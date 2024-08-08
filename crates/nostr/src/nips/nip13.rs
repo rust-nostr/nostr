@@ -16,7 +16,7 @@ pub fn get_leading_zero_bits<T>(h: T) -> u8
 where
     T: AsRef<[u8]>,
 {
-    let mut res: u8 = 0_u8;
+    let mut res: u8 = 0u8;
     for b in h.as_ref().iter() {
         if *b == 0 {
             res += 8;

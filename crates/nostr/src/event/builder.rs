@@ -31,13 +31,13 @@ use crate::nips::nip51::{ArticlesCuration, Bookmarks, Emojis, Interests, MuteLis
 use crate::nips::nip53::LiveEvent;
 #[cfg(feature = "nip57")]
 use crate::nips::nip57::ZapRequestData;
+use crate::nips::nip58;
 #[cfg(all(feature = "std", feature = "nip59"))]
 use crate::nips::nip59;
 use crate::nips::nip65::RelayMetadata;
 use crate::nips::nip90::DataVendingMachineStatus;
 use crate::nips::nip94::FileMetadata;
 use crate::nips::nip98::HttpData;
-use crate::nips::{nip13, nip58};
 #[cfg(feature = "std")]
 use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
@@ -303,7 +303,7 @@ impl EventBuilder {
                 .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
             let id: EventId = EventId::new(&pubkey, &created_at, &self.kind, &tags, &self.content);
 
-            if nip13::get_leading_zero_bits(id.as_bytes()) >= difficulty {
+            if id.check_pow(difficulty) {
                 #[cfg(feature = "std")]
                 tracing::debug!(
                     "{} iterations in {} ms. Avg rate {} hashes/second",
