@@ -7,6 +7,7 @@
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::cmp::Ordering;
+use core::fmt;
 use core::hash::{Hash, Hasher};
 
 #[cfg(feature = "std")]
@@ -33,10 +34,16 @@ use crate::types::url::Url;
 use crate::{ImageDimensions, PublicKey, SingleLetterTag, Timestamp, UncheckedUrl};
 
 /// Tag
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Tag {
     buf: Vec<String>,
     standardized: OnceCell<Option<TagStandard>>,
+}
+
+impl fmt::Debug for Tag {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Tag").field(&self.buf).finish()
+    }
 }
 
 impl PartialEq for Tag {

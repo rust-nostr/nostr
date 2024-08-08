@@ -52,8 +52,14 @@ impl From<hex::Error> for Error {
 /// 32-bytes lowercase hex-encoded sha256 of the serialized event data
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct EventId([u8; 32]);
+
+impl fmt::Debug for EventId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "EventId({})", self.to_hex())
+    }
+}
 
 impl EventId {
     /// Event ID len

@@ -38,7 +38,7 @@ impl From<XOnlyPublicKey> for PublicKey {
 
 impl fmt::Debug for PublicKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("PublicKey").field(&self.to_bytes()).finish()
+        write!(f, "PublicKey({})", self.to_hex())
     }
 }
 
