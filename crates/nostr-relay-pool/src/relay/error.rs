@@ -3,6 +3,7 @@
 // Distributed under the MIT software license
 
 use std::collections::HashMap;
+use std::time::Duration;
 
 use async_utility::thread;
 use nostr::message::relay::NegentropyErrorCode;
@@ -147,6 +148,14 @@ pub enum Error {
     /// WebSocket error
     #[error("{0}")]
     WebSocket(Box<dyn std::error::Error + Send + Sync>),
+    /// Max latency exceeded
+    #[error("Maximum latency exceeded: max={}ms, current={}ms", max.as_millis(), current.as_millis())]
+    MaximumLatencyExceeded {
+        /// Max
+        max: Duration,
+        /// Current
+        current: Duration,
+    },
 }
 
 impl Error {

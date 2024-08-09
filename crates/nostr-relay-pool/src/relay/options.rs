@@ -35,6 +35,7 @@ pub struct RelayOptions {
     retry_sec: Arc<AtomicU64>,
     adjust_retry_sec: Arc<AtomicBool>,
     pub(super) limits: RelayLimits,
+    pub(super) max_avg_latency: Option<Duration>,
 }
 
 impl Default for RelayOptions {
@@ -47,6 +48,7 @@ impl Default for RelayOptions {
             retry_sec: Arc::new(AtomicU64::new(DEFAULT_RETRY_SEC)),
             adjust_retry_sec: Arc::new(AtomicBool::new(true)),
             limits: RelayLimits::default(),
+            max_avg_latency: None,
         }
     }
 }
@@ -192,6 +194,15 @@ impl RelayOptions {
     /// Set custom limits
     pub fn limits(mut self, limits: RelayLimits) -> Self {
         self.limits = limits;
+        self
+    }
+
+    /// Set max latency (default: None)
+    ///
+    /// Relay with an avg. latency greater that this value will be skipped.
+    #[inline]
+    pub fn max_avg_latency(mut self, max: Option<Duration>) -> Self {
+        self.max_avg_latency = max;
         self
     }
 }

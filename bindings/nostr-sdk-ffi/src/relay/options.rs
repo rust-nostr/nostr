@@ -165,6 +165,15 @@ impl RelayOptions {
         builder.inner = builder.inner.limits(limits.deref().clone());
         builder
     }
+
+    /// Set max latency (default: None)
+    ///
+    /// Relay with an avg. latency greater that this value will be skipped.
+    pub fn max_avg_latency(self: Arc<Self>, max: Option<Duration>) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.max_avg_latency(max);
+        builder
+    }
 }
 
 #[derive(Clone, Object)]

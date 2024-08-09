@@ -426,7 +426,8 @@ impl Client {
         // Set min POW difficulty and limits
         let opts: RelayOptions = opts
             .pow(self.opts.get_min_pow_difficulty())
-            .limits(self.opts.relay_limits.clone());
+            .limits(self.opts.relay_limits.clone())
+            .max_avg_latency(self.opts.max_avg_latency);
 
         // Add relay
         let added: bool = self.add_relay_with_opts::<&Url>(&url, opts).await?;

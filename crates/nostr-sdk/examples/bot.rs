@@ -27,6 +27,7 @@ async fn main() -> Result<()> {
     client.add_relay("wss://nostr.mom").await?;
     client.add_relay("wss://nostr.wine").await?;
     client.add_relay("wss://relay.nostr.info").await?;
+    client.add_relay("wss://auth.nostr1.com").await?;
 
     client.connect().await;
 

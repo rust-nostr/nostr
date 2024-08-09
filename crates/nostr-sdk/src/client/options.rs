@@ -30,6 +30,7 @@ pub struct Options {
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) connection: Connection,
     pub(super) relay_limits: RelayLimits,
+    pub(super) max_avg_latency: Option<Duration>,
     pub(super) pool: RelayPoolOptions,
 }
 
@@ -50,6 +51,7 @@ impl Default for Options {
             #[cfg(not(target_arch = "wasm32"))]
             connection: Connection::default(),
             relay_limits: RelayLimits::default(),
+            max_avg_latency: None,
             pool: RelayPoolOptions::default(),
         }
     }
@@ -210,6 +212,15 @@ impl Options {
     #[inline]
     pub fn relay_limits(mut self, limits: RelayLimits) -> Self {
         self.relay_limits = limits;
+        self
+    }
+
+    /// Set max latency (default: None)
+    ///
+    /// Relays with an avg. latency greater that this value will be skipped.
+    #[inline]
+    pub fn max_avg_latency(mut self, max: Duration) -> Self {
+        self.max_avg_latency = Some(max);
         self
     }
 
