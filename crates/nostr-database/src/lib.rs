@@ -163,7 +163,10 @@ pub trait NostrDatabase: AsyncTraitDeps {
     async fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> Result<Vec<(EventId, Timestamp)>, Self::Err>;
+    ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
+        let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
+        Ok(events.into_iter().map(|e| (e.id, e.created_at)).collect())
+    }
 
     /// Delete all events that match the [Filter]
     async fn delete(&self, filter: Filter) -> Result<(), Self::Err>;
