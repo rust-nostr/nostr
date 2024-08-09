@@ -89,6 +89,12 @@ where
         }
     }
 
+    /// Get capacity
+    #[inline]
+    pub fn capacity(&self) -> Capacity {
+        self.capacity
+    }
+
     /// Change capacity
     pub fn change_capacity(&mut self, capacity: Capacity) {
         match capacity {

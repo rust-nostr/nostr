@@ -686,10 +686,15 @@ impl InternalDatabaseHelper {
         }
     }
 
-    /// Clear indexes
     pub fn clear(&mut self) {
-        // TODO: clear but preserve capacity
+        // Get current capacity
+        let capacity: Capacity = self.events.capacity();
+
+        // Reset helper to default
         *self = Self::default();
+
+        // Change capacity
+        self.events.change_capacity(capacity);
     }
 }
 
@@ -810,7 +815,7 @@ impl DatabaseHelper {
         inner.delete(filter)
     }
 
-    /// Clear indexes
+    /// Clear helper
     pub async fn clear(&self) {
         let mut inner = self.inner.write().await;
         inner.clear();
