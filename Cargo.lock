@@ -1232,7 +1232,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68a27f0a2651f507903d67f8fb0688291e3e69f70381cdb5ee9729366f795f80"
 dependencies = [
  "heck 0.5.0",
- "indexmap 2.2.6",
+ "indexmap 1.9.3",
  "itertools 0.13.0",
  "proc-macro-crate 3.1.0",
  "proc-macro2",
@@ -4047,12 +4047,13 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.120"
+version = "1.0.122"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e0d21c9a8cae1235ad58a00c11cb40d4b1e5c784f1ef2c537876ed6ffd8b7c5"
+checksum = "784b6203951c57ff748476b126ccb5e8e2959a5c19e5c617ab1956be3dbc68da"
 dependencies = [
  "indexmap 2.2.6",
  "itoa",
+ "memchr",
  "ryu",
  "serde",
 ]
