@@ -222,10 +222,7 @@ fn ndb_filter_conversion(f: Filter) -> nostrdb::Filter {
 
     if !f.generic_tags.is_empty() {
         for (single_letter, set) in f.generic_tags.into_iter() {
-            filter.tags(
-                set.into_iter().map(|v| v.to_string()).collect(),
-                single_letter.as_char(),
-            );
+            filter.tags(set.into_iter().collect(), single_letter.as_char());
         }
     }
 
