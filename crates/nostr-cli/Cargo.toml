@@ -12,6 +12,6 @@ once_cell.workspace = true
 prettytable-rs = "0.10"
 rayon = "1.10"
 regex = "1.9.6"
-rustyline = { version = "13.0", default-features = false }
+rustyline = { version = "14.0", default-features = false }
 serde_json = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = ["full"] }
