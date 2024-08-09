@@ -3,13 +3,14 @@
 import asyncio
 
 from src.keys import generate, restore, vanity
-from src.timestamps import timestamps
-from src.filters import filters
 from src.event.json import event_json
 from src.event.builder import event_builder
-from src.event.tags import tags
 from src.event.eventid import event_id
 from src.event.kind import kind
+from src.timestamps import timestamps
+from src.event.tags import tags
+from src.messages.filters import filters
+from src.messages.relaymessage import relay_message
 from src.nip01 import nip01
 from src.nip05 import nip05
 from src.nip06 import nip06
@@ -30,6 +31,7 @@ async def main():
     timestamps()
     tags()
     filters()
+    relay_message()
     nip01()
     await nip05()
     nip06()
