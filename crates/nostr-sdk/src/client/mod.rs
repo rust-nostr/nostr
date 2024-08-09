@@ -459,8 +459,12 @@ impl Client {
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
-    /// let proxy = Some(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)));
-    /// let opts = RelayOptions::new().proxy(proxy).write(false).retry_sec(11);
+    /// let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050));
+    /// let mode = ConnectionMode::Proxy(addr);
+    /// let opts = RelayOptions::new()
+    ///     .connection_mode(mode)
+    ///     .write(false)
+    ///     .retry_sec(11);
     /// client
     ///     .add_relay_with_opts("wss://relay.nostr.info", opts)
     ///     .await
