@@ -18,7 +18,7 @@ use nostr::Timestamp;
 use tokio::sync::RwLock;
 
 #[cfg(not(target_arch = "wasm32"))]
-use super::constants::LATENCY_MAX_VALUES;
+use super::constants::{LATENCY_MAX_VALUES, LATENCY_MIN_READS};
 
 /// Ping Stats
 #[cfg(not(target_arch = "wasm32"))]
@@ -163,16 +163,17 @@ impl RelayConnectionStats {
     /// Calculate latency
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn latency(&self) -> Option<Duration> {
+        // Acquire list
         let latencies = self.latencies.read().await;
+
+        // Check number of reads
+        if latencies.len() < LATENCY_MIN_READS {
+            return None;
+        }
+
+        // Calc latency
         let sum: Duration = latencies.iter().sum();
         sum.checked_div(latencies.len() as u32)
-    }
-
-    /// Get number of latency reads
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) async fn latency_reads(&self) -> usize {
-        let latencies = self.latencies.read().await;
-        latencies.len()
     }
 
     pub(crate) fn new_attempt(&self) {

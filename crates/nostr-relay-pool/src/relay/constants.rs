@@ -16,4 +16,7 @@ pub const WEBSOCKET_TX_TIMEOUT: Duration = Duration::from_secs(10);
 pub const LATENCY_MAX_VALUES: usize = 50;
 
 #[cfg(not(target_arch = "wasm32"))]
+pub(crate) const LATENCY_MIN_READS: usize = 3;
+
+#[cfg(not(target_arch = "wasm32"))]
 pub const HIGH_LATENCY: Duration = Duration::from_secs(1);

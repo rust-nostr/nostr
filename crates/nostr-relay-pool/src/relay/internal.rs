@@ -471,9 +471,7 @@ impl InternalRelay {
                         // Log high latency
                         #[cfg(not(target_arch = "wasm32"))]
                         if let Some(latency) = relay.stats.latency().await {
-                            let reads: usize = relay.stats.latency_reads().await;
-
-                            if latency >= HIGH_LATENCY && reads >= 3 {
+                            if latency >= HIGH_LATENCY {
                                 tracing::warn!(
                                     "Latency of '{}' relay is high, averaging over {} ms!",
                                     relay.url(),
