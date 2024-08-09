@@ -147,6 +147,12 @@ impl Coordinate {
         self.identifier = identifier.into();
         self
     }
+
+    /// Check if coordinate has identifier
+    #[inline]
+    pub fn has_identifier(&self) -> bool {
+        !self.identifier.is_empty()
+    }
 }
 
 impl From<Coordinate> for Tag {

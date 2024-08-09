@@ -36,11 +36,22 @@ impl From<&JsNostrDatabase> for Arc<DynNostrDatabase> {
 
 #[wasm_bindgen(js_class = NostrDatabase)]
 impl JsNostrDatabase {
-    /// Open IndexedDB database
-    ///
-    /// If not exists, create it.
-    pub async fn indexeddb(name: String) -> Result<JsNostrDatabase> {
+    /// Open/Create database with **unlimited** capacity
+    pub async fn indexeddb(name: &str) -> Result<JsNostrDatabase> {
         let db = Arc::new(WebDatabase::open(name).await.map_err(into_err)?);
+        Ok(Self {
+            inner: db.into_nostr_database(),
+        })
+    }
+
+    /// Open/Create database with **limited** capacity
+    #[wasm_bindgen(js_name = indexeddbBounded)]
+    pub async fn indexeddb_bounded(name: &str, max_capacity: u64) -> Result<JsNostrDatabase> {
+        let db = Arc::new(
+            WebDatabase::open_bounded(name, max_capacity as usize)
+                .await
+                .map_err(into_err)?,
+        );
         Ok(Self {
             inner: db.into_nostr_database(),
         })

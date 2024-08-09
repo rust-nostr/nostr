@@ -27,6 +27,7 @@
 
 ### Changed
 
+* Bump MSRV to v1.70.0 ([Yuki Kishimoto])
 * Bump toolchain channel to `1.80.1` ([Yuki Kishimoto])
 * nostr: deprecate `Event::author_ref` and `Event::iter_tags` ([Yuki Kishimoto])
 * nostr: calculate `EventId` in `EventBuilder::to_unsigned_event_with_supplier` ([Yuki Kishimoto])
@@ -44,6 +45,10 @@
 * database: not match event if `Filter::search` field is set ([Yuki Kishimoto])
 * database: avoid to copy `EventId` in `Event::decode` ([Yuki Kishimoto])
 * database: use `Vec` instead of `BTreeSet` as inner value for `TagIndexValues` ([Yuki Kishimoto])
+* database: rework `DatabaseIndexes` and rename to `DatabaseHelper` ([Yuki Kishimoto])
+* database: allow to set max capacity to `DatabaseHelper` ([Yuki Kishimoto])
+* database: speedup helper bulk load ([Yuki Kishimoto])
+* database: set a default logic for `NostrDatabase::negentropy_items` ([Yuki Kishimoto])
 * sdk: rename `Proxy` and `ProxyTarget` to `Connection` and `ConnectionTarget` ([Yuki Kishimoto])
 * sqlite: use `ValueRef` instead of owned one ([Yuki Kishimoto])
 * cli: improve `sync` command ([Yuki Kishimoto])
@@ -59,8 +64,10 @@
 * nostr: add `ConversationKey::new` ([Yuki Kishimoto])
 * nostr: add `Request::multi_pay_invoice` constructor ([Yuki Kishimoto])
 * nostr: add `Jsonutil::as_pretty_json` and `JsonUtil::try_as_pretty_json` methods ([Yuki Kishimoto])
+* nostr: add `Coordinate::has_identifier` ([Yuki Kishimoto])
 * pool: add `RelayPoolNotification::Authenticated` variant ([Yuki Kishimoto])
 * pool: add `RelayPool::save_subscription` ([Yuki Kishimoto])
+* sqlite/rocksdb/indexeddb: allow to open database with limited capacity ([Yuki Kishimoto])
 * sdk: add `Client::gift_wrap_to` and `Client::send_private_msg_to` ([reyamir])
 * sdk: add option to autoconnect relay on `Client::add_relay` method call ([Yuki Kishimoto])
 * sdk: add support to embedded tor client ([Yuki Kishimoto])
@@ -81,6 +88,8 @@
 * nostr: remove support for `nrelay` NIP-19 entity ([Yuki Kishimoto])
 * nostr: remove support for NIP-44 v1 ([Yuki Kishimoto])
 * nostr: remove `EventBuilder::encrypted_direct_msg` ([Yuki Kishimoto])
+* database: remove `TempEvent` ([Yuki Kishimoto])
+* database: remove `NostrDatabase::event_ids_by_filters` ([Yuki Kishimoto])
 * sdk: remove `Client::send_direct_msg` ([Yuki Kishimoto])
 * cli: remove `tracing-subscriber` dep
 

@@ -39,9 +39,19 @@ impl From<&NostrDatabase> for Arc<DynNostrDatabase> {
 #[cfg(feature = "sqlite")]
 #[uniffi::export(async_runtime = "tokio")]
 impl NostrDatabase {
+    /// Open database with **unlimited** capacity
     #[uniffi::constructor]
     pub async fn sqlite(path: &str) -> Result<Self> {
         let db = Arc::new(SQLiteDatabase::open(path).await?);
+        Ok(Self {
+            inner: db.into_nostr_database(),
+        })
+    }
+
+    /// Open database with **limited** capacity
+    #[uniffi::constructor]
+    pub async fn sqlite_bounded(path: &str, max_capacity: u64) -> Result<Self> {
+        let db = Arc::new(SQLiteDatabase::open_bounded(path, max_capacity as usize).await?);
         Ok(Self {
             inner: db.into_nostr_database(),
         })

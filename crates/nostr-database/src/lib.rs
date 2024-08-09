@@ -20,21 +20,18 @@ use nostr::{Event, EventId, Filter, JsonUtil, Kind, Metadata, PublicKey, Timesta
 mod error;
 #[cfg(feature = "flatbuf")]
 pub mod flatbuffers;
-pub mod index;
+pub mod helper;
 pub mod memory;
 pub mod profile;
-mod tag_indexes;
-#[cfg(feature = "flatbuf")]
-mod temp;
+mod tree;
+mod util;
 
 pub use self::error::DatabaseError;
 #[cfg(feature = "flatbuf")]
 pub use self::flatbuffers::{FlatBufferBuilder, FlatBufferDecode, FlatBufferEncode};
-pub use self::index::{DatabaseIndexes, EventIndexResult};
+pub use self::helper::{DatabaseEventResult, DatabaseHelper};
 pub use self::memory::{MemoryDatabase, MemoryDatabaseOptions};
 pub use self::profile::Profile;
-#[cfg(feature = "flatbuf")]
-pub use self::temp::TempEvent;
 
 /// Backend
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -162,18 +159,14 @@ pub trait NostrDatabase: AsyncTraitDeps {
     /// Query store with filters
     async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err>;
 
-    /// Get event IDs by filters
-    async fn event_ids_by_filters(
-        &self,
-        filters: Vec<Filter>,
-        order: Order,
-    ) -> Result<Vec<EventId>, Self::Err>;
-
     /// Get `negentropy` items
     async fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> Result<Vec<(EventId, Timestamp)>, Self::Err>;
+    ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
+        let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
+        Ok(events.into_iter().map(|e| (e.id, e.created_at)).collect())
+    }
 
     /// Delete all events that match the [Filter]
     async fn delete(&self, filter: Filter) -> Result<(), Self::Err>;
@@ -347,17 +340,6 @@ impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
 
     async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
         self.0.query(filters, order).await.map_err(Into::into)
-    }
-
-    async fn event_ids_by_filters(
-        &self,
-        filters: Vec<Filter>,
-        order: Order,
-    ) -> Result<Vec<EventId>, Self::Err> {
-        self.0
-            .event_ids_by_filters(filters, order)
-            .await
-            .map_err(Into::into)
     }
 
     async fn negentropy_items(

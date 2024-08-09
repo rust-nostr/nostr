@@ -21,8 +21,8 @@ use async_trait::async_trait;
 use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use nostr_database::{
-    Backend, DatabaseError, DatabaseIndexes, EventIndexResult, FlatBufferBuilder, FlatBufferDecode,
-    FlatBufferEncode, NostrDatabase, Order, TempEvent,
+    Backend, DatabaseError, DatabaseEventResult, DatabaseHelper, FlatBufferBuilder,
+    FlatBufferDecode, FlatBufferEncode, NostrDatabase, Order,
 };
 use rocksdb::{
     BoundColumnFamily, ColumnFamilyDescriptor, DBCompactionStyle, DBCompressionType, IteratorMode,
@@ -39,11 +39,11 @@ const EVENTS_SEEN_BY_RELAYS_CF: &str = "event-seen-by-relays";
 #[derive(Debug, Clone)]
 pub struct RocksDatabase {
     db: Arc<OptimisticTransactionDB>,
-    indexes: DatabaseIndexes,
+    helper: DatabaseHelper,
     fbb: Arc<RwLock<FlatBufferBuilder<'static>>>,
 }
 
-fn default_opts() -> rocksdb::Options {
+fn default_opts() -> Options {
     let mut opts = Options::default();
     opts.set_keep_log_file_num(10);
     opts.set_max_open_files(16);
@@ -71,8 +71,7 @@ fn column_families() -> Vec<ColumnFamilyDescriptor> {
 }
 
 impl RocksDatabase {
-    /// Open RocksDB store
-    pub async fn open<P>(path: P) -> Result<Self, DatabaseError>
+    async fn new<P>(path: P, helper: DatabaseHelper) -> Result<Self, DatabaseError>
     where
         P: AsRef<Path>,
     {
@@ -100,13 +99,31 @@ impl RocksDatabase {
 
         let this = Self {
             db: Arc::new(db),
-            indexes: DatabaseIndexes::new(),
+            helper,
             fbb: Arc::new(RwLock::new(FlatBufferBuilder::with_capacity(70_000))),
         };
 
-        this.build_indexes().await?;
+        this.bulk_load().await?;
 
         Ok(this)
+    }
+
+    /// Open database with **unlimited** capacity
+    #[inline]
+    pub async fn open<P>(path: P) -> Result<Self, DatabaseError>
+    where
+        P: AsRef<Path>,
+    {
+        Self::new(path, DatabaseHelper::unbounded()).await
+    }
+
+    /// Open database with **limited** capacity
+    #[inline]
+    pub async fn open_bounded<P>(path: P, max_capacity: usize) -> Result<Self, DatabaseError>
+    where
+        P: AsRef<Path>,
+    {
+        Self::new(path, DatabaseHelper::bounded(max_capacity)).await
     }
 
     fn cf_handle(&self, name: &str) -> Result<Arc<BoundColumnFamily>, DatabaseError> {
@@ -114,17 +131,17 @@ impl RocksDatabase {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn build_indexes(&self) -> Result<(), DatabaseError> {
+    async fn bulk_load(&self) -> Result<(), DatabaseError> {
         let cf = self.cf_handle(EVENTS_CF)?;
         let events = self
             .db
             .full_iterator_cf(&cf, IteratorMode::Start)
             .flatten()
-            .filter_map(|(_, value)| TempEvent::decode(&value).ok())
+            .filter_map(|(_, value)| Event::decode(&value).ok())
             .collect();
 
         // Build indexes
-        let to_discard: HashSet<EventId> = self.indexes.bulk_index(events).await;
+        let to_discard: HashSet<EventId> = self.helper.bulk_load(events).await;
 
         // Discard events
         if !to_discard.is_empty() {
@@ -155,10 +172,10 @@ impl NostrDatabase for RocksDatabase {
     #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
         // Index event
-        let EventIndexResult {
+        let DatabaseEventResult {
             to_store,
             to_discard,
-        } = self.indexes.index_event(event).await;
+        } = self.helper.index_event(event).await;
 
         if to_store {
             // Acquire FlatBuffers Builder
@@ -202,7 +219,7 @@ impl NostrDatabase for RocksDatabase {
         // Prepare write batch
         let mut batch = WriteBatchWithTransaction::default();
 
-        let events = self.indexes.bulk_import(events).await;
+        let events = self.helper.bulk_import(events).await;
 
         // Get Column Family
         let events_cf = self.cf_handle(EVENTS_CF)?;
@@ -224,7 +241,7 @@ impl NostrDatabase for RocksDatabase {
     }
 
     async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        if self.indexes.has_event_id_been_deleted(event_id).await {
+        if self.helper.has_event_id_been_deleted(event_id).await {
             Ok(true)
         } else {
             let cf = self.cf_handle(EVENTS_CF)?;
@@ -238,7 +255,7 @@ impl NostrDatabase for RocksDatabase {
     }
 
     async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        Ok(self.indexes.has_event_id_been_deleted(event_id).await)
+        Ok(self.helper.has_event_id_been_deleted(event_id).await)
     }
 
     async fn has_coordinate_been_deleted(
@@ -247,7 +264,7 @@ impl NostrDatabase for RocksDatabase {
         timestamp: Timestamp,
     ) -> Result<bool, Self::Err> {
         Ok(self
-            .indexes
+            .helper
             .has_coordinate_been_deleted(coordinate, timestamp)
             .await)
     }
@@ -300,54 +317,23 @@ impl NostrDatabase for RocksDatabase {
 
     #[tracing::instrument(skip_all, level = "trace")]
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err> {
-        Ok(self.indexes.count(filters).await)
+        Ok(self.helper.count(filters).await)
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
-        let ids: Vec<EventId> = self.indexes.query(filters, order).await;
-
-        let this = self.clone();
-        tokio::task::spawn_blocking(move || {
-            let cf = this.cf_handle(EVENTS_CF)?;
-
-            let mut events: Vec<Event> = Vec::with_capacity(ids.len());
-
-            let span = tracing::trace_span!("query-batched-multi-get");
-            let list = span.in_scope(|| this.db.batched_multi_get_cf(&cf, ids.iter(), false));
-
-            let span = tracing::trace_span!("query-decode-events");
-            span.in_scope(|| {
-                for v in list.into_iter().flatten().flatten() {
-                    let event: Event = Event::decode(&v).map_err(DatabaseError::backend)?;
-                    events.push(event);
-                }
-                Ok(())
-            })?;
-
-            Ok(events)
-        })
-        .await
-        .map_err(DatabaseError::backend)?
-    }
-
-    async fn event_ids_by_filters(
-        &self,
-        filters: Vec<Filter>,
-        order: Order,
-    ) -> Result<Vec<EventId>, Self::Err> {
-        Ok(self.indexes.query(filters, order).await)
+        Ok(self.helper.query(filters, order).await)
     }
 
     async fn negentropy_items(
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
-        Ok(self.indexes.negentropy_items(filter).await)
+        Ok(self.helper.negentropy_items(filter).await)
     }
 
     async fn delete(&self, filter: Filter) -> Result<(), Self::Err> {
-        match self.indexes.delete(filter).await {
+        match self.helper.delete(filter).await {
             Some(ids) => {
                 let events_cf = self.cf_handle(EVENTS_CF)?;
 
