@@ -182,8 +182,9 @@ impl Relay {
         self.inner.flags()
     }
 
+    /// Get Relay Service Flags
     #[inline]
-    pub(crate) fn flags_ref(&self) -> &AtomicRelayServiceFlags {
+    pub fn flags_ref(&self) -> &AtomicRelayServiceFlags {
         self.inner.flags_ref()
     }
 

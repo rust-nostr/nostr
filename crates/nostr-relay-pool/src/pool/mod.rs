@@ -178,6 +178,22 @@ impl RelayPool {
         self.inner.add_relay(url, opts).await
     }
 
+    /// Try to get relay by `url` or add it to pool.
+    ///
+    /// Return `Some(..)` only if the relay already exists.
+    #[inline]
+    pub async fn get_or_add_relay<U>(
+        &self,
+        url: U,
+        opts: RelayOptions,
+    ) -> Result<Option<Relay>, Error>
+    where
+        U: TryIntoUrl + Clone,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.inner.get_or_add_relay(url, opts).await
+    }
+
     /// Disconnect and remove relay
     #[inline]
     pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>

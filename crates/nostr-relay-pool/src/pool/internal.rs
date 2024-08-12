@@ -212,6 +212,24 @@ impl InternalRelayPool {
         }
     }
 
+    pub async fn get_or_add_relay<U>(
+        &self,
+        url: U,
+        opts: RelayOptions,
+    ) -> Result<Option<Relay>, Error>
+    where
+        U: TryIntoUrl + Clone,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        match self.relay(url.clone()).await {
+            Ok(relay) => Ok(Some(relay)),
+            Err(..) => {
+                self.add_relay(url, opts).await?;
+                Ok(None)
+            }
+        }
+    }
+
     pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,

@@ -363,38 +363,7 @@ impl Client {
         Ok(self.pool.relay(url).await?)
     }
 
-    /// Add new relay
-    ///
-    /// Return `false` if the relay already exists.
-    ///
-    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
-    /// to avoid to set pool subscriptions.
-    ///
-    /// This method use previously set or default [Options] to configure the [Relay] (ex. set proxy, set min POW, set relay limits, ...).
-    /// To use custom [RelayOptions], check `Client::add_relay_with_opts`.
-    ///
-    /// Connection is **NOT** automatically started with relay, remember to call `client.connect()`!
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
-    /// client.add_relay("wss://relay.nostr.info").await.unwrap();
-    /// client.add_relay("wss://relay.damus.io").await.unwrap();
-    ///
-    /// client.connect().await;
-    /// # }
-    /// ```
-    pub async fn add_relay<U>(&self, url: U) -> Result<bool, Error>
-    where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
-    {
-        let url: Url = url.try_into_url().map_err(pool::Error::from)?;
+    async fn compose_relay_opts(&self, url: &Url) -> RelayOptions {
         let opts: RelayOptions = RelayOptions::new();
 
         // Set connection mode
@@ -429,19 +398,83 @@ impl Client {
         };
 
         // Set min POW difficulty and limits
-        let opts: RelayOptions = opts
-            .pow(self.opts.get_min_pow_difficulty())
+        opts.pow(self.opts.get_min_pow_difficulty())
             .limits(self.opts.relay_limits.clone())
-            .max_avg_latency(self.opts.max_avg_latency);
+            .max_avg_latency(self.opts.max_avg_latency)
+    }
+
+    /// Add new relay
+    ///
+    /// Return `false` if the relay already exists.
+    ///
+    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
+    /// to avoid to set pool subscriptions.
+    ///
+    /// This method use previously set or default [Options] to configure the [Relay] (ex. set proxy, set min POW, set relay limits, ...).
+    /// To use custom [RelayOptions], check `Client::add_relay_with_opts`.
+    ///
+    /// Connection is **NOT** automatically started with relay, remember to call `client.connect()`!
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use nostr_sdk::prelude::*;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// #   let my_keys = Keys::generate();
+    /// #   let client = Client::new(&my_keys);
+    /// client.add_relay("wss://relay.nostr.info").await.unwrap();
+    /// client.add_relay("wss://relay.damus.io").await.unwrap();
+    ///
+    /// client.connect().await;
+    /// # }
+    /// ```
+    pub async fn add_relay<U>(&self, url: U) -> Result<bool, Error>
+    where
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let url: Url = url.try_into_url().map_err(pool::Error::from)?;
+
+        // Compose relay options
+        let opts: RelayOptions = self.compose_relay_opts(&url).await;
 
         // Add relay
-        let added: bool = self.add_relay_with_opts::<&Url>(&url, opts).await?;
+        let added: bool = self.pool.add_relay::<&Url>(&url, opts).await?;
 
         if added && self.opts.autoconnect {
             self.connect_relay::<Url>(url).await?;
         }
 
         Ok(added)
+    }
+
+    /// Add discovery relay
+    ///
+    /// If relay already exists in the pool, this method automatically add the 'DISCOVERY' flag to it.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
+    #[inline]
+    pub async fn add_discovery_relay<U>(&self, url: U) -> Result<(), Error>
+    where
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Convert into url
+        let url: Url = url.try_into_url().map_err(pool::Error::from)?;
+
+        // Compose relay options
+        let opts: RelayOptions = self.compose_relay_opts(&url).await;
+
+        // Set `DISCOVERY` flag
+        let opts: RelayOptions = opts.flags(RelayServiceFlags::DISCOVERY);
+
+        // Add relay with opts or edit current one
+        if let Some(relay) = self.pool.get_or_add_relay::<Url>(url, opts).await? {
+            relay.flags_ref().add(RelayServiceFlags::DISCOVERY);
+        }
+
+        Ok(())
     }
 
     /// Add new relay with custom [`RelayOptions`]

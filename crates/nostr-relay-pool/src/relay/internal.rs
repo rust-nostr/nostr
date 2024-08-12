@@ -254,7 +254,7 @@ impl InternalRelay {
     }
 
     #[inline]
-    pub(crate) fn flags_ref(&self) -> &AtomicRelayServiceFlags {
+    pub fn flags_ref(&self) -> &AtomicRelayServiceFlags {
         &self.opts.flags
     }
 
