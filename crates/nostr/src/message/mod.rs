@@ -20,6 +20,7 @@ pub mod relay;
 pub use self::client::ClientMessage;
 pub use self::relay::{MachineReadablePrefix, RawRelayMessage, RelayMessage};
 use crate::event;
+use crate::util::hex;
 
 /// Messages error
 #[derive(Debug)]
@@ -96,8 +97,7 @@ impl SubscriptionId {
     #[inline]
     #[cfg(feature = "std")]
     pub fn generate() -> Self {
-        let mut rng = OsRng;
-        Self::generate_with_rng(&mut rng)
+        Self::generate_with_rng(&mut OsRng)
     }
 
     /// Generate new random [`SubscriptionId`]
@@ -105,10 +105,15 @@ impl SubscriptionId {
     where
         R: RngCore,
     {
-        let mut os_random = [0u8; 32];
-        rng.fill_bytes(&mut os_random);
-        let hash = Sha256Hash::hash(&os_random).to_string();
-        Self::new(&hash[..32])
+        // Random bytes
+        let mut bytes: [u8; 32] = [0u8; 32];
+        rng.fill_bytes(&mut bytes);
+
+        // Hash random bytes
+        let hash: [u8; 32] = Sha256Hash::hash(&bytes).to_byte_array();
+
+        // Cut the hash and encode to hex
+        Self::new(hex::encode(&hash[..16]))
     }
 }
 

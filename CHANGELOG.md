@@ -38,6 +38,7 @@
 * nostr: remove `Arc<T>` from `OnceCell<T>` in `Event` and `Tag` ([Yuki Kishimoto])
 * nostr: move `sig` field from `PartialEvent` to `MissingPartialEvent` ([Yuki Kishimoto])
 * nostr: better `Debug` trait impl for `EventId`, `PublicKey` and `Tag` ([Yuki Kishimoto])
+* nostr: improve `SubscriptionId::generate_with_rng` ([Yuki Kishimoto])
 * pool: take mutex ownership instead of clone in `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
 * pool: remove IDs collection from `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
 * pool: better checks before perform queries or send messages to relays ([Yuki Kishimoto])
