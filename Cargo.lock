@@ -5570,7 +5570,7 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 [[package]]
 name = "tungstenite"
 version = "0.23.0"
-source = "git+https://github.com/yukibtc/tungstenite-rs?branch=tor#2ceb32f28de9e3be3be73dd69e8593109156ac5b"
+source = "git+https://github.com/yukibtc/tungstenite-rs?branch=tor#b66ab8a3eddd3260096cb7c4917d9884fab8b1f0"
 dependencies = [
  "byteorder",
  "bytes",
