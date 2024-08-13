@@ -102,7 +102,7 @@ fn get_key_from_json(json: &Value, name: &str) -> Option<PublicKey> {
 }
 
 #[inline]
-fn get_relays_from_json(json: &Value, pk: PublicKey) -> Vec<Url> {
+fn get_relays_from_json(json: &Value, pk: &PublicKey) -> Vec<Url> {
     json.get("relays")
         .and_then(|relays| relays.get(pk.to_hex()))
         .and_then(|value| serde_json::from_value(value.clone()).ok())
@@ -110,7 +110,7 @@ fn get_relays_from_json(json: &Value, pk: PublicKey) -> Vec<Url> {
 }
 
 #[inline]
-fn get_nip46_relays_from_json(json: &Value, pk: PublicKey) -> Vec<Url> {
+fn get_nip46_relays_from_json(json: &Value, pk: &PublicKey) -> Vec<Url> {
     json.get("nip46")
         .and_then(|relays| relays.get(pk.to_hex()))
         .and_then(|value| serde_json::from_value(value.clone()).ok())
@@ -178,8 +178,8 @@ where
     let (json, name) = make_req(nip05.as_ref(), _proxy).await?;
 
     let public_key: PublicKey = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
-    let relays: Vec<Url> = get_relays_from_json(&json, public_key);
-    let nip46: Vec<Url> = get_nip46_relays_from_json(&json, public_key);
+    let relays: Vec<Url> = get_relays_from_json(&json, &public_key);
+    let nip46: Vec<Url> = get_nip46_relays_from_json(&json, &public_key);
 
     Ok(Nip05Profile {
         public_key,
