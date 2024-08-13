@@ -567,11 +567,9 @@ impl InternalRelay {
             let _ = thread::spawn(async move {
                 match RelayInformationDocument::get(relay.url(), proxy).await {
                     Ok(document) => relay.set_document(document).await,
-                    Err(e) => tracing::error!(
-                        "Impossible to get information document from '{}': {}",
-                        relay.url,
-                        e
-                    ),
+                    Err(e) => {
+                        tracing::warn!("Can't get information document from '{}': {e}", relay.url)
+                    }
                 };
             });
         }
