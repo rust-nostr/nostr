@@ -1,4 +1,4 @@
-const { Keys, Client, Filter, loadWasmAsync, Timestamp, Duration } = require("../");
+const { Keys, Client, Filter, loadWasmAsync, Timestamp, Duration, EventSource } = require("../");
 
 async function main() {
     await loadWasmAsync();
@@ -14,7 +14,8 @@ async function main() {
     const filter = new Filter().author(keys.publicKey).kind(4).until(Timestamp.now()).limit(10);
     console.log('filter', filter.asJson());
 
-    let events = await client.getEventsOf([filter], Duration.fromSecs(10));
+    let source = EventSource.relays(Duration.fromSecs(10));
+    let events = await client.getEventsOf([filter], source);
     events.forEach((e) => {
         console.log(e.asJson())
     })

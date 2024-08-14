@@ -1,5 +1,5 @@
 import asyncio
-from nostr_sdk import PublicKey, Client, Filter, Kind, init_logger, LogLevel
+from nostr_sdk import PublicKey, Client, Filter, Kind, init_logger, LogLevel, EventSource
 from datetime import timedelta
 
 
@@ -20,7 +20,8 @@ async def main():
 
     # Get events
     f = Filter().authors([muted_public_key, other_public_key]).kind(Kind(0))
-    events = await client.get_events_of([f], timedelta(seconds=10))
+    source = EventSource.relays(timedelta(seconds=10))
+    events = await client.get_events_of([f], source)
     print(f"Received {events.__len__()} events")
 
 

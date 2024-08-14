@@ -4,8 +4,10 @@
 
 //! Client
 
-use std::collections::HashMap;
+use std::collections::btree_set::IntoIter;
+use std::collections::{BTreeSet, HashMap};
 use std::future::Future;
+use std::iter::Rev;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -26,9 +28,9 @@ pub mod options;
 mod zapper;
 
 pub use self::builder::ClientBuilder;
-pub use self::options::Options;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Connection, ConnectionTarget};
+pub use self::options::{EventSource, Options};
 #[cfg(feature = "nip57")]
 pub use self::zapper::{ZapDetails, ZapEntity};
 
@@ -41,6 +43,9 @@ pub enum Error {
     /// [`RelayPool`] error
     #[error(transparent)]
     RelayPool(#[from] pool::Error),
+    /// Database error
+    #[error(transparent)]
+    Database(#[from] DatabaseError),
     /// Signer error
     #[error(transparent)]
     Signer(#[from] nostr_signer::Error),
@@ -811,8 +816,6 @@ impl Client {
 
     /// Get events of filters
     ///
-    /// If timeout is set to `None`, the default from [`Options`] will be used.
-    ///
     /// # Example
     /// ```rust,no_run
     /// use std::time::Duration;
@@ -827,9 +830,9 @@ impl Client {
     ///     .pubkeys(vec![my_keys.public_key()])
     ///     .since(Timestamp::now());
     ///
-    /// let timeout = Duration::from_secs(10);
+    /// let timeout = Some(Duration::from_secs(10));
     /// let _events = client
-    ///     .get_events_of(vec![subscription], Some(timeout))
+    ///     .get_events_of(vec![subscription], EventSource::both(timeout))
     ///     .await
     ///     .unwrap();
     /// # }
@@ -838,16 +841,61 @@ impl Client {
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
-        timeout: Option<Duration>,
+        source: EventSource,
     ) -> Result<Vec<Event>, Error> {
-        self.get_events_of_with_opts(filters, timeout, FilterOptions::ExitOnEOSE)
-            .await
+        match source {
+            EventSource::Database => Ok(self.database().query(filters, Order::Desc).await?),
+            EventSource::Relays {
+                timeout,
+                specific_relays,
+            } => match specific_relays {
+                Some(urls) => self.get_events_from(urls, filters, timeout).await,
+                None => {
+                    let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
+                    Ok(self
+                        .pool
+                        .get_events_of(filters, timeout, FilterOptions::ExitOnEOSE)
+                        .await?)
+                }
+            },
+            EventSource::Both {
+                timeout,
+                specific_relays,
+            } => {
+                // Check how many filters are passed and return the limit
+                let limit: Option<usize> = match (filters.len(), filters.first()) {
+                    (1, Some(filter)) => filter.limit,
+                    _ => None,
+                };
+
+                let stored = self.database().query(filters.clone(), Order::Desc).await?;
+                let mut events: BTreeSet<Event> = stored.into_iter().collect();
+
+                let mut stream: ReceiverStream<Event> = match specific_relays {
+                    Some(urls) => self.stream_events_from(urls, filters, timeout).await?,
+                    None => self.stream_events_of(filters, timeout).await?,
+                };
+
+                while let Some(event) = stream.next().await {
+                    events.insert(event);
+                }
+
+                let iter: Rev<IntoIter<Event>> = events.into_iter().rev();
+
+                // Check limit
+                match limit {
+                    Some(limit) => Ok(iter.take(limit).collect()),
+                    None => Ok(iter.collect()),
+                }
+            }
+        }
     }
 
     /// Get events of filters with [`FilterOptions`]
     ///
     /// If timeout is set to `None`, the default from [`Options`] will be used.
     #[inline]
+    #[deprecated(since = "0.34.0", note = "Use `client.pool().get_events_of(..)`.")]
     pub async fn get_events_of_with_opts(
         &self,
         filters: Vec<Filter>,
@@ -1061,7 +1109,9 @@ impl Client {
             .author(public_key)
             .kind(Kind::Metadata)
             .limit(1);
-        let events: Vec<Event> = self.get_events_of(vec![filter], None).await?; // TODO: add timeout?
+        let events: Vec<Event> = self
+            .get_events_of(vec![filter], EventSource::both(None))
+            .await?; // TODO: add timeout?
         match events.first() {
             Some(event) => Ok(Metadata::from_json(event.content())?),
             None => Err(Error::MetadataNotFound),
@@ -1183,7 +1233,9 @@ impl Client {
     pub async fn get_contact_list(&self, timeout: Option<Duration>) -> Result<Vec<Contact>, Error> {
         let mut contact_list: Vec<Contact> = Vec::new();
         let filters: Vec<Filter> = self.get_contact_list_filters().await?;
-        let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
+        let events: Vec<Event> = self
+            .get_events_of(filters, EventSource::both(timeout))
+            .await?;
 
         // Get first event (result of `get_events_of` is sorted DESC by timestamp)
         if let Some(event) = events.into_iter().next() {
@@ -1211,7 +1263,9 @@ impl Client {
     ) -> Result<Vec<PublicKey>, Error> {
         let mut pubkeys: Vec<PublicKey> = Vec::new();
         let filters: Vec<Filter> = self.get_contact_list_filters().await?;
-        let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
+        let events: Vec<Event> = self
+            .get_events_of(filters, EventSource::both(timeout))
+            .await?;
 
         for event in events.into_iter() {
             pubkeys.extend(event.public_keys());
@@ -1240,7 +1294,9 @@ impl Client {
                         .limit(1),
                 );
             }
-            let events: Vec<Event> = self.get_events_of(filters, timeout).await?;
+            let events: Vec<Event> = self
+                .get_events_of(filters, EventSource::both(timeout))
+                .await?;
             for event in events.into_iter() {
                 let metadata = Metadata::from_json(event.content())?;
                 if let Some(m) = contacts.get_mut(&event.author()) {

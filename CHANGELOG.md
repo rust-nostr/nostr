@@ -53,6 +53,8 @@
 * database: set a default logic for `NostrDatabase::negentropy_items` ([Yuki Kishimoto])
 * sdk: rename `Proxy` and `ProxyTarget` to `Connection` and `ConnectionTarget` ([Yuki Kishimoto])
 * sdk: allow to skip slow relays ([Yuki Kishimoto])
+* sdk: allow to specify the source of events for `Client::get_events_of` method ([Yuki Kishimoto])
+* sdk: deprecate `Client::get_events_of_with_opts` ([Yuki Kishimoto])
 * sqlite: use `ValueRef` instead of owned one ([Yuki Kishimoto])
 * cli: improve `sync` command ([Yuki Kishimoto])
 * cli: allow to specify relays in `open` command ([Yuki Kishimoto])

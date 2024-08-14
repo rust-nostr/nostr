@@ -23,7 +23,7 @@ pub mod signer;
 pub mod zapper;
 
 pub use self::builder::ClientBuilder;
-pub use self::options::Options;
+pub use self::options::{EventSource, Options};
 pub use self::signer::NostrSigner;
 use self::zapper::{ZapDetails, ZapEntity};
 use crate::error::Result;
@@ -356,7 +356,7 @@ impl Client {
     pub async fn get_events_of(
         &self,
         filters: Vec<Arc<Filter>>,
-        timeout: Option<Duration>,
+        source: &EventSource,
     ) -> Result<Vec<Arc<Event>>> {
         let filters = filters
             .into_iter()
@@ -365,7 +365,7 @@ impl Client {
 
         Ok(self
             .inner
-            .get_events_of(filters, timeout)
+            .get_events_of(filters, source.deref().clone())
             .await?
             .into_iter()
             .map(|e| Arc::new(e.into()))

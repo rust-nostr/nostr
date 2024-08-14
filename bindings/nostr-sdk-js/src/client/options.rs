@@ -4,7 +4,7 @@
 
 use std::ops::Deref;
 
-use nostr_sdk::Options;
+use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::duration::JsDuration;
@@ -108,5 +108,58 @@ impl JsOptions {
     #[wasm_bindgen(js_name = relayLimits)]
     pub fn relay_limits(self, limits: &JsRelayLimits) -> Self {
         self.inner.relay_limits(limits.deref().clone()).into()
+    }
+}
+
+#[wasm_bindgen(js_name = EventSource)]
+pub struct JsEventSource {
+    inner: EventSource,
+}
+
+impl Deref for JsEventSource {
+    type Target = EventSource;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+#[wasm_bindgen(js_class = EventSource)]
+impl JsEventSource {
+    /// Database only
+    pub fn database() -> Self {
+        Self {
+            inner: nostr_sdk::EventSource::Database,
+        }
+    }
+
+    /// Relays only
+    pub fn relays(timeout: Option<JsDuration>) -> Self {
+        Self {
+            inner: nostr_sdk::EventSource::relays(timeout.map(|t| *t)),
+        }
+    }
+
+    /// From specific relays only
+    #[wasm_bindgen(js_name = specificRelays)]
+    pub fn specific_relays(urls: Vec<String>, timeout: Option<JsDuration>) -> Self {
+        Self {
+            inner: nostr_sdk::EventSource::specific_relays(urls, timeout.map(|t| *t)),
+        }
+    }
+
+    /// Both from database and relays
+    pub fn both(timeout: Option<JsDuration>) -> Self {
+        Self {
+            inner: nostr_sdk::EventSource::both(timeout.map(|t| *t)),
+        }
+    }
+
+    /// Both from database and specific relays
+    #[wasm_bindgen(js_name = bothWithSpecificRelays)]
+    pub fn both_with_specific_relays(urls: Vec<String>, timeout: Option<JsDuration>) -> Self {
+        Self {
+            inner: nostr_sdk::EventSource::both_with_specific_relays(urls, timeout.map(|t| *t)),
+        }
     }
 }

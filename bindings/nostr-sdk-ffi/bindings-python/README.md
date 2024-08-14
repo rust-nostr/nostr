@@ -19,8 +19,7 @@ pip install nostr-sdk
 ```python
 import asyncio
 from datetime import timedelta
-from nostr_sdk import Keys, Client, NostrSigner, EventBuilder, Filter, Metadata, Nip46Signer, init_logger, LogLevel
-import time
+from nostr_sdk import Keys, Client, NostrSigner, EventBuilder, Filter, Metadata, EventSource, init_logger, LogLevel
 
 
 async def main():
@@ -65,7 +64,8 @@ async def main():
     # Get events from relays
     print("Getting events from relays...")
     f = Filter().authors([keys.public_key(), custom_keys.public_key()])
-    events = await client.get_events_of([f], timedelta(seconds=10))
+    source = EventSource.relays(timedelta(seconds=10))
+    events = await client.get_events_of([f], source)
     for event in events:
         print(event.as_json())
 

@@ -308,3 +308,68 @@ impl Connection {
         self
     }
 }
+
+/// Source of the events
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum EventSource {
+    /// Database only
+    Database,
+    /// Relays only
+    Relays {
+        /// Optional timeout
+        timeout: Option<Duration>,
+        /// Specific relays
+        specific_relays: Option<Vec<String>>,
+    },
+    /// Both from database and relays
+    Both {
+        /// Optional timeout for relays
+        timeout: Option<Duration>,
+        /// Specific relays
+        specific_relays: Option<Vec<String>>,
+    },
+}
+
+impl EventSource {
+    /// Relays only
+    #[inline]
+    pub fn relays(timeout: Option<Duration>) -> Self {
+        Self::Relays {
+            timeout,
+            specific_relays: None,
+        }
+    }
+
+    /// From specific relays only
+    pub fn specific_relays<I, S>(urls: I, timeout: Option<Duration>) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        Self::Relays {
+            timeout,
+            specific_relays: Some(urls.into_iter().map(|u| u.into()).collect()),
+        }
+    }
+
+    /// Both from database and relays
+    #[inline]
+    pub fn both(timeout: Option<Duration>) -> Self {
+        Self::Both {
+            timeout,
+            specific_relays: None,
+        }
+    }
+
+    /// Both from database and specific relays
+    pub fn both_with_specific_relays<I, S>(urls: I, timeout: Option<Duration>) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        Self::Both {
+            timeout,
+            specific_relays: Some(urls.into_iter().map(|u| u.into()).collect()),
+        }
+    }
+}

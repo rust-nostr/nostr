@@ -22,7 +22,10 @@ async fn main() -> Result<()> {
     // Get events from all connected relays
     let filter = Filter::new().author(public_key).kind(Kind::Metadata);
     let events = client
-        .get_events_of(vec![filter], Some(Duration::from_secs(10)))
+        .get_events_of(
+            vec![filter],
+            EventSource::relays(Some(Duration::from_secs(10))),
+        )
         .await?;
     println!("{events:#?}");
 

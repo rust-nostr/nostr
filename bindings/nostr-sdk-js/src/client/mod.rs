@@ -22,7 +22,7 @@ pub mod signer;
 pub mod zapper;
 
 pub use self::builder::JsClientBuilder;
-use self::options::JsOptions;
+use self::options::{JsEventSource, JsOptions};
 pub use self::signer::JsNostrSigner;
 use self::zapper::{JsZapDetails, JsZapEntity};
 use crate::abortable::JsAbortHandle;
@@ -340,13 +340,12 @@ impl JsClient {
     pub async fn get_events_of(
         &self,
         filters: Vec<JsFilter>,
-        timeout: Option<JsDuration>,
+        source: &JsEventSource,
     ) -> Result<JsEventArray> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
-        let timeout: Option<Duration> = timeout.map(|d| *d);
         let events: Vec<Event> = self
             .inner
-            .get_events_of(filters, timeout)
+            .get_events_of(filters, source.deref().clone())
             .await
             .map_err(into_err)?;
         let events: JsEventArray = events
