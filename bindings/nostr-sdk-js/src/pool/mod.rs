@@ -387,8 +387,6 @@ impl JsRelayPool {
     }
 
     // /// Get events of filters
-    // ///
-    // /// Get events both from **local database** and **relays**
     // #[wasm_bindgen(js_name = getEventsOf)]
     // pub async fn get_events_of(
     //     &self,
@@ -410,8 +408,6 @@ impl JsRelayPool {
     // }
     //
     // /// Get events of filters from **specific relays**
-    // ///
-    // /// Get events both from **local database** and **relays**
     // #[wasm_bindgen(js_name = getEventsFrom)]
     // pub async fn get_events_from(
     //     &self,

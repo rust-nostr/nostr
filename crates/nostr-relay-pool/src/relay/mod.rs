@@ -377,8 +377,6 @@ impl Relay {
     }
 
     /// Get events of filters
-    ///
-    /// Get events from local database and relay
     #[inline]
     pub async fn get_events_of(
         &self,

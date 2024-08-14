@@ -262,8 +262,6 @@ impl JsRelay {
     }
 
     /// Get events of filters
-    ///
-    /// Get events from local database and relay
     #[wasm_bindgen(js_name = getEventsOf)]
     pub async fn get_events_of(
         &self,

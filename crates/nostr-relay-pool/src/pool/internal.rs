@@ -14,7 +14,7 @@ use async_utility::thread::JoinHandle;
 use async_utility::{thread, time};
 use atomic_destructor::AtomicDestroyer;
 use nostr::{ClientMessage, Event, EventId, Filter, SubscriptionId, Timestamp, TryIntoUrl, Url};
-use nostr_database::{DynNostrDatabase, IntoNostrDatabase, Order};
+use nostr_database::{DynNostrDatabase, IntoNostrDatabase};
 use tokio::sync::{broadcast, mpsc, Mutex, RwLock};
 use tokio_stream::wrappers::ReceiverStream;
 
@@ -632,15 +632,8 @@ impl InternalRelayPool {
                 return Err(Error::RelayNotFound);
             }
 
-            let stored_events: Vec<Event> = self
-                .database
-                .query(filters.clone(), Order::Desc)
-                .await
-                .unwrap_or_default();
-
             // Compose events collections
-            let events: Arc<Mutex<BTreeSet<Event>>> =
-                Arc::new(Mutex::new(stored_events.into_iter().collect()));
+            let events: Arc<Mutex<BTreeSet<Event>>> = Arc::new(Mutex::new(BTreeSet::new()));
 
             // Filter relays and start query
             let mut handles = Vec::with_capacity(urls.len());

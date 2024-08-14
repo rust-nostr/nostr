@@ -353,8 +353,6 @@ impl RelayPool {
     }
 
     /// Get events of filters
-    ///
-    /// Get events both from **local database** and **relays**
     pub async fn get_events_of(
         &self,
         filters: Vec<Arc<Filter>>,
@@ -375,8 +373,6 @@ impl RelayPool {
     }
 
     /// Get events of filters from **specific relays**
-    ///
-    /// Get events both from **local database** and **relays**
     pub async fn get_events_from(
         &self,
         urls: Vec<String>,

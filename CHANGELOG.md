@@ -43,6 +43,7 @@
 * pool: remove IDs collection from `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
 * pool: better checks before perform queries or send messages to relays ([Yuki Kishimoto])
 * pool: bump `async-wsocket` to `v0.6` ([Yuki Kishimoto])
+* pool: get events only from remote relay when calling `get_events_of` or `get_events_from` ([Yuki Kishimoto])
 * database: not match event if `Filter::search` field is set ([Yuki Kishimoto])
 * database: avoid to copy `EventId` in `Event::decode` ([Yuki Kishimoto])
 * database: use `Vec` instead of `BTreeSet` as inner value for `TagIndexValues` ([Yuki Kishimoto])

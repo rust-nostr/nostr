@@ -859,8 +859,6 @@ impl Client {
     }
 
     /// Get events of filters from specific relays
-    ///
-    /// Get events both from **local database** and **relays**
     #[inline]
     pub async fn get_events_from<I, U>(
         &self,
