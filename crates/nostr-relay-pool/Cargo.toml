@@ -24,6 +24,7 @@ nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["macros", "sync"] }
+tokio-stream = "0.1"
 tracing = { workspace = true, features = ["std", "attributes"] }
 
 [dev-dependencies]

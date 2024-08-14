@@ -880,6 +880,40 @@ impl Client {
             .await?)
     }
 
+    /// Stream events of filters
+    #[inline]
+    pub async fn stream_events_of(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+    ) -> Result<ReceiverStream<Event>, Error> {
+        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
+        Ok(self
+            .pool
+            .stream_events_of(filters, timeout, FilterOptions::ExitOnEOSE)
+            .await?)
+    }
+
+    /// Stream events of filters from **specific relays**
+    #[inline]
+    pub async fn stream_events_from<I, U>(
+        &self,
+        urls: I,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+    ) -> Result<ReceiverStream<Event>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
+        Ok(self
+            .pool
+            .stream_events_from(urls, filters, timeout, FilterOptions::ExitOnEOSE)
+            .await?)
+    }
+
     /// Send client message to **all relays**
     #[inline]
     pub async fn send_msg(&self, msg: ClientMessage) -> Result<Output<()>, Error> {

@@ -74,6 +74,7 @@
 * sdk: add option to autoconnect relay on `Client::add_relay` method call ([Yuki Kishimoto])
 * sdk: add support to embedded tor client ([Yuki Kishimoto])
 * sdk: add `Options::max_avg_latency` ([Yuki Kishimoto])
+* sdk: add `Client::stream_events_of` and `Client::stream_events_from` methods ([Yuki Kishimoto])
 * ffi(nostr): add `EventBuilder::seal` constructor ([Yuki Kishimoto])
 * cli: add `generate` command ([Yuki Kishimoto])
 * cli: add `json` flag to `query` command ([Yuki Kishimoto])

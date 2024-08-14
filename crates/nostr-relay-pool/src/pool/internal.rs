@@ -15,7 +15,8 @@ use async_utility::{thread, time};
 use atomic_destructor::AtomicDestroyer;
 use nostr::{ClientMessage, Event, EventId, Filter, SubscriptionId, Timestamp, TryIntoUrl, Url};
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase, Order};
-use tokio::sync::{broadcast, Mutex, RwLock};
+use tokio::sync::{broadcast, mpsc, Mutex, RwLock};
+use tokio_stream::wrappers::ReceiverStream;
 
 use super::options::RelayPoolOptions;
 use super::{Error, Output, RelayPoolNotification};
@@ -681,6 +682,64 @@ impl InternalRelayPool {
                 None => Ok(iter.collect()),
             }
         }
+    }
+
+    pub async fn stream_events_from<I, U>(
+        &self,
+        urls: I,
+        filters: Vec<Filter>,
+        timeout: Duration,
+        opts: FilterOptions,
+    ) -> Result<ReceiverStream<Event>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let urls: HashSet<Url> = urls
+            .into_iter()
+            .map(|u| u.try_into_url())
+            .collect::<Result<_, _>>()?;
+
+        // Check if urls set is empty
+        if urls.is_empty() {
+            return Err(Error::NoRelaysSpecified);
+        }
+
+        let (tx, rx) = mpsc::channel::<Event>(4096); // TODO: change to unbounded or allow to change this value?
+
+        let relays: HashMap<Url, Relay> = self.relays().await;
+
+        // Check if urls set contains ONLY already added relays
+        if !urls.iter().all(|url| relays.contains_key(url)) {
+            return Err(Error::RelayNotFound);
+        }
+
+        // Compose events collections
+        let ids: Arc<Mutex<HashSet<EventId>>> = Arc::new(Mutex::new(HashSet::new()));
+
+        // Filter relays and start query
+        for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
+            let tx = tx.clone();
+            let filters = filters.clone();
+            let ids = ids.clone();
+            thread::spawn(async move {
+                if let Err(e) = relay
+                    .get_events_of_with_callback(filters, timeout, opts, |event| async {
+                        let mut ids = ids.lock().await;
+                        if ids.insert(event.id) {
+                            drop(ids);
+                            let _ = tx.try_send(event); // TODO: log error?
+                        }
+                    })
+                    .await
+                {
+                    tracing::error!("Failed to stream events from '{url}': {e}");
+                }
+            })?;
+        }
+
+        Ok(ReceiverStream::new(rx))
     }
 
     pub async fn connect(&self, connection_timeout: Option<Duration>) {

@@ -16,6 +16,7 @@ use nostr::{
 };
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase, MemoryDatabase};
 use tokio::sync::broadcast;
+pub use tokio_stream::wrappers::ReceiverStream;
 
 mod error;
 mod internal;
@@ -454,6 +455,38 @@ impl RelayPool {
     {
         self.inner
             .get_events_from(urls, filters, timeout, opts)
+            .await
+    }
+
+    /// Stream events of filters
+    #[inline]
+    pub async fn stream_events_of(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Duration,
+        opts: FilterOptions,
+    ) -> Result<ReceiverStream<Event>, Error> {
+        let relays = self.relays().await;
+        self.stream_events_from(relays.into_keys(), filters, timeout, opts)
+            .await
+    }
+
+    /// Stream events of filters from **specific relays**
+    #[inline]
+    pub async fn stream_events_from<I, U>(
+        &self,
+        urls: I,
+        filters: Vec<Filter>,
+        timeout: Duration,
+        opts: FilterOptions,
+    ) -> Result<ReceiverStream<Event>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.inner
+            .stream_events_from(urls, filters, timeout, opts)
             .await
     }
 

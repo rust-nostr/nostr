@@ -104,6 +104,10 @@ name = "sqlite"
 required-features = ["all-nips", "sqlite"]
 
 [[example]]
+name = "stream-events-of"
+required-features = ["all-nips"]
+
+[[example]]
 name = "subscriptions"
 required-features = ["all-nips"]
 
