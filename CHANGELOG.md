@@ -21,9 +21,16 @@
 
 -->
 
-## [Unreleased]
+## [v0.34.0]
 
 ### Summary
+
+Add embedded tor client support, allow to open databases with a limited capacity (automatically discard old events when max capacity is reached),
+add `Client::stream_events_of` as alternative method to `Client::get_events_of` (stream events instead of waiting for `EOSE` and collect into a list),
+add search capability (NIP-50) support to `Filter::match_event` and databases, add NIP-31 and NIP-70 support,
+add option to autoconnect relay on `Client::add_relay` method call (currently disabled by default), rework the `get_events_of` methods behaviour for 
+better consistency (`RelayPool::get_events_of` and `Relay::get_events_of` get events only from remote relay/s while
+`Client::get_events_of` allow to choose the source of events: `database`, `relays` or `both`), bugs fix and more!
 
 ### Changed
 
@@ -44,7 +51,6 @@
 * pool: better checks before perform queries or send messages to relays ([Yuki Kishimoto])
 * pool: bump `async-wsocket` to `v0.7` ([Yuki Kishimoto])
 * pool: get events only from remote relay when calling `get_events_of` or `get_events_from` ([Yuki Kishimoto])
-* database: not match event if `Filter::search` field is set ([Yuki Kishimoto])
 * database: avoid to copy `EventId` in `Event::decode` ([Yuki Kishimoto])
 * database: use `Vec` instead of `BTreeSet` as inner value for `TagIndexValues` ([Yuki Kishimoto])
 * database: rework `DatabaseIndexes` and rename to `DatabaseHelper` ([Yuki Kishimoto])
@@ -98,7 +104,7 @@
 * database: remove `TempEvent` ([Yuki Kishimoto])
 * database: remove `NostrDatabase::event_ids_by_filters` ([Yuki Kishimoto])
 * sdk: remove `Client::send_direct_msg` ([Yuki Kishimoto])
-* cli: remove `tracing-subscriber` dep
+* cli: remove `tracing-subscriber` dep ([Yuki Kishimoto])
 
 ## [v0.33.0]
 
@@ -422,7 +428,8 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [reyamir]: https://github.com/reyamir
 
 <!-- Tags -->
-[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.33.0...HEAD
+[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.34.0...HEAD
+[v0.34.0]: https://github.com/rust-nostr/nostr/compare/v0.33.0...v0.34.0
 [v0.33.0]: https://github.com/rust-nostr/nostr/compare/v0.32.0...v0.33.0
 [v0.32.0]: https://github.com/rust-nostr/nostr/compare/v0.31.0...v0.32.0
 [v0.31.0]: https://github.com/rust-nostr/nostr/compare/v0.30.0...v0.31.0

@@ -1,2 +1,2 @@
-nostr-protocol==0.33.0
+nostr-protocol==0.34.0
 mnemonic==0.21
