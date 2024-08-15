@@ -25,18 +25,18 @@ async-trait = "0.1"
 async-utility = "0.2"
 atomic-destructor = { version = "0.2", default-features = false }
 js-sys = "0.3"
-nostr = { version = "0.33", path = "./crates/nostr", default-features = false }
-nostr-database = { version = "0.33", path = "./crates/nostr-database", default-features = false }
-nostr-indexeddb = { version = "0.33", path = "./crates/nostr-indexeddb", default-features = false }
-nostr-ndb = { version = "0.33", path = "./crates/nostr-ndb", default-features = false }
-nostr-relay-pool = { version = "0.33", path = "./crates/nostr-relay-pool", default-features = false }
-nostr-rocksdb = { version = "0.33", path = "./crates/nostr-rocksdb", default-features = false }
-nostr-sdk = { version = "0.33", path = "./crates/nostr-sdk", default-features = false }
-nostr-signer = { version = "0.33", path = "./crates/nostr-signer", default-features = false }
-nostr-sqlite = { version = "0.33", path = "./crates/nostr-sqlite", default-features = false }
-nostr-webln = { version = "0.33", path = "./crates/nostr-webln", default-features = false }
-nostr-zapper = { version = "0.33", path = "./crates/nostr-zapper", default-features = false }
-nwc = { version = "0.33", path = "./crates/nwc", default-features = false }
+nostr = { version = "0.34", path = "./crates/nostr", default-features = false }
+nostr-database = { version = "0.34", path = "./crates/nostr-database", default-features = false }
+nostr-indexeddb = { version = "0.34", path = "./crates/nostr-indexeddb", default-features = false }
+nostr-ndb = { version = "0.34", path = "./crates/nostr-ndb", default-features = false }
+nostr-relay-pool = { version = "0.34", path = "./crates/nostr-relay-pool", default-features = false }
+nostr-rocksdb = { version = "0.34", path = "./crates/nostr-rocksdb", default-features = false }
+nostr-sdk = { version = "0.34", path = "./crates/nostr-sdk", default-features = false }
+nostr-signer = { version = "0.34", path = "./crates/nostr-signer", default-features = false }
+nostr-sqlite = { version = "0.34", path = "./crates/nostr-sqlite", default-features = false }
+nostr-webln = { version = "0.34", path = "./crates/nostr-webln", default-features = false }
+nostr-zapper = { version = "0.34", path = "./crates/nostr-zapper", default-features = false }
+nwc = { version = "0.34", path = "./crates/nwc", default-features = false }
 once_cell = { version = "1.19", default-features = false }
 serde_json = { version = "1.0", default-features = false }
 thiserror = "1.0"

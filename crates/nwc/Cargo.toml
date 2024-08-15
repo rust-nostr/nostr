@@ -1,6 +1,6 @@
 [package]
 name = "nwc"
-version = "0.33.0"
+version = "0.34.0"
 edition = "2021"
 description = "NWC client and zapper backend for Nostr apps"
 authors.workspace = true

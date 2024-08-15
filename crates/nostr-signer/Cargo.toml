@@ -1,6 +1,6 @@
 [package]
 name = "nostr-signer"
-version = "0.33.0"
+version = "0.34.0"
 edition = "2021"
 description = "Signer for Nostr apps"
 authors.workspace = true

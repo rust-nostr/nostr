@@ -1,6 +1,6 @@
 [package]
 name = "nostr-rocksdb"
-version = "0.33.0"
+version = "0.34.0"
 edition = "2021"
 description = "RocksDB Storage backend for Nostr apps"
 authors.workspace = true
