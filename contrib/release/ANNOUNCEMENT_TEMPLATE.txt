@@ -17,4 +17,4 @@ Thanks to all contributors!
 https://rust-nostr.org
 https://rust-nostr.org/donate
 
-#rustnostr #nostr
+#rustnostr #nostr #rustlang #programming #rust #python #javascript #kotlin #swift
