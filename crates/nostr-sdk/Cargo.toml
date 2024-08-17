@@ -40,7 +40,7 @@ nip59 = ["nostr/nip59", "nostr-signer/nip59"]
 [dependencies]
 async-utility.workspace = true
 atomic-destructor.workspace = true
-lnurl-pay = { version = "0.5", features = ["api"], optional = true }
+lnurl-pay = { version = "0.6", features = ["api"], optional = true }
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
 nostr-relay-pool.workspace = true

@@ -29,6 +29,7 @@
 
 * nostr: bump `bitcoin` to `v0.32` ([Yuki Kishimoto])
 * webln: bump `webln` to `v0.3` ([Yuki Kishimoto])
+* sdk: bump `lnurl-pay` to `v0.6` ([Yuki Kishimoto])
 
 ### Added
 
