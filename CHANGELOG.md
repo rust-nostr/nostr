@@ -28,6 +28,7 @@
 ### Changed
 
 * nostr: bump `bitcoin` to `v0.32` ([Yuki Kishimoto])
+* webln: bump `webln` to `v0.3` ([Yuki Kishimoto])
 
 ### Added
 
