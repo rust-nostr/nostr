@@ -21,6 +21,22 @@
 
 -->
 
+## [Unreleased]
+
+### Summary
+
+### Changed
+
+* nostr: bump `bitcoin` to `v0.32` ([Yuki Kishimoto])
+
+### Added
+
+### Fixed
+
+### Removed
+
+* nostr: remove `bech32` from the public API ([Yuki Kishimoto])
+
 ## [v0.34.0]
 
 ### Summary

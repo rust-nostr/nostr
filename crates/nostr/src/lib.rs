@@ -37,9 +37,9 @@ pub use base64;
 #[cfg(feature = "nip06")]
 pub use bip39;
 #[doc(hidden)]
-pub use bitcoin::{bech32, hashes, secp256k1};
+pub use bitcoin::{self, hashes, secp256k1};
 #[doc(hidden)]
-pub use {bitcoin, negentropy, serde_json};
+pub use {negentropy, serde_json};
 
 pub mod event;
 pub mod key;

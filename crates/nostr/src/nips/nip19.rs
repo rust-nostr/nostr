@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::str::{self, FromStr, Utf8Error};
 
-use bitcoin::bech32::{self, Bech32, Hrp};
+use bech32::{self, Bech32, Hrp};
 
 use super::nip01::Coordinate;
 #[cfg(all(feature = "std", feature = "nip05"))]
@@ -59,8 +59,10 @@ pub enum Error {
     Fmt(fmt::Error),
     /// Url parse error
     Url(url::ParseError),
-    /// Bech32 error.
-    Bech32(bech32::DecodeError),
+    /// Bech32 decode error.
+    Bech32Decode(bech32::DecodeError),
+    /// Bech32 encode error
+    Bech32Encode(bech32::EncodeError),
     /// UFT-8 error
     FromUTF8(FromUtf8Error),
     /// UFT-8 error
@@ -92,7 +94,8 @@ impl fmt::Display for Error {
         match self {
             Self::Fmt(e) => write!(f, "{e}"),
             Self::Url(e) => write!(f, "Url: {e}"),
-            Self::Bech32(e) => write!(f, "Bech32: {e}"),
+            Self::Bech32Decode(e) => write!(f, "{e}"),
+            Self::Bech32Encode(e) => write!(f, "{e}"),
             Self::FromUTF8(e) => write!(f, "UTF8: {e}"),
             Self::UTF8(e) => write!(f, "UTF8: {e}"),
             Self::Hash(e) => write!(f, "Hash: {e}"),
@@ -122,7 +125,13 @@ impl From<url::ParseError> for Error {
 
 impl From<bech32::DecodeError> for Error {
     fn from(e: bech32::DecodeError) -> Self {
-        Self::Bech32(e)
+        Self::Bech32Decode(e)
+    }
+}
+
+impl From<bech32::EncodeError> for Error {
+    fn from(e: bech32::EncodeError) -> Self {
+        Self::Bech32Encode(e)
     }
 }
 

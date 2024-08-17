@@ -13,7 +13,7 @@ use core::fmt;
 use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
-use bitcoin::bech32::{self, Bech32, Hrp};
+use bech32::{Bech32, Hrp};
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
 #[cfg(feature = "std")]
@@ -48,7 +48,8 @@ pub enum Error {
     Key(KeyError),
     Builder(BuilderError),
     Event(event::Error),
-    Bech32(bech32::DecodeError),
+    Bech32Decode(bech32::DecodeError),
+    Bech32Encode(bech32::EncodeError),
     Secp256k1(secp256k1::Error),
     InvalidPrivateZapMessage,
     PrivateZapMessageNotFound,
@@ -68,7 +69,8 @@ impl fmt::Display for Error {
             Self::Key(e) => write!(f, "{e}"),
             Self::Builder(e) => write!(f, "{e}"),
             Self::Event(e) => write!(f, "{e}"),
-            Self::Bech32(e) => write!(f, "{e}"),
+            Self::Bech32Decode(e) => write!(f, "{e}"),
+            Self::Bech32Encode(e) => write!(f, "{e}"),
             Self::Secp256k1(e) => write!(f, "{e}"),
             Self::InvalidPrivateZapMessage => write!(f, "Invalid private zap message"),
             Self::PrivateZapMessageNotFound => write!(f, "Private zap message not found"),
@@ -107,7 +109,13 @@ impl From<event::Error> for Error {
 
 impl From<bech32::DecodeError> for Error {
     fn from(e: bech32::DecodeError) -> Self {
-        Self::Bech32(e)
+        Self::Bech32Decode(e)
+    }
+}
+
+impl From<bech32::EncodeError> for Error {
+    fn from(e: bech32::EncodeError) -> Self {
+        Self::Bech32Encode(e)
     }
 }
 

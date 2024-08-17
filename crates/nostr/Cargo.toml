@@ -20,6 +20,7 @@ default = ["std", "all-nips"]
 std = [
     "dep:url",
     "base64?/std",
+    "bech32/std",
     "bitcoin/std",
     "bitcoin/rand-std",
     "bip39?/std",
@@ -34,14 +35,13 @@ std = [
     "serde_json/preserve_order",
     "tracing/std",
     "unicode-normalization?/std",
-    "wasm-bindgen?/std",
 ]
 alloc = [
     "dep:url-fork",
+    "base64?/alloc",
+    "bech32/alloc",
     "cbc?/alloc",
     "chacha20poly1305?/alloc",
-    "base64?/alloc",
-    "bitcoin/no-std",
     "once_cell/alloc",
     "serde/alloc",
     "serde_json/alloc",
@@ -62,9 +62,10 @@ nip59 = ["nip44"]
 
 [dependencies]
 aes = { version = "0.8", optional = true }
-base64 = { version = "0.21", default-features = false, optional = true }
+base64 = { version = "0.21", default-features = false, optional = true } # bitcoin uses v0.21
+bech32 = { version = "0.11", default-features = false } # bitcoin uses v0.11
 bip39 = { version = "2.0", default-features = false, optional = true }
-bitcoin = { version = "0.31", default-features = false, features = ["rand", "serde"] }
+bitcoin = { version = "0.32", default-features = false, features = ["rand", "serde"] }
 cbc = { version = "0.1", optional = true }
 chacha20 = { version = "0.9", optional = true }
 chacha20poly1305 = { version = "0.10", default-features = false, features = ["getrandom"], optional = true }
