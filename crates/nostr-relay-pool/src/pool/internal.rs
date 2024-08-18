@@ -139,40 +139,33 @@ impl InternalRelayPool {
         subscriptions.clear();
     }
 
-    pub async fn add_relay<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
-    where
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
-        // Convert into url
-        let url: Url = url.try_into_url()?;
-
+    pub async fn add_relay(&self, url: Url, opts: RelayOptions) -> bool {
         // Get relays
         let mut relays = self.relays.write().await;
 
-        // Check if map already contains url
-        if !relays.contains_key(&url) {
-            // Compose new relay
-            let relay = Relay::custom(url, self.database.clone(), self.blacklist.clone(), opts);
-
-            // Set notification sender
-            relay
-                .set_notification_sender(Some(self.notification_sender.clone()))
-                .await;
-
-            // Set relay subscriptions
-            let subscriptions = self.subscriptions().await;
-            for (id, filters) in subscriptions.into_iter() {
-                relay.inner.update_subscription(id, filters, false).await;
-            }
-
-            // Insert relay into map
-            relays.insert(relay.url(), relay);
-
-            Ok(true)
-        } else {
-            Ok(false)
+        // Check if relay is already added
+        if relays.contains_key(&url) {
+            return false;
         }
+
+        // Compose new relay
+        let relay = Relay::custom(url, self.database.clone(), self.blacklist.clone(), opts);
+
+        // Set notification sender
+        relay
+            .set_notification_sender(Some(self.notification_sender.clone()))
+            .await;
+
+        // Set relay subscriptions
+        let subscriptions = self.subscriptions().await;
+        for (id, filters) in subscriptions.into_iter() {
+            relay.inner.update_subscription(id, filters, false).await;
+        }
+
+        // Insert relay into map
+        relays.insert(relay.url(), relay);
+
+        true
     }
 
     pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>

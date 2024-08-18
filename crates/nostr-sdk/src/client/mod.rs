@@ -365,15 +365,16 @@ impl Client {
 
     /// Add new relay
     ///
-    /// Return `false` if the relay already exists.
+    /// Return `false` if the relay was already added.
     ///
-    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
-    /// to avoid to set pool subscriptions.
+    /// If there are pool subscriptions, the added relay will inherit them.
+    /// Use `subscribe_to` instead of `subscribe` to prevent a subscription from being inherited.
     ///
-    /// This method use previously set or default [Options] to configure the [Relay] (ex. set proxy, set min POW, set relay limits, ...).
+    /// This method uses previously set or default [Options] to configure the [Relay]
+    /// (ex. set proxy, set min POW, set relay limits, ...).
     /// To use custom [RelayOptions], check `Client::add_relay_with_opts`.
     ///
-    /// Connection is **NOT** automatically started with relay, remember to call `client.connect()`!
+    /// Connection is **NOT** automatically started with relay, remember to call `connect`!
     ///
     /// # Example
     /// ```rust,no_run
@@ -395,6 +396,15 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let url: Url = url.try_into_url().map_err(pool::Error::from)?;
+        Ok(self.add_relay_url(url).await)
+    }
+
+    /// Add a relay by Url
+    ///
+    /// Return `false` if the relay was already added.
+    ///
+    /// See `add_relay`
+    pub async fn add_relay_url(&self, url: Url) -> bool {
         let opts: RelayOptions = RelayOptions::new();
 
         // Set connection mode
@@ -435,13 +445,14 @@ impl Client {
             .max_avg_latency(self.opts.max_avg_latency);
 
         // Add relay
-        let added: bool = self.add_relay_with_opts::<&Url>(&url, opts).await?;
+        let added: bool = self.add_relay_url_with_opts(url.clone(), opts).await;
 
         if added && self.opts.autoconnect {
-            self.connect_relay::<Url>(url).await?;
+            // Url is a valid url and the relay has been added, so this cannot error.
+            let _ = self.connect_relay(url).await;
         }
 
-        Ok(added)
+        added
     }
 
     /// Add new relay with custom [`RelayOptions`]
@@ -486,6 +497,11 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         Ok(self.pool.add_relay(url, opts).await?)
+    }
+
+    #[inline]
+    pub async fn add_relay_url_with_opts(&self, url: Url, opts: RelayOptions) -> bool {
+        self.pool.add_relay_url(url, opts).await
     }
 
     /// Add multiple relays
@@ -536,6 +552,9 @@ impl Client {
     }
 
     /// Connect to a previously added relay
+    ///
+    /// Errors when the argument is not a valid Url
+    /// or the relay was not added yet.
     ///
     /// # Example
     /// ```rust,no_run

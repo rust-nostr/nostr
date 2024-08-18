@@ -46,6 +46,7 @@
 * bindings(nostr): expose `as_pretty_json` for some structs ([Yuki Kishimoto])
 * ffi(nostr): expose `Kind::is_*` methods ([Yuki Kishimoto])
 * js(nostr): add `Kind` object ([Yuki Kishimoto])
+* sdk: add ability to add relay by url without handling a Result ([Janek])
 
 ### Fixed
 
@@ -464,6 +465,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [reyamir]: https://github.com/reyamir
 [w3irdrobot]: https://github.com/w3irdrobot
 [nanikamado]: https://github.com/nanikamado
+[Janek]: https://github.com/xeruf
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.34.0...HEAD

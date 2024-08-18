@@ -149,17 +149,26 @@ impl RelayPool {
         self.inner.relay(url).await
     }
 
+    /// Add new relay by Url
+    ///
+    /// If there are pool subscriptions, the added relay will inherit them.
+    /// Use `subscribe_to` instead of `subscribe` to prevent a subscription from being inherited.
+    #[inline]
+    pub async fn add_relay_url(&self, url: Url, opts: RelayOptions) -> bool {
+        self.inner.add_relay(url, opts).await
+    }
+
     /// Add new relay
     ///
-    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
-    /// to avoid to set pool subscriptions.
+    /// If there are pool subscriptions, the added relay will inherit them.
+    /// Use `subscribe_to` instead of `subscribe` to prevent a subscription from being inherited.
     #[inline]
     pub async fn add_relay<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.inner.add_relay(url, opts).await
+        Ok(self.inner.add_relay(url.try_into_url()?, opts).await)
     }
 
     /// Disconnect and remove relay
@@ -202,8 +211,7 @@ impl RelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let relay = self.relay(url).await?;
-        relay.connect(connection_timeout).await;
-        Ok(())
+        Ok(relay.connect(connection_timeout).await)
     }
 
     /// Get subscriptions
