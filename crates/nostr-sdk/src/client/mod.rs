@@ -1101,9 +1101,48 @@ impl Client {
         self.send_event_to(urls, event).await
     }
 
-    /// Get public key metadata
+    /// Fetch public key metadata from database, falling back to connected relays.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    pub async fn fetch_metadata(
+        &self,
+        public_key: PublicKey,
+        timeout: Option<Duration>,
+    ) -> Result<Metadata, Error> {
+        let filter: Filter = Filter::new()
+            .author(public_key)
+            .kind(Kind::Metadata)
+            .limit(1);
+        let events: Vec<Event> = self
+            .get_events_of(vec![filter], EventSource::both(timeout))
+            .await?;
+        match events.first() {
+            Some(event) => Ok(Metadata::try_from(event)?),
+            None => Err(Error::MetadataNotFound),
+        }
+    }
+
+    /// Get cached public key metadata.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    pub async fn get_metadata(&self, public_key: PublicKey) -> Result<Metadata, Error> {
+        let filter: Filter = Filter::new()
+            .author(public_key)
+            .kind(Kind::Metadata)
+            .limit(1);
+        let events: Vec<Event> = self
+            .get_events_of(vec![filter], EventSource::Database)
+            .await?;
+        match events.first() {
+            Some(event) => Ok(Metadata::try_from(event)?),
+            None => Err(Error::MetadataNotFound),
+        }
+    }
+
+    /// Fetch public key metadata from database, falling back to connected relays.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[deprecated]
     pub async fn metadata(&self, public_key: PublicKey) -> Result<Metadata, Error> {
         let filter: Filter = Filter::new()
             .author(public_key)
@@ -1111,7 +1150,7 @@ impl Client {
             .limit(1);
         let events: Vec<Event> = self
             .get_events_of(vec![filter], EventSource::both(None))
-            .await?; // TODO: add timeout?
+            .await?;
         match events.first() {
             Some(event) => Ok(Metadata::from_json(&event.content)?),
             None => Err(Error::MetadataNotFound),
@@ -1212,7 +1251,7 @@ impl Client {
         Ok(vec![filter])
     }
 
-    /// Get contact list
+    /// Get contact list from database, falling back to connected relays.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     ///
@@ -1254,7 +1293,8 @@ impl Client {
 
         Ok(contact_list)
     }
-    /// Get contact list public keys
+
+    /// Get contact list public keys from database, falling back to connected relays.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     pub async fn get_contact_list_public_keys(
@@ -1274,7 +1314,7 @@ impl Client {
         Ok(pubkeys)
     }
 
-    /// Get contact list [`Metadata`]
+    /// Get contact list [`Metadata`] from database, falling back to connected relays.
     pub async fn get_contact_list_metadata(
         &self,
         timeout: Option<Duration>,
