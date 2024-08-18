@@ -1,7 +1,7 @@
 # Code style
 
 This is a description of a coding style that every contributor **must** follow.
-Please, read the whole document before you start pushing code.
+Please read the whole document before you start pushing code.
 
 ## Generics
 
@@ -74,13 +74,13 @@ impl<'a> AnswerCallbackQuery<'a> {
 }
 ```
 
-**Rationale:** `Self` is generally shorter and it's easier to copy-paste code or rename the type.
+**Rationale:** `Self` is generally shorter, and it is easier to copy-paste code or rename the type.
 
-## Deriving traits (apply only to libraries)
+## Deriving traits (in libraries)
 
 Derive `Debug`, `Clone`, `Copy`, `PartialEq`, `Eq` and `Hash` for public types when possible (in this order).
 
-**Rationale:** these traits can be useful for users and can be implemented for most types.
+**Rationale:** these traits can be useful for users and can be automatically implemented for most types.
 
 Derive `Default` when there is a reasonable default value for the type.
 
