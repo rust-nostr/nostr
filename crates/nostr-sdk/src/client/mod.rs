@@ -816,6 +816,9 @@ impl Client {
 
     /// Get events of filters
     ///
+    /// The returned events are sorted by newest first,
+    /// if there is a limit only the newest are returned.
+    ///
     /// # Example
     /// ```rust,no_run
     /// use std::time::Duration;
@@ -1101,21 +1104,36 @@ impl Client {
         self.send_event_to(urls, event).await
     }
 
-    /// Get public key metadata
+    /// Fetch the newest public key metadata from database and connected relays.
+    ///
+    /// If you only want to consult cached data,
+    /// consider `client.database().profile(PUBKEY)`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    pub async fn metadata(&self, public_key: PublicKey) -> Result<Metadata, Error> {
+    pub async fn fetch_metadata(
+        &self,
+        public_key: PublicKey,
+        timeout: Option<Duration>,
+    ) -> Result<Metadata, Error> {
         let filter: Filter = Filter::new()
             .author(public_key)
             .kind(Kind::Metadata)
             .limit(1);
         let events: Vec<Event> = self
-            .get_events_of(vec![filter], EventSource::both(None))
-            .await?; // TODO: add timeout?
+            .get_events_of(vec![filter], EventSource::both(timeout))
+            .await?;
         match events.first() {
-            Some(event) => Ok(Metadata::from_json(&event.content)?),
+            Some(event) => Ok(Metadata::try_from(event)?),
             None => Err(Error::MetadataNotFound),
         }
+    }
+
+    /// Replaced by `fetch_metadata`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[deprecated(since = "0.35.0", note = "Use `Client::fetch_metadata` instead.")]
+    pub async fn metadata(&self, public_key: PublicKey) -> Result<Metadata, Error> {
+        self.fetch_metadata(public_key, None).await
     }
 
     /// Update metadata
@@ -1212,7 +1230,7 @@ impl Client {
         Ok(vec![filter])
     }
 
-    /// Get contact list
+    /// Get contact list from database and connected relays.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     ///
@@ -1254,7 +1272,8 @@ impl Client {
 
         Ok(contact_list)
     }
-    /// Get contact list public keys
+
+    /// Get contact list public keys from database and connected relays.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     pub async fn get_contact_list_public_keys(
@@ -1274,7 +1293,7 @@ impl Client {
         Ok(pubkeys)
     }
 
-    /// Get contact list [`Metadata`]
+    /// Get contact list [`Metadata`] from database and connected relays.
     pub async fn get_contact_list_metadata(
         &self,
         timeout: Option<Duration>,

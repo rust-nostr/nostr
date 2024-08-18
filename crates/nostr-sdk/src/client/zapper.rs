@@ -105,11 +105,11 @@ impl Client {
                     .await?;
                 let event: &Event = events.first().ok_or(Error::EventNotFound(event_id))?;
                 let public_key: PublicKey = event.pubkey;
-                let metadata: Metadata = self.metadata(public_key).await?;
+                let metadata: Metadata = self.fetch_metadata(public_key, None).await?;
                 (public_key, metadata)
             }
             ZapEntity::PublicKey(public_key) => {
-                let metadata: Metadata = self.metadata(public_key).await?;
+                let metadata: Metadata = self.fetch_metadata(public_key, None).await?;
                 (public_key, metadata)
             }
         };

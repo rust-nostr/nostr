@@ -37,12 +37,13 @@ pub use self::partial::{MissingPartialEvent, PartialEvent};
 pub use self::tag::{Tag, TagKind, TagStandard};
 pub use self::unsigned::UnsignedEvent;
 use crate::nips::nip01::Coordinate;
+use crate::types::metadata;
 #[cfg(feature = "std")]
 use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{Alphabet, JsonUtil, PublicKey, SingleLetterTag, Timestamp};
+use crate::{Alphabet, JsonUtil, Metadata, PublicKey, SingleLetterTag, Timestamp};
 
 /// Tags Indexes
 pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<String>>;
@@ -537,6 +538,14 @@ impl JsonUtil for Event {
         T: AsRef<[u8]>,
     {
         Ok(serde_json::from_slice(json.as_ref())?)
+    }
+}
+
+impl TryFrom<&Event> for Metadata {
+    type Error = metadata::Error;
+
+    fn try_from(event: &Event) -> Result<Self, Self::Error> {
+        Metadata::from_json(&event.content)
     }
 }
 
