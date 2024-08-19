@@ -239,7 +239,7 @@ impl ClientMessage {
         // ["EVENT", <event JSON>]
         if v[0] == "EVENT" {
             if v_len >= 2 {
-                let event = Event::from_value(v[1].clone())?;
+                let event: Event = serde_json::from_value(v[1].clone())?;
                 return Ok(Self::event(event));
             } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
@@ -290,7 +290,7 @@ impl ClientMessage {
         // ["AUTH", <event JSON>]
         if v[0] == "AUTH" {
             if v_len >= 2 {
-                let event = Event::from_value(v[1].clone())?;
+                let event: Event = serde_json::from_value(v[1].clone())?;
                 return Ok(Self::auth(event));
             } else {
                 return Err(MessageHandleError::InvalidMessageFormat);

@@ -220,7 +220,7 @@ impl Event {
     /// Deserialize [`Event`] from [`Value`]
     ///
     /// **This method NOT verify the signature!**
-    #[inline]
+    #[deprecated(since = "0.35.0")]
     pub fn from_value(value: Value) -> Result<Self, Error> {
         Ok(serde_json::from_value(value)?)
     }
