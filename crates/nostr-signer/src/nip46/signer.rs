@@ -128,9 +128,9 @@ impl NostrConnectRemoteSigner {
         self.pool
             .handle_notifications(|notification| async {
                 if let RelayPoolNotification::Event { event, .. } = notification {
-                    if event.kind() == Kind::NostrConnect {
+                    if event.kind == Kind::NostrConnect {
                         if let Ok(msg) =
-                            nip04::decrypt(self.keys.secret_key()?, &event.pubkey, event.content())
+                            nip04::decrypt(self.keys.secret_key()?, &event.pubkey, event.content)
                         {
                             tracing::debug!("New Nostr Connect message received: {msg}");
 
@@ -247,7 +247,7 @@ impl NostrConnectRemoteSigner {
 
                                 // Compose and publish event
                                 let event =
-                                    EventBuilder::nostr_connect(&self.keys, event.author(), msg)?
+                                    EventBuilder::nostr_connect(&self.keys, event.pubkey, msg)?
                                         .to_event(&self.keys)?;
                                 self.pool.send_event(event, RelaySendOptions::new()).await?;
                             }

@@ -245,8 +245,8 @@ impl From<Event> for UnsignedEvent {
             pubkey: event.pubkey,
             created_at: event.created_at,
             kind: event.kind,
-            tags: event.tags.clone(),
-            content: event.content.clone(),
+            tags: event.tags,
+            content: event.content,
         }
     }
 }

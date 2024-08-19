@@ -115,7 +115,7 @@ impl NWC {
         time::timeout(Some(self.opts.timeout), async {
             while let Ok(notification) = notifications.recv().await {
                 if let RelayNotification::Event { event, .. } = notification {
-                    if event.kind() == Kind::WalletConnectResponse
+                    if event.kind == Kind::WalletConnectResponse
                         && event.event_ids().next().copied() == Some(event_id)
                     {
                         return Ok(Response::from_event(&self.uri, &event)?);

@@ -48,23 +48,23 @@ impl Deref for Event {
 impl Event {
     #[inline]
     pub fn id(&self) -> EventId {
-        self.inner.id().into()
+        self.inner.id.into()
     }
 
     /// Get event author (`pubkey` field)
     #[inline]
     pub fn author(&self) -> PublicKey {
-        self.inner.author().into()
+        self.inner.pubkey.into()
     }
 
     #[inline]
     pub fn created_at(&self) -> Timestamp {
-        self.inner.created_at().into()
+        self.inner.created_at.into()
     }
 
     #[inline]
     pub fn kind(&self) -> Kind {
-        self.inner.kind().into()
+        self.inner.kind.into()
     }
 
     pub fn tags(&self) -> Vec<Arc<Tag>> {
@@ -94,12 +94,12 @@ impl Event {
 
     #[inline]
     pub fn content(&self) -> String {
-        self.inner.content().to_string()
+        self.inner.content.to_string()
     }
 
     #[inline]
     pub fn signature(&self) -> String {
-        self.inner.signature().to_string()
+        self.inner.sig.to_string()
     }
 
     /// Verify both `EventId` and `Signature`

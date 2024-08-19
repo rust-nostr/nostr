@@ -188,7 +188,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
             .limit(1);
         let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
         match events.first() {
-            Some(event) => match Metadata::from_json(event.content()) {
+            Some(event) => match Metadata::from_json(&event.content) {
                 Ok(metadata) => Ok(Profile::new(public_key, metadata)),
                 Err(e) => {
                     tracing::error!("Impossible to deserialize profile metadata: {e}");
@@ -236,8 +236,8 @@ pub trait NostrDatabaseExt: NostrDatabase {
                     .into_iter()
                     .map(|e| {
                         let metadata: Metadata =
-                            Metadata::from_json(e.content()).unwrap_or_default();
-                        Profile::new(e.author(), metadata)
+                            Metadata::from_json(&e.content).unwrap_or_default();
+                        Profile::new(e.pubkey, metadata)
                     })
                     .collect();
 

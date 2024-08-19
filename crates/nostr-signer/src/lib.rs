@@ -252,16 +252,16 @@ impl NostrSigner {
 
         // Decrypt and verify seal
         let seal: String = self
-            .nip44_decrypt(&gift_wrap.pubkey, gift_wrap.content())
+            .nip44_decrypt(&gift_wrap.pubkey, &gift_wrap.content)
             .await?;
         let seal: Event = Event::from_json(seal)?;
         seal.verify()?;
 
         // Decrypt rumor
-        let rumor: String = self.nip44_decrypt(&seal.pubkey, seal.content()).await?;
+        let rumor: String = self.nip44_decrypt(&seal.pubkey, &seal.content).await?;
 
         Ok(UnwrappedGift {
-            sender: seal.author(),
+            sender: seal.pubkey,
             rumor: UnsignedEvent::from_json(rumor)?,
         })
     }

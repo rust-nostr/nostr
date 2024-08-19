@@ -1133,7 +1133,7 @@ impl InternalRelay {
 
     #[inline]
     pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
-        let id: EventId = event.id();
+        let id: EventId = event.id;
         self.batch_event(vec![event], opts).await?;
         Ok(id)
     }
@@ -1153,7 +1153,7 @@ impl InternalRelay {
         let mut missing: HashSet<EventId> = HashSet::with_capacity(events_len);
 
         for event in events.into_iter() {
-            missing.insert(event.id());
+            missing.insert(event.id);
             msgs.push(ClientMessage::event(event));
         }
 
@@ -1227,13 +1227,13 @@ impl InternalRelay {
         if event.kind != Kind::Authentication {
             return Err(Error::UnexpectedKind {
                 expected: Kind::Authentication,
-                found: event.kind(),
+                found: event.kind,
             });
         }
 
         let mut notifications = self.internal_notification_sender.subscribe();
 
-        let id: EventId = event.id();
+        let id: EventId = event.id;
 
         // Send message
         let msg: ClientMessage = ClientMessage::auth(event);

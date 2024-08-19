@@ -1113,7 +1113,7 @@ impl Client {
             .get_events_of(vec![filter], EventSource::both(None))
             .await?; // TODO: add timeout?
         match events.first() {
-            Some(event) => Ok(Metadata::from_json(event.content())?),
+            Some(event) => Ok(Metadata::from_json(&event.content)?),
             None => Err(Error::MetadataNotFound),
         }
     }
@@ -1239,7 +1239,7 @@ impl Client {
 
         // Get first event (result of `get_events_of` is sorted DESC by timestamp)
         if let Some(event) = events.into_iter().next() {
-            for tag in event.into_iter_tags() {
+            for tag in event.tags.into_iter() {
                 if let Some(TagStandard::PublicKey {
                     public_key,
                     relay_url,
@@ -1298,8 +1298,8 @@ impl Client {
                 .get_events_of(filters, EventSource::both(timeout))
                 .await?;
             for event in events.into_iter() {
-                let metadata = Metadata::from_json(event.content())?;
-                if let Some(m) = contacts.get_mut(&event.author()) {
+                let metadata = Metadata::from_json(&event.content)?;
+                if let Some(m) = contacts.get_mut(&event.pubkey) {
                     *m = metadata
                 };
             }

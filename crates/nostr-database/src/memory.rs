@@ -118,7 +118,7 @@ impl NostrDatabase for MemoryDatabase {
         } else {
             // Mark it as seen
             let mut seen_event_ids = self.seen_event_ids.lock().await;
-            self._event_id_seen(&mut seen_event_ids, event.id(), None);
+            self._event_id_seen(&mut seen_event_ids, event.id, None);
 
             Ok(false)
         }

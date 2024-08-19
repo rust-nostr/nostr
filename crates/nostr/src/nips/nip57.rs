@@ -381,7 +381,7 @@ pub fn decrypt_sent_private_zap_message(
 ) -> Result<Event, Error> {
     // Re-create our ephemeral encryption key
     let secret_key: SecretKey =
-        create_encryption_key(secret_key, public_key, private_zap_event.created_at())?;
+        create_encryption_key(secret_key, public_key, private_zap_event.created_at)?;
     let key: [u8; 32] = util::generate_shared_key(&secret_key, public_key);
 
     // decrypt like normal
@@ -449,12 +449,12 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(msg, private_zap_msg.content());
+        assert_eq!(msg, &private_zap_msg.content);
 
         let private_zap_msg =
             decrypt_received_private_zap_message(bob_keys.secret_key().unwrap(), &private_zap)
                 .unwrap();
 
-        assert_eq!(msg, private_zap_msg.content())
+        assert_eq!(msg, &private_zap_msg.content)
     }
 }

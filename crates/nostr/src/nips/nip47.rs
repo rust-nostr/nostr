@@ -699,7 +699,7 @@ impl Response {
     /// Deserialize from [Event]
     #[inline]
     pub fn from_event(uri: &NostrWalletConnectURI, event: &Event) -> Result<Self, Error> {
-        let decrypt_res: String = nip04::decrypt(&uri.secret, &event.pubkey, event.content())?;
+        let decrypt_res: String = nip04::decrypt(&uri.secret, &event.pubkey, &event.content)?;
         Self::from_json(decrypt_res)
     }
 

@@ -202,7 +202,7 @@ impl InternalDatabaseHelper {
         let now: Timestamp = Timestamp::now();
         events
             .into_iter()
-            .filter(|e| !e.is_ephemeral())
+            .filter(|e| !e.kind.is_ephemeral())
             .map(|event| self.internal_index_event(&event, &now))
             .flat_map(|res| res.to_discard)
             .collect()
@@ -217,7 +217,7 @@ impl InternalDatabaseHelper {
         let now: Timestamp = Timestamp::now();
         events
             .into_iter()
-            .filter(|e| !e.is_expired() && !e.is_ephemeral())
+            .filter(|e| !e.is_expired() && !e.kind.is_ephemeral())
             .filter(move |event| self.internal_index_event(event, &now).to_store)
     }
 
@@ -240,9 +240,9 @@ impl InternalDatabaseHelper {
         let mut to_discard: HashSet<EventId> = HashSet::new();
 
         // Compose others fields
-        let author: PublicKey = event.author();
-        let created_at: Timestamp = event.created_at();
-        let kind: Kind = event.kind();
+        let author: PublicKey = event.pubkey;
+        let created_at: Timestamp = event.created_at;
+        let kind: Kind = event.kind;
 
         let mut should_insert: bool = true;
 
@@ -430,7 +430,7 @@ impl InternalDatabaseHelper {
     #[tracing::instrument(skip_all, level = "trace")]
     pub fn index_event(&mut self, event: &Event) -> DatabaseEventResult {
         // Check if it's expired or ephemeral (in `internal_index_event` is checked only the raw event expiration)
-        if event.is_expired() || event.is_ephemeral() {
+        if event.is_expired() || event.kind.is_ephemeral() {
             return DatabaseEventResult::default();
         }
         let now = Timestamp::now();
@@ -741,7 +741,7 @@ impl DatabaseHelper {
     #[tracing::instrument(skip_all, level = "trace")]
     pub async fn index_event(&self, event: &Event) -> DatabaseEventResult {
         // Check if it's expired or ephemeral
-        if event.is_expired() || event.is_ephemeral() {
+        if event.is_expired() || event.kind.is_ephemeral() {
             return DatabaseEventResult::default();
         }
 

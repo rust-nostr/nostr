@@ -57,23 +57,23 @@ impl From<JsEvent> for Event {
 impl JsEvent {
     #[wasm_bindgen(getter)]
     pub fn id(&self) -> JsEventId {
-        self.inner.id().into()
+        self.inner.id.into()
     }
 
     /// Get event author (`pubkey` field)
     #[wasm_bindgen(getter)]
     pub fn author(&self) -> JsPublicKey {
-        self.inner.author().into()
+        self.inner.pubkey.into()
     }
 
     #[wasm_bindgen(js_name = createdAt, getter)]
     pub fn created_at(&self) -> JsTimestamp {
-        self.inner.created_at().into()
+        self.inner.created_at.into()
     }
 
     #[wasm_bindgen(getter)]
     pub fn kind(&self) -> u16 {
-        self.inner.kind().as_u16()
+        self.inner.kind.as_u16()
     }
 
     #[wasm_bindgen(getter)]
@@ -101,12 +101,12 @@ impl JsEvent {
 
     #[wasm_bindgen(getter)]
     pub fn content(&self) -> String {
-        self.inner.content().to_string()
+        self.inner.content.to_string()
     }
 
     #[wasm_bindgen(getter)]
     pub fn signature(&self) -> String {
-        self.inner.signature().to_string()
+        self.inner.sig.to_string()
     }
 
     /// Verify both `EventId` and `Signature`

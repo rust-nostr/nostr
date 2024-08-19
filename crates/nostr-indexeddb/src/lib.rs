@@ -282,7 +282,7 @@ impl_nostr_database!({
                 .db
                 .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readwrite)?;
             let store = tx.object_store(EVENTS_CF)?;
-            let key = JsValue::from(event.id().to_hex());
+            let key = JsValue::from(event.id.to_hex());
 
             // Acquire FlatBuffers Builder
             let mut fbb = self.fbb.lock().await;

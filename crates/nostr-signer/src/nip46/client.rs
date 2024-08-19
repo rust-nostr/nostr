@@ -128,8 +128,8 @@ impl Nip46Signer {
         time::timeout(Some(self.timeout), async {
             while let Ok(notification) = notifications.recv().await {
                 if let RelayPoolNotification::Event { event, .. } = notification {
-                    if event.kind() == Kind::NostrConnect {
-                        let msg = nip04::decrypt(secret_key, &event.pubkey, event.content())?;
+                    if event.kind == Kind::NostrConnect {
+                        let msg = nip04::decrypt(secret_key, &event.pubkey, &event.content)?;
                         let msg = Message::from_json(msg)?;
 
                         tracing::debug!("Received NIP46 message: '{msg}'");
@@ -279,9 +279,9 @@ async fn get_signer_public_key(
     time::timeout(Some(timeout), async {
         while let Ok(notification) = notifications.recv().await {
             if let RelayPoolNotification::Event { event, .. } = notification {
-                if event.kind() == Kind::NostrConnect {
+                if event.kind == Kind::NostrConnect {
                     // Decrypt content
-                    let msg: String = nip04::decrypt(secret_key, &event.pubkey, event.content())?;
+                    let msg: String = nip04::decrypt(secret_key, &event.pubkey, event.content)?;
 
                     tracing::debug!("Received Nostr Connect message: '{msg}'");
 
@@ -300,7 +300,7 @@ async fn get_signer_public_key(
                             result: Some(ResponseResult::Connect),
                             error: None,
                             ..
-                        } => return Ok(event.author()),
+                        } => return Ok(event.pubkey),
                         _ => {}
                     }
                 }

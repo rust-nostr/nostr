@@ -186,7 +186,7 @@ impl NostrDatabase for RocksDatabase {
                 let events_cf = self.cf_handle(EVENTS_CF)?;
 
                 // Serialize key and value
-                let id = event.id();
+                let id = event.id;
                 let key: &[u8] = id.as_bytes();
                 let value: &[u8] = event.encode(&mut fbb);
 

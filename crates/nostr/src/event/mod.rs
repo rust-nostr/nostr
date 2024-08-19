@@ -5,13 +5,13 @@
 
 //! Event
 
+use alloc::borrow::Cow;
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::ops::Deref;
 use core::str::FromStr;
 
 use bitcoin::secp256k1::schnorr::Signature;
@@ -55,35 +55,6 @@ const TAGS: &str = "tags";
 const CONTENT: &str = "content";
 const SIG: &str = "sig";
 
-/// Supported event keys
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum EventKey {
-    Id,
-    PubKey,
-    CreatedAt,
-    Kind,
-    Tags,
-    Content,
-    Sig,
-}
-
-impl FromStr for EventKey {
-    type Err = Error;
-
-    fn from_str(key: &str) -> Result<Self, Self::Err> {
-        match key {
-            ID => Ok(Self::Id),
-            PUBKEY => Ok(Self::PubKey),
-            CREATED_AT => Ok(Self::CreatedAt),
-            KIND => Ok(Self::Kind),
-            TAGS => Ok(Self::Tags),
-            CONTENT => Ok(Self::Content),
-            SIG => Ok(Self::Sig),
-            k => Err(Error::UnknownKey(k.to_string())),
-        }
-    }
-}
-
 /// [`Event`] error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
@@ -126,12 +97,24 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
-/// [`Event`] struct
+/// Nostr event
 #[derive(Clone)]
 pub struct Event {
-    /// Event
-    inner: EventIntermediate,
-    /// JSON deserialization key order
+    /// ID
+    pub id: EventId,
+    /// Author
+    pub pubkey: PublicKey,
+    /// UNIX timestamp (seconds)
+    pub created_at: Timestamp,
+    /// Kind
+    pub kind: Kind,
+    /// Vector of [`Tag`]
+    pub tags: Vec<Tag>,
+    /// Content
+    pub content: String,
+    /// Signature
+    pub sig: Signature,
+    /// JSON de/serialization order
     deser_order: Vec<EventKey>,
     /// Tags indexes
     #[cfg(feature = "std")]
@@ -141,20 +124,26 @@ pub struct Event {
 impl fmt::Debug for Event {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Event")
-            .field(ID, &self.inner.id)
-            .field(PUBKEY, &self.inner.pubkey)
-            .field(CREATED_AT, &self.inner.created_at)
-            .field(KIND, &self.inner.kind)
-            .field(TAGS, &self.inner.tags)
-            .field(CONTENT, &self.inner.content)
-            .field(SIG, &self.inner.sig)
+            .field(ID, &self.id)
+            .field(PUBKEY, &self.pubkey)
+            .field(CREATED_AT, &self.created_at)
+            .field(KIND, &self.kind)
+            .field(TAGS, &self.tags)
+            .field(CONTENT, &self.content)
+            .field(SIG, &self.sig)
             .finish()
     }
 }
 
 impl PartialEq for Event {
     fn eq(&self, other: &Self) -> bool {
-        self.inner.eq(&other.inner)
+        self.id == other.id
+            && self.pubkey == other.pubkey
+            && self.created_at == other.created_at
+            && self.kind == other.kind
+            && self.tags == other.tags
+            && self.content == other.content
+            && self.sig == other.sig
     }
 }
 
@@ -168,21 +157,25 @@ impl PartialOrd for Event {
 
 impl Ord for Event {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.inner.cmp(&other.inner)
+        if self.created_at != other.created_at {
+            // Ascending order
+            // NOT EDIT, will break many things!!
+            self.created_at.cmp(&other.created_at)
+        } else {
+            self.id.cmp(&other.id)
+        }
     }
 }
 
 impl Hash for Event {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.inner.hash(state);
-    }
-}
-
-impl Deref for Event {
-    type Target = EventIntermediate;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
+        self.id.hash(state);
+        self.pubkey.hash(state);
+        self.created_at.hash(state);
+        self.kind.hash(state);
+        self.tags.hash(state);
+        self.content.hash(state);
+        self.sig.hash(state);
     }
 }
 
@@ -202,15 +195,13 @@ impl Event {
         S: Into<String>,
     {
         Self {
-            inner: EventIntermediate {
-                id,
-                pubkey: public_key,
-                created_at,
-                kind,
-                tags: tags.into_iter().collect(),
-                content: content.into(),
-                sig,
-            },
+            id,
+            pubkey: public_key,
+            created_at,
+            kind,
+            tags: tags.into_iter().collect(),
+            content: content.into(),
+            sig,
             deser_order: Vec::new(),
             #[cfg(feature = "std")]
             tags_indexes: OnceCell::new(),
@@ -226,53 +217,39 @@ impl Event {
     }
 
     /// Get event ID
-    #[inline]
+    #[deprecated(since = "0.35.0")]
     pub fn id(&self) -> EventId {
-        self.inner.id
+        self.id
     }
 
     /// Get event author (`pubkey` field)
-    #[inline]
+    #[deprecated(since = "0.35.0")]
     pub fn author(&self) -> PublicKey {
-        self.inner.pubkey
-    }
-
-    /// Get event author reference (`pubkey` field)
-    #[inline]
-    #[deprecated(since = "0.34.0")]
-    pub fn author_ref(&self) -> &PublicKey {
-        &self.inner.pubkey
+        self.pubkey
     }
 
     /// Get [Timestamp] of when the event was created
-    #[inline]
+    #[deprecated(since = "0.35.0")]
     pub fn created_at(&self) -> Timestamp {
-        self.inner.created_at
+        self.created_at
     }
 
     /// Get event [Kind]
-    #[inline]
+    #[deprecated(since = "0.35.0")]
     pub fn kind(&self) -> Kind {
-        self.inner.kind
+        self.kind
     }
 
-    /// Get reference to event tags
-    #[inline]
+    /// Get tags ownership
+    #[deprecated(since = "0.35.0")]
     pub fn tags(&self) -> &[Tag] {
-        &self.inner.tags
-    }
-
-    /// Iterate event tags
-    #[inline]
-    #[deprecated(since = "0.34.0")]
-    pub fn iter_tags(&self) -> impl Iterator<Item = &Tag> {
-        self.inner.tags.iter()
+        &self.tags
     }
 
     /// Iterate and consume event tags
-    #[inline]
+    #[deprecated(since = "0.35.0")]
     pub fn into_iter_tags(self) -> impl Iterator<Item = Tag> {
-        self.inner.tags.into_iter()
+        self.tags.into_iter()
     }
 
     /// Get content of **first** tag that match [TagKind].
@@ -295,15 +272,15 @@ impl Event {
     }
 
     /// Get reference of event content
-    #[inline]
+    #[deprecated(since = "0.35.0")]
     pub fn content(&self) -> &str {
-        &self.inner.content
+        &self.content
     }
 
     /// Get event signature
-    #[inline]
+    #[deprecated(since = "0.35.0")]
     pub fn signature(&self) -> Signature {
-        self.inner.sig
+        self.sig
     }
 
     /// Verify both [`EventId`] and [`Signature`]
@@ -329,13 +306,13 @@ impl Event {
     /// Verify if the [`EventId`] it's composed correctly
     pub fn verify_id(&self) -> Result<(), Error> {
         let id: EventId = EventId::new(
-            &self.inner.pubkey,
-            &self.inner.created_at,
-            &self.inner.kind,
-            &self.inner.tags,
-            &self.inner.content,
+            &self.pubkey,
+            &self.created_at,
+            &self.kind,
+            &self.tags,
+            &self.content,
         );
-        if id == self.inner.id {
+        if id == self.id {
             Ok(())
         } else {
             Err(Error::InvalidId)
@@ -355,8 +332,8 @@ impl Event {
     where
         C: Verification,
     {
-        let message: Message = Message::from_digest_slice(self.inner.id.as_bytes())?;
-        secp.verify_schnorr(&self.inner.sig, &message, &self.inner.pubkey)
+        let message: Message = Message::from_digest_slice(self.id.as_bytes())?;
+        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
             .map_err(|_| Error::InvalidSignature)
     }
 
@@ -365,7 +342,7 @@ impl Event {
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
     #[inline]
     pub fn check_pow(&self, difficulty: u8) -> bool {
-        self.inner.id.check_pow(difficulty)
+        self.id.check_pow(difficulty)
     }
 
     /// Get [`Timestamp`] expiration if set
@@ -420,7 +397,7 @@ impl Event {
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     #[inline]
     pub fn is_job_request(&self) -> bool {
-        self.inner.kind.is_job_request()
+        self.kind.is_job_request()
     }
 
     /// Check if [`Kind`] is a NIP90 job result
@@ -428,7 +405,7 @@ impl Event {
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     #[inline]
     pub fn is_job_result(&self) -> bool {
-        self.inner.kind.is_job_result()
+        self.kind.is_job_result()
     }
 
     /// Check if event [`Kind`] is `Regular`
@@ -436,7 +413,7 @@ impl Event {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn is_regular(&self) -> bool {
-        self.inner.kind.is_regular()
+        self.kind.is_regular()
     }
 
     /// Check if event [`Kind`] is `Replaceable`
@@ -444,7 +421,7 @@ impl Event {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn is_replaceable(&self) -> bool {
-        self.inner.kind.is_replaceable()
+        self.kind.is_replaceable()
     }
 
     /// Check if event [`Kind`] is `Ephemeral`
@@ -452,7 +429,7 @@ impl Event {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn is_ephemeral(&self) -> bool {
-        self.inner.kind.is_ephemeral()
+        self.kind.is_ephemeral()
     }
 
     /// Check if event [`Kind`] is `Parameterized replaceable`
@@ -460,7 +437,7 @@ impl Event {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn is_parameterized_replaceable(&self) -> bool {
-        self.inner.kind.is_parameterized_replaceable()
+        self.kind.is_parameterized_replaceable()
     }
 
     /// Extract identifier (`d` tag), if exists.
@@ -570,39 +547,57 @@ impl JsonUtil for Event {
     }
 }
 
-/// Event Intermediate used for de/serialization of [`Event`]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct EventIntermediate {
-    /// Id
-    pub id: EventId,
-    /// Author
-    pub pubkey: PublicKey,
-    /// Timestamp (seconds)
-    pub created_at: Timestamp,
-    /// Kind
-    pub kind: Kind,
-    /// Vector of [`Tag`]
-    pub tags: Vec<Tag>,
-    /// Content
-    pub content: String,
-    /// Signature
-    pub sig: Signature,
+/// Supported event keys
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum EventKey {
+    Id,
+    PubKey,
+    CreatedAt,
+    Kind,
+    Tags,
+    Content,
+    Sig,
 }
 
-impl PartialOrd for EventIntermediate {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
+impl FromStr for EventKey {
+    type Err = Error;
+
+    fn from_str(key: &str) -> Result<Self, Self::Err> {
+        match key {
+            ID => Ok(Self::Id),
+            PUBKEY => Ok(Self::PubKey),
+            CREATED_AT => Ok(Self::CreatedAt),
+            KIND => Ok(Self::Kind),
+            TAGS => Ok(Self::Tags),
+            CONTENT => Ok(Self::Content),
+            SIG => Ok(Self::Sig),
+            k => Err(Error::UnknownKey(k.to_string())),
+        }
     }
 }
 
-impl Ord for EventIntermediate {
-    fn cmp(&self, other: &Self) -> Ordering {
-        if self.created_at != other.created_at {
-            // Ascending order
-            // NOT EDIT, will break many things!!
-            self.created_at.cmp(&other.created_at)
-        } else {
-            self.id.cmp(&other.id)
+/// Struct used for de/serialization of [`Event`]
+#[derive(Serialize, Deserialize)]
+struct EventIntermediate<'a> {
+    pub id: Cow<'a, EventId>,
+    pub pubkey: Cow<'a, PublicKey>,
+    pub created_at: Cow<'a, Timestamp>,
+    pub kind: Cow<'a, Kind>,
+    pub tags: Cow<'a, Vec<Tag>>,
+    pub content: Cow<'a, String>,
+    pub sig: Cow<'a, Signature>,
+}
+
+impl<'a> From<&'a Event> for EventIntermediate<'a> {
+    fn from(e: &'a Event) -> Self {
+        Self {
+            id: Cow::Borrowed(&e.id),
+            pubkey: Cow::Borrowed(&e.pubkey),
+            created_at: Cow::Borrowed(&e.created_at),
+            kind: Cow::Borrowed(&e.kind),
+            tags: Cow::Borrowed(&e.tags),
+            content: Cow::Borrowed(&e.content),
+            sig: Cow::Borrowed(&e.sig),
         }
     }
 }
@@ -613,18 +608,19 @@ impl Serialize for Event {
         S: Serializer,
     {
         if self.deser_order.is_empty() {
-            self.inner.serialize(serializer)
+            let e: EventIntermediate<'_> = self.into();
+            e.serialize(serializer)
         } else {
             let mut s = serializer.serialize_struct("Event", 7)?;
             for key in self.deser_order.iter() {
                 match key {
-                    EventKey::Id => s.serialize_field(ID, &self.inner.id)?,
-                    EventKey::PubKey => s.serialize_field(PUBKEY, &self.inner.pubkey)?,
-                    EventKey::CreatedAt => s.serialize_field(CREATED_AT, &self.inner.created_at)?,
-                    EventKey::Kind => s.serialize_field(KIND, &self.inner.kind)?,
-                    EventKey::Tags => s.serialize_field(TAGS, &self.inner.tags)?,
-                    EventKey::Content => s.serialize_field(CONTENT, &self.inner.content)?,
-                    EventKey::Sig => s.serialize_field(SIG, &self.inner.sig)?,
+                    EventKey::Id => s.serialize_field(ID, &self.id)?,
+                    EventKey::PubKey => s.serialize_field(PUBKEY, &self.pubkey)?,
+                    EventKey::CreatedAt => s.serialize_field(CREATED_AT, &self.created_at)?,
+                    EventKey::Kind => s.serialize_field(KIND, &self.kind)?,
+                    EventKey::Tags => s.serialize_field(TAGS, &self.tags)?,
+                    EventKey::Content => s.serialize_field(CONTENT, &self.content)?,
+                    EventKey::Sig => s.serialize_field(SIG, &self.sig)?,
                 }
             }
             s.end()
@@ -639,16 +635,26 @@ impl<'de> Deserialize<'de> for Event {
     {
         let value: Value = Value::deserialize(deserializer)?;
 
-        let deser_order: Vec<EventKey> = if let Value::Object(map) = &value {
-            map.keys()
-                .filter_map(|k| EventKey::from_str(k).ok())
-                .collect()
-        } else {
-            Vec::new()
-        };
+        let deser_order: Vec<EventKey> = value
+            .as_object()
+            .map(|map| {
+                map.keys()
+                    .filter_map(|k| EventKey::from_str(k).ok())
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let inter: EventIntermediate<'_> =
+            serde_json::from_value(value).map_err(serde::de::Error::custom)?;
 
         Ok(Self {
-            inner: serde_json::from_value(value).map_err(serde::de::Error::custom)?,
+            id: inter.id.into_owned(),
+            pubkey: inter.pubkey.into_owned(),
+            created_at: inter.created_at.into_owned(),
+            kind: inter.kind.into_owned(),
+            tags: inter.tags.into_owned(),
+            content: inter.content.into_owned(),
+            sig: inter.sig.into_owned(),
             deser_order,
             #[cfg(feature = "std")]
             tags_indexes: OnceCell::new(),
@@ -682,8 +688,8 @@ mod tests {
         let deserialized = Event::from_json(serialized).unwrap();
 
         assert_eq!(e, deserialized);
-        assert_eq!(Kind::Custom(123), e.kind());
-        assert_eq!(Kind::Custom(123), deserialized.kind());
+        assert_eq!(Kind::Custom(123), e.kind);
+        assert_eq!(Kind::Custom(123), deserialized.kind);
     }
 
     #[test]

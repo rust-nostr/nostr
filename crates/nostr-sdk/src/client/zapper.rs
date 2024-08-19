@@ -104,7 +104,7 @@ impl Client {
                     .get_events_of(vec![filter], EventSource::both(Some(self.opts.timeout)))
                     .await?;
                 let event: &Event = events.first().ok_or(Error::EventNotFound(event_id))?;
-                let public_key: PublicKey = event.author();
+                let public_key: PublicKey = event.pubkey;
                 let metadata: Metadata = self.metadata(public_key).await?;
                 (public_key, metadata)
             }

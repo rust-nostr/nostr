@@ -436,12 +436,12 @@ impl EventBuilder {
             Some(root) => {
                 // ID and author
                 tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
-                    event_id: root.id(),
+                    event_id: root.id,
                     relay_url: relay_url.clone(),
                     marker: Some(Marker::Root),
-                    public_key: Some(root.author()),
+                    public_key: Some(root.pubkey),
                 }));
-                tags.push(Tag::public_key(root.author()));
+                tags.push(Tag::public_key(root.pubkey));
 
                 // Add others `p` tags
                 tags.extend(
@@ -460,22 +460,22 @@ impl EventBuilder {
             None => {
                 // No root event is passed, use `reply_to` event ID for `root` marker
                 tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
-                    event_id: reply_to.id(),
+                    event_id: reply_to.id,
                     relay_url: relay_url.clone(),
                     marker: Some(Marker::Root),
-                    public_key: Some(reply_to.author()),
+                    public_key: Some(reply_to.pubkey),
                 }));
             }
         }
 
         // Add `e` and `p` tag of event author
         tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
-            event_id: reply_to.id(),
+            event_id: reply_to.id,
             relay_url,
             marker: Some(Marker::Reply),
-            public_key: Some(reply_to.author()),
+            public_key: Some(reply_to.pubkey),
         }));
-        tags.push(Tag::public_key(reply_to.author()));
+        tags.push(Tag::public_key(reply_to.pubkey));
 
         // Add others `p` tags of reply_to event
         tags.extend(
@@ -575,12 +575,12 @@ impl EventBuilder {
                 event.as_json(),
                 [
                     Tag::from_standardized_without_cell(TagStandard::Event {
-                        event_id: event.id(),
+                        event_id: event.id,
                         relay_url,
                         marker: None,
-                        public_key: Some(event.author()),
+                        public_key: Some(event.pubkey),
                     }),
-                    Tag::public_key(event.author()),
+                    Tag::public_key(event.pubkey),
                 ],
             )
         } else {
@@ -589,13 +589,13 @@ impl EventBuilder {
                 event.as_json(),
                 [
                     Tag::from_standardized_without_cell(TagStandard::Event {
-                        event_id: event.id(),
+                        event_id: event.id,
                         relay_url,
                         marker: None,
-                        public_key: Some(event.author()),
+                        public_key: Some(event.pubkey),
                     }),
-                    Tag::public_key(event.author()),
-                    Tag::from_standardized_without_cell(TagStandard::Kind(event.kind())),
+                    Tag::public_key(event.pubkey),
+                    Tag::from_standardized_without_cell(TagStandard::Kind(event.kind)),
                 ],
             )
         }
@@ -637,7 +637,7 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        Self::reaction_extended(event.id(), event.author(), Some(event.kind()), reaction)
+        Self::reaction_extended(event.id, event.pubkey, Some(event.kind), reaction)
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
@@ -942,7 +942,7 @@ impl EventBuilder {
         // add P tag
         tags.push(Tag::from_standardized_without_cell(
             TagStandard::PublicKey {
-                public_key: zap_request.author(),
+                public_key: zap_request.pubkey,
                 relay_url: None,
                 alias: None,
                 uppercase: true,
@@ -1048,7 +1048,7 @@ impl EventBuilder {
         // Add identity tag
         tags.push(Tag::from_standardized_without_cell(
             TagStandard::Coordinate {
-                coordinate: Coordinate::new(Kind::BadgeDefinition, badge_definition.author())
+                coordinate: Coordinate::new(Kind::BadgeDefinition, badge_definition.pubkey)
                     .identifier(badge_id),
                 relay_url: None,
             },
@@ -1103,7 +1103,7 @@ impl EventBuilder {
         });
 
         let badge_awards_identifiers = badge_awards.into_iter().filter_map(|event| {
-            let (_, relay_url) = nip58::extract_awarded_public_key(event.tags(), pubkey_awarded)?;
+            let (_, relay_url) = nip58::extract_awarded_public_key(&event.tags, pubkey_awarded)?;
             let relay_url = relay_url.clone();
             let (id, a_tag) = event.tags.iter().find_map(|t| match t.as_standardized() {
                 Some(TagStandard::Coordinate { coordinate, .. }) => {
@@ -1127,7 +1127,7 @@ impl EventBuilder {
                 {
                     let badge_award_event_tag: Tag =
                         Tag::from_standardized_without_cell(TagStandard::Event {
-                            event_id: badge_award_event.id(),
+                            event_id: badge_award_event.id,
                             relay_url: relay_url.clone(),
                             marker: None,
                             public_key: None,
@@ -1170,7 +1170,7 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        let kind: Kind = job_request.kind() + 1000;
+        let kind: Kind = job_request.kind + 1000;
 
         // Check if Job Result kind
         if !kind.is_job_result() {
@@ -1198,8 +1198,8 @@ impl EventBuilder {
             .collect();
 
         tags.extend_from_slice(&[
-            Tag::event(job_request.id()),
-            Tag::public_key(job_request.author()),
+            Tag::event(job_request.id),
+            Tag::public_key(job_request.pubkey),
             Tag::from_standardized_without_cell(TagStandard::Request(job_request)),
             Tag::from_standardized_without_cell(TagStandard::Amount { millisats, bolt11 }),
         ]);
@@ -1223,8 +1223,8 @@ impl EventBuilder {
                 status,
                 extra_info,
             }),
-            Tag::event(job_request.id()),
-            Tag::public_key(job_request.author()),
+            Tag::event(job_request.id),
+            Tag::public_key(job_request.pubkey),
             Tag::from_standardized_without_cell(TagStandard::Amount {
                 millisats: amount_millisats,
                 bolt11,
@@ -1779,9 +1779,9 @@ mod tests {
                 .to_event(&keys)
                 .unwrap();
 
-        assert_eq!(event_builder.kind(), Kind::BadgeAward);
-        assert_eq!(event_builder.content(), "");
-        assert_eq!(event_builder.tags(), example_event.tags());
+        assert_eq!(event_builder.kind, Kind::BadgeAward);
+        assert_eq!(event_builder.content, "");
+        assert_eq!(event_builder.tags, example_event.tags);
     }
 
     #[test]
@@ -1840,8 +1840,7 @@ mod tests {
                 ["e", "{}"]
             ]
             }}"#,
-            bravery_badge_award.id(),
-            honor_badge_award.id(),
+            bravery_badge_award.id, honor_badge_award.id,
         );
         let example_event: Event = serde_json::from_str(&example_event_json).unwrap();
 
@@ -1853,8 +1852,8 @@ mod tests {
                 .to_event(&keys)
                 .unwrap();
 
-        assert_eq!(profile_badges.kind(), Kind::ProfileBadges);
-        assert_eq!(profile_badges.tags(), example_event.tags());
+        assert_eq!(profile_badges.kind, Kind::ProfileBadges);
+        assert_eq!(profile_badges.tags, example_event.tags);
     }
 }
 

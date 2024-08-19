@@ -155,7 +155,7 @@ impl NostrDatabase for SQLiteDatabase {
             let mut fbb = self.fbb.write().await;
 
             // Encode
-            let event_id: EventId = event.id();
+            let event_id: EventId = event.id;
             let value: Vec<u8> = event.encode(&mut fbb).to_vec();
 
             // Save event
@@ -186,7 +186,7 @@ impl NostrDatabase for SQLiteDatabase {
         let events: Vec<(EventId, Vec<u8>)> = events
             .into_iter()
             .map(move |e| {
-                let event_id: EventId = e.id();
+                let event_id: EventId = e.id;
                 let value: Vec<u8> = e.encode(&mut fbb).to_vec();
                 (event_id, value)
             })

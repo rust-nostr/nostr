@@ -260,7 +260,6 @@ mod tests {
 #[cfg(bench)]
 mod benches {
     use super::*;
-    use crate::prelude::hex::{decode, encode};
     use crate::test::{black_box, Bencher};
 
     const ID: &str = "2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45";
