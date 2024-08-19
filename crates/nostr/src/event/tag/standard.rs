@@ -584,12 +584,11 @@ impl From<TagStandard> for Vec<String> {
                     tag.push(relay_url.to_string());
                 }
                 if let Some(marker) = marker {
-                    if tag.len() == 2 {
-                        tag.push(String::new());
-                    }
+                    tag.resize_with(3, String::new);
                     tag.push(marker.to_string());
                 }
                 if let Some(public_key) = public_key {
+                    tag.resize_with(4, String::new);
                     tag.push(public_key.to_string());
                 }
                 tag
@@ -605,6 +604,7 @@ impl From<TagStandard> for Vec<String> {
                     tag.push(relay_url.to_string());
                 }
                 if let Some(alias) = alias {
+                    tag.resize_with(3, String::new);
                     tag.push(alias);
                 }
                 tag

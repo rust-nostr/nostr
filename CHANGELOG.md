@@ -38,6 +38,8 @@
 
 ### Fixed
 
+* nostr: fix `TagStanderd::to_vec` ([nanikamado])
+
 ### Removed
 
 * nostr: remove `bech32` from the public API ([Yuki Kishimoto])
@@ -448,6 +450,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [lnbc1QWFyb24]: https://github.com/lnbc1QWFyb24
 [reyamir]: https://github.com/reyamir
 [w3irdrobot]: https://github.com/w3irdrobot
+[nanikamado]: https://github.com/nanikamado
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.34.0...HEAD
