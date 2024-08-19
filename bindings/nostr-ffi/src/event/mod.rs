@@ -247,4 +247,9 @@ impl Event {
     pub fn as_json(&self) -> Result<String> {
         Ok(self.inner.try_as_json()?)
     }
+
+    #[inline]
+    pub fn as_pretty_json(&self) -> Result<String> {
+        Ok(self.inner.try_as_pretty_json()?)
+    }
 }

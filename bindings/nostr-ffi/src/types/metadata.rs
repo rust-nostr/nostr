@@ -126,6 +126,11 @@ impl Metadata {
         Ok(self.inner.try_as_json()?)
     }
 
+    #[inline]
+    pub fn as_pretty_json(&self) -> Result<String> {
+        Ok(self.inner.try_as_pretty_json()?)
+    }
+
     pub fn set_name(self: Arc<Self>, name: String) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.name(name);

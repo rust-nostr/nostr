@@ -79,6 +79,7 @@ impl UnsignedEvent {
         Ok(Event::from(self.inner.clone().add_signature(sig)?))
     }
 
+    #[inline]
     #[uniffi::constructor]
     pub fn from_json(json: String) -> Result<Self> {
         Ok(Self {
@@ -86,7 +87,13 @@ impl UnsignedEvent {
         })
     }
 
+    #[inline]
     pub fn as_json(&self) -> Result<String> {
         Ok(self.inner.try_as_json()?)
+    }
+
+    #[inline]
+    pub fn as_pretty_json(&self) -> Result<String> {
+        Ok(self.inner.try_as_pretty_json()?)
     }
 }

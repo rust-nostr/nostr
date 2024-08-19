@@ -54,6 +54,11 @@ impl JsMetadata {
         self.inner.try_as_json().map_err(into_err)
     }
 
+    #[wasm_bindgen(js_name = asPrettyJson)]
+    pub fn as_pretty_json(&self) -> Result<String> {
+        self.inner.try_as_pretty_json().map_err(into_err)
+    }
+
     #[inline]
     #[wasm_bindgen(js_name = name)]
     pub fn set_name(self, name: &str) -> Self {
