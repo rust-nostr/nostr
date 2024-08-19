@@ -2,8 +2,6 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::time::Duration;
-
 use nostr_sdk::prelude::*;
 
 #[tokio::main]
@@ -26,12 +24,7 @@ async fn main() -> Result<()> {
     let filter = Filter::new()
         .authors([muted_public_key, public_key])
         .kind(Kind::Metadata);
-    let events = client
-        .get_events_of(
-            vec![filter],
-            EventSource::relays(Some(Duration::from_secs(10))),
-        )
-        .await?;
+    let events = client.get_events_of(vec![filter], None).await?;
     println!("Received {} events.", events.len());
 
     Ok(())
