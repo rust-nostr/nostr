@@ -13,19 +13,25 @@ use core::str::FromStr;
 
 use bitcoin::secp256k1::schnorr::Signature;
 
-use crate::{ImageDimensions, PublicKey, Tag, TagStandard, Timestamp, UncheckedUrl};
+use crate::{
+    Alphabet, ImageDimensions, PublicKey, SingleLetterTag, Tag, TagKind, TagStandard, Timestamp,
+    UncheckedUrl,
+};
 
 /// NIP53 Error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Unknown [`LiveEventMarker`]
     UnknownLiveEventMarker(String),
+    /// Description missing from event
+    DescriptionMissing,
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::UnknownLiveEventMarker(u) => write!(f, "Unknown live event marker: {u}"),
+            Self::DescriptionMissing => write!(f, "Event missing a description"),
         }
     }
 }
@@ -149,6 +155,30 @@ pub struct LiveEvent {
     pub speakers: Vec<(PublicKey, Option<UncheckedUrl>)>,
     /// Participants
     pub participants: Vec<(PublicKey, Option<UncheckedUrl>)>,
+}
+
+impl LiveEvent {
+    /// Create a new LiveEvent
+    pub fn new(id: impl ToString) -> LiveEvent {
+        LiveEvent {
+            id: id.to_string(),
+            title: None,
+            summary: None,
+            image: None,
+            hashtags: Vec::new(),
+            streaming: None,
+            recording: None,
+            starts: None,
+            ends: None,
+            status: None,
+            current_participants: None,
+            total_participants: None,
+            relays: Vec::new(),
+            host: None,
+            speakers: Vec::new(),
+            participants: Vec::new(),
+        }
+    }
 }
 
 impl From<LiveEvent> for Vec<Tag> {
@@ -285,5 +315,63 @@ impl From<LiveEvent> for Vec<Tag> {
         }
 
         tags
+    }
+}
+
+impl TryFrom<Vec<Tag>> for LiveEvent {
+    type Error = Error;
+
+    fn try_from(tags: Vec<Tag>) -> Result<Self, Self::Error> {
+        let id = match tags
+            .iter()
+            .find(|t| t.kind() == TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::D)))
+        {
+            Some(tag) if tag.content().is_none() => return Err(Error::DescriptionMissing),
+            Some(tag) => tag.content().map(String::from).unwrap(),
+            None => return Err(Error::DescriptionMissing),
+        };
+        let mut live_event = LiveEvent::new(id);
+
+        for tag in tags.into_iter() {
+            let Some(tag) = tag.to_standardized() else {
+                continue;
+            };
+
+            match tag {
+                TagStandard::Title(title) => live_event.title = Some(title),
+                TagStandard::Summary(summary) => live_event.summary = Some(summary),
+                TagStandard::Streaming(url) => live_event.streaming = Some(url),
+                TagStandard::LiveEventStatus(status) => live_event.status = Some(status),
+                TagStandard::PublicKeyLiveEvent {
+                    public_key,
+                    relay_url,
+                    marker,
+                    proof,
+                } => match marker {
+                    LiveEventMarker::Host => {
+                        live_event.host = Some(LiveEventHost {
+                            public_key,
+                            relay_url,
+                            proof,
+                        })
+                    }
+                    LiveEventMarker::Speaker => live_event.speakers.push((public_key, relay_url)),
+                    LiveEventMarker::Participant => {
+                        live_event.participants.push((public_key, relay_url))
+                    }
+                },
+                TagStandard::Image(image, dim) => live_event.image = Some((image, dim)),
+                TagStandard::Hashtag(hashtag) => live_event.hashtags.push(hashtag),
+                TagStandard::Recording(url) => live_event.recording = Some(url),
+                TagStandard::Starts(starts) => live_event.starts = Some(starts),
+                TagStandard::Ends(ends) => live_event.ends = Some(ends),
+                TagStandard::CurrentParticipants(n) => live_event.current_participants = Some(n),
+                TagStandard::TotalParticipants(n) => live_event.total_participants = Some(n),
+                TagStandard::Relays(mut relays) => live_event.relays.append(&mut relays),
+                _ => {}
+            }
+        }
+
+        Ok(live_event)
     }
 }

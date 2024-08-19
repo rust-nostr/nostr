@@ -33,6 +33,8 @@
 
 ### Added
 
+* `TryFrom<Vec<Tag>>` implementation for LiveEvent ([w3irdrobot])
+
 ### Fixed
 
 ### Removed
@@ -444,6 +446,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [RydalWater]: https://github.com/RydalWater
 [lnbc1QWFyb24]: https://github.com/lnbc1QWFyb24
 [reyamir]: https://github.com/reyamir
+[w3irdrobot]: https://github.com/w3irdrobot
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.34.0...HEAD
