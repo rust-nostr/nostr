@@ -34,6 +34,7 @@
 ### Added
 
 ### Fixed
+* nostr: fix `TagStanderd::to_vec` ([nanikamado])
 
 ### Removed
 
@@ -444,6 +445,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [RydalWater]: https://github.com/RydalWater
 [lnbc1QWFyb24]: https://github.com/lnbc1QWFyb24
 [reyamir]: https://github.com/reyamir
+[nanikamado]: https://github.com/nanikamado
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.34.0...HEAD
