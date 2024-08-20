@@ -85,7 +85,7 @@ where
     /// Serialize as pretty JSON string
     #[inline]
     fn try_as_pretty_json(&self) -> Result<String, Self::Err> {
-        Ok(serde_json::to_string(self)?)
+        Ok(serde_json::to_string_pretty(self)?)
     }
 }
 

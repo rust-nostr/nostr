@@ -50,6 +50,7 @@
 
 * nostr: fix `TagStanderd::to_vec` ([nanikamado])
 * nostr: fix broken intra doc links ([Yuki Kishimoto])
+* nostr: fix `JsonUtil::try_as_pretty_json` method ([Yuki Kishimoto])
 
 ### Removed
 
