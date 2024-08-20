@@ -159,54 +159,6 @@ impl JsEvent {
         self.inner.is_expired_at(now.deref())
     }
 
-    /// Check if `Kind` is a NIP90 job request
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    #[wasm_bindgen(js_name = isJobRequest)]
-    pub fn is_job_request(&self) -> bool {
-        self.inner.is_job_request()
-    }
-
-    /// Check if `Kind` is a NIP90 job result
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    #[wasm_bindgen(js_name = isJobResult)]
-    pub fn is_job_result(&self) -> bool {
-        self.inner.is_job_result()
-    }
-
-    /// Check if event `Kind` is `Regular`
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[wasm_bindgen(js_name = isRegular)]
-    pub fn is_regular(&self) -> bool {
-        self.inner.is_regular()
-    }
-
-    /// Check if event `Kind` is `Replaceable`
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[wasm_bindgen(js_name = isReplaceable)]
-    pub fn is_replaceable(&self) -> bool {
-        self.inner.is_replaceable()
-    }
-
-    /// Check if event `Kind` is `Ephemeral`
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[wasm_bindgen(js_name = isEphemeral)]
-    pub fn is_ephemeral(&self) -> bool {
-        self.inner.is_ephemeral()
-    }
-
-    /// Check if event `Kind` is `Parameterized replaceable`
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[wasm_bindgen(js_name = isParametrizedReplaceable)]
-    pub fn is_parameterized_replaceable(&self) -> bool {
-        self.inner.is_parameterized_replaceable()
-    }
-
     /// Extract identifier (`d` tag), if exists.
     #[wasm_bindgen]
     pub fn identifier(&self) -> Option<String> {

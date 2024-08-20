@@ -134,54 +134,6 @@ impl Event {
         self.inner.is_expired()
     }
 
-    /// Check if `Kind` is a NIP90 job request
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    #[inline]
-    pub fn is_job_request(&self) -> bool {
-        self.inner.is_job_request()
-    }
-
-    /// Check if `Kind` is a NIP90 job result
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    #[inline]
-    pub fn is_job_result(&self) -> bool {
-        self.inner.is_job_result()
-    }
-
-    /// Check if event `Kind` is `Regular`
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[inline]
-    pub fn is_regular(&self) -> bool {
-        self.inner.is_regular()
-    }
-
-    /// Check if event `Kind` is `Replaceable`
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[inline]
-    pub fn is_replaceable(&self) -> bool {
-        self.inner.is_replaceable()
-    }
-
-    /// Check if event `Kind` is `Ephemeral`
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[inline]
-    pub fn is_ephemeral(&self) -> bool {
-        self.inner.is_ephemeral()
-    }
-
-    /// Check if event `Kind` is `Parameterized replaceable`
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[inline]
-    pub fn is_parameterized_replaceable(&self) -> bool {
-        self.inner.is_parameterized_replaceable()
-    }
-
     /// Extract identifier (`d` tag), if exists.
     #[inline]
     pub fn identifier(&self) -> Option<String> {
