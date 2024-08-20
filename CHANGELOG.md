@@ -29,12 +29,14 @@
 
 * nostr: bump `bitcoin` to `v0.32` ([Yuki Kishimoto])
 * nostr: deprecate `Event::from_value` ([Yuki Kishimoto])
+* nostr: deprecate `Tag::as_vec` ([Yuki Kishimoto])
 * webln: bump `webln` to `v0.3` ([Yuki Kishimoto])
 * sdk: bump `lnurl-pay` to `v0.6` ([Yuki Kishimoto])
 
 ### Added
 
 * nostr: impl `TryFrom<Vec<Tag>>` for `LiveEvent` ([w3irdrobot])
+* nostr: add `Tag::as_slice` ([Yuki Kishimoto])
 * bindings(nostr): expose `as_pretty_json` for some structs ([Yuki Kishimoto])
 
 ### Fixed

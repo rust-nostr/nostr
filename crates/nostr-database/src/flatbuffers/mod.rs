@@ -68,7 +68,7 @@ impl FlatBufferEncode for Event {
             .iter()
             .map(|t| {
                 let tags = t
-                    .as_vec()
+                    .as_slice()
                     .iter()
                     .map(|t| fbb.create_string(t))
                     .collect::<Vec<_>>();

@@ -146,7 +146,7 @@ impl Tag {
     #[inline]
     pub fn as_standardized(&self) -> Option<&TagStandard> {
         self.standardized
-            .get_or_init(|| TagStandard::parse(self.as_vec()).ok())
+            .get_or_init(|| TagStandard::parse(self.as_slice()).ok())
             .as_ref()
     }
 
@@ -159,8 +159,14 @@ impl Tag {
     }
 
     /// Get reference of array of strings
-    #[inline]
+    #[deprecated(since = "0.35.0", note = "Use `as_slice` instead.")]
     pub fn as_vec(&self) -> &[String] {
+        &self.buf
+    }
+
+    /// Get as slice of strings
+    #[inline]
+    pub fn as_slice(&self) -> &[String] {
         &self.buf
     }
 

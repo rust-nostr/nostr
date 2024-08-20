@@ -297,7 +297,7 @@ impl Tag {
 
     /// Get array of strings
     pub fn as_vec(&self) -> Vec<String> {
-        self.inner.as_vec().to_vec()
+        self.inner.as_slice().to_vec()
     }
 
     /// Compose `["e", "<event-id">]`

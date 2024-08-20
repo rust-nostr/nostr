@@ -157,7 +157,7 @@ impl Nip07Signer {
             .tags
             .iter()
             .map(|t| {
-                t.as_vec()
+                t.as_slice()
                     .iter()
                     .map(|v| JsValue::from_str(v))
                     .collect::<Array>()
