@@ -8,7 +8,7 @@ use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
-use crate::event::{JsEvent, JsEventId};
+use crate::event::{JsEvent, JsEventId, JsKind};
 use crate::key::JsPublicKey;
 use crate::nips::nip01::JsCoordinate;
 use crate::types::JsTimestamp;
@@ -238,20 +238,20 @@ impl JsFilter {
     }
 
     /// Set kind
-    pub fn kind(self, kind: u16) -> Self {
-        self.inner.kind(Kind::from(kind)).into()
+    pub fn kind(self, kind: &JsKind) -> Self {
+        self.inner.kind(**kind).into()
     }
 
     /// Set kinds
-    pub fn kinds(self, kinds: Vec<u16>) -> Self {
-        self.inner.kinds(kinds.into_iter().map(Kind::from)).into()
+    pub fn kinds(self, kinds: Vec<JsKind>) -> Self {
+        self.inner.kinds(kinds.into_iter().map(|k| *k)).into()
     }
 
     /// Remove kinds
     #[wasm_bindgen(js_name = removeKinds)]
-    pub fn remove_kinds(self, kinds: Vec<u16>) -> Self {
+    pub fn remove_kinds(self, kinds: Vec<JsKind>) -> Self {
         self.inner
-            .remove_kinds(kinds.into_iter().map(Kind::from))
+            .remove_kinds(kinds.into_iter().map(|k| *k))
             .into()
     }
 

@@ -9,11 +9,13 @@ use wasm_bindgen::prelude::*;
 
 pub mod builder;
 pub mod id;
+pub mod kind;
 pub mod tag;
 pub mod unsigned;
 
 pub use self::builder::JsEventBuilder;
 pub use self::id::JsEventId;
+pub use self::kind::JsKind;
 pub use self::tag::JsTag;
 pub use self::unsigned::JsUnsignedEvent;
 use crate::error::{into_err, Result};
@@ -72,8 +74,8 @@ impl JsEvent {
     }
 
     #[wasm_bindgen(getter)]
-    pub fn kind(&self) -> u16 {
-        self.inner.kind.as_u16()
+    pub fn kind(&self) -> JsKind {
+        self.inner.kind.into()
     }
 
     #[wasm_bindgen(getter)]

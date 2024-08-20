@@ -9,7 +9,7 @@ use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use super::tag::{JsImageDimensions, JsThumbnails};
-use super::{JsEvent, JsEventId, JsTag, JsUnsignedEvent};
+use super::{JsEvent, JsEventId, JsKind, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::nips::nip01::JsCoordinate;
@@ -47,9 +47,9 @@ impl From<EventBuilder> for JsEventBuilder {
 #[wasm_bindgen(js_class = EventBuilder)]
 impl JsEventBuilder {
     #[wasm_bindgen(constructor)]
-    pub fn new(kind: u16, content: &str, tags: Vec<JsTag>) -> Self {
+    pub fn new(kind: &JsKind, content: &str, tags: Vec<JsTag>) -> Self {
         Self {
-            inner: EventBuilder::new(kind.into(), content, tags.into_iter().map(|t| t.into())),
+            inner: EventBuilder::new(**kind, content, tags.into_iter().map(|t| t.into())),
         }
     }
 
@@ -235,14 +235,14 @@ impl JsEventBuilder {
     pub fn reaction_extended(
         event_id: &JsEventId,
         public_key: &JsPublicKey,
-        kind: Option<u16>,
+        kind: Option<JsKind>,
         reaction: &str,
     ) -> Self {
         Self {
-            inner: nostr::EventBuilder::reaction_extended(
+            inner: EventBuilder::reaction_extended(
                 **event_id,
                 **public_key,
-                kind.map(|k| k.into()),
+                kind.map(|k| *k),
                 reaction,
             ),
         }
@@ -454,9 +454,9 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     #[wasm_bindgen(js_name = jobRequest)]
-    pub fn job_request(kind: u16, tags: Vec<JsTag>) -> Result<JsEventBuilder> {
+    pub fn job_request(kind: &JsKind, tags: Vec<JsTag>) -> Result<JsEventBuilder> {
         Ok(Self {
-            inner: EventBuilder::job_request(kind.into(), tags.into_iter().map(|t| t.into()))
+            inner: EventBuilder::job_request(**kind, tags.into_iter().map(|t| t.into()))
                 .map_err(into_err)?,
         })
     }

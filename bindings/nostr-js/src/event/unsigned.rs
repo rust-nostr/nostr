@@ -11,7 +11,7 @@ use wasm_bindgen::prelude::*;
 
 use super::tag::JsTag;
 use crate::error::{into_err, Result};
-use crate::event::{JsEvent, JsEventId};
+use crate::event::{JsEvent, JsEventId, JsKind};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::types::JsTimestamp;
 
@@ -59,8 +59,8 @@ impl JsUnsignedEvent {
 
     #[inline]
     #[wasm_bindgen(getter)]
-    pub fn kind(&self) -> u16 {
-        self.inner.kind.as_u16()
+    pub fn kind(&self) -> JsKind {
+        self.inner.kind.into()
     }
 
     #[wasm_bindgen(getter)]

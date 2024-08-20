@@ -10,6 +10,7 @@ use nostr::secp256k1::schnorr::Signature;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
+use crate::event::JsKind;
 use crate::key::{JsKeys, JsPublicKey};
 use crate::types::JsTimestamp;
 
@@ -36,12 +37,12 @@ pub fn create_delegation_tag(
 pub fn validate_delegation_tag(
     delegation_tag: &str,
     delegatee_pubkey: &JsPublicKey,
-    event_kind: u16,
+    kind: &JsKind,
     created_at: &JsTimestamp,
 ) -> bool {
     match DelegationTag::from_str(delegation_tag) {
         Ok(tag) => {
-            let event_properties = EventProperties::new(event_kind, created_at.as_u64());
+            let event_properties = EventProperties::new(kind.as_u16(), created_at.as_u64());
             tag.validate(delegatee_pubkey.deref(), &event_properties)
                 .is_ok()
         }

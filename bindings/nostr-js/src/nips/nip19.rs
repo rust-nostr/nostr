@@ -6,7 +6,7 @@ use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
-use crate::event::JsEventId;
+use crate::event::{JsEventId, JsKind};
 use crate::key::JsPublicKey;
 
 #[wasm_bindgen(js_name = Nip19Event)]
@@ -26,12 +26,12 @@ impl JsNip19Event {
     pub fn new(
         event_id: &JsEventId,
         author: Option<JsPublicKey>,
-        kind: Option<u16>,
+        kind: Option<JsKind>,
         relays: Vec<String>,
     ) -> Self {
         let mut inner = Nip19Event::new(**event_id, relays);
         inner.author = author.map(|p| *p);
-        inner.kind = kind.map(Kind::from);
+        inner.kind = kind.map(|k| *k);
         Self { inner }
     }
 
@@ -68,8 +68,8 @@ impl JsNip19Event {
         self.inner.author.map(|p| p.into())
     }
 
-    pub fn kind(&self) -> Option<u16> {
-        self.inner.kind.map(|k| k.as_u16())
+    pub fn kind(&self) -> Option<JsKind> {
+        self.inner.kind.map(|k| k.into())
     }
 
     pub fn relays(&self) -> Vec<String> {

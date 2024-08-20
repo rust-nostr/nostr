@@ -4,9 +4,9 @@
 use std::ops::Deref;
 
 use nostr::nips::nip01::Coordinate;
-use nostr::Kind;
 use wasm_bindgen::prelude::*;
 
+use crate::event::JsKind;
 use crate::key::JsPublicKey;
 
 #[wasm_bindgen(js_name = Coordinate)]
@@ -33,14 +33,14 @@ impl From<Coordinate> for JsCoordinate {
 impl JsCoordinate {
     #[wasm_bindgen(constructor)]
     pub fn new(
-        kind: u16,
+        kind: &JsKind,
         public_key: &JsPublicKey,
         identifier: Option<String>,
         relays: Option<Vec<String>>,
     ) -> Self {
         Self {
             inner: Coordinate {
-                kind: Kind::from(kind),
+                kind: **kind,
                 public_key: **public_key,
                 identifier: identifier.unwrap_or_default(),
                 relays: relays.unwrap_or_default(),
@@ -50,8 +50,8 @@ impl JsCoordinate {
 
     #[inline]
     #[wasm_bindgen(getter)]
-    pub fn kind(&self) -> u16 {
-        self.inner.kind.as_u16()
+    pub fn kind(&self) -> JsKind {
+        self.inner.kind.into()
     }
 
     #[wasm_bindgen(getter, js_name = publicKey)]

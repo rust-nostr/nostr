@@ -1,9 +1,9 @@
-const { Filter, loadWasmAsync, Timestamp, Alphabet, SingleLetterTag } = require("../");
+const { Filter, loadWasmAsync, Timestamp, Kind, Alphabet, SingleLetterTag } = require("../");
 
 async function main() {
     await loadWasmAsync();
 
-    const filter = new Filter().kind(4).until(Timestamp.now()).limit(10);
+    const filter = new Filter().kind(new Kind(4)).until(Timestamp.now()).limit(10);
     console.log('filter', filter.asJson());
 
     // Custom tag
