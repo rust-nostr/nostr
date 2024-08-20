@@ -178,7 +178,7 @@ pub enum TagStandard {
 }
 
 impl TagStandard {
-    /// Parse [`Tag`] from slice of string
+    /// Parse tag from slice of string
     #[inline]
     pub fn parse<S>(tag: &[S]) -> Result<Self, Error>
     where
@@ -561,7 +561,7 @@ impl TagStandard {
         }
     }
 
-    /// Consume [`Tag`] and return string vector
+    /// Consume tag and return string vector
     #[inline]
     pub fn to_vec(self) -> Vec<String> {
         self.into()

@@ -572,7 +572,7 @@ impl Message {
         }
     }
 
-    /// Generate error [`Response`] message for [`Request`]
+    /// Generate response error message for a request
     pub fn generate_error_response<S>(&self, error: S) -> Result<Self, Error>
     where
         S: AsRef<str>,

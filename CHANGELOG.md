@@ -40,6 +40,7 @@
 ### Fixed
 
 * nostr: fix `TagStanderd::to_vec` ([nanikamado])
+* nostr: fix broken intra doc links ([Yuki Kishimoto])
 
 ### Removed
 

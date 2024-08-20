@@ -17,7 +17,7 @@ use crate::{key, secp256k1};
 pub enum Error {
     /// Keys
     Keys(key::Error),
-    /// Impossible to parse [`Marker`]
+    /// Impossible to parse marker
     MarkerParseError,
     /// Impossible to find tag kind
     KindNotFound,
