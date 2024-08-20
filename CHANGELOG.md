@@ -30,6 +30,7 @@
 * nostr: bump `bitcoin` to `v0.32` ([Yuki Kishimoto])
 * nostr: deprecate `Event::from_value` ([Yuki Kishimoto])
 * nostr: deprecate `Tag::as_vec` ([Yuki Kishimoto])
+* nostr: re-write `RawRelayMessage` parsing ([Yuki Kishimoto])
 * signer: update NIP-04 and NIP-44 methods signature ([Yuki Kishimoto])
 * webln: bump `webln` to `v0.3` ([Yuki Kishimoto])
 * sdk: bump `lnurl-pay` to `v0.6` ([Yuki Kishimoto])
