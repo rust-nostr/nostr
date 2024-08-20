@@ -1323,7 +1323,7 @@ impl Client {
         S: Into<String>,
     {
         let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
-        self.gift_wrap(receiver, rumor, None).await
+        self.gift_wrap(&receiver, rumor, None).await
     }
 
     /// Send private direct message to specific relays
@@ -1345,7 +1345,7 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
-        self.gift_wrap_to(urls, receiver, rumor, None).await
+        self.gift_wrap_to(urls, &receiver, rumor, None).await
     }
 
     /// Repost
@@ -1585,7 +1585,7 @@ impl Client {
     #[cfg(feature = "nip59")]
     async fn internal_gift_wrap(
         &self,
-        receiver: PublicKey,
+        receiver: &PublicKey,
         rumor: EventBuilder,
         expiration: Option<Timestamp>,
     ) -> Result<Event, Error> {
@@ -1603,7 +1603,7 @@ impl Client {
 
         // Compose gift wrap
         Ok(EventBuilder::gift_wrap_from_seal(
-            &receiver, &seal, expiration,
+            receiver, &seal, expiration,
         )?)
     }
 
@@ -1614,7 +1614,7 @@ impl Client {
     #[cfg(feature = "nip59")]
     pub async fn gift_wrap(
         &self,
-        receiver: PublicKey,
+        receiver: &PublicKey,
         rumor: EventBuilder,
         expiration: Option<Timestamp>,
     ) -> Result<Output<EventId>, Error> {
@@ -1630,7 +1630,7 @@ impl Client {
     pub async fn gift_wrap_to<I, U>(
         &self,
         urls: I,
-        receiver: PublicKey,
+        receiver: &PublicKey,
         rumor: EventBuilder,
         expiration: Option<Timestamp>,
     ) -> Result<Output<EventId>, Error>

@@ -71,7 +71,10 @@ impl NostrSigner {
     }
 
     pub async fn nip04_encrypt(&self, public_key: &PublicKey, content: String) -> Result<String> {
-        Ok(self.inner.nip04_encrypt(**public_key, content).await?)
+        Ok(self
+            .inner
+            .nip04_encrypt(public_key.deref(), content)
+            .await?)
     }
 
     pub async fn nip04_decrypt(
@@ -81,16 +84,22 @@ impl NostrSigner {
     ) -> Result<String> {
         Ok(self
             .inner
-            .nip04_decrypt(**public_key, encrypted_content)
+            .nip04_decrypt(public_key.deref(), encrypted_content)
             .await?)
     }
 
     pub async fn nip44_encrypt(&self, public_key: &PublicKey, content: String) -> Result<String> {
-        Ok(self.inner.nip44_encrypt(**public_key, content).await?)
+        Ok(self
+            .inner
+            .nip44_encrypt(public_key.deref(), content)
+            .await?)
     }
 
     pub async fn nip44_decrypt(&self, public_key: &PublicKey, content: String) -> Result<String> {
-        Ok(self.inner.nip44_decrypt(**public_key, content).await?)
+        Ok(self
+            .inner
+            .nip44_decrypt(public_key.deref(), content)
+            .await?)
     }
 
     /// Unwrap Gift Wrap event

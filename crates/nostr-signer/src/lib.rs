@@ -150,17 +150,21 @@ impl NostrSigner {
 
     /// NIP04 encrypt
     #[cfg(feature = "nip04")]
-    pub async fn nip04_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
+    pub async fn nip04_encrypt<T>(
+        &self,
+        public_key: &PublicKey,
+        content: T,
+    ) -> Result<String, Error>
     where
         T: AsRef<[u8]>,
     {
         let content: &[u8] = content.as_ref();
         match self {
-            Self::Keys(keys) => Ok(nip04::encrypt(keys.secret_key()?, &public_key, content)?),
+            Self::Keys(keys) => Ok(nip04::encrypt(keys.secret_key()?, public_key, content)?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(signer) => Ok(signer.nip04_encrypt(public_key, content).await?),
             #[cfg(feature = "nip46")]
-            Self::NIP46(signer) => Ok(signer.nip04_encrypt(public_key, content).await?),
+            Self::NIP46(signer) => Ok(signer.nip04_encrypt(*public_key, content).await?),
         }
     }
 
@@ -168,7 +172,7 @@ impl NostrSigner {
     #[cfg(feature = "nip04")]
     pub async fn nip04_decrypt<T>(
         &self,
-        public_key: PublicKey,
+        public_key: &PublicKey,
         encrypted_content: T,
     ) -> Result<String, Error>
     where
@@ -178,19 +182,23 @@ impl NostrSigner {
         match self {
             Self::Keys(keys) => Ok(nip04::decrypt(
                 keys.secret_key()?,
-                &public_key,
+                public_key,
                 encrypted_content,
             )?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(signer) => Ok(signer.nip04_decrypt(public_key, encrypted_content).await?),
             #[cfg(feature = "nip46")]
-            Self::NIP46(signer) => Ok(signer.nip04_decrypt(public_key, encrypted_content).await?),
+            Self::NIP46(signer) => Ok(signer.nip04_decrypt(*public_key, encrypted_content).await?),
         }
     }
 
     /// NIP44 encryption with [NostrSigner]
     #[cfg(feature = "nip44")]
-    pub async fn nip44_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
+    pub async fn nip44_encrypt<T>(
+        &self,
+        public_key: &PublicKey,
+        content: T,
+    ) -> Result<String, Error>
     where
         T: AsRef<[u8]>,
     {
@@ -198,30 +206,34 @@ impl NostrSigner {
         match self {
             Self::Keys(keys) => Ok(nip44::encrypt(
                 keys.secret_key()?,
-                &public_key,
+                public_key,
                 content,
                 nip44::Version::default(),
             )?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(signer) => Ok(signer.nip44_encrypt(public_key, content).await?),
             #[cfg(feature = "nip46")]
-            Self::NIP46(signer) => Ok(signer.nip44_encrypt(public_key, content).await?),
+            Self::NIP46(signer) => Ok(signer.nip44_encrypt(*public_key, content).await?),
         }
     }
 
     /// NIP44 decryption with [NostrSigner]
     #[cfg(feature = "nip44")]
-    pub async fn nip44_decrypt<T>(&self, public_key: PublicKey, payload: T) -> Result<String, Error>
+    pub async fn nip44_decrypt<T>(
+        &self,
+        public_key: &PublicKey,
+        payload: T,
+    ) -> Result<String, Error>
     where
         T: AsRef<[u8]>,
     {
         let payload: &[u8] = payload.as_ref();
         match self {
-            Self::Keys(keys) => Ok(nip44::decrypt(keys.secret_key()?, &public_key, payload)?),
+            Self::Keys(keys) => Ok(nip44::decrypt(keys.secret_key()?, public_key, payload)?),
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(signer) => Ok(signer.nip44_decrypt(public_key, payload).await?),
             #[cfg(feature = "nip46")]
-            Self::NIP46(signer) => Ok(signer.nip44_decrypt(public_key, payload).await?),
+            Self::NIP46(signer) => Ok(signer.nip44_decrypt(*public_key, payload).await?),
         }
     }
 
@@ -240,13 +252,13 @@ impl NostrSigner {
 
         // Decrypt and verify seal
         let seal: String = self
-            .nip44_decrypt(gift_wrap.author(), gift_wrap.content())
+            .nip44_decrypt(&gift_wrap.pubkey, gift_wrap.content())
             .await?;
         let seal: Event = Event::from_json(seal)?;
         seal.verify()?;
 
         // Decrypt rumor
-        let rumor: String = self.nip44_decrypt(seal.author(), seal.content()).await?;
+        let rumor: String = self.nip44_decrypt(&seal.pubkey, seal.content()).await?;
 
         Ok(UnwrappedGift {
             sender: seal.author(),

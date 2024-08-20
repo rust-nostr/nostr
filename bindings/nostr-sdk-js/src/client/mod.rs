@@ -714,7 +714,11 @@ impl JsClient {
         expiration: Option<JsTimestamp>,
     ) -> Result<JsSendEventOutput> {
         self.inner
-            .gift_wrap(**receiver, rumor.deref().clone(), expiration.map(|t| *t))
+            .gift_wrap(
+                receiver.deref(),
+                rumor.deref().clone(),
+                expiration.map(|t| *t),
+            )
             .await
             .map_err(into_err)
             .map(Into::into)
@@ -734,7 +738,7 @@ impl JsClient {
         self.inner
             .gift_wrap_to(
                 urls,
-                **receiver,
+                receiver.deref(),
                 rumor.deref().clone(),
                 expiration.map(|t| *t),
             )

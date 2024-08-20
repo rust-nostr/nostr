@@ -570,7 +570,7 @@ impl Client {
         Ok(self
             .inner
             .gift_wrap(
-                **receiver,
+                receiver.deref(),
                 rumor.as_ref().deref().clone(),
                 expiration.map(|t| **t),
             )
@@ -592,7 +592,7 @@ impl Client {
             .inner
             .gift_wrap_to(
                 urls,
-                **receiver,
+                receiver.deref(),
                 rumor.as_ref().deref().clone(),
                 expiration.map(|t| **t),
             )
