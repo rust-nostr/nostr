@@ -53,6 +53,54 @@ impl Kind {
     pub fn as_enum(&self) -> KindEnum {
         self.inner.into()
     }
+
+    /// Check if it's a NIP90 job request
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    #[inline]
+    pub fn is_job_request(&self) -> bool {
+        self.inner.is_job_request()
+    }
+
+    /// Check if it's a NIP90 job result
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    #[inline]
+    pub fn is_job_result(&self) -> bool {
+        self.inner.is_job_result()
+    }
+
+    /// Check if it's regular
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    pub fn is_regular(&self) -> bool {
+        self.inner.is_regular()
+    }
+
+    /// Check if it's replaceable
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    pub fn is_replaceable(&self) -> bool {
+        self.inner.is_replaceable()
+    }
+
+    /// Check if it's ephemeral
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    pub fn is_ephemeral(&self) -> bool {
+        self.inner.is_ephemeral()
+    }
+
+    /// Check if it's parameterized replaceable
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[inline]
+    pub fn is_parameterized_replaceable(&self) -> bool {
+        self.inner.is_parameterized_replaceable()
+    }
 }
 
 #[derive(Enum)]

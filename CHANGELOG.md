@@ -43,6 +43,7 @@
 * nostr: impl `TryFrom<Vec<Tag>>` for `LiveEvent` ([w3irdrobot])
 * nostr: add `Tag::as_slice` ([Yuki Kishimoto])
 * bindings(nostr): expose `as_pretty_json` for some structs ([Yuki Kishimoto])
+* ffi(nostr): expose `Kind::is_*` methods ([Yuki Kishimoto])
 
 ### Fixed
 
