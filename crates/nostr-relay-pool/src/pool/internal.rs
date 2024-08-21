@@ -187,6 +187,7 @@ impl InternalRelayPool {
         }
         Ok(())
     }
+
     pub async fn remove_all_relays(&self) -> Result<(), Error> {
         let mut relays = self.relays.write().await;
         for relay in relays.values() {

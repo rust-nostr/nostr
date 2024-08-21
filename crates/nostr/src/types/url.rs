@@ -5,6 +5,7 @@
 //! Url
 
 use alloc::string::String;
+use core::convert::Infallible;
 use core::fmt::{self, Debug};
 use core::str::FromStr;
 
@@ -23,7 +24,7 @@ pub trait TryIntoUrl {
 }
 
 impl TryIntoUrl for Url {
-    type Err = ParseError;
+    type Err = Infallible;
 
     #[inline]
     fn try_into_url(self) -> Result<Url, Self::Err> {
@@ -32,7 +33,7 @@ impl TryIntoUrl for Url {
 }
 
 impl TryIntoUrl for &Url {
-    type Err = ParseError;
+    type Err = Infallible;
 
     #[inline]
     fn try_into_url(self) -> Result<Url, Self::Err> {

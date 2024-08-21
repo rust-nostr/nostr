@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use core::convert::Infallible;
+
 use async_utility::thread;
 use nostr::message::MessageHandleError;
 use nostr::types::url;
@@ -55,4 +57,7 @@ pub enum Error {
     /// Notification Handler error
     #[error("notification handler error: {0}")]
     Handler(String),
+    /// Infallible
+    #[error(transparent)]
+    Infallible(#[from] Infallible),
 }
