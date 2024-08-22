@@ -876,6 +876,10 @@ impl InternalRelay {
                     RelayMessage::Closed {
                         subscription_id, ..
                     } => {
+                        tracing::debug!(
+                            "Subscription '{subscription_id}' closed by '{}'",
+                            self.url
+                        );
                         self.subscription_closed(subscription_id).await;
                     }
                     _ => (),
