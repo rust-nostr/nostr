@@ -221,13 +221,13 @@ impl UnsignedEvent {
         );
 
         // Verify event ID
-        if verify_id {
-            event.verify_id()?;
+        if verify_id && !event.verify_id() {
+            return Err(Error::Event(super::Error::InvalidId));
         }
 
         // Verify event signature
-        if verify_sig {
-            event.verify_signature_with_ctx(secp)?
+        if verify_sig && !event.verify_signature_with_ctx(secp) {
+            return Err(Error::Event(super::Error::InvalidSignature));
         }
 
         Ok(event)

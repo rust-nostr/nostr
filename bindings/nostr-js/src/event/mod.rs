@@ -120,13 +120,13 @@ impl JsEvent {
     /// Verify if the `EventId` it's composed correctly
     #[wasm_bindgen(js_name = verifyId)]
     pub fn verify_id(&self) -> bool {
-        self.inner.verify_id().is_ok()
+        self.inner.verify_id()
     }
 
     /// Verify only event `Signature`
     #[wasm_bindgen(js_name = verifySignature)]
     pub fn verify_signature(&self) -> bool {
-        self.inner.verify_signature().is_ok()
+        self.inner.verify_signature()
     }
 
     /// Check POW

@@ -15,7 +15,7 @@ use core::hash::{Hash, Hasher};
 use core::str::FromStr;
 
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Message, Secp256k1, Verification};
+use bitcoin::secp256k1::{Message, Secp256k1, Verification};
 #[cfg(feature = "std")]
 use once_cell::sync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `std::cell::OnceLock` instead and remove `once_cell` dep.
 use serde::ser::SerializeStruct;
@@ -66,8 +66,6 @@ pub enum Error {
     UnknownKey(String),
     /// Error serializing or deserializing JSON data
     Json(String),
-    /// Secp256k1 error
-    Secp256k1(secp256k1::Error),
 }
 
 #[cfg(feature = "std")]
@@ -80,7 +78,6 @@ impl fmt::Display for Error {
             Self::InvalidId => write!(f, "Invalid event id"),
             Self::UnknownKey(key) => write!(f, "Unknown JSON event key: {key}"),
             Self::Json(e) => write!(f, "Json: {e}"),
-            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
         }
     }
 }
@@ -88,12 +85,6 @@ impl fmt::Display for Error {
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
         Self::Json(e.to_string())
-    }
-}
-
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Self::Secp256k1(e)
     }
 }
 
@@ -297,14 +288,20 @@ impl Event {
         C: Verification,
     {
         // Verify ID
-        self.verify_id()?;
+        if !self.verify_id() {
+            return Err(Error::InvalidId);
+        }
 
         // Verify signature
-        self.verify_signature_with_ctx(secp)
+        if !self.verify_signature_with_ctx(secp) {
+            return Err(Error::InvalidSignature);
+        }
+
+        Ok(())
     }
 
     /// Verify if the [`EventId`] it's composed correctly
-    pub fn verify_id(&self) -> Result<(), Error> {
+    pub fn verify_id(&self) -> bool {
         let id: EventId = EventId::new(
             &self.pubkey,
             &self.created_at,
@@ -312,29 +309,25 @@ impl Event {
             &self.tags,
             &self.content,
         );
-        if id == self.id {
-            Ok(())
-        } else {
-            Err(Error::InvalidId)
-        }
+        id == self.id
     }
 
     /// Verify only event [`Signature`]
     #[inline]
     #[cfg(feature = "std")]
-    pub fn verify_signature(&self) -> Result<(), Error> {
-        self.verify_with_ctx(&SECP256K1)
+    pub fn verify_signature(&self) -> bool {
+        self.verify_signature_with_ctx(&SECP256K1)
     }
 
-    /// Verify event [`Signature`]
+    /// Verify event signature
     #[inline]
-    pub fn verify_signature_with_ctx<C>(&self, secp: &Secp256k1<C>) -> Result<(), Error>
+    pub fn verify_signature_with_ctx<C>(&self, secp: &Secp256k1<C>) -> bool
     where
         C: Verification,
     {
-        let message: Message = Message::from_digest_slice(self.id.as_bytes())?;
+        let message: Message = Message::from_digest(self.id.to_bytes());
         secp.verify_schnorr(&self.sig, &message, &self.pubkey)
-            .map_err(|_| Error::InvalidSignature)
+            .is_ok()
     }
 
     /// Check POW
@@ -734,10 +727,10 @@ mod tests {
     #[test]
     fn test_verify_event_id() {
         let event = Event::from_json(r#"{"content":"","created_at":1698412975,"id":"f55c30722f056e330d8a7a6a9ba1522f7522c0f1ced1c93d78ea833c78a3d6ec","kind":3,"pubkey":"f831caf722214748c72db4829986bd0cbb2bb8b3aeade1c959624a52a9629046","sig":"5092a9ffaecdae7d7794706f085ff5852befdf79df424cc3419bb797bf515ae05d4f19404cb8324b8b4380a4bd497763ac7b0f3b1b63ef4d3baa17e5f5901808","tags":[["p","4ddeb9109a8cd29ba279a637f5ec344f2479ee07df1f4043f3fe26d8948cfef9","",""],["p","bb6fd06e156929649a73e6b278af5e648214a69d88943702f1fb627c02179b95","",""],["p","b8b8210f33888fdbf5cedee9edf13c3e9638612698fe6408aff8609059053420","",""],["p","9dcee4fabcd690dc1da9abdba94afebf82e1e7614f4ea92d61d52ef9cd74e083","",""],["p","3eea9e831fefdaa8df35187a204d82edb589a36b170955ac5ca6b88340befaa0","",""],["p","885238ab4568f271b572bf48b9d6f99fa07644731f288259bd395998ee24754e","",""],["p","568a25c71fba591e39bebe309794d5c15d27dbfa7114cacb9f3586ea1314d126","",""]]}"#).unwrap();
-        event.verify_id().unwrap();
+        assert!(event.verify_id());
 
         let event = Event::from_json(r#"{"content":"Think about this.\n\nThe most powerful centralized institutions in the world have been replaced by a protocol that protects the individual. #bitcoin\n\nDo you doubt that we can replace everything else?\n\nBullish on the future of humanity\nnostr:nevent1qqs9ljegkuk2m2ewfjlhxy054n6ld5dfngwzuep0ddhs64gc49q0nmqpzdmhxue69uhhyetvv9ukzcnvv5hx7un8qgsw3mfhnrr0l6ll5zzsrtpeufckv2lazc8k3ru5c3wkjtv8vlwngksrqsqqqqqpttgr27","created_at":1703184271,"id":"38acf9b08d06859e49237688a9fd6558c448766f47457236c2331f93538992c6","kind":1,"pubkey":"e8ed3798c6ffebffa08501ac39e271662bfd160f688f94c45d692d8767dd345a","sig":"f76d5ecc8e7de688ac12b9d19edaacdcffb8f0c8fa2a44c00767363af3f04dbc069542ddc5d2f63c94cb5e6ce701589d538cf2db3b1f1211a96596fabb6ecafe","tags":[["e","5fcb28b72cadab2e4cbf7311f4acf5f6d1a99a1c2e642f6b6f0d5518a940f9ec","","mention"],["p","e8ed3798c6ffebffa08501ac39e271662bfd160f688f94c45d692d8767dd345a","","mention"],["t","bitcoin"],["t","bitcoin"]]}"#).unwrap();
-        event.verify_id().unwrap();
+        assert!(event.verify_id());
     }
 
     // Test only with `std` feature due to `serde_json` preserve_order feature.
@@ -871,6 +864,24 @@ mod benches {
         let event = Event::from_json(json).unwrap();
         bh.iter(|| {
             black_box(event.as_json());
+        });
+    }
+
+    #[bench]
+    pub fn verify_event_id(bh: &mut Bencher) {
+        let json = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
+        let event = Event::from_json(json).unwrap();
+        bh.iter(|| {
+            black_box(event.verify_id()).unwrap();
+        });
+    }
+
+    #[bench]
+    pub fn verify_event_sig(bh: &mut Bencher) {
+        let json = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
+        let event = Event::from_json(json).unwrap();
+        bh.iter(|| {
+            black_box(event.verify_signature()).unwrap();
         });
     }
 }

@@ -105,19 +105,20 @@ impl Event {
     /// Verify both `EventId` and `Signature`
     #[inline]
     pub fn verify(&self) -> bool {
+        // TODO: return `Result` instead?
         self.inner.verify().is_ok()
     }
 
     /// Verify if the `EventId` it's composed correctly
     #[inline]
-    pub fn verify_id(&self) -> Result<()> {
-        Ok(self.inner.verify_id()?)
+    pub fn verify_id(&self) -> bool {
+        self.inner.verify_id()
     }
 
     /// Verify only event `Signature`
     #[inline]
-    pub fn verify_signature(&self) -> Result<()> {
-        Ok(self.inner.verify_signature()?)
+    pub fn verify_signature(&self) -> bool {
+        self.inner.verify_signature()
     }
 
     /// Get `Timestamp` expiration if set

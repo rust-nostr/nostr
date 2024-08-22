@@ -34,6 +34,7 @@
 * nostr: update `Event` fields ([Yuki Kishimoto])
 * nostr: deprecate `Event::is_*` kind related methods ([Yuki Kishimoto])
 * nostr: change `TryIntoUrl::Err` to `Infallible` for `Url` ([Yuki Kishimoto])
+* nostr: change `Event::verify_id` and `Event::verify_signature` fingerprint ([Yuki Kishimoto])
 * signer: update NIP-04 and NIP-44 methods signature ([Yuki Kishimoto])
 * webln: bump `webln` to `v0.3` ([Yuki Kishimoto])
 * sdk: bump `lnurl-pay` to `v0.6` ([Yuki Kishimoto])
