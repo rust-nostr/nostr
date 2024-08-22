@@ -464,6 +464,26 @@ impl Client {
             .into())
     }
 
+    /// Fetch the newest public key metadata from database and connected relays.
+    ///
+    /// If you only want to consult cached data,
+    /// consider `client.database().profile(PUBKEY)`.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[uniffi::method(default(timeout = None))]
+    pub async fn fetch_metadata(
+        &self,
+        public_key: &PublicKey,
+        timeout: Option<Duration>,
+    ) -> Result<Arc<Metadata>> {
+        Ok(Arc::new(
+            self.inner
+                .fetch_metadata(**public_key, timeout)
+                .await?
+                .into(),
+        ))
+    }
+
     pub async fn set_metadata(&self, metadata: Arc<Metadata>) -> Result<SendEventOutput> {
         Ok(self
             .inner

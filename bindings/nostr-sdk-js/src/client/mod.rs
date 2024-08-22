@@ -473,6 +473,25 @@ impl JsClient {
             .map(|id| id.into())
     }
 
+    /// Fetch the newest public key metadata from database and connected relays.
+    ///
+    /// If you only want to consult cached data,
+    /// consider `client.database().profile(PUBKEY)`.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    #[wasm_bindgen(js_name = fetchMetadata)]
+    pub async fn fetch_metadata(
+        &self,
+        public_key: &JsPublicKey,
+        timeout: Option<JsDuration>,
+    ) -> Result<JsMetadata> {
+        self.inner
+            .fetch_metadata(**public_key, timeout.map(|t| *t))
+            .await
+            .map_err(into_err)
+            .map(|m| m.into())
+    }
+
     /// Update metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
