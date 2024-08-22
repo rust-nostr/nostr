@@ -882,6 +882,12 @@ impl InternalRelay {
                         );
                         self.subscription_closed(subscription_id).await;
                     }
+                    RelayMessage::Auth { challenge } => {
+                        tracing::debug!(
+                            "Received '{challenge}' authentication challenge from '{}'",
+                            self.url
+                        );
+                    }
                     _ => (),
                 }
 
