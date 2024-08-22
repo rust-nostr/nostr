@@ -816,6 +816,9 @@ impl Client {
 
     /// Get events of filters
     ///
+    /// The returned events are sorted by newest first,
+    /// if there is a limit only the newest are returned.
+    ///
     /// # Example
     /// ```rust,no_run
     /// use std::time::Duration;
@@ -1101,7 +1104,10 @@ impl Client {
         self.send_event_to(urls, event).await
     }
 
-    /// Fetch public key metadata from database, falling back to connected relays.
+    /// Fetch newest public key metadata from database and connected relays.
+    ///
+    /// If you only want to consult cached data,
+    /// consider `client.database().profile(PUBKEY).metadata`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub async fn fetch_metadata(
@@ -1122,24 +1128,7 @@ impl Client {
         }
     }
 
-    /// Get cached public key metadata.
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    pub async fn get_metadata(&self, public_key: PublicKey) -> Result<Metadata, Error> {
-        let filter: Filter = Filter::new()
-            .author(public_key)
-            .kind(Kind::Metadata)
-            .limit(1);
-        let events: Vec<Event> = self
-            .get_events_of(vec![filter], EventSource::Database)
-            .await?;
-        match events.first() {
-            Some(event) => Ok(Metadata::try_from(event)?),
-            None => Err(Error::MetadataNotFound),
-        }
-    }
-
-    /// Fetch public key metadata from database, falling back to connected relays.
+    /// Replaced by `fetch_metadata`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[deprecated]
