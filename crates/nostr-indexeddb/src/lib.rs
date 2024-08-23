@@ -4,7 +4,6 @@
 
 //! Web's IndexedDB Storage backend for Nostr SDK
 
-#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 #![allow(unknown_lints, clippy::arc_with_non_send_sync)]
@@ -72,6 +71,10 @@ impl fmt::Debug for WebDatabase {
             .finish()
     }
 }
+
+unsafe impl Send for WebDatabase {}
+
+unsafe impl Sync for WebDatabase {}
 
 impl WebDatabase {
     async fn new<S>(name: S, helper: DatabaseHelper) -> Result<Self, IndexedDBError>
