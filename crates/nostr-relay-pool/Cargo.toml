@@ -28,6 +28,7 @@ tokio-stream = "0.1"
 tracing = { workspace = true, features = ["std", "attributes"] }
 
 [dev-dependencies]
+nostr-relay-builder.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [[example]]

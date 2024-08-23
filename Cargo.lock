@@ -2720,6 +2720,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-relay-builder"
+version = "0.34.0"
+dependencies = [
+ "async-utility",
+ "atomic-destructor",
+ "nostr",
+ "nostr-database",
+ "thiserror",
+ "tokio",
+ "tokio-tungstenite",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "nostr-relay-pool"
 version = "0.34.0"
 dependencies = [
@@ -2728,6 +2743,7 @@ dependencies = [
  "atomic-destructor",
  "nostr",
  "nostr-database",
+ "nostr-relay-builder",
  "thiserror",
  "tokio",
  "tokio-stream",

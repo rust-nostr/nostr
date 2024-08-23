@@ -9,6 +9,7 @@ args=(
     "-p nostr-sqlite"
     "-p nostr-rocksdb"
     "-p nostr-indexeddb"
+    "-p nostr-relay-builder"
     "-p nostr-relay-pool"
     "-p nostr-signer"
     "-p nostr-zapper"
@@ -17,7 +18,7 @@ args=(
     "-p nostr-sdk"
 )
 
-for arg in "${args[@]}"; 
+for arg in "${args[@]}";
 do
     echo "Publishing '$arg'"
     cargo publish $arg

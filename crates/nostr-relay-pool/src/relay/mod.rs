@@ -445,3 +445,32 @@ impl Relay {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use nostr_relay_builder::prelude::*;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_ok_msg() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = Url::parse(&mock.url()).unwrap();
+
+        let relay = Relay::new(url);
+
+        assert_eq!(relay.status().await, RelayStatus::Initialized);
+
+        relay.connect(Some(Duration::from_millis(100))).await;
+
+        assert_eq!(relay.status().await, RelayStatus::Connected);
+
+        let keys = Keys::generate();
+        let event = EventBuilder::text_note("Test", []).to_event(&keys).unwrap();
+        relay
+            .send_event(event, RelaySendOptions::default())
+            .await
+            .unwrap();
+    }
+}
