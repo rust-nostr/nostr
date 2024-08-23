@@ -5,7 +5,9 @@
 
 //! Keys
 
+use core::cmp::Ordering;
 use core::fmt;
+use core::hash::{Hash, Hasher};
 #[cfg(feature = "std")]
 use core::str::FromStr;
 
@@ -14,6 +16,10 @@ use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{self, Keypair, Message, Secp256k1, Signing, XOnlyPublicKey};
+#[cfg(feature = "std")]
+use once_cell::sync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `std::cell::OnceLock` instead and remove `once_cell` dep.
+#[cfg(not(feature = "std"))]
+use once_cell::unsync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `core::cell::OnceCell` instead and remove `once_cell` dep.
 
 pub mod public_key;
 pub mod secret_key;
@@ -32,8 +38,6 @@ pub enum Error {
     InvalidSecretKey,
     /// Invalid public key
     InvalidPublicKey,
-    /// Secret key missing
-    SkMissing,
     /// Unsupported char
     InvalidChar(char),
     /// Secp256k1 error
@@ -48,7 +52,6 @@ impl fmt::Display for Error {
         match self {
             Self::InvalidSecretKey => write!(f, "Invalid secret key"),
             Self::InvalidPublicKey => write!(f, "Invalid public key"),
-            Self::SkMissing => write!(f, "Secret key missing"),
             Self::InvalidChar(c) => write!(f, "Unsupported char: {c}"),
             Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
         }
@@ -62,11 +65,45 @@ impl From<secp256k1::Error> for Error {
 }
 
 /// Keys
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct Keys {
     public_key: PublicKey,
-    key_pair: Option<Keypair>,
-    secret_key: Option<SecretKey>,
+    secret_key: SecretKey,
+    key_pair: OnceCell<Keypair>,
+}
+
+impl fmt::Debug for Keys {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Keys")
+            .field("public_key", &self.public_key)
+            .finish()
+    }
+}
+
+impl PartialEq for Keys {
+    fn eq(&self, other: &Self) -> bool {
+        self.public_key == other.public_key
+    }
+}
+
+impl Eq for Keys {}
+
+impl PartialOrd for Keys {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Keys {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.public_key.cmp(&other.public_key)
+    }
+}
+
+impl Hash for Keys {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.public_key.hash(state)
+    }
 }
 
 #[cfg(feature = "std")]
@@ -77,7 +114,7 @@ impl Keys {
         Self::new_with_ctx(&SECP256K1, secret_key)
     }
 
-    /// Try to parse [Keys] from **secret key** `hex` or `bech32`
+    /// Parse secret key from `hex` or `bech32` and compose keys
     #[inline]
     pub fn parse<S>(secret_key: S) -> Result<Self, Error>
     where
@@ -104,17 +141,20 @@ impl Keys {
     /// Generate random [`Keys`] with custom [`Rng`] and without [`Keypair`]
     ///
     /// Useful for faster [`Keys`] generation (ex. vanity pubkey mining)
-    #[inline]
+    #[deprecated(
+        since = "0.35.0",
+        note = "Use `generate` or `generate_with_rng` instead"
+    )]
     pub fn generate_without_keypair<R>(rng: &mut R) -> Self
     where
         R: Rng + ?Sized,
     {
-        Self::generate_without_keypair_with_ctx(&SECP256K1, rng)
+        Self::generate_with_rng(rng)
     }
 
     /// Sign schnorr [`Message`]
     #[inline]
-    pub fn sign_schnorr(&self, message: &Message) -> Result<Signature, Error> {
+    pub fn sign_schnorr(&self, message: &Message) -> Signature {
         self.sign_schnorr_with_ctx(&SECP256K1, message, &mut OsRng)
     }
 }
@@ -125,13 +165,13 @@ impl Keys {
     where
         C: Signing,
     {
-        let key_pair = Keypair::from_secret_key(secp, &secret_key);
-        let public_key = XOnlyPublicKey::from_keypair(&key_pair).0;
+        let key_pair: Keypair = Keypair::from_secret_key(secp, &secret_key);
+        let public_key: XOnlyPublicKey = XOnlyPublicKey::from_keypair(&key_pair).0;
 
         Self {
             public_key: PublicKey::from(public_key),
-            key_pair: Some(key_pair),
-            secret_key: Some(secret_key),
+            secret_key,
+            key_pair: OnceCell::from(key_pair),
         }
     }
 
@@ -146,30 +186,9 @@ impl Keys {
         Ok(Self::new_with_ctx(secp, secret_key))
     }
 
-    /// Initialize with public key only (no secret key).
-    #[inline]
-    pub fn from_public_key(public_key: PublicKey) -> Self {
-        Self {
-            public_key,
-            key_pair: None,
-            secret_key: None,
-        }
-    }
-
     /// Generate random [`Keys`] with custom [`Rng`]
     #[inline]
     pub fn generate_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
-    where
-        C: Signing,
-        R: Rng + ?Sized,
-    {
-        let secret_key: SecretKey = SecretKey::generate_with_ctx(secp, rng);
-        Self::new_with_ctx(secp, secret_key)
-    }
-
-    /// Generate random [`Keys`] with custom [`Rng`] and without [`Keypair`]
-    /// Useful for faster [`Keys`] generation (ex. vanity pubkey mining)
-    pub fn generate_without_keypair_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
     where
         C: Signing,
         R: Rng + ?Sized,
@@ -178,9 +197,20 @@ impl Keys {
         let (public_key, _) = public_key.x_only_public_key();
         Self {
             public_key: PublicKey::from(public_key),
-            key_pair: None,
-            secret_key: Some(SecretKey::from(secret_key)),
+            secret_key: SecretKey::from(secret_key),
+            key_pair: OnceCell::new(),
         }
+    }
+
+    /// Generate random [`Keys`] with custom [`Rng`] and without [`Keypair`]
+    /// Useful for faster [`Keys`] generation (ex. vanity pubkey mining)
+    #[deprecated(since = "0.35.0", note = "Use `generate_with_ctx` instead")]
+    pub fn generate_without_keypair_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
+    where
+        C: Signing,
+        R: Rng + ?Sized,
+    {
+        Self::generate_with_ctx(secp, rng)
     }
 
     /// Get public key
@@ -197,27 +227,18 @@ impl Keys {
 
     /// Get secret key
     #[inline]
-    pub fn secret_key(&self) -> Result<&SecretKey, Error> {
-        if let Some(secret_key) = &self.secret_key {
-            Ok(secret_key)
-        } else {
-            Err(Error::SkMissing)
-        }
+    pub fn secret_key(&self) -> &SecretKey {
+        &self.secret_key
     }
 
     /// Get keypair
-    ///
-    /// If not exists, will be created
-    pub fn key_pair<C>(&self, secp: &Secp256k1<C>) -> Result<Keypair, Error>
+    #[inline]
+    pub fn key_pair<C>(&self, secp: &Secp256k1<C>) -> &Keypair
     where
         C: Signing,
     {
-        if let Some(key_pair) = self.key_pair {
-            Ok(key_pair)
-        } else {
-            let secret_key = self.secret_key()?;
-            Ok(Keypair::from_secret_key(secp, secret_key))
-        }
+        self.key_pair
+            .get_or_init(|| Keypair::from_secret_key(secp, &self.secret_key))
     }
 
     /// Sign schnorr [`Message`]
@@ -226,13 +247,13 @@ impl Keys {
         secp: &Secp256k1<C>,
         message: &Message,
         rng: &mut R,
-    ) -> Result<Signature, Error>
+    ) -> Signature
     where
         C: Signing,
         R: Rng + CryptoRng,
     {
-        let keypair: &Keypair = &self.key_pair(secp)?;
-        Ok(secp.sign_schnorr_with_rng(message, keypair, rng))
+        let keypair: &Keypair = self.key_pair(secp);
+        secp.sign_schnorr_with_rng(message, keypair, rng)
     }
 }
 
@@ -249,6 +270,20 @@ impl FromStr for Keys {
 
 impl Drop for Keys {
     fn drop(&mut self) {
-        self.secret_key = None;
+        self.secret_key.non_secure_erase();
+    }
+}
+
+#[cfg(bench)]
+mod benches {
+    use test::{black_box, Bencher};
+
+    use super::*;
+
+    #[bench]
+    pub fn generate_keys(bh: &mut Bencher) {
+        bh.iter(|| {
+            black_box(Keys::generate());
+        });
     }
 }

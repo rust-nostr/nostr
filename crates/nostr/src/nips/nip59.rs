@@ -111,7 +111,7 @@ impl UnwrappedGift {
             return Err(Error::NotGiftWrap);
         }
 
-        let secret_key: &SecretKey = receiver_keys.secret_key()?;
+        let secret_key: &SecretKey = receiver_keys.secret_key();
 
         // Decrypt and verify seal
         let seal: String = nip44::decrypt(secret_key, &gift_wrap.pubkey, &gift_wrap.content)?;

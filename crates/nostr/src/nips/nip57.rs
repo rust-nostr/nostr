@@ -300,7 +300,7 @@ where
 
     // Create encryption key
     let secret_key: SecretKey =
-        create_encryption_key(keys.secret_key()?, &data.public_key, created_at)?;
+        create_encryption_key(keys.secret_key(), &data.public_key, created_at)?;
 
     // Compose encrypted message
     let mut tags: Vec<Tag> = vec![Tag::public_key(data.public_key)];
@@ -443,7 +443,7 @@ mod tests {
         let private_zap = private_zap_request(data, &alice_keys).unwrap();
 
         let private_zap_msg = decrypt_sent_private_zap_message(
-            alice_keys.secret_key().unwrap(),
+            alice_keys.secret_key(),
             &bob_keys.public_key(),
             &private_zap,
         )
@@ -452,8 +452,7 @@ mod tests {
         assert_eq!(msg, &private_zap_msg.content);
 
         let private_zap_msg =
-            decrypt_received_private_zap_message(bob_keys.secret_key().unwrap(), &private_zap)
-                .unwrap();
+            decrypt_received_private_zap_message(bob_keys.secret_key(), &private_zap).unwrap();
 
         assert_eq!(msg, &private_zap_msg.content)
     }

@@ -86,13 +86,13 @@ fn main() -> ! {
 fn print_keys(keys: &Keys) {
     hprintln!(
         "- Secret Key (hex): {}",
-        keys.secret_key().unwrap().to_secret_hex()
+        keys.secret_key().to_secret_hex()
     )
     .unwrap();
     hprintln!("- Public Key (hex): {}", keys.public_key()).unwrap();
     hprintln!(
         "- Secret Key (bech32): {}",
-        keys.secret_key().unwrap().to_bech32().unwrap()
+        keys.secret_key().to_bech32().unwrap()
     )
     .unwrap();
     hprintln!(

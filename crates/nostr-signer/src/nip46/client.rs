@@ -109,7 +109,7 @@ impl Nip46Signer {
     }
 
     async fn send_request(&self, req: Request) -> Result<ResponseResult, Error> {
-        let secret_key: &SecretKey = self.app_keys.secret_key()?;
+        let secret_key: &SecretKey = self.app_keys.secret_key();
         let signer_public_key: PublicKey = self.signer_public_key();
 
         // Convert request to event
@@ -275,13 +275,13 @@ async fn get_signer_public_key(
     mut notifications: Receiver<RelayPoolNotification>,
     timeout: Duration,
 ) -> Result<PublicKey, Error> {
-    let secret_key = app_keys.secret_key()?;
     time::timeout(Some(timeout), async {
         while let Ok(notification) = notifications.recv().await {
             if let RelayPoolNotification::Event { event, .. } = notification {
                 if event.kind == Kind::NostrConnect {
                     // Decrypt content
-                    let msg: String = nip04::decrypt(secret_key, &event.pubkey, event.content)?;
+                    let msg: String =
+                        nip04::decrypt(app_keys.secret_key(), &event.pubkey, event.content)?;
 
                     tracing::debug!("Received Nostr Connect message: '{msg}'");
 

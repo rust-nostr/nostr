@@ -194,7 +194,7 @@ mod tests {
             let keys =
                 Keys::from_mnemonic_with_ctx(&secp, mnemonic, None, None, None, None).unwrap();
             assert_eq!(
-                keys.secret_key().unwrap(),
+                keys.secret_key(),
                 &SecretKey::from_str(expected_secret_key).unwrap()
             );
         }

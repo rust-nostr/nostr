@@ -25,8 +25,7 @@ pub fn create_delegation_tag(
     conditions: &str,
 ) -> Result<String> {
     let conditions = Conditions::from_str(conditions).map_err(into_err)?;
-    let tag = DelegationTag::new(delegator_keys.deref(), delegatee_pubkey.deref(), conditions)
-        .map_err(into_err)?;
+    let tag = DelegationTag::new(delegator_keys.deref(), delegatee_pubkey.deref(), conditions);
     Ok(tag.to_string())
 }
 
@@ -61,8 +60,7 @@ pub fn sign_delegation(
 ) -> Result<String> {
     let conditions = Conditions::from_str(conditions).map_err(into_err)?;
     let signature: Signature =
-        nip26::sign_delegation(keys.deref(), delegatee_pk.deref(), &conditions)
-            .map_err(into_err)?;
+        nip26::sign_delegation(keys.deref(), delegatee_pk.deref(), &conditions);
     Ok(signature.to_string())
 }
 

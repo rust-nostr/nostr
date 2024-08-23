@@ -53,13 +53,6 @@ impl Keys {
         })
     }
 
-    #[uniffi::constructor]
-    pub fn from_public_key(public_key: &PublicKey) -> Self {
-        Self {
-            inner: key::Keys::from_public_key(**public_key),
-        }
-    }
-
     /// Generate random `Keys`
     #[uniffi::constructor]
     pub fn generate() -> Self {
@@ -95,12 +88,12 @@ impl Keys {
         self.inner.public_key().into()
     }
 
-    pub fn secret_key(&self) -> Result<SecretKey> {
-        Ok(self.inner.secret_key()?.clone().into())
+    pub fn secret_key(&self) -> SecretKey {
+        self.inner.secret_key().clone().into()
     }
 
     pub fn sign_schnorr(&self, message: &[u8]) -> Result<String> {
         let message: Message = Message::from_digest_slice(message)?;
-        Ok(self.inner.sign_schnorr(&message)?.to_string())
+        Ok(self.inner.sign_schnorr(&message).to_string())
     }
 }

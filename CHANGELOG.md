@@ -35,6 +35,11 @@
 * nostr: deprecate `Event::is_*` kind related methods ([Yuki Kishimoto])
 * nostr: change `TryIntoUrl::Err` to `Infallible` for `Url` ([Yuki Kishimoto])
 * nostr: change `Event::verify_id` and `Event::verify_signature` fingerprint ([Yuki Kishimoto])
+* nostr: impl custom `Debug`, `PartialEq` and `Eq` for `Keys` ([Yuki Kishimoto])
+* nostr: impl `PartialOrd`, `Ord` and `Hash` for `Keys` ([Yuki Kishimoto])
+* nostr: change `Keys::secret_key` and `Keys::sign_schnorr` methods fingerprint ([Yuki Kishimoto])
+* nostr: deprecate `Keys::generate_without_keypair` ([Yuki Kishimoto])
+* nostr: change NIP-26 functions fingerprint ([Yuki Kishimoto])
 * signer: update NIP-04 and NIP-44 methods signature ([Yuki Kishimoto])
 * webln: bump `webln` to `v0.3` ([Yuki Kishimoto])
 * sdk: bump `lnurl-pay` to `v0.6` ([Yuki Kishimoto])
@@ -59,6 +64,8 @@
 ### Removed
 
 * nostr: remove `bech32` from the public API ([Yuki Kishimoto])
+* nostr: remove `Keys::from_public_key` ([Yuki Kishimoto])
+* js(nostr): remove `Keys::vanity` ([Yuki Kishimoto])
 
 ## [v0.34.0]
 

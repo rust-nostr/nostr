@@ -128,7 +128,7 @@ pub fn sign_delegation(
     delegator_keys: &Keys,
     delegatee_pk: &PublicKey,
     conditions: &Conditions,
-) -> Result<Signature, Error> {
+) -> Signature {
     sign_delegation_with_ctx(
         &SECP256K1,
         &mut rand::thread_rng(),
@@ -146,15 +146,15 @@ pub fn sign_delegation_with_ctx<C, R>(
     delegator_keys: &Keys,
     delegatee_pk: &PublicKey,
     conditions: &Conditions,
-) -> Result<Signature, Error>
+) -> Signature
 where
     C: Signing,
     R: Rng + CryptoRng,
 {
     let unhashed_token = DelegationToken::new(delegatee_pk, conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
-    let message = Message::from_digest_slice(hashed_token.as_byte_array())?;
-    Ok(delegator_keys.sign_schnorr_with_ctx(secp, &message, rng)?)
+    let message: Message = Message::from_digest(hashed_token.to_byte_array());
+    delegator_keys.sign_schnorr_with_ctx(secp, &message, rng)
 }
 
 /// Verify delegation signature
@@ -188,7 +188,7 @@ where
 {
     let unhashed_token = DelegationToken::new(delegatee_public_key, conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
-    let message = Message::from_digest_slice(hashed_token.as_byte_array())?;
+    let message = Message::from_digest(hashed_token.to_byte_array());
     secp.verify_schnorr(&signature, &message, delegator_public_key)?;
     Ok(())
 }
@@ -236,7 +236,7 @@ impl DelegationTag {
         delegator_keys: &Keys,
         delegatee_pubkey: &PublicKey,
         conditions: Conditions,
-    ) -> Result<Self, Error> {
+    ) -> Self {
         Self::new_with_ctx(
             &SECP256K1,
             &mut rand::thread_rng(),
@@ -253,18 +253,18 @@ impl DelegationTag {
         delegator_keys: &Keys,
         delegatee_pubkey: &PublicKey,
         conditions: Conditions,
-    ) -> Result<Self, Error>
+    ) -> Self
     where
         C: Signing,
         R: Rng + CryptoRng,
     {
-        let signature =
-            sign_delegation_with_ctx(secp, rng, delegator_keys, delegatee_pubkey, &conditions)?;
-        Ok(Self {
+        let signature: Signature =
+            sign_delegation_with_ctx(secp, rng, delegator_keys, delegatee_pubkey, &conditions);
+        Self {
             delegator_pubkey: delegator_keys.public_key(),
             conditions,
             signature,
-        })
+        }
     }
 
     /// Get delegator public key
@@ -602,8 +602,7 @@ mod tests {
         let conditions =
             Conditions::from_str("kind=1&created_at>1676067553&created_at<1678659553").unwrap();
 
-        let tag =
-            DelegationTag::new(&delegator_keys, &delegatee_pubkey, conditions.clone()).unwrap();
+        let tag = DelegationTag::new(&delegator_keys, &delegatee_pubkey, conditions.clone());
 
         // Verify signature (it's variable)
         let verify_result = verify_delegation_signature(
@@ -634,7 +633,7 @@ mod tests {
         let conditions =
             Conditions::from_str("kind=1&created_at>1676067553&created_at<1678659553").unwrap();
 
-        let tag = DelegationTag::new(&delegator_keys, &delegatee_pubkey, conditions).unwrap();
+        let tag = DelegationTag::new(&delegator_keys, &delegatee_pubkey, conditions);
 
         assert!(tag
             .validate(&delegatee_pubkey, &EventProperties::new(1, 1677000000))
@@ -694,8 +693,7 @@ mod tests {
         let conditions =
             Conditions::from_str("kind=1&created_at>1674834236&created_at<1677426236").unwrap();
 
-        let signature =
-            sign_delegation(&delegator_keys, &delegatee_public_key, &conditions).unwrap();
+        let signature = sign_delegation(&delegator_keys, &delegatee_public_key, &conditions);
 
         // Signature is changing, validate by verify method
         let verify_result = verify_delegation_signature(
@@ -720,8 +718,7 @@ mod tests {
         let conditions =
             Conditions::from_str("kind=1&created_at>1674834236&created_at<1677426236").unwrap();
 
-        let signature =
-            sign_delegation(&delegator_keys, &delegatee_public_key, &conditions).unwrap();
+        let signature = sign_delegation(&delegator_keys, &delegatee_public_key, &conditions);
 
         // Signature is changing, validate by lowlevel verify
         let unhashed_token: String =
@@ -824,7 +821,7 @@ mod tests {
         let conditions =
             Conditions::from_str("kind=1&created_at>1676067553&created_at<1678659553").unwrap();
 
-        let tag = DelegationTag::new(&delegator_keys, &delegatee_pubkey, conditions).unwrap();
+        let tag = DelegationTag::new(&delegator_keys, &delegatee_pubkey, conditions);
 
         // Positive
         assert!(tag

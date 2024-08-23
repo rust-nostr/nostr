@@ -50,25 +50,11 @@ impl JsKeys {
         })
     }
 
-    /// Initialize with public key only (no secret key).
-    #[wasm_bindgen(js_name = fromPublicKey)]
-    pub fn from_public_key(public_key: &JsPublicKey) -> JsKeys {
-        Self {
-            inner: Keys::from_public_key(**public_key),
-        }
-    }
-
     /// Generate new random keys
     pub fn generate() -> JsKeys {
         Self {
             inner: Keys::generate(),
         }
-    }
-
-    pub fn vanity(prefixes: Vec<String>, bech32: bool, num_cores: u8) -> Result<JsKeys> {
-        Ok(Self {
-            inner: Keys::vanity(prefixes, bech32, num_cores as usize).map_err(into_err)?,
-        })
     }
 
     /// Derive keys from BIP-39 mnemonics (ENGLISH wordlist).
@@ -102,7 +88,7 @@ impl JsKeys {
 
     /// Get secret key
     #[wasm_bindgen(js_name = secretKey, getter)]
-    pub fn secret_key(&self) -> Result<JsSecretKey> {
-        Ok(self.inner.secret_key().cloned().map_err(into_err)?.into())
+    pub fn secret_key(&self) -> JsSecretKey {
+        self.inner.secret_key().clone().into()
     }
 }

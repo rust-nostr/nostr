@@ -89,7 +89,7 @@ impl Keys {
                         break;
                     }
 
-                    let keys = Keys::generate_without_keypair(&mut rng);
+                    let keys: Keys = Keys::generate_with_rng(&mut rng);
 
                     if bech32 {
                         let bech32_key = keys

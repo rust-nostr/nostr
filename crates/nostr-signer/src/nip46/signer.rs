@@ -130,7 +130,7 @@ impl NostrConnectRemoteSigner {
                 if let RelayPoolNotification::Event { event, .. } = notification {
                     if event.kind == Kind::NostrConnect {
                         if let Ok(msg) =
-                            nip04::decrypt(self.keys.secret_key()?, &event.pubkey, event.content)
+                            nip04::decrypt(self.keys.secret_key(), &event.pubkey, event.content)
                         {
                             tracing::debug!("New Nostr Connect message received: {msg}");
 
@@ -160,7 +160,7 @@ impl NostrConnectRemoteSigner {
                                         }
                                         Request::Nip04Encrypt { public_key, text } => {
                                             match nip04::encrypt(
-                                                self.keys.secret_key()?,
+                                                self.keys.secret_key(),
                                                 &public_key,
                                                 text,
                                             ) {
@@ -178,7 +178,7 @@ impl NostrConnectRemoteSigner {
                                             ciphertext,
                                         } => {
                                             match nip04::decrypt(
-                                                self.keys.secret_key()?,
+                                                self.keys.secret_key(),
                                                 &public_key,
                                                 ciphertext,
                                             ) {
@@ -193,7 +193,7 @@ impl NostrConnectRemoteSigner {
                                         }
                                         Request::Nip44Encrypt { public_key, text } => {
                                             match nip44::encrypt(
-                                                self.keys.secret_key()?,
+                                                self.keys.secret_key(),
                                                 &public_key,
                                                 text,
                                                 nip44::Version::default(),
@@ -212,7 +212,7 @@ impl NostrConnectRemoteSigner {
                                             ciphertext,
                                         } => {
                                             match nip44::decrypt(
-                                                self.keys.secret_key()?,
+                                                self.keys.secret_key(),
                                                 &public_key,
                                                 ciphertext,
                                             ) {

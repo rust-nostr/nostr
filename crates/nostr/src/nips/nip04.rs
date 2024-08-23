@@ -194,22 +194,16 @@ mod tests {
 
         let content = String::from("Saturn, bringer of old age");
 
-        let encrypted_content =
-            encrypt(sender_keys.secret_key().unwrap(), &receiver_pk, &content).unwrap();
+        let encrypted_content = encrypt(sender_keys.secret_key(), &receiver_pk, &content).unwrap();
 
         assert_eq!(
-            decrypt(
-                receiver_keys.secret_key().unwrap(),
-                &sender_pk,
-                encrypted_content
-            )
-            .unwrap(),
+            decrypt(receiver_keys.secret_key(), &sender_pk, encrypted_content).unwrap(),
             content
         );
 
         assert_eq!(
             decrypt(
-                receiver_keys.secret_key().unwrap(),
+                receiver_keys.secret_key(),
                 &sender_pk,
                 encrypted_content_from_outside
             )
@@ -219,7 +213,7 @@ mod tests {
 
         assert_eq!(
             decrypt(
-                sender_keys.secret_key().unwrap(),
+                sender_keys.secret_key(),
                 &receiver_pk,
                 "invalidcontentformat"
             )
@@ -228,7 +222,7 @@ mod tests {
         );
         assert_eq!(
             decrypt(
-                sender_keys.secret_key().unwrap(),
+                sender_keys.secret_key(),
                 &receiver_pk,
                 "badbase64?iv=encode"
             )
@@ -239,7 +233,7 @@ mod tests {
         // Content encrypted with aes256 using GCM mode
         assert_eq!(
             decrypt(
-                sender_keys.secret_key().unwrap(),
+                sender_keys.secret_key(),
                 &receiver_pk,
                 "nseh0cQPEFID5C0CxYdcPwp091NhRQ==?iv=8PHy8/T19vf4+fr7/P3+/w=="
             )
