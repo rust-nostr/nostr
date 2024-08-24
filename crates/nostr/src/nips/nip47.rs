@@ -912,13 +912,13 @@ impl NostrWalletConnectURI {
             lud16,
         }
     }
-}
 
-impl FromStr for NostrWalletConnectURI {
-    type Err = Error;
-
-    fn from_str(uri: &str) -> Result<Self, Self::Err> {
-        let url = Url::parse(uri)?;
+    /// Parse NWC URI
+    pub fn parse<S>(uri: S) -> Result<Self, Error>
+    where
+        S: AsRef<str>,
+    {
+        let url: Url = Url::parse(uri.as_ref())?;
 
         if url.scheme() != NOSTR_WALLET_CONNECT_URI_SCHEME {
             return Err(Error::InvalidURIScheme);
@@ -957,6 +957,14 @@ impl FromStr for NostrWalletConnectURI {
         }
 
         Err(Error::InvalidURI)
+    }
+}
+
+impl FromStr for NostrWalletConnectURI {
+    type Err = Error;
+
+    fn from_str(uri: &str) -> Result<Self, Self::Err> {
+        Self::parse(uri)
     }
 }
 
