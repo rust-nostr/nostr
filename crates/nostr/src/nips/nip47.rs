@@ -925,7 +925,7 @@ impl FromStr for NostrWalletConnectURI {
         }
 
         if let Some(pubkey) = url.domain() {
-            let public_key = PublicKey::from_str(pubkey)?;
+            let public_key = PublicKey::from_hex(pubkey)?;
 
             let mut relay_url: Option<Url> = None;
             let mut secret: Option<SecretKey> = None;
@@ -934,12 +934,10 @@ impl FromStr for NostrWalletConnectURI {
             for (key, value) in url.query_pairs() {
                 match key {
                     Cow::Borrowed("relay") => {
-                        let value = value.to_string();
-                        relay_url = Some(Url::parse(&value)?);
+                        relay_url = Some(Url::parse(value.as_ref())?);
                     }
                     Cow::Borrowed("secret") => {
-                        let value = value.to_string();
-                        secret = Some(SecretKey::from_str(&value)?);
+                        secret = Some(SecretKey::from_hex(value.as_ref())?);
                     }
                     Cow::Borrowed("lud16") => {
                         lud16 = Some(value.to_string());
@@ -948,15 +946,13 @@ impl FromStr for NostrWalletConnectURI {
                 }
             }
 
-            if let Some(relay_url) = relay_url {
-                if let Some(secret) = secret {
-                    return Ok(Self {
-                        public_key,
-                        relay_url,
-                        secret,
-                        lud16,
-                    });
-                }
+            if let (Some(relay_url), Some(secret)) = (relay_url, secret) {
+                return Ok(Self {
+                    public_key,
+                    relay_url,
+                    secret,
+                    lud16,
+                });
             }
         }
 

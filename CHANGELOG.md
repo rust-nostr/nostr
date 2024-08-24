@@ -40,6 +40,7 @@
 * nostr: change `Keys::secret_key` and `Keys::sign_schnorr` methods fingerprint ([Yuki Kishimoto])
 * nostr: deprecate `Keys::generate_without_keypair` ([Yuki Kishimoto])
 * nostr: change NIP-26 functions fingerprint ([Yuki Kishimoto])
+* nostr: improve `NostrWalletConnectURI` parsing ([Yuki Kishimoto])
 * database: update `NostrDatabase` supertraits ([Yuki Kishimoto])
 * signer: update NIP-04 and NIP-44 methods signature ([Yuki Kishimoto])
 * webln: bump `webln` to `v0.3` ([Yuki Kishimoto])
