@@ -344,9 +344,9 @@ dependencies = [
 
 [[package]]
 name = "async-wsocket"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5725a0615e4eb98e82e9cb963529398114e3fccfbf0e8b9111d605e2ac443e46"
+checksum = "1eee6fcc818b89848df37050215603de0e2e072734e4730c03060feb2d0abebb"
 dependencies = [
  "arti-client",
  "async-utility",
@@ -1252,7 +1252,7 @@ checksum = "e1b84d32b18d9a256d81e4fec2e4cfd0ab6dde5e5ff49be1713ae0adbd0060c2"
 dependencies = [
  "heck 0.5.0",
  "indexmap 2.2.6",
- "itertools 0.13.0",
+ "itertools 0.12.1",
  "proc-macro-crate 3.1.0",
  "proc-macro2",
  "quote",
