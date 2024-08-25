@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
+#![warn(clippy::large_futures)]
 
 use std::fmt;
 

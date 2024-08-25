@@ -6,6 +6,7 @@
 
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
+#![warn(clippy::large_futures)]
 #![allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive for `BTreeSet<Event>`
 
 use core::fmt;
