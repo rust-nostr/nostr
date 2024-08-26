@@ -1,6 +1,6 @@
 # Relay Message
 
-The backbone of the Nostr network is built on relays rather than application specific centralized databases. Clients use WebSockets as a means to connect to relays and pass relevant data back and forth around the network. In accordance with the protocol base specification ([NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md)) there are 5 main types of messages which Relays construct as JSON arrays. This section is concerned with the construction of these message objects using the [Relay Message Module](https://docs.rs/nostr/latest/nostr/message/relay/index.html). 
+The backbone of the Nostr network is built on relays rather than application specific centralized databases. Clients use WebSockets as a means to connect to relays and pass relevant data back and forth around the network. In accordance with the protocol base specification ([NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md#from-relay-to-client-sending-events-and-notices)) there are 5 main types of messages which relays construct as JSON arrays. This section is concerned with the construction of these message objects using the [Relay Message Module](https://docs.rs/nostr/latest/nostr/message/relay/index.html). 
 
 For a more detailed explanation regarding the rules and handling of relay message objects please refer to the Nostr protocol documentation linked above. 
 
