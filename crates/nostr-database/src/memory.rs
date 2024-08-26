@@ -46,7 +46,7 @@ impl MemoryDatabaseOptions {
 }
 
 /// Memory Database (RAM)
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MemoryDatabase {
     opts: MemoryDatabaseOptions,
     seen_event_ids: Arc<Mutex<LruCache<EventId, HashSet<Url>>>>,
