@@ -1063,13 +1063,9 @@ impl Client {
     pub async fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
         let signer = self.signer().await?;
 
-        let public_key = signer.public_key().await?;
+        let public_key: PublicKey = signer.public_key().await?;
         let difficulty: u8 = self.opts.get_difficulty();
-        let unsigned = if difficulty > 0 {
-            builder.to_unsigned_pow_event(public_key, difficulty)
-        } else {
-            builder.to_unsigned_event(public_key)
-        };
+        let unsigned: UnsignedEvent = builder.pow(difficulty).to_unsigned_event(public_key);
 
         Ok(signer.sign_event(unsigned).await?)
     }

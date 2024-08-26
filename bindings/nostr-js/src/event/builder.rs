@@ -67,7 +67,15 @@ impl JsEventBuilder {
         self.inner.custom_created_at(**created_at).into()
     }
 
-    /// Build `Event`
+    /// Set POW difficulty
+    ///
+    /// Only values `> 0` are accepted!
+    #[wasm_bindgen]
+    pub fn pow(self, difficulty: u8) -> Self {
+        self.inner.pow(difficulty).into()
+    }
+
+    /// Build event
     ///
     /// **This method consume the builder, so it will no longer be usable!**
     #[wasm_bindgen(js_name = toEvent)]
@@ -76,38 +84,12 @@ impl JsEventBuilder {
         Ok(event.into())
     }
 
-    /// Build `UnsignedEvent`
+    /// Build unsigned event
     ///
     /// **This method consume the builder, so it will no longer be usable!**
     #[wasm_bindgen(js_name = toUnsignedEvent)]
     pub fn to_unsigned_event(self, public_key: &JsPublicKey) -> JsUnsignedEvent {
         self.inner.to_unsigned_event(**public_key).into()
-    }
-
-    /// Build POW `Event`
-    ///
-    /// **This method consume the builder, so it will no longer be usable!**
-    #[wasm_bindgen(js_name = toPowEvent)]
-    pub fn to_pow_event(self, keys: &JsKeys, difficulty: u8) -> Result<JsEvent> {
-        Ok(self
-            .inner
-            .to_pow_event(keys.deref(), difficulty)
-            .map_err(into_err)?
-            .into())
-    }
-
-    /// Build Unisgned POW Event
-    ///
-    /// **This method consume the builder, so it will no longer be usable!**
-    #[wasm_bindgen(js_name = toUnsignedPowEvent)]
-    pub fn to_unsigned_pow_event(
-        self,
-        public_key: &JsPublicKey,
-        difficulty: u8,
-    ) -> JsUnsignedEvent {
-        self.inner
-            .to_unsigned_pow_event(**public_key, difficulty)
-            .into()
     }
 
     /// Profile metadata

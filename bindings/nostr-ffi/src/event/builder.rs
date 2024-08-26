@@ -72,28 +72,22 @@ impl EventBuilder {
         builder
     }
 
+    /// Set POW difficulty
+    ///
+    /// Only values `> 0` are accepted!
+    pub fn pow(self: Arc<Self>, difficulty: u8) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.pow(difficulty);
+        builder
+    }
+
     pub fn to_event(&self, keys: &Keys) -> Result<Event> {
         let event = self.inner.clone().to_event(keys.deref())?;
         Ok(event.into())
     }
 
-    pub fn to_pow_event(&self, keys: &Keys, difficulty: u8) -> Result<Event> {
-        Ok(self
-            .inner
-            .clone()
-            .to_pow_event(keys.deref(), difficulty)?
-            .into())
-    }
-
     pub fn to_unsigned_event(&self, public_key: &PublicKey) -> UnsignedEvent {
         self.inner.clone().to_unsigned_event(**public_key).into()
-    }
-
-    pub fn to_unsigned_pow_event(&self, public_key: &PublicKey, difficulty: u8) -> UnsignedEvent {
-        self.inner
-            .clone()
-            .to_unsigned_pow_event(**public_key, difficulty)
-            .into()
     }
 
     /// Profile metadata

@@ -178,6 +178,8 @@ pub struct EventBuilder {
     tags: Vec<Tag>,
     content: String,
     custom_created_at: Option<Timestamp>,
+    /// POW difficulty
+    pow: Option<u8>,
 }
 
 impl EventBuilder {
@@ -193,6 +195,7 @@ impl EventBuilder {
             tags: tags.into_iter().collect(),
             content: content.into(),
             custom_created_at: None,
+            pow: None,
         }
     }
 
@@ -213,7 +216,18 @@ impl EventBuilder {
         self
     }
 
-    /// Build [`Event`]
+    /// Set POW difficulty
+    ///
+    /// Only values `> 0` are accepted!
+    #[inline]
+    pub fn pow(mut self, difficulty: u8) -> Self {
+        if difficulty > 0 {
+            self.pow = Some(difficulty);
+        }
+        self
+    }
+
+    /// Build event
     #[inline]
     pub fn to_event_with_ctx<C, R, T>(
         self,
@@ -233,7 +247,7 @@ impl EventBuilder {
             .sign_with_ctx(secp, rng, keys)?)
     }
 
-    /// Build [`UnsignedEvent`]
+    /// Build unsigned event
     pub fn to_unsigned_event_with_supplier<T>(
         self,
         supplier: &T,
@@ -242,22 +256,71 @@ impl EventBuilder {
     where
         T: TimeSupplier,
     {
-        let mut unsigned = UnsignedEvent {
-            id: None,
-            pubkey,
-            created_at: self
-                .custom_created_at
-                .unwrap_or_else(|| Timestamp::now_with_supplier(supplier)),
-            kind: self.kind,
-            tags: self.tags,
-            content: self.content,
-        };
-        unsigned.ensure_id();
-        unsigned
+        // Check if should be POW
+        match self.pow {
+            Some(difficulty) if difficulty > 0 => {
+                let mut nonce: u128 = 0;
+                let mut tags: Vec<Tag> = self.tags;
+
+                #[cfg(feature = "std")]
+                let now: Instant = Instant::now();
+
+                loop {
+                    nonce += 1;
+
+                    tags.push(Tag::pow(nonce, difficulty));
+
+                    let created_at: Timestamp = self
+                        .custom_created_at
+                        .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
+                    let id: EventId =
+                        EventId::new(&pubkey, &created_at, &self.kind, &tags, &self.content);
+
+                    if id.check_pow(difficulty) {
+                        #[cfg(feature = "std")]
+                        tracing::debug!(
+                            "{} iterations in {} ms. Avg rate {} hashes/second",
+                            nonce,
+                            now.elapsed().as_millis(),
+                            nonce * 1000 / std::cmp::max(1, now.elapsed().as_millis())
+                        );
+
+                        return UnsignedEvent {
+                            id: Some(id),
+                            pubkey,
+                            created_at,
+                            kind: self.kind,
+                            tags,
+                            content: self.content,
+                        };
+                    }
+
+                    tags.pop();
+                }
+            }
+            // No POW difficulty set OR difficulty == 0
+            _ => {
+                let mut unsigned: UnsignedEvent = UnsignedEvent {
+                    id: None,
+                    pubkey,
+                    created_at: self
+                        .custom_created_at
+                        .unwrap_or_else(|| Timestamp::now_with_supplier(supplier)),
+                    kind: self.kind,
+                    tags: self.tags,
+                    content: self.content,
+                };
+                unsigned.ensure_id();
+                unsigned
+            }
+        }
     }
 
     /// Build POW [`Event`]
-    #[inline]
+    #[deprecated(
+        since = "0.35.0",
+        note = "Use `EventBuilder::pow` to set a difficulty and then call `EventBuilder::to_event_with_ctx`."
+    )]
     pub fn to_pow_event_with_ctx<C, R, T>(
         self,
         secp: &Secp256k1<C>,
@@ -272,12 +335,17 @@ impl EventBuilder {
         T: TimeSupplier,
     {
         let pubkey: PublicKey = keys.public_key();
+        #[allow(deprecated)]
         Ok(self
             .to_unsigned_pow_event_with_supplier(supplier, pubkey, difficulty)
             .sign_with_ctx(secp, rng, keys)?)
     }
 
     /// Build unsigned POW [`Event`]
+    #[deprecated(
+        since = "0.35.0",
+        note = "Use `EventBuilder::pow` to set a difficulty and then call `EventBuilder::to_unsigned_event_with_supplier`."
+    )]
     pub fn to_unsigned_pow_event_with_supplier<T>(
         self,
         supplier: &T,
@@ -287,53 +355,18 @@ impl EventBuilder {
     where
         T: TimeSupplier,
     {
-        let mut nonce: u128 = 0;
-        let mut tags: Vec<Tag> = self.tags;
-
-        #[cfg(feature = "std")]
-        let now: Instant = Instant::now();
-
-        loop {
-            nonce += 1;
-
-            tags.push(Tag::pow(nonce, difficulty));
-
-            let created_at: Timestamp = self
-                .custom_created_at
-                .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
-            let id: EventId = EventId::new(&pubkey, &created_at, &self.kind, &tags, &self.content);
-
-            if id.check_pow(difficulty) {
-                #[cfg(feature = "std")]
-                tracing::debug!(
-                    "{} iterations in {} ms. Avg rate {} hashes/second",
-                    nonce,
-                    now.elapsed().as_millis(),
-                    nonce * 1000 / std::cmp::max(1, now.elapsed().as_millis())
-                );
-
-                return UnsignedEvent {
-                    id: Some(id),
-                    pubkey,
-                    created_at,
-                    kind: self.kind,
-                    tags,
-                    content: self.content,
-                };
-            }
-
-            tags.pop();
-        }
+        self.pow(difficulty)
+            .to_unsigned_event_with_supplier(supplier, pubkey)
     }
 
-    /// Build [`Event`]
+    /// Build event
     #[inline]
     #[cfg(feature = "std")]
     pub fn to_event(self, keys: &Keys) -> Result<Event, Error> {
         self.to_event_with_ctx(&SECP256K1, &mut rand::thread_rng(), &Instant::now(), keys)
     }
 
-    /// Build [`UnsignedEvent`]
+    /// Build unsigned event
     #[inline]
     #[cfg(feature = "std")]
     pub fn to_unsigned_event(self, pubkey: PublicKey) -> UnsignedEvent {
@@ -341,9 +374,13 @@ impl EventBuilder {
     }
 
     /// Build POW [`Event`]
-    #[inline]
     #[cfg(feature = "std")]
+    #[deprecated(
+        since = "0.35.0",
+        note = "Use `EventBuilder::pow` to set a difficulty and then call `EventBuilder::to_event`."
+    )]
     pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
+        #[allow(deprecated)]
         self.to_pow_event_with_ctx(
             &SECP256K1,
             &mut rand::thread_rng(),
@@ -354,9 +391,13 @@ impl EventBuilder {
     }
 
     /// Build unsigned POW [`Event`]
-    #[inline]
     #[cfg(feature = "std")]
+    #[deprecated(
+        since = "0.35.0",
+        note = "Use `EventBuilder::pow` to set a difficulty and then call `EventBuilder::to_unsigned_event`."
+    )]
     pub fn to_unsigned_pow_event(self, pubkey: PublicKey, difficulty: u8) -> UnsignedEvent {
+        #[allow(deprecated)]
         self.to_unsigned_pow_event_with_supplier(&Instant::now(), pubkey, difficulty)
     }
 

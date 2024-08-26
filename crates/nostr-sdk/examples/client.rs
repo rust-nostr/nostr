@@ -27,8 +27,9 @@ async fn main() -> Result<()> {
     println!("Not sent to: {:?}", output.failed);
 
     // Create a text note POW event and broadcast to all connected relays
-    let event: Event =
-        EventBuilder::text_note("POW text note from nostr-sdk", []).to_pow_event(&my_keys, 20)?;
+    let event: Event = EventBuilder::text_note("POW text note from rust-nostr", [])
+        .pow(20)
+        .to_event(&my_keys)?;
     client.send_event(event).await?;
 
     // Send multiple events at once (to all relays)
@@ -40,8 +41,9 @@ async fn main() -> Result<()> {
     client.batch_event(events, opts).await?;
 
     // Send event to specific relays
-    let event: Event = EventBuilder::text_note("POW text note from nostr-sdk 16", [])
-        .to_pow_event(&my_keys, 16)?;
+    let event: Event = EventBuilder::text_note("POW text note from rust-nostr 16", [])
+        .pow(16)
+        .to_event(&my_keys)?;
     client
         .send_event_to(["wss://relay.damus.io", "wss://relay.rip"], event)
         .await?;

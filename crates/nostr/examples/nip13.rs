@@ -19,9 +19,7 @@ fn main() -> Result<()> {
     // or
     // let builder = EventBuilder::new(Kind::TextNote, msg_content, &[]);
 
-    let event: Event = builder.to_pow_event(&alice_keys, difficulty)?;
-
-    event.verify()?;
+    let event: Event = builder.pow(difficulty).to_event(&alice_keys)?;
 
     println!("{:#?}", event);
 
