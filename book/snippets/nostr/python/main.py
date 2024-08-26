@@ -9,6 +9,7 @@ from src.event.eventid import event_id
 from src.event.kind import kind
 from src.timestamps import timestamps
 from src.event.tags import tags
+from src.messages.client import client_message
 from src.messages.filters import filters
 from src.messages.relay import relay_message
 from src.nip01 import nip01
@@ -30,6 +31,7 @@ async def main():
     kind()
     timestamps()
     tags()
+    client_message()
     filters()
     relay_message()
     nip01()

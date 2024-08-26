@@ -84,6 +84,7 @@ def relay_message():
     print()
     # ANCHOR: neg-code
     # Negative Error Code
+    print("  Negative Relay Message (code):")
     relay_message_neg = RelayMessageEnum.NEG_ERR("subscription_ID_abc123", "404")
     relay_message = RelayMessage.from_enum(relay_message_neg)
     print(f"     - Negative Error Code: {relay_message.as_enum().is_neg_err()}")
@@ -93,6 +94,7 @@ def relay_message():
     print()
     # ANCHOR: neg-msg
     # Negative Error Message
+    print("  Negative Relay Message (message):")
     relay_message_neg = RelayMessageEnum.NEG_MSG("subscription_ID_abc123", "This is not the message you are looking for")
     relay_message = RelayMessage.from_enum(relay_message_neg)
     print(f"     - Negative Error Message: {relay_message.as_enum().is_neg_msg()}")
