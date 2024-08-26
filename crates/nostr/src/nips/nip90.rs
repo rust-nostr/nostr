@@ -6,8 +6,11 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/90.md>
 
+use alloc::string::String;
 use core::fmt;
 use core::str::FromStr;
+
+use crate::{Event, EventId, PublicKey};
 
 /// DVM Error
 #[derive(Debug)]
@@ -63,5 +66,62 @@ impl FromStr for DataVendingMachineStatus {
             "partial" => Ok(Self::Partial),
             _ => Err(Error::UnknownStatus),
         }
+    }
+}
+
+/// Data Vending Machine (DVM) - Job Feedback data
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct JobFeedbackData {
+    pub(crate) job_request_id: EventId,
+    pub(crate) customer_public_key: PublicKey,
+    pub(crate) status: DataVendingMachineStatus,
+    pub(crate) extra_info: Option<String>,
+    pub(crate) amount_msat: Option<u64>,
+    pub(crate) bolt11: Option<String>,
+    pub(crate) payload: Option<String>,
+}
+
+impl JobFeedbackData {
+    /// Construct new Job Feedback
+    pub fn new(job_request: &Event, status: DataVendingMachineStatus) -> Self {
+        Self {
+            job_request_id: job_request.id,
+            customer_public_key: job_request.pubkey,
+            status,
+            extra_info: None,
+            amount_msat: None,
+            bolt11: None,
+            payload: None,
+        }
+    }
+
+    /// Add extra info
+    #[inline]
+    pub fn extra_info<S>(mut self, info: S) -> Self
+    where
+        S: Into<String>,
+    {
+        self.extra_info = Some(info.into());
+        self
+    }
+
+    /// Add payment amount
+    #[inline]
+    pub fn amount(mut self, millisats: u64, bolt11: Option<String>) -> Self {
+        self.amount_msat = Some(millisats);
+        self.bolt11 = bolt11;
+        self
+    }
+
+    /// Add payload
+    #[inline]
+    pub fn payload<S>(mut self, payload: S) -> Self
+    where
+        S: Into<String>,
+    {
+        self.payload = Some(payload.into());
+        self
     }
 }

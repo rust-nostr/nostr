@@ -20,7 +20,7 @@ use crate::nips::nip51::{
 use crate::nips::nip53::JsLiveEvent;
 use crate::nips::nip57::JsZapRequestData;
 use crate::nips::nip65::JsRelayListItem;
-use crate::nips::nip90::JsDataVendingMachineStatus;
+use crate::nips::nip90::JsJobFeedbackData;
 use crate::nips::nip94::JsFileMetadata;
 use crate::nips::nip98::JsHttpData;
 use crate::types::{JsContact, JsMetadata, JsTimestamp};
@@ -486,23 +486,9 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     #[wasm_bindgen(js_name = jobFeedback)]
-    pub fn job_feedback(
-        job_request: &JsEvent,
-        status: JsDataVendingMachineStatus,
-        extra_info: Option<String>,
-        amount_millisats: u64,
-        bolt11: Option<String>,
-        payload: Option<String>,
-    ) -> Self {
+    pub fn job_feedback(data: &JsJobFeedbackData) -> Self {
         Self {
-            inner: EventBuilder::job_feedback(
-                job_request.deref(),
-                status.into(),
-                extra_info,
-                amount_millisats,
-                bolt11,
-                payload,
-            ),
+            inner: EventBuilder::job_feedback(data.deref().clone()),
         }
     }
 

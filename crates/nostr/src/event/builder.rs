@@ -35,7 +35,7 @@ use crate::nips::nip58;
 #[cfg(all(feature = "std", feature = "nip59"))]
 use crate::nips::nip59;
 use crate::nips::nip65::RelayMetadata;
-use crate::nips::nip90::DataVendingMachineStatus;
+use crate::nips::nip90::JobFeedbackData;
 use crate::nips::nip94::FileMetadata;
 use crate::nips::nip98::HttpData;
 #[cfg(feature = "std")]
@@ -1210,27 +1210,26 @@ impl EventBuilder {
     /// Data Vending Machine (DVM) - Job Feedback
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    pub fn job_feedback(
-        job_request: &Event,
-        status: DataVendingMachineStatus,
-        extra_info: Option<String>,
-        amount_millisats: u64,
-        bolt11: Option<String>,
-        payload: Option<String>,
-    ) -> Self {
-        let tags = [
-            Tag::from_standardized_without_cell(TagStandard::DataVendingMachineStatus {
-                status,
-                extra_info,
-            }),
-            Tag::event(job_request.id),
-            Tag::public_key(job_request.pubkey),
-            Tag::from_standardized_without_cell(TagStandard::Amount {
-                millisats: amount_millisats,
-                bolt11,
-            }),
-        ];
-        Self::new(Kind::JobFeedback, payload.unwrap_or_default(), tags)
+    pub fn job_feedback(data: JobFeedbackData) -> Self {
+        let mut tags: Vec<Tag> = Vec::with_capacity(3);
+
+        tags.push(Tag::event(data.job_request_id));
+        tags.push(Tag::public_key(data.customer_public_key));
+        tags.push(Tag::from_standardized_without_cell(
+            TagStandard::DataVendingMachineStatus {
+                status: data.status,
+                extra_info: data.extra_info,
+            },
+        ));
+
+        if let Some(millisats) = data.amount_msat {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Amount {
+                millisats,
+                bolt11: data.bolt11,
+            }));
+        }
+
+        Self::new(Kind::JobFeedback, data.payload.unwrap_or_default(), tags)
     }
 
     /// File metadata

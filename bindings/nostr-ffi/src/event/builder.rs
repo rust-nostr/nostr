@@ -19,7 +19,7 @@ use crate::nips::nip15::{ProductData, StallData};
 use crate::nips::nip51::{ArticlesCuration, Bookmarks, EmojiInfo, Emojis, Interests, MuteList};
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
-use crate::nips::nip90::DataVendingMachineStatus;
+use crate::nips::nip90::JobFeedbackData;
 use crate::nips::nip98::HttpData;
 use crate::types::{Contact, Metadata};
 use crate::{
@@ -502,24 +502,10 @@ impl EventBuilder {
     /// Data Vending Machine (DVM) - Job Feedback
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    #[uniffi::constructor(default(bolt11 = None, payload = None))]
-    pub fn job_feedback(
-        job_request: &Event,
-        status: DataVendingMachineStatus,
-        extra_info: Option<String>,
-        amount_millisats: u64,
-        bolt11: Option<String>,
-        payload: Option<String>,
-    ) -> Self {
+    #[uniffi::constructor]
+    pub fn job_feedback(data: &JobFeedbackData) -> Self {
         Self {
-            inner: nostr::EventBuilder::job_feedback(
-                job_request.deref(),
-                status.into(),
-                extra_info,
-                amount_millisats,
-                bolt11,
-                payload,
-            ),
+            inner: nostr::EventBuilder::job_feedback(data.deref().clone()),
         }
     }
 
