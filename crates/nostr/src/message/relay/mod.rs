@@ -55,6 +55,21 @@ pub enum MachineReadablePrefix {
     Restricted,
 }
 
+impl fmt::Display for MachineReadablePrefix {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Duplicate => write!(f, "duplicate"),
+            Self::Pow => write!(f, "pow"),
+            Self::Blocked => write!(f, "blocked"),
+            Self::RateLimited => write!(f, "rate-limited"),
+            Self::Invalid => write!(f, "invalid"),
+            Self::Error => write!(f, "error"),
+            Self::AuthRequired => write!(f, "auth-required"),
+            Self::Restricted => write!(f, "restricted"),
+        }
+    }
+}
+
 impl MachineReadablePrefix {
     /// Parse machine-readable prefix
     pub fn parse<S>(message: S) -> Option<Self>

@@ -44,6 +44,7 @@
 * nostr: improve `NostrWalletConnectURI` parsing ([Yuki Kishimoto])
 * nostr: update `EventBuilder::job_feedback` method fingerprint ([Yuki Kishimoto])
 * nostr: deprecate `EventBuilder::to_pow_event` ([Yuki Kishimoto])
+* nostr: impl `Display` for `MachineReadablePrefix` ([Yuki Kishimoto])
 * database: update `NostrDatabase` supertraits ([Yuki Kishimoto])
 * signer: update NIP-04 and NIP-44 methods signature ([Yuki Kishimoto])
 * webln: bump `webln` to `v0.3` ([Yuki Kishimoto])
