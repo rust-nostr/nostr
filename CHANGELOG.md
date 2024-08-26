@@ -28,6 +28,7 @@
 ### Changed
 
 * nostr: bump `bitcoin` to `v0.32` ([Yuki Kishimoto])
+* nostr: bump `base64` to `v0.22` ([Yuki Kishimoto])
 * nostr: deprecate `Event::from_value` ([Yuki Kishimoto])
 * nostr: deprecate `Tag::as_vec` ([Yuki Kishimoto])
 * nostr: re-write `RawRelayMessage` parsing ([Yuki Kishimoto])

@@ -62,7 +62,7 @@ nip59 = ["nip44"]
 
 [dependencies]
 aes = { version = "0.8", optional = true }
-base64 = { version = "0.21", default-features = false, optional = true } # bitcoin uses v0.21
+base64 = { version = "0.22", default-features = false, optional = true }
 bech32 = { version = "0.11", default-features = false } # bitcoin uses v0.11
 bip39 = { version = "2.0", default-features = false, optional = true }
 bitcoin = { version = "0.32", default-features = false, features = ["rand", "serde"] }
