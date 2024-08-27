@@ -22,8 +22,8 @@ where
             table.add_row(row![
                 index + 1,
                 event.id,
-                event.author(),
-                event.kind(),
+                event.pubkey,
+                event.kind,
                 event.created_at.to_human_datetime()
             ]);
         }

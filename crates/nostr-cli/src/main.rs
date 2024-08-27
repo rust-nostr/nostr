@@ -118,7 +118,7 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
     match command {
         Command::Generate => {
             let keys: Keys = Keys::generate();
-            println!("Secret key: {}", keys.secret_key()?.to_bech32()?);
+            println!("Secret key: {}", keys.secret_key().to_bech32()?);
             println!("Public key: {}", keys.public_key().to_bech32()?);
             Ok(())
         }
@@ -231,6 +231,7 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
             } else if database {
                 // Query database
                 let now = Instant::now();
+                let txn = db.qtxn().await;
                 let events = db
                     .query(vec![filter], if reverse { Order::Asc } else { Order::Desc })
                     .await?;
@@ -247,7 +248,7 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
                 );
                 if print {
                     // Print events
-                    util::print_events(events, json);
+                    //util::print_events(events, json);
                 }
             } else {
                 // Query relays
