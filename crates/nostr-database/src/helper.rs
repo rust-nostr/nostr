@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use nostr::nips::nip01::Coordinate;
 use nostr::{Alphabet, Event, EventId, Filter, Kind, PublicKey, SingleLetterTag, Timestamp};
-use tokio::sync::RwLock;
+use tokio::sync::{OwnedRwLockReadGuard, RwLock};
 
 use crate::tree::{BTreeCappedSet, Capacity, InsertResult, OverCapacityPolicy};
 use crate::Order;
@@ -607,23 +607,22 @@ impl InternalDatabaseHelper {
 
     /// Query
     #[tracing::instrument(skip_all, level = "trace")]
-    pub fn query<I>(&self, filters: I, order: Order) -> Vec<Event>
+    pub fn query<'a, I>(
+        &'a self,
+        filters: I,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = &'a Event> + 'a>
     where
         I: IntoIterator<Item = Filter>,
     {
         match self.internal_query(filters) {
             InternalQueryResult::All => match order {
-                Order::Asc => self
-                    .events
-                    .iter()
-                    .rev()
-                    .map(|ev| ev.deref().clone())
-                    .collect(),
-                Order::Desc => self.events.iter().map(|ev| ev.deref().clone()).collect(),
+                Order::Asc => Box::new(self.events.iter().rev().map(|ev| ev.deref())),
+                Order::Desc => Box::new(self.events.iter().map(|ev| ev.deref())),
             },
             InternalQueryResult::Set(set) => match order {
-                Order::Asc => set.into_iter().rev().map(|ev| ev.deref().clone()).collect(),
-                Order::Desc => set.into_iter().map(|ev| ev.deref().clone()).collect(),
+                Order::Asc => Box::new(set.into_iter().rev().map(|ev| ev.deref())),
+                Order::Desc => Box::new(set.into_iter().map(|ev| ev.deref())),
             },
         }
     }
@@ -698,6 +697,11 @@ impl InternalDatabaseHelper {
     }
 }
 
+/// Database helper transaction
+pub struct QueryTransaction {
+    guard: OwnedRwLockReadGuard<InternalDatabaseHelper>,
+}
+
 /// Database Indexes
 #[derive(Debug, Clone, Default)]
 pub struct DatabaseHelper {
@@ -716,6 +720,14 @@ impl DatabaseHelper {
     pub fn bounded(max: usize) -> Self {
         Self {
             inner: Arc::new(RwLock::new(InternalDatabaseHelper::bounded(max))),
+        }
+    }
+
+    /// Query transaction
+    #[inline]
+    pub async fn qtxn(&self) -> QueryTransaction {
+        QueryTransaction {
+            guard: self.inner.clone().read_owned().await,
         }
     }
 
@@ -771,7 +783,21 @@ impl DatabaseHelper {
         I: IntoIterator<Item = Filter>,
     {
         let inner = self.inner.read().await;
-        inner.query(filters, order)
+        inner.query(filters, order).cloned().collect()
+    }
+
+    /// Query
+    #[tracing::instrument(skip_all, level = "trace")]
+    pub fn fast_query<'a, I>(
+        &self,
+        txn: &'a QueryTransaction,
+        filters: I,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = &'a Event> + 'a>
+    where
+        I: IntoIterator<Item = Filter>,
+    {
+        txn.guard.query(filters, order)
     }
 
     /// Count events
