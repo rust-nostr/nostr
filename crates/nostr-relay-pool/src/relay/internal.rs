@@ -289,11 +289,13 @@ impl InternalRelay {
         // Check avg. latency
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let max: Option<Duration> = self.opts.max_avg_latency;
-            let current: Option<Duration> = self.stats.latency().await;
-            if let (Some(max), Some(current)) = (max, current) {
-                if current > max {
-                    return Err(Error::MaximumLatencyExceeded { max, current });
+            // Check if max avg latency is set
+            if let Some(max) = self.opts.max_avg_latency {
+                // ONLY LATER get the latency, to avoid unnecessary calculation
+                if let Some(current) = self.stats.latency().await {
+                    if current > max {
+                        return Err(Error::MaximumLatencyExceeded { max, current });
+                    }
                 }
             }
         }
