@@ -181,6 +181,5 @@ impl<'de> Deserialize<'de> for SecretKey {
 impl Drop for SecretKey {
     fn drop(&mut self) {
         self.inner.non_secure_erase();
-        tracing::trace!("Secret Key dropped.");
     }
 }

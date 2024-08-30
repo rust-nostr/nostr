@@ -211,7 +211,6 @@ impl RelayInformationDocument {
         match req.send().await {
             Ok(response) => {
                 let json: String = response.text().await?;
-                tracing::debug!("Response: {json}");
                 match serde_json::from_slice(json.as_bytes()) {
                     Ok(json) => Ok(json),
                     Err(_) => Err(Error::InvalidInformationDocument),

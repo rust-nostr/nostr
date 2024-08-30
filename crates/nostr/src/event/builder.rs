@@ -262,9 +262,6 @@ impl EventBuilder {
                 let mut nonce: u128 = 0;
                 let mut tags: Vec<Tag> = self.tags;
 
-                #[cfg(feature = "std")]
-                let now: Instant = Instant::now();
-
                 loop {
                     nonce += 1;
 
@@ -277,14 +274,6 @@ impl EventBuilder {
                         EventId::new(&pubkey, &created_at, &self.kind, &tags, &self.content);
 
                     if id.check_pow(difficulty) {
-                        #[cfg(feature = "std")]
-                        tracing::debug!(
-                            "{} iterations in {} ms. Avg rate {} hashes/second",
-                            nonce,
-                            now.elapsed().as_millis(),
-                            nonce * 1000 / std::cmp::max(1, now.elapsed().as_millis())
-                        );
-
                         return UnsignedEvent {
                             id: Some(id),
                             pubkey,

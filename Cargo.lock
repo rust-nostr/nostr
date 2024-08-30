@@ -2622,7 +2622,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "tracing",
  "unicode-normalization",
  "url",
  "url-fork",
