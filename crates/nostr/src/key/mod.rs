@@ -293,6 +293,37 @@ impl Drop for Keys {
     }
 }
 
+#[cfg(test)]
+#[cfg(feature = "std")]
+mod tests {
+    use super::*;
+
+    const SECRET_KEY_BECH32: &str =
+        "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99";
+    const SECRET_KEY_HEX: &str = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e";
+
+    #[test]
+    fn parse_keys() -> Result<(), Error> {
+        Keys::parse(SECRET_KEY_BECH32)?;
+        Keys::parse(SECRET_KEY_HEX)?;
+        Ok(())
+    }
+
+    #[test]
+    fn parse_invalid_keys() {
+        assert_eq!(Keys::parse("nsec...").unwrap_err(), Error::InvalidSecretKey);
+        assert_eq!(
+            Keys::parse("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
+                .unwrap_err(),
+            Error::InvalidSecretKey
+        );
+        assert_eq!(
+            Keys::parse("6b911fd37cdf5c8").unwrap_err(),
+            Error::InvalidSecretKey
+        );
+    }
+}
+
 #[cfg(bench)]
 mod benches {
     use test::{black_box, Bencher};
