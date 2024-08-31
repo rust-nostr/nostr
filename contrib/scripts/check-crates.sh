@@ -44,6 +44,7 @@ buildargs=(
     "-p nostr-sdk --features sqlite"
     "-p nostr-sdk --features ndb"
     "-p nostr-sdk --features tor"
+    "-p nostr-cli"
 )
 
 skip_msrv=()
