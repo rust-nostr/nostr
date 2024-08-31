@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 use core::fmt;
 
 #[cfg(feature = "std")]
-use bitcoin::secp256k1::rand;
+use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Signing, Verification};
@@ -150,7 +150,7 @@ impl UnsignedEvent {
     #[inline]
     #[cfg(feature = "std")]
     pub fn sign(self, keys: &Keys) -> Result<Event, Error> {
-        self.sign_with_ctx(&SECP256K1, &mut rand::thread_rng(), keys)
+        self.sign_with_ctx(&SECP256K1, &mut OsRng, keys)
     }
 
     /// Sign an unsigned event

@@ -10,7 +10,7 @@ use core::fmt;
 use core::ops::Range;
 
 #[cfg(feature = "std")]
-use bitcoin::secp256k1::rand;
+use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::{self, Secp256k1, Signing, Verification};
 use serde_json::{json, Value};
@@ -352,7 +352,7 @@ impl EventBuilder {
     #[inline]
     #[cfg(feature = "std")]
     pub fn to_event(self, keys: &Keys) -> Result<Event, Error> {
-        self.to_event_with_ctx(&SECP256K1, &mut rand::thread_rng(), &Instant::now(), keys)
+        self.to_event_with_ctx(&SECP256K1, &mut OsRng, &Instant::now(), keys)
     }
 
     /// Build unsigned event
@@ -370,13 +370,7 @@ impl EventBuilder {
     )]
     pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
         #[allow(deprecated)]
-        self.to_pow_event_with_ctx(
-            &SECP256K1,
-            &mut rand::thread_rng(),
-            &Instant::now(),
-            keys,
-            difficulty,
-        )
+        self.to_pow_event_with_ctx(&SECP256K1, &mut OsRng, &Instant::now(), keys, difficulty)
     }
 
     /// Build unsigned POW [`Event`]

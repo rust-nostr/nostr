@@ -15,7 +15,7 @@ use core::str::FromStr;
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::hashes::Hash;
 #[cfg(feature = "std")]
-use bitcoin::secp256k1::rand;
+use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{self, Message, Secp256k1, Signing, Verification};
@@ -131,7 +131,7 @@ pub fn sign_delegation(
 ) -> Signature {
     sign_delegation_with_ctx(
         &SECP256K1,
-        &mut rand::thread_rng(),
+        &mut OsRng,
         delegator_keys,
         delegatee_pk,
         conditions,
@@ -239,7 +239,7 @@ impl DelegationTag {
     ) -> Self {
         Self::new_with_ctx(
             &SECP256K1,
-            &mut rand::thread_rng(),
+            &mut OsRng,
             delegator_keys,
             delegatee_pubkey,
             conditions,

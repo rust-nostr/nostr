@@ -6,9 +6,11 @@
 
 use alloc::string::String;
 
+#[cfg(feature = "std")]
+use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::{ecdh, Parity, PublicKey as NormalizedPublicKey};
 #[cfg(feature = "std")]
-use bitcoin::secp256k1::{rand, All, Secp256k1};
+use bitcoin::secp256k1::{All, Secp256k1};
 #[cfg(feature = "std")]
 use once_cell::sync::Lazy;
 use serde::de::DeserializeOwned;
@@ -38,8 +40,7 @@ pub fn generate_shared_key(secret_key: &SecretKey, public_key: &PublicKey) -> [u
 #[cfg(feature = "std")]
 pub static SECP256K1: Lazy<Secp256k1<All>> = Lazy::new(|| {
     let mut ctx = Secp256k1::new();
-    let mut rng = rand::thread_rng();
-    ctx.randomize(&mut rng);
+    ctx.randomize(&mut OsRng);
     ctx
 });
 
