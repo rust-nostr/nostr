@@ -64,7 +64,7 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
-/// Keys
+/// Nostr keys
 #[derive(Clone)]
 pub struct Keys {
     public_key: PublicKey,
@@ -106,61 +106,19 @@ impl Hash for Keys {
     }
 }
 
-#[cfg(feature = "std")]
 impl Keys {
-    /// Initialize from secret key.
+    /// Initialize nostr keys from secret key.
+    ///
+    /// This method internally construct the [Keypair] and derive the [PublicKey].
     #[inline]
+    #[cfg(feature = "std")]
     pub fn new(secret_key: SecretKey) -> Self {
         Self::new_with_ctx(&SECP256K1, secret_key)
     }
 
-    /// Parse secret key from `hex` or `bech32` and compose keys
-    #[inline]
-    pub fn parse<S>(secret_key: S) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
-        Self::parse_with_ctx(&SECP256K1, secret_key)
-    }
-
-    /// Generate new random [`Keys`]
-    #[inline]
-    pub fn generate() -> Self {
-        Self::generate_with_rng(&mut OsRng)
-    }
-
-    /// Generate random [`Keys`] with custom [`Rng`]
-    #[inline]
-    pub fn generate_with_rng<R>(rng: &mut R) -> Self
-    where
-        R: Rng + ?Sized,
-    {
-        Self::generate_with_ctx(&SECP256K1, rng)
-    }
-
-    /// Generate random [`Keys`] with custom [`Rng`] and without [`Keypair`]
+    /// Initialize nostr keys from secret key.
     ///
-    /// Useful for faster [`Keys`] generation (ex. vanity pubkey mining)
-    #[deprecated(
-        since = "0.35.0",
-        note = "Use `generate` or `generate_with_rng` instead"
-    )]
-    pub fn generate_without_keypair<R>(rng: &mut R) -> Self
-    where
-        R: Rng + ?Sized,
-    {
-        Self::generate_with_rng(rng)
-    }
-
-    /// Sign schnorr [`Message`]
-    #[inline]
-    pub fn sign_schnorr(&self, message: &Message) -> Signature {
-        self.sign_schnorr_with_ctx(&SECP256K1, message, &mut OsRng)
-    }
-}
-
-impl Keys {
-    /// Initialize from secret key.
+    /// This method internally construct the [Keypair] and derive the [PublicKey].
     pub fn new_with_ctx<C>(secp: &Secp256k1<C>, secret_key: SecretKey) -> Self
     where
         C: Signing,
@@ -175,7 +133,17 @@ impl Keys {
         }
     }
 
-    /// Try to parse [Keys] from **secret key** `hex` or `bech32`
+    /// Parse secret key from `hex` or `bech32` and compose keys
+    #[inline]
+    #[cfg(feature = "std")]
+    pub fn parse<S>(secret_key: S) -> Result<Self, Error>
+    where
+        S: AsRef<str>,
+    {
+        Self::parse_with_ctx(&SECP256K1, secret_key)
+    }
+
+    /// Parse secret key from `hex` or `bech32` and compose keys
     #[inline]
     pub fn parse_with_ctx<C, S>(secp: &Secp256k1<C>, secret_key: S) -> Result<Self, Error>
     where
@@ -186,7 +154,36 @@ impl Keys {
         Ok(Self::new_with_ctx(secp, secret_key))
     }
 
-    /// Generate random [`Keys`] with custom [`Rng`]
+    /// Generate random keys
+    ///
+    /// This constructor use a random number generator that retrieves randomness from the operating system (see [`OsRng`]).
+    ///
+    /// Use [`Keys::generate_with_rng`] to specify a custom random source.
+    ///
+    /// Check [`Keys::generate_with_ctx`] to learn more about how this constructor works internally.
+    #[inline]
+    #[cfg(feature = "std")]
+    pub fn generate() -> Self {
+        Self::generate_with_rng(&mut OsRng)
+    }
+
+    /// Generate random keys using a custom random source
+    ///
+    /// Check [`Keys::generate_with_ctx`] to learn more about how this constructor works internally.
+    #[inline]
+    #[cfg(feature = "std")]
+    pub fn generate_with_rng<R>(rng: &mut R) -> Self
+    where
+        R: Rng + ?Sized,
+    {
+        Self::generate_with_ctx(&SECP256K1, rng)
+    }
+
+    /// Generate random keys
+    ///
+    /// Generate random keys **without** construct the [`Keypair`].
+    /// This allows faster keys generation (i.e. for vanity pubkey mining).
+    /// The [`Keypair`] will be automatically created when needed and stored in a cell.
     #[inline]
     pub fn generate_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
     where
@@ -202,8 +199,7 @@ impl Keys {
         }
     }
 
-    /// Generate random [`Keys`] with custom [`Rng`] and without [`Keypair`]
-    /// Useful for faster [`Keys`] generation (ex. vanity pubkey mining)
+    /// Replaced by [`Keys::generate_with_ctx`]
     #[deprecated(since = "0.35.0", note = "Use `generate_with_ctx` instead")]
     pub fn generate_without_keypair_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
     where
@@ -211,6 +207,19 @@ impl Keys {
         R: Rng + ?Sized,
     {
         Self::generate_with_ctx(secp, rng)
+    }
+
+    /// Replaced by [`Keys::generate_with_rng`]
+    #[cfg(feature = "std")]
+    #[deprecated(
+        since = "0.35.0",
+        note = "Use `generate` or `generate_with_rng` instead"
+    )]
+    pub fn generate_without_keypair<R>(rng: &mut R) -> Self
+    where
+        R: Rng + ?Sized,
+    {
+        Self::generate_with_rng(rng)
     }
 
     /// Get public key
@@ -241,7 +250,16 @@ impl Keys {
             .get_or_init(|| Keypair::from_secret_key(secp, &self.secret_key))
     }
 
-    /// Sign schnorr [`Message`]
+    /// Creates a schnorr signature of the [`Message`].
+    ///
+    /// This method use a random number generator that retrieves randomness from the operating system (see [`OsRng`]).
+    #[inline]
+    #[cfg(feature = "std")]
+    pub fn sign_schnorr(&self, message: &Message) -> Signature {
+        self.sign_schnorr_with_ctx(&SECP256K1, message, &mut OsRng)
+    }
+
+    /// Creates a schnorr signature of the [`Message`] using a custom random number generation source.
     pub fn sign_schnorr_with_ctx<C, R>(
         &self,
         secp: &Secp256k1<C>,

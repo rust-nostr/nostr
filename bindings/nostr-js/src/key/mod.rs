@@ -14,6 +14,7 @@ pub use self::public_key::JsPublicKey;
 pub use self::secret_key::JsSecretKey;
 use crate::error::{into_err, Result};
 
+/// Nostr keys
 #[wasm_bindgen(js_name = Keys)]
 pub struct JsKeys {
     inner: Keys,
@@ -35,7 +36,7 @@ impl From<Keys> for JsKeys {
 
 #[wasm_bindgen(js_class = Keys)]
 impl JsKeys {
-    /// Initialize from secret key.
+    /// Initialize nostr keys from secret key.
     #[wasm_bindgen(constructor)]
     pub fn new(secret_key: &JsSecretKey) -> JsKeys {
         Self {
@@ -43,14 +44,20 @@ impl JsKeys {
         }
     }
 
-    /// Try to parse keys from **secret key** `hex` or `bech32`
+    /// Parse secret key from `hex` or `bech32` and compose keys
     pub fn parse(secret_key: &str) -> Result<JsKeys> {
         Ok(Self {
             inner: Keys::parse(secret_key).map_err(into_err)?,
         })
     }
 
-    /// Generate new random keys
+    /// Generate random keys
+    ///
+    /// This constructor use a random number generator that retrieves randomness from the operating system.
+    ///
+    /// Generate random keys **without** construct the `Keypair`.
+    /// This allows faster keys generation (i.e. for vanity pubkey mining).
+    /// The `Keypair` will be automatically created when needed and stored in a cell.
     pub fn generate() -> JsKeys {
         Self {
             inner: Keys::generate(),
