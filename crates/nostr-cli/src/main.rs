@@ -231,7 +231,6 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
             } else if database {
                 // Query database
                 let now = Instant::now();
-                let txn = db.qtxn().await;
                 let events = db
                     .query(vec![filter], if reverse { Order::Asc } else { Order::Desc })
                     .await?;
@@ -248,7 +247,7 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
                 );
                 if print {
                     // Print events
-                    //util::print_events(events, json);
+                    util::print_events(events, json);
                 }
             } else {
                 // Query relays
@@ -268,6 +267,7 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
                     println!("File size: {} bytes", metadata.len());
 
                     // Deserialize events
+                    #[allow(clippy::mutable_key_type)]
                     let events: BTreeSet<Event> = reader
                         .lines()
                         .par_bridge()
