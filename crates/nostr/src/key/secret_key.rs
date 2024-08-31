@@ -5,7 +5,6 @@
 //! Secret key
 
 use alloc::string::{String, ToString};
-use core::fmt;
 use core::ops::{Deref, DerefMut};
 use core::str::FromStr;
 
@@ -46,12 +45,6 @@ impl DerefMut for SecretKey {
 impl From<secp256k1::SecretKey> for SecretKey {
     fn from(inner: secp256k1::SecretKey) -> Self {
         Self { inner }
-    }
-}
-
-impl fmt::Display for SecretKey {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_secret_hex())
     }
 }
 
