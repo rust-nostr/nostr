@@ -67,7 +67,8 @@ impl From<secp256k1::Error> for Error {
 /// Nostr keys
 #[derive(Clone)]
 pub struct Keys {
-    public_key: PublicKey,
+    /// Public key
+    pub public_key: PublicKey,
     secret_key: SecretKey,
     key_pair: OnceCell<Keypair>,
 }
@@ -229,7 +230,7 @@ impl Keys {
     }
 
     /// Get public key
-    #[inline]
+    #[deprecated(since = "0.35.0")]
     pub fn public_key_ref(&self) -> &PublicKey {
         &self.public_key
     }

@@ -46,6 +46,8 @@
 * nostr: deprecate `EventBuilder::to_pow_event` ([Yuki Kishimoto])
 * nostr: impl `Display` for `MachineReadablePrefix` ([Yuki Kishimoto])
 * nostr: improve `Keys` docs ([Yuki Kishimoto])
+* nostr: change visibility of `public_key` field in `Keys` struct ([Yuki Kishimoto])
+* nostr: deprecate `Keys::public_key_ref` ([Yuki Kishimoto])
 * database: update `NostrDatabase` supertraits ([Yuki Kishimoto])
 * database: impl `Clone` for `MemoryDatabase` ([Yuki Kishimoto])
 * signer: update NIP-04 and NIP-44 methods signature ([Yuki Kishimoto])
