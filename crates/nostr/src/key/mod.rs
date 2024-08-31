@@ -287,12 +287,6 @@ impl FromStr for Keys {
     }
 }
 
-impl Drop for Keys {
-    fn drop(&mut self) {
-        self.secret_key.non_secure_erase();
-    }
-}
-
 #[cfg(test)]
 #[cfg(feature = "std")]
 mod tests {
