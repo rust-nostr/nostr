@@ -47,7 +47,9 @@ buildargs=(
     "-p nostr-cli"
 )
 
-skip_msrv=()
+skip_msrv=(
+    "-p nostr-cli"     # MSRV: 1.74.0
+)
 
 for arg in "${buildargs[@]}";
 do
