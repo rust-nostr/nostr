@@ -147,6 +147,10 @@ pub enum KindEnum {
     PublicChatReserved48,
     /// Public Chat Reserved (NIP28)
     PublicChatReserved49,
+    /// Generic Comment
+    ///
+    /// <https://github.com/arthurfranca/nips/blob/comment/22.md> (TODO: replace url when it merged)
+    GenericComment,
     /// Git Patch
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
@@ -352,6 +356,7 @@ impl From<nostr::Kind> for KindEnum {
             nostr::Kind::PublicChatReserved47 => Self::PublicChatReserved47,
             nostr::Kind::PublicChatReserved48 => Self::PublicChatReserved48,
             nostr::Kind::PublicChatReserved49 => Self::PublicChatReserved49,
+            nostr::Kind::GenericComment => Self::GenericComment,
             nostr::Kind::GitPatch => Self::GitPatch,
             nostr::Kind::GitIssue => Self::GitIssue,
             nostr::Kind::GitReply => Self::GitReply,
@@ -438,6 +443,7 @@ impl From<KindEnum> for nostr::Kind {
             KindEnum::PublicChatReserved47 => Self::PublicChatReserved47,
             KindEnum::PublicChatReserved48 => Self::PublicChatReserved48,
             KindEnum::PublicChatReserved49 => Self::PublicChatReserved49,
+            KindEnum::GenericComment => Self::GenericComment,
             KindEnum::GitPatch => Self::GitPatch,
             KindEnum::GitIssue => Self::GitIssue,
             KindEnum::GitReply => Self::GitReply,

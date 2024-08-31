@@ -110,6 +110,7 @@ kind_variants! {
     PublicChatReserved47 => 47, "Public Chat Reserved (NIP28)",
     PublicChatReserved48 => 48, "Public Chat Reserved (NIP28)",
     PublicChatReserved49 => 49, "Public Chat Reserved (NIP28)",
+    GenericComment => 1111, "Generic Comment (NIP22)",
     GitPatch => 1617, "Git Patch (NIP34)",
     GitIssue => 1621, "Git Issue (NIP34)",
     GitReply => 1622, "Git Reply (NIP34)",
