@@ -31,7 +31,6 @@ nostr-indexeddb = { version = "0.34", path = "./crates/nostr-indexeddb", default
 nostr-ndb = { version = "0.34", path = "./crates/nostr-ndb", default-features = false }
 nostr-relay-builder = { version = "0.34", path = "./crates/nostr-relay-builder", default-features = false }
 nostr-relay-pool = { version = "0.34", path = "./crates/nostr-relay-pool", default-features = false }
-nostr-rocksdb = { version = "0.34", path = "./crates/nostr-rocksdb", default-features = false }
 nostr-sdk = { version = "0.34", path = "./crates/nostr-sdk", default-features = false }
 nostr-signer = { version = "0.34", path = "./crates/nostr-signer", default-features = false }
 nostr-sqlite = { version = "0.34", path = "./crates/nostr-sqlite", default-features = false }

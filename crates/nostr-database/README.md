@@ -11,7 +11,6 @@ This library contains the `NostrDatabase` and `NostrDatabaseExt` traits. You can
 * Memory (RAM, both native and web), available in this library
 * [nostrdb](https://github.com/damus-io/nostrdb) (native), available at [`nostr-ndb`](https://crates.io/crates/nostr-ndb)
 * SQLite (native), available at [`nostr-sqlite`](https://crates.io/crates/nostr-sqlite)
-* RocksDB (native), available at [`nostr-rocksdb`](https://crates.io/crates/nostr-rocksdb)
 * IndexedDB (web), available at [`nostr-indexeddb`](https://crates.io/crates/nostr-indexeddb)
 
 ## Crate Feature Flags

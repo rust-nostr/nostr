@@ -8,7 +8,6 @@ The project is split up into several crates in the `crates/` directory:
     * [**nostr**](./crates/nostr/): Rust implementation of Nostr protocol.
     * [**nostr-database**](./crates/nostr-database/): Database for Nostr apps
         * [**nostr-ndb**](./crates/nostr-ndb/): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
-        * [**nostr-rocksdb**](./crates/nostr-rocksdb/): RocksDB Storage backend
         * [**nostr-sqlite**](./crates/nostr-sqlite/): SQLite Storage backend
         * [**nostr-indexeddb**](./crates/nostr-indexeddb/): IndexedDB Storage backend
     * [**nostr-relay-pool**](./crates/nostr-relay-pool/): Nostr Relay Pool

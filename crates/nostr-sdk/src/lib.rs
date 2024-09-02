@@ -33,9 +33,6 @@ pub use nostr_relay_pool::{
     RelaySendOptions, RelayServiceFlags, RelayStatus, SubscribeAutoCloseOptions, SubscribeOptions,
 };
 #[doc(hidden)]
-#[cfg(feature = "rocksdb")]
-pub use nostr_rocksdb::RocksDatabase;
-#[doc(hidden)]
 pub use nostr_signer::{self as signer, NostrSigner, NostrSignerType};
 #[doc(hidden)]
 #[cfg(feature = "sqlite")]

@@ -19,7 +19,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 default = ["all-nips"]
 tor = ["nostr-relay-pool/tor"]
 ndb = ["dep:nostr-ndb"]
-rocksdb = ["dep:nostr-rocksdb"]
 sqlite = ["dep:nostr-sqlite"]
 indexeddb = ["dep:nostr-indexeddb"]
 webln = ["nip57", "dep:nostr-webln"]
@@ -53,7 +52,6 @@ tracing = { workspace = true, features = ["std", "attributes"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 nostr-ndb = { workspace = true, optional = true }
-nostr-rocksdb = { workspace = true, optional = true }
 nostr-sqlite = { workspace = true, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -87,10 +85,6 @@ required-features = ["nip46"]
 [[example]]
 name = "bot"
 required-features = ["all-nips"]
-
-[[example]]
-name = "rocksdb"
-required-features = ["all-nips", "rocksdb"]
 
 [[example]]
 name = "nostrdb"
