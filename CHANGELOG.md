@@ -64,6 +64,7 @@
 * nostr: add `NostrWalletConnectURI::parse` ([Yuki Kishimoto])
 * nostr: add `JobFeedbackData` struct ([Yuki Kishimoto])
 * nostr: add `EventBuilder::pow` method ([Yuki Kishimoto])
+* nostr: add `TagKind::custom` constructor ([Yuki Kishimoto])
 * database: add `DatabaseHelper::fast_query` ([Yuki Kishimoto])
 * bindings(nostr): expose `as_pretty_json` for some structs ([Yuki Kishimoto])
 * bindings(sdk): expose `Client::fetch_metadata` ([Yuki Kishimoto])

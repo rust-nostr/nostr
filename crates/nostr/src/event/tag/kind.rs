@@ -107,6 +107,19 @@ pub enum TagKind<'a> {
     Custom(Cow<'a, str>),
 }
 
+impl<'a> TagKind<'a> {
+    /// Construct [`TagKind::Custom`]
+    ///
+    /// Shorthand for `TagKind::Custom(Cow::from(...))`.
+    #[inline]
+    pub fn custom<T>(kind: T) -> Self
+    where
+        T: Into<Cow<'a, str>>,
+    {
+        Self::Custom(kind.into())
+    }
+}
+
 impl<'a> fmt::Display for TagKind<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -208,5 +221,27 @@ impl<'a> From<&'a str> for TagKind<'a> {
                 Err(..) => Self::Custom(Cow::Borrowed(k)),
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use alloc::string::String;
+
+    use super::*;
+
+    #[test]
+    fn test_custom_tag_kind_constructor() {
+        let owned = TagKind::custom(String::from("owned"));
+        match owned {
+            TagKind::Custom(Cow::Owned(val)) => assert_eq!(val, "owned"),
+            _ => panic!("Unexpected tag kind"),
+        };
+
+        let borrowed = TagKind::custom("borrowed");
+        match borrowed {
+            TagKind::Custom(Cow::Borrowed(val)) => assert_eq!(val, "borrowed"),
+            _ => panic!("Unexpected tag kind"),
+        };
     }
 }
