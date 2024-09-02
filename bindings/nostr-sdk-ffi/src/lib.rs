@@ -10,6 +10,7 @@ pub mod client;
 pub mod database;
 pub mod error;
 pub mod logger;
+pub mod mock;
 pub mod negentropy;
 pub mod notifications;
 pub mod nwc;
