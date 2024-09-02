@@ -51,6 +51,7 @@
 * nostr: use `OsRng` instead of `ThreadRng` for `SECP256K1` global context and schnorr signing ([Yuki Kishimoto])
 * database: update `NostrDatabase` supertraits ([Yuki Kishimoto])
 * database: impl `Clone` for `MemoryDatabase` ([Yuki Kishimoto])
+* pool: deprecate auto adjustment of retry seconds for relays ([Yuki Kishimoto])
 * signer: update NIP-04 and NIP-44 methods signature ([Yuki Kishimoto])
 * webln: bump `webln` to `v0.3` ([Yuki Kishimoto])
 * sdk: bump `lnurl-pay` to `v0.6` ([Yuki Kishimoto])

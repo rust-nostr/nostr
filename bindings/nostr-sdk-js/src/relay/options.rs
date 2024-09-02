@@ -93,16 +93,6 @@ impl JsRelayOptions {
         self.inner.update_retry_sec(retry_sec);
     }
 
-    /// Automatically adjust retry seconds based on success/attempts (default: true)
-    pub fn adjust_retry_sec(self, adjust_retry_sec: bool) -> Self {
-        self.inner.adjust_retry_sec(adjust_retry_sec).into()
-    }
-
-    /// Set adjust_retry_sec option
-    pub fn update_adjust_retry_sec(&self, adjust_retry_sec: bool) {
-        self.inner.update_adjust_retry_sec(adjust_retry_sec);
-    }
-
     /// Set custom limits
     pub fn limits(self, limits: &JsRelayLimits) -> Self {
         self.inner.limits(limits.deref().clone()).into()

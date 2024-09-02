@@ -147,18 +147,6 @@ impl RelayOptions {
         self.inner.update_retry_sec(retry_sec);
     }
 
-    /// Automatically adjust retry seconds based on success/attempts (default: true)
-    pub fn adjust_retry_sec(self: Arc<Self>, adjust_retry_sec: bool) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.adjust_retry_sec(adjust_retry_sec);
-        builder
-    }
-
-    /// Set adjust_retry_sec option
-    pub fn update_adjust_retry_sec(&self, adjust_retry_sec: bool) {
-        self.inner.update_adjust_retry_sec(adjust_retry_sec);
-    }
-
     /// Set custom limits
     pub fn limits(self: Arc<Self>, limits: &RelayLimits) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
