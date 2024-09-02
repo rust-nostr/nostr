@@ -1,11 +1,10 @@
 import asyncio
 
 from nostr_sdk import Client
-import time
 
 
 async def main():
-    client = Client(None)
+    client = Client()
 
     await client.add_relay("wss://relay.damus.io")
     await client.add_relay("wss://nostr.wine")
@@ -25,8 +24,10 @@ async def main():
             print(f"    Bytes sent: {stats.bytes_sent()}")
             print(f"    Bytes received: {stats.bytes_received()}")
             print(f"    Connected at: {stats.connected_at().to_human_datetime()}")
-            if await stats.latency() is not None:
-                print(f"    Latency: {stats.latency().total_seconds() * 1000} ms")
+
+            latency = await stats.latency()
+            if latency is not None:
+                print(f"    Latency: {latency.total_seconds() * 1000} ms")
 
             print("###########################################")
 
