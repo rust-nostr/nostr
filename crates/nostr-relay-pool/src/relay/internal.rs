@@ -29,8 +29,6 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, watch, Mutex, MutexGuard, RwLock};
 
 use super::blacklist::RelayBlacklist;
-#[cfg(not(target_arch = "wasm32"))]
-use super::constants::HIGH_LATENCY;
 use super::constants::{MIN_ATTEMPTS, MIN_UPTIME, PING_INTERVAL, WEBSOCKET_TX_TIMEOUT};
 use super::flags::AtomicRelayServiceFlags;
 use super::options::{
@@ -480,18 +478,6 @@ impl InternalRelay {
                                 relay.url(),
                                 relay.channels.nostr_capacity()
                             );
-                        }
-
-                        // Log high latency
-                        #[cfg(not(target_arch = "wasm32"))]
-                        if let Some(latency) = relay.stats.latency().await {
-                            if latency >= HIGH_LATENCY {
-                                tracing::warn!(
-                                    "Latency of '{}' relay is high, averaging over {} ms!",
-                                    relay.url(),
-                                    latency.as_millis()
-                                );
-                            }
                         }
 
                         // Schedule relay for termination

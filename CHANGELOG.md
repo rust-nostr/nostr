@@ -87,6 +87,7 @@
 * nostr: remove `Keys::from_public_key` ([Yuki Kishimoto])
 * nostr: remove `tracing` dep ([Yuki Kishimoto])
 * nostr: remove impl `fmt::Display` for `SecretKey` ([Yuki Kishimoto])
+* pool: remove high latency log ([Yuki Kishimoto])
 * js(nostr): remove `Keys::vanity` ([Yuki Kishimoto])
 
 ## [v0.34.0]
