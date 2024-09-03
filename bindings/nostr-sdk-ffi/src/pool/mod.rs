@@ -48,7 +48,7 @@ impl RelayPool {
 
     /// Completely shutdown pool
     pub async fn shutdown(&self) -> Result<()> {
-        Ok(self.inner.clone().shutdown().await?)
+        Ok(self.inner.shutdown().await?)
     }
 
     /// Get database

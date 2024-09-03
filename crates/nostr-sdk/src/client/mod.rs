@@ -333,9 +333,9 @@ impl Client {
         // TODO: update mute list event?
     }
 
-    /// Completely shutdown [`Client`]
+    /// Completely shutdown client
     #[inline]
-    pub async fn shutdown(self) -> Result<(), Error> {
+    pub async fn shutdown(&self) -> Result<(), Error> {
         Ok(self.pool.shutdown().await?)
     }
 

@@ -50,7 +50,7 @@ impl JsRelayPool {
     /// Completely shutdown pool
     #[wasm_bindgen]
     pub async fn shutdown(&self) -> Result<()> {
-        self.inner.clone().shutdown().await.map_err(into_err)
+        self.inner.shutdown().await.map_err(into_err)
     }
 
     /// Get database

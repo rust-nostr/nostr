@@ -154,7 +154,7 @@ impl JsClient {
     }
 
     /// Completely shutdown `Client`
-    pub async fn shutdown(self) -> Result<()> {
+    pub async fn shutdown(&self) -> Result<()> {
         self.inner.shutdown().await.map_err(into_err)
     }
 

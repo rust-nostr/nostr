@@ -59,6 +59,7 @@
 * sdk: bump `lnurl-pay` to `v0.6` ([Yuki Kishimoto])
 * sdk: update `Client::gift_wrap` and `Client::gift_wrap_to` methods signature ([Yuki Kishimoto])
 * sdk: document and rename `Client::metadata` to `Client::fetch_metadata` ([Janek])
+* sdk: update `Client::shutdown` method fingerprint ([Yuki Kishimoto])
 
 ### Added
 

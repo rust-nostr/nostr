@@ -109,7 +109,7 @@ impl RelayPool {
 
     /// Completely shutdown pool
     #[inline]
-    pub async fn shutdown(self) -> Result<(), Error> {
+    pub async fn shutdown(&self) -> Result<(), Error> {
         self.inner.shutdown().await
     }
 

@@ -143,7 +143,7 @@ impl Client {
     }
 
     pub async fn shutdown(&self) -> Result<()> {
-        Ok(self.inner.clone().shutdown().await?)
+        Ok(self.inner.shutdown().await?)
     }
 
     pub async fn relays(&self) -> HashMap<String, Arc<Relay>> {
