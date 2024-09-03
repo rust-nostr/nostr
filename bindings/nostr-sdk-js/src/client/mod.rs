@@ -408,16 +408,6 @@ impl JsClient {
         Ok(events)
     }
 
-    /// Send client message
-    #[wasm_bindgen(js_name = sendMsg)]
-    pub async fn send_msg(&self, msg: &JsClientMessage) -> Result<JsOutput> {
-        self.inner
-            .send_msg(msg.deref().clone())
-            .await
-            .map_err(into_err)
-            .map(Into::into)
-    }
-
     /// Send client message to a specific relay
     #[wasm_bindgen(js_name = sendMsgTo)]
     pub async fn send_msg_to(&self, urls: Vec<String>, msg: &JsClientMessage) -> Result<JsOutput> {

@@ -157,37 +157,6 @@ impl JsRelayPool {
     //         .map(|f| f.into_iter().map(|f| f.into()).collect())
     // }
 
-    /// Send client message to all connected relays
-    #[wasm_bindgen(js_name = sendMsg)]
-    pub async fn send_msg(
-        &self,
-        msg: &JsClientMessage,
-        opts: &JsRelaySendOptions,
-    ) -> Result<JsOutput> {
-        Ok(self
-            .inner
-            .send_msg(msg.deref().clone(), **opts)
-            .await
-            .map_err(into_err)?
-            .into())
-    }
-
-    /// Send multiple client messages at once to all connected relays
-    #[wasm_bindgen(js_name = batchMsg)]
-    pub async fn batch_msg(
-        &self,
-        msgs: Vec<JsClientMessage>,
-        opts: &JsRelaySendOptions,
-    ) -> Result<JsOutput> {
-        let msgs = msgs.into_iter().map(|msg| msg.deref().clone()).collect();
-        Ok(self
-            .inner
-            .batch_msg(msgs, **opts)
-            .await
-            .map_err(into_err)?
-            .into())
-    }
-
     /// Send client message to specific relays
     ///
     /// Note: **the relays must already be added!**

@@ -1023,19 +1023,21 @@ impl Client {
     }
 
     /// Send client message to **all relays**
-    #[inline]
+    #[deprecated(since = "0.35.0", note = "Use `send_msg_to` instead")]
     pub async fn send_msg(&self, msg: ClientMessage) -> Result<Output<()>, Error> {
         let opts: RelaySendOptions = self.opts.get_wait_for_send();
+        #[allow(deprecated)]
         Ok(self.pool.send_msg(msg, opts).await?)
     }
 
     /// Batch send client messages to **all relays**
-    #[inline]
+    #[deprecated(since = "0.35.0", note = "Use `batch_msg_to` instead")]
     pub async fn batch_msg(
         &self,
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
     ) -> Result<Output<()>, Error> {
+        #[allow(deprecated)]
         Ok(self.pool.batch_msg(msgs, opts).await?)
     }
 

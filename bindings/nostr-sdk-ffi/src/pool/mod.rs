@@ -137,32 +137,6 @@ impl RelayPool {
             .map(|f| f.into_iter().map(|f| Arc::new(f.into())).collect())
     }
 
-    /// Send client message to all connected relays
-    pub async fn send_msg(
-        &self,
-        msg: Arc<ClientMessage>,
-        opts: Arc<RelaySendOptions>,
-    ) -> Result<Output> {
-        Ok(self
-            .inner
-            .send_msg(msg.as_ref().deref().clone(), **opts)
-            .await?
-            .into())
-    }
-
-    /// Send multiple client messages at once to all connected relays
-    pub async fn batch_msg(
-        &self,
-        msgs: Vec<Arc<ClientMessage>>,
-        opts: &RelaySendOptions,
-    ) -> Result<Output> {
-        let msgs = msgs
-            .into_iter()
-            .map(|msg| msg.as_ref().deref().clone())
-            .collect();
-        Ok(self.inner.batch_msg(msgs, **opts).await?.into())
-    }
-
     /// Send client message to specific relays
     ///
     /// Note: **the relays must already be added!**

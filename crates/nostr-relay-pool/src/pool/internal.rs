@@ -252,24 +252,6 @@ impl InternalRelayPool {
         Ok(())
     }
 
-    pub async fn send_msg(
-        &self,
-        msg: ClientMessage,
-        opts: RelaySendOptions,
-    ) -> Result<Output<()>, Error> {
-        let urls: Vec<Url> = self.all_relay_urls().await;
-        self.send_msg_to(urls, msg, opts).await
-    }
-
-    pub async fn batch_msg(
-        &self,
-        msgs: Vec<ClientMessage>,
-        opts: RelaySendOptions,
-    ) -> Result<Output<()>, Error> {
-        let urls: Vec<Url> = self.all_relay_urls().await;
-        self.batch_msg_to(urls, msgs, opts).await
-    }
-
     pub async fn send_msg_to<I, U>(
         &self,
         urls: I,

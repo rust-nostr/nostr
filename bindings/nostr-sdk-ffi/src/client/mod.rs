@@ -398,14 +398,6 @@ impl Client {
             .collect())
     }
 
-    pub async fn send_msg(&self, msg: Arc<ClientMessage>) -> Result<Output> {
-        Ok(self
-            .inner
-            .send_msg(msg.as_ref().deref().clone())
-            .await?
-            .into())
-    }
-
     pub async fn send_msg_to(&self, urls: Vec<String>, msg: Arc<ClientMessage>) -> Result<Output> {
         Ok(self
             .inner

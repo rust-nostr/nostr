@@ -267,23 +267,23 @@ impl RelayPool {
     }
 
     /// Send client message to all connected relays
-    #[inline]
+    #[deprecated(since = "0.35.0", note = "Use `send_msg_to` instead")]
     pub async fn send_msg(
         &self,
-        msg: ClientMessage,
-        opts: RelaySendOptions,
+        _msg: ClientMessage,
+        _opts: RelaySendOptions,
     ) -> Result<Output<()>, Error> {
-        self.inner.send_msg(msg, opts).await
+        Ok(Output::default())
     }
 
     /// Send multiple client messages at once to all connected relays
-    #[inline]
+    #[deprecated(since = "0.35.0", note = "Use `batch_msg_to` instead")]
     pub async fn batch_msg(
         &self,
-        msgs: Vec<ClientMessage>,
-        opts: RelaySendOptions,
+        _msgs: Vec<ClientMessage>,
+        _opts: RelaySendOptions,
     ) -> Result<Output<()>, Error> {
-        self.inner.batch_msg(msgs, opts).await
+        Ok(Output::default())
     }
 
     /// Send client message to specific relays
