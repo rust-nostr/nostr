@@ -8,12 +8,17 @@ use std::sync::Arc;
 use nostr::prelude::*;
 use tokio::sync::RwLock;
 
+use super::constant::PUBKEY_METADATA_OUTDATED_AFTER;
+
 // TODO: add support to DM relay list
 
 #[derive(Debug, Clone)]
 struct RelayListMetadata {
     pub map: HashMap<Url, Option<RelayMetadata>>,
-    pub timestamp: Timestamp,
+    /// Timestamp of when the event metadata was created
+    pub event_created_at: Timestamp,
+    /// Timestamp of when the metadata was updated
+    pub last_update: Timestamp,
 }
 
 #[derive(Debug, Clone)]
@@ -41,12 +46,13 @@ impl GossipGraph {
                 .entry(event.pubkey)
                 .and_modify(|m| {
                     // Update only if new metadata has more recent timestamp
-                    if event.created_at >= m.timestamp {
+                    if event.created_at >= m.event_created_at {
                         *m = RelayListMetadata {
                             map: nip65::extract_relay_list(&event)
                                 .map(|(u, m)| (u.clone(), *m))
                                 .collect(),
-                            timestamp: event.created_at,
+                            event_created_at: event.created_at,
+                            last_update: Timestamp::now(),
                         };
                     }
                 })
@@ -54,9 +60,40 @@ impl GossipGraph {
                     map: nip65::extract_relay_list(&event)
                         .map(|(u, m)| (u.clone(), *m))
                         .collect(),
-                    timestamp: event.created_at,
+                    event_created_at: event.created_at,
+                    last_update: Timestamp::now(),
                 });
         }
+    }
+
+    /// Check for what public keys the metadata are outdated or not existent
+    pub async fn check_outdated<I>(&self, public_keys: I) -> HashSet<PublicKey>
+    where
+        I: IntoIterator<Item = PublicKey>,
+    {
+        let map = self.public_keys.read().await;
+        let now = Timestamp::now();
+
+        let mut outdated: HashSet<PublicKey> = HashSet::new();
+
+        for public_key in public_keys.into_iter() {
+            match map.get(&public_key) {
+                Some(meta) => {
+                    let empty: bool = meta.map.is_empty();
+                    let expired: bool = meta.last_update + PUBKEY_METADATA_OUTDATED_AFTER < now;
+
+                    if empty || expired {
+                        outdated.insert(public_key);
+                    }
+                }
+                None => {
+                    // Public key not found, insert into outdated
+                    outdated.insert(public_key);
+                }
+            }
+        }
+
+        outdated
     }
 
     pub async fn get_nip65_relays<'a, I>(

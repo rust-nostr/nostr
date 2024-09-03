@@ -1084,27 +1084,35 @@ impl Client {
 
         // ########## Gossip ##########
 
-        // Get DISCOVERY and READ relays
-        // TODO: avoid clone of both url and relay
-        let relays = self
-            .pool
-            .relays_with_flag(
-                RelayServiceFlags::DISCOVERY | RelayServiceFlags::READ,
-                FlagCheck::Any,
-            )
-            .await
-            .into_keys();
-
+        // Get all public keys involved in the event
         let public_keys = event.public_keys().copied().chain(iter::once(event.pubkey));
 
-        // Get events
-        let filter: Filter = Filter::default().authors(public_keys).kind(Kind::RelayList);
-        let events: Vec<Event> = self
-            .get_events_from(relays, vec![filter], Some(Duration::from_secs(10)))
-            .await?;
+        // Check what are up-to-date in the gossip graph and which ones require an update
+        let outdated_public_keys = self.gossip_graph.check_outdated(public_keys).await;
 
-        // Update gossip graph
-        self.gossip_graph.update(events).await;
+        if !outdated_public_keys.is_empty() {
+            // Get DISCOVERY and READ relays
+            // TODO: avoid clone of both url and relay
+            let relays = self
+                .pool
+                .relays_with_flag(
+                    RelayServiceFlags::DISCOVERY | RelayServiceFlags::READ,
+                    FlagCheck::Any,
+                )
+                .await
+                .into_keys();
+
+            // Get events
+            let filter: Filter = Filter::default()
+                .authors(outdated_public_keys)
+                .kind(Kind::RelayList);
+            let events: Vec<Event> = self
+                .get_events_from(relays, vec![filter], Some(Duration::from_secs(10)))
+                .await?;
+
+            // Update gossip graph
+            self.gossip_graph.update(events).await;
+        }
 
         // Get relays
         let mut outbox = self.gossip_graph.get_outbox_relays(&[event.pubkey]).await;
