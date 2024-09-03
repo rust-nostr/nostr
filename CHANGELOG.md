@@ -70,6 +70,7 @@
 * nostr: add `TagKind::custom` constructor ([Yuki Kishimoto])
 * database: add `DatabaseHelper::fast_query` ([Yuki Kishimoto])
 * relay-builder: add `MockRelay` ([Yuki Kishimoto])
+* pool: add `RelayPool::disconnect_relay` method ([Yuki Kishimoto])
 * bindings(nostr): expose `as_pretty_json` for some structs ([Yuki Kishimoto])
 * bindings(sdk): expose `Client::fetch_metadata` ([Yuki Kishimoto])
 * ffi(nostr): expose `Kind::is_*` methods ([Yuki Kishimoto])

@@ -812,11 +812,23 @@ impl InternalRelayPool {
         }
     }
 
+    pub async fn disconnect(&self) -> Result<(), Error> {
+        // Lock with read shared access
+        let relays = self.relays.read().await;
+
+        // Iter values and disconnect
+        for relay in relays.values() {
+            relay.disconnect().await?;
+        }
+
+        Ok(())
+    }
+
     pub async fn connect_relay<U>(
         &self,
         url: U,
         connection_timeout: Option<Duration>,
-    ) -> nostr::Result<(), Error>
+    ) -> Result<(), Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
@@ -836,14 +848,22 @@ impl InternalRelayPool {
         Ok(())
     }
 
-    pub async fn disconnect(&self) -> Result<(), Error> {
+    pub async fn disconnect_relay<U>(&self, url: U) -> Result<(), Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Convert url
+        let url: Url = url.try_into_url()?;
+
         // Lock with read shared access
         let relays = self.relays.read().await;
 
-        // Iter values and disconnect
-        for relay in relays.values() {
-            relay.disconnect().await?;
-        }
+        // Get relay
+        let relay: &Relay = self.internal_relay(&relays, &url)?;
+
+        // Disconnect
+        relay.disconnect().await?;
 
         Ok(())
     }

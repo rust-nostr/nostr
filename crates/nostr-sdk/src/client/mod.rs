@@ -579,14 +579,13 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
+    #[inline]
     pub async fn disconnect_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let relay = self.relay(url).await?;
-        relay.disconnect().await?;
-        Ok(())
+        Ok(self.pool.disconnect_relay(url).await?)
     }
 
     /// Connect to all added relays

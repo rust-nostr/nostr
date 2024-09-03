@@ -204,6 +204,16 @@ impl RelayPool {
         self.inner.connect_relay(url, connection_timeout).await
     }
 
+    /// Disconnect relay
+    #[inline]
+    pub async fn disconnect_relay<U>(&self, url: U) -> Result<(), Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.inner.disconnect_relay(url).await
+    }
+
     /// Get subscriptions
     #[inline]
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
