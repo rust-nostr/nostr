@@ -15,7 +15,7 @@ use async_utility::{thread, time};
 use atomic_destructor::AtomicDestroyer;
 use nostr::{ClientMessage, Event, EventId, Filter, SubscriptionId, Timestamp, TryIntoUrl, Url};
 use nostr_database::{DynNostrDatabase, IntoNostrDatabase};
-use tokio::sync::{broadcast, mpsc, Mutex, RwLock};
+use tokio::sync::{broadcast, mpsc, Mutex, RwLock, RwLockReadGuard};
 use tokio_stream::wrappers::ReceiverStream;
 
 use super::options::RelayPoolOptions;
@@ -24,10 +24,12 @@ use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, Rela
 use crate::relay::{Reconciliation, Relay, RelayBlacklist};
 use crate::{util, SubscribeOptions};
 
+type Relays = HashMap<Url, Relay>;
+
 #[derive(Debug, Clone)]
 pub struct InternalRelayPool {
     database: Arc<DynNostrDatabase>,
-    relays: Arc<RwLock<HashMap<Url, Relay>>>,
+    relays: Arc<RwLock<Relays>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,
     blacklist: RelayBlacklist,
@@ -100,9 +102,19 @@ impl InternalRelayPool {
         relays.clone()
     }
 
-    async fn internal_relay(&self, url: &Url) -> Result<Relay, Error> {
+    /// Method to get **all** relays urls
+    async fn all_relay_urls(&self) -> Vec<Url> {
         let relays = self.relays.read().await;
-        relays.get(url).cloned().ok_or(Error::RelayNotFound)
+        relays.keys().cloned().collect()
+    }
+
+    #[inline]
+    fn internal_relay<'a>(
+        &self,
+        txn: &'a RwLockReadGuard<'a, Relays>,
+        url: &'a Url,
+    ) -> Result<&'a Relay, Error> {
+        txn.get(url).ok_or(Error::RelayNotFound)
     }
 
     pub async fn relay<U>(&self, url: U) -> Result<Relay, Error>
@@ -111,7 +123,8 @@ impl InternalRelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let url: Url = url.try_into_url()?;
-        self.internal_relay(&url).await
+        let relays = self.relays.read().await;
+        self.internal_relay(&relays, &url).cloned()
     }
 
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
@@ -202,8 +215,8 @@ impl InternalRelayPool {
         msg: ClientMessage,
         opts: RelaySendOptions,
     ) -> Result<Output<()>, Error> {
-        let relays = self.relays().await;
-        self.send_msg_to(relays.into_keys(), msg, opts).await
+        let urls: Vec<Url> = self.all_relay_urls().await;
+        self.send_msg_to(urls, msg, opts).await
     }
 
     pub async fn batch_msg(
@@ -211,8 +224,8 @@ impl InternalRelayPool {
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
     ) -> Result<Output<()>, Error> {
-        let relays = self.relays().await;
-        self.batch_msg_to(relays.into_keys(), msgs, opts).await
+        let urls: Vec<Url> = self.all_relay_urls().await;
+        self.batch_msg_to(urls, msgs, opts).await
     }
 
     pub async fn send_msg_to<I, U>(
@@ -258,8 +271,8 @@ impl InternalRelayPool {
             }
         }
 
-        // Get relays
-        let relays: HashMap<Url, Relay> = self.relays().await;
+        // Lock with read shared access
+        let relays = self.relays.read().await;
 
         if relays.is_empty() {
             return Err(Error::NoRelays);
@@ -268,7 +281,7 @@ impl InternalRelayPool {
         // If passed only 1 url, not use threads
         if urls.len() == 1 {
             let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
-            let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
+            let relay: &Relay = self.internal_relay(&relays, &url)?;
             relay.batch_msg(msgs, opts).await?;
             Ok(Output::success(url, ()))
         } else {
@@ -280,7 +293,9 @@ impl InternalRelayPool {
             let result: Arc<Mutex<Output<()>>> = Arc::new(Mutex::new(Output::default()));
             let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(urls.len());
 
-            for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
+            for (url, relay) in relays.iter().filter(|(url, ..)| urls.contains(url)) {
+                let url: Url = url.clone();
+                let relay: Relay = relay.clone();
                 let msgs: Vec<ClientMessage> = msgs.clone();
                 let result: Arc<Mutex<Output<()>>> = result.clone();
                 let handle: JoinHandle<()> = thread::spawn(async move {
@@ -321,8 +336,8 @@ impl InternalRelayPool {
         event: Event,
         opts: RelaySendOptions,
     ) -> Result<Output<EventId>, Error> {
-        let relays: HashMap<Url, Relay> = self.relays().await;
-        self.send_event_to(relays.into_keys(), event, opts).await
+        let urls: Vec<Url> = self.all_relay_urls().await;
+        self.send_event_to(urls, event, opts).await
     }
 
     pub async fn batch_event(
@@ -330,8 +345,8 @@ impl InternalRelayPool {
         events: Vec<Event>,
         opts: RelaySendOptions,
     ) -> Result<Output<()>, Error> {
-        let relays = self.relays().await;
-        self.batch_event_to(relays.into_keys(), events, opts).await
+        let urls: Vec<Url> = self.all_relay_urls().await;
+        self.batch_event_to(urls, events, opts).await
     }
 
     pub async fn send_event_to<I, U>(
@@ -381,8 +396,8 @@ impl InternalRelayPool {
             self.database.save_event(event).await?;
         }
 
-        // Get relays
-        let relays: HashMap<Url, Relay> = self.relays().await;
+        // Lock with read shared access
+        let relays = self.relays.read().await;
 
         if relays.is_empty() {
             return Err(Error::NoRelays);
@@ -391,7 +406,7 @@ impl InternalRelayPool {
         // If passed only 1 url, not use threads
         if urls.len() == 1 {
             let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
-            let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
+            let relay: &Relay = self.internal_relay(&relays, &url)?;
             relay.batch_event(events, opts).await?;
             Ok(Output::success(url, ()))
         } else {
@@ -403,7 +418,9 @@ impl InternalRelayPool {
             let result: Arc<Mutex<Output<()>>> = Arc::new(Mutex::new(Output::default()));
             let mut handles = Vec::with_capacity(urls.len());
 
-            for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
+            for (url, relay) in relays.iter().filter(|(url, ..)| urls.contains(url)) {
+                let url: Url = url.clone();
+                let relay: Relay = relay.clone();
                 let events: Vec<Event> = events.clone();
                 let result: Arc<Mutex<Output<()>>> = result.clone();
                 let handle = thread::spawn(async move {
@@ -465,12 +482,11 @@ impl InternalRelayPool {
             self.save_subscription(id.clone(), filters.clone()).await;
         }
 
-        // Get relays
-        let relays = self.relays().await;
+        // Get relay urls
+        let urls: Vec<Url> = self.all_relay_urls().await;
 
         // Subscribe
-        self.subscribe_with_id_to(relays.into_keys(), id, filters, opts)
-            .await
+        self.subscribe_with_id_to(urls, id, filters, opts).await
     }
 
     pub async fn subscribe_to<I, U>(
@@ -518,8 +534,8 @@ impl InternalRelayPool {
             return Err(Error::NoRelaysSpecified);
         }
 
-        // Get relays
-        let relays: HashMap<Url, Relay> = self.relays().await;
+        // Lock with read shared access
+        let relays = self.relays.read().await;
 
         // Check if relays map is empty
         if relays.is_empty() {
@@ -529,7 +545,7 @@ impl InternalRelayPool {
         // If passed only 1 url, not use threads
         if urls.len() == 1 {
             let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
-            let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
+            let relay: &Relay = self.internal_relay(&relays, &url)?;
             relay.subscribe_with_id(id, filters, opts).await?;
             Ok(Output::success(url, ()))
         } else {
@@ -542,7 +558,9 @@ impl InternalRelayPool {
             let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(urls.len());
 
             // Subscribe
-            for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
+            for (url, relay) in relays.iter().filter(|(url, ..)| urls.contains(url)) {
+                let url: Url = url.clone();
+                let relay: Relay = relay.clone();
                 let id: SubscriptionId = id.clone();
                 let filters: Vec<Filter> = filters.clone();
                 let result: Arc<Mutex<Output<()>>> = result.clone();
@@ -580,8 +598,13 @@ impl InternalRelayPool {
     }
 
     pub async fn unsubscribe(&self, id: SubscriptionId, opts: RelaySendOptions) {
-        let relays = self.relays().await;
+        // Remove subscription from pool
         self.remove_subscription(&id).await;
+
+        // Lock with read shared access
+        let relays = self.relays.read().await;
+
+        // Remove subscription from relays
         for relay in relays.values() {
             if let Err(e) = relay.unsubscribe(id.clone(), opts).await {
                 tracing::error!("{e}");
@@ -590,8 +613,13 @@ impl InternalRelayPool {
     }
 
     pub async fn unsubscribe_all(&self, opts: RelaySendOptions) {
-        let relays = self.relays().await;
+        // Remove subscriptions from pool
         self.remove_all_subscriptions().await;
+
+        // Lock with read shared access
+        let relays = self.relays.read().await;
+
+        // Unsubscribe relays
         for relay in relays.values() {
             if let Err(e) = relay.unsubscribe_all(opts).await {
                 tracing::error!("{e}");
@@ -621,13 +649,18 @@ impl InternalRelayPool {
             return Err(Error::NoRelaysSpecified);
         }
 
+        // Lock with read shared access
+        let relays = self.relays.read().await;
+
+        if relays.is_empty() {
+            return Err(Error::NoRelays);
+        }
+
         if urls.len() == 1 {
             let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
-            let relay: Relay = self.internal_relay(&url).await?;
+            let relay: &Relay = self.internal_relay(&relays, &url)?;
             Ok(relay.get_events_of(filters, timeout, opts).await?)
         } else {
-            let relays: HashMap<Url, Relay> = self.relays().await;
-
             // Check if urls set contains ONLY already added relays
             if !urls.iter().all(|url| relays.contains_key(url)) {
                 return Err(Error::RelayNotFound);
@@ -638,7 +671,9 @@ impl InternalRelayPool {
 
             // Filter relays and start query
             let mut handles = Vec::with_capacity(urls.len());
-            for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
+            for (url, relay) in relays.iter().filter(|(url, ..)| urls.contains(url)) {
+                let url: Url = url.clone();
+                let relay: Relay = relay.clone();
                 let filters = filters.clone();
                 let events = events.clone();
                 let handle = thread::spawn(async move {
@@ -702,7 +737,13 @@ impl InternalRelayPool {
 
         let (tx, rx) = mpsc::channel::<Event>(4096); // TODO: change to unbounded or allow to change this value?
 
-        let relays: HashMap<Url, Relay> = self.relays().await;
+        // Lock with read shared access
+        let relays = self.relays.read().await;
+
+        // Check if empty
+        if relays.is_empty() {
+            return Err(Error::NoRelays);
+        }
 
         // Check if urls set contains ONLY already added relays
         if !urls.iter().all(|url| relays.contains_key(url)) {
@@ -713,7 +754,9 @@ impl InternalRelayPool {
         let ids: Arc<Mutex<HashSet<EventId>>> = Arc::new(Mutex::new(HashSet::new()));
 
         // Filter relays and start query
-        for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
+        for (url, relay) in relays.iter().filter(|(url, ..)| urls.contains(url)) {
+            let url: Url = url.clone();
+            let relay: Relay = relay.clone();
             let tx = tx.clone();
             let filters = filters.clone();
             let ids = ids.clone();
@@ -737,35 +780,47 @@ impl InternalRelayPool {
     }
 
     pub async fn connect(&self, connection_timeout: Option<Duration>) {
-        let relays: HashMap<Url, Relay> = self.relays().await;
+        // Lock with read shared access
+        let relays = self.relays.read().await;
 
-        if connection_timeout.is_some() {
-            let mut handles = Vec::with_capacity(relays.len());
+        match connection_timeout {
+            Some(..) => {
+                let mut handles = Vec::with_capacity(relays.len());
 
-            for relay in relays.into_values() {
-                let handle = thread::spawn(async move {
-                    relay.connect(connection_timeout).await;
-                });
-                handles.push(handle);
-            }
+                // False positive
+                // Relay is borrowed and then moved to a thread so MUST be cloned.
+                #[allow(clippy::unnecessary_to_owned)]
+                for relay in relays.values().cloned() {
+                    let handle = thread::spawn(async move {
+                        relay.connect(connection_timeout).await;
+                    });
+                    handles.push(handle);
+                }
 
-            for handle in handles.into_iter().flatten() {
-                if let Err(e) = handle.join().await {
-                    tracing::error!("Impossible to join thread: {e}")
+                for handle in handles.into_iter().flatten() {
+                    if let Err(e) = handle.join().await {
+                        tracing::error!("Impossible to join thread: {e}")
+                    }
                 }
             }
-        } else {
-            for relay in relays.values() {
-                relay.connect(None).await;
+            None => {
+                // Iter values and connect
+                for relay in relays.values() {
+                    relay.connect(None).await;
+                }
             }
         }
     }
 
     pub async fn disconnect(&self) -> Result<(), Error> {
-        let relays = self.relays().await;
-        for relay in relays.into_values() {
+        // Lock with read shared access
+        let relays = self.relays.read().await;
+
+        // Iter values and disconnect
+        for relay in relays.values() {
             relay.disconnect().await?;
         }
+
         Ok(())
     }
 
@@ -775,8 +830,8 @@ impl InternalRelayPool {
         filter: Filter,
         opts: NegentropyOptions,
     ) -> Result<Output<Reconciliation>, Error> {
-        let relays: HashMap<Url, Relay> = self.relays().await;
-        self.reconcile_with(relays.into_keys(), filter, opts).await
+        let urls: Vec<Url> = self.all_relay_urls().await;
+        self.reconcile_with(urls, filter, opts).await
     }
 
     #[inline]
@@ -803,9 +858,8 @@ impl InternalRelayPool {
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
     ) -> Result<Output<Reconciliation>, Error> {
-        let relays: HashMap<Url, Relay> = self.relays().await;
-        self.reconcile_advanced(relays.into_keys(), filter, items, opts)
-            .await
+        let urls: Vec<Url> = self.all_relay_urls().await;
+        self.reconcile_advanced(urls, filter, items, opts).await
     }
 
     pub async fn reconcile_advanced<I, U>(
@@ -830,14 +884,20 @@ impl InternalRelayPool {
             return Err(Error::NoRelaysSpecified);
         }
 
+        // Lock with read shared access
+        let relays = self.relays.read().await;
+
+        // Check if empty
+        if relays.is_empty() {
+            return Err(Error::NoRelays);
+        }
+
         if urls.len() == 1 {
             let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
-            let relay: Relay = self.internal_relay(&url).await?;
+            let relay: &Relay = self.internal_relay(&relays, &url)?;
             let res: Reconciliation = relay.reconcile_with_items(filter, items, opts).await?;
             Ok(Output::success(url, res))
         } else {
-            let relays: HashMap<Url, Relay> = self.relays().await;
-
             // Check if urls set contains ONLY already added relays
             if !urls.iter().all(|url| relays.contains_key(url)) {
                 return Err(Error::RelayNotFound);
@@ -847,7 +907,9 @@ impl InternalRelayPool {
             let result: Arc<Mutex<Output<Reconciliation>>> =
                 Arc::new(Mutex::new(Output::default()));
             let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(urls.len());
-            for (url, relay) in relays.into_iter().filter(|(url, ..)| urls.contains(url)) {
+            for (url, relay) in relays.iter().filter(|(url, ..)| urls.contains(url)) {
+                let url: Url = url.clone();
+                let relay: Relay = relay.clone();
                 let filter: Filter = filter.clone();
                 let my_items: Vec<(EventId, Timestamp)> = items.clone();
                 let result: Arc<Mutex<Output<Reconciliation>>> = result.clone();
