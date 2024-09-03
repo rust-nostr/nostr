@@ -201,9 +201,7 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let relay = self.relay(url).await?;
-        relay.connect(connection_timeout).await;
-        Ok(())
+        self.inner.connect_relay(url, connection_timeout).await
     }
 
     /// Get subscriptions
