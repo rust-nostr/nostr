@@ -27,6 +27,12 @@ pub struct RelayPool {
     inner: nostr_sdk::RelayPool,
 }
 
+impl From<nostr_sdk::RelayPool> for RelayPool {
+    fn from(inner: nostr_sdk::RelayPool) -> Self {
+        Self { inner }
+    }
+}
+
 #[uniffi::export(async_runtime = "tokio")]
 impl RelayPool {
     /// Create new `RelayPool` with `in-memory` database

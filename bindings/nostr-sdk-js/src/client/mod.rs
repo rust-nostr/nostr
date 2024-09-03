@@ -29,6 +29,7 @@ use crate::abortable::JsAbortHandle;
 use crate::database::JsNostrDatabase;
 use crate::duration::JsDuration;
 use crate::pool::result::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
+use crate::pool::JsRelayPool;
 use crate::relay::blacklist::JsRelayBlacklist;
 use crate::relay::options::{JsNegentropyOptions, JsSubscribeAutoCloseOptions};
 use crate::relay::{JsRelay, JsRelayArray};
@@ -97,6 +98,11 @@ impl JsClient {
     /// Rise error if it not set.
     pub async fn signer(&self) -> Result<JsNostrSigner> {
         Ok(self.inner.signer().await.map_err(into_err)?.into())
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn pool(&self) -> JsRelayPool {
+        self.inner.pool().into()
     }
 
     #[wasm_bindgen(getter)]

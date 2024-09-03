@@ -28,6 +28,12 @@ pub struct JsRelayPool {
     inner: RelayPool,
 }
 
+impl From<RelayPool> for JsRelayPool {
+    fn from(inner: RelayPool) -> Self {
+        Self { inner }
+    }
+}
+
 #[wasm_bindgen(js_class = RelayPool)]
 impl JsRelayPool {
     /// Create new `RelayPool` with `in-memory` database

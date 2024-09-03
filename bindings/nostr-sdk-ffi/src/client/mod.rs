@@ -28,6 +28,7 @@ pub use self::signer::NostrSigner;
 use self::zapper::{ZapDetails, ZapEntity};
 use crate::error::Result;
 use crate::pool::result::{Output, ReconciliationOutput, SendEventOutput, SubscribeOutput};
+use crate::pool::RelayPool;
 use crate::relay::options::{NegentropyOptions, SubscribeAutoCloseOptions};
 use crate::relay::{RelayBlacklist, RelayOptions};
 use crate::{HandleNotification, NostrDatabase, Relay};
@@ -89,6 +90,11 @@ impl Client {
 
     pub async fn signer(&self) -> Result<NostrSigner> {
         Ok(self.inner.signer().await?.into())
+    }
+
+    /// Get relay pool
+    pub fn pool(&self) -> Arc<RelayPool> {
+        Arc::new(self.inner.pool().into())
     }
 
     pub fn database(&self) -> Arc<NostrDatabase> {
