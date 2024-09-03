@@ -167,17 +167,42 @@ impl Client {
 
     /// Add new relay
     ///
-    /// Return `false` if the relay already exists.
+    /// Relays added with this method will have both `READ` and `WRITE` flags enabled
+    ///
+    /// If the relay already exists, the flags will be updated and `false` returned.
     ///
     /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
     /// to avoid to set pool subscriptions.
     ///
     /// This method use previously set or default `Options` to configure the `Relay` (ex. set proxy, set min POW, set relay limits, ...).
-    /// To use custom `RelayOptions`, check `add_relay_with_opts` method.
+    /// To use custom `RelayOptions` use `add_relay` method on `RelayPool`.
     ///
     /// Connection is **NOT** automatically started with relay, remember to call `connect` method!
     pub async fn add_relay(&self, url: String) -> Result<bool> {
         Ok(self.inner.add_relay(url).await?)
+    }
+
+    /// Add discovery relay
+    ///
+    /// If relay already exists, this method automatically add the `DISCOVERY` flag to it and return `false`.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
+    pub async fn add_discovery_relay(&self, url: String) -> Result<bool> {
+        Ok(self.inner.add_discovery_relay(url).await?)
+    }
+
+    /// Add read relay
+    ///
+    /// If relay already exists, this method add the `READ` flag to it and return `false`.
+    pub async fn add_read_relay(&self, url: String) -> Result<bool> {
+        Ok(self.inner.add_read_relay(url).await?)
+    }
+
+    /// Add write relay
+    ///
+    /// If relay already exists, this method add the `WRITE` flag to it and return `false`.
+    pub async fn add_write_relay(&self, url: String) -> Result<bool> {
+        Ok(self.inner.add_write_relay(url).await?)
     }
 
     /// Add new relay with custom `RelayOptions`

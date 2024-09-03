@@ -185,7 +185,9 @@ impl JsClient {
 
     /// Add new relay
     ///
-    /// Return `false` if the relay already exists.
+    /// Relays added with this method will have both `READ` and `WRITE` flags enabled
+    ///
+    /// If the relay already exists, the flags will be updated and `false` returned.
     ///
     /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribeTo` method instead of `subscribe`,
     /// to avoid to set pool subscriptions.
@@ -196,6 +198,32 @@ impl JsClient {
     #[wasm_bindgen(js_name = addRelay)]
     pub async fn add_relay(&self, url: String) -> Result<bool> {
         self.inner.add_relay(url).await.map_err(into_err)
+    }
+
+    /// Add discovery relay
+    ///
+    /// If relay already exists, this method automatically add the `DISCOVERY` flag to it and return `false`.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
+    #[wasm_bindgen(js_name = addDiscoveryRelay)]
+    pub async fn add_discovery_relay(&self, url: String) -> Result<bool> {
+        self.inner.add_discovery_relay(url).await.map_err(into_err)
+    }
+
+    /// Add read relay
+    ///
+    /// If relay already exists, this method add the `READ` flag to it and return `false`.
+    #[wasm_bindgen(js_name = addReadRelay)]
+    pub async fn add_read_relay(&self, url: String) -> Result<bool> {
+        self.inner.add_read_relay(url).await.map_err(into_err)
+    }
+
+    /// Add write relay
+    ///
+    /// If relay already exists, this method add the `WRITE` flag to it and return `false`.
+    #[wasm_bindgen(js_name = addWriteRelay)]
+    pub async fn add_write_relay(&self, url: String) -> Result<bool> {
+        self.inner.add_write_relay(url).await.map_err(into_err)
     }
 
     /// Add multiple relays

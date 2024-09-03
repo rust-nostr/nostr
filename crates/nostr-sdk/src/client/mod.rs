@@ -427,24 +427,34 @@ impl Client {
         let opts: RelayOptions = opts.flags(flag);
 
         // Add relay with opts or edit current one
-        match self.pool.get_or_add_relay::<Url>(url, opts).await? {
+        match self.pool.get_or_add_relay::<&Url>(&url, opts).await? {
             Some(relay) => {
                 relay.flags_ref().add(flag);
                 Ok(false)
             }
-            None => Ok(true),
+            None => {
+                // Connect if `autoconnect` is enabled
+                if self.opts.autoconnect {
+                    self.connect_relay::<Url>(url).await?;
+                }
+
+                Ok(true)
+            }
         }
     }
 
-    /// Add new relay
+    /// Add relay
     ///
-    /// Return `false` if the relay already exists.
+    /// Relays added with this method will have both `READ` and `WRITE` flags enabled
+    /// (check [`RelayServiceFlags`] for more details).
+    ///
+    /// If the relay already exists, the flags will be updated and `false` returned.
     ///
     /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
     /// to avoid to set pool subscriptions.
     ///
     /// This method use previously set or default [Options] to configure the [Relay] (ex. set proxy, set min POW, set relay limits, ...).
-    /// To use custom [RelayOptions], check `Client::add_relay_with_opts`.
+    /// To use custom [`RelayOptions`] use [`RelayPool::add_relay`].
     ///
     /// Connection is **NOT** automatically started with relay, remember to call `client.connect()`!
     ///
@@ -462,28 +472,19 @@ impl Client {
     /// client.connect().await;
     /// # }
     /// ```
+    #[inline]
     pub async fn add_relay<U>(&self, url: U) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url: Url = url.try_into_url().map_err(pool::Error::from)?;
-
-        // Add relay
-        let added: bool = self
-            .get_or_add_relay_with_flag::<&Url>(&url, RelayServiceFlags::default())
-            .await?;
-
-        if added && self.opts.autoconnect {
-            self.connect_relay::<Url>(url).await?;
-        }
-
-        Ok(added)
+        self.get_or_add_relay_with_flag(url, RelayServiceFlags::default())
+            .await
     }
 
     /// Add discovery relay
     ///
-    /// If relay already exists in the pool, this method automatically add the 'DISCOVERY' flag to it.
+    /// If relay already exists, this method automatically add the `DISCOVERY` flag to it and return `false`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     #[inline]
@@ -493,6 +494,32 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::DISCOVERY)
+            .await
+    }
+
+    /// Add read relay
+    ///
+    /// If relay already exists, this method add the `READ` flag to it and return `false`.
+    #[inline]
+    pub async fn add_read_relay<U>(&self, url: U) -> Result<bool, Error>
+    where
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::READ)
+            .await
+    }
+
+    /// Add write relay
+    ///
+    /// If relay already exists, this method add the `WRITE` flag to it and return `false`.
+    #[inline]
+    pub async fn add_write_relay<U>(&self, url: U) -> Result<bool, Error>
+    where
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::WRITE)
             .await
     }
 
