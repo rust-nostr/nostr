@@ -52,6 +52,7 @@ pub use nostr_zapper::{self as zapper, NostrZapper, ZapperBackend, ZapperError};
 pub use nwc::{self, NostrWalletConnectOptions, NWC};
 
 pub mod client;
+mod gossip;
 pub mod prelude;
 
 pub use self::client::{Client, ClientBuilder, EventSource, Options};

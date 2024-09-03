@@ -81,6 +81,10 @@ name = "get-events-of"
 required-features = ["all-nips"]
 
 [[example]]
+name = "gossip"
+required-features = ["all-nips"]
+
+[[example]]
 name = "nostr-connect"
 required-features = ["nip46"]
 

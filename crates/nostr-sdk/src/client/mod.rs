@@ -7,7 +7,7 @@
 use std::collections::btree_set::IntoIter;
 use std::collections::{BTreeSet, HashMap};
 use std::future::Future;
-use std::iter::Rev;
+use std::iter::{self, Rev};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -33,6 +33,7 @@ pub use self::options::{Connection, ConnectionTarget};
 pub use self::options::{EventSource, Options};
 #[cfg(feature = "nip57")]
 pub use self::zapper::{ZapDetails, ZapEntity};
+use crate::gossip::graph::GossipGraph;
 
 /// [`Client`] error
 #[derive(Debug, Error)]
@@ -92,6 +93,7 @@ pub struct Client {
     signer: Arc<RwLock<Option<NostrSigner>>>,
     #[cfg(feature = "nip57")]
     zapper: Arc<RwLock<Option<Arc<DynNostrZapper>>>>,
+    gossip_graph: GossipGraph,
     opts: Options,
 }
 
@@ -109,6 +111,7 @@ impl StealthClone for Client {
             signer: self.signer.clone(),
             #[cfg(feature = "nip57")]
             zapper: self.zapper.clone(),
+            gossip_graph: self.gossip_graph.clone(),
             opts: self.opts.clone(),
         }
     }
@@ -178,6 +181,7 @@ impl Client {
             signer: Arc::new(RwLock::new(builder.signer)),
             #[cfg(feature = "nip57")]
             zapper: Arc::new(RwLock::new(builder.zapper)),
+            gossip_graph: GossipGraph::new(),
             opts: builder.opts,
         };
 
@@ -363,7 +367,7 @@ impl Client {
         Ok(self.pool.relay(url).await?)
     }
 
-    async fn compose_relay_opts(&self, url: &Url) -> RelayOptions {
+    async fn compose_relay_opts(&self, _url: &Url) -> RelayOptions {
         let opts: RelayOptions = RelayOptions::new();
 
         // Set connection mode
@@ -373,7 +377,7 @@ impl Client {
             ConnectionMode::Proxy(..) => match self.opts.connection.target {
                 ConnectionTarget::All => opts.connection_mode(self.opts.connection.mode.clone()),
                 ConnectionTarget::Onion => {
-                    let domain: &str = url.domain().unwrap_or_default();
+                    let domain: &str = _url.domain().unwrap_or_default();
 
                     if domain.ends_with(".onion") {
                         opts.connection_mode(self.opts.connection.mode.clone())
@@ -386,7 +390,7 @@ impl Client {
             ConnectionMode::Tor { .. } => match self.opts.connection.target {
                 ConnectionTarget::All => opts.connection_mode(self.opts.connection.mode.clone()),
                 ConnectionTarget::Onion => {
-                    let domain: &str = url.domain().unwrap_or_default();
+                    let domain: &str = _url.domain().unwrap_or_default();
 
                     if domain.ends_with(".onion") {
                         opts.connection_mode(self.opts.connection.mode.clone())
@@ -401,6 +405,35 @@ impl Client {
         opts.pow(self.opts.get_min_pow_difficulty())
             .limits(self.opts.relay_limits.clone())
             .max_avg_latency(self.opts.max_avg_latency)
+    }
+
+    /// If return `false` means that already existed
+    async fn get_or_add_relay_with_flag<U>(
+        &self,
+        url: U,
+        flag: RelayServiceFlags,
+    ) -> Result<bool, Error>
+    where
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Convert into url
+        let url: Url = url.try_into_url().map_err(pool::Error::from)?;
+
+        // Compose relay options
+        let opts: RelayOptions = self.compose_relay_opts(&url).await;
+
+        // Set flag
+        let opts: RelayOptions = opts.flags(flag);
+
+        // Add relay with opts or edit current one
+        match self.pool.get_or_add_relay::<Url>(url, opts).await? {
+            Some(relay) => {
+                relay.flags_ref().add(flag);
+                Ok(false)
+            }
+            None => Ok(true),
+        }
     }
 
     /// Add new relay
@@ -436,11 +469,10 @@ impl Client {
     {
         let url: Url = url.try_into_url().map_err(pool::Error::from)?;
 
-        // Compose relay options
-        let opts: RelayOptions = self.compose_relay_opts(&url).await;
-
         // Add relay
-        let added: bool = self.pool.add_relay::<&Url>(&url, opts).await?;
+        let added: bool = self
+            .get_or_add_relay_with_flag::<&Url>(&url, RelayServiceFlags::default())
+            .await?;
 
         if added && self.opts.autoconnect {
             self.connect_relay::<Url>(url).await?;
@@ -455,26 +487,33 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     #[inline]
-    pub async fn add_discovery_relay<U>(&self, url: U) -> Result<(), Error>
+    pub async fn add_discovery_relay<U>(&self, url: U) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        // Convert into url
-        let url: Url = url.try_into_url().map_err(pool::Error::from)?;
+        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::DISCOVERY)
+            .await
+    }
 
-        // Compose relay options
-        let opts: RelayOptions = self.compose_relay_opts(&url).await;
+    #[inline]
+    async fn add_inbox_relay<U>(&self, url: U) -> Result<bool, Error>
+    where
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::INBOX)
+            .await
+    }
 
-        // Set `DISCOVERY` flag
-        let opts: RelayOptions = opts.flags(RelayServiceFlags::DISCOVERY);
-
-        // Add relay with opts or edit current one
-        if let Some(relay) = self.pool.get_or_add_relay::<Url>(url, opts).await? {
-            relay.flags_ref().add(RelayServiceFlags::DISCOVERY);
-        }
-
-        Ok(())
+    #[inline]
+    async fn add_outbox_relay<U>(&self, url: U) -> Result<bool, Error>
+    where
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::OUTBOX)
+            .await
     }
 
     /// Add new relay with custom [`RelayOptions`]
@@ -1040,14 +1079,83 @@ impl Client {
         Ok(self.pool.batch_msg_to(urls, msgs, opts).await?)
     }
 
-    /// Send event to **all relays**
+    /// Send event
+    ///
+    /// If `gossip` is enabled in [`Options`] this method will send the event to **all** manually added
+    /// relays + NIP-65 relays. Otherwise, will be sent only to **all** manually added relays.
     ///
     /// This method will wait for the `OK` message from the relay.
     /// If you not want to wait for the `OK` message, use `send_msg` method instead.
     #[inline]
     pub async fn send_event(&self, event: Event) -> Result<Output<EventId>, Error> {
         let opts: RelaySendOptions = self.opts.get_wait_for_send();
-        Ok(self.pool.send_event(event, opts).await?)
+
+        // NOT gossip, send event to all relays
+        if !self.opts.gossip {
+            return Ok(self.pool.send_event(event, opts).await?);
+        }
+
+        // ########## Gossip ##########
+
+        // Get DISCOVERY and READ relays
+        // TODO: avoid clone of both url and relay
+        let relays = self
+            .pool
+            .relays_with_flag(
+                RelayServiceFlags::DISCOVERY | RelayServiceFlags::READ,
+                FlagCheck::Any,
+            )
+            .await
+            .into_keys();
+
+        let public_keys = event.public_keys().copied().chain(iter::once(event.pubkey));
+
+        // Get events
+        let filter: Filter = Filter::default().authors(public_keys).kind(Kind::RelayList);
+        let events: Vec<Event> = self
+            .get_events_from(relays, vec![filter], Some(Duration::from_secs(10)))
+            .await?;
+
+        // Update gossip graph
+        self.gossip_graph.update(events).await;
+
+        // Get relays
+        let mut outbox = self.gossip_graph.get_outbox_relays(&[event.pubkey]).await;
+        let inbox = self
+            .gossip_graph
+            .get_inbox_relays(event.public_keys())
+            .await;
+
+        // Add outbox relays
+        for url in outbox.iter() {
+            if self.add_outbox_relay(url).await? {
+                self.connect_relay(url).await?;
+            }
+        }
+
+        // Add inbox relays
+        for url in inbox.iter() {
+            if self.add_inbox_relay(url).await? {
+                self.connect_relay(url).await?;
+            }
+        }
+
+        // Get WRITE relays
+        // TODO: avoid clone of both url and relay
+        let write_relays = self
+            .pool
+            .relays_with_flag(RelayServiceFlags::WRITE, FlagCheck::All)
+            .await
+            .into_keys();
+
+        // Extend OUTBOX relays with WRITE ones
+        outbox.extend(write_relays);
+
+        // Union of OUTBOX (and WRITE) with INBOX relays
+        let urls = outbox.union(&inbox);
+
+        // Send event
+        Ok(self.pool.send_event_to(urls, event, opts).await?)
     }
 
     /// Send multiple [`Event`] at once to **all relays**.
