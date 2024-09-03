@@ -29,6 +29,7 @@ pub struct Options {
     pub(super) connection_timeout: Option<Duration>,
     send_timeout: Option<Duration>,
     nip42_auto_authentication: Arc<AtomicBool>,
+    pub(super) gossip: bool,
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) connection: Connection,
     pub(super) relay_limits: RelayLimits,
@@ -50,6 +51,7 @@ impl Default for Options {
             connection_timeout: None,
             send_timeout: Some(DEFAULT_SEND_TIMEOUT),
             nip42_auto_authentication: Arc::new(AtomicBool::new(true)),
+            gossip: false,
             #[cfg(not(target_arch = "wasm32"))]
             connection: Connection::default(),
             relay_limits: RelayLimits::default(),
@@ -188,6 +190,13 @@ impl Options {
     #[inline]
     pub fn automatic_authentication(mut self, enabled: bool) -> Self {
         self.nip42_auto_authentication = Arc::new(AtomicBool::new(enabled));
+        self
+    }
+
+    /// Enable gossip model (default: false)
+    #[inline]
+    pub fn gossip(mut self, enable: bool) -> Self {
+        self.gossip = enable;
         self
     }
 

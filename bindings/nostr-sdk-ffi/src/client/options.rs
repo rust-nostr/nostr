@@ -119,6 +119,13 @@ impl Options {
         builder
     }
 
+    /// Enable gossip model (default: false)
+    pub fn gossip(self: Arc<Self>, enabled: bool) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.gossip(enabled);
+        builder
+    }
+
     /// Connection
     pub fn connection(self: Arc<Self>, connection: &Connection) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
