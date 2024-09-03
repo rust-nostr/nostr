@@ -24,20 +24,16 @@ async fn main() -> Result<()> {
     let client = Client::with_opts(&my_keys, opts);
 
     // Add relays
+    client.add_relay("wss://relay.damus.io").await?;
     client
-        .add_relays([
-            "wss://relay.damus.io",
-            "ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion",
-            "ws://2jsnlhfnelig5acq6iacydmzdbdmg7xwunm4xl6qwbvzacw4lwrjmlyd.onion",
-        ])
+        .add_relay("ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion")
+        .await?;
+    client
+        .add_relay("ws://2jsnlhfnelig5acq6iacydmzdbdmg7xwunm4xl6qwbvzacw4lwrjmlyd.onion")
         .await?;
 
-    // Add relay with custom flags
-    let mut flags = RelayServiceFlags::default();
-    flags.remove(RelayServiceFlags::WRITE); // Use default flags and remove one
-    let _flags = RelayServiceFlags::READ | RelayServiceFlags::PING; // Or, explicit set the flags to use
-    let opts = RelayOptions::new().flags(flags);
-    client.add_relay_with_opts("wss://nostr.mom", opts).await?;
+    // Add read relay
+    client.add_read_relay("wss://nostr.mom").await?;
 
     client.connect().await;
 

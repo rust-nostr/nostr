@@ -21,9 +21,8 @@ async fn main() -> Result<()> {
     let client = Client::builder().opts(opts).build();
 
     // Add relays and connect
-    client
-        .add_relays(["wss://nostr.oxtr.dev", "wss://relay.damus.io"])
-        .await?;
+    client.add_relay("wss://relay.damus.io").await?;
+    client.add_relay("wss://nostr.oxtr.dev").await?;
     client.connect().await;
 
     // ...

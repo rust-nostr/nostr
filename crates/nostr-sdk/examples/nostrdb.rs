@@ -18,13 +18,8 @@ async fn main() -> Result<()> {
         .database(database)
         .build();
 
-    client
-        .add_relays([
-            "wss://relay.damus.io",
-            "wss://nostr.wine",
-            "wss://atl.purplerelay.com",
-        ])
-        .await?;
+    client.add_relay("wss://relay.damus.io").await?;
+    client.add_relay("wss://atl.purplerelay.com").await?;
     client.connect().await;
 
     // Publish a text note

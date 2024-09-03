@@ -39,12 +39,8 @@ async function main() {
 
     // Add relays
     await client.addRelay("wss://relay.damus.io");
-
-    // Add multiple relays at once
-    await client.addRelays([
-        "wss://nostr.oxtr.dev",
-        "wss://relay.nostr.band",
-    ]);
+    await client.addRelay("wss://nos.lol");
+    await client.addRelay("wss://nostr.oxtr.dev");
 
     await client.connect();
 

@@ -12,11 +12,9 @@ async function main() {
     let zapper = NostrZapper.nwc(nwc);
     let client = Client.builder().zapper(zapper).build();
 
-    await client.addRelays([
-        "wss://relay.damus.io",
-        "wss://nos.lol",
-        "wss://nostr.oxtr.dev"
-    ]);
+    await client.addRelay("wss://relay.damus.io");
+    await client.addRelay("wss://nos.lol");
+    await client.addRelay("wss://nostr.oxtr.dev");
     await client.connect();
 
     let pk = PublicKey.fromBech32("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet");

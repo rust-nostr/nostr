@@ -30,7 +30,7 @@ use crate::error::Result;
 use crate::pool::result::{Output, ReconciliationOutput, SendEventOutput, SubscribeOutput};
 use crate::pool::RelayPool;
 use crate::relay::options::{NegentropyOptions, SubscribeAutoCloseOptions};
-use crate::relay::{RelayBlacklist, RelayOptions};
+use crate::relay::RelayBlacklist;
 use crate::{HandleNotification, NostrDatabase, Relay};
 
 #[derive(Object)]
@@ -203,31 +203,6 @@ impl Client {
     /// If relay already exists, this method add the `WRITE` flag to it and return `false`.
     pub async fn add_write_relay(&self, url: String) -> Result<bool> {
         Ok(self.inner.add_write_relay(url).await?)
-    }
-
-    /// Add new relay with custom `RelayOptions`
-    ///
-    /// Return `false` if the relay already exists.
-    ///
-    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
-    /// to avoid to set pool subscriptions.
-    ///
-    /// Connection is **NOT** automatically started with relay, remember to call `connect` method!
-    pub async fn add_relay_with_opts(&self, url: String, opts: &RelayOptions) -> Result<bool> {
-        Ok(self
-            .inner
-            .add_relay_with_opts(url, opts.deref().clone())
-            .await?)
-    }
-
-    /// Add multiple relays
-    ///
-    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
-    /// to avoid to set pool subscriptions.
-    ///
-    /// Connection is **NOT** automatically started with relays, remember to call `connect` method!
-    pub async fn add_relays(&self, relays: Vec<String>) -> Result<()> {
-        Ok(self.inner.add_relays(relays).await?)
     }
 
     pub async fn remove_relay(&self, url: String) -> Result<()> {

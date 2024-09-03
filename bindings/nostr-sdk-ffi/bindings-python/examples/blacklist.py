@@ -9,7 +9,8 @@ async def main():
 
     # Init client
     client = Client()
-    await client.add_relays(["wss://relay.damus.io", "wss://nos.lol"])
+    await client.add_relay("wss://relay.damus.io")
+    await client.add_relay("wss://nos.lol")
     await client.connect()
 
     muted_public_key = PublicKey.parse("npub1l2vyh47mk2p0qlsku7hg0vn29faehy9hy34ygaclpn66ukqp3afqutajft")

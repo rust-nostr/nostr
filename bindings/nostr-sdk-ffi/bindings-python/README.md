@@ -42,7 +42,8 @@ async def main():
     client = Client(signer)
 
     # Add relays and connect
-    await client.add_relays(["wss://relay.damus.io", "wss://nos.lol"])
+    await client.add_relay("wss://relay.damus.io")
+    await client.add_relay("wss://nos.lol")
     await client.connect()
 
     # Send an event using the Nostr Signer

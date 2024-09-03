@@ -544,41 +544,7 @@ impl Client {
     }
 
     /// Add new relay with custom [`RelayOptions`]
-    ///
-    /// Return `false` if the relay already exists.
-    ///
-    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
-    /// to avoid to set pool subscriptions.
-    ///
-    /// Note: **this method ignore the options set in [`Options`]**.
-    ///
-    /// Connection is **NOT** automatically started with relay, remember to call `client.connect()`!
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
-    ///
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
-    /// let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050));
-    /// let mode = ConnectionMode::Proxy(addr);
-    /// let opts = RelayOptions::new()
-    ///     .connection_mode(mode)
-    ///     .write(false)
-    ///     .retry_sec(11);
-    /// client
-    ///     .add_relay_with_opts("wss://relay.nostr.info", opts)
-    ///     .await
-    ///     .unwrap();
-    ///
-    /// client.connect().await;
-    /// # }
-    /// ```
-    #[inline]
+    #[deprecated(since = "0.35.0", note = "Use `RelayPool::add_relay` instead")]
     pub async fn add_relay_with_opts<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
     where
         U: TryIntoUrl,
@@ -588,12 +554,7 @@ impl Client {
     }
 
     /// Add multiple relays
-    ///
-    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
-    /// to avoid to set pool subscriptions.
-    ///
-    /// Connection is **NOT** automatically started with relays, remember to call `client.connect()`!
-    #[inline]
+    #[deprecated(since = "0.35.0", note = "Use one of the add relay methods")]
     pub async fn add_relays<I, U>(&self, relays: I) -> Result<(), Error>
     where
         I: IntoIterator<Item = U>,

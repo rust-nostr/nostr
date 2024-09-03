@@ -16,11 +16,9 @@ async function main() {
 
     // Compose client and add relays
     let client = new Client(signer);
-    await client.addRelays([
-        "wss://relay.damus.io",
-        "wss://nos.lol",
-        "wss://nostr.oxtr.dev",
-    ]);
+    await client.addRelay("wss://relay.damus.io");
+    await client.addRelay("wss://nos.lol");
+    await client.addRelay("wss://nostr.oxtr.dev");
     await client.connect();
 
     await client.publishTextNote("My first text note from rust-nostr WASM with NIP46 signer!", []);

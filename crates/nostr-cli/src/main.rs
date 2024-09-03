@@ -33,7 +33,11 @@ async fn run() -> Result<()> {
             let db = NostrLMDB::open("./db/nostr-lmdb")?;
             let client = Client::builder().database(db).build();
 
-            client.add_relays(relays).await?;
+            // Add relays
+            for url in relays.iter() {
+                client.add_relay(url).await?;
+            }
+
             client.connect().await;
 
             let rl = &mut DefaultEditor::new()?;
@@ -119,7 +123,9 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
 
             let list: Vec<Url> = if !relays.is_empty() {
                 // Add relays
-                client.add_relays(relays.iter()).await?;
+                for url in relays.iter() {
+                    client.add_relay(url).await?;
+                }
 
                 println!("Connecting to relays...");
 

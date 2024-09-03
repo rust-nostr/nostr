@@ -21,12 +21,12 @@ async fn main() -> Result<()> {
     let client = Client::with_opts(&my_keys, opts);
 
     // Add relays
+    client.add_relay("wss://relay.damus.io").await?;
     client
-        .add_relays([
-            "wss://relay.damus.io",
-            "ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion",
-            "ws://2jsnlhfnelig5acq6iacydmzdbdmg7xwunm4xl6qwbvzacw4lwrjmlyd.onion",
-        ])
+        .add_relay("ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion")
+        .await?;
+    client
+        .add_relay("ws://2jsnlhfnelig5acq6iacydmzdbdmg7xwunm4xl6qwbvzacw4lwrjmlyd.onion")
         .await?;
 
     client.connect().await;

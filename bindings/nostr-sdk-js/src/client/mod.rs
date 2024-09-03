@@ -226,17 +226,6 @@ impl JsClient {
         self.inner.add_write_relay(url).await.map_err(into_err)
     }
 
-    /// Add multiple relays
-    ///
-    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribeTo` method instead of `subscribe`,
-    /// to avoid to set pool subscriptions.
-    ///
-    /// Connection is **NOT** automatically started with relays, remember to call `connect` method!
-    #[wasm_bindgen(js_name = addRelays)]
-    pub async fn add_relays(&self, urls: Vec<String>) -> Result<()> {
-        self.inner.add_relays(urls).await.map_err(into_err)
-    }
-
     /// Remove relay
     #[wasm_bindgen(js_name = removeRelay)]
     pub async fn remove_relay(&self, url: String) -> Result<()> {
