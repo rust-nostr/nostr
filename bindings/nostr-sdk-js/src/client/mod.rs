@@ -264,7 +264,7 @@ impl JsClient {
         self.inner.disconnect().await.map_err(into_err)
     }
 
-    /// Subscribe to filters to all connected relays
+    /// Subscribe to filters
     ///
     /// ### Auto-closing subscription
     ///
@@ -282,7 +282,7 @@ impl JsClient {
             .map(|o| o.into())
     }
 
-    /// Subscribe to filters with custom subscription ID to all connected relays
+    /// Subscribe to filters with custom subscription ID
     ///
     /// ### Auto-closing subscription
     ///

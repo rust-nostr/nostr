@@ -374,7 +374,7 @@ impl RelayPool {
         self.inner.batch_event_to(urls, events, opts).await
     }
 
-    /// Subscribe to filters to all connected relays
+    /// Subscribe to filters to all relays with `READ` flag.
     ///
     /// ### Auto-closing subscription
     ///
@@ -390,7 +390,7 @@ impl RelayPool {
         self.inner.subscribe(filters, opts).await
     }
 
-    /// Subscribe to filters with custom [SubscriptionId] to all connected relays
+    /// Subscribe to filters with custom [SubscriptionId] to all relays with `READ` flag.
     ///
     /// ### Auto-closing subscription
     ///
@@ -462,7 +462,7 @@ impl RelayPool {
         self.inner.unsubscribe_all(opts).await
     }
 
-    /// Get events of filters
+    /// Get events of filters from relays with `READ` flag.
     #[inline]
     pub async fn get_events_of(
         &self,
@@ -470,12 +470,10 @@ impl RelayPool {
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
-        let relays = self.relays().await;
-        self.get_events_from(relays.into_keys(), filters, timeout, opts)
-            .await
+        self.inner.get_events_of(filters, timeout, opts).await
     }
 
-    /// Get events of filters from **specific relays**
+    /// Get events of filters from specific relays
     #[inline]
     pub async fn get_events_from<I, U>(
         &self,
@@ -494,7 +492,7 @@ impl RelayPool {
             .await
     }
 
-    /// Stream events of filters
+    /// Stream events of filters from relays with `READ` flag.
     #[inline]
     pub async fn stream_events_of(
         &self,
@@ -502,12 +500,10 @@ impl RelayPool {
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<ReceiverStream<Event>, Error> {
-        let relays = self.relays().await;
-        self.stream_events_from(relays.into_keys(), filters, timeout, opts)
-            .await
+        self.inner.stream_events_of(filters, timeout, opts).await
     }
 
-    /// Stream events of filters from **specific relays**
+    /// Stream events of filters from specific relays
     #[inline]
     pub async fn stream_events_from<I, U>(
         &self,

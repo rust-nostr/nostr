@@ -227,7 +227,7 @@ impl RelayPool {
             .into())
     }
 
-    /// Subscribe to filters to all connected relays
+    /// Subscribe to filters to relays with `READ` flag.
     ///
     /// ### Auto-closing subscription
     ///
@@ -252,7 +252,7 @@ impl RelayPool {
             .into())
     }
 
-    /// Subscribe with custom subscription ID to all connected relays
+    /// Subscribe with custom subscription ID to relays with `READ` flag.
     ///
     /// ### Auto-closing subscription
     ///

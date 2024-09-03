@@ -257,7 +257,7 @@ impl Client {
             .map(|filters| filters.into_iter().map(|f| Arc::new(f.into())).collect())
     }
 
-    /// Subscribe to filters to all connected relays
+    /// Subscribe to filters
     ///
     /// ### Auto-closing subscription
     ///
@@ -279,7 +279,7 @@ impl Client {
             .into())
     }
 
-    /// Subscribe to filters with custom subscription ID to all connected relays
+    /// Subscribe to filters with custom subscription ID
     ///
     /// ### Auto-closing subscription
     ///

@@ -705,7 +705,7 @@ impl Client {
         self.pool.subscription(id).await
     }
 
-    /// Subscribe to filters to all connected relays
+    /// Subscribe to filters
     ///
     /// This method create a new subscription. None of the previous subscriptions will be edited/closed when you call this!
     /// So remember to unsubscribe when you no longer need it. You can get all your active **pool** (non-auto-closing) subscriptions
@@ -754,7 +754,7 @@ impl Client {
         Ok(self.pool.subscribe(filters, opts).await?)
     }
 
-    /// Subscribe to filters with custom [SubscriptionId] to all connected relays
+    /// Subscribe to filters with custom [SubscriptionId]
     ///
     /// # Auto-closing subscription
     ///

@@ -141,6 +141,13 @@ impl InternalRelayPool {
         relays.keys().cloned().collect()
     }
 
+    async fn read_relay_urls(&self) -> Vec<Url> {
+        let relays = self.relays.read().await;
+        self.internal_relays_with_flag(&relays, RelayServiceFlags::READ, FlagCheck::All)
+            .map(|(k, ..)| k.clone())
+            .collect()
+    }
+
     async fn write_relay_urls(&self) -> Vec<Url> {
         let relays = self.relays.read().await;
         self.internal_relays_with_flag(&relays, RelayServiceFlags::WRITE, FlagCheck::All)
@@ -523,7 +530,7 @@ impl InternalRelayPool {
         }
 
         // Get relay urls
-        let urls: Vec<Url> = self.all_relay_urls().await;
+        let urls: Vec<Url> = self.read_relay_urls().await;
 
         // Subscribe
         self.subscribe_with_id_to(urls, id, filters, opts).await
@@ -667,6 +674,16 @@ impl InternalRelayPool {
         }
     }
 
+    pub async fn get_events_of(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Duration,
+        opts: FilterOptions,
+    ) -> Result<Vec<Event>, Error> {
+        let urls: Vec<Url> = self.read_relay_urls().await;
+        self.get_events_from(urls, filters, timeout, opts).await
+    }
+
     pub async fn get_events_from<I, U>(
         &self,
         urls: I,
@@ -751,6 +768,17 @@ impl InternalRelayPool {
                 None => Ok(iter.collect()),
             }
         }
+    }
+
+    #[inline]
+    pub async fn stream_events_of(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Duration,
+        opts: FilterOptions,
+    ) -> Result<ReceiverStream<Event>, Error> {
+        let urls: Vec<Url> = self.read_relay_urls().await;
+        self.stream_events_from(urls, filters, timeout, opts).await
     }
 
     pub async fn stream_events_from<I, U>(
