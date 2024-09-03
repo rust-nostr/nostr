@@ -102,6 +102,17 @@ impl InternalRelayPool {
         relays.clone()
     }
 
+    #[inline]
+    fn internal_relays_with_flag<'a>(
+        &self,
+        txn: &'a RwLockReadGuard<'a, Relays>,
+        flag: RelayServiceFlags,
+        check: FlagCheck,
+    ) -> impl Iterator<Item = (&'a Url, &'a Relay)> + 'a {
+        txn.iter()
+            .filter(move |(_, r)| r.flags_ref().has(flag, check))
+    }
+
     /// Get relays that has `READ` or `WRITE` flags
     #[inline]
     pub async fn relays(&self) -> HashMap<Url, Relay> {
@@ -119,9 +130,7 @@ impl InternalRelayPool {
         check: FlagCheck,
     ) -> HashMap<Url, Relay> {
         let relays = self.relays.read().await;
-        relays
-            .iter()
-            .filter(|(_, r)| r.flags_ref().has(flag, check))
+        self.internal_relays_with_flag(&relays, flag, check)
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect()
     }
@@ -130,6 +139,13 @@ impl InternalRelayPool {
     async fn all_relay_urls(&self) -> Vec<Url> {
         let relays = self.relays.read().await;
         relays.keys().cloned().collect()
+    }
+
+    async fn write_relay_urls(&self) -> Vec<Url> {
+        let relays = self.relays.read().await;
+        self.internal_relays_with_flag(&relays, RelayServiceFlags::WRITE, FlagCheck::All)
+            .map(|(k, ..)| k.clone())
+            .collect()
     }
 
     #[inline]
@@ -360,7 +376,7 @@ impl InternalRelayPool {
         event: Event,
         opts: RelaySendOptions,
     ) -> Result<Output<EventId>, Error> {
-        let urls: Vec<Url> = self.all_relay_urls().await;
+        let urls: Vec<Url> = self.write_relay_urls().await;
         self.send_event_to(urls, event, opts).await
     }
 
@@ -369,7 +385,7 @@ impl InternalRelayPool {
         events: Vec<Event>,
         opts: RelaySendOptions,
     ) -> Result<Output<()>, Error> {
-        let urls: Vec<Url> = self.all_relay_urls().await;
+        let urls: Vec<Url> = self.write_relay_urls().await;
         self.batch_event_to(urls, events, opts).await
     }
 

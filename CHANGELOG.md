@@ -61,6 +61,7 @@
 * pool: deprecate auto adjustment of retry seconds for relays ([Yuki Kishimoto])
 * pool: avoid unnecessary `Url` and `Relay` clone in `RelayPool` methods ([Yuki Kishimoto])
 * pool: avoid `Relay` clone in `RelayPool::connect_relay` method ([Yuki Kishimoto])
+* pool: `RelayPool::send_event` and `RelayPool::batch_event` send only to relays with `WRITE` flag ([Yuki Kishimoto])
 * signer: update NIP-04 and NIP-44 methods signature ([Yuki Kishimoto])
 * webln: bump `webln` to `v0.3` ([Yuki Kishimoto])
 * sqlite: deprecate `SQLiteDatabase` in favor of LMDB ([Yuki Kishimoto])

@@ -194,7 +194,7 @@ impl JsRelayPool {
             .into())
     }
 
-    /// Send event to **all connected relays** and wait for `OK` message
+    /// Send event to all relays with `WRITE` flag
     #[wasm_bindgen(js_name = sendEvent)]
     pub async fn send_event(
         &self,
@@ -209,7 +209,7 @@ impl JsRelayPool {
             .into())
     }
 
-    /// Send multiple `Event` at once to **all connected relays** and wait for `OK` message
+    /// Send multiple events at once to all relays with `WRITE` flag
     #[wasm_bindgen(js_name = batchEvent)]
     pub async fn batch_event(
         &self,
@@ -225,7 +225,7 @@ impl JsRelayPool {
             .into())
     }
 
-    /// Send event to **specific relays** and wait for `OK` message
+    /// Send event to specific relays
     #[wasm_bindgen(js_name = sendEventTo)]
     pub async fn send_event_to(
         &self,
@@ -241,7 +241,7 @@ impl JsRelayPool {
             .into())
     }
 
-    /// Send multiple events at once to **specific relays** and wait for `OK` message
+    /// Send multiple events at once to specific relays
     #[wasm_bindgen(js_name = batchEventTo)]
     pub async fn batch_event_to(
         &self,

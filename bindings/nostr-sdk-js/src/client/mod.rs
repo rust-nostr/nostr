@@ -420,8 +420,8 @@ impl JsClient {
 
     /// Send event
     ///
-    /// This method will wait for the `OK` message from the relay.
-    /// If you not want to wait for the `OK` message, use `sendMsg` method instead.
+    /// Send event to all relays with `WRITE` flag.
+    /// If `gossip` is enabled (see `Options`) the event will be sent also to NIP-65 relays (automatically discovered).
     #[wasm_bindgen(js_name = sendEvent)]
     pub async fn send_event(&self, event: &JsEvent) -> Result<JsSendEventOutput> {
         self.inner
@@ -432,9 +432,6 @@ impl JsClient {
     }
 
     /// Send event to specific relay
-    ///
-    /// This method will wait for the `OK` message from the relay.
-    /// If you not want to wait for the `OK` message, use `sendMsgTo` method instead.
     #[wasm_bindgen(js_name = sendEventTo)]
     pub async fn send_event_to(
         &self,
@@ -458,9 +455,9 @@ impl JsClient {
             .map(|id| id.into())
     }
 
-    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to all relays.
+    /// Take an `EventBuilder`, sign it by using the `NostrSigner` and broadcast to relays (check `send_event` method for more details)
     ///
-    /// Rise an error if the [`NostrSigner`] is not set.
+    /// Rise an error if the `NostrSigner` is not set.
     #[wasm_bindgen(js_name = sendEventBuilder)]
     pub async fn send_event_builder(&self, builder: &JsEventBuilder) -> Result<JsSendEventOutput> {
         self.inner
@@ -470,9 +467,9 @@ impl JsClient {
             .map(|id| id.into())
     }
 
-    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to specific relays.
+    /// Take an `EventBuilder`, sign it by using the `NostrSigner` and broadcast to specific relays.
     ///
-    /// Rise an error if the [`NostrSigner`] is not set.
+    /// Rise an error if the `NostrSigner` is not set.
     #[wasm_bindgen(js_name = sendEventBuilderTo)]
     pub async fn send_event_builder_to(
         &self,

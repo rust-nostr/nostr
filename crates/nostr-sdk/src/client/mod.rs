@@ -1071,11 +1071,8 @@ impl Client {
 
     /// Send event
     ///
-    /// If `gossip` is enabled in [`Options`] this method will send the event to **all** manually added
-    /// relays + NIP-65 relays. Otherwise, will be sent only to **all** manually added relays.
-    ///
-    /// This method will wait for the `OK` message from the relay.
-    /// If you not want to wait for the `OK` message, use `send_msg` method instead.
+    /// Send [`Event`] to all relays with `WRITE` flag.
+    /// If `gossip` is enabled (see [`Options::gossip`]) the event will be sent also to NIP-65 relays (automatically discovered).
     #[inline]
     pub async fn send_event(&self, event: Event) -> Result<Output<EventId>, Error> {
         let opts: RelaySendOptions = self.opts.get_wait_for_send();
@@ -1148,7 +1145,7 @@ impl Client {
         Ok(self.pool.send_event_to(urls, event, opts).await?)
     }
 
-    /// Send multiple [`Event`] at once to **all relays**.
+    /// Send multiple events at once to all relays with `WRITE` flag (check [`RelayServiceFlags`] for more details).
     #[inline]
     pub async fn batch_event(
         &self,
@@ -1158,10 +1155,7 @@ impl Client {
         Ok(self.pool.batch_event(events, opts).await?)
     }
 
-    /// Send event to **specific relays**.
-    ///
-    /// This method will wait for the `OK` message from the relay.
-    /// If you not want to wait for the `OK` message, use `send_msg` method instead.
+    /// Send event to specific relays.
     #[inline]
     pub async fn send_event_to<I, U>(&self, urls: I, event: Event) -> Result<Output<EventId>, Error>
     where
@@ -1173,7 +1167,7 @@ impl Client {
         Ok(self.pool.send_event_to(urls, event, opts).await?)
     }
 
-    /// Send multiple [`Event`] at once to **specific relays**.
+    /// Send multiple events at once to specific relays
     #[inline]
     pub async fn batch_event_to<I, U>(
         &self,
@@ -1200,7 +1194,7 @@ impl Client {
         Ok(signer.sign_event(unsigned).await?)
     }
 
-    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to **all relays**.
+    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to relays (check [`Client::send_event`] from more details).
     ///
     /// Rise an error if the [`NostrSigner`] is not set.
     #[inline]
@@ -1212,7 +1206,7 @@ impl Client {
         self.send_event(event).await
     }
 
-    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to **specific relays**.
+    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to specific relays.
     ///
     /// Rise an error if the [`NostrSigner`] is not set.
     #[inline]

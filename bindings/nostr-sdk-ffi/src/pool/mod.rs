@@ -169,7 +169,7 @@ impl RelayPool {
         Ok(self.inner.batch_msg_to(urls, msgs, **opts).await?.into())
     }
 
-    /// Send event to **all connected relays** and wait for `OK` message
+    /// Send event to all relays with `WRITE` flag
     pub async fn send_event(
         &self,
         event: &Event,
@@ -182,7 +182,7 @@ impl RelayPool {
             .into())
     }
 
-    /// Send multiple `Event` at once to **all connected relays** and wait for `OK` message
+    /// Send multiple events at once to all relays with `WRITE` flag
     pub async fn batch_event(
         &self,
         events: Vec<Arc<Event>>,
@@ -195,7 +195,7 @@ impl RelayPool {
         Ok(self.inner.batch_event(events, **opts).await?.into())
     }
 
-    /// Send event to **specific relays** and wait for `OK` message
+    /// Send event to specific relays
     pub async fn send_event_to(
         &self,
         urls: Vec<String>,
@@ -209,7 +209,7 @@ impl RelayPool {
             .into())
     }
 
-    /// Send multiple events at once to **specific relays** and wait for `OK` message
+    /// Send multiple events at once to specific relays
     pub async fn batch_event_to(
         &self,
         urls: Vec<String>,

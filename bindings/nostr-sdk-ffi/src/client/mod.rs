@@ -406,6 +406,10 @@ impl Client {
             .into())
     }
 
+    /// Send event
+    ///
+    /// Send event to all relays with `WRITE` flag.
+    /// If `gossip` is enabled (see `Options`) the event will be sent also to NIP-65 relays (automatically discovered).
     pub async fn send_event(&self, event: Arc<Event>) -> Result<SendEventOutput> {
         Ok(self
             .inner
@@ -414,6 +418,7 @@ impl Client {
             .into())
     }
 
+    /// Send event to specific relays.
     pub async fn send_event_to(
         &self,
         urls: Vec<String>,
@@ -436,9 +441,9 @@ impl Client {
         ))
     }
 
-    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to all relays.
+    /// Take an `EventBuilder`, sign it by using the `NostrSigner` and broadcast to relays (check `send_event` method for more details)
     ///
-    /// Rise an error if the [`NostrSigner`] is not set.
+    /// Rise an error if the `NostrSigner` is not set.
     pub async fn send_event_builder(&self, builder: Arc<EventBuilder>) -> Result<SendEventOutput> {
         Ok(self
             .inner
@@ -447,9 +452,9 @@ impl Client {
             .into())
     }
 
-    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to specific relays.
+    /// Take an `EventBuilder`, sign it by using the `NostrSigner` and broadcast to specific relays.
     ///
-    /// Rise an error if the [`NostrSigner`] is not set.
+    /// Rise an error if the `NostrSigner` is not set.
     pub async fn send_event_builder_to(
         &self,
         urls: Vec<String>,

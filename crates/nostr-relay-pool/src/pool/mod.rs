@@ -322,7 +322,7 @@ impl RelayPool {
         self.inner.batch_msg_to(urls, msgs, opts).await
     }
 
-    /// Send event to **all connected relays** and wait for `OK` message
+    /// Send event to all relays with `WRITE` flag (check [`RelayServiceFlags`] for more details).
     #[inline]
     pub async fn send_event(
         &self,
@@ -332,7 +332,7 @@ impl RelayPool {
         self.inner.send_event(event, opts).await
     }
 
-    /// Send multiple [`Event`] at once to **all connected relays** and wait for `OK` message
+    /// Send multiple events at once to all relays with `WRITE` flag (check [`RelayServiceFlags`] for more details).
     #[inline]
     pub async fn batch_event(
         &self,
@@ -342,7 +342,7 @@ impl RelayPool {
         self.inner.batch_event(events, opts).await
     }
 
-    /// Send event to **specific relays** and wait for `OK` message
+    /// Send event to specific relays
     #[inline]
     pub async fn send_event_to<I, U>(
         &self,
@@ -358,7 +358,7 @@ impl RelayPool {
         self.inner.send_event_to(urls, event, opts).await
     }
 
-    /// Send multiple events at once to **specific relays** and wait for `OK` message
+    /// Send multiple events at once to specific relays
     #[inline]
     pub async fn batch_event_to<I, U>(
         &self,
