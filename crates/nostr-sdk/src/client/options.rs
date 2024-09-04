@@ -6,6 +6,8 @@
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
+#[cfg(all(feature = "tor", any(target_os = "android", target_os = "ios")))]
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -245,7 +247,7 @@ pub enum ConnectionTarget {
 
 /// Connection
 #[cfg(not(target_arch = "wasm32"))]
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct Connection {
     /// Mode
     pub mode: ConnectionMode,
@@ -281,14 +283,14 @@ impl Connection {
     /// Set direct connection
     #[inline]
     pub fn direct(mut self) -> Self {
-        self.mode = ConnectionMode::Direct;
+        self.mode = ConnectionMode::direct();
         self
     }
 
     /// Set proxy
     #[inline]
     pub fn proxy(mut self, addr: SocketAddr) -> Self {
-        self.mode = ConnectionMode::Proxy(addr);
+        self.mode = ConnectionMode::proxy(addr);
         self
     }
 
@@ -302,9 +304,20 @@ impl Connection {
     /// tungstenite = { git = "https://github.com/yukibtc/tungstenite-rs", branch = "tor" }
     /// ```
     #[inline]
-    #[cfg(feature = "tor")]
+    #[cfg(all(feature = "tor", not(target_os = "android"), not(target_os = "ios")))]
     pub fn embedded_tor(mut self) -> Self {
-        self.mode = ConnectionMode::Tor;
+        self.mode = ConnectionMode::tor();
+        self
+    }
+
+    /// Use embedded tor client
+    #[inline]
+    #[cfg(all(feature = "tor", any(target_os = "android", target_os = "ios")))]
+    pub fn embedded_tor<P>(mut self, path: P) -> Self
+    where
+        P: AsRef<Path>,
+    {
+        self.mode = ConnectionMode::tor(path.as_ref().to_path_buf());
         self
     }
 }

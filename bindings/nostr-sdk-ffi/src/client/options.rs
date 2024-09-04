@@ -122,7 +122,7 @@ impl Options {
     /// Connection
     pub fn connection(self: Arc<Self>, connection: &Connection) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.connection(**connection);
+        builder.inner = builder.inner.connection(connection.deref().clone());
         builder
     }
 
@@ -207,11 +207,26 @@ impl Connection {
         builder.inner = builder.inner.proxy(addr);
         Ok(builder)
     }
+}
 
+#[cfg(all(not(target_os = "android"), not(target_os = "ios")))]
+#[uniffi::export]
+impl Connection {
     /// Use embedded tor client
     pub fn embedded_tor(self: Arc<Self>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.embedded_tor();
+        builder
+    }
+}
+
+#[cfg(any(target_os = "android", target_os = "ios"))]
+#[uniffi::export]
+impl Connection {
+    /// Use embedded tor client
+    pub fn embedded_tor(self: Arc<Self>, data_path: String) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.embedded_tor(data_path);
         builder
     }
 }

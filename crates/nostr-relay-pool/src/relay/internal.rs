@@ -216,7 +216,7 @@ impl InternalRelay {
 
     #[inline]
     pub fn connection_mode(&self) -> ConnectionMode {
-        self.opts.connection_mode
+        self.opts.connection_mode.clone()
     }
 
     pub async fn status(&self) -> RelayStatus {
@@ -527,7 +527,7 @@ impl InternalRelay {
             #[cfg(not(target_arch = "wasm32"))]
             ConnectionMode::Proxy(proxy) => (true, Some(proxy)),
             #[cfg(all(feature = "tor", not(target_arch = "wasm32")))]
-            ConnectionMode::Tor => (false, None),
+            ConnectionMode::Tor { .. } => (false, None),
         };
 
         if allowed {
@@ -779,7 +779,7 @@ impl InternalRelay {
         let timeout: Duration = if self.stats.attempts() > 1 {
             // Many attempts, use the default timeout
             #[cfg(feature = "tor")]
-            if let ConnectionMode::Tor = self.connection_mode() {
+            if let ConnectionMode::Tor { .. } = self.connection_mode() {
                 Duration::from_secs(120)
             } else {
                 Duration::from_secs(60)

@@ -399,28 +399,28 @@ impl Client {
 
         // Set connection mode
         #[cfg(not(target_arch = "wasm32"))]
-        let opts: RelayOptions = match self.opts.connection.mode {
+        let opts: RelayOptions = match &self.opts.connection.mode {
             ConnectionMode::Direct => opts,
             ConnectionMode::Proxy(..) => match self.opts.connection.target {
-                ConnectionTarget::All => opts.connection_mode(self.opts.connection.mode),
+                ConnectionTarget::All => opts.connection_mode(self.opts.connection.mode.clone()),
                 ConnectionTarget::Onion => {
                     let domain: &str = url.domain().unwrap_or_default();
 
                     if domain.ends_with(".onion") {
-                        opts.connection_mode(self.opts.connection.mode)
+                        opts.connection_mode(self.opts.connection.mode.clone())
                     } else {
                         opts
                     }
                 }
             },
             #[cfg(feature = "tor")]
-            ConnectionMode::Tor => match self.opts.connection.target {
-                ConnectionTarget::All => opts.connection_mode(self.opts.connection.mode),
+            ConnectionMode::Tor { .. } => match self.opts.connection.target {
+                ConnectionTarget::All => opts.connection_mode(self.opts.connection.mode.clone()),
                 ConnectionTarget::Onion => {
                     let domain: &str = url.domain().unwrap_or_default();
 
                     if domain.ends_with(".onion") {
-                        opts.connection_mode(self.opts.connection.mode)
+                        opts.connection_mode(self.opts.connection.mode.clone())
                     } else {
                         opts
                     }

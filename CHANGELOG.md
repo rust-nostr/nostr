@@ -51,6 +51,7 @@
 * nostr: use `OsRng` instead of `ThreadRng` for `SECP256K1` global context and schnorr signing ([Yuki Kishimoto])
 * database: update `NostrDatabase` supertraits ([Yuki Kishimoto])
 * database: impl `Clone` for `MemoryDatabase` ([Yuki Kishimoto])
+* pool: bump `async-wsocket` to `v0.8` ([Yuki Kishimoto])
 * pool: deprecate auto adjustment of retry seconds for relays ([Yuki Kishimoto])
 * pool: avoid unnecessary `Url` and `Relay` clone in `RelayPool` methods ([Yuki Kishimoto])
 * pool: avoid `Relay` clone in `RelayPool::connect_relay` method ([Yuki Kishimoto])
@@ -61,6 +62,7 @@
 * sdk: document and rename `Client::metadata` to `Client::fetch_metadata` ([Janek])
 * sdk: update `Client::shutdown` method fingerprint ([Yuki Kishimoto])
 * ffi(sdk): set default value for `signer` arg in `Client::with_opts` ([Yuki Kishimoto])
+* ffi(sdk): change `Connection::embedded_tor` fingerprint for `android` and `ios` targets ([Yuki Kishimoto])
 
 ### Added
 
