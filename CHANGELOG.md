@@ -89,6 +89,7 @@
 * nostr: add `nip65::extract_owned_relay_list` ([Yuki Kishimoto])
 * database: add `DatabaseHelper::fast_query` ([Yuki Kishimoto])
 * database: add `NostrDatabase::check_id` ([Yuki Kishimoto])
+* database: add `NostrDatabaseExt::relay_lists` ([Yuki Kishimoto])
 * lmdb: add LMDB storage backend ([Yuki Kishimoto])
 * relay-builder: add `MockRelay` ([Yuki Kishimoto])
 * pool: add `RelayPool::disconnect_relay` method ([Yuki Kishimoto])

@@ -269,6 +269,33 @@ pub trait NostrDatabaseExt: NostrDatabase {
             None => Ok(HashMap::new()),
         }
     }
+
+    /// Get relays list for public keys
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
+    #[tracing::instrument(skip_all, level = "trace")]
+    async fn relay_lists<I>(
+        &self,
+        public_keys: I,
+    ) -> Result<HashMap<PublicKey, HashMap<Url, Option<RelayMetadata>>>, DatabaseError>
+    where
+        I: IntoIterator<Item = PublicKey> + Send,
+    {
+        // Query
+        let filter: Filter = Filter::default().authors(public_keys).kind(Kind::RelayList);
+        let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
+
+        let mut map = HashMap::with_capacity(events.len());
+
+        for event in events.into_iter() {
+            map.insert(
+                event.pubkey,
+                nip65::extract_owned_relay_list(event).collect(),
+            );
+        }
+
+        Ok(map)
+    }
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
