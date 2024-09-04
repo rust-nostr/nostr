@@ -51,7 +51,7 @@ impl Client {
         Self::with_opts(signer, Arc::new(Options::new()))
     }
 
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(signer = None))]
     pub fn with_opts(signer: Option<Arc<NostrSigner>>, opts: Arc<Options>) -> Self {
         Self {
             inner: match signer {
