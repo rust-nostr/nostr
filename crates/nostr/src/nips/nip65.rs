@@ -75,3 +75,21 @@ pub fn extract_relay_list(event: &Event) -> impl Iterator<Item = (&Url, &Option<
         }
     })
 }
+
+/// Extracts the relay info (url, optional read/write flag) from the event
+#[inline]
+pub fn extract_owned_relay_list(
+    event: Event,
+) -> impl Iterator<Item = (Url, Option<RelayMetadata>)> {
+    event.tags.into_iter().filter_map(|tag| {
+        if let Some(TagStandard::RelayMetadata {
+            relay_url,
+            metadata,
+        }) = tag.to_standardized()
+        {
+            Some((relay_url, metadata))
+        } else {
+            None
+        }
+    })
+}
