@@ -61,6 +61,7 @@
 * sdk: update `Client::gift_wrap` and `Client::gift_wrap_to` methods signature ([Yuki Kishimoto])
 * sdk: document and rename `Client::metadata` to `Client::fetch_metadata` ([Janek])
 * sdk: update `Client::shutdown` method fingerprint ([Yuki Kishimoto])
+* ffi(nostr): impl `Display` for `Coordinate` ([Yuki Kishimoto])
 * ffi(sdk): set default value for `signer` arg in `Client::with_opts` ([Yuki Kishimoto])
 * ffi(sdk): change `Connection::embedded_tor` fingerprint for `android` and `ios` targets ([Yuki Kishimoto])
 
