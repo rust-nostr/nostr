@@ -73,6 +73,7 @@
 * nostr: add `JobFeedbackData` struct ([Yuki Kishimoto])
 * nostr: add `EventBuilder::pow` method ([Yuki Kishimoto])
 * nostr: add `TagKind::custom` constructor ([Yuki Kishimoto])
+* nostr: add `Timestamp::from_secs` ([Yuki Kishimoto])
 * database: add `DatabaseHelper::fast_query` ([Yuki Kishimoto])
 * database: add `NostrDatabase::check_event` ([Yuki Kishimoto])
 * relay-builder: add `MockRelay` ([Yuki Kishimoto])

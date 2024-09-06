@@ -40,7 +40,7 @@ impl JsTimestamp {
     #[wasm_bindgen(js_name = fromSecs)]
     pub fn from_secs(secs: f64) -> Self {
         Self {
-            inner: Timestamp::from(secs as u64),
+            inner: Timestamp::from_secs(secs as u64),
         }
     }
 
