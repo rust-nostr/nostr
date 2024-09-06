@@ -15,7 +15,6 @@ use std::sync::Arc;
 
 pub use async_trait::async_trait;
 pub use nostr;
-use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, JsonUtil, Kind, Metadata, PublicKey, Timestamp, Url};
 
 mod error;
@@ -101,6 +100,17 @@ where
     }
 }
 
+/// Database event status
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum DatabaseEventStatus {
+    /// The event is saved
+    Saved,
+    /// The event was deleted
+    Deleted,
+    /// The event not exists
+    NotExistent,
+}
+
 /// Nostr Database
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
@@ -114,8 +124,7 @@ pub trait NostrDatabase: fmt::Debug + Send + Sync {
     /// Save [`Event`] into store
     ///
     /// Return `true` if event was successfully saved into database.
-    ///
-    /// **This method assume that [`Event`] was already verified**
+    // TODO: return enum saying that event is saved or deleted or replaced and so on or error?
     async fn save_event(&self, event: &Event) -> Result<bool, Self::Err>;
 
     /// Bulk import events into database
@@ -123,21 +132,10 @@ pub trait NostrDatabase: fmt::Debug + Send + Sync {
     /// **This method assume that [`Event`] was already verified**
     async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), Self::Err>;
 
-    /// Check if [`Event`] has already been saved
-    async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err>;
-
-    /// Check if [`EventId`] has already been seen
-    async fn has_event_already_been_seen(&self, event_id: &EventId) -> Result<bool, Self::Err>;
-
-    /// Check if [`EventId`] has been deleted
-    async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, Self::Err>;
-
-    /// Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
-    async fn has_coordinate_been_deleted(
-        &self,
-        coordinate: &Coordinate,
-        timestamp: Timestamp,
-    ) -> Result<bool, Self::Err>;
+    /// Check event status
+    ///
+    /// Check if the event is saved, deleted or not existent.
+    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, Self::Err>;
 
     /// Set [`EventId`] as seen by relay
     ///
@@ -147,11 +145,11 @@ pub trait NostrDatabase: fmt::Debug + Send + Sync {
     /// Get list of relays that have seen the [`EventId`]
     async fn event_seen_on_relays(
         &self,
-        event_id: EventId,
+        event_id: &EventId,
     ) -> Result<Option<HashSet<Url>>, Self::Err>;
 
     /// Get [`Event`] by [`EventId`]
-    async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err>;
+    async fn event_by_id(&self, event_id: &EventId) -> Result<Event, Self::Err>;
 
     /// Count number of [`Event`] found by filters
     ///
@@ -283,36 +281,8 @@ impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
         self.0.bulk_import(events).await.map_err(Into::into)
     }
 
-    async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        self.0
-            .has_event_already_been_saved(event_id)
-            .await
-            .map_err(Into::into)
-    }
-
-    async fn has_event_already_been_seen(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        self.0
-            .has_event_already_been_seen(event_id)
-            .await
-            .map_err(Into::into)
-    }
-
-    async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        self.0
-            .has_event_id_been_deleted(event_id)
-            .await
-            .map_err(Into::into)
-    }
-
-    async fn has_coordinate_been_deleted(
-        &self,
-        coordinate: &Coordinate,
-        timestamp: Timestamp,
-    ) -> Result<bool, Self::Err> {
-        self.0
-            .has_coordinate_been_deleted(coordinate, timestamp)
-            .await
-            .map_err(Into::into)
+    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, Self::Err> {
+        self.0.check_event(event_id).await.map_err(Into::into)
     }
 
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
@@ -324,7 +294,7 @@ impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
 
     async fn event_seen_on_relays(
         &self,
-        event_id: EventId,
+        event_id: &EventId,
     ) -> Result<Option<HashSet<Url>>, Self::Err> {
         self.0
             .event_seen_on_relays(event_id)
@@ -332,7 +302,7 @@ impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
             .map_err(Into::into)
     }
 
-    async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err> {
+    async fn event_by_id(&self, event_id: &EventId) -> Result<Event, Self::Err> {
         self.0.event_by_id(event_id).await.map_err(Into::into)
     }
 

@@ -10,12 +10,12 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use lru::LruCache;
-use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use tokio::sync::Mutex;
 
 use crate::{
-    util, Backend, DatabaseError, DatabaseEventResult, DatabaseHelper, NostrDatabase, Order,
+    util, Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper,
+    NostrDatabase, Order,
 };
 
 /// Database options
@@ -127,40 +127,32 @@ impl NostrDatabase for MemoryDatabase {
     async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), Self::Err> {
         if self.opts.events {
             self.helper.bulk_import(events).await;
-            Ok(())
         } else {
-            Err(DatabaseError::FeatureDisabled)
+            let mut seen_event_ids = self.seen_event_ids.lock().await;
+            for event in events.into_iter() {
+                self._event_id_seen(&mut seen_event_ids, event.id, None);
+            }
         }
+        Ok(())
     }
 
-    async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        if self.helper.has_event_id_been_deleted(event_id).await {
-            Ok(true)
-        } else if self.opts.events {
-            Ok(self.helper.has_event(event_id).await)
+    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, Self::Err> {
+        if self.opts.events {
+            if self.helper.has_event_id_been_deleted(event_id).await {
+                Ok(DatabaseEventStatus::Deleted)
+            } else if self.helper.has_event(event_id).await {
+                Ok(DatabaseEventStatus::Saved)
+            } else {
+                Ok(DatabaseEventStatus::NotExistent)
+            }
         } else {
-            Ok(false)
+            let seen_event_ids = self.seen_event_ids.lock().await;
+            Ok(if seen_event_ids.contains(event_id) {
+                DatabaseEventStatus::Saved
+            } else {
+                DatabaseEventStatus::NotExistent
+            })
         }
-    }
-
-    async fn has_event_already_been_seen(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        let seen_event_ids = self.seen_event_ids.lock().await;
-        Ok(seen_event_ids.contains(event_id))
-    }
-
-    async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        Ok(self.helper.has_event_id_been_deleted(event_id).await)
-    }
-
-    async fn has_coordinate_been_deleted(
-        &self,
-        coordinate: &Coordinate,
-        timestamp: Timestamp,
-    ) -> Result<bool, Self::Err> {
-        Ok(self
-            .helper
-            .has_coordinate_been_deleted(coordinate, timestamp)
-            .await)
     }
 
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
@@ -171,17 +163,16 @@ impl NostrDatabase for MemoryDatabase {
 
     async fn event_seen_on_relays(
         &self,
-        event_id: EventId,
+        event_id: &EventId,
     ) -> Result<Option<HashSet<Url>>, Self::Err> {
         let mut seen_event_ids = self.seen_event_ids.lock().await;
-        Ok(seen_event_ids.get(&event_id).cloned())
+        Ok(seen_event_ids.get(event_id).cloned())
     }
 
-    // TODO: use reference
-    async fn event_by_id(&self, id: EventId) -> Result<Event, Self::Err> {
+    async fn event_by_id(&self, id: &EventId) -> Result<Event, Self::Err> {
         if self.opts.events {
             self.helper
-                .event_by_id(&id)
+                .event_by_id(id)
                 .await
                 .ok_or(DatabaseError::NotFound)
         } else {
@@ -189,7 +180,6 @@ impl NostrDatabase for MemoryDatabase {
         }
     }
 
-    #[inline]
     #[tracing::instrument(skip_all, level = "trace")]
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err> {
         Ok(self.helper.count(filters).await)

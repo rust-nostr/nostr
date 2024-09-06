@@ -15,7 +15,6 @@ use async_wsocket::{ConnectionMode, Sink, Stream, WsMessage};
 use atomic_destructor::AtomicDestroyer;
 use nostr::message::MessageHandleError;
 use nostr::negentropy::{Bytes, Negentropy};
-use nostr::nips::nip01::Coordinate;
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
 #[cfg(not(target_arch = "wasm32"))]
@@ -24,7 +23,7 @@ use nostr::{
     ClientMessage, Event, EventId, Filter, JsonUtil, Keys, Kind, MissingPartialEvent, PartialEvent,
     RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
 };
-use nostr_database::DynNostrDatabase;
+use nostr_database::{DatabaseEventStatus, DynNostrDatabase};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, watch, Mutex, MutexGuard, RwLock};
 
@@ -939,50 +938,16 @@ impl InternalRelay {
                     return Err(Error::PowDifficultyTooLow { min: difficulty });
                 }
 
-                // Check if event has been deleted
-                if self
-                    .database
-                    .has_event_id_been_deleted(&partial_event.id)
-                    .await?
-                {
-                    tracing::warn!(
-                        "Received event {} that was deleted: type=id, relay_url={}",
-                        partial_event.id,
-                        self.url
-                    );
-                    return Ok(None);
-                }
-
-                // Deserialize missing event fields
-                let missing: MissingPartialEvent = MissingPartialEvent::from_raw(event)?;
-
                 // TODO: check if word/hashtag is blacklisted
 
-                // Check if event is replaceable and has coordinate
-                if missing.kind.is_replaceable() || missing.kind.is_parameterized_replaceable() {
-                    let coordinate: Coordinate =
-                        Coordinate::new(missing.kind, partial_event.pubkey)
-                            .identifier(missing.identifier().unwrap_or_default());
-                    // Check if event has been deleted
-                    if self
-                        .database
-                        .has_coordinate_been_deleted(&coordinate, missing.created_at)
-                        .await?
-                    {
-                        tracing::warn!(
-                            "Received event {} that was deleted: type=coordinate, relay_url={}",
-                            partial_event.id,
-                            self.url
-                        );
-                        return Ok(None);
-                    }
-                }
+                // Check if event status
+                let status: DatabaseEventStatus =
+                    self.database.check_event(&partial_event.id).await?;
 
-                // Check if event id was already seen
-                let seen: bool = self
-                    .database
-                    .has_event_already_been_seen(&partial_event.id)
-                    .await?;
+                // Event deleted
+                if let DatabaseEventStatus::Deleted = status {
+                    return Ok(None); // TODO: return error?
+                }
 
                 // Set event as seen by relay
                 if let Err(e) = self
@@ -996,13 +961,8 @@ impl InternalRelay {
                     );
                 }
 
-                // Check if event was already saved
-                let saved: bool = self
-                    .database
-                    .has_event_already_been_saved(&partial_event.id)
-                    .await?;
-
-                // Compose full event
+                // Deserialize missing event fields and compose full event
+                let missing: MissingPartialEvent = MissingPartialEvent::from_raw(event)?;
                 let event: Event = partial_event.merge(missing)?;
 
                 // Check if it's expired
@@ -1010,25 +970,18 @@ impl InternalRelay {
                     return Err(Error::EventExpired);
                 }
 
-                // Verify event
-                if !seen && !saved {
+                if let DatabaseEventStatus::NotExistent = status {
+                    // Verify event
                     event.verify()?;
-                }
 
-                // Save event
-                if !saved {
+                    // Save into database
                     self.database.save_event(&event).await?;
-                }
 
-                // Box event
-                let boxed_event: Box<Event> = Box::new(event);
-
-                // Send notification
-                if !seen && !saved {
+                    // Send notification
                     self.send_notification(
                         RelayNotification::Event {
                             subscription_id: SubscriptionId::new(&subscription_id),
-                            event: boxed_event.clone(),
+                            event: Box::new(event.clone()),
                         },
                         true,
                     )
@@ -1037,7 +990,7 @@ impl InternalRelay {
 
                 Ok(Some(RelayMessage::Event {
                     subscription_id: SubscriptionId::new(subscription_id),
-                    event: boxed_event,
+                    event: Box::new(event),
                 }))
             }
             m => Ok(Some(RelayMessage::try_from(m)?)),
@@ -1834,7 +1787,7 @@ impl InternalRelay {
                         {
                             if let Some(id) = have_ids.pop() {
                                 if let Ok(event_id) = EventId::from_slice(&id) {
-                                    match self.database.event_by_id(event_id).await {
+                                    match self.database.event_by_id(&event_id).await {
                                         Ok(event) => {
                                             in_flight_up.insert(event_id);
                                             self.send_msg(ClientMessage::event(event), send_opts)

@@ -16,15 +16,8 @@ pub extern crate nostr;
 pub extern crate nostr_database as database;
 pub extern crate nostrdb;
 
-use async_trait::async_trait;
-use nostr::nips::nip01::Coordinate;
 use nostr::secp256k1::schnorr::Signature;
-use nostr::util::hex;
-use nostr::{
-    Event, EventId, Filter, JsonUtil, Kind, PublicKey, RelayMessage, SubscriptionId, Tag,
-    Timestamp, Url,
-};
-use nostr_database::{Backend, DatabaseError, NostrDatabase, Order};
+use nostr_database::prelude::*;
 use nostrdb::{Config, Filter as NdbFilter, Ndb, NdbStrVariant, Note, QueryResult, Transaction};
 
 const MAX_RESULTS: i32 = 10_000;
@@ -113,41 +106,34 @@ impl NostrDatabase for NdbDatabase {
         Ok(())
     }
 
-    async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err> {
+    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, Self::Err> {
         let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let res = self.db.get_note_by_id(&txn, event_id.as_bytes());
-        Ok(res.is_ok())
+        Ok(if res.is_ok() {
+            DatabaseEventStatus::Saved
+        } else {
+            DatabaseEventStatus::NotExistent
+        })
     }
 
-    async fn has_event_already_been_seen(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        self.has_event_already_been_saved(event_id).await
-    }
-
-    async fn has_event_id_been_deleted(&self, _event_id: &EventId) -> Result<bool, Self::Err> {
-        Ok(false)
-    }
-
-    async fn has_coordinate_been_deleted(
+    async fn event_id_seen(
         &self,
-        _coordinate: &Coordinate,
-        _timestamp: Timestamp,
-    ) -> Result<bool, Self::Err> {
-        Ok(false)
-    }
-
-    async fn event_id_seen(&self, _event_id: EventId, _relay_url: Url) -> Result<(), Self::Err> {
+        _event_id: EventId,
+        _relay_url: Url,
+    ) -> std::result::Result<(), Self::Err> {
         Ok(())
     }
 
     async fn event_seen_on_relays(
         &self,
-        _event_id: EventId,
-    ) -> Result<Option<HashSet<Url>>, Self::Err> {
+        _event_id: &EventId,
+    ) -> std::result::Result<Option<HashSet<Url>>, Self::Err> {
+        // TODO: use in-memory map to keep track of seen relays
         Err(DatabaseError::NotSupported)
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err> {
+    async fn event_by_id(&self, event_id: &EventId) -> Result<Event, Self::Err> {
         let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let note = self
             .db

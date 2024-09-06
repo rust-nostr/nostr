@@ -73,6 +73,7 @@
 * nostr: add `EventBuilder::pow` method ([Yuki Kishimoto])
 * nostr: add `TagKind::custom` constructor ([Yuki Kishimoto])
 * database: add `DatabaseHelper::fast_query` ([Yuki Kishimoto])
+* database: add `NostrDatabase::check_event` ([Yuki Kishimoto])
 * relay-builder: add `MockRelay` ([Yuki Kishimoto])
 * pool: add `RelayPool::disconnect_relay` method ([Yuki Kishimoto])
 * bindings(nostr): expose `as_pretty_json` for some structs ([Yuki Kishimoto])
@@ -96,6 +97,7 @@
 * nostr: remove `Keys::from_public_key` ([Yuki Kishimoto])
 * nostr: remove `tracing` dep ([Yuki Kishimoto])
 * nostr: remove impl `fmt::Display` for `SecretKey` ([Yuki Kishimoto])
+* database: remove `has_event_already_been_saved`, `has_event_already_been_seen`, `has_event_id_been_deleted` and `has_coordinate_been_deleted` methods from `NostrDatabase` ([Yuki Kishimoto])
 * pool: remove high latency log ([Yuki Kishimoto])
 * js(nostr): remove `Keys::vanity` ([Yuki Kishimoto])
 

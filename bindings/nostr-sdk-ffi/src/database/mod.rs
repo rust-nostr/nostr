@@ -94,13 +94,15 @@ impl NostrDatabase {
 
     /// Get list of relays that have seen the [`EventId`]
     pub async fn event_seen_on_relays(&self, event_id: &EventId) -> Result<Option<Vec<String>>> {
-        let res = self.inner.event_seen_on_relays(**event_id).await?;
+        let res = self.inner.event_seen_on_relays(event_id.deref()).await?;
         Ok(res.map(|set| set.into_iter().map(|u| u.to_string()).collect()))
     }
 
     /// Get [`Event`] by [`EventId`]
     pub async fn event_by_id(&self, event_id: &EventId) -> Result<Arc<Event>> {
-        Ok(Arc::new(self.inner.event_by_id(**event_id).await?.into()))
+        Ok(Arc::new(
+            self.inner.event_by_id(event_id.deref()).await?.into(),
+        ))
     }
 
     pub async fn count(&self, filters: Vec<Arc<Filter>>) -> Result<u64> {

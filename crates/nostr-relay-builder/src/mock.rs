@@ -13,7 +13,7 @@ use async_utility::futures_util::stream::{self, SplitSink};
 use async_utility::futures_util::{SinkExt, StreamExt};
 use atomic_destructor::{AtomicDestroyer, AtomicDestructor};
 use nostr::prelude::*;
-use nostr_database::{MemoryDatabase, MemoryDatabaseOptions, NostrDatabase, Order};
+use nostr_database::prelude::*;
 use thiserror::Error;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
@@ -256,11 +256,8 @@ impl InternalMockRelay {
                 }
 
                 // Check if event already exists
-                if self
-                    .database
-                    .has_event_already_been_saved(&event.id)
-                    .await?
-                {
+                let event_status = self.database.check_event(&event.id).await?;
+                if let DatabaseEventStatus::Saved | DatabaseEventStatus::Deleted = event_status {
                     return self
                         .send_msg(
                             ws_tx,

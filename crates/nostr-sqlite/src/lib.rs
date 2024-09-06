@@ -17,12 +17,7 @@ pub extern crate nostr;
 pub extern crate nostr_database as database;
 
 use async_trait::async_trait;
-use nostr::nips::nip01::Coordinate;
-use nostr::{Event, EventId, Filter, Timestamp, Url};
-use nostr_database::{
-    Backend, DatabaseEventResult, DatabaseHelper, FlatBufferBuilder, FlatBufferDecode,
-    FlatBufferEncode, NostrDatabase, Order,
-};
+use nostr_database::prelude::*;
 use rusqlite::config::DbConfig;
 use rusqlite::Connection;
 use tokio::sync::RwLock;
@@ -211,9 +206,9 @@ impl NostrDatabase for SQLiteDatabase {
         Ok(())
     }
 
-    async fn has_event_already_been_saved(&self, event_id: &EventId) -> Result<bool, Self::Err> {
+    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, Self::Err> {
         if self.helper.has_event_id_been_deleted(event_id).await {
-            Ok(true)
+            Ok(DatabaseEventStatus::Deleted)
         } else {
             let event_id: String = event_id.to_hex();
             self.pool
@@ -226,50 +221,26 @@ impl NostrDatabase for SQLiteDatabase {
                         Some(row) => row.get(0)?,
                         None => 0,
                     };
-                    Ok(exists == 1)
+                    Ok(if exists == 1 {
+                        DatabaseEventStatus::Saved
+                    } else {
+                        DatabaseEventStatus::NotExistent
+                    })
                 })
                 .await?
         }
     }
 
-    async fn has_event_already_been_seen(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        let event_id: String = event_id.to_hex();
-        self.pool
-            .interact(move |conn| {
-                let mut stmt = conn.prepare_cached(
-                    "SELECT EXISTS(SELECT 1 FROM event_seen_by_relays WHERE event_id = ? LIMIT 1);",
-                )?;
-                let mut rows = stmt.query([event_id])?;
-                let exists: u8 = match rows.next()? {
-                    Some(row) => row.get(0)?,
-                    None => 0,
-                };
-                Ok(exists == 1)
-            })
-            .await?
-    }
-
-    async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-        Ok(self.helper.has_event_id_been_deleted(event_id).await)
-    }
-
-    async fn has_coordinate_been_deleted(
+    async fn event_id_seen(
         &self,
-        coordinate: &Coordinate,
-        timestamp: Timestamp,
-    ) -> Result<bool, Self::Err> {
-        Ok(self
-            .helper
-            .has_coordinate_been_deleted(coordinate, timestamp)
-            .await)
-    }
-
-    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
+        event_id: EventId,
+        relay_url: Url,
+    ) -> std::result::Result<(), Self::Err> {
         self.pool
             .interact(move |conn| {
                 let mut stmt = conn.prepare_cached(
-                "INSERT OR IGNORE INTO event_seen_by_relays (event_id, relay_url) VALUES (?, ?);",
-            )?;
+                    "INSERT OR IGNORE INTO event_seen_by_relays (event_id, relay_url) VALUES (?, ?);",
+                )?;
                 stmt.execute((event_id.to_hex(), relay_url.to_string()))
             })
             .await??;
@@ -278,14 +249,15 @@ impl NostrDatabase for SQLiteDatabase {
 
     async fn event_seen_on_relays(
         &self,
-        event_id: EventId,
+        event_id: &EventId,
     ) -> Result<Option<HashSet<Url>>, Self::Err> {
+        let event_id: String = event_id.to_hex();
         self.pool
             .interact(move |conn| {
                 let mut stmt = conn.prepare_cached(
                     "SELECT relay_url FROM event_seen_by_relays WHERE event_id = ?;",
                 )?;
-                let mut rows = stmt.query([event_id.to_hex()])?;
+                let mut rows = stmt.query([event_id])?;
                 let mut relays = HashSet::new();
                 while let Ok(Some(row)) = rows.next() {
                     let url: &str = row.get_ref(0)?.as_str()?;
@@ -297,12 +269,13 @@ impl NostrDatabase for SQLiteDatabase {
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err> {
+    async fn event_by_id(&self, event_id: &EventId) -> Result<Event, Self::Err> {
+        let event_id: String = event_id.to_hex();
         self.pool
             .interact(move |conn| {
                 let mut stmt =
                     conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
-                let mut rows = stmt.query([event_id.to_hex()])?;
+                let mut rows = stmt.query([event_id])?;
                 let row = rows
                     .next()?
                     .ok_or_else(|| Error::NotFound("event".into()))?;

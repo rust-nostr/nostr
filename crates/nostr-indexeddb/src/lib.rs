@@ -18,21 +18,11 @@ use std::sync::Arc;
 pub extern crate nostr;
 pub extern crate nostr_database as database;
 
-#[cfg(target_arch = "wasm32")]
-use async_trait::async_trait;
 use indexed_db_futures::js_sys::JsString;
 use indexed_db_futures::request::{IdbOpenDbRequestLike, OpenDbRequest};
 use indexed_db_futures::web_sys::IdbTransactionMode;
 use indexed_db_futures::{IdbDatabase, IdbQuerySource, IdbVersionChangeEvent};
-use nostr::nips::nip01::Coordinate;
-use nostr::util::hex;
-use nostr::{Event, EventId, Filter, Timestamp, Url};
-#[cfg(target_arch = "wasm32")]
-use nostr_database::NostrDatabase;
-use nostr_database::{
-    Backend, DatabaseError, DatabaseEventResult, DatabaseHelper, FlatBufferBuilder,
-    FlatBufferDecode, FlatBufferEncode, Order,
-};
+use nostr_database::prelude::*;
 use tokio::sync::Mutex;
 use wasm_bindgen::{JsCast, JsValue};
 
@@ -42,7 +32,7 @@ pub use self::error::IndexedDBError;
 
 const CURRENT_DB_VERSION: u32 = 2;
 const EVENTS_CF: &str = "events";
-const EVENTS_SEEN_BY_RELAYS_CF: &str = "event-seen-by-relays";
+const EVENTS_SEEN_BY_RELAYS_CF: &str = "event-seen-by-relays"; // TODO: remove
 const ALL_STORES: [&str; 2] = [EVENTS_CF, EVENTS_SEEN_BY_RELAYS_CF];
 
 /// Helper struct for upgrading the inner DB.
@@ -341,52 +331,26 @@ impl_nostr_database!({
         Ok(())
     }
 
-    async fn has_event_already_been_saved(
-        &self,
-        event_id: &EventId,
-    ) -> Result<bool, IndexedDBError> {
+    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, IndexedDBError> {
         if self.helper.has_event_id_been_deleted(event_id).await {
-            Ok(true)
+            Ok(DatabaseEventStatus::Deleted)
         } else {
             let tx = self
                 .db
                 .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;
             let store = tx.object_store(EVENTS_CF)?;
             let key = JsValue::from(event_id.to_hex());
-            Ok(store.get(&key)?.await?.is_some())
+            Ok(if store.get(&key)?.await?.is_some() {
+                DatabaseEventStatus::Saved
+            } else {
+                DatabaseEventStatus::NotExistent
+            })
         }
-    }
-
-    async fn has_event_already_been_seen(
-        &self,
-        event_id: &EventId,
-    ) -> Result<bool, IndexedDBError> {
-        let tx = self
-            .db
-            .transaction_on_one_with_mode(EVENTS_SEEN_BY_RELAYS_CF, IdbTransactionMode::Readonly)?;
-        let store = tx.object_store(EVENTS_SEEN_BY_RELAYS_CF)?;
-        let key = JsValue::from(event_id.to_hex());
-        Ok(store.get(&key)?.await?.is_some())
-    }
-
-    async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, IndexedDBError> {
-        Ok(self.helper.has_event_id_been_deleted(event_id).await)
-    }
-
-    async fn has_coordinate_been_deleted(
-        &self,
-        coordinate: &Coordinate,
-        timestamp: Timestamp,
-    ) -> Result<bool, IndexedDBError> {
-        Ok(self
-            .helper
-            .has_coordinate_been_deleted(coordinate, timestamp)
-            .await)
     }
 
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), IndexedDBError> {
         let mut set: HashSet<Url> = self
-            .event_seen_on_relays(event_id)
+            .event_seen_on_relays(&event_id)
             .await?
             .unwrap_or_else(|| HashSet::with_capacity(1));
 
@@ -416,7 +380,7 @@ impl_nostr_database!({
 
     async fn event_seen_on_relays(
         &self,
-        event_id: EventId,
+        event_id: &EventId,
     ) -> Result<Option<HashSet<Url>>, IndexedDBError> {
         let tx = self
             .db
@@ -437,7 +401,7 @@ impl_nostr_database!({
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn event_by_id(&self, event_id: EventId) -> Result<Event, IndexedDBError> {
+    async fn event_by_id(&self, event_id: &EventId) -> Result<Event, IndexedDBError> {
         let tx = self
             .db
             .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)?;

@@ -2,6 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
 use std::sync::Arc;
 
 use js_sys::Array;
@@ -73,7 +74,7 @@ impl JsNostrDatabase {
     ) -> Result<Option<JsStringArray>> {
         let res = self
             .inner
-            .event_seen_on_relays(**event_id)
+            .event_seen_on_relays(event_id.deref())
             .await
             .map_err(into_err)?;
         Ok(res.map(|set| {
@@ -89,7 +90,7 @@ impl JsNostrDatabase {
     pub async fn event_by_id(&self, event_id: &JsEventId) -> Result<JsEvent> {
         Ok(self
             .inner
-            .event_by_id(**event_id)
+            .event_by_id(event_id.deref())
             .await
             .map_err(into_err)?
             .into())

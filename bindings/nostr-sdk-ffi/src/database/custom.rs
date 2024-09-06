@@ -5,10 +5,28 @@
 use std::fmt;
 use std::sync::Arc;
 
-use nostr_ffi::nips::nip01::Coordinate;
-use nostr_ffi::{Event, EventId, Filter, Timestamp};
+use nostr_ffi::{Event, EventId, Filter};
+use nostr_sdk::database;
+use uniffi::Enum;
 
 use crate::error::Result;
+
+#[derive(Enum)]
+pub enum DatabaseEventStatus {
+    Saved,
+    Deleted,
+    NotExistent,
+}
+
+impl From<DatabaseEventStatus> for database::DatabaseEventStatus {
+    fn from(value: DatabaseEventStatus) -> Self {
+        match value {
+            DatabaseEventStatus::Saved => Self::Saved,
+            DatabaseEventStatus::Deleted => Self::Deleted,
+            DatabaseEventStatus::NotExistent => Self::NotExistent,
+        }
+    }
+}
 
 #[uniffi::export(with_foreign)]
 #[async_trait::async_trait]
@@ -24,20 +42,7 @@ pub trait CustomNostrDatabase: Send + Sync {
     async fn save_event(&self, event: Arc<Event>) -> Result<bool>;
 
     /// Check if [`Event`] has already been saved
-    async fn has_event_already_been_saved(&self, event_id: Arc<EventId>) -> Result<bool>;
-
-    /// Check if [`EventId`] has already been seen
-    async fn has_event_already_been_seen(&self, event_id: Arc<EventId>) -> Result<bool>;
-
-    /// Check if [`EventId`] has been deleted
-    async fn has_event_id_been_deleted(&self, event_id: Arc<EventId>) -> Result<bool>;
-
-    /// Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
-    async fn has_coordinate_been_deleted(
-        &self,
-        coordinate: Arc<Coordinate>,
-        timestamp: Arc<Timestamp>,
-    ) -> Result<bool>;
+    async fn check_event(&self, event_id: Arc<EventId>) -> Result<DatabaseEventStatus>;
 
     /// Set [`EventId`] as seen by relay
     ///
@@ -123,41 +128,11 @@ mod inner {
             Ok(())
         }
 
-        async fn has_event_already_been_saved(
-            &self,
-            event_id: &EventId,
-        ) -> Result<bool, Self::Err> {
+        async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, Self::Err> {
             self.inner
-                .has_event_already_been_saved(Arc::new((*event_id).into()))
+                .check_event(Arc::new((*event_id).into()))
                 .await
-                .map_err(DatabaseError::backend)
-        }
-
-        async fn has_event_already_been_seen(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-            self.inner
-                .has_event_already_been_seen(Arc::new((*event_id).into()))
-                .await
-                .map_err(DatabaseError::backend)
-        }
-
-        async fn has_event_id_been_deleted(&self, event_id: &EventId) -> Result<bool, Self::Err> {
-            self.inner
-                .has_event_id_been_deleted(Arc::new((*event_id).into()))
-                .await
-                .map_err(DatabaseError::backend)
-        }
-
-        async fn has_coordinate_been_deleted(
-            &self,
-            coordinate: &Coordinate,
-            timestamp: Timestamp,
-        ) -> Result<bool, Self::Err> {
-            self.inner
-                .has_coordinate_been_deleted(
-                    Arc::new(coordinate.to_owned().into()),
-                    Arc::new(timestamp.into()),
-                )
-                .await
+                .map(|s| s.into())
                 .map_err(DatabaseError::backend)
         }
 
@@ -170,11 +145,11 @@ mod inner {
 
         async fn event_seen_on_relays(
             &self,
-            event_id: EventId,
+            event_id: &EventId,
         ) -> Result<Option<HashSet<Url>>, Self::Err> {
             let res = self
                 .inner
-                .event_seen_on_relays(Arc::new(event_id.into()))
+                .event_seen_on_relays(Arc::new((*event_id).into()))
                 .await
                 .map_err(DatabaseError::backend)?;
             Ok(res.map(|list| {
@@ -184,9 +159,9 @@ mod inner {
             }))
         }
 
-        async fn event_by_id(&self, event_id: EventId) -> Result<Event, Self::Err> {
+        async fn event_by_id(&self, event_id: &EventId) -> Result<Event, Self::Err> {
             // TODO: use event_by_id directly
-            let filter = Filter::new().id(event_id).limit(1);
+            let filter = Filter::new().id(*event_id).limit(1);
             let events = self.query(vec![filter], Order::Desc).await?;
             events.first().cloned().ok_or(DatabaseError::NotFound)
         }
