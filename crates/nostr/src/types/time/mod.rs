@@ -4,11 +4,11 @@
 
 //! Time
 
-use alloc::string::String;
-use alloc::vec::Vec;
+use alloc::borrow::Cow;
+use alloc::string::ToString;
 use core::fmt;
 use core::ops::{Add, Range, Sub};
-use core::str::FromStr;
+use core::str::{self, FromStr};
 use core::time::Duration;
 
 #[cfg(feature = "std")]
@@ -20,6 +20,17 @@ mod supplier;
 pub use self::supplier::TimeSupplier;
 #[cfg(feature = "std")]
 pub use self::supplier::{Instant, SystemTime, UNIX_EPOCH};
+
+// 2000-03-01 (mod 400 year, immediately after feb29)
+const LEAPOCH: i64 = 11017;
+const DAYS_PER_400Y: i64 = 365 * 400 + 97;
+const DAYS_PER_100Y: i64 = 365 * 100 + 24;
+const DAYS_PER_4Y: i64 = 365 * 4 + 1;
+
+const TO_HUMAN_DATE_BUF: [u8; 20] = [
+    b'0', b'0', b'0', b'0', b'-', b'0', b'0', b'-', b'0', b'0', b'T', b'0', b'0', b':', b'0', b'0',
+    b':', b'0', b'0', b'Z',
+];
 
 /// Unix timestamp in seconds
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -111,19 +122,13 @@ impl Timestamp {
     }
 
     /// Convert [`Timestamp`] to human datetime
-    pub fn to_human_datetime(&self) -> String {
+    pub fn to_human_datetime<'a>(&self) -> Cow<'a, str> {
         let timestamp: u64 = self.as_u64();
 
         if timestamp >= 253_402_300_800 {
             // Year 9999
-            return String::from("Unavailable");
+            return Cow::Borrowed("Unavailable");
         }
-
-        // 2000-03-01 (mod 400 year, immediately after feb29
-        const LEAPOCH: i64 = 11017;
-        const DAYS_PER_400Y: i64 = 365 * 400 + 97;
-        const DAYS_PER_100Y: i64 = 365 * 100 + 24;
-        const DAYS_PER_4Y: i64 = 365 * 4 + 1;
 
         let days = (timestamp / 86400) as i64 - LEAPOCH;
         let secs_of_day = timestamp % 86400;
@@ -173,24 +178,24 @@ impl Timestamp {
             mon + 2
         };
 
-        let mut buf: Vec<char> = "0000-00-00T00:00:00Z".chars().collect();
+        let mut buf: [u8; 20] = TO_HUMAN_DATE_BUF;
 
-        buf[0] = (b'0' + (year / 1000) as u8) as char;
-        buf[1] = (b'0' + (year / 100 % 10) as u8) as char;
-        buf[2] = (b'0' + (year / 10 % 10) as u8) as char;
-        buf[3] = (b'0' + (year % 10) as u8) as char;
-        buf[5] = (b'0' + (mon / 10) as u8) as char;
-        buf[6] = (b'0' + (mon % 10) as u8) as char;
-        buf[8] = (b'0' + (mday / 10) as u8) as char;
-        buf[9] = (b'0' + (mday % 10) as u8) as char;
-        buf[11] = (b'0' + (secs_of_day / 3600 / 10) as u8) as char;
-        buf[12] = (b'0' + (secs_of_day / 3600 % 10) as u8) as char;
-        buf[14] = (b'0' + (secs_of_day / 60 / 10 % 6) as u8) as char;
-        buf[15] = (b'0' + (secs_of_day / 60 % 10) as u8) as char;
-        buf[17] = (b'0' + (secs_of_day / 10 % 6) as u8) as char;
-        buf[18] = (b'0' + (secs_of_day % 10) as u8) as char;
+        buf[0] = b'0' + (year / 1000) as u8;
+        buf[1] = b'0' + (year / 100 % 10) as u8;
+        buf[2] = b'0' + (year / 10 % 10) as u8;
+        buf[3] = b'0' + (year % 10) as u8;
+        buf[5] = b'0' + (mon / 10) as u8;
+        buf[6] = b'0' + (mon % 10) as u8;
+        buf[8] = b'0' + (mday / 10) as u8;
+        buf[9] = b'0' + (mday % 10) as u8;
+        buf[11] = b'0' + (secs_of_day / 3600 / 10) as u8;
+        buf[12] = b'0' + (secs_of_day / 3600 % 10) as u8;
+        buf[14] = b'0' + (secs_of_day / 60 / 10 % 6) as u8;
+        buf[15] = b'0' + (secs_of_day / 60 % 10) as u8;
+        buf[17] = b'0' + (secs_of_day / 10 % 6) as u8;
+        buf[18] = b'0' + (secs_of_day % 10) as u8;
 
-        buf.into_iter().collect::<String>()
+        Cow::Owned(str::from_utf8(&buf).unwrap_or_default().to_string())
     }
 }
 
@@ -277,7 +282,22 @@ mod tests {
         let timestamp = Timestamp::from(1682060685);
         assert_eq!(
             timestamp.to_human_datetime(),
-            String::from("2023-04-21T07:04:45Z")
+            Cow::from("2023-04-21T07:04:45Z")
         );
+    }
+}
+
+#[cfg(bench)]
+mod benches {
+    use test::{black_box, Bencher};
+
+    use super::*;
+
+    #[bench]
+    pub fn timestamp_to_human_datetime(bh: &mut Bencher) {
+        let timestamp = Timestamp::from(1682060685);
+        bh.iter(|| {
+            black_box(timestamp.to_human_datetime());
+        });
     }
 }

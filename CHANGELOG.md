@@ -49,6 +49,7 @@
 * nostr: change visibility of `public_key` field in `Keys` struct ([Yuki Kishimoto])
 * nostr: deprecate `Keys::public_key_ref` ([Yuki Kishimoto])
 * nostr: use `OsRng` instead of `ThreadRng` for `SECP256K1` global context and schnorr signing ([Yuki Kishimoto])
+* nostr: improve `Timestamp::to_human_datetime` performance ([Yuki Kishimoto])
 * database: update `NostrDatabase` supertraits ([Yuki Kishimoto])
 * database: impl `Clone` for `MemoryDatabase` ([Yuki Kishimoto])
 * pool: bump `async-wsocket` to `v0.8` ([Yuki Kishimoto])
