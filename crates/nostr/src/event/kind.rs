@@ -165,7 +165,7 @@ kind_variants! {
 
 impl PartialEq<Kind> for Kind {
     fn eq(&self, other: &Kind) -> bool {
-        self.as_u64() == other.as_u64()
+        self.as_u16() == other.as_u16()
     }
 }
 
@@ -179,7 +179,7 @@ impl PartialOrd for Kind {
 
 impl Ord for Kind {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.as_u64().cmp(&other.as_u64())
+        self.as_u16().cmp(&other.as_u16())
     }
 }
 
@@ -188,25 +188,25 @@ impl Hash for Kind {
     where
         H: Hasher,
     {
-        self.as_u64().hash(state);
+        self.as_u16().hash(state);
     }
 }
 
 impl Kind {
-    /// Get [`Kind`] as `u64`
+    /// Get as 16-bit unsigned integer
     #[inline]
     pub fn as_u16(&self) -> u16 {
         (*self).into()
     }
 
-    /// Get [`Kind`] as `u32`
-    #[inline]
+    /// Get as 32-bit unsigned integer
+    #[deprecated(since = "0.35.0")]
     pub fn as_u32(&self) -> u32 {
         self.as_u16() as u32
     }
 
-    /// Get [`Kind`] as `u64`
-    #[inline]
+    /// Get as 64-bit unsigned integer
+    #[deprecated(since = "0.35.0")]
     pub fn as_u64(&self) -> u64 {
         self.as_u16() as u64
     }

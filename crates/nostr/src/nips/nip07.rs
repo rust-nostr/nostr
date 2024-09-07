@@ -185,7 +185,7 @@ impl Nip07Signer {
         Reflect::set(
             &unsigned_obj,
             &JsValue::from_str("kind"),
-            &(unsigned.kind.as_u64() as f64).into(),
+            &(unsigned.kind.as_u16() as f64).into(),
         )?;
 
         Reflect::set(&unsigned_obj, &JsValue::from_str("tags"), &tags.into())?;

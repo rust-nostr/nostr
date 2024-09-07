@@ -53,6 +53,7 @@
 * nostr: deprecate `EventId::owned` ([Yuki Kishimoto])
 * nostr: convert `EventId::all_zeroes` to const function ([Yuki Kishimoto])
 * nostr: convert `Timestamp::from_secs` to const function ([Yuki Kishimoto])
+* nostr: deprecate `Kind::as_u32` and `Kind::as_u64` ([Yuki Kishimoto])
 * database: update `NostrDatabase` supertraits ([Yuki Kishimoto])
 * database: impl `Clone` for `MemoryDatabase` ([Yuki Kishimoto])
 * pool: bump `async-wsocket` to `v0.8` ([Yuki Kishimoto])

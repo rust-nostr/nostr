@@ -526,7 +526,7 @@ impl ToBech32 for Nip19Event {
         if let Some(kind) = &self.kind {
             bytes.push(KIND); // Type
             bytes.push(4); // Len
-            bytes.extend(kind.as_u32().to_be_bytes()); // Value
+            bytes.extend((kind.as_u16() as u32).to_be_bytes()); // Value
         }
 
         for relay in self.relays.iter() {
@@ -746,7 +746,7 @@ impl ToBech32 for Coordinate {
         // Kind
         bytes.push(KIND); // Type
         bytes.push(4); // Len
-        bytes.extend(self.kind.as_u32().to_be_bytes()); // Value
+        bytes.extend((self.kind.as_u16() as u32).to_be_bytes()); // Value
 
         for relay in self.relays.iter() {
             bytes.push(RELAY); // Type

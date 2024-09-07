@@ -26,9 +26,6 @@ pub enum Error {
     /// Invalid FlatBuffer
     #[error(transparent)]
     InvalidFlatbuffer(#[from] InvalidFlatbuffer),
-    #[error(transparent)]
-    /// Event ID error
-    EventId(#[from] nostr::event::id::Error),
     /// Tag error
     #[error(transparent)]
     Tag(#[from] nostr::event::tag::Error),
@@ -82,7 +79,7 @@ impl FlatBufferEncode for Event {
             id: Some(&id),
             pubkey: Some(&pubkey),
             created_at: self.created_at.as_u64(),
-            kind: self.kind.as_u64(),
+            kind: self.kind.as_u16() as u64,
             tags: Some(fbb.create_vector(&tags)),
             content: Some(fbb.create_string(&self.content)),
             sig: Some(&sig),

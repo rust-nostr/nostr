@@ -191,7 +191,7 @@ fn ndb_filter_conversion(f: Filter) -> nostrdb::Filter {
 
     if let Some(kinds) = f.kinds {
         if !kinds.is_empty() {
-            let kinds: Vec<u64> = kinds.into_iter().map(|p| p.as_u64()).collect();
+            let kinds: Vec<u64> = kinds.into_iter().map(|p| p.as_u16() as u64).collect();
             filter.kinds(kinds);
         }
     }

@@ -36,16 +36,10 @@ impl JsKind {
         }
     }
 
-    /// Get kind as 16-bit unsigned number
+    /// Get as 16-bit unsigned integer
     #[wasm_bindgen(js_name = asU16)]
     pub fn as_u16(&self) -> u16 {
         self.inner.as_u16()
-    }
-
-    /// Get kind as 64-bit unsigned number
-    #[wasm_bindgen(js_name = asU64)]
-    pub fn as_u64(&self) -> u64 {
-        self.inner.as_u64()
     }
 
     /// Check if it's a NIP90 job request
