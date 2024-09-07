@@ -49,6 +49,18 @@ impl Timestamp {
         Self::from_secs(0)
     }
 
+    /// The minimum representable timestamp
+    #[inline]
+    pub const fn min() -> Self {
+        Self::from_secs(u64::MIN)
+    }
+
+    /// The maximum representable timestamp
+    #[inline]
+    pub const fn max() -> Self {
+        Self::from_secs(u64::MAX)
+    }
+
     /// Get UNIX timestamp
     #[cfg(feature = "std")]
     pub fn now() -> Self {
