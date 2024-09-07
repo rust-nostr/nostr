@@ -144,7 +144,7 @@ pub trait NostrDatabase: fmt::Debug + Send + Sync {
     ) -> Result<Option<HashSet<Url>>, DatabaseError>;
 
     /// Get [`Event`] by [`EventId`]
-    async fn event_by_id(&self, event_id: &EventId) -> Result<Event, DatabaseError>;
+    async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Event>, DatabaseError>;
 
     /// Count number of [`Event`] found by filters
     ///

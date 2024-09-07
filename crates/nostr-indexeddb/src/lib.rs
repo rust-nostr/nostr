@@ -452,11 +452,8 @@ impl_nostr_database!({
 
     #[inline]
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn event_by_id(&self, event_id: &EventId) -> Result<Event, DatabaseError> {
-        self.helper
-            .event_by_id(event_id)
-            .await
-            .ok_or(DatabaseError::NotFound)
+    async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Event>, DatabaseError> {
+        Ok(self.helper.event_by_id(event_id).await)
     }
 
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {

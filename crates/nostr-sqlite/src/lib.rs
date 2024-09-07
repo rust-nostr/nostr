@@ -250,7 +250,7 @@ impl NostrDatabase for SQLiteDatabase {
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn event_by_id(&self, event_id: &EventId) -> Result<Event, DatabaseError> {
+    async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Event>, DatabaseError> {
         let event_id: String = event_id.to_hex();
         self.pool
             .interact(move |conn| {
@@ -258,16 +258,17 @@ impl NostrDatabase for SQLiteDatabase {
                     .prepare_cached("SELECT event FROM events WHERE event_id = ?;")
                     .map_err(DatabaseError::backend)?;
                 let mut rows = stmt.query([event_id]).map_err(DatabaseError::backend)?;
-                let row = rows
-                    .next()
-                    .map_err(DatabaseError::backend)?
-                    .ok_or_else(|| DatabaseError::NotFound)?;
-                let buf: &[u8] = row
-                    .get_ref(0)
-                    .map_err(DatabaseError::backend)?
-                    .as_bytes()
-                    .map_err(DatabaseError::backend)?;
-                Event::decode(buf).map_err(DatabaseError::backend)
+                match rows.next().map_err(DatabaseError::backend)? {
+                    Some(row) => {
+                        let buf: &[u8] = row
+                            .get_ref(0)
+                            .map_err(DatabaseError::backend)?
+                            .as_bytes()
+                            .map_err(DatabaseError::backend)?;
+                        Ok(Some(Event::decode(buf).map_err(DatabaseError::backend)?))
+                    }
+                    None => Ok(None),
+                }
             })
             .await?
     }

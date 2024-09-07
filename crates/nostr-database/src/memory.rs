@@ -167,15 +167,13 @@ impl NostrDatabase for MemoryDatabase {
         Ok(seen_event_ids.get(event_id).cloned())
     }
 
-    async fn event_by_id(&self, id: &EventId) -> Result<Event, DatabaseError> {
-        if self.opts.events {
-            self.helper
-                .event_by_id(id)
-                .await
-                .ok_or(DatabaseError::NotFound)
-        } else {
-            Err(DatabaseError::FeatureDisabled)
+    async fn event_by_id(&self, id: &EventId) -> Result<Option<Event>, DatabaseError> {
+        if !self.opts.events {
+            // TODO: return `Ok(None)`?
+            return Err(DatabaseError::FeatureDisabled);
         }
+
+        Ok(self.helper.event_by_id(id).await)
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
@@ -188,6 +186,7 @@ impl NostrDatabase for MemoryDatabase {
         if self.opts.events {
             Ok(self.helper.query(filters, order).await)
         } else {
+            // TODO: return empty list or `NotSupported`?
             Err(DatabaseError::FeatureDisabled)
         }
     }

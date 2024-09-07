@@ -56,6 +56,7 @@
 * nostr: deprecate `Kind::as_u32` and `Kind::as_u64` ([Yuki Kishimoto])
 * database: update `NostrDatabase` supertraits ([Yuki Kishimoto])
 * database: impl `Clone` for `MemoryDatabase` ([Yuki Kishimoto])
+* database: update `NostrDatabase::event_by_id` fingerprint ([Yuki Kishimoto])
 * pool: bump `async-wsocket` to `v0.8` ([Yuki Kishimoto])
 * pool: deprecate auto adjustment of retry seconds for relays ([Yuki Kishimoto])
 * pool: avoid unnecessary `Url` and `Relay` clone in `RelayPool` methods ([Yuki Kishimoto])

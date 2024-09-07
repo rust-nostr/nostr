@@ -99,10 +99,12 @@ impl NostrDatabase {
     }
 
     /// Get [`Event`] by [`EventId`]
-    pub async fn event_by_id(&self, event_id: &EventId) -> Result<Arc<Event>> {
-        Ok(Arc::new(
-            self.inner.event_by_id(event_id.deref()).await?.into(),
-        ))
+    pub async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Arc<Event>>> {
+        Ok(self
+            .inner
+            .event_by_id(event_id.deref())
+            .await?
+            .map(|e| Arc::new(e.into())))
     }
 
     pub async fn count(&self, filters: Vec<Arc<Filter>>) -> Result<u64> {

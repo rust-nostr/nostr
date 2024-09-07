@@ -127,13 +127,13 @@ impl NostrDatabase for NdbDatabase {
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn event_by_id(&self, event_id: &EventId) -> Result<Event, DatabaseError> {
+    async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Event>, DatabaseError> {
         let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let note = self
             .db
             .get_note_by_id(&txn, event_id.as_bytes())
             .map_err(DatabaseError::backend)?;
-        ndb_note_to_event(note)
+        Ok(Some(ndb_note_to_event(note)?))
     }
 
     #[tracing::instrument(skip_all, level = "trace")]

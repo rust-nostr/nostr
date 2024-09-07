@@ -87,13 +87,13 @@ impl JsNostrDatabase {
 
     /// Get [`Event`] by [`EventId`]
     #[wasm_bindgen(js_name = eventById)]
-    pub async fn event_by_id(&self, event_id: &JsEventId) -> Result<JsEvent> {
+    pub async fn event_by_id(&self, event_id: &JsEventId) -> Result<Option<JsEvent>> {
         Ok(self
             .inner
             .event_by_id(event_id.deref())
             .await
             .map_err(into_err)?
-            .into())
+            .map(|e| e.into()))
     }
 
     pub async fn count(&self, filters: Vec<JsFilter>) -> Result<u64> {

@@ -62,26 +62,8 @@ pub trait CustomNostrDatabase: Send + Sync {
     /// Get list of relays that have seen the [`EventId`]
     async fn event_seen_on_relays(&self, event_id: Arc<EventId>) -> Result<Option<Vec<String>>>;
 
-    // TODO: for some reason this method cause issues with `#[uniffi::export(with_foreign)]`
-    // `*const c_void` cannot be sent between threads safely [E0277] Help: within
-    // `uniffi_core::oneshot::OneshotInner<ForeignFutureResult<*const c_void>>`,
-    // the trait `std::marker::Send` is not implemented for `*const c_void`, which is required by
-    // `{async block@bindings/nostr-sdk-ffi/src/database/custom.rs:13:1: 13:32}: std::marker::Send`
-    // Note: required because it appears within the type `ForeignFutureResult<*const c_void>`
-    // Note: required because it appears within the type `std::option::Option<ForeignFutureResult<*const c_void>>`
-    // Note: required because it appears within the type `uniffi_core::oneshot::OneshotInner<ForeignFutureResult<*const c_void>>`
-    // Note: required for `std::sync::Mutex<uniffi_core::oneshot::OneshotInner<ForeignFutureResult<*const c_void>>>` to implement `Sync`
-    // Note: required for `Arc<std::sync::Mutex<uniffi_core::oneshot::OneshotInner<ForeignFutureResult<*const c_void>>>>` to implement `std::marker::Send`
-    // Note: required because it appears within the type `uniffi_core::oneshot::Receiver<ForeignFutureResult<*const c_void>>`
-    // Note: required because it captures the following types: `ForeignFuture`,
-    // `uniffi_core::oneshot::Receiver<ForeignFutureResult<<std::result::Result<Arc<nostr_ffi::Event>, NostrSdkError> as LiftReturn<UniFfiTag>>::ReturnType>>`
-    // Note: required because it's used within this `async` fn body
-    // Note: required because it captures the following types: `impl std::future::Future<Output = std::result::Result<Arc<nostr_ffi::Event>, NostrSdkError>>`
-    // Note: required because it's used within this `async` block
-    // Note: required for the cast from `Pin<Box<{async block@bindings/nostr-sdk-ffi/src/database/custom.rs:13:1: 13:32}>>` to `Pin<Box<dyn std::future::Future<Output = std::result::Result<Arc<nostr_ffi::Event>, NostrSdkError>> + std::marker::Send>>`
-    //
-    // // Get [`Event`] by [`EventId`]
-    // async fn event_by_id(&self, event_id: Arc<EventId>) -> Result<Arc<Event>>;
+    /// Get event by ID
+    async fn event_by_id(&self, event_id: Arc<EventId>) -> Result<Option<Arc<Event>>>;
 
     /// Count number of [`Event`] found by filters
     ///
@@ -181,11 +163,13 @@ mod inner {
             }))
         }
 
-        async fn event_by_id(&self, event_id: &EventId) -> Result<Event, DatabaseError> {
-            // TODO: use event_by_id directly
-            let filter = Filter::new().id(*event_id).limit(1);
-            let events = self.query(vec![filter], Order::Desc).await?;
-            events.first().cloned().ok_or(DatabaseError::NotFound)
+        async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Event>, DatabaseError> {
+            Ok(self
+                .inner
+                .event_by_id(Arc::new((*event_id).into()))
+                .await
+                .map_err(DatabaseError::backend)?
+                .map(|e| e.as_ref().deref().clone()))
         }
 
         async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {

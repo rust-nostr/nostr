@@ -1806,11 +1806,14 @@ impl InternalRelay {
                             if let Some(id) = have_ids.pop() {
                                 if let Ok(event_id) = EventId::from_slice(&id) {
                                     match self.database.event_by_id(&event_id).await {
-                                        Ok(event) => {
+                                        Ok(Some(event)) => {
                                             in_flight_up.insert(event_id);
                                             self.send_msg(ClientMessage::event(event), send_opts)
                                                 .await?;
                                             num_sent += 1;
+                                        }
+                                        Ok(None) => {
+                                            // Event not found
                                         }
                                         Err(e) => tracing::error!(
                                             "Couldn't upload event to {}: {e}",
