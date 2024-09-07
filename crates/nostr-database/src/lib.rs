@@ -62,7 +62,7 @@ pub enum Order {
 }
 
 /// A type-erased [`NostrDatabase`].
-pub type DynNostrDatabase = dyn NostrDatabase<Err = DatabaseError>;
+pub type DynNostrDatabase = dyn NostrDatabase;
 
 /// A type that can be type-erased into `Arc<dyn NostrDatabase>`.
 pub trait IntoNostrDatabase {
@@ -81,22 +81,16 @@ where
     T: NostrDatabase + Sized + 'static,
 {
     fn into_nostr_database(self) -> Arc<DynNostrDatabase> {
-        Arc::new(EraseNostrDatabaseError(self))
+        Arc::new(self)
     }
 }
 
-// Turns a given `Arc<T>` into `Arc<DynNostrDatabase>` by attaching the
-// NostrDatabase impl vtable of `EraseNostrDatabaseError<T>`.
 impl<T> IntoNostrDatabase for Arc<T>
 where
     T: NostrDatabase + 'static,
 {
     fn into_nostr_database(self) -> Arc<DynNostrDatabase> {
-        let ptr: *const T = Arc::into_raw(self);
-        let ptr_erased = ptr as *const EraseNostrDatabaseError<T>;
-        // SAFETY: EraseNostrDatabaseError is repr(transparent) so T and
-        //         EraseNostrDatabaseError<T> have the same layout and ABI
-        unsafe { Arc::from_raw(ptr_erased) }
+        self
     }
 }
 
@@ -115,9 +109,6 @@ pub enum DatabaseEventStatus {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait NostrDatabase: fmt::Debug + Send + Sync {
-    /// Error
-    type Err: From<DatabaseError> + Into<DatabaseError>;
-
     /// Name of the backend database used (ex. rocksdb, lmdb, sqlite, indexeddb, ...)
     fn backend(&self) -> Backend;
 
@@ -125,54 +116,54 @@ pub trait NostrDatabase: fmt::Debug + Send + Sync {
     ///
     /// Return `true` if event was successfully saved into database.
     // TODO: return enum saying that event is saved or deleted or replaced and so on or error?
-    async fn save_event(&self, event: &Event) -> Result<bool, Self::Err>;
+    async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError>;
 
     /// Bulk import events into database
     ///
     /// **This method assume that [`Event`] was already verified**
-    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), Self::Err>;
+    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), DatabaseError>;
 
     /// Check event status
     ///
     /// Check if the event is saved, deleted or not existent.
-    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, Self::Err>;
+    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError>;
 
     /// Set [`EventId`] as seen by relay
     ///
     /// Useful for NIP65 (aka gossip)
-    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err>;
+    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), DatabaseError>;
 
     /// Get list of relays that have seen the [`EventId`]
     async fn event_seen_on_relays(
         &self,
         event_id: &EventId,
-    ) -> Result<Option<HashSet<Url>>, Self::Err>;
+    ) -> Result<Option<HashSet<Url>>, DatabaseError>;
 
     /// Get [`Event`] by [`EventId`]
-    async fn event_by_id(&self, event_id: &EventId) -> Result<Event, Self::Err>;
+    async fn event_by_id(&self, event_id: &EventId) -> Result<Event, DatabaseError>;
 
     /// Count number of [`Event`] found by filters
     ///
     /// Use `Filter::new()` or `Filter::default()` to count all events.
-    async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err>;
+    async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError>;
 
     /// Query store with filters
-    async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err>;
+    async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, DatabaseError>;
 
     /// Get `negentropy` items
     async fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
+    ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
         let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
         Ok(events.into_iter().map(|e| (e.id, e.created_at)).collect())
     }
 
     /// Delete all events that match the [Filter]
-    async fn delete(&self, filter: Filter) -> Result<(), Self::Err>;
+    async fn delete(&self, filter: Filter) -> Result<(), DatabaseError>;
 
     /// Wipe all data
-    async fn wipe(&self) -> Result<(), Self::Err>;
+    async fn wipe(&self) -> Result<(), DatabaseError>;
 }
 
 /// Nostr Database Extension
@@ -181,7 +172,7 @@ pub trait NostrDatabase: fmt::Debug + Send + Sync {
 pub trait NostrDatabaseExt: NostrDatabase {
     /// Get profile metadata
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn profile(&self, public_key: PublicKey) -> Result<Profile, Self::Err> {
+    async fn profile(&self, public_key: PublicKey) -> Result<Profile, DatabaseError> {
         let filter = Filter::new()
             .author(public_key)
             .kind(Kind::Metadata)
@@ -204,7 +195,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
     async fn contacts_public_keys(
         &self,
         public_key: PublicKey,
-    ) -> Result<Vec<PublicKey>, Self::Err> {
+    ) -> Result<Vec<PublicKey>, DatabaseError> {
         let filter = Filter::new()
             .author(public_key)
             .kind(Kind::ContactList)
@@ -218,7 +209,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
 
     /// Get contact list with metadata of [`PublicKey`]
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn contacts(&self, public_key: PublicKey) -> Result<BTreeSet<Profile>, Self::Err> {
+    async fn contacts(&self, public_key: PublicKey) -> Result<BTreeSet<Profile>, DatabaseError> {
         let filter = Filter::new()
             .author(public_key)
             .kind(Kind::ContactList)
@@ -254,78 +245,3 @@ pub trait NostrDatabaseExt: NostrDatabase {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<T: NostrDatabase + ?Sized> NostrDatabaseExt for T {}
-
-#[repr(transparent)]
-struct EraseNostrDatabaseError<T>(T);
-
-impl<T: fmt::Debug> fmt::Debug for EraseNostrDatabaseError<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl<T: NostrDatabase> NostrDatabase for EraseNostrDatabaseError<T> {
-    type Err = DatabaseError;
-
-    fn backend(&self) -> Backend {
-        self.0.backend()
-    }
-
-    async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
-        self.0.save_event(event).await.map_err(Into::into)
-    }
-
-    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), Self::Err> {
-        self.0.bulk_import(events).await.map_err(Into::into)
-    }
-
-    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, Self::Err> {
-        self.0.check_event(event_id).await.map_err(Into::into)
-    }
-
-    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
-        self.0
-            .event_id_seen(event_id, relay_url)
-            .await
-            .map_err(Into::into)
-    }
-
-    async fn event_seen_on_relays(
-        &self,
-        event_id: &EventId,
-    ) -> Result<Option<HashSet<Url>>, Self::Err> {
-        self.0
-            .event_seen_on_relays(event_id)
-            .await
-            .map_err(Into::into)
-    }
-
-    async fn event_by_id(&self, event_id: &EventId) -> Result<Event, Self::Err> {
-        self.0.event_by_id(event_id).await.map_err(Into::into)
-    }
-
-    async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err> {
-        self.0.count(filters).await.map_err(Into::into)
-    }
-
-    async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
-        self.0.query(filters, order).await.map_err(Into::into)
-    }
-
-    async fn negentropy_items(
-        &self,
-        filter: Filter,
-    ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
-        self.0.negentropy_items(filter).await.map_err(Into::into)
-    }
-
-    async fn delete(&self, filter: Filter) -> Result<(), Self::Err> {
-        self.0.delete(filter).await.map_err(Into::into)
-    }
-
-    async fn wipe(&self) -> Result<(), Self::Err> {
-        self.0.wipe().await.map_err(Into::into)
-    }
-}

@@ -26,7 +26,7 @@ mod error;
 mod migration;
 mod pool;
 
-pub use self::error::Error;
+use self::error::Error;
 use self::migration::STARTUP_SQL;
 use self::pool::Pool;
 
@@ -39,11 +39,11 @@ pub struct SQLiteDatabase {
 }
 
 impl SQLiteDatabase {
-    async fn new<P>(path: P, helper: DatabaseHelper) -> Result<Self, Error>
+    async fn new<P>(path: P, helper: DatabaseHelper) -> Result<Self, DatabaseError>
     where
         P: AsRef<Path>,
     {
-        let conn = Connection::open(path)?;
+        let conn = Connection::open(path).map_err(DatabaseError::backend)?;
         let pool: Pool = Pool::new(conn);
 
         // Execute migrations
@@ -62,7 +62,7 @@ impl SQLiteDatabase {
 
     /// Open database with **unlimited** capacity
     #[inline]
-    pub async fn open<P>(path: P) -> Result<Self, Error>
+    pub async fn open<P>(path: P) -> Result<Self, DatabaseError>
     where
         P: AsRef<Path>,
     {
@@ -71,7 +71,7 @@ impl SQLiteDatabase {
 
     /// Open database with **limited** capacity
     #[inline]
-    pub async fn open_bounded<P>(path: P, max_capacity: usize) -> Result<Self, Error>
+    pub async fn open_bounded<P>(path: P, max_capacity: usize) -> Result<Self, DatabaseError>
     where
         P: AsRef<Path>,
     {
@@ -79,7 +79,7 @@ impl SQLiteDatabase {
     }
 
     #[tracing::instrument(skip_all)]
-    async fn bulk_load(&self) -> Result<(), Error> {
+    async fn bulk_load(&self) -> Result<(), DatabaseError> {
         let events = self
             .pool
             .interact(move |conn| {
@@ -119,14 +119,12 @@ impl SQLiteDatabase {
 
 #[async_trait]
 impl NostrDatabase for SQLiteDatabase {
-    type Err = Error;
-
     fn backend(&self) -> Backend {
         Backend::SQLite
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
+    async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
         // Index event
         let DatabaseEventResult {
             to_store,
@@ -161,7 +159,8 @@ impl NostrDatabase for SQLiteDatabase {
                     )?;
                     stmt.execute((event_id.to_hex(), value))
                 })
-                .await??;
+                .await?
+                .map_err(DatabaseError::backend)?;
 
             Ok(true)
         } else {
@@ -170,7 +169,7 @@ impl NostrDatabase for SQLiteDatabase {
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), Self::Err> {
+    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), DatabaseError> {
         // Acquire FlatBuffers Builder
         let mut fbb = self.fbb.write().await;
 
@@ -201,24 +200,27 @@ impl NostrDatabase for SQLiteDatabase {
 
                 tx.commit()
             })
-            .await??;
+            .await?
+            .map_err(DatabaseError::backend)?;
 
         Ok(())
     }
 
-    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, Self::Err> {
+    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
         if self.helper.has_event_id_been_deleted(event_id).await {
             Ok(DatabaseEventStatus::Deleted)
         } else {
             let event_id: String = event_id.to_hex();
             self.pool
                 .interact(move |conn| {
-                    let mut stmt = conn.prepare_cached(
-                        "SELECT EXISTS(SELECT 1 FROM events WHERE event_id = ? LIMIT 1);",
-                    )?;
-                    let mut rows = stmt.query([event_id])?;
-                    let exists: u8 = match rows.next()? {
-                        Some(row) => row.get(0)?,
+                    let mut stmt = conn
+                        .prepare_cached(
+                            "SELECT EXISTS(SELECT 1 FROM events WHERE event_id = ? LIMIT 1);",
+                        )
+                        .map_err(DatabaseError::backend)?;
+                    let mut rows = stmt.query([event_id]).map_err(DatabaseError::backend)?;
+                    let exists: u8 = match rows.next().map_err(DatabaseError::backend)? {
+                        Some(row) => row.get(0).map_err(DatabaseError::backend)?,
                         None => 0,
                     };
                     Ok(if exists == 1 {
@@ -235,7 +237,7 @@ impl NostrDatabase for SQLiteDatabase {
         &self,
         event_id: EventId,
         relay_url: Url,
-    ) -> std::result::Result<(), Self::Err> {
+    ) -> std::result::Result<(), DatabaseError> {
         self.pool
             .interact(move |conn| {
                 let mut stmt = conn.prepare_cached(
@@ -243,25 +245,31 @@ impl NostrDatabase for SQLiteDatabase {
                 )?;
                 stmt.execute((event_id.to_hex(), relay_url.to_string()))
             })
-            .await??;
+            .await?.map_err(DatabaseError::backend)?;
         Ok(())
     }
 
     async fn event_seen_on_relays(
         &self,
         event_id: &EventId,
-    ) -> Result<Option<HashSet<Url>>, Self::Err> {
+    ) -> Result<Option<HashSet<Url>>, DatabaseError> {
         let event_id: String = event_id.to_hex();
         self.pool
             .interact(move |conn| {
-                let mut stmt = conn.prepare_cached(
-                    "SELECT relay_url FROM event_seen_by_relays WHERE event_id = ?;",
-                )?;
-                let mut rows = stmt.query([event_id])?;
+                let mut stmt = conn
+                    .prepare_cached(
+                        "SELECT relay_url FROM event_seen_by_relays WHERE event_id = ?;",
+                    )
+                    .map_err(DatabaseError::backend)?;
+                let mut rows = stmt.query([event_id]).map_err(DatabaseError::backend)?;
                 let mut relays = HashSet::new();
                 while let Ok(Some(row)) = rows.next() {
-                    let url: &str = row.get_ref(0)?.as_str()?;
-                    relays.insert(Url::parse(url)?);
+                    let url: &str = row
+                        .get_ref(0)
+                        .map_err(DatabaseError::backend)?
+                        .as_str()
+                        .map_err(DatabaseError::backend)?;
+                    relays.insert(Url::parse(url).map_err(DatabaseError::backend)?);
                 }
                 Ok(Some(relays))
             })
@@ -269,31 +277,37 @@ impl NostrDatabase for SQLiteDatabase {
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn event_by_id(&self, event_id: &EventId) -> Result<Event, Self::Err> {
+    async fn event_by_id(&self, event_id: &EventId) -> Result<Event, DatabaseError> {
         let event_id: String = event_id.to_hex();
         self.pool
             .interact(move |conn| {
-                let mut stmt =
-                    conn.prepare_cached("SELECT event FROM events WHERE event_id = ?;")?;
-                let mut rows = stmt.query([event_id])?;
+                let mut stmt = conn
+                    .prepare_cached("SELECT event FROM events WHERE event_id = ?;")
+                    .map_err(DatabaseError::backend)?;
+                let mut rows = stmt.query([event_id]).map_err(DatabaseError::backend)?;
                 let row = rows
-                    .next()?
-                    .ok_or_else(|| Error::NotFound("event".into()))?;
-                let buf: &[u8] = row.get_ref(0)?.as_bytes()?;
-                Ok(Event::decode(buf)?)
+                    .next()
+                    .map_err(DatabaseError::backend)?
+                    .ok_or_else(|| DatabaseError::NotFound)?;
+                let buf: &[u8] = row
+                    .get_ref(0)
+                    .map_err(DatabaseError::backend)?
+                    .as_bytes()
+                    .map_err(DatabaseError::backend)?;
+                Event::decode(buf).map_err(DatabaseError::backend)
             })
             .await?
     }
 
     #[inline]
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err> {
+    async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {
         Ok(self.helper.count(filters).await)
     }
 
     #[inline]
     #[tracing::instrument(skip_all)]
-    async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
+    async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, DatabaseError> {
         Ok(self.helper.query(filters, order).await)
     }
 
@@ -301,11 +315,11 @@ impl NostrDatabase for SQLiteDatabase {
     async fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
+    ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
         Ok(self.helper.negentropy_items(filter).await)
     }
 
-    async fn delete(&self, filter: Filter) -> Result<(), Self::Err> {
+    async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {
         match self.helper.delete(filter).await {
             Some(ids) => {
                 self.pool
@@ -322,14 +336,15 @@ impl NostrDatabase for SQLiteDatabase {
             None => {
                 self.pool
                     .interact(move |conn| conn.execute("DELETE FROM events;", []))
-                    .await??;
+                    .await?
+                    .map_err(DatabaseError::backend)?;
             }
         };
 
         Ok(())
     }
 
-    async fn wipe(&self) -> Result<(), Self::Err> {
+    async fn wipe(&self) -> Result<(), DatabaseError> {
         self.pool
             .interact(|conn| {
                 // Reset DB

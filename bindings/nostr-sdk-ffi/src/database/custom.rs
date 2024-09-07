@@ -111,24 +111,25 @@ mod inner {
     #[async_trait]
     #[allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive
     impl NostrDatabase for IntermediateCustomNostrDatabase {
-        type Err = DatabaseError;
-
         fn backend(&self) -> Backend {
             Backend::Custom(self.inner.backend())
         }
 
-        async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
+        async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
             self.inner
                 .save_event(Arc::new(event.to_owned().into()))
                 .await
                 .map_err(DatabaseError::backend)
         }
 
-        async fn bulk_import(&self, _events: BTreeSet<Event>) -> Result<(), Self::Err> {
+        async fn bulk_import(&self, _events: BTreeSet<Event>) -> Result<(), DatabaseError> {
             Ok(())
         }
 
-        async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, Self::Err> {
+        async fn check_event(
+            &self,
+            event_id: &EventId,
+        ) -> Result<DatabaseEventStatus, DatabaseError> {
             self.inner
                 .check_event(Arc::new((*event_id).into()))
                 .await
@@ -136,7 +137,11 @@ mod inner {
                 .map_err(DatabaseError::backend)
         }
 
-        async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
+        async fn event_id_seen(
+            &self,
+            event_id: EventId,
+            relay_url: Url,
+        ) -> Result<(), DatabaseError> {
             self.inner
                 .event_id_seen(Arc::new(event_id.into()), relay_url.to_string())
                 .await
@@ -146,7 +151,7 @@ mod inner {
         async fn event_seen_on_relays(
             &self,
             event_id: &EventId,
-        ) -> Result<Option<HashSet<Url>>, Self::Err> {
+        ) -> Result<Option<HashSet<Url>>, DatabaseError> {
             let res = self
                 .inner
                 .event_seen_on_relays(Arc::new((*event_id).into()))
@@ -159,14 +164,14 @@ mod inner {
             }))
         }
 
-        async fn event_by_id(&self, event_id: &EventId) -> Result<Event, Self::Err> {
+        async fn event_by_id(&self, event_id: &EventId) -> Result<Event, DatabaseError> {
             // TODO: use event_by_id directly
             let filter = Filter::new().id(*event_id).limit(1);
             let events = self.query(vec![filter], Order::Desc).await?;
             events.first().cloned().ok_or(DatabaseError::NotFound)
         }
 
-        async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err> {
+        async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {
             let filters = filters.into_iter().map(|f| Arc::new(f.into())).collect();
             let res = self
                 .inner
@@ -180,7 +185,7 @@ mod inner {
             &self,
             filters: Vec<Filter>,
             _order: Order,
-        ) -> Result<Vec<Event>, Self::Err> {
+        ) -> Result<Vec<Event>, DatabaseError> {
             let filters = filters.into_iter().map(|f| Arc::new(f.into())).collect();
             let res = self
                 .inner
@@ -196,7 +201,7 @@ mod inner {
         async fn negentropy_items(
             &self,
             filter: Filter,
-        ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
+        ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
             let filter = Arc::new(filter.into());
             let res = self
                 .inner
@@ -209,14 +214,14 @@ mod inner {
                 .collect())
         }
 
-        async fn delete(&self, filter: Filter) -> Result<(), Self::Err> {
+        async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {
             self.inner
                 .delete(Arc::new(filter.into()))
                 .await
                 .map_err(DatabaseError::backend)
         }
 
-        async fn wipe(&self) -> Result<(), Self::Err> {
+        async fn wipe(&self) -> Result<(), DatabaseError> {
             self.inner.wipe().await.map_err(DatabaseError::backend)
         }
     }

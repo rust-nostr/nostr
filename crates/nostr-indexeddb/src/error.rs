@@ -18,9 +18,12 @@ pub enum IndexedDBError {
         /// Message given to the DomException
         message: String,
     },
-    /// Database error
-    #[error(transparent)]
-    Database(#[from] DatabaseError),
+}
+
+#[inline]
+pub(crate) fn into_err(e: indexed_db_futures::web_sys::DomException) -> DatabaseError {
+    let indexed_err: IndexedDBError = e.into();
+    DatabaseError::backend(indexed_err)
 }
 
 impl From<indexed_db_futures::web_sys::DomException> for IndexedDBError {

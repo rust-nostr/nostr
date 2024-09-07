@@ -105,13 +105,11 @@ impl MemoryDatabase {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrDatabase for MemoryDatabase {
-    type Err = DatabaseError;
-
     fn backend(&self) -> Backend {
         Backend::Memory
     }
 
-    async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
+    async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
         if self.opts.events {
             let DatabaseEventResult { to_store, .. } = self.helper.index_event(event).await;
             Ok(to_store)
@@ -124,7 +122,7 @@ impl NostrDatabase for MemoryDatabase {
         }
     }
 
-    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), Self::Err> {
+    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), DatabaseError> {
         if self.opts.events {
             self.helper.bulk_import(events).await;
         } else {
@@ -136,7 +134,7 @@ impl NostrDatabase for MemoryDatabase {
         Ok(())
     }
 
-    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, Self::Err> {
+    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
         if self.opts.events {
             if self.helper.has_event_id_been_deleted(event_id).await {
                 Ok(DatabaseEventStatus::Deleted)
@@ -155,7 +153,7 @@ impl NostrDatabase for MemoryDatabase {
         }
     }
 
-    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), Self::Err> {
+    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), DatabaseError> {
         let mut seen_event_ids = self.seen_event_ids.lock().await;
         self._event_id_seen(&mut seen_event_ids, event_id, Some(relay_url));
         Ok(())
@@ -164,12 +162,12 @@ impl NostrDatabase for MemoryDatabase {
     async fn event_seen_on_relays(
         &self,
         event_id: &EventId,
-    ) -> Result<Option<HashSet<Url>>, Self::Err> {
+    ) -> Result<Option<HashSet<Url>>, DatabaseError> {
         let mut seen_event_ids = self.seen_event_ids.lock().await;
         Ok(seen_event_ids.get(event_id).cloned())
     }
 
-    async fn event_by_id(&self, id: &EventId) -> Result<Event, Self::Err> {
+    async fn event_by_id(&self, id: &EventId) -> Result<Event, DatabaseError> {
         if self.opts.events {
             self.helper
                 .event_by_id(id)
@@ -181,12 +179,12 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err> {
+    async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {
         Ok(self.helper.count(filters).await)
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, Self::Err> {
+    async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, DatabaseError> {
         if self.opts.events {
             Ok(self.helper.query(filters, order).await)
         } else {
@@ -197,7 +195,7 @@ impl NostrDatabase for MemoryDatabase {
     async fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
+    ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
         if self.opts.events {
             Ok(self.helper.negentropy_items(filter).await)
         } else {
@@ -205,12 +203,12 @@ impl NostrDatabase for MemoryDatabase {
         }
     }
 
-    async fn delete(&self, filter: Filter) -> Result<(), Self::Err> {
+    async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {
         self.helper.delete(filter).await;
         Ok(())
     }
 
-    async fn wipe(&self) -> Result<(), Self::Err> {
+    async fn wipe(&self) -> Result<(), DatabaseError> {
         // Clear helper
         self.helper.clear().await;
 

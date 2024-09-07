@@ -106,6 +106,7 @@
 * nostr: remove `tracing` dep ([Yuki Kishimoto])
 * nostr: remove impl `fmt::Display` for `SecretKey` ([Yuki Kishimoto])
 * database: remove `has_event_already_been_saved`, `has_event_already_been_seen`, `has_event_id_been_deleted` and `has_coordinate_been_deleted` methods from `NostrDatabase` ([Yuki Kishimoto])
+* database: remove `Err` from `NostrDatabase` ([Yuki Kishimoto])
 * pool: remove high latency log ([Yuki Kishimoto])
 * js(nostr): remove `Keys::vanity` ([Yuki Kishimoto])
 

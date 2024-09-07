@@ -22,7 +22,7 @@ pub use nostr::{self, *};
 pub use nostr_database::{self as database, NostrDatabase, NostrDatabaseExt, Profile};
 #[doc(hidden)]
 #[cfg(all(target_arch = "wasm32", feature = "indexeddb"))]
-pub use nostr_indexeddb::{IndexedDBError, WebDatabase};
+pub use nostr_indexeddb::WebDatabase;
 #[doc(hidden)]
 #[cfg(feature = "ndb")]
 pub use nostr_ndb::{self as ndb, NdbDatabase};
@@ -36,7 +36,7 @@ pub use nostr_relay_pool::{
 pub use nostr_signer::{self as signer, NostrSigner, NostrSignerType};
 #[doc(hidden)]
 #[cfg(feature = "sqlite")]
-pub use nostr_sqlite::{Error as SQLiteError, SQLiteDatabase};
+pub use nostr_sqlite::SQLiteDatabase;
 #[doc(hidden)]
 #[cfg(all(target_arch = "wasm32", feature = "webln"))]
 pub use nostr_webln::WebLNZapper;

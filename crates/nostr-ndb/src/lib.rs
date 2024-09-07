@@ -78,14 +78,12 @@ impl From<Ndb> for NdbDatabase {
 
 #[async_trait]
 impl NostrDatabase for NdbDatabase {
-    type Err = DatabaseError;
-
     fn backend(&self) -> Backend {
         Backend::LMDB
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn save_event(&self, event: &Event) -> Result<bool, Self::Err> {
+    async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
         let msg = RelayMessage::event(SubscriptionId::new("ndb"), event.clone());
         let json: String = msg.as_json();
         self.db
@@ -95,7 +93,7 @@ impl NostrDatabase for NdbDatabase {
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), Self::Err> {
+    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), DatabaseError> {
         for event in events.into_iter() {
             let msg = RelayMessage::event(SubscriptionId::new("ndb"), event);
             let json: String = msg.as_json();
@@ -106,7 +104,7 @@ impl NostrDatabase for NdbDatabase {
         Ok(())
     }
 
-    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, Self::Err> {
+    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
         let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let res = self.db.get_note_by_id(&txn, event_id.as_bytes());
         Ok(if res.is_ok() {
@@ -120,20 +118,20 @@ impl NostrDatabase for NdbDatabase {
         &self,
         _event_id: EventId,
         _relay_url: Url,
-    ) -> std::result::Result<(), Self::Err> {
+    ) -> std::result::Result<(), DatabaseError> {
         Ok(())
     }
 
     async fn event_seen_on_relays(
         &self,
         _event_id: &EventId,
-    ) -> std::result::Result<Option<HashSet<Url>>, Self::Err> {
+    ) -> std::result::Result<Option<HashSet<Url>>, DatabaseError> {
         // TODO: use in-memory map to keep track of seen relays
         Err(DatabaseError::NotSupported)
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn event_by_id(&self, event_id: &EventId) -> Result<Event, Self::Err> {
+    async fn event_by_id(&self, event_id: &EventId) -> Result<Event, DatabaseError> {
         let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let note = self
             .db
@@ -143,14 +141,18 @@ impl NostrDatabase for NdbDatabase {
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn count(&self, filters: Vec<Filter>) -> Result<usize, Self::Err> {
+    async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {
         let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let res: Vec<QueryResult> = self.ndb_query(&txn, filters)?;
         Ok(res.len())
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn query(&self, filters: Vec<Filter>, _order: Order) -> Result<Vec<Event>, Self::Err> {
+    async fn query(
+        &self,
+        filters: Vec<Filter>,
+        _order: Order,
+    ) -> Result<Vec<Event>, DatabaseError> {
         let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let res: Vec<QueryResult> = self.ndb_query(&txn, filters)?;
         let mut events: Vec<Event> = Vec::with_capacity(res.len());
@@ -163,7 +165,7 @@ impl NostrDatabase for NdbDatabase {
     async fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> Result<Vec<(EventId, Timestamp)>, Self::Err> {
+    ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
         let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let res: Vec<QueryResult> = self.ndb_query(&txn, vec![filter])?;
         Ok(res
@@ -172,11 +174,11 @@ impl NostrDatabase for NdbDatabase {
             .collect())
     }
 
-    async fn delete(&self, _filter: Filter) -> Result<(), Self::Err> {
+    async fn delete(&self, _filter: Filter) -> Result<(), DatabaseError> {
         Err(DatabaseError::NotSupported)
     }
 
-    async fn wipe(&self) -> Result<(), Self::Err> {
+    async fn wipe(&self) -> Result<(), DatabaseError> {
         Err(DatabaseError::NotSupported)
     }
 }

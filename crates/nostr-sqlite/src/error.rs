@@ -17,16 +17,13 @@ pub enum Error {
     Sqlite(#[from] rusqlite::Error),
     /// Pool error
     #[error(transparent)]
-    JoinError(#[from] JoinError),
+    Thread(#[from] JoinError),
     /// Migration error
     #[error(transparent)]
     Migration(#[from] MigrationError),
     /// From SQL error
     #[error(transparent)]
     FromSql(#[from] FromSqlError),
-    /// Database error
-    #[error(transparent)]
-    Database(#[from] DatabaseError),
     /// Flatbuffers error
     #[error(transparent)]
     Flatbuffers(#[from] flatbuffers::Error),

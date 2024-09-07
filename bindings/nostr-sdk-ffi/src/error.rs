@@ -74,12 +74,6 @@ impl From<nostr_sdk::database::DatabaseError> for NostrSdkError {
     }
 }
 
-impl From<nostr_sdk::SQLiteError> for NostrSdkError {
-    fn from(e: nostr_sdk::SQLiteError) -> NostrSdkError {
-        Self::Generic(e.to_string())
-    }
-}
-
 impl From<nostr_sdk::signer::Error> for NostrSdkError {
     fn from(e: nostr_sdk::signer::Error) -> NostrSdkError {
         Self::Generic(e.to_string())
