@@ -39,13 +39,13 @@ pub struct Timestamp(u64);
 impl Timestamp {
     /// Construct from seconds
     #[inline]
-    pub fn from_secs(secs: u64) -> Self {
+    pub const fn from_secs(secs: u64) -> Self {
         Self(secs)
     }
 
     /// Compose `0` timestamp
     #[inline]
-    pub fn zero() -> Self {
+    pub const fn zero() -> Self {
         Self::from_secs(0)
     }
 

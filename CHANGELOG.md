@@ -52,6 +52,7 @@
 * nostr: improve `Timestamp::to_human_datetime` performance ([Yuki Kishimoto])
 * nostr: deprecate `EventId::owned` ([Yuki Kishimoto])
 * nostr: convert `EventId::all_zeroes` to const function ([Yuki Kishimoto])
+* nostr: convert `Timestamp::from_secs` to const function ([Yuki Kishimoto])
 * database: update `NostrDatabase` supertraits ([Yuki Kishimoto])
 * database: impl `Clone` for `MemoryDatabase` ([Yuki Kishimoto])
 * pool: bump `async-wsocket` to `v0.8` ([Yuki Kishimoto])
