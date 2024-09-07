@@ -1,6 +1,6 @@
 # Nostr SQLite
 
-This crate implements a storage backend on SQLite for native environments.
+Deprecated! Check [`nostr-lmdb`](https://crates.io/crates/nostr-lmdb) instead.
 
 ## State
 

@@ -12,15 +12,8 @@ A high-level, [Nostr](https://github.com/nostr-protocol/nostr) client library wr
 
 If you're writing a typical Nostr client or bot, this is likely the crate you need.
 
-However, the crate is designed in a modular way and depends on several
-other lower-level crates. If you're attempting something more custom, you might be interested in these:
-
-* [`nostr`](https://crates.io/crates/nostr): Rust implementation of Nostr protocol
-* [`nostr-database`](https://crates.io/crates/nostr-database): Database for Nostr apps
-* [`nostr-relay-pool`](https://crates.io/crates/nostr-relay-pool): Nostr Relay Pool
-* [`nostr-signer`](https://crates.io/crates/nostr-signer): Signer for Nostr apps
-* [`nostr-zapper`](https://crates.io/crates/nostr-zapper): Zapper abstraction for Nostr apps
-* [`nwc`](https://crates.io/crates/nwc): `NWC` client and zapper backend for Nostr apps
+However, the crate is designed in a modular way and depends on several other lower-level crates. 
+If you're attempting something more custom, you might be interested in [these](https://github.com/rust-nostr/nostr#project-structure).
 
 ## Getting started
 
@@ -122,7 +115,7 @@ This crate supports the `wasm32` targets.
 
 An example can be found at [`nostr-sdk-wasm-example`](https://github.com/rust-nostr/nostr-sdk-wasm-example) repo.
 
-On macOS you need to install `llvm`:
+On macOS, you need to install `llvm`:
 
 ```shell
 brew install llvm
@@ -141,7 +134,6 @@ The following crate feature flags are available:
 | `tor`       |   No    | Enable support for embedded tor client                                                       |
 | `lmdb`      |   No    | Enable LMDB storage backend                                                                  |
 | `ndb`       |   No    | Enable [nostrdb](https://github.com/damus-io/nostrdb) storage backend                        |
-| `sqlite`    |   No    | Enable SQLite storage backend                                                                |
 | `indexeddb` |   No    | Enable Web's IndexedDb storage backend                                                       |
 | `webln`     |   No    | Enable WebLN zapper                                                                          |
 | `all-nips`  |   Yes   | Enable all NIPs                                                                              |

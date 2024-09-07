@@ -63,6 +63,7 @@
 * pool: avoid `Relay` clone in `RelayPool::connect_relay` method ([Yuki Kishimoto])
 * signer: update NIP-04 and NIP-44 methods signature ([Yuki Kishimoto])
 * webln: bump `webln` to `v0.3` ([Yuki Kishimoto])
+* sqlite: deprecate `SQLiteDatabase` in favor of LMDB ([Yuki Kishimoto])
 * sdk: bump `lnurl-pay` to `v0.6` ([Yuki Kishimoto])
 * sdk: update `Client::gift_wrap` and `Client::gift_wrap_to` methods signature ([Yuki Kishimoto])
 * sdk: document and rename `Client::metadata` to `Client::fetch_metadata` ([Janek])

@@ -11,6 +11,7 @@ use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt,
 use nostr_sdk::NdbDatabase;
 #[cfg(feature = "lmdb")]
 use nostr_sdk::NostrLMDB;
+#[allow(deprecated)]
 #[cfg(feature = "sqlite")]
 use nostr_sdk::SQLiteDatabase;
 use uniffi::Object;
@@ -38,10 +39,13 @@ impl From<&NostrDatabase> for Arc<DynNostrDatabase> {
     }
 }
 
+#[allow(deprecated)]
 #[cfg(feature = "sqlite")]
 #[uniffi::export(async_runtime = "tokio")]
 impl NostrDatabase {
     /// Open database with **unlimited** capacity
+    ///
+    /// This backend is deprecated and will be removed in the future!
     #[uniffi::constructor]
     pub async fn sqlite(path: &str) -> Result<Self> {
         let db = Arc::new(SQLiteDatabase::open(path).await?);
@@ -51,6 +55,8 @@ impl NostrDatabase {
     }
 
     /// Open database with **limited** capacity
+    ///
+    /// This backend is deprecated and will be removed in the future!
     #[uniffi::constructor]
     pub async fn sqlite_bounded(path: &str, max_capacity: u64) -> Result<Self> {
         let db = Arc::new(SQLiteDatabase::open_bounded(path, max_capacity as usize).await?);

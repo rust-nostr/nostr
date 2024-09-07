@@ -31,6 +31,7 @@ use self::migration::STARTUP_SQL;
 use self::pool::Pool;
 
 /// SQLite Nostr Database
+#[deprecated(since = "0.35.0", note = "Use LMDB or other backend instead")]
 #[derive(Debug, Clone)]
 pub struct SQLiteDatabase {
     pool: Pool,
@@ -38,6 +39,7 @@ pub struct SQLiteDatabase {
     fbb: Arc<RwLock<FlatBufferBuilder<'static>>>,
 }
 
+#[allow(deprecated)]
 impl SQLiteDatabase {
     async fn new<P>(path: P, helper: DatabaseHelper) -> Result<Self, DatabaseError>
     where
@@ -118,6 +120,7 @@ impl SQLiteDatabase {
 }
 
 #[async_trait]
+#[allow(deprecated)]
 impl NostrDatabase for SQLiteDatabase {
     fn backend(&self) -> Backend {
         Backend::SQLite

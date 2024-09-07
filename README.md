@@ -9,7 +9,6 @@ The project is split up into several crates in the `crates/` directory:
     * [**nostr-database**](./crates/nostr-database/): Database for Nostr apps
         * [**nostr-lmdb**](./crates/nostr-sqlite/): LMDB storage backend
         * [**nostr-ndb**](./crates/nostr-ndb/): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
-        * [**nostr-sqlite**](./crates/nostr-sqlite/): SQLite storage backend
         * [**nostr-indexeddb**](./crates/nostr-indexeddb/): IndexedDB storage backend
     * [**nostr-relay-pool**](./crates/nostr-relay-pool/): Nostr Relay Pool
     * [**nostr-signer**](./crates/nostr-signer/): Signer for Nostr apps
