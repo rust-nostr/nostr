@@ -76,13 +76,25 @@ impl EventId {
         let json: Value = json!([0, public_key, created_at, kind, tags, content]);
         let event_str: String = json.to_string();
         let hash: Sha256Hash = Sha256Hash::hash(event_str.as_bytes());
-        Self::owned(hash.to_byte_array())
+        Self::from_byte_array(hash.to_byte_array())
     }
 
     /// Construct event ID
-    #[inline]
+    #[deprecated(since = "0.35.0", note = "Use `from_byte_array` instead")]
     pub fn owned(bytes: [u8; Self::LEN]) -> Self {
+        Self::from_byte_array(bytes)
+    }
+
+    /// Construct event ID from 32-byte array
+    #[inline]
+    pub const fn from_byte_array(bytes: [u8; Self::LEN]) -> Self {
         Self(bytes)
+    }
+
+    /// All zeros
+    #[inline]
+    pub const fn all_zeros() -> Self {
+        Self::from_byte_array([0u8; Self::LEN])
     }
 
     /// Try to parse [EventId] from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
@@ -118,7 +130,7 @@ impl EventId {
     {
         let mut bytes: [u8; Self::LEN] = [0u8; Self::LEN];
         hex::decode_to_slice(hex, &mut bytes)?;
-        Ok(Self::owned(bytes))
+        Ok(Self::from_byte_array(bytes))
     }
 
     /// Parse from bytes
@@ -133,14 +145,8 @@ impl EventId {
         let mut bytes: [u8; Self::LEN] = [0u8; Self::LEN];
         bytes.copy_from_slice(slice);
 
-        // Construct owned
-        Ok(Self::owned(bytes))
-    }
-
-    /// All zeros
-    #[inline]
-    pub fn all_zeros() -> Self {
-        Self::owned([0u8; Self::LEN])
+        // Construct
+        Ok(Self::from_byte_array(bytes))
     }
 
     /// Get as bytes

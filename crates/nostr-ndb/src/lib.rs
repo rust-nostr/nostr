@@ -229,7 +229,7 @@ fn ndb_filter_conversion(f: Filter) -> nostrdb::Filter {
 
 #[inline(always)]
 fn ndb_note_to_event(note: Note) -> Result<Event, DatabaseError> {
-    let id = EventId::owned(*note.id());
+    let id = EventId::from_byte_array(*note.id());
     let public_key = PublicKey::from_slice(note.pubkey()).map_err(DatabaseError::nostr)?;
     let sig = Signature::from_slice(note.sig()).map_err(DatabaseError::nostr)?;
 
@@ -264,7 +264,7 @@ fn ndb_note_to_tags(note: &Note) -> Result<Vec<Tag>, DatabaseError> {
 
 #[inline(always)]
 fn ndb_note_to_neg_item(note: Note) -> (EventId, Timestamp) {
-    let id = EventId::owned(*note.id());
+    let id = EventId::from_byte_array(*note.id());
     let created_at = Timestamp::from(note.created_at());
     (id, created_at)
 }
