@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 pub use async_trait::async_trait;
 pub use nostr;
+use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, JsonUtil, Kind, Metadata, PublicKey, Timestamp, Url};
 
 mod error;
@@ -97,9 +98,9 @@ where
 /// Database event status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DatabaseEventStatus {
-    /// The event is saved
+    /// The event is saved into database
     Saved,
-    /// The event was deleted
+    /// The event is marked as deleted
     Deleted,
     /// The event not exists
     NotExistent,
@@ -115,13 +116,21 @@ pub trait NostrDatabase: fmt::Debug + Send + Sync {
     /// Save [`Event`] into store
     ///
     /// Return `true` if event was successfully saved into database.
-    // TODO: return enum saying that event is saved or deleted or replaced and so on or error?
+    ///
+    /// **This method assume that [`Event`] was already verified**
     async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError>;
 
-    /// Check event status
+    /// Check event status by ID
     ///
     /// Check if the event is saved, deleted or not existent.
-    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError>;
+    async fn check_id(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError>;
+
+    /// Check if [`Coordinate`] has been deleted before a certain [`Timestamp`]
+    async fn has_coordinate_been_deleted(
+        &self,
+        coordinate: &Coordinate,
+        timestamp: &Timestamp,
+    ) -> Result<bool, DatabaseError>;
 
     /// Set [`EventId`] as seen by relay
     ///

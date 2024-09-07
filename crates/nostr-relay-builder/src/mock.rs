@@ -256,7 +256,7 @@ impl InternalMockRelay {
                 }
 
                 // Check if event already exists
-                let event_status = self.database.check_event(&event.id).await?;
+                let event_status = self.database.check_id(&event.id).await?;
                 if let DatabaseEventStatus::Saved | DatabaseEventStatus::Deleted = event_status {
                     return self
                         .send_msg(

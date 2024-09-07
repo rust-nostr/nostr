@@ -350,7 +350,7 @@ impl_nostr_database!({
             .map_err(DatabaseError::backend)
     }
 
-    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
+    async fn check_id(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
         if self.helper.has_event_id_been_deleted(event_id).await {
             Ok(DatabaseEventStatus::Deleted)
         } else {
@@ -374,6 +374,17 @@ impl_nostr_database!({
                 },
             )
         }
+    }
+
+    async fn has_coordinate_been_deleted(
+        &self,
+        coordinate: &Coordinate,
+        timestamp: &Timestamp,
+    ) -> Result<bool, DatabaseError> {
+        Ok(self
+            .helper
+            .has_coordinate_been_deleted(coordinate, timestamp)
+            .await)
     }
 
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), DatabaseError> {

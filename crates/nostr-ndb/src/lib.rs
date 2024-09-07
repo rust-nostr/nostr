@@ -92,7 +92,7 @@ impl NostrDatabase for NdbDatabase {
         Ok(true)
     }
 
-    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
+    async fn check_id(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
         let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let res = self.db.get_note_by_id(&txn, event_id.as_bytes());
         Ok(if res.is_ok() {
@@ -100,6 +100,14 @@ impl NostrDatabase for NdbDatabase {
         } else {
             DatabaseEventStatus::NotExistent
         })
+    }
+
+    async fn has_coordinate_been_deleted(
+        &self,
+        _coordinate: &Coordinate,
+        _timestamp: &Timestamp,
+    ) -> Result<bool, DatabaseError> {
+        Ok(false)
     }
 
     async fn event_id_seen(

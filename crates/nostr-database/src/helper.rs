@@ -827,10 +827,10 @@ impl DatabaseHelper {
     pub async fn has_coordinate_been_deleted(
         &self,
         coordinate: &Coordinate,
-        timestamp: Timestamp,
+        timestamp: &Timestamp,
     ) -> bool {
         let inner = self.inner.read().await;
-        inner.has_coordinate_been_deleted(coordinate, &timestamp)
+        inner.has_coordinate_been_deleted(coordinate, timestamp)
     }
 
     /// Delete all events that match [Filter]

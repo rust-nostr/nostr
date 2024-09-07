@@ -15,6 +15,7 @@ use async_wsocket::{ConnectionMode, Sink, Stream, WsMessage};
 use atomic_destructor::AtomicDestroyer;
 use nostr::message::MessageHandleError;
 use nostr::negentropy::{Bytes, Negentropy};
+use nostr::nips::nip01::Coordinate;
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
 #[cfg(not(target_arch = "wasm32"))]
@@ -941,12 +942,30 @@ impl InternalRelay {
                 // TODO: check if word/hashtag is blacklisted
 
                 // Check if event status
-                let status: DatabaseEventStatus =
-                    self.database.check_event(&partial_event.id).await?;
+                let status: DatabaseEventStatus = self.database.check_id(&partial_event.id).await?;
 
                 // Event deleted
                 if let DatabaseEventStatus::Deleted = status {
-                    return Ok(None); // TODO: return error?
+                    return Ok(None);
+                }
+
+                // Deserialize missing fields
+                let missing: MissingPartialEvent = MissingPartialEvent::from_raw(event)?;
+
+                // Check if event is replaceable and has coordinate
+                if missing.kind.is_replaceable() || missing.kind.is_parameterized_replaceable() {
+                    let coordinate: Coordinate =
+                        Coordinate::new(missing.kind, partial_event.pubkey)
+                            .identifier(missing.identifier().unwrap_or_default());
+
+                    // Check if coordinate has been deleted
+                    if self
+                        .database
+                        .has_coordinate_been_deleted(&coordinate, &missing.created_at)
+                        .await?
+                    {
+                        return Ok(None);
+                    }
                 }
 
                 // Set event as seen by relay
@@ -961,8 +980,7 @@ impl InternalRelay {
                     );
                 }
 
-                // Deserialize missing event fields and compose full event
-                let missing: MissingPartialEvent = MissingPartialEvent::from_raw(event)?;
+                // Compose full event
                 let event: Event = partial_event.merge(missing)?;
 
                 // Check if it's expired

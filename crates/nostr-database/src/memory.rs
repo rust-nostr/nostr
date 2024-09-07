@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use lru::LruCache;
+use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use tokio::sync::Mutex;
 
@@ -122,7 +123,7 @@ impl NostrDatabase for MemoryDatabase {
         }
     }
 
-    async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
+    async fn check_id(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
         if self.opts.events {
             if self.helper.has_event_id_been_deleted(event_id).await {
                 Ok(DatabaseEventStatus::Deleted)
@@ -139,6 +140,17 @@ impl NostrDatabase for MemoryDatabase {
                 DatabaseEventStatus::NotExistent
             })
         }
+    }
+
+    async fn has_coordinate_been_deleted(
+        &self,
+        coordinate: &Coordinate,
+        timestamp: &Timestamp,
+    ) -> Result<bool, DatabaseError> {
+        Ok(self
+            .helper
+            .has_coordinate_been_deleted(coordinate, timestamp)
+            .await)
     }
 
     async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), DatabaseError> {

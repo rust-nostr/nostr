@@ -5,7 +5,8 @@
 use std::fmt;
 use std::sync::Arc;
 
-use nostr_ffi::{Event, EventId, Filter};
+use nostr_ffi::nips::nip01::Coordinate;
+use nostr_ffi::{Event, EventId, Filter, Timestamp};
 use nostr_sdk::database;
 use uniffi::Enum;
 
@@ -41,8 +42,17 @@ pub trait CustomNostrDatabase: Send + Sync {
     /// **This method assume that [`Event`] was already verified**
     async fn save_event(&self, event: Arc<Event>) -> Result<bool>;
 
-    /// Check if [`Event`] has already been saved
-    async fn check_event(&self, event_id: Arc<EventId>) -> Result<DatabaseEventStatus>;
+    /// Check event status by ID
+    ///
+    /// Check if the event is saved, deleted or not existent.
+    async fn check_id(&self, event_id: Arc<EventId>) -> Result<DatabaseEventStatus>;
+
+    /// Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
+    async fn has_coordinate_been_deleted(
+        &self,
+        coordinate: Arc<Coordinate>,
+        timestamp: Arc<Timestamp>,
+    ) -> Result<bool>;
 
     /// Set [`EventId`] as seen by relay
     ///
@@ -122,14 +132,25 @@ mod inner {
                 .map_err(DatabaseError::backend)
         }
 
-        async fn check_event(
-            &self,
-            event_id: &EventId,
-        ) -> Result<DatabaseEventStatus, DatabaseError> {
+        async fn check_id(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
             self.inner
-                .check_event(Arc::new((*event_id).into()))
+                .check_id(Arc::new((*event_id).into()))
                 .await
                 .map(|s| s.into())
+                .map_err(DatabaseError::backend)
+        }
+
+        async fn has_coordinate_been_deleted(
+            &self,
+            coordinate: &Coordinate,
+            timestamp: &Timestamp,
+        ) -> Result<bool, DatabaseError> {
+            self.inner
+                .has_coordinate_been_deleted(
+                    Arc::new(coordinate.to_owned().into()),
+                    Arc::new((*timestamp).into()),
+                )
+                .await
                 .map_err(DatabaseError::backend)
         }
 
