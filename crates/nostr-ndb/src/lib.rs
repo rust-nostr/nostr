@@ -9,7 +9,7 @@
 #![warn(rustdoc::bare_urls)]
 #![allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive for async_trait
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 
 pub extern crate nostr;
@@ -90,18 +90,6 @@ impl NostrDatabase for NdbDatabase {
             .process_event(&json)
             .map_err(DatabaseError::backend)?;
         Ok(true)
-    }
-
-    #[tracing::instrument(skip_all, level = "trace")]
-    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), DatabaseError> {
-        for event in events.into_iter() {
-            let msg = RelayMessage::event(SubscriptionId::new("ndb"), event);
-            let json: String = msg.as_json();
-            self.db
-                .process_event(&json)
-                .map_err(DatabaseError::backend)?;
-        }
-        Ok(())
     }
 
     async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {

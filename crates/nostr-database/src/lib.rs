@@ -118,11 +118,6 @@ pub trait NostrDatabase: fmt::Debug + Send + Sync {
     // TODO: return enum saying that event is saved or deleted or replaced and so on or error?
     async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError>;
 
-    /// Bulk import events into database
-    ///
-    /// **This method assume that [`Event`] was already verified**
-    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), DatabaseError>;
-
     /// Check event status
     ///
     /// Check if the event is saved, deleted or not existent.

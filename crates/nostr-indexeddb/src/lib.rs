@@ -10,7 +10,7 @@
 #![cfg_attr(not(target_arch = "wasm32"), allow(unused))]
 #![allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive for `BTreeSet<Event>`
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::future::IntoFuture;
 use std::sync::Arc;
@@ -348,38 +348,6 @@ impl_nostr_database!({
         self._save_event(event)
             .await
             .map_err(DatabaseError::backend)
-    }
-
-    #[tracing::instrument(skip_all, level = "trace")]
-    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), DatabaseError> {
-        let tx = self
-            .db
-            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readwrite)
-            .map_err(into_err)?;
-        let store = tx.object_store(EVENTS_CF).map_err(into_err)?;
-
-        // Bulk import indexes
-        let events = self.helper.bulk_import(events).await;
-
-        // Acquire FlatBuffers Builder
-        let mut fbb = self.fbb.lock().await;
-
-        for event in events.into_iter() {
-            let key = JsValue::from(event.id.to_hex());
-            let value = JsValue::from(hex::encode(event.encode(&mut fbb)));
-            store
-                .put_key_val(&key, &value)
-                .map_err(into_err)?
-                .await
-                .map_err(into_err)?;
-        }
-
-        // Drop FlatBuffers Builder
-        drop(fbb);
-
-        tx.await.into_result().map_err(into_err)?;
-
-        Ok(())
     }
 
     async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {

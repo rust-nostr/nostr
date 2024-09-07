@@ -168,44 +168,6 @@ impl NostrDatabase for SQLiteDatabase {
         }
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
-    async fn bulk_import(&self, events: BTreeSet<Event>) -> Result<(), DatabaseError> {
-        // Acquire FlatBuffers Builder
-        let mut fbb = self.fbb.write().await;
-
-        // Events to store
-        let events = self.helper.bulk_import(events).await;
-
-        // Encode
-        let events: Vec<(EventId, Vec<u8>)> = events
-            .into_iter()
-            .map(move |e| {
-                let event_id: EventId = e.id;
-                let value: Vec<u8> = e.encode(&mut fbb).to_vec();
-                (event_id, value)
-            })
-            .collect();
-
-        // Bulk save
-        self.pool
-            .interact(move |conn| {
-                let tx = conn.transaction()?;
-
-                for (event_id, value) in events.into_iter() {
-                    tx.execute(
-                        "INSERT OR IGNORE INTO events (event_id, event) VALUES (?, ?);",
-                        (event_id.to_hex(), value),
-                    )?;
-                }
-
-                tx.commit()
-            })
-            .await?
-            .map_err(DatabaseError::backend)?;
-
-        Ok(())
-    }
-
     async fn check_event(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
         if self.helper.has_event_id_been_deleted(event_id).await {
             Ok(DatabaseEventStatus::Deleted)

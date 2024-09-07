@@ -2,7 +2,6 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::time::Duration;
@@ -10,7 +9,6 @@ use std::time::Duration;
 use clap::Parser;
 use cli::DatabaseCommand;
 use nostr_sdk::prelude::*;
-use rayon::prelude::*;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use tokio::time::Instant;
@@ -267,28 +265,32 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
                     println!("File size: {} bytes", metadata.len());
 
                     // Deserialize events
-                    #[allow(clippy::mutable_key_type)]
-                    let events: BTreeSet<Event> = reader
-                        .lines()
-                        .par_bridge()
-                        .flatten()
-                        .filter_map(|msg| {
-                            if let Ok(RelayMessage::Event { event, .. }) =
-                                serde_json::from_str(&msg)
-                            {
-                                Some(*event)
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
+                    let iter = reader.lines().map_while(Result::ok).filter_map(|msg| {
+                        if let Ok(RelayMessage::Event { event, .. }) = RelayMessage::from_json(msg)
+                        {
+                            Some(event)
+                        } else {
+                            None
+                        }
+                    });
 
                     // Bulk load
+                    let mut counter: u32 = 0;
                     let db = client.database();
-                    println!("Indexing {} events", events.len());
                     let now = Instant::now();
-                    db.bulk_import(events).await?;
-                    println!("Indexed in {:.6} secs", now.elapsed().as_secs_f64());
+
+                    for event in iter {
+                        if let Ok(stored) = db.save_event(&event).await {
+                            if stored {
+                                counter += 1;
+                            }
+                        }
+                    }
+
+                    println!(
+                        "Imported {counter} events in {:.6} secs",
+                        now.elapsed().as_secs_f64()
+                    );
                 } else {
                     println!("File not found")
                 }

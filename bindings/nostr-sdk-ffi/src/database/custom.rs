@@ -99,7 +99,7 @@ impl fmt::Debug for IntermediateCustomNostrDatabase {
 }
 
 mod inner {
-    use std::collections::{BTreeSet, HashSet};
+    use std::collections::HashSet;
     use std::ops::Deref;
     use std::sync::Arc;
 
@@ -120,10 +120,6 @@ mod inner {
                 .save_event(Arc::new(event.to_owned().into()))
                 .await
                 .map_err(DatabaseError::backend)
-        }
-
-        async fn bulk_import(&self, _events: BTreeSet<Event>) -> Result<(), DatabaseError> {
-            Ok(())
         }
 
         async fn check_event(
