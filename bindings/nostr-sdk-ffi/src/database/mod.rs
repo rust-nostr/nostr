@@ -9,6 +9,8 @@ use nostr_ffi::{Event, EventId, Filter, PublicKey};
 use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt, Order};
 #[cfg(feature = "ndb")]
 use nostr_sdk::NdbDatabase;
+#[cfg(feature = "lmdb")]
+use nostr_sdk::NostrLMDB;
 #[cfg(feature = "sqlite")]
 use nostr_sdk::SQLiteDatabase;
 use uniffi::Object;
@@ -59,6 +61,19 @@ impl NostrDatabase {
 
     // `#[uniffi::export(async_runtime = "tokio")]` require a method
     async fn _none(&self) {}
+}
+
+#[cfg(feature = "lmdb")]
+#[uniffi::export]
+impl NostrDatabase {
+    /// LMDB backend
+    #[uniffi::constructor]
+    pub fn lmdb(path: &str) -> Result<Self> {
+        let db = Arc::new(NostrLMDB::open(path)?);
+        Ok(Self {
+            inner: db.into_nostr_database(),
+        })
+    }
 }
 
 #[cfg(feature = "ndb")]

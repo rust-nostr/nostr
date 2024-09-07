@@ -9,7 +9,8 @@ name = "nostr_sdk_ffi"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [features]
-default = ["sqlite", "ndb"]
+default = ["lmdb", "sqlite", "ndb"]
+lmdb = ["nostr-sdk/lmdb"]
 sqlite = ["nostr-sdk/sqlite"]
 ndb = ["nostr-sdk/ndb"]
 

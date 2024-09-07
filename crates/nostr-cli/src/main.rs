@@ -30,17 +30,7 @@ async fn run() -> Result<()> {
 
     match args.command {
         CliCommand::Open { relays } => {
-            println!("Loading database...");
-            let now = Instant::now();
-            //let db = RocksDatabase::open("./db/nostr").await?;
-            let db = SQLiteDatabase::open("nostr.db").await?;
-            // let db = MemoryDatabase::with_opts(MemoryDatabaseOptions {
-            //     events: true,
-            //     max_events: None,
-            // });
-            println!("Loaded in {:.2} secs", now.elapsed().as_secs_f64());
-
-            println!("Constructing client...");
+            let db = NostrLMDB::open("./db/nostr-lmdb")?;
             let client = Client::builder().database(db).build();
 
             client.add_relays(relays).await?;
@@ -86,7 +76,7 @@ async fn run() -> Result<()> {
             let secret_key: SecretKey = io::get_secret_key()?;
 
             // Ask URI
-            let uri: Option<String> = cli::io::get_optional_input("Nostr Connect URI")?;
+            let uri: Option<String> = io::get_optional_input("Nostr Connect URI")?;
 
             // Compose signer
             let signer: NostrConnectRemoteSigner = match uri {

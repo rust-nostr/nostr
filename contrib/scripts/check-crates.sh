@@ -42,6 +42,7 @@ buildargs=(
     "-p nostr-sdk --features nip47,nip57"
     "-p nostr-sdk --features nip47,nip57 --target wasm32-unknown-unknown"
     "-p nostr-sdk --features indexeddb,webln --target wasm32-unknown-unknown"
+    "-p nostr-sdk --features lmdb"
     "-p nostr-sdk --features sqlite"
     "-p nostr-sdk --features ndb"
     "-p nostr-sdk --features tor"

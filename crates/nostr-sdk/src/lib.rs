@@ -24,6 +24,9 @@ pub use nostr_database::{self as database, NostrDatabase, NostrDatabaseExt, Prof
 #[cfg(all(target_arch = "wasm32", feature = "indexeddb"))]
 pub use nostr_indexeddb::WebDatabase;
 #[doc(hidden)]
+#[cfg(feature = "lmdb")]
+pub use nostr_lmdb::NostrLMDB;
+#[doc(hidden)]
 #[cfg(feature = "ndb")]
 pub use nostr_ndb::{self as ndb, NdbDatabase};
 #[doc(hidden)]

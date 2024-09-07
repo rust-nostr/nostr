@@ -139,6 +139,7 @@ The following crate feature flags are available:
 | Feature     | Default | Description                                                                                  |
 |-------------|:-------:|----------------------------------------------------------------------------------------------|
 | `tor`       |   No    | Enable support for embedded tor client                                                       |
+| `lmdb`      |   No    | Enable LMDB storage backend                                                                  |
 | `ndb`       |   No    | Enable [nostrdb](https://github.com/damus-io/nostrdb) storage backend                        |
 | `sqlite`    |   No    | Enable SQLite storage backend                                                                |
 | `indexeddb` |   No    | Enable Web's IndexedDb storage backend                                                       |

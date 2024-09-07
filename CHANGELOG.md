@@ -83,6 +83,7 @@
 * nostr: add `Timestamp::min` and `Timestamp::max` ([Yuki Kishimoto])
 * database: add `DatabaseHelper::fast_query` ([Yuki Kishimoto])
 * database: add `NostrDatabase::check_id` ([Yuki Kishimoto])
+* lmdb: add LMDB storage backend ([Yuki Kishimoto])
 * relay-builder: add `MockRelay` ([Yuki Kishimoto])
 * pool: add `RelayPool::disconnect_relay` method ([Yuki Kishimoto])
 * bindings(nostr): expose `as_pretty_json` for some structs ([Yuki Kishimoto])

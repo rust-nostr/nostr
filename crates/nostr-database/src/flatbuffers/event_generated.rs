@@ -19,7 +19,7 @@ pub mod event_fbs {
 
     // struct Fixed32Bytes, aligned to 1
     #[repr(transparent)]
-    #[derive(Clone, Copy, PartialEq)]
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct Fixed32Bytes(pub [u8; 32]);
     impl Default for Fixed32Bytes {
         fn default() -> Self {

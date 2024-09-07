@@ -6,8 +6,8 @@
 
 use std::collections::HashSet;
 
-pub use flatbuffers::FlatBufferBuilder;
 use flatbuffers::InvalidFlatbuffer;
+pub use flatbuffers::{FlatBufferBuilder, ForwardsUOffset, Vector};
 use nostr::secp256k1::schnorr::Signature;
 use nostr::{key, secp256k1, Event, EventId, Kind, PublicKey, Tag, Timestamp, Url};
 use thiserror::Error;
@@ -17,7 +17,7 @@ mod event_generated;
 #[allow(unused_imports, dead_code, clippy::all, unsafe_code, missing_docs)]
 mod event_seen_by_generated;
 
-use self::event_generated::event_fbs;
+pub use self::event_generated::event_fbs;
 use self::event_seen_by_generated::event_seen_by_fbs;
 
 /// FlatBuffers Error
@@ -50,6 +50,12 @@ pub trait FlatBufferEncode {
 pub trait FlatBufferDecode: Sized {
     /// FlatBuffer decode
     fn decode(buf: &[u8]) -> Result<Self, Error>;
+}
+
+/// FlatBuffer Decode trait
+pub trait FlatBufferDecodeBorrowed<'a>: Sized {
+    /// FlatBuffer decode
+    fn decode(buf: &'a [u8]) -> Result<Self, Error>;
 }
 
 impl FlatBufferEncode for Event {

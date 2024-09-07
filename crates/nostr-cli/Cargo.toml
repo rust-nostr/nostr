@@ -7,7 +7,7 @@ rust-version.workspace = true
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
 dialoguer = "0.11"
-nostr-sdk = { workspace = true, features = ["all-nips", "sqlite"] }
+nostr-sdk = { workspace = true, features = ["all-nips", "lmdb"] }
 once_cell.workspace = true
 prettytable-rs = "0.10"
 regex = "1.9.6"
