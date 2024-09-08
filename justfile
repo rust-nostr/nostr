@@ -1,5 +1,7 @@
 #!/usr/bin/env just --justfile
 
+set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
+
 # Build nostr CLI (release)
 cli:
 	cargo build -p nostr-cli --release
@@ -60,10 +62,6 @@ clean:
 # Build and serve the book
 book:
     cd book && just serve
-
-# Compile the nostr-database flatbuffers
-flatbuf:
-	cd crates/nostr-database && just flatbuf
 
 # Get many-events.json to test database performance
 many-events:

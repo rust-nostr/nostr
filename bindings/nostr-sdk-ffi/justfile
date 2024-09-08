@@ -1,4 +1,4 @@
-#!/usr/bin/env just --justfile
+set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
 # Check if ANDROID_NDK_HOME env is set
 [private]
