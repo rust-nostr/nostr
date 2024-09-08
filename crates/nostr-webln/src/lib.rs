@@ -50,8 +50,6 @@ macro_rules! impl_nostr_zapper {
     ({ $($body:tt)* }) => {
         #[nostr_zapper::async_trait(?Send)]
         impl NostrZapper for WebLNZapper {
-            type Err = ZapperError;
-
             $($body)*
         }
     };

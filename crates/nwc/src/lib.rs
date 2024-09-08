@@ -27,7 +27,7 @@ use nostr::nips::nip47::{
 };
 use nostr::{Event, EventId, Filter, Kind, SubscriptionId, Timestamp};
 use nostr_relay_pool::{Relay, RelayNotification, RelaySendOptions, SubscribeOptions};
-use nostr_zapper::{async_trait, NostrZapper, ZapperBackend};
+use nostr_zapper::{async_trait, NostrZapper, ZapperBackend, ZapperError};
 
 pub mod error;
 pub mod options;
@@ -210,16 +210,16 @@ impl NWC {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrZapper for NWC {
-    type Err = Error;
-
     #[inline]
     fn backend(&self) -> ZapperBackend {
         ZapperBackend::NWC
     }
 
     #[inline]
-    async fn pay(&self, invoice: String) -> Result<(), Self::Err> {
-        self.pay_invoice(invoice).await?;
+    async fn pay(&self, invoice: String) -> Result<(), ZapperError> {
+        self.pay_invoice(invoice)
+            .await
+            .map_err(ZapperError::backend)?;
         Ok(())
     }
 }

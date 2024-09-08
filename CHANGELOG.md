@@ -113,6 +113,7 @@
 * database: remove `DatabaseError::NotFound` variant ([Yuki Kishimoto])
 * database: remove `DatabaseError::Nostr` variant ([Yuki Kishimoto])
 * pool: remove high latency log ([Yuki Kishimoto])
+* zapper: remove `Err` from `NostrZapper` and unnecessary variants from `ZapperError` ([Yuki Kishimoto])
 * js(nostr): remove `Keys::vanity` ([Yuki Kishimoto])
 
 ## [v0.34.0]
