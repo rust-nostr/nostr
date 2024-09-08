@@ -168,11 +168,6 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     async fn event_by_id(&self, id: &EventId) -> Result<Option<Event>, DatabaseError> {
-        if !self.opts.events {
-            // TODO: return `Ok(None)`?
-            return Err(DatabaseError::FeatureDisabled);
-        }
-
         Ok(self.helper.event_by_id(id).await)
     }
 
@@ -183,23 +178,14 @@ impl NostrDatabase for MemoryDatabase {
 
     #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, DatabaseError> {
-        if self.opts.events {
-            Ok(self.helper.query(filters, order).await)
-        } else {
-            // TODO: return empty list or `NotSupported`?
-            Err(DatabaseError::FeatureDisabled)
-        }
+        Ok(self.helper.query(filters, order).await)
     }
 
     async fn negentropy_items(
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
-        if self.opts.events {
-            Ok(self.helper.negentropy_items(filter).await)
-        } else {
-            Err(DatabaseError::FeatureDisabled)
-        }
+        Ok(self.helper.negentropy_items(filter).await)
     }
 
     async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {

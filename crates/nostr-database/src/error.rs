@@ -15,9 +15,6 @@ pub enum DatabaseError {
     /// Not supported
     #[error("not supported by current backend")]
     NotSupported,
-    /// Feature disabled
-    #[error("feature disabled for current backend")]
-    FeatureDisabled,
 }
 
 impl DatabaseError {
