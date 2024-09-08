@@ -5,14 +5,11 @@
 
 //! Filters
 
-#[cfg(not(feature = "std"))]
-use alloc::collections::{BTreeMap as AllocMap, BTreeSet as AllocSet};
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
 use core::fmt;
 use core::hash::Hash;
 use core::str::FromStr;
-#[cfg(feature = "std")]
-use std::collections::{HashMap as AllocMap, HashSet as AllocSet};
 
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
@@ -22,7 +19,7 @@ use crate::event::TagsIndexes;
 use crate::nips::nip01::Coordinate;
 use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Timestamp};
 
-type GenericTags = AllocMap<SingleLetterTag, AllocSet<String>>;
+type GenericTags = BTreeMap<SingleLetterTag, BTreeSet<String>>;
 
 /// Alphabet Error
 #[derive(Debug)]
@@ -260,20 +257,20 @@ impl<'de> Deserialize<'de> for SingleLetterTag {
 /// Subscription filters
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Filter {
     /// List of [`EventId`]
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
-    pub ids: Option<AllocSet<EventId>>,
+    pub ids: Option<BTreeSet<EventId>>,
     /// List of [`PublicKey`]
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
-    pub authors: Option<AllocSet<PublicKey>>,
+    pub authors: Option<BTreeSet<PublicKey>>,
     /// List of a kind numbers
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
-    pub kinds: Option<AllocSet<Kind>>,
+    pub kinds: Option<BTreeSet<Kind>>,
     /// It's a string describing a query in a human-readable form, i.e. "best nostr apps"
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/50.md>
@@ -666,7 +663,7 @@ impl Filter {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        let values: AllocSet<String> = values.into_iter().map(|v| v.into()).collect();
+        let values: BTreeSet<String> = values.into_iter().map(|v| v.into()).collect();
         self.generic_tags.entry(tag).or_default().extend(values);
         self
     }
@@ -799,13 +796,13 @@ where
         where
             M: MapAccess<'de>,
         {
-            let mut generic_tags = AllocMap::new();
+            let mut generic_tags = BTreeMap::new();
             while let Some(key) = map.next_key::<String>()? {
                 let mut chars = key.chars();
                 if let (Some('#'), Some(ch), None) = (chars.next(), chars.next(), chars.next()) {
                     let tag: SingleLetterTag =
                         SingleLetterTag::from_char(ch).map_err(serde::de::Error::custom)?;
-                    let values: AllocSet<String> = map.next_value()?;
+                    let values: BTreeSet<String> = map.next_value()?;
                     generic_tags.insert(tag, values);
                 } else {
                     map.next_value::<serde::de::IgnoredAny>()?;
@@ -818,7 +815,7 @@ where
     deserializer.deserialize_map(GenericTagsVisitor)
 }
 
-fn extend_or_collect<T, I>(mut set: Option<AllocSet<T>>, iter: I) -> Option<AllocSet<T>>
+fn extend_or_collect<T, I>(mut set: Option<BTreeSet<T>>, iter: I) -> Option<BTreeSet<T>>
 where
     I: IntoIterator<Item = T>,
     T: Eq + Ord + Hash,
@@ -834,7 +831,7 @@ where
 
 /// Remove values from set
 /// If after remove the set is empty, will be returned `None`
-fn remove_or_none<T, I>(mut set: Option<AllocSet<T>>, iter: I) -> Option<AllocSet<T>>
+fn remove_or_none<T, I>(mut set: Option<BTreeSet<T>>, iter: I) -> Option<BTreeSet<T>>
 where
     I: IntoIterator<Item = T>,
     T: Eq + Ord + Hash,

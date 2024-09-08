@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::str::FromStr;
 
 use nostr::{Filter, SingleLetterTag, Timestamp};
@@ -18,7 +18,7 @@ pub struct DatabaseFilter {
     pub search: Option<String>,
     pub since: Option<Timestamp>,
     pub until: Option<Timestamp>,
-    pub generic_tags: HashMap<SingleLetterTag, HashSet<String>>,
+    pub generic_tags: BTreeMap<SingleLetterTag, BTreeSet<String>>,
 }
 
 impl DatabaseFilter {
