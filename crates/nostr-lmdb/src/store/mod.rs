@@ -8,7 +8,8 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-use heed::{RoTxn, RwTxn};
+use heed::types::Bytes;
+use heed::{RoRange, RoTxn, RwTxn};
 use nostr::prelude::*;
 use nostr_database::FlatBufferBuilder;
 use tokio::sync::Mutex;
@@ -247,14 +248,7 @@ impl Store {
         I: IntoIterator<Item = Filter>,
     {
         let txn = self.db.read_txn()?;
-
-        let mut output = BTreeSet::new();
-
-        for filter in filters.into_iter() {
-            let events = self.single_filter_query(&txn, filter)?;
-            output.extend(events);
-        }
-
+        let output = self.gather_events(&txn, filters)?;
         Ok(output.len())
     }
 
@@ -263,14 +257,7 @@ impl Store {
         I: IntoIterator<Item = Filter>,
     {
         let txn = self.db.read_txn()?;
-
-        let mut output = BTreeSet::new();
-
-        for filter in filters.into_iter() {
-            let events = self.single_filter_query(&txn, filter)?;
-            output.extend(events);
-        }
-
+        let output = self.gather_events(&txn, filters)?;
         Ok(output
             .into_iter()
             .filter_map(|e| e.to_event().ok())
@@ -284,6 +271,22 @@ impl Store {
             .into_iter()
             .map(|e| (EventId::from_byte_array(*e.id()), e.created_at))
             .collect())
+    }
+
+    fn gather_events<'a, I>(
+        &self,
+        txn: &'a RoTxn,
+        filters: I,
+    ) -> Result<BTreeSet<DatabaseEvent<'a>>, Error>
+    where
+        I: IntoIterator<Item = Filter>,
+    {
+        let mut output = BTreeSet::new();
+        for filter in filters {
+            let events = self.single_filter_query(txn, filter)?;
+            output.extend(events);
+        }
+        Ok(output)
     }
 
     /// Find all events that match the filter
@@ -301,8 +304,7 @@ impl Store {
         // We insert into a BTreeSet to keep them time-ordered
         let mut output: BTreeSet<DatabaseEvent<'a>> = BTreeSet::new();
 
-        let optional_limit = filter.limit;
-        let limit = filter.limit.unwrap_or(usize::MAX);
+        let limit: Option<usize> = filter.limit;
         let since = filter.since.unwrap_or_else(Timestamp::min);
         let until = filter.until.unwrap_or_else(Timestamp::max);
 
@@ -311,9 +313,12 @@ impl Store {
         if !filter.ids.is_empty() {
             // Fetch by id
             for id in filter.ids.iter() {
-                // Stop if limited
-                if output.len() >= limit {
-                    break;
+                // Check if limit is set
+                if let Some(limit) = limit {
+                    // Stop if limited
+                    if output.len() >= limit {
+                        break;
+                    }
                 }
 
                 if let Some(event) = self.db.get_event_by_id(txn, &id.0)? {
@@ -357,13 +362,15 @@ impl Store {
                             paircount += 1;
 
                             // Stop this pair if limited
-                            if paircount >= limit {
-                                // Since we found the limit just among this pair,
-                                // potentially move since forward
-                                if created_at > since {
-                                    since = created_at;
+                            if let Some(limit) = limit {
+                                if paircount >= limit {
+                                    // Since we found the limit just among this pair,
+                                    // potentially move since forward
+                                    if created_at > since {
+                                        since = created_at;
+                                    }
+                                    break 'per_event;
                                 }
-                                break 'per_event;
                             }
 
                             // If kind is replaceable (and not parameterized)
@@ -389,43 +396,14 @@ impl Store {
                         let iter = self
                             .db
                             .atc_iter(txn, &author.0, tagname, tag_value, &since, &until)?;
-
-                        // Count how many we have found of this author-tag pair, so we
-                        // can possibly update `since`
-                        let mut paircount = 0;
-
-                        'per_event: for result in iter {
-                            let (_key, value) = result?;
-                            let event = self
-                                .db
-                                .get_event_by_id(txn, value)?
-                                .ok_or(Error::NotFound)?;
-
-                            // If we have gone beyond since, we can stop early
-                            // (We have to check because `since` might change in this loop)
-                            if event.created_at < since {
-                                break 'per_event;
-                            }
-
-                            // check against the rest of the filter
-                            if filter.match_event(&event) {
-                                let created_at = event.created_at;
-
-                                // Accept the event
-                                output.insert(event);
-                                paircount += 1;
-
-                                // Stop this pair if limited
-                                if paircount >= limit {
-                                    // Since we found the limit just among this pair,
-                                    // potentially move since forward
-                                    if created_at > since {
-                                        since = created_at;
-                                    }
-                                    break 'per_event;
-                                }
-                            }
-                        }
+                        self.iterate_filter_until_limit(
+                            txn,
+                            &filter,
+                            iter,
+                            &mut since,
+                            limit,
+                            &mut output,
+                        )?;
                     }
                 }
             }
@@ -440,43 +418,14 @@ impl Store {
                         let iter = self
                             .db
                             .ktc_iter(txn, *kind, tag_name, tag_value, &since, &until)?;
-
-                        // Count how many we have found of this kind-tag pair, so we
-                        // can possibly update `since`
-                        let mut paircount = 0;
-
-                        'per_event: for result in iter {
-                            let (_key, value) = result?;
-                            let event = self
-                                .db
-                                .get_event_by_id(txn, value)?
-                                .ok_or(Error::NotFound)?;
-
-                            // If we have gone beyond since, we can stop early
-                            // (We have to check because `since` might change in this loop)
-                            if event.created_at < since {
-                                break 'per_event;
-                            }
-
-                            // check against the rest of the filter
-                            if filter.match_event(&event) {
-                                let created_at = event.created_at;
-
-                                // Accept the event
-                                output.insert(event);
-                                paircount += 1;
-
-                                // Stop this pair if limited
-                                if paircount >= limit {
-                                    // Since we found the limit just among this pair,
-                                    // potentially move since forward
-                                    if created_at > since {
-                                        since = created_at;
-                                    }
-                                    break 'per_event;
-                                }
-                            }
-                        }
+                        self.iterate_filter_until_limit(
+                            txn,
+                            &filter,
+                            iter,
+                            &mut since,
+                            limit,
+                            &mut output,
+                        )?;
                     }
                 }
             }
@@ -488,37 +437,14 @@ impl Store {
             for (tag_name, set) in filter.generic_tags.iter() {
                 for tag_value in set.iter() {
                     let iter = self.db.tc_iter(txn, tag_name, tag_value, &since, &until)?;
-
-                    let mut rangecount = 0;
-
-                    'per_event: for result in iter {
-                        let (_key, value) = result?;
-                        let event = self
-                            .db
-                            .get_event_by_id(txn, value)?
-                            .ok_or(Error::NotFound)?;
-
-                        if event.created_at < since {
-                            break 'per_event;
-                        }
-
-                        // check against the rest of the filter
-                        if filter.match_event(&event) {
-                            let created_at = event.created_at;
-
-                            // Accept the event
-                            output.insert(event);
-                            rangecount += 1;
-
-                            // Stop this limited
-                            if rangecount >= limit {
-                                if created_at > since {
-                                    since = created_at;
-                                }
-                                break 'per_event;
-                            }
-                        }
-                    }
+                    self.iterate_filter_until_limit(
+                        txn,
+                        &filter,
+                        iter,
+                        &mut since,
+                        limit,
+                        &mut output,
+                    )?;
                 }
             }
         } else if !filter.authors.is_empty() {
@@ -528,37 +454,14 @@ impl Store {
 
             for author in filter.authors.iter() {
                 let iter = self.db.ac_iter(txn, &author.0, since, until)?;
-
-                let mut rangecount = 0;
-
-                'per_event: for result in iter {
-                    let (_key, value) = result?;
-                    let event = self
-                        .db
-                        .get_event_by_id(txn, value)?
-                        .ok_or(Error::NotFound)?;
-
-                    if event.created_at < since {
-                        break 'per_event;
-                    }
-
-                    // check against the rest of the filter
-                    if filter.match_event(&event) {
-                        let created_at = event.created_at;
-
-                        // Accept the event
-                        output.insert(event);
-                        rangecount += 1;
-
-                        // Stop this limited
-                        if rangecount >= limit {
-                            if created_at > since {
-                                since = created_at;
-                            }
-                            break 'per_event;
-                        }
-                    }
-                }
+                self.iterate_filter_until_limit(
+                    txn,
+                    &filter,
+                    iter,
+                    &mut since,
+                    limit,
+                    &mut output,
+                )?;
             }
         } else {
             // SCRAPE
@@ -566,8 +469,12 @@ impl Store {
 
             let iter = self.db.ci_iter(txn, &since, &until)?;
             for result in iter {
-                if output.len() >= limit {
-                    break;
+                // Check if limit is set
+                if let Some(limit) = limit {
+                    // Stop if limited
+                    if output.len() >= limit {
+                        break;
+                    }
                 }
 
                 let (_key, value) = result?;
@@ -583,10 +490,58 @@ impl Store {
         }
 
         // Reverse order, optionally apply limit and collect to Vec
-        Ok(match optional_limit {
+        Ok(match limit {
             Some(limit) => output.into_iter().take(limit).collect(),
             None => output.into_iter().collect(),
         })
+    }
+
+    fn iterate_filter_until_limit<'a>(
+        &self,
+        txn: &'a RoTxn,
+        filter: &DatabaseFilter,
+        iter: RoRange<Bytes, Bytes>,
+        since: &mut Timestamp,
+        limit: Option<usize>,
+        output: &mut BTreeSet<DatabaseEvent<'a>>,
+    ) -> Result<(), Error> {
+        let mut count: usize = 0;
+
+        for result in iter {
+            let (_key, value) = result?;
+
+            // Get event by ID
+            let event = self
+                .db
+                .get_event_by_id(txn, value)?
+                .ok_or(Error::NotFound)?;
+
+            if event.created_at < *since {
+                break;
+            }
+
+            // check against the rest of the filter
+            if filter.match_event(&event) {
+                let created_at = event.created_at;
+
+                // Accept the event
+                output.insert(event);
+                count += 1;
+
+                // Check if limit is set
+                if let Some(limit) = limit {
+                    // Stop this limited
+                    if count >= limit {
+                        if created_at > *since {
+                            *since = created_at;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn find_replaceable_event<'a>(
