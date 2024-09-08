@@ -110,6 +110,7 @@
 * database: remove `has_event_already_been_saved`, `has_event_already_been_seen` and `has_event_id_been_deleted` methods from `NostrDatabase` ([Yuki Kishimoto])
 * database: remove `Err` from `NostrDatabase` ([Yuki Kishimoto])
 * database: remove `NostrDatabase::bulk_import` ([Yuki Kishimoto])
+* database: remove `DatabaseError::NotFound` variant ([Yuki Kishimoto])
 * pool: remove high latency log ([Yuki Kishimoto])
 * js(nostr): remove `Keys::vanity` ([Yuki Kishimoto])
 

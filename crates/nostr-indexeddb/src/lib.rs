@@ -438,16 +438,16 @@ impl_nostr_database!({
             .object_store(EVENTS_SEEN_BY_RELAYS_CF)
             .map_err(into_err)?;
         let key = JsValue::from(event_id.to_hex());
-        match store.get(&key).map_err(into_err)?.await.map_err(into_err)? {
-            Some(jsvalue) => {
-                let set_hex = js_value_to_string(jsvalue).ok_or(DatabaseError::NotFound)?;
+        if let Some(jsvalue) = store.get(&key).map_err(into_err)?.await.map_err(into_err)? {
+            if let Some(set_hex) = js_value_to_string(jsvalue) {
                 let bytes = hex::decode(set_hex).map_err(DatabaseError::backend)?;
-                Ok(Some(
+                return Ok(Some(
                     HashSet::decode(&bytes).map_err(DatabaseError::backend)?,
-                ))
+                ));
             }
-            None => Ok(None),
         }
+
+        Ok(None)
     }
 
     #[inline]

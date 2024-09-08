@@ -21,9 +21,6 @@ pub enum DatabaseError {
     /// Feature disabled
     #[error("feature disabled for current backend")]
     FeatureDisabled,
-    /// Not found
-    #[error("not found")]
-    NotFound,
 }
 
 impl DatabaseError {
