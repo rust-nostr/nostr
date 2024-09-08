@@ -111,6 +111,7 @@
 * database: remove `Err` from `NostrDatabase` ([Yuki Kishimoto])
 * database: remove `NostrDatabase::bulk_import` ([Yuki Kishimoto])
 * database: remove `DatabaseError::NotFound` variant ([Yuki Kishimoto])
+* database: remove `DatabaseError::Nostr` variant ([Yuki Kishimoto])
 * pool: remove high latency log ([Yuki Kishimoto])
 * js(nostr): remove `Keys::vanity` ([Yuki Kishimoto])
 

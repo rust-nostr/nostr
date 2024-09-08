@@ -228,8 +228,8 @@ fn ndb_filter_conversion(f: Filter) -> nostrdb::Filter {
 #[inline(always)]
 fn ndb_note_to_event(note: Note) -> Result<Event, DatabaseError> {
     let id = EventId::from_byte_array(*note.id());
-    let public_key = PublicKey::from_slice(note.pubkey()).map_err(DatabaseError::nostr)?;
-    let sig = Signature::from_slice(note.sig()).map_err(DatabaseError::nostr)?;
+    let public_key = PublicKey::from_slice(note.pubkey()).map_err(DatabaseError::backend)?;
+    let sig = Signature::from_slice(note.sig()).map_err(DatabaseError::backend)?;
 
     let tags: Vec<Tag> = ndb_note_to_tags(&note)?;
 
@@ -254,7 +254,7 @@ fn ndb_note_to_tags(note: &Note) -> Result<Vec<Tag>, DatabaseError> {
                 NdbStrVariant::Str(s) => s.to_owned(),
             })
             .collect();
-        let tag: Tag = Tag::parse(&tag_str).map_err(DatabaseError::nostr)?;
+        let tag: Tag = Tag::parse(&tag_str).map_err(DatabaseError::backend)?;
         tags.push(tag);
     }
     Ok(tags)
