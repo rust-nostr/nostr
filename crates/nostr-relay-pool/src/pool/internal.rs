@@ -135,10 +135,16 @@ impl InternalRelayPool {
             .collect()
     }
 
-    /// Method to get **all** relays urls
-    async fn all_relay_urls(&self) -> Vec<Url> {
+    /// Get relays with `READ` or `WRITE` relays
+    async fn relay_urls(&self) -> Vec<Url> {
         let relays = self.relays.read().await;
-        relays.keys().cloned().collect()
+        self.internal_relays_with_flag(
+            &relays,
+            RelayServiceFlags::READ | RelayServiceFlags::WRITE,
+            FlagCheck::Any,
+        )
+        .map(|(k, ..)| k.clone())
+        .collect()
     }
 
     async fn read_relay_urls(&self) -> Vec<Url> {
@@ -971,7 +977,7 @@ impl InternalRelayPool {
         filter: Filter,
         opts: NegentropyOptions,
     ) -> Result<Output<Reconciliation>, Error> {
-        let urls: Vec<Url> = self.all_relay_urls().await;
+        let urls: Vec<Url> = self.relay_urls().await;
         self.reconcile_with(urls, filter, opts).await
     }
 
@@ -999,7 +1005,7 @@ impl InternalRelayPool {
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
     ) -> Result<Output<Reconciliation>, Error> {
-        let urls: Vec<Url> = self.all_relay_urls().await;
+        let urls: Vec<Url> = self.relay_urls().await;
         self.reconcile_advanced(urls, filter, items, opts).await
     }
 
