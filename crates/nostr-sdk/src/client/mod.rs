@@ -711,6 +711,9 @@ impl Client {
     /// So remember to unsubscribe when you no longer need it. You can get all your active **pool** (non-auto-closing) subscriptions
     /// by calling `client.subscriptions().await`.
     ///
+    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
+    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    ///
     /// # Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the [SubscribeAutoCloseOptions].
@@ -747,50 +750,25 @@ impl Client {
         filters: Vec<Filter>,
         opts: Option<SubscribeAutoCloseOptions>,
     ) -> Result<Output<SubscriptionId>, Error> {
-        let send_opts: RelaySendOptions = self.opts.get_wait_for_subscription();
-        let opts: SubscribeOptions = SubscribeOptions::default()
-            .close_on(opts)
-            .send_opts(send_opts);
-        Ok(self.pool.subscribe(filters, opts).await?)
+        let id: SubscriptionId = SubscriptionId::generate();
+        let output: Output<()> = self.subscribe_with_id(id.clone(), filters, opts).await?;
+        Ok(Output {
+            val: id,
+            success: output.success,
+            failed: output.failed,
+        })
     }
 
     /// Subscribe to filters with custom [SubscriptionId]
+    ///
+    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
+    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// # Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the [SubscribeAutoCloseOptions].
     ///
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<()> {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
-    /// let id = SubscriptionId::new("myid");
-    /// let subscription = Filter::new()
-    ///     .pubkeys(vec![my_keys.public_key()])
-    ///     .since(Timestamp::now());
-    ///
-    /// // Subscribe
-    /// client
-    ///     .subscribe_with_id(id, vec![subscription], None)
-    ///     .await?;
-    ///
-    /// // Auto-closing subscription
-    /// let id = SubscriptionId::generate();
-    /// let subscription = Filter::new().kind(Kind::TextNote).limit(10);
-    /// let opts = SubscribeAutoCloseOptions::default().filter(FilterOptions::ExitOnEOSE);
-    /// client
-    ///     .subscribe_with_id(id, vec![subscription], Some(opts))
-    ///     .await?;
-    ///
-    /// # Ok(())
-    /// # }
-    /// ```
     pub async fn subscribe_with_id(
         &self,
         id: SubscriptionId,
@@ -801,7 +779,12 @@ impl Client {
         let opts: SubscribeOptions = SubscribeOptions::default()
             .close_on(opts)
             .send_opts(send_opts);
-        Ok(self.pool.subscribe_with_id(id, filters, opts).await?)
+
+        if self.opts.gossip {
+            self.gossip_subscribe(id, filters, opts).await
+        } else {
+            Ok(self.pool.subscribe_with_id(id, filters, opts).await?)
+        }
     }
 
     /// Subscribe to filters to specific relays
@@ -1955,7 +1938,7 @@ impl Client {
         Ok(())
     }
 
-    /// Break down filters for gossip
+    /// Break down filters for gossip and discovery relays
     async fn break_down_filters(
         &self,
         filters: Vec<Filter>,
@@ -2052,5 +2035,15 @@ impl Client {
             Some(limit) => Ok(iter.take(limit).collect()),
             None => Ok(iter.collect()),
         }
+    }
+
+    async fn gossip_subscribe(
+        &self,
+        id: SubscriptionId,
+        filters: Vec<Filter>,
+        opts: SubscribeOptions,
+    ) -> Result<Output<()>, Error> {
+        let filters = self.break_down_filters(filters).await?;
+        Ok(self.pool.subscribe_targeted(id, filters, opts).await?)
     }
 }

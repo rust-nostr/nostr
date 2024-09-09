@@ -96,6 +96,7 @@
 * sdk: add `Client::add_read_relay` and `Client::add_write_relay` ([Yuki Kishimoto])
 * sdk: add `Client::stream_events_targeted` ([Yuki Kishimoto])
 * sdk: add `Client::subscribe_targeted` ([Yuki Kishimoto])
+* sdk: add gossip support to `Client::subscribe` and `Client::subscribe_with_id` ([Yuki Kishimoto])
 * bindings(nostr): expose `as_pretty_json` for some structs ([Yuki Kishimoto])
 * bindings(sdk): expose `Client::fetch_metadata` ([Yuki Kishimoto])
 * bindings(sdk): expose `Client::pool` method ([Yuki Kishimoto])

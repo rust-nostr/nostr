@@ -259,6 +259,9 @@ impl Client {
 
     /// Subscribe to filters
     ///
+    /// If `gossip` is enabled (see `Options]) the events will be requested also to
+    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    ///
     /// ### Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
@@ -280,6 +283,9 @@ impl Client {
     }
 
     /// Subscribe to filters with custom subscription ID
+    ///
+    /// If `gossip` is enabled (see `Options]) the events will be requested also to
+    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// ### Auto-closing subscription
     ///
