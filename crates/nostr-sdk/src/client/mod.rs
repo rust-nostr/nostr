@@ -351,7 +351,10 @@ impl Client {
         self.pool.notifications()
     }
 
-    /// Get relays
+    /// Get relays with `READ` or `WRITE` flags
+    ///
+    /// Call [`RelayPool::all_relays`] to get all relays
+    /// or [`RelayPool::relays_with_flag`] to get relays with specific [`RelayServiceFlags`].
     #[inline]
     pub async fn relays(&self) -> HashMap<Url, Relay> {
         self.pool.relays().await

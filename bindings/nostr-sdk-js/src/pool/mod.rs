@@ -5,6 +5,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
+use js_sys::Array;
 use nostr_js::error::{into_err, Result};
 use nostr_js::event::JsEvent;
 use nostr_js::message::JsClientMessage;
@@ -21,7 +22,7 @@ use crate::relay::blacklist::JsRelayBlacklist;
 use crate::relay::options::{
     JsNegentropyOptions, JsRelayOptions, JsRelaySendOptions, JsSubscribeOptions,
 };
-use crate::relay::JsRelay;
+use crate::relay::{JsRelay, JsRelayArray};
 
 #[wasm_bindgen(js_name = RelayPool)]
 pub struct JsRelayPool {
@@ -71,16 +72,20 @@ impl JsRelayPool {
         self.inner.blacklist().into()
     }
 
-    // /// Get relays
-    // #[wasm_bindgen]
-    // pub async fn relays(&self) -> HashMap<String, Arc<Relay>> {
-    //     self.inner
-    //         .relays()
-    //         .await
-    //         .into_iter()
-    //         .map(|(u, r)| (u.to_string(), Arc::new(r.into())))
-    //         .collect()
-    // }
+    /// Get relays with `READ` or `WRITE` flags
+    #[wasm_bindgen]
+    pub async fn relays(&self) -> JsRelayArray {
+        self.inner
+            .relays()
+            .await
+            .into_values()
+            .map(|relay| {
+                let e: JsRelay = relay.into();
+                JsValue::from(e)
+            })
+            .collect::<Array>()
+            .unchecked_into()
+    }
 
     /// Get relay
     #[wasm_bindgen]

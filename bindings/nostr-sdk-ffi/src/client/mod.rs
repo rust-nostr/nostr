@@ -152,6 +152,7 @@ impl Client {
         Ok(self.inner.shutdown().await?)
     }
 
+    /// Get relays with `READ` or `WRITE` flags
     pub async fn relays(&self) -> HashMap<String, Arc<Relay>> {
         self.inner
             .relays()

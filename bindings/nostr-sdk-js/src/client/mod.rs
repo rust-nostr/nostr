@@ -164,7 +164,7 @@ impl JsClient {
         self.inner.shutdown().await.map_err(into_err)
     }
 
-    /// Get relays
+    /// Get relays with `READ` or `WRITE` flags
     pub async fn relays(&self) -> JsRelayArray {
         self.inner
             .relays()

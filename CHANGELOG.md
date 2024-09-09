@@ -109,6 +109,7 @@
 * js(nostr): add `Kind` object ([Yuki Kishimoto])
 * js(nostr): expose `getNip05Profile` function ([Yuki Kishimoto])
 * js(nostr): expose missing methods to `JsCoordinate` ([Yuki Kishimoto])
+* js(sdk): expose `RelayPool::relays` ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])
 
 ### Fixed
