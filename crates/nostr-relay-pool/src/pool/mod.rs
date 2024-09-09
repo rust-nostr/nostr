@@ -522,6 +522,25 @@ impl RelayPool {
             .await
     }
 
+    /// Targeted streaming events
+    ///
+    /// Stream events from specific relays with specific filters
+    pub async fn stream_events_targeted<I, U>(
+        &self,
+        source: I,
+        timeout: Duration,
+        opts: FilterOptions,
+    ) -> Result<ReceiverStream<Event>, Error>
+    where
+        I: IntoIterator<Item = (U, Vec<Filter>)>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.inner
+            .stream_events_targeted(source, timeout, opts)
+            .await
+    }
+
     /// Negentropy reconciliation with all connected relays
     #[inline]
     pub async fn reconcile(

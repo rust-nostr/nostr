@@ -781,6 +781,7 @@ impl InternalRelayPool {
         self.stream_events_from(urls, filters, timeout, opts).await
     }
 
+    #[inline]
     pub async fn stream_events_from<I, U>(
         &self,
         urls: I,
@@ -793,13 +794,29 @@ impl InternalRelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let urls: HashSet<Url> = urls
-            .into_iter()
-            .map(|u| u.try_into_url())
-            .collect::<Result<_, _>>()?;
+        let targets = urls.into_iter().map(|u| (u, filters.clone()));
+        self.stream_events_targeted(targets, timeout, opts).await
+    }
+
+    pub async fn stream_events_targeted<I, U>(
+        &self,
+        targets: I,
+        timeout: Duration,
+        opts: FilterOptions,
+    ) -> Result<ReceiverStream<Event>, Error>
+    where
+        I: IntoIterator<Item = (U, Vec<Filter>)>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Collect targets map
+        let mut map: HashMap<Url, Vec<Filter>> = HashMap::new();
+        for (url, filters) in targets.into_iter() {
+            map.insert(url.try_into_url()?, filters);
+        }
 
         // Check if urls set is empty
-        if urls.is_empty() {
+        if map.is_empty() {
             return Err(Error::NoRelaysSpecified);
         }
 
@@ -814,7 +831,7 @@ impl InternalRelayPool {
         }
 
         // Check if urls set contains ONLY already added relays
-        if !urls.iter().all(|url| relays.contains_key(url)) {
+        if !map.keys().all(|url| relays.contains_key(url)) {
             return Err(Error::RelayNotFound);
         }
 
@@ -822,11 +839,9 @@ impl InternalRelayPool {
         let ids: Arc<Mutex<HashSet<EventId>>> = Arc::new(Mutex::new(HashSet::new()));
 
         // Filter relays and start query
-        for (url, relay) in relays.iter().filter(|(url, ..)| urls.contains(url)) {
-            let url: Url = url.clone();
-            let relay: Relay = relay.clone();
+        for (url, filters) in map.into_iter() {
+            let relay: Relay = self.internal_relay(&relays, &url).cloned()?;
             let tx = tx.clone();
-            let filters = filters.clone();
             let ids = ids.clone();
             thread::spawn(async move {
                 if let Err(e) = relay

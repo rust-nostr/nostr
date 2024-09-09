@@ -1022,6 +1022,26 @@ impl Client {
             .await?)
     }
 
+    /// Targeted streaming events
+    ///
+    /// Stream events from specific relays with specific filters
+    pub async fn stream_events_targeted<I, U>(
+        &self,
+        source: I,
+        timeout: Option<Duration>,
+    ) -> Result<ReceiverStream<Event>, Error>
+    where
+        I: IntoIterator<Item = (U, Vec<Filter>)>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
+        Ok(self
+            .pool
+            .stream_events_targeted(source, timeout, FilterOptions::ExitOnEOSE)
+            .await?)
+    }
+
     /// Send client message to **all relays**
     #[deprecated(since = "0.35.0", note = "Use `send_msg_to` instead")]
     pub async fn send_msg(&self, msg: ClientMessage) -> Result<Output<()>, Error> {
