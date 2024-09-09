@@ -7,7 +7,9 @@ authors.workspace = true
 homepage.workspace = true
 repository.workspace = true
 license.workspace = true
+readme = "README.md"
 rust-version.workspace = true
+keywords = ["nostr", "database", "lmdb"]
 
 [dependencies]
 heed = { version = "0.20", default-features = false, features = ["read-txn-no-tls"] }
