@@ -21,6 +21,8 @@ use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Timestamp};
 
 type GenericTags = BTreeMap<SingleLetterTag, BTreeSet<String>>;
 
+const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
+
 /// Alphabet Error
 #[derive(Debug)]
 pub enum SingleLetterTagError {
@@ -86,7 +88,7 @@ pub struct SingleLetterTag {
 impl SingleLetterTag {
     /// Compose new `lowercase` single-letter tag
     #[inline]
-    pub fn lowercase(character: Alphabet) -> Self {
+    pub const fn lowercase(character: Alphabet) -> Self {
         Self {
             character,
             uppercase: false,
@@ -95,7 +97,7 @@ impl SingleLetterTag {
 
     /// Compose new `uppercase` single-letter tag
     #[inline]
-    pub fn uppercase(character: Alphabet) -> Self {
+    pub const fn uppercase(character: Alphabet) -> Self {
         Self {
             character,
             uppercase: true,
@@ -695,6 +697,21 @@ impl Filter {
     #[inline]
     pub fn is_empty(&self) -> bool {
         self == &Filter::default()
+    }
+
+    /// Extract **all** public keys (both from `authors` and `#p`)
+    pub fn extract_public_keys(&self) -> BTreeSet<PublicKey> {
+        let mut public_keys: BTreeSet<PublicKey> = BTreeSet::new();
+
+        if let Some(authors) = &self.authors {
+            public_keys.extend(authors);
+        }
+
+        if let Some(p_tag) = self.generic_tags.get(&P_TAG) {
+            public_keys.extend(p_tag.iter().filter_map(|p| PublicKey::from_hex(p).ok()));
+        }
+
+        public_keys
     }
 
     #[inline]
