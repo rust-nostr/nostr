@@ -23,6 +23,10 @@ use self::store::Store;
 #[derive(Debug)]
 pub struct NostrLMDB {
     db: Store,
+    // TODO: Temporary use memory database to store seen event IDs
+    // until decide if continue to store them in `NostrDatabase`
+    // or somewhere else
+    temp: MemoryDatabase,
 }
 
 impl NostrLMDB {
@@ -34,6 +38,10 @@ impl NostrLMDB {
     {
         Ok(Self {
             db: Store::open(path).map_err(DatabaseError::backend)?,
+            temp: MemoryDatabase::with_opts(MemoryDatabaseOptions {
+                events: false,
+                max_events: Some(100_000),
+            }),
         })
     }
 }
@@ -91,20 +99,17 @@ impl NostrDatabase for NostrLMDB {
         }
     }
 
-    async fn event_id_seen(
-        &self,
-        _event_id: EventId,
-        _relay_url: Url,
-    ) -> Result<(), DatabaseError> {
-        Ok(())
+    #[inline]
+    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), DatabaseError> {
+        self.temp.event_id_seen(event_id, relay_url).await
     }
 
     #[inline]
     async fn event_seen_on_relays(
         &self,
-        _event_id: &EventId,
+        event_id: &EventId,
     ) -> Result<Option<HashSet<Url>>, DatabaseError> {
-        Err(DatabaseError::NotSupported)
+        self.temp.event_seen_on_relays(event_id).await
     }
 
     #[inline]
