@@ -6,11 +6,13 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 
 use nostr::prelude::*;
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, RwLockReadGuard};
 
 use super::constant::PUBKEY_METADATA_OUTDATED_AFTER;
 
 // TODO: add support to DM relay list
+
+const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
 
 #[derive(Debug)]
 pub struct BrokenDownFilters {
@@ -31,10 +33,12 @@ struct RelayListMetadata {
     pub last_update: Timestamp,
 }
 
+type PublicKeyMap = HashMap<PublicKey, RelayListMetadata>;
+
 #[derive(Debug, Clone)]
 pub struct GossipGraph {
     /// Keep track of seen public keys and of their NIP-65
-    public_keys: Arc<RwLock<HashMap<PublicKey, RelayListMetadata>>>,
+    public_keys: Arc<RwLock<PublicKeyMap>>,
 }
 
 impl GossipGraph {
@@ -106,20 +110,19 @@ impl GossipGraph {
         outdated
     }
 
-    pub async fn get_nip65_relays<'a, I>(
+    fn get_nip65_relays<'a, I>(
         &self,
+        txn: &RwLockReadGuard<PublicKeyMap>,
         public_keys: I,
         metadata: Option<RelayMetadata>,
     ) -> HashSet<Url>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
-        let map = self.public_keys.read().await;
-
         let mut urls: HashSet<Url> = HashSet::new();
 
         for public_key in public_keys.into_iter() {
-            if let Some(meta) = map.get(public_key) {
+            if let Some(meta) = txn.get(public_key) {
                 for (url, m) in meta.map.iter() {
                     let insert: bool = match m {
                         Some(val) => match metadata {
@@ -139,20 +142,19 @@ impl GossipGraph {
         urls
     }
 
-    pub async fn map_nip65_relays<'a, I>(
+    fn map_nip65_relays<'a, I>(
         &self,
+        txn: &RwLockReadGuard<PublicKeyMap>,
         public_keys: I,
         metadata: RelayMetadata,
     ) -> HashMap<Url, BTreeSet<PublicKey>>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
-        let map = self.public_keys.read().await;
-
         let mut urls: HashMap<Url, BTreeSet<PublicKey>> = HashMap::new();
 
         for public_key in public_keys.into_iter() {
-            if let Some(meta) = map.get(public_key) {
+            if let Some(meta) = txn.get(public_key) {
                 for (url, m) in meta.map.iter() {
                     let insert: bool = match m {
                         Some(val) => val == &metadata,
@@ -180,8 +182,8 @@ impl GossipGraph {
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
-        self.get_nip65_relays(public_keys, Some(RelayMetadata::Write))
-            .await
+        let txn = self.public_keys.read().await;
+        self.get_nip65_relays(&txn, public_keys, Some(RelayMetadata::Write))
     }
 
     /// Get inbox (read) relays for public keys
@@ -190,31 +192,34 @@ impl GossipGraph {
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
-        self.get_nip65_relays(public_keys, Some(RelayMetadata::Read))
-            .await
+        let txn = self.public_keys.read().await;
+        self.get_nip65_relays(&txn, public_keys, Some(RelayMetadata::Read))
     }
 
     /// Map outbox (write) relays for public keys
     #[inline]
-    pub async fn map_outbox_relays<'a, I>(
+    fn map_outbox_relays<'a, I>(
         &self,
+        txn: &RwLockReadGuard<PublicKeyMap>,
         public_keys: I,
     ) -> HashMap<Url, BTreeSet<PublicKey>>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
-        self.map_nip65_relays(public_keys, RelayMetadata::Write)
-            .await
+        self.map_nip65_relays(txn, public_keys, RelayMetadata::Write)
     }
 
     /// Map inbox (read) relays for public keys
     #[inline]
-    pub async fn map_inbox_relays<'a, I>(&self, public_keys: I) -> HashMap<Url, BTreeSet<PublicKey>>
+    fn map_inbox_relays<'a, I>(
+        &self,
+        txn: &RwLockReadGuard<PublicKeyMap>,
+        public_keys: I,
+    ) -> HashMap<Url, BTreeSet<PublicKey>>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
-        self.map_nip65_relays(public_keys, RelayMetadata::Read)
-            .await
+        self.map_nip65_relays(txn, public_keys, RelayMetadata::Read)
     }
 
     pub async fn break_down_filters(&self, filters: Vec<Filter>) -> BrokenDownFilters {
@@ -223,11 +228,11 @@ impl GossipGraph {
         let mut outbox_urls = HashSet::new();
         let mut inbox_urls = HashSet::new();
 
-        let p = SingleLetterTag::lowercase(Alphabet::P);
+        let txn = self.public_keys.read().await;
 
         for filter in filters.into_iter() {
             // Extract `p` tag from generic tags and parse public key hex
-            let p_tag: Option<BTreeSet<PublicKey>> = filter.generic_tags.get(&p).map(|s| {
+            let p_tag: Option<BTreeSet<PublicKey>> = filter.generic_tags.get(&P_TAG).map(|s| {
                 s.iter()
                     .filter_map(|p| PublicKey::from_hex(p).ok())
                     .collect()
@@ -236,7 +241,7 @@ impl GossipGraph {
             match (&filter.authors, &p_tag) {
                 (Some(authors), None) => {
                     // Get map of outbox relays
-                    let outbox = self.map_outbox_relays(authors).await;
+                    let outbox = self.map_outbox_relays(&txn, authors);
 
                     // Construct new filters
                     for (relay, pk_set) in outbox.into_iter() {
@@ -257,7 +262,7 @@ impl GossipGraph {
                 }
                 (None, Some(p_public_keys)) => {
                     // Get map of inbox relays
-                    let inbox = self.map_inbox_relays(p_public_keys).await;
+                    let inbox = self.map_inbox_relays(&txn, p_public_keys);
 
                     // Construct new filters
                     for (relay, pk_set) in inbox.into_iter() {
@@ -267,7 +272,7 @@ impl GossipGraph {
                         let mut new_filter: Filter = filter.clone();
                         new_filter
                             .generic_tags
-                            .insert(p, pk_set.into_iter().map(|p| p.to_string()).collect());
+                            .insert(P_TAG, pk_set.into_iter().map(|p| p.to_string()).collect());
 
                         // Update map
                         map.entry(relay)
@@ -281,7 +286,7 @@ impl GossipGraph {
                 (Some(authors), Some(p_public_keys)) => {
                     // Get map of outbox and inbox relays
                     let pks = authors.union(p_public_keys);
-                    let relays = self.get_nip65_relays(pks, None).await;
+                    let relays = self.get_nip65_relays(&txn, pks, None);
 
                     for relay in relays.into_iter() {
                         outbox_urls.insert(relay.clone());
