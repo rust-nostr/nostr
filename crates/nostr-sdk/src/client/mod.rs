@@ -859,6 +859,24 @@ impl Client {
             .await?)
     }
 
+    /// Targeted subscription
+    ///
+    /// Subscribe to specific relays with specific filters
+    #[inline]
+    pub async fn subscribe_targeted<I, U>(
+        &self,
+        id: SubscriptionId,
+        targets: I,
+        opts: SubscribeOptions,
+    ) -> Result<Output<()>, Error>
+    where
+        I: IntoIterator<Item = (U, Vec<Filter>)>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        Ok(self.pool.subscribe_targeted(id, targets, opts).await?)
+    }
+
     /// Unsubscribe
     #[inline]
     pub async fn unsubscribe(&self, id: SubscriptionId) {

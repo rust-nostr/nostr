@@ -558,6 +558,7 @@ impl InternalRelayPool {
         })
     }
 
+    #[inline]
     pub async fn subscribe_with_id_to<I, U>(
         &self,
         urls: I,
@@ -570,14 +571,29 @@ impl InternalRelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        // Compose URLs
-        let urls: HashSet<Url> = urls
-            .into_iter()
-            .map(|u| u.try_into_url())
-            .collect::<Result<_, _>>()?;
+        let targets = urls.into_iter().map(|u| (u, filters.clone()));
+        self.subscribe_targeted(id, targets, opts).await
+    }
+
+    pub async fn subscribe_targeted<I, U>(
+        &self,
+        id: SubscriptionId,
+        targets: I,
+        opts: SubscribeOptions,
+    ) -> Result<Output<()>, Error>
+    where
+        I: IntoIterator<Item = (U, Vec<Filter>)>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Collect targets map
+        let mut map: HashMap<Url, Vec<Filter>> = HashMap::new();
+        for (url, filters) in targets.into_iter() {
+            map.insert(url.try_into_url()?, filters);
+        }
 
         // Check if urls set is empty
-        if urls.is_empty() {
+        if map.is_empty() {
             return Err(Error::NoRelaysSpecified);
         }
 
@@ -590,26 +606,24 @@ impl InternalRelayPool {
         }
 
         // If passed only 1 url, not use threads
-        if urls.len() == 1 {
-            let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
+        if map.len() == 1 {
+            let (url, filters) = map.into_iter().next().ok_or(Error::RelayNotFound)?;
             let relay: &Relay = self.internal_relay(&relays, &url)?;
             relay.subscribe_with_id(id, filters, opts).await?;
             Ok(Output::success(url, ()))
         } else {
             // Check if urls set contains ONLY already added relays
-            if !urls.iter().all(|url| relays.contains_key(url)) {
+            if !map.keys().all(|url| relays.contains_key(url)) {
                 return Err(Error::RelayNotFound);
             }
 
             let result: Arc<Mutex<Output<()>>> = Arc::new(Mutex::new(Output::default()));
-            let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(urls.len());
+            let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(map.len());
 
             // Subscribe
-            for (url, relay) in relays.iter().filter(|(url, ..)| urls.contains(url)) {
-                let url: Url = url.clone();
-                let relay: Relay = relay.clone();
+            for (url, filters) in map.into_iter() {
+                let relay: Relay = self.internal_relay(&relays, &url).cloned()?;
                 let id: SubscriptionId = id.clone();
-                let filters: Vec<Filter> = filters.clone();
                 let result: Arc<Mutex<Output<()>>> = result.clone();
                 let handle: JoinHandle<()> = thread::spawn(async move {
                     match relay.subscribe_with_id(id, filters, opts).await {
