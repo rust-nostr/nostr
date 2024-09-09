@@ -358,7 +358,10 @@ impl JsClient {
 
     /// Get events of filters
     ///
-    /// If timeout is not set, the default one from Options will be used.
+    /// The returned events are sorted by newest first, if there is a limit only the newest are returned.
+    ///
+    /// If `gossip` is enabled (see `Options]) the events will be requested also to
+    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
     #[wasm_bindgen(js_name = getEventsOf)]
     pub async fn get_events_of(
         &self,

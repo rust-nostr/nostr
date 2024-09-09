@@ -5,7 +5,7 @@
 //! Client
 
 use std::collections::btree_set::IntoIter;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::future::Future;
 use std::iter::{self, Rev};
 use std::sync::Arc;
@@ -875,8 +875,10 @@ impl Client {
 
     /// Get events of filters
     ///
-    /// The returned events are sorted by newest first,
-    /// if there is a limit only the newest are returned.
+    /// The returned events are sorted by newest first, if there is a limit only the newest are returned.
+    ///
+    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
+    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// # Example
     /// ```rust,no_run
@@ -899,7 +901,6 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    #[inline]
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
@@ -914,6 +915,11 @@ impl Client {
                 Some(urls) => self.get_events_from(urls, filters, timeout).await,
                 None => {
                     let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
+
+                    if self.opts.gossip {
+                        return self.gossip_get_events_of(filters, timeout).await;
+                    }
+
                     Ok(self
                         .pool
                         .get_events_of(filters, timeout, FilterOptions::ExitOnEOSE)
@@ -989,17 +995,26 @@ impl Client {
     }
 
     /// Stream events of filters
-    #[inline]
+    ///
+    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be streamed also from
+    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
     pub async fn stream_events_of(
         &self,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
     ) -> Result<ReceiverStream<Event>, Error> {
+        // Get timeout
         let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
-        Ok(self
-            .pool
-            .stream_events_of(filters, timeout, FilterOptions::ExitOnEOSE)
-            .await?)
+
+        // Check if gossip is enabled
+        if self.opts.gossip {
+            self.gossip_stream_events_of(filters, timeout).await
+        } else {
+            Ok(self
+                .pool
+                .stream_events_of(filters, timeout, FilterOptions::ExitOnEOSE)
+                .await?)
+        }
     }
 
     /// Stream events of filters from **specific relays**
@@ -1109,30 +1124,8 @@ impl Client {
 
         // Check what are up-to-date in the gossip graph and which ones require an update
         let outdated_public_keys = self.gossip_graph.check_outdated(public_keys).await;
-
-        if !outdated_public_keys.is_empty() {
-            // Get DISCOVERY and READ relays
-            // TODO: avoid clone of both url and relay
-            let relays = self
-                .pool
-                .relays_with_flag(
-                    RelayServiceFlags::DISCOVERY | RelayServiceFlags::READ,
-                    FlagCheck::Any,
-                )
-                .await
-                .into_keys();
-
-            // Get events
-            let filter: Filter = Filter::default()
-                .authors(outdated_public_keys)
-                .kind(Kind::RelayList);
-            let events: Vec<Event> = self
-                .get_events_from(relays, vec![filter], Some(Duration::from_secs(10)))
-                .await?;
-
-            // Update gossip graph
-            self.gossip_graph.update(events).await;
-        }
+        self.update_outdated_gossip_graph(outdated_public_keys)
+            .await?;
 
         // Get relays
         let mut outbox = self.gossip_graph.get_outbox_relays(&[event.pubkey]).await;
@@ -1909,5 +1902,137 @@ impl Client {
         Fut: Future<Output = Result<bool>>,
     {
         Ok(self.pool.handle_notifications(func).await?)
+    }
+}
+
+impl Client {
+    async fn update_outdated_gossip_graph(
+        &self,
+        outdated_public_keys: HashSet<PublicKey>,
+    ) -> Result<(), Error> {
+        if !outdated_public_keys.is_empty() {
+            // Get DISCOVERY and READ relays
+            // TODO: avoid clone of both url and relay
+            let relays = self
+                .pool
+                .relays_with_flag(
+                    RelayServiceFlags::DISCOVERY | RelayServiceFlags::READ,
+                    FlagCheck::Any,
+                )
+                .await
+                .into_keys();
+
+            // Get events
+            let filter: Filter = Filter::default()
+                .authors(outdated_public_keys)
+                .kind(Kind::RelayList);
+            let events: Vec<Event> = self
+                .get_events_from(relays, vec![filter], Some(Duration::from_secs(10)))
+                .await?;
+
+            // Update gossip graph
+            self.gossip_graph.update(events).await;
+        }
+
+        Ok(())
+    }
+
+    /// Break down filters for gossip
+    async fn break_down_filters(
+        &self,
+        filters: Vec<Filter>,
+    ) -> Result<HashMap<Url, Vec<Filter>>, Error> {
+        // Extract all public keys from filters
+        let public_keys = filters.iter().flat_map(|f| f.extract_public_keys());
+
+        // Check outdated ones
+        let outdated_public_keys = self.gossip_graph.check_outdated(public_keys).await;
+
+        // Update outdated public keys
+        self.update_outdated_gossip_graph(outdated_public_keys)
+            .await?;
+
+        // Broken down filters
+        let mut broken_down = self.gossip_graph.break_down_filters(filters).await;
+
+        // Get read relays
+        let read_relays = self
+            .pool
+            .relays_with_flag(RelayServiceFlags::READ, FlagCheck::All)
+            .await;
+
+        // Extend filters with read relays and "other" filters (the filters that aren't linked to public keys)
+        for url in read_relays.into_keys() {
+            broken_down
+                .filters
+                .entry(url)
+                .and_modify(|f| {
+                    f.extend(broken_down.other.clone());
+                })
+                .or_default()
+                .extend(broken_down.other.clone())
+        }
+
+        // Add outbox relays
+        for url in broken_down.outbox_urls.into_iter() {
+            if self.add_outbox_relay(&url).await? {
+                self.connect_relay(url).await?;
+            }
+        }
+
+        // Add inbox relays
+        for url in broken_down.inbox_urls.into_iter() {
+            if self.add_inbox_relay(&url).await? {
+                self.connect_relay(url).await?;
+            }
+        }
+
+        Ok(broken_down.filters)
+    }
+
+    async fn gossip_stream_events_of(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Duration,
+    ) -> Result<ReceiverStream<Event>, Error> {
+        let filters = self.break_down_filters(filters).await?;
+
+        // Stream events
+        let stream: ReceiverStream<Event> = self
+            .pool
+            .stream_events_targeted(filters, timeout, FilterOptions::ExitOnEOSE)
+            .await?;
+
+        Ok(stream)
+    }
+
+    async fn gossip_get_events_of(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Duration,
+    ) -> Result<Vec<Event>, Error> {
+        // Check how many filters are passed and return the limit
+        let limit: Option<usize> = match (filters.len(), filters.first()) {
+            (1, Some(filter)) => filter.limit,
+            _ => None,
+        };
+
+        let mut events: BTreeSet<Event> = BTreeSet::new();
+
+        // Stream events
+        let mut stream: ReceiverStream<Event> =
+            self.gossip_stream_events_of(filters, timeout).await?;
+
+        while let Some(event) = stream.next().await {
+            events.insert(event);
+        }
+
+        let iter: Rev<IntoIter<Event>> = events.into_iter().rev();
+
+        // Check limit
+        match limit {
+            Some(limit) => Ok(iter.take(limit).collect()),
+            None => Ok(iter.collect()),
+        }
     }
 }

@@ -359,6 +359,12 @@ impl Client {
         self.inner.unsubscribe_all().await
     }
 
+    /// Get events of filters
+    ///
+    /// The returned events are sorted by newest first, if there is a limit only the newest are returned.
+    ///
+    /// If `gossip` is enabled (see `Options]) the events will be requested also to
+    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
     pub async fn get_events_of(
         &self,
         filters: Vec<Arc<Filter>>,
