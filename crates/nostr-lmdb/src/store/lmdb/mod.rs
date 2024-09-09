@@ -3,6 +3,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::collections::BTreeSet;
 use std::ops::Bound;
 use std::path::Path;
 
@@ -16,12 +17,12 @@ use nostr_database::{FlatBufferBuilder, FlatBufferEncode};
 mod index;
 
 use super::error::Error;
-use super::types::DatabaseEvent;
+use super::types::{DatabaseEvent, DatabaseFilter};
 
 const EVENT_ID_ALL_ZEROS: [u8; 32] = [0; 32];
 const EVENT_ID_ALL_255: [u8; 32] = [255; 32];
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Lmdb {
     /// LMDB env
     env: Env,
@@ -298,6 +299,401 @@ impl Lmdb {
             Some(bytes) => Ok(Some(DatabaseEvent::decode(bytes)?)),
             None => Ok(None),
         }
+    }
+
+    pub fn query<'a, I>(
+        &self,
+        txn: &'a RoTxn,
+        filters: I,
+    ) -> Result<BTreeSet<DatabaseEvent<'a>>, Error>
+    where
+        I: IntoIterator<Item = Filter>,
+    {
+        let mut output = BTreeSet::new();
+        for filter in filters {
+            let events = self.single_filter_query(txn, filter)?;
+            output.extend(events);
+        }
+        Ok(output)
+    }
+
+    /// Find all events that match the filter
+    pub fn single_filter_query<'a>(
+        &self,
+        txn: &'a RoTxn,
+        filter: Filter,
+    ) -> Result<Vec<DatabaseEvent<'a>>, Error> {
+        if let (Some(since), Some(until)) = (filter.since, filter.until) {
+            if since > until {
+                return Ok(Vec::new());
+            }
+        }
+
+        // We insert into a BTreeSet to keep them time-ordered
+        let mut output: BTreeSet<DatabaseEvent<'a>> = BTreeSet::new();
+
+        let limit: Option<usize> = filter.limit;
+        let since = filter.since.unwrap_or_else(Timestamp::min);
+        let until = filter.until.unwrap_or_else(Timestamp::max);
+
+        let filter: DatabaseFilter = filter.into();
+
+        if !filter.ids.is_empty() {
+            // Fetch by id
+            for id in filter.ids.iter() {
+                // Check if limit is set
+                if let Some(limit) = limit {
+                    // Stop if limited
+                    if output.len() >= limit {
+                        break;
+                    }
+                }
+
+                if let Some(event) = self.get_event_by_id(txn, &id.0)? {
+                    if filter.match_event(&event) {
+                        output.insert(event);
+                    }
+                }
+            }
+        } else if !filter.authors.is_empty() && !filter.kinds.is_empty() {
+            // We may bring since forward if we hit the limit without going back that
+            // far, so we use a mutable since:
+            let mut since = since;
+
+            for author in filter.authors.iter() {
+                for kind in filter.kinds.iter() {
+                    let iter = self.akc_iter(txn, &author.0, *kind, since, until)?;
+
+                    // Count how many we have found of this author-kind pair, so we
+                    // can possibly update `since`
+                    let mut paircount = 0;
+
+                    'per_event: for result in iter {
+                        let (_key, value) = result?;
+                        let event = self.get_event_by_id(txn, value)?.ok_or(Error::NotFound)?;
+
+                        // If we have gone beyond since, we can stop early
+                        // (We have to check because `since` might change in this loop)
+                        if event.created_at < since {
+                            break 'per_event;
+                        }
+
+                        // check against the rest of the filter
+                        if filter.match_event(&event) {
+                            let created_at = event.created_at;
+
+                            // Accept the event
+                            output.insert(event);
+                            paircount += 1;
+
+                            // Stop this pair if limited
+                            if let Some(limit) = limit {
+                                if paircount >= limit {
+                                    // Since we found the limit just among this pair,
+                                    // potentially move since forward
+                                    if created_at > since {
+                                        since = created_at;
+                                    }
+                                    break 'per_event;
+                                }
+                            }
+
+                            // If kind is replaceable (and not parameterized)
+                            // then don't take any more events for this author-kind
+                            // pair.
+                            // NOTE that this optimization is difficult to implement
+                            // for other replaceable event situations
+                            if Kind::from(*kind).is_replaceable() {
+                                break 'per_event;
+                            }
+                        }
+                    }
+                }
+            }
+        } else if !filter.authors.is_empty() && !filter.generic_tags.is_empty() {
+            // We may bring since forward if we hit the limit without going back that
+            // far, so we use a mutable since:
+            let mut since = since;
+
+            for author in filter.authors.iter() {
+                for (tagname, set) in filter.generic_tags.iter() {
+                    for tag_value in set.iter() {
+                        let iter =
+                            self.atc_iter(txn, &author.0, tagname, tag_value, &since, &until)?;
+                        self.iterate_filter_until_limit(
+                            txn,
+                            &filter,
+                            iter,
+                            &mut since,
+                            limit,
+                            &mut output,
+                        )?;
+                    }
+                }
+            }
+        } else if !filter.kinds.is_empty() && !filter.generic_tags.is_empty() {
+            // We may bring since forward if we hit the limit without going back that
+            // far, so we use a mutable since:
+            let mut since = since;
+
+            for kind in filter.kinds.iter() {
+                for (tag_name, set) in filter.generic_tags.iter() {
+                    for tag_value in set.iter() {
+                        let iter =
+                            self.ktc_iter(txn, *kind, tag_name, tag_value, &since, &until)?;
+                        self.iterate_filter_until_limit(
+                            txn,
+                            &filter,
+                            iter,
+                            &mut since,
+                            limit,
+                            &mut output,
+                        )?;
+                    }
+                }
+            }
+        } else if !filter.generic_tags.is_empty() {
+            // We may bring since forward if we hit the limit without going back that
+            // far, so we use a mutable since:
+            let mut since = since;
+
+            for (tag_name, set) in filter.generic_tags.iter() {
+                for tag_value in set.iter() {
+                    let iter = self.tc_iter(txn, tag_name, tag_value, &since, &until)?;
+                    self.iterate_filter_until_limit(
+                        txn,
+                        &filter,
+                        iter,
+                        &mut since,
+                        limit,
+                        &mut output,
+                    )?;
+                }
+            }
+        } else if !filter.authors.is_empty() {
+            // We may bring since forward if we hit the limit without going back that
+            // far, so we use a mutable since:
+            let mut since = since;
+
+            for author in filter.authors.iter() {
+                let iter = self.ac_iter(txn, &author.0, since, until)?;
+                self.iterate_filter_until_limit(
+                    txn,
+                    &filter,
+                    iter,
+                    &mut since,
+                    limit,
+                    &mut output,
+                )?;
+            }
+        } else {
+            // SCRAPE
+            // This is INEFFICIENT as it scans through many events
+
+            let iter = self.ci_iter(txn, &since, &until)?;
+            for result in iter {
+                // Check if limit is set
+                if let Some(limit) = limit {
+                    // Stop if limited
+                    if output.len() >= limit {
+                        break;
+                    }
+                }
+
+                let (_key, value) = result?;
+                let event = self.get_event_by_id(txn, value)?.ok_or(Error::NotFound)?;
+
+                if filter.match_event(&event) {
+                    output.insert(event);
+                }
+            }
+        }
+
+        // Reverse order, optionally apply limit and collect to Vec
+        Ok(match limit {
+            Some(limit) => output.into_iter().take(limit).collect(),
+            None => output.into_iter().collect(),
+        })
+    }
+
+    fn iterate_filter_until_limit<'a>(
+        &self,
+        txn: &'a RoTxn,
+        filter: &DatabaseFilter,
+        iter: RoRange<Bytes, Bytes>,
+        since: &mut Timestamp,
+        limit: Option<usize>,
+        output: &mut BTreeSet<DatabaseEvent<'a>>,
+    ) -> Result<(), Error> {
+        let mut count: usize = 0;
+
+        for result in iter {
+            let (_key, value) = result?;
+
+            // Get event by ID
+            let event = self.get_event_by_id(txn, value)?.ok_or(Error::NotFound)?;
+
+            if event.created_at < *since {
+                break;
+            }
+
+            // check against the rest of the filter
+            if filter.match_event(&event) {
+                let created_at = event.created_at;
+
+                // Accept the event
+                output.insert(event);
+                count += 1;
+
+                // Check if limit is set
+                if let Some(limit) = limit {
+                    // Stop this limited
+                    if count >= limit {
+                        if created_at > *since {
+                            *since = created_at;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn find_replaceable_event<'a>(
+        &self,
+        txn: &'a RoTxn,
+        author: &PublicKey,
+        kind: Kind,
+    ) -> Result<Option<DatabaseEvent<'a>>, Error> {
+        if !kind.is_replaceable() {
+            return Err(Error::WrongEventKind);
+        }
+
+        let mut iter = self.akc_iter(
+            txn,
+            &author.to_bytes(),
+            kind.as_u16(),
+            Timestamp::min(),
+            Timestamp::max(),
+        )?;
+
+        if let Some(result) = iter.next() {
+            let (_key, value) = result?;
+            return self.get_event_by_id(txn, value);
+        }
+
+        Ok(None)
+    }
+
+    pub fn find_parameterized_replaceable_event<'a>(
+        &'a self,
+        txn: &'a RoTxn,
+        addr: &Coordinate,
+    ) -> Result<Option<DatabaseEvent<'a>>, Error> {
+        if !addr.kind.is_parameterized_replaceable() {
+            return Err(Error::WrongEventKind);
+        }
+
+        let iter = self.atc_iter(
+            txn,
+            &addr.public_key.to_bytes(),
+            &SingleLetterTag::lowercase(Alphabet::D),
+            &addr.identifier,
+            &Timestamp::min(),
+            &Timestamp::max(),
+        )?;
+
+        for result in iter {
+            let (_key, value) = result?;
+            let event = self.get_event_by_id(txn, value)?.ok_or(Error::NotFound)?;
+
+            // the atc index doesn't have kind, so we have to compare the kinds
+            if event.kind != addr.kind.as_u16() {
+                continue;
+            }
+
+            return Ok(Some(event));
+        }
+
+        Ok(None)
+    }
+
+    /// Remove an event by ID
+    pub fn remove_by_id(&self, txn: &mut RwTxn, event_id: &[u8]) -> Result<(), Error> {
+        let read_txn = self.read_txn()?;
+        if let Some(event) = self.get_event_by_id(&read_txn, event_id)? {
+            self.remove(txn, &event)?;
+        }
+
+        Ok(())
+    }
+
+    // Remove all replaceable events with the matching author-kind
+    // Kind must be a replaceable (not parameterized replaceable) event kind
+    pub fn remove_replaceable(
+        &self,
+        txn: &mut RwTxn,
+        author: &PublicKey,
+        kind: Kind,
+        until: Timestamp,
+    ) -> Result<(), Error> {
+        if !kind.is_replaceable() {
+            return Err(Error::WrongEventKind);
+        }
+
+        let read_txn = self.read_txn()?;
+        let iter = self.akc_iter(
+            &read_txn,
+            &author.to_bytes(),
+            kind.as_u16(),
+            Timestamp::zero(),
+            until,
+        )?;
+
+        for result in iter {
+            let (_key, value) = result?;
+            self.remove_by_id(txn, value)?;
+        }
+
+        Ok(())
+    }
+
+    // Remove all parameterized-replaceable events with the matching author-kind-d
+    // Kind must be a paramterized-replaceable event kind
+    pub fn remove_parameterized_replaceable(
+        &self,
+        txn: &mut RwTxn,
+        coordinate: &Coordinate,
+        until: Timestamp,
+    ) -> Result<(), Error> {
+        if !coordinate.kind.is_parameterized_replaceable() {
+            return Err(Error::WrongEventKind);
+        }
+
+        let read_txn = self.read_txn()?;
+        let iter = self.atc_iter(
+            &read_txn,
+            &coordinate.public_key.to_bytes(),
+            &SingleLetterTag::lowercase(Alphabet::D),
+            &coordinate.identifier,
+            &Timestamp::min(),
+            &until,
+        )?;
+
+        for result in iter {
+            let (_key, value) = result?;
+
+            // Our index doesn't have Kind embedded, so we have to check it
+            let event = self.get_event_by_id(txn, value)?.ok_or(Error::NotFound)?;
+
+            if event.kind == coordinate.kind.as_u16() {
+                self.remove_by_id(txn, value)?;
+            }
+        }
+
+        Ok(())
     }
 
     #[inline]

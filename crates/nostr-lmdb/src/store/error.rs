@@ -6,6 +6,7 @@
 use nostr::{key, secp256k1};
 use nostr_database::flatbuffers;
 use thiserror::Error;
+use tokio::task::JoinError;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -18,6 +19,8 @@ pub enum Error {
     /// Flatbuffers error
     #[error(transparent)]
     FlatBuffers(#[from] flatbuffers::Error),
+    #[error(transparent)]
+    Thread(#[from] JoinError),
     #[error(transparent)]
     Key(#[from] key::Error),
     #[error(transparent)]

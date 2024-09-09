@@ -40,10 +40,13 @@ impl NostrLMDB {
 
 #[async_trait]
 impl NostrDatabase for NostrLMDB {
+    #[inline]
     fn backend(&self) -> Backend {
         Backend::LMDB
     }
 
+    #[inline]
+    #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
         self.db
             .store_event(event)
@@ -54,13 +57,15 @@ impl NostrDatabase for NostrLMDB {
     async fn check_id(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
         if self
             .db
-            .event_is_deleted(event_id)
+            .event_is_deleted(*event_id)
+            .await
             .map_err(DatabaseError::backend)?
         {
             Ok(DatabaseEventStatus::Deleted)
         } else if self
             .db
             .has_event(event_id)
+            .await
             .map_err(DatabaseError::backend)?
         {
             Ok(DatabaseEventStatus::Saved)
@@ -76,7 +81,8 @@ impl NostrDatabase for NostrLMDB {
     ) -> Result<bool, DatabaseError> {
         if let Some(t) = self
             .db
-            .when_is_coordinate_deleted(coordinate)
+            .when_is_coordinate_deleted(coordinate.clone())
+            .await
             .map_err(DatabaseError::backend)?
         {
             Ok(&t >= timestamp)
@@ -93,6 +99,7 @@ impl NostrDatabase for NostrLMDB {
         Ok(())
     }
 
+    #[inline]
     async fn event_seen_on_relays(
         &self,
         _event_id: &EventId,
@@ -100,39 +107,48 @@ impl NostrDatabase for NostrLMDB {
         Err(DatabaseError::NotSupported)
     }
 
+    #[inline]
     async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Event>, DatabaseError> {
         self.db
             .get_event_by_id(event_id)
+            .await
             .map_err(DatabaseError::backend)
     }
 
+    #[inline]
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {
-        self.db.count(filters).map_err(DatabaseError::backend)
+        self.db.count(filters).await.map_err(DatabaseError::backend)
     }
 
+    #[inline]
+    #[tracing::instrument(skip_all, level = "trace")]
     async fn query(
         &self,
         filters: Vec<Filter>,
         _order: Order,
     ) -> Result<Vec<Event>, DatabaseError> {
-        self.db.query(filters).map_err(DatabaseError::backend)
+        self.db.query(filters).await.map_err(DatabaseError::backend)
     }
 
+    #[inline]
     async fn negentropy_items(
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
         self.db
             .negentropy_items(filter)
+            .await
             .map_err(DatabaseError::backend)
     }
 
+    #[inline]
     async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {
-        self.db.delete(filter).map_err(DatabaseError::backend)
+        self.db.delete(filter).await.map_err(DatabaseError::backend)
     }
 
+    #[inline]
     async fn wipe(&self) -> Result<(), DatabaseError> {
-        self.db.wipe().map_err(DatabaseError::backend)
+        self.db.wipe().await.map_err(DatabaseError::backend)
     }
 }
 

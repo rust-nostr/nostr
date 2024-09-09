@@ -15,6 +15,7 @@ nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "sync"] }
+tracing = { workspace = true, features = ["std", "attributes"] }
 
 [dev-dependencies]
 tempfile = "3"
