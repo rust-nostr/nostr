@@ -127,8 +127,8 @@ impl NostrDatabase for NostrLMDB {
             .map_err(DatabaseError::backend)
     }
 
-    async fn delete(&self, _filter: Filter) -> Result<(), DatabaseError> {
-        Err(DatabaseError::NotSupported)
+    async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {
+        self.db.delete(filter).map_err(DatabaseError::backend)
     }
 
     async fn wipe(&self) -> Result<(), DatabaseError> {

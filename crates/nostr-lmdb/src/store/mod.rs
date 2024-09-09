@@ -273,6 +273,18 @@ impl Store {
             .collect())
     }
 
+    pub fn delete(&self, filter: Filter) -> Result<(), Error> {
+        let read_txn = self.db.read_txn()?;
+        let events = self.single_filter_query(&read_txn, filter)?;
+
+        let mut txn = self.db.write_txn()?;
+        for event in events.into_iter() {
+            self.db.remove(&mut txn, &event)?;
+        }
+
+        Ok(())
+    }
+
     fn gather_events<'a, I>(
         &self,
         txn: &'a RoTxn,
