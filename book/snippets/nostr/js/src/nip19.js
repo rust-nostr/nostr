@@ -1,4 +1,4 @@
-const { loadWasmSync, Keys, EventBuilder, Nip19Profile, Nip19Event} = require("@rust-nostr/nostr");
+const { loadWasmSync, Keys, EventBuilder, Nip19Profile, Nip19Event, Coordinate } = require("@rust-nostr/nostr");
 
 function run() {
     // Load WASM
@@ -50,6 +50,19 @@ function run() {
     console.log(` Event (decoded): ${decode_nevent.eventId().toBech32()}`);
     // ANCHOR_END: nip19-nevent-decode
 
+    console.log();
+    // ANCHOR: nip19-naddr-encode
+    // Create NIP-19 coordinate
+    let coord = new Coordinate(0,keys.publicKey());
+    console.log(` Coordinate (encoded): ${coord.toBech32()}`);
+    // ANCHOR_END: nip19-naddr-encode
+
+    // ANCHOR: nip19-naddr-decode
+    // Decode NIP-19 coordinate
+    let decode_coord = Coordinate.parse(coord.toBech32());
+    console.log(` Coordinate (decoded): ${decode_coord}`);
+    // ANCHOR_END: nip19-naddr-decode
+    
 }
 
 module.exports.run = run;

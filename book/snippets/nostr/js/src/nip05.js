@@ -1,4 +1,4 @@
-const { loadWasmSync, PublicKey, Metadata, verifyNip05, } = require("@rust-nostr/nostr");
+const { loadWasmSync, PublicKey, Metadata, verifyNip05, getNip05Profile } = require("@rust-nostr/nostr");
 
 function run() {
     // Load WASM
@@ -24,6 +24,15 @@ function run() {
         console.log(`     Unable to verify NIP-05, for ${publicKey.toBech32()}`);
     };
     // ANCHOR_END: verify-nip05
+
+    console.log();
+
+    // ANCHOR: nip05-profile
+    console.log("Get NIP-05 profile:");
+    let nip_05 = "yuki@yukikishimoto.com";
+    let profile = getNip05Profile(nip_05);
+    console.log(`     ${nip_05} Public key: ${profile.publicKey().toBech32()}`);
+    // ANCHOR_END: nip05-profile
 }
 
 module.exports.run = run;
