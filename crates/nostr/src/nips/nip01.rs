@@ -91,7 +91,7 @@ impl Coordinate {
         }
     }
 
-    /// Try to parse [Coordinate] from `<kind>:<pubkey>:[<d-tag>]` format, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
+    /// Parse coordinate from `<kind>:<pubkey>:[<d-tag>]` format, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
     pub fn parse<S>(coordinate: S) -> Result<Self, Error>
     where
         S: AsRef<str>,

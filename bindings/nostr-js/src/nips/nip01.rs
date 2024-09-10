@@ -1,11 +1,12 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::ops::Deref;
+use core::ops::Deref;
 
-use nostr::nips::nip01::Coordinate;
+use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
+use crate::error::{into_err, Result};
 use crate::event::JsKind;
 use crate::key::JsPublicKey;
 
@@ -48,6 +49,14 @@ impl JsCoordinate {
         }
     }
 
+    /// Parse coordinate from `<kind>:<pubkey>:[<d-tag>]` format, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
+    #[wasm_bindgen]
+    pub fn parse(coordinate: &str) -> Result<JsCoordinate> {
+        Ok(Self {
+            inner: Coordinate::parse(coordinate).map_err(into_err)?,
+        })
+    }
+
     #[inline]
     #[wasm_bindgen(getter)]
     pub fn kind(&self) -> JsKind {
@@ -67,5 +76,20 @@ impl JsCoordinate {
     #[wasm_bindgen(getter)]
     pub fn relays(&self) -> Vec<String> {
         self.inner.relays.clone()
+    }
+
+    #[wasm_bindgen(js_name = toString)]
+    pub fn _to_string(&self) -> String {
+        self.inner.to_string()
+    }
+
+    #[wasm_bindgen(js_name = toBech32)]
+    pub fn to_bech32(&self) -> Result<String> {
+        self.inner.to_bech32().map_err(into_err)
+    }
+
+    #[wasm_bindgen(js_name = toNostrUri)]
+    pub fn to_nostr_uri(&self) -> Result<String> {
+        self.inner.to_nostr_uri().map_err(into_err)
     }
 }

@@ -94,6 +94,7 @@
 * ffi(sdk): expose `MockRelay` ([Yuki Kishimoto])
 * js(nostr): add `Kind` object ([Yuki Kishimoto])
 * js(nostr): expose `getNip05Profile` function ([Yuki Kishimoto])
+* js(nostr): expose missing methods to `JsCoordinate` ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])
 
 ### Fixed
