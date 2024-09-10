@@ -87,15 +87,12 @@ async fn main() {
     println!("Seen on: {relays:?}");
 
     let events = database
-        .query(
-            vec![Filter::new()
-                .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])
-                .limit(20)
-                //.kind(Kind::Custom(123))
-                //.identifier("myid5000")
-                .author(keys_a.public_key())],
-            Order::Desc,
-        )
+        .query(vec![Filter::new()
+            .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])
+            .limit(20)
+            //.kind(Kind::Custom(123))
+            //.identifier("myid5000")
+            .author(keys_a.public_key())])
         .await
         .unwrap();
     println!("Got {} events", events.len());

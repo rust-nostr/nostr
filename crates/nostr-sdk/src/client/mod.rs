@@ -911,7 +911,7 @@ impl Client {
         source: EventSource,
     ) -> Result<Vec<Event>, Error> {
         match source {
-            EventSource::Database => Ok(self.database().query(filters, Order::Desc).await?),
+            EventSource::Database => Ok(self.database().query(filters).await?),
             EventSource::Relays {
                 timeout,
                 specific_relays,
@@ -940,7 +940,7 @@ impl Client {
                     _ => None,
                 };
 
-                let stored = self.database().query(filters.clone(), Order::Desc).await?;
+                let stored = self.database().query(filters.clone()).await?;
                 let mut events: BTreeSet<Event> = stored.into_iter().collect();
 
                 let mut stream: ReceiverStream<Event> = match specific_relays {
@@ -1922,7 +1922,7 @@ impl Client {
 
             // Query from database
             let database = self.database();
-            let mut stored_events = database.query(vec![filter.clone()], Order::Desc).await?;
+            let mut stored_events = database.query(vec![filter.clone()]).await?;
 
             // Get DISCOVERY and READ relays
             // TODO: avoid clone of both url and relay

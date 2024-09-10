@@ -284,8 +284,8 @@ impl NostrDatabase for SQLiteDatabase {
 
     #[inline]
     #[tracing::instrument(skip_all)]
-    async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, DatabaseError> {
-        Ok(self.helper.query(filters, order).await)
+    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, DatabaseError> {
+        Ok(self.helper.query(filters).await)
     }
 
     #[inline]

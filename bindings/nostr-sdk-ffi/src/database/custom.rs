@@ -95,7 +95,7 @@ mod inner {
     use std::ops::Deref;
     use std::sync::Arc;
 
-    use nostr_sdk::database::{DatabaseError, NostrDatabase, Order};
+    use nostr_sdk::database::{DatabaseError, NostrDatabase};
     use nostr_sdk::prelude::*;
 
     use super::IntermediateCustomNostrDatabase;
@@ -182,11 +182,7 @@ mod inner {
             Ok(res as usize)
         }
 
-        async fn query(
-            &self,
-            filters: Vec<Filter>,
-            _order: Order,
-        ) -> Result<Vec<Event>, DatabaseError> {
+        async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, DatabaseError> {
             let filters = filters.into_iter().map(|f| Arc::new(f.into())).collect();
             let res = self
                 .inner

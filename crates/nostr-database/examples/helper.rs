@@ -5,7 +5,7 @@
 use std::time::Duration;
 
 use nostr::prelude::*;
-use nostr_database::{DatabaseHelper, Order};
+use nostr_database::DatabaseHelper;
 use tracing_subscriber::fmt::format::FmtSpan;
 
 #[tokio::main]
@@ -59,15 +59,12 @@ async fn main() {
     }
 
     let ids = index
-        .query(
-            vec![Filter::new()
-                .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])
-                .limit(20)
-                //.kind(Kind::Custom(123))
-                //.identifier("myid5000")
-                .author(keys_a.public_key())],
-            Order::Desc,
-        )
+        .query(vec![Filter::new()
+            .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])
+            .limit(20)
+            //.kind(Kind::Custom(123))
+            //.identifier("myid5000")
+            .author(keys_a.public_key())])
         .await;
     println!("Got {} ids", ids.len());
 

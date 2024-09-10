@@ -76,9 +76,6 @@ pub enum Command {
         /// Limit
         #[clap(short, long)]
         limit: Option<usize>,
-        /// Ascending order
-        #[clap(long)]
-        reverse: bool,
         /// Query only database
         #[clap(long)]
         database: bool,

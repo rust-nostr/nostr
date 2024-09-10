@@ -6,7 +6,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr_ffi::{Event, EventId, Filter, PublicKey};
-use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt, Order};
+use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt};
 #[cfg(feature = "ndb")]
 use nostr_sdk::NdbDatabase;
 #[cfg(feature = "lmdb")]
@@ -143,7 +143,7 @@ impl NostrDatabase {
             .collect();
         Ok(self
             .inner
-            .query(filters, Order::Desc)
+            .query(filters)
             .await?
             .into_iter()
             .map(|e| Arc::new(e.into()))

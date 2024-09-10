@@ -31,7 +31,7 @@ pub fn app() -> Html {
             .query(vec![Filter::new()
                 .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])
                 .limit(20)
-                .author(keys_a.public_key())], Order::Desc)
+                .author(keys_a.public_key())])
             .await
             .unwrap();
         console::log_1(&format!("Events: {events:?}").into());

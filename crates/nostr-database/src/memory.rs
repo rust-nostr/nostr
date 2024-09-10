@@ -16,7 +16,7 @@ use tokio::sync::Mutex;
 
 use crate::{
     util, Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper,
-    NostrDatabase, Order,
+    NostrDatabase,
 };
 
 /// Database options
@@ -177,8 +177,8 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, DatabaseError> {
-        Ok(self.helper.query(filters, order).await)
+    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, DatabaseError> {
+        Ok(self.helper.query(filters).await)
     }
 
     async fn negentropy_items(

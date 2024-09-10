@@ -15,7 +15,6 @@ use nostr::{Alphabet, Event, EventId, Filter, Kind, PublicKey, SingleLetterTag, 
 use tokio::sync::{OwnedRwLockReadGuard, RwLock};
 
 use crate::tree::{BTreeCappedSet, Capacity, InsertResult, OverCapacityPolicy};
-use crate::Order;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct DatabaseEvent {
@@ -607,23 +606,13 @@ impl InternalDatabaseHelper {
 
     /// Query
     #[tracing::instrument(skip_all, level = "trace")]
-    pub fn query<'a, I>(
-        &'a self,
-        filters: I,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = &'a Event> + 'a>
+    pub fn query<'a, I>(&'a self, filters: I) -> Box<dyn Iterator<Item = &'a Event> + 'a>
     where
         I: IntoIterator<Item = Filter>,
     {
         match self.internal_query(filters) {
-            InternalQueryResult::All => match order {
-                Order::Asc => Box::new(self.events.iter().rev().map(|ev| ev.deref())),
-                Order::Desc => Box::new(self.events.iter().map(|ev| ev.deref())),
-            },
-            InternalQueryResult::Set(set) => match order {
-                Order::Asc => Box::new(set.into_iter().rev().map(|ev| ev.deref())),
-                Order::Desc => Box::new(set.into_iter().map(|ev| ev.deref())),
-            },
+            InternalQueryResult::All => Box::new(self.events.iter().map(|ev| ev.deref())),
+            InternalQueryResult::Set(set) => Box::new(set.into_iter().map(|ev| ev.deref())),
         }
     }
 
@@ -778,12 +767,12 @@ impl DatabaseHelper {
 
     /// Query
     #[tracing::instrument(skip_all, level = "trace")]
-    pub async fn query<I>(&self, filters: I, order: Order) -> Vec<Event>
+    pub async fn query<I>(&self, filters: I) -> Vec<Event>
     where
         I: IntoIterator<Item = Filter>,
     {
         let inner = self.inner.read().await;
-        inner.query(filters, order).cloned().collect()
+        inner.query(filters).cloned().collect()
     }
 
     /// Query
@@ -792,12 +781,11 @@ impl DatabaseHelper {
         &self,
         txn: &'a QueryTransaction,
         filters: I,
-        order: Order,
     ) -> Box<dyn Iterator<Item = &'a Event> + 'a>
     where
         I: IntoIterator<Item = Filter>,
     {
-        txn.guard.query(filters, order)
+        txn.guard.query(filters)
     }
 
     /// Count events
@@ -910,69 +898,53 @@ mod tests {
             Event::from_json(EVENTS[1]).unwrap(),
             Event::from_json(EVENTS[0]).unwrap(),
         ];
-        assert_eq!(
-            indexes.query([Filter::new()], Order::Desc).await,
-            expected_output
-        );
+        assert_eq!(indexes.query([Filter::new()]).await, expected_output);
         assert_eq!(indexes.count([Filter::new()]).await, 10);
 
         // Test get previously deleted replaceable event (check if was deleted by indexes)
         assert!(indexes
-            .query(
-                [Filter::new()
-                    .kind(Kind::Metadata)
-                    .author(keys_a.public_key())],
-                Order::Desc
-            )
+            .query([Filter::new()
+                .kind(Kind::Metadata)
+                .author(keys_a.public_key())])
             .await
             .is_empty());
 
         // Test get previously deleted param. replaceable event (check if was deleted by indexes)
         assert!(indexes
-            .query(
-                [Filter::new()
-                    .kind(Kind::ParameterizedReplaceable(32122))
-                    .author(keys_a.public_key())
-                    .identifier("id-2")],
-                Order::Desc
-            )
+            .query([Filter::new()
+                .kind(Kind::ParameterizedReplaceable(32122))
+                .author(keys_a.public_key())
+                .identifier("id-2")])
             .await
             .is_empty());
 
         // Test get param replaceable events WITHOUT using indexes (identifier not passed)
-        // Test ascending order
         assert_eq!(
             indexes
-                .query(
-                    [Filter::new()
-                        .kind(Kind::ParameterizedReplaceable(32122))
-                        .author(keys_b.public_key())],
-                    Order::Asc
-                )
+                .query([Filter::new()
+                    .kind(Kind::ParameterizedReplaceable(32122))
+                    .author(keys_b.public_key())])
                 .await,
             vec![
-                Event::from_json(EVENTS[4]).unwrap(),
                 Event::from_json(EVENTS[5]).unwrap(),
+                Event::from_json(EVENTS[4]).unwrap(),
             ]
         );
 
         // Test get param replaceable events using indexes
         assert_eq!(
             indexes
-                .query(
-                    [Filter::new()
-                        .kind(Kind::ParameterizedReplaceable(32122))
-                        .author(keys_b.public_key())
-                        .identifier("id-3")],
-                    Order::Desc
-                )
+                .query([Filter::new()
+                    .kind(Kind::ParameterizedReplaceable(32122))
+                    .author(keys_b.public_key())
+                    .identifier("id-3")])
                 .await,
             vec![Event::from_json(EVENTS[4]).unwrap()]
         );
 
         assert_eq!(
             indexes
-                .query([Filter::new().author(keys_a.public_key())], Order::Desc)
+                .query([Filter::new().author(keys_a.public_key())])
                 .await,
             vec![
                 Event::from_json(EVENTS[12]).unwrap(),
@@ -985,12 +957,9 @@ mod tests {
 
         assert_eq!(
             indexes
-                .query(
-                    [Filter::new()
-                        .author(keys_a.public_key())
-                        .kinds([Kind::TextNote, Kind::Custom(32121)])],
-                    Order::Desc
-                )
+                .query([Filter::new()
+                    .author(keys_a.public_key())
+                    .kinds([Kind::TextNote, Kind::Custom(32121)])])
                 .await,
             vec![
                 Event::from_json(EVENTS[1]).unwrap(),
@@ -1000,12 +969,9 @@ mod tests {
 
         assert_eq!(
             indexes
-                .query(
-                    [Filter::new()
-                        .authors([keys_a.public_key(), keys_b.public_key()])
-                        .kinds([Kind::TextNote, Kind::Custom(32121)])],
-                    Order::Desc
-                )
+                .query([Filter::new()
+                    .authors([keys_a.public_key(), keys_b.public_key()])
+                    .kinds([Kind::TextNote, Kind::Custom(32121)])])
                 .await,
             vec![
                 Event::from_json(EVENTS[1]).unwrap(),
@@ -1015,9 +981,7 @@ mod tests {
 
         // Test get param replaceable events using identifier
         assert_eq!(
-            indexes
-                .query([Filter::new().identifier("id-1")], Order::Desc)
-                .await,
+            indexes.query([Filter::new().identifier("id-1")]).await,
             vec![
                 Event::from_json(EVENTS[6]).unwrap(),
                 Event::from_json(EVENTS[5]).unwrap(),
@@ -1027,21 +991,16 @@ mod tests {
 
         // Test get param replaceable events with multiple tags using identifier
         assert_eq!(
-            indexes
-                .query([Filter::new().identifier("multi-id")], Order::Desc)
-                .await,
+            indexes.query([Filter::new().identifier("multi-id")]).await,
             vec![Event::from_json(EVENTS[13]).unwrap()]
         );
         // As above but by using kind and pubkey
         assert_eq!(
             indexes
-                .query(
-                    [Filter::new()
-                        .pubkey(keys_a.public_key())
-                        .kind(Kind::Custom(30333))
-                        .limit(1)],
-                    Order::Desc
-                )
+                .query([Filter::new()
+                    .pubkey(keys_a.public_key())
+                    .kind(Kind::Custom(30333))
+                    .limit(1)])
                 .await,
             vec![Event::from_json(EVENTS[13]).unwrap()]
         );
@@ -1053,12 +1012,9 @@ mod tests {
         assert!(res.to_discard.is_empty());
         assert_eq!(
             indexes
-                .query(
-                    [Filter::new()
-                        .kind(Kind::Metadata)
-                        .author(keys_a.public_key())],
-                    Order::Desc
-                )
+                .query([Filter::new()
+                    .kind(Kind::Metadata)
+                    .author(keys_a.public_key())])
                 .await,
             vec![first_ev_metadata.clone()]
         );
@@ -1070,12 +1026,9 @@ mod tests {
         assert!(res.to_discard.contains(&first_ev_metadata.id));
         assert_eq!(
             indexes
-                .query(
-                    [Filter::new()
-                        .kind(Kind::Metadata)
-                        .author(keys_a.public_key())],
-                    Order::Desc
-                )
+                .query([Filter::new()
+                    .kind(Kind::Metadata)
+                    .author(keys_a.public_key())])
                 .await,
             vec![ev]
         );

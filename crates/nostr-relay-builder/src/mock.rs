@@ -367,7 +367,7 @@ impl InternalMockRelay {
                     .insert(subscription_id.clone(), filters.clone());
 
                 // Query database
-                let events = self.database.query(filters, Order::Desc).await?;
+                let events = self.database.query(filters).await?;
 
                 tracing::debug!(
                     "Found {} events for subscription '{subscription_id}'",

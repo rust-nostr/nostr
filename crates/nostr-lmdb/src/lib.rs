@@ -127,11 +127,7 @@ impl NostrDatabase for NostrLMDB {
 
     #[inline]
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn query(
-        &self,
-        filters: Vec<Filter>,
-        _order: Order,
-    ) -> Result<Vec<Event>, DatabaseError> {
+    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, DatabaseError> {
         self.db.query(filters).await.map_err(DatabaseError::backend)
     }
 
@@ -325,10 +321,9 @@ mod tests {
 
         // Test filter query
         let events = db
-            .query(
-                vec![Filter::new().author(keys.public_key).kind(Kind::Metadata)],
-                Order::Desc,
-            )
+            .query(vec![Filter::new()
+                .author(keys.public_key)
+                .kind(Kind::Metadata)])
             .await
             .unwrap();
         assert_eq!(events, vec![expected_event.clone()]);
@@ -357,10 +352,9 @@ mod tests {
 
         // Test filter query
         let events = db
-            .query(
-                vec![Filter::new().author(keys.public_key).kind(Kind::Metadata)],
-                Order::Desc,
-            )
+            .query(vec![Filter::new()
+                .author(keys.public_key)
+                .kind(Kind::Metadata)])
             .await
             .unwrap();
         assert_eq!(events, vec![new_expected_event]);
@@ -394,10 +388,7 @@ mod tests {
         assert_eq!(event, expected_event);
 
         // Test filter query
-        let events = db
-            .query(vec![coordinate.clone().into()], Order::Desc)
-            .await
-            .unwrap();
+        let events = db.query(vec![coordinate.clone().into()]).await.unwrap();
         assert_eq!(events, vec![expected_event.clone()]);
 
         // Check if number of events in database match the expected
@@ -428,10 +419,7 @@ mod tests {
         assert_eq!(event, new_expected_event);
 
         // Test filter query
-        let events = db
-            .query(vec![coordinate.into()], Order::Desc)
-            .await
-            .unwrap();
+        let events = db.query(vec![coordinate.into()]).await.unwrap();
         assert_eq!(events, vec![new_expected_event]);
 
         // Check if number of events in database match the expected
@@ -445,13 +433,13 @@ mod tests {
         let _added_events: usize = db.add_random_events().await;
 
         let events = db
-            .query(vec![Filter::new().search("Account A")], Order::Desc)
+            .query(vec![Filter::new().search("Account A")])
             .await
             .unwrap();
         assert_eq!(events.len(), 1);
 
         let events = db
-            .query(vec![Filter::new().search("text note")], Order::Desc)
+            .query(vec![Filter::new().search("text note")])
             .await
             .unwrap();
         assert_eq!(events.len(), 2);
@@ -484,7 +472,7 @@ mod tests {
             Event::from_json(EVENTS[0]).unwrap(),
         ];
         assert_eq!(
-            db.query(vec![Filter::new()], Order::Desc).await.unwrap(),
+            db.query(vec![Filter::new()]).await.unwrap(),
             expected_output
         );
         assert_eq!(db.count_all().await, 9);

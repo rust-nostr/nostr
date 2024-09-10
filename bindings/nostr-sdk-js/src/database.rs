@@ -11,7 +11,7 @@ use nostr_js::event::{JsEvent, JsEventArray, JsEventId};
 use nostr_js::key::JsPublicKey;
 use nostr_js::types::JsFilter;
 use nostr_js::JsStringArray;
-use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt, Order};
+use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt};
 use nostr_sdk::WebDatabase;
 use wasm_bindgen::prelude::*;
 
@@ -105,7 +105,7 @@ impl JsNostrDatabase {
         let filters = filters.into_iter().map(|f| f.into()).collect();
         Ok(self
             .inner
-            .query(filters, Order::Desc)
+            .query(filters)
             .await
             .map_err(into_err)?
             .into_iter()

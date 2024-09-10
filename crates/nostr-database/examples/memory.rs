@@ -7,7 +7,7 @@ use std::time::Duration;
 use nostr::prelude::*;
 use nostr::{EventBuilder, Filter, Keys, Kind, Metadata, Tag};
 use nostr_database::memory::MemoryDatabase;
-use nostr_database::{MemoryDatabaseOptions, NostrDatabase, Order};
+use nostr_database::{MemoryDatabaseOptions, NostrDatabase};
 use tracing_subscriber::fmt::format::FmtSpan;
 
 #[tokio::main]
@@ -65,15 +65,12 @@ async fn main() {
     }
 
     let events = database
-        .query(
-            vec![Filter::new()
-                .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])
-                .limit(20)
-                //.kind(Kind::Custom(123))
-                //.identifier("myid5000")
-                .author(keys_a.public_key())],
-            Order::Desc,
-        )
+        .query(vec![Filter::new()
+            .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])
+            .limit(20)
+            //.kind(Kind::Custom(123))
+            //.identifier("myid5000")
+            .author(keys_a.public_key())])
         .await
         .unwrap();
     println!("Got {} events", events.len());

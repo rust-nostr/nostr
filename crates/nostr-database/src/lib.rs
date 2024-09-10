@@ -53,16 +53,6 @@ pub enum Backend {
     Custom(String),
 }
 
-/// Query result order
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Order {
-    /// Ascending
-    Asc,
-    /// Descending (default)
-    #[default]
-    Desc,
-}
-
 /// A type-erased [`NostrDatabase`].
 pub type DynNostrDatabase = dyn NostrDatabase;
 
@@ -153,14 +143,14 @@ pub trait NostrDatabase: fmt::Debug + Send + Sync {
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError>;
 
     /// Query store with filters
-    async fn query(&self, filters: Vec<Filter>, order: Order) -> Result<Vec<Event>, DatabaseError>;
+    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, DatabaseError>;
 
     /// Get `negentropy` items
     async fn negentropy_items(
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
-        let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
+        let events: Vec<Event> = self.query(vec![filter]).await?;
         Ok(events.into_iter().map(|e| (e.id, e.created_at)).collect())
     }
 
@@ -182,7 +172,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
             .author(public_key)
             .kind(Kind::Metadata)
             .limit(1);
-        let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
+        let events: Vec<Event> = self.query(vec![filter]).await?;
         match events.first() {
             Some(event) => match Metadata::from_json(&event.content) {
                 Ok(metadata) => Ok(Profile::new(public_key, metadata)),
@@ -205,7 +195,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
             .author(public_key)
             .kind(Kind::ContactList)
             .limit(1);
-        let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
+        let events: Vec<Event> = self.query(vec![filter]).await?;
         match events.first() {
             Some(event) => Ok(event.public_keys().copied().collect()),
             None => Ok(Vec::new()),
@@ -219,7 +209,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
             .author(public_key)
             .kind(Kind::ContactList)
             .limit(1);
-        let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
+        let events: Vec<Event> = self.query(vec![filter]).await?;
         match events.first() {
             Some(event) => {
                 // Get contacts metadata
@@ -227,7 +217,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
                     .authors(event.public_keys().copied())
                     .kind(Kind::Metadata);
                 let mut contacts: HashSet<Profile> = self
-                    .query(vec![filter], Order::Desc)
+                    .query(vec![filter])
                     .await?
                     .into_iter()
                     .map(|e| {
@@ -259,7 +249,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
             .author(public_key)
             .kind(Kind::RelayList)
             .limit(1);
-        let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
+        let events: Vec<Event> = self.query(vec![filter]).await?;
 
         // Extract relay list (NIP65)
         match events.first() {
@@ -283,7 +273,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
     {
         // Query
         let filter: Filter = Filter::default().authors(public_keys).kind(Kind::RelayList);
-        let events: Vec<Event> = self.query(vec![filter], Order::Desc).await?;
+        let events: Vec<Event> = self.query(vec![filter]).await?;
 
         let mut map = HashMap::with_capacity(events.len());
 

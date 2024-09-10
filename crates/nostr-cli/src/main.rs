@@ -179,7 +179,6 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
             since,
             until,
             limit,
-            reverse,
             database,
             print,
             json,
@@ -225,9 +224,7 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
             } else if database {
                 // Query database
                 let now = Instant::now();
-                let events = db
-                    .query(vec![filter], if reverse { Order::Asc } else { Order::Desc })
-                    .await?;
+                let events = db.query(vec![filter]).await?;
 
                 let duration = now.elapsed();
                 println!(

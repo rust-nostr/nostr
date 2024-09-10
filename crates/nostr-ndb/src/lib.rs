@@ -144,11 +144,7 @@ impl NostrDatabase for NdbDatabase {
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn query(
-        &self,
-        filters: Vec<Filter>,
-        _order: Order,
-    ) -> Result<Vec<Event>, DatabaseError> {
+    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, DatabaseError> {
         let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let res: Vec<QueryResult> = self.ndb_query(&txn, filters)?;
         let mut events: Vec<Event> = Vec::with_capacity(res.len());
