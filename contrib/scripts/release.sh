@@ -5,9 +5,9 @@ set -euo pipefail
 args=(
     "-p nostr"
     "-p nostr-database"
+    "-p nostr-lmdb"
     "-p nostr-ndb"
     "-p nostr-sqlite"
-    "-p nostr-rocksdb"
     "-p nostr-indexeddb"
     "-p nostr-relay-builder"
     "-p nostr-relay-pool"
