@@ -1915,6 +1915,15 @@ impl Client {
         outdated_public_keys: HashSet<PublicKey>,
     ) -> Result<(), Error> {
         if !outdated_public_keys.is_empty() {
+            // Compose filters
+            let filter: Filter = Filter::default()
+                .authors(outdated_public_keys)
+                .kind(Kind::RelayList);
+
+            // Query from database
+            let database = self.database();
+            let mut stored_events = database.query(vec![filter.clone()], Order::Desc).await?;
+
             // Get DISCOVERY and READ relays
             // TODO: avoid clone of both url and relay
             let relays = self
@@ -1926,13 +1935,13 @@ impl Client {
                 .await
                 .into_keys();
 
-            // Get events
-            let filter: Filter = Filter::default()
-                .authors(outdated_public_keys)
-                .kind(Kind::RelayList);
-            let events: Vec<Event> = self
+            // Get events from discovery and read relays
+            let mut events: Vec<Event> = self
                 .get_events_from(relays, vec![filter], Some(Duration::from_secs(10)))
                 .await?;
+
+            // Join database and relays events
+            events.append(&mut stored_events);
 
             // Update gossip graph
             self.gossip_graph.update(events).await;
