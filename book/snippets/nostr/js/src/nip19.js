@@ -1,4 +1,4 @@
-const { loadWasmSync, Keys, EventBuilder, Nip19Profile, Nip19Event, Nip19Relay} = require("@rust-nostr/nostr");
+const { loadWasmSync, Keys, EventBuilder, Nip19Profile, Nip19Event} = require("@rust-nostr/nostr");
 
 function run() {
     // Load WASM
@@ -49,19 +49,6 @@ function run() {
     let decode_nevent = Nip19Event.fromBech32(nevent.toBech32());
     console.log(` Event (decoded): ${decode_nevent.eventId().toBech32()}`);
     // ANCHOR_END: nip19-nevent-decode
-
-    console.log();
-    // ANCHOR: nip19-nrelay-encode
-    // Create NIP-19 relay
-    let relay = new Nip19Relay("wss://relay.damus.io");
-    console.log(` Relay (encoded): ${relay.toBech32()}`);
-    // ANCHOR_END: nip19-nrelay-encode
-
-    // ANCHOR: nip19-nrelay-decode
-    // Decode NIP-19 relay
-    let decode_relay = Nip19Relay.fromBech32(relay.toBech32());
-    console.log(` Relay (decoded): ${decode_relay.url()}`);
-    // ANCHOR_END: nip19-nrelay-decode
 
 }
 
