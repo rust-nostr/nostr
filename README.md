@@ -5,29 +5,29 @@
 The project is split up into several crates in the `crates/` directory:
 
 * Libraries:
-    * [**nostr**](./crates/nostr/): Rust implementation of Nostr protocol.
-    * [**nostr-database**](./crates/nostr-database/): Database for Nostr apps
-        * [**nostr-lmdb**](./crates/nostr-sqlite/): LMDB storage backend
-        * [**nostr-ndb**](./crates/nostr-ndb/): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
-        * [**nostr-indexeddb**](./crates/nostr-indexeddb/): IndexedDB storage backend
-    * [**nostr-relay-pool**](./crates/nostr-relay-pool/): Nostr Relay Pool
-    * [**nostr-signer**](./crates/nostr-signer/): Signer for Nostr apps
-    * [**nostr-zapper**](./crates/nostr-zapper/): Zapper abstraction for Nostr apps
-        * [**nostr-webln**](./crates/nostr-webln/): WebLN zapper backend for Nostr apps
-    * [**nostr-sdk**](./crates/nostr-sdk/): High level client library.
-    * [**nwc**](./crates/nwc/): `NWC` client and zapper backend for Nostr apps
+    * [**nostr**](./crates/nostr): Rust implementation of Nostr protocol.
+    * [**nostr-database**](./crates/nostr-database): Database for Nostr apps
+        * [**nostr-lmdb**](./crates/nostr-lmdb): LMDB storage backend
+        * [**nostr-ndb**](./crates/nostr-ndb): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
+        * [**nostr-indexeddb**](./crates/nostr-indexeddb): IndexedDB storage backend
+    * [**nostr-relay-pool**](./crates/nostr-relay-pool): Nostr Relay Pool
+    * [**nostr-signer**](./crates/nostr-signer): Signer for Nostr apps
+    * [**nostr-zapper**](./crates/nostr-zapper): Zapper abstraction for Nostr apps
+        * [**nostr-webln**](./crates/nostr-webln): WebLN zapper backend for Nostr apps
+    * [**nostr-sdk**](./crates/nostr-sdk): High level client library.
+    * [**nwc**](./crates/nwc): `NWC` client and zapper backend for Nostr apps
 * Binaries (tools):
-    * [**nostr-cli**](./crates/nostr-cli/): Nostr CLI
+    * [**nostr-cli**](./crates/nostr-cli): Nostr CLI
 
 ### Bindings
 
 **nostr** and **nostr-sdk** crates can be embedded inside other environments, like Swift, Kotlin, Python and JavaScript. 
-Please, explore the [`bindings/`](./bindings/) directory to learn more.
+Please, explore the [`bindings/`](./bindings) directory to learn more.
 
 ### Embedded
 
 **nostr** crate can be used in [`no_std`](https://docs.rust-embedded.org/book/intro/no-std.html) environments. 
-Check the example in the [`embedded/`](./crates/nostr/examples/embedded/) directory.
+Check the example in the [`embedded/`](./crates/nostr/examples/embedded) directory.
 
 ## Book
 
