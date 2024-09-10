@@ -8,7 +8,7 @@ use lnurl_pay::api::Lud06OrLud16;
 use lnurl_pay::{LightningAddress, LnUrl};
 use nostr::prelude::*;
 
-use super::{Client, Error, EventSource};
+use super::{Client, Error};
 
 /// Zap entity
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -100,9 +100,7 @@ impl Client {
             ZapEntity::Event(event_id) => {
                 // Get event
                 let filter: Filter = Filter::new().id(event_id);
-                let events: Vec<Event> = self
-                    .get_events_of(vec![filter], EventSource::both(Some(self.opts.timeout)))
-                    .await?;
+                let events: Vec<Event> = self.get_events_of(vec![filter], None).await?;
                 let event: &Event = events.first().ok_or(Error::EventNotFound(event_id))?;
                 let public_key: PublicKey = event.pubkey;
                 let metadata: Metadata = self.fetch_metadata(public_key, None).await?;

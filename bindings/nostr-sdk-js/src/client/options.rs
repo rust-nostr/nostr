@@ -129,14 +129,14 @@ impl JsEventSource {
     /// Database only
     pub fn database() -> Self {
         Self {
-            inner: nostr_sdk::EventSource::Database,
+            inner: EventSource::Database,
         }
     }
 
     /// Relays only
     pub fn relays(timeout: Option<JsDuration>) -> Self {
         Self {
-            inner: nostr_sdk::EventSource::relays(timeout.map(|t| *t)),
+            inner: EventSource::relays(timeout.map(|t| *t)),
         }
     }
 
@@ -144,14 +144,14 @@ impl JsEventSource {
     #[wasm_bindgen(js_name = specificRelays)]
     pub fn specific_relays(urls: Vec<String>, timeout: Option<JsDuration>) -> Self {
         Self {
-            inner: nostr_sdk::EventSource::specific_relays(urls, timeout.map(|t| *t)),
+            inner: EventSource::specific_relays(urls, timeout.map(|t| *t)),
         }
     }
 
     /// Both from database and relays
     pub fn both(timeout: Option<JsDuration>) -> Self {
         Self {
-            inner: nostr_sdk::EventSource::both(timeout.map(|t| *t)),
+            inner: EventSource::both(timeout.map(|t| *t)),
         }
     }
 
@@ -159,7 +159,15 @@ impl JsEventSource {
     #[wasm_bindgen(js_name = bothWithSpecificRelays)]
     pub fn both_with_specific_relays(urls: Vec<String>, timeout: Option<JsDuration>) -> Self {
         Self {
-            inner: nostr_sdk::EventSource::both_with_specific_relays(urls, timeout.map(|t| *t)),
+            inner: EventSource::both_with_specific_relays(urls, timeout.map(|t| *t)),
+        }
+    }
+
+    /// Use database as main source and fallback to relays if the result is empty.
+    #[wasm_bindgen(js_name = databaseWithFallback)]
+    pub fn database_with_fallback(timeout: Option<JsDuration>) -> Self {
+        Self {
+            inner: EventSource::database_with_fallback(timeout.map(|t| *t)),
         }
     }
 }

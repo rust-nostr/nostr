@@ -16,6 +16,8 @@ pub use nostr_signer::prelude::*;
 #[cfg(feature = "nip57")]
 pub use nostr_zapper::prelude::*;
 
+pub use crate::client::builder::*;
+pub use crate::client::options::*;
 // Internal modules
 pub use crate::client::*;
 pub use crate::*;

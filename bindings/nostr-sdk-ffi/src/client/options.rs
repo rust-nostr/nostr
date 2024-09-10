@@ -285,4 +285,12 @@ impl EventSource {
             inner: nostr_sdk::EventSource::both_with_specific_relays(urls, timeout),
         }
     }
+
+    /// Use database as main source and fallback to relays if the result is empty.
+    #[uniffi::constructor(default(timeout = None))]
+    pub fn database_with_fallback(timeout: Option<Duration>) -> Self {
+        Self {
+            inner: nostr_sdk::EventSource::database_with_fallback(timeout),
+        }
+    }
 }

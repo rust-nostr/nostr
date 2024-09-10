@@ -28,9 +28,10 @@ pub mod options;
 mod zapper;
 
 pub use self::builder::ClientBuilder;
+use self::options::FetchPolicyRelays;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Connection, ConnectionTarget};
-pub use self::options::{EventSource, Options};
+pub use self::options::{FetchPolicy, Options};
 #[cfg(feature = "nip57")]
 pub use self::zapper::{ZapDetails, ZapEntity};
 
@@ -83,6 +84,9 @@ pub enum Error {
     /// Metadata not found
     #[error("metadata not found")]
     MetadataNotFound,
+    /// Fetch source not specified
+    #[error("Fetch source not specified")]
+    FetchSourceNotSpecified,
 }
 
 /// Nostr client
@@ -832,9 +836,13 @@ impl Client {
     ///     .pubkeys(vec![my_keys.public_key()])
     ///     .since(Timestamp::now());
     ///
-    /// let timeout = Some(Duration::from_secs(10));
+    /// let policy = FetchPolicy::default()
+    ///     .database() // Use database as source of events
+    ///     .relays() // Use also relays as source of events
+    ///     .relays_as_fallback() // Database is main source of events, relays the fallback
+    ///     .timeout(Duration::from_secs(10));
     /// let _events = client
-    ///     .get_events_of(vec![subscription], EventSource::both(timeout))
+    ///     .get_events_of(vec![subscription], Some(policy))
     ///     .await
     ///     .unwrap();
     /// # }
@@ -843,39 +851,76 @@ impl Client {
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
-        source: EventSource,
+        policy: Option<FetchPolicy>,
     ) -> Result<Vec<Event>, Error> {
-        match source {
-            EventSource::Database => Ok(self.database().query(filters, Order::Desc).await?),
-            EventSource::Relays {
-                timeout,
-                specific_relays,
-            } => match specific_relays {
-                Some(urls) => self.get_events_from(urls, filters, timeout).await,
-                None => {
-                    let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
-                    Ok(self
+        let policy: FetchPolicy = policy.unwrap_or_else(|| self.opts.fetch_policy.clone());
+
+        match (policy.database, policy.relays) {
+            // Database only
+            (true, None) => Ok(self.database().query(filters, Order::Desc).await?),
+            // Relays only
+            (false, Some(relays)) => {
+                // Check what relays to use
+                match relays {
+                    FetchPolicyRelays::All => Ok(self
                         .pool
-                        .get_events_of(filters, timeout, FilterOptions::ExitOnEOSE)
-                        .await?)
+                        .get_events_of(filters, policy.timeout, FilterOptions::ExitOnEOSE)
+                        .await?),
+                    FetchPolicyRelays::Specific(urls) => Ok(self
+                        .pool
+                        .get_events_from(urls, filters, policy.timeout, FilterOptions::ExitOnEOSE)
+                        .await?),
                 }
-            },
-            EventSource::Both {
-                timeout,
-                specific_relays,
-            } => {
+            }
+            // Database & Relays (maybe fallback)
+            (true, Some(relays)) => {
                 // Check how many filters are passed and return the limit
                 let limit: Option<usize> = match (filters.len(), filters.first()) {
                     (1, Some(filter)) => filter.limit,
                     _ => None,
                 };
 
-                let stored = self.database().query(filters.clone(), Order::Desc).await?;
+                // Query database
+                let stored: Vec<Event> =
+                    self.database().query(filters.clone(), Order::Desc).await?;
+
+                // Check fallback policy
+                if let Some(fallback) = policy.fallback {
+                    // Check `older` policy
+                    let fallback_required: bool = match fallback.older {
+                        Some(duration) => {
+                            let now: Timestamp = Timestamp::now();
+
+                            // If one of the events is "expired" return `true`, meaning that fallback is needed.
+                            // TODO: keep track of when an event was seen and use that timestamp for checks
+                            stored
+                                .iter()
+                                .filter(|e| {
+                                    e.kind.is_replaceable() || e.kind.is_parameterized_replaceable()
+                                })
+                                .any(|e| {
+                                    let expiration: Timestamp = e.created_at + duration;
+                                    now > expiration
+                                })
+                        }
+                        None => false, // No fallback needed
+                    };
+
+                    if !fallback_required && !stored.is_empty() {
+                        return Ok(stored);
+                    }
+                }
+
                 let mut events: BTreeSet<Event> = stored.into_iter().collect();
 
-                let mut stream: ReceiverStream<Event> = match specific_relays {
-                    Some(urls) => self.stream_events_from(urls, filters, timeout).await?,
-                    None => self.stream_events_of(filters, timeout).await?,
+                let mut stream: ReceiverStream<Event> = match relays {
+                    FetchPolicyRelays::All => {
+                        self.stream_events_of(filters, policy.timeout).await?
+                    }
+                    FetchPolicyRelays::Specific(urls) => {
+                        self.stream_events_from(urls, filters, policy.timeout)
+                            .await?
+                    }
                 };
 
                 while let Some(event) = stream.next().await {
@@ -890,6 +935,8 @@ impl Client {
                     None => Ok(iter.collect()),
                 }
             }
+            // Not source specified
+            (false, None) => Err(Error::FetchSourceNotSpecified),
         }
     }
 
@@ -904,7 +951,7 @@ impl Client {
         timeout: Option<Duration>,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
-        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
+        let timeout: Duration = timeout.unwrap_or(self.opts.fetch_policy.timeout);
         Ok(self.pool.get_events_of(filters, timeout, opts).await?)
     }
 
@@ -921,7 +968,7 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
+        let timeout: Duration = timeout.unwrap_or(self.opts.fetch_policy.timeout);
         Ok(self
             .pool
             .get_events_from(urls, filters, timeout, FilterOptions::ExitOnEOSE)
@@ -933,9 +980,8 @@ impl Client {
     pub async fn stream_events_of(
         &self,
         filters: Vec<Filter>,
-        timeout: Option<Duration>,
+        timeout: Duration,
     ) -> Result<ReceiverStream<Event>, Error> {
-        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
         Ok(self
             .pool
             .stream_events_of(filters, timeout, FilterOptions::ExitOnEOSE)
@@ -948,14 +994,13 @@ impl Client {
         &self,
         urls: I,
         filters: Vec<Filter>,
-        timeout: Option<Duration>,
+        timeout: Duration,
     ) -> Result<ReceiverStream<Event>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
         Ok(self
             .pool
             .stream_events_from(urls, filters, timeout, FilterOptions::ExitOnEOSE)
@@ -1108,15 +1153,13 @@ impl Client {
     pub async fn fetch_metadata(
         &self,
         public_key: PublicKey,
-        timeout: Option<Duration>,
+        policy: Option<FetchPolicy>,
     ) -> Result<Metadata, Error> {
         let filter: Filter = Filter::new()
             .author(public_key)
             .kind(Kind::Metadata)
             .limit(1);
-        let events: Vec<Event> = self
-            .get_events_of(vec![filter], EventSource::both(timeout))
-            .await?;
+        let events: Vec<Event> = self.get_events_of(vec![filter], policy).await?;
         match events.first() {
             Some(event) => Ok(Metadata::try_from(event)?),
             None => Err(Error::MetadataNotFound),
@@ -1239,16 +1282,16 @@ impl Client {
     /// # async fn main() {
     /// #   let my_keys = Keys::generate();
     /// #   let client = Client::new(&my_keys);
-    /// let timeout = Duration::from_secs(10);
-    /// let _list = client.get_contact_list(Some(timeout)).await.unwrap();
+    /// let _list = client.get_contact_list(None).await.unwrap();
     /// # }
     /// ```
-    pub async fn get_contact_list(&self, timeout: Option<Duration>) -> Result<Vec<Contact>, Error> {
+    pub async fn get_contact_list(
+        &self,
+        policy: Option<FetchPolicy>,
+    ) -> Result<Vec<Contact>, Error> {
         let mut contact_list: Vec<Contact> = Vec::new();
         let filters: Vec<Filter> = self.get_contact_list_filters().await?;
-        let events: Vec<Event> = self
-            .get_events_of(filters, EventSource::both(timeout))
-            .await?;
+        let events: Vec<Event> = self.get_events_of(filters, policy).await?;
 
         // Get first event (result of `get_events_of` is sorted DESC by timestamp)
         if let Some(event) = events.into_iter().next() {
@@ -1273,13 +1316,11 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     pub async fn get_contact_list_public_keys(
         &self,
-        timeout: Option<Duration>,
+        policy: Option<FetchPolicy>,
     ) -> Result<Vec<PublicKey>, Error> {
         let mut pubkeys: Vec<PublicKey> = Vec::new();
         let filters: Vec<Filter> = self.get_contact_list_filters().await?;
-        let events: Vec<Event> = self
-            .get_events_of(filters, EventSource::both(timeout))
-            .await?;
+        let events: Vec<Event> = self.get_events_of(filters, policy).await?;
 
         for event in events.into_iter() {
             pubkeys.extend(event.public_keys());
@@ -1291,9 +1332,9 @@ impl Client {
     /// Get contact list [`Metadata`] from database and connected relays.
     pub async fn get_contact_list_metadata(
         &self,
-        timeout: Option<Duration>,
+        policy: Option<FetchPolicy>,
     ) -> Result<HashMap<PublicKey, Metadata>, Error> {
-        let public_keys = self.get_contact_list_public_keys(timeout).await?;
+        let public_keys = self.get_contact_list_public_keys(policy.clone()).await?;
         let mut contacts: HashMap<PublicKey, Metadata> =
             public_keys.iter().map(|p| (*p, Metadata::new())).collect();
 
@@ -1308,9 +1349,7 @@ impl Client {
                         .limit(1),
                 );
             }
-            let events: Vec<Event> = self
-                .get_events_of(filters, EventSource::both(timeout))
-                .await?;
+            let events: Vec<Event> = self.get_events_of(filters, policy.clone()).await?;
             for event in events.into_iter() {
                 let metadata = Metadata::from_json(&event.content)?;
                 if let Some(m) = contacts.get_mut(&event.pubkey) {

@@ -54,4 +54,4 @@ pub use nwc::{self, NostrWalletConnectOptions, NWC};
 pub mod client;
 pub mod prelude;
 
-pub use self::client::{Client, ClientBuilder, EventSource, Options};
+pub use self::client::{Client, ClientBuilder, Options};

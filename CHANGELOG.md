@@ -87,6 +87,7 @@
 * lmdb: add LMDB storage backend ([Yuki Kishimoto])
 * relay-builder: add `MockRelay` ([Yuki Kishimoto])
 * pool: add `RelayPool::disconnect_relay` method ([Yuki Kishimoto])
+* sdk: add fetch policies ([Yuki Kishimoto])
 * bindings(nostr): expose `as_pretty_json` for some structs ([Yuki Kishimoto])
 * bindings(sdk): expose `Client::fetch_metadata` ([Yuki Kishimoto])
 * bindings(sdk): expose `Client::pool` method ([Yuki Kishimoto])

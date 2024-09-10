@@ -25,7 +25,7 @@ pub struct Options {
     min_pow_difficulty: Arc<AtomicU8>,
     pub(super) req_filters_chunk_size: u8,
     skip_disconnected_relays: bool,
-    pub(super) timeout: Duration,
+    pub(super) fetch_policy: FetchPolicy,
     pub(super) connection_timeout: Option<Duration>,
     send_timeout: Option<Duration>,
     nip42_auto_authentication: Arc<AtomicBool>,
@@ -46,7 +46,7 @@ impl Default for Options {
             min_pow_difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: 10,
             skip_disconnected_relays: true,
-            timeout: Duration::from_secs(60),
+            fetch_policy: FetchPolicy::both(),
             connection_timeout: None,
             send_timeout: Some(DEFAULT_SEND_TIMEOUT),
             nip42_auto_authentication: Arc::new(AtomicBool::new(true)),
@@ -157,12 +157,19 @@ impl Options {
         self
     }
 
+    /// Set a default fetch policy
+    #[inline]
+    pub fn fetch_policy(mut self, policy: FetchPolicy) -> Self {
+        self.fetch_policy = policy;
+        self
+    }
+
     /// Timeout (default: 60)
     ///
     /// Used in `get_events_of` and similar methods as default timeout.
-    #[inline]
+    #[deprecated(since = "0.35.0", note = "Use `fetch_policy` instead.")]
     pub fn timeout(mut self, timeout: Duration) -> Self {
-        self.timeout = timeout;
+        self.fetch_policy.timeout = timeout;
         self
     }
 
@@ -322,67 +329,105 @@ impl Connection {
     }
 }
 
-/// Source of the events
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum EventSource {
-    /// Database only
-    Database,
-    /// Relays only
-    Relays {
-        /// Optional timeout
-        timeout: Option<Duration>,
-        /// Specific relays
-        specific_relays: Option<Vec<String>>,
-    },
-    /// Both from database and relays
-    Both {
-        /// Optional timeout for relays
-        timeout: Option<Duration>,
-        /// Specific relays
-        specific_relays: Option<Vec<String>>,
-    },
+/// Fallback policy
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct FallbackPolicy {
+    pub(super) older: Option<Duration>,
 }
 
-impl EventSource {
-    /// Relays only
+impl FallbackPolicy {
+    /// Fallback if one or more events are older than [Duration]
+    ///
+    /// This apply only to `replaceable` and `param. replaceable` events!
+    pub fn older(mut self, duration: Duration) -> Self {
+        self.older = Some(duration);
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum FetchPolicyRelays {
+    All,
+    Specific(Vec<String>),
+}
+
+/// Fetch policy
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FetchPolicy {
+    pub(super) database: bool,
+    pub(super) relays: Option<FetchPolicyRelays>,
+    pub(super) fallback: Option<FallbackPolicy>,
+    pub(super) timeout: Duration,
+}
+
+impl Default for FetchPolicy {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
+impl FetchPolicy {
+    /// New empty fetch policy
     #[inline]
-    pub fn relays(timeout: Option<Duration>) -> Self {
-        Self::Relays {
-            timeout,
-            specific_relays: None,
+    pub fn empty() -> Self {
+        Self {
+            database: false,
+            relays: None,
+            fallback: None,
+            timeout: Duration::from_secs(10),
         }
     }
 
-    /// From specific relays only
-    pub fn specific_relays<I, S>(urls: I, timeout: Option<Duration>) -> Self
+    /// Use both database and relays
+    #[inline]
+    pub fn both() -> Self {
+        Self::empty().database().relays()
+    }
+
+    /// Use database
+    #[inline]
+    pub fn database(mut self) -> Self {
+        self.database = true;
+        self
+    }
+
+    /// Use all relays
+    #[inline]
+    pub fn relays(mut self) -> Self {
+        self.relays = Some(FetchPolicyRelays::All);
+        self
+    }
+
+    /// Use specified relays
+    #[inline]
+    pub fn specific_relays<I, S>(mut self, urls: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        Self::Relays {
-            timeout,
-            specific_relays: Some(urls.into_iter().map(|u| u.into()).collect()),
-        }
+        self.relays = Some(FetchPolicyRelays::Specific(
+            urls.into_iter().map(|u| u.into()).collect(),
+        ));
+        self
     }
 
-    /// Both from database and relays
+    /// Set a fallback policy
     #[inline]
-    pub fn both(timeout: Option<Duration>) -> Self {
-        Self::Both {
-            timeout,
-            specific_relays: None,
-        }
+    pub fn fallback(mut self, fallback: FallbackPolicy) -> Self {
+        self.fallback = Some(fallback);
+        self
     }
 
-    /// Both from database and specific relays
-    pub fn both_with_specific_relays<I, S>(urls: I, timeout: Option<Duration>) -> Self
-    where
-        I: IntoIterator<Item = S>,
-        S: Into<String>,
-    {
-        Self::Both {
-            timeout,
-            specific_relays: Some(urls.into_iter().map(|u| u.into()).collect()),
-        }
+    /// Use relays as fallback
+    #[inline]
+    pub fn relays_as_fallback(self) -> Self {
+        self.fallback(FallbackPolicy::default())
+    }
+
+    /// Timeout (default: 10 secs)
+    #[inline]
+    pub fn timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
     }
 }
