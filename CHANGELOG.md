@@ -73,6 +73,7 @@
 * sdk: update `Client::shutdown` method fingerprint ([Yuki Kishimoto])
 * sdk: deprecate `Client::add_relay_with_opts` and `Client::add_relays` ([Yuki Kishimoto])
 * sdk: deprecate `RelayPool::send_msg` and `RelayPool::batch_msg` ([Yuki Kishimoto])
+* sdk: inherit pool subscriptions only when calling `Client::add_relay` or `Client::add_read_relay` methods ([Yuki Kishimoto])
 * ffi(nostr): impl `Display` for `Coordinate` ([Yuki Kishimoto])
 * ffi(sdk): change `Connection::embedded_tor` fingerprint for `android` and `ios` targets ([Yuki Kishimoto])
 

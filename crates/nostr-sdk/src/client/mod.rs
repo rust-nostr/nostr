@@ -414,6 +414,7 @@ impl Client {
     async fn get_or_add_relay_with_flag<U>(
         &self,
         url: U,
+        inherit_pool_subscriptions: bool,
         flag: RelayServiceFlags,
     ) -> Result<bool, Error>
     where
@@ -430,7 +431,11 @@ impl Client {
         let opts: RelayOptions = opts.flags(flag);
 
         // Add relay with opts or edit current one
-        match self.pool.get_or_add_relay::<&Url>(&url, opts).await? {
+        match self
+            .pool
+            .get_or_add_relay::<&Url>(&url, inherit_pool_subscriptions, opts)
+            .await?
+        {
             Some(relay) => {
                 relay.flags_ref().add(flag);
                 Ok(false)
@@ -481,7 +486,7 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.get_or_add_relay_with_flag(url, RelayServiceFlags::default())
+        self.get_or_add_relay_with_flag(url, true, RelayServiceFlags::default())
             .await
     }
 
@@ -496,21 +501,32 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::DISCOVERY)
-            .await
+        self.get_or_add_relay_with_flag(
+            url,
+            false,
+            RelayServiceFlags::PING | RelayServiceFlags::DISCOVERY,
+        )
+        .await
     }
 
     /// Add read relay
     ///
     /// If relay already exists, this method add the `READ` flag to it and return `false`.
+    ///
+    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
+    /// to avoid to set pool subscriptions.
     #[inline]
     pub async fn add_read_relay<U>(&self, url: U) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::READ)
-            .await
+        self.get_or_add_relay_with_flag(
+            url,
+            true,
+            RelayServiceFlags::PING | RelayServiceFlags::READ,
+        )
+        .await
     }
 
     /// Add write relay
@@ -522,8 +538,12 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::WRITE)
-            .await
+        self.get_or_add_relay_with_flag(
+            url,
+            false,
+            RelayServiceFlags::PING | RelayServiceFlags::WRITE,
+        )
+        .await
     }
 
     #[inline]
@@ -532,8 +552,12 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::INBOX)
-            .await
+        self.get_or_add_relay_with_flag(
+            url,
+            false,
+            RelayServiceFlags::PING | RelayServiceFlags::INBOX,
+        )
+        .await
     }
 
     #[inline]
@@ -542,8 +566,12 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::OUTBOX)
-            .await
+        self.get_or_add_relay_with_flag(
+            url,
+            false,
+            RelayServiceFlags::PING | RelayServiceFlags::OUTBOX,
+        )
+        .await
     }
 
     /// Add new relay with custom [`RelayOptions`]

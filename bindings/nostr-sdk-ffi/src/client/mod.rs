@@ -195,6 +195,9 @@ impl Client {
     /// Add read relay
     ///
     /// If relay already exists, this method add the `READ` flag to it and return `false`.
+    ///
+    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
+    /// to avoid to set pool subscriptions.
     pub async fn add_read_relay(&self, url: String) -> Result<bool> {
         Ok(self.inner.add_read_relay(url).await?)
     }
