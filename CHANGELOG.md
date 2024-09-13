@@ -120,6 +120,7 @@
 * nostr: fix `TagStanderd::to_vec` ([nanikamado])
 * nostr: fix broken intra doc links ([Yuki Kishimoto])
 * nostr: fix `JsonUtil::try_as_pretty_json` method ([Yuki Kishimoto])
+* nostr: fix `Kind::is_regular` method ([Yuki Kishimoto])
 
 ### Removed
 

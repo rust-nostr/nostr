@@ -29,7 +29,9 @@ pub const PARAMETERIZED_REPLACEABLE_RANGE: Range<u16> = 30_000..40_000;
 
 macro_rules! kind_variants {
     ($($name:ident => $value:expr, $doc:expr),* $(,)?) => {
-        /// Event [`Kind`]
+        /// Event kind
+        ///
+        /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
         #[derive(Debug, Clone, Copy)]
         pub enum Kind {
             $(
@@ -227,10 +229,19 @@ impl Kind {
         NIP90_JOB_RESULT_RANGE.contains(&self.as_u16())
     }
 
-    /// Check if [`Kind`] is `Regular`
-    #[inline]
+    /// Check if it's regular
+    ///
+    /// Regular means that event is expected to be stored by relays.
     pub fn is_regular(&self) -> bool {
-        REGULAR_RANGE.contains(&self.as_u16())
+        let kind: u16 = self.as_u16();
+
+        // Exclude ALL param replaceable and ephemeral
+        // Exclude PARTIALLY the replaceable
+        if kind > 10_000 {
+            return false;
+        }
+
+        REGULAR_RANGE.contains(&kind) || !self.is_replaceable()
     }
 
     /// Check if [`Kind`] is `Replaceable`

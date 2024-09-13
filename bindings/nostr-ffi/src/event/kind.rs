@@ -67,6 +67,8 @@ impl Kind {
 
     /// Check if it's regular
     ///
+    /// Regular means that event is expected to be stored by relays.
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn is_regular(&self) -> bool {
