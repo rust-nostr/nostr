@@ -195,6 +195,12 @@ impl Hash for Kind {
 }
 
 impl Kind {
+    /// Construct from 16-bit unsigned integer
+    #[inline]
+    pub fn from_u16(kind: u16) -> Self {
+        Self::from(kind)
+    }
+
     /// Get as 16-bit unsigned integer
     #[inline]
     pub fn as_u16(&self) -> u16 {

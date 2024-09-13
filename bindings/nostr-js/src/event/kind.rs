@@ -32,7 +32,7 @@ impl JsKind {
     #[wasm_bindgen(constructor)]
     pub fn new(kind: u16) -> Self {
         Self {
-            inner: Kind::from(kind),
+            inner: Kind::from_u16(kind),
         }
     }
 

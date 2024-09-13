@@ -31,7 +31,7 @@ impl Kind {
     #[uniffi::constructor]
     pub fn new(kind: u16) -> Self {
         Self {
-            inner: nostr::Kind::from(kind),
+            inner: nostr::Kind::from_u16(kind),
         }
     }
 

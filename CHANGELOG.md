@@ -89,6 +89,7 @@
 * nostr: add `EventId::from_byte_array` ([Yuki Kishimoto])
 * nostr: add `Timestamp::min` and `Timestamp::max` ([Yuki Kishimoto])
 * nostr: add `nip65::extract_owned_relay_list` ([Yuki Kishimoto])
+* nostr: add `Kind::from_u16` ([Yuki Kishimoto])
 * database: add `DatabaseHelper::fast_query` ([Yuki Kishimoto])
 * database: add `NostrDatabase::check_id` ([Yuki Kishimoto])
 * database: add `NostrDatabaseExt::relay_lists` ([Yuki Kishimoto])
