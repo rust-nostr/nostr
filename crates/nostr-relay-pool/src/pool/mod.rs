@@ -18,12 +18,12 @@ pub use tokio_stream::wrappers::ReceiverStream;
 mod error;
 mod internal;
 pub mod options;
-mod result;
+mod output;
 
 pub use self::error::Error;
 use self::internal::InternalRelayPool;
 pub use self::options::RelayPoolOptions;
-pub use self::result::Output;
+pub use self::output::Output;
 use crate::relay::flags::FlagCheck;
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
 use crate::relay::{Relay, RelayBlacklist, RelayStatus};
