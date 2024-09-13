@@ -20,6 +20,8 @@ nip11 = ["nostr/nip11"]
 async-utility.workspace = true
 async-wsocket = { version = "0.8", features = ["socks"] }
 atomic-destructor = { workspace = true, features = ["tracing"] }
+negentropy = { workspace = true, features = ["std"] }
+negentropy-deprecated = { workspace = true, features = ["std"] }
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
 thiserror.workspace = true

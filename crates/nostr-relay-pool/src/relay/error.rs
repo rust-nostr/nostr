@@ -8,7 +8,7 @@ use std::time::Duration;
 use async_utility::thread;
 use nostr::message::relay::NegentropyErrorCode;
 use nostr::message::MessageHandleError;
-use nostr::{event, negentropy, EventId, Kind, PublicKey};
+use nostr::{event, EventId, Kind, PublicKey};
 use nostr_database::DatabaseError;
 use thiserror::Error;
 
@@ -27,6 +27,9 @@ pub enum Error {
     /// Negentropy error
     #[error(transparent)]
     Negentropy(#[from] negentropy::Error),
+    /// Negentropy error
+    #[error(transparent)]
+    NegentropyDeprecated(#[from] negentropy_deprecated::Error),
     /// Database error
     #[error(transparent)]
     Database(#[from] DatabaseError),
@@ -90,8 +93,8 @@ pub enum Error {
     #[error("negentropy reconciliation error: {0}")]
     NegentropyReconciliation(NegentropyErrorCode),
     /// Negentropy not supported
-    #[error("negentropy not supported")]
-    NegentropyNotSupported,
+    #[error("negentropy (maybe) not supported")]
+    NegentropyMaybeNotSupported,
     /// Unknown negentropy error
     #[error("unknown negentropy error")]
     UnknownNegentropyError,

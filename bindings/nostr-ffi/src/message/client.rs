@@ -36,8 +36,8 @@ pub enum ClientMessageEnum {
     NegOpen {
         subscription_id: String,
         filter: Arc<Filter>,
-        /// ID size (MUST be between 8 and 32, inclusive)
-        id_size: u8,
+        /// ID size (deprecated)
+        id_size: Option<u8>,
         initial_message: String,
     },
     /// Negentropy Message

@@ -28,6 +28,7 @@ std = [
     "chacha20?/std",
     "chacha20poly1305?/std",
     "negentropy/std",
+    "negentropy-deprecated/std",
     "once_cell/std",
     "scrypt?/std",
     "serde/std",
@@ -68,7 +69,8 @@ bitcoin = { version = "0.32", default-features = false, features = ["rand", "ser
 cbc = { version = "0.1", optional = true }
 chacha20 = { version = "0.9", optional = true }
 chacha20poly1305 = { version = "0.10", default-features = false, features = ["getrandom"], optional = true }
-negentropy = { version = "0.3", default-features = false }
+negentropy.workspace = true
+negentropy-deprecated.workspace = true
 nostr-ots = { version = "0.2", optional = true }
 once_cell.workspace = true
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "socks"], optional = true }

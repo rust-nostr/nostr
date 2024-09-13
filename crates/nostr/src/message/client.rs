@@ -9,7 +9,8 @@ use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use negentropy::{Bytes, Negentropy};
+use negentropy::{Bytes, Negentropy, NegentropyStorageBase};
+use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
 
@@ -47,8 +48,8 @@ pub enum ClientMessage {
         subscription_id: SubscriptionId,
         /// Filter
         filter: Box<Filter>,
-        /// ID size (MUST be between 8 and 32, inclusive)
-        id_size: u8,
+        /// ID size (deprecated)
+        id_size: Option<u8>,
         /// Initial message
         initial_message: String,
     },
@@ -124,17 +125,34 @@ impl ClientMessage {
     }
 
     /// Create new `NEG-OPEN` message
-    #[inline]
-    pub fn neg_open(
-        negentropy: &mut Negentropy,
-        subscription_id: &SubscriptionId,
+    pub fn neg_open<T>(
+        negentropy: &mut Negentropy<T>,
+        subscription_id: SubscriptionId,
         filter: Filter,
-    ) -> Result<Self, negentropy::Error> {
+    ) -> Result<Self, negentropy::Error>
+    where
+        T: NegentropyStorageBase,
+    {
         let initial_message: Bytes = negentropy.initiate()?;
         Ok(Self::NegOpen {
-            subscription_id: subscription_id.clone(),
+            subscription_id,
             filter: Box::new(filter),
-            id_size: negentropy.id_size() as u8,
+            id_size: None,
+            initial_message: initial_message.to_hex(),
+        })
+    }
+
+    /// Create new `NEG-OPEN` message (deprecated protocol version)
+    pub fn neg_open_deprecated(
+        negentropy: &mut NegentropyDeprecated,
+        subscription_id: SubscriptionId,
+        filter: Filter,
+    ) -> Result<Self, negentropy_deprecated::Error> {
+        let initial_message: BytesDeprecated = negentropy.initiate()?;
+        Ok(Self::NegOpen {
+            subscription_id,
+            filter: Box::new(filter),
+            id_size: Some(negentropy.id_size() as u8),
             initial_message: initial_message.to_hex(),
         })
     }
@@ -204,15 +222,16 @@ impl ClientMessage {
                 filter,
                 id_size,
                 initial_message,
-            } => {
-                json!([
+            } => match id_size {
+                Some(id_size) => json!([
                     "NEG-OPEN",
                     subscription_id,
                     filter,
                     id_size,
                     initial_message
-                ])
-            }
+                ]),
+                None => json!(["NEG-OPEN", subscription_id, filter, initial_message]),
+            },
             Self::NegMsg {
                 subscription_id,
                 message,
@@ -298,9 +317,24 @@ impl ClientMessage {
         }
 
         // Negentropy Open
-        // ["NEG-OPEN", <subscription ID string>, <filter>, <idSize>, <initialMessage, lowercase hex-encoded>]
+        // New: ["NEG-OPEN", <subscription ID string>, <filter>, <initialMessage as lowercase hex-encoded>]
+        // Old: ["NEG-OPEN", <subscription ID string>, <filter>, <idSize>, <initialMessage as lowercase hex-encoded>]
         if v[0] == "NEG-OPEN" {
-            if v_len >= 5 {
+            // New negentropy protocol message
+            if v_len == 4 {
+                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+                let filter: Filter = Filter::from_json(v[2].to_string())?;
+                let initial_message: String = serde_json::from_value(v[3].clone())?;
+                return Ok(Self::NegOpen {
+                    subscription_id,
+                    filter: Box::new(filter),
+                    id_size: None,
+                    initial_message,
+                });
+            }
+
+            // Old negentropy protocol message
+            if v_len == 5 {
                 let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
                 let filter: Filter = Filter::from_json(v[2].to_string())?;
                 let id_size: u8 =
@@ -310,12 +344,12 @@ impl ClientMessage {
                 return Ok(Self::NegOpen {
                     subscription_id,
                     filter: Box::new(filter),
-                    id_size,
+                    id_size: Some(id_size),
                     initial_message,
                 });
-            } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
             }
+
+            return Err(MessageHandleError::InvalidMessageFormat);
         }
 
         // Negentropy Message

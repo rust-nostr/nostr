@@ -13,8 +13,9 @@ use async_utility::{thread, time};
 use async_wsocket::futures_util::{self, Future, SinkExt, StreamExt};
 use async_wsocket::{ConnectionMode, Sink, Stream, WsMessage};
 use atomic_destructor::AtomicDestroyer;
+use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
+use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
 use nostr::message::MessageHandleError;
-use nostr::negentropy::{Bytes, Negentropy};
 use nostr::nips::nip01::Coordinate;
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
@@ -1637,10 +1638,322 @@ impl InternalRelay {
             return Err(Error::ReadDisabled);
         }
 
-        // Compose negentropy struct, add items and seal
-        let mut negentropy = Negentropy::new(32, Some(20_000))?;
+        match self
+            .reconcile_with_items_new(filter.clone(), items.clone(), opts)
+            .await
+        {
+            Ok(res) => Ok(res),
+            Err(e) => match e {
+                Error::NegentropyMaybeNotSupported
+                | Error::Negentropy(negentropy::Error::UnsupportedProtocolVersion) => {
+                    tracing::warn!("Negentropy protocol '{}' (maybe) not supported, trying the deprecated one.", negentropy::PROTOCOL_VERSION);
+                    self.reconcile_with_items_deprecated(filter, items, opts)
+                        .await
+                }
+                e => Err(e),
+            },
+        }
+    }
+
+    /// New negentropy protocol
+    async fn reconcile_with_items_new(
+        &self,
+        filter: Filter,
+        items: Vec<(EventId, Timestamp)>,
+        opts: NegentropyOptions,
+    ) -> Result<Reconciliation, Error> {
+        // Compose negentropy storage, add items and seal
+        let mut storage = NegentropyStorageVector::with_capacity(items.len());
         for (id, timestamp) in items.into_iter() {
-            let id = Bytes::from_slice(id.as_bytes());
+            let id: Id = Id::new(id.to_bytes());
+            storage.insert(timestamp.as_u64(), id)?;
+        }
+        storage.seal()?;
+
+        let mut negentropy = Negentropy::new(storage, 20_000)?;
+
+        // Send initial negentropy message
+        let sub_id = SubscriptionId::generate();
+        let send_opts = RelaySendOptions::default().skip_send_confirmation(true);
+        let open_msg = ClientMessage::neg_open(&mut negentropy, sub_id.clone(), filter)?;
+        self.send_msg(open_msg, send_opts).await?;
+
+        let mut notifications = self.internal_notification_sender.subscribe();
+        let mut temp_notifications = self.internal_notification_sender.subscribe();
+
+        // Check if negentropy it's supported
+        time::timeout(Some(opts.initial_timeout), async {
+            while let Ok(notification) = temp_notifications.recv().await {
+                if let RelayNotification::Message { message } = notification {
+                    match message {
+                        RelayMessage::NegMsg {
+                            subscription_id, ..
+                        } => {
+                            if subscription_id == sub_id {
+                                break;
+                            }
+                        }
+                        RelayMessage::NegErr {
+                            subscription_id,
+                            code,
+                        } => {
+                            if subscription_id == sub_id {
+                                return Err(Error::NegentropyReconciliation(code));
+                            }
+                        }
+                        RelayMessage::Notice { message } => {
+                            if message
+                                == "ERROR: negentropy error: negentropy query missing elements"
+                            {
+                                // The NEG-OPEN message is send with 4 elements instead of 5
+                                // If the relay return this error means that is not support new
+                                // negentropy protocol
+                                return Err(Error::Negentropy(
+                                    negentropy::Error::UnsupportedProtocolVersion,
+                                ));
+                            } else if message.contains("bad msg")
+                                && (message.contains("unknown cmd")
+                                    || message.contains("negentropy")
+                                    || message.contains("NEG-"))
+                            {
+                                return Err(Error::NegentropyMaybeNotSupported);
+                            } else if message.contains("bad msg: invalid message")
+                                && message.contains("NEG-OPEN")
+                            {
+                                return Err(Error::UnknownNegentropyError);
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+            }
+
+            Ok::<(), Error>(())
+        })
+        .await
+        .ok_or(Error::Timeout)??;
+
+        let do_up: bool = opts.do_up();
+        let do_down: bool = opts.do_down();
+        let mut in_flight_up: HashSet<EventId> = HashSet::new();
+        let mut in_flight_down: bool = false;
+        let mut sync_done: bool = false;
+        let mut have_ids: Vec<Id> = Vec::new();
+        let mut need_ids: Vec<Id> = Vec::new();
+        let down_sub_id: SubscriptionId = SubscriptionId::generate();
+
+        let mut output: Reconciliation = Reconciliation::default();
+
+        // Start reconciliation
+        while let Ok(notification) = notifications.recv().await {
+            match notification {
+                RelayNotification::Message { message } => {
+                    match message {
+                        RelayMessage::NegMsg {
+                            subscription_id,
+                            message,
+                        } => {
+                            if subscription_id == sub_id {
+                                let query: Bytes = Bytes::from_hex(message)?;
+                                let msg: Option<Bytes> = negentropy.reconcile_with_ids(
+                                    &query,
+                                    &mut have_ids,
+                                    &mut need_ids,
+                                )?;
+
+                                output.local.extend(
+                                    have_ids
+                                        .iter()
+                                        .map(|b| EventId::from_byte_array(b.to_bytes())),
+                                );
+                                output.remote.extend(
+                                    need_ids
+                                        .iter()
+                                        .map(|b| EventId::from_byte_array(b.to_bytes())),
+                                );
+
+                                if !do_up {
+                                    have_ids.clear();
+                                }
+
+                                if !do_down {
+                                    need_ids.clear();
+                                }
+
+                                match msg {
+                                    Some(query) => {
+                                        tracing::info!(
+                                            "Continue negentropy reconciliation with {}",
+                                            self.url
+                                        );
+                                        self.send_msg(
+                                            ClientMessage::NegMsg {
+                                                subscription_id: sub_id.clone(),
+                                                message: query.to_hex(),
+                                            },
+                                            send_opts,
+                                        )
+                                        .await?;
+                                    }
+                                    None => sync_done = true,
+                                }
+                            }
+                        }
+                        RelayMessage::NegErr {
+                            subscription_id,
+                            code,
+                        } => {
+                            if subscription_id == sub_id {
+                                return Err(Error::NegentropyReconciliation(code));
+                            }
+                        }
+                        RelayMessage::Ok {
+                            event_id,
+                            status,
+                            message,
+                        } => {
+                            if in_flight_up.remove(&event_id) {
+                                if status {
+                                    output.sent.insert(event_id);
+                                } else {
+                                    tracing::error!(
+                                        "Unable to upload event {event_id} to {}: {message}",
+                                        self.url
+                                    );
+
+                                    output
+                                        .send_failures
+                                        .entry(self.url())
+                                        .and_modify(|map| {
+                                            map.insert(event_id, message.clone());
+                                        })
+                                        .or_default()
+                                        .insert(event_id, message);
+                                }
+                            }
+                        }
+                        RelayMessage::Event {
+                            subscription_id,
+                            event,
+                        } => {
+                            if subscription_id == down_sub_id {
+                                output.received.insert(event.id);
+                            }
+                        }
+                        RelayMessage::EndOfStoredEvents(id) => {
+                            if id == down_sub_id {
+                                in_flight_down = false;
+                            }
+                        }
+                        _ => (),
+                    }
+
+                    // Get/Send events
+                    if do_up
+                        && !have_ids.is_empty()
+                        && in_flight_up.len() <= NEGENTROPY_LOW_WATER_UP
+                    {
+                        let mut num_sent = 0;
+
+                        while !have_ids.is_empty() && in_flight_up.len() < NEGENTROPY_HIGH_WATER_UP
+                        {
+                            if let Some(id) = have_ids.pop() {
+                                let event_id: EventId = EventId::from_byte_array(id.to_bytes());
+                                match self.database.event_by_id(&event_id).await {
+                                    Ok(Some(event)) => {
+                                        in_flight_up.insert(event_id);
+                                        self.send_msg(ClientMessage::event(event), send_opts)
+                                            .await?;
+                                        num_sent += 1;
+                                    }
+                                    Ok(None) => {
+                                        // Event not found
+                                    }
+                                    Err(e) => tracing::error!(
+                                        "Couldn't upload event to {}: {e}",
+                                        self.url
+                                    ),
+                                }
+                            }
+                        }
+
+                        if num_sent > 0 {
+                            tracing::info!(
+                                "Negentropy UP for '{}': {} events ({} remaining)",
+                                self.url,
+                                num_sent,
+                                have_ids.len()
+                            );
+                        }
+                    }
+
+                    if do_down && !need_ids.is_empty() && !in_flight_down {
+                        let mut ids: Vec<EventId> = Vec::with_capacity(NEGENTROPY_BATCH_SIZE_DOWN);
+
+                        while !need_ids.is_empty() && ids.len() < NEGENTROPY_BATCH_SIZE_DOWN {
+                            if let Some(id) = need_ids.pop() {
+                                ids.push(EventId::from_byte_array(id.to_bytes()));
+                            }
+                        }
+
+                        tracing::info!(
+                            "Negentropy DOWN for '{}': {} events ({} remaining)",
+                            self.url,
+                            ids.len(),
+                            need_ids.len()
+                        );
+
+                        let filter = Filter::new().ids(ids);
+                        self.send_msg(
+                            ClientMessage::req(down_sub_id.clone(), vec![filter]),
+                            send_opts,
+                        )
+                        .await?;
+
+                        in_flight_down = true
+                    }
+                }
+                RelayNotification::RelayStatus { status } => {
+                    if status.is_disconnected() {
+                        return Err(Error::NotConnectedStatusChanged);
+                    }
+                }
+                RelayNotification::Shutdown => break,
+                _ => (),
+            };
+
+            if sync_done
+                && have_ids.is_empty()
+                && need_ids.is_empty()
+                && in_flight_up.is_empty()
+                && !in_flight_down
+            {
+                break;
+            }
+        }
+
+        tracing::info!("Negentropy reconciliation terminated for {}", self.url);
+
+        // Close negentropy
+        let close_msg = ClientMessage::NegClose {
+            subscription_id: sub_id,
+        };
+        self.send_msg(close_msg, send_opts).await?;
+
+        Ok(output)
+    }
+
+    /// Deprecated negentopy protocol
+    async fn reconcile_with_items_deprecated(
+        &self,
+        filter: Filter,
+        items: Vec<(EventId, Timestamp)>,
+        opts: NegentropyOptions,
+    ) -> Result<Reconciliation, Error> {
+        // Compose negentropy struct, add items and seal
+        let mut negentropy = NegentropyDeprecated::new(32, Some(20_000))?;
+        for (id, timestamp) in items.into_iter() {
+            let id = BytesDeprecated::from_slice(id.as_bytes());
             negentropy.add_item(timestamp.as_u64(), id)?;
         }
         negentropy.seal()?;
@@ -1648,7 +1961,7 @@ impl InternalRelay {
         // Send initial negentropy message
         let sub_id = SubscriptionId::generate();
         let send_opts = RelaySendOptions::default().skip_send_confirmation(true);
-        let open_msg = ClientMessage::neg_open(&mut negentropy, &sub_id, filter)?;
+        let open_msg = ClientMessage::neg_open_deprecated(&mut negentropy, sub_id.clone(), filter)?;
         self.send_msg(open_msg, send_opts).await?;
 
         let mut notifications = self.internal_notification_sender.subscribe();
@@ -1680,7 +1993,7 @@ impl InternalRelay {
                                     || message.contains("negentropy")
                                     || message.contains("NEG-"))
                             {
-                                return Err(Error::NegentropyNotSupported);
+                                return Err(Error::NegentropyMaybeNotSupported);
                             } else if message.contains("bad msg: invalid message")
                                 && message.contains("NEG-OPEN")
                             {
@@ -1702,8 +2015,8 @@ impl InternalRelay {
         let mut in_flight_up: HashSet<EventId> = HashSet::new();
         let mut in_flight_down: bool = false;
         let mut sync_done: bool = false;
-        let mut have_ids: Vec<Bytes> = Vec::new();
-        let mut need_ids: Vec<Bytes> = Vec::new();
+        let mut have_ids: Vec<BytesDeprecated> = Vec::new();
+        let mut need_ids: Vec<BytesDeprecated> = Vec::new();
         let down_sub_id: SubscriptionId = SubscriptionId::generate();
 
         let mut output: Reconciliation = Reconciliation::default();
@@ -1718,8 +2031,8 @@ impl InternalRelay {
                             message,
                         } => {
                             if subscription_id == sub_id {
-                                let query: Bytes = Bytes::from_hex(message)?;
-                                let msg: Option<Bytes> = negentropy.reconcile_with_ids(
+                                let query: BytesDeprecated = BytesDeprecated::from_hex(message)?;
+                                let msg: Option<BytesDeprecated> = negentropy.reconcile_with_ids(
                                     &query,
                                     &mut have_ids,
                                     &mut need_ids,
@@ -1918,7 +2231,7 @@ impl InternalRelay {
             .await
         {
             Ok(_) => Ok(true),
-            Err(Error::NegentropyNotSupported) => Ok(false),
+            Err(Error::NegentropyMaybeNotSupported) => Ok(false),
             Err(e) => Err(e),
         }
     }

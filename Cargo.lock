@@ -2633,6 +2633,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e664971378a3987224f7a0e10059782035e89899ae403718ee07de85bec42afe"
 
 [[package]]
+name = "negentropy"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43a88da9dd148bbcdce323dd6ac47d369b4769d4a3b78c6c52389b9269f77932"
+
+[[package]]
 name = "nix"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2669,7 +2675,8 @@ dependencies = [
  "getrandom",
  "instant",
  "js-sys",
- "negentropy",
+ "negentropy 0.3.1",
+ "negentropy 0.4.3",
  "nostr-ots",
  "num_cpus",
  "once_cell",
@@ -2808,6 +2815,8 @@ dependencies = [
  "async-utility",
  "async-wsocket",
  "atomic-destructor",
+ "negentropy 0.3.1",
+ "negentropy 0.4.3",
  "nostr",
  "nostr-database",
  "nostr-relay-builder",

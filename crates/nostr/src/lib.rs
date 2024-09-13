@@ -39,7 +39,7 @@ pub use bip39;
 #[doc(hidden)]
 pub use bitcoin::{self, hashes, secp256k1};
 #[doc(hidden)]
-pub use {negentropy, serde_json};
+pub use serde_json;
 
 pub mod event;
 pub mod key;

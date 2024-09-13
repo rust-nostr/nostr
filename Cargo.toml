@@ -25,6 +25,8 @@ async-trait = "0.1"
 async-utility = "0.2"
 atomic-destructor = { version = "0.2", default-features = false }
 js-sys = "0.3"
+negentropy = { version = "0.4", default-features = false }
+negentropy-deprecated = { package = "negentropy", version = "0.3", default-features = false }
 nostr = { version = "0.34", path = "./crates/nostr", default-features = false }
 nostr-database = { version = "0.34", path = "./crates/nostr-database", default-features = false }
 nostr-indexeddb = { version = "0.34", path = "./crates/nostr-indexeddb", default-features = false }
