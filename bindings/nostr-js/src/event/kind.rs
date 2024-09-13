@@ -42,22 +42,6 @@ impl JsKind {
         self.inner.as_u16()
     }
 
-    /// Check if it's a NIP90 job request
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    #[wasm_bindgen(js_name = isJobRequest)]
-    pub fn is_job_request(&self) -> bool {
-        self.inner.is_job_request()
-    }
-
-    /// Check if it's a NIP90 job result
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    #[wasm_bindgen(js_name = isJobResult)]
-    pub fn is_job_result(&self) -> bool {
-        self.inner.is_job_result()
-    }
-
     /// Check if it's regular
     ///
     /// Regular means that event is expected to be stored by relays.
@@ -70,6 +54,9 @@ impl JsKind {
 
     /// Check if it's replaceable
     ///
+    /// Replaceable means that, for each combination of `pubkey` and `kind`,
+    /// only the latest event MUST be stored by relays, older versions MAY be discarded.
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[wasm_bindgen(js_name = isReplaceable)]
     pub fn is_replaceable(&self) -> bool {
@@ -77,6 +64,8 @@ impl JsKind {
     }
 
     /// Check if it's ephemeral
+    ///
+    /// Ephemeral means that event is not expected to be stored by relays.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[wasm_bindgen(js_name = isEphemeral)]
@@ -86,9 +75,28 @@ impl JsKind {
 
     /// Check if it's parameterized replaceable
     ///
+    /// Parametrized replaceable means that, for each combination of `pubkey`, `kind` and the `d` tag's first value,
+    /// only the latest event MUST be stored by relays, older versions MAY be discarded.
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[wasm_bindgen(js_name = isParametrizedReplaceable)]
     pub fn is_parameterized_replaceable(&self) -> bool {
         self.inner.is_parameterized_replaceable()
+    }
+
+    /// Check if it's a NIP-90 job request
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    #[wasm_bindgen(js_name = isJobRequest)]
+    pub fn is_job_request(&self) -> bool {
+        self.inner.is_job_request()
+    }
+
+    /// Check if it's a NIP-90 job result
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    #[wasm_bindgen(js_name = isJobResult)]
+    pub fn is_job_result(&self) -> bool {
+        self.inner.is_job_result()
     }
 }

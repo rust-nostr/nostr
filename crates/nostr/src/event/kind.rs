@@ -14,9 +14,9 @@ use core::str::FromStr;
 use serde::de::{Deserialize, Deserializer, Error, Visitor};
 use serde::ser::{Serialize, Serializer};
 
-/// NIP90 - Job request range
+/// NIP-90 - Job request range
 pub const NIP90_JOB_REQUEST_RANGE: Range<u16> = 5_000..5_999;
-/// NIP90 - Job result range
+/// NIP-90 - Job result range
 pub const NIP90_JOB_RESULT_RANGE: Range<u16> = 6_000..6_999;
 /// Regular range
 pub const REGULAR_RANGE: Range<u16> = 1_000..10_000;
@@ -219,25 +219,11 @@ impl Kind {
         self.as_u16() as u64
     }
 
-    /// Check if [`Kind`] is a NIP90 job request
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    #[inline]
-    pub fn is_job_request(&self) -> bool {
-        NIP90_JOB_REQUEST_RANGE.contains(&self.as_u16())
-    }
-
-    /// Check if [`Kind`] is a NIP90 job result
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    #[inline]
-    pub fn is_job_result(&self) -> bool {
-        NIP90_JOB_RESULT_RANGE.contains(&self.as_u16())
-    }
-
     /// Check if it's regular
     ///
     /// Regular means that event is expected to be stored by relays.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub fn is_regular(&self) -> bool {
         let kind: u16 = self.as_u16();
 
@@ -250,7 +236,12 @@ impl Kind {
         REGULAR_RANGE.contains(&kind) || !self.is_replaceable()
     }
 
-    /// Check if [`Kind`] is `Replaceable`
+    /// Check if it's replaceable
+    ///
+    /// Replaceable means that, for each combination of `pubkey` and `kind`,
+    /// only the latest event MUST be stored by relays, older versions MAY be discarded.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn is_replaceable(&self) -> bool {
         matches!(self, Kind::Metadata)
@@ -259,16 +250,41 @@ impl Kind {
             || REPLACEABLE_RANGE.contains(&self.as_u16())
     }
 
-    /// Check if [`Kind`] is `Ephemeral`
+    /// Check if it's ephemeral
+    ///
+    /// Ephemeral means that event is not expected to be stored by relays.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn is_ephemeral(&self) -> bool {
         EPHEMERAL_RANGE.contains(&self.as_u16())
     }
 
-    /// Check if [`Kind`] is `Parameterized replaceable`
+    /// Check if it's parameterized replaceable
+    ///
+    /// Parametrized replaceable means that, for each combination of `pubkey`, `kind` and the `d` tag's first value,
+    /// only the latest event MUST be stored by relays, older versions MAY be discarded.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn is_parameterized_replaceable(&self) -> bool {
         PARAMETERIZED_REPLACEABLE_RANGE.contains(&self.as_u16())
+    }
+
+    /// Check if it's a NIP-90 job request
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    #[inline]
+    pub fn is_job_request(&self) -> bool {
+        NIP90_JOB_REQUEST_RANGE.contains(&self.as_u16())
+    }
+
+    /// Check if it's a NIP-90 job result
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
+    #[inline]
+    pub fn is_job_result(&self) -> bool {
+        NIP90_JOB_RESULT_RANGE.contains(&self.as_u16())
     }
 }
 
