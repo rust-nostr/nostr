@@ -152,8 +152,9 @@ The following crate feature flags are available:
 
 ### Tor embedded client 
 
-The library used under the hood for websocket require a little change ([PR here](https://github.com/snapview/tungstenite-rs/pull/431)).
-Until it's merged, you have to add the following lines in your `Cargo.toml`:
+The library used under the hood for websocket require a little fix ([PR here](https://github.com/snapview/tungstenite-rs/pull/431)) 
+to work with [`arti-client`](https://crates.io/crates/arti-client) (the pure rust tor implementation).
+Until it's merged and released, if you are interested to use the embedded tor client, you have to add the following lines in your `Cargo.toml`:
 
 ```toml
 [patch.crates-io]
