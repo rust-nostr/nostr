@@ -18,7 +18,7 @@ nip11 = ["nostr/nip11"]
 
 [dependencies]
 async-utility.workspace = true
-async-wsocket = { version = "0.8", features = ["socks"] }
+async-wsocket = { version = "0.9", features = ["socks"] }
 atomic-destructor = { workspace = true, features = ["tracing"] }
 negentropy = { workspace = true, features = ["std"] }
 negentropy-deprecated = { workspace = true, features = ["std"] }

@@ -64,6 +64,7 @@
 * pool: avoid `Relay` clone in `RelayPool::connect_relay` method ([Yuki Kishimoto])
 * pool: `RelayPool::send_event` and `RelayPool::batch_event` send only to relays with `WRITE` flag ([Yuki Kishimoto])
 * pool: `RelayPool::subscribe_with_id`, `RelayPool::get_events_of` and `RelayPool::stream_events_of` REQ events only to relays with `READ` flag ([Yuki Kishimoto])
+* pool: bump `async-wsocket` to `v0.9` ([Yuki Kishimoto])
 * signer: update NIP-04 and NIP-44 methods signature ([Yuki Kishimoto])
 * webln: bump `webln` to `v0.3` ([Yuki Kishimoto])
 * sqlite: deprecate `SQLiteDatabase` in favor of LMDB ([Yuki Kishimoto])

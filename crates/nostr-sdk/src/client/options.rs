@@ -304,14 +304,6 @@ impl Connection {
     }
 
     /// Use embedded tor client
-    ///
-    /// The library used under the hood for websocket require a little change ([PR here](https://github.com/snapview/tungstenite-rs/pull/431)).
-    /// Until it's merged, you have to add the following lines in your `Cargo.toml`:
-    ///
-    /// ```toml
-    /// [patch.crates-io]
-    /// tungstenite = { git = "https://github.com/yukibtc/tungstenite-rs", branch = "tor" }
-    /// ```
     #[inline]
     #[cfg(all(feature = "tor", not(target_os = "android"), not(target_os = "ios")))]
     pub fn embedded_tor(mut self) -> Self {

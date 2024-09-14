@@ -150,17 +150,6 @@ The following crate feature flags are available:
 | `nip57`     |   Yes   | Enable NIP-57: Zaps                                                                          |
 | `nip59`     |   Yes   | Enable NIP-59: Gift Wrap                                                                     |
 
-### Tor embedded client 
-
-The library used under the hood for websocket require a little fix ([PR here](https://github.com/snapview/tungstenite-rs/pull/431)) 
-to work with [`arti-client`](https://crates.io/crates/arti-client) (the pure rust tor implementation).
-Until it's merged and released, if you are interested to use the embedded tor client, you have to add the following lines in your `Cargo.toml`:
-
-```toml
-[patch.crates-io]
-tungstenite = { git = "https://github.com/yukibtc/tungstenite-rs", branch = "tor" }
-```
-
 ## Supported NIPs
 
 Look at <https://github.com/rust-nostr/nostr/tree/master/crates/nostr#supported-nips>
