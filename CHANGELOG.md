@@ -58,6 +58,7 @@
 * database: update `NostrDatabase` supertraits ([Yuki Kishimoto])
 * database: impl `Clone` for `MemoryDatabase` ([Yuki Kishimoto])
 * database: update `NostrDatabase::event_by_id` fingerprint ([Yuki Kishimoto])
+* relay-builder: bump `tokio-tungstenite` to `v0.24` ([Yuki Kishimoto])
 * pool: bump `async-wsocket` to `v0.8` ([Yuki Kishimoto])
 * pool: deprecate auto adjustment of retry seconds for relays ([Yuki Kishimoto])
 * pool: avoid unnecessary `Url` and `Relay` clone in `RelayPool` methods ([Yuki Kishimoto])
