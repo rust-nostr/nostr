@@ -13,7 +13,7 @@ use nostr_sdk::pool;
 use uniffi::{Enum, Object};
 
 use crate::error::Result;
-use crate::relay::{ConnectionMode, RelayLimits};
+use crate::relay::{ConnectionMode, RelayFilteringMode, RelayLimits};
 
 #[derive(Clone, Object)]
 pub struct Options {
@@ -146,6 +146,13 @@ impl Options {
     pub fn max_avg_latency(self: Arc<Self>, max: Duration) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.max_avg_latency(max);
+        builder
+    }
+
+    /// Set filtering mode (default: blacklist)
+    pub fn filtering_mode(self: Arc<Self>, mode: RelayFilteringMode) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.filtering_mode(mode.into());
         builder
     }
 }

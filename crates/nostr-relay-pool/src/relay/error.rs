@@ -134,6 +134,9 @@ pub enum Error {
     /// Event ID blacklisted
     #[error("Received event with blacklisted ID: {0}")]
     EventIdBlacklisted(EventId),
+    /// Public key whitelist
+    #[error("Received event authored by non-whitelisted public key: {0}")]
+    PublicKeyNotInWhitelist(PublicKey),
     /// Public key blacklisted
     #[error("Received event authored by blacklisted public key: {0}")]
     PublicKeyBlacklisted(PublicKey),

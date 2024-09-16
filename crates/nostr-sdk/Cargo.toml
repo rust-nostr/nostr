@@ -126,5 +126,8 @@ required-features = ["nip47"]
 name = "nip65"
 
 [[example]]
+name = "whitelist"
+
+[[example]]
 name = "zapper"
 required-features = ["nip47", "nip57"]

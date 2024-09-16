@@ -235,10 +235,10 @@ impl Options {
         self
     }
 
-    /// Set pool options
+    /// Set filtering mode (default: blacklist)
     #[inline]
-    pub fn pool(mut self, opts: RelayPoolOptions) -> Self {
-        self.pool = opts;
+    pub fn filtering_mode(mut self, mode: RelayFilteringMode) -> Self {
+        self.pool = self.pool.filtering_mode(mode);
         self
     }
 }

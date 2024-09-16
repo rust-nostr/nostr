@@ -13,11 +13,12 @@ use nostr_js::types::JsFilter;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
-pub mod blacklist;
+pub mod filtering;
 pub mod flags;
 pub mod limits;
 pub mod options;
 
+use self::filtering::JsRelayFiltering;
 use self::flags::JsAtomicRelayServiceFlags;
 use self::options::{
     JsFilterOptions, JsNegentropyOptions, JsRelayOptions, JsRelaySendOptions, JsSubscribeOptions,
@@ -125,6 +126,11 @@ impl JsRelay {
     /// Get Relay Service Flags
     pub fn flags(&self) -> JsAtomicRelayServiceFlags {
         self.inner.flags().into()
+    }
+
+    /// Get relay filtering
+    pub fn filtering(&self) -> JsRelayFiltering {
+        self.inner.filtering().into()
     }
 
     /// Check if relay is connected

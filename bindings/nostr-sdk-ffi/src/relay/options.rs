@@ -11,7 +11,7 @@ use nostr_ffi::helper::unwrap_or_clone_arc;
 use nostr_sdk::pool;
 use uniffi::{Enum, Object};
 
-use super::RelayLimits;
+use super::{RelayFilteringMode, RelayLimits};
 use crate::error::{NostrSdkError, Result};
 
 #[derive(Enum)]
@@ -165,6 +165,13 @@ impl RelayOptions {
     pub fn max_avg_latency(self: Arc<Self>, max: Option<Duration>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.max_avg_latency(max);
+        builder
+    }
+
+    /// Set filtering mode (default: blacklist)
+    pub fn filtering_mode(self: Arc<Self>, mode: RelayFilteringMode) -> Self {
+        let mut builder = unwrap_or_clone_arc(self);
+        builder.inner = builder.inner.filtering_mode(mode.into());
         builder
     }
 }

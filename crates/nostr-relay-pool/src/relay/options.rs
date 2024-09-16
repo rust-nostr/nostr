@@ -12,6 +12,7 @@ use std::time::Duration;
 
 use async_wsocket::ConnectionMode;
 
+use super::filtering::RelayFilteringMode;
 use super::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
 use crate::RelayLimits;
 
@@ -34,6 +35,7 @@ pub struct RelayOptions {
     retry_sec: Arc<AtomicU64>,
     pub(super) limits: RelayLimits,
     pub(super) max_avg_latency: Option<Duration>,
+    pub(super) filtering_mode: RelayFilteringMode,
 }
 
 impl Default for RelayOptions {
@@ -46,6 +48,7 @@ impl Default for RelayOptions {
             retry_sec: Arc::new(AtomicU64::new(DEFAULT_RETRY_SEC)),
             limits: RelayLimits::default(),
             max_avg_latency: None,
+            filtering_mode: RelayFilteringMode::default(),
         }
     }
 }
@@ -192,6 +195,13 @@ impl RelayOptions {
     #[inline]
     pub fn max_avg_latency(mut self, max: Option<Duration>) -> Self {
         self.max_avg_latency = max;
+        self
+    }
+
+    /// Relay filtering mode (default: blacklist)
+    #[inline]
+    pub fn filtering_mode(mut self, mode: RelayFilteringMode) -> Self {
+        self.filtering_mode = mode;
         self
     }
 }

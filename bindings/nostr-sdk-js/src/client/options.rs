@@ -8,6 +8,7 @@ use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::duration::JsDuration;
+use crate::relay::filtering::JsRelayFilteringMode;
 use crate::relay::limits::JsRelayLimits;
 
 #[wasm_bindgen(js_name = Options)]
@@ -113,6 +114,12 @@ impl JsOptions {
     #[wasm_bindgen(js_name = relayLimits)]
     pub fn relay_limits(self, limits: &JsRelayLimits) -> Self {
         self.inner.relay_limits(limits.deref().clone()).into()
+    }
+
+    /// Set filtering mode (default: blacklist)
+    #[wasm_bindgen(js_name = filteringMode)]
+    pub fn filtering_mode(self, mode: JsRelayFilteringMode) -> Self {
+        self.inner.filtering_mode(mode.into()).into()
     }
 }
 

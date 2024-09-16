@@ -20,9 +20,9 @@ use nostr::{
 use nostr_database::{DynNostrDatabase, MemoryDatabase};
 use tokio::sync::broadcast;
 
-mod blacklist;
 mod constants;
 mod error;
+mod filtering;
 pub mod flags;
 mod internal;
 pub mod limits;
@@ -30,8 +30,8 @@ pub mod options;
 pub mod stats;
 mod status;
 
-pub use self::blacklist::RelayBlacklist;
 pub use self::error::Error;
+pub use self::filtering::{RelayFiltering, RelayFilteringMode};
 pub use self::flags::{AtomicRelayServiceFlags, FlagCheck, RelayServiceFlags};
 use self::internal::InternalRelay;
 pub use self::limits::RelayLimits;
@@ -141,20 +141,25 @@ impl Relay {
     #[inline]
     pub fn with_opts(url: Url, opts: RelayOptions) -> Self {
         let database = Arc::new(MemoryDatabase::default());
-        let blacklist: RelayBlacklist = RelayBlacklist::empty();
-        Self::custom(url, database, blacklist, opts)
+        Self::custom(url, database, opts)
     }
 
-    /// Create new `Relay` with **custom** `options`, `blacklist` and/or `database`
+    /// Create new `Relay` with **custom** `database` and/or `options`
     #[inline]
-    pub fn custom(
+    pub fn custom(url: Url, database: Arc<DynNostrDatabase>, opts: RelayOptions) -> Self {
+        let filtering: RelayFiltering = RelayFiltering::new(opts.filtering_mode);
+        Self::internal_custom(url, database, filtering, opts)
+    }
+
+    #[inline]
+    pub(crate) fn internal_custom(
         url: Url,
         database: Arc<DynNostrDatabase>,
-        blacklist: RelayBlacklist,
+        filtering: RelayFiltering,
         opts: RelayOptions,
     ) -> Self {
         Self {
-            inner: AtomicDestructor::new(InternalRelay::new(url, database, blacklist, opts)),
+            inner: AtomicDestructor::new(InternalRelay::new(url, database, filtering, opts)),
         }
     }
 
@@ -188,10 +193,10 @@ impl Relay {
         self.inner.flags_ref()
     }
 
-    /// Get blacklist
+    /// Get relay filtering
     #[inline]
-    pub fn blacklist(&self) -> RelayBlacklist {
-        self.inner.blacklist()
+    pub fn filtering(&self) -> RelayFiltering {
+        self.inner.filtering()
     }
 
     /// Check if [`Relay`] is connected

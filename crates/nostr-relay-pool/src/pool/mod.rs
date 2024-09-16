@@ -26,7 +26,7 @@ pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
 use crate::relay::flags::FlagCheck;
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
-use crate::relay::{Relay, RelayBlacklist, RelayStatus};
+use crate::relay::{Relay, RelayFiltering, RelayStatus};
 use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};
 
 /// Relay Pool Notification
@@ -125,10 +125,10 @@ impl RelayPool {
         self.inner.database()
     }
 
-    /// Get blacklist
+    /// Get relay filtering
     #[inline]
-    pub fn blacklist(&self) -> RelayBlacklist {
-        self.inner.blacklist()
+    pub fn filtering(&self) -> RelayFiltering {
+        self.inner.filtering()
     }
 
     /// Get all relays

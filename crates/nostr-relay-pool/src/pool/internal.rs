@@ -21,7 +21,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use super::options::RelayPoolOptions;
 use super::{Error, Output, RelayPoolNotification};
 use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
-use crate::relay::{FlagCheck, Reconciliation, Relay, RelayBlacklist};
+use crate::relay::{FlagCheck, Reconciliation, Relay, RelayFiltering};
 use crate::{util, RelayServiceFlags, SubscribeOptions};
 
 type Relays = HashMap<Url, Relay>;
@@ -32,7 +32,7 @@ pub struct InternalRelayPool {
     relays: Arc<RwLock<Relays>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,
-    blacklist: RelayBlacklist,
+    filtering: RelayFiltering,
     //opts: RelayPoolOptions,
 }
 
@@ -63,7 +63,7 @@ impl InternalRelayPool {
             relays: Arc::new(RwLock::new(HashMap::new())),
             notification_sender,
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
-            blacklist: RelayBlacklist::empty(),
+            filtering: RelayFiltering::new(opts.filtering_mode),
             //opts,
         }
     }
@@ -93,8 +93,8 @@ impl InternalRelayPool {
         self.database.clone()
     }
 
-    pub fn blacklist(&self) -> RelayBlacklist {
-        self.blacklist.clone()
+    pub fn filtering(&self) -> RelayFiltering {
+        self.filtering.clone()
     }
 
     pub async fn all_relays(&self) -> HashMap<Url, Relay> {
@@ -227,7 +227,8 @@ impl InternalRelayPool {
         }
 
         // Compose new relay
-        let relay = Relay::custom(url, self.database.clone(), self.blacklist.clone(), opts);
+        let relay =
+            Relay::internal_custom(url, self.database.clone(), self.filtering.clone(), opts);
 
         // Set notification sender
         relay

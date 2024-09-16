@@ -271,10 +271,10 @@ impl Client {
         self.pool.database()
     }
 
-    /// Get blacklist
+    /// Get filtering
     #[inline]
-    pub fn blacklist(&self) -> RelayBlacklist {
-        self.pool.blacklist()
+    pub fn filtering(&self) -> RelayFiltering {
+        self.pool.filtering()
     }
 
     /// Mute [EventId]s
@@ -282,59 +282,47 @@ impl Client {
     /// Add [EventId]s to blacklist
     ///
     /// <div class="warning">Mute list event is not currently created/updated!</div>
-    pub async fn mute_ids<I>(&self, ids: I)
+    #[deprecated(
+        since = "0.35.0",
+        note = "Check `RelayFiltering` instead. Use `client.filtering()` to get filtering list."
+    )]
+    pub async fn mute_ids<I>(&self, _ids: I)
     where
         I: IntoIterator<Item = EventId>,
     {
-        let blacklist: RelayBlacklist = self.blacklist();
-        blacklist.add_ids(ids).await;
-
-        // TODO: create/update mute list event?
     }
 
     /// Unmute [EventId]s
-    ///
-    /// Remove [EventId]s from blacklist
-    ///
-    /// <div class="warning">Mute list event is not currently created/updated!</div>
-    pub async fn unmute_ids<'a, I>(&self, ids: I)
+    #[deprecated(
+        since = "0.35.0",
+        note = "Check `RelayFiltering` instead. Use `client.filtering()` to get filtering list."
+    )]
+    pub async fn unmute_ids<'a, I>(&self, _ids: I)
     where
         I: IntoIterator<Item = &'a EventId>,
     {
-        let blacklist: RelayBlacklist = self.blacklist();
-        blacklist.remove_ids(ids).await;
-
-        // TODO: update mute list event?
     }
 
     /// Mute [PublicKey]s
-    ///
-    /// Add [PublicKey]s to blacklist
-    ///
-    /// <div class="warning">Mute list event is not currently created/updated!</div>
-    pub async fn mute_public_keys<I>(&self, public_keys: I)
+    #[deprecated(
+        since = "0.35.0",
+        note = "Check `RelayFiltering` instead. Use `client.filtering()` to get filtering list."
+    )]
+    pub async fn mute_public_keys<I>(&self, _public_keys: I)
     where
         I: IntoIterator<Item = PublicKey>,
     {
-        let blacklist: RelayBlacklist = self.blacklist();
-        blacklist.add_public_keys(public_keys).await;
-
-        // TODO: create/update mute list event?
     }
 
     /// Unmute [PublicKey]s
-    ///
-    /// Remove [PublicKey]s from blacklist
-    ///
-    /// <div class="warning">Mute list event is not currently created/updated!</div>
-    pub async fn unmute_public_keys<'a, I>(&self, public_keys: I)
+    #[deprecated(
+        since = "0.35.0",
+        note = "Check `RelayFiltering` instead. Use `client.filtering()` to get filtering list."
+    )]
+    pub async fn unmute_public_keys<'a, I>(&self, _public_keys: I)
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
-        let blacklist: RelayBlacklist = self.blacklist();
-        blacklist.remove_public_keys(public_keys).await;
-
-        // TODO: update mute list event?
     }
 
     /// Completely shutdown client

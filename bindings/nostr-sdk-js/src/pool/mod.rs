@@ -18,7 +18,7 @@ pub mod result;
 use self::result::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
 use crate::database::JsNostrDatabase;
 use crate::duration::JsDuration;
-use crate::relay::blacklist::JsRelayBlacklist;
+use crate::relay::filtering::JsRelayFiltering;
 use crate::relay::options::{
     JsNegentropyOptions, JsRelayOptions, JsRelaySendOptions, JsSubscribeOptions,
 };
@@ -66,10 +66,9 @@ impl JsRelayPool {
         self.inner.database().into()
     }
 
-    /// Get blacklist
-    #[wasm_bindgen(getter)]
-    pub fn blacklist(&self) -> JsRelayBlacklist {
-        self.inner.blacklist().into()
+    /// Get relay filtering
+    pub fn filtering(&self) -> JsRelayFiltering {
+        self.inner.filtering().into()
     }
 
     /// Get relays with `READ` or `WRITE` flags

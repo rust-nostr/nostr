@@ -12,13 +12,13 @@ use nostr_sdk::database::DynNostrDatabase;
 use nostr_sdk::{pool, FilterOptions, SubscriptionId, Url};
 use uniffi::{Object, Record};
 
-pub mod blacklist;
+pub mod filtering;
 pub mod limits;
 pub mod options;
 pub mod stats;
 pub mod status;
 
-pub use self::blacklist::RelayBlacklist;
+pub use self::filtering::{RelayFiltering, RelayFilteringMode};
 pub use self::limits::RelayLimits;
 use self::options::NegentropyOptions;
 pub use self::options::{ConnectionMode, RelayOptions, RelaySendOptions, SubscribeOptions};
@@ -119,20 +119,14 @@ impl Relay {
         })
     }
 
-    /// Create new `Relay` with **custom** `options` and/or `database`
+    /// Create new `Relay` with **custom** `database` and/or `options`
     #[uniffi::constructor]
-    pub fn custom(
-        url: String,
-        database: &NostrDatabase,
-        blacklist: &RelayBlacklist,
-        opts: &RelayOptions,
-    ) -> Result<Self> {
+    pub fn custom(url: String, database: &NostrDatabase, opts: &RelayOptions) -> Result<Self> {
         let url: Url = Url::parse(&url)?;
         let database: Arc<DynNostrDatabase> = database.into();
-        let blacklist = blacklist.deref().clone();
         let opts = opts.deref().clone();
         Ok(Self {
-            inner: nostr_sdk::Relay::custom(url, database, blacklist, opts),
+            inner: nostr_sdk::Relay::custom(url, database, opts),
         })
     }
 
@@ -156,9 +150,9 @@ impl Relay {
         self.inner.flags()
     } */
 
-    /// Get blacklist
-    pub fn blacklist(&self) -> RelayBlacklist {
-        self.inner.blacklist().into()
+    /// Get relay filtering
+    pub fn filtering(&self) -> RelayFiltering {
+        self.inner.filtering().into()
     }
 
     /// Check if `Relay` is connected

@@ -19,7 +19,7 @@ use crate::error::Result;
 use crate::negentropy::NegentropyItem;
 use crate::pool::result::ReconciliationOutput;
 use crate::relay::options::{FilterOptions, NegentropyOptions};
-use crate::relay::{RelayBlacklist, RelayOptions, RelaySendOptions, SubscribeOptions};
+use crate::relay::{RelayFiltering, RelayOptions, RelaySendOptions, SubscribeOptions};
 use crate::{HandleNotification, NostrDatabase, Relay};
 
 #[derive(Object)]
@@ -62,9 +62,9 @@ impl RelayPool {
         Arc::new(self.inner.database().into())
     }
 
-    /// Get blacklist
-    pub fn blacklist(&self) -> RelayBlacklist {
-        self.inner.blacklist().into()
+    /// Get relay filtering
+    pub fn filtering(&self) -> RelayFiltering {
+        self.inner.filtering().into()
     }
 
     /// Get relays with `READ` or `WRITE` flags

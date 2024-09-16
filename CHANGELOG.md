@@ -102,6 +102,7 @@
 * pool: add `RelayPool::disconnect_relay` method ([Yuki Kishimoto])
 * pool: add `RelayPool::relays_with_flag` and `RelayPool::all_relays` ([Yuki Kishimoto])
 * pool: add support to negentropy v1 ([Yuki Kishimoto])
+* pool: add whitelist support
 * sdk: add `Client::add_discovery_relay` ([Yuki Kishimoto])
 * sdk: add `Client::add_read_relay` and `Client::add_write_relay` ([Yuki Kishimoto])
 * sdk: add `Client::stream_events_targeted` ([Yuki Kishimoto])

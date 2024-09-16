@@ -17,7 +17,8 @@ async def main():
     other_public_key = PublicKey.parse("npub1xtscya34g58tk0z605fvr788k263gsu6cy9x0mhnm87echrgufzsevkk5s")
 
     # Mute public key
-    await client.mute_public_keys([muted_public_key])
+    filtering = client.filtering()
+    await filtering.add_public_keys([muted_public_key])
 
     # Get events
     f = Filter().authors([muted_public_key, other_public_key]).kind(Kind(0))

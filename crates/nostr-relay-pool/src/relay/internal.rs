@@ -29,8 +29,8 @@ use nostr_database::{DatabaseEventStatus, DynNostrDatabase};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, watch, Mutex, MutexGuard, RwLock};
 
-use super::blacklist::RelayBlacklist;
 use super::constants::{MIN_ATTEMPTS, MIN_UPTIME, PING_INTERVAL, WEBSOCKET_TX_TIMEOUT};
+use super::filtering::RelayFiltering;
 use super::flags::AtomicRelayServiceFlags;
 use super::options::{
     FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions, SubscribeAutoCloseOptions,
@@ -160,7 +160,7 @@ pub(crate) struct InternalRelay {
     document: Arc<RwLock<RelayInformationDocument>>,
     opts: RelayOptions,
     stats: RelayConnectionStats,
-    blacklist: RelayBlacklist,
+    filtering: RelayFiltering,
     database: Arc<DynNostrDatabase>,
     channels: RelayChannels,
     scheduled_for_termination: Arc<AtomicBool>,
@@ -188,7 +188,7 @@ impl InternalRelay {
     pub fn new(
         url: Url,
         database: Arc<DynNostrDatabase>,
-        blacklist: RelayBlacklist,
+        filtering: RelayFiltering,
         opts: RelayOptions,
     ) -> Self {
         let (relay_notification_sender, ..) = broadcast::channel::<RelayNotification>(2048);
@@ -200,7 +200,7 @@ impl InternalRelay {
             document: Arc::new(RwLock::new(RelayInformationDocument::new())),
             opts,
             stats: RelayConnectionStats::new(),
-            blacklist,
+            filtering,
             database,
             channels: RelayChannels::new(),
             scheduled_for_termination: Arc::new(AtomicBool::new(false)),
@@ -260,8 +260,8 @@ impl InternalRelay {
     }
 
     #[inline]
-    pub fn blacklist(&self) -> RelayBlacklist {
-        self.blacklist.clone()
+    pub fn filtering(&self) -> RelayFiltering {
+        self.filtering.clone()
     }
 
     #[inline]
@@ -929,15 +929,8 @@ impl InternalRelay {
                 // Deserialize partial event (id, pubkey and sig)
                 let partial_event: PartialEvent = PartialEvent::from_raw(&event)?;
 
-                // Check blacklist (ID)
-                if self.blacklist.has_id(&partial_event.id).await {
-                    return Err(Error::EventIdBlacklisted(partial_event.id));
-                }
-
-                // Check blacklist (author public key)
-                if self.blacklist.has_public_key(&partial_event.pubkey).await {
-                    return Err(Error::PublicKeyBlacklisted(partial_event.pubkey));
-                }
+                // Check filtering
+                self.filtering.check_partial_event(&partial_event).await?;
 
                 // Check min POW
                 let difficulty: u8 = self.opts.get_pow_difficulty();
