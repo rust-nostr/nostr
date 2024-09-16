@@ -116,6 +116,7 @@
 * js(nostr): expose `getNip05Profile` function ([Yuki Kishimoto])
 * js(nostr): expose missing methods to `JsCoordinate` ([Yuki Kishimoto])
 * js(sdk): expose `RelayPool::relays` ([Yuki Kishimoto])
+* cli: add `serve` command ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])
 
 ### Fixed

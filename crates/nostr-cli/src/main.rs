@@ -7,7 +7,7 @@ use std::io::{BufRead, BufReader};
 use std::time::Duration;
 
 use clap::Parser;
-use cli::DatabaseCommand;
+use nostr_relay_builder::prelude::*;
 use nostr_sdk::prelude::*;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
@@ -16,7 +16,7 @@ use tokio::time::Instant;
 mod cli;
 mod util;
 
-use self::cli::{io, parser, Cli, CliCommand, Command};
+use self::cli::{io, parser, Cli, CliCommand, Command, DatabaseCommand};
 
 #[tokio::main]
 async fn main() {
@@ -74,6 +74,15 @@ async fn run() -> Result<()> {
             }
 
             Ok(())
+        }
+        CliCommand::Serve => {
+            let mock = MockRelay::run().await?;
+
+            println!("Relay running at {}", mock.url());
+
+            loop {
+                tokio::time::sleep(Duration::from_secs(60)).await
+            }
         }
         CliCommand::ServeSigner => {
             // Ask secret key

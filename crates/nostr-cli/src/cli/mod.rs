@@ -27,6 +27,8 @@ pub enum CliCommand {
         // tor: bool,
         // proxy: Option<SocketAddr>,
     },
+    /// Serve a local relay for test purpose
+    Serve,
     /// Serve Nostr Connect signer
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
