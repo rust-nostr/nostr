@@ -27,7 +27,6 @@
 
 ### Changed
 
-* Bump toolchain channel to `1.81.0` ([Yuki Kishimoto])
 * nostr: bump `bitcoin` to `v0.32` ([Yuki Kishimoto])
 * nostr: bump `base64` to `v0.22` ([Yuki Kishimoto])
 * nostr: deprecate `Event::from_value` ([Yuki Kishimoto])
