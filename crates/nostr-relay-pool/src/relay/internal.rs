@@ -22,7 +22,7 @@ use nostr::nips::nip11::RelayInformationDocument;
 #[cfg(not(target_arch = "wasm32"))]
 use nostr::secp256k1::rand;
 use nostr::{
-    ClientMessage, Event, EventId, Filter, JsonUtil, Keys, Kind, MissingPartialEvent, PartialEvent,
+    ClientMessage, Event, EventId, Filter, JsonUtil, Kind, MissingPartialEvent, PartialEvent,
     RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
 };
 use nostr_database::{DatabaseEventStatus, DynNostrDatabase};
@@ -2220,13 +2220,27 @@ impl InternalRelay {
     }
 
     pub async fn support_negentropy(&self) -> Result<bool, Error> {
-        let pk = Keys::generate();
-        let filter = Filter::new().author(pk.public_key());
+        // Check if NIP-77 is marked as supported in relay document
+        #[cfg(feature = "nip11")]
+        {
+            let document = self.document().await;
+            if let Some(nips) = document.supported_nips {
+                if nips.contains(&77) {
+                    return Ok(true);
+                }
+            }
+        }
+
+        // Not declared in relay document or relay document not found
+        // Execute dry-run reconciliation to check if it's supported
+        let filter: Filter = Filter::new().limit(1);
         match self
             .reconcile_with_items(
                 filter,
                 Vec::new(),
-                NegentropyOptions::new().initial_timeout(Duration::from_secs(5)),
+                NegentropyOptions::new()
+                    .initial_timeout(Duration::from_secs(5))
+                    .dry_run(),
             )
             .await
         {
