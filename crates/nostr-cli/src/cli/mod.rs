@@ -16,12 +16,13 @@ pub mod parser;
 #[clap(author, version, about, long_about)]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: CliCommand,
+    pub command: Command,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum CliCommand {
-    Open {
+pub enum Command {
+    /// Open nostr shell
+    Shell {
         #[clap(long)]
         relays: Vec<Url>,
         // tor: bool,
@@ -37,7 +38,7 @@ pub enum CliCommand {
 
 #[derive(Debug, Parser)]
 #[command(name = "")]
-pub enum Command {
+pub enum ShellCommand {
     /// Generate random keys
     Generate,
     /// Sync public key's event with specified relays (negentropy)
@@ -49,8 +50,8 @@ pub enum Command {
         #[clap(long)]
         relays: Vec<Url>,
         /// Direction
-        #[clap(short, long, value_enum, default_value_t = CliNegentropyDirection::Down)]
-        direction: CliNegentropyDirection,
+        #[clap(short, long, value_enum, default_value_t = ShellNegentropyDirection::Down)]
+        direction: ShellNegentropyDirection,
     },
     /// Query
     Query {
@@ -92,16 +93,14 @@ pub enum Command {
     #[command(arg_required_else_help = true)]
     Database {
         #[command(subcommand)]
-        command: DatabaseCommand,
+        command: ShellCommandDatabase,
     },
-    /// Developer tools
-    Dev {},
     /// Exit
     Exit,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum DatabaseCommand {
+pub enum ShellCommandDatabase {
     /// Populate database
     #[command(arg_required_else_help = true)]
     Populate {
@@ -112,11 +111,8 @@ pub enum DatabaseCommand {
     Stats,
 }
 
-#[derive(Debug, Subcommand)]
-pub enum DevCommands {}
-
 #[derive(Debug, Clone, ValueEnum)]
-pub enum CliNegentropyDirection {
+pub enum ShellNegentropyDirection {
     /// Send events to relay
     Up,
     /// Get events from relay
@@ -125,12 +121,12 @@ pub enum CliNegentropyDirection {
     Both,
 }
 
-impl From<CliNegentropyDirection> for NegentropyDirection {
-    fn from(value: CliNegentropyDirection) -> Self {
+impl From<ShellNegentropyDirection> for NegentropyDirection {
+    fn from(value: ShellNegentropyDirection) -> Self {
         match value {
-            CliNegentropyDirection::Up => Self::Up,
-            CliNegentropyDirection::Down => Self::Down,
-            CliNegentropyDirection::Both => Self::Both,
+            ShellNegentropyDirection::Up => Self::Up,
+            ShellNegentropyDirection::Down => Self::Down,
+            ShellNegentropyDirection::Both => Self::Both,
         }
     }
 }

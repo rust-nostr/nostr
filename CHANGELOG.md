@@ -78,6 +78,7 @@
 * sdk: inherit pool subscriptions only when calling `Client::add_relay` or `Client::add_read_relay` methods ([Yuki Kishimoto])
 * ffi(nostr): impl `Display` for `Coordinate` ([Yuki Kishimoto])
 * ffi(sdk): change `Connection::embedded_tor` fingerprint for `android` and `ios` targets ([Yuki Kishimoto])
+* cli: rename `open` command to `shell` ([Yuki Kishimoto])
 
 ### Added
 

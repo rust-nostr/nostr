@@ -16,7 +16,7 @@ use tokio::time::Instant;
 mod cli;
 mod util;
 
-use self::cli::{io, parser, Cli, CliCommand, Command, DatabaseCommand};
+use self::cli::{io, parser, Cli, Command, ShellCommand, ShellCommandDatabase};
 
 #[tokio::main]
 async fn main() {
@@ -29,7 +29,7 @@ async fn run() -> Result<()> {
     let args = Cli::parse();
 
     match args.command {
-        CliCommand::Open { relays } => {
+        Command::Shell { relays } => {
             let db = NostrLMDB::open("./db/nostr-lmdb")?;
             let client = Client::builder().database(db).build();
 
@@ -49,7 +49,7 @@ async fn run() -> Result<()> {
                         rl.add_history_entry(line.as_str())?;
                         let mut vec: Vec<String> = parser::split(&line)?;
                         vec.insert(0, String::new());
-                        match Command::try_parse_from(vec) {
+                        match ShellCommand::try_parse_from(vec) {
                             Ok(command) => {
                                 if let Err(e) = handle_command(command, &client).await {
                                     eprintln!("Error: {e}");
@@ -75,7 +75,7 @@ async fn run() -> Result<()> {
 
             Ok(())
         }
-        CliCommand::Serve => {
+        Command::Serve => {
             let mock = MockRelay::run().await?;
 
             println!("Relay running at {}", mock.url());
@@ -115,15 +115,15 @@ async fn run() -> Result<()> {
     }
 }
 
-async fn handle_command(command: Command, client: &Client) -> Result<()> {
+async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
     match command {
-        Command::Generate => {
+        ShellCommand::Generate => {
             let keys: Keys = Keys::generate();
             println!("Secret key: {}", keys.secret_key().to_bech32()?);
             println!("Public key: {}", keys.public_key().to_bech32()?);
             Ok(())
         }
-        Command::Sync {
+        ShellCommand::Sync {
             public_key,
             relays,
             direction,
@@ -179,7 +179,7 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
 
             Ok(())
         }
-        Command::Query {
+        ShellCommand::Query {
             id,
             author,
             kind,
@@ -255,8 +255,8 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
 
             Ok(())
         }
-        Command::Database { command } => match command {
-            DatabaseCommand::Populate { path } => {
+        ShellCommand::Database { command } => match command {
+            ShellCommandDatabase::Populate { path } => {
                 if path.exists() && path.is_file() {
                     // Open JSON file
                     let file = File::open(path)?;
@@ -299,13 +299,12 @@ async fn handle_command(command: Command, client: &Client) -> Result<()> {
 
                 Ok(())
             }
-            DatabaseCommand::Stats => {
+            ShellCommandDatabase::Stats => {
                 println!("TODO");
                 Ok(())
             }
         },
-        Command::Dev {} => Ok(()),
-        Command::Exit => std::process::exit(0x01),
+        ShellCommand::Exit => std::process::exit(0x01),
     }
 }
 
