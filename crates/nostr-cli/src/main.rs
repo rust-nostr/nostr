@@ -84,7 +84,7 @@ async fn run() -> Result<()> {
                 tokio::time::sleep(Duration::from_secs(60)).await
             }
         }
-        CliCommand::ServeSigner => {
+        Command::Bunker => {
             // Ask secret key
             let secret_key: SecretKey = io::get_secret_key()?;
 

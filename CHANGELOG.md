@@ -79,6 +79,7 @@
 * ffi(nostr): impl `Display` for `Coordinate` ([Yuki Kishimoto])
 * ffi(sdk): change `Connection::embedded_tor` fingerprint for `android` and `ios` targets ([Yuki Kishimoto])
 * cli: rename `open` command to `shell` ([Yuki Kishimoto])
+* cli: rename `serve-signer` command to `bunker` ([Yuki Kishimoto])
 
 ### Added
 

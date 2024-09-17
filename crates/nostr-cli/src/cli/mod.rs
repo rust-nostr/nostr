@@ -33,7 +33,7 @@ pub enum Command {
     /// Serve Nostr Connect signer
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
-    ServeSigner,
+    Bunker,
 }
 
 #[derive(Debug, Parser)]
