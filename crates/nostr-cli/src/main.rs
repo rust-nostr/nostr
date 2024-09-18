@@ -2,15 +2,17 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
 use std::time::Duration;
 
 use clap::Parser;
 use nostr_relay_builder::prelude::*;
 use nostr_sdk::prelude::*;
 use rustyline::error::ReadlineError;
-use rustyline::DefaultEditor;
+use rustyline::history::FileHistory;
+use rustyline::{Config, Editor};
 use tokio::time::Instant;
 
 mod cli;
@@ -30,7 +32,18 @@ async fn run() -> Result<()> {
 
     match args.command {
         Command::Shell { relays } => {
-            let db = NostrLMDB::open("./db/nostr-lmdb")?;
+            // Get data dir
+            let data_dir: PathBuf = dirs::data_dir().expect("Can't find data directory");
+
+            // Compose paths
+            let nostr_cli_dir: PathBuf = data_dir.join("rust-nostr/cli");
+            let db_path = nostr_cli_dir.join("data/lmdb");
+            let history_path = nostr_cli_dir.join(".shell_history");
+
+            // Create main dir if not exists
+            fs::create_dir_all(nostr_cli_dir)?;
+
+            let db = NostrLMDB::open(db_path)?;
             let client = Client::builder().database(db).build();
 
             // Add relays
@@ -40,15 +53,25 @@ async fn run() -> Result<()> {
 
             client.connect().await;
 
-            let rl = &mut DefaultEditor::new()?;
+            let config = Config::builder().max_history_size(2000)?.build();
+            let history = FileHistory::with_config(config);
+            let rl: &mut Editor<(), FileHistory> = &mut Editor::with_history(config, history)?;
+
+            // Load history
+            let _ = rl.load_history(&history_path);
 
             loop {
                 let readline = rl.readline("nostr> ");
                 match readline {
                     Ok(line) => {
+                        // Add to history
                         rl.add_history_entry(line.as_str())?;
+
+                        // Split command line
                         let mut vec: Vec<String> = parser::split(&line)?;
                         vec.insert(0, String::new());
+
+                        // Parse command
                         match ShellCommand::try_parse_from(vec) {
                             Ok(command) => {
                                 if let Err(e) = handle_command(command, &client).await {
@@ -72,6 +95,9 @@ async fn run() -> Result<()> {
                     }
                 }
             }
+
+            // Save history to file
+            rl.save_history(&history_path)?;
 
             Ok(())
         }

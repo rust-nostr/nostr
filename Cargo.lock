@@ -1567,6 +1567,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9fc0510504f03c51ada170672ac806f1f105a88aa97a5281117e1ddc3368e51a"
 
 [[package]]
+name = "fd-lock"
+version = "4.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e5768da2206272c81ef0b5e951a41862938a6070da63bcea197899942d3b947"
+dependencies = [
+ "cfg-if",
+ "rustix",
+ "windows-sys 0.52.0",
+]
+
+[[package]]
 name = "ff"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2699,6 +2710,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "dialoguer",
+ "dirs",
  "nostr-relay-builder",
  "nostr-sdk",
  "once_cell",
@@ -3894,6 +3906,7 @@ dependencies = [
  "bitflags 2.6.0",
  "cfg-if",
  "clipboard-win",
+ "fd-lock",
  "libc",
  "log",
  "memchr",

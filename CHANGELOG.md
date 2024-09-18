@@ -119,6 +119,7 @@
 * js(nostr): expose missing methods to `JsCoordinate` ([Yuki Kishimoto])
 * js(sdk): expose `RelayPool::relays` ([Yuki Kishimoto])
 * cli: add `serve` command ([Yuki Kishimoto])
+* cli: add shell history ([Yuki Kishimoto])
 * book: add some python examples ([RydalWater])
 
 ### Fixed
