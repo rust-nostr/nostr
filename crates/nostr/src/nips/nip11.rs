@@ -12,6 +12,7 @@ use alloc::vec::Vec;
 use core::fmt;
 use std::net::SocketAddr;
 
+use reqwest::Client;
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::Proxy;
 
@@ -188,9 +189,7 @@ impl RelayInformationDocument {
     /// Get Relay Information Document
     ///
     /// **Proxy is ignored for WASM targets!**
-    pub async fn get(url: Url, _proxy: Option<SocketAddr>) -> Result<Self, Error> {
-        use reqwest::Client;
-
+    pub async fn get(mut url: Url, _proxy: Option<SocketAddr>) -> Result<Self, Error> {
         #[cfg(not(target_arch = "wasm32"))]
         let client: Client = {
             let mut builder = Client::builder();
@@ -204,10 +203,8 @@ impl RelayInformationDocument {
         #[cfg(target_arch = "wasm32")]
         let client: Client = Client::new();
 
-        let url = Self::with_http_scheme(url)?;
-        let req = client
-            .get(url.to_string())
-            .header("Accept", "application/nostr+json");
+        let url: &str = Self::with_http_scheme(&mut url)?;
+        let req = client.get(url).header("Accept", "application/nostr+json");
         match req.send().await {
             Ok(response) => {
                 let json: String = response.text().await?;
@@ -222,14 +219,13 @@ impl RelayInformationDocument {
 
     /// Returns new URL with scheme substituted to HTTP(S) if WS(S) was provided,
     /// other schemes leaves untouched.
-    fn with_http_scheme(url: Url) -> Result<Url, Error> {
-        let mut url = url;
+    fn with_http_scheme(url: &mut Url) -> Result<&str, Error> {
         match url.scheme() {
             "wss" => url.set_scheme("https").map_err(|_| Error::InvalidScheme)?,
             "ws" => url.set_scheme("http").map_err(|_| Error::InvalidScheme)?,
             _ => {}
         }
-        Ok(url)
+        Ok(url.as_str())
     }
 }
 
