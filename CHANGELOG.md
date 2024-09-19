@@ -21,9 +21,14 @@
 
 -->
 
-## [Unreleased]
+## [v0.35.0]
 
 ### Summary
+
+Add gossip model support, deprecate `SQLite` database in favor of `LMDB` 
+(fork of [pocket](https://github.com/mikedilger/pocket) database),
+add support to negentropy v1 (old version is still supported!), add `MockRelay` (a local disposable relay for tests),
+allow usage of embedded tor client on mobile devices, many improvements, bugs fix and more!
 
 ### Changed
 
@@ -102,7 +107,7 @@
 * pool: add `RelayPool::disconnect_relay` method ([Yuki Kishimoto])
 * pool: add `RelayPool::relays_with_flag` and `RelayPool::all_relays` ([Yuki Kishimoto])
 * pool: add support to negentropy v1 ([Yuki Kishimoto])
-* pool: add whitelist support
+* pool: add whitelist support ([Yuki Kishimoto])
 * sdk: add `Client::add_discovery_relay` ([Yuki Kishimoto])
 * sdk: add `Client::add_read_relay` and `Client::add_write_relay` ([Yuki Kishimoto])
 * sdk: add `Client::stream_events_targeted` ([Yuki Kishimoto])
@@ -121,7 +126,7 @@
 * js(sdk): expose `RelayPool::relays` ([Yuki Kishimoto])
 * cli: add `serve` command ([Yuki Kishimoto])
 * cli: add shell history ([Yuki Kishimoto])
-* book: add some python examples ([RydalWater])
+* book: add some examples ([RydalWater])
 
 ### Fixed
 
@@ -148,7 +153,7 @@
 * pool: remove `Error::OneShotRecvError` variant ([Yuki Kishimoto])
 * zapper: remove `Err` from `NostrZapper` and unnecessary variants from `ZapperError` ([Yuki Kishimoto])
 * js(nostr): remove `Keys::vanity` ([Yuki Kishimoto])
-* cli: remove `reverse` flag from `query` command
+* cli: remove `reverse` flag from `query` command ([Yuki Kishimoto])
 
 ## [v0.34.0]
 
@@ -559,7 +564,8 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [nanikamado]: https://github.com/nanikamado
 
 <!-- Tags -->
-[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.34.0...HEAD
+[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.35.0...HEAD
+[v0.35.0]: https://github.com/rust-nostr/nostr/compare/v0.34.0...v0.35.0
 [v0.34.0]: https://github.com/rust-nostr/nostr/compare/v0.33.0...v0.34.0
 [v0.33.0]: https://github.com/rust-nostr/nostr/compare/v0.32.0...v0.33.0
 [v0.32.0]: https://github.com/rust-nostr/nostr/compare/v0.31.0...v0.32.0
