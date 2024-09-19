@@ -12,7 +12,7 @@ repositories {
 
 android {
     namespace = "rust.nostr.protocol"
-    
+
     compileSdk = 34
 
     defaultConfig {
@@ -54,7 +54,7 @@ mavenPublishing {
 
     signAllPublications()
 
-    coordinates("org.rust-nostr", "nostr", "0.34.0")
+    coordinates("org.rust-nostr", "nostr", "0.35.0")
 
     pom {
       name.set("nostr")

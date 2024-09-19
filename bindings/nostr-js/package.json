@@ -1,6 +1,6 @@
 {
   "name": "@rust-nostr/nostr",
-  "version": "0.34.0",
+  "version": "0.35.0",
   "description": "Nostr protocol implementation",
   "keywords": [
     "nostr",
