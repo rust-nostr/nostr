@@ -8,7 +8,7 @@ use std::time::Duration;
 use async_utility::thread;
 use nostr::message::relay::NegentropyErrorCode;
 use nostr::message::MessageHandleError;
-use nostr::{event, EventId, Kind, PublicKey};
+use nostr::{event, EventId, Kind};
 use nostr_database::DatabaseError;
 use thiserror::Error;
 
@@ -131,15 +131,6 @@ pub enum Error {
         /// Min. difficulty
         min: u8,
     },
-    /// Event ID blacklisted
-    #[error("Received event with blacklisted ID: {0}")]
-    EventIdBlacklisted(EventId),
-    /// Public key whitelist
-    #[error("Received event authored by non-whitelisted public key: {0}")]
-    PublicKeyNotInWhitelist(PublicKey),
-    /// Public key blacklisted
-    #[error("Received event authored by blacklisted public key: {0}")]
-    PublicKeyBlacklisted(PublicKey),
     /// Unexpected kind
     #[error("Unexpected kind: expected={expected}, found={found}")]
     UnexpectedKind {

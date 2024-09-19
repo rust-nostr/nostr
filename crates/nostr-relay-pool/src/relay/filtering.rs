@@ -11,7 +11,12 @@ use std::sync::Arc;
 use nostr::{EventId, PartialEvent, PublicKey};
 use tokio::sync::RwLock;
 
-use super::error::Error;
+pub(crate) enum CheckFiltering {
+    Allow,
+    EventIdBlacklisted(EventId),
+    PublicKeyBlacklisted(PublicKey),
+    PublicKeyNotInWhitelist(PublicKey),
+}
 
 /// Filtering mode
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -181,28 +186,25 @@ impl RelayFiltering {
         public_keys.contains(public_key)
     }
 
-    pub(crate) async fn check_partial_event(
-        &self,
-        partial_event: &PartialEvent,
-    ) -> Result<(), Error> {
+    pub(crate) async fn check_partial_event(&self, partial_event: &PartialEvent) -> CheckFiltering {
         match self.mode.load() {
             RelayFilteringMode::Whitelist => {
                 if !self.has_public_key(&partial_event.pubkey).await {
-                    return Err(Error::PublicKeyNotInWhitelist(partial_event.pubkey));
+                    return CheckFiltering::PublicKeyNotInWhitelist(partial_event.pubkey);
                 }
             }
             RelayFilteringMode::Blacklist => {
                 if self.has_id(&partial_event.id).await {
-                    return Err(Error::EventIdBlacklisted(partial_event.id));
+                    return CheckFiltering::EventIdBlacklisted(partial_event.id);
                 }
 
                 if self.has_public_key(&partial_event.pubkey).await {
-                    return Err(Error::PublicKeyBlacklisted(partial_event.pubkey));
+                    return CheckFiltering::PublicKeyBlacklisted(partial_event.pubkey);
                 }
             }
         };
 
-        Ok(())
+        CheckFiltering::Allow
     }
 
     /// Remove everything

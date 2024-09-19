@@ -30,7 +30,7 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, watch, Mutex, MutexGuard, RwLock};
 
 use super::constants::{MIN_ATTEMPTS, MIN_UPTIME, PING_INTERVAL, WEBSOCKET_TX_TIMEOUT};
-use super::filtering::RelayFiltering;
+use super::filtering::{CheckFiltering, RelayFiltering};
 use super::flags::AtomicRelayServiceFlags;
 use super::options::{
     FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions, SubscribeAutoCloseOptions,
@@ -930,7 +930,27 @@ impl InternalRelay {
                 let partial_event: PartialEvent = PartialEvent::from_raw(&event)?;
 
                 // Check filtering
-                self.filtering.check_partial_event(&partial_event).await?;
+                match self.filtering.check_partial_event(&partial_event).await {
+                    CheckFiltering::Allow => {
+                        // Nothing to do
+                    }
+                    CheckFiltering::EventIdBlacklisted(id) => {
+                        tracing::debug!("Received event with blacklisted ID: {id}");
+                        return Ok(None);
+                    }
+                    CheckFiltering::PublicKeyBlacklisted(pubkey) => {
+                        tracing::debug!(
+                            "Received event authored by blacklisted public key: {pubkey}"
+                        );
+                        return Ok(None);
+                    }
+                    CheckFiltering::PublicKeyNotInWhitelist(pubkey) => {
+                        tracing::debug!(
+                            "Received event authored by non-whitelisted public key: {pubkey}"
+                        );
+                        return Ok(None);
+                    }
+                }
 
                 // Check min POW
                 let difficulty: u8 = self.opts.get_pow_difficulty();
