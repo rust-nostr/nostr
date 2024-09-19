@@ -1,6 +1,13 @@
 name: Publish nostr-sdk to PyPI
 
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Compile without publish to PyPI"
+        type: boolean
+        default: false
+        required: true
 
 jobs:
   build-linux-x86_64:
@@ -48,7 +55,7 @@ jobs:
         python: ["3.9", "3.10", "3.11", "3.12"]
     defaults:
       run:
-        working-directory: bindings/nostr-sdk-ffi/bindings-python        
+        working-directory: bindings/nostr-sdk-ffi/bindings-python
     steps:
       - name: "Checkout"
         uses: actions/checkout@v3
@@ -66,7 +73,7 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu 
-      
+
       - name: "Generate nostr_sdk.py and binaries"
         run: bash ./scripts/generate-linux-aarch64.sh
 
@@ -182,6 +189,7 @@ jobs:
       run:
         working-directory: bindings/nostr-sdk-ffi/bindings-python
     needs: [build-linux-x86_64, build-linux-aarch64, build-macos-arm64, build-macos-x86_64, build-windows]
+    if: github.event.inputs.dry-run == 'false'
     steps:
       - name: "Checkout"
         uses: actions/checkout@v3
