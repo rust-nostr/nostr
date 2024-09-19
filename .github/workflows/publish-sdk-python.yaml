@@ -26,13 +26,14 @@ jobs:
     container:
       image: quay.io/pypa/manylinux_2_28_x86_64
       env:
-        PLAT: manylinux_2_28_x86_64
         PYBIN: "/opt/python/${{ matrix.python }}/bin"
     steps:
       - name: "Checkout"
         uses: actions/checkout@v3
 
-      - uses: actions-rs/toolchain@v1
+      # Needed because inside container
+      - name: "Setup Rust"
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
 
@@ -59,10 +60,6 @@ jobs:
     steps:
       - name: "Checkout"
         uses: actions/checkout@v3
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
 
       - name: "Setup Python"
         uses: actions/setup-python@v4
