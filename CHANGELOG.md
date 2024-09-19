@@ -145,6 +145,7 @@
 * database: remove `Order` enum ([Yuki Kishimoto])
 * database: remove `order` arg from `NostrDatabase::query` ([Yuki Kishimoto])
 * pool: remove high latency log ([Yuki Kishimoto])
+* pool: remove `Error::OneShotRecvError` variant ([Yuki Kishimoto])
 * zapper: remove `Err` from `NostrZapper` and unnecessary variants from `ZapperError` ([Yuki Kishimoto])
 * js(nostr): remove `Keys::vanity` ([Yuki Kishimoto])
 * cli: remove `reverse` flag from `query` command

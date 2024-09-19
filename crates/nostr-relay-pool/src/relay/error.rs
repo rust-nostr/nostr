@@ -77,9 +77,6 @@ pub enum Error {
     /// Batch event empty
     #[error("batch event cannot be empty")]
     BatchEventEmpty,
-    /// Impossible to receive oneshot message
-    #[error("impossible to recv msg")]
-    OneShotRecvError,
     /// Read actions disabled
     #[error("read actions are disabled for this relay")]
     ReadDisabled,

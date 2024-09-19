@@ -1085,14 +1085,8 @@ impl InternalRelay {
             // Wait for oneshot reply
             match time::timeout(Some(opts.timeout), rx).await {
                 Some(result) => match result {
-                    Ok(val) => {
-                        if val {
-                            Ok(())
-                        } else {
-                            Err(Error::MessageNotSent)
-                        }
-                    }
-                    Err(_) => Err(Error::OneShotRecvError),
+                    Ok(true) => Ok(()),
+                    Ok(false) | Err(_) => Err(Error::MessageNotSent),
                 },
                 None => Err(Error::RecvTimeout),
             }
