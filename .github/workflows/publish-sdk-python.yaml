@@ -43,7 +43,7 @@ jobs:
       - name: "Build wheel"
         run: ${PYBIN}/python setup.py bdist_wheel --plat-name manylinux_2_28_x86_64 --verbose
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: nostr_sdk-manylinux_2_28_x86_64-${{ matrix.python }}
           path: /home/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/bindings-python/dist/*.whl
@@ -77,7 +77,7 @@ jobs:
       - name: "Build wheel"
         run: python3 setup.py bdist_wheel --plat-name manylinux_2_31_aarch64 --verbose
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: nostr_sdk-manylinux_2_31_aarch64-${{ matrix.python }}
           path: /home/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/bindings-python/dist/*.whl
@@ -111,7 +111,7 @@ jobs:
         run: python3 setup.py bdist_wheel --plat-name macosx_11_0_arm64 --verbose
 
       - name: "Upload artifacts"
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: nostr_sdk-macos-arm64-${{ matrix.python }}
           path: /Users/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/bindings-python/dist/*.whl
@@ -144,7 +144,7 @@ jobs:
         # see issue #350 for more information
         run: python3 setup.py bdist_wheel --plat-name macosx_11_0_x86_64 --verbose
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: nostr_sdk-macos-x86_64-${{ matrix.python }}
           path: /Users/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/bindings-python/dist/*.whl
@@ -174,7 +174,7 @@ jobs:
         run: python setup.py bdist_wheel --verbose
 
       - name: "Upload artifacts"
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: nostr_sdk-win-${{ matrix.python }}
           path: D:\a\nostr\nostr\bindings\nostr-sdk-ffi\bindings-python\dist\*.whl
@@ -192,7 +192,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: "Download artifacts in dist/ directory"
-        uses: actions/download-artifact@v4.1.7
+        uses: actions/download-artifact@v4
         with:
           path: dist/
 
