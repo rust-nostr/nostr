@@ -21,6 +21,7 @@ use crate::RelayLimits;
 pub const DEFAULT_SEND_TIMEOUT: Duration = Duration::from_secs(20);
 pub(super) const DEFAULT_RETRY_SEC: u64 = 10;
 pub(super) const MIN_RETRY_SEC: u64 = 5;
+pub(super) const MAX_ADJ_RETRY_SEC: u64 = 60;
 pub(super) const NEGENTROPY_HIGH_WATER_UP: usize = 100;
 pub(super) const NEGENTROPY_LOW_WATER_UP: usize = 50;
 pub(super) const NEGENTROPY_BATCH_SIZE_DOWN: usize = 50;
@@ -33,6 +34,7 @@ pub struct RelayOptions {
     pow: Arc<AtomicU8>,
     reconnect: Arc<AtomicBool>,
     retry_sec: Arc<AtomicU64>,
+    adjust_retry_sec: Arc<AtomicBool>,
     pub(super) limits: RelayLimits,
     pub(super) max_avg_latency: Option<Duration>,
     pub(super) filtering_mode: RelayFilteringMode,
@@ -46,6 +48,7 @@ impl Default for RelayOptions {
             pow: Arc::new(AtomicU8::new(0)),
             reconnect: Arc::new(AtomicBool::new(true)),
             retry_sec: Arc::new(AtomicU64::new(DEFAULT_RETRY_SEC)),
+            adjust_retry_sec: Arc::new(AtomicBool::new(true)),
             limits: RelayLimits::default(),
             max_avg_latency: None,
             filtering_mode: RelayFilteringMode::default(),
@@ -174,14 +177,22 @@ impl RelayOptions {
     }
 
     /// Automatically adjust retry seconds based on success/attempts (default: true)
-    #[deprecated(since = "0.35.0")]
-    pub fn adjust_retry_sec(self, _adjust_retry_sec: bool) -> Self {
-        self
+    pub fn adjust_retry_sec(self, adjust_retry_sec: bool) -> Self {
+        Self {
+            adjust_retry_sec: Arc::new(AtomicBool::new(adjust_retry_sec)),
+            ..self
+        }
+    }
+
+    pub(crate) fn get_adjust_retry_sec(&self) -> bool {
+        self.adjust_retry_sec.load(Ordering::SeqCst)
     }
 
     /// Set adjust_retry_sec option
-    #[deprecated(since = "0.35.0")]
-    pub fn update_adjust_retry_sec(&self, _adjust_retry_sec: bool) {}
+    pub fn update_adjust_retry_sec(&self, adjust_retry_sec: bool) {
+        self.adjust_retry_sec
+            .store(adjust_retry_sec, Ordering::SeqCst);
+    }
 
     /// Set custom limits
     pub fn limits(mut self, limits: RelayLimits) -> Self {

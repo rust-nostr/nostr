@@ -4,6 +4,7 @@
 
 //! Internal Relay
 
+use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -19,8 +20,7 @@ use nostr::message::MessageHandleError;
 use nostr::nips::nip01::Coordinate;
 #[cfg(feature = "nip11")]
 use nostr::nips::nip11::RelayInformationDocument;
-#[cfg(not(target_arch = "wasm32"))]
-use nostr::secp256k1::rand;
+use nostr::secp256k1::rand::{self, Rng};
 use nostr::{
     ClientMessage, Event, EventId, Filter, JsonUtil, Kind, MissingPartialEvent, PartialEvent,
     RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
@@ -34,8 +34,8 @@ use super::filtering::{CheckFiltering, RelayFiltering};
 use super::flags::AtomicRelayServiceFlags;
 use super::options::{
     FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions, SubscribeAutoCloseOptions,
-    SubscribeOptions, NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_HIGH_WATER_UP,
-    NEGENTROPY_LOW_WATER_UP,
+    SubscribeOptions, MAX_ADJ_RETRY_SEC, MIN_RETRY_SEC, NEGENTROPY_BATCH_SIZE_DOWN,
+    NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP,
 };
 use super::stats::RelayConnectionStats;
 use super::{Error, Reconciliation, RelayNotification, RelayStatus};
@@ -513,7 +513,8 @@ impl InternalRelay {
                         };
 
                         // Sleep
-                        let retry_sec: u64 = relay.opts.get_retry_sec();
+                        let retry_sec: u64 = relay.calculate_retry_sec();
+                        tracing::trace!("{} retry time set to {retry_sec} secs", relay.url);
                         thread::sleep(Duration::from_secs(retry_sec)).await;
                     }
                 });
@@ -524,6 +525,25 @@ impl InternalRelay {
                 let _ = thread::spawn(async move { relay.try_connect(connection_timeout).await });
             }
         }
+    }
+
+    /// Depending on attempts and success, use default or incremental retry time
+    fn calculate_retry_sec(&self) -> u64 {
+        if self.opts.get_adjust_retry_sec() {
+            // diff = attempts - success
+            let diff: u64 = self.stats.attempts().saturating_sub(self.stats.success()) as u64;
+
+            // Use incremental retry time if diff >= 3
+            if diff >= 3 {
+                let retry_interval: i64 =
+                    cmp::min(MIN_RETRY_SEC * (1 + diff), MAX_ADJ_RETRY_SEC) as i64;
+                let jitter: i64 = rand::thread_rng().gen_range(-1..=1);
+                return retry_interval.saturating_add(jitter) as u64;
+            }
+        }
+
+        // Use default retry time
+        self.opts.get_retry_sec()
     }
 
     #[cfg(feature = "nip11")]

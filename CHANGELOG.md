@@ -59,7 +59,6 @@
 * database: update `NostrDatabase::event_by_id` fingerprint ([Yuki Kishimoto])
 * relay-builder: bump `tokio-tungstenite` to `v0.24` ([Yuki Kishimoto])
 * pool: bump `async-wsocket` to `v0.8` ([Yuki Kishimoto])
-* pool: deprecate auto adjustment of retry seconds for relays ([Yuki Kishimoto])
 * pool: avoid unnecessary `Url` and `Relay` clone in `RelayPool` methods ([Yuki Kishimoto])
 * pool: avoid `Relay` clone in `RelayPool::connect_relay` method ([Yuki Kishimoto])
 * pool: `RelayPool::send_event` and `RelayPool::batch_event` send only to relays with `WRITE` flag ([Yuki Kishimoto])
