@@ -615,7 +615,7 @@ impl InternalRelay {
                         let nonce: u64 = *rx_ping.borrow_and_update();
 
                         // Compose ping message
-                        let msg = WsMessage::Ping(nonce.to_string().as_bytes().to_vec());
+                        let msg = WsMessage::Ping(nonce.to_be_bytes().to_vec());
 
                         // Send WebSocket message
                         match send_ws_msgs(&mut ws_tx, [msg]).await {
@@ -670,25 +670,36 @@ impl InternalRelay {
                     #[cfg(not(target_arch = "wasm32"))]
                     WsMessage::Pong(bytes) => {
                         if self.opts.flags.has_ping() {
-                            match String::from_utf8(bytes) {
-                                Ok(nonce) => match nonce.parse::<u64>() {
-                                    Ok(nonce) => {
-                                        if self.stats.ping.last_nonce() == nonce {
-                                            tracing::debug!(
-                                                "Pong from '{}' match nonce: {}",
-                                                self.url,
-                                                nonce
-                                            );
-                                            self.stats.ping.set_replied(true);
-                                            let sent_at = self.stats.ping.sent_at().await;
-                                            self.stats.save_latency(sent_at.elapsed()).await;
-                                        } else {
-                                            tracing::error!("Pong nonce not match: received={nonce}, expected={}", self.stats.ping.last_nonce());
-                                        }
+                            match bytes.try_into() {
+                                Ok(nonce) => {
+                                    // Nonce from big-endian bytes
+                                    let nonce: u64 = u64::from_be_bytes(nonce);
+
+                                    // Get last nonce
+                                    let last_nonce: u64 = self.stats.ping.last_nonce();
+
+                                    // Check if last nonce not match the current one
+                                    if last_nonce != nonce {
+                                        tracing::error!("Pong nonce not match: received={nonce}, expected={last_nonce}");
+                                        break;
                                     }
-                                    Err(e) => tracing::error!("{e}"),
-                                },
-                                Err(e) => tracing::error!("{e}"),
+
+                                    tracing::debug!(
+                                        "Pong from '{}' match nonce: {nonce}",
+                                        self.url
+                                    );
+
+                                    // Set ping as replied
+                                    self.stats.ping.set_replied(true);
+
+                                    // Save latency
+                                    let sent_at = self.stats.ping.sent_at().await;
+                                    self.stats.save_latency(sent_at.elapsed()).await;
+                                }
+                                Err(e) => {
+                                    tracing::error!("Can't parse pong nonce: {e:?}");
+                                    break;
+                                }
                             }
                         }
                     }
