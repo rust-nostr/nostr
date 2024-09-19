@@ -31,7 +31,8 @@ fun builder() {
     // Compose POW event
     val powEvent =
     EventBuilder.textNote("Another reply with POW", listOf(Tag.event(textNoteEvent.id())))
-        .toPowEvent(keys, 20u);
+        .pow(20u)
+        .toEvent(keys);
     println(powEvent.asJson())
 }
 // ANCHOR_END: builder

@@ -13,4 +13,4 @@ def event_builder():
     reply_event = EventBuilder.text_note("Reply to hello", [Tag.event(textnote_event.id())]).to_event(keys)
 
     # Compose POW event
-    pow_event = EventBuilder.text_note("Another reply with POW", [Tag.event(textnote_event.id())]).to_pow_event(keys, 20)
+    pow_event = EventBuilder.text_note("Another reply with POW", [Tag.event(textnote_event.id())]).pow(20).to_event(keys)

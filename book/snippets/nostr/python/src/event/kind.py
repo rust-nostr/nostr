@@ -34,7 +34,7 @@ def kind():
     event  = EventBuilder.metadata(Metadata()).to_event(keys)
     print(f"     - Kind metadata(): {event.kind().as_u16()} - {event.kind().as_enum()}")
     event  = EventBuilder.contact_list([]).to_event(keys)
-    print(f"     - Kind contact_list(): {event.kind().as_u64()} - {event.kind().as_enum()}")
+    print(f"     - Kind contact_list(): {event.kind().as_u16()} - {event.kind().as_enum()}")
     # ANCHOR_END: kind-methods
 
     print()

@@ -1,5 +1,3 @@
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
-
 use nostr_sdk::prelude::*;
 
 pub async fn quickstart() -> Result<()> {
@@ -7,21 +5,9 @@ pub async fn quickstart() -> Result<()> {
     let my_keys: Keys = Keys::generate();
 
     let client = Client::new(&my_keys);
-    let proxy = Some(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)));
 
     client.add_relay("wss://relay.damus.io").await?;
-    client
-        .add_relay_with_opts(
-            "wss://relay.nostr.info",
-            RelayOptions::new().proxy(proxy).flags(RelayServiceFlags::default().remove(RelayServiceFlags::WRITE)),
-        )
-        .await?;
-    client
-        .add_relay_with_opts(
-            "ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion",
-            RelayOptions::new().proxy(proxy),
-        )
-        .await?;
+    client.add_read_relay("wss://relay.nostr.info").await?;
 
     client.connect().await;
     // ANCHOR_END: create-client
@@ -42,14 +28,19 @@ pub async fn quickstart() -> Result<()> {
 
     // ANCHOR: create-filter
     let filter = Filter::new().kind(Kind::Metadata);
-    let sub_id: SubscriptionId = client.subscribe(vec![filter], None).await;
+    let sub_id = client.subscribe(vec![filter], None).await?;
     // ANCHOR_END: create-filter
 
     // ANCHOR: notifications
     let mut notifications = client.notifications();
     while let Ok(notification) = notifications.recv().await {
-        if let RelayPoolNotification::Event { subscription_id, event, .. } = notification {
-            if subscription_id == sub_id && event.kind == Kind::Metadata {
+        if let RelayPoolNotification::Event {
+            subscription_id,
+            event,
+            ..
+        } = notification
+        {
+            if subscription_id == *sub_id && event.kind == Kind::Metadata {
                 // handle the event
                 break; // Exit
             }

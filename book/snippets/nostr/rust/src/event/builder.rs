@@ -16,7 +16,8 @@ pub fn event() -> Result<()> {
     // Compose POW event
     let pow_event =
         EventBuilder::text_note("Another reply with POW", [Tag::event(textnote_event.id)])
-            .to_pow_event(&keys, 20)?;
+            .pow(20)
+            .to_event(&keys)?;
 
     Ok(())
 }
