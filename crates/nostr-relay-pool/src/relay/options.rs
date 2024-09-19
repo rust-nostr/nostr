@@ -4,8 +4,6 @@
 
 //! Relay options
 
-#[cfg(not(target_arch = "wasm32"))]
-use std::net::SocketAddr;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -60,17 +58,6 @@ impl RelayOptions {
     /// New [`RelayOptions`]
     pub fn new() -> Self {
         Self::default()
-    }
-
-    /// Set proxy
-    #[deprecated(since = "0.33.0", note = "Use `connection_mode` instead")]
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn proxy(mut self, proxy: Option<SocketAddr>) -> Self {
-        match proxy {
-            Some(proxy) => self.connection_mode = ConnectionMode::Proxy(proxy),
-            None => self.connection_mode = ConnectionMode::Direct,
-        };
-        self
     }
 
     /// Set connection mode

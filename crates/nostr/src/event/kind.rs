@@ -207,18 +207,6 @@ impl Kind {
         (*self).into()
     }
 
-    /// Get as 32-bit unsigned integer
-    #[deprecated(since = "0.35.0")]
-    pub fn as_u32(&self) -> u32 {
-        self.as_u16() as u32
-    }
-
-    /// Get as 64-bit unsigned integer
-    #[deprecated(since = "0.35.0")]
-    pub fn as_u64(&self) -> u64 {
-        self.as_u16() as u64
-    }
-
     /// Check if it's regular
     ///
     /// Regular means that event is expected to be stored by relays.

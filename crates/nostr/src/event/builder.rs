@@ -305,49 +305,6 @@ impl EventBuilder {
         }
     }
 
-    /// Build POW [`Event`]
-    #[deprecated(
-        since = "0.35.0",
-        note = "Use `EventBuilder::pow` to set a difficulty and then call `EventBuilder::to_event_with_ctx`."
-    )]
-    pub fn to_pow_event_with_ctx<C, R, T>(
-        self,
-        secp: &Secp256k1<C>,
-        rng: &mut R,
-        supplier: &T,
-        keys: &Keys,
-        difficulty: u8,
-    ) -> Result<Event, Error>
-    where
-        C: Signing + Verification,
-        R: Rng + CryptoRng,
-        T: TimeSupplier,
-    {
-        let pubkey: PublicKey = keys.public_key();
-        #[allow(deprecated)]
-        Ok(self
-            .to_unsigned_pow_event_with_supplier(supplier, pubkey, difficulty)
-            .sign_with_ctx(secp, rng, keys)?)
-    }
-
-    /// Build unsigned POW [`Event`]
-    #[deprecated(
-        since = "0.35.0",
-        note = "Use `EventBuilder::pow` to set a difficulty and then call `EventBuilder::to_unsigned_event_with_supplier`."
-    )]
-    pub fn to_unsigned_pow_event_with_supplier<T>(
-        self,
-        supplier: &T,
-        pubkey: PublicKey,
-        difficulty: u8,
-    ) -> UnsignedEvent
-    where
-        T: TimeSupplier,
-    {
-        self.pow(difficulty)
-            .to_unsigned_event_with_supplier(supplier, pubkey)
-    }
-
     /// Build event
     #[inline]
     #[cfg(feature = "std")]
@@ -360,28 +317,6 @@ impl EventBuilder {
     #[cfg(feature = "std")]
     pub fn to_unsigned_event(self, pubkey: PublicKey) -> UnsignedEvent {
         self.to_unsigned_event_with_supplier(&Instant::now(), pubkey)
-    }
-
-    /// Build POW [`Event`]
-    #[cfg(feature = "std")]
-    #[deprecated(
-        since = "0.35.0",
-        note = "Use `EventBuilder::pow` to set a difficulty and then call `EventBuilder::to_event`."
-    )]
-    pub fn to_pow_event(self, keys: &Keys, difficulty: u8) -> Result<Event, Error> {
-        #[allow(deprecated)]
-        self.to_pow_event_with_ctx(&SECP256K1, &mut OsRng, &Instant::now(), keys, difficulty)
-    }
-
-    /// Build unsigned POW [`Event`]
-    #[cfg(feature = "std")]
-    #[deprecated(
-        since = "0.35.0",
-        note = "Use `EventBuilder::pow` to set a difficulty and then call `EventBuilder::to_unsigned_event`."
-    )]
-    pub fn to_unsigned_pow_event(self, pubkey: PublicKey, difficulty: u8) -> UnsignedEvent {
-        #[allow(deprecated)]
-        self.to_unsigned_pow_event_with_supplier(&Instant::now(), pubkey, difficulty)
     }
 
     /// Profile metadata

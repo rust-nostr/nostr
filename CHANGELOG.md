@@ -35,6 +35,7 @@
 
 ### Removed
 
+* Remove deprecated ([Yuki Kishimoto])
 * webln: remove `nostr-webln` crate ([Yuki Kishimoto])
 
 ## [v0.35.0]

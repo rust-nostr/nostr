@@ -277,54 +277,6 @@ impl Client {
         self.pool.filtering()
     }
 
-    /// Mute [EventId]s
-    ///
-    /// Add [EventId]s to blacklist
-    ///
-    /// <div class="warning">Mute list event is not currently created/updated!</div>
-    #[deprecated(
-        since = "0.35.0",
-        note = "Check `RelayFiltering` instead. Use `client.filtering()` to get filtering list."
-    )]
-    pub async fn mute_ids<I>(&self, _ids: I)
-    where
-        I: IntoIterator<Item = EventId>,
-    {
-    }
-
-    /// Unmute [EventId]s
-    #[deprecated(
-        since = "0.35.0",
-        note = "Check `RelayFiltering` instead. Use `client.filtering()` to get filtering list."
-    )]
-    pub async fn unmute_ids<'a, I>(&self, _ids: I)
-    where
-        I: IntoIterator<Item = &'a EventId>,
-    {
-    }
-
-    /// Mute [PublicKey]s
-    #[deprecated(
-        since = "0.35.0",
-        note = "Check `RelayFiltering` instead. Use `client.filtering()` to get filtering list."
-    )]
-    pub async fn mute_public_keys<I>(&self, _public_keys: I)
-    where
-        I: IntoIterator<Item = PublicKey>,
-    {
-    }
-
-    /// Unmute [PublicKey]s
-    #[deprecated(
-        since = "0.35.0",
-        note = "Check `RelayFiltering` instead. Use `client.filtering()` to get filtering list."
-    )]
-    pub async fn unmute_public_keys<'a, I>(&self, _public_keys: I)
-    where
-        I: IntoIterator<Item = &'a PublicKey>,
-    {
-    }
-
     /// Completely shutdown client
     #[inline]
     pub async fn shutdown(&self) -> Result<(), Error> {
@@ -560,30 +512,6 @@ impl Client {
             RelayServiceFlags::PING | RelayServiceFlags::OUTBOX,
         )
         .await
-    }
-
-    /// Add new relay with custom [`RelayOptions`]
-    #[deprecated(since = "0.35.0", note = "Use `RelayPool::add_relay` instead")]
-    pub async fn add_relay_with_opts<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
-    where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
-    {
-        Ok(self.pool.add_relay(url, opts).await?)
-    }
-
-    /// Add multiple relays
-    #[deprecated(since = "0.35.0", note = "Use one of the add relay methods")]
-    pub async fn add_relays<I, U>(&self, relays: I) -> Result<(), Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
-    {
-        for url in relays.into_iter() {
-            self.add_relay(url).await?;
-        }
-        Ok(())
     }
 
     /// Disconnect and remove relay
@@ -979,21 +907,6 @@ impl Client {
         }
     }
 
-    /// Get events of filters with [`FilterOptions`]
-    ///
-    /// If timeout is set to `None`, the default from [`Options`] will be used.
-    #[inline]
-    #[deprecated(since = "0.34.0", note = "Use `client.pool().get_events_of(..)`.")]
-    pub async fn get_events_of_with_opts(
-        &self,
-        filters: Vec<Filter>,
-        timeout: Option<Duration>,
-        opts: FilterOptions,
-    ) -> Result<Vec<Event>, Error> {
-        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
-        Ok(self.pool.get_events_of(filters, timeout, opts).await?)
-    }
-
     /// Get events of filters from specific relays
     #[inline]
     pub async fn get_events_from<I, U>(
@@ -1075,25 +988,6 @@ impl Client {
             .pool
             .stream_events_targeted(source, timeout, FilterOptions::ExitOnEOSE)
             .await?)
-    }
-
-    /// Send client message to **all relays**
-    #[deprecated(since = "0.35.0", note = "Use `send_msg_to` instead")]
-    pub async fn send_msg(&self, msg: ClientMessage) -> Result<Output<()>, Error> {
-        let opts: RelaySendOptions = self.opts.get_wait_for_send();
-        #[allow(deprecated)]
-        Ok(self.pool.send_msg(msg, opts).await?)
-    }
-
-    /// Batch send client messages to **all relays**
-    #[deprecated(since = "0.35.0", note = "Use `batch_msg_to` instead")]
-    pub async fn batch_msg(
-        &self,
-        msgs: Vec<ClientMessage>,
-        opts: RelaySendOptions,
-    ) -> Result<Output<()>, Error> {
-        #[allow(deprecated)]
-        Ok(self.pool.batch_msg(msgs, opts).await?)
     }
 
     /// Send client message to a **specific relays**
@@ -1287,14 +1181,6 @@ impl Client {
             Some(event) => Ok(Metadata::try_from(event)?),
             None => Err(Error::MetadataNotFound),
         }
-    }
-
-    /// Replaced by `fetch_metadata`
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[deprecated(since = "0.35.0", note = "Use `Client::fetch_metadata` instead.")]
-    pub async fn metadata(&self, public_key: PublicKey) -> Result<Metadata, Error> {
-        self.fetch_metadata(public_key, None).await
     }
 
     /// Update metadata

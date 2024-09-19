@@ -79,12 +79,6 @@ impl EventId {
         Self::from_byte_array(hash.to_byte_array())
     }
 
-    /// Construct event ID
-    #[deprecated(since = "0.35.0", note = "Use `from_byte_array` instead")]
-    pub fn owned(bytes: [u8; Self::LEN]) -> Self {
-        Self::from_byte_array(bytes)
-    }
-
     /// Construct event ID from 32-byte array
     #[inline]
     pub const fn from_byte_array(bytes: [u8; Self::LEN]) -> Self {

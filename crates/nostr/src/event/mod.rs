@@ -200,50 +200,6 @@ impl Event {
         }
     }
 
-    /// Deserialize [`Event`] from [`Value`]
-    ///
-    /// **This method NOT verify the signature!**
-    #[deprecated(since = "0.35.0")]
-    pub fn from_value(value: Value) -> Result<Self, Error> {
-        Ok(serde_json::from_value(value)?)
-    }
-
-    /// Get event ID
-    #[deprecated(since = "0.35.0")]
-    pub fn id(&self) -> EventId {
-        self.id
-    }
-
-    /// Get event author (`pubkey` field)
-    #[deprecated(since = "0.35.0")]
-    pub fn author(&self) -> PublicKey {
-        self.pubkey
-    }
-
-    /// Get [Timestamp] of when the event was created
-    #[deprecated(since = "0.35.0")]
-    pub fn created_at(&self) -> Timestamp {
-        self.created_at
-    }
-
-    /// Get event [Kind]
-    #[deprecated(since = "0.35.0")]
-    pub fn kind(&self) -> Kind {
-        self.kind
-    }
-
-    /// Get tags ownership
-    #[deprecated(since = "0.35.0")]
-    pub fn tags(&self) -> &[Tag] {
-        &self.tags
-    }
-
-    /// Iterate and consume event tags
-    #[deprecated(since = "0.35.0")]
-    pub fn into_iter_tags(self) -> impl Iterator<Item = Tag> {
-        self.tags.into_iter()
-    }
-
     /// Get content of **first** tag that match [TagKind].
     #[inline]
     pub fn get_tag_content(&self, kind: TagKind) -> Option<&str> {
@@ -261,18 +217,6 @@ impl Event {
             .filter(|t| t.kind() == kind)
             .filter_map(|t| t.content())
             .collect()
-    }
-
-    /// Get reference of event content
-    #[deprecated(since = "0.35.0")]
-    pub fn content(&self) -> &str {
-        &self.content
-    }
-
-    /// Get event signature
-    #[deprecated(since = "0.35.0")]
-    pub fn signature(&self) -> Signature {
-        self.sig
     }
 
     /// Verify both [`EventId`] and [`Signature`]
@@ -384,54 +328,6 @@ impl Event {
             return timestamp < now;
         }
         false
-    }
-
-    /// Check if [`Kind`] is a NIP90 job request
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    #[deprecated(since = "0.35.0")]
-    pub fn is_job_request(&self) -> bool {
-        self.kind.is_job_request()
-    }
-
-    /// Check if [`Kind`] is a NIP90 job result
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    #[deprecated(since = "0.35.0")]
-    pub fn is_job_result(&self) -> bool {
-        self.kind.is_job_result()
-    }
-
-    /// Check if event [`Kind`] is `Regular`
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[deprecated(since = "0.35.0")]
-    pub fn is_regular(&self) -> bool {
-        self.kind.is_regular()
-    }
-
-    /// Check if event [`Kind`] is `Replaceable`
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[deprecated(since = "0.35.0")]
-    pub fn is_replaceable(&self) -> bool {
-        self.kind.is_replaceable()
-    }
-
-    /// Check if event [`Kind`] is `Ephemeral`
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[deprecated(since = "0.35.0")]
-    pub fn is_ephemeral(&self) -> bool {
-        self.kind.is_ephemeral()
-    }
-
-    /// Check if event [`Kind`] is `Parameterized replaceable`
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[deprecated(since = "0.35.0")]
-    pub fn is_parameterized_replaceable(&self) -> bool {
-        self.kind.is_parameterized_replaceable()
     }
 
     /// Extract identifier (`d` tag), if exists.

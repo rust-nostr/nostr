@@ -51,11 +51,8 @@ async fn main() -> Result<()> {
     client.add_relay("wss://relay.damus.io").await?;
     client.add_relay("ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion").await?;
     
-    // Add relay with custom options
-    client.add_relay_with_opts(
-        "wss://relay.nostr.info", 
-        RelayOptions::new().write(false)
-    ).await?;
+    // Add read relay
+    client.add_read_relay("wss://relay.nostr.info").await?;
 
     // Connect to relays
     client.connect().await;
@@ -77,7 +74,7 @@ async fn main() -> Result<()> {
     client.publish_text_note("My first text note from rust-nostr!", []).await?;
 
     // Create a POW text note
-    let event: Event = EventBuilder::text_note("POW text note from nostr-sdk", []).to_pow_event(&my_keys, 20)?;
+    let event: Event = EventBuilder::text_note("POW text note from nostr-sdk", []).pow(20).to_event(&my_keys)?;
     client.send_event(event).await?; // Send to all relays
     // client.send_event_to(["wss://relay.damus.io"], event).await?; // Send to specific relay
 

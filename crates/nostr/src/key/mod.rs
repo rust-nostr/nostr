@@ -200,39 +200,10 @@ impl Keys {
         }
     }
 
-    /// Replaced by [`Keys::generate_with_ctx`]
-    #[deprecated(since = "0.35.0", note = "Use `generate_with_ctx` instead")]
-    pub fn generate_without_keypair_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
-    where
-        C: Signing,
-        R: Rng + ?Sized,
-    {
-        Self::generate_with_ctx(secp, rng)
-    }
-
-    /// Replaced by [`Keys::generate_with_rng`]
-    #[cfg(feature = "std")]
-    #[deprecated(
-        since = "0.35.0",
-        note = "Use `generate` or `generate_with_rng` instead"
-    )]
-    pub fn generate_without_keypair<R>(rng: &mut R) -> Self
-    where
-        R: Rng + ?Sized,
-    {
-        Self::generate_with_rng(rng)
-    }
-
     /// Get public key
     #[inline]
     pub fn public_key(&self) -> PublicKey {
         self.public_key
-    }
-
-    /// Get public key
-    #[deprecated(since = "0.35.0")]
-    pub fn public_key_ref(&self) -> &PublicKey {
-        &self.public_key
     }
 
     /// Get secret key

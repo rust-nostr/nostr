@@ -50,7 +50,7 @@ fn main() -> Result<()> {
     let event: Event = EventBuilder::text_note("Hello from rust-nostr", []).to_event(&my_keys)?;
 
     // New POW text note
-    let event: Event = EventBuilder::text_note("My first POW text note from rust-nostr", []).to_pow_event(&my_keys, 20)?;
+    let event: Event = EventBuilder::text_note("My first POW text note from rust-nostr", []).pow(20).to_event(&my_keys)?;
 
     // Convert client nessage to JSON
     let json = ClientMessage::event(event).as_json();
