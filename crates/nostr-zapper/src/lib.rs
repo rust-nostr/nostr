@@ -4,9 +4,11 @@
 
 //! Nostr Zapper
 
+#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 #![allow(unknown_lints)]
+#![allow(clippy::arc_with_non_send_sync)]
 
 use std::sync::Arc;
 
@@ -17,8 +19,12 @@ use nostr::prelude::*;
 
 pub mod error;
 pub mod prelude;
+#[cfg(feature = "webln")]
+mod webln;
 
 pub use self::error::ZapperError;
+#[cfg(feature = "webln")]
+pub use self::webln::WebLNZapper;
 
 /// Backend
 #[derive(Debug, Clone, PartialEq, Eq)]

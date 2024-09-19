@@ -42,11 +42,8 @@ pub use nostr_signer::{self as signer, NostrSigner, NostrSignerType};
 #[cfg(feature = "sqlite")]
 pub use nostr_sqlite::SQLiteDatabase;
 #[doc(hidden)]
-#[cfg(all(target_arch = "wasm32", feature = "webln"))]
-pub use nostr_webln::WebLNZapper;
-#[doc(hidden)]
 #[cfg(feature = "nip57")]
-pub use nostr_zapper::{self as zapper, NostrZapper, ZapperBackend, ZapperError};
+pub use nostr_zapper::{self as zapper, *};
 #[doc(hidden)]
 #[cfg(feature = "nip47")]
 pub use nwc::{self, NostrWalletConnectOptions, NWC};

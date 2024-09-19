@@ -4,21 +4,15 @@
 
 //! WebLN zapper backend for Nostr apps
 
-#![forbid(unsafe_code)]
-#![warn(missing_docs)]
-#![warn(rustdoc::bare_urls)]
-#![allow(unknown_lints, clippy::arc_with_non_send_sync)]
 #![cfg_attr(not(target_arch = "wasm32"), allow(unused))]
-
-pub extern crate nostr_zapper as zapper;
-pub extern crate webln;
 
 use std::ops::Deref;
 
-#[cfg(target_arch = "wasm32")]
-use nostr_zapper::NostrZapper;
-use nostr_zapper::{ZapperBackend, ZapperError};
 use webln::WebLN;
+
+#[cfg(target_arch = "wasm32")]
+use crate::{async_trait, NostrZapper};
+use crate::{ZapperBackend, ZapperError};
 
 /// [WebLN] zapper
 #[derive(Debug, Clone)]
@@ -48,7 +42,7 @@ impl WebLNZapper {
 #[cfg(target_arch = "wasm32")]
 macro_rules! impl_nostr_zapper {
     ({ $($body:tt)* }) => {
-        #[nostr_zapper::async_trait(?Send)]
+        #[async_trait(?Send)]
         impl NostrZapper for WebLNZapper {
             $($body)*
         }

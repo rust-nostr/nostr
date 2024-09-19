@@ -21,6 +21,22 @@
 
 -->
 
+## [Unreleased]
+
+### Summary
+
+### Changed
+
+### Added
+
+* zapper: add `WebLNZapper` struct (moved from `nostr-webln` crate) ([Yuki Kishimoto])
+
+### Fixed
+
+### Removed
+
+* webln: remove `nostr-webln` crate ([Yuki Kishimoto])
+
 ## [v0.35.0]
 
 ### Summary

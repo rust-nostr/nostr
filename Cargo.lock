@@ -2855,7 +2855,6 @@ dependencies = [
  "nostr-relay-pool",
  "nostr-signer",
  "nostr-sqlite",
- "nostr-webln",
  "nostr-zapper",
  "nwc",
  "thiserror",
@@ -2921,20 +2920,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "nostr-webln"
-version = "0.35.0"
-dependencies = [
- "nostr-zapper",
- "webln",
-]
-
-[[package]]
 name = "nostr-zapper"
 version = "0.35.0"
 dependencies = [
  "async-trait",
  "nostr",
  "thiserror",
+ "webln",
 ]
 
 [[package]]

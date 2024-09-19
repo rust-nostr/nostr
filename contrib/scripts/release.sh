@@ -13,7 +13,6 @@ args=(
     "-p nostr-relay-pool"
     "-p nostr-signer"
     "-p nostr-zapper"
-    "-p nostr-webln"
     "-p nwc"
     "-p nostr-sdk"
     "-p nostr-cli"
