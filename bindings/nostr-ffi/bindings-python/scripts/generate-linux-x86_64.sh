@@ -9,6 +9,7 @@ rustup target add x86_64-unknown-linux-gnu
 cargo build --release --target x86_64-unknown-linux-gnu
 
 echo "Generating nostr.py..."
+cd ../
 cargo run -p uniffi-bindgen generate --library ../../target/x86_64-unknown-linux-gnu/release/libnostr_ffi.so --language python --no-format -o bindings-python/src/nostr/
 
 echo "Copying linux libnostr_ffi.so..."
