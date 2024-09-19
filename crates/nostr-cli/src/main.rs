@@ -43,8 +43,17 @@ async fn run() -> Result<()> {
             // Create main dir if not exists
             fs::create_dir_all(nostr_cli_dir)?;
 
-            let db = NostrLMDB::open(db_path)?;
-            let client = Client::builder().database(db).build();
+            // Open database
+            let db: NostrLMDB = NostrLMDB::open(db_path)?;
+
+            // Configure connection
+            let connection: Connection = Connection::new()
+                .target(ConnectionTarget::Onion)
+                .embedded_tor();
+
+            // Build client
+            let opts: Options = Options::new().connection(connection);
+            let client: Client = Client::builder().database(db).opts(opts).build();
 
             // Add relays
             for url in relays.iter() {
