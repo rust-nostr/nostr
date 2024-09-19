@@ -2,7 +2,13 @@
 name = "nostr-cli"
 version = "0.35.0"
 edition = "2021"
-rust-version.workspace = true
+description = "Nostr CLI"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+keywords = ["nostr", "cli"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }

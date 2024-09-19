@@ -16,6 +16,7 @@ args=(
     "-p nostr-webln"
     "-p nwc"
     "-p nostr-sdk"
+    "-p nostr-cli"
 )
 
 for arg in "${args[@]}";
