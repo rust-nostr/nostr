@@ -66,6 +66,7 @@
 * pool: `RelayPool::subscribe_with_id`, `RelayPool::get_events_of` and `RelayPool::stream_events_of` REQ events only to relays with `READ` flag ([Yuki Kishimoto])
 * pool: bump `async-wsocket` to `v0.9` ([Yuki Kishimoto])
 * pool: improve `Relay::support_negentropy` method ([Yuki Kishimoto])
+* pool: change handle relay message log level from `error` to `warn` ([Yuki Kishimoto])
 * signer: update NIP-04 and NIP-44 methods signature ([Yuki Kishimoto])
 * webln: bump `webln` to `v0.3` ([Yuki Kishimoto])
 * sqlite: deprecate `SQLiteDatabase` in favor of LMDB ([Yuki Kishimoto])

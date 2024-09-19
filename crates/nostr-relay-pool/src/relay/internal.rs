@@ -870,7 +870,7 @@ impl InternalRelay {
                     .await;
             }
             Ok(None) | Err(Error::MessageHandle(MessageHandleError::EmptyMsg)) => (),
-            Err(e) => tracing::error!(
+            Err(e) => tracing::warn!(
                 "Impossible to handle relay message from '{}': {e}",
                 self.url
             ),
