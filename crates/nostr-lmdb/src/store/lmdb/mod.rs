@@ -51,12 +51,20 @@ impl Lmdb {
     where
         P: AsRef<Path>,
     {
+        // 64-bit
+        #[cfg(target_pointer_width = "64")]
+        let map_size: usize = 1024 * 1024 * 1024 * 32; // 32 GB
+
+        // 32-bit
+        #[cfg(target_pointer_width = "32")]
+        let map_size: usize = u32::MAX as usize; // 4 GB
+
         // Construct LMDB env
         let env: Env = unsafe {
             EnvOpenOptions::new()
                 .flags(EnvFlags::NO_TLS)
                 .max_dbs(9)
-                .map_size(1048576 * 1024 * 24) // 24 GB
+                .map_size(map_size)
                 .open(path)?
         };
 
