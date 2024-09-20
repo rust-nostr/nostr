@@ -263,6 +263,16 @@ mod tests {
             FlagCheck::All
         ));
 
+        // Try to remove multiple flags
+        flags.add(RelayServiceFlags::WRITE | RelayServiceFlags::DISCOVERY);
+        flags.remove(
+            RelayServiceFlags::WRITE | RelayServiceFlags::OUTBOX | RelayServiceFlags::DISCOVERY,
+        );
+        assert!(flags.has(
+            RelayServiceFlags::PING | RelayServiceFlags::READ,
+            FlagCheck::All
+        ));
+
         // Try to re-add already existing flag
         flags.add(RelayServiceFlags::PING);
         assert!(flags.has(
