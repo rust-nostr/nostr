@@ -540,9 +540,9 @@ impl Client {
     }
 
     /// Disconnect and remove all relays
-    #[inline]
+    #[deprecated(since = "0.36.0")]
     pub async fn remove_all_relays(&self) -> Result<(), Error> {
-        Ok(self.pool.remove_all_relays().await?)
+        Ok(())
     }
 
     /// Connect to a previously added relay

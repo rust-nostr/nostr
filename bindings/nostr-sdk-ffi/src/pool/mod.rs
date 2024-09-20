@@ -101,10 +101,6 @@ impl RelayPool {
         Ok(self.inner.force_remove_relay(url).await?)
     }
 
-    pub async fn remove_all_relay(&self) -> Result<()> {
-        Ok(self.inner.remove_all_relays().await?)
-    }
-
     /// Connect to all added relays and keep connection alive
     pub async fn connect(&self, connection_timeout: Option<Duration>) {
         self.inner.connect(connection_timeout).await

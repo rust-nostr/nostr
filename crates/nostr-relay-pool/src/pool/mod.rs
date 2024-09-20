@@ -223,9 +223,9 @@ impl RelayPool {
     }
 
     /// Disconnect and remove all relays
-    #[inline]
+    #[deprecated(since = "0.36.0")]
     pub async fn remove_all_relays(&self) -> Result<(), Error> {
-        self.inner.remove_all_relays().await
+        Ok(())
     }
 
     /// Connect to all added relays and keep connection alive

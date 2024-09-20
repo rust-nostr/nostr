@@ -28,6 +28,7 @@
 ### Changed
 
 * pool: changes in `RelayPool::remove_relay` behavior ([Yuki Kishimoto])
+* pool: deprecate `RelayPool::remove_all_relays` ([Yuki Kishimoto])
 
 ### Added
 

@@ -117,11 +117,6 @@ impl JsRelayPool {
         self.inner.force_remove_relay(url).await.map_err(into_err)
     }
 
-    #[wasm_bindgen(js_name = removeAllRelays)]
-    pub async fn remove_all_relays(&self) -> Result<()> {
-        self.inner.remove_all_relays().await.map_err(into_err)
-    }
-
     /// Connect to all added relays and keep connection alive
     #[wasm_bindgen]
     pub async fn connect(&self, connection_timeout: Option<JsDuration>) {
