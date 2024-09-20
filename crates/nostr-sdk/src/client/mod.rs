@@ -514,19 +514,10 @@ impl Client {
         .await
     }
 
-    /// Disconnect and remove relay
+    /// Remove and disconnect relay
     ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
-    /// client.remove_relay("wss://relay.nostr.info").await.unwrap();
-    /// # }
-    /// ```
+    /// If the relay has `INBOX` or `OUTBOX` flags, it will not be removed from the pool and its
+    /// flags will be updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
     #[inline]
     pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
     where
@@ -534,6 +525,18 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         Ok(self.pool.remove_relay(url).await?)
+    }
+
+    /// Force remove and disconnect relay
+    ///
+    /// Note: this method will remove the relay, also if it's in use for the gossip model or other service!
+    #[inline]
+    pub async fn force_remove_relay<U>(&self, url: U) -> Result<(), Error>
+    where
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        Ok(self.pool.force_remove_relay(url).await?)
     }
 
     /// Disconnect and remove all relays

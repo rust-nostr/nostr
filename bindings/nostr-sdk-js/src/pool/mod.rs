@@ -100,9 +100,21 @@ impl JsRelayPool {
             .map_err(into_err)
     }
 
+    /// Remove and disconnect relay
+    ///
+    /// If the relay has `INBOX` or `OUTBOX` flags, it will not be removed from the pool and its
+    /// flags will be updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
     #[wasm_bindgen(js_name = removeRelay)]
-    pub async fn remove_relay(&self, url: String) -> Result<()> {
+    pub async fn remove_relay(&self, url: &str) -> Result<()> {
         self.inner.remove_relay(url).await.map_err(into_err)
+    }
+
+    /// Force remove and disconnect relay
+    ///
+    /// Note: this method will remove the relay, also if it's in use for the gossip model or other service!
+    #[wasm_bindgen(js_name = forceRemoveRelay)]
+    pub async fn force_remove_relay(&self, url: &str) -> Result<()> {
+        self.inner.force_remove_relay(url).await.map_err(into_err)
     }
 
     #[wasm_bindgen(js_name = removeAllRelays)]

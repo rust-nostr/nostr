@@ -27,8 +27,11 @@
 
 ### Changed
 
+* pool: changes in `RelayPool::remove_relay` behavior ([Yuki Kishimoto])
+
 ### Added
 
+* pool: add `RelayPool::force_remove_relay` method ([Yuki Kishimoto])
 * zapper: add `WebLNZapper` struct (moved from `nostr-webln` crate) ([Yuki Kishimoto])
 
 ### Fixed

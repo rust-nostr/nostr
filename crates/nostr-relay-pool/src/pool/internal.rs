@@ -269,16 +269,40 @@ impl InternalRelayPool {
         }
     }
 
-    pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
+    pub async fn remove_relay<U>(&self, url: U, force: bool) -> Result<(), Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
+        // Convert into url
         let url: Url = url.try_into_url()?;
+
+        // Acquire write lock
         let mut relays = self.relays.write().await;
+
+        // Remove relay
         if let Some(relay) = relays.remove(&url) {
+            // It NOT force, check if has INBOX or OUTBOX flags
+            if !force {
+                let flags = relay.flags_ref();
+                if flags.has_any(RelayServiceFlags::INBOX | RelayServiceFlags::OUTBOX) {
+                    // Remove READ, WRITE and DISCOVERY flags
+                    flags.remove(
+                        RelayServiceFlags::READ
+                            | RelayServiceFlags::WRITE
+                            | RelayServiceFlags::DISCOVERY,
+                    );
+
+                    // Re-insert
+                    relays.insert(url, relay);
+                    return Ok(());
+                }
+            }
+
+            // Disconnect
             relay.disconnect().await?;
         }
+
         Ok(())
     }
 

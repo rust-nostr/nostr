@@ -197,14 +197,29 @@ impl RelayPool {
             .await
     }
 
-    /// Disconnect and remove relay
+    /// Remove and disconnect relay
+    ///
+    /// If the relay has `INBOX` or `OUTBOX` flags, it will not be removed from the pool and its
+    /// flags will be updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
     #[inline]
     pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.inner.remove_relay(url).await
+        self.inner.remove_relay(url, false).await
+    }
+
+    /// Force remove and disconnect relay
+    ///
+    /// Note: this method will remove the relay, also if it's in use for the gossip model or other service!
+    #[inline]
+    pub async fn force_remove_relay<U>(&self, url: U) -> Result<(), Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.inner.remove_relay(url, true).await
     }
 
     /// Disconnect and remove all relays
