@@ -46,7 +46,7 @@ thiserror = "1.0"
 tokio = { version = "1", default-features = false }
 tracing = { version = "0.1", default-features = false }
 tracing-subscriber = "0.3"
-uniffi = "0.28.0"
+uniffi = "=0.28.0" # v0.28.1 causes issues when checking MSRV
 wasm-bindgen = { version = "0.2", default-features = false }
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", default-features = false }
