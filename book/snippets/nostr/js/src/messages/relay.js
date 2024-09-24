@@ -1,16 +1,67 @@
-const { loadWasmSync, RelayMessage } = require("@rust-nostr/nostr");
+const { RelayMessage, EventBuilder, Keys, loadWasmAsync } = require('@rust-nostr/nostr');
 
-function relayMessageJson() {
-    // Load WASM
-    loadWasmSync();
+async function run() {
+    await loadWasmAsync();
 
-    // Deserialize from json
-    let json1 = '["EVENT", "random_string", {"id":"70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5","pubkey":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe","created_at":1612809991,"kind":1,"tags":[],"content":"test","sig":"273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502"}]'
-    let msg = RelayMessage.fromJson(json1)
+    const keys = Keys.generate();
+    const event = EventBuilder.textNote("TestTextNoTe", []).toEvent(keys);
 
-    // Serialize as json
-    let json2 = msg.asJson()
-    console.log(json2);
+    console.log("\nRelay Messages:");
+
+    // ANCHOR: event-message
+    console.log("  Event Relay Message:");
+    let relayMessage = RelayMessage.event("subscription_ID_abc123", event);
+    console.log(`     - JSON: ${relayMessage.asJson()}`);
+    // ANCHOR_END: event-message
+
+    console.log();
+    // ANCHOR: ok-message
+    console.log("  Event Acceptance Relay Message:");
+    relayMessage = RelayMessage.ok(event.id, false, "You have no power here, Gandalf The Grey");
+    console.log(`     - JSON: ${relayMessage.asJson()}`);
+    // ANCHOR_END: ok-message
+
+    console.log();
+    // ANCHOR: eose-message
+    console.log("  End of Stored Events Relay Message:");
+    relayMessage = RelayMessage.eose("subscription_ID_abc123");
+    console.log(`     - JSON: ${relayMessage.asJson()}`);
+    // ANCHOR_END: eose-message
+
+    console.log();
+    // ANCHOR: closed-message
+    console.log("  Closed Relay Message:");
+    relayMessage = RelayMessage.closed("subscription_ID_abc123", "So long and thanks for all the fish");
+    console.log(`     - JSON: ${relayMessage.asJson()}`);
+    // ANCHOR_END: closed-message
+
+    console.log();
+    // ANCHOR: notice-message
+    console.log("  Notice Relay Message:");
+    relayMessage = RelayMessage.notice("You have been served");
+    console.log(`     - JSON: ${relayMessage.asJson()}`);
+    // ANCHOR_END: notice-message
+
+    console.log();
+    // ANCHOR: parse-message
+    console.log("  Parse Relay Message:");
+    relayMessage = RelayMessage.fromJson('["NOTICE","You have been served"]');
+    console.log(`     - JSON: ${relayMessage.asJson()}`);
+    // ANCHOR_END: parse-message
+
+    console.log();
+    // ANCHOR: auth-message 
+    console.log("  Auth Relay Message:");
+    relayMessage = RelayMessage.auth("I Challenge You To A Duel! (or some other challenge string)");
+    console.log(`     - JSON: ${relayMessage.asJson()}`);
+    // ANCHOR_END: auth-message
+
+    console.log();
+    // ANCHOR: count-message
+    console.log("  Count Relay Message:");
+    relayMessage = RelayMessage.count("subscription_ID_abc123", 42);
+    console.log(`     - JSON: ${relayMessage.asJson()}`);
+    // ANCHOR_END: count-message
 }
 
-module.exports.relayMessageJson = relayMessageJson;
+module.exports.run = run;
