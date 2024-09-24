@@ -23,7 +23,7 @@ use tokio_tungstenite::WebSocketStream;
 type WsTx = SplitSink<WebSocketStream<TcpStream>, Message>;
 
 const MAX_REQS: usize = 20;
-const NOTES_PER_MINUTE: i32 = 100;
+const NOTES_PER_MINUTE: u32 = 100;
 
 /// Mock relay error
 #[derive(Debug, Error)]
@@ -38,7 +38,7 @@ pub enum Error {
 
 #[derive(Debug, Clone)]
 struct RateLimit {
-    pub notes_per_minute: i32,
+    pub notes_per_minute: u32,
     //pub whitelist: Option<Vec<String>>,
 }
 
@@ -432,16 +432,29 @@ enum RateLimiterResponse {
 
 /// Tokens to keep track of session limits
 struct Tokens {
-    pub num: i32,
-    pub last_note: Option<Instant>,
+    pub count: u32,
+    pub last: Option<Instant>,
 }
 
 impl Tokens {
     #[inline]
-    pub fn new(tokens: i32) -> Self {
+    pub fn new(tokens: u32) -> Self {
         Self {
-            num: tokens,
-            last_note: None,
+            count: tokens,
+            last: None,
+        }
+    }
+
+    fn calculate_new_tokens(&mut self, max_per_minute: u32, elapsed_time: Duration) {
+        let percent: f32 = (elapsed_time.as_secs() as f32) / 60.0;
+        let new_tokens: u32 = (percent * max_per_minute as f32).floor() as u32;
+        
+        self.count = self.count.saturating_add(new_tokens);
+
+        self.count = self.count.saturating_sub(1);
+
+        if self.count >= max_per_minute {
+            self.count = max_per_minute.saturating_sub(1);
         }
     }
 }
@@ -452,40 +465,37 @@ struct Session {
 }
 
 impl Session {
-    /// `true` means that is rate limited
-    pub fn check_rate_limit(&mut self, notes_per_minute: i32) -> RateLimiterResponse {
-        match self.tokens.last_note {
-            Some(last_note) => {
+    const MIN: Duration = Duration::from_secs(60);
+
+    fn calculate_elapsed_time(&self, now: Instant, last: Instant) -> Duration {
+        let mut elapsed_time: Duration = now - last;
+
+        if elapsed_time > Self::MIN {
+            elapsed_time = Self::MIN;
+        }
+
+        elapsed_time
+    }
+
+    pub fn check_rate_limit(&mut self, max_per_minute: u32) -> RateLimiterResponse {
+        match self.tokens.last {
+            Some(last) => {
                 let now: Instant = Instant::now();
-                let mut diff: Duration = now - last_note;
+                let elapsed_time: Duration = self.calculate_elapsed_time(now, last);
 
-                let min: Duration = Duration::from_secs(60);
-                if diff > min {
-                    diff = min;
-                }
+                self.tokens
+                    .calculate_new_tokens(max_per_minute, elapsed_time);
 
-                let percent: f32 = (diff.as_secs() as f32) / 60.0;
-                let new_tokens: i32 = (percent * notes_per_minute as f32).floor() as i32;
-                self.tokens.num += new_tokens - 1;
-
-                if self.tokens.num <= 0 {
-                    self.tokens.num = 0;
-                }
-
-                if self.tokens.num >= notes_per_minute {
-                    self.tokens.num = notes_per_minute - 1;
-                }
-
-                if self.tokens.num == 0 {
+                if self.tokens.count == 0 {
                     return RateLimiterResponse::Limited;
                 }
 
-                self.tokens.last_note = Some(now);
+                self.tokens.last = Some(now);
 
                 RateLimiterResponse::Allowed
             }
             None => {
-                self.tokens.last_note = Some(Instant::now());
+                self.tokens.last = Some(Instant::now());
                 RateLimiterResponse::Allowed
             }
         }
