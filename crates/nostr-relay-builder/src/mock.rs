@@ -448,7 +448,7 @@ impl Tokens {
     fn calculate_new_tokens(&mut self, max_per_minute: u32, elapsed_time: Duration) {
         let percent: f32 = (elapsed_time.as_secs() as f32) / 60.0;
         let new_tokens: u32 = (percent * max_per_minute as f32).floor() as u32;
-        
+
         self.count = self.count.saturating_add(new_tokens);
 
         self.count = self.count.saturating_sub(1);
