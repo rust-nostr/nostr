@@ -32,6 +32,8 @@ pub(super) struct InternalLocalRelay {
     /// Every session will listen and check own subscriptions
     new_event: broadcast::Sender<Event>,
     rate_limit: RateLimit,
+    #[cfg(feature = "tor")]
+    hidden_service: Option<String>,
 }
 
 impl AtomicDestroyer for InternalLocalRelay {
@@ -59,6 +61,18 @@ impl InternalLocalRelay {
         // Bind
         let listener: TcpListener = TcpListener::bind(addr).await?;
 
+        // If enabled, launch tor hidden service
+        #[cfg(feature = "tor")]
+        let hidden_service: Option<String> = match builder.tor {
+            Some(opts) => {
+                let service =
+                    native::tor::launch_onion_service(opts.nickname, addr, 80, opts.custom_path)
+                        .await?;
+                service.onion_name().map(|n| format!("ws://{n}"))
+            }
+            None => None,
+        };
+
         // Channels
         let (shutdown_tx, mut shutdown_rx) = broadcast::channel::<()>(1);
         let (new_event, ..) = broadcast::channel(1024);
@@ -70,6 +84,8 @@ impl InternalLocalRelay {
             shutdown: shutdown_tx,
             new_event,
             rate_limit: builder.rate_limit,
+            #[cfg(feature = "tor")]
+            hidden_service,
         };
 
         let r: Self = relay.clone();
@@ -107,6 +123,12 @@ impl InternalLocalRelay {
     #[inline]
     pub fn url(&self) -> String {
         format!("ws://{}", self.addr)
+    }
+
+    #[inline]
+    #[cfg(feature = "tor")]
+    pub fn hidden_service(&self) -> Option<&str> {
+        self.hidden_service.as_deref()
     }
 
     #[inline]

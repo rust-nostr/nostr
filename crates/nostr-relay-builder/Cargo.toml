@@ -11,6 +11,10 @@ readme = "README.md"
 rust-version.workspace = true
 keywords = ["nostr", "relay", "builder"]
 
+[features]
+default = []
+tor = ["async-wsocket/tor"]
+
 [dependencies]
 async-utility.workspace = true
 async-wsocket.workspace = true
@@ -24,3 +28,11 @@ tracing.workspace = true
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+[[example]]
+name = "local-with-hs"
+required-features = ["tor"]
+
+
+[[example]]
+name = "mock"

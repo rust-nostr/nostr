@@ -23,7 +23,7 @@ rust-version = "1.70.0"
 [workspace.dependencies]
 async-trait = "0.1"
 async-utility = "0.2"
-async-wsocket = { git = "https://github.com/shadowylab/async-wsocket", rev = "27d3a55e7fb725b5084ec6e9fca7e1a4589e004d" }
+async-wsocket = { git = "https://github.com/shadowylab/async-wsocket", rev = "4d6a5b1780e65dc657ac36e5990a97c10feef072" }
 atomic-destructor = { version = "0.2", default-features = false }
 js-sys = "0.3"
 negentropy = { version = "0.4", default-features = false }

@@ -36,6 +36,13 @@ impl LocalRelay {
         self.inner.url()
     }
 
+    /// Get hidden service address if available
+    #[inline]
+    #[cfg(feature = "tor")]
+    pub fn hidden_service(&self) -> Option<&str> {
+        self.inner.hidden_service()
+    }
+
     /// Shutdown relay
     #[inline]
     pub fn shutdown(&self) {
