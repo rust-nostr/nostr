@@ -55,8 +55,35 @@ When presented with a relay message object as either a JSON or an instance of th
 <div slot="title">JavaScript</div>
 <section>
 
+
+The `RelayMessage` class easily handles the construction of the 5 main message types `EVENT`, `OK`, `EOSE` (end of stored events), `CLOSED` and `NOTICE`. In the examples below we can utilize the relevant class methods `event()`, `ok()`, `eose()`, `closed()` and `notice()`, respectively, to create the relay message objects.
+
+Once we have the `RelayMessage` objects we can use the `asJson()` method to present their content. 
+
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/relay.js}}
+{{#include ../../snippets/nostr/js/src/messages/relay.js:event-message}}
+```
+
+```javascript,ignore
+{{#include ../../snippets/nostr/js/src/messages/relay.py:ok-message}}
+```
+
+```javascript,ignore
+{{#include ../../snippets/nostr/js/src/messages/relay.js:eose-message}}
+```
+
+```javascript,ignore
+{{#include ../../snippets/nostr/js/src/messages/relay.js:closed-message}}
+```
+
+```javascript,ignore
+{{#include ../../snippets/nostr/js/src/messages/relay.js:notice-message}}
+```
+
+When presented with a relay message object as either a JSON we can parse these data using the `fromJson()` method.
+
+```javascript,ignore
+{{#include ../../snippets/nostr/js/src/messages/relay.js:parse-message}}
 ```
 
 </section>
@@ -108,7 +135,17 @@ The `AUTH` type is designed to facilitate a method by which clients can authenti
 <div slot="title">JavaScript</div>
 <section>
 
-TODO
+As an extension of the relay messaging section of the protocol [NIP-42](https://github.com/nostr-protocol/nips/blob/master/42.md) and [NIP-45](https://github.com/nostr-protocol/nips/blob/master/45.md) introduce two new messaging types `AUTH` and `COUNT`.
+
+The `AUTH` type is designed to facilitate a method by which clients can authenticate with a given relay. Whereas the `COUNT` type offers a method for relays to provide simple counts of events to clients (upon request). These are constructed in much the same way as the earlier message examples, by using the `RelayMessage` class in conjunction with the relevant methods `auth()` and `count()`. 
+
+```javascript,ignore
+{{#include ../../snippets/nostr/js/src/messages/relay.js:auth-message}}
+```
+
+```javascript,ignore
+{{#include ../../snippets/nostr/js/src/messages/relay.js:count-message}}
+```
 
 </section>
 
@@ -157,7 +194,7 @@ Finally, the `RelayMessageEnum` class also opens up two additional message types
 <div slot="title">JavaScript</div>
 <section>
 
-TODO
+Not available currently with JavaScript bindings.
 
 </section>
 
