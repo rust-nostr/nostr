@@ -33,6 +33,7 @@
 
 ### Added
 
+* relay-builder: add `LocalRelay` and `RelayBuilder` ([Yuki Kishimoto])
 * pool: add `RelayPool::force_remove_relay` method ([Yuki Kishimoto])
 * zapper: add `WebLNZapper` struct (moved from `nostr-webln` crate) ([Yuki Kishimoto])
 

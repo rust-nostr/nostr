@@ -98,8 +98,8 @@ impl From<async_utility::thread::Error> for NostrSdkError {
     }
 }
 
-impl From<nostr_relay_builder::mock::Error> for NostrSdkError {
-    fn from(e: nostr_relay_builder::mock::Error) -> NostrSdkError {
+impl From<nostr_relay_builder::error::Error> for NostrSdkError {
+    fn from(e: nostr_relay_builder::error::Error) -> NostrSdkError {
         Self::Generic(e.to_string())
     }
 }

@@ -10,7 +10,10 @@
 
 // External crates
 pub use nostr::prelude::*;
+pub use nostr_database::prelude::*;
 
+pub use crate::builder::{self, *};
+pub use crate::local::{self, *};
 // Internal modules
 pub use crate::mock::{self, *};
 pub use crate::*;

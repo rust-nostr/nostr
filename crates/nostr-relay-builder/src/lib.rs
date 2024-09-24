@@ -9,7 +9,13 @@
 #![warn(rustdoc::bare_urls)]
 #![warn(clippy::large_futures)]
 
-// pub struct RelayBuilder {}
-
+pub mod builder;
+pub mod error;
+pub mod local;
 pub mod mock;
 pub mod prelude;
+
+pub use self::builder::RelayBuilder;
+pub use self::error::Error;
+pub use self::local::LocalRelay;
+pub use self::mock::MockRelay;
