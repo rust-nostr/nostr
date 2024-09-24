@@ -13,12 +13,12 @@ keywords = ["nostr", "relay", "builder"]
 
 [dependencies]
 async-utility.workspace = true
+async-wsocket.workspace = true
 atomic-destructor = { workspace = true, features = ["tracing"] }
 nostr = { workspace = true, default-features = false, features = ["std"] }
 nostr-database.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["macros", "net", "sync"] }
-tokio-tungstenite = "0.24" # Must match the same version used in `async-wsocket`
 tracing.workspace = true
 
 [dev-dependencies]

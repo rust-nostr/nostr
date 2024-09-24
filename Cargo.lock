@@ -231,6 +231,7 @@ dependencies = [
  "tor-guardmgr",
  "tor-hsclient",
  "tor-hscrypto",
+ "tor-hsservice",
  "tor-keymgr",
  "tor-linkspec",
  "tor-llcrypto",
@@ -345,8 +346,7 @@ dependencies = [
 [[package]]
 name = "async-wsocket"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c0984bead67f20366bc8dd46018dfbe189b67eeefb0e5b86b9eade18d7c3c3b"
+source = "git+https://github.com/shadowylab/async-wsocket?rev=27d3a55e7fb725b5084ec6e9fca7e1a4589e004d#27d3a55e7fb725b5084ec6e9fca7e1a4589e004d"
 dependencies = [
  "arti-client",
  "async-utility",
@@ -358,6 +358,8 @@ dependencies = [
  "tokio-rustls",
  "tokio-socks",
  "tokio-tungstenite",
+ "tor-hsrproxy",
+ "tor-hsservice",
  "tor-rtcompat",
  "url",
  "wasm-bindgen",
@@ -1695,6 +1697,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "fslock-arti-fork"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b21bd626aaab7b904b20bef6d9e06298914a0c8d9fb8b010483766b2e532791"
+dependencies = [
+ "libc",
+ "winapi",
+]
+
+[[package]]
+name = "fslock-guard"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f82482849edd4067d2e0ace172a41f151f4ecb37bf132e15a2ba689d38bf0aa1"
+dependencies = [
+ "fslock-arti-fork",
+ "thiserror",
+ "winapi",
+]
+
+[[package]]
 name = "funty"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1874,6 +1897,18 @@ dependencies = [
  "ff",
  "rand_core",
  "subtle",
+]
+
+[[package]]
+name = "growable-bloom-filter"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c669fa03050eb3445343f215d62fc1ab831e8098bc9a55f26e9724faff11075c"
+dependencies = [
+ "serde",
+ "serde_bytes",
+ "serde_derive",
+ "xxhash-rust",
 ]
 
 [[package]]
@@ -2336,6 +2371,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29c15563dc2726973df627357ce0c9ddddbea194836909d655df6a75d2cf296d"
 dependencies = [
  "wasm-bindgen",
+]
+
+[[package]]
+name = "k12"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4dc5fdb62af2f520116927304f15d25b3c2667b4817b90efdc045194c912c54"
+dependencies = [
+ "digest",
+ "sha3",
 ]
 
 [[package]]
@@ -2811,12 +2856,12 @@ name = "nostr-relay-builder"
 version = "0.35.0"
 dependencies = [
  "async-utility",
+ "async-wsocket",
  "atomic-destructor",
  "nostr",
  "nostr-database",
  "thiserror",
  "tokio",
- "tokio-tungstenite",
  "tracing",
  "tracing-subscriber",
 ]
@@ -3596,6 +3641,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rangemap"
+version = "1.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f60fcc7d6849342eff22c4350c8b9a989ee8ceabc4b481253e8946b9fe83d684"
+
+[[package]]
 name = "redox_syscall"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4066,6 +4117,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3a1a3341211875ef120e117ea7fd5228530ae7e7036a779fdc9117be6b3282c"
 dependencies = [
  "ordered-float",
+ "serde",
+]
+
+[[package]]
+name = "serde_bytes"
+version = "0.11.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "387cc504cb06bb40a96c8e04e951fe01854cf6bc921053c954e4a606d9675c6a"
+dependencies = [
  "serde",
 ]
 
@@ -4832,6 +4892,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bb3afa49a44e1610c03b6142337ba0c4de1a6d70aea59849878de8876099930"
 dependencies = [
  "caret",
+ "derive_builder_fork_arti",
  "derive_more",
  "digest",
  "thiserror",
@@ -5166,6 +5227,7 @@ version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3db824b336c082804882221188097f73bcd8f551da2f56144c7b560c971f44f9"
 dependencies = [
+ "cipher",
  "data-encoding",
  "derive_more",
  "digest",
@@ -5181,6 +5243,91 @@ dependencies = [
  "tor-error",
  "tor-llcrypto",
  "tor-units",
+ "zeroize",
+]
+
+[[package]]
+name = "tor-hsrproxy"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4676822340531b64f08f6aebe7e369a05e202cff8edf2aed259fb2e7b92cd744"
+dependencies = [
+ "derive-deftly",
+ "derive_builder_fork_arti",
+ "futures",
+ "oneshot-fused-workaround",
+ "rangemap",
+ "safelog",
+ "serde",
+ "serde_with",
+ "thiserror",
+ "tor-async-utils",
+ "tor-cell",
+ "tor-config",
+ "tor-error",
+ "tor-hsservice",
+ "tor-log-ratelim",
+ "tor-proto",
+ "tor-rtcompat",
+ "tracing",
+ "void",
+]
+
+[[package]]
+name = "tor-hsservice"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9ab7093a43a62ce62c962e99192bf91d544fbe46d2f35ec80a329cd52de0035"
+dependencies = [
+ "amplify",
+ "async-trait",
+ "base64ct",
+ "cfg-if",
+ "derive-deftly",
+ "derive_builder_fork_arti",
+ "derive_more",
+ "digest",
+ "educe",
+ "fs-mistrust",
+ "futures",
+ "growable-bloom-filter",
+ "hex",
+ "humantime",
+ "itertools 0.13.0",
+ "k12",
+ "once_cell",
+ "oneshot-fused-workaround",
+ "postage",
+ "rand",
+ "rand_core",
+ "retry-error",
+ "safelog",
+ "serde",
+ "serde_with",
+ "strum 0.26.3",
+ "thiserror",
+ "tor-async-utils",
+ "tor-basic-utils",
+ "tor-bytes",
+ "tor-cell",
+ "tor-circmgr",
+ "tor-config",
+ "tor-dirclient",
+ "tor-error",
+ "tor-hscrypto",
+ "tor-keymgr",
+ "tor-linkspec",
+ "tor-llcrypto",
+ "tor-log-ratelim",
+ "tor-netdir",
+ "tor-netdoc",
+ "tor-persist",
+ "tor-proto",
+ "tor-protover",
+ "tor-relay-selection",
+ "tor-rtcompat",
+ "tracing",
+ "void",
 ]
 
 [[package]]
@@ -5371,11 +5518,13 @@ version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "38b7942bb43a51129ae4e84124e82e48f96e453a6fb8381c5c2b23899116d411"
 dependencies = [
+ "amplify",
  "derive-deftly",
  "derive_more",
  "filetime",
  "fs-mistrust",
  "fslock",
+ "fslock-guard",
  "futures",
  "itertools 0.13.0",
  "oneshot-fused-workaround",
@@ -6425,6 +6574,12 @@ dependencies = [
  "ring 0.16.20",
  "untrusted 0.7.1",
 ]
+
+[[package]]
+name = "xxhash-rust"
+version = "0.8.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a5cbf750400958819fb6178eaa83bee5cd9c29a26a40cc241df8c70fdd46984"
 
 [[package]]
 name = "xz2"

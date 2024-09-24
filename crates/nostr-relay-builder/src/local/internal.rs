@@ -8,13 +8,12 @@ use std::sync::Arc;
 
 use async_utility::futures_util::stream::{self, SplitSink};
 use async_utility::futures_util::{SinkExt, StreamExt};
+use async_wsocket::native::{self, Message, WebSocketStream};
 use atomic_destructor::AtomicDestroyer;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
-use tokio_tungstenite::tungstenite::protocol::Message;
-use tokio_tungstenite::WebSocketStream;
 
 use super::session::{RateLimiterResponse, Session, Tokens};
 use super::util;
@@ -119,7 +118,7 @@ impl InternalLocalRelay {
         let mut shutdown_rx = self.shutdown.subscribe();
         let mut new_event = self.new_event.subscribe();
 
-        let ws_stream = tokio_tungstenite::accept_async(raw_stream).await?;
+        let ws_stream = native::accept(raw_stream).await?;
         tracing::debug!("WebSocket connection established: {addr}");
 
         let (mut tx, mut rx) = ws_stream.split();
