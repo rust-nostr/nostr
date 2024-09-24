@@ -18,8 +18,8 @@ async function main() {
     eventJson.eventJson();
     eventBuilder.eventBuilder();
 
-    relayMessages.run();
-
+    await relayMessages.run();
+    
     nip01.run();
     await nip05.run();
     nip19.run();

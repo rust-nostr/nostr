@@ -16,7 +16,7 @@ async function run() {
 
     console.log();
     // ANCHOR: ok-message
-    console.log("\n  Event Acceptance Relay Message:");
+    console.log("  Event Acceptance Relay Message:");
     relayMessage = RelayMessage.ok(event.id, false, "You have no power here, Gandalf The Grey");
     console.log(`     - JSON: ${relayMessage.asJson()}`);
     // ANCHOR_END: ok-message
