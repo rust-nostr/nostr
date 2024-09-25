@@ -17,7 +17,7 @@ use tokio::sync::{broadcast, Semaphore};
 
 use super::session::{RateLimiterResponse, Session, Tokens};
 use super::util;
-use crate::builder::{RateLimit, RelayBuilder};
+use crate::builder::{RateLimit, RelayBuilder, RelayBuilderMode};
 use crate::error::Error;
 
 type WsTx = SplitSink<WebSocketStream<TcpStream>, Message>;
@@ -31,6 +31,7 @@ pub(super) struct InternalLocalRelay {
     ///
     /// Every session will listen and check own subscriptions
     new_event: broadcast::Sender<Event>,
+    mode: RelayBuilderMode,
     rate_limit: RateLimit,
     connections_limit: Arc<Semaphore>,
     #[cfg(feature = "tor")]
@@ -86,6 +87,7 @@ impl InternalLocalRelay {
             database: builder.database,
             shutdown: shutdown_tx,
             new_event,
+            mode: builder.mode,
             rate_limit: builder.rate_limit,
             connections_limit: Arc::new(Semaphore::new(max_connections)),
             #[cfg(feature = "tor")]
@@ -256,6 +258,28 @@ impl InternalLocalRelay {
                             },
                         )
                         .await;
+                }
+
+                // Check mode
+                if let RelayBuilderMode::PublicKey(pk) = self.mode {
+                    let authored: bool = event.pubkey == pk;
+                    let tagged: bool = event.public_keys().any(|p| p == &pk);
+
+                    if !authored && !tagged {
+                        return self
+                            .send_msg(
+                                ws_tx,
+                                RelayMessage::Ok {
+                                    event_id: event.id,
+                                    status: false,
+                                    message: format!(
+                                        "{}: event not related to owner of this relay",
+                                        MachineReadablePrefix::Blocked
+                                    ),
+                                },
+                            )
+                            .await;
+                    }
                 }
 
                 if !event.verify_id() {

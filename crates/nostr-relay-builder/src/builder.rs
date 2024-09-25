@@ -79,6 +79,18 @@ impl RelayBuilderHiddenService {
     }
 }
 
+/// Mode
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum RelayBuilderMode {
+    /// Generic mode
+    #[default]
+    Generic,
+    /// Accept only events that are authored by or contains a specific public key
+    ///
+    /// All other events are rejected
+    PublicKey(PublicKey),
+}
+
 /// Relay builder
 pub struct RelayBuilder {
     /// IP address
@@ -87,6 +99,8 @@ pub struct RelayBuilder {
     pub port: Option<u16>,
     /// Database
     pub database: Arc<DynNostrDatabase>,
+    /// Mode
+    pub mode: RelayBuilderMode,
     /// Rate limit
     pub rate_limit: RateLimit,
     /// Tor hidden service
@@ -105,6 +119,7 @@ impl Default for RelayBuilder {
                 events: true,
                 max_events: Some(75_000),
             })),
+            mode: RelayBuilderMode::default(),
             rate_limit: RateLimit::default(),
             #[cfg(feature = "tor")]
             tor: None,
@@ -135,6 +150,13 @@ impl RelayBuilder {
         D: IntoNostrDatabase,
     {
         self.database = database.into_nostr_database();
+        self
+    }
+
+    /// Set mode
+    #[inline]
+    pub fn mode(mut self, mode: RelayBuilderMode) -> Self {
+        self.mode = mode;
         self
     }
 
