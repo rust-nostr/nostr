@@ -38,6 +38,7 @@
 * relay-builder: allow to serve local relay as hidden service ([Yuki Kishimoto])
 * relay-builder: allow to set number of max connections allowed ([Yuki Kishimoto])
 * relay-builder: add `RelayBuilderMode` ([Yuki Kishimoto])
+* relay-builder: add min POW difficulty option to `RelayBuilder` ([Yuki Kishimoto])
 * pool: add `RelayPool::force_remove_relay` method ([Yuki Kishimoto])
 * zapper: add `WebLNZapper` struct (moved from `nostr-webln` crate) ([Yuki Kishimoto])
 

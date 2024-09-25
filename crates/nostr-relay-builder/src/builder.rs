@@ -108,6 +108,8 @@ pub struct RelayBuilder {
     pub tor: Option<RelayBuilderHiddenService>,
     /// Max connections allowed
     pub max_connections: Option<usize>,
+    /// Min POW difficulty
+    pub min_pow: Option<u8>,
 }
 
 impl Default for RelayBuilder {
@@ -124,6 +126,7 @@ impl Default for RelayBuilder {
             #[cfg(feature = "tor")]
             tor: None,
             max_connections: None,
+            min_pow: None,
         }
     }
 }
@@ -179,6 +182,13 @@ impl RelayBuilder {
     #[inline]
     pub fn max_connections(mut self, max: usize) -> Self {
         self.max_connections = Some(max);
+        self
+    }
+
+    /// Set min POW difficulty
+    #[inline]
+    pub fn min_pow(mut self, difficulty: u8) -> Self {
+        self.min_pow = Some(difficulty);
         self
     }
 }

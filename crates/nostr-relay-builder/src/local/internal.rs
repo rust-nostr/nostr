@@ -34,6 +34,7 @@ pub(super) struct InternalLocalRelay {
     mode: RelayBuilderMode,
     rate_limit: RateLimit,
     connections_limit: Arc<Semaphore>,
+    min_pow: Option<u8>, // TODO: use AtomicU8 to allow to change it?
     #[cfg(feature = "tor")]
     hidden_service: Option<String>,
 }
@@ -90,6 +91,7 @@ impl InternalLocalRelay {
             mode: builder.mode,
             rate_limit: builder.rate_limit,
             connections_limit: Arc::new(Semaphore::new(max_connections)),
+            min_pow: builder.min_pow,
             #[cfg(feature = "tor")]
             hidden_service,
         };
@@ -240,6 +242,25 @@ impl InternalLocalRelay {
                             },
                         )
                         .await;
+                }
+
+                // Check POW
+                if let Some(difficulty) = self.min_pow {
+                    if !event.id.check_pow(difficulty) {
+                        return self
+                            .send_msg(
+                                ws_tx,
+                                RelayMessage::Ok {
+                                    event_id: event.id,
+                                    status: false,
+                                    message: format!(
+                                        "{}: required a difficulty >= {difficulty}",
+                                        MachineReadablePrefix::Pow
+                                    ),
+                                },
+                            )
+                            .await;
+                    }
                 }
 
                 // Check if event already exists
