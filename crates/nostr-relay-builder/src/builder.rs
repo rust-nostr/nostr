@@ -92,6 +92,8 @@ pub struct RelayBuilder {
     /// Tor hidden service
     #[cfg(feature = "tor")]
     pub tor: Option<RelayBuilderHiddenService>,
+    /// Max connections allowed
+    pub max_connections: Option<usize>,
 }
 
 impl Default for RelayBuilder {
@@ -106,6 +108,7 @@ impl Default for RelayBuilder {
             rate_limit: RateLimit::default(),
             #[cfg(feature = "tor")]
             tor: None,
+            max_connections: None,
         }
     }
 }
@@ -147,6 +150,13 @@ impl RelayBuilder {
     #[cfg(feature = "tor")]
     pub fn tor(mut self, opts: RelayBuilderHiddenService) -> Self {
         self.tor = Some(opts);
+        self
+    }
+
+    /// Set number of max connections allowed
+    #[inline]
+    pub fn max_connections(mut self, max: usize) -> Self {
+        self.max_connections = Some(max);
         self
     }
 }

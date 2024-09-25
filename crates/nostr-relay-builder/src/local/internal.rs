@@ -13,7 +13,7 @@ use atomic_destructor::AtomicDestroyer;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, Semaphore};
 
 use super::session::{RateLimiterResponse, Session, Tokens};
 use super::util;
@@ -32,6 +32,7 @@ pub(super) struct InternalLocalRelay {
     /// Every session will listen and check own subscriptions
     new_event: broadcast::Sender<Event>,
     rate_limit: RateLimit,
+    connections_limit: Arc<Semaphore>,
     #[cfg(feature = "tor")]
     hidden_service: Option<String>,
 }
@@ -77,6 +78,8 @@ impl InternalLocalRelay {
         let (shutdown_tx, mut shutdown_rx) = broadcast::channel::<()>(1);
         let (new_event, ..) = broadcast::channel(1024);
 
+        let max_connections: usize = builder.max_connections.unwrap_or(Semaphore::MAX_PERMITS);
+
         // Compose relay
         let relay: Self = Self {
             addr,
@@ -84,6 +87,7 @@ impl InternalLocalRelay {
             shutdown: shutdown_tx,
             new_event,
             rate_limit: builder.rate_limit,
+            connections_limit: Arc::new(Semaphore::new(max_connections)),
             #[cfg(feature = "tor")]
             hidden_service,
         };
@@ -98,7 +102,7 @@ impl InternalLocalRelay {
                                 let r1: Self = r.clone();
                                 tokio::spawn(async move {
                                     if let Err(e) = r1.handle_connection(stream, addr).await {
-                                        tracing::error!("{e}");
+                                        tracing::warn!("{e}");
                                     }
                                 });
                             }
@@ -137,11 +141,16 @@ impl InternalLocalRelay {
     }
 
     async fn handle_connection(&self, raw_stream: TcpStream, addr: SocketAddr) -> Result<()> {
+        // Accept websocket
+        let ws_stream = native::accept(raw_stream).await?;
+
+        // Try to acquire connection limit
+        let permit = self.connections_limit.try_acquire()?;
+
+        tracing::debug!("WebSocket connection established: {addr}");
+
         let mut shutdown_rx = self.shutdown.subscribe();
         let mut new_event = self.new_event.subscribe();
-
-        let ws_stream = native::accept(raw_stream).await?;
-        tracing::debug!("WebSocket connection established: {addr}");
 
         let (mut tx, mut rx) = ws_stream.split();
 
@@ -195,6 +204,9 @@ impl InternalLocalRelay {
                 }
             }
         }
+
+        // Drop connection permit
+        drop(permit);
 
         tracing::debug!("WebSocket connection terminated for {addr}");
 
