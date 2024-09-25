@@ -36,10 +36,9 @@ impl From<signer::Nip46Signer> for Nip46Signer {
 
 #[uniffi::export(async_runtime = "tokio")]
 impl Nip46Signer {
-    // TODO: change again to `new` (currently python not support async constructor)
     /// Construct Nostr Connect client
     #[uniffi::constructor]
-    pub async fn init(
+    pub fn new(
         uri: &NostrConnectURI,
         app_keys: &Keys,
         timeout: Duration,
@@ -51,29 +50,27 @@ impl Nip46Signer {
                 app_keys.deref().clone(),
                 timeout,
                 opts.map(|k| k.as_ref().deref().clone()),
-            )
-            .await?,
+            )?,
         })
     }
 
     /// Get signer relays
-    pub async fn relays(&self) -> Vec<String> {
+    pub fn relays(&self) -> Vec<String> {
         self.inner
             .relays()
-            .await
             .into_iter()
             .map(|u| u.to_string())
             .collect()
     }
 
     /// Get signer public key
-    pub fn signer_public_key(&self) -> PublicKey {
-        self.inner.signer_public_key().into()
+    pub async fn signer_public_key(&self) -> Result<PublicKey> {
+        Ok(self.inner.signer_public_key().await.copied()?.into())
     }
 
     /// Get `bunker` URI
-    pub async fn bunker_uri(&self) -> NostrConnectURI {
-        self.inner.bunker_uri().await.into()
+    pub async fn bunker_uri(&self) -> Result<NostrConnectURI> {
+        Ok(self.inner.bunker_uri().await?.into())
     }
 }
 

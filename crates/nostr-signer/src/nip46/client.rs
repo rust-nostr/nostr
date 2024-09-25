@@ -14,6 +14,7 @@ use nostr_relay_pool::{
     RelayOptions, RelayPool, RelayPoolNotification, RelaySendOptions, SubscribeOptions,
 };
 use tokio::sync::broadcast::Receiver;
+use tokio::sync::OnceCell;
 
 use super::Error;
 
@@ -23,15 +24,17 @@ use super::Error;
 #[derive(Debug, Clone)]
 pub struct Nip46Signer {
     app_keys: Keys,
-    signer_public_key: PublicKey,
+    uri: NostrConnectURI,
+    signer_public_key: OnceCell<PublicKey>,
     pool: RelayPool,
     timeout: Duration,
+    opts: RelayOptions,
     secret: Option<String>,
 }
 
 impl Nip46Signer {
     /// Construct Nostr Connect client
-    pub async fn new(
+    pub fn new(
         uri: NostrConnectURI,
         app_keys: Keys,
         timeout: Duration,
@@ -44,42 +47,59 @@ impl Nip46Signer {
             }
         }
 
-        // Compose pool
-        let pool: RelayPool = RelayPool::default();
+        Ok(Self {
+            app_keys,
+            signer_public_key: OnceCell::new(),
+            pool: RelayPool::default(),
+            timeout,
+            opts: opts.unwrap_or_default(),
+            secret: uri.secret(),
+            uri,
+        })
+    }
 
+    async fn bootstrap(&self) -> Result<PublicKey, Error> {
         // Add relays
-        let opts: RelayOptions = opts.unwrap_or_default();
-        for url in uri.relays().into_iter() {
-            pool.add_relay(url, opts.clone()).await?;
+        for url in self.uri.relays().into_iter() {
+            self.pool.add_relay(url, self.opts.clone()).await?;
         }
 
         // Connect to relays
-        pool.connect(Some(Duration::from_secs(10))).await;
+        self.pool.connect(None).await;
 
         // Subscribe
-        let notifications = subscribe(&app_keys, &pool).await?;
+        let notifications = self.subscribe().await?;
 
         // Get signer public key
-        let signer_public_key: PublicKey = match uri.signer_public_key() {
+        let signer_public_key: PublicKey = match self.uri.signer_public_key() {
             Some(public_key) => public_key,
-            None => get_signer_public_key(&app_keys, notifications, timeout).await?,
-        };
-
-        // Compose
-        let this = Self {
-            app_keys,
-            signer_public_key,
-            pool,
-            timeout,
-            secret: uri.secret(),
+            None => get_signer_public_key(&self.app_keys, notifications, self.timeout).await?,
         };
 
         // Send `connect` command if bunker URI
-        if uri.is_bunker() {
-            this.connect().await?;
+        if self.uri.is_bunker() {
+            self.connect(signer_public_key).await?;
         }
 
-        Ok(this)
+        Ok(signer_public_key)
+    }
+
+    async fn subscribe(&self) -> Result<Receiver<RelayPoolNotification>, Error> {
+        let public_key: PublicKey = self.app_keys.public_key();
+
+        let filter = Filter::new()
+            .pubkey(public_key)
+            .kind(Kind::NostrConnect)
+            .limit(0);
+
+        let notifications = self.pool.notifications();
+
+        // Subscribe
+        self.pool
+            .subscribe(vec![filter], SubscribeOptions::default())
+            .await?;
+
+        Ok(notifications)
     }
 
     /// Get local app keys
@@ -89,28 +109,40 @@ impl Nip46Signer {
     }
 
     /// Get signer relays
-    pub async fn relays(&self) -> Vec<Url> {
-        self.pool.relays().await.into_keys().collect()
+    #[inline]
+    pub fn relays(&self) -> Vec<Url> {
+        self.uri.relays()
     }
 
     /// Get signer [PublicKey]
     #[inline]
-    pub fn signer_public_key(&self) -> PublicKey {
+    pub async fn signer_public_key(&self) -> Result<&PublicKey, Error> {
         self.signer_public_key
+            .get_or_try_init(|| async { self.bootstrap().await })
+            .await
     }
 
     /// Get `bunker` URI
-    pub async fn bunker_uri(&self) -> NostrConnectURI {
-        NostrConnectURI::Bunker {
-            signer_public_key: self.signer_public_key,
-            relays: self.relays().await,
+    pub async fn bunker_uri(&self) -> Result<NostrConnectURI, Error> {
+        Ok(NostrConnectURI::Bunker {
+            signer_public_key: *self.signer_public_key().await?,
+            relays: self.relays(),
             secret: self.secret.clone(),
-        }
+        })
     }
 
+    #[inline]
     async fn send_request(&self, req: Request) -> Result<ResponseResult, Error> {
+        let signer_public_key: PublicKey = *self.signer_public_key().await?;
+        self.send_request_with_pk(req, signer_public_key).await
+    }
+
+    async fn send_request_with_pk(
+        &self,
+        req: Request,
+        signer_public_key: PublicKey,
+    ) -> Result<ResponseResult, Error> {
         let secret_key: &SecretKey = self.app_keys.secret_key();
-        let signer_public_key: PublicKey = self.signer_public_key();
 
         // Convert request to event
         let msg = Message::request(req);
@@ -162,12 +194,12 @@ impl Nip46Signer {
     }
 
     /// Connect msg
-    async fn connect(&self) -> Result<(), Error> {
+    async fn connect(&self, signer_public_key: PublicKey) -> Result<(), Error> {
         let req = Request::Connect {
-            public_key: self.signer_public_key(),
+            public_key: signer_public_key,
             secret: self.secret.clone(),
         };
-        let res = self.send_request(req).await?;
+        let res = self.send_request_with_pk(req, signer_public_key).await?;
         Ok(res.to_connect()?)
     }
 
@@ -248,26 +280,6 @@ impl Nip46Signer {
     pub async fn shutdown(self) -> Result<(), Error> {
         Ok(self.pool.shutdown().await?)
     }
-}
-
-async fn subscribe(
-    app_keys: &Keys,
-    pool: &RelayPool,
-) -> Result<Receiver<RelayPoolNotification>, Error> {
-    let public_key: PublicKey = app_keys.public_key();
-
-    let filter = Filter::new()
-        .pubkey(public_key)
-        .kind(Kind::NostrConnect)
-        .limit(0);
-
-    let notifications = pool.notifications();
-
-    // Subscribe
-    pool.subscribe(vec![filter], SubscribeOptions::default())
-        .await?;
-
-    Ok(notifications)
 }
 
 async fn get_signer_public_key(

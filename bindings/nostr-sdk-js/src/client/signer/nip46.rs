@@ -37,7 +37,7 @@ impl From<Nip46Signer> for JsNip46Signer {
 impl JsNip46Signer {
     /// Construct Nostr Connect client
     #[wasm_bindgen]
-    pub async fn init(
+    pub fn new(
         uri: &JsNostrConnectURI,
         app_keys: &JsKeys,
         timeout: &JsDuration,
@@ -49,17 +49,15 @@ impl JsNip46Signer {
                 **timeout,
                 None,
             )
-            .await
             .map_err(into_err)?,
         })
     }
 
     /// Get signer relays
     #[wasm_bindgen]
-    pub async fn relays(&self) -> JsStringArray {
+    pub fn relays(&self) -> JsStringArray {
         self.inner
             .relays()
-            .await
             .into_iter()
             .map(|u| JsValue::from(u.to_string()))
             .collect::<Array>()
@@ -68,13 +66,19 @@ impl JsNip46Signer {
 
     /// Get signer public key
     #[wasm_bindgen(js_name = signerPublicKey)]
-    pub fn signer_public_key(&self) -> JsPublicKey {
-        self.inner.signer_public_key().into()
+    pub async fn signer_public_key(&self) -> Result<JsPublicKey> {
+        Ok(self
+            .inner
+            .signer_public_key()
+            .await
+            .copied()
+            .map_err(into_err)?
+            .into())
     }
 
     /// Get `bunker` URI
     #[wasm_bindgen(js_name = bunkerUri)]
-    pub async fn bunker_uri(&self) -> JsNostrConnectURI {
-        self.inner.bunker_uri().await.into()
+    pub async fn bunker_uri(&self) -> Result<JsNostrConnectURI> {
+        Ok(self.inner.bunker_uri().await.map_err(into_err)?.into())
     }
 }

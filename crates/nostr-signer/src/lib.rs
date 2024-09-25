@@ -127,7 +127,7 @@ impl NostrSigner {
             #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
             Self::NIP07(s) => Ok(s.get_public_key().await?),
             #[cfg(feature = "nip46")]
-            Self::NIP46(s) => Ok(s.signer_public_key()),
+            Self::NIP46(s) => Ok(*s.signer_public_key().await?),
         }
     }
 

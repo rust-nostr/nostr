@@ -36,7 +36,7 @@ async def main():
     # Or, initialize with NIP46 signer
     # app_keys = Keys.parse("..")
     # uri = NostrConnectUri.parse("bunker://.. or nostrconnect://..")
-    # nip46 = await Nip46Signer.init(uri, app_keys, timedelta(seconds=60), None)
+    # nip46 = Nip46Signer(uri, app_keys, timedelta(seconds=60), None)
     # signer = NostrSigner.nip46(nip46)
 
     client = Client(signer)
