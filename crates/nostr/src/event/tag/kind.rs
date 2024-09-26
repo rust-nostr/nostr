@@ -103,6 +103,10 @@ pub enum TagKind<'a> {
     Request,
     /// Word
     Word,
+    /// Client
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/89.md>
+    Client,
     /// Custom tag kind
     Custom(Cow<'a, str>),
 }
@@ -166,6 +170,7 @@ impl<'a> fmt::Display for TagKind<'a> {
             Self::Encrypted => write!(f, "encrypted"),
             Self::Request => write!(f, "request"),
             Self::Word => write!(f, "word"),
+            Self::Client => write!(f, "client"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -216,6 +221,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "encrypted" => Self::Encrypted,
             "request" => Self::Request,
             "word" => Self::Word,
+            "client" => Self::Client,
             k => match SingleLetterTag::from_str(k) {
                 Ok(s) => Self::SingleLetter(s),
                 Err(..) => Self::Custom(Cow::Borrowed(k)),

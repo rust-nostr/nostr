@@ -117,6 +117,10 @@ pub enum TagKind {
     Encrypted,
     Request,
     Word,
+    /// Client
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/89.md>
+    Client,
     Unknown {
         unknown: String,
     },
@@ -170,6 +174,7 @@ impl<'a> From<tag::TagKind<'a>> for TagKind {
             tag::TagKind::Encrypted => Self::Encrypted,
             tag::TagKind::Request => Self::Request,
             tag::TagKind::Word => Self::Word,
+            tag::TagKind::Client => Self::Client,
             tag::TagKind::Custom(unknown) => Self::Unknown {
                 unknown: unknown.to_string(),
             },
@@ -223,6 +228,7 @@ impl<'a> From<TagKind> for tag::TagKind<'a> {
             TagKind::Encrypted => Self::Encrypted,
             TagKind::Request => Self::Request,
             TagKind::Word => Self::Word,
+            TagKind::Client => Self::Client,
             TagKind::Unknown { unknown } => Self::Custom(Cow::Owned(unknown)),
         }
     }
