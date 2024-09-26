@@ -78,8 +78,8 @@ impl RelayPool {
     }
 
     /// Get relay
-    pub async fn relay(&self, url: String) -> Result<Arc<Relay>> {
-        Ok(Arc::new(self.inner.relay(url).await?.into()))
+    pub async fn relay(&self, url: &str) -> Result<Arc<Relay>> {
+        Ok(Arc::new(self.inner.relay(&url).await?.into()))
     }
 
     pub async fn add_relay(&self, url: String, opts: &RelayOptions) -> Result<bool> {
@@ -91,14 +91,14 @@ impl RelayPool {
     /// If the relay has `INBOX` or `OUTBOX` flags, it will not be removed from the pool and its
     /// flags will be updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
     pub async fn remove_relay(&self, url: &str) -> Result<()> {
-        Ok(self.inner.remove_relay(url).await?)
+        Ok(self.inner.remove_relay(&url).await?)
     }
 
     /// Force remove and disconnect relay
     ///
     /// Note: this method will remove the relay, also if it's in use for the gossip model or other service!
     pub async fn force_remove_relay(&self, url: &str) -> Result<()> {
-        Ok(self.inner.force_remove_relay(url).await?)
+        Ok(self.inner.force_remove_relay(&url).await?)
     }
 
     /// Connect to all added relays and keep connection alive

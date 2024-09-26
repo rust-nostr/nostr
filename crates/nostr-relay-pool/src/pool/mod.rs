@@ -157,7 +157,7 @@ impl RelayPool {
 
     /// Get [`Relay`]
     #[inline]
-    pub async fn relay<U>(&self, url: U) -> Result<Relay, Error>
+    pub async fn relay<U>(&self, url: &U) -> Result<Relay, Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
@@ -189,7 +189,7 @@ impl RelayPool {
         opts: RelayOptions,
     ) -> Result<Option<Relay>, Error>
     where
-        U: TryIntoUrl + Clone,
+        U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
         self.inner
@@ -202,7 +202,7 @@ impl RelayPool {
     /// If the relay has `INBOX` or `OUTBOX` flags, it will not be removed from the pool and its
     /// flags will be updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
     #[inline]
-    pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
+    pub async fn remove_relay<U>(&self, url: &U) -> Result<(), Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
@@ -214,7 +214,7 @@ impl RelayPool {
     ///
     /// Note: this method will remove the relay, also if it's in use for the gossip model or other service!
     #[inline]
-    pub async fn force_remove_relay<U>(&self, url: U) -> Result<(), Error>
+    pub async fn force_remove_relay<U>(&self, url: &U) -> Result<(), Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,

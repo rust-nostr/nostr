@@ -30,6 +30,7 @@
 * relay-builder: refactor `Session::check_rate_limit` method ([Yuki Kishimoto])
 * pool: changes in `RelayPool::remove_relay` behavior ([Yuki Kishimoto])
 * pool: deprecate `RelayPool::remove_all_relays` ([Yuki Kishimoto])
+* sdk: use `TryIntoUrl::try_as_url` where possible to avoid clone ([Yuki Kishimoto])
 * signer: bootstrap NIP-46 signer on demand ([Yuki Kishimoto])
 
 ### Added

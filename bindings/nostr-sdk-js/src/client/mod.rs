@@ -136,7 +136,7 @@ impl JsClient {
 
     /// Get a previously added `Relay`
     pub async fn relay(&self, url: &str) -> Result<JsRelay> {
-        Ok(self.inner.relay(url).await.map_err(into_err)?.into())
+        Ok(self.inner.relay(&url).await.map_err(into_err)?.into())
     }
 
     /// Add new relay
@@ -152,7 +152,7 @@ impl JsClient {
     ///
     /// Connection is **NOT** automatically started with relay, remember to call `connect` method!
     #[wasm_bindgen(js_name = addRelay)]
-    pub async fn add_relay(&self, url: String) -> Result<bool> {
+    pub async fn add_relay(&self, url: &str) -> Result<bool> {
         self.inner.add_relay(url).await.map_err(into_err)
     }
 
@@ -162,7 +162,7 @@ impl JsClient {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     #[wasm_bindgen(js_name = addDiscoveryRelay)]
-    pub async fn add_discovery_relay(&self, url: String) -> Result<bool> {
+    pub async fn add_discovery_relay(&self, url: &str) -> Result<bool> {
         self.inner.add_discovery_relay(url).await.map_err(into_err)
     }
 
@@ -173,7 +173,7 @@ impl JsClient {
     /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
     /// to avoid to set pool subscriptions.
     #[wasm_bindgen(js_name = addReadRelay)]
-    pub async fn add_read_relay(&self, url: String) -> Result<bool> {
+    pub async fn add_read_relay(&self, url: &str) -> Result<bool> {
         self.inner.add_read_relay(url).await.map_err(into_err)
     }
 
@@ -181,7 +181,7 @@ impl JsClient {
     ///
     /// If relay already exists, this method add the `WRITE` flag to it and return `false`.
     #[wasm_bindgen(js_name = addWriteRelay)]
-    pub async fn add_write_relay(&self, url: String) -> Result<bool> {
+    pub async fn add_write_relay(&self, url: &str) -> Result<bool> {
         self.inner.add_write_relay(url).await.map_err(into_err)
     }
 
@@ -191,7 +191,7 @@ impl JsClient {
     /// flags will be updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
     #[wasm_bindgen(js_name = removeRelay)]
     pub async fn remove_relay(&self, url: &str) -> Result<()> {
-        self.inner.remove_relay(url).await.map_err(into_err)
+        self.inner.remove_relay(&url).await.map_err(into_err)
     }
 
     /// Force remove and disconnect relay
@@ -199,7 +199,7 @@ impl JsClient {
     /// Note: this method will remove the relay, also if it's in use for the gossip model or other service!
     #[wasm_bindgen(js_name = forceRemoveRelay)]
     pub async fn force_remove_relay(&self, url: &str) -> Result<()> {
-        self.inner.force_remove_relay(url).await.map_err(into_err)
+        self.inner.force_remove_relay(&url).await.map_err(into_err)
     }
 
     /// Connect to a previously added relay
