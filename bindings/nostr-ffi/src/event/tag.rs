@@ -291,6 +291,12 @@ impl Tag {
         self.inner.kind().into()
     }
 
+    /// Get tag kind as string
+    #[inline]
+    pub fn kind_str(&self) -> String {
+        self.inner.kind().to_string()
+    }
+
     /// Return the **first** tag value (index `1`), if exists.
     #[inline]
     pub fn content(&self) -> Option<String> {

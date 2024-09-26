@@ -46,6 +46,7 @@
 * pool: add `RelayFiltering::overwrite_public_keys` method ([Yuki Kishimoto])
 * zapper: add `WebLNZapper` struct (moved from `nostr-webln` crate) ([Yuki Kishimoto])
 * ffi(nostr): add `tag_kind_to_string` func ([Yuki Kishimoto])
+* ffi(nostr): add `Tag::kind_str` method ([Yuki Kishimoto])
 * book: add some examples ([RydalWater])
 
 ### Fixed
