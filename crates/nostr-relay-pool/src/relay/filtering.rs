@@ -180,6 +180,15 @@ impl RelayFiltering {
         public_keys.remove(public_key);
     }
 
+    /// Overwrite public keys set
+    pub async fn overwrite_public_keys<I>(&self, public_keys: I)
+    where
+        I: IntoIterator<Item = PublicKey>,
+    {
+        let mut p = self.public_keys.write().await;
+        *p = public_keys.into_iter().collect();
+    }
+
     /// Check if has public key
     pub async fn has_public_key(&self, public_key: &PublicKey) -> bool {
         let public_keys = self.public_keys.read().await;

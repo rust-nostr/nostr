@@ -129,6 +129,13 @@ impl RelayFiltering {
         self.inner.remove_public_key(public_key.deref()).await
     }
 
+    /// Overwrite public keys set
+    pub async fn overwrite_public_keys(&self, public_keys: Vec<Arc<PublicKey>>) {
+        self.inner
+            .overwrite_public_keys(public_keys.into_iter().map(|p| **p))
+            .await
+    }
+
     /// Check if has public key
     pub async fn has_public_key(&self, public_key: &PublicKey) -> bool {
         self.inner.has_public_key(public_key.deref()).await

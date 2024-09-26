@@ -43,6 +43,7 @@
 * relay-builder: add `RelayBuilderMode` ([Yuki Kishimoto])
 * relay-builder: add min POW difficulty option to `RelayBuilder` ([Yuki Kishimoto])
 * pool: add `RelayPool::force_remove_relay` method ([Yuki Kishimoto])
+* pool: add `RelayFiltering::overwrite_public_keys` method ([Yuki Kishimoto])
 * zapper: add `WebLNZapper` struct (moved from `nostr-webln` crate) ([Yuki Kishimoto])
 * book: add some examples ([RydalWater])
 

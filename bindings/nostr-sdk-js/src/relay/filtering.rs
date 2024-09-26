@@ -121,9 +121,9 @@ impl JsRelayFiltering {
 
     /// Remove public keys
     #[wasm_bindgen(js_name = removePublicKeys)]
-    pub async fn remove_public_keys(&self, ids: Vec<JsPublicKey>) {
+    pub async fn remove_public_keys(&self, public_keys: Vec<JsPublicKey>) {
         self.inner
-            .remove_public_keys(ids.iter().map(|p| p.deref()))
+            .remove_public_keys(public_keys.iter().map(|p| p.deref()))
             .await
     }
 
@@ -131,6 +131,14 @@ impl JsRelayFiltering {
     #[wasm_bindgen(js_name = removePublicKey)]
     pub async fn remove_public_key(&self, public_key: &JsPublicKey) {
         self.inner.remove_public_key(public_key.deref()).await
+    }
+
+    /// Overwrite public keys set
+    #[wasm_bindgen(js_name = overwritePublicKeys)]
+    pub async fn overwrite_public_keys(&self, public_keys: Vec<JsPublicKey>) {
+        self.inner
+            .overwrite_public_keys(public_keys.iter().map(|p| **p))
+            .await
     }
 
     /// Check if has public key
