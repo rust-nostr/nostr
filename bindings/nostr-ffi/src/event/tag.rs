@@ -234,6 +234,13 @@ impl<'a> From<TagKind> for tag::TagKind<'a> {
     }
 }
 
+/// Convert tag kind to string
+#[uniffi::export]
+pub fn tag_kind_to_string(kind: TagKind) -> String {
+    let kind: tag::TagKind<'_> = kind.into();
+    kind.to_string()
+}
+
 /// Tag
 #[derive(Debug, PartialEq, Eq, Hash, Object)]
 #[uniffi::export(Debug, Eq, Hash)]
