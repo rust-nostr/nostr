@@ -24,11 +24,11 @@ impl Client {
                         // Check if auto authentication (NIP42) is enabled
                         if client.opts.is_nip42_auto_authentication_enabled() {
                             if let RelayMessage::Auth { challenge } = message {
-                                match client.auth(challenge, &relay_url).await {
+                                match client.auth(challenge, relay_url.clone()).await {
                                     Ok(..) => {
                                         tracing::info!("Authenticated to '{relay_url}' relay.");
 
-                                        if let Ok(relay) = client.relay(&relay_url).await {
+                                        if let Ok(relay) = client.relay(relay_url).await {
                                             let opts = RelaySendOptions::new()
                                                 .skip_send_confirmation(true);
                                             if let Err(e) = relay.resubscribe(opts).await {

@@ -208,7 +208,7 @@ async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
             for url in relays.into_iter() {
                 if !current_relays.contains_key(&url) {
                     println!("Relay '{url}' removed.");
-                    client.remove_relay(&url).await?;
+                    client.remove_relay(url).await?;
                 }
             }
 

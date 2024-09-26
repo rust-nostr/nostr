@@ -89,7 +89,7 @@ impl JsRelayPool {
     /// Get relay
     #[wasm_bindgen]
     pub async fn relay(&self, url: &str) -> Result<JsRelay> {
-        Ok(self.inner.relay(&url).await.map_err(into_err)?.into())
+        Ok(self.inner.relay(url).await.map_err(into_err)?.into())
     }
 
     #[wasm_bindgen(js_name = addRelay)]
@@ -106,7 +106,7 @@ impl JsRelayPool {
     /// flags will be updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
     #[wasm_bindgen(js_name = removeRelay)]
     pub async fn remove_relay(&self, url: &str) -> Result<()> {
-        self.inner.remove_relay(&url).await.map_err(into_err)
+        self.inner.remove_relay(url).await.map_err(into_err)
     }
 
     /// Force remove and disconnect relay
@@ -114,7 +114,7 @@ impl JsRelayPool {
     /// Note: this method will remove the relay, also if it's in use for the gossip model or other service!
     #[wasm_bindgen(js_name = forceRemoveRelay)]
     pub async fn force_remove_relay(&self, url: &str) -> Result<()> {
-        self.inner.force_remove_relay(&url).await.map_err(into_err)
+        self.inner.force_remove_relay(url).await.map_err(into_err)
     }
 
     /// Connect to all added relays and keep connection alive

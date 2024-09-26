@@ -120,8 +120,8 @@ impl Client {
             .collect()
     }
 
-    pub async fn relay(&self, url: &str) -> Result<Arc<Relay>> {
-        Ok(Arc::new(self.inner.relay(&url).await?.into()))
+    pub async fn relay(&self, url: String) -> Result<Arc<Relay>> {
+        Ok(Arc::new(self.inner.relay(url).await?.into()))
     }
 
     /// Add new relay
@@ -137,7 +137,7 @@ impl Client {
     /// To use custom `RelayOptions` use `add_relay` method on `RelayPool`.
     ///
     /// Connection is **NOT** automatically started with relay, remember to call `connect` method!
-    pub async fn add_relay(&self, url: &str) -> Result<bool> {
+    pub async fn add_relay(&self, url: String) -> Result<bool> {
         Ok(self.inner.add_relay(url).await?)
     }
 
@@ -146,7 +146,7 @@ impl Client {
     /// If relay already exists, this method automatically add the `DISCOVERY` flag to it and return `false`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
-    pub async fn add_discovery_relay(&self, url: &str) -> Result<bool> {
+    pub async fn add_discovery_relay(&self, url: String) -> Result<bool> {
         Ok(self.inner.add_discovery_relay(url).await?)
     }
 
@@ -156,14 +156,14 @@ impl Client {
     ///
     /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
     /// to avoid to set pool subscriptions.
-    pub async fn add_read_relay(&self, url: &str) -> Result<bool> {
+    pub async fn add_read_relay(&self, url: String) -> Result<bool> {
         Ok(self.inner.add_read_relay(url).await?)
     }
 
     /// Add write relay
     ///
     /// If relay already exists, this method add the `WRITE` flag to it and return `false`.
-    pub async fn add_write_relay(&self, url: &str) -> Result<bool> {
+    pub async fn add_write_relay(&self, url: String) -> Result<bool> {
         Ok(self.inner.add_write_relay(url).await?)
     }
 
@@ -172,14 +172,14 @@ impl Client {
     /// If the relay has `INBOX` or `OUTBOX` flags, it will not be removed from the pool and its
     /// flags will be updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
     pub async fn remove_relay(&self, url: &str) -> Result<()> {
-        Ok(self.inner.remove_relay(&url).await?)
+        Ok(self.inner.remove_relay(url).await?)
     }
 
     /// Force remove and disconnect relay
     ///
     /// Note: this method will remove the relay, also if it's in use for the gossip model or other service!
     pub async fn force_remove_relay(&self, url: &str) -> Result<()> {
-        Ok(self.inner.force_remove_relay(&url).await?)
+        Ok(self.inner.force_remove_relay(url).await?)
     }
 
     /// Connect to a previously added relay

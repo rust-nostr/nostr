@@ -4,7 +4,6 @@
 
 //! Relay Pool
 
-use std::borrow::Cow;
 use std::collections::btree_set::IntoIter;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::iter::Rev;
@@ -172,12 +171,12 @@ impl InternalRelayPool {
         txn.get(url).ok_or(Error::RelayNotFound)
     }
 
-    pub async fn relay<U>(&self, url: &U) -> Result<Relay, Error>
+    pub async fn relay<U>(&self, url: U) -> Result<Relay, Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url: Cow<Url> = url.try_as_url()?;
+        let url: Url = url.try_into_url()?;
         let relays = self.relays.read().await;
         self.internal_relay(&relays, &url).cloned()
     }
@@ -258,10 +257,10 @@ impl InternalRelayPool {
         opts: RelayOptions,
     ) -> Result<Option<Relay>, Error>
     where
-        U: TryIntoUrl,
+        U: TryIntoUrl + Clone,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        match self.relay(&url).await {
+        match self.relay(url.clone()).await {
             Ok(relay) => Ok(Some(relay)),
             Err(..) => {
                 self.add_relay(url, inherit_pool_subscriptions, opts)
@@ -271,13 +270,13 @@ impl InternalRelayPool {
         }
     }
 
-    pub async fn remove_relay<U>(&self, url: &U, force: bool) -> Result<(), Error>
+    pub async fn remove_relay<U>(&self, url: U, force: bool) -> Result<(), Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Convert into url
-        let url: Cow<Url> = url.try_as_url()?;
+        let url: Url = url.try_into_url()?;
 
         // Acquire write lock
         let mut relays = self.relays.write().await;
@@ -296,7 +295,7 @@ impl InternalRelayPool {
                     );
 
                     // Re-insert
-                    relays.insert(relay.url(), relay);
+                    relays.insert(url, relay);
                     return Ok(());
                 }
             }
@@ -308,7 +307,6 @@ impl InternalRelayPool {
         Ok(())
     }
 
-    #[inline]
     pub async fn send_msg_to<I, U>(
         &self,
         urls: I,

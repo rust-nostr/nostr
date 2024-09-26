@@ -302,7 +302,7 @@ impl Client {
 
     /// Get a previously added [`Relay`]
     #[inline]
-    pub async fn relay<U>(&self, url: &U) -> Result<Relay, Error>
+    pub async fn relay<U>(&self, url: U) -> Result<Relay, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
@@ -519,7 +519,7 @@ impl Client {
     /// If the relay has `INBOX` or `OUTBOX` flags, it will not be removed from the pool and its
     /// flags will be updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
     #[inline]
-    pub async fn remove_relay<U>(&self, url: &U) -> Result<(), Error>
+    pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
@@ -531,7 +531,7 @@ impl Client {
     ///
     /// Note: this method will remove the relay, also if it's in use for the gossip model or other service!
     #[inline]
-    pub async fn force_remove_relay<U>(&self, url: &U) -> Result<(), Error>
+    pub async fn force_remove_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
@@ -1600,7 +1600,7 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[inline]
-    pub async fn auth<S>(&self, challenge: S, relay: &Url) -> Result<(), Error>
+    pub async fn auth<S>(&self, challenge: S, relay: Url) -> Result<(), Error>
     where
         S: Into<String>,
     {
