@@ -35,7 +35,6 @@
 ### Added
 
 * nostr: add `TagKind::Client` variant ([Yuki Kishimoto])
-* nostr: add `TryIntoUrl::try_as_url` ([Yuki Kishimoto])
 * database: add `Backend::is_persistent` method ([Yuki Kishimoto])
 * relay-builder: add `LocalRelay` and `RelayBuilder` ([Yuki Kishimoto])
 * relay-builder: allow to serve local relay as hidden service ([Yuki Kishimoto])

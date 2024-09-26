@@ -4,7 +4,6 @@
 
 //! Url
 
-use alloc::borrow::Cow;
 use alloc::string::String;
 use core::convert::Infallible;
 use core::fmt::{self, Debug};
@@ -22,9 +21,6 @@ pub trait TryIntoUrl {
 
     /// Try into [`Url`]
     fn try_into_url(self) -> Result<Url, Self::Err>;
-
-    /// Try as [`Url`]
-    fn try_as_url(&self) -> Result<Cow<Url>, Self::Err>;
 }
 
 impl TryIntoUrl for Url {
@@ -33,11 +29,6 @@ impl TryIntoUrl for Url {
     #[inline]
     fn try_into_url(self) -> Result<Url, Self::Err> {
         Ok(self)
-    }
-
-    #[inline]
-    fn try_as_url(&self) -> Result<Cow<Url>, Self::Err> {
-        Ok(Cow::Borrowed(self))
     }
 }
 
@@ -48,11 +39,6 @@ impl TryIntoUrl for &Url {
     fn try_into_url(self) -> Result<Url, Self::Err> {
         Ok(self.clone())
     }
-
-    #[inline]
-    fn try_as_url(&self) -> Result<Cow<Url>, Self::Err> {
-        Ok(Cow::Borrowed(self))
-    }
 }
 
 impl TryIntoUrl for String {
@@ -61,12 +47,6 @@ impl TryIntoUrl for String {
     #[inline]
     fn try_into_url(self) -> Result<Url, Self::Err> {
         Url::parse(&self)
-    }
-
-    #[inline]
-    fn try_as_url(&self) -> Result<Cow<Url>, Self::Err> {
-        let url: Url = self.try_into_url()?;
-        Ok(Cow::Owned(url))
     }
 }
 
@@ -77,12 +57,6 @@ impl TryIntoUrl for &String {
     fn try_into_url(self) -> Result<Url, Self::Err> {
         Url::parse(self)
     }
-
-    #[inline]
-    fn try_as_url(&self) -> Result<Cow<Url>, Self::Err> {
-        let url: Url = self.try_into_url()?;
-        Ok(Cow::Owned(url))
-    }
 }
 
 impl TryIntoUrl for &str {
@@ -91,12 +65,6 @@ impl TryIntoUrl for &str {
     #[inline]
     fn try_into_url(self) -> Result<Url, Self::Err> {
         Url::parse(self)
-    }
-
-    #[inline]
-    fn try_as_url(&self) -> Result<Cow<Url>, Self::Err> {
-        let url: Url = self.try_into_url()?;
-        Ok(Cow::Owned(url))
     }
 }
 
