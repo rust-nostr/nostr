@@ -40,6 +40,7 @@ use super::options::{
 use super::stats::RelayConnectionStats;
 use super::{Error, Reconciliation, RelayNotification, RelayStatus};
 use crate::pool::RelayPoolNotification;
+use crate::util::cell::TimedOnceCell;
 
 struct NostrMessage {
     msgs: Vec<ClientMessage>,
@@ -167,6 +168,7 @@ pub(crate) struct InternalRelay {
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
     external_notification_sender: Arc<RwLock<Option<broadcast::Sender<RelayPoolNotification>>>>,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, SubscriptionData>>>,
+    support_negentropy: TimedOnceCell<bool>,
 }
 
 impl AtomicDestroyer for InternalRelay {
@@ -207,6 +209,7 @@ impl InternalRelay {
             internal_notification_sender: relay_notification_sender,
             external_notification_sender: Arc::new(RwLock::new(None)),
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
+            support_negentropy: TimedOnceCell::new(Duration::from_secs(60 * 60)), // Expire after 1h
         }
     }
 
@@ -2258,34 +2261,38 @@ impl InternalRelay {
     }
 
     pub async fn support_negentropy(&self) -> Result<bool, Error> {
-        // Check if NIP-77 is marked as supported in relay document
-        #[cfg(feature = "nip11")]
-        {
-            let document = self.document().await;
-            if let Some(nips) = document.supported_nips {
-                if nips.contains(&77) {
-                    return Ok(true);
+        self.support_negentropy
+            .get_or_try_init(|| async {
+                // Check if NIP-77 is marked as supported in relay document
+                #[cfg(feature = "nip11")]
+                {
+                    let document = self.document().await;
+                    if let Some(nips) = document.supported_nips {
+                        if nips.contains(&77) {
+                            return Ok(true);
+                        }
+                    }
                 }
-            }
-        }
 
-        // Not declared in relay document or relay document not found
-        // Execute dry-run reconciliation to check if it's supported
-        let filter: Filter = Filter::new().limit(1);
-        match self
-            .reconcile_with_items(
-                filter,
-                Vec::new(),
-                NegentropyOptions::new()
-                    .initial_timeout(Duration::from_secs(5))
-                    .dry_run(),
-            )
+                // Not declared in relay document or relay document not found
+                // Execute dry-run reconciliation to check if it's supported
+                let filter: Filter = Filter::new().limit(1);
+                match self
+                    .reconcile_with_items(
+                        filter,
+                        Vec::new(),
+                        NegentropyOptions::new()
+                            .initial_timeout(Duration::from_secs(5))
+                            .dry_run(),
+                    )
+                    .await
+                {
+                    Ok(_) => Ok(true),
+                    Err(Error::NegentropyMaybeNotSupported) => Ok(false),
+                    Err(e) => Err(e),
+                }
+            })
             .await
-        {
-            Ok(_) => Ok(true),
-            Err(Error::NegentropyMaybeNotSupported) => Ok(false),
-            Err(e) => Err(e),
-        }
     }
 }
 

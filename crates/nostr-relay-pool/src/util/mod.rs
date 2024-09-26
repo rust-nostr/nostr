@@ -6,6 +6,8 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
+pub mod cell;
+
 /// Take ownership of `T` from `Arc<Mutex<T>>`.
 ///
 /// Try to take ownership of result without clone.
