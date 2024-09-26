@@ -53,6 +53,15 @@ pub enum Backend {
     Custom(String),
 }
 
+impl Backend {
+    /// Check if it's a persistent backend
+    ///
+    /// All values different from [`Backend::Memory`] are considered persistent
+    pub fn is_persistent(&self) -> bool {
+        !matches!(self, Self::Memory)
+    }
+}
+
 /// A type-erased [`NostrDatabase`].
 pub type DynNostrDatabase = dyn NostrDatabase;
 
@@ -291,3 +300,18 @@ pub trait NostrDatabaseExt: NostrDatabase {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<T: NostrDatabase + ?Sized> NostrDatabaseExt for T {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_backend_is_persistent() {
+        assert_eq!(Backend::Memory.is_persistent(), false);
+        assert_eq!(Backend::RocksDB.is_persistent(), true);
+        assert_eq!(Backend::LMDB.is_persistent(), true);
+        assert_eq!(Backend::SQLite.is_persistent(), true);
+        assert_eq!(Backend::IndexedDB.is_persistent(), true);
+        assert_eq!(Backend::Custom("custom".to_string()).is_persistent(), true);
+    }
+}
