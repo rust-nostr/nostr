@@ -11,6 +11,7 @@ use std::iter::Rev;
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_utility::futures_util::StreamExt;
 use async_utility::thread::JoinHandle;
 use async_utility::{thread, time};
 use atomic_destructor::AtomicDestroyer;
@@ -743,77 +744,29 @@ impl InternalRelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let urls: HashSet<Url> = urls
-            .into_iter()
-            .map(|u| u.try_into_url())
-            .collect::<Result<_, _>>()?;
+        // Check how many filters are passed and return the limit
+        let limit: Option<usize> = match (filters.len(), filters.first()) {
+            (1, Some(filter)) => filter.limit,
+            _ => None,
+        };
 
-        // Check if urls set is empty
-        if urls.is_empty() {
-            return Err(Error::NoRelaysSpecified);
+        let mut events: BTreeSet<Event> = BTreeSet::new();
+
+        // Stream events
+        let mut stream = self
+            .stream_events_from(urls, filters, timeout, opts)
+            .await?;
+        while let Some(event) = stream.next().await {
+            events.insert(event);
         }
 
-        // Lock with read shared access
-        let relays = self.relays.read().await;
+        // Iterate set and revert order (events are sorted in ascending order in the BTreeSet)
+        let iter: Rev<IntoIter<Event>> = events.into_iter().rev();
 
-        if relays.is_empty() {
-            return Err(Error::NoRelays);
-        }
-
-        if urls.len() == 1 {
-            let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
-            let relay: &Relay = self.internal_relay(&relays, &url)?;
-            Ok(relay.get_events_of(filters, timeout, opts).await?)
-        } else {
-            // Check if urls set contains ONLY already added relays
-            if !urls.iter().all(|url| relays.contains_key(url)) {
-                return Err(Error::RelayNotFound);
-            }
-
-            // Compose events collections
-            let events: Arc<Mutex<BTreeSet<Event>>> = Arc::new(Mutex::new(BTreeSet::new()));
-
-            // Filter relays and start query
-            let mut handles = Vec::with_capacity(urls.len());
-            for (url, relay) in relays.iter().filter(|(url, ..)| urls.contains(url)) {
-                let url: Url = url.clone();
-                let relay: Relay = relay.clone();
-                let filters = filters.clone();
-                let events = events.clone();
-                let handle = thread::spawn(async move {
-                    if let Err(e) = relay
-                        .get_events_of_with_callback(filters, timeout, opts, |event| async {
-                            let mut events = events.lock().await;
-                            events.insert(event);
-                        })
-                        .await
-                    {
-                        tracing::error!("Failed to get events from {url}: {e}");
-                    }
-                })?;
-                handles.push(handle);
-            }
-
-            // Join threads
-            for handle in handles.into_iter() {
-                handle.join().await?;
-            }
-
-            // Lock events, iterate set and revert order (events are sorted in ascending order in the BTreeSet)
-            let events: BTreeSet<Event> = util::take_mutex_ownership(events).await;
-            let iter: Rev<IntoIter<Event>> = events.into_iter().rev();
-
-            // Check how many filters are passed and return the limit
-            let limit: Option<usize> = match (filters.len(), filters.first()) {
-                (1, Some(filter)) => filter.limit,
-                _ => None,
-            };
-
-            // Check limit
-            match limit {
-                Some(limit) => Ok(iter.take(limit).collect()),
-                None => Ok(iter.collect()),
-            }
+        // Check limit
+        match limit {
+            Some(limit) => Ok(iter.take(limit).collect()),
+            None => Ok(iter.collect()),
         }
     }
 
