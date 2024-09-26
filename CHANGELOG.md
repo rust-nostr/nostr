@@ -35,6 +35,7 @@
 ### Added
 
 * nostr: add `TagKind::Client` variant ([Yuki Kishimoto])
+* nostr: add `TryIntoUrl::try_as_url` ([Yuki Kishimoto])
 * relay-builder: add `LocalRelay` and `RelayBuilder` ([Yuki Kishimoto])
 * relay-builder: allow to serve local relay as hidden service ([Yuki Kishimoto])
 * relay-builder: allow to set number of max connections allowed ([Yuki Kishimoto])
