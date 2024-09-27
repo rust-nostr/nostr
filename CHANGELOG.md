@@ -50,6 +50,8 @@
 
 ### Fixed
 
+* lmdb: add missing commit method call in `Store::delete` ([Yuki Kishimoto])
+
 ### Removed
 
 * Remove deprecated ([Yuki Kishimoto])

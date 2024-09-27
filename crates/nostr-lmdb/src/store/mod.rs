@@ -322,6 +322,7 @@ impl Store {
             for event in events.into_iter() {
                 db.remove(&mut txn, &event)?;
             }
+            txn.commit()?;
 
             Ok(())
         })
