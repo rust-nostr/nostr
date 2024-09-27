@@ -133,7 +133,7 @@ python:
 	rm -rf bindings-python/dist
 	pip install -r bindings-python/requirements.txt
 	cargo build --release
-	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_ffi.a --language python --no-format -o bindings-python/src/nostr/
+	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_ffi.dylib --language python --no-format -o bindings-python/src/nostr/
 	cp ../../target/release/libnostr_ffi.dylib bindings-python/src/nostr/
 	cd bindings-python && python setup.py --verbose bdist_wheel
 	pip install ./bindings-python/dist/nostr_protocol*.whl --force-reinstall
