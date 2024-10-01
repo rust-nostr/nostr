@@ -34,7 +34,7 @@ pub use self::builder::EventBuilder;
 pub use self::id::EventId;
 pub use self::kind::Kind;
 pub use self::partial::{MissingPartialEvent, PartialEvent};
-pub use self::tag::{Tag, TagKind, TagStandard};
+pub use self::tag::{Tag, TagKind, TagStandard, Tags};
 pub use self::unsigned::UnsignedEvent;
 use crate::nips::nip01::Coordinate;
 use crate::types::metadata;
@@ -43,7 +43,7 @@ use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{Alphabet, JsonUtil, Metadata, PublicKey, SingleLetterTag, Timestamp};
+use crate::{JsonUtil, Metadata, PublicKey, SingleLetterTag, Timestamp};
 
 /// Tags Indexes
 pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<String>>;
@@ -100,8 +100,8 @@ pub struct Event {
     pub created_at: Timestamp,
     /// Kind
     pub kind: Kind,
-    /// Vector of [`Tag`]
-    pub tags: Vec<Tag>,
+    /// Tag list
+    pub tags: Tags,
     /// Content
     pub content: String,
     /// Signature
@@ -191,7 +191,7 @@ impl Event {
             pubkey: public_key,
             created_at,
             kind,
-            tags: tags.into_iter().collect(),
+            tags: Tags::new(tags.into_iter().collect()),
             content: content.into(),
             sig,
             deser_order: Vec::new(),
@@ -201,16 +201,13 @@ impl Event {
     }
 
     /// Get content of **first** tag that match [TagKind].
-    #[inline]
+    #[deprecated(since = "0.36.0", note = "Use `Tags::find` method instead.")]
     pub fn get_tag_content(&self, kind: TagKind) -> Option<&str> {
-        self.tags
-            .iter()
-            .find(|t| t.kind() == kind)
-            .and_then(|t| t.content())
+        self.tags.find(kind).and_then(|t| t.content())
     }
 
     /// Get content of all tags that match [TagKind].
-    #[inline]
+    #[deprecated(since = "0.36.0")]
     pub fn get_tags_content(&self, kind: TagKind) -> Vec<&str> {
         self.tags
             .iter()
@@ -251,7 +248,7 @@ impl Event {
             &self.pubkey,
             &self.created_at,
             &self.kind,
-            &self.tags,
+            self.tags.as_slice(),
             &self.content,
         );
         id == self.id
@@ -284,18 +281,13 @@ impl Event {
     }
 
     /// Get [`Timestamp`] expiration if set
-    #[inline]
+    #[deprecated(since = "0.36.0", note = "Use `Tags::expiration` method instead.")]
     pub fn expiration(&self) -> Option<&Timestamp> {
-        for tag in self.tags.iter().filter(|t| t.kind() == TagKind::Expiration) {
-            if let Some(TagStandard::Expiration(timestamp)) = tag.as_standardized() {
-                return Some(timestamp);
-            }
-        }
-        None
+        self.tags.expiration()
     }
 
     /// Returns `true` if the event has an expiration tag that is expired.
-    /// If an event has no `Expiration` tag, then it will return `false`.
+    /// If an event has no expiration tag, then it will return `false`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
     #[inline]
@@ -306,7 +298,7 @@ impl Event {
     }
 
     /// Returns `true` if the event has an expiration tag that is expired.
-    /// If an event has no `Expiration` tag, then it will return `false`.
+    /// If an event has no expiration tag, then it will return `false`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
     #[inline]
@@ -319,77 +311,53 @@ impl Event {
     }
 
     /// Returns `true` if the event has an expiration tag that is expired.
-    /// If an event has no `Expiration` tag, then it will return `false`.
+    /// If an event has no expiration tag, then it will return `false`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
     #[inline]
     pub fn is_expired_at(&self, now: &Timestamp) -> bool {
-        if let Some(timestamp) = self.expiration() {
+        if let Some(timestamp) = self.tags.expiration() {
             return timestamp < now;
         }
         false
     }
 
     /// Extract identifier (`d` tag), if exists.
-    #[inline]
+    #[deprecated(since = "0.36.0", note = "Use `Tags::identifier` method instead.")]
     pub fn identifier(&self) -> Option<&str> {
-        for tag in self
-            .tags
-            .iter()
-            .filter(|t| t.kind() == TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::D)))
-        {
-            if let Some(TagStandard::Identifier(id)) = tag.as_standardized() {
-                return Some(id);
-            }
-        }
-        None
+        self.tags.identifier()
     }
 
     /// Extract public keys from tags (`p` tag)
     ///
     /// **This method extract ONLY `TagStandard::PublicKey`, `TagStandard::PublicKeyReport` and `TagStandard::PublicKeyLiveEvent` variants**
-    #[inline]
+    #[deprecated(since = "0.36.0", note = "Use `Tags::public_keys` method instead.")]
     pub fn public_keys(&self) -> impl Iterator<Item = &PublicKey> {
-        self.tags.iter().filter_map(|t| match t.as_standardized() {
-            Some(TagStandard::PublicKey { public_key, .. }) => Some(public_key),
-            Some(TagStandard::PublicKeyReport(public_key, ..)) => Some(public_key),
-            Some(TagStandard::PublicKeyLiveEvent { public_key, .. }) => Some(public_key),
-            _ => None,
-        })
+        self.tags.public_keys()
     }
 
     /// Extract event IDs from tags (`e` tag)
     ///
     /// **This method extract ONLY `TagStandard::Event` and `TagStandard::EventReport` variants**
-    #[inline]
+    #[deprecated(since = "0.36.0", note = "Use `Tags::event_ids` method instead.")]
     pub fn event_ids(&self) -> impl Iterator<Item = &EventId> {
-        self.tags.iter().filter_map(|t| match t.as_standardized() {
-            Some(TagStandard::Event { event_id, .. }) => Some(event_id),
-            Some(TagStandard::EventReport(event_id, ..)) => Some(event_id),
-            _ => None,
-        })
+        self.tags.event_ids()
     }
 
     /// Extract coordinates from tags (`a` tag)
     ///
     /// **This method extract ONLY `TagStandard::Coordinate`**
-    #[inline]
+    #[deprecated(since = "0.36.0", note = "Use `Tags::coordinates` method instead.")]
     pub fn coordinates(&self) -> impl Iterator<Item = &Coordinate> {
-        self.tags.iter().filter_map(|t| match t.as_standardized() {
-            Some(TagStandard::Coordinate { coordinate, .. }) => Some(coordinate),
-            _ => None,
-        })
+        self.tags.coordinates()
     }
 
     /// Extract hashtags from tags (`t` tag)
     ///
     /// **This method extract ONLY `TagStandard::Hashtag`**
-    #[inline]
-    pub fn hashtags(&self) -> impl Iterator<Item = &String> {
-        self.tags.iter().filter_map(|t| match t.as_standardized() {
-            Some(TagStandard::Hashtag(hashtag)) => Some(hashtag),
-            _ => None,
-        })
+    #[deprecated(since = "0.36.0", note = "Use `Tags::hashtags` method instead.")]
+    pub fn hashtags(&self) -> impl Iterator<Item = &str> {
+        self.tags.hashtags()
     }
 
     pub(crate) fn build_tags_indexes(&self) -> TagsIndexes {
@@ -418,7 +386,7 @@ impl Event {
     /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
     #[inline]
     pub fn is_protected(&self) -> bool {
-        self.tags.iter().any(|t| t.is_protected())
+        self.tags.find_standardized(TagKind::Protected).is_some()
     }
 }
 
@@ -481,7 +449,7 @@ struct EventIntermediate<'a> {
     pub pubkey: Cow<'a, PublicKey>,
     pub created_at: Cow<'a, Timestamp>,
     pub kind: Cow<'a, Kind>,
-    pub tags: Cow<'a, Vec<Tag>>,
+    pub tags: Cow<'a, Tags>,
     pub content: Cow<'a, String>,
     pub sig: Cow<'a, Signature>,
 }
@@ -694,7 +662,7 @@ mod tests {
               ]
             }"#;
         let event = Event::from_json(json).unwrap();
-        assert_eq!(event.event_ids().count(), 1);
+        assert_eq!(event.tags.event_ids().count(), 1);
     }
 
     #[test]

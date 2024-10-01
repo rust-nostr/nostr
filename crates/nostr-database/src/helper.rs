@@ -255,7 +255,7 @@ impl InternalDatabaseHelper {
                 }
             }
         } else if kind.is_parameterized_replaceable() {
-            match event.identifier() {
+            match event.tags.identifier() {
                 Some(identifier) => {
                     let coordinate: Coordinate =
                         Coordinate::new(kind, author).identifier(identifier);
@@ -279,7 +279,7 @@ impl InternalDatabaseHelper {
             }
         } else if kind == Kind::EventDeletion {
             // Check `e` tags
-            for id in event.event_ids() {
+            for id in event.tags.event_ids() {
                 if let Some(ev) = self.ids.get(id) {
                     if ev.pubkey == author && ev.created_at <= created_at {
                         to_discard.insert(ev.id);
@@ -288,7 +288,7 @@ impl InternalDatabaseHelper {
             }
 
             // Check `a` tags
-            for coordinate in event.coordinates() {
+            for coordinate in event.tags.coordinates() {
                 if coordinate.public_key == author {
                     // Save deleted coordinate at certain timestamp
                     self.deleted_coordinates
@@ -343,7 +343,7 @@ impl InternalDatabaseHelper {
                     .insert(e.clone());
 
                 if kind.is_parameterized_replaceable() {
-                    if let Some(identifier) = e.identifier() {
+                    if let Some(identifier) = e.tags.identifier() {
                         self.param_replaceable_index
                             .insert((kind, author, identifier.to_string()), e.clone());
                     }
@@ -386,7 +386,7 @@ impl InternalDatabaseHelper {
                     }
 
                     if ev.kind.is_parameterized_replaceable() {
-                        if let Some(identifier) = ev.identifier() {
+                        if let Some(identifier) = ev.tags.identifier() {
                             self.param_replaceable_index.remove(&(
                                 ev.kind,
                                 ev.pubkey,
@@ -412,7 +412,7 @@ impl InternalDatabaseHelper {
         }
 
         if ev.kind.is_parameterized_replaceable() {
-            if let Some(identifier) = ev.identifier() {
+            if let Some(identifier) = ev.tags.identifier() {
                 self.param_replaceable_index
                     .remove(&(ev.kind, ev.pubkey, identifier.to_string()));
             }

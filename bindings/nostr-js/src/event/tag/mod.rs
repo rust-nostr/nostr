@@ -7,6 +7,9 @@ use std::ops::Deref;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
+pub mod list;
+
+pub use self::list::JsTags;
 use crate::error::{into_err, Result};
 use crate::event::JsEventId;
 use crate::key::JsPublicKey;
@@ -20,7 +23,7 @@ use crate::types::JsTimestamp;
 /// Tag
 #[wasm_bindgen(js_name = Tag)]
 pub struct JsTag {
-    inner: Tag,
+    pub(crate) inner: Tag,
 }
 
 impl From<Tag> for JsTag {

@@ -284,7 +284,7 @@ impl InternalLocalRelay {
                 // Check mode
                 if let RelayBuilderMode::PublicKey(pk) = self.mode {
                     let authored: bool = event.pubkey == pk;
-                    let tagged: bool = event.public_keys().any(|p| p == &pk);
+                    let tagged: bool = event.tags.public_keys().any(|p| p == &pk);
 
                     if !authored && !tagged {
                         return self

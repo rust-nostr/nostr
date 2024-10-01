@@ -50,7 +50,7 @@ pub mod types;
 pub mod util;
 
 #[doc(hidden)]
-pub use self::event::tag::{Tag, TagKind, TagStandard};
+pub use self::event::tag::{Tag, TagKind, TagStandard, Tags};
 #[doc(hidden)]
 pub use self::event::{
     Event, EventBuilder, EventId, Kind, MissingPartialEvent, PartialEvent, UnsignedEvent,

@@ -37,6 +37,7 @@
 
 * nostr: add `TagKind::Client` variant ([Yuki Kishimoto])
 * nostr: add some shorthand constructors for `TagKind::SingleLetter` ([Yuki Kishimoto])
+* nostr: add `Tags` struct ([Yuki Kishimoto])
 * database: add `Backend::is_persistent` method ([Yuki Kishimoto])
 * relay-builder: add `LocalRelay` and `RelayBuilder` ([Yuki Kishimoto])
 * relay-builder: allow to serve local relay as hidden service ([Yuki Kishimoto])

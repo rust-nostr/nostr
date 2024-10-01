@@ -45,7 +45,7 @@ use crate::types::{Contact, Metadata, Timestamp};
 use crate::util::EventIdOrCoordinate;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{Alphabet, ImageDimensions, JsonUtil, SingleLetterTag, UncheckedUrl, Url};
+use crate::{Alphabet, ImageDimensions, JsonUtil, SingleLetterTag, Tags, UncheckedUrl, Url};
 
 /// Wrong kind error
 #[derive(Debug)]
@@ -279,7 +279,7 @@ impl EventBuilder {
                             pubkey,
                             created_at,
                             kind: self.kind,
-                            tags,
+                            tags: Tags::new(tags),
                             content: self.content,
                         };
                     }
@@ -296,7 +296,7 @@ impl EventBuilder {
                         .custom_created_at
                         .unwrap_or_else(|| Timestamp::now_with_supplier(supplier)),
                     kind: self.kind,
-                    tags: self.tags,
+                    tags: Tags::new(self.tags),
                     content: self.content,
                 };
                 unsigned.ensure_id();
@@ -1056,17 +1056,17 @@ impl EventBuilder {
         let id_tag: Tag = Tag::identifier("profile_badges");
         let mut tags: Vec<Tag> = vec![id_tag];
 
-        let badge_definitions_identifiers = badge_definitions.into_iter().filter_map(|event| {
-            let id: String = event.identifier()?.to_string();
+        let badge_definitions_identifiers = badge_definitions.iter().filter_map(|event| {
+            let id: &str = event.tags.identifier()?;
             Some((event, id))
         });
 
-        let badge_awards_identifiers = badge_awards.into_iter().filter_map(|event| {
-            let (_, relay_url) = nip58::extract_awarded_public_key(&event.tags, pubkey_awarded)?;
-            let relay_url = relay_url.clone();
+        let badge_awards_identifiers = badge_awards.iter().filter_map(|event| {
+            let (_, relay_url) =
+                nip58::extract_awarded_public_key(event.tags.as_slice(), pubkey_awarded)?;
             let (id, a_tag) = event.tags.iter().find_map(|t| match t.as_standardized() {
                 Some(TagStandard::Coordinate { coordinate, .. }) => {
-                    Some((coordinate.identifier.clone(), t.clone()))
+                    Some((&coordinate.identifier, t))
                 }
                 _ => None,
             })?;
@@ -1091,7 +1091,7 @@ impl EventBuilder {
                             marker: None,
                             public_key: None,
                         });
-                    tags.extend_from_slice(&[a_tag, badge_award_event_tag]);
+                    tags.extend_from_slice(&[a_tag.clone(), badge_award_event_tag]);
                 }
                 _ => {}
             }

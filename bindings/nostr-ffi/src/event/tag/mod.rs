@@ -11,9 +11,11 @@ use nostr::{UncheckedUrl, Url};
 use uniffi::Object;
 
 pub mod kind;
+pub mod list;
 pub mod standard;
 
 pub use self::kind::TagKind;
+pub use self::list::Tags;
 pub use self::standard::TagStandard;
 use crate::error::Result;
 use crate::nips::nip01::Coordinate;

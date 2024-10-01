@@ -16,11 +16,10 @@ pub mod unsigned;
 pub use self::builder::JsEventBuilder;
 pub use self::id::JsEventId;
 pub use self::kind::JsKind;
-pub use self::tag::JsTag;
+pub use self::tag::{JsTag, JsTags};
 pub use self::unsigned::JsUnsignedEvent;
 use crate::error::{into_err, Result};
 use crate::key::JsPublicKey;
-use crate::nips::nip01::JsCoordinate;
 use crate::types::JsTimestamp;
 
 #[wasm_bindgen]
@@ -79,26 +78,8 @@ impl JsEvent {
     }
 
     #[wasm_bindgen(getter)]
-    pub fn tags(&self) -> Vec<JsTag> {
-        self.inner.tags.iter().cloned().map(JsTag::from).collect()
-    }
-
-    /// Get content of **first** tag that match tag kind (ex. `e`, `p`, `title`, ...)
-    #[wasm_bindgen(js_name = getTagContent)]
-    pub fn get_tag_content(&self, kind: &str) -> Option<String> {
-        self.inner
-            .get_tag_content(TagKind::from(kind))
-            .map(|c| c.to_string())
-    }
-
-    /// Get content of all tags that match `TagKind`.
-    #[wasm_bindgen(js_name = getTagsContent)]
-    pub fn get_tags_content(&self, kind: &str) -> Vec<String> {
-        self.inner
-            .get_tags_content(TagKind::from(kind))
-            .into_iter()
-            .map(|c| c.to_string())
-            .collect()
+    pub fn tags(&self) -> JsTags {
+        self.inner.tags.clone().into()
     }
 
     #[wasm_bindgen(getter)]
@@ -137,12 +118,6 @@ impl JsEvent {
         self.inner.check_pow(difficulty)
     }
 
-    /// Get `Timestamp` expiration if set
-    #[wasm_bindgen]
-    pub fn expiration(&self) -> Option<JsTimestamp> {
-        self.inner.expiration().map(|t| (*t).into())
-    }
-
     /// Returns `true` if the event has an expiration tag that is expired.
     /// If an event has no `Expiration` tag, then it will return `false`.
     ///
@@ -159,44 +134,6 @@ impl JsEvent {
     #[wasm_bindgen(js_name = isExpiredAt)]
     pub fn is_expired_at(&self, now: &JsTimestamp) -> bool {
         self.inner.is_expired_at(now.deref())
-    }
-
-    /// Extract identifier (`d` tag), if exists.
-    #[wasm_bindgen]
-    pub fn identifier(&self) -> Option<String> {
-        self.inner.identifier().map(|i| i.to_string())
-    }
-
-    /// Extract public keys from tags (`p` tag)
-    ///
-    /// **This method extract ONLY supported standard variants**
-    #[wasm_bindgen(js_name = publicKeys)]
-    pub fn public_keys(&self) -> Vec<JsPublicKey> {
-        self.inner.public_keys().map(|p| (*p).into()).collect()
-    }
-
-    /// Extract event IDs from tags (`e` tag)
-    ///
-    /// **This method extract ONLY supported standard variants**
-    #[wasm_bindgen(js_name = eventIds)]
-    pub fn event_ids(&self) -> Vec<JsEventId> {
-        self.inner.event_ids().map(|e| (*e).into()).collect()
-    }
-
-    /// Extract coordinates from tags (`a` tag)
-    ///
-    /// **This method extract ONLY supported standard variants**
-    #[wasm_bindgen]
-    pub fn coordinates(&self) -> Vec<JsCoordinate> {
-        self.inner.coordinates().map(|c| c.clone().into()).collect()
-    }
-
-    /// Extract hashtags from tags (`t` tag)
-    ///
-    /// **This method extract ONLY supported standard variants**
-    #[wasm_bindgen]
-    pub fn hashtags(&self) -> Vec<String> {
-        self.inner.hashtags().map(|t| t.to_owned()).collect()
     }
 
     /// Check if it's a protected event

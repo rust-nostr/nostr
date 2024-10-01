@@ -5,7 +5,6 @@
 //! Unsigned Event
 
 use alloc::string::{String, ToString};
-use alloc::vec::Vec;
 use core::fmt;
 
 #[cfg(feature = "std")]
@@ -16,7 +15,7 @@ use bitcoin::secp256k1::{self, Message, Secp256k1, Signing, Verification};
 
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{Event, EventId, JsonUtil, Keys, Kind, PublicKey, Tag, Timestamp};
+use crate::{Event, EventId, JsonUtil, Keys, Kind, PublicKey, Tag, Tags, Timestamp};
 
 /// [`UnsignedEvent`] error
 #[derive(Debug, PartialEq, Eq)]
@@ -81,8 +80,8 @@ pub struct UnsignedEvent {
     pub created_at: Timestamp,
     /// Kind
     pub kind: Kind,
-    /// Vector of [`Tag`]
-    pub tags: Vec<Tag>,
+    /// Tag list
+    pub tags: Tags,
     /// Content
     pub content: String,
 }
@@ -106,7 +105,7 @@ impl UnsignedEvent {
             pubkey: public_key,
             created_at,
             kind,
-            tags: tags.into_iter().collect(),
+            tags: Tags::new(tags.into_iter().collect()),
             content: content.into(),
         }
     }
@@ -127,7 +126,7 @@ impl UnsignedEvent {
             &self.pubkey,
             &self.created_at,
             &self.kind,
-            &self.tags,
+            self.tags.as_slice(),
             &self.content,
         )
     }

@@ -20,10 +20,12 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 mod error;
 pub mod kind;
+pub mod list;
 pub mod standard;
 
 pub use self::error::Error;
 pub use self::kind::TagKind;
+pub use self::list::Tags;
 pub use self::standard::TagStandard;
 use super::id::EventId;
 use crate::nips::nip01::Coordinate;

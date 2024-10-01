@@ -71,11 +71,6 @@ impl Store {
     // }
 
     /// Store an event.
-    ///
-    /// If the event already exists, you will get a Error::Duplicate
-    ///
-    /// If the event is ephemeral, it will be stored and you will get an offset, but
-    /// it will not be indexed.
     pub async fn store_event(&self, event: &Event) -> Result<bool, Error> {
         if event.kind.is_ephemeral() {
             return Ok(false);
@@ -117,7 +112,7 @@ impl Store {
                 // Reject event if ADDR was deleted after it's created_at date
                 // (parameterized)
                 if event.kind.is_parameterized_replaceable() {
-                    if let Some(identifier) = event.identifier() {
+                    if let Some(identifier) = event.tags.identifier() {
                         let coordinate: Coordinate =
                             Coordinate::new(event.kind, event.pubkey).identifier(identifier);
                         if let Some(time) = db.when_is_coordinate_deleted(&txn, &coordinate)? {
@@ -151,7 +146,7 @@ impl Store {
                 }
 
                 if event.kind.is_parameterized_replaceable() {
-                    if let Some(identifier) = event.identifier() {
+                    if let Some(identifier) = event.tags.identifier() {
                         let coordinate: Coordinate =
                             Coordinate::new(event.kind, event.pubkey).identifier(identifier);
 
@@ -191,7 +186,7 @@ impl Store {
     }
 
     fn handle_deletion_event(db: &Lmdb, txn: &mut RwTxn, event: &Event) -> Result<(), Error> {
-        for id in event.event_ids() {
+        for id in event.tags.event_ids() {
             // Actually remove
             if let Some(target) = db.get_event_by_id(txn, id.as_bytes())? {
                 // author must match
@@ -209,7 +204,7 @@ impl Store {
             db.mark_deleted(txn, id)?;
         }
 
-        for coordinate in event.coordinates() {
+        for coordinate in event.tags.coordinates() {
             if coordinate.public_key != event.pubkey {
                 continue;
             }

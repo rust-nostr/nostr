@@ -1037,7 +1037,11 @@ impl Client {
         // ########## Gossip ##########
 
         // Get all public keys involved in the event
-        let public_keys = event.public_keys().copied().chain(iter::once(event.pubkey));
+        let public_keys = event
+            .tags
+            .public_keys()
+            .copied()
+            .chain(iter::once(event.pubkey));
 
         // Check what are up-to-date in the gossip graph and which ones require an update
         let outdated_public_keys = self.gossip_graph.check_outdated(public_keys).await;
@@ -1048,7 +1052,7 @@ impl Client {
         let mut outbox = self.gossip_graph.get_outbox_relays(&[event.pubkey]).await;
         let inbox = self
             .gossip_graph
-            .get_inbox_relays(event.public_keys())
+            .get_inbox_relays(event.tags.public_keys())
             .await;
 
         // Add outbox relays
@@ -1337,7 +1341,7 @@ impl Client {
             .await?;
 
         for event in events.into_iter() {
-            pubkeys.extend(event.public_keys());
+            pubkeys.extend(event.tags.public_keys());
         }
 
         Ok(pubkeys)
