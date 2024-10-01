@@ -6,7 +6,6 @@
 //! Event
 
 use alloc::borrow::Cow;
-use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::cmp::Ordering;
@@ -16,8 +15,6 @@ use core::str::FromStr;
 
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{Message, Secp256k1, Verification};
-#[cfg(feature = "std")]
-use once_cell::sync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `std::cell::OnceLock` instead and remove `once_cell` dep.
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
@@ -34,6 +31,8 @@ pub use self::builder::EventBuilder;
 pub use self::id::EventId;
 pub use self::kind::Kind;
 pub use self::partial::{MissingPartialEvent, PartialEvent};
+#[cfg(feature = "std")]
+use self::tag::list::TagsIndexes;
 pub use self::tag::{Tag, TagKind, TagStandard, Tags};
 pub use self::unsigned::UnsignedEvent;
 use crate::nips::nip01::Coordinate;
@@ -43,10 +42,7 @@ use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::{JsonUtil, Metadata, PublicKey, SingleLetterTag, Timestamp};
-
-/// Tags Indexes
-pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<String>>;
+use crate::{JsonUtil, Metadata, PublicKey, Timestamp};
 
 const ID: &str = "id";
 const PUBKEY: &str = "pubkey";
@@ -108,9 +104,6 @@ pub struct Event {
     pub sig: Signature,
     /// JSON de/serialization order
     deser_order: Vec<EventKey>,
-    /// Tags indexes
-    #[cfg(feature = "std")]
-    tags_indexes: OnceCell<TagsIndexes>,
 }
 
 impl fmt::Debug for Event {
@@ -195,8 +188,6 @@ impl Event {
             content: content.into(),
             sig,
             deser_order: Vec::new(),
-            #[cfg(feature = "std")]
-            tags_indexes: OnceCell::new(),
         }
     }
 
@@ -360,25 +351,11 @@ impl Event {
         self.tags.hashtags()
     }
 
-    pub(crate) fn build_tags_indexes(&self) -> TagsIndexes {
-        let mut idx: TagsIndexes = TagsIndexes::new();
-        for (single_letter_tag, content) in self
-            .tags
-            .iter()
-            .filter_map(|t| Some((t.single_letter_tag()?, t.content()?)))
-        {
-            idx.entry(single_letter_tag)
-                .or_default()
-                .insert(content.to_string());
-        }
-        idx
-    }
-
     /// Get tags indexes
-    #[inline]
+    #[deprecated(since = "0.36.0", note = "Use `Tags::indexes` method instead.")]
     #[cfg(feature = "std")]
     pub fn tags_indexes(&self) -> &TagsIndexes {
-        self.tags_indexes.get_or_init(|| self.build_tags_indexes())
+        self.tags.indexes()
     }
 
     /// Check if it's a protected event
@@ -522,8 +499,6 @@ impl<'de> Deserialize<'de> for Event {
             content: inter.content.into_owned(),
             sig: inter.sig.into_owned(),
             deser_order,
-            #[cfg(feature = "std")]
-            tags_indexes: OnceCell::new(),
         })
     }
 }

@@ -15,7 +15,7 @@ use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 
-use crate::event::TagsIndexes;
+use crate::event::tag::list::TagsIndexes;
 use crate::nips::nip01::Coordinate;
 use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Timestamp};
 
@@ -738,13 +738,13 @@ impl Filter {
         }
 
         #[cfg(feature = "std")]
-        let tags_indexes: &TagsIndexes = event.tags_indexes();
+        let indexes: &TagsIndexes = event.tags.indexes();
         #[cfg(not(feature = "std"))]
-        let tags_indexes: TagsIndexes = event.build_tags_indexes();
+        let indexes: TagsIndexes = event.tags.build_indexes();
 
         // Match
         self.generic_tags.iter().all(|(tag_name, set)| {
-            if let Some(val_set) = tags_indexes.get(tag_name) {
+            if let Some(val_set) = indexes.get(tag_name) {
                 set.iter().any(|t| val_set.contains(t))
             } else {
                 false

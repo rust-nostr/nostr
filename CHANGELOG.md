@@ -27,6 +27,7 @@
 
 ### Changed
 
+* nostr: move `TagsIndexes` into `Tags` struct ([Yuki Kishimoto])
 * relay-builder: refactor `Session::check_rate_limit` method ([Yuki Kishimoto])
 * pool: changes in `RelayPool::remove_relay` behavior ([Yuki Kishimoto])
 * pool: deprecate `RelayPool::remove_all_relays` ([Yuki Kishimoto])

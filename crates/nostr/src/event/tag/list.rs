@@ -4,21 +4,32 @@
 
 //! Tags (tag list)
 
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::string::{String, ToString};
 use alloc::vec::{IntoIter, Vec};
+use core::cmp::Ordering;
 use core::fmt;
+use core::hash::{Hash, Hasher};
 use core::slice::Iter;
 
+#[cfg(feature = "std")]
+use once_cell::sync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `std::cell::OnceLock` instead and remove `once_cell` dep.
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::Tag;
 use crate::nips::nip01::Coordinate;
-use crate::{EventId, PublicKey, TagKind, TagStandard, Timestamp};
+use crate::{EventId, PublicKey, SingleLetterTag, TagKind, TagStandard, Timestamp};
+
+/// Tags Indexes
+pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<String>>;
 
 /// Tag list
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone)]
 pub struct Tags {
     list: Vec<Tag>,
+    #[cfg(feature = "std")]
+    indexes: OnceCell<TagsIndexes>,
 }
 
 impl fmt::Debug for Tags {
@@ -27,11 +38,41 @@ impl fmt::Debug for Tags {
     }
 }
 
+impl PartialEq for Tags {
+    fn eq(&self, other: &Self) -> bool {
+        self.list == other.list
+    }
+}
+
+impl Eq for Tags {}
+
+impl PartialOrd for Tags {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Tags {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.list.cmp(&other.list)
+    }
+}
+
+impl Hash for Tags {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.list.hash(state);
+    }
+}
+
 impl Tags {
     /// Construct new tag list.
     #[inline]
     pub fn new(list: Vec<Tag>) -> Self {
-        Self { list }
+        Self {
+            list,
+            #[cfg(feature = "std")]
+            indexes: OnceCell::new(),
+        }
     }
 
     /// Get number of tags.
@@ -179,6 +220,26 @@ impl Tags {
                 TagStandard::Hashtag(hashtag) => Some(hashtag.as_ref()),
                 _ => None,
             })
+    }
+
+    pub(crate) fn build_indexes(&self) -> TagsIndexes {
+        let mut idx: TagsIndexes = TagsIndexes::new();
+        for (single_letter_tag, content) in self
+            .iter()
+            .filter_map(|t| Some((t.single_letter_tag()?, t.content()?)))
+        {
+            idx.entry(single_letter_tag)
+                .or_default()
+                .insert(content.to_string());
+        }
+        idx
+    }
+
+    /// Get indexes
+    #[inline]
+    #[cfg(feature = "std")]
+    pub fn indexes(&self) -> &TagsIndexes {
+        self.indexes.get_or_init(|| self.build_indexes())
     }
 }
 
