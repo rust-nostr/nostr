@@ -16,16 +16,8 @@ use async_wsocket::{ConnectionMode, Sink, Stream, WsMessage};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
 use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
-use nostr::message::MessageHandleError;
-use nostr::nips::nip01::Coordinate;
-#[cfg(feature = "nip11")]
-use nostr::nips::nip11::RelayInformationDocument;
 use nostr::secp256k1::rand::{self, Rng};
-use nostr::{
-    ClientMessage, Event, EventId, Filter, JsonUtil, Kind, MissingPartialEvent, PartialEvent,
-    RawRelayMessage, RelayMessage, SubscriptionId, Timestamp, Url,
-};
-use nostr_database::{DatabaseEventStatus, DynNostrDatabase};
+use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, watch, Mutex, MutexGuard, RwLock};
 
@@ -1607,11 +1599,11 @@ impl InternalRelay {
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
-    ) -> Result<Vec<Event>, Error> {
-        let events: Mutex<Vec<Event>> = Mutex::new(Vec::new());
+    ) -> Result<Events, Error> {
+        let events: Mutex<Events> = Mutex::new(Events::unbounded());
         self.fetch_events_with_callback(filters, timeout, opts, |event| async {
             let mut events = events.lock().await;
-            events.push(event);
+            events.insert(event);
         })
         .await?;
         Ok(events.into_inner())

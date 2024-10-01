@@ -127,7 +127,7 @@ impl NostrDatabase for NostrLMDB {
 
     #[inline]
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, DatabaseError> {
+    async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
         self.db.query(filters).await.map_err(DatabaseError::backend)
     }
 
@@ -326,7 +326,7 @@ mod tests {
                 .kind(Kind::Metadata)])
             .await
             .unwrap();
-        assert_eq!(events, vec![expected_event.clone()]);
+        assert_eq!(events.to_vec(), vec![expected_event.clone()]);
 
         // Check if number of events in database match the expected
         assert_eq!(db.count_all().await, added_events + 1);
@@ -358,7 +358,7 @@ mod tests {
                 .kind(Kind::Metadata)])
             .await
             .unwrap();
-        assert_eq!(events, vec![new_expected_event]);
+        assert_eq!(events.to_vec(), vec![new_expected_event]);
 
         // Check if number of events in database match the expected
         assert_eq!(db.count_all().await, added_events + 1);
@@ -390,7 +390,7 @@ mod tests {
 
         // Test filter query
         let events = db.query(vec![coordinate.clone().into()]).await.unwrap();
-        assert_eq!(events, vec![expected_event.clone()]);
+        assert_eq!(events.to_vec(), vec![expected_event.clone()]);
 
         // Check if number of events in database match the expected
         assert_eq!(db.count_all().await, added_events + 1);
@@ -422,7 +422,7 @@ mod tests {
 
         // Test filter query
         let events = db.query(vec![coordinate.into()]).await.unwrap();
-        assert_eq!(events, vec![new_expected_event]);
+        assert_eq!(events.to_vec(), vec![new_expected_event]);
 
         // Check if number of events in database match the expected
         assert_eq!(db.count_all().await, added_events + 1);
@@ -474,7 +474,7 @@ mod tests {
             Event::from_json(EVENTS[0]).unwrap(),
         ];
         assert_eq!(
-            db.query(vec![Filter::new()]).await.unwrap(),
+            db.query(vec![Filter::new()]).await.unwrap().to_vec(),
             expected_output
         );
         assert_eq!(db.count_all().await, 8);

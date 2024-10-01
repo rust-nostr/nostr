@@ -4,10 +4,9 @@
 
 //! Client
 
-use std::collections::btree_set::IntoIter;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::future::Future;
-use std::iter::{self, Rev};
+use std::iter;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -826,8 +825,6 @@ impl Client {
 
     /// Fetch events from relays
     ///
-    /// The returned events are sorted by newest first, if there is a limit only the newest are returned.
-    ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
     /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
     ///
@@ -855,7 +852,7 @@ impl Client {
         &self,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
-    ) -> Result<Vec<Event>, Error> {
+    ) -> Result<Events, Error> {
         let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
 
         if self.opts.gossip {
@@ -875,7 +872,7 @@ impl Client {
         filters: Vec<Filter>,
         _source: EventSource,
     ) -> Result<Vec<Event>, Error> {
-        self.fetch_events(filters, None).await
+        Ok(self.fetch_events(filters, None).await?.to_vec())
     }
 
     /// Fetch events from specific relays
@@ -885,7 +882,7 @@ impl Client {
         urls: I,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
-    ) -> Result<Vec<Event>, Error>
+    ) -> Result<Events, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -911,7 +908,10 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.fetch_events_from(urls, filters, timeout).await
+        Ok(self
+            .fetch_events_from(urls, filters, timeout)
+            .await?
+            .to_vec())
     }
 
     /// Stream events of filters
@@ -1165,7 +1165,8 @@ impl Client {
             .author(public_key)
             .kind(Kind::Metadata)
             .limit(1);
-        let events: Vec<Event> = self.fetch_events(vec![filter], timeout).await?;
+        // TODO: add fetch_event and use that
+        let events: Events = self.fetch_events(vec![filter], timeout).await?;
         match events.first() {
             Some(event) => Ok(Metadata::try_from(event)?),
             None => Err(Error::MetadataNotFound),
@@ -1287,7 +1288,7 @@ impl Client {
     pub async fn get_contact_list(&self, timeout: Option<Duration>) -> Result<Vec<Contact>, Error> {
         let mut contact_list: Vec<Contact> = Vec::new();
         let filters: Vec<Filter> = self.get_contact_list_filters().await?;
-        let events: Vec<Event> = self.fetch_events(filters, timeout).await?;
+        let events: Events = self.fetch_events(filters, timeout).await?;
 
         // Get first event (result of `fetch_events` is sorted DESC by timestamp)
         if let Some(event) = events.into_iter().next() {
@@ -1316,7 +1317,7 @@ impl Client {
     ) -> Result<Vec<PublicKey>, Error> {
         let mut pubkeys: Vec<PublicKey> = Vec::new();
         let filters: Vec<Filter> = self.get_contact_list_filters().await?;
-        let events: Vec<Event> = self.fetch_events(filters, timeout).await?;
+        let events: Events = self.fetch_events(filters, timeout).await?;
 
         for event in events.into_iter() {
             pubkeys.extend(event.tags.public_keys());
@@ -1345,7 +1346,7 @@ impl Client {
                         .limit(1),
                 );
             }
-            let events: Vec<Event> = self.fetch_events(filters, timeout).await?;
+            let events: Events = self.fetch_events(filters, timeout).await?;
             for event in events.into_iter() {
                 let metadata = Metadata::from_json(&event.content)?;
                 if let Some(m) = contacts.get_mut(&event.pubkey) {
@@ -1785,7 +1786,7 @@ impl Client {
 
             // Query from database
             let database = self.database();
-            let mut stored_events = database.query(vec![filter.clone()]).await?;
+            let stored_events: Events = database.query(vec![filter.clone()]).await?;
 
             // Get DISCOVERY and READ relays
             // TODO: avoid clone of both url and relay
@@ -1799,15 +1800,15 @@ impl Client {
                 .into_keys();
 
             // Get events from discovery and read relays
-            let mut events: Vec<Event> = self
+            let events: Events = self
                 .fetch_events_from(relays, vec![filter], Some(Duration::from_secs(10)))
                 .await?;
 
-            // Join database and relays events
-            events.append(&mut stored_events);
+            // Merge database and relays events
+            let merged: Events = events.merge(stored_events);
 
             // Update gossip graph
-            self.gossip_graph.update(events).await;
+            self.gossip_graph.update(merged).await;
         }
 
         Ok(())
@@ -1866,6 +1867,7 @@ impl Client {
         Ok(broken_down.filters)
     }
 
+    // TODO: rename to `gossip_stream_events`
     async fn gossip_stream_events_of(
         &self,
         filters: Vec<Filter>,
@@ -1886,14 +1888,8 @@ impl Client {
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
-    ) -> Result<Vec<Event>, Error> {
-        // Check how many filters are passed and return the limit
-        let limit: Option<usize> = match (filters.len(), filters.first()) {
-            (1, Some(filter)) => filter.limit,
-            _ => None,
-        };
-
-        let mut events: BTreeSet<Event> = BTreeSet::new();
+    ) -> Result<Events, Error> {
+        let mut events: Events = Events::new(&filters);
 
         // Stream events
         let mut stream: ReceiverStream<Event> =
@@ -1903,13 +1899,7 @@ impl Client {
             events.insert(event);
         }
 
-        let iter: Rev<IntoIter<Event>> = events.into_iter().rev();
-
-        // Check limit
-        match limit {
-            Some(limit) => Ok(iter.take(limit).collect()),
-            None => Ok(iter.collect()),
-        }
+        Ok(events)
     }
 
     async fn gossip_subscribe(

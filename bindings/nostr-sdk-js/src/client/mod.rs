@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use js_sys::Array;
 use nostr_js::error::{into_err, Result};
-use nostr_js::event::{JsEvent, JsEventArray, JsEventBuilder, JsEventId, JsTag};
+use nostr_js::event::{JsEvent, JsEventBuilder, JsEventId, JsTag};
 use nostr_js::key::JsPublicKey;
 use nostr_js::message::{JsClientMessage, JsRelayMessage};
 use nostr_js::nips::nip59::JsUnwrappedGift;
@@ -26,7 +26,7 @@ use self::options::JsOptions;
 pub use self::signer::JsNostrSigner;
 use self::zapper::{JsZapDetails, JsZapEntity};
 use crate::abortable::JsAbortHandle;
-use crate::database::JsNostrDatabase;
+use crate::database::{JsEvents, JsNostrDatabase};
 use crate::duration::JsDuration;
 use crate::pool::result::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
 use crate::pool::JsRelayPool;
@@ -334,8 +334,6 @@ impl JsClient {
 
     /// Fetch events from relays
     ///
-    /// The returned events are sorted by newest first, if there is a limit only the newest are returned.
-    ///
     /// If `gossip` is enabled (see `Options`) the events will be requested also to
     /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
     #[wasm_bindgen(js_name = fetchEvents)]
@@ -343,23 +341,15 @@ impl JsClient {
         &self,
         filters: Vec<JsFilter>,
         timeout: Option<JsDuration>,
-    ) -> Result<JsEventArray> {
+    ) -> Result<JsEvents> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         let timeout: Option<Duration> = timeout.map(|d| *d);
-        let events: Vec<Event> = self
+        let events: Events = self
             .inner
             .fetch_events(filters, timeout)
             .await
             .map_err(into_err)?;
-        let events: JsEventArray = events
-            .into_iter()
-            .map(|e| {
-                let e: JsEvent = e.into();
-                JsValue::from(e)
-            })
-            .collect::<Array>()
-            .unchecked_into();
-        Ok(events)
+        Ok(events.into())
     }
 
     /// Fetch events from specific relays
@@ -369,23 +359,15 @@ impl JsClient {
         urls: Vec<String>,
         filters: Vec<JsFilter>,
         timeout: Option<JsDuration>,
-    ) -> Result<JsEventArray> {
+    ) -> Result<JsEvents> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         let timeout: Option<Duration> = timeout.map(|d| *d);
-        let events: Vec<Event> = self
+        let events: Events = self
             .inner
             .fetch_events_from(urls, filters, timeout)
             .await
             .map_err(into_err)?;
-        let events: JsEventArray = events
-            .into_iter()
-            .map(|e| {
-                let e: JsEvent = e.into();
-                JsValue::from(e)
-            })
-            .collect::<Array>()
-            .unchecked_into();
-        Ok(events)
+        Ok(events.into())
     }
 
     /// Send client message to a specific relay

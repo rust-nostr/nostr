@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use atomic_destructor::{AtomicDestructor, StealthClone};
 use nostr::prelude::*;
-use nostr_database::{DynNostrDatabase, IntoNostrDatabase, MemoryDatabase};
+use nostr_database::{DynNostrDatabase, Events, IntoNostrDatabase, MemoryDatabase};
 use tokio::sync::broadcast;
 pub use tokio_stream::wrappers::ReceiverStream;
 
@@ -485,7 +485,7 @@ impl RelayPool {
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
-    ) -> Result<Vec<Event>, Error> {
+    ) -> Result<Events, Error> {
         self.inner.fetch_events(filters, timeout, opts).await
     }
 
@@ -497,7 +497,11 @@ impl RelayPool {
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
-        self.inner.fetch_events(filters, timeout, opts).await
+        Ok(self
+            .inner
+            .fetch_events(filters, timeout, opts)
+            .await?
+            .to_vec())
     }
 
     /// Fetch events from specific relays
@@ -508,7 +512,7 @@ impl RelayPool {
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
-    ) -> Result<Vec<Event>, Error>
+    ) -> Result<Events, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -533,11 +537,14 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.inner
+        Ok(self
+            .inner
             .fetch_events_from(urls, filters, timeout, opts)
-            .await
+            .await?
+            .to_vec())
     }
 
+    // TODO: rename to `stream_events`
     /// Stream events of filters from relays with `READ` flag.
     #[inline]
     pub async fn stream_events_of(

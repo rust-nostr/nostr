@@ -143,9 +143,11 @@ impl PartialOrd for Event {
 impl Ord for Event {
     fn cmp(&self, other: &Self) -> Ordering {
         if self.created_at != other.created_at {
-            // Ascending order
+            // Descending order
             // NOT EDIT, will break many things!!
-            self.created_at.cmp(&other.created_at)
+            // If the change is required, search for EVENT_ORD_IMPL comment
+            // in the code and adj things.
+            self.created_at.cmp(&other.created_at).reverse()
         } else {
             self.id.cmp(&other.id)
         }

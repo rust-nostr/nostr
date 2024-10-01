@@ -4,7 +4,6 @@
 
 //! Nostr Database Helper
 
-use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::iter;
 use std::ops::Deref;
@@ -15,34 +14,9 @@ use nostr::{Alphabet, Event, EventId, Filter, Kind, PublicKey, SingleLetterTag, 
 use tokio::sync::{OwnedRwLockReadGuard, RwLock};
 
 use crate::tree::{BTreeCappedSet, Capacity, InsertResult, OverCapacityPolicy};
+use crate::Events;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct DatabaseEvent {
-    event: Arc<Event>,
-}
-
-impl PartialOrd for DatabaseEvent {
-    #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for DatabaseEvent {
-    #[inline]
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.event.cmp(&other.event).reverse()
-    }
-}
-
-impl Deref for DatabaseEvent {
-    type Target = Event;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.event
-    }
-}
+type DatabaseEvent = Arc<Event>;
 
 struct QueryByAuthorParams {
     author: PublicKey,
@@ -201,6 +175,7 @@ impl InternalDatabaseHelper {
         let now: Timestamp = Timestamp::now();
         events
             .into_iter()
+            .rev() // Lookup ID: EVENT_ORD_IMPL
             .filter(|e| !e.kind.is_ephemeral())
             .map(|event| self.internal_index_event(&event, &now))
             .flat_map(|res| res.to_discard)
@@ -216,6 +191,7 @@ impl InternalDatabaseHelper {
         let now: Timestamp = Timestamp::now();
         events
             .into_iter()
+            .rev() // Lookup ID: EVENT_ORD_IMPL
             .filter(|e| !e.is_expired() && !e.kind.is_ephemeral())
             .filter(move |event| self.internal_index_event(event, &now).to_store)
     }
@@ -906,7 +882,10 @@ mod tests {
             Event::from_json(EVENTS[1]).unwrap(),
             Event::from_json(EVENTS[0]).unwrap(),
         ];
-        assert_eq!(indexes.query([Filter::new()]).await, expected_output);
+        assert_eq!(
+            indexes.query([Filter::new()]).await.to_vec(),
+            expected_output
+        );
         assert_eq!(indexes.count([Filter::new()]).await, 8);
 
         // Test get previously deleted replaceable event (check if was deleted by indexes)
@@ -932,7 +911,8 @@ mod tests {
                 .query([Filter::new()
                     .kind(Kind::ParameterizedReplaceable(32122))
                     .author(keys_b.public_key())])
-                .await,
+                .await
+                .to_vec(),
             vec![
                 Event::from_json(EVENTS[5]).unwrap(),
                 Event::from_json(EVENTS[4]).unwrap(),
@@ -946,14 +926,16 @@ mod tests {
                     .kind(Kind::ParameterizedReplaceable(32122))
                     .author(keys_b.public_key())
                     .identifier("id-3")])
-                .await,
+                .await
+                .to_vec(),
             vec![Event::from_json(EVENTS[4]).unwrap()]
         );
 
         assert_eq!(
             indexes
                 .query([Filter::new().author(keys_a.public_key())])
-                .await,
+                .await
+                .to_vec(),
             vec![
                 Event::from_json(EVENTS[12]).unwrap(),
                 Event::from_json(EVENTS[8]).unwrap(),
@@ -968,7 +950,8 @@ mod tests {
                 .query([Filter::new()
                     .author(keys_a.public_key())
                     .kinds([Kind::TextNote, Kind::Custom(32121)])])
-                .await,
+                .await
+                .to_vec(),
             vec![
                 Event::from_json(EVENTS[1]).unwrap(),
                 Event::from_json(EVENTS[0]).unwrap(),
@@ -980,7 +963,8 @@ mod tests {
                 .query([Filter::new()
                     .authors([keys_a.public_key(), keys_b.public_key()])
                     .kinds([Kind::TextNote, Kind::Custom(32121)])])
-                .await,
+                .await
+                .to_vec(),
             vec![
                 Event::from_json(EVENTS[1]).unwrap(),
                 Event::from_json(EVENTS[0]).unwrap(),
@@ -989,7 +973,10 @@ mod tests {
 
         // Test get param replaceable events using identifier
         assert_eq!(
-            indexes.query([Filter::new().identifier("id-1")]).await,
+            indexes
+                .query([Filter::new().identifier("id-1")])
+                .await
+                .to_vec(),
             vec![
                 Event::from_json(EVENTS[6]).unwrap(),
                 Event::from_json(EVENTS[5]).unwrap(),
@@ -999,7 +986,10 @@ mod tests {
 
         // Test get param replaceable events with multiple tags using identifier
         assert_eq!(
-            indexes.query([Filter::new().identifier("multi-id")]).await,
+            indexes
+                .query([Filter::new().identifier("multi-id")])
+                .await
+                .to_vec(),
             vec![Event::from_json(EVENTS[13]).unwrap()]
         );
         // As above but by using kind and pubkey
@@ -1009,7 +999,8 @@ mod tests {
                     .pubkey(keys_a.public_key())
                     .kind(Kind::Custom(30333))
                     .limit(1)])
-                .await,
+                .await
+                .to_vec(),
             vec![Event::from_json(EVENTS[13]).unwrap()]
         );
 
@@ -1023,7 +1014,8 @@ mod tests {
                 .query([Filter::new()
                     .kind(Kind::Metadata)
                     .author(keys_a.public_key())])
-                .await,
+                .await
+                .to_vec(),
             vec![first_ev_metadata.clone()]
         );
 
@@ -1037,7 +1029,8 @@ mod tests {
                 .query([Filter::new()
                     .kind(Kind::Metadata)
                     .author(keys_a.public_key())])
-                .await,
+                .await
+                .to_vec(),
             vec![ev]
         );
     }

@@ -12,6 +12,8 @@ use nostr_sdk::database::DynNostrDatabase;
 use nostr_sdk::{pool, FilterOptions, SubscriptionId, Url};
 use uniffi::{Object, Record};
 
+use crate::database::events::Events;
+
 pub mod filtering;
 pub mod limits;
 pub mod options;
@@ -331,7 +333,7 @@ impl Relay {
         &self,
         filters: Vec<Arc<Filter>>,
         timeout: Duration,
-    ) -> Result<Vec<Arc<Event>>> {
+    ) -> Result<Events> {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
@@ -340,9 +342,7 @@ impl Relay {
             .inner
             .fetch_events(filters, timeout, FilterOptions::ExitOnEOSE)
             .await?
-            .into_iter()
-            .map(|e| Arc::new(e.into()))
-            .collect())
+            .into())
     }
 
     /// Count events

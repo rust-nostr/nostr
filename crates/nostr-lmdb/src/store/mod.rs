@@ -3,14 +3,16 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
 use heed::{RoTxn, RwTxn};
-use nostr::prelude::*;
-use nostr_database::FlatBufferBuilder;
+use nostr_database::prelude::*;
 use tokio::sync::Mutex;
+
+use crate::store::types::DatabaseEvent;
 
 mod error;
 mod lmdb;
@@ -285,14 +287,16 @@ impl Store {
         .await?
     }
 
-    pub async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Error> {
+    // Lookup ID: EVENT_ORD_IMPL
+    pub async fn query(&self, filters: Vec<Filter>) -> Result<Events, Error> {
         self.interact(move |db| {
             let txn: RoTxn = db.read_txn()?;
-            let output = db.query(&txn, filters)?;
-            Ok(output
+            let output: BTreeSet<DatabaseEvent> = db.query(&txn, filters)?;
+            let set: BTreeSet<Event> = output
                 .into_iter()
                 .filter_map(|e| e.to_event().ok())
-                .collect())
+                .collect();
+            Ok(Events::from(set))
         })
         .await?
     }

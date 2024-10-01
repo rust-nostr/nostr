@@ -323,7 +323,7 @@ impl Connection {
     }
 }
 
-/// Source of the events
+/// Source of the events (deprecated)
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum EventSource {
     /// Database only

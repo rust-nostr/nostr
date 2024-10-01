@@ -4,9 +4,8 @@
 
 use std::ops::Deref;
 
-use js_sys::Array;
 use nostr_js::error::{into_err, Result};
-use nostr_js::event::{JsEvent, JsEventArray, JsEventId};
+use nostr_js::event::{JsEvent, JsEventId};
 use nostr_js::message::JsClientMessage;
 use nostr_js::nips::nip11::JsRelayInformationDocument;
 use nostr_js::types::JsFilter;
@@ -23,6 +22,7 @@ use self::flags::JsAtomicRelayServiceFlags;
 use self::options::{
     JsFilterOptions, JsNegentropyOptions, JsRelayOptions, JsRelaySendOptions, JsSubscribeOptions,
 };
+use crate::database::JsEvents;
 use crate::duration::JsDuration;
 
 #[derive(Clone)]
@@ -274,22 +274,14 @@ impl JsRelay {
         filters: Vec<JsFilter>,
         timeout: &JsDuration,
         opts: &JsFilterOptions,
-    ) -> Result<JsEventArray> {
+    ) -> Result<JsEvents> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
-        let events: Vec<Event> = self
+        Ok(self
             .inner
             .fetch_events(filters, **timeout, **opts)
             .await
-            .map_err(into_err)?;
-        let events: JsEventArray = events
-            .into_iter()
-            .map(|e| {
-                let e: JsEvent = e.into();
-                JsValue::from(e)
-            })
-            .collect::<Array>()
-            .unchecked_into();
-        Ok(events)
+            .map_err(into_err)?
+            .into())
     }
 
     /// Count events

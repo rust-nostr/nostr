@@ -18,7 +18,7 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     let filter = Filter::new().author(public_key).kind(Kind::RelayList);
-    let events: Vec<Event> = client
+    let events: Events = client
         .fetch_events(vec![filter], Some(Duration::from_secs(10)))
         .await?;
     let event = events.first().unwrap();

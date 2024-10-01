@@ -12,12 +12,7 @@ use std::time::Duration;
 use async_wsocket::futures_util::Future;
 use async_wsocket::ConnectionMode;
 use atomic_destructor::AtomicDestructor;
-#[cfg(feature = "nip11")]
-use nostr::nips::nip11::RelayInformationDocument;
-use nostr::{
-    ClientMessage, Event, EventId, Filter, RelayMessage, Result, SubscriptionId, Timestamp, Url,
-};
-use nostr_database::{DynNostrDatabase, MemoryDatabase};
+use nostr_database::prelude::*;
 use tokio::sync::broadcast;
 
 mod constants;
@@ -394,7 +389,7 @@ impl Relay {
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
-    ) -> Result<Vec<Event>, Error> {
+    ) -> Result<Events, Error> {
         self.inner.fetch_events(filters, timeout, opts).await
     }
 
@@ -406,7 +401,7 @@ impl Relay {
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
-        self.fetch_events(filters, timeout, opts).await
+        Ok(self.fetch_events(filters, timeout, opts).await?.to_vec())
     }
 
     /// Count events

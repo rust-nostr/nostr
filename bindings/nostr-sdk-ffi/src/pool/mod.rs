@@ -15,6 +15,7 @@ use uniffi::Object;
 pub mod result;
 
 use self::result::{Output, SendEventOutput, SubscribeOutput};
+use crate::database::events::Events;
 use crate::error::Result;
 use crate::negentropy::NegentropyItem;
 use crate::pool::result::ReconciliationOutput;
@@ -345,7 +346,7 @@ impl RelayPool {
         filters: Vec<Arc<Filter>>,
         timeout: Duration,
         opts: FilterOptions,
-    ) -> Result<Vec<Arc<Event>>> {
+    ) -> Result<Events> {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
@@ -354,9 +355,7 @@ impl RelayPool {
             .inner
             .fetch_events(filters, timeout, opts.into())
             .await?
-            .into_iter()
-            .map(|e| Arc::new(e.into()))
-            .collect())
+            .into())
     }
 
     /// Fetch events from specific relays
@@ -366,7 +365,7 @@ impl RelayPool {
         filters: Vec<Arc<Filter>>,
         timeout: Duration,
         opts: FilterOptions,
-    ) -> Result<Vec<Arc<Event>>> {
+    ) -> Result<Events> {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
@@ -375,9 +374,7 @@ impl RelayPool {
             .inner
             .fetch_events_from(urls, filters, timeout, opts.into())
             .await?
-            .into_iter()
-            .map(|e| Arc::new(e.into()))
-            .collect())
+            .into())
     }
 
     /// Negentropy reconciliation

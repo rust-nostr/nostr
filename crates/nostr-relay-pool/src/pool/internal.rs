@@ -4,9 +4,7 @@
 
 //! Relay Pool
 
-use std::collections::btree_set::IntoIter;
-use std::collections::{BTreeSet, HashMap, HashSet};
-use std::iter::Rev;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -15,7 +13,7 @@ use async_utility::thread::JoinHandle;
 use async_utility::{thread, time};
 use atomic_destructor::AtomicDestroyer;
 use nostr::prelude::*;
-use nostr_database::{DynNostrDatabase, IntoNostrDatabase};
+use nostr_database::{DynNostrDatabase, Events, IntoNostrDatabase};
 use tokio::sync::{broadcast, mpsc, Mutex, RwLock, RwLockReadGuard};
 use tokio_stream::wrappers::ReceiverStream;
 
@@ -725,7 +723,7 @@ impl InternalRelayPool {
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
-    ) -> Result<Vec<Event>, Error> {
+    ) -> Result<Events, Error> {
         let urls: Vec<Url> = self.read_relay_urls().await;
         self.fetch_events_from(urls, filters, timeout, opts).await
     }
@@ -736,19 +734,13 @@ impl InternalRelayPool {
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
-    ) -> Result<Vec<Event>, Error>
+    ) -> Result<Events, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        // Check how many filters are passed and return the limit
-        let limit: Option<usize> = match (filters.len(), filters.first()) {
-            (1, Some(filter)) => filter.limit,
-            _ => None,
-        };
-
-        let mut events: BTreeSet<Event> = BTreeSet::new();
+        let mut events: Events = Events::new(&filters);
 
         // Stream events
         let mut stream = self
@@ -758,14 +750,7 @@ impl InternalRelayPool {
             events.insert(event);
         }
 
-        // Iterate set and revert order (events are sorted in ascending order in the BTreeSet)
-        let iter: Rev<IntoIter<Event>> = events.into_iter().rev();
-
-        // Check limit
-        match limit {
-            Some(limit) => Ok(iter.take(limit).collect()),
-            None => Ok(iter.collect()),
-        }
+        Ok(events)
     }
 
     #[inline]
