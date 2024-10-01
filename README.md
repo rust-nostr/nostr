@@ -5,7 +5,7 @@
 The project is split up into several crates in the `crates/` directory:
 
 * Libraries:
-    * [**nostr**](./crates/nostr): Rust implementation of Nostr protocol.
+    * [**nostr**](./crates/nostr): Rust implementation of Nostr protocol
     * [**nostr-database**](./crates/nostr-database): Database for Nostr apps
         * [**nostr-lmdb**](./crates/nostr-lmdb): LMDB storage backend
         * [**nostr-ndb**](./crates/nostr-ndb): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
@@ -13,8 +13,7 @@ The project is split up into several crates in the `crates/` directory:
     * [**nostr-relay-pool**](./crates/nostr-relay-pool): Nostr Relay Pool
     * [**nostr-signer**](./crates/nostr-signer): Signer for Nostr apps
     * [**nostr-zapper**](./crates/nostr-zapper): Zapper abstraction for Nostr apps
-        * [**nostr-webln**](./crates/nostr-webln): WebLN zapper backend for Nostr apps
-    * [**nostr-sdk**](./crates/nostr-sdk): High level client library.
+    * [**nostr-sdk**](./crates/nostr-sdk): High level client library
     * [**nwc**](./crates/nwc): `NWC` client and zapper backend for Nostr apps
 * Binaries (tools):
     * [**nostr-cli**](./crates/nostr-cli): Nostr CLI
