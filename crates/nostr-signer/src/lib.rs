@@ -30,6 +30,9 @@ pub enum Error {
     /// Unsigned event error
     #[error(transparent)]
     Unsigned(#[from] unsigned::Error),
+    /// Builder event error
+    #[error(transparent)]
+    Builder(#[from] builder::Error),
     /// NIP04 error
     #[cfg(feature = "nip04")]
     #[error(transparent)]
@@ -236,6 +239,32 @@ impl NostrSigner {
             #[cfg(feature = "nip46")]
             Self::NIP46(signer) => Ok(signer.nip44_decrypt(*public_key, payload).await?),
         }
+    }
+
+    /// Build gift wrap event
+    // TODO: find a way to merge this with the `Keys` implementation in `nostr` crate
+    #[cfg(feature = "nip59")]
+    pub async fn gift_wrap(
+        &self,
+        receiver: &PublicKey,
+        rumor: EventBuilder,
+        expiration: Option<Timestamp>,
+    ) -> Result<Event, Error> {
+        // Compose rumor
+        let public_key: PublicKey = self.public_key().await?;
+        let rumor = rumor.to_unsigned_event(public_key);
+
+        // Compose seal
+        // TODO: use directly the `EventBuilder::seal` constructor
+        let content: String = self.nip44_encrypt(receiver, rumor.as_json()).await?;
+        let seal: EventBuilder = EventBuilder::new(Kind::Seal, content, [])
+            .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK));
+        let seal: Event = self.sign_event_builder(seal).await?;
+
+        // Compose gift wrap
+        Ok(EventBuilder::gift_wrap_from_seal(
+            receiver, &seal, expiration,
+        )?)
     }
 
     /// Unwrap Gift Wrap event

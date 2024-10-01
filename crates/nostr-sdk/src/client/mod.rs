@@ -1650,33 +1650,9 @@ impl Client {
         self.internal_zap(to, satoshi, details).await
     }
 
-    /// Build gift wrap event
-    #[cfg(feature = "nip59")]
-    async fn internal_gift_wrap(
-        &self,
-        receiver: &PublicKey,
-        rumor: EventBuilder,
-        expiration: Option<Timestamp>,
-    ) -> Result<Event, Error> {
-        // Compose rumor
-        let signer: NostrSigner = self.signer().await?;
-        let public_key: PublicKey = signer.public_key().await?;
-        let rumor = rumor.to_unsigned_event(public_key);
-
-        // Compose seal
-        // TODO: use directly the `EventBuilder::seal` constructor
-        let content: String = signer.nip44_encrypt(receiver, rumor.as_json()).await?;
-        let seal: EventBuilder = EventBuilder::new(Kind::Seal, content, [])
-            .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK));
-        let seal: Event = self.sign_event_builder(seal).await?;
-
-        // Compose gift wrap
-        Ok(EventBuilder::gift_wrap_from_seal(
-            receiver, &seal, expiration,
-        )?)
-    }
-
-    /// Construct Gift Wrap and send to all relays
+    /// Construct Gift Wrap and send to relays
+    ///
+    /// Check [`Client::send_event`] to know how sending events works.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
@@ -1687,7 +1663,8 @@ impl Client {
         rumor: EventBuilder,
         expiration: Option<Timestamp>,
     ) -> Result<Output<EventId>, Error> {
-        let gift_wrap: Event = self.internal_gift_wrap(receiver, rumor, expiration).await?;
+        let signer: NostrSigner = self.signer().await?;
+        let gift_wrap: Event = signer.gift_wrap(receiver, rumor, expiration).await?;
         self.send_event(gift_wrap).await
     }
 
@@ -1708,7 +1685,8 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let gift_wrap: Event = self.internal_gift_wrap(receiver, rumor, expiration).await?;
+        let signer: NostrSigner = self.signer().await?;
+        let gift_wrap: Event = signer.gift_wrap(receiver, rumor, expiration).await?;
         self.send_event_to(urls, gift_wrap).await
     }
 

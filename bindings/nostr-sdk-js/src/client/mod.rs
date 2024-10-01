@@ -711,7 +711,9 @@ impl JsClient {
             .map_err(into_err)
     }
 
-    /// Construct Gift Wrap and send to all relays
+    /// Construct Gift Wrap and send to relays
+    ///
+    /// Check `sendEvent` method to know how sending events works.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[wasm_bindgen(js_name = giftWrap)]

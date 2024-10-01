@@ -43,6 +43,7 @@
 * relay-builder: add min POW difficulty option to `RelayBuilder` ([Yuki Kishimoto])
 * pool: add `RelayPool::force_remove_relay` method ([Yuki Kishimoto])
 * pool: add `RelayFiltering::overwrite_public_keys` method ([Yuki Kishimoto])
+* signer: add `NostrSigner::gift_wrap` ([Yuki Kishimoto])
 * zapper: add `WebLNZapper` struct (moved from `nostr-webln` crate) ([Yuki Kishimoto])
 * ffi(nostr): add `tag_kind_to_string` func ([Yuki Kishimoto])
 * ffi(nostr): add `Tag::kind_str` method ([Yuki Kishimoto])

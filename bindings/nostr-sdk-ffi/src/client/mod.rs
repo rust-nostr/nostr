@@ -566,7 +566,9 @@ impl Client {
             .await?)
     }
 
-    /// Construct Gift Wrap and send to all relays
+    /// Construct Gift Wrap and send to relays
+    ///
+    /// Check `send_event` method to know how sending events works.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     pub async fn gift_wrap(
