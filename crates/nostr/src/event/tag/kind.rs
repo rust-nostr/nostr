@@ -8,7 +8,7 @@ use alloc::borrow::Cow;
 use core::fmt;
 use core::str::FromStr;
 
-use crate::SingleLetterTag;
+use crate::{Alphabet, SingleLetterTag};
 
 /// Tag kind
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -112,6 +112,46 @@ pub enum TagKind<'a> {
 }
 
 impl<'a> TagKind<'a> {
+    /// Construct `a` kind
+    ///
+    /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::A))`.
+    #[inline]
+    pub fn a() -> Self {
+        Self::SingleLetter(SingleLetterTag::lowercase(Alphabet::A))
+    }
+
+    /// Construct `d` kind
+    ///
+    /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::D))`.
+    #[inline]
+    pub fn d() -> Self {
+        Self::SingleLetter(SingleLetterTag::lowercase(Alphabet::D))
+    }
+
+    /// Construct `e` kind
+    ///
+    /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E))`.
+    #[inline]
+    pub fn e() -> Self {
+        Self::SingleLetter(SingleLetterTag::lowercase(Alphabet::E))
+    }
+
+    /// Construct `p` kind
+    ///
+    /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::P))`.
+    #[inline]
+    pub fn p() -> Self {
+        Self::SingleLetter(SingleLetterTag::lowercase(Alphabet::P))
+    }
+
+    /// Construct `t` kind
+    ///
+    /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::T))`.
+    #[inline]
+    pub fn t() -> Self {
+        Self::SingleLetter(SingleLetterTag::lowercase(Alphabet::T))
+    }
+
     /// Construct [`TagKind::Custom`]
     ///
     /// Shorthand for `TagKind::Custom(Cow::from(...))`.
