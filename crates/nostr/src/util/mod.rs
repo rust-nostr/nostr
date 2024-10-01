@@ -12,7 +12,7 @@ use bitcoin::secp256k1::{ecdh, Parity, PublicKey as NormalizedPublicKey};
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::{All, Secp256k1};
 #[cfg(feature = "std")]
-use once_cell::sync::Lazy;
+use once_cell::sync::Lazy; // TODO: use `std::sync::LazyLock` when MSRV >= 1.80.0
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 

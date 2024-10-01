@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use once_cell::sync::Lazy;
+use once_cell::sync::Lazy; // TODO: use `std::sync::LazyLock` when MSRV >= 1.80.0
 use regex::Regex;
 
 static MAIN_PATTERN: Lazy<Regex> = Lazy::new(|| {

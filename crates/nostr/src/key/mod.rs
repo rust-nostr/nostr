@@ -5,21 +5,21 @@
 
 //! Keys
 
+#[cfg(not(feature = "std"))]
+use core::cell::OnceCell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 #[cfg(feature = "std")]
 use core::str::FromStr;
+#[cfg(feature = "std")]
+use std::sync::OnceLock as OnceCell;
 
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::schnorr::Signature;
 use bitcoin::secp256k1::{self, Keypair, Message, Secp256k1, Signing, XOnlyPublicKey};
-#[cfg(feature = "std")]
-use once_cell::sync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `std::cell::OnceLock` instead and remove `once_cell` dep.
-#[cfg(not(feature = "std"))]
-use once_cell::unsync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `core::cell::OnceCell` instead and remove `once_cell` dep.
 
 pub mod public_key;
 pub mod secret_key;

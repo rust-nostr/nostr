@@ -11,9 +11,9 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::slice::Iter;
-
 #[cfg(feature = "std")]
-use once_cell::sync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `std::cell::OnceLock` instead and remove `once_cell` dep.
+use std::sync::OnceLock;
+
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -29,7 +29,7 @@ pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<String>>;
 pub struct Tags {
     list: Vec<Tag>,
     #[cfg(feature = "std")]
-    indexes: OnceCell<TagsIndexes>,
+    indexes: OnceLock<TagsIndexes>,
 }
 
 impl fmt::Debug for Tags {
@@ -71,7 +71,7 @@ impl Tags {
         Self {
             list,
             #[cfg(feature = "std")]
-            indexes: OnceCell::new(),
+            indexes: OnceLock::new(),
         }
     }
 

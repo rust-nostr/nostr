@@ -28,6 +28,7 @@
 ### Changed
 
 * nostr: move `TagsIndexes` into `Tags` struct ([Yuki Kishimoto])
+* nostr: use `OnceCell` implementation from `std` lib instead of `once_cell` ([Yuki Kishimoto])
 * relay-builder: refactor `Session::check_rate_limit` method ([Yuki Kishimoto])
 * pool: changes in `RelayPool::remove_relay` behavior ([Yuki Kishimoto])
 * pool: deprecate `RelayPool::remove_all_relays` ([Yuki Kishimoto])

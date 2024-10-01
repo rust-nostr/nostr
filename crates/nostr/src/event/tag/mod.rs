@@ -6,14 +6,14 @@
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+#[cfg(not(feature = "std"))]
+use core::cell::OnceCell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-
 #[cfg(feature = "std")]
-use once_cell::sync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `std::cell::OnceLock` instead and remove `once_cell` dep.
-#[cfg(not(feature = "std"))]
-use once_cell::unsync::OnceCell; // TODO: when MSRV will be >= 1.70.0, use `core::cell::OnceCell` instead and remove `once_cell` dep.
+use std::sync::OnceLock as OnceCell;
+
 use serde::de::Error as DeserializerError;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
