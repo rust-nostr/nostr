@@ -10,7 +10,7 @@ use nostr::Url;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
-use crate::event::tag::JsImageDimensions;
+use crate::types::image::JsImageDimensions;
 
 #[wasm_bindgen(js_name = Aes256Gcm)]
 pub struct JsAes256Gcm {

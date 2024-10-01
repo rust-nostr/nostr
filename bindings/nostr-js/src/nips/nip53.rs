@@ -7,8 +7,8 @@ use nostr::nips::nip53::{LiveEvent, LiveEventHost, LiveEventStatus};
 use nostr::{ImageDimensions, PublicKey, UncheckedUrl};
 use wasm_bindgen::prelude::*;
 
-use crate::event::tag::JsImageDimensions;
 use crate::key::JsPublicKey;
+use crate::types::image::JsImageDimensions;
 
 #[wasm_bindgen(js_name = Image)]
 pub struct JsImage {

@@ -3,11 +3,35 @@
 
 use std::ops::Deref;
 
-use nostr::nips::nip65;
+use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use crate::event::tag::JsRelayMetadata;
 use crate::event::JsEvent;
+
+#[derive(Clone, Copy)]
+#[wasm_bindgen(js_name = RelayMetadata)]
+pub enum JsRelayMetadata {
+    Read,
+    Write,
+}
+
+impl From<RelayMetadata> for JsRelayMetadata {
+    fn from(value: RelayMetadata) -> Self {
+        match value {
+            RelayMetadata::Read => Self::Read,
+            RelayMetadata::Write => Self::Write,
+        }
+    }
+}
+
+impl From<JsRelayMetadata> for RelayMetadata {
+    fn from(value: JsRelayMetadata) -> Self {
+        match value {
+            JsRelayMetadata::Read => Self::Read,
+            JsRelayMetadata::Write => Self::Write,
+        }
+    }
+}
 
 #[wasm_bindgen(js_name = RelayListItem)]
 pub struct JsRelayListItem {

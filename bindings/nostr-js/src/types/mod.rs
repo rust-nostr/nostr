@@ -4,6 +4,7 @@
 
 pub mod contact;
 pub mod filter;
+pub mod image;
 pub mod metadata;
 pub mod time;
 

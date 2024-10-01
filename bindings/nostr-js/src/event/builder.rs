@@ -8,7 +8,6 @@ use std::str::FromStr;
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use super::tag::{JsImageDimensions, JsThumbnails};
 use super::{JsEvent, JsEventId, JsKind, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
@@ -23,6 +22,7 @@ use crate::nips::nip65::JsRelayListItem;
 use crate::nips::nip90::JsJobFeedbackData;
 use crate::nips::nip94::JsFileMetadata;
 use crate::nips::nip98::JsHttpData;
+use crate::types::image::{JsImageDimensions, JsThumbnails};
 use crate::types::{JsContact, JsMetadata, JsTimestamp};
 
 #[wasm_bindgen(js_name = EventBuilder)]

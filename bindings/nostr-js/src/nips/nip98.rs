@@ -3,11 +3,38 @@
 
 use std::ops::Deref;
 
-use nostr::nips::nip98::HttpData;
-use nostr::UncheckedUrl;
+use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use crate::event::tag::JsHttpMethod;
+#[wasm_bindgen(js_name = HttpMethod)]
+pub enum JsHttpMethod {
+    GET,
+    POST,
+    PUT,
+    PATCH,
+}
+
+impl From<HttpMethod> for JsHttpMethod {
+    fn from(value: HttpMethod) -> Self {
+        match value {
+            HttpMethod::GET => Self::GET,
+            HttpMethod::POST => Self::POST,
+            HttpMethod::PUT => Self::PUT,
+            HttpMethod::PATCH => Self::PATCH,
+        }
+    }
+}
+
+impl From<JsHttpMethod> for HttpMethod {
+    fn from(value: JsHttpMethod) -> Self {
+        match value {
+            JsHttpMethod::GET => Self::GET,
+            JsHttpMethod::POST => Self::POST,
+            JsHttpMethod::PUT => Self::PUT,
+            JsHttpMethod::PATCH => Self::PATCH,
+        }
+    }
+}
 
 #[wasm_bindgen(js_name = HttpData)]
 pub struct JsHttpData {
