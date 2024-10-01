@@ -36,6 +36,7 @@ buildargs=(
     "-p nostr --no-default-features --features alloc"
     "-p nostr --no-default-features --features alloc,all-nips"
     "-p nostr-database"
+    "-p nostr-lmdb"
     "-p nostr-relay-builder"
     "-p nostr-sdk"
     "-p nostr-sdk --no-default-features"

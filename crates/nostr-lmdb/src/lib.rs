@@ -272,10 +272,10 @@ mod tests {
             (keys, event)
         }
 
-        async fn add_event_with_keys(&self, builder: EventBuilder, keys: &Keys) -> Event {
+        async fn add_event_with_keys(&self, builder: EventBuilder, keys: &Keys) -> (Event, bool) {
             let event = builder.to_event(&keys).unwrap();
-            self.db.save_event(&event).await.unwrap();
-            event
+            let stored = self.db.save_event(&event).await.unwrap();
+            (event, stored)
         }
 
         async fn count_all(&self) -> usize {
@@ -332,15 +332,16 @@ mod tests {
         assert_eq!(db.count_all().await, added_events + 1);
 
         // Replace previous event
-        let new_expected_event = db
+        let (new_expected_event, stored) = db
             .add_event_with_keys(
                 EventBuilder::metadata(&metadata).custom_created_at(now),
                 &keys,
             )
             .await;
+        assert!(stored);
 
-        // Test event by ID (MUST return error)
-        assert!(db.event_by_id(&expected_event.id).await.is_err());
+        // Test event by ID (MUST be None because replaced)
+        assert!(db.event_by_id(&expected_event.id).await.unwrap().is_none());
 
         // Test event by ID
         let event = db
@@ -395,7 +396,7 @@ mod tests {
         assert_eq!(db.count_all().await, added_events + 1);
 
         // Replace previous event
-        let new_expected_event = db
+        let (new_expected_event, stored) = db
             .add_event_with_keys(
                 EventBuilder::new(
                     Kind::ParameterizedReplaceable(33_333),
@@ -406,9 +407,10 @@ mod tests {
                 &keys,
             )
             .await;
+        assert!(stored);
 
-        // Test event by ID (MUST return error)
-        assert!(db.event_by_id(&expected_event.id).await.is_err());
+        // Test event by ID (MUST be None` because replaced)
+        assert!(db.event_by_id(&expected_event.id).await.unwrap().is_none());
 
         // Test event by ID
         let event = db
@@ -462,7 +464,7 @@ mod tests {
             // Event 10 deleted by event 12
             // Event 9 replaced by event 10
             Event::from_json(EVENTS[8]).unwrap(),
-            Event::from_json(EVENTS[7]).unwrap(),
+            // Event 7 is an invalid deletion
             Event::from_json(EVENTS[6]).unwrap(),
             Event::from_json(EVENTS[5]).unwrap(),
             Event::from_json(EVENTS[4]).unwrap(),
@@ -475,6 +477,6 @@ mod tests {
             db.query(vec![Filter::new()]).await.unwrap(),
             expected_output
         );
-        assert_eq!(db.count_all().await, 9);
+        assert_eq!(db.count_all().await, 8);
     }
 }

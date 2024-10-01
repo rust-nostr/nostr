@@ -176,9 +176,8 @@ impl Store {
             // Handle deletion events
             if let Kind::EventDeletion = event.kind {
                 let invalid: bool = Self::handle_deletion_event(&db, &mut txn, &event)?;
-                
+
                 if invalid {
-                    txn.abort();
                     return Ok(false);
                 }
             }

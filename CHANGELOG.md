@@ -64,6 +64,7 @@
 ### Fixed
 
 * lmdb: add missing commit method call in `Store::delete` ([Yuki Kishimoto])
+* lmdb: fix unit tests ([Yuki Kishimoto])
 
 ### Removed
 
