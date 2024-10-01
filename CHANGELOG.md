@@ -33,6 +33,7 @@
 * relay-builder: refactor `Session::check_rate_limit` method ([Yuki Kishimoto])
 * pool: changes in `RelayPool::remove_relay` behavior ([Yuki Kishimoto])
 * pool: deprecate `RelayPool::remove_all_relays` ([Yuki Kishimoto])
+* sdk: deprecate `Client::get_events_of` and `Client::get_events_from` methods ([Yuki Kishimoto])
 * signer: bootstrap NIP-46 signer on demand ([Yuki Kishimoto])
 * bindings(nostr): adj. `tag` module ([Yuki Kishimoto])
 
@@ -49,6 +50,7 @@
 * relay-builder: add min POW difficulty option to `RelayBuilder` ([Yuki Kishimoto])
 * pool: add `RelayPool::force_remove_relay` method ([Yuki Kishimoto])
 * pool: add `RelayFiltering::overwrite_public_keys` method ([Yuki Kishimoto])
+* sdk: add `Client::fetch_events` and `Client::fetch_events_from` methods ([Yuki Kishimoto])
 * signer: add `NostrSigner::gift_wrap` ([Yuki Kishimoto])
 * zapper: add `WebLNZapper` struct (moved from `nostr-webln` crate) ([Yuki Kishimoto])
 * ffi(nostr): add `tag_kind_to_string` func ([Yuki Kishimoto])

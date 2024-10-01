@@ -267,9 +267,9 @@ impl JsRelay {
         self.inner.unsubscribe_all(**opts).await.map_err(into_err)
     }
 
-    /// Get events of filters
-    #[wasm_bindgen(js_name = getEventsOf)]
-    pub async fn get_events_of(
+    /// Fetch events
+    #[wasm_bindgen(js_name = fetchEvents)]
+    pub async fn fetch_events(
         &self,
         filters: Vec<JsFilter>,
         timeout: &JsDuration,
@@ -278,7 +278,7 @@ impl JsRelay {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         let events: Vec<Event> = self
             .inner
-            .get_events_of(filters, **timeout, **opts)
+            .fetch_events(filters, **timeout, **opts)
             .await
             .map_err(into_err)?;
         let events: JsEventArray = events
@@ -292,16 +292,13 @@ impl JsRelay {
         Ok(events)
     }
 
-    /// Count events of filters
-    pub async fn count_events_of(
-        &self,
-        filters: Vec<JsFilter>,
-        timeout: &JsDuration,
-    ) -> Result<u64> {
+    /// Count events
+    #[wasm_bindgen(js_name = countEvents)]
+    pub async fn count_events(&self, filters: Vec<JsFilter>, timeout: &JsDuration) -> Result<u64> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         Ok(self
             .inner
-            .count_events_of(filters, **timeout)
+            .count_events(filters, **timeout)
             .await
             .map_err(into_err)? as u64)
     }

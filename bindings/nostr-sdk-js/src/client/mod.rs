@@ -22,7 +22,7 @@ pub mod signer;
 pub mod zapper;
 
 pub use self::builder::JsClientBuilder;
-use self::options::{JsEventSource, JsOptions};
+use self::options::JsOptions;
 pub use self::signer::JsNostrSigner;
 use self::zapper::{JsZapDetails, JsZapEntity};
 use crate::abortable::JsAbortHandle;
@@ -332,22 +332,23 @@ impl JsClient {
         self.inner.unsubscribe_all().await;
     }
 
-    /// Get events of filters
+    /// Fetch events from relays
     ///
     /// The returned events are sorted by newest first, if there is a limit only the newest are returned.
     ///
-    /// If `gossip` is enabled (see `Options]) the events will be requested also to
+    /// If `gossip` is enabled (see `Options`) the events will be requested also to
     /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
-    #[wasm_bindgen(js_name = getEventsOf)]
-    pub async fn get_events_of(
+    #[wasm_bindgen(js_name = fetchEvents)]
+    pub async fn fetch_events(
         &self,
         filters: Vec<JsFilter>,
-        source: &JsEventSource,
+        timeout: Option<JsDuration>,
     ) -> Result<JsEventArray> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
+        let timeout: Option<Duration> = timeout.map(|d| *d);
         let events: Vec<Event> = self
             .inner
-            .get_events_of(filters, source.deref().clone())
+            .fetch_events(filters, timeout)
             .await
             .map_err(into_err)?;
         let events: JsEventArray = events
@@ -361,9 +362,9 @@ impl JsClient {
         Ok(events)
     }
 
-    /// Get events of filters from specific relays
-    #[wasm_bindgen(js_name = getEventsFrom)]
-    pub async fn get_events_from(
+    /// Fetch events from specific relays
+    #[wasm_bindgen(js_name = fetchEventsFrom)]
+    pub async fn fetch_events_from(
         &self,
         urls: Vec<String>,
         filters: Vec<JsFilter>,
@@ -373,7 +374,7 @@ impl JsClient {
         let timeout: Option<Duration> = timeout.map(|d| *d);
         let events: Vec<Event> = self
             .inner
-            .get_events_from(urls, filters, timeout)
+            .fetch_events_from(urls, filters, timeout)
             .await
             .map_err(into_err)?;
         let events: JsEventArray = events

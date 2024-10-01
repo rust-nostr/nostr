@@ -339,8 +339,8 @@ impl RelayPool {
         self.inner.unsubscribe_all(**opts).await
     }
 
-    /// Get events of filters
-    pub async fn get_events_of(
+    /// Fetch events from relays
+    pub async fn fetch_events(
         &self,
         filters: Vec<Arc<Filter>>,
         timeout: Duration,
@@ -352,15 +352,15 @@ impl RelayPool {
             .collect();
         Ok(self
             .inner
-            .get_events_of(filters, timeout, opts.into())
+            .fetch_events(filters, timeout, opts.into())
             .await?
             .into_iter()
             .map(|e| Arc::new(e.into()))
             .collect())
     }
 
-    /// Get events of filters from **specific relays**
-    pub async fn get_events_from(
+    /// Fetch events from specific relays
+    pub async fn fetch_events_from(
         &self,
         urls: Vec<String>,
         filters: Vec<Arc<Filter>>,
@@ -373,7 +373,7 @@ impl RelayPool {
             .collect();
         Ok(self
             .inner
-            .get_events_from(urls, filters, timeout, opts.into())
+            .fetch_events_from(urls, filters, timeout, opts.into())
             .await?
             .into_iter()
             .map(|e| Arc::new(e.into()))

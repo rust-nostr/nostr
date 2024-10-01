@@ -19,23 +19,18 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
-    // Get events from all connected relays
     let filter = Filter::new().author(public_key).kind(Kind::Metadata);
     let events = client
-        .get_events_of(
-            vec![filter],
-            EventSource::relays(Some(Duration::from_secs(10))),
-        )
+        .fetch_events(vec![filter], Some(Duration::from_secs(10)))
         .await?;
     println!("{events:#?}");
 
-    // Get events from specific relays
     let filter = Filter::new()
         .author(public_key)
         .kind(Kind::TextNote)
         .limit(3);
     let events = client
-        .get_events_from(
+        .fetch_events_from(
             ["wss://relay.damus.io", "wss://relay.rip"],
             vec![filter],
             Some(Duration::from_secs(10)),

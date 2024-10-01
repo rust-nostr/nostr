@@ -1480,7 +1480,7 @@ impl InternalRelay {
         Ok(())
     }
 
-    pub(crate) async fn get_events_of_with_callback<F>(
+    pub(crate) async fn fetch_events_with_callback<F>(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
@@ -1602,14 +1602,14 @@ impl InternalRelay {
         Ok(())
     }
 
-    pub async fn get_events_of(
+    pub async fn fetch_events(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
         let events: Mutex<Vec<Event>> = Mutex::new(Vec::new());
-        self.get_events_of_with_callback(filters, timeout, opts, |event| async {
+        self.fetch_events_with_callback(filters, timeout, opts, |event| async {
             let mut events = events.lock().await;
             events.push(event);
         })
@@ -1617,7 +1617,7 @@ impl InternalRelay {
         Ok(events.into_inner())
     }
 
-    pub async fn count_events_of(
+    pub async fn count_events(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,

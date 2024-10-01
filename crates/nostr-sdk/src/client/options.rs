@@ -161,7 +161,7 @@ impl Options {
 
     /// Timeout (default: 60)
     ///
-    /// Used in `get_events_of` and similar methods as default timeout.
+    /// Used in `fetch_events` and similar methods as default timeout.
     #[inline]
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;

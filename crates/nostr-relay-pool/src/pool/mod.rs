@@ -478,19 +478,49 @@ impl RelayPool {
         self.inner.unsubscribe_all(opts).await
     }
 
-    /// Get events of filters from relays with `READ` flag.
+    /// Fetch events from relays with [`RelayServiceFlags::READ`] flag.
     #[inline]
+    pub async fn fetch_events(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Duration,
+        opts: FilterOptions,
+    ) -> Result<Vec<Event>, Error> {
+        self.inner.fetch_events(filters, timeout, opts).await
+    }
+
+    /// Get events of filters from relays with `READ` flag.
+    #[deprecated(since = "0.36.0", note = "Use `fetch_events` instead")]
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
-        self.inner.get_events_of(filters, timeout, opts).await
+        self.inner.fetch_events(filters, timeout, opts).await
+    }
+
+    /// Fetch events from specific relays
+    #[inline]
+    pub async fn fetch_events_from<I, U>(
+        &self,
+        urls: I,
+        filters: Vec<Filter>,
+        timeout: Duration,
+        opts: FilterOptions,
+    ) -> Result<Vec<Event>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.inner
+            .fetch_events_from(urls, filters, timeout, opts)
+            .await
     }
 
     /// Get events of filters from specific relays
-    #[inline]
+    #[deprecated(since = "0.36.0", note = "Use `fetch_events_from` instead")]
     pub async fn get_events_from<I, U>(
         &self,
         urls: I,
@@ -504,7 +534,7 @@ impl RelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         self.inner
-            .get_events_from(urls, filters, timeout, opts)
+            .fetch_events_from(urls, filters, timeout, opts)
             .await
     }
 

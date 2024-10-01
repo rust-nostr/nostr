@@ -338,16 +338,16 @@ impl Client {
         self.inner.unsubscribe_all().await
     }
 
-    /// Get events of filters
+    /// Fetch events from relays
     ///
     /// The returned events are sorted by newest first, if there is a limit only the newest are returned.
     ///
     /// If `gossip` is enabled (see `Options]) the events will be requested also to
     /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
-    pub async fn get_events_of(
+    pub async fn fetch_events(
         &self,
         filters: Vec<Arc<Filter>>,
-        source: &EventSource,
+        timeout: Option<Duration>,
     ) -> Result<Vec<Arc<Event>>> {
         let filters = filters
             .into_iter()
@@ -356,15 +356,15 @@ impl Client {
 
         Ok(self
             .inner
-            .get_events_of(filters, source.deref().clone())
+            .fetch_events(filters, timeout)
             .await?
             .into_iter()
             .map(|e| Arc::new(e.into()))
             .collect())
     }
 
-    /// Get events of filters from specific relays
-    pub async fn get_events_from(
+    /// Fetch events from specific relays
+    pub async fn fetch_events_from(
         &self,
         urls: Vec<String>,
         filters: Vec<Arc<Filter>>,
@@ -376,7 +376,7 @@ impl Client {
             .collect();
         Ok(self
             .inner
-            .get_events_from(urls, filters, timeout)
+            .fetch_events_from(urls, filters, timeout)
             .await?
             .into_iter()
             .map(|e| Arc::new(e.into()))

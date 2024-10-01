@@ -326,8 +326,8 @@ impl Relay {
         Ok(self.inner.unsubscribe_all(**opts).await?)
     }
 
-    /// Get events of filters
-    pub async fn get_events_of(
+    /// Fetch events
+    pub async fn fetch_events(
         &self,
         filters: Vec<Arc<Filter>>,
         timeout: Duration,
@@ -338,24 +338,20 @@ impl Relay {
             .collect();
         Ok(self
             .inner
-            .get_events_of(filters, timeout, FilterOptions::ExitOnEOSE)
+            .fetch_events(filters, timeout, FilterOptions::ExitOnEOSE)
             .await?
             .into_iter()
             .map(|e| Arc::new(e.into()))
             .collect())
     }
 
-    /// Count events of filters
-    pub async fn count_events_of(
-        &self,
-        filters: Vec<Arc<Filter>>,
-        timeout: Duration,
-    ) -> Result<u64> {
+    /// Count events
+    pub async fn count_events(&self, filters: Vec<Arc<Filter>>, timeout: Duration) -> Result<u64> {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-        Ok(self.inner.count_events_of(filters, timeout).await? as u64)
+        Ok(self.inner.count_events(filters, timeout).await? as u64)
     }
 
     /// Negentropy reconciliation

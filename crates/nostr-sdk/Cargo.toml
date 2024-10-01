@@ -76,7 +76,7 @@ name = "client"
 required-features = ["all-nips"]
 
 [[example]]
-name = "get-events-of"
+name = "fetch-events"
 required-features = ["all-nips"]
 
 [[example]]

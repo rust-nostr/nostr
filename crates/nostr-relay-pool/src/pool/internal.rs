@@ -720,17 +720,17 @@ impl InternalRelayPool {
         }
     }
 
-    pub async fn get_events_of(
+    pub async fn fetch_events(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
         let urls: Vec<Url> = self.read_relay_urls().await;
-        self.get_events_from(urls, filters, timeout, opts).await
+        self.fetch_events_from(urls, filters, timeout, opts).await
     }
 
-    pub async fn get_events_from<I, U>(
+    pub async fn fetch_events_from<I, U>(
         &self,
         urls: I,
         filters: Vec<Filter>,
@@ -843,7 +843,7 @@ impl InternalRelayPool {
             let ids = ids.clone();
             thread::spawn(async move {
                 if let Err(e) = relay
-                    .get_events_of_with_callback(filters, timeout, opts, |event| async {
+                    .fetch_events_with_callback(filters, timeout, opts, |event| async {
                         let mut ids = ids.lock().await;
                         if ids.insert(event.id) {
                             drop(ids);
