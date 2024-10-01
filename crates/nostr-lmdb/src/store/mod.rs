@@ -175,7 +175,12 @@ impl Store {
 
             // Handle deletion events
             if let Kind::EventDeletion = event.kind {
-                Self::handle_deletion_event(&db, &mut txn, &event)?;
+                let invalid: bool = Self::handle_deletion_event(&db, &mut txn, &event)?;
+                
+                if invalid {
+                    txn.abort();
+                    return Ok(false);
+                }
             }
 
             txn.commit()?;
@@ -185,13 +190,13 @@ impl Store {
         .await?
     }
 
-    fn handle_deletion_event(db: &Lmdb, txn: &mut RwTxn, event: &Event) -> Result<(), Error> {
+    fn handle_deletion_event(db: &Lmdb, txn: &mut RwTxn, event: &Event) -> Result<bool, Error> {
         for id in event.tags.event_ids() {
             // Actually remove
             if let Some(target) = db.get_event_by_id(txn, id.as_bytes())? {
                 // author must match
                 if target.author() != &event.pubkey.to_bytes() {
-                    continue;
+                    return Ok(true);
                 }
 
                 // Remove event
@@ -206,7 +211,7 @@ impl Store {
 
         for coordinate in event.tags.coordinates() {
             if coordinate.public_key != event.pubkey {
-                continue;
+                return Ok(true);
             }
 
             // Mark deleted
@@ -225,7 +230,7 @@ impl Store {
             }
         }
 
-        Ok(())
+        Ok(false)
     }
 
     /// Get an event by ID

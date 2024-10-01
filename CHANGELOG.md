@@ -34,6 +34,7 @@
 * pool: changes in `RelayPool::remove_relay` behavior ([Yuki Kishimoto])
 * pool: deprecate `RelayPool::remove_all_relays` ([Yuki Kishimoto])
 * sdk: deprecate `Client::get_events_of` and `Client::get_events_from` methods ([Yuki Kishimoto])
+* lmdb: not save event deletion if contains not owned events ([Yuki Kishimoto])
 * signer: bootstrap NIP-46 signer on demand ([Yuki Kishimoto])
 * bindings(nostr): adj. `tag` module ([Yuki Kishimoto])
 
