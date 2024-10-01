@@ -5,7 +5,8 @@
 #![allow(dead_code)]
 
 use std::borrow::Borrow;
-use std::collections::btree_set::Iter;
+use std::cmp::Ordering;
+use std::collections::btree_set::{IntoIter, Iter};
 use std::collections::BTreeSet;
 
 /// Represents the possible options for removing a value.
@@ -18,7 +19,7 @@ pub enum OverCapacityPolicy {
     Last,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum Capacity {
     #[default]
     Unbounded,
@@ -26,6 +27,25 @@ pub enum Capacity {
         max: usize,
         policy: OverCapacityPolicy,
     },
+}
+
+impl PartialOrd for Capacity {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Capacity {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Self::Unbounded, Self::Unbounded) => Ordering::Equal,
+            (Self::Unbounded, Self::Bounded { .. }) => Ordering::Greater,
+            (Self::Bounded { .. }, Self::Unbounded) => Ordering::Less,
+            (Self::Bounded { max: this_max, .. }, Self::Bounded { max: other_max, .. }) => {
+                this_max.cmp(other_max)
+            }
+        }
+    }
 }
 
 impl Capacity {
@@ -118,6 +138,11 @@ where
     }
 
     #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.set.is_empty()
+    }
+
+    #[inline]
     pub fn contains<Q>(&self, value: &Q) -> bool
     where
         T: Borrow<Q> + Ord,
@@ -173,6 +198,24 @@ where
         }
     }
 
+    /// Extend with values
+    pub fn extend<I>(&mut self, values: I)
+    where
+        I: IntoIterator<Item = T>,
+    {
+        match self.capacity {
+            Capacity::Bounded { .. } => {
+                // TODO: find more efficient way
+                for value in values.into_iter() {
+                    self.insert(value);
+                }
+            }
+            Capacity::Unbounded => {
+                self.set.extend(values);
+            }
+        }
+    }
+
     #[inline]
     pub fn remove<Q>(&mut self, value: &Q) -> bool
     where
@@ -182,9 +225,45 @@ where
         self.set.remove(value)
     }
 
+    /// Get first value
+    #[inline]
+    pub fn first(&self) -> Option<&T>
+    where
+        T: Ord,
+    {
+        self.set.first()
+    }
+
+    /// Get last value
+    #[inline]
+    pub fn last(&self) -> Option<&T>
+    where
+        T: Ord,
+    {
+        self.set.last()
+    }
+
     #[inline]
     pub fn iter(&self) -> Iter<'_, T> {
         self.set.iter()
+    }
+}
+
+impl<T> From<BTreeSet<T>> for BTreeCappedSet<T> {
+    fn from(set: BTreeSet<T>) -> Self {
+        Self {
+            set,
+            capacity: Capacity::Unbounded,
+        }
+    }
+}
+
+impl<T> IntoIterator for BTreeCappedSet<T> {
+    type Item = T;
+    type IntoIter = IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.set.into_iter()
     }
 }
 
@@ -284,5 +363,12 @@ mod tests {
         assert_eq!(iter.next(), Some(&1));
         assert_eq!(iter.next(), Some(&2));
         assert_eq!(iter.next(), Some(&3));
+    }
+
+    #[test]
+    fn test_cmp_capacity() {
+        assert!(Capacity::Unbounded > Capacity::bounded(1000));
+        assert!(Capacity::bounded(1) < Capacity::bounded(1000));
+        assert_eq!(Capacity::Unbounded, Capacity::Unbounded);
     }
 }
