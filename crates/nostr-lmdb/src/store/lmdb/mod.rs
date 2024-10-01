@@ -4,6 +4,7 @@
 // Distributed under the MIT software license
 
 use std::collections::BTreeSet;
+use std::iter;
 use std::ops::Bound;
 use std::path::Path;
 
@@ -317,8 +318,8 @@ impl Lmdb {
     where
         I: IntoIterator<Item = Filter>,
     {
-        let mut output = BTreeSet::new();
-        for filter in filters {
+        let mut output: BTreeSet<DatabaseEvent<'a>> = BTreeSet::new();
+        for filter in filters.into_iter() {
             let events = self.single_filter_query(txn, filter)?;
             output.extend(events);
         }
@@ -326,14 +327,14 @@ impl Lmdb {
     }
 
     /// Find all events that match the filter
-    pub fn single_filter_query<'a>(
+    fn single_filter_query<'a>(
         &self,
         txn: &'a RoTxn,
         filter: Filter,
-    ) -> Result<Vec<DatabaseEvent<'a>>, Error> {
+    ) -> Result<Box<dyn Iterator<Item = DatabaseEvent<'a>> + 'a>, Error> {
         if let (Some(since), Some(until)) = (filter.since, filter.until) {
             if since > until {
-                return Ok(Vec::new());
+                return Ok(Box::new(iter::empty()));
             }
         }
 
@@ -517,10 +518,10 @@ impl Lmdb {
             }
         }
 
-        // Reverse order, optionally apply limit and collect to Vec
+        // Reverse order, optionally apply limit
         Ok(match limit {
-            Some(limit) => output.into_iter().take(limit).collect(),
-            None => output.into_iter().collect(),
+            Some(limit) => Box::new(output.into_iter().take(limit)),
+            None => Box::new(output.into_iter()),
         })
     }
 

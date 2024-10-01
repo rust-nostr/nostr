@@ -304,7 +304,7 @@ impl Store {
     ) -> Result<Vec<(EventId, Timestamp)>, Error> {
         self.interact(move |db| {
             let txn = db.read_txn()?;
-            let events = db.single_filter_query(&txn, filter)?;
+            let events = db.query(&txn, vec![filter])?;
             Ok(events
                 .into_iter()
                 .map(|e| (EventId::from_byte_array(*e.id()), e.created_at))
@@ -316,7 +316,7 @@ impl Store {
     pub async fn delete(&self, filter: Filter) -> Result<(), Error> {
         self.interact(move |db| {
             let read_txn = db.read_txn()?;
-            let events = db.single_filter_query(&read_txn, filter)?;
+            let events = db.query(&read_txn, vec![filter])?;
 
             let mut txn = db.write_txn()?;
             for event in events.into_iter() {
