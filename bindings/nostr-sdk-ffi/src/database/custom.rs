@@ -91,7 +91,7 @@ impl fmt::Debug for IntermediateCustomNostrDatabase {
 }
 
 mod inner {
-    use std::collections::{BTreeSet, HashSet};
+    use std::collections::HashSet;
     use std::ops::Deref;
     use std::sync::Arc;
 
@@ -183,17 +183,17 @@ mod inner {
         }
 
         async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
+            let mut events = Events::new(&filters);
+
             let filters = filters.into_iter().map(|f| Arc::new(f.into())).collect();
             let res = self
                 .inner
                 .query(filters)
                 .await
                 .map_err(DatabaseError::backend)?;
-            let events: BTreeSet<Event> = res
-                .into_iter()
-                .map(|e| e.as_ref().deref().clone())
-                .collect();
-            Ok(Events::from(events))
+
+            events.extend(res.into_iter().map(|e| e.as_ref().deref().clone()));
+            Ok(events)
         }
 
         async fn negentropy_items(

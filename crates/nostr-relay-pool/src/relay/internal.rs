@@ -1600,7 +1600,7 @@ impl InternalRelay {
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Events, Error> {
-        let events: Mutex<Events> = Mutex::new(Events::unbounded());
+        let events: Mutex<Events> = Mutex::new(Events::new(&filters));
         self.fetch_events_with_callback(filters, timeout, opts, |event| async {
             let mut events = events.lock().await;
             events.insert(event);

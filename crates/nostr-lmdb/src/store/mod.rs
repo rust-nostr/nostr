@@ -290,13 +290,13 @@ impl Store {
     // Lookup ID: EVENT_ORD_IMPL
     pub async fn query(&self, filters: Vec<Filter>) -> Result<Events, Error> {
         self.interact(move |db| {
+            let mut events: Events = Events::new(&filters);
+
             let txn: RoTxn = db.read_txn()?;
             let output: BTreeSet<DatabaseEvent> = db.query(&txn, filters)?;
-            let set: BTreeSet<Event> = output
-                .into_iter()
-                .filter_map(|e| e.to_event().ok())
-                .collect();
-            Ok(Events::from(set))
+            events.extend(output.into_iter().filter_map(|e| e.to_event().ok()));
+
+            Ok(events)
         })
         .await?
     }

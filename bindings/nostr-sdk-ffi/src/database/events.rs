@@ -38,6 +38,10 @@ impl Events {
     }
 
     /// Merge events collections into a single one.
+    ///
+    /// Collection is converted to unbounded if one of the merge `Events` have a different hash.
+    /// In other words, the filters limit is respected only if the `Events` are related to the same
+    /// list of filters.
     pub fn merge(&self, other: &Self) -> Self {
         self.inner.clone().merge(other.inner.clone()).into()
     }

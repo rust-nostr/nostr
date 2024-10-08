@@ -2,9 +2,9 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::cmp;
 use std::collections::btree_set::IntoIter;
-use std::collections::BTreeSet;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 use nostr::{Event, Filter};
 
@@ -17,6 +17,8 @@ const POLICY: OverCapacityPolicy = OverCapacityPolicy::Last;
 #[derive(Debug, Clone)]
 pub struct Events {
     set: BTreeCappedSet<Event>,
+    hash: u64,
+    prev_not_match: bool,
 }
 
 impl Events {
@@ -29,25 +31,19 @@ impl Events {
             _ => None,
         };
 
-        match limit {
-            Some(limit) => Self::bounded(limit),
-            None => Self::unbounded(),
-        }
-    }
+        let mut hasher = DefaultHasher::new();
+        filters.hash(&mut hasher);
+        let hash: u64 = hasher.finish();
 
-    /// New bounded collection
-    #[inline]
-    pub fn bounded(limit: usize) -> Self {
-        Self {
-            set: BTreeCappedSet::bounded_with_policy(limit, POLICY),
-        }
-    }
+        let set: BTreeCappedSet<Event> = match limit {
+            Some(limit) => BTreeCappedSet::bounded_with_policy(limit, POLICY),
+            None => BTreeCappedSet::unbounded(),
+        };
 
-    /// New unbounded collection
-    #[inline]
-    pub fn unbounded() -> Self {
         Self {
-            set: BTreeCappedSet::unbounded(),
+            set,
+            hash,
+            prev_not_match: false,
         }
     }
 
@@ -88,26 +84,16 @@ impl Events {
 
     /// Merge events collections into a single one.
     ///
-    /// If one of the collections is bounded, the minimum capacity will be used.
+    /// Collection is converted to unbounded if one of the merge [`Events`] have a different hash.
+    /// In other words, the filters limit is respected only if the [`Events`] are related to the same
+    /// list of filters.
     pub fn merge(mut self, other: Self) -> Self {
-        // Get min capacity
-        let mut min: Capacity = cmp::min(self.set.capacity(), other.set.capacity());
-
-        // Check over capacity policy
-        // Lookup ID: EVENT_ORD_IMPL
-        if let Capacity::Bounded {
-            max,
-            policy: OverCapacityPolicy::First,
-        } = min
-        {
-            min = Capacity::Bounded {
-                max,
-                policy: POLICY,
-            };
-        };
-
-        // Update capacity
-        self.set.change_capacity(min);
+        // Hash not match -> change capacity to unbounded
+        if self.hash != other.hash || self.prev_not_match || other.prev_not_match {
+            self.set.change_capacity(Capacity::Unbounded);
+            self.hash = 0;
+            self.prev_not_match = true;
+        }
 
         // Extend
         self.extend(other.set);
@@ -153,12 +139,92 @@ impl IntoIterator for Events {
     }
 }
 
-impl From<BTreeSet<Event>> for Events {
-    fn from(set: BTreeSet<Event>) -> Self {
-        Self {
-            set: BTreeCappedSet::from(set),
-        }
+#[cfg(test)]
+mod tests {
+    use nostr::Kind;
+
+    use super::*;
+
+    #[test]
+    fn test_merge() {
+        // Same filter
+        let filters = vec![Filter::new().kind(Kind::TextNote).limit(100)];
+
+        let events1 = Events::new(&filters);
+        assert_eq!(
+            events1.set.capacity(),
+            Capacity::Bounded {
+                max: 100,
+                policy: POLICY
+            }
+        );
+
+        let events2 = Events::new(&filters);
+        assert_eq!(
+            events2.set.capacity(),
+            Capacity::Bounded {
+                max: 100,
+                policy: POLICY
+            }
+        );
+
+        let hash1 = events1.hash;
+
+        assert_eq!(events1.hash, events2.hash);
+
+        let events = events1.merge(events2);
+        assert_eq!(events.hash, hash1);
+        assert!(!events.prev_not_match);
+        assert_eq!(
+            events.set.capacity(),
+            Capacity::Bounded {
+                max: 100,
+                policy: POLICY
+            }
+        );
+
+        // Different filters
+        let filters1 = vec![Filter::new().kind(Kind::TextNote).limit(100)];
+        let filters2 = vec![Filter::new().kind(Kind::Metadata).limit(10)];
+        let filters3 = vec![Filter::new().kind(Kind::ContactList).limit(1)];
+
+        let events1 = Events::new(&filters1);
+        assert_eq!(
+            events1.set.capacity(),
+            Capacity::Bounded {
+                max: 100,
+                policy: POLICY
+            }
+        );
+
+        let events2 = Events::new(&filters2);
+        assert_eq!(
+            events2.set.capacity(),
+            Capacity::Bounded {
+                max: 10,
+                policy: POLICY
+            }
+        );
+
+        let events3 = Events::new(&filters3);
+        assert_eq!(
+            events3.set.capacity(),
+            Capacity::Bounded {
+                max: 1,
+                policy: POLICY
+            }
+        );
+
+        assert_ne!(events1.hash, events2.hash);
+
+        let events = events1.merge(events2);
+        assert_eq!(events.hash, 0);
+        assert!(events.prev_not_match);
+        assert_eq!(events.set.capacity(), Capacity::Unbounded);
+
+        let events = events.merge(events3);
+        assert_eq!(events.hash, 0);
+        assert!(events.prev_not_match);
+        assert_eq!(events.set.capacity(), Capacity::Unbounded);
     }
 }
-
-// TODO: add unit tests

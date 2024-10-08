@@ -750,13 +750,11 @@ impl DatabaseHelper {
 
     /// Query
     #[tracing::instrument(skip_all, level = "trace")]
-    pub async fn query<I>(&self, filters: I) -> Events
-    where
-        I: IntoIterator<Item = Filter>,
-    {
+    pub async fn query(&self, filters: Vec<Filter>) -> Events {
         let inner = self.inner.read().await;
-        let set: BTreeSet<Event> = inner.query(filters).cloned().collect();
-        Events::from(set)
+        let mut events = Events::new(&filters);
+        events.extend(inner.query(filters).cloned());
+        events
     }
 
     /// Query
@@ -883,14 +881,14 @@ mod tests {
             Event::from_json(EVENTS[0]).unwrap(),
         ];
         assert_eq!(
-            indexes.query([Filter::new()]).await.to_vec(),
+            indexes.query(vec![Filter::new()]).await.to_vec(),
             expected_output
         );
         assert_eq!(indexes.count([Filter::new()]).await, 8);
 
         // Test get previously deleted replaceable event (check if was deleted by indexes)
         assert!(indexes
-            .query([Filter::new()
+            .query(vec![Filter::new()
                 .kind(Kind::Metadata)
                 .author(keys_a.public_key())])
             .await
@@ -898,7 +896,7 @@ mod tests {
 
         // Test get previously deleted param. replaceable event (check if was deleted by indexes)
         assert!(indexes
-            .query([Filter::new()
+            .query(vec![Filter::new()
                 .kind(Kind::ParameterizedReplaceable(32122))
                 .author(keys_a.public_key())
                 .identifier("id-2")])
@@ -908,7 +906,7 @@ mod tests {
         // Test get param replaceable events WITHOUT using indexes (identifier not passed)
         assert_eq!(
             indexes
-                .query([Filter::new()
+                .query(vec![Filter::new()
                     .kind(Kind::ParameterizedReplaceable(32122))
                     .author(keys_b.public_key())])
                 .await
@@ -922,7 +920,7 @@ mod tests {
         // Test get param replaceable events using indexes
         assert_eq!(
             indexes
-                .query([Filter::new()
+                .query(vec![Filter::new()
                     .kind(Kind::ParameterizedReplaceable(32122))
                     .author(keys_b.public_key())
                     .identifier("id-3")])
@@ -933,7 +931,7 @@ mod tests {
 
         assert_eq!(
             indexes
-                .query([Filter::new().author(keys_a.public_key())])
+                .query(vec![Filter::new().author(keys_a.public_key())])
                 .await
                 .to_vec(),
             vec![
@@ -947,7 +945,7 @@ mod tests {
 
         assert_eq!(
             indexes
-                .query([Filter::new()
+                .query(vec![Filter::new()
                     .author(keys_a.public_key())
                     .kinds([Kind::TextNote, Kind::Custom(32121)])])
                 .await
@@ -960,7 +958,7 @@ mod tests {
 
         assert_eq!(
             indexes
-                .query([Filter::new()
+                .query(vec![Filter::new()
                     .authors([keys_a.public_key(), keys_b.public_key()])
                     .kinds([Kind::TextNote, Kind::Custom(32121)])])
                 .await
@@ -974,7 +972,7 @@ mod tests {
         // Test get param replaceable events using identifier
         assert_eq!(
             indexes
-                .query([Filter::new().identifier("id-1")])
+                .query(vec![Filter::new().identifier("id-1")])
                 .await
                 .to_vec(),
             vec![
@@ -987,7 +985,7 @@ mod tests {
         // Test get param replaceable events with multiple tags using identifier
         assert_eq!(
             indexes
-                .query([Filter::new().identifier("multi-id")])
+                .query(vec![Filter::new().identifier("multi-id")])
                 .await
                 .to_vec(),
             vec![Event::from_json(EVENTS[13]).unwrap()]
@@ -995,7 +993,7 @@ mod tests {
         // As above but by using kind and pubkey
         assert_eq!(
             indexes
-                .query([Filter::new()
+                .query(vec![Filter::new()
                     .pubkey(keys_a.public_key())
                     .kind(Kind::Custom(30333))
                     .limit(1)])
@@ -1011,7 +1009,7 @@ mod tests {
         assert!(res.to_discard.is_empty());
         assert_eq!(
             indexes
-                .query([Filter::new()
+                .query(vec![Filter::new()
                     .kind(Kind::Metadata)
                     .author(keys_a.public_key())])
                 .await
@@ -1026,7 +1024,7 @@ mod tests {
         assert!(res.to_discard.contains(&first_ev_metadata.id));
         assert_eq!(
             indexes
-                .query([Filter::new()
+                .query(vec![Filter::new()
                     .kind(Kind::Metadata)
                     .author(keys_a.public_key())])
                 .await
