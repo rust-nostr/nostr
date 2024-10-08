@@ -544,19 +544,29 @@ impl RelayPool {
             .to_vec())
     }
 
-    // TODO: rename to `stream_events`
-    /// Stream events of filters from relays with `READ` flag.
-    #[inline]
+    /// Stream events
+    #[deprecated(since = "0.36.0", note = "Use `stream_events` instead")]
     pub async fn stream_events_of(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<ReceiverStream<Event>, Error> {
-        self.inner.stream_events_of(filters, timeout, opts).await
+        self.stream_events(filters, timeout, opts).await
     }
 
-    /// Stream events of filters from specific relays
+    /// Stream events from relays with `READ` flag.
+    #[inline]
+    pub async fn stream_events(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Duration,
+        opts: FilterOptions,
+    ) -> Result<ReceiverStream<Event>, Error> {
+        self.inner.stream_events(filters, timeout, opts).await
+    }
+
+    /// Stream events from specific relays
     #[inline]
     pub async fn stream_events_from<I, U>(
         &self,

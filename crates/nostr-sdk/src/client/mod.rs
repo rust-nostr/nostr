@@ -914,11 +914,21 @@ impl Client {
             .to_vec())
     }
 
-    /// Stream events of filters
+    /// Stream events
+    #[deprecated(since = "0.36.0", note = "Use `stream_events` instead")]
+    pub async fn stream_events_of(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+    ) -> Result<ReceiverStream<Event>, Error> {
+        self.stream_events(filters, timeout).await
+    }
+
+    /// Stream events from relays
     ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be streamed also from
     /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
-    pub async fn stream_events_of(
+    pub async fn stream_events(
         &self,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
@@ -928,16 +938,16 @@ impl Client {
 
         // Check if gossip is enabled
         if self.opts.gossip {
-            self.gossip_stream_events_of(filters, timeout).await
+            self.gossip_stream_events(filters, timeout).await
         } else {
             Ok(self
                 .pool
-                .stream_events_of(filters, timeout, FilterOptions::ExitOnEOSE)
+                .stream_events(filters, timeout, FilterOptions::ExitOnEOSE)
                 .await?)
         }
     }
 
-    /// Stream events of filters from **specific relays**
+    /// Stream events from specific relays
     #[inline]
     pub async fn stream_events_from<I, U>(
         &self,
@@ -1867,8 +1877,7 @@ impl Client {
         Ok(broken_down.filters)
     }
 
-    // TODO: rename to `gossip_stream_events`
-    async fn gossip_stream_events_of(
+    async fn gossip_stream_events(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
@@ -1892,8 +1901,7 @@ impl Client {
         let mut events: Events = Events::new(&filters);
 
         // Stream events
-        let mut stream: ReceiverStream<Event> =
-            self.gossip_stream_events_of(filters, timeout).await?;
+        let mut stream: ReceiverStream<Event> = self.gossip_stream_events(filters, timeout).await?;
 
         while let Some(event) = stream.next().await {
             events.insert(event);

@@ -36,6 +36,7 @@
 * pool: deprecate `RelayPool::remove_all_relays` ([Yuki Kishimoto])
 * sdk: deprecate `Client::get_events_of` and `Client::get_events_from` methods ([Yuki Kishimoto])
 * sdk: use `Events` instead of `Vec<Event>` in fetch and query methods ([Yuki Kishimoto])
+* sdk: rename `stream_events_of` to `stream_events` ([Yuki Kishimoto])
 * database: improve `BTreeCappedSet` ([Yuki Kishimoto])
 * database: not save invalid event deletion ([Yuki Kishimoto])
 * lmdb: not save event deletion ([Yuki Kishimoto])

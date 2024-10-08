@@ -754,7 +754,7 @@ impl InternalRelayPool {
     }
 
     #[inline]
-    pub async fn stream_events_of(
+    pub async fn stream_events(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,

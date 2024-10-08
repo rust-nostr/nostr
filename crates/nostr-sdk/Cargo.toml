@@ -99,7 +99,7 @@ required-features = ["all-nips", "ndb"]
 name = "shutdown-on-drop"
 
 [[example]]
-name = "stream-events-of"
+name = "stream-events"
 required-features = ["all-nips"]
 
 [[example]]
