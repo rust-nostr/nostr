@@ -537,7 +537,8 @@ impl EventBuilder {
                         event_id: event.id,
                         relay_url,
                         marker: None,
-                        public_key: Some(event.pubkey),
+                        // NOTE: not add public key since it's already included as `p` tag
+                        public_key: None,
                     }),
                     Tag::public_key(event.pubkey),
                 ],
@@ -551,7 +552,8 @@ impl EventBuilder {
                         event_id: event.id,
                         relay_url,
                         marker: None,
-                        public_key: Some(event.pubkey),
+                        // NOTE: not add public key since it's already included as `p` tag
+                        public_key: None,
                     }),
                     Tag::public_key(event.pubkey),
                     Tag::from_standardized_without_cell(TagStandard::Kind(event.kind)),
