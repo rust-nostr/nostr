@@ -291,6 +291,12 @@ pub struct Filter {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub limit: Option<usize>,
+    /// Minimum POW difficulty
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub pow: Option<u8>,
     /// Generic tag queries
     #[serde(
         flatten,
@@ -768,6 +774,14 @@ impl Filter {
         }
     }
 
+    #[inline]
+    fn pow_match(&self, event: &Event) -> bool {
+        match self.pow {
+            Some(difficulty) => event.id.check_pow(difficulty),
+            None => true,
+        }
+    }
+
     /// Determine if [Filter] match given [Event].
     #[inline]
     pub fn match_event(&self, event: &Event) -> bool {
@@ -777,6 +791,7 @@ impl Filter {
             && self.since.map_or(true, |t| event.created_at >= t)
             && self.until.map_or(true, |t| event.created_at <= t)
             && self.tag_match(event)
+            && self.pow_match(event)
             && self.search_match(event)
     }
 }
