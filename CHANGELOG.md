@@ -53,6 +53,7 @@
 * zapper: add `WebLNZapper` struct (moved from `nostr-webln` crate) ([Yuki Kishimoto])
 * ffi(nostr): add `tag_kind_to_string` func ([Yuki Kishimoto])
 * ffi(nostr): add `Tag::kind_str` method ([Yuki Kishimoto])
+* ffi(nostr): impl `Display` for `Kind` ([Yuki Kishimoto])
 * book: add some examples ([RydalWater])
 
 ### Fixed

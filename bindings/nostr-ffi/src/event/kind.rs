@@ -2,15 +2,22 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::fmt;
 use std::ops::Deref;
 
 use uniffi::{Enum, Object};
 
 /// Event Kind
 #[derive(Debug, PartialEq, Eq, Hash, Object)]
-#[uniffi::export(Debug, Eq, Hash)]
+#[uniffi::export(Debug, Display, Eq, Hash)]
 pub struct Kind {
     inner: nostr::Kind,
+}
+
+impl fmt::Display for Kind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.inner)
+    }
 }
 
 impl Deref for Kind {
