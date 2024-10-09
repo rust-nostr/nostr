@@ -26,6 +26,7 @@ pub use self::builder::ClientBuilder;
 pub use self::options::{EventSource, Options};
 pub use self::signer::NostrSigner;
 use self::zapper::{ZapDetails, ZapEntity};
+use crate::database::events::Events;
 use crate::error::Result;
 use crate::pool::result::{Output, ReconciliationOutput, SendEventOutput, SubscribeOutput};
 use crate::pool::RelayPool;
@@ -338,49 +339,38 @@ impl Client {
         self.inner.unsubscribe_all().await
     }
 
-    /// Get events of filters
-    ///
-    /// The returned events are sorted by newest first, if there is a limit only the newest are returned.
+    /// Fetch events from relays
     ///
     /// If `gossip` is enabled (see `Options]) the events will be requested also to
     /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
-    pub async fn get_events_of(
+    pub async fn fetch_events(
         &self,
         filters: Vec<Arc<Filter>>,
-        source: &EventSource,
-    ) -> Result<Vec<Arc<Event>>> {
+        timeout: Option<Duration>,
+    ) -> Result<Events> {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-
-        Ok(self
-            .inner
-            .get_events_of(filters, source.deref().clone())
-            .await?
-            .into_iter()
-            .map(|e| Arc::new(e.into()))
-            .collect())
+        Ok(self.inner.fetch_events(filters, timeout).await?.into())
     }
 
-    /// Get events of filters from specific relays
-    pub async fn get_events_from(
+    /// Fetch events from specific relays
+    pub async fn fetch_events_from(
         &self,
         urls: Vec<String>,
         filters: Vec<Arc<Filter>>,
         timeout: Option<Duration>,
-    ) -> Result<Vec<Arc<Event>>> {
+    ) -> Result<Events> {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
         Ok(self
             .inner
-            .get_events_from(urls, filters, timeout)
+            .fetch_events_from(urls, filters, timeout)
             .await?
-            .into_iter()
-            .map(|e| Arc::new(e.into()))
-            .collect())
+            .into())
     }
 
     pub async fn send_msg_to(&self, urls: Vec<String>, msg: Arc<ClientMessage>) -> Result<Output> {

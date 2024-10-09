@@ -15,7 +15,7 @@ use nostr::{Event, EventId, Filter, Timestamp, Url};
 use tokio::sync::Mutex;
 
 use crate::{
-    util, Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper,
+    util, Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper, Events,
     NostrDatabase,
 };
 
@@ -177,7 +177,7 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, DatabaseError> {
+    async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
         Ok(self.helper.query(filters).await)
     }
 

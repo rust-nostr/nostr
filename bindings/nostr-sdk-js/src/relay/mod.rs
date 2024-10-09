@@ -4,9 +4,8 @@
 
 use std::ops::Deref;
 
-use js_sys::Array;
 use nostr_js::error::{into_err, Result};
-use nostr_js::event::{JsEvent, JsEventArray, JsEventId};
+use nostr_js::event::{JsEvent, JsEventId};
 use nostr_js::message::JsClientMessage;
 use nostr_js::nips::nip11::JsRelayInformationDocument;
 use nostr_js::types::JsFilter;
@@ -23,6 +22,7 @@ use self::flags::JsAtomicRelayServiceFlags;
 use self::options::{
     JsFilterOptions, JsNegentropyOptions, JsRelayOptions, JsRelaySendOptions, JsSubscribeOptions,
 };
+use crate::database::JsEvents;
 use crate::duration::JsDuration;
 
 #[derive(Clone)]
@@ -267,41 +267,30 @@ impl JsRelay {
         self.inner.unsubscribe_all(**opts).await.map_err(into_err)
     }
 
-    /// Get events of filters
-    #[wasm_bindgen(js_name = getEventsOf)]
-    pub async fn get_events_of(
+    /// Fetch events
+    #[wasm_bindgen(js_name = fetchEvents)]
+    pub async fn fetch_events(
         &self,
         filters: Vec<JsFilter>,
         timeout: &JsDuration,
         opts: &JsFilterOptions,
-    ) -> Result<JsEventArray> {
-        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
-        let events: Vec<Event> = self
-            .inner
-            .get_events_of(filters, **timeout, **opts)
-            .await
-            .map_err(into_err)?;
-        let events: JsEventArray = events
-            .into_iter()
-            .map(|e| {
-                let e: JsEvent = e.into();
-                JsValue::from(e)
-            })
-            .collect::<Array>()
-            .unchecked_into();
-        Ok(events)
-    }
-
-    /// Count events of filters
-    pub async fn count_events_of(
-        &self,
-        filters: Vec<JsFilter>,
-        timeout: &JsDuration,
-    ) -> Result<u64> {
+    ) -> Result<JsEvents> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         Ok(self
             .inner
-            .count_events_of(filters, **timeout)
+            .fetch_events(filters, **timeout, **opts)
+            .await
+            .map_err(into_err)?
+            .into())
+    }
+
+    /// Count events
+    #[wasm_bindgen(js_name = countEvents)]
+    pub async fn count_events(&self, filters: Vec<JsFilter>, timeout: &JsDuration) -> Result<u64> {
+        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
+        Ok(self
+            .inner
+            .count_events(filters, **timeout)
             .await
             .map_err(into_err)? as u64)
     }

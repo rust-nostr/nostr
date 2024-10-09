@@ -30,9 +30,17 @@
 * nostr: move `TagsIndexes` into `Tags` struct ([Yuki Kishimoto])
 * nostr: use `OnceCell` implementation from `std` lib instead of `once_cell` ([Yuki Kishimoto])
 * nostr: remove redundant public key from repost events ([Yuki Kishimoto])
+* nostr: change `impl Ord for Event` behaviour (descending order instead of ascending) ([Yuki Kishimoto])
 * relay-builder: refactor `Session::check_rate_limit` method ([Yuki Kishimoto])
 * pool: changes in `RelayPool::remove_relay` behavior ([Yuki Kishimoto])
 * pool: deprecate `RelayPool::remove_all_relays` ([Yuki Kishimoto])
+* sdk: deprecate `Client::get_events_of` and `Client::get_events_from` methods ([Yuki Kishimoto])
+* sdk: use `Events` instead of `Vec<Event>` in fetch and query methods ([Yuki Kishimoto])
+* sdk: rename `stream_events_of` to `stream_events` ([Yuki Kishimoto])
+* database: improve `BTreeCappedSet` ([Yuki Kishimoto])
+* database: not save invalid event deletion ([Yuki Kishimoto])
+* lmdb: not save event deletion ([Yuki Kishimoto])
+* lmdb: return iterator instead of vector in `Lmdb::single_filter_query` ([Yuki Kishimoto])
 * signer: bootstrap NIP-46 signer on demand ([Yuki Kishimoto])
 * bindings(nostr): adj. `tag` module ([Yuki Kishimoto])
 
@@ -42,6 +50,7 @@
 * nostr: add some shorthand constructors for `TagKind::SingleLetter` ([Yuki Kishimoto])
 * nostr: add `Tags` struct ([Yuki Kishimoto])
 * database: add `Backend::is_persistent` method ([Yuki Kishimoto])
+* database: add `Events` struct ([Yuki Kishimoto])
 * relay-builder: add `LocalRelay` and `RelayBuilder` ([Yuki Kishimoto])
 * relay-builder: allow to serve local relay as hidden service ([Yuki Kishimoto])
 * relay-builder: allow to set number of max connections allowed ([Yuki Kishimoto])
@@ -49,6 +58,7 @@
 * relay-builder: add min POW difficulty option to `RelayBuilder` ([Yuki Kishimoto])
 * pool: add `RelayPool::force_remove_relay` method ([Yuki Kishimoto])
 * pool: add `RelayFiltering::overwrite_public_keys` method ([Yuki Kishimoto])
+* sdk: add `Client::fetch_events` and `Client::fetch_events_from` methods ([Yuki Kishimoto])
 * signer: add `NostrSigner::gift_wrap` ([Yuki Kishimoto])
 * zapper: add `WebLNZapper` struct (moved from `nostr-webln` crate) ([Yuki Kishimoto])
 * ffi(nostr): add `tag_kind_to_string` func ([Yuki Kishimoto])
@@ -60,6 +70,7 @@
 ### Fixed
 
 * lmdb: add missing commit method call in `Store::delete` ([Yuki Kishimoto])
+* lmdb: fix unit tests ([Yuki Kishimoto])
 
 ### Removed
 

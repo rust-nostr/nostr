@@ -20,6 +20,7 @@ use nostr::nips::nip65::{self, RelayMetadata};
 use nostr::{Event, EventId, Filter, JsonUtil, Kind, Metadata, PublicKey, Timestamp, Url};
 
 mod error;
+mod events;
 #[cfg(feature = "flatbuf")]
 pub mod flatbuffers;
 pub mod helper;
@@ -30,6 +31,7 @@ mod tree;
 mod util;
 
 pub use self::error::DatabaseError;
+pub use self::events::Events;
 #[cfg(feature = "flatbuf")]
 pub use self::flatbuffers::{FlatBufferBuilder, FlatBufferDecode, FlatBufferEncode};
 pub use self::helper::{DatabaseEventResult, DatabaseHelper};
@@ -152,14 +154,14 @@ pub trait NostrDatabase: fmt::Debug + Send + Sync {
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError>;
 
     /// Query store with filters
-    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, DatabaseError>;
+    async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError>;
 
     /// Get `negentropy` items
     async fn negentropy_items(
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
-        let events: Vec<Event> = self.query(vec![filter]).await?;
+        let events: Events = self.query(vec![filter]).await?;
         Ok(events.into_iter().map(|e| (e.id, e.created_at)).collect())
     }
 
@@ -181,7 +183,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
             .author(public_key)
             .kind(Kind::Metadata)
             .limit(1);
-        let events: Vec<Event> = self.query(vec![filter]).await?;
+        let events: Events = self.query(vec![filter]).await?;
         match events.first() {
             Some(event) => match Metadata::from_json(&event.content) {
                 Ok(metadata) => Ok(Profile::new(public_key, metadata)),
@@ -204,7 +206,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
             .author(public_key)
             .kind(Kind::ContactList)
             .limit(1);
-        let events: Vec<Event> = self.query(vec![filter]).await?;
+        let events: Events = self.query(vec![filter]).await?;
         match events.first() {
             Some(event) => Ok(event.tags.public_keys().copied().collect()),
             None => Ok(Vec::new()),
@@ -218,7 +220,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
             .author(public_key)
             .kind(Kind::ContactList)
             .limit(1);
-        let events: Vec<Event> = self.query(vec![filter]).await?;
+        let events: Events = self.query(vec![filter]).await?;
         match events.first() {
             Some(event) => {
                 // Get contacts metadata
@@ -258,7 +260,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
             .author(public_key)
             .kind(Kind::RelayList)
             .limit(1);
-        let events: Vec<Event> = self.query(vec![filter]).await?;
+        let events: Events = self.query(vec![filter]).await?;
 
         // Extract relay list (NIP65)
         match events.first() {
@@ -282,7 +284,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
     {
         // Query
         let filter: Filter = Filter::default().authors(public_keys).kind(Kind::RelayList);
-        let events: Vec<Event> = self.query(vec![filter]).await?;
+        let events: Events = self.query(vec![filter]).await?;
 
         let mut map = HashMap::with_capacity(events.len());
 

@@ -4,7 +4,6 @@
 
 //! Nostr Database Helper
 
-use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::iter;
 use std::ops::Deref;
@@ -15,34 +14,9 @@ use nostr::{Alphabet, Event, EventId, Filter, Kind, PublicKey, SingleLetterTag, 
 use tokio::sync::{OwnedRwLockReadGuard, RwLock};
 
 use crate::tree::{BTreeCappedSet, Capacity, InsertResult, OverCapacityPolicy};
+use crate::Events;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct DatabaseEvent {
-    event: Arc<Event>,
-}
-
-impl PartialOrd for DatabaseEvent {
-    #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for DatabaseEvent {
-    #[inline]
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.event.cmp(&other.event).reverse()
-    }
-}
-
-impl Deref for DatabaseEvent {
-    type Target = Event;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.event
-    }
-}
+type DatabaseEvent = Arc<Event>;
 
 struct QueryByAuthorParams {
     author: PublicKey,
@@ -201,6 +175,7 @@ impl InternalDatabaseHelper {
         let now: Timestamp = Timestamp::now();
         events
             .into_iter()
+            .rev() // Lookup ID: EVENT_ORD_IMPL
             .filter(|e| !e.kind.is_ephemeral())
             .map(|event| self.internal_index_event(&event, &now))
             .flat_map(|res| res.to_discard)
@@ -216,6 +191,7 @@ impl InternalDatabaseHelper {
         let now: Timestamp = Timestamp::now();
         events
             .into_iter()
+            .rev() // Lookup ID: EVENT_ORD_IMPL
             .filter(|e| !e.is_expired() && !e.kind.is_ephemeral())
             .filter(move |event| self.internal_index_event(event, &now).to_store)
     }
@@ -281,7 +257,13 @@ impl InternalDatabaseHelper {
             // Check `e` tags
             for id in event.tags.event_ids() {
                 if let Some(ev) = self.ids.get(id) {
-                    if ev.pubkey == author && ev.created_at <= created_at {
+                    if ev.pubkey != author {
+                        to_discard.insert(event.id);
+                        should_insert = false;
+                        break;
+                    }
+
+                    if ev.created_at <= created_at {
                         to_discard.insert(ev.id);
                     }
                 }
@@ -289,37 +271,40 @@ impl InternalDatabaseHelper {
 
             // Check `a` tags
             for coordinate in event.tags.coordinates() {
-                if coordinate.public_key == author {
-                    // Save deleted coordinate at certain timestamp
-                    self.deleted_coordinates
-                        .entry(coordinate.clone())
-                        .and_modify(|t| {
-                            // Update only if newer
-                            if created_at > *t {
-                                *t = created_at
-                            }
-                        })
-                        .or_insert(created_at);
+                if coordinate.public_key != author {
+                    to_discard.insert(event.id);
+                    should_insert = false;
+                    break;
+                }
 
-                    // Not check if ev.pubkey match the author because assume that query
-                    // returned only the events owned by author
-                    if !coordinate.identifier.is_empty() {
-                        let mut params: QueryByParamReplaceable = QueryByParamReplaceable::new(
-                            coordinate.kind,
-                            coordinate.public_key,
-                            coordinate.identifier.clone(),
-                        );
-                        params.until = Some(created_at);
-                        if let Some(ev) = self.internal_query_param_replaceable(params) {
-                            to_discard.insert(ev.id);
+                // Save deleted coordinate at certain timestamp
+                self.deleted_coordinates
+                    .entry(coordinate.clone())
+                    .and_modify(|t| {
+                        // Update only if newer
+                        if created_at > *t {
+                            *t = created_at
                         }
-                    } else {
-                        let mut params: QueryByKindAndAuthorParams =
-                            QueryByKindAndAuthorParams::new(coordinate.kind, coordinate.public_key);
-                        params.until = Some(created_at);
-                        to_discard
-                            .extend(self.internal_query_by_kind_and_author(params).map(|e| e.id));
+                    })
+                    .or_insert(created_at);
+
+                // Not check if ev.pubkey match the author because assume that query
+                // returned only the events owned by author
+                if !coordinate.identifier.is_empty() {
+                    let mut params: QueryByParamReplaceable = QueryByParamReplaceable::new(
+                        coordinate.kind,
+                        coordinate.public_key,
+                        coordinate.identifier.clone(),
+                    );
+                    params.until = Some(created_at);
+                    if let Some(ev) = self.internal_query_param_replaceable(params) {
+                        to_discard.insert(ev.id);
                     }
+                } else {
+                    let mut params: QueryByKindAndAuthorParams =
+                        QueryByKindAndAuthorParams::new(coordinate.kind, coordinate.public_key);
+                    params.until = Some(created_at);
+                    to_discard.extend(self.internal_query_by_kind_and_author(params).map(|e| e.id));
                 }
             }
         }
@@ -329,9 +314,7 @@ impl InternalDatabaseHelper {
 
         // Insert event
         if should_insert {
-            let e: DatabaseEvent = DatabaseEvent {
-                event: Arc::new(event.clone()),
-            }; // TODO: avoid clone?
+            let e: DatabaseEvent = Arc::new(event.clone()); // TODO: avoid clone?
 
             let InsertResult { inserted, pop } = self.events.insert(e.clone());
 
@@ -611,8 +594,8 @@ impl InternalDatabaseHelper {
         I: IntoIterator<Item = Filter>,
     {
         match self.internal_query(filters) {
-            InternalQueryResult::All => Box::new(self.events.iter().map(|ev| ev.deref())),
-            InternalQueryResult::Set(set) => Box::new(set.into_iter().map(|ev| ev.deref())),
+            InternalQueryResult::All => Box::new(self.events.iter().map(|ev| ev.as_ref())),
+            InternalQueryResult::Set(set) => Box::new(set.into_iter().map(|ev| ev.as_ref())),
         }
     }
 
@@ -767,12 +750,11 @@ impl DatabaseHelper {
 
     /// Query
     #[tracing::instrument(skip_all, level = "trace")]
-    pub async fn query<I>(&self, filters: I) -> Vec<Event>
-    where
-        I: IntoIterator<Item = Filter>,
-    {
+    pub async fn query(&self, filters: Vec<Filter>) -> Events {
         let inner = self.inner.read().await;
-        inner.query(filters).cloned().collect()
+        let mut events = Events::new(&filters);
+        events.extend(inner.query(filters).cloned());
+        events
     }
 
     /// Query
@@ -885,11 +867,11 @@ mod tests {
         let expected_output = vec![
             Event::from_json(EVENTS[13]).unwrap(),
             Event::from_json(EVENTS[12]).unwrap(),
-            Event::from_json(EVENTS[11]).unwrap(),
+            // Event 11 is invalid deletion
             // Event 10 deleted by event 12
             // Event 9 replaced by event 10
             Event::from_json(EVENTS[8]).unwrap(),
-            Event::from_json(EVENTS[7]).unwrap(),
+            // Event 7 is invalid deletion
             Event::from_json(EVENTS[6]).unwrap(),
             Event::from_json(EVENTS[5]).unwrap(),
             Event::from_json(EVENTS[4]).unwrap(),
@@ -898,12 +880,15 @@ mod tests {
             Event::from_json(EVENTS[1]).unwrap(),
             Event::from_json(EVENTS[0]).unwrap(),
         ];
-        assert_eq!(indexes.query([Filter::new()]).await, expected_output);
-        assert_eq!(indexes.count([Filter::new()]).await, 10);
+        assert_eq!(
+            indexes.query(vec![Filter::new()]).await.to_vec(),
+            expected_output
+        );
+        assert_eq!(indexes.count([Filter::new()]).await, 8);
 
         // Test get previously deleted replaceable event (check if was deleted by indexes)
         assert!(indexes
-            .query([Filter::new()
+            .query(vec![Filter::new()
                 .kind(Kind::Metadata)
                 .author(keys_a.public_key())])
             .await
@@ -911,7 +896,7 @@ mod tests {
 
         // Test get previously deleted param. replaceable event (check if was deleted by indexes)
         assert!(indexes
-            .query([Filter::new()
+            .query(vec![Filter::new()
                 .kind(Kind::ParameterizedReplaceable(32122))
                 .author(keys_a.public_key())
                 .identifier("id-2")])
@@ -921,10 +906,11 @@ mod tests {
         // Test get param replaceable events WITHOUT using indexes (identifier not passed)
         assert_eq!(
             indexes
-                .query([Filter::new()
+                .query(vec![Filter::new()
                     .kind(Kind::ParameterizedReplaceable(32122))
                     .author(keys_b.public_key())])
-                .await,
+                .await
+                .to_vec(),
             vec![
                 Event::from_json(EVENTS[5]).unwrap(),
                 Event::from_json(EVENTS[4]).unwrap(),
@@ -934,18 +920,20 @@ mod tests {
         // Test get param replaceable events using indexes
         assert_eq!(
             indexes
-                .query([Filter::new()
+                .query(vec![Filter::new()
                     .kind(Kind::ParameterizedReplaceable(32122))
                     .author(keys_b.public_key())
                     .identifier("id-3")])
-                .await,
+                .await
+                .to_vec(),
             vec![Event::from_json(EVENTS[4]).unwrap()]
         );
 
         assert_eq!(
             indexes
-                .query([Filter::new().author(keys_a.public_key())])
-                .await,
+                .query(vec![Filter::new().author(keys_a.public_key())])
+                .await
+                .to_vec(),
             vec![
                 Event::from_json(EVENTS[12]).unwrap(),
                 Event::from_json(EVENTS[8]).unwrap(),
@@ -957,10 +945,11 @@ mod tests {
 
         assert_eq!(
             indexes
-                .query([Filter::new()
+                .query(vec![Filter::new()
                     .author(keys_a.public_key())
                     .kinds([Kind::TextNote, Kind::Custom(32121)])])
-                .await,
+                .await
+                .to_vec(),
             vec![
                 Event::from_json(EVENTS[1]).unwrap(),
                 Event::from_json(EVENTS[0]).unwrap(),
@@ -969,10 +958,11 @@ mod tests {
 
         assert_eq!(
             indexes
-                .query([Filter::new()
+                .query(vec![Filter::new()
                     .authors([keys_a.public_key(), keys_b.public_key()])
                     .kinds([Kind::TextNote, Kind::Custom(32121)])])
-                .await,
+                .await
+                .to_vec(),
             vec![
                 Event::from_json(EVENTS[1]).unwrap(),
                 Event::from_json(EVENTS[0]).unwrap(),
@@ -981,7 +971,10 @@ mod tests {
 
         // Test get param replaceable events using identifier
         assert_eq!(
-            indexes.query([Filter::new().identifier("id-1")]).await,
+            indexes
+                .query(vec![Filter::new().identifier("id-1")])
+                .await
+                .to_vec(),
             vec![
                 Event::from_json(EVENTS[6]).unwrap(),
                 Event::from_json(EVENTS[5]).unwrap(),
@@ -991,17 +984,21 @@ mod tests {
 
         // Test get param replaceable events with multiple tags using identifier
         assert_eq!(
-            indexes.query([Filter::new().identifier("multi-id")]).await,
+            indexes
+                .query(vec![Filter::new().identifier("multi-id")])
+                .await
+                .to_vec(),
             vec![Event::from_json(EVENTS[13]).unwrap()]
         );
         // As above but by using kind and pubkey
         assert_eq!(
             indexes
-                .query([Filter::new()
+                .query(vec![Filter::new()
                     .pubkey(keys_a.public_key())
                     .kind(Kind::Custom(30333))
                     .limit(1)])
-                .await,
+                .await
+                .to_vec(),
             vec![Event::from_json(EVENTS[13]).unwrap()]
         );
 
@@ -1012,10 +1009,11 @@ mod tests {
         assert!(res.to_discard.is_empty());
         assert_eq!(
             indexes
-                .query([Filter::new()
+                .query(vec![Filter::new()
                     .kind(Kind::Metadata)
                     .author(keys_a.public_key())])
-                .await,
+                .await
+                .to_vec(),
             vec![first_ev_metadata.clone()]
         );
 
@@ -1026,10 +1024,11 @@ mod tests {
         assert!(res.to_discard.contains(&first_ev_metadata.id));
         assert_eq!(
             indexes
-                .query([Filter::new()
+                .query(vec![Filter::new()
                     .kind(Kind::Metadata)
                     .author(keys_a.public_key())])
-                .await,
+                .await
+                .to_vec(),
             vec![ev]
         );
     }

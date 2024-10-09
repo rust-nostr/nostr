@@ -30,10 +30,7 @@ async fn main() -> Result<()> {
         .authors([allowed_public_key, not_in_whitelist_public_key])
         .kind(Kind::Metadata);
     let events = client
-        .get_events_of(
-            vec![filter],
-            EventSource::relays(Some(Duration::from_secs(10))),
-        )
+        .fetch_events(vec![filter], Some(Duration::from_secs(10)))
         .await?;
     println!("Received {} events.", events.len());
 

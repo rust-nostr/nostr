@@ -182,17 +182,18 @@ mod inner {
             Ok(res as usize)
         }
 
-        async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, DatabaseError> {
+        async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
+            let mut events = Events::new(&filters);
+
             let filters = filters.into_iter().map(|f| Arc::new(f.into())).collect();
             let res = self
                 .inner
                 .query(filters)
                 .await
                 .map_err(DatabaseError::backend)?;
-            Ok(res
-                .into_iter()
-                .map(|e| e.as_ref().deref().clone())
-                .collect())
+
+            events.extend(res.into_iter().map(|e| e.as_ref().deref().clone()));
+            Ok(events)
         }
 
         async fn negentropy_items(

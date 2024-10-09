@@ -17,6 +17,7 @@ use nostr_sdk::SQLiteDatabase;
 use uniffi::Object;
 
 pub mod custom;
+pub mod events;
 
 use self::custom::{CustomNostrDatabase, IntermediateCustomNostrDatabase};
 use crate::error::Result;

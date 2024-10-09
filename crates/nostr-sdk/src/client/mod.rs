@@ -4,10 +4,9 @@
 
 //! Client
 
-use std::collections::btree_set::IntoIter;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::future::Future;
-use std::iter::{self, Rev};
+use std::iter;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -824,9 +823,7 @@ impl Client {
         self.pool.unsubscribe_all(opts).await;
     }
 
-    /// Get events of filters
-    ///
-    /// The returned events are sorted by newest first, if there is a limit only the newest are returned.
+    /// Fetch events from relays
     ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
     /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
@@ -845,73 +842,61 @@ impl Client {
     ///     .pubkeys(vec![my_keys.public_key()])
     ///     .since(Timestamp::now());
     ///
-    /// let timeout = Some(Duration::from_secs(10));
     /// let _events = client
-    ///     .get_events_of(vec![subscription], EventSource::both(timeout))
+    ///     .fetch_events(vec![subscription], Some(Duration::from_secs(10)))
     ///     .await
     ///     .unwrap();
     /// # }
     /// ```
+    pub async fn fetch_events(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+    ) -> Result<Events, Error> {
+        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
+
+        if self.opts.gossip {
+            return self.gossip_fetch_events(filters, timeout).await;
+        }
+
+        Ok(self
+            .pool
+            .fetch_events(filters, timeout, FilterOptions::ExitOnEOSE)
+            .await?)
+    }
+
+    /// Get events of filters
+    #[deprecated(since = "0.36.0", note = "Use `fetch_events` instead")]
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
-        source: EventSource,
+        _source: EventSource,
     ) -> Result<Vec<Event>, Error> {
-        match source {
-            EventSource::Database => Ok(self.database().query(filters).await?),
-            EventSource::Relays {
-                timeout,
-                specific_relays,
-            } => match specific_relays {
-                Some(urls) => self.get_events_from(urls, filters, timeout).await,
-                None => {
-                    let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
-
-                    if self.opts.gossip {
-                        return self.gossip_get_events_of(filters, timeout).await;
-                    }
-
-                    Ok(self
-                        .pool
-                        .get_events_of(filters, timeout, FilterOptions::ExitOnEOSE)
-                        .await?)
-                }
-            },
-            EventSource::Both {
-                timeout,
-                specific_relays,
-            } => {
-                // Check how many filters are passed and return the limit
-                let limit: Option<usize> = match (filters.len(), filters.first()) {
-                    (1, Some(filter)) => filter.limit,
-                    _ => None,
-                };
-
-                let stored = self.database().query(filters.clone()).await?;
-                let mut events: BTreeSet<Event> = stored.into_iter().collect();
-
-                let mut stream: ReceiverStream<Event> = match specific_relays {
-                    Some(urls) => self.stream_events_from(urls, filters, timeout).await?,
-                    None => self.stream_events_of(filters, timeout).await?,
-                };
-
-                while let Some(event) = stream.next().await {
-                    events.insert(event);
-                }
-
-                let iter: Rev<IntoIter<Event>> = events.into_iter().rev();
-
-                // Check limit
-                match limit {
-                    Some(limit) => Ok(iter.take(limit).collect()),
-                    None => Ok(iter.collect()),
-                }
-            }
-        }
+        Ok(self.fetch_events(filters, None).await?.to_vec())
     }
 
-    /// Get events of filters from specific relays
+    /// Fetch events from specific relays
     #[inline]
+    pub async fn fetch_events_from<I, U>(
+        &self,
+        urls: I,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+    ) -> Result<Events, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
+        Ok(self
+            .pool
+            .fetch_events_from(urls, filters, timeout, FilterOptions::ExitOnEOSE)
+            .await?)
+    }
+
+    /// Fetch events of filters from specific relays
+    #[deprecated(since = "0.36.0", note = "Use `fetch_events_from` instead")]
     pub async fn get_events_from<I, U>(
         &self,
         urls: I,
@@ -923,18 +908,27 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
         Ok(self
-            .pool
-            .get_events_from(urls, filters, timeout, FilterOptions::ExitOnEOSE)
-            .await?)
+            .fetch_events_from(urls, filters, timeout)
+            .await?
+            .to_vec())
     }
 
-    /// Stream events of filters
+    /// Stream events
+    #[deprecated(since = "0.36.0", note = "Use `stream_events` instead")]
+    pub async fn stream_events_of(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+    ) -> Result<ReceiverStream<Event>, Error> {
+        self.stream_events(filters, timeout).await
+    }
+
+    /// Stream events from relays
     ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be streamed also from
     /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
-    pub async fn stream_events_of(
+    pub async fn stream_events(
         &self,
         filters: Vec<Filter>,
         timeout: Option<Duration>,
@@ -944,16 +938,16 @@ impl Client {
 
         // Check if gossip is enabled
         if self.opts.gossip {
-            self.gossip_stream_events_of(filters, timeout).await
+            self.gossip_stream_events(filters, timeout).await
         } else {
             Ok(self
                 .pool
-                .stream_events_of(filters, timeout, FilterOptions::ExitOnEOSE)
+                .stream_events(filters, timeout, FilterOptions::ExitOnEOSE)
                 .await?)
         }
     }
 
-    /// Stream events of filters from **specific relays**
+    /// Stream events from specific relays
     #[inline]
     pub async fn stream_events_from<I, U>(
         &self,
@@ -1166,9 +1160,9 @@ impl Client {
         self.send_event_to(urls, event).await
     }
 
-    /// Fetch the newest public key metadata from database and connected relays.
+    /// Fetch the newest public key metadata from relays.
     ///
-    /// If you only want to consult cached data,
+    /// If you only want to consult stored data,
     /// consider `client.database().profile(PUBKEY)`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
@@ -1181,9 +1175,8 @@ impl Client {
             .author(public_key)
             .kind(Kind::Metadata)
             .limit(1);
-        let events: Vec<Event> = self
-            .get_events_of(vec![filter], EventSource::both(timeout))
-            .await?;
+        // TODO: add fetch_event and use that
+        let events: Events = self.fetch_events(vec![filter], timeout).await?;
         match events.first() {
             Some(event) => Ok(Metadata::try_from(event)?),
             None => Err(Error::MetadataNotFound),
@@ -1284,7 +1277,7 @@ impl Client {
         Ok(vec![filter])
     }
 
-    /// Get contact list from database and connected relays.
+    /// Get contact list from relays.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     ///
@@ -1305,11 +1298,9 @@ impl Client {
     pub async fn get_contact_list(&self, timeout: Option<Duration>) -> Result<Vec<Contact>, Error> {
         let mut contact_list: Vec<Contact> = Vec::new();
         let filters: Vec<Filter> = self.get_contact_list_filters().await?;
-        let events: Vec<Event> = self
-            .get_events_of(filters, EventSource::both(timeout))
-            .await?;
+        let events: Events = self.fetch_events(filters, timeout).await?;
 
-        // Get first event (result of `get_events_of` is sorted DESC by timestamp)
+        // Get first event (result of `fetch_events` is sorted DESC by timestamp)
         if let Some(event) = events.into_iter().next() {
             for tag in event.tags.into_iter() {
                 if let Some(TagStandard::PublicKey {
@@ -1327,7 +1318,7 @@ impl Client {
         Ok(contact_list)
     }
 
-    /// Get contact list public keys from database and connected relays.
+    /// Get contact list public keys from relays.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     pub async fn get_contact_list_public_keys(
@@ -1336,9 +1327,7 @@ impl Client {
     ) -> Result<Vec<PublicKey>, Error> {
         let mut pubkeys: Vec<PublicKey> = Vec::new();
         let filters: Vec<Filter> = self.get_contact_list_filters().await?;
-        let events: Vec<Event> = self
-            .get_events_of(filters, EventSource::both(timeout))
-            .await?;
+        let events: Events = self.fetch_events(filters, timeout).await?;
 
         for event in events.into_iter() {
             pubkeys.extend(event.tags.public_keys());
@@ -1347,7 +1336,7 @@ impl Client {
         Ok(pubkeys)
     }
 
-    /// Get contact list [`Metadata`] from database and connected relays.
+    /// Get contact list [`Metadata`] from relays.
     pub async fn get_contact_list_metadata(
         &self,
         timeout: Option<Duration>,
@@ -1367,9 +1356,7 @@ impl Client {
                         .limit(1),
                 );
             }
-            let events: Vec<Event> = self
-                .get_events_of(filters, EventSource::both(timeout))
-                .await?;
+            let events: Events = self.fetch_events(filters, timeout).await?;
             for event in events.into_iter() {
                 let metadata = Metadata::from_json(&event.content)?;
                 if let Some(m) = contacts.get_mut(&event.pubkey) {
@@ -1809,7 +1796,7 @@ impl Client {
 
             // Query from database
             let database = self.database();
-            let mut stored_events = database.query(vec![filter.clone()]).await?;
+            let stored_events: Events = database.query(vec![filter.clone()]).await?;
 
             // Get DISCOVERY and READ relays
             // TODO: avoid clone of both url and relay
@@ -1823,15 +1810,15 @@ impl Client {
                 .into_keys();
 
             // Get events from discovery and read relays
-            let mut events: Vec<Event> = self
-                .get_events_from(relays, vec![filter], Some(Duration::from_secs(10)))
+            let events: Events = self
+                .fetch_events_from(relays, vec![filter], Some(Duration::from_secs(10)))
                 .await?;
 
-            // Join database and relays events
-            events.append(&mut stored_events);
+            // Merge database and relays events
+            let merged: Events = events.merge(stored_events);
 
             // Update gossip graph
-            self.gossip_graph.update(events).await;
+            self.gossip_graph.update(merged).await;
         }
 
         Ok(())
@@ -1890,7 +1877,7 @@ impl Client {
         Ok(broken_down.filters)
     }
 
-    async fn gossip_stream_events_of(
+    async fn gossip_stream_events(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
@@ -1906,34 +1893,21 @@ impl Client {
         Ok(stream)
     }
 
-    async fn gossip_get_events_of(
+    async fn gossip_fetch_events(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
-    ) -> Result<Vec<Event>, Error> {
-        // Check how many filters are passed and return the limit
-        let limit: Option<usize> = match (filters.len(), filters.first()) {
-            (1, Some(filter)) => filter.limit,
-            _ => None,
-        };
-
-        let mut events: BTreeSet<Event> = BTreeSet::new();
+    ) -> Result<Events, Error> {
+        let mut events: Events = Events::new(&filters);
 
         // Stream events
-        let mut stream: ReceiverStream<Event> =
-            self.gossip_stream_events_of(filters, timeout).await?;
+        let mut stream: ReceiverStream<Event> = self.gossip_stream_events(filters, timeout).await?;
 
         while let Some(event) = stream.next().await {
             events.insert(event);
         }
 
-        let iter: Rev<IntoIter<Event>> = events.into_iter().rev();
-
-        // Check limit
-        match limit {
-            Some(limit) => Ok(iter.take(limit).collect()),
-            None => Ok(iter.collect()),
-        }
+        Ok(events)
     }
 
     async fn gossip_subscribe(

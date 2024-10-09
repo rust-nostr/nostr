@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use js_sys::Array;
 use nostr_js::error::{into_err, Result};
-use nostr_js::event::{JsEvent, JsEventArray, JsEventId};
+use nostr_js::event::{JsEvent, JsEventId};
 use nostr_js::key::JsPublicKey;
 use nostr_js::types::JsFilter;
 use nostr_js::JsStringArray;
@@ -15,6 +15,9 @@ use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt}
 use nostr_sdk::WebDatabase;
 use wasm_bindgen::prelude::*;
 
+pub mod events;
+
+pub use self::events::JsEvents;
 use crate::profile::JsProfile;
 
 /// Nostr Database
@@ -101,20 +104,9 @@ impl JsNostrDatabase {
         Ok(self.inner.count(filters).await.map_err(into_err)? as u64)
     }
 
-    pub async fn query(&self, filters: Vec<JsFilter>) -> Result<JsEventArray> {
+    pub async fn query(&self, filters: Vec<JsFilter>) -> Result<JsEvents> {
         let filters = filters.into_iter().map(|f| f.into()).collect();
-        Ok(self
-            .inner
-            .query(filters)
-            .await
-            .map_err(into_err)?
-            .into_iter()
-            .map(|e| {
-                let event: JsEvent = e.into();
-                JsValue::from(event)
-            })
-            .collect::<Array>()
-            .unchecked_into())
+        Ok(self.inner.query(filters).await.map_err(into_err)?.into())
     }
 
     /// Wipe all data

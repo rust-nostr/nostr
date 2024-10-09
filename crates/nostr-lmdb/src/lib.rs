@@ -127,7 +127,7 @@ impl NostrDatabase for NostrLMDB {
 
     #[inline]
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, DatabaseError> {
+    async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
         self.db.query(filters).await.map_err(DatabaseError::backend)
     }
 
@@ -272,10 +272,10 @@ mod tests {
             (keys, event)
         }
 
-        async fn add_event_with_keys(&self, builder: EventBuilder, keys: &Keys) -> Event {
+        async fn add_event_with_keys(&self, builder: EventBuilder, keys: &Keys) -> (Event, bool) {
             let event = builder.to_event(&keys).unwrap();
-            self.db.save_event(&event).await.unwrap();
-            event
+            let stored = self.db.save_event(&event).await.unwrap();
+            (event, stored)
         }
 
         async fn count_all(&self) -> usize {
@@ -326,21 +326,22 @@ mod tests {
                 .kind(Kind::Metadata)])
             .await
             .unwrap();
-        assert_eq!(events, vec![expected_event.clone()]);
+        assert_eq!(events.to_vec(), vec![expected_event.clone()]);
 
         // Check if number of events in database match the expected
         assert_eq!(db.count_all().await, added_events + 1);
 
         // Replace previous event
-        let new_expected_event = db
+        let (new_expected_event, stored) = db
             .add_event_with_keys(
                 EventBuilder::metadata(&metadata).custom_created_at(now),
                 &keys,
             )
             .await;
+        assert!(stored);
 
-        // Test event by ID (MUST return error)
-        assert!(db.event_by_id(&expected_event.id).await.is_err());
+        // Test event by ID (MUST be None because replaced)
+        assert!(db.event_by_id(&expected_event.id).await.unwrap().is_none());
 
         // Test event by ID
         let event = db
@@ -357,7 +358,7 @@ mod tests {
                 .kind(Kind::Metadata)])
             .await
             .unwrap();
-        assert_eq!(events, vec![new_expected_event]);
+        assert_eq!(events.to_vec(), vec![new_expected_event]);
 
         // Check if number of events in database match the expected
         assert_eq!(db.count_all().await, added_events + 1);
@@ -389,13 +390,13 @@ mod tests {
 
         // Test filter query
         let events = db.query(vec![coordinate.clone().into()]).await.unwrap();
-        assert_eq!(events, vec![expected_event.clone()]);
+        assert_eq!(events.to_vec(), vec![expected_event.clone()]);
 
         // Check if number of events in database match the expected
         assert_eq!(db.count_all().await, added_events + 1);
 
         // Replace previous event
-        let new_expected_event = db
+        let (new_expected_event, stored) = db
             .add_event_with_keys(
                 EventBuilder::new(
                     Kind::ParameterizedReplaceable(33_333),
@@ -406,9 +407,10 @@ mod tests {
                 &keys,
             )
             .await;
+        assert!(stored);
 
-        // Test event by ID (MUST return error)
-        assert!(db.event_by_id(&expected_event.id).await.is_err());
+        // Test event by ID (MUST be None` because replaced)
+        assert!(db.event_by_id(&expected_event.id).await.unwrap().is_none());
 
         // Test event by ID
         let event = db
@@ -420,7 +422,7 @@ mod tests {
 
         // Test filter query
         let events = db.query(vec![coordinate.into()]).await.unwrap();
-        assert_eq!(events, vec![new_expected_event]);
+        assert_eq!(events.to_vec(), vec![new_expected_event]);
 
         // Check if number of events in database match the expected
         assert_eq!(db.count_all().await, added_events + 1);
@@ -462,7 +464,7 @@ mod tests {
             // Event 10 deleted by event 12
             // Event 9 replaced by event 10
             Event::from_json(EVENTS[8]).unwrap(),
-            Event::from_json(EVENTS[7]).unwrap(),
+            // Event 7 is an invalid deletion
             Event::from_json(EVENTS[6]).unwrap(),
             Event::from_json(EVENTS[5]).unwrap(),
             Event::from_json(EVENTS[4]).unwrap(),
@@ -472,9 +474,9 @@ mod tests {
             Event::from_json(EVENTS[0]).unwrap(),
         ];
         assert_eq!(
-            db.query(vec![Filter::new()]).await.unwrap(),
+            db.query(vec![Filter::new()]).await.unwrap().to_vec(),
             expected_output
         );
-        assert_eq!(db.count_all().await, 9);
+        assert_eq!(db.count_all().await, 8);
     }
 }

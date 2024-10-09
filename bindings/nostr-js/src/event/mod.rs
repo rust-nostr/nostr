@@ -22,13 +22,6 @@ use crate::error::{into_err, Result};
 use crate::key::JsPublicKey;
 use crate::types::JsTimestamp;
 
-#[wasm_bindgen]
-extern "C" {
-    /// Event array
-    #[wasm_bindgen(typescript_type = "Event[]")]
-    pub type JsEventArray;
-}
-
 #[wasm_bindgen(js_name = Event)]
 pub struct JsEvent {
     inner: Event,

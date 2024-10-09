@@ -12,12 +12,7 @@ use std::time::Duration;
 use async_wsocket::futures_util::Future;
 use async_wsocket::ConnectionMode;
 use atomic_destructor::AtomicDestructor;
-#[cfg(feature = "nip11")]
-use nostr::nips::nip11::RelayInformationDocument;
-use nostr::{
-    ClientMessage, Event, EventId, Filter, RelayMessage, Result, SubscriptionId, Timestamp, Url,
-};
-use nostr_database::{DynNostrDatabase, MemoryDatabase};
+use nostr_database::prelude::*;
 use tokio::sync::broadcast;
 
 mod constants;
@@ -372,7 +367,7 @@ impl Relay {
 
     /// Get events of filters with custom callback
     #[inline]
-    pub(crate) async fn get_events_of_with_callback<F>(
+    pub(crate) async fn fetch_events_with_callback<F>(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
@@ -383,29 +378,50 @@ impl Relay {
         F: Future<Output = ()>,
     {
         self.inner
-            .get_events_of_with_callback(filters, timeout, opts, callback)
+            .fetch_events_with_callback(filters, timeout, opts, callback)
             .await
     }
 
-    /// Get events of filters
+    /// Fetch events
     #[inline]
+    pub async fn fetch_events(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Duration,
+        opts: FilterOptions,
+    ) -> Result<Events, Error> {
+        self.inner.fetch_events(filters, timeout, opts).await
+    }
+
+    /// Get events of filters
+    #[deprecated(since = "0.36.0", note = "Use `fetch_events` instead")]
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
-        self.inner.get_events_of(filters, timeout, opts).await
+        Ok(self.fetch_events(filters, timeout, opts).await?.to_vec())
+    }
+
+    /// Count events
+    #[inline]
+    pub async fn count_events(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Duration,
+    ) -> Result<usize, Error> {
+        self.inner.count_events(filters, timeout).await
     }
 
     /// Count events of filters
-    #[inline]
+    #[deprecated(since = "0.36.0", note = "Use `count_events` instead")]
     pub async fn count_events_of(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
     ) -> Result<usize, Error> {
-        self.inner.count_events_of(filters, timeout).await
+        self.count_events(filters, timeout).await
     }
 
     /// Negentropy reconciliation

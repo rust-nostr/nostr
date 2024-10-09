@@ -1,5 +1,5 @@
 import asyncio
-from nostr_sdk import Metadata, Client, NostrSigner, Keys, Filter, PublicKey, Kind, EventSource
+from nostr_sdk import Metadata, Client, NostrSigner, Keys, Filter, PublicKey, Kind
 from datetime import timedelta
 
 
@@ -30,8 +30,7 @@ async def main():
     pk = PublicKey.from_bech32("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")
     print(f"\nGetting profile metadata for {pk.to_bech32()}...")
     f = Filter().kind(Kind(0)).author(pk).limit(1)
-    source = EventSource.relays(timedelta(seconds=10))
-    events = await client.get_events_of([f], source)
+    events = await client.fetch_events([f], timedelta(seconds=10))
     for event in events:
         metadata = Metadata.from_json(event.content())
         print(f"Name: {metadata.get_name()}")

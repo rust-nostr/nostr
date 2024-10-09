@@ -3,14 +3,16 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
 use heed::{RoTxn, RwTxn};
-use nostr::prelude::*;
-use nostr_database::FlatBufferBuilder;
+use nostr_database::prelude::*;
 use tokio::sync::Mutex;
+
+use crate::store::types::DatabaseEvent;
 
 mod error;
 mod lmdb;
@@ -175,7 +177,11 @@ impl Store {
 
             // Handle deletion events
             if let Kind::EventDeletion = event.kind {
-                Self::handle_deletion_event(&db, &mut txn, &event)?;
+                let invalid: bool = Self::handle_deletion_event(&db, &mut txn, &event)?;
+
+                if invalid {
+                    return Ok(false);
+                }
             }
 
             txn.commit()?;
@@ -185,13 +191,13 @@ impl Store {
         .await?
     }
 
-    fn handle_deletion_event(db: &Lmdb, txn: &mut RwTxn, event: &Event) -> Result<(), Error> {
+    fn handle_deletion_event(db: &Lmdb, txn: &mut RwTxn, event: &Event) -> Result<bool, Error> {
         for id in event.tags.event_ids() {
             // Actually remove
             if let Some(target) = db.get_event_by_id(txn, id.as_bytes())? {
                 // author must match
                 if target.author() != &event.pubkey.to_bytes() {
-                    continue;
+                    return Ok(true);
                 }
 
                 // Remove event
@@ -206,7 +212,7 @@ impl Store {
 
         for coordinate in event.tags.coordinates() {
             if coordinate.public_key != event.pubkey {
-                continue;
+                return Ok(true);
             }
 
             // Mark deleted
@@ -225,7 +231,7 @@ impl Store {
             }
         }
 
-        Ok(())
+        Ok(false)
     }
 
     /// Get an event by ID
@@ -281,14 +287,16 @@ impl Store {
         .await?
     }
 
-    pub async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, Error> {
+    // Lookup ID: EVENT_ORD_IMPL
+    pub async fn query(&self, filters: Vec<Filter>) -> Result<Events, Error> {
         self.interact(move |db| {
+            let mut events: Events = Events::new(&filters);
+
             let txn: RoTxn = db.read_txn()?;
-            let output = db.query(&txn, filters)?;
-            Ok(output
-                .into_iter()
-                .filter_map(|e| e.to_event().ok())
-                .collect())
+            let output: BTreeSet<DatabaseEvent> = db.query(&txn, filters)?;
+            events.extend(output.into_iter().filter_map(|e| e.to_event().ok()));
+
+            Ok(events)
         })
         .await?
     }
@@ -299,7 +307,7 @@ impl Store {
     ) -> Result<Vec<(EventId, Timestamp)>, Error> {
         self.interact(move |db| {
             let txn = db.read_txn()?;
-            let events = db.single_filter_query(&txn, filter)?;
+            let events = db.query(&txn, vec![filter])?;
             Ok(events
                 .into_iter()
                 .map(|e| (EventId::from_byte_array(*e.id()), e.created_at))
@@ -311,7 +319,7 @@ impl Store {
     pub async fn delete(&self, filter: Filter) -> Result<(), Error> {
         self.interact(move |db| {
             let read_txn = db.read_txn()?;
-            let events = db.single_filter_query(&read_txn, filter)?;
+            let events = db.query(&read_txn, vec![filter])?;
 
             let mut txn = db.write_txn()?;
             for event in events.into_iter() {

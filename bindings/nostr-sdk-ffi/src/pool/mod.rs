@@ -15,6 +15,7 @@ use uniffi::Object;
 pub mod result;
 
 use self::result::{Output, SendEventOutput, SubscribeOutput};
+use crate::database::events::Events;
 use crate::error::Result;
 use crate::negentropy::NegentropyItem;
 use crate::pool::result::ReconciliationOutput;
@@ -339,45 +340,41 @@ impl RelayPool {
         self.inner.unsubscribe_all(**opts).await
     }
 
-    /// Get events of filters
-    pub async fn get_events_of(
+    /// Fetch events from relays
+    pub async fn fetch_events(
         &self,
         filters: Vec<Arc<Filter>>,
         timeout: Duration,
         opts: FilterOptions,
-    ) -> Result<Vec<Arc<Event>>> {
+    ) -> Result<Events> {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
         Ok(self
             .inner
-            .get_events_of(filters, timeout, opts.into())
+            .fetch_events(filters, timeout, opts.into())
             .await?
-            .into_iter()
-            .map(|e| Arc::new(e.into()))
-            .collect())
+            .into())
     }
 
-    /// Get events of filters from **specific relays**
-    pub async fn get_events_from(
+    /// Fetch events from specific relays
+    pub async fn fetch_events_from(
         &self,
         urls: Vec<String>,
         filters: Vec<Arc<Filter>>,
         timeout: Duration,
         opts: FilterOptions,
-    ) -> Result<Vec<Arc<Event>>> {
+    ) -> Result<Events> {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
         Ok(self
             .inner
-            .get_events_from(urls, filters, timeout, opts.into())
+            .fetch_events_from(urls, filters, timeout, opts.into())
             .await?
-            .into_iter()
-            .map(|e| Arc::new(e.into()))
-            .collect())
+            .into())
     }
 
     /// Negentropy reconciliation

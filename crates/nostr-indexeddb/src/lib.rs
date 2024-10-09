@@ -462,7 +462,7 @@ impl_nostr_database!({
 
     #[inline]
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn query(&self, filters: Vec<Filter>) -> Result<Vec<Event>, DatabaseError> {
+    async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
         Ok(self.helper.query(filters).await)
     }
 

@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use atomic_destructor::{AtomicDestructor, StealthClone};
 use nostr::prelude::*;
-use nostr_database::{DynNostrDatabase, IntoNostrDatabase, MemoryDatabase};
+use nostr_database::{DynNostrDatabase, Events, IntoNostrDatabase, MemoryDatabase};
 use tokio::sync::broadcast;
 pub use tokio_stream::wrappers::ReceiverStream;
 
@@ -478,19 +478,53 @@ impl RelayPool {
         self.inner.unsubscribe_all(opts).await
     }
 
-    /// Get events of filters from relays with `READ` flag.
+    /// Fetch events from relays with [`RelayServiceFlags::READ`] flag.
     #[inline]
+    pub async fn fetch_events(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Duration,
+        opts: FilterOptions,
+    ) -> Result<Events, Error> {
+        self.inner.fetch_events(filters, timeout, opts).await
+    }
+
+    /// Get events of filters from relays with `READ` flag.
+    #[deprecated(since = "0.36.0", note = "Use `fetch_events` instead")]
     pub async fn get_events_of(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Vec<Event>, Error> {
-        self.inner.get_events_of(filters, timeout, opts).await
+        Ok(self
+            .inner
+            .fetch_events(filters, timeout, opts)
+            .await?
+            .to_vec())
+    }
+
+    /// Fetch events from specific relays
+    #[inline]
+    pub async fn fetch_events_from<I, U>(
+        &self,
+        urls: I,
+        filters: Vec<Filter>,
+        timeout: Duration,
+        opts: FilterOptions,
+    ) -> Result<Events, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.inner
+            .fetch_events_from(urls, filters, timeout, opts)
+            .await
     }
 
     /// Get events of filters from specific relays
-    #[inline]
+    #[deprecated(since = "0.36.0", note = "Use `fetch_events_from` instead")]
     pub async fn get_events_from<I, U>(
         &self,
         urls: I,
@@ -503,23 +537,36 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.inner
-            .get_events_from(urls, filters, timeout, opts)
-            .await
+        Ok(self
+            .inner
+            .fetch_events_from(urls, filters, timeout, opts)
+            .await?
+            .to_vec())
     }
 
-    /// Stream events of filters from relays with `READ` flag.
-    #[inline]
+    /// Stream events
+    #[deprecated(since = "0.36.0", note = "Use `stream_events` instead")]
     pub async fn stream_events_of(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<ReceiverStream<Event>, Error> {
-        self.inner.stream_events_of(filters, timeout, opts).await
+        self.stream_events(filters, timeout, opts).await
     }
 
-    /// Stream events of filters from specific relays
+    /// Stream events from relays with `READ` flag.
+    #[inline]
+    pub async fn stream_events(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Duration,
+        opts: FilterOptions,
+    ) -> Result<ReceiverStream<Event>, Error> {
+        self.inner.stream_events(filters, timeout, opts).await
+    }
+
+    /// Stream events from specific relays
     #[inline]
     pub async fn stream_events_from<I, U>(
         &self,

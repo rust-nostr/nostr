@@ -4,9 +4,7 @@
 
 //! Relay Pool
 
-use std::collections::btree_set::IntoIter;
-use std::collections::{BTreeSet, HashMap, HashSet};
-use std::iter::Rev;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -15,7 +13,7 @@ use async_utility::thread::JoinHandle;
 use async_utility::{thread, time};
 use atomic_destructor::AtomicDestroyer;
 use nostr::prelude::*;
-use nostr_database::{DynNostrDatabase, IntoNostrDatabase};
+use nostr_database::{DynNostrDatabase, Events, IntoNostrDatabase};
 use tokio::sync::{broadcast, mpsc, Mutex, RwLock, RwLockReadGuard};
 use tokio_stream::wrappers::ReceiverStream;
 
@@ -720,35 +718,29 @@ impl InternalRelayPool {
         }
     }
 
-    pub async fn get_events_of(
+    pub async fn fetch_events(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
-    ) -> Result<Vec<Event>, Error> {
+    ) -> Result<Events, Error> {
         let urls: Vec<Url> = self.read_relay_urls().await;
-        self.get_events_from(urls, filters, timeout, opts).await
+        self.fetch_events_from(urls, filters, timeout, opts).await
     }
 
-    pub async fn get_events_from<I, U>(
+    pub async fn fetch_events_from<I, U>(
         &self,
         urls: I,
         filters: Vec<Filter>,
         timeout: Duration,
         opts: FilterOptions,
-    ) -> Result<Vec<Event>, Error>
+    ) -> Result<Events, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        // Check how many filters are passed and return the limit
-        let limit: Option<usize> = match (filters.len(), filters.first()) {
-            (1, Some(filter)) => filter.limit,
-            _ => None,
-        };
-
-        let mut events: BTreeSet<Event> = BTreeSet::new();
+        let mut events: Events = Events::new(&filters);
 
         // Stream events
         let mut stream = self
@@ -758,18 +750,11 @@ impl InternalRelayPool {
             events.insert(event);
         }
 
-        // Iterate set and revert order (events are sorted in ascending order in the BTreeSet)
-        let iter: Rev<IntoIter<Event>> = events.into_iter().rev();
-
-        // Check limit
-        match limit {
-            Some(limit) => Ok(iter.take(limit).collect()),
-            None => Ok(iter.collect()),
-        }
+        Ok(events)
     }
 
     #[inline]
-    pub async fn stream_events_of(
+    pub async fn stream_events(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
@@ -843,7 +828,7 @@ impl InternalRelayPool {
             let ids = ids.clone();
             thread::spawn(async move {
                 if let Err(e) = relay
-                    .get_events_of_with_callback(filters, timeout, opts, |event| async {
+                    .fetch_events_with_callback(filters, timeout, opts, |event| async {
                         let mut ids = ids.lock().await;
                         if ids.insert(event.id) {
                             drop(ids);
