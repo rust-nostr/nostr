@@ -42,6 +42,11 @@ impl JsKind {
         self.inner.as_u16()
     }
 
+    #[wasm_bindgen(js_name = toString)]
+    pub fn _to_string(&self) -> String {
+        self.inner.to_string()
+    }
+
     /// Check if it's regular
     ///
     /// Regular means that event is expected to be stored by relays.

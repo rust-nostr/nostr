@@ -54,6 +54,7 @@
 * ffi(nostr): add `tag_kind_to_string` func ([Yuki Kishimoto])
 * ffi(nostr): add `Tag::kind_str` method ([Yuki Kishimoto])
 * ffi(nostr): impl `Display` for `Kind` ([Yuki Kishimoto])
+* js(nostr): add `JsKind::_to_string` method ([Yuki Kishimoto])
 * book: add some examples ([RydalWater])
 
 ### Fixed
