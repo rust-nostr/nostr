@@ -56,6 +56,7 @@
 * relay-builder: allow to set number of max connections allowed ([Yuki Kishimoto])
 * relay-builder: add `RelayBuilderMode` ([Yuki Kishimoto])
 * relay-builder: add min POW difficulty option to `RelayBuilder` ([Yuki Kishimoto])
+* relay-builder: handle ephemeral events ([Yuki Kishimoto])
 * pool: add `RelayPool::force_remove_relay` method ([Yuki Kishimoto])
 * pool: add `RelayFiltering::overwrite_public_keys` method ([Yuki Kishimoto])
 * sdk: add `Client::fetch_events` and `Client::fetch_events_from` methods ([Yuki Kishimoto])

@@ -335,6 +335,25 @@ impl InternalLocalRelay {
                         .await;
                 }
 
+                if event.kind.is_ephemeral() {
+                    let event_id = event.id;
+
+                    // Broadcast to channel
+                    self.new_event.send(*event)?;
+
+                    // Send OK message
+                    return self
+                        .send_msg(
+                            ws_tx,
+                            RelayMessage::Ok {
+                                event_id,
+                                status: true,
+                                message: String::new(),
+                            },
+                        )
+                        .await;
+                }
+
                 let msg: RelayMessage = match self.database.save_event(&event).await {
                     Ok(status) => {
                         if status {
