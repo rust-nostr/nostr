@@ -265,20 +265,38 @@ impl InternalLocalRelay {
 
                 // Check if event already exists
                 let event_status = self.database.check_id(&event.id).await?;
-                if let DatabaseEventStatus::Saved | DatabaseEventStatus::Deleted = event_status {
-                    return self
-                        .send_msg(
-                            ws_tx,
-                            RelayMessage::Ok {
-                                event_id: event.id,
-                                status: true,
-                                message: format!(
-                                    "{}: already have this event",
-                                    MachineReadablePrefix::Duplicate
-                                ),
-                            },
-                        )
-                        .await;
+                match event_status {
+                    DatabaseEventStatus::Saved => {
+                        return self
+                            .send_msg(
+                                ws_tx,
+                                RelayMessage::Ok {
+                                    event_id: event.id,
+                                    status: true,
+                                    message: format!(
+                                        "{}: already have this event",
+                                        MachineReadablePrefix::Duplicate
+                                    ),
+                                },
+                            )
+                            .await;
+                    }
+                    DatabaseEventStatus::Deleted => {
+                        return self
+                            .send_msg(
+                                ws_tx,
+                                RelayMessage::Ok {
+                                    event_id: event.id,
+                                    status: false,
+                                    message: format!(
+                                        "{}: this event is deleted",
+                                        MachineReadablePrefix::Blocked
+                                    ),
+                                },
+                            )
+                            .await;
+                    }
+                    DatabaseEventStatus::NotExistent => {}
                 }
 
                 // Check mode

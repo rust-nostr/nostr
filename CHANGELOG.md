@@ -32,6 +32,7 @@
 * nostr: remove redundant public key from repost events ([Yuki Kishimoto])
 * nostr: change `impl Ord for Event` behaviour (descending order instead of ascending) ([Yuki Kishimoto])
 * relay-builder: refactor `Session::check_rate_limit` method ([Yuki Kishimoto])
+* relay-builder: return error if event was deleted ([Yuki Kishimoto])
 * pool: changes in `RelayPool::remove_relay` behavior ([Yuki Kishimoto])
 * pool: deprecate `RelayPool::remove_all_relays` ([Yuki Kishimoto])
 * sdk: deprecate `Client::get_events_of` and `Client::get_events_from` methods ([Yuki Kishimoto])
