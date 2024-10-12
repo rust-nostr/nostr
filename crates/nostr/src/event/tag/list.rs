@@ -282,3 +282,15 @@ impl<'de> Deserialize<'de> for Tags {
         Ok(Self::new(tags))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{Event, JsonUtil};
+
+    #[test]
+    fn test_extract_d_tag() {
+        let json = r#"{"id":"3dfdbb371de782f51812dc4809ea1104d80e143cec1091a4be07f518ef09e3d7","pubkey":"b8aef32a5421205c1f89ad09e2d93873df68a8611b247f62af005655eadc0efb","created_at":1728728536,"kind":30000,"sig":"0395c41fd95d52b534eaa29c82cd9437130cf63e67117b1587914375fdfb878137287a1d15653161f91ea919afb06358784217409a9ff0323261f683b2936829","content":"older_param_replaceable","tags":[["d","1"]]}"#;
+        let event = Event::from_json(json).unwrap();
+        assert_eq!(event.tags.identifier(), Some("1"));
+    }
+}
