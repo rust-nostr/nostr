@@ -61,6 +61,7 @@
 * relay-builder: handle ephemeral events ([Yuki Kishimoto])
 * pool: add `RelayPool::force_remove_relay` method ([Yuki Kishimoto])
 * pool: add `RelayFiltering::overwrite_public_keys` method ([Yuki Kishimoto])
+* pool: add `RelayPool::reconcile_targeted` ([Yuki Kishimoto])
 * sdk: add `Client::fetch_events` and `Client::fetch_events_from` methods ([Yuki Kishimoto])
 * signer: add `NostrSigner::gift_wrap` ([Yuki Kishimoto])
 * zapper: add `WebLNZapper` struct (moved from `nostr-webln` crate) ([Yuki Kishimoto])
@@ -79,6 +80,7 @@
 ### Removed
 
 * Remove deprecated ([Yuki Kishimoto])
+* pool: remove `RelayPool::reconcile_advanced` ([Yuki Kishimoto])
 * webln: remove `nostr-webln` crate ([Yuki Kishimoto])
 
 ## [v0.35.0]

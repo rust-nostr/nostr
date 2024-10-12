@@ -958,7 +958,8 @@ impl InternalRelayPool {
     {
         let items: Vec<(EventId, Timestamp)> =
             self.database.negentropy_items(filter.clone()).await?;
-        self.reconcile_advanced(urls, filter, items, opts).await
+        let targets = urls.into_iter().map(|u| (u, filter.clone(), items.clone()));
+        self.reconcile_targeted(targets, opts).await
     }
 
     #[inline]
@@ -969,28 +970,28 @@ impl InternalRelayPool {
         opts: NegentropyOptions,
     ) -> Result<Output<Reconciliation>, Error> {
         let urls: Vec<Url> = self.relay_urls().await;
-        self.reconcile_advanced(urls, filter, items, opts).await
+        let targets = urls.into_iter().map(|u| (u, filter.clone(), items.clone()));
+        self.reconcile_targeted(targets, opts).await
     }
 
-    pub async fn reconcile_advanced<I, U>(
+    pub async fn reconcile_targeted<I, U>(
         &self,
-        urls: I,
-        filter: Filter,
-        items: Vec<(EventId, Timestamp)>,
+        targets: I,
         opts: NegentropyOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
-        I: IntoIterator<Item = U>,
+        I: IntoIterator<Item = (U, Filter, Vec<(EventId, Timestamp)>)>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let urls: HashSet<Url> = urls
-            .into_iter()
-            .map(|u| u.try_into_url())
-            .collect::<Result<_, _>>()?;
+        // Collect targets map
+        let mut map: HashMap<Url, (Filter, Vec<(EventId, Timestamp)>)> = HashMap::new();
+        for (url, filter, items) in targets.into_iter() {
+            map.insert(url.try_into_url()?, (filter, items));
+        }
 
         // Check if urls set is empty
-        if urls.is_empty() {
+        if map.is_empty() {
             return Err(Error::NoRelaysSpecified);
         }
 
@@ -1002,58 +1003,51 @@ impl InternalRelayPool {
             return Err(Error::NoRelays);
         }
 
-        if urls.len() == 1 {
-            let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
-            let relay: &Relay = self.internal_relay(&relays, &url)?;
-            let res: Reconciliation = relay.reconcile_with_items(filter, items, opts).await?;
-            Ok(Output::success(url, res))
-        } else {
-            // Check if urls set contains ONLY already added relays
-            if !urls.iter().all(|url| relays.contains_key(url)) {
-                return Err(Error::RelayNotFound);
-            }
-
-            // Filter relays and start query
-            let result: Arc<Mutex<Output<Reconciliation>>> =
-                Arc::new(Mutex::new(Output::default()));
-            let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(urls.len());
-            for (url, relay) in relays.iter().filter(|(url, ..)| urls.contains(url)) {
-                let url: Url = url.clone();
-                let relay: Relay = relay.clone();
-                let filter: Filter = filter.clone();
-                let my_items: Vec<(EventId, Timestamp)> = items.clone();
-                let result: Arc<Mutex<Output<Reconciliation>>> = result.clone();
-                let handle: JoinHandle<()> = thread::spawn(async move {
-                    match relay.reconcile_with_items(filter, my_items, opts).await {
-                        Ok(rec) => {
-                            // Success, insert relay url in 'success' set result
-                            let mut result = result.lock().await;
-                            result.success.insert(url);
-                            result.merge(rec);
-                        }
-                        Err(e) => {
-                            tracing::error!("Failed to get reconcile with {url}: {e}");
-
-                            // Failed, insert relay url in 'failed' map result
-                            let mut result = result.lock().await;
-                            result.failed.insert(url, Some(e.to_string()));
-                        }
-                    }
-                })?;
-                handles.push(handle);
-            }
-
-            for handle in handles.into_iter() {
-                handle.join().await?;
-            }
-
-            let result: Output<Reconciliation> = util::take_mutex_ownership(result).await;
-
-            if result.success.is_empty() {
-                return Err(Error::NegentropyReconciliationFailed);
-            }
-
-            Ok(result)
+        // Check if urls set contains ONLY already added relays
+        if !map.keys().all(|url| relays.contains_key(url)) {
+            return Err(Error::RelayNotFound);
         }
+
+        // Filter relays and start query
+        let result: Arc<Mutex<Output<Reconciliation>>> = Arc::new(Mutex::new(Output::default()));
+        let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(map.len());
+
+        // Filter relays and start query
+        for (url, (filter, items)) in map.into_iter() {
+            let relay: Relay = self.internal_relay(&relays, &url).cloned()?;
+            let result: Arc<Mutex<Output<Reconciliation>>> = result.clone();
+            let handle: JoinHandle<()> = thread::spawn(async move {
+                match relay.reconcile_with_items(filter, items, opts).await {
+                    Ok(rec) => {
+                        // Success, insert relay url in 'success' set result
+                        let mut result = result.lock().await;
+                        result.success.insert(url);
+                        result.merge(rec);
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to get reconcile with '{url}': {e}");
+
+                        // Failed, insert relay url in 'failed' map result
+                        let mut result = result.lock().await;
+                        result.failed.insert(url, Some(e.to_string()));
+                    }
+                }
+            })?;
+            handles.push(handle);
+        }
+
+        // Join threads
+        for handle in handles.into_iter() {
+            handle.join().await?;
+        }
+
+        // Take output
+        let result: Output<Reconciliation> = util::take_mutex_ownership(result).await;
+
+        if result.success.is_empty() {
+            return Err(Error::NegentropyReconciliationFailed);
+        }
+
+        Ok(result)
     }
 }

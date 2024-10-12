@@ -641,23 +641,21 @@ impl RelayPool {
         self.inner.reconcile_with_items(filter, items, opts).await
     }
 
-    /// Negentropy reconciliation with custom relays and items
+    /// Targeted negentropy reconciliation
+    ///
+    /// Reconcile events with specific relays and filters
     #[inline]
-    pub async fn reconcile_advanced<I, U>(
+    pub async fn reconcile_targeted<I, U>(
         &self,
-        urls: I,
-        filter: Filter,
-        items: Vec<(EventId, Timestamp)>,
+        targets: I,
         opts: NegentropyOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
-        I: IntoIterator<Item = U>,
+        I: IntoIterator<Item = (U, Filter, Vec<(EventId, Timestamp)>)>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.inner
-            .reconcile_advanced(urls, filter, items, opts)
-            .await
+        self.inner.reconcile_targeted(targets, opts).await
     }
 
     /// Handle notifications

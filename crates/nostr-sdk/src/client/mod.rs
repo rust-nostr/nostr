@@ -1750,26 +1750,23 @@ impl Client {
         Ok(self.pool.reconcile_with_items(filter, items, opts).await?)
     }
 
-    /// Negentropy reconciliation with specified relays and custom items
+    /// Targeted negentropy reconciliation
+    ///
+    /// Reconcile events with specific relays and filters
     ///
     /// <https://github.com/hoytech/negentropy>
     #[inline]
-    pub async fn reconcile_advanced<I, U>(
+    pub async fn reconcile_targeted<I, U>(
         &self,
-        urls: I,
-        filter: Filter,
-        items: Vec<(EventId, Timestamp)>,
+        targets: I,
         opts: NegentropyOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
-        I: IntoIterator<Item = U>,
+        I: IntoIterator<Item = (U, Filter, Vec<(EventId, Timestamp)>)>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        Ok(self
-            .pool
-            .reconcile_advanced(urls, filter, items, opts)
-            .await?)
+        Ok(self.pool.reconcile_targeted(targets, opts).await?)
     }
 
     /// Handle notifications
