@@ -589,8 +589,8 @@ impl Lmdb {
         )?;
 
         if let Some(result) = iter.next() {
-            let (_key, value) = result?;
-            return self.get_event_by_id(txn, value);
+            let (_key, id) = result?;
+            return self.get_event_by_id(txn, id);
         }
 
         Ok(None)
@@ -615,8 +615,8 @@ impl Lmdb {
         )?;
 
         for result in iter {
-            let (_key, value) = result?;
-            let event = self.get_event_by_id(txn, value)?.ok_or(Error::NotFound)?;
+            let (_key, id) = result?;
+            let event = self.get_event_by_id(txn, id)?.ok_or(Error::NotFound)?;
 
             // the atc index doesn't have kind, so we have to compare the kinds
             if event.kind != addr.kind.as_u16() {
@@ -630,10 +630,14 @@ impl Lmdb {
     }
 
     /// Remove an event by ID
-    pub fn remove_by_id(&self, txn: &mut RwTxn, event_id: &[u8]) -> Result<(), Error> {
-        let read_txn = self.read_txn()?;
-        if let Some(event) = self.get_event_by_id(&read_txn, event_id)? {
-            self.remove(txn, &event)?;
+    pub fn remove_by_id(
+        &self,
+        read_txn: &RoTxn,
+        write_txn: &mut RwTxn,
+        event_id: &[u8],
+    ) -> Result<(), Error> {
+        if let Some(event) = self.get_event_by_id(read_txn, event_id)? {
+            self.remove(write_txn, &event)?;
         }
 
         Ok(())
@@ -644,33 +648,32 @@ impl Lmdb {
     pub fn remove_replaceable(
         &self,
         txn: &mut RwTxn,
-        author: &PublicKey,
-        kind: Kind,
+        coordinate: &Coordinate,
         until: Timestamp,
     ) -> Result<(), Error> {
-        if !kind.is_replaceable() {
+        if !coordinate.kind.is_replaceable() {
             return Err(Error::WrongEventKind);
         }
 
         let read_txn = self.read_txn()?;
         let iter = self.akc_iter(
             &read_txn,
-            &author.to_bytes(),
-            kind.as_u16(),
+            &coordinate.public_key.to_bytes(),
+            coordinate.kind.as_u16(),
             Timestamp::zero(),
             until,
         )?;
 
         for result in iter {
-            let (_key, value) = result?;
-            self.remove_by_id(txn, value)?;
+            let (_key, id) = result?;
+            self.remove_by_id(&read_txn, txn, id)?;
         }
 
         Ok(())
     }
 
     // Remove all parameterized-replaceable events with the matching author-kind-d
-    // Kind must be a paramterized-replaceable event kind
+    // Kind must be a parameterized-replaceable event kind
     pub fn remove_parameterized_replaceable(
         &self,
         txn: &mut RwTxn,
@@ -692,13 +695,15 @@ impl Lmdb {
         )?;
 
         for result in iter {
-            let (_key, value) = result?;
+            let (_key, id) = result?;
 
             // Our index doesn't have Kind embedded, so we have to check it
-            let event = self.get_event_by_id(txn, value)?.ok_or(Error::NotFound)?;
+            let event = self
+                .get_event_by_id(&read_txn, id)?
+                .ok_or(Error::NotFound)?;
 
             if event.kind == coordinate.kind.as_u16() {
-                self.remove_by_id(txn, value)?;
+                self.remove_by_id(&read_txn, txn, id)?;
             }
         }
 

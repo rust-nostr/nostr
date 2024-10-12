@@ -57,7 +57,7 @@ impl NostrDatabase for NostrLMDB {
     #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
         self.db
-            .store_event(event)
+            .save_event(event)
             .await
             .map_err(DatabaseError::backend)
     }
@@ -426,6 +426,20 @@ mod tests {
 
         // Check if number of events in database match the expected
         assert_eq!(db.count_all().await, added_events + 1);
+
+        // Trey to add param replaceable event with older timestamp (MUSTN'T be stored)
+        let (_, stored) = db
+            .add_event_with_keys(
+                EventBuilder::new(
+                    Kind::ParameterizedReplaceable(33_333),
+                    "Test replace 2",
+                    [Tag::identifier("my-id-a")],
+                )
+                .custom_created_at(now - Duration::from_secs(2000)),
+                &keys,
+            )
+            .await;
+        assert!(!stored);
     }
 
     #[tokio::test]

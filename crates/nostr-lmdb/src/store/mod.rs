@@ -65,15 +65,8 @@ impl Store {
         Ok(tokio::task::spawn_blocking(move || f(db, &mut fbb)).await?)
     }
 
-    // /// Sync the data to disk. This happens periodically, but sometimes it's useful to force
-    // /// it.
-    // pub fn sync(&self) -> Result<(), Error> {
-    //     self.db.sync()?;
-    //     Ok(())
-    // }
-
     /// Store an event.
-    pub async fn store_event(&self, event: &Event) -> Result<bool, Error> {
+    pub async fn save_event(&self, event: &Event) -> Result<bool, Error> {
         if event.kind.is_ephemeral() {
             return Ok(false);
         }
@@ -82,27 +75,39 @@ impl Store {
         let event = event.clone();
 
         self.interact_with_fbb(move |db, fbb| {
-            // Read operations
-            {
-                // Acquire read transaction
-                let txn = db.read_txn()?;
+            // Acquire write transaction
+            let mut txn = db.write_txn()?;
 
-                // Already exists
-                if db.has_event(&txn, event.id.as_bytes())? {
-                    //return Err(Error::Duplicate);
-                    return Ok(false);
+            // Already exists
+            if db.has_event(&txn, event.id.as_bytes())? {
+                //return Err(Error::Duplicate);
+                return Ok(false);
+            }
+
+            // Reject event if ID was deleted
+            if db.is_deleted(&txn, &event.id)? {
+                //return Err(Error::Deleted);
+                return Ok(false);
+            }
+
+            // Reject event if ADDR was deleted after it's created_at date
+            // (non-parameterized)
+            if event.kind.is_replaceable() {
+                let coordinate: Coordinate = Coordinate::new(event.kind, event.pubkey);
+                if let Some(time) = db.when_is_coordinate_deleted(&txn, &coordinate)? {
+                    if event.created_at <= time {
+                        //return Err(Error::Deleted);
+                        return Ok(false);
+                    }
                 }
+            }
 
-                // Reject event if ID was deleted
-                if db.is_deleted(&txn, &event.id)? {
-                    //return Err(Error::Deleted);
-                    return Ok(false);
-                }
-
-                // Reject event if ADDR was deleted after it's created_at date
-                // (non-parameterized)
-                if event.kind.is_replaceable() {
-                    let coordinate: Coordinate = Coordinate::new(event.kind, event.pubkey);
+            // Reject event if ADDR was deleted after it's created_at date
+            // (parameterized)
+            if event.kind.is_parameterized_replaceable() {
+                if let Some(identifier) = event.tags.identifier() {
+                    let coordinate: Coordinate =
+                        Coordinate::new(event.kind, event.pubkey).identifier(identifier);
                     if let Some(time) = db.when_is_coordinate_deleted(&txn, &coordinate)? {
                         if event.created_at <= time {
                             //return Err(Error::Deleted);
@@ -110,64 +115,42 @@ impl Store {
                         }
                     }
                 }
+            }
 
-                // Reject event if ADDR was deleted after it's created_at date
-                // (parameterized)
-                if event.kind.is_parameterized_replaceable() {
-                    if let Some(identifier) = event.tags.identifier() {
-                        let coordinate: Coordinate =
-                            Coordinate::new(event.kind, event.pubkey).identifier(identifier);
-                        if let Some(time) = db.when_is_coordinate_deleted(&txn, &coordinate)? {
-                            if event.created_at <= time {
-                                //return Err(Error::Deleted);
-                                return Ok(false);
-                            }
-                        }
+            // Remove replaceable events being replaced
+            if event.kind.is_replaceable() {
+                // Find replaceable event
+                if let Some(stored) = db.find_replaceable_event(&txn, &event.pubkey, event.kind)? {
+                    if stored.created_at > event.created_at {
+                        // return Err(Error::Replaced);
+                        return Ok(false);
                     }
+
+                    let coordinate: Coordinate = Coordinate::new(event.kind, event.pubkey);
+                    db.remove_replaceable(&mut txn, &coordinate, event.created_at)?;
                 }
             }
 
-            // Acquire write transaction
-            let mut txn = db.write_txn()?;
+            // Remove parameterized replaceable events being replaced
+            if event.kind.is_parameterized_replaceable() {
+                if let Some(identifier) = event.tags.identifier() {
+                    let coordinate: Coordinate =
+                        Coordinate::new(event.kind, event.pubkey).identifier(identifier);
 
-            // Pre-remove replaceable events being replaced
-            {
-                if event.kind.is_replaceable() {
-                    // Pre-remove any replaceable events that this replaces
-                    db.remove_replaceable(&mut txn, &event.pubkey, event.kind, event.created_at)?;
-
-                    // If any remaining matching replaceable events exist, then
-                    // this event is invalid, return Replaced
-                    if db
-                        .find_replaceable_event(&txn, &event.pubkey, event.kind)?
-                        .is_some()
+                    // Find param replaceable event
+                    if let Some(stored) =
+                        db.find_parameterized_replaceable_event(&txn, &coordinate)?
                     {
-                        //return Err(Error::Replaced);
-                        return Ok(false);
-                    }
-                }
+                        if stored.created_at > event.created_at {
+                            // return Err(Error::Replaced);
+                            return Ok(false);
+                        }
 
-                if event.kind.is_parameterized_replaceable() {
-                    if let Some(identifier) = event.tags.identifier() {
-                        let coordinate: Coordinate =
-                            Coordinate::new(event.kind, event.pubkey).identifier(identifier);
-
-                        // Pre-remove any parameterized-replaceable events that this replaces
                         db.remove_parameterized_replaceable(
                             &mut txn,
                             &coordinate,
                             Timestamp::max(),
                         )?;
-
-                        // If any remaining matching parameterized replaceable events exist, then
-                        // this event is invalid, return Replaced
-                        if db
-                            .find_parameterized_replaceable_event(&txn, &coordinate)?
-                            .is_some()
-                        {
-                            //return Err(Error::Replaced);
-                            return Ok(false);
-                        }
                     }
                 }
             }
@@ -192,6 +175,8 @@ impl Store {
     }
 
     fn handle_deletion_event(db: &Lmdb, txn: &mut RwTxn, event: &Event) -> Result<bool, Error> {
+        let read_txn = db.read_txn()?;
+
         for id in event.tags.event_ids() {
             // Actually remove
             if let Some(target) = db.get_event_by_id(txn, id.as_bytes())? {
@@ -201,7 +186,7 @@ impl Store {
                 }
 
                 // Remove event
-                db.remove_by_id(txn, id.as_bytes())?;
+                db.remove_by_id(&read_txn, txn, id.as_bytes())?;
             }
 
             // Mark deleted
@@ -220,12 +205,7 @@ impl Store {
 
             // Remove events (up to the created_at of the deletion event)
             if coordinate.kind.is_replaceable() {
-                db.remove_replaceable(
-                    txn,
-                    &coordinate.public_key,
-                    coordinate.kind,
-                    event.created_at,
-                )?;
+                db.remove_replaceable(txn, coordinate, event.created_at)?;
             } else if coordinate.kind.is_parameterized_replaceable() {
                 db.remove_parameterized_replaceable(txn, coordinate, event.created_at)?;
             }
