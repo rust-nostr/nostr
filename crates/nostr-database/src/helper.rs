@@ -359,31 +359,29 @@ impl InternalDatabaseHelper {
     }
 
     fn discard_events(&mut self, ids: &HashSet<EventId>) {
-        if !ids.is_empty() {
-            for id in ids.iter() {
-                if let Some(ev) = self.ids.remove(id) {
-                    self.events.remove(&ev);
+        for id in ids.iter() {
+            if let Some(ev) = self.ids.remove(id) {
+                self.events.remove(&ev);
 
-                    if let Some(set) = self.author_index.get_mut(&ev.pubkey) {
-                        set.remove(&ev);
-                    }
+                if let Some(set) = self.author_index.get_mut(&ev.pubkey) {
+                    set.remove(&ev);
+                }
 
-                    if ev.kind.is_parameterized_replaceable() {
-                        if let Some(identifier) = ev.tags.identifier() {
-                            self.param_replaceable_index.remove(&(
-                                ev.kind,
-                                ev.pubkey,
-                                identifier.to_string(),
-                            ));
-                        }
-                    }
-
-                    if let Some(set) = self.kind_author_index.get_mut(&(ev.kind, ev.pubkey)) {
-                        set.remove(&ev);
+                if ev.kind.is_parameterized_replaceable() {
+                    if let Some(identifier) = ev.tags.identifier() {
+                        self.param_replaceable_index.remove(&(
+                            ev.kind,
+                            ev.pubkey,
+                            identifier.to_string(),
+                        ));
                     }
                 }
-                self.deleted_ids.insert(*id);
+
+                if let Some(set) = self.kind_author_index.get_mut(&(ev.kind, ev.pubkey)) {
+                    set.remove(&ev);
+                }
             }
+            self.deleted_ids.insert(*id);
         }
     }
 
