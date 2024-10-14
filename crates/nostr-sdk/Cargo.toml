@@ -120,6 +120,7 @@ required-features = ["all-nips", "lmdb"]
 
 [[example]]
 name = "negentropy"
+required-features = ["all-nips", "lmdb"]
 
 [[example]]
 name = "nip47"

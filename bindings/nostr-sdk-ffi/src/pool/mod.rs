@@ -17,7 +17,6 @@ pub mod result;
 use self::result::{Output, SendEventOutput, SubscribeOutput};
 use crate::database::events::Events;
 use crate::error::Result;
-use crate::negentropy::NegentropyItem;
 use crate::pool::result::ReconciliationOutput;
 use crate::relay::options::{FilterOptions, NegentropyOptions};
 use crate::relay::{RelayFiltering, RelayOptions, RelaySendOptions, SubscribeOptions};
@@ -388,24 +387,6 @@ impl RelayPool {
         Ok(self
             .inner
             .reconcile(filter.deref().clone(), **opts)
-            .await?
-            .into())
-    }
-
-    /// Negentropy reconciliation with custom items
-    pub async fn reconcile_with_items(
-        &self,
-        filter: &Filter,
-        items: Vec<NegentropyItem>,
-        opts: &NegentropyOptions,
-    ) -> Result<ReconciliationOutput> {
-        let items = items
-            .into_iter()
-            .map(|item| (**item.id, **item.timestamp))
-            .collect();
-        Ok(self
-            .inner
-            .reconcile_with_items(filter.deref().clone(), items, **opts)
             .await?
             .into())
     }

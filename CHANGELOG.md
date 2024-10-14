@@ -83,6 +83,7 @@
 
 * Remove deprecated ([Yuki Kishimoto])
 * pool: remove `RelayPool::reconcile_advanced` ([Yuki Kishimoto])
+* pool: remove `RelayPool::reconcile_with_items` ([Yuki Kishimoto])
 * webln: remove `nostr-webln` crate ([Yuki Kishimoto])
 
 ## [v0.35.0]

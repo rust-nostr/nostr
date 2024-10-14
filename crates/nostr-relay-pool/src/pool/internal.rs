@@ -962,18 +962,6 @@ impl InternalRelayPool {
         self.reconcile_targeted(targets, opts).await
     }
 
-    #[inline]
-    pub async fn reconcile_with_items(
-        &self,
-        filter: Filter,
-        items: Vec<(EventId, Timestamp)>,
-        opts: NegentropyOptions,
-    ) -> Result<Output<Reconciliation>, Error> {
-        let urls: Vec<Url> = self.relay_urls().await;
-        let targets = urls.into_iter().map(|u| (u, filter.clone(), items.clone()));
-        self.reconcile_targeted(targets, opts).await
-    }
-
     pub async fn reconcile_targeted<I, U>(
         &self,
         targets: I,

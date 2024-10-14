@@ -11,7 +11,9 @@ async fn main() -> Result<()> {
     let public_key =
         PublicKey::from_bech32("npub1080l37pfvdpyuzasyuy2ytjykjvq3ylr5jlqlg7tvzjrh9r8vn3sf5yaph")?;
 
-    let client = Client::default();
+    let database = NostrLMDB::open("./db/nostr-lmdb")?;
+    let client: Client = ClientBuilder::default().database(database).build();
+
     client.add_relay("wss://atl.purplerelay.com").await?;
     client.add_relay("wss://nostr.wine").await?;
     client.add_relay("wss://relay.damus.io").await?;
@@ -19,10 +21,9 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
-    let my_items = Vec::new();
     let filter = Filter::new().author(public_key).limit(10);
     let opts = NegentropyOptions::default();
-    let output = client.reconcile_with_items(filter, my_items, opts).await?;
+    let output = client.reconcile(filter, opts).await?;
     println!("Success: {:?}", output.success);
     println!("Failed: {:?}", output.failed);
 

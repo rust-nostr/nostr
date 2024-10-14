@@ -430,23 +430,6 @@ impl JsRelayPool {
             .map(|o| o.into())
     }
 
-    // /// Negentropy reconciliation with custom items
-    // pub async fn reconcile_with_items(
-    //     &self,
-    //     filter: &JsFilter,
-    //     items: Vec<NegentropyItem>,
-    //     opts: &JsNegentropyOptions,
-    // ) -> Result<()> {
-    //     let items = items
-    //         .into_iter()
-    //         .map(|item| (**item.id, **item.timestamp))
-    //         .collect();
-    //     Ok(self
-    //         .inner
-    //         .reconcile_with_items(filter.deref().clone(), items, **opts)
-    //         .await?)
-    // }
-
     // /// Handle relay pool notifications
     // pub async fn handle_notifications(
     //     &self,
