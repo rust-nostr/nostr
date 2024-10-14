@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP21
+//! NIP21: `nostr:` URI scheme
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/21.md>
 

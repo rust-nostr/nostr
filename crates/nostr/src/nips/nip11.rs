@@ -3,7 +3,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP11
+//! NIP11: Relay Information Document
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/11.md>
 

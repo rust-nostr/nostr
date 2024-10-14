@@ -1,7 +1,7 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
 // Distributed under the MIT software license
 
-//! NIP59
+//! NIP59: Gift Wrap
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/59.md>
 

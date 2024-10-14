@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP10
+//! NIP10: Conventions for clients' use of `e` and `p` tags in text events
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/10.md>
 

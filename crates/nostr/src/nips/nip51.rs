@@ -1,7 +1,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP51
+//! NIP51: Lists
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/51.md>
 

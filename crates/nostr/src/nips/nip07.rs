@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP07
+//! NIP07: `window.nostr` capability for web browsers
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/07.md>
 

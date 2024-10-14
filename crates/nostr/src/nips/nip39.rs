@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP39
+//! NIP39: External Identities in Profiles
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/39.md>
 

@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP06
+//! NIP06: Basic key derivation from mnemonic seed phrase
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/06.md>
 

@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP19
+//! NIP19: bech32-encoded entities
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/19.md>
 

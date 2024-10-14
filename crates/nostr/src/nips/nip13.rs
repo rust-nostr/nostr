@@ -3,7 +3,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP13
+//! NIP13: Proof of Work
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/13.md>
 

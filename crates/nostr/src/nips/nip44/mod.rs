@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP44
+//! NIP44: Versioned Encryption
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/44.md>
 

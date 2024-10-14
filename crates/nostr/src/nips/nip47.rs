@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP47
+//! NIP47: Wallet Connect
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/47.md>
 

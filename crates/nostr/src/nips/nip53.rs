@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP53
+//! NIP53: Live Activities
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/53.md>
 

@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP98
+//! NIP98: HTTP Auth
 //!
 //! This NIP defines an ephemeral event used to authorize requests to HTTP servers using nostr events.
 //! This is useful for HTTP services which are build for Nostr and deal with Nostr user accounts.

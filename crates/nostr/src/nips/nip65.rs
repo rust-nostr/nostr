@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP65
+//! NIP65: Relay List Metadata
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/65.md>
 

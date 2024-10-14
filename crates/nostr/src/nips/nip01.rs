@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP01
+//! NIP01: Basic protocol flow description
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/01.md>
 

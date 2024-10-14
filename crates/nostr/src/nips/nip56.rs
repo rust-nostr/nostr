@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP56
+//! NIP56: Reporting
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/56.md>
 

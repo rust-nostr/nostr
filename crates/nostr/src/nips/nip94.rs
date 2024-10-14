@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP94
+//! NIP94: File Metadata
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/94.md>
 
