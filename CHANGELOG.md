@@ -43,6 +43,7 @@
 * database: not save invalid event deletion ([Yuki Kishimoto])
 * lmdb: not save event deletion ([Yuki Kishimoto])
 * lmdb: return iterator instead of vector in `Lmdb::single_filter_query` ([Yuki Kishimoto])
+* lmdb: mark event as deleted only if database have the target event ([Yuki Kishimoto])
 * signer: bootstrap NIP-46 signer on demand ([Yuki Kishimoto])
 * bindings(nostr): adj. `tag` module ([Yuki Kishimoto])
 

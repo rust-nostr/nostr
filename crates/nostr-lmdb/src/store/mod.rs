@@ -178,24 +178,20 @@ impl Store {
         let read_txn = db.read_txn()?;
 
         for id in event.tags.event_ids() {
-            // Actually remove
             if let Some(target) = db.get_event_by_id(txn, id.as_bytes())? {
-                // author must match
+                // Author must match
                 if target.author() != &event.pubkey.to_bytes() {
                     return Ok(true);
                 }
 
-                // Remove event
+                // Mark as deleted and remove event
+                db.mark_deleted(txn, id)?;
                 db.remove_by_id(&read_txn, txn, id.as_bytes())?;
             }
-
-            // Mark deleted
-            // NOTE: if we didn't have the target event, we presume this is valid,
-            //       and if not, clients will just have to deal with that.
-            db.mark_deleted(txn, id)?;
         }
 
         for coordinate in event.tags.coordinates() {
+            // Author must match
             if coordinate.public_key != event.pubkey {
                 return Ok(true);
             }
