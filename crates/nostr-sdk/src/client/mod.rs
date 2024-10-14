@@ -1709,7 +1709,10 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
-    /// Negentropy reconciliation with all connected relays
+    /// Negentropy reconciliation
+    ///
+    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be reconciled also from
+    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// <https://github.com/hoytech/negentropy>
     #[inline]
@@ -1718,6 +1721,10 @@ impl Client {
         filter: Filter,
         opts: NegentropyOptions,
     ) -> Result<Output<Reconciliation>, Error> {
+        if self.opts.gossip {
+            return self.gossip_reconcile(filter, opts).await;
+        }
+
         Ok(self.pool.reconcile(filter, opts).await?)
     }
 
@@ -1885,5 +1892,37 @@ impl Client {
     ) -> Result<Output<()>, Error> {
         let filters = self.break_down_filters(filters).await?;
         Ok(self.pool.subscribe_targeted(id, filters, opts).await?)
+    }
+
+    async fn gossip_reconcile(
+        &self,
+        filter: Filter,
+        opts: NegentropyOptions,
+    ) -> Result<Output<Reconciliation>, Error> {
+        // Break down filter
+        let temp_filters = self.break_down_filters(vec![filter]).await?;
+
+        let database = self.database();
+        let mut filters = HashMap::with_capacity(temp_filters.len());
+
+        // Iterate broken down filters and compose new filters for targeted reconciliation
+        for (url, value) in temp_filters.into_iter() {
+            let mut map = HashMap::with_capacity(value.len());
+
+            // Iterate per-url filters and get items
+            for filter in value.into_iter() {
+                // Get items
+                let items: Vec<(EventId, Timestamp)> =
+                    database.negentropy_items(filter.clone()).await?;
+
+                // Add filter and items to map
+                map.insert(filter, items);
+            }
+
+            filters.insert(url, map);
+        }
+
+        // Reconciliation
+        Ok(self.pool.reconcile_targeted(filters, opts).await?)
     }
 }

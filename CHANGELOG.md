@@ -67,6 +67,7 @@
 * pool: add `RelayPool::reconcile_targeted` ([Yuki Kishimoto])
 * pool: add `Relay::reconcile_multi` ([Yuki Kishimoto])
 * sdk: add `Client::fetch_events` and `Client::fetch_events_from` methods ([Yuki Kishimoto])
+* sdk: add gossip support to `Client::reconcile` ([Yuki Kishimoto])
 * signer: add `NostrSigner::gift_wrap` ([Yuki Kishimoto])
 * zapper: add `WebLNZapper` struct (moved from `nostr-webln` crate) ([Yuki Kishimoto])
 * ffi(nostr): add `tag_kind_to_string` func ([Yuki Kishimoto])

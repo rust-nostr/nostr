@@ -341,7 +341,7 @@ impl Client {
 
     /// Fetch events from relays
     ///
-    /// If `gossip` is enabled (see `Options]) the events will be requested also to
+    /// If `gossip` is enabled (see `Options`) the events will be requested also to
     /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
     pub async fn fetch_events(
         &self,
@@ -621,6 +621,12 @@ impl Client {
             .into())
     }
 
+    /// Negentropy reconciliation
+    ///
+    /// If `gossip` is enabled (see `Options`) the events will be reconciled also with
+    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    ///
+    /// <https://github.com/hoytech/negentropy>
     pub async fn reconcile(
         &self,
         filter: Arc<Filter>,

@@ -757,6 +757,9 @@ impl JsClient {
 
     /// Negentropy reconciliation
     ///
+    /// If `gossip` is enabled (see `Options`) the events will be reconciled also with
+    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    ///
     /// <https://github.com/hoytech/negentropy>
     pub async fn reconcile(
         &self,
