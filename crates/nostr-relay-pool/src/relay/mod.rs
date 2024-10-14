@@ -447,6 +447,16 @@ impl Relay {
         self.inner.reconcile_with_items(filter, items, opts).await
     }
 
+    /// Negentropy reconciliation
+    #[inline]
+    pub async fn reconcile_multi(
+        &self,
+        map: HashMap<Filter, Vec<(EventId, Timestamp)>>,
+        opts: NegentropyOptions,
+    ) -> Result<Reconciliation, Error> {
+        self.inner.reconcile_multi(map, opts).await
+    }
+
     /// Check if relay support negentropy protocol
     #[inline]
     pub async fn support_negentropy(&self) -> Result<bool, Error> {
