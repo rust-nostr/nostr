@@ -956,9 +956,16 @@ impl InternalRelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
+        // Get items
         let items: Vec<(EventId, Timestamp)> =
             self.database.negentropy_items(filter.clone()).await?;
-        let targets = urls.into_iter().map(|u| (u, filter.clone(), items.clone()));
+
+        // Compose filters
+        let mut filters: HashMap<Filter, Vec<(EventId, Timestamp)>> = HashMap::with_capacity(1);
+        filters.insert(filter, items);
+
+        // Reconcile
+        let targets = urls.into_iter().map(|u| (u, filters.clone()));
         self.reconcile_targeted(targets, opts).await
     }
 
@@ -968,14 +975,14 @@ impl InternalRelayPool {
         opts: NegentropyOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
-        I: IntoIterator<Item = (U, Filter, Vec<(EventId, Timestamp)>)>,
+        I: IntoIterator<Item = (U, HashMap<Filter, Vec<(EventId, Timestamp)>>)>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Collect targets map
-        let mut map: HashMap<Url, (Filter, Vec<(EventId, Timestamp)>)> = HashMap::new();
-        for (url, filter, items) in targets.into_iter() {
-            map.insert(url.try_into_url()?, (filter, items));
+        let mut map: HashMap<Url, HashMap<Filter, Vec<(EventId, Timestamp)>>> = HashMap::new();
+        for (url, value) in targets.into_iter() {
+            map.insert(url.try_into_url()?, value);
         }
 
         // Check if urls set is empty
@@ -1001,11 +1008,11 @@ impl InternalRelayPool {
         let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(map.len());
 
         // Filter relays and start query
-        for (url, (filter, items)) in map.into_iter() {
+        for (url, filters) in map.into_iter() {
             let relay: Relay = self.internal_relay(&relays, &url).cloned()?;
             let result: Arc<Mutex<Output<Reconciliation>>> = result.clone();
             let handle: JoinHandle<()> = thread::spawn(async move {
-                match relay.reconcile_with_items(filter, items, opts).await {
+                match relay.reconcile_multi(filters, opts).await {
                     Ok(rec) => {
                         // Success, insert relay url in 'success' set result
                         let mut result = result.lock().await;

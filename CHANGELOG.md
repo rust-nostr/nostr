@@ -35,6 +35,7 @@
 * relay-builder: return error if event was deleted ([Yuki Kishimoto])
 * pool: changes in `RelayPool::remove_relay` behavior ([Yuki Kishimoto])
 * pool: deprecate `RelayPool::remove_all_relays` ([Yuki Kishimoto])
+* pool: allow multi-filter reconciliation ([Yuki Kishimoto])
 * sdk: deprecate `Client::get_events_of` and `Client::get_events_from` methods ([Yuki Kishimoto])
 * sdk: use `Events` instead of `Vec<Event>` in fetch and query methods ([Yuki Kishimoto])
 * sdk: rename `stream_events_of` to `stream_events` ([Yuki Kishimoto])

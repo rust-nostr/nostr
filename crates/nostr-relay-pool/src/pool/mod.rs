@@ -640,7 +640,7 @@ impl RelayPool {
         opts: NegentropyOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
-        I: IntoIterator<Item = (U, Filter, Vec<(EventId, Timestamp)>)>,
+        I: IntoIterator<Item = (U, HashMap<Filter, Vec<(EventId, Timestamp)>>)>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
