@@ -365,7 +365,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_scomposed_filters() {
+    async fn test_break_down_filters() {
         let keys_a = Keys::parse(SECRET_KEY_A).unwrap();
         let keys_b = Keys::parse(SECRET_KEY_B).unwrap();
 
@@ -381,43 +381,43 @@ mod tests {
 
         // Single filter, single author
         let filters = vec![Filter::new().author(keys_a.public_key)];
-        let scomposed = graph.break_down_filters(filters.clone()).await;
+        let broken_down = graph.break_down_filters(filters.clone()).await;
 
-        assert_eq!(scomposed.filters.get(&damus_url).unwrap(), &filters);
-        assert_eq!(scomposed.filters.get(&nostr_bg_url).unwrap(), &filters);
-        assert_eq!(scomposed.filters.get(&nos_lol_url).unwrap(), &filters);
-        assert!(!scomposed.filters.contains_key(&nostr_mom_url));
-        assert!(scomposed.other.is_empty());
+        assert_eq!(broken_down.filters.get(&damus_url).unwrap(), &filters);
+        assert_eq!(broken_down.filters.get(&nostr_bg_url).unwrap(), &filters);
+        assert_eq!(broken_down.filters.get(&nos_lol_url).unwrap(), &filters);
+        assert!(!broken_down.filters.contains_key(&nostr_mom_url));
+        assert!(broken_down.other.is_empty());
 
         // Multiple filters, multiple authors
         let authors_filter = Filter::new().authors([keys_a.public_key, keys_b.public_key]);
         let search_filter = Filter::new().search("Test").limit(10);
         let filters = vec![authors_filter.clone(), search_filter.clone()];
-        let scomposed = graph.break_down_filters(filters.clone()).await;
+        let broken_down = graph.break_down_filters(filters.clone()).await;
 
         assert_eq!(
-            scomposed.filters.get(&damus_url).unwrap(),
+            broken_down.filters.get(&damus_url).unwrap(),
             &vec![authors_filter]
         );
         assert_eq!(
-            scomposed.filters.get(&nostr_bg_url).unwrap(),
+            broken_down.filters.get(&nostr_bg_url).unwrap(),
             &vec![Filter::new().author(keys_a.public_key)]
         );
         assert_eq!(
-            scomposed.filters.get(&nos_lol_url).unwrap(),
+            broken_down.filters.get(&nos_lol_url).unwrap(),
             &vec![Filter::new().author(keys_a.public_key)]
         );
-        assert!(!scomposed.filters.contains_key(&nostr_mom_url));
+        assert!(!broken_down.filters.contains_key(&nostr_mom_url));
         assert_eq!(
-            scomposed.filters.get(&nostr_info_url).unwrap(),
+            broken_down.filters.get(&nostr_info_url).unwrap(),
             &vec![Filter::new().author(keys_b.public_key)]
         );
         assert_eq!(
-            scomposed.filters.get(&relay_rip_url).unwrap(),
+            broken_down.filters.get(&relay_rip_url).unwrap(),
             &vec![Filter::new().author(keys_b.public_key)]
         );
-        assert!(!scomposed.filters.contains_key(&snort_url));
-        assert_eq!(scomposed.other, vec![search_filter]);
+        assert!(!broken_down.filters.contains_key(&snort_url));
+        assert_eq!(broken_down.other, vec![search_filter]);
 
         // Multiple filters, multiple authors and single p tags
         let authors_filter = Filter::new().authors([keys_a.public_key, keys_b.public_key]);
@@ -428,51 +428,51 @@ mod tests {
             p_tag_filter.clone(),
             search_filter.clone(),
         ];
-        let scomposed = graph.break_down_filters(filters.clone()).await;
+        let broken_down = graph.break_down_filters(filters.clone()).await;
 
         assert_eq!(
-            scomposed.filters.get(&damus_url).unwrap(),
+            broken_down.filters.get(&damus_url).unwrap(),
             &vec![p_tag_filter.clone(), authors_filter]
         );
         assert_eq!(
-            scomposed.filters.get(&nostr_bg_url).unwrap(),
+            broken_down.filters.get(&nostr_bg_url).unwrap(),
             &vec![
                 p_tag_filter.clone(),
                 Filter::new().author(keys_a.public_key),
             ]
         );
         assert_eq!(
-            scomposed.filters.get(&nos_lol_url).unwrap(),
+            broken_down.filters.get(&nos_lol_url).unwrap(),
             &vec![Filter::new().author(keys_a.public_key)]
         );
         assert_eq!(
-            scomposed.filters.get(&nostr_mom_url).unwrap(),
+            broken_down.filters.get(&nostr_mom_url).unwrap(),
             &vec![p_tag_filter]
         );
         assert_eq!(
-            scomposed.filters.get(&nostr_info_url).unwrap(),
+            broken_down.filters.get(&nostr_info_url).unwrap(),
             &vec![Filter::new().author(keys_b.public_key)]
         );
         assert_eq!(
-            scomposed.filters.get(&relay_rip_url).unwrap(),
+            broken_down.filters.get(&relay_rip_url).unwrap(),
             &vec![Filter::new().author(keys_b.public_key)]
         );
-        assert!(!scomposed.filters.contains_key(&snort_url));
-        assert_eq!(scomposed.other, vec![search_filter]);
+        assert!(!broken_down.filters.contains_key(&snort_url));
+        assert_eq!(broken_down.other, vec![search_filter]);
 
         // Single filter, both author and p tag
         let filters = vec![Filter::new()
             .author(keys_a.public_key)
             .pubkey(keys_b.public_key)];
-        let scomposed = graph.break_down_filters(filters.clone()).await;
+        let broken_down = graph.break_down_filters(filters.clone()).await;
 
-        assert_eq!(scomposed.filters.get(&damus_url).unwrap(), &filters);
-        assert_eq!(scomposed.filters.get(&nostr_bg_url).unwrap(), &filters);
-        assert_eq!(scomposed.filters.get(&nos_lol_url).unwrap(), &filters);
-        assert_eq!(scomposed.filters.get(&nostr_mom_url).unwrap(), &filters);
-        assert_eq!(scomposed.filters.get(&nostr_info_url).unwrap(), &filters);
-        assert_eq!(scomposed.filters.get(&relay_rip_url).unwrap(), &filters);
-        assert_eq!(scomposed.filters.get(&snort_url).unwrap(), &filters);
-        assert!(scomposed.other.is_empty());
+        assert_eq!(broken_down.filters.get(&damus_url).unwrap(), &filters);
+        assert_eq!(broken_down.filters.get(&nostr_bg_url).unwrap(), &filters);
+        assert_eq!(broken_down.filters.get(&nos_lol_url).unwrap(), &filters);
+        assert_eq!(broken_down.filters.get(&nostr_mom_url).unwrap(), &filters);
+        assert_eq!(broken_down.filters.get(&nostr_info_url).unwrap(), &filters);
+        assert_eq!(broken_down.filters.get(&relay_rip_url).unwrap(), &filters);
+        assert_eq!(broken_down.filters.get(&snort_url).unwrap(), &filters);
+        assert!(broken_down.other.is_empty());
     }
 }
