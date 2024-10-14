@@ -661,7 +661,7 @@ impl Client {
     /// by calling `client.subscriptions().await`.
     ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
-    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// # Auto-closing subscription
     ///
@@ -711,7 +711,7 @@ impl Client {
     /// Subscribe to filters with custom [SubscriptionId]
     ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
-    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// # Auto-closing subscription
     ///
@@ -826,7 +826,7 @@ impl Client {
     /// Fetch events from relays
     ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
-    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// # Example
     /// ```rust,no_run
@@ -927,7 +927,7 @@ impl Client {
     /// Stream events from relays
     ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be streamed also from
-    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     pub async fn stream_events(
         &self,
         filters: Vec<Filter>,
@@ -1018,7 +1018,7 @@ impl Client {
     /// Send event
     ///
     /// Send [`Event`] to all relays with `WRITE` flag.
-    /// If `gossip` is enabled (see [`Options::gossip`]) the event will be sent also to NIP-65 relays (automatically discovered).
+    /// If `gossip` is enabled (see [`Options::gossip`]) the event will be sent also to NIP65 relays (automatically discovered).
     #[inline]
     pub async fn send_event(&self, event: Event) -> Result<Output<EventId>, Error> {
         let opts: RelaySendOptions = self.opts.get_wait_for_send();
@@ -1712,7 +1712,7 @@ impl Client {
     /// Negentropy reconciliation
     ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be reconciled also from
-    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// <https://github.com/hoytech/negentropy>
     #[inline]

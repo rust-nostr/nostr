@@ -89,7 +89,7 @@ impl JsKind {
         self.inner.is_parameterized_replaceable()
     }
 
-    /// Check if it's a NIP-90 job request
+    /// Check if it's a NIP90 job request
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     #[wasm_bindgen(js_name = isJobRequest)]
@@ -97,7 +97,7 @@ impl JsKind {
         self.inner.is_job_request()
     }
 
-    /// Check if it's a NIP-90 job result
+    /// Check if it's a NIP90 job result
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     #[wasm_bindgen(js_name = isJobResult)]

@@ -237,7 +237,7 @@ impl JsClient {
     /// Subscribe to filters
     ///
     /// If `gossip` is enabled (see `Options]) the events will be requested also to
-    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// ### Auto-closing subscription
     ///
@@ -258,7 +258,7 @@ impl JsClient {
     /// Subscribe to filters with custom subscription ID
     ///
     /// If `gossip` is enabled (see `Options]) the events will be requested also to
-    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// ### Auto-closing subscription
     ///
@@ -335,7 +335,7 @@ impl JsClient {
     /// Fetch events from relays
     ///
     /// If `gossip` is enabled (see `Options`) the events will be requested also to
-    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     #[wasm_bindgen(js_name = fetchEvents)]
     pub async fn fetch_events(
         &self,
@@ -383,7 +383,7 @@ impl JsClient {
     /// Send event
     ///
     /// Send event to all relays with `WRITE` flag.
-    /// If `gossip` is enabled (see `Options`) the event will be sent also to NIP-65 relays (automatically discovered).
+    /// If `gossip` is enabled (see `Options`) the event will be sent also to NIP65 relays (automatically discovered).
     #[wasm_bindgen(js_name = sendEvent)]
     pub async fn send_event(&self, event: &JsEvent) -> Result<JsSendEventOutput> {
         self.inner
@@ -758,7 +758,7 @@ impl JsClient {
     /// Negentropy reconciliation
     ///
     /// If `gossip` is enabled (see `Options`) the events will be reconciled also with
-    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// <https://github.com/hoytech/negentropy>
     pub async fn reconcile(

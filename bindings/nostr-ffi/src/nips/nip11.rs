@@ -139,7 +139,7 @@ pub struct Limitation {
     pub max_content_length: Option<i32>,
     /// New events will require at least this difficulty of PoW,
     pub min_pow_difficulty: Option<i32>,
-    /// Relay requires NIP-42 authentication to happen before a new connection may perform any other action
+    /// Relay requires NIP42 authentication to happen before a new connection may perform any other action
     pub auth_required: Option<bool>,
     /// Relay requires payment before a new connection may perform any action
     pub payment_required: Option<bool>,

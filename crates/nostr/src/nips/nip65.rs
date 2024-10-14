@@ -12,7 +12,7 @@ use core::str::FromStr;
 
 use crate::{Event, TagStandard, Url};
 
-/// NIP-56 error
+/// NIP56 error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Invalid Relay Metadata

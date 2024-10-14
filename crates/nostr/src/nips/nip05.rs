@@ -67,7 +67,7 @@ impl From<key::Error> for Error {
     }
 }
 
-/// NIP-05 profile
+/// NIP05 profile
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/05.md>
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -78,7 +78,7 @@ pub struct Nip05Profile {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/05.md>
     pub relays: Vec<Url>,
-    /// NIP-46 relays
+    /// NIP46 relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
     pub nip46: Vec<Url>,
@@ -166,7 +166,7 @@ where
     Ok(verify_from_json(public_key, &json, name))
 }
 
-/// Get NIP-05 profile
+/// Get NIP05 profile
 ///
 /// **Proxy is ignored for WASM targets!**
 ///

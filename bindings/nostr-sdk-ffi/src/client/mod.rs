@@ -234,7 +234,7 @@ impl Client {
     /// Subscribe to filters
     ///
     /// If `gossip` is enabled (see `Options]) the events will be requested also to
-    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// ### Auto-closing subscription
     ///
@@ -259,7 +259,7 @@ impl Client {
     /// Subscribe to filters with custom subscription ID
     ///
     /// If `gossip` is enabled (see `Options]) the events will be requested also to
-    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// ### Auto-closing subscription
     ///
@@ -342,7 +342,7 @@ impl Client {
     /// Fetch events from relays
     ///
     /// If `gossip` is enabled (see `Options`) the events will be requested also to
-    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     pub async fn fetch_events(
         &self,
         filters: Vec<Arc<Filter>>,
@@ -384,7 +384,7 @@ impl Client {
     /// Send event
     ///
     /// Send event to all relays with `WRITE` flag.
-    /// If `gossip` is enabled (see `Options`) the event will be sent also to NIP-65 relays (automatically discovered).
+    /// If `gossip` is enabled (see `Options`) the event will be sent also to NIP65 relays (automatically discovered).
     pub async fn send_event(&self, event: Arc<Event>) -> Result<SendEventOutput> {
         Ok(self
             .inner
@@ -624,7 +624,7 @@ impl Client {
     /// Negentropy reconciliation
     ///
     /// If `gossip` is enabled (see `Options`) the events will be reconciled also with
-    /// NIP-65 relays (automatically discovered) of public keys included in filters (if any).
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// <https://github.com/hoytech/negentropy>
     pub async fn reconcile(

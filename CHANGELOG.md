@@ -45,7 +45,7 @@
 * lmdb: not save event deletion ([Yuki Kishimoto])
 * lmdb: return iterator instead of vector in `Lmdb::single_filter_query` ([Yuki Kishimoto])
 * lmdb: mark event as deleted only if database have the target event ([Yuki Kishimoto])
-* signer: bootstrap NIP-46 signer on demand ([Yuki Kishimoto])
+* signer: bootstrap NIP46 signer on demand ([Yuki Kishimoto])
 * bindings(nostr): adj. `tag` module ([Yuki Kishimoto])
 
 ### Added
@@ -113,7 +113,7 @@ allow usage of embedded tor client on mobile devices, many improvements, bugs fi
 * nostr: impl `PartialOrd`, `Ord` and `Hash` for `Keys` ([Yuki Kishimoto])
 * nostr: change `Keys::secret_key` and `Keys::sign_schnorr` methods fingerprint ([Yuki Kishimoto])
 * nostr: deprecate `Keys::generate_without_keypair` ([Yuki Kishimoto])
-* nostr: change NIP-26 functions fingerprint ([Yuki Kishimoto])
+* nostr: change NIP26 functions fingerprint ([Yuki Kishimoto])
 * nostr: improve `NostrWalletConnectURI` parsing ([Yuki Kishimoto])
 * nostr: update `EventBuilder::job_feedback` method fingerprint ([Yuki Kishimoto])
 * nostr: deprecate `EventBuilder::to_pow_event` ([Yuki Kishimoto])
@@ -139,7 +139,7 @@ allow usage of embedded tor client on mobile devices, many improvements, bugs fi
 * pool: bump `async-wsocket` to `v0.9` ([Yuki Kishimoto])
 * pool: improve `Relay::support_negentropy` method ([Yuki Kishimoto])
 * pool: change handle relay message log level from `error` to `warn` ([Yuki Kishimoto])
-* signer: update NIP-04 and NIP-44 methods signature ([Yuki Kishimoto])
+* signer: update NIP04 and NIP44 methods signature ([Yuki Kishimoto])
 * webln: bump `webln` to `v0.3` ([Yuki Kishimoto])
 * sqlite: deprecate `SQLiteDatabase` in favor of LMDB ([Yuki Kishimoto])
 * sdk: bump `lnurl-pay` to `v0.6` ([Yuki Kishimoto])
@@ -229,7 +229,7 @@ allow usage of embedded tor client on mobile devices, many improvements, bugs fi
 
 Add embedded tor client support, allow to open databases with a limited capacity (automatically discard old events when max capacity is reached),
 add `Client::stream_events_of` as alternative method to `Client::get_events_of` (stream events instead of waiting for `EOSE` and collect into a list),
-add search capability (NIP-50) support to `Filter::match_event` and databases, add NIP-31 and NIP-70 support,
+add search capability (NIP50) support to `Filter::match_event` and databases, add NIP31 and NIP70 support,
 add option to autoconnect relay on `Client::add_relay` method call (currently disabled by default), rework the `get_events_of` methods behaviour for 
 better consistency (`RelayPool::get_events_of` and `Relay::get_events_of` get events only from remote relay/s while
 `Client::get_events_of` allow to choose the source of events: `database`, `relays` or `both`), bugs fix and more!
@@ -240,10 +240,10 @@ better consistency (`RelayPool::get_events_of` and `Relay::get_events_of` get ev
 * Bump toolchain channel to `1.80.1` ([Yuki Kishimoto])
 * nostr: deprecate `Event::author_ref` and `Event::iter_tags` ([Yuki Kishimoto])
 * nostr: calculate `EventId` in `EventBuilder::to_unsigned_event_with_supplier` ([Yuki Kishimoto])
-* nostr: ensure that NIP-59 rumor has `EventId` ([Yuki Kishimoto])
+* nostr: ensure that NIP59 rumor has `EventId` ([Yuki Kishimoto])
 * nostr: update `PartialEvent` methods ([Yuki Kishimoto])
 * nostr: change `EventBuilder::award_badge` fingerprint ([Yuki Kishimoto])
-* nostr: add NIP-50 support to `Filter::match_event` method ([Yuki Kishimoto])
+* nostr: add NIP50 support to `Filter::match_event` method ([Yuki Kishimoto])
 * nostr: remove `Arc<T>` from `OnceCell<T>` in `Event` and `Tag` ([Yuki Kishimoto])
 * nostr: move `sig` field from `PartialEvent` to `MissingPartialEvent` ([Yuki Kishimoto])
 * nostr: better `Debug` trait impl for `EventId`, `PublicKey` and `Tag` ([Yuki Kishimoto])
@@ -269,8 +269,8 @@ better consistency (`RelayPool::get_events_of` and `Relay::get_events_of` get ev
 
 ### Added
 
-* nostr: add NIP-31 support ([Yuki Kishimoto])
-* nostr: add NIP-70 support ([Yuki Kishimoto])
+* nostr: add NIP31 support ([Yuki Kishimoto])
+* nostr: add NIP70 support ([Yuki Kishimoto])
 * nostr: add `EventId::LEN` const ([Yuki Kishimoto])
 * nostr: add `UnsignedEvent::ensure_id` method ([Yuki Kishimoto])
 * nostr: add missing `payload` arg to `EventBuilder::job_result` ([Yuki Kishimoto])
@@ -300,8 +300,8 @@ better consistency (`RelayPool::get_events_of` and `Relay::get_events_of` get ev
 ### Removed
 
 * Remove deprecated methods/functions ([Yuki Kishimoto])
-* nostr: remove support for `nrelay` NIP-19 entity ([Yuki Kishimoto])
-* nostr: remove support for NIP-44 v1 ([Yuki Kishimoto])
+* nostr: remove support for `nrelay` NIP19 entity ([Yuki Kishimoto])
+* nostr: remove support for NIP44 v1 ([Yuki Kishimoto])
 * nostr: remove `EventBuilder::encrypted_direct_msg` ([Yuki Kishimoto])
 * database: remove `TempEvent` ([Yuki Kishimoto])
 * database: remove `NostrDatabase::event_ids_by_filters` ([Yuki Kishimoto])
@@ -313,8 +313,8 @@ better consistency (`RelayPool::get_events_of` and `Relay::get_events_of` get ev
 ### Summary
 
 Better outputs for send/batch/reconcile methods (ex. you can now easily know where a message/event is successfully published and where/why failed),
-allow to change NIP-42 option after client initialization, increase max stack size for JS bindings to prevent "memory access out of bounds" error,
-expose more objects/methods for JS bindings, dry run option for negentropy reconciliation, get NIP-46 relay from NIP-05 profile, 
+allow to change NIP42 option after client initialization, increase max stack size for JS bindings to prevent "memory access out of bounds" error,
+expose more objects/methods for JS bindings, dry run option for negentropy reconciliation, get NIP46 relay from NIP05 profile, 
 bug fixes (NIP-42 auth not works correctly, NIP-46 "ACK" message not handled, ...) and more!
 
 ### Changed

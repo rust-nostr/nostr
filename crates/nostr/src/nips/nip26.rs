@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP-26: Delegated Event Signing
+//! NIP26: Delegated Event Signing
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/26.md>
 
@@ -220,7 +220,7 @@ impl fmt::Display for DelegationToken {
     }
 }
 
-/// Delegation tag, as defined in NIP-26
+/// Delegation tag, as defined in NIP26
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DelegationTag {
     delegator_pubkey: PublicKey,

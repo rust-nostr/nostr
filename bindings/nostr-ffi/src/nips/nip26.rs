@@ -10,7 +10,7 @@ use nostr::secp256k1::schnorr::Signature;
 use crate::error::Result;
 use crate::{Keys, Kind, PublicKey};
 
-/// Create a NIP-26 delegation tag (including the signature).
+/// Create a NIP26 delegation tag (including the signature).
 /// See also validate_delegation_tag().
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/26.md>
@@ -25,7 +25,7 @@ pub fn create_delegation_tag(
     Ok(tag.to_string())
 }
 
-/// Validate a NIP-26 delegation tag, check signature and conditions.
+/// Validate a NIP26 delegation tag, check signature and conditions.
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/26.md>
 #[uniffi::export]

@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP-98
+//! NIP98
 //!
 //! This NIP defines an ephemeral event used to authorize requests to HTTP servers using nostr events.
 //! This is useful for HTTP services which are build for Nostr and deal with Nostr user accounts.
@@ -36,7 +36,7 @@ impl fmt::Display for RequiredTags {
     }
 }
 
-/// NIP-98 error
+/// NIP98 error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Tag missing when parsing

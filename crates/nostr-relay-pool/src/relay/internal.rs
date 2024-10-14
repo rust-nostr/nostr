@@ -1215,7 +1215,7 @@ impl InternalRelay {
     }
 
     pub async fn auth(&self, event: Event, opts: RelaySendOptions) -> Result<(), Error> {
-        // Check if NIP-42 event
+        // Check if NIP42 event
         if event.kind != Kind::Authentication {
             return Err(Error::UnexpectedKind {
                 expected: Kind::Authentication,
@@ -2276,7 +2276,7 @@ impl InternalRelay {
     pub async fn support_negentropy(&self) -> Result<bool, Error> {
         self.support_negentropy
             .get_or_try_init(|| async {
-                // Check if NIP-77 is marked as supported in relay document
+                // Check if NIP77 is marked as supported in relay document
                 #[cfg(feature = "nip11")]
                 {
                     let document = self.document().await;

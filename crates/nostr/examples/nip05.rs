@@ -10,15 +10,15 @@ async fn main() -> Result<()> {
         PublicKey::parse("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a")?;
 
     if nip05::verify(&public_key, "0xtr@oxtr.dev", None).await? {
-        println!("NIP-05 verified");
+        println!("NIP05 verified");
     } else {
-        println!("NIP-05 NOT verified");
+        println!("NIP05 NOT verified");
     }
 
     let profile: Nip05Profile = nip05::profile("_@fiatjaf.com", None).await?;
     println!("Public key: {}", profile.public_key);
     println!("Relays: {:?}", profile.relays);
-    println!("Relays (NIP-46): {:?}", profile.nip46);
+    println!("Relays (NIP46): {:?}", profile.nip46);
 
     Ok(())
 }

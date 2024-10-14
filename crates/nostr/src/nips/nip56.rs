@@ -2,14 +2,14 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP-56
+//! NIP56
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/56.md>
 
 use core::fmt;
 use core::str::FromStr;
 
-/// NIP-56 error
+/// NIP56 error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Unknown [`Report`]

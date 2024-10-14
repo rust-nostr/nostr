@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP-39
+//! NIP39
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/39.md>
 
@@ -13,7 +13,7 @@ use core::fmt;
 
 use crate::{Alphabet, SingleLetterTag, TagKind, TagStandard};
 
-/// NIP-56 error
+/// NIP56 error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Invalid identity

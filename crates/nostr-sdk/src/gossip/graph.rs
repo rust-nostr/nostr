@@ -37,7 +37,7 @@ type PublicKeyMap = HashMap<PublicKey, RelayListMetadata>;
 
 #[derive(Debug, Clone)]
 pub struct GossipGraph {
-    /// Keep track of seen public keys and of their NIP-65
+    /// Keep track of seen public keys and of their NIP65
     public_keys: Arc<RwLock<PublicKeyMap>>,
 }
 

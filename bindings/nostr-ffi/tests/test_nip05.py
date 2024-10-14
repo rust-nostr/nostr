@@ -8,7 +8,7 @@ async def main():
     if await verify_nip05(public_key, nip_05, proxy):
         print(f"     '{nip_05}' verified, for {public_key.to_bech32()}")
     else:
-        print(f"     Unable to verify NIP-05, for {public_key.to_bech32()}")
+        print(f"     Unable to verify NIP05, for {public_key.to_bech32()}")
 
 if __name__ == '__main__':
     asyncio.run(main())

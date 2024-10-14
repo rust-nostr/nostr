@@ -10,7 +10,7 @@ use wasm_bindgen::prelude::*;
 use crate::error::{into_err, Result};
 use crate::key::JsPublicKey;
 
-/// NIP-05 profile
+/// NIP05 profile
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/05.md>
 #[wasm_bindgen(js_name = Nip05Profile)]
@@ -38,7 +38,7 @@ impl JsNip05Profile {
         self.inner.relays.iter().map(|u| u.to_string()).collect()
     }
 
-    /// NIP-46 relays
+    /// NIP46 relays
     #[wasm_bindgen]
     pub fn nip46(&self) -> Vec<String> {
         self.inner.nip46.iter().map(|u| u.to_string()).collect()
@@ -55,7 +55,7 @@ pub async fn verify_nip05(public_key: &JsPublicKey, nip05: &str) -> Result<bool>
         .map_err(into_err)
 }
 
-/// Get NIP-05 profile
+/// Get NIP05 profile
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/05.md>
 #[wasm_bindgen(js_name = getNip05Profile)]

@@ -14,7 +14,7 @@ use crate::error::Result;
 use crate::helper::unwrap_or_clone_arc;
 use crate::{NostrError, PublicKey, UnsignedEvent};
 
-/// Request (NIP-46)
+/// Request (NIP46)
 #[derive(Enum)]
 pub enum Nip46Request {
     /// Connect

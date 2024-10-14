@@ -14,7 +14,7 @@ use crate::event::JsKind;
 use crate::key::{JsKeys, JsPublicKey};
 use crate::types::JsTimestamp;
 
-/// Create a NIP-26 delegation tag (including the signature).
+/// Create a NIP26 delegation tag (including the signature).
 /// See also validate_delegation_tag().
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/26.md>
@@ -29,7 +29,7 @@ pub fn create_delegation_tag(
     Ok(tag.to_string())
 }
 
-/// Validate a NIP-26 delegation tag, check signature and conditions.
+/// Validate a NIP26 delegation tag, check signature and conditions.
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/26.md>
 #[wasm_bindgen(js_name = validateDelegationTag)]
