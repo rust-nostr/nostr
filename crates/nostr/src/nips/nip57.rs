@@ -32,7 +32,7 @@ use crate::types::time::TimeSupplier;
 use crate::SECP256K1;
 use crate::{
     event, util, Event, EventBuilder, EventId, JsonUtil, Keys, Kind, PublicKey, SecretKey, Tag,
-    TagStandard, Timestamp, UncheckedUrl,
+    TagStandard, Timestamp, Url,
 };
 
 type Aes256CbcEnc = Encryptor<Aes256>;
@@ -142,7 +142,7 @@ pub struct ZapRequestData {
     /// Public key of the recipient
     pub public_key: PublicKey,
     /// List of relays the recipient's wallet should publish its zap receipt to
-    pub relays: Vec<UncheckedUrl>,
+    pub relays: Vec<Url>,
     /// Message
     pub message: String,
     /// Amount in `millisats` the sender intends to pay
@@ -159,7 +159,7 @@ impl ZapRequestData {
     /// New Zap Request Data
     pub fn new<I>(public_key: PublicKey, relays: I) -> Self
     where
-        I: IntoIterator<Item = UncheckedUrl>,
+        I: IntoIterator<Item = Url>,
     {
         Self {
             public_key,
@@ -437,7 +437,7 @@ mod tests {
         let alice_keys = Keys::generate();
         let bob_keys = Keys::generate();
 
-        let relays = [UncheckedUrl::from("wss://relay.damus.io")];
+        let relays = [Url::parse("wss://relay.damus.io").unwrap()];
         let msg = "Private Zap message!";
         let data = ZapRequestData::new(bob_keys.public_key(), relays).message(msg);
         let private_zap = private_zap_request(data, &alice_keys).unwrap();

@@ -13,7 +13,7 @@ fn main() -> Result<()> {
 
     let public_key =
         PublicKey::from_bech32("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")?;
-    let relays = [UncheckedUrl::from("wss://relay.damus.io")];
+    let relays = [Url::parse("wss://relay.damus.io").unwrap()];
     let msg = "Zap!";
     let data = ZapRequestData::new(public_key, relays).message(msg);
 

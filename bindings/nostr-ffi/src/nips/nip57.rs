@@ -6,6 +6,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::nips::nip57;
+use nostr::Url;
 use uniffi::{Enum, Object};
 
 use crate::error::Result;
@@ -57,7 +58,10 @@ impl ZapRequestData {
     #[uniffi::constructor]
     pub fn new(public_key: &PublicKey, relays: Vec<String>) -> Self {
         Self {
-            inner: nip57::ZapRequestData::new(**public_key, relays.into_iter().map(|r| r.into())),
+            inner: nip57::ZapRequestData::new(
+                **public_key,
+                relays.into_iter().filter_map(|u| Url::parse(&u).ok()),
+            ),
         }
     }
 

@@ -149,8 +149,8 @@ impl Client {
                 let mut data = ZapRequestData::new(
                     public_key,
                     [
-                        UncheckedUrl::from("wss://nostr.mutinywallet.com"),
-                        UncheckedUrl::from("wss://relay.mutinywallet.com"),
+                        Url::parse("wss://nostr.mutinywallet.com").expect("Url must be valid"),
+                        Url::parse("wss://relay.mutinywallet.com").expect("Url must be valid"),
                     ],
                 )
                 .amount(msats)

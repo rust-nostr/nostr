@@ -118,7 +118,7 @@ pub enum TagStandard {
     Description(String),
     Bolt11(String),
     Preimage(String),
-    Relays(Vec<UncheckedUrl>),
+    Relays(Vec<Url>),
     Amount {
         millisats: u64,
         bolt11: Option<String>,
@@ -259,27 +259,16 @@ impl TagStandard {
             TagKind::Delegation => return parse_delegation_tag(tag),
             TagKind::Encrypted => return Ok(Self::Encrypted),
             TagKind::Clone => {
-                let mut urls: Vec<Url> = Vec::with_capacity(tag.len().saturating_sub(1));
-                for url in tag.iter().skip(1) {
-                    urls.push(Url::parse(url.as_ref())?);
-                }
+                let urls: Vec<Url> = extract_urls(tag)?;
                 return Ok(Self::GitClone(urls));
             }
             TagKind::Protected => return Ok(Self::Protected),
             TagKind::Relays => {
-                // Relays vec is of unknown length so checked here based on kind
-                let urls = tag
-                    .iter()
-                    .skip(1)
-                    .map(|u| UncheckedUrl::from(u.as_ref()))
-                    .collect::<Vec<UncheckedUrl>>();
+                let urls: Vec<Url> = extract_urls(tag)?;
                 return Ok(Self::Relays(urls));
             }
             TagKind::Web => {
-                let mut urls: Vec<Url> = Vec::with_capacity(tag.len().saturating_sub(1));
-                for url in tag.iter().skip(1) {
-                    urls.push(Url::parse(url.as_ref())?);
-                }
+                let urls: Vec<Url> = extract_urls(tag)?;
                 return Ok(Self::Web(urls));
             }
             _ => (), // Covered later
@@ -1014,4 +1003,16 @@ where
         Some(t) => (!t.is_empty()).then_some(t),
         None => None,
     }
+}
+
+fn extract_urls<S>(tag: &[S]) -> Result<Vec<Url>, Error>
+where
+    S: AsRef<str>,
+{
+    // Skip index 0 because is the tag kind
+    let mut urls: Vec<Url> = Vec::with_capacity(tag.len().saturating_sub(1));
+    for url in tag.iter().skip(1) {
+        urls.push(Url::parse(url.as_ref())?);
+    }
+    Ok(urls)
 }

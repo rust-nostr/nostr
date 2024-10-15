@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use nostr::nips::nip53;
 use nostr::secp256k1::schnorr::Signature;
-use nostr::types::url::UncheckedUrl;
+use nostr::types::url::{UncheckedUrl, Url};
 use uniffi::{Enum, Record};
 
 use crate::{ImageDimensions, PublicKey, Timestamp};
@@ -118,7 +118,7 @@ pub struct LiveEvent {
     pub status: Option<LiveEventStatus>,
     pub current_participants: Option<u64>,
     pub total_participants: Option<u64>,
-    pub relays: Vec<String>,
+    pub relays: Vec<String>, // TODO: create and use `Url` struct instead
     pub host: Option<LiveEventHost>,
     pub speakers: Vec<Person>,
     pub participants: Vec<Person>,
@@ -141,7 +141,11 @@ impl From<LiveEvent> for nip53::LiveEvent {
             status: value.status.map(|s| s.into()),
             current_participants: value.current_participants,
             total_participants: value.total_participants,
-            relays: value.relays.into_iter().map(UncheckedUrl::from).collect(),
+            relays: value
+                .relays
+                .into_iter()
+                .filter_map(|u| Url::parse(&u).ok())
+                .collect(),
             host: value.host.map(|h| h.into()),
             speakers: value
                 .speakers

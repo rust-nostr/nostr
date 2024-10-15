@@ -4,8 +4,7 @@
 
 use std::ops::Deref;
 
-use nostr::nips::nip57::{self, ZapRequestData, ZapType};
-use nostr::UncheckedUrl;
+use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use super::nip01::JsCoordinate;
@@ -77,7 +76,10 @@ impl JsZapRequestData {
         Self {
             inner: ZapRequestData {
                 public_key: **public_key,
-                relays: relays.into_iter().map(|r| UncheckedUrl::from(&r)).collect(),
+                relays: relays
+                    .into_iter()
+                    .filter_map(|r| Url::parse(&r).ok())
+                    .collect(),
                 message: message.to_string(),
                 amount: amount.map(|n| n as u64),
                 lnurl,

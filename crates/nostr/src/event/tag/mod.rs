@@ -1310,15 +1310,13 @@ mod tests {
                 "relays",
                 "wss://relay.damus.io/",
                 "wss://nostr-relay.wlvs.space/",
-                "wss://nostr.fmt.wiz.biz",
-                "wss//nostr.fmt.wiz.biz"
+                "wss://nostr.fmt.wiz.biz/"
             ])
             .unwrap(),
             Tag::from_standardized_without_cell(TagStandard::Relays(vec![
-                UncheckedUrl::from("wss://relay.damus.io/"),
-                UncheckedUrl::from("wss://nostr-relay.wlvs.space/"),
-                UncheckedUrl::from("wss://nostr.fmt.wiz.biz"),
-                UncheckedUrl::from("wss//nostr.fmt.wiz.biz")
+                Url::parse("wss://relay.damus.io/").unwrap(),
+                Url::parse("wss://nostr-relay.wlvs.space/").unwrap(),
+                Url::parse("wss://nostr.fmt.wiz.biz").unwrap(),
             ]))
         );
 

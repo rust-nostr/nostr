@@ -15,7 +15,7 @@ use bitcoin::secp256k1::schnorr::Signature;
 
 use crate::{
     Alphabet, ImageDimensions, PublicKey, SingleLetterTag, Tag, TagKind, TagStandard, Timestamp,
-    UncheckedUrl,
+    UncheckedUrl, Url,
 };
 
 /// NIP53 Error
@@ -148,7 +148,7 @@ pub struct LiveEvent {
     /// Total participants
     pub total_participants: Option<u64>,
     /// Relays
-    pub relays: Vec<UncheckedUrl>,
+    pub relays: Vec<Url>,
     /// Host
     pub host: Option<LiveEventHost>,
     /// Speakers

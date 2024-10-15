@@ -550,9 +550,13 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::Description { desc } => Ok(Self::Description(desc)),
             TagStandard::Bolt11 { bolt11 } => Ok(Self::Bolt11(bolt11)),
             TagStandard::Preimage { preimage } => Ok(Self::Preimage(preimage)),
-            TagStandard::Relays { urls } => Ok(Self::Relays(
-                urls.into_iter().map(UncheckedUrl::from).collect(),
-            )),
+            TagStandard::Relays { urls } => {
+                let mut parsed_urls: Vec<Url> = Vec::with_capacity(urls.len());
+                for url in urls.into_iter() {
+                    parsed_urls.push(Url::parse(&url)?);
+                }
+                Ok(Self::Relays(parsed_urls))
+            }
             TagStandard::Amount { millisats, bolt11 } => Ok(Self::Amount { millisats, bolt11 }),
             TagStandard::Lnurl { lnurl } => Ok(Self::Lnurl(lnurl)),
             TagStandard::Name { name } => Ok(Self::Name(name)),
