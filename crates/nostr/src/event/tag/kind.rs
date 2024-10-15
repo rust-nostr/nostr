@@ -13,101 +13,105 @@ use crate::{Alphabet, SingleLetterTag};
 /// Tag kind
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TagKind<'a> {
-    /// Single letter
-    SingleLetter(SingleLetterTag),
-    /// Protected event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
-    Protected,
+    /// AES 256 GCM
+    Aes256Gcm,
     /// Human-readable plaintext summary of what that event is about
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
     Alt,
-    /// Relay
-    Relay,
-    /// Nonce
-    Nonce,
-    /// Delegation
-    Delegation,
-    /// Content warning
-    ContentWarning,
-    /// Expiration
-    Expiration,
-    /// Subject
-    Subject,
-    /// Auth challenge
-    Challenge,
-    /// Title (NIP23)
-    Title,
-    /// Image (NIP23)
-    Image,
-    /// Thumbnail
-    Thumb,
-    /// Summary (NIP23)
-    Summary,
-    /// PublishedAt (NIP23)
-    PublishedAt,
-    /// Description (NIP57)
-    Description,
-    /// Bolt11 Invoice (NIP57)
-    Bolt11,
-    /// Preimage (NIP57)
-    Preimage,
-    /// Relays (NIP57)
-    Relays,
-    /// Amount (NIP57)
+    /// Amount
     Amount,
-    /// Lnurl (NIP57)
-    Lnurl,
-    /// Name tag
-    Name,
-    /// Url
-    Url,
-    /// AES 256 GCM
-    Aes256Gcm,
-    /// Size of file in bytes
-    Size,
-    /// Size of file in pixels
-    Dim,
-    /// Magnet
-    Magnet,
+    /// Anonymous
+    Anon,
     /// Blurhash
     Blurhash,
-    /// Streaming
-    Streaming,
-    /// Recording
-    Recording,
-    /// Starts
-    Starts,
-    /// Ends
-    Ends,
-    /// Status
-    Status,
-    /// Current participants
-    CurrentParticipants,
-    /// Total participants
-    TotalParticipants,
-    /// HTTP Method Request
-    Method,
-    /// Payload HASH
-    Payload,
-    /// Anon
-    Anon,
-    /// Proxy
-    Proxy,
-    /// Emoji
-    Emoji,
-    /// Encrypted
-    Encrypted,
-    /// Request (NIP90)
-    Request,
-    /// Word
-    Word,
+    /// Bolt11 invoice
+    Bolt11,
+    /// Challenge
+    Challenge,
     /// Client
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/89.md>
     Client,
-    /// Custom tag kind
+    /// Content warning
+    ContentWarning,
+    /// Current participants
+    CurrentParticipants,
+    /// Delegation
+    Delegation,
+    /// Description
+    Description,
+    /// Size of file in pixels
+    Dim,
+    /// Emoji
+    Emoji,
+    /// Encrypted
+    Encrypted,
+    /// Ends
+    Ends,
+    /// Expiration
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
+    Expiration,
+    /// Image
+    Image,
+    /// Lnurl
+    Lnurl,
+    /// Magnet
+    Magnet,
+    /// HTTP Method Request
+    Method,
+    /// Name
+    Name,
+    /// Nonce
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
+    Nonce,
+    /// Payload
+    Payload,
+    /// Preimage
+    Preimage,
+    /// Protected event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
+    Protected,
+    /// Proxy
+    Proxy,
+    /// PublishedAt
+    PublishedAt,
+    /// Recording
+    Recording,
+    /// Relay
+    Relay,
+    /// Relays
+    Relays,
+    /// Request
+    Request,
+    /// Size of file in bytes
+    Size,
+    /// Starts
+    Starts,
+    /// Status
+    Status,
+    /// Streaming
+    Streaming,
+    /// Subject
+    Subject,
+    /// Summary
+    Summary,
+    /// Title
+    Title,
+    /// Thumbnail
+    Thumb,
+    /// Total participants
+    TotalParticipants,
+    /// Url
+    Url,
+    /// Word
+    Word,
+    /// Single letter
+    SingleLetter(SingleLetterTag),
+    /// Custom
     Custom(Cow<'a, str>),
 }
 
@@ -167,50 +171,50 @@ impl<'a> TagKind<'a> {
 impl<'a> fmt::Display for TagKind<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::SingleLetter(s) => write!(f, "{s}"),
-            Self::Protected => write!(f, "-"),
-            Self::Alt => write!(f, "alt"),
-            Self::Relay => write!(f, "relay"),
-            Self::Nonce => write!(f, "nonce"),
-            Self::Delegation => write!(f, "delegation"),
-            Self::ContentWarning => write!(f, "content-warning"),
-            Self::Expiration => write!(f, "expiration"),
-            Self::Subject => write!(f, "subject"),
-            Self::Challenge => write!(f, "challenge"),
-            Self::Title => write!(f, "title"),
-            Self::Image => write!(f, "image"),
-            Self::Thumb => write!(f, "thumb"),
-            Self::Summary => write!(f, "summary"),
-            Self::PublishedAt => write!(f, "published_at"),
-            Self::Description => write!(f, "description"),
-            Self::Bolt11 => write!(f, "bolt11"),
-            Self::Preimage => write!(f, "preimage"),
-            Self::Relays => write!(f, "relays"),
-            Self::Amount => write!(f, "amount"),
-            Self::Lnurl => write!(f, "lnurl"),
-            Self::Name => write!(f, "name"),
-            Self::Url => write!(f, "url"),
             Self::Aes256Gcm => write!(f, "aes-256-gcm"),
-            Self::Size => write!(f, "size"),
-            Self::Dim => write!(f, "dim"),
-            Self::Magnet => write!(f, "magnet"),
-            Self::Blurhash => write!(f, "blurhash"),
-            Self::Streaming => write!(f, "streaming"),
-            Self::Recording => write!(f, "recording"),
-            Self::Starts => write!(f, "starts"),
-            Self::Ends => write!(f, "ends"),
-            Self::Status => write!(f, "status"),
-            Self::CurrentParticipants => write!(f, "current_participants"),
-            Self::TotalParticipants => write!(f, "total_participants"),
-            Self::Method => write!(f, "method"),
-            Self::Payload => write!(f, "payload"),
+            Self::Alt => write!(f, "alt"),
+            Self::Amount => write!(f, "amount"),
             Self::Anon => write!(f, "anon"),
-            Self::Proxy => write!(f, "proxy"),
+            Self::Blurhash => write!(f, "blurhash"),
+            Self::Bolt11 => write!(f, "bolt11"),
+            Self::Challenge => write!(f, "challenge"),
+            Self::Client => write!(f, "client"),
+            Self::ContentWarning => write!(f, "content-warning"),
+            Self::CurrentParticipants => write!(f, "current_participants"),
+            Self::Delegation => write!(f, "delegation"),
+            Self::Description => write!(f, "description"),
+            Self::Dim => write!(f, "dim"),
             Self::Emoji => write!(f, "emoji"),
             Self::Encrypted => write!(f, "encrypted"),
+            Self::Ends => write!(f, "ends"),
+            Self::Expiration => write!(f, "expiration"),
+            Self::Image => write!(f, "image"),
+            Self::Lnurl => write!(f, "lnurl"),
+            Self::Magnet => write!(f, "magnet"),
+            Self::Method => write!(f, "method"),
+            Self::Name => write!(f, "name"),
+            Self::Nonce => write!(f, "nonce"),
+            Self::Payload => write!(f, "payload"),
+            Self::Preimage => write!(f, "preimage"),
+            Self::Protected => write!(f, "-"),
+            Self::Proxy => write!(f, "proxy"),
+            Self::PublishedAt => write!(f, "published_at"),
+            Self::Recording => write!(f, "recording"),
+            Self::Relay => write!(f, "relay"),
+            Self::Relays => write!(f, "relays"),
             Self::Request => write!(f, "request"),
+            Self::Size => write!(f, "size"),
+            Self::Starts => write!(f, "starts"),
+            Self::Status => write!(f, "status"),
+            Self::Streaming => write!(f, "streaming"),
+            Self::Subject => write!(f, "subject"),
+            Self::Summary => write!(f, "summary"),
+            Self::Title => write!(f, "title"),
+            Self::Thumb => write!(f, "thumb"),
+            Self::TotalParticipants => write!(f, "total_participants"),
+            Self::Url => write!(f, "url"),
             Self::Word => write!(f, "word"),
-            Self::Client => write!(f, "client"),
+            Self::SingleLetter(s) => write!(f, "{s}"),
             Self::Custom(tag) => write!(f, "{tag}"),
         }
     }
@@ -220,48 +224,48 @@ impl<'a> From<&'a str> for TagKind<'a> {
     fn from(kind: &'a str) -> Self {
         match kind {
             "-" => Self::Protected,
-            "alt" => Self::Alt,
-            "relay" => Self::Relay,
-            "nonce" => Self::Nonce,
-            "delegation" => Self::Delegation,
-            "content-warning" => Self::ContentWarning,
-            "expiration" => Self::Expiration,
-            "subject" => Self::Subject,
-            "challenge" => Self::Challenge,
-            "title" => Self::Title,
-            "image" => Self::Image,
-            "thumb" => Self::Thumb,
-            "summary" => Self::Summary,
-            "published_at" => Self::PublishedAt,
-            "description" => Self::Description,
-            "bolt11" => Self::Bolt11,
-            "preimage" => Self::Preimage,
-            "relays" => Self::Relays,
-            "amount" => Self::Amount,
-            "lnurl" => Self::Lnurl,
-            "name" => Self::Name,
-            "url" => Self::Url,
             "aes-256-gcm" => Self::Aes256Gcm,
-            "size" => Self::Size,
-            "dim" => Self::Dim,
-            "magnet" => Self::Magnet,
-            "blurhash" => Self::Blurhash,
-            "streaming" => Self::Streaming,
-            "recording" => Self::Recording,
-            "starts" => Self::Starts,
-            "ends" => Self::Ends,
-            "status" => Self::Status,
-            "current_participants" => Self::CurrentParticipants,
-            "total_participants" => Self::TotalParticipants,
-            "method" => Self::Method,
-            "payload" => Self::Payload,
+            "alt" => Self::Alt,
+            "amount" => Self::Amount,
             "anon" => Self::Anon,
-            "proxy" => Self::Proxy,
+            "blurhash" => Self::Blurhash,
+            "bolt11" => Self::Bolt11,
+            "challenge" => Self::Challenge,
+            "client" => Self::Client,
+            "content-warning" => Self::ContentWarning,
+            "current_participants" => Self::CurrentParticipants,
+            "delegation" => Self::Delegation,
+            "description" => Self::Description,
+            "dim" => Self::Dim,
             "emoji" => Self::Emoji,
             "encrypted" => Self::Encrypted,
+            "ends" => Self::Ends,
+            "expiration" => Self::Expiration,
+            "image" => Self::Image,
+            "lnurl" => Self::Lnurl,
+            "magnet" => Self::Magnet,
+            "method" => Self::Method,
+            "name" => Self::Name,
+            "nonce" => Self::Nonce,
+            "payload" => Self::Payload,
+            "preimage" => Self::Preimage,
+            "proxy" => Self::Proxy,
+            "published_at" => Self::PublishedAt,
+            "recording" => Self::Recording,
+            "relay" => Self::Relay,
+            "relays" => Self::Relays,
             "request" => Self::Request,
+            "size" => Self::Size,
+            "starts" => Self::Starts,
+            "status" => Self::Status,
+            "streaming" => Self::Streaming,
+            "subject" => Self::Subject,
+            "summary" => Self::Summary,
+            "title" => Self::Title,
+            "thumb" => Self::Thumb,
+            "total_participants" => Self::TotalParticipants,
+            "url" => Self::Url,
             "word" => Self::Word,
-            "client" => Self::Client,
             k => match SingleLetterTag::from_str(k) {
                 Ok(s) => Self::SingleLetter(s),
                 Err(..) => Self::Custom(Cow::Borrowed(k)),
