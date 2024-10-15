@@ -33,6 +33,8 @@ pub enum TagKind<'a> {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/89.md>
     Client,
+    /// Clone
+    Clone,
     /// Content warning
     ContentWarning,
     /// Current participants
@@ -181,6 +183,7 @@ impl<'a> fmt::Display for TagKind<'a> {
             Self::Bolt11 => write!(f, "bolt11"),
             Self::Challenge => write!(f, "challenge"),
             Self::Client => write!(f, "client"),
+            Self::Clone => write!(f, "clone"),
             Self::ContentWarning => write!(f, "content-warning"),
             Self::CurrentParticipants => write!(f, "current_participants"),
             Self::Delegation => write!(f, "delegation"),
@@ -235,6 +238,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "bolt11" => Self::Bolt11,
             "challenge" => Self::Challenge,
             "client" => Self::Client,
+            "clone" => Self::Clone,
             "content-warning" => Self::ContentWarning,
             "current_participants" => Self::CurrentParticipants,
             "delegation" => Self::Delegation,
@@ -301,6 +305,9 @@ mod tests {
 
     #[test]
     fn test_from_to_tag_kind() {
+        assert_eq!(TagKind::from("clone"), TagKind::Clone);
+        assert_eq!(TagKind::Clone.to_string(), "clone");
+
         assert_eq!(TagKind::from("web"), TagKind::Web);
         assert_eq!(TagKind::Web.to_string(), "web");
     }

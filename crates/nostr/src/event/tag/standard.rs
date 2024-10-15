@@ -47,6 +47,10 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
     EventReport(EventId, Report),
+    /// Git clone ([`TagKind::Clone`] tag)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitClone(Vec<Url>),
     /// Public Key
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
@@ -243,6 +247,13 @@ impl TagStandard {
             }
             TagKind::Delegation => return parse_delegation_tag(tag),
             TagKind::Encrypted => return Ok(Self::Encrypted),
+            TagKind::Clone => {
+                let mut urls: Vec<Url> = Vec::with_capacity(tag.len().saturating_sub(1));
+                for url in tag.iter().skip(1) {
+                    urls.push(Url::parse(url.as_ref())?);
+                }
+                return Ok(Self::GitClone(urls));
+            }
             TagKind::Protected => return Ok(Self::Protected),
             TagKind::Relays => {
                 // Relays vec is of unknown length so checked here based on kind
@@ -465,6 +476,7 @@ impl TagStandard {
                 character: Alphabet::E,
                 uppercase: false,
             }),
+            Self::GitClone(..) => TagKind::Clone,
             Self::PublicKey { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::P,
                 uppercase: *uppercase,
@@ -621,6 +633,12 @@ impl From<TagStandard> for Vec<String> {
             }
             TagStandard::EventReport(id, report) => {
                 vec![tag_kind, id.to_hex(), report.to_string()]
+            }
+            TagStandard::GitClone(urls) => {
+                let mut tag: Vec<String> = Vec::with_capacity(1 + urls.len());
+                tag.push(tag_kind);
+                tag.extend(urls.into_iter().map(|url| url.to_string()));
+                tag
             }
             TagStandard::PublicKeyReport(pk, report) => {
                 vec![tag_kind, pk.to_string(), report.to_string()]

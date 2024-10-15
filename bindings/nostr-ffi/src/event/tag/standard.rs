@@ -37,6 +37,9 @@ pub enum TagStandard {
         /// Should be the public key of the author of the referenced event
         public_key: Option<Arc<PublicKey>>,
     },
+    GitClone {
+        urls: Vec<String>,
+    },
     PublicKeyTag {
         public_key: Arc<PublicKey>,
         relay_url: Option<String>,
@@ -260,6 +263,9 @@ impl From<tag::TagStandard> for TagStandard {
                 marker: marker.map(|m| m.into()),
                 public_key: public_key.map(|p| Arc::new(p.into())),
             },
+            tag::TagStandard::GitClone(urls) => Self::GitClone {
+                urls: urls.into_iter().map(|r| r.to_string()).collect(),
+            },
             tag::TagStandard::PublicKey {
                 public_key,
                 relay_url,
@@ -441,6 +447,13 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 marker: marker.map(nip10::Marker::from),
                 public_key: public_key.map(|p| **p),
             }),
+            TagStandard::GitClone { urls } => {
+                let mut parsed_urls: Vec<Url> = Vec::with_capacity(urls.len());
+                for url in urls.into_iter() {
+                    parsed_urls.push(Url::parse(&url)?);
+                }
+                Ok(Self::GitClone(parsed_urls))
+            }
             TagStandard::PublicKeyTag {
                 public_key,
                 relay_url,

@@ -916,6 +916,15 @@ mod tests {
         );
 
         assert_eq!(
+            vec!["clone", "https://github.com/rust-nostr/nostr.git",],
+            Tag::from_standardized_without_cell(TagStandard::GitClone(vec![Url::parse(
+                "https://github.com/rust-nostr/nostr.git"
+            )
+            .unwrap(),]))
+            .to_vec()
+        );
+
+        assert_eq!(
             vec![
                 "web",
                 "https://rust-nostr.org/",
@@ -1355,6 +1364,14 @@ mod tests {
                 "IT-MI".to_string(),
                 "ISO-3166-2".to_string()
             ]))
+        );
+
+        assert_eq!(
+            Tag::parse(&["clone", "https://github.com/rust-nostr/nostr.git",]).unwrap(),
+            Tag::from_standardized_without_cell(TagStandard::GitClone(vec![Url::parse(
+                "https://github.com/rust-nostr/nostr.git"
+            )
+            .unwrap(),]))
         );
 
         assert_eq!(

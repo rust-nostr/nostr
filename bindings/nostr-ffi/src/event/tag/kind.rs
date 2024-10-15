@@ -23,6 +23,11 @@ pub enum TagKind {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
     Alt,
+    /// Client
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/89.md>
+    Client,
+    Clone,
     /// Relay
     RelayUrl,
     /// Nonce
@@ -97,10 +102,6 @@ pub enum TagKind {
     /// Encrypted
     Encrypted,
     Request,
-    /// Client
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/89.md>
-    Client,
     Web,
     Word,
     Unknown {
@@ -116,6 +117,8 @@ impl<'a> From<tag::TagKind<'a>> for TagKind {
             },
             tag::TagKind::Protected => Self::Protected,
             tag::TagKind::Alt => Self::Alt,
+            tag::TagKind::Client => Self::Client,
+            tag::TagKind::Clone => Self::Clone,
             tag::TagKind::Relay => Self::RelayUrl,
             tag::TagKind::Nonce => Self::Nonce,
             tag::TagKind::Delegation => Self::Delegation,
@@ -155,7 +158,6 @@ impl<'a> From<tag::TagKind<'a>> for TagKind {
             tag::TagKind::Emoji => Self::Emoji,
             tag::TagKind::Encrypted => Self::Encrypted,
             tag::TagKind::Request => Self::Request,
-            tag::TagKind::Client => Self::Client,
             tag::TagKind::Web => Self::Web,
             tag::TagKind::Word => Self::Word,
             tag::TagKind::Custom(unknown) => Self::Unknown {
@@ -171,6 +173,8 @@ impl<'a> From<TagKind> for tag::TagKind<'a> {
             TagKind::SingleLetter { single_letter } => Self::SingleLetter(**single_letter),
             TagKind::Protected => Self::Protected,
             TagKind::Alt => Self::Alt,
+            TagKind::Client => Self::Client,
+            TagKind::Clone => Self::Clone,
             TagKind::RelayUrl => Self::Relay,
             TagKind::Nonce => Self::Nonce,
             TagKind::Delegation => Self::Delegation,
@@ -210,7 +214,6 @@ impl<'a> From<TagKind> for tag::TagKind<'a> {
             TagKind::Emoji => Self::Emoji,
             TagKind::Encrypted => Self::Encrypted,
             TagKind::Request => Self::Request,
-            TagKind::Client => Self::Client,
             TagKind::Web => Self::Web,
             TagKind::Word => Self::Word,
             TagKind::Unknown { unknown } => Self::Custom(Cow::Owned(unknown)),
