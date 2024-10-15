@@ -158,7 +158,6 @@ pub enum TagStandard {
         status: DataVendingMachineStatus,
         extra_info: Option<String>,
     },
-    Word(String),
     /// Label namespace
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
@@ -175,6 +174,9 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
     Alt(String),
+    /// List of web URLs
+    Web(Vec<Url>),
+    Word(String),
 }
 
 impl TagStandard {
@@ -250,6 +252,13 @@ impl TagStandard {
                     .map(|u| UncheckedUrl::from(u.as_ref()))
                     .collect::<Vec<UncheckedUrl>>();
                 return Ok(Self::Relays(urls));
+            }
+            TagKind::Web => {
+                let mut urls: Vec<Url> = Vec::with_capacity(tag.len().saturating_sub(1));
+                for url in tag.iter().skip(1) {
+                    urls.push(Url::parse(url.as_ref())?);
+                }
+                return Ok(Self::Web(urls));
             }
             _ => (), // Covered later
         };
@@ -558,6 +567,7 @@ impl TagStandard {
             }),
             Self::Protected => TagKind::Protected,
             Self::Alt(..) => TagKind::Alt,
+            Self::Web(..) => TagKind::Web,
         }
     }
 
@@ -786,13 +796,19 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::Word(word) => vec![tag_kind, word],
             TagStandard::LabelNamespace(n) => vec![tag_kind, n],
             TagStandard::Label(l) => {
-                let mut tag = Vec::with_capacity(1 + l.len());
+                let mut tag: Vec<String> = Vec::with_capacity(1 + l.len());
                 tag.push(tag_kind);
                 tag.extend(l);
                 tag
             }
             TagStandard::Protected => vec![tag_kind],
             TagStandard::Alt(summary) => vec![tag_kind, summary],
+            TagStandard::Web(urls) => {
+                let mut tag: Vec<String> = Vec::with_capacity(1 + urls.len());
+                tag.push(tag_kind);
+                tag.extend(urls.into_iter().map(|url| url.to_string()));
+                tag
+            }
         }
     }
 }

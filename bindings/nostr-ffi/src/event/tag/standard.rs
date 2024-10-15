@@ -222,9 +222,6 @@ pub enum TagStandard {
         status: DataVendingMachineStatus,
         extra_info: Option<String>,
     },
-    Word {
-        word: String,
-    },
     LabelNamespace {
         namespace: String,
     },
@@ -240,6 +237,12 @@ pub enum TagStandard {
     /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
     Alt {
         summary: String,
+    },
+    Word {
+        word: String,
+    },
+    Web {
+        urls: Vec<String>,
     },
 }
 
@@ -415,6 +418,9 @@ impl From<tag::TagStandard> for TagStandard {
             tag::TagStandard::Label(labels) => Self::Label { label: labels },
             tag::TagStandard::Protected => Self::Protected,
             tag::TagStandard::Alt(summary) => Self::Alt { summary },
+            tag::TagStandard::Web(urls) => Self::Web {
+                urls: urls.into_iter().map(|r| r.to_string()).collect(),
+            },
         }
     }
 }
@@ -563,6 +569,13 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::Label { label } => Ok(Self::Label(label)),
             TagStandard::Protected => Ok(Self::Protected),
             TagStandard::Alt { summary } => Ok(Self::Alt(summary)),
+            TagStandard::Web { urls } => {
+                let mut parsed_urls: Vec<Url> = Vec::with_capacity(urls.len());
+                for url in urls.into_iter() {
+                    parsed_urls.push(Url::parse(&url)?);
+                }
+                Ok(Self::Web(parsed_urls))
+            }
         }
     }
 }

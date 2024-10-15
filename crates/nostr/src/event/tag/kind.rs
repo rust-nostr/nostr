@@ -107,6 +107,8 @@ pub enum TagKind<'a> {
     TotalParticipants,
     /// Url
     Url,
+    /// Web
+    Web,
     /// Word
     Word,
     /// Single letter
@@ -213,6 +215,7 @@ impl<'a> fmt::Display for TagKind<'a> {
             Self::Thumb => write!(f, "thumb"),
             Self::TotalParticipants => write!(f, "total_participants"),
             Self::Url => write!(f, "url"),
+            Self::Web => write!(f, "web"),
             Self::Word => write!(f, "word"),
             Self::SingleLetter(s) => write!(f, "{s}"),
             Self::Custom(tag) => write!(f, "{tag}"),
@@ -265,6 +268,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "thumb" => Self::Thumb,
             "total_participants" => Self::TotalParticipants,
             "url" => Self::Url,
+            "web" => Self::Web,
             "word" => Self::Word,
             k => match SingleLetterTag::from_str(k) {
                 Ok(s) => Self::SingleLetter(s),
@@ -276,7 +280,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
 
 #[cfg(test)]
 mod tests {
-    use alloc::string::String;
+    use alloc::string::{String, ToString};
 
     use super::*;
 
@@ -293,5 +297,11 @@ mod tests {
             TagKind::Custom(Cow::Borrowed(val)) => assert_eq!(val, "borrowed"),
             _ => panic!("Unexpected tag kind"),
         };
+    }
+
+    #[test]
+    fn test_from_to_tag_kind() {
+        assert_eq!(TagKind::from("web"), TagKind::Web);
+        assert_eq!(TagKind::Web.to_string(), "web");
     }
 }

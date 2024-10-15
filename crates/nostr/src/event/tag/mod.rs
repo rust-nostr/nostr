@@ -914,6 +914,19 @@ mod tests {
             )
             .to_vec()
         );
+
+        assert_eq!(
+            vec![
+                "web",
+                "https://rust-nostr.org/",
+                "https://github.com/rust-nostr",
+            ],
+            Tag::from_standardized_without_cell(TagStandard::Web(vec![
+                Url::parse("https://rust-nostr.org").unwrap(),
+                Url::parse("https://github.com/rust-nostr").unwrap(),
+            ]))
+            .to_vec()
+        );
     }
 
     #[test]
@@ -1341,6 +1354,19 @@ mod tests {
             Tag::from_standardized_without_cell(TagStandard::Label(vec![
                 "IT-MI".to_string(),
                 "ISO-3166-2".to_string()
+            ]))
+        );
+
+        assert_eq!(
+            Tag::parse(&[
+                "web",
+                "https://rust-nostr.org/",
+                "https://github.com/rust-nostr",
+            ])
+            .unwrap(),
+            Tag::from_standardized_without_cell(TagStandard::Web(vec![
+                Url::parse("https://rust-nostr.org").unwrap(),
+                Url::parse("https://github.com/rust-nostr").unwrap(),
             ]))
         );
     }
