@@ -6,11 +6,14 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/34.md>
 
+#![allow(clippy::wrong_self_convention)]
+
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use crate::nips::nip01::Coordinate;
 use crate::types::url::Url;
-use crate::{PublicKey, Tag, TagStandard};
+use crate::{EventBuilder, Kind, PublicKey, Tag, TagStandard};
 
 /// Earlier unique commit ID
 pub const EUC: &str = "euc";
@@ -42,6 +45,13 @@ pub struct GitRepositoryAnnouncement {
     pub euc: Option<String>,
     /// Other recognized maintainers
     pub maintainers: Vec<PublicKey>,
+}
+
+impl GitRepositoryAnnouncement {
+    pub(crate) fn to_event_builder(self) -> EventBuilder {
+        let tags: Vec<Tag> = self.into();
+        EventBuilder::new(Kind::GitRepoAnnouncement, "", tags)
+    }
 }
 
 impl From<GitRepositoryAnnouncement> for Vec<Tag> {
@@ -98,5 +108,43 @@ impl From<GitRepositoryAnnouncement> for Vec<Tag> {
         }
 
         tags
+    }
+}
+
+/// Git Issue
+pub struct GitIssue {
+    /// The issue content (markdown)
+    pub content: String,
+    /// The repository address
+    pub repository: Coordinate,
+    /// Public keys (owners or other users)
+    pub public_keys: Vec<PublicKey>,
+    /// Subject
+    pub subject: Option<String>,
+    /// Labels
+    pub labels: Vec<String>,
+}
+
+impl GitIssue {
+    pub(crate) fn to_event_builder(self) -> EventBuilder {
+        let mut tags: Vec<Tag> = Vec::with_capacity(1);
+
+        // Add coordinate
+        tags.push(Tag::coordinate(self.repository));
+
+        // Add public keys
+        tags.extend(self.public_keys.into_iter().map(Tag::public_key));
+
+        // Add subject
+        if let Some(subject) = self.subject {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Subject(
+                subject,
+            )));
+        }
+
+        // Add labels
+        tags.extend(self.labels.into_iter().map(Tag::hashtag));
+
+        EventBuilder::new(Kind::GitIssue, self.content, tags)
     }
 }

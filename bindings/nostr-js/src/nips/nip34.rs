@@ -2,10 +2,13 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use core::ops::Deref;
+
 use nostr::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::key::JsPublicKey;
+use crate::nips::nip01::JsCoordinate;
 
 /// Git Repository Announcement
 ///
@@ -67,6 +70,38 @@ impl From<JsGitRepositoryAnnouncement> for GitRepositoryAnnouncement {
                 .collect(),
             euc: value.euc,
             maintainers: value.maintainers.into_iter().map(|p| *p).collect(),
+        }
+    }
+}
+
+/// Git Issue
+#[wasm_bindgen(js_name = GitIssue)]
+pub struct JsGitIssue {
+    /// The issue content (markdown)
+    #[wasm_bindgen(getter_with_clone)]
+    pub content: String,
+    /// The repository address
+    #[wasm_bindgen(getter_with_clone)]
+    pub repository: JsCoordinate,
+    /// Public keys (owners or other users)
+    #[wasm_bindgen(getter_with_clone)]
+    pub public_keys: Vec<JsPublicKey>,
+    /// Subject
+    #[wasm_bindgen(getter_with_clone)]
+    pub subject: Option<String>,
+    /// Labels
+    #[wasm_bindgen(getter_with_clone)]
+    pub labels: Vec<String>,
+}
+
+impl From<JsGitIssue> for GitIssue {
+    fn from(value: JsGitIssue) -> Self {
+        Self {
+            content: value.content,
+            repository: value.repository.deref().clone(),
+            public_keys: value.public_keys.into_iter().map(|p| *p).collect(),
+            subject: value.subject,
+            labels: value.labels,
         }
     }
 }

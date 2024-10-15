@@ -2,12 +2,14 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::nips::nip34;
 use nostr::Url;
 use uniffi::Record;
 
+use crate::nips::nip01::Coordinate;
 use crate::PublicKey;
 
 /// Git Repository Announcement
@@ -62,6 +64,33 @@ impl From<GitRepositoryAnnouncement> for nip34::GitRepositoryAnnouncement {
                 .collect(),
             euc: value.euc,
             maintainers: value.maintainers.into_iter().map(|p| **p).collect(),
+        }
+    }
+}
+
+/// Git Issue
+#[derive(Record)]
+pub struct GitIssue {
+    /// The issue content (markdown)
+    pub content: String,
+    /// The repository address
+    pub repository: Arc<Coordinate>,
+    /// Public keys (owners or other users)
+    pub public_keys: Vec<Arc<PublicKey>>,
+    /// Subject
+    pub subject: Option<String>,
+    /// Labels
+    pub labels: Vec<String>,
+}
+
+impl From<GitIssue> for nip34::GitIssue {
+    fn from(value: GitIssue) -> Self {
+        Self {
+            content: value.content,
+            repository: value.repository.as_ref().deref().clone(),
+            public_keys: value.public_keys.into_iter().map(|p| **p).collect(),
+            subject: value.subject,
+            labels: value.labels,
         }
     }
 }

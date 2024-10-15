@@ -1550,9 +1550,17 @@ impl EventBuilder {
     /// Git Repository Announcement
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    pub fn git_repository_announcement(data: GitRepositoryAnnouncement) -> Self {
-        let tags: Vec<Tag> = data.into(); // TODO: create a `ToTags` trait and use `data.to_tags` method
-        Self::new(Kind::GitRepoAnnouncement, "", tags)
+    #[inline]
+    pub fn git_repository_announcement(announcement: GitRepositoryAnnouncement) -> Self {
+        announcement.to_event_builder()
+    }
+
+    /// Git Issue
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    #[inline]
+    pub fn git_issue(issue: GitIssue) -> Self {
+        issue.to_event_builder()
     }
 }
 
