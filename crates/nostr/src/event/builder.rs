@@ -15,37 +15,9 @@ use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::{self, Secp256k1, Signing, Verification};
 use serde_json::{json, Value};
 
-use super::kind::{Kind, NIP90_JOB_REQUEST_RANGE, NIP90_JOB_RESULT_RANGE};
-use super::{Event, EventId, Tag, TagKind, TagStandard, UnsignedEvent};
-use crate::key::{self, Keys, PublicKey};
-use crate::nips::nip01::Coordinate;
-#[cfg(feature = "nip04")]
-use crate::nips::nip04;
-use crate::nips::nip10::Marker;
-use crate::nips::nip15::{ProductData, StallData};
-#[cfg(all(feature = "std", feature = "nip44"))]
-use crate::nips::nip44::{self, Version};
-#[cfg(all(feature = "std", feature = "nip46"))]
+#[cfg(all(feature = "std", feature = "nip04", feature = "nip46"))]
 use crate::nips::nip46::Message as NostrConnectMessage;
-use crate::nips::nip51::{ArticlesCuration, Bookmarks, Emojis, Interests, MuteList};
-use crate::nips::nip53::LiveEvent;
-#[cfg(feature = "nip57")]
-use crate::nips::nip57::ZapRequestData;
-use crate::nips::nip58;
-#[cfg(all(feature = "std", feature = "nip59"))]
-use crate::nips::nip59;
-use crate::nips::nip65::RelayMetadata;
-use crate::nips::nip90::JobFeedbackData;
-use crate::nips::nip94::FileMetadata;
-use crate::nips::nip98::HttpData;
-#[cfg(feature = "std")]
-use crate::types::time::Instant;
-use crate::types::time::TimeSupplier;
-use crate::types::{Contact, Metadata, Timestamp};
-use crate::util::EventIdOrCoordinate;
-#[cfg(feature = "std")]
-use crate::SECP256K1;
-use crate::{Alphabet, ImageDimensions, JsonUtil, SingleLetterTag, Tags, UncheckedUrl, Url};
+use crate::prelude::*;
 
 /// Wrong kind error
 #[derive(Debug)]
@@ -1251,7 +1223,7 @@ impl EventBuilder {
             sender_keys.secret_key(),
             receiver_pubkey,
             rumor.as_json(),
-            Version::default(),
+            nip44::Version::default(),
         )?;
 
         // Compose builder
@@ -1280,7 +1252,7 @@ impl EventBuilder {
             keys.secret_key(),
             receiver,
             seal.as_json(),
-            Version::default(),
+            nip44::Version::default(),
         )?;
 
         let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(expiration.is_some()));
@@ -1573,6 +1545,14 @@ impl EventBuilder {
                 Tag::from_standardized_without_cell(TagStandard::Label(labels)),
             ],
         )
+    }
+
+    /// Git Repository Announcement
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    pub fn git_repository_announcement(data: GitRepositoryAnnouncement) -> Self {
+        let tags: Vec<Tag> = data.into(); // TODO: create a `ToTags` trait and use `data.to_tags` method
+        Self::new(Kind::GitRepoAnnouncement, "", tags)
     }
 }
 

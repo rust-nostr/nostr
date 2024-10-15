@@ -13,6 +13,7 @@ use crate::error::{into_err, Result};
 use crate::key::{JsKeys, JsPublicKey};
 use crate::nips::nip01::JsCoordinate;
 use crate::nips::nip15::{JsProductData, JsStallData};
+use crate::nips::nip34::JsGitRepositoryAnnouncement;
 use crate::nips::nip51::{
     JsArticlesCuration, JsBookmarks, JsEmojiInfo, JsEmojis, JsInterests, JsMuteList,
 };
@@ -761,6 +762,16 @@ impl JsEventBuilder {
     pub fn label(label_namespace: &str, labels: Vec<String>) -> Self {
         Self {
             inner: EventBuilder::label(label_namespace, labels),
+        }
+    }
+
+    /// Git Repository Announcement
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    #[wasm_bindgen(js_name = gitRepositoryAnnouncement)]
+    pub fn git_repository_announcement(data: JsGitRepositoryAnnouncement) -> Self {
+        Self {
+            inner: EventBuilder::git_repository_announcement(data.into()),
         }
     }
 }

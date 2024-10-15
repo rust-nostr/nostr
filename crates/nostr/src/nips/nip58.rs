@@ -12,7 +12,7 @@ use core::fmt;
 use crate::{Event, Kind, PublicKey, Tag, TagStandard, UncheckedUrl};
 
 #[derive(Debug)]
-/// [`BadgeAward`](crate::event::kind::Kind#variant.BadgeAward) error
+/// Badge Award error
 pub enum Error {
     /// Invalid length
     InvalidLength,

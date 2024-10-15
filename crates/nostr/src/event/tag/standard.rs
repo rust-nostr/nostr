@@ -16,6 +16,7 @@ use crate::event::id::EventId;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip10::Marker;
 use crate::nips::nip26::Conditions;
+use crate::nips::nip34::EUC;
 use crate::nips::nip39::Identity;
 use crate::nips::nip48::Protocol;
 use crate::nips::nip53::{LiveEventMarker, LiveEventStatus};
@@ -624,8 +625,7 @@ impl From<TagStandard> for Vec<String> {
                 tag
             }
             TagStandard::GitEarliestUniqueCommitId(id) => {
-                // TODO: add "euc" to a const in future NIP34 module
-                vec![tag_kind, id, String::from("euc")]
+                vec![tag_kind, id, EUC.to_string()]
             }
             TagStandard::GitMaintainers(public_keys) => {
                 let mut tag: Vec<String> = Vec::with_capacity(1 + public_keys.len());
@@ -966,8 +966,7 @@ where
                 relay_url: Url::parse(tag_1)?,
                 metadata: Some(RelayMetadata::from_str(tag_2)?),
             })
-        } else if tag_2 == "euc" {
-            // TODO: use `nip34::EUC` const from future NIP34 module
+        } else if tag_2 == EUC {
             Ok(TagStandard::GitEarliestUniqueCommitId(tag_1.to_string()))
         } else {
             Err(Error::UnknownStardardizedTag)
