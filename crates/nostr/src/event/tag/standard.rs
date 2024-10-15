@@ -55,6 +55,10 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     GitEarliestUniqueCommitId(String),
+    /// Git repo maintainers
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitMaintainers(Vec<PublicKey>),
     /// Public Key
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
@@ -251,6 +255,10 @@ impl TagStandard {
                     msg: extract_optional_string(tag, 1).map(|s| s.to_string()),
                 })
             }
+            TagKind::Clone => {
+                let urls: Vec<Url> = extract_urls(tag)?;
+                return Ok(Self::GitClone(urls));
+            }
             TagKind::ContentWarning => {
                 return Ok(Self::ContentWarning {
                     reason: extract_optional_string(tag, 1).map(|s| s.to_string()),
@@ -258,9 +266,9 @@ impl TagStandard {
             }
             TagKind::Delegation => return parse_delegation_tag(tag),
             TagKind::Encrypted => return Ok(Self::Encrypted),
-            TagKind::Clone => {
-                let urls: Vec<Url> = extract_urls(tag)?;
-                return Ok(Self::GitClone(urls));
+            TagKind::Maintainers => {
+                let public_keys: Vec<PublicKey> = extract_public_keys(tag)?;
+                return Ok(Self::GitMaintainers(public_keys));
             }
             TagKind::Protected => return Ok(Self::Protected),
             TagKind::Relays => {
@@ -451,6 +459,7 @@ impl TagStandard {
             Self::GitEarliestUniqueCommitId(..) => {
                 TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::R))
             }
+            Self::GitMaintainers(..) => TagKind::Maintainers,
             Self::PublicKey { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::P,
                 uppercase: *uppercase,
@@ -617,6 +626,12 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::GitEarliestUniqueCommitId(id) => {
                 // TODO: add "euc" to a const in future NIP34 module
                 vec![tag_kind, id, String::from("euc")]
+            }
+            TagStandard::GitMaintainers(public_keys) => {
+                let mut tag: Vec<String> = Vec::with_capacity(1 + public_keys.len());
+                tag.push(tag_kind);
+                tag.extend(public_keys.into_iter().map(|val| val.to_string()));
+                tag
             }
             TagStandard::PublicKeyReport(pk, report) => {
                 vec![tag_kind, pk.to_string(), report.to_string()]
@@ -1010,9 +1025,21 @@ where
     S: AsRef<str>,
 {
     // Skip index 0 because is the tag kind
-    let mut urls: Vec<Url> = Vec::with_capacity(tag.len().saturating_sub(1));
+    let mut list: Vec<Url> = Vec::with_capacity(tag.len().saturating_sub(1));
     for url in tag.iter().skip(1) {
-        urls.push(Url::parse(url.as_ref())?);
+        list.push(Url::parse(url.as_ref())?);
     }
-    Ok(urls)
+    Ok(list)
+}
+
+fn extract_public_keys<S>(tag: &[S]) -> Result<Vec<PublicKey>, Error>
+where
+    S: AsRef<str>,
+{
+    // Skip index 0 because is the tag kind
+    let mut list: Vec<PublicKey> = Vec::with_capacity(tag.len().saturating_sub(1));
+    for url in tag.iter().skip(1) {
+        list.push(PublicKey::parse(url.as_ref())?);
+    }
+    Ok(list)
 }

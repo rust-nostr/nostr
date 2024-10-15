@@ -61,6 +61,8 @@ pub enum TagKind<'a> {
     Lnurl,
     /// Magnet
     Magnet,
+    /// Maintainers
+    Maintainers,
     /// HTTP Method Request
     Method,
     /// Name
@@ -196,6 +198,7 @@ impl<'a> fmt::Display for TagKind<'a> {
             Self::Image => write!(f, "image"),
             Self::Lnurl => write!(f, "lnurl"),
             Self::Magnet => write!(f, "magnet"),
+            Self::Maintainers => write!(f, "maintainers"),
             Self::Method => write!(f, "method"),
             Self::Name => write!(f, "name"),
             Self::Nonce => write!(f, "nonce"),
@@ -251,6 +254,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "image" => Self::Image,
             "lnurl" => Self::Lnurl,
             "magnet" => Self::Magnet,
+            "maintainers" => Self::Maintainers,
             "method" => Self::Method,
             "name" => Self::Name,
             "nonce" => Self::Nonce,
@@ -307,6 +311,9 @@ mod tests {
     fn test_from_to_tag_kind() {
         assert_eq!(TagKind::from("clone"), TagKind::Clone);
         assert_eq!(TagKind::Clone.to_string(), "clone");
+
+        assert_eq!(TagKind::from("maintainers"), TagKind::Maintainers);
+        assert_eq!(TagKind::Maintainers.to_string(), "maintainers");
 
         assert_eq!(TagKind::from("web"), TagKind::Web);
         assert_eq!(TagKind::Web.to_string(), "web");

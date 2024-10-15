@@ -934,6 +934,25 @@ mod tests {
 
         assert_eq!(
             vec![
+                "maintainers",
+                "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+            ],
+            Tag::from_standardized_without_cell(TagStandard::GitMaintainers(vec![
+                PublicKey::from_hex(
+                    "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245"
+                )
+                .unwrap(),
+                PublicKey::from_hex(
+                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                )
+                .unwrap(),
+            ]))
+            .to_vec()
+        );
+
+        assert_eq!(
+            vec![
                 "web",
                 "https://rust-nostr.org/",
                 "https://github.com/rust-nostr",
@@ -1385,6 +1404,25 @@ mod tests {
                 "https://github.com/rust-nostr/nostr.git"
             )
             .unwrap(),]))
+        );
+
+        assert_eq!(
+            Tag::parse(&[
+                "maintainers",
+                "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+            ])
+            .unwrap(),
+            Tag::from_standardized_without_cell(TagStandard::GitMaintainers(vec![
+                PublicKey::from_hex(
+                    "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245"
+                )
+                .unwrap(),
+                PublicKey::from_hex(
+                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                )
+                .unwrap(),
+            ]))
         );
 
         assert_eq!(

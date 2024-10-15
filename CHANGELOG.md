@@ -57,6 +57,7 @@
 * nostr: add `d` tag extraction test from `Tags` ([Yuki Kishimoto])
 * nostr: add `TagStandard::Clone` and `TagKind::Clone` variants ([Yuki Kishimoto])
 * nostr: add `TagStandard::GitEarliestUniqueCommitId` variant ([Yuki Kishimoto])
+* nostr: add `TagStandard::GitMaintainers` and `TagKind::Maintainers` variants ([Yuki Kishimoto])
 * nostr: add `TagStandard::Web` and `TagKind::Web` variants ([Yuki Kishimoto])
 * database: add `Backend::is_persistent` method ([Yuki Kishimoto])
 * database: add `Events` struct ([Yuki Kishimoto])

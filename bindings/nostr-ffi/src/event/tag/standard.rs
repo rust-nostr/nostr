@@ -49,6 +49,12 @@ pub enum TagStandard {
     GitEarliestUniqueCommitId {
         commit: String,
     },
+    /// Git repo maintainers
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitMaintainers {
+        public_keys: Vec<Arc<PublicKey>>,
+    },
     PublicKeyTag {
         public_key: Arc<PublicKey>,
         relay_url: Option<String>,
@@ -278,6 +284,12 @@ impl From<tag::TagStandard> for TagStandard {
             tag::TagStandard::GitEarliestUniqueCommitId(commit) => {
                 Self::GitEarliestUniqueCommitId { commit }
             }
+            tag::TagStandard::GitMaintainers(public_keys) => Self::GitMaintainers {
+                public_keys: public_keys
+                    .into_iter()
+                    .map(|p| Arc::new(p.into()))
+                    .collect(),
+            },
             tag::TagStandard::PublicKey {
                 public_key,
                 relay_url,
@@ -469,6 +481,9 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::GitEarliestUniqueCommitId { commit } => {
                 Ok(Self::GitEarliestUniqueCommitId(commit))
             }
+            TagStandard::GitMaintainers { public_keys } => Ok(Self::GitMaintainers(
+                public_keys.into_iter().map(|p| **p).collect(),
+            )),
             TagStandard::PublicKeyTag {
                 public_key,
                 relay_url,

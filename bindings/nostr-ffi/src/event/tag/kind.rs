@@ -15,10 +15,6 @@ pub enum TagKind {
     SingleLetter {
         single_letter: Arc<SingleLetterTag>,
     },
-    /// Protected event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
-    Protected,
     /// Human-readable plaintext summary of what that event is about
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
@@ -28,6 +24,12 @@ pub enum TagKind {
     /// <https://github.com/nostr-protocol/nips/blob/master/89.md>
     Client,
     Clone,
+    /// Maintainers
+    Maintainers,
+    /// Protected event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
+    Protected,
     /// Relay
     RelayUrl,
     /// Nonce
@@ -115,10 +117,11 @@ impl<'a> From<tag::TagKind<'a>> for TagKind {
             tag::TagKind::SingleLetter(single_letter) => Self::SingleLetter {
                 single_letter: Arc::new(single_letter.into()),
             },
-            tag::TagKind::Protected => Self::Protected,
             tag::TagKind::Alt => Self::Alt,
             tag::TagKind::Client => Self::Client,
             tag::TagKind::Clone => Self::Clone,
+            tag::TagKind::Maintainers => Self::Maintainers,
+            tag::TagKind::Protected => Self::Protected,
             tag::TagKind::Relay => Self::RelayUrl,
             tag::TagKind::Nonce => Self::Nonce,
             tag::TagKind::Delegation => Self::Delegation,
@@ -171,10 +174,11 @@ impl<'a> From<TagKind> for tag::TagKind<'a> {
     fn from(value: TagKind) -> Self {
         match value {
             TagKind::SingleLetter { single_letter } => Self::SingleLetter(**single_letter),
-            TagKind::Protected => Self::Protected,
             TagKind::Alt => Self::Alt,
             TagKind::Client => Self::Client,
             TagKind::Clone => Self::Clone,
+            TagKind::Maintainers => Self::Maintainers,
+            TagKind::Protected => Self::Protected,
             TagKind::RelayUrl => Self::Relay,
             TagKind::Nonce => Self::Nonce,
             TagKind::Delegation => Self::Delegation,
