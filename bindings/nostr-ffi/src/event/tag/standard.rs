@@ -37,8 +37,17 @@ pub enum TagStandard {
         /// Should be the public key of the author of the referenced event
         public_key: Option<Arc<PublicKey>>,
     },
+    /// Git clone (`clone` tag)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     GitClone {
         urls: Vec<String>,
+    },
+    /// Git earliest unique commit ID
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitEarliestUniqueCommitId {
+        commit: String,
     },
     PublicKeyTag {
         public_key: Arc<PublicKey>,
@@ -266,6 +275,9 @@ impl From<tag::TagStandard> for TagStandard {
             tag::TagStandard::GitClone(urls) => Self::GitClone {
                 urls: urls.into_iter().map(|r| r.to_string()).collect(),
             },
+            tag::TagStandard::GitEarliestUniqueCommitId(commit) => {
+                Self::GitEarliestUniqueCommitId { commit }
+            }
             tag::TagStandard::PublicKey {
                 public_key,
                 relay_url,
@@ -453,6 +465,9 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                     parsed_urls.push(Url::parse(&url)?);
                 }
                 Ok(Self::GitClone(parsed_urls))
+            }
+            TagStandard::GitEarliestUniqueCommitId { commit } => {
+                Ok(Self::GitEarliestUniqueCommitId(commit))
             }
             TagStandard::PublicKeyTag {
                 public_key,

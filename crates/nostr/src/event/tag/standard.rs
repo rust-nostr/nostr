@@ -51,6 +51,10 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     GitClone(Vec<Url>),
+    /// Git earliest unique commit ID
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitEarliestUniqueCommitId(String),
     /// Public Key
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
@@ -233,6 +237,13 @@ impl TagStandard {
                 } => {
                     return parse_p_tag(tag, uppercase);
                 }
+                // Parse `r` tag
+                SingleLetterTag {
+                    character: Alphabet::R,
+                    uppercase,
+                } => {
+                    return parse_r_tag(tag, uppercase);
+                }
                 _ => (), // Covered later
             },
             TagKind::Anon => {
@@ -280,19 +291,6 @@ impl TagStandard {
             let tag_1: &str = tag[1].as_ref();
 
             return match tag_kind {
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::R,
-                    uppercase: false,
-                }) => {
-                    if tag_1.starts_with("ws://") || tag_1.starts_with("wss://") {
-                        Ok(Self::RelayMetadata {
-                            relay_url: Url::parse(tag_1)?,
-                            metadata: None,
-                        })
-                    } else {
-                        Ok(Self::Reference(tag_1.to_string()))
-                    }
-                }
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::T,
                     uppercase: false,
@@ -394,21 +392,6 @@ impl TagStandard {
                     key: tag_1.to_string(),
                     iv: tag_2.to_string(),
                 }),
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::R,
-                    uppercase: false,
-                }) => {
-                    if (tag_1.starts_with("ws://") || tag_1.starts_with("wss://"))
-                        && !tag_2.is_empty()
-                    {
-                        Ok(Self::RelayMetadata {
-                            relay_url: Url::parse(tag_1)?,
-                            metadata: Some(RelayMetadata::from_str(tag_2)?),
-                        })
-                    } else {
-                        Err(Error::UnknownStardardizedTag)
-                    }
-                }
                 TagKind::Proxy => Ok(Self::Proxy {
                     id: tag_1.to_string(),
                     protocol: Protocol::from(tag_2),
@@ -472,11 +455,13 @@ impl TagStandard {
     /// Get tag kind
     pub fn kind(&self) -> TagKind {
         match self {
-            Self::Event { .. } | Self::EventReport(..) => TagKind::SingleLetter(SingleLetterTag {
-                character: Alphabet::E,
-                uppercase: false,
-            }),
+            Self::Event { .. } | Self::EventReport(..) => {
+                TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E))
+            }
             Self::GitClone(..) => TagKind::Clone,
+            Self::GitEarliestUniqueCommitId(..) => {
+                TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::R))
+            }
             Self::PublicKey { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::P,
                 uppercase: *uppercase,
@@ -639,6 +624,10 @@ impl From<TagStandard> for Vec<String> {
                 tag.push(tag_kind);
                 tag.extend(urls.into_iter().map(|url| url.to_string()));
                 tag
+            }
+            TagStandard::GitEarliestUniqueCommitId(id) => {
+                // TODO: add "euc" to a const in future NIP34 module
+                vec![tag_kind, id, String::from("euc")]
             }
             TagStandard::PublicKeyReport(pk, report) => {
                 vec![tag_kind, pk.to_string(), report.to_string()]
@@ -958,6 +947,43 @@ where
     } else {
         Err(Error::UnknownStardardizedTag)
     }
+}
+
+fn parse_r_tag<S>(tag: &[S], uppercase: bool) -> Result<TagStandard, Error>
+where
+    S: AsRef<str>,
+{
+    if tag.len() >= 3 && !uppercase {
+        let tag_1: &str = tag[1].as_ref();
+        let tag_2: &str = tag[2].as_ref();
+
+        return if tag_1.starts_with("ws://") || tag_1.starts_with("wss://") {
+            Ok(TagStandard::RelayMetadata {
+                relay_url: Url::parse(tag_1)?,
+                metadata: Some(RelayMetadata::from_str(tag_2)?),
+            })
+        } else if tag_2 == "euc" {
+            // TODO: use `nip34::EUC` const from future NIP34 module
+            Ok(TagStandard::GitEarliestUniqueCommitId(tag_1.to_string()))
+        } else {
+            Err(Error::UnknownStardardizedTag)
+        };
+    }
+
+    if tag.len() >= 2 && !uppercase {
+        let tag_1: &str = tag[1].as_ref();
+
+        return if tag_1.starts_with("ws://") || tag_1.starts_with("wss://") {
+            Ok(TagStandard::RelayMetadata {
+                relay_url: Url::parse(tag_1)?,
+                metadata: None,
+            })
+        } else {
+            Ok(TagStandard::Reference(tag_1.to_string()))
+        };
+    }
+
+    Err(Error::UnknownStardardizedTag)
 }
 
 fn parse_delegation_tag<S>(tag: &[S]) -> Result<TagStandard, Error>

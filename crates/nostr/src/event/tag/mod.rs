@@ -916,6 +916,14 @@ mod tests {
         );
 
         assert_eq!(
+            vec!["r", "5e664e5a7845cd1373c79f580ca4fe29ab5b34d2", "euc"],
+            Tag::from_standardized_without_cell(TagStandard::GitEarliestUniqueCommitId(
+                String::from("5e664e5a7845cd1373c79f580ca4fe29ab5b34d2")
+            ))
+            .to_vec()
+        );
+
+        assert_eq!(
             vec!["clone", "https://github.com/rust-nostr/nostr.git",],
             Tag::from_standardized_without_cell(TagStandard::GitClone(vec![Url::parse(
                 "https://github.com/rust-nostr/nostr.git"
@@ -1364,6 +1372,13 @@ mod tests {
                 "IT-MI".to_string(),
                 "ISO-3166-2".to_string()
             ]))
+        );
+
+        assert_eq!(
+            Tag::parse(&["r", "5e664e5a7845cd1373c79f580ca4fe29ab5b34d2", "euc"]).unwrap(),
+            Tag::from_standardized_without_cell(TagStandard::GitEarliestUniqueCommitId(
+                String::from("5e664e5a7845cd1373c79f580ca4fe29ab5b34d2")
+            ))
         );
 
         assert_eq!(
