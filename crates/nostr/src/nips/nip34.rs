@@ -52,69 +52,63 @@ pub struct GitRepositoryAnnouncement {
 
 impl GitRepositoryAnnouncement {
     pub(crate) fn to_event_builder(self) -> EventBuilder {
-        let tags: Vec<Tag> = self.into();
-        EventBuilder::new(Kind::GitRepoAnnouncement, "", tags)
-    }
-}
-
-impl From<GitRepositoryAnnouncement> for Vec<Tag> {
-    fn from(value: GitRepositoryAnnouncement) -> Self {
-        let mut tags: Self = Self::with_capacity(1);
+        let mut tags: Vec<Tag> = Vec::with_capacity(1);
 
         // Add repo ID
-        tags.push(Tag::identifier(value.id));
+        tags.push(Tag::identifier(self.id));
 
         // Add name
-        if let Some(name) = value.name {
+        if let Some(name) = self.name {
             tags.push(Tag::from_standardized_without_cell(TagStandard::Name(name)));
         }
 
         // Add description
-        if let Some(description) = value.description {
+        if let Some(description) = self.description {
             tags.push(Tag::from_standardized_without_cell(
                 TagStandard::Description(description),
             ));
         }
 
         // Add web
-        if !value.web.is_empty() {
+        if !self.web.is_empty() {
             tags.push(Tag::from_standardized_without_cell(TagStandard::Web(
-                value.web,
+                self.web,
             )));
         }
 
         // Add clone
-        if !value.clone.is_empty() {
+        if !self.clone.is_empty() {
             tags.push(Tag::from_standardized_without_cell(TagStandard::GitClone(
-                value.clone,
+                self.clone,
             )));
         }
 
         // Add relays
-        if !value.relays.is_empty() {
+        if !self.relays.is_empty() {
             tags.push(Tag::from_standardized_without_cell(TagStandard::Relays(
-                value.relays,
+                self.relays,
             )));
         }
 
         // Add EUC
-        if let Some(euc) = value.euc {
+        if let Some(euc) = self.euc {
             tags.push(Tag::from_standardized_without_cell(
                 TagStandard::GitEarliestUniqueCommitId(euc),
             ));
         }
 
         // Add maintainers
-        if !value.maintainers.is_empty() {
+        if !self.maintainers.is_empty() {
             tags.push(Tag::from_standardized_without_cell(
-                TagStandard::GitMaintainers(value.maintainers),
+                TagStandard::GitMaintainers(self.maintainers),
             ));
         }
 
         // Add alt tag
         tags.push(Tag::alt(GIT_REPO_ANNOUNCEMENT_ALT));
 
-        tags
+        // Build
+        EventBuilder::new(Kind::GitRepoAnnouncement, "", tags)
     }
 }
 
