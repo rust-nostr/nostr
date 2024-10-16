@@ -187,6 +187,14 @@ impl JsTag {
         }
     }
 
+    /// Compose `["r", "<value>"]` tag
+    #[inline]
+    pub fn reference(reference: &str) -> Self {
+        Self {
+            inner: Tag::reference(reference),
+        }
+    }
+
     /// Compose `["title", "<title>"]` tag
     #[inline]
     pub fn title(title: &str) -> Self {

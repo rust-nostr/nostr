@@ -262,6 +262,15 @@ impl Tag {
         Self::from_standardized_without_cell(TagStandard::Hashtag(hashtag.into()))
     }
 
+    /// Compose `["r", "<value>"]` tag
+    #[inline]
+    pub fn reference<T>(reference: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self::from_standardized_without_cell(TagStandard::Reference(reference.into()))
+    }
+
     /// Compose `["title", "<title>"]` tag
     #[inline]
     pub fn title<T>(title: T) -> Self

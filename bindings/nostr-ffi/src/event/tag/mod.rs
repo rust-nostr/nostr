@@ -211,6 +211,15 @@ impl Tag {
         }
     }
 
+    /// Compose `["r", "<value>"]` tag
+    #[inline]
+    #[uniffi::constructor]
+    pub fn reference(reference: &str) -> Self {
+        Self {
+            inner: tag::Tag::reference(reference),
+        }
+    }
+
     /// Compose `["title", "<title>"]` tag
     #[inline]
     #[uniffi::constructor]
