@@ -8,6 +8,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::str::FromStr;
 
+use bitcoin::hashes::sha1::Hash as Sha1Hash;
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 use bitcoin::secp256k1::schnorr::Signature;
 
@@ -52,6 +53,10 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     GitClone(Vec<Url>),
+    /// Git commit
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitCommit(Sha1Hash),
     /// Git earliest unique commit ID
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
@@ -321,6 +326,7 @@ impl TagStandard {
                 TagKind::Expiration => Ok(Self::Expiration(Timestamp::from_str(tag_1)?)),
                 TagKind::Subject => Ok(Self::Subject(tag_1.to_string())),
                 TagKind::Challenge => Ok(Self::Challenge(tag_1.to_string())),
+                TagKind::Commit => Ok(Self::GitCommit(Sha1Hash::from_str(tag_1)?)),
                 TagKind::Title => Ok(Self::Title(tag_1.to_string())),
                 TagKind::Image => Ok(Self::Image(UncheckedUrl::from(tag_1), None)),
                 TagKind::Thumb => Ok(Self::Thumb(UncheckedUrl::from(tag_1), None)),
@@ -457,6 +463,7 @@ impl TagStandard {
                 TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E))
             }
             Self::GitClone(..) => TagKind::Clone,
+            Self::GitCommit(..) => TagKind::Commit,
             Self::GitEarliestUniqueCommitId(..) => {
                 TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::R))
             }
@@ -623,6 +630,9 @@ impl From<TagStandard> for Vec<String> {
                 tag.push(tag_kind);
                 tag.extend(urls.into_iter().map(|url| url.to_string()));
                 tag
+            }
+            TagStandard::GitCommit(hash) => {
+                vec![tag_kind, hash.to_string()]
             }
             TagStandard::GitEarliestUniqueCommitId(id) => {
                 vec![tag_kind, id, EUC.to_string()]

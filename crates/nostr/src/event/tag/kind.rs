@@ -35,6 +35,10 @@ pub enum TagKind<'a> {
     Client,
     /// Clone
     Clone,
+    /// Commit
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    Commit,
     /// Content warning
     ContentWarning,
     /// Current participants
@@ -186,6 +190,7 @@ impl<'a> fmt::Display for TagKind<'a> {
             Self::Challenge => write!(f, "challenge"),
             Self::Client => write!(f, "client"),
             Self::Clone => write!(f, "clone"),
+            Self::Commit => write!(f, "commit"),
             Self::ContentWarning => write!(f, "content-warning"),
             Self::CurrentParticipants => write!(f, "current_participants"),
             Self::Delegation => write!(f, "delegation"),
@@ -242,6 +247,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "challenge" => Self::Challenge,
             "client" => Self::Client,
             "clone" => Self::Clone,
+            "commit" => Self::Commit,
             "content-warning" => Self::ContentWarning,
             "current_participants" => Self::CurrentParticipants,
             "delegation" => Self::Delegation,

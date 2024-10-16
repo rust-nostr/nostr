@@ -24,6 +24,10 @@ pub enum TagKind {
     /// <https://github.com/nostr-protocol/nips/blob/master/89.md>
     Client,
     Clone,
+    /// Commit
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    Commit,
     /// Maintainers
     Maintainers,
     /// Protected event
@@ -120,6 +124,7 @@ impl<'a> From<tag::TagKind<'a>> for TagKind {
             tag::TagKind::Alt => Self::Alt,
             tag::TagKind::Client => Self::Client,
             tag::TagKind::Clone => Self::Clone,
+            tag::TagKind::Commit => Self::Commit,
             tag::TagKind::Maintainers => Self::Maintainers,
             tag::TagKind::Protected => Self::Protected,
             tag::TagKind::Relay => Self::RelayUrl,
@@ -177,6 +182,7 @@ impl<'a> From<TagKind> for tag::TagKind<'a> {
             TagKind::Alt => Self::Alt,
             TagKind::Client => Self::Client,
             TagKind::Clone => Self::Clone,
+            TagKind::Commit => Self::Commit,
             TagKind::Maintainers => Self::Maintainers,
             TagKind::Protected => Self::Protected,
             TagKind::RelayUrl => Self::Relay,

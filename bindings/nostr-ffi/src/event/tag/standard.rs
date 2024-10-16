@@ -7,6 +7,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use nostr::event::tag;
+use nostr::hashes::sha1::Hash as Sha1Hash;
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::nips::nip10;
 use nostr::nips::nip26::Conditions;
@@ -42,6 +43,12 @@ pub enum TagStandard {
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     GitClone {
         urls: Vec<String>,
+    },
+    /// Git commit
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitCommit {
+        hash: String,
     },
     /// Git earliest unique commit ID
     ///
@@ -281,6 +288,9 @@ impl From<tag::TagStandard> for TagStandard {
             tag::TagStandard::GitClone(urls) => Self::GitClone {
                 urls: urls.into_iter().map(|r| r.to_string()).collect(),
             },
+            tag::TagStandard::GitCommit(hash) => Self::GitCommit {
+                hash: hash.to_string(),
+            },
             tag::TagStandard::GitEarliestUniqueCommitId(commit) => {
                 Self::GitEarliestUniqueCommitId { commit }
             }
@@ -478,6 +488,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 }
                 Ok(Self::GitClone(parsed_urls))
             }
+            TagStandard::GitCommit { hash } => Ok(Self::GitCommit(Sha1Hash::from_str(&hash)?)),
             TagStandard::GitEarliestUniqueCommitId { commit } => {
                 Ok(Self::GitEarliestUniqueCommitId(commit))
             }
