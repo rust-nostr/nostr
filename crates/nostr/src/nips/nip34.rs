@@ -18,6 +18,9 @@ use crate::{EventBuilder, Kind, PublicKey, Tag, TagStandard};
 /// Earlier unique commit ID
 pub const EUC: &str = "euc";
 
+const GIT_REPO_ANNOUNCEMENT_ALT: &str = "git repository";
+const GIT_ISSUE_ALT: &str = "git issue";
+
 /// Git Repository Announcement
 ///
 /// Git repositories are hosted in Git-enabled servers, but their existence can be announced using Nostr events,
@@ -101,11 +104,15 @@ impl From<GitRepositoryAnnouncement> for Vec<Tag> {
             ));
         }
 
+        // Add maintainers
         if !value.maintainers.is_empty() {
             tags.push(Tag::from_standardized_without_cell(
                 TagStandard::GitMaintainers(value.maintainers),
             ));
         }
+
+        // Add alt tag
+        tags.push(Tag::alt(GIT_REPO_ANNOUNCEMENT_ALT));
 
         tags
     }
@@ -145,6 +152,10 @@ impl GitIssue {
         // Add labels
         tags.extend(self.labels.into_iter().map(Tag::hashtag));
 
+        // Add alt tag
+        tags.push(Tag::alt(GIT_ISSUE_ALT));
+
+        // Build
         EventBuilder::new(Kind::GitIssue, self.content, tags)
     }
 }
