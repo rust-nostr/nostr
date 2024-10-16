@@ -402,6 +402,11 @@ mod tests {
     use crate::{Alphabet, Event, JsonUtil, Kind, Timestamp, UncheckedUrl};
 
     #[test]
+    fn test_parse_empty_tag() {
+        assert_eq!(Tag::parse::<String>(&[]).unwrap_err(), Error::EmptyTag);
+    }
+
+    #[test]
     fn test_tag_match_standardized() {
         let tag: Tag = Tag::parse(&["d", "bravery"]).unwrap();
         assert_eq!(
@@ -967,8 +972,6 @@ mod tests {
 
     #[test]
     fn test_tag_parser() {
-        assert_eq!(Tag::parse::<String>(&[]).unwrap_err(), Error::EmptyTag);
-
         assert_eq!(Tag::parse(&["-"]).unwrap(), Tag::protected());
 
         assert_eq!(
