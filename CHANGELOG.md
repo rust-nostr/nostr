@@ -62,6 +62,7 @@
 * nostr: add `TagStandard::Web` and `TagKind::Web` variants ([Yuki Kishimoto])
 * nostr: add `EventBuilder::git_repository_announcement` ([Yuki Kishimoto])
 * nostr: add `EventBuilder::git_issue` ([Yuki Kishimoto])
+* nostr: add `EventBuilder::git_patch` ([Yuki Kishimoto])
 * nostr: add `Tag::reference` constructor ([Yuki Kishimoto])
 * database: add `Backend::is_persistent` method ([Yuki Kishimoto])
 * database: add `Events` struct ([Yuki Kishimoto])

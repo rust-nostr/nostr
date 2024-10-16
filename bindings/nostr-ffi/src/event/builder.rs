@@ -16,7 +16,7 @@ use crate::helper::unwrap_or_clone_arc;
 use crate::key::Keys;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip15::{ProductData, StallData};
-use crate::nips::nip34::{GitIssue, GitRepositoryAnnouncement};
+use crate::nips::nip34::{GitIssue, GitPatch, GitRepositoryAnnouncement};
 use crate::nips::nip51::{ArticlesCuration, Bookmarks, EmojiInfo, Emojis, Interests, MuteList};
 use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
@@ -785,5 +785,15 @@ impl EventBuilder {
         Self {
             inner: nostr::EventBuilder::git_issue(issue.into()),
         }
+    }
+
+    /// Git Patch
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    #[uniffi::constructor]
+    pub fn git_patch(patch: GitPatch) -> Result<Self> {
+        Ok(Self {
+            inner: nostr::EventBuilder::git_patch(patch.try_into()?),
+        })
     }
 }

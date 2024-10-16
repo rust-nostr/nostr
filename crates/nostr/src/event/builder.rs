@@ -1562,6 +1562,14 @@ impl EventBuilder {
     pub fn git_issue(issue: GitIssue) -> Self {
         issue.to_event_builder()
     }
+
+    /// Git Patch
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    #[inline]
+    pub fn git_patch(patch: GitPatch) -> Self {
+        patch.to_event_builder()
+    }
 }
 
 #[cfg(test)]

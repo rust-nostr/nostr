@@ -3,14 +3,17 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
+use std::str::FromStr;
 use std::sync::Arc;
 
+use nostr::hashes::sha1::Hash as Sha1Hash;
 use nostr::nips::nip34;
 use nostr::Url;
-use uniffi::Record;
+use uniffi::{Enum, Record};
 
+use crate::error::NostrError;
 use crate::nips::nip01::Coordinate;
-use crate::PublicKey;
+use crate::{EventId, PublicKey, Timestamp};
 
 /// Git Repository Announcement
 ///
@@ -92,5 +95,120 @@ impl From<GitIssue> for nip34::GitIssue {
             subject: value.subject,
             labels: value.labels,
         }
+    }
+}
+
+/// Git Patch Committer
+#[derive(Record)]
+pub struct GitPatchCommitter {
+    /// Name
+    pub name: Option<String>,
+    /// Email
+    pub email: Option<String>,
+    /// Timestamp
+    pub timestamp: Arc<Timestamp>,
+    /// Timezone offset in minutes
+    pub offset_minutes: i32,
+}
+
+impl From<GitPatchCommitter> for nip34::GitPatchCommitter {
+    fn from(value: GitPatchCommitter) -> Self {
+        Self {
+            name: value.name,
+            email: value.email,
+            timestamp: **value.timestamp,
+            offset_minutes: value.offset_minutes,
+        }
+    }
+}
+
+/// Git Patch Content
+#[derive(Enum)]
+pub enum GitPatchContent {
+    /// Cover letter
+    CoverLetter {
+        /// Title
+        title: String,
+        /// Description
+        description: String,
+        /// Last commit
+        last_commit: String,
+        /// Number of commits
+        commits_len: u64,
+    },
+    /// Patch
+    Patch {
+        /// Patch content
+        content: String,
+        /// Commit hash
+        commit: String,
+        /// Parent commit
+        parent_commit: String,
+        /// PGP signature of commit
+        commit_pgp_sig: Option<String>,
+        /// Committer
+        committer: GitPatchCommitter,
+    },
+}
+
+impl TryFrom<GitPatchContent> for nip34::GitPatchContent {
+    type Error = NostrError;
+
+    fn try_from(value: GitPatchContent) -> Result<Self, Self::Error> {
+        match value {
+            GitPatchContent::CoverLetter {
+                title,
+                description,
+                last_commit,
+                commits_len,
+            } => Ok(Self::CoverLetter {
+                title,
+                description,
+                last_commit: Sha1Hash::from_str(&last_commit)?,
+                commits_len: commits_len as usize,
+            }),
+            GitPatchContent::Patch {
+                content,
+                commit,
+                parent_commit,
+                commit_pgp_sig,
+                committer,
+            } => Ok(Self::Patch {
+                content,
+                commit: Sha1Hash::from_str(&commit)?,
+                parent_commit: Sha1Hash::from_str(&parent_commit)?,
+                commit_pgp_sig,
+                committer: committer.into(),
+            }),
+        }
+    }
+}
+
+/// Git Patch
+#[derive(Record)]
+pub struct GitPatch {
+    /// Repository ID
+    pub repo_id: String,
+    /// Patch
+    pub content: GitPatchContent,
+    /// Maintainers
+    pub maintainers: Vec<Arc<PublicKey>>,
+    /// Earliest unique commit ID of repo
+    pub euc: String,
+    /// Root proposal ID
+    pub root_proposal_id: Option<Arc<EventId>>,
+}
+
+impl TryFrom<GitPatch> for nip34::GitPatch {
+    type Error = NostrError;
+
+    fn try_from(value: GitPatch) -> Result<Self, Self::Error> {
+        Ok(Self {
+            repo_id: value.repo_id,
+            content: value.content.try_into()?,
+            maintainers: value.maintainers.into_iter().map(|p| **p).collect(),
+            euc: value.euc,
+            root_proposal_id: value.root_proposal_id.map(|e| **e),
+        })
     }
 }
