@@ -14,6 +14,7 @@ keywords = ["nostr", "cli"]
 clap = { version = "4.5", features = ["derive"] }
 dialoguer = "0.11"
 dirs = "5.0"
+nostr-connect.workspace = true
 nostr-relay-builder.workspace = true
 nostr-sdk = { workspace = true, features = ["all-nips", "lmdb", "tor"] }
 once_cell.workspace = true

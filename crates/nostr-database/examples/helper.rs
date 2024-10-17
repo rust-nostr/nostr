@@ -24,27 +24,29 @@ async fn main() {
             .unwrap();
     let keys_b = Keys::new(secret_key);
 
-    let index = DatabaseHelper::unbounded();
+    let helper = DatabaseHelper::unbounded();
 
     for i in 0..100_000 {
         let event = EventBuilder::text_note(format!("Event #{i}"), [])
-            .to_event(&keys_a)
+            .sign_with_keys(&keys_a)
             .unwrap();
-        index.index_event(&event).await;
+        helper.index_event(&event).await;
 
         let event = EventBuilder::text_note(
             format!("Reply to event #{i}"),
             [Tag::event(event.id), Tag::public_key(event.pubkey)],
         )
-        .to_event(&keys_b)
+        .sign_with_keys(&keys_b)
         .unwrap();
-        index.index_event(&event).await;
+        helper.index_event(&event).await;
     }
 
     for i in 0..1000 {
         let metadata = Metadata::new().name(format!("Name #{i}"));
-        let event = EventBuilder::metadata(&metadata).to_event(&keys_a).unwrap();
-        index.index_event(&event).await;
+        let event = EventBuilder::metadata(&metadata)
+            .sign_with_keys(&keys_a)
+            .unwrap();
+        helper.index_event(&event).await;
     }
 
     for i in 0..500_000 {
@@ -53,12 +55,12 @@ async fn main() {
             "Custom with d tag",
             [Tag::identifier(format!("myid{i}"))],
         )
-        .to_event(&keys_a)
+        .sign_with_keys(&keys_a)
         .unwrap();
-        index.index_event(&event).await;
+        helper.index_event(&event).await;
     }
 
-    let ids = index
+    let events = helper
         .query(vec![Filter::new()
             .kinds(vec![Kind::Metadata, Kind::Custom(123), Kind::TextNote])
             .limit(20)
@@ -66,7 +68,7 @@ async fn main() {
             //.identifier("myid5000")
             .author(keys_a.public_key())])
         .await;
-    println!("Got {} ids", ids.len());
+    println!("Got {} events", events.len());
 
     loop {
         tokio::time::sleep(Duration::from_secs(60)).await;
