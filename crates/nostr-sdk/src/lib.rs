@@ -36,8 +36,6 @@ pub use nostr_relay_pool::{
     RelaySendOptions, RelayServiceFlags, RelayStatus, SubscribeAutoCloseOptions, SubscribeOptions,
 };
 #[doc(hidden)]
-pub use nostr_signer::{self as signer, NostrSigner, NostrSignerType};
-#[doc(hidden)]
 #[allow(deprecated)]
 #[cfg(feature = "sqlite")]
 pub use nostr_sqlite::SQLiteDatabase;

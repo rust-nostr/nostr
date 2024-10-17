@@ -2773,6 +2773,7 @@ dependencies = [
  "clap",
  "dialoguer",
  "dirs",
+ "nostr-connect",
  "nostr-relay-builder",
  "nostr-sdk",
  "once_cell",
@@ -2781,6 +2782,21 @@ dependencies = [
  "rustyline",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "nostr-connect"
+version = "0.35.0"
+dependencies = [
+ "async-trait",
+ "async-utility",
+ "dialoguer",
+ "nostr",
+ "nostr-relay-pool",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2910,12 +2926,12 @@ dependencies = [
  "atomic-destructor",
  "lnurl-pay",
  "nostr",
+ "nostr-connect",
  "nostr-database",
  "nostr-indexeddb",
  "nostr-lmdb",
  "nostr-ndb",
  "nostr-relay-pool",
- "nostr-signer",
  "nostr-sqlite",
  "nostr-zapper",
  "nwc",
@@ -2951,20 +2967,6 @@ dependencies = [
  "tracing-subscriber",
  "wasm-bindgen",
  "wasm-bindgen-futures",
-]
-
-[[package]]
-name = "nostr-signer"
-version = "0.35.0"
-dependencies = [
- "async-utility",
- "dialoguer",
- "nostr",
- "nostr-relay-pool",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]

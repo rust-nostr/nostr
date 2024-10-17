@@ -1,0 +1,29 @@
+[package]
+name = "nostr-connect"
+version = "0.35.0"
+edition = "2021"
+description = "Nostr Connect (NIP46)"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "signer", "nip46", "nostr-connect"]
+
+[features]
+default = []
+tor = ["nostr-relay-pool/tor"]
+
+[dependencies]
+async-trait.workspace = true
+async-utility.workspace = true
+nostr = { workspace = true, features = ["std", "nip04", "nip44", "nip46"] }
+nostr-relay-pool.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["sync"] }
+tracing = { workspace = true, features = ["std", "attributes"] }
+
+[dev-dependencies]
+dialoguer = "0.11"
+tracing-subscriber = { workspace = true, features = ["env-filter"] }

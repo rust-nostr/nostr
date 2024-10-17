@@ -38,6 +38,7 @@ buildargs=(
     "-p nostr-database"
     "-p nostr-lmdb"
     "-p nostr-relay-builder"
+    "-p nostr-connect"
     "-p nostr-sdk"
     "-p nostr-sdk --no-default-features"
     "-p nostr-sdk --features nip47,nip57"
