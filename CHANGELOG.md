@@ -32,6 +32,7 @@
 * nostr: remove redundant public key from repost events ([Yuki Kishimoto])
 * nostr: change `impl Ord for Event` behaviour (descending order instead of ascending) ([Yuki Kishimoto])
 * nostr: change `TagStandard::Relays` variant value from `Vec<UncheckedUrl>` to `Vec<Url>` ([Yuki Kishimoto])
+* nostr: reserve capacity for tags when POW is enabled in `EventBuilder` ([Yuki Kishimoto])
 * relay-builder: refactor `Session::check_rate_limit` method ([Yuki Kishimoto])
 * relay-builder: return error if event was deleted ([Yuki Kishimoto])
 * pool: changes in `RelayPool::remove_relay` behavior ([Yuki Kishimoto])

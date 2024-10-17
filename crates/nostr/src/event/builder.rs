@@ -246,6 +246,8 @@ impl EventBuilder {
                 let mut nonce: u128 = 0;
                 let mut tags: Vec<Tag> = self.tags;
 
+                tags.reserve_exact(1);
+
                 loop {
                     nonce += 1;
 
