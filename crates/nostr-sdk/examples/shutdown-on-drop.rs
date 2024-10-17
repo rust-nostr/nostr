@@ -12,17 +12,17 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let keys = Keys::generate();
-    let client = Client::new(keys); // Ref countert set to 1
+    let client = Client::new(keys); // Counter set to 1
 
     client.add_relay("wss://relay.rip").await?;
     client.add_relay("wss://relay.damus.io").await?;
     client.connect().await;
 
-    let c = client.clone(); // Clone, ref counter set to 2
+    let c = client.clone(); // Clone, counter set to 2
     let _ = thread::spawn(async move {
         thread::sleep(Duration::from_secs(3)).await;
         c.relays().await;
-        // First drop, decrease ref counter to 1...
+        // First drop, decrease counter to 1...
     });
 
     thread::sleep(Duration::from_secs(5)).await;
@@ -34,4 +34,4 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-// Client dropped, ref counter set to 0: auto shutdown relay pool.
+// Client dropped, counter set to 0: auto shutdown relay pool.

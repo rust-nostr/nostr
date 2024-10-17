@@ -4,21 +4,19 @@
 
 use nostr_sdk::prelude::*;
 
-const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
-
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     // Parse keys
-    let my_keys = Keys::parse(BECH32_SK)?;
+    let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
 
     // Configure client to use embedded tor for `.onion` relays
     let connection: Connection = Connection::new()
         .embedded_tor()
         .target(ConnectionTarget::Onion);
     let opts = Options::new().connection(connection);
-    let client = Client::with_opts(&my_keys, opts);
+    let client = Client::with_opts(keys.clone(), opts);
 
     // Add relays
     client.add_relay("wss://relay.damus.io").await?;
@@ -31,7 +29,7 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
-    let filter: Filter = Filter::new().pubkey(my_keys.public_key()).limit(0);
+    let filter: Filter = Filter::new().pubkey(keys.public_key()).limit(0);
     client.subscribe(vec![filter], None).await?;
 
     // Handle subscription notifications with `handle_notifications` method
