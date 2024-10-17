@@ -582,10 +582,9 @@ impl TagStandard {
 }
 
 impl From<TagStandard> for Vec<String> {
-    fn from(tag: TagStandard) -> Self {
-        let tag_kind: String = tag.kind().to_string();
-
-        match tag {
+    fn from(standard: TagStandard) -> Self {
+        let tag_kind: String = standard.kind().to_string();
+        let tag: Vec<String> = match standard {
             TagStandard::Event {
                 event_id,
                 relay_url,
@@ -830,7 +829,12 @@ impl From<TagStandard> for Vec<String> {
                 tag.extend(urls.into_iter().map(|url| url.to_string()));
                 tag
             }
-        }
+        };
+
+        // Tag can't be empty, require at least 1 value
+        assert!(!tag.is_empty(), "Empty tag");
+
+        tag
     }
 }
 
