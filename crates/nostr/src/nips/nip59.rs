@@ -16,7 +16,7 @@ use crate::event::unsigned::{self, UnsignedEvent};
 use crate::event::{self, Event};
 use crate::key::{self, Keys, SecretKey};
 #[cfg(feature = "std")]
-use crate::SECP256K1;
+use crate::{EventBuilder, Timestamp, SECP256K1};
 use crate::{JsonUtil, Kind, PublicKey};
 
 /// Range for random timestamp tweak (up to 2 days)
@@ -133,6 +133,29 @@ impl UnwrappedGift {
 #[cfg(feature = "std")]
 pub fn extract_rumor(receiver_keys: &Keys, gift_wrap: &Event) -> Result<UnwrappedGift, Error> {
     UnwrappedGift::from_gift_wrap(receiver_keys, gift_wrap)
+}
+
+/// Create seal
+#[cfg(feature = "std")]
+pub fn make_seal(
+    sender_keys: &Keys,
+    receiver_pubkey: &PublicKey,
+    mut rumor: UnsignedEvent,
+) -> Result<EventBuilder, Error> {
+    // Make sure that rumor has event ID
+    rumor.ensure_id();
+
+    // Encrypt content
+    let content: String = nip44::encrypt(
+        sender_keys.secret_key(),
+        receiver_pubkey,
+        rumor.as_json(),
+        nip44::Version::default(),
+    )?;
+
+    // Compose builder
+    Ok(EventBuilder::new(Kind::Seal, content, [])
+        .custom_created_at(Timestamp::tweaked(RANGE_RANDOM_TIMESTAMP_TWEAK)))
 }
 
 #[cfg(feature = "std")]

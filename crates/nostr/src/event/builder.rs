@@ -59,6 +59,9 @@ pub enum Error {
     NIP44(nip44::Error),
     /// NIP58 error
     NIP58(nip58::Error),
+    /// NIP59 error
+    #[cfg(all(feature = "std", feature = "nip59"))]
+    NIP59(nip59::Error),
     /// Wrong kind
     WrongKind {
         /// The received wrong kind
@@ -85,6 +88,8 @@ impl fmt::Display for Error {
             #[cfg(all(feature = "std", feature = "nip44"))]
             Self::NIP44(e) => write!(f, "NIP44: {e}"),
             Self::NIP58(e) => write!(f, "NIP58: {e}"),
+            #[cfg(all(feature = "std", feature = "nip59"))]
+            Self::NIP59(e) => write!(f, "{e}"),
             Self::WrongKind { received, expected } => {
                 write!(f, "Wrong kind: received={received}, expected={expected}")
             }
@@ -140,6 +145,13 @@ impl From<nip44::Error> for Error {
 impl From<nip58::Error> for Error {
     fn from(e: nip58::Error) -> Self {
         Self::NIP58(e)
+    }
+}
+
+#[cfg(all(feature = "std", feature = "nip59"))]
+impl From<nip59::Error> for Error {
+    fn from(e: nip59::Error) -> Self {
+        Self::NIP59(e)
     }
 }
 
@@ -1209,26 +1221,14 @@ impl EventBuilder {
     /// Seal
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[inline]
     #[cfg(all(feature = "std", feature = "nip59"))]
     pub fn seal(
         sender_keys: &Keys,
         receiver_pubkey: &PublicKey,
-        mut rumor: UnsignedEvent,
+        rumor: UnsignedEvent,
     ) -> Result<Self, Error> {
-        // Make sure that rumor has event ID
-        rumor.ensure_id();
-
-        // Encrypt content
-        let content: String = nip44::encrypt(
-            sender_keys.secret_key(),
-            receiver_pubkey,
-            rumor.as_json(),
-            nip44::Version::default(),
-        )?;
-
-        // Compose builder
-        Ok(Self::new(Kind::Seal, content, [])
-            .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK)))
+        Ok(nip59::make_seal(sender_keys, receiver_pubkey, rumor)?)
     }
 
     /// Gift Wrap from seal
