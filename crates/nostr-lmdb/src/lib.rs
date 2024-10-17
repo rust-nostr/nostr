@@ -212,12 +212,12 @@ mod tests {
             // Add some text notes
             events.push(
                 EventBuilder::text_note("Text Note A", [])
-                    .to_event(&keys_a)
+                    .sign_with_keys(&keys_a)
                     .unwrap(),
             );
             events.push(
                 EventBuilder::text_note("Text Note B", [])
-                    .to_event(&keys_b)
+                    .sign_with_keys(&keys_b)
                     .unwrap(),
             );
 
@@ -226,14 +226,14 @@ mod tests {
                 EventBuilder::metadata(
                     &Metadata::new().name("account-a").display_name("Account A"),
                 )
-                .to_event(&keys_a)
+                .sign_with_keys(&keys_a)
                 .unwrap(),
             );
             events.push(
                 EventBuilder::metadata(
                     &Metadata::new().name("account-b").display_name("Account B"),
                 )
-                .to_event(&keys_b)
+                .sign_with_keys(&keys_b)
                 .unwrap(),
             );
 
@@ -244,7 +244,7 @@ mod tests {
                     "",
                     [Tag::identifier("my-id-a")],
                 )
-                .to_event(&keys_a)
+                .sign_with_keys(&keys_a)
                 .unwrap(),
             );
             events.push(
@@ -253,7 +253,7 @@ mod tests {
                     "",
                     [Tag::identifier("my-id-b")],
                 )
-                .to_event(&keys_b)
+                .sign_with_keys(&keys_b)
                 .unwrap(),
             );
 
@@ -267,13 +267,13 @@ mod tests {
 
         async fn add_event(&self, builder: EventBuilder) -> (Keys, Event) {
             let keys = Keys::generate();
-            let event = builder.to_event(&keys).unwrap();
+            let event = builder.sign_with_keys(&keys).unwrap();
             self.db.save_event(&event).await.unwrap();
             (keys, event)
         }
 
         async fn add_event_with_keys(&self, builder: EventBuilder, keys: &Keys) -> (Event, bool) {
-            let event = builder.to_event(&keys).unwrap();
+            let event = builder.sign_with_keys(&keys).unwrap();
             let stored = self.db.save_event(&event).await.unwrap();
             (event, stored)
         }

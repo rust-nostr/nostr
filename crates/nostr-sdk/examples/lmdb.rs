@@ -8,11 +8,11 @@ use nostr_sdk::prelude::*;
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let my_keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
+    let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
 
     let database = NostrLMDB::open("./db/nostr-lmdb")?;
     let client: Client = ClientBuilder::default()
-        .signer(&my_keys)
+        .signer(keys.clone())
         .database(database)
         .build();
 
@@ -26,7 +26,7 @@ async fn main() -> Result<()> {
     client.publish_text_note("Hello world", []).await?;
 
     // Negentropy reconcile
-    let filter = Filter::new().author(my_keys.public_key());
+    let filter = Filter::new().author(keys.public_key());
     let output = client.sync(filter, &SyncOptions::default()).await?;
 
     println!("Local: {}", output.local.len());
@@ -42,7 +42,7 @@ async fn main() -> Result<()> {
     }
 
     // Query events from database
-    let filter = Filter::new().author(my_keys.public_key()).limit(10);
+    let filter = Filter::new().author(keys.public_key()).limit(10);
     let events = client.database().query(vec![filter]).await?;
     println!("Events: {events:?}");
 

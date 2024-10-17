@@ -34,7 +34,7 @@ async fn main() {
 
     for i in 0..100_000 {
         let event = EventBuilder::text_note(format!("Event #{i}"), [])
-            .to_event(&keys_a)
+            .sign_with_keys(&keys_a)
             .unwrap();
         database.save_event(&event).await.unwrap();
 
@@ -42,14 +42,16 @@ async fn main() {
             format!("Reply to event #{i}"),
             [Tag::event(event.id), Tag::public_key(event.pubkey)],
         )
-        .to_event(&keys_b)
+        .sign_with_keys(&keys_b)
         .unwrap();
         database.save_event(&event).await.unwrap();
     }
 
     for i in 0..10 {
         let metadata = Metadata::new().name(format!("Name #{i}"));
-        let event = EventBuilder::metadata(&metadata).to_event(&keys_a).unwrap();
+        let event = EventBuilder::metadata(&metadata)
+            .sign_with_keys(&keys_a)
+            .unwrap();
         database.save_event(&event).await.unwrap();
     }
 
@@ -59,7 +61,7 @@ async fn main() {
             "Custom with d tag",
             [Tag::identifier(format!("myid{i}"))],
         )
-        .to_event(&keys_a)
+        .sign_with_keys(&keys_a)
         .unwrap();
         database.save_event(&event).await.unwrap();
     }

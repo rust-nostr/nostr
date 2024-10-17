@@ -22,9 +22,7 @@ async fn main() -> Result<()> {
     let nwc = NWC::new(uri);
 
     // Compose client
-    let secret_key =
-        SecretKey::from_bech32("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
-    let keys = Keys::new(secret_key);
+    let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
     let client = Client::builder().signer(keys).zapper(nwc).build();
 
     client.add_relay("wss://relay.nostr.band").await?;
@@ -35,7 +33,7 @@ async fn main() -> Result<()> {
         PublicKey::from_bech32("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")
             .unwrap();
 
-    // Send sats without zap event
+    // Send SAT without zap event
     client.zap(public_key, 1000, None).await?;
 
     // Zap profile

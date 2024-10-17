@@ -15,7 +15,7 @@ async fn main() -> Result<()> {
     let my_keys = Keys::parse(BECH32_SK)?;
 
     let opts = Options::new().gossip(true);
-    let client = Client::with_opts(&my_keys, opts);
+    let client = Client::with_opts(my_keys, opts);
 
     client.add_discovery_relay("wss://relay.damus.io").await?;
     client.add_discovery_relay("wss://purplepag.es").await?;

@@ -6,18 +6,15 @@ use std::time::Duration;
 
 use nostr_sdk::prelude::*;
 
-const BECH32_SK: &str = "nsec12kcgs78l06p30jz7z7h3n2x2cy99nw2z6zspjdp7qc206887mwvs95lnkx";
-
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let secret_key = SecretKey::from_bech32(BECH32_SK)?;
-    let keys = Keys::new(secret_key);
+    let keys = Keys::parse("nsec12kcgs78l06p30jz7z7h3n2x2cy99nw2z6zspjdp7qc206887mwvs95lnkx")?;
     let opts = Options::new()
         .connection_timeout(Some(Duration::from_secs(10)))
         .send_timeout(Some(Duration::from_secs(5)));
-    let client = Client::with_opts(&keys, opts);
+    let client = Client::with_opts(keys.clone(), opts);
 
     println!("Bot public key: {}", keys.public_key().to_bech32()?);
 

@@ -10,11 +10,11 @@ const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let my_keys = Keys::parse(BECH32_SK)?;
+    let keys = Keys::parse(BECH32_SK)?;
 
     let database = NdbDatabase::open("./db/ndb")?;
     let client: Client = Client::builder()
-        .signer(&my_keys)
+        .signer(keys.clone())
         .database(database)
         .build();
 
@@ -26,11 +26,11 @@ async fn main() -> Result<()> {
     client.publish_text_note("Hello world", []).await?;
 
     // Negentropy reconcile
-    let filter = Filter::new().author(my_keys.public_key());
+    let filter = Filter::new().author(keys.public_key());
     client.sync(filter, &SyncOptions::default()).await?;
 
     // Query events from database
-    let filter = Filter::new().author(my_keys.public_key()).limit(10);
+    let filter = Filter::new().author(keys.public_key()).limit(10);
     let events = client.database().query(vec![filter]).await?;
     println!("Events: {events:?}");
 

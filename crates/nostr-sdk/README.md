@@ -26,13 +26,13 @@ use nostr_sdk::prelude::*;
 #[tokio::main]
 async fn main() -> Result<()> {
     // Generate new random keys
-    let my_keys = Keys::generate();
+    let keys = Keys::generate();
 
     // Or use your already existing (from hex or bech32)
-    let my_keys = Keys::parse("hex-or-bech32-secret-key")?;
+    let keys = Keys::parse("hex-or-bech32-secret-key")?;
 
     // Show bech32 public key
-    let bech32_pubkey: String = my_keys.public_key().to_bech32()?;
+    let bech32_pubkey: String = keys.public_key().to_bech32()?;
     println!("Bech32 PubKey: {}", bech32_pubkey);
 
     // Configure client to use proxy for `.onion` relays
@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
     // Create new client with custom options.
     // Use `Client::new(signer)` to construct the client with a custom signer and default options
     // or `Client::default()` to create one without signer and with default options.
-    let client = Client::with_opts(&my_keys, opts);
+    let client = Client::with_opts(keys.clone(), opts);
 
     // Add relays
     client.add_relay("wss://relay.damus.io").await?;
@@ -74,7 +74,7 @@ async fn main() -> Result<()> {
     client.publish_text_note("My first text note from rust-nostr!", []).await?;
 
     // Create a POW text note
-    let event: Event = EventBuilder::text_note("POW text note from nostr-sdk", []).pow(20).to_event(&my_keys)?;
+    let event: Event = EventBuilder::text_note("POW text note from nostr-sdk", []).pow(20).sign(&keys).await?;
     client.send_event(event).await?; // Send to all relays
     // client.send_event_to(["wss://relay.damus.io"], event).await?; // Send to specific relay
 
@@ -141,7 +141,6 @@ The following crate feature flags are available:
 | `nip07`     |   Yes   | Enable NIP-07: `window.nostr` capability for web browsers (**available only for `wasm32`!**) |
 | `nip11`     |   Yes   | Enable NIP-11: Relay Information Document                                                    |
 | `nip44`     |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                                |
-| `nip46`     |   Yes   | Enable NIP-46: Nostr Connect                                                                 |
 | `nip47`     |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                          |
 | `nip49`     |   Yes   | Enable NIP-49: Private Key Encryption                                                        |
 | `nip57`     |   Yes   | Enable NIP-57: Zaps                                                                          |

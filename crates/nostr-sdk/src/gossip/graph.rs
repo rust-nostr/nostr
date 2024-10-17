@@ -349,7 +349,9 @@ mod tests {
         let list = relays
             .into_iter()
             .filter_map(|(url, m)| Some((Url::parse(url).ok()?, m)));
-        EventBuilder::relay_list(list).to_event(&keys).unwrap()
+        EventBuilder::relay_list(list)
+            .sign_with_keys(&keys)
+            .unwrap()
     }
 
     async fn setup_graph() -> GossipGraph {

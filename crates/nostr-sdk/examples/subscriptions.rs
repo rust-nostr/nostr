@@ -4,14 +4,11 @@
 
 use nostr_sdk::prelude::*;
 
-const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
-
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let secret_key = SecretKey::from_bech32(BECH32_SK)?;
-    let keys = Keys::new(secret_key);
+    let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
     let public_key = keys.public_key();
 
     let opts = Options::new().wait_for_send(false);

@@ -14,7 +14,6 @@ use atomic_destructor::StealthClone;
 use nostr::prelude::*;
 use nostr_database::DynNostrDatabase;
 use nostr_relay_pool::prelude::*;
-use nostr_signer::prelude::*;
 #[cfg(feature = "nip57")]
 use nostr_zapper::{DynNostrZapper, IntoNostrZapper, ZapperError};
 use thiserror::Error;
@@ -48,7 +47,7 @@ pub enum Error {
     Database(#[from] DatabaseError),
     /// Signer error
     #[error(transparent)]
-    Signer(#[from] nostr_signer::Error),
+    Signer(#[from] SignerError),
     /// Zapper error
     #[cfg(feature = "nip57")]
     #[error(transparent)]
@@ -74,6 +73,10 @@ pub enum Error {
     #[cfg(feature = "nip57")]
     #[error(transparent)]
     LnUrlPay(#[from] lnurl_pay::Error),
+    /// NIP59
+    #[cfg(feature = "nip59")]
+    #[error(transparent)]
+    NIP59(#[from] nip59::Error),
     /// Event not found
     #[error("event not found: {0}")]
     EventNotFound(EventId),
@@ -89,7 +92,7 @@ pub enum Error {
 #[derive(Debug, Clone)]
 pub struct Client {
     pool: RelayPool,
-    signer: Arc<RwLock<Option<NostrSigner>>>,
+    signer: Arc<RwLock<Option<Arc<dyn NostrSigner>>>>,
     #[cfg(feature = "nip57")]
     zapper: Arc<RwLock<Option<Arc<DynNostrZapper>>>>,
     gossip_graph: GossipGraph,
@@ -117,46 +120,46 @@ impl StealthClone for Client {
 }
 
 impl Client {
-    /// Create a new [`Client`] with signer
+    /// Construct client with signer
     ///
-    /// To create a [`Client`] without any signer use `Client::default()`.
+    /// To construct one without signer use [`Client::default()`].
     ///
     /// # Example
     /// ```rust,no_run
     /// use nostr_sdk::prelude::*;
     ///
-    /// let my_keys = Keys::generate();
-    /// let client = Client::new(&my_keys);
+    /// let keys = Keys::generate();
+    /// let client = Client::new(keys);
     /// ```
     #[inline]
-    pub fn new<S>(signer: S) -> Self
+    pub fn new<T>(signer: T) -> Self
     where
-        S: Into<NostrSigner>,
+        T: IntoNostrSigner,
     {
         Self::builder().signer(signer).build()
     }
 
-    /// Create a new [`Client`] with [`Options`]
+    /// Construct client with signer and options
     ///
-    /// To create a [`Client`] with custom [`Options`] and without any signer use `Client::builder().opts(opts).build()`.
+    /// Check [`ClientBuilder`] to construct more customized clients (i.e. with persistent database).
     ///
     /// # Example
     /// ```rust,no_run
     /// use nostr_sdk::prelude::*;
     ///
-    /// let my_keys = Keys::generate();
+    /// let keys = Keys::generate();
     /// let opts = Options::new().wait_for_send(true);
-    /// let client = Client::with_opts(&my_keys, opts);
+    /// let client = Client::with_opts(keys, opts);
     /// ```
     #[inline]
-    pub fn with_opts<S>(signer: S, opts: Options) -> Self
+    pub fn with_opts<T>(signer: T, opts: Options) -> Self
     where
-        S: Into<NostrSigner>,
+        T: IntoNostrSigner,
     {
         Self::builder().signer(signer).opts(opts).build()
     }
 
-    /// Construct [ClientBuilder]
+    /// Construct client builder
     ///
     /// # Example
     /// ```rust,no_run
@@ -214,15 +217,24 @@ impl Client {
     /// Get current nostr signer
     ///
     /// Rise error if it not set.
-    pub async fn signer(&self) -> Result<NostrSigner, Error> {
+    pub async fn signer(&self) -> Result<Arc<dyn NostrSigner>, Error> {
         let signer = self.signer.read().await;
         signer.clone().ok_or(Error::SignerNotConfigured)
     }
 
     /// Set nostr signer
-    pub async fn set_signer(&self, signer: Option<NostrSigner>) {
+    pub async fn set_signer<T>(&self, signer: T)
+    where
+        T: IntoNostrSigner,
+    {
         let mut s = self.signer.write().await;
-        *s = signer;
+        *s = Some(signer.into_nostr_signer());
+    }
+
+    /// Unset nostr signer
+    pub async fn unset_signer(&self) {
+        let mut s = self.signer.write().await;
+        *s = None;
     }
 
     /// Check if `zapper` is configured
@@ -404,21 +416,6 @@ impl Client {
     /// To use custom [`RelayOptions`] use [`RelayPool::add_relay`].
     ///
     /// Connection is **NOT** automatically started with relay, remember to call `client.connect()`!
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
-    /// client.add_relay("wss://relay.nostr.info").await.unwrap();
-    /// client.add_relay("wss://relay.damus.io").await.unwrap();
-    ///
-    /// client.connect().await;
-    /// # }
-    /// ```
     #[inline]
     pub async fn add_relay<U>(&self, url: U) -> Result<bool, Error>
     where
@@ -545,21 +542,6 @@ impl Client {
     }
 
     /// Connect to a previously added relay
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
-    /// client
-    ///     .connect_relay("wss://relay.nostr.info")
-    ///     .await
-    ///     .unwrap();
-    /// # }
-    /// ```
     #[inline]
     pub async fn connect_relay<U>(&self, url: U) -> Result<(), Error>
     where
@@ -573,21 +555,6 @@ impl Client {
     }
 
     /// Disconnect relay
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
-    /// client
-    ///     .disconnect_relay("wss://relay.nostr.info")
-    ///     .await
-    ///     .unwrap();
-    /// # }
-    /// ```
     #[inline]
     pub async fn disconnect_relay<U>(&self, url: U) -> Result<(), Error>
     where
@@ -598,18 +565,6 @@ impl Client {
     }
 
     /// Connect to all added relays
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
-    /// client.connect().await;
-    /// # }
-    /// ```
     #[inline]
     pub async fn connect(&self) {
         self.pool.connect(self.opts.connection_timeout).await;
@@ -625,18 +580,6 @@ impl Client {
     }
 
     /// Disconnect from all relays
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
-    /// client.disconnect().await.unwrap();
-    /// # }
-    /// ```
     #[inline]
     pub async fn disconnect(&self) -> Result<(), Error> {
         Ok(self.pool.disconnect().await?)
@@ -671,14 +614,14 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
+    /// # use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
+    /// #   let keys = Keys::generate();
+    /// #   let client = Client::new(keys.clone());
+    /// // Compose filter
     /// let subscription = Filter::new()
-    ///     .pubkeys(vec![my_keys.public_key()])
+    ///     .pubkeys(vec![keys.public_key()])
     ///     .since(Timestamp::now());
     ///
     /// // Subscribe
@@ -866,16 +809,14 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use std::time::Duration;
-    ///
-    /// use nostr_sdk::prelude::*;
-    ///
+    /// # use std::time::Duration;
+    /// # use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
+    /// #   let keys = Keys::generate();
+    /// #   let client = Client::new(keys.clone());
     /// let subscription = Filter::new()
-    ///     .pubkeys(vec![my_keys.public_key()])
+    ///     .pubkeys(vec![keys.public_key()])
     ///     .since(Timestamp::now());
     ///
     /// let _events = client
@@ -1159,9 +1100,9 @@ impl Client {
     pub async fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
         let signer = self.signer().await?;
 
-        let public_key: PublicKey = signer.public_key().await?;
+        let public_key: PublicKey = signer.get_public_key().await?;
         let difficulty: u8 = self.opts.get_difficulty();
-        let unsigned: UnsignedEvent = builder.pow(difficulty).to_unsigned_event(public_key);
+        let unsigned: UnsignedEvent = builder.pow(difficulty).build(public_key);
 
         Ok(signer.sign_event(unsigned).await?)
     }
@@ -1225,12 +1166,11 @@ impl Client {
     ///
     /// # Example
     /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
+    /// # use nostr_sdk::prelude::*;
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
+    /// #   let keys = Keys::generate();
+    /// #   let client = Client::new(keys);
     /// let metadata = Metadata::new()
     ///     .name("username")
     ///     .display_name("My Username")
@@ -1262,21 +1202,6 @@ impl Client {
     /// Publish text note
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
-    /// client
-    ///     .publish_text_note("My first text note from rust-nostr!", [])
-    ///     .await
-    ///     .unwrap();
-    /// # }
-    /// ```
     #[inline]
     pub async fn publish_text_note<S, I>(
         &self,
@@ -1305,7 +1230,7 @@ impl Client {
 
     async fn get_contact_list_filters(&self) -> Result<Vec<Filter>, Error> {
         let signer = self.signer().await?;
-        let public_key = signer.public_key().await?;
+        let public_key = signer.get_public_key().await?;
         let filter: Filter = Filter::new()
             .author(public_key)
             .kind(Kind::ContactList)
@@ -1316,21 +1241,6 @@ impl Client {
     /// Get contact list from relays.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use std::time::Duration;
-    ///
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
-    /// let timeout = Duration::from_secs(10);
-    /// let _list = client.get_contact_list(Some(timeout)).await.unwrap();
-    /// # }
-    /// ```
     pub async fn get_contact_list(&self, timeout: Option<Duration>) -> Result<Vec<Contact>, Error> {
         let mut contact_list: Vec<Contact> = Vec::new();
         let filters: Vec<Filter> = self.get_contact_list_filters().await?;
@@ -1470,24 +1380,6 @@ impl Client {
     /// Like event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use std::str::FromStr;
-    ///
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
-    /// let event =
-    ///     Event::from_json(r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#)
-    ///         .unwrap();
-    ///
-    /// client.like(&event).await.unwrap();
-    /// # }
-    /// ```
     #[inline]
     pub async fn like(&self, event: &Event) -> Result<Output<EventId>, Error> {
         self.reaction(event, "+").await
@@ -1496,24 +1388,6 @@ impl Client {
     /// Disike event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use std::str::FromStr;
-    ///
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
-    /// let event =
-    ///     Event::from_json(r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#)
-    ///         .unwrap();
-    ///
-    /// client.dislike(&event).await.unwrap();
-    /// # }
-    /// ```
     #[inline]
     pub async fn dislike(&self, event: &Event) -> Result<Output<EventId>, Error> {
         self.reaction(event, "-").await
@@ -1531,8 +1405,8 @@ impl Client {
     ///
     /// # #[tokio::main]
     /// # async fn main() {
-    /// #   let my_keys = Keys::generate();
-    /// #   let client = Client::new(&my_keys);
+    /// #   let keys = Keys::generate();
+    /// #   let client = Client::new(keys);
     /// let event =
     ///     Event::from_json(r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#)
     ///         .unwrap();
@@ -1690,8 +1564,18 @@ impl Client {
         rumor: EventBuilder,
         expiration: Option<Timestamp>,
     ) -> Result<Output<EventId>, Error> {
-        let signer: NostrSigner = self.signer().await?;
-        let gift_wrap: Event = signer.gift_wrap(receiver, rumor, expiration).await?;
+        // Acquire signer
+        let signer = self.signer().await?;
+
+        // Compose rumor
+        let public_key: PublicKey = signer.get_public_key().await?;
+        let rumor: UnsignedEvent = rumor.build(public_key);
+
+        // Build gift wrap
+        let gift_wrap: Event =
+            EventBuilder::gift_wrap(&signer, receiver, rumor, expiration).await?;
+
+        // Send
         self.send_event(gift_wrap).await
     }
 
@@ -1712,8 +1596,18 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let signer: NostrSigner = self.signer().await?;
-        let gift_wrap: Event = signer.gift_wrap(receiver, rumor, expiration).await?;
+        // Acquire signer
+        let signer = self.signer().await?;
+
+        // Compose rumor
+        let public_key: PublicKey = signer.get_public_key().await?;
+        let rumor: UnsignedEvent = rumor.build(public_key);
+
+        // Build gift wrap
+        let gift_wrap: Event =
+            EventBuilder::gift_wrap(&signer, receiver, rumor, expiration).await?;
+
+        // Send
         self.send_event_to(urls, gift_wrap).await
     }
 
@@ -1725,8 +1619,8 @@ impl Client {
     #[inline]
     #[cfg(feature = "nip59")]
     pub async fn unwrap_gift_wrap(&self, gift_wrap: &Event) -> Result<UnwrappedGift, Error> {
-        let signer: NostrSigner = self.signer().await?;
-        Ok(signer.unwrap_gift_wrap(gift_wrap).await?)
+        let signer = self.signer().await?;
+        Ok(UnwrappedGift::from_gift_wrap(&signer, gift_wrap).await?)
     }
 
     /// File metadata
