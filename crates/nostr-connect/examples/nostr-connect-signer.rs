@@ -4,7 +4,7 @@
 
 use dialoguer::Confirm;
 use nostr::nips::nip46::Request;
-use nostr_signer::prelude::*;
+use nostr_connect::prelude::*;
 
 const USER_SECRET_KEY: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
 

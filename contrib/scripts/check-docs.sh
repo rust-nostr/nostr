@@ -6,8 +6,7 @@ buildargs=(
     "-p nostr"
     "-p nostr-database"
     "-p nostr-relay-pool"
-    "-p nostr-signer"
-    "-p nostr-zapper"
+    "-p nostr-connect"
     "-p nwc"
     "-p nostr-sdk"
 )

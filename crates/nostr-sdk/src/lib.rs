@@ -37,8 +37,6 @@ pub use nostr_relay_pool::{
     SyncOptions,
 };
 #[doc(hidden)]
-pub use nostr_signer::{self as signer, NostrSigner, NostrSignerType};
-#[doc(hidden)]
 #[cfg(feature = "nip57")]
 pub use nostr_zapper::{self as zapper, *};
 #[doc(hidden)]

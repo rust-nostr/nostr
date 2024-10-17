@@ -9,6 +9,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_trait::async_trait;
 use async_utility::time;
 use nostr::nips::nip46::{Message, NostrConnectURI, Request, ResponseResult};
 use nostr::prelude::*;
@@ -172,7 +173,7 @@ impl Nip46Signer {
 
         let req_id = msg.id().to_string();
         let event: Event = EventBuilder::nostr_connect(&self.app_keys, signer_public_key, msg)?
-            .to_event(&self.app_keys)?;
+            .sign_with_keys(&self.app_keys)?;
 
         let mut notifications = self.pool.notifications();
 
@@ -233,66 +234,59 @@ impl Nip46Signer {
     }
 
     /// Sign an [UnsignedEvent]
-    pub async fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, Error> {
+    async fn _sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, Error> {
         let req = Request::SignEvent(unsigned);
         let res = self.send_request(req).await?;
         Ok(res.to_sign_event()?)
     }
 
-    /// NIP04 encrypt
-    pub async fn nip04_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
-    where
-        T: AsRef<[u8]>,
-    {
-        let content: &[u8] = content.as_ref();
-        let req = Request::Nip04Encrypt {
-            public_key,
-            text: String::from_utf8_lossy(content).to_string(),
-        };
-        let res = self.send_request(req).await?;
-        Ok(res.to_encrypt_decrypt()?)
-    }
-
-    /// NIP04 decrypt
-    pub async fn nip04_decrypt<S>(
+    async fn _nip04_encrypt(
         &self,
         public_key: PublicKey,
-        ciphertext: S,
-    ) -> Result<String, Error>
-    where
-        S: Into<String>,
-    {
+        content: String,
+    ) -> Result<String, Error> {
+        let req = Request::Nip04Encrypt {
+            public_key,
+            text: content,
+        };
+        let res = self.send_request(req).await?;
+        Ok(res.to_encrypt_decrypt()?)
+    }
+
+    async fn _nip04_decrypt(
+        &self,
+        public_key: PublicKey,
+        ciphertext: String,
+    ) -> Result<String, Error> {
         let req = Request::Nip04Decrypt {
             public_key,
-            ciphertext: ciphertext.into(),
+            ciphertext,
         };
         let res = self.send_request(req).await?;
         Ok(res.to_encrypt_decrypt()?)
     }
 
-    /// NIP44 encrypt
-    pub async fn nip44_encrypt<T>(&self, public_key: PublicKey, content: T) -> Result<String, Error>
-    where
-        T: AsRef<[u8]>,
-    {
-        let content: &[u8] = content.as_ref();
+    async fn _nip44_encrypt(
+        &self,
+        public_key: PublicKey,
+        content: String,
+    ) -> Result<String, Error> {
         let req = Request::Nip44Encrypt {
             public_key,
-            text: String::from_utf8_lossy(content).to_string(),
+            text: content,
         };
         let res = self.send_request(req).await?;
         Ok(res.to_encrypt_decrypt()?)
     }
 
-    /// NIP44 decrypt
-    pub async fn nip44_decrypt<T>(&self, public_key: PublicKey, payload: T) -> Result<String, Error>
-    where
-        T: AsRef<[u8]>,
-    {
-        let payload: &[u8] = payload.as_ref();
+    async fn _nip44_decrypt(
+        &self,
+        public_key: PublicKey,
+        payload: String,
+    ) -> Result<String, Error> {
         let req = Request::Nip44Decrypt {
             public_key,
-            ciphertext: String::from_utf8_lossy(payload).to_string(),
+            ciphertext: payload,
         };
         let res = self.send_request(req).await?;
         Ok(res.to_encrypt_decrypt()?)
@@ -345,4 +339,62 @@ async fn get_signer_public_key(
     })
     .await
     .ok_or(Error::Timeout)?
+}
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl NostrSigner for Nip46Signer {
+    async fn get_public_key(&self) -> Result<PublicKey, SignerError> {
+        // TODO: avoid copied?
+        self.signer_public_key()
+            .await
+            .map_err(SignerError::backend)
+            .copied()
+    }
+
+    async fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, SignerError> {
+        self._sign_event(unsigned)
+            .await
+            .map_err(SignerError::backend)
+    }
+
+    async fn nip04_encrypt(
+        &self,
+        public_key: &PublicKey,
+        content: &str,
+    ) -> Result<String, SignerError> {
+        self._nip04_encrypt(*public_key, content.to_string())
+            .await
+            .map_err(SignerError::backend)
+    }
+
+    async fn nip04_decrypt(
+        &self,
+        public_key: &PublicKey,
+        content: &str,
+    ) -> Result<String, SignerError> {
+        self._nip04_decrypt(*public_key, content.to_string())
+            .await
+            .map_err(SignerError::backend)
+    }
+
+    async fn nip44_encrypt(
+        &self,
+        public_key: &PublicKey,
+        content: &str,
+    ) -> Result<String, SignerError> {
+        self._nip44_encrypt(*public_key, content.to_string())
+            .await
+            .map_err(SignerError::backend)
+    }
+
+    async fn nip44_decrypt(
+        &self,
+        public_key: &PublicKey,
+        content: &str,
+    ) -> Result<String, SignerError> {
+        self._nip44_decrypt(*public_key, content.to_string())
+            .await
+            .map_err(SignerError::backend)
+    }
 }

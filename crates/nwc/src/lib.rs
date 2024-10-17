@@ -18,6 +18,7 @@ use std::time::Duration;
 pub extern crate nostr;
 pub extern crate nostr_zapper as zapper;
 
+use async_trait::async_trait;
 use async_utility::time;
 use nostr::nips::nip47::{
     GetBalanceResponseResult, GetInfoResponseResult, ListTransactionsRequestParams,
@@ -27,7 +28,7 @@ use nostr::nips::nip47::{
 };
 use nostr::{Event, EventId, Filter, Kind, SubscriptionId, Timestamp};
 use nostr_relay_pool::{Relay, RelayNotification, RelaySendOptions, SubscribeOptions};
-use nostr_zapper::{async_trait, NostrZapper, ZapperBackend, ZapperError};
+use nostr_zapper::{NostrZapper, ZapperBackend, ZapperError};
 
 pub mod error;
 pub mod options;

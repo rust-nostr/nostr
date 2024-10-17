@@ -11,6 +11,7 @@ use std::time::Duration;
 use clap::Parser;
 use console::Term;
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};
+use nostr_connect::prelude::*;
 use nostr_relay_builder::prelude::*;
 use nostr_sdk::prelude::*;
 use rustyline::error::ReadlineError;

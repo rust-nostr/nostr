@@ -28,6 +28,7 @@
 ### Changed
 
 * Bump toolchain channel to `1.82.0`
+* Convert `nostr-signer` crate to `nostr-connect` ([Yuki Kishimoto])
 * nostr: move `TagsIndexes` into `Tags` struct ([Yuki Kishimoto])
 * nostr: use `OnceCell` implementation from `std` lib instead of `once_cell` ([Yuki Kishimoto])
 * nostr: remove redundant public key from repost events ([Yuki Kishimoto])

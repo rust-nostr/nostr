@@ -16,6 +16,7 @@ console = "0.15"
 dialoguer = "0.11"
 dirs = "5.0"
 indicatif = "0.17"
+nostr-connect.workspace = true
 nostr-relay-builder.workspace = true
 nostr-sdk = { workspace = true, features = ["all-nips", "lmdb", "tor"] }
 once_cell.workspace = true

@@ -6,8 +6,14 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/46.md>
 
+#![forbid(unsafe_code)]
+#![warn(missing_docs)]
+#![warn(rustdoc::bare_urls)]
+#![warn(clippy::large_futures)]
+
 pub mod client;
 pub mod error;
+pub mod prelude;
 pub mod signer;
 
 pub use self::client::Nip46Signer;

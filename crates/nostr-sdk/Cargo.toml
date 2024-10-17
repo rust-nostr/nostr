@@ -22,19 +22,18 @@ lmdb = ["dep:nostr-lmdb"]
 ndb = ["dep:nostr-ndb"]
 indexeddb = ["dep:nostr-indexeddb"]
 webln = ["nip57", "nostr-zapper?/webln"]
-all-nips = ["nip04", "nip05", "nip06", "nip07", "nip11", "nip44", "nip46", "nip47", "nip49", "nip57", "nip59"]
+all-nips = ["nip04", "nip05", "nip06", "nip07", "nip11", "nip44", "nip47", "nip49", "nip57", "nip59"]
 nip03 = ["nostr/nip03"]
-nip04 = ["nostr/nip04", "nostr-signer/nip04"]
+nip04 = ["nostr/nip04"]
 nip05 = ["nostr/nip05"]
 nip06 = ["nostr/nip06"]
-nip07 = ["nostr/nip07", "nostr-signer/nip07"]
+nip07 = ["nostr/nip07"]
 nip11 = ["nostr/nip11", "nostr-relay-pool/nip11"]
-nip44 = ["nostr/nip44", "nostr-signer/nip44"]
-nip46 = ["nostr/nip46", "nostr-signer/nip46"]
+nip44 = ["nostr/nip44"]
 nip47 = ["nostr/nip47", "dep:nwc"]
 nip49 = ["nostr/nip49"]
 nip57 = ["nostr/nip57", "dep:nostr-zapper", "dep:lnurl-pay"]
-nip59 = ["nostr/nip59", "nostr-signer/nip59"]
+nip59 = ["nostr/nip59"]
 
 [dependencies]
 async-utility.workspace = true
@@ -43,7 +42,6 @@ lnurl-pay = { version = "0.6", features = ["api"], optional = true }
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
 nostr-relay-pool.workspace = true
-nostr-signer.workspace = true
 nostr-zapper = { workspace = true, optional = true }
 nwc = { workspace = true, optional = true }
 thiserror.workspace = true
@@ -58,6 +56,7 @@ nostr-ndb = { workspace = true, optional = true }
 nostr-indexeddb = { workspace = true, optional = true }
 
 [dev-dependencies]
+nostr-connect.workspace = true
 tokio = { workspace = true, features = ["macros"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
@@ -87,7 +86,7 @@ required-features = ["all-nips"]
 
 [[example]]
 name = "nostr-connect"
-required-features = ["nip46"]
+required-features = ["nip59"]
 
 [[example]]
 name = "bot"

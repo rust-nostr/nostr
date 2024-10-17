@@ -95,7 +95,7 @@ impl NostrConnectRemoteSigner {
             secret: None,
         });
         let event =
-            EventBuilder::nostr_connect(&self.keys, public_key, msg)?.to_event(&self.keys)?;
+            EventBuilder::nostr_connect(&self.keys, public_key, msg)?.sign_with_keys(&self.keys)?;
         self.pool
             .send_event(event, RelaySendOptions::default())
             .await?;
@@ -226,7 +226,7 @@ impl NostrConnectRemoteSigner {
                                             }
                                         }
                                         Request::SignEvent(unsigned) => {
-                                            match unsigned.sign(&self.keys) {
+                                            match unsigned.sign_with_keys(&self.keys) {
                                                 Ok(event) => (
                                                     Some(ResponseResult::SignEvent(Box::new(
                                                         event,
@@ -248,7 +248,7 @@ impl NostrConnectRemoteSigner {
                                 // Compose and publish event
                                 let event =
                                     EventBuilder::nostr_connect(&self.keys, event.pubkey, msg)?
-                                        .to_event(&self.keys)?;
+                                        .sign_with_keys(&self.keys)?;
                                 self.pool.send_event(event, RelaySendOptions::new()).await?;
                             }
                         } else {

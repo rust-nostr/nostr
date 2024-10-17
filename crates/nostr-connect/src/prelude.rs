@@ -10,6 +10,4 @@
 
 pub use nostr::prelude::*;
 
-#[cfg(feature = "nip46")]
-pub use crate::nip46::*;
 pub use crate::*;
