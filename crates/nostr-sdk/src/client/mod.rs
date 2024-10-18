@@ -915,6 +915,59 @@ impl Client {
             .to_vec())
     }
 
+    /// Get events both from database and relays
+    ///
+    ///
+    /// This method will be deprecated in the future!
+    /// This is a temporary solution for who still want to query events both from database and relays and merge the result.
+    /// The optimal solution is to execute a [`Client::sync`] to reconcile missing events, [`Client::subscribe`] to get all
+    /// new future events, [`NostrDatabase::query`] to query stored events and [`Client::handle_notifications`] to listen-for/handle new events (i.e. to know when update the UI).
+    /// This will allow very fast queries, low bandwidth usage (depending on how many events the client have to reconcile) and a lower load on the relays.
+    ///
+    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
+    ///
+    /// You can obtain the same result with:
+    /// ```rust,no_run
+    /// # use std::time::Duration;
+    /// # use nostr_sdk::prelude::*;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<()> {
+    /// # let client = Client::default();
+    /// # let filters = vec![Filter::new().limit(1)];
+    /// // Query database
+    /// let stored_events: Events = client.database().query(filters.clone()).await?;
+    ///
+    /// // Query relays
+    /// let fetched_events: Events = client
+    ///     .fetch_events(filters, Some(Duration::from_secs(10)))
+    ///     .await?;
+    ///
+    /// // Merge result
+    /// let events: Events = stored_events.merge(fetched_events);
+    ///
+    /// // Iter and print result
+    /// for event in events.into_iter() {
+    ///     println!("{}", event.as_json());
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn fetch_combined_events(
+        &self,
+        filters: Vec<Filter>,
+        timeout: Option<Duration>,
+    ) -> Result<Events, Error> {
+        // Query database
+        let stored_events: Events = self.database().query(filters.clone()).await?;
+
+        // Query relays
+        let fetched_events: Events = self.fetch_events(filters, timeout).await?;
+
+        // Merge result
+        Ok(stored_events.merge(fetched_events))
+    }
+
     /// Stream events
     #[deprecated(since = "0.36.0", note = "Use `stream_events` instead")]
     pub async fn stream_events_of(

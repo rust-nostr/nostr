@@ -406,6 +406,34 @@ impl Client {
             .into())
     }
 
+    /// Get events both from database and relays
+    ///
+    /// You can obtain the same result by merging the `Events` from different type of sources.
+    ///
+    /// This method will be deprecated in the future!
+    /// This is a temporary solution for who still want to query events both from database and relays and merge the result.
+    /// The optimal solution is to execute a [`Client::sync`] to get all old events, [`Client::subscribe`] to get all
+    /// new future events, [`NostrDatabase::query`] to query events and [`Client::handle_notifications`] to listen-for/handle new events (i.e. to know when update the UI).
+    /// This will allow very fast queries, low bandwidth usage (depending on how many events the client have to sync) and a low load on relays.
+    ///
+    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
+    pub async fn fetch_combined_events(
+        &self,
+        filters: Vec<Arc<Filter>>,
+        timeout: Option<Duration>,
+    ) -> Result<Events> {
+        let filters = filters
+            .into_iter()
+            .map(|f| f.as_ref().deref().clone())
+            .collect();
+        Ok(self
+            .inner
+            .fetch_combined_events(filters, timeout)
+            .await?
+            .into())
+    }
+
     pub async fn send_msg_to(&self, urls: Vec<String>, msg: Arc<ClientMessage>) -> Result<Output> {
         Ok(self
             .inner
