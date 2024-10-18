@@ -5,6 +5,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::str::FromStr;
 
+use nostr::nips::nip13;
 use nostr::{Filter, SingleLetterTag, Timestamp};
 use nostr_database::flatbuffers::event_fbs::Fixed32Bytes;
 
@@ -18,6 +19,7 @@ pub struct DatabaseFilter {
     pub search: Option<String>,
     pub since: Option<Timestamp>,
     pub until: Option<Timestamp>,
+    pub pow: Option<u8>,
     pub generic_tags: BTreeMap<SingleLetterTag, BTreeSet<String>>,
 }
 
@@ -79,6 +81,14 @@ impl DatabaseFilter {
     }
 
     #[inline]
+    fn pow_match(&self, event: &DatabaseEvent) -> bool {
+        match self.pow {
+            Some(difficulty) => nip13::get_leading_zero_bits(event.id.0) >= difficulty,
+            None => true,
+        }
+    }
+
+    #[inline]
     pub fn match_event(&self, event: &DatabaseEvent) -> bool {
         self.ids_match(event)
             && self.authors_match(event)
@@ -86,6 +96,7 @@ impl DatabaseFilter {
             && self.since.map_or(true, |t| event.created_at >= t)
             && self.until.map_or(true, |t| event.created_at <= t)
             && self.tag_match(event)
+            && self.pow_match(event)
             && self.search_match(event)
     }
 }
@@ -121,6 +132,7 @@ impl From<Filter> for DatabaseFilter {
             }),
             since: filter.since,
             until: filter.until,
+            pow: filter.pow,
             generic_tags: filter.generic_tags,
         }
     }
