@@ -58,6 +58,13 @@ impl JsPublicKey {
         })
     }
 
+    #[wasm_bindgen(js_name = fromNostrUri)]
+    pub fn from_nostr_uri(uri: &str) -> Result<JsPublicKey> {
+        Ok(Self {
+            inner: PublicKey::from_nostr_uri(uri).map_err(into_err)?,
+        })
+    }
+
     /// Get in hex format
     #[wasm_bindgen(js_name = toHex)]
     pub fn to_hex(&self) -> String {
@@ -68,5 +75,10 @@ impl JsPublicKey {
     #[wasm_bindgen(js_name = toBech32)]
     pub fn to_bech32(&self) -> Result<String> {
         self.inner.to_bech32().map_err(into_err)
+    }
+
+    #[wasm_bindgen(js_name = toNostrUri)]
+    pub fn to_nostr_uri(&self) -> Result<String> {
+        self.inner.to_nostr_uri().map_err(into_err)
     }
 }
