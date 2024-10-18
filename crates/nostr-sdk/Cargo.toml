@@ -20,7 +20,6 @@ default = ["all-nips"]
 tor = ["nostr-relay-pool/tor"]
 lmdb = ["dep:nostr-lmdb"]
 ndb = ["dep:nostr-ndb"]
-sqlite = ["dep:nostr-sqlite"]
 indexeddb = ["dep:nostr-indexeddb"]
 webln = ["nip57", "nostr-zapper?/webln"]
 all-nips = ["nip04", "nip05", "nip06", "nip07", "nip11", "nip44", "nip46", "nip47", "nip49", "nip57", "nip59"]
@@ -54,7 +53,6 @@ tracing = { workspace = true, features = ["std", "attributes"] }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 nostr-lmdb = { workspace = true, optional = true }
 nostr-ndb = { workspace = true, optional = true }
-nostr-sqlite = { workspace = true, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 nostr-indexeddb = { workspace = true, optional = true }

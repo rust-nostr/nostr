@@ -8,8 +8,8 @@ async def main():
     keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
     print(keys.public_key().to_bech32())
 
-    # Create/open SQLite database
-    database = await NostrDatabase.sqlite("nostr.db")
+    # Create/open LMDB database
+    database = NostrDatabase.lmdb("nostr-lmdb")
 
     # NOT AVAILABLE ON WINDOWS AT THE MOMENT!
     # Create/open nostrdb database

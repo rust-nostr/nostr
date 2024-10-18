@@ -112,7 +112,7 @@ pub enum DatabaseEventStatus {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait NostrDatabase: fmt::Debug + Send + Sync {
-    /// Name of the backend database used (ex. rocksdb, lmdb, sqlite, indexeddb, ...)
+    /// Name of the backend database used
     fn backend(&self) -> Backend;
 
     /// Save [`Event`] into store

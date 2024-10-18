@@ -2915,7 +2915,6 @@ dependencies = [
  "nostr-ndb",
  "nostr-relay-pool",
  "nostr-signer",
- "nostr-sqlite",
  "nostr-zapper",
  "nwc",
  "thiserror",
@@ -2960,20 +2959,6 @@ dependencies = [
  "dialoguer",
  "nostr",
  "nostr-relay-pool",
- "thiserror",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "nostr-sqlite"
-version = "0.35.0"
-dependencies = [
- "async-trait",
- "nostr",
- "nostr-database",
- "rusqlite",
  "thiserror",
  "tokio",
  "tracing",

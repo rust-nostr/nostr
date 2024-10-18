@@ -37,7 +37,6 @@ nostr-relay-builder = { version = "0.35", path = "./crates/nostr-relay-builder",
 nostr-relay-pool = { version = "0.35", path = "./crates/nostr-relay-pool", default-features = false }
 nostr-sdk = { version = "0.35", path = "./crates/nostr-sdk", default-features = false }
 nostr-signer = { version = "0.35", path = "./crates/nostr-signer", default-features = false }
-nostr-sqlite = { version = "0.35", path = "./crates/nostr-sqlite", default-features = false }
 nostr-zapper = { version = "0.35", path = "./crates/nostr-zapper", default-features = false }
 nwc = { version = "0.35", path = "./crates/nwc", default-features = false }
 once_cell = { version = "1.20", default-features = false }
