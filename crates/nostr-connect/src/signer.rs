@@ -94,8 +94,9 @@ impl NostrConnectRemoteSigner {
             public_key: self.keys.public_key(),
             secret: None,
         });
-        let event =
-            EventBuilder::nostr_connect(&self.keys, public_key, msg)?.to_event(&self.keys)?;
+        let event = EventBuilder::nostr_connect(&self.keys, public_key, msg)
+            .await?
+            .sign_with_keys(&self.keys)?;
         self.pool
             .send_event(event, RelaySendOptions::default())
             .await?;
@@ -247,8 +248,9 @@ impl NostrConnectRemoteSigner {
 
                                 // Compose and publish event
                                 let event =
-                                    EventBuilder::nostr_connect(&self.keys, event.pubkey, msg)?
-                                        .to_event(&self.keys)?;
+                                    EventBuilder::nostr_connect(&self.keys, event.pubkey, msg)
+                                        .await?
+                                        .sign_with_keys(&self.keys)?;
                                 self.pool.send_event(event, RelaySendOptions::new()).await?;
                             }
                         } else {

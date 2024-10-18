@@ -1,15 +1,15 @@
 [package]
-name = "nwc"
+name = "nostr-connect"
 version = "0.35.0"
 edition = "2021"
-description = "NWC client and zapper backend for Nostr apps"
+description = "Nostr Connect (NIP46)"
 authors.workspace = true
 homepage.workspace = true
 repository.workspace = true
 license.workspace = true
 readme = "README.md"
 rust-version.workspace = true
-keywords = ["nostr", "zapper", "nwc"]
+keywords = ["nostr", "signer", "nip46", "nostr-connect"]
 
 [features]
 default = []
@@ -18,12 +18,12 @@ tor = ["nostr-relay-pool/tor"]
 [dependencies]
 async-trait.workspace = true
 async-utility.workspace = true
-nostr = { workspace = true, features = ["std", "nip47"] }
+nostr = { workspace = true, features = ["std", "nip04", "nip44", "nip46"] }
 nostr-relay-pool.workspace = true
-nostr-zapper.workspace = true
 thiserror.workspace = true
-tracing = { workspace = true, features = ["std"] }
+tokio = { workspace = true, features = ["sync"] }
+tracing = { workspace = true, features = ["std", "attributes"] }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-tracing-subscriber.workspace = true
+dialoguer = "0.11"
+tracing-subscriber = { workspace = true, features = ["env-filter"] }

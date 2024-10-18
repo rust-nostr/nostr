@@ -4,15 +4,14 @@
 
 use std::time::Duration;
 
+use nostr_connect::prelude::*;
 use nostr_sdk::prelude::*;
-
-const APP_SECRET_KEY: &str = "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99";
 
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let app_keys = Keys::parse(APP_SECRET_KEY)?;
+    let app_keys = Keys::parse("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")?;
 
     // Compose signer from bunker URI
     let uri = NostrConnectURI::parse("bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss%3A%2F%2Frelay.nsec.app")?;

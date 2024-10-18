@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use clap::Parser;
+use nostr_connect::prelude::*;
 use nostr_relay_builder::prelude::*;
 use nostr_sdk::prelude::*;
 use rustyline::error::ReadlineError;

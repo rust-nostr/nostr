@@ -526,7 +526,7 @@ impl Request {
             encrypted,
             [Tag::public_key(uri.public_key)],
         )
-        .to_event(&keys)?)
+        .sign_with_keys(&keys)?)
     }
 }
 
