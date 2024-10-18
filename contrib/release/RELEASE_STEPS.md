@@ -27,6 +27,7 @@
 
 * Bump versions in `book` (**without commit**, commit in next step)
     * Update examples
+    * Search in the code for `UNCOMMENT_ON_RELEASE` string and uncomment the code (examples added in book before release)
     * Rust book tests: `just check-book`
   
 * Update `CHANGELOG.md`
