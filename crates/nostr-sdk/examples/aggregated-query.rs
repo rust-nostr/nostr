@@ -19,6 +19,23 @@ async fn main() -> Result<()> {
     let public_key =
         PublicKey::from_bech32("npub1080l37pfvdpyuzasyuy2ytjykjvq3ylr5jlqlg7tvzjrh9r8vn3sf5yaph")?;
 
+    // ################ Aggregated query with same filter ################
+    let filter = Filter::new()
+        .author(public_key)
+        .kind(Kind::TextNote)
+        .limit(50);
+    let stored_events = client.database().query(vec![filter.clone()]).await?;
+    let fetched_events = client
+        .fetch_events(vec![filter], Some(Duration::from_secs(10)))
+        .await?;
+    let events = stored_events.merge(fetched_events);
+
+    for event in events.into_iter() {
+        println!("{}", event.as_json());
+    }
+
+    // ################ Aggregated query with different filters ################
+
     // Query events from database
     let filter = Filter::new().author(public_key).kind(Kind::TextNote);
     let stored_events = client.database().query(vec![filter]).await?;
