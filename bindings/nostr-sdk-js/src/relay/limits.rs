@@ -38,7 +38,7 @@ impl JsRelayLimits {
         }
     }
 
-    /// Maximum size of normalised JSON, in bytes (default: 5_250_000)
+    /// Maximum size of normalised JSON, in bytes (default: 5MB)
     #[wasm_bindgen(js_name = messageMaxSize)]
     pub fn message_max_size(mut self, max_size: Option<u32>) -> Self {
         self.inner.messages.max_size = max_size;

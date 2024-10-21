@@ -10,6 +10,13 @@ use core::time::Duration;
 // IF CHANGED, REMEMBER TO UPDATE THE DOCS!
 pub const DEFAULT_SEND_TIMEOUT: Duration = Duration::from_secs(20);
 
+/// Max relay size
+pub const MAX_MESSAGE_SIZE: u32 = 5 * 1024 * 1024; // 5 MB
+/// Max event size
+pub const MAX_EVENT_SIZE: u32 = 70 * 1024; // 70 kB
+/// Max event size for contact list kind
+pub const MAX_CONTACT_LIST_EVENT_SIZE: u32 = 840 * 1024; // 840 kB
+
 pub(super) const DEFAULT_RETRY_SEC: u64 = 10;
 pub(super) const MIN_RETRY_SEC: u64 = 5;
 pub(super) const MAX_ADJ_RETRY_SEC: u64 = 60;

@@ -8,8 +8,7 @@ use std::collections::HashMap;
 
 use nostr::Kind;
 
-const MAX_EVENT_SIZE: u32 = 70_000; // bytes
-const MAX_CONTACT_LIST_EVENT_SIZE: u32 = 840_000; // bytes
+use super::constants::{MAX_CONTACT_LIST_EVENT_SIZE, MAX_EVENT_SIZE, MAX_MESSAGE_SIZE};
 
 /// Relay limits
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -34,14 +33,14 @@ impl RelayLimits {
 /// Messages limits
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RelayMessageLimits {
-    /// Maximum size of normalised JSON, in bytes (default: 5_250_000)
+    /// Maximum size of normalised JSON, in bytes (default: [`MAX_MESSAGE_SIZE`])
     pub max_size: Option<u32>,
 }
 
 impl Default for RelayMessageLimits {
     fn default() -> Self {
         Self {
-            max_size: Some(5_250_000),
+            max_size: Some(MAX_MESSAGE_SIZE),
         }
     }
 }
@@ -57,7 +56,7 @@ impl RelayMessageLimits {
 /// Events limits
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RelayEventLimits {
-    /// Maximum size of normalised JSON, in bytes (default: 70_000)
+    /// Maximum size of normalised JSON, in bytes (default: [`MAX_EVENT_SIZE`])
     pub max_size: Option<u32>,
     /// Maximum size of normalized JSON per [Kind], in bytes.
     pub max_size_per_kind: HashMap<Kind, Option<u32>>,

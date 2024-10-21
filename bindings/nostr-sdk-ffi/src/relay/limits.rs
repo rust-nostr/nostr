@@ -43,7 +43,8 @@ impl RelayLimits {
         }
     }
 
-    /// Maximum size of normalised JSON, in bytes (default: 5_250_000)
+    // TODO: change default value in doc automatically
+    /// Maximum size of normalised JSON, in bytes (default: 5MB)
     pub fn message_max_size(self: Arc<Self>, max_size: Option<u32>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner.messages.max_size = max_size;
