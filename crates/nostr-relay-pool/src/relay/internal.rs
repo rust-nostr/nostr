@@ -1849,8 +1849,8 @@ impl InternalRelay {
 
                                 match msg {
                                     Some(query) => {
-                                        tracing::info!(
-                                            "Continue negentropy reconciliation with {}",
+                                        tracing::debug!(
+                                            "Continue negentropy reconciliation with '{}'",
                                             self.url
                                         );
                                         self.send_msg(
@@ -1890,7 +1890,7 @@ impl InternalRelay {
                                     output.sent.insert(event_id);
                                 } else {
                                     tracing::error!(
-                                        "Unable to upload event {event_id} to {}: {message}",
+                                        "Unable to upload event {event_id} to '{}': {message}",
                                         self.url
                                     );
 
@@ -1943,7 +1943,7 @@ impl InternalRelay {
                                         // Event not found
                                     }
                                     Err(e) => tracing::error!(
-                                        "Couldn't upload event to {}: {e}",
+                                        "Couldn't upload event to '{}': {e}",
                                         self.url
                                     ),
                                 }
@@ -2124,8 +2124,8 @@ impl InternalRelay {
 
                                 match msg {
                                     Some(query) => {
-                                        tracing::info!(
-                                            "Continue negentropy reconciliation with {}",
+                                        tracing::debug!(
+                                            "Continue negentropy reconciliation with '{}'",
                                             self.url
                                         );
                                         self.send_msg(
@@ -2165,7 +2165,7 @@ impl InternalRelay {
                                     output.sent.insert(event_id);
                                 } else {
                                     tracing::error!(
-                                        "Unable to upload event {event_id} to {}: {message}",
+                                        "Unable to upload event {event_id} to '{}': {message}",
                                         self.url
                                     );
 
