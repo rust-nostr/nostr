@@ -15,7 +15,7 @@ use atomic_destructor::AtomicDestructor;
 use nostr_database::prelude::*;
 use tokio::sync::broadcast;
 
-mod constants;
+pub mod constants;
 mod error;
 mod filtering;
 pub mod flags;

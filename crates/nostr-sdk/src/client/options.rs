@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_relay_pool::prelude::*;
-use nostr_relay_pool::relay::options::DEFAULT_SEND_TIMEOUT;
+use nostr_relay_pool::relay::constants::DEFAULT_SEND_TIMEOUT;
 
 /// Options
 #[derive(Debug, Clone)]

@@ -10,19 +10,10 @@ use std::time::Duration;
 
 use async_wsocket::ConnectionMode;
 
+use super::constants::{DEFAULT_RETRY_SEC, DEFAULT_SEND_TIMEOUT, MIN_RETRY_SEC};
 use super::filtering::RelayFilteringMode;
 use super::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
 use crate::RelayLimits;
-
-/// Default send timeout
-// IF CHANGED, REMEMBER TO UPDATE THE DOCS!
-pub const DEFAULT_SEND_TIMEOUT: Duration = Duration::from_secs(20);
-pub(super) const DEFAULT_RETRY_SEC: u64 = 10;
-pub(super) const MIN_RETRY_SEC: u64 = 5;
-pub(super) const MAX_ADJ_RETRY_SEC: u64 = 60;
-pub(super) const NEGENTROPY_HIGH_WATER_UP: usize = 100;
-pub(super) const NEGENTROPY_LOW_WATER_UP: usize = 50;
-pub(super) const NEGENTROPY_BATCH_SIZE_DOWN: usize = 50;
 
 /// [`Relay`](super::Relay) options
 #[derive(Debug, Clone)]
