@@ -1822,8 +1822,8 @@ impl InternalRelay {
         let mut in_flight_up: HashSet<EventId> = HashSet::new();
         let mut in_flight_down: bool = false;
         let mut sync_done: bool = false;
-        let mut have_ids: Vec<Id> = Vec::new();
-        let mut need_ids: Vec<Id> = Vec::new();
+        let mut have_ids: Vec<EventId> = Vec::new();
+        let mut need_ids: Vec<EventId> = Vec::new();
         let down_sub_id: SubscriptionId = SubscriptionId::generate();
 
         let mut output: Reconciliation = Reconciliation::default();
@@ -1838,30 +1838,35 @@ impl InternalRelay {
                             message,
                         } => {
                             if subscription_id == sub_id {
+                                let mut curr_have_ids: Vec<Id> = Vec::new();
+                                let mut curr_need_ids: Vec<Id> = Vec::new();
+
+                                // Parse message
                                 let query: Bytes = Bytes::from_hex(message)?;
+
+                                // Reconcile
                                 let msg: Option<Bytes> = negentropy.reconcile_with_ids(
                                     &query,
-                                    &mut have_ids,
-                                    &mut need_ids,
+                                    &mut curr_have_ids,
+                                    &mut curr_need_ids,
                                 )?;
 
-                                output.local.extend(
-                                    have_ids
-                                        .iter()
-                                        .map(|b| EventId::from_byte_array(b.to_bytes())),
-                                );
-                                output.remote.extend(
-                                    need_ids
-                                        .iter()
-                                        .map(|b| EventId::from_byte_array(b.to_bytes())),
-                                );
-
-                                if !do_up {
-                                    have_ids.clear();
+                                // If event ID wasn't already seen, add to the HAVE IDs
+                                // Add to HAVE IDs only if `do_up` is true
+                                for id in curr_have_ids.into_iter() {
+                                    let event_id: EventId = EventId::from_byte_array(id.to_bytes());
+                                    if output.local.insert(event_id) && do_up {
+                                        have_ids.push(event_id);
+                                    }
                                 }
 
-                                if !do_down {
-                                    need_ids.clear();
+                                // If event ID wasn't already seen, add to the NEED IDs
+                                // Add to NEED IDs only if `do_down` is true
+                                for id in curr_need_ids.into_iter() {
+                                    let event_id: EventId = EventId::from_byte_array(id.to_bytes());
+                                    if output.remote.insert(event_id) && do_down {
+                                        need_ids.push(event_id);
+                                    }
                                 }
 
                                 match msg {
@@ -1936,7 +1941,7 @@ impl InternalRelay {
                         _ => (),
                     }
 
-                    // Get/Send events
+                    // Send events
                     if do_up
                         && !have_ids.is_empty()
                         && in_flight_up.len() <= NEGENTROPY_LOW_WATER_UP
@@ -1946,10 +1951,9 @@ impl InternalRelay {
                         while !have_ids.is_empty() && in_flight_up.len() < NEGENTROPY_HIGH_WATER_UP
                         {
                             if let Some(id) = have_ids.pop() {
-                                let event_id: EventId = EventId::from_byte_array(id.to_bytes());
-                                match self.database.event_by_id(&event_id).await {
+                                match self.database.event_by_id(&id).await {
                                     Ok(Some(event)) => {
-                                        in_flight_up.insert(event_id);
+                                        in_flight_up.insert(id);
                                         self.send_msg(ClientMessage::event(event), send_opts)
                                             .await?;
                                         num_sent += 1;
@@ -1975,12 +1979,14 @@ impl InternalRelay {
                         }
                     }
 
+                    // Get events
                     if do_down && !need_ids.is_empty() && !in_flight_down {
-                        let mut ids: Vec<EventId> = Vec::with_capacity(NEGENTROPY_BATCH_SIZE_DOWN);
+                        let capacity: usize = cmp::min(need_ids.len(), NEGENTROPY_BATCH_SIZE_DOWN);
+                        let mut ids: Vec<EventId> = Vec::with_capacity(capacity);
 
                         while !need_ids.is_empty() && ids.len() < NEGENTROPY_BATCH_SIZE_DOWN {
                             if let Some(id) = need_ids.pop() {
-                                ids.push(EventId::from_byte_array(id.to_bytes()));
+                                ids.push(id);
                             }
                         }
 
@@ -2099,8 +2105,8 @@ impl InternalRelay {
         let mut in_flight_up: HashSet<EventId> = HashSet::new();
         let mut in_flight_down: bool = false;
         let mut sync_done: bool = false;
-        let mut have_ids: Vec<BytesDeprecated> = Vec::new();
-        let mut need_ids: Vec<BytesDeprecated> = Vec::new();
+        let mut have_ids: Vec<EventId> = Vec::new();
+        let mut need_ids: Vec<EventId> = Vec::new();
         let down_sub_id: SubscriptionId = SubscriptionId::generate();
 
         let mut output: Reconciliation = Reconciliation::default();
@@ -2115,26 +2121,39 @@ impl InternalRelay {
                             message,
                         } => {
                             if subscription_id == sub_id {
+                                let mut curr_have_ids: Vec<BytesDeprecated> = Vec::new();
+                                let mut curr_need_ids: Vec<BytesDeprecated> = Vec::new();
+
+                                // Parse message
                                 let query: BytesDeprecated = BytesDeprecated::from_hex(message)?;
+
+                                // Reconcile
                                 let msg: Option<BytesDeprecated> = negentropy.reconcile_with_ids(
                                     &query,
-                                    &mut have_ids,
-                                    &mut need_ids,
+                                    &mut curr_have_ids,
+                                    &mut curr_need_ids,
                                 )?;
 
-                                output.local.extend(
-                                    have_ids.iter().filter_map(|b| EventId::from_slice(b).ok()),
-                                );
-                                output.remote.extend(
-                                    need_ids.iter().filter_map(|b| EventId::from_slice(b).ok()),
-                                );
-
-                                if !do_up {
-                                    have_ids.clear();
+                                // If event ID wasn't already seen, add to the HAVE IDs
+                                // Add to HAVE IDs only if `do_up` is true
+                                for id in curr_have_ids
+                                    .into_iter()
+                                    .filter_map(|id| EventId::from_slice(id.as_bytes()).ok())
+                                {
+                                    if output.local.insert(id) && do_up {
+                                        have_ids.push(id);
+                                    }
                                 }
 
-                                if !do_down {
-                                    need_ids.clear();
+                                // If event ID wasn't already seen, add to the NEED IDs
+                                // Add to NEED IDs only if `do_down` is true
+                                for id in curr_need_ids
+                                    .into_iter()
+                                    .filter_map(|id| EventId::from_slice(id.as_bytes()).ok())
+                                {
+                                    if output.remote.insert(id) && do_down {
+                                        need_ids.push(id);
+                                    }
                                 }
 
                                 match msg {
@@ -2219,22 +2238,20 @@ impl InternalRelay {
                         while !have_ids.is_empty() && in_flight_up.len() < NEGENTROPY_HIGH_WATER_UP
                         {
                             if let Some(id) = have_ids.pop() {
-                                if let Ok(event_id) = EventId::from_slice(&id) {
-                                    match self.database.event_by_id(&event_id).await {
-                                        Ok(Some(event)) => {
-                                            in_flight_up.insert(event_id);
-                                            self.send_msg(ClientMessage::event(event), send_opts)
-                                                .await?;
-                                            num_sent += 1;
-                                        }
-                                        Ok(None) => {
-                                            // Event not found
-                                        }
-                                        Err(e) => tracing::error!(
-                                            "Couldn't upload event to {}: {e}",
-                                            self.url
-                                        ),
+                                match self.database.event_by_id(&id).await {
+                                    Ok(Some(event)) => {
+                                        in_flight_up.insert(id);
+                                        self.send_msg(ClientMessage::event(event), send_opts)
+                                            .await?;
+                                        num_sent += 1;
                                     }
+                                    Ok(None) => {
+                                        // Event not found
+                                    }
+                                    Err(e) => tracing::error!(
+                                        "Couldn't upload event to {}: {e}",
+                                        self.url
+                                    ),
                                 }
                             }
                         }
@@ -2250,13 +2267,12 @@ impl InternalRelay {
                     }
 
                     if do_down && !need_ids.is_empty() && !in_flight_down {
-                        let mut ids: Vec<EventId> = Vec::with_capacity(NEGENTROPY_BATCH_SIZE_DOWN);
+                        let capacity: usize = cmp::min(need_ids.len(), NEGENTROPY_BATCH_SIZE_DOWN);
+                        let mut ids: Vec<EventId> = Vec::with_capacity(capacity);
 
                         while !need_ids.is_empty() && ids.len() < NEGENTROPY_BATCH_SIZE_DOWN {
                             if let Some(id) = need_ids.pop() {
-                                if let Ok(event_id) = EventId::from_slice(&id) {
-                                    ids.push(event_id);
-                                }
+                                ids.push(id);
                             }
                         }
 
