@@ -1123,6 +1123,23 @@ impl InternalRelay {
     }
 
     #[inline]
+    async fn send_neg_msg(
+        &self,
+        id: SubscriptionId,
+        message: String,
+        send_opts: RelaySendOptions,
+    ) -> Result<(), Error> {
+        self.send_msg(
+            ClientMessage::NegMsg {
+                subscription_id: id,
+                message,
+            },
+            send_opts,
+        )
+        .await
+    }
+
+    #[inline]
     async fn send_neg_close(
         &self,
         id: SubscriptionId,
@@ -1853,11 +1870,9 @@ impl InternalRelay {
                                             "Continue negentropy reconciliation with '{}'",
                                             self.url
                                         );
-                                        self.send_msg(
-                                            ClientMessage::NegMsg {
-                                                subscription_id: sub_id.clone(),
-                                                message: query.to_hex(),
-                                            },
+                                        self.send_neg_msg(
+                                            subscription_id,
+                                            query.to_hex(),
                                             send_opts,
                                         )
                                         .await?;
@@ -2128,11 +2143,9 @@ impl InternalRelay {
                                             "Continue negentropy reconciliation with '{}'",
                                             self.url
                                         );
-                                        self.send_msg(
-                                            ClientMessage::NegMsg {
-                                                subscription_id: sub_id.clone(),
-                                                message: query.to_hex(),
-                                            },
+                                        self.send_neg_msg(
+                                            subscription_id,
+                                            query.to_hex(),
                                             send_opts,
                                         )
                                         .await?;
