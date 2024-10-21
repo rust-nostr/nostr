@@ -12,8 +12,10 @@ keywords = ["nostr", "cli"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
+console = "0.15"
 dialoguer = "0.11"
 dirs = "5.0"
+indicatif = "0.17"
 nostr-relay-builder.workspace = true
 nostr-sdk = { workspace = true, features = ["all-nips", "lmdb", "tor"] }
 once_cell.workspace = true

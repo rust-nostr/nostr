@@ -95,6 +95,7 @@
 * ffi(nostr): impl `Display` for `Kind` ([Yuki Kishimoto])
 * js(nostr): add `JsKind::_to_string` method ([Yuki Kishimoto])
 * js(nostr): expose `from_nostr_uri` and `to_nostr_uri` for `PublicKey` and `EventId` ([Yuki Kishimoto])
+* cli: show negentropy sync progress ([Yuki Kishimoto])
 * book: add some examples ([RydalWater])
 
 ### Fixed

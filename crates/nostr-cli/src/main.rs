@@ -2,12 +2,15 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::fmt::Write;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::time::Duration;
 
 use clap::Parser;
+use console::Term;
+use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 use nostr_relay_builder::prelude::*;
 use nostr_sdk::prelude::*;
 use rustyline::error::ReadlineError;
@@ -163,6 +166,7 @@ async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
             relays,
             direction,
         } => {
+            let term = Term::stdout();
             let current_relays = client.relays().await;
 
             let list: Vec<Url> = if !relays.is_empty() {
@@ -171,7 +175,7 @@ async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
                     client.add_relay(url).await?;
                 }
 
-                println!("Connecting to relays...");
+                term.write_str("Connecting to relays...")?;
 
                 // Connect and wait for connection
                 client.connect_with_timeout(Duration::from_secs(60)).await;
@@ -181,33 +185,47 @@ async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
                 current_relays.keys().cloned().collect()
             };
 
+            term.clear_line()?;
+            term.write_line("Syncing...")?;
+
             // Compose filter and opts
             let filter: Filter = Filter::default().author(public_key);
             let direction: NegentropyDirection = direction.into();
-            let opts: NegentropyOptions = NegentropyOptions::default().direction(direction);
+            let (tx, mut rx) = SyncProgress::channel();
+            let opts: NegentropyOptions = NegentropyOptions::default()
+                .direction(direction)
+                .progress(tx);
 
-            // Dry run
-            let output: Output<Reconciliation> = client
-                .sync_with(list.iter(), filter.clone(), opts.dry_run())
-                .await?;
+            tokio::spawn(async move {
+                let pb = ProgressBar::new(0);
+                let style = ProgressStyle::with_template("[{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({percent_precise}%) - ETA: {eta}")
+                    .unwrap()
+                    .with_key("eta", |state: &ProgressState, w: &mut dyn Write| write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap())
+                    .progress_chars("#>-");
+                pb.set_style(style);
 
-            println!(
-                "Reconciling events with relays: local={}, remote={}",
-                output.local.len(),
-                output.remote.len()
-            );
+                loop {
+                    match rx.changed().await {
+                        Ok(..) => {
+                            let SyncProgress { total, current } = *rx.borrow_and_update();
+                            pb.set_length(total);
+                            pb.set_position(current);
+                        }
+                        Err(..) => break,
+                    }
+                }
+            });
 
             // Reconcile
             let output: Output<Reconciliation> = client.sync_with(list, filter, opts).await?;
 
-            println!("Reconciliation terminated:");
+            println!("Sync terminated:");
             println!("- Sent {} events", output.sent.len());
             println!("- Received {} events", output.received.len());
 
             // Remove relays
             for url in relays.into_iter() {
                 if !current_relays.contains_key(&url) {
-                    println!("Relay '{url}' removed.");
                     client.remove_relay(url).await?;
                 }
             }
