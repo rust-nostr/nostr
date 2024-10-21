@@ -256,12 +256,35 @@ pub enum ConnectionTarget {
 
 /// Connection
 #[cfg(not(target_arch = "wasm32"))]
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Connection {
     /// Mode
     pub mode: ConnectionMode,
     /// Target
     pub target: ConnectionTarget,
+}
+
+#[allow(clippy::derivable_impls)]
+#[cfg(not(target_arch = "wasm32"))]
+impl Default for Connection {
+    fn default() -> Self {
+        #[cfg(all(feature = "tor", not(target_os = "android"), not(target_os = "ios")))]
+        {
+            Self {
+                mode: ConnectionMode::tor(),
+                target: ConnectionTarget::Onion,
+            }
+        }
+
+        #[cfg(any(
+            not(feature = "tor"),
+            all(feature = "tor", any(target_os = "android", target_os = "ios")),
+        ))]
+        Self {
+            mode: ConnectionMode::default(),
+            target: ConnectionTarget::default(),
+        }
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
