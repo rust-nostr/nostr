@@ -9,6 +9,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_wsocket::ConnectionMode;
+use tokio::sync::watch::{self, Receiver, Sender};
 
 use super::constants::{DEFAULT_RETRY_SEC, DEFAULT_SEND_TIMEOUT, MIN_RETRY_SEC};
 use super::filtering::RelayFilteringMode;
@@ -310,12 +311,30 @@ pub enum NegentropyDirection {
     Both,
 }
 
+/// Sync (negentropy reconciliation) progress
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub struct SyncProgress {
+    /// Total events to process
+    pub total: u64,
+    /// Processed events
+    pub current: u64,
+}
+
+impl SyncProgress {
+    /// Construct new sync progress channel
+    #[inline]
+    pub fn channel() -> (Sender<Self>, Receiver<Self>) {
+        watch::channel(SyncProgress::default())
+    }
+}
+
 /// Negentropy reconciliation options
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct NegentropyOptions {
     pub(super) initial_timeout: Duration,
     pub(super) direction: NegentropyDirection,
     pub(super) dry_run: bool,
+    pub(super) progress: Option<Sender<SyncProgress>>,
 }
 
 impl Default for NegentropyOptions {
@@ -324,6 +343,7 @@ impl Default for NegentropyOptions {
             initial_timeout: Duration::from_secs(10),
             direction: NegentropyDirection::default(),
             dry_run: false,
+            progress: None,
         }
     }
 }
@@ -358,6 +378,15 @@ impl NegentropyOptions {
     #[inline]
     pub fn dry_run(mut self) -> Self {
         self.dry_run = true;
+        self
+    }
+
+    /// Sync progress
+    ///
+    /// Use [`SyncProgress::channel`] to create a watch channel and pass the sender here.
+    #[inline]
+    pub fn progress(mut self, sender: Sender<SyncProgress>) -> Self {
+        self.progress = Some(sender);
         self
     }
 

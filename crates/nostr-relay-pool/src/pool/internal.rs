@@ -787,6 +787,8 @@ impl InternalRelayPool {
             return Err(Error::RelayNotFound);
         }
 
+        // TODO: shared reconciliation output to avoid to request duplicates?
+
         // Filter relays and start query
         let result: Arc<Mutex<Output<Reconciliation>>> = Arc::new(Mutex::new(Output::default()));
         let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(map.len());
@@ -794,6 +796,7 @@ impl InternalRelayPool {
         // Filter relays and start query
         for (url, filters) in map.into_iter() {
             let relay: Relay = self.internal_relay(&relays, &url).cloned()?;
+            let opts: NegentropyOptions = opts.clone();
             let result: Arc<Mutex<Output<Reconciliation>>> = result.clone();
             let handle: JoinHandle<()> = thread::spawn(async move {
                 match relay.sync_multi(filters, opts).await {

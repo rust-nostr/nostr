@@ -84,6 +84,7 @@
 * pool: add `RelayFiltering::overwrite_public_keys` method ([Yuki Kishimoto])
 * pool: add `RelayPool::sync_targeted` ([Yuki Kishimoto])
 * pool: add `Relay::reconcile_multi` ([Yuki Kishimoto])
+* pool: negentropy sync progress ([Yuki Kishimoto])
 * sdk: add `Client::fetch_events` and `Client::fetch_events_from` methods ([Yuki Kishimoto])
 * sdk: add `Client::sync` and `Client::sync_with` methods ([Yuki Kishimoto])
 * sdk: add gossip support to `Client::sync` ([Yuki Kishimoto])

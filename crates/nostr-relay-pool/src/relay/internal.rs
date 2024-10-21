@@ -1721,7 +1721,7 @@ impl InternalRelay {
 
         for (filter, items) in map.into_iter() {
             match self
-                .sync_new(filter.clone(), items.clone(), opts, &mut output)
+                .sync_new(filter.clone(), items.clone(), &opts, &mut output)
                 .await
             {
                 Ok(..) => {}
@@ -1729,7 +1729,7 @@ impl InternalRelay {
                     Error::NegentropyMaybeNotSupported
                     | Error::Negentropy(negentropy::Error::UnsupportedProtocolVersion) => {
                         tracing::warn!("Negentropy protocol '{}' (maybe) not supported, trying the deprecated one.", negentropy::PROTOCOL_VERSION);
-                        self.sync_deprecated(filter, items, opts, &mut output)
+                        self.sync_deprecated(filter, items, &opts, &mut output)
                             .await?;
                     }
                     e => return Err(e),
@@ -1745,7 +1745,7 @@ impl InternalRelay {
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
-        opts: NegentropyOptions,
+        opts: &NegentropyOptions,
         output: &mut Reconciliation,
     ) -> Result<(), Error> {
         // Compose negentropy storage, add items and seal
@@ -1851,12 +1851,15 @@ impl InternalRelay {
                                     &mut curr_need_ids,
                                 )?;
 
+                                let mut counter: u64 = 0;
+
                                 // If event ID wasn't already seen, add to the HAVE IDs
                                 // Add to HAVE IDs only if `do_up` is true
                                 for id in curr_have_ids.into_iter() {
                                     let event_id: EventId = EventId::from_byte_array(id.to_bytes());
                                     if output.local.insert(event_id) && do_up {
                                         have_ids.push(event_id);
+                                        counter += 1;
                                     }
                                 }
 
@@ -1866,7 +1869,14 @@ impl InternalRelay {
                                     let event_id: EventId = EventId::from_byte_array(id.to_bytes());
                                     if output.remote.insert(event_id) && do_down {
                                         need_ids.push(event_id);
+                                        counter += 1;
                                     }
+                                }
+
+                                if let Some(progress) = &opts.progress {
+                                    progress.send_modify(|state| {
+                                        state.total += counter;
+                                    });
                                 }
 
                                 match msg {
@@ -1969,6 +1979,13 @@ impl InternalRelay {
                             }
                         }
 
+                        // Update progress
+                        if let Some(progress) = &opts.progress {
+                            progress.send_modify(|state| {
+                                state.current += num_sent;
+                            });
+                        }
+
                         if num_sent > 0 {
                             tracing::info!(
                                 "Negentropy UP for '{}': {} events ({} remaining)",
@@ -1996,6 +2013,13 @@ impl InternalRelay {
                             ids.len(),
                             need_ids.len()
                         );
+
+                        // Update progress
+                        if let Some(progress) = &opts.progress {
+                            progress.send_modify(|state| {
+                                state.current += ids.len() as u64;
+                            });
+                        }
 
                         let filter = Filter::new().ids(ids);
                         self.send_msg(
@@ -2038,7 +2062,7 @@ impl InternalRelay {
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
-        opts: NegentropyOptions,
+        opts: &NegentropyOptions,
         output: &mut Reconciliation,
     ) -> Result<(), Error> {
         // Compose negentropy struct, add items and seal
@@ -2133,6 +2157,8 @@ impl InternalRelay {
                                     &mut curr_need_ids,
                                 )?;
 
+                                let mut counter: u64 = 0;
+
                                 // If event ID wasn't already seen, add to the HAVE IDs
                                 // Add to HAVE IDs only if `do_up` is true
                                 for id in curr_have_ids
@@ -2141,6 +2167,7 @@ impl InternalRelay {
                                 {
                                     if output.local.insert(id) && do_up {
                                         have_ids.push(id);
+                                        counter += 1;
                                     }
                                 }
 
@@ -2152,7 +2179,14 @@ impl InternalRelay {
                                 {
                                     if output.remote.insert(id) && do_down {
                                         need_ids.push(id);
+                                        counter += 1;
                                     }
+                                }
+
+                                if let Some(progress) = &opts.progress {
+                                    progress.send_modify(|state| {
+                                        state.total += counter;
+                                    });
                                 }
 
                                 match msg {
@@ -2255,6 +2289,13 @@ impl InternalRelay {
                             }
                         }
 
+                        // Update progress
+                        if let Some(progress) = &opts.progress {
+                            progress.send_modify(|state| {
+                                state.current += num_sent;
+                            });
+                        }
+
                         if num_sent > 0 {
                             tracing::info!(
                                 "Negentropy UP for '{}': {} events ({} remaining)",
@@ -2281,6 +2322,13 @@ impl InternalRelay {
                             ids.len(),
                             need_ids.len()
                         );
+
+                        // Update progress
+                        if let Some(progress) = &opts.progress {
+                            progress.send_modify(|state| {
+                                state.current += ids.len() as u64;
+                            });
+                        }
 
                         let filter = Filter::new().ids(ids);
                         self.send_msg(

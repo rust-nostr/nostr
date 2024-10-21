@@ -8,21 +8,34 @@ use nostr_sdk::prelude::*;
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let public_key =
-        PublicKey::from_bech32("npub1080l37pfvdpyuzasyuy2ytjykjvq3ylr5jlqlg7tvzjrh9r8vn3sf5yaph")?;
-
     let database = NostrLMDB::open("./db/nostr-lmdb")?;
     let client: Client = ClientBuilder::default().database(database).build();
 
-    client.add_relay("wss://atl.purplerelay.com").await?;
-    client.add_relay("wss://nostr.wine").await?;
     client.add_relay("wss://relay.damus.io").await?;
     client.add_relay("wss://nostr.oxtr.dev").await?;
 
     client.connect().await;
 
-    let filter = Filter::new().author(public_key).limit(10);
-    let opts = NegentropyOptions::default();
+    let public_key =
+        PublicKey::from_bech32("npub1xtscya34g58tk0z605fvr788k263gsu6cy9x0mhnm87echrgufzsevkk5s")?;
+    let filter = Filter::new().author(public_key);
+    let (tx, mut rx) = SyncProgress::channel();
+    let opts = NegentropyOptions::default().progress(tx);
+
+    tokio::spawn(async move {
+        loop {
+            match rx.changed().await {
+                Ok(..) => {
+                    let SyncProgress { total, current } = *rx.borrow_and_update();
+                    if total > 0 {
+                        println!("{:.2}%", (current as f64 / total as f64) * 100.0);
+                    }
+                }
+                Err(..) => break,
+            }
+        }
+    });
+
     let output = client.sync(filter, opts).await?;
     println!("Success: {:?}", output.success);
     println!("Failed: {:?}", output.failed);

@@ -32,7 +32,7 @@ use self::internal::InternalRelay;
 pub use self::limits::RelayLimits;
 pub use self::options::{
     FilterOptions, NegentropyDirection, NegentropyOptions, RelayOptions, RelaySendOptions,
-    SubscribeAutoCloseOptions, SubscribeOptions,
+    SubscribeAutoCloseOptions, SubscribeOptions, SyncProgress,
 };
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
