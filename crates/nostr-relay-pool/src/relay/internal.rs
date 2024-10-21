@@ -1123,6 +1123,18 @@ impl InternalRelay {
     }
 
     #[inline]
+    async fn send_neg_close(
+        &self,
+        id: SubscriptionId,
+        send_opts: RelaySendOptions,
+    ) -> Result<(), Error> {
+        let close_msg = ClientMessage::NegClose {
+            subscription_id: id,
+        };
+        self.send_msg(close_msg, send_opts).await
+    }
+
+    #[inline]
     pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
         let id: EventId = event.id;
         self.batch_event(vec![event], opts).await?;
@@ -1850,7 +1862,13 @@ impl InternalRelay {
                                         )
                                         .await?;
                                     }
-                                    None => sync_done = true,
+                                    None => {
+                                        // Mark sync as done
+                                        sync_done = true;
+
+                                        // Send NEG-CLOSE message
+                                        self.send_neg_close(subscription_id, send_opts).await?;
+                                    }
                                 }
                             }
                         }
@@ -1973,7 +1991,9 @@ impl InternalRelay {
                         return Err(Error::NotConnectedStatusChanged);
                     }
                 }
-                RelayNotification::Shutdown => break,
+                RelayNotification::Shutdown => {
+                    return Err(Error::Shutdown);
+                }
                 _ => (),
             };
 
@@ -1988,12 +2008,6 @@ impl InternalRelay {
         }
 
         tracing::info!("Negentropy reconciliation terminated for {}", self.url);
-
-        // Close negentropy
-        let close_msg = ClientMessage::NegClose {
-            subscription_id: sub_id,
-        };
-        self.send_msg(close_msg, send_opts).await?;
 
         Ok(output)
     }
@@ -2123,7 +2137,13 @@ impl InternalRelay {
                                         )
                                         .await?;
                                     }
-                                    None => sync_done = true,
+                                    None => {
+                                        // Mark sync as done
+                                        sync_done = true;
+
+                                        // Send NEG-CLOSE message
+                                        self.send_neg_close(subscription_id, send_opts).await?;
+                                    }
                                 }
                             }
                         }
@@ -2264,12 +2284,6 @@ impl InternalRelay {
         }
 
         tracing::info!("Negentropy reconciliation terminated for {}", self.url);
-
-        // Close negentropy
-        let close_msg = ClientMessage::NegClose {
-            subscription_id: sub_id,
-        };
-        self.send_msg(close_msg, send_opts).await?;
 
         Ok(output)
     }
