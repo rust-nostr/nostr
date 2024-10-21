@@ -23,7 +23,8 @@ use tokio::sync::{broadcast, oneshot, watch, Mutex, MutexGuard, RwLock};
 
 use super::constants::{
     MAX_ADJ_RETRY_SEC, MIN_ATTEMPTS, MIN_RETRY_SEC, MIN_UPTIME, NEGENTROPY_BATCH_SIZE_DOWN,
-    NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, WEBSOCKET_TX_TIMEOUT,
+    NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP, PING_INTERVAL,
+    WEBSOCKET_TX_TIMEOUT,
 };
 use super::filtering::{CheckFiltering, RelayFiltering};
 use super::flags::AtomicRelayServiceFlags;
@@ -1724,7 +1725,7 @@ impl InternalRelay {
         }
         storage.seal()?;
 
-        let mut negentropy = Negentropy::new(storage, 20_000)?;
+        let mut negentropy = Negentropy::new(storage, NEGENTROPY_FRAME_SIZE_LIMIT)?;
 
         // Send initial negentropy message
         let sub_id = SubscriptionId::generate();
@@ -2005,7 +2006,7 @@ impl InternalRelay {
         opts: NegentropyOptions,
     ) -> Result<Reconciliation, Error> {
         // Compose negentropy struct, add items and seal
-        let mut negentropy = NegentropyDeprecated::new(32, Some(20_000))?;
+        let mut negentropy = NegentropyDeprecated::new(32, Some(NEGENTROPY_FRAME_SIZE_LIMIT))?;
         for (id, timestamp) in items.into_iter() {
             let id = BytesDeprecated::from_slice(id.as_bytes());
             negentropy.add_item(timestamp.as_u64(), id)?;

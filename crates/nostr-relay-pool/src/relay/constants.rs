@@ -14,6 +14,7 @@ pub(super) const DEFAULT_RETRY_SEC: u64 = 10;
 pub(super) const MIN_RETRY_SEC: u64 = 5;
 pub(super) const MAX_ADJ_RETRY_SEC: u64 = 60;
 
+pub(super) const NEGENTROPY_FRAME_SIZE_LIMIT: u64 = 60_000; // Default frame limit is 128k. Halve that (hex encoding) and subtract a bit (JSON msg overhead)
 pub(super) const NEGENTROPY_HIGH_WATER_UP: usize = 100;
 pub(super) const NEGENTROPY_LOW_WATER_UP: usize = 50;
 pub(super) const NEGENTROPY_BATCH_SIZE_DOWN: usize = 50;
