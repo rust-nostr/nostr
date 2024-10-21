@@ -1720,16 +1720,17 @@ impl InternalRelay {
         let mut output: Reconciliation = Reconciliation::default();
 
         for (filter, items) in map.into_iter() {
-            match self.sync_new(filter.clone(), items.clone(), opts).await {
-                Ok(res) => {
-                    output.merge(res);
-                }
+            match self
+                .sync_new(filter.clone(), items.clone(), opts, &mut output)
+                .await
+            {
+                Ok(..) => {}
                 Err(e) => match e {
                     Error::NegentropyMaybeNotSupported
                     | Error::Negentropy(negentropy::Error::UnsupportedProtocolVersion) => {
                         tracing::warn!("Negentropy protocol '{}' (maybe) not supported, trying the deprecated one.", negentropy::PROTOCOL_VERSION);
-                        let res = self.sync_deprecated(filter, items, opts).await?;
-                        output.merge(res);
+                        self.sync_deprecated(filter, items, opts, &mut output)
+                            .await?;
                     }
                     e => return Err(e),
                 },
@@ -1745,7 +1746,8 @@ impl InternalRelay {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<Reconciliation, Error> {
+        output: &mut Reconciliation,
+    ) -> Result<(), Error> {
         // Compose negentropy storage, add items and seal
         let mut storage = NegentropyStorageVector::with_capacity(items.len());
         for (id, timestamp) in items.into_iter() {
@@ -1825,8 +1827,6 @@ impl InternalRelay {
         let mut have_ids: Vec<EventId> = Vec::new();
         let mut need_ids: Vec<EventId> = Vec::new();
         let down_sub_id: SubscriptionId = SubscriptionId::generate();
-
-        let mut output: Reconciliation = Reconciliation::default();
 
         // Start reconciliation
         while let Ok(notification) = notifications.recv().await {
@@ -2030,7 +2030,7 @@ impl InternalRelay {
 
         tracing::info!("Negentropy reconciliation terminated for {}", self.url);
 
-        Ok(output)
+        Ok(())
     }
 
     /// Deprecated negentropy protocol
@@ -2039,7 +2039,8 @@ impl InternalRelay {
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
-    ) -> Result<Reconciliation, Error> {
+        output: &mut Reconciliation,
+    ) -> Result<(), Error> {
         // Compose negentropy struct, add items and seal
         let mut negentropy = NegentropyDeprecated::new(32, Some(NEGENTROPY_FRAME_SIZE_LIMIT))?;
         for (id, timestamp) in items.into_iter() {
@@ -2108,8 +2109,6 @@ impl InternalRelay {
         let mut have_ids: Vec<EventId> = Vec::new();
         let mut need_ids: Vec<EventId> = Vec::new();
         let down_sub_id: SubscriptionId = SubscriptionId::generate();
-
-        let mut output: Reconciliation = Reconciliation::default();
 
         // Start reconciliation
         while let Ok(notification) = notifications.recv().await {
@@ -2314,7 +2313,7 @@ impl InternalRelay {
 
         tracing::info!("Negentropy reconciliation terminated for {}", self.url);
 
-        Ok(output)
+        Ok(())
     }
 
     pub async fn support_negentropy(&self) -> Result<bool, Error> {
