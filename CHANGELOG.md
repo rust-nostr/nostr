@@ -41,6 +41,7 @@
 * pool: allow multi-filter reconciliation ([Yuki Kishimoto])
 * pool: increase negentropy frame size limit to `60_000` ([Yuki Kishimoto])
 * pool: set default max relay message size to 5MB ([Yuki Kishimoto])
+* pool: return error when receive `RelayNotification::Shutdown` variant ([Yuki Kishimoto])
 * sdk: deprecate `Client::get_events_of` and `Client::get_events_from` methods ([Yuki Kishimoto])
 * sdk: use `Events` instead of `Vec<Event>` in fetch and query methods ([Yuki Kishimoto])
 * sdk: rename `stream_events_of` to `stream_events` ([Yuki Kishimoto])

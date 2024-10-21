@@ -1565,7 +1565,7 @@ impl InternalRelay {
                             return Err(Error::NotConnectedStatusChanged);
                         }
                     }
-                    RelayNotification::Shutdown => break,
+                    RelayNotification::Shutdown => return Err(Error::Shutdown),
                     _ => (),
                 }
             }
@@ -1596,7 +1596,7 @@ impl InternalRelay {
                                 return Err(Error::NotConnected);
                             }
                         }
-                        RelayNotification::Shutdown => break,
+                        RelayNotification::Shutdown => return Err(Error::Shutdown),
                         _ => (),
                     }
                 }
@@ -2269,7 +2269,7 @@ impl InternalRelay {
                         return Err(Error::NotConnectedStatusChanged);
                     }
                 }
-                RelayNotification::Shutdown => break,
+                RelayNotification::Shutdown => return Err(Error::Shutdown),
                 _ => (),
             };
 

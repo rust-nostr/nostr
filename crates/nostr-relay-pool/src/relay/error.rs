@@ -60,6 +60,9 @@ pub enum Error {
     /// Relay not connected
     #[error("relay not connected (status changed)")]
     NotConnectedStatusChanged,
+    /// Received shutdown
+    #[error("received shutdown")]
+    Shutdown,
     /// Event not published
     #[error("event not published: {0}")]
     EventNotPublished(String),
