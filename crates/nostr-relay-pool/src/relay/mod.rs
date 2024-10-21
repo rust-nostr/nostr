@@ -424,37 +424,35 @@ impl Relay {
         self.count_events(filters, timeout).await
     }
 
-    /// Negentropy reconciliation
-    ///
-    /// Use events stored in database
+    /// Sync events with relays (negentropy reconciliation)
     #[inline]
-    pub async fn reconcile(
+    pub async fn sync(
         &self,
         filter: Filter,
         opts: NegentropyOptions,
     ) -> Result<Reconciliation, Error> {
-        self.inner.reconcile(filter, opts).await
+        self.inner.sync(filter, opts).await
     }
 
-    /// Negentropy reconciliation
+    /// Sync events with relays (negentropy reconciliation)
     #[inline]
-    pub async fn reconcile_with_items(
+    pub async fn sync_with_items(
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: NegentropyOptions,
     ) -> Result<Reconciliation, Error> {
-        self.inner.reconcile_with_items(filter, items, opts).await
+        self.inner.sync_with_items(filter, items, opts).await
     }
 
-    /// Negentropy reconciliation
+    /// Sync events with relays (negentropy reconciliation)
     #[inline]
-    pub async fn reconcile_multi(
+    pub async fn sync_multi(
         &self,
         map: HashMap<Filter, Vec<(EventId, Timestamp)>>,
         opts: NegentropyOptions,
     ) -> Result<Reconciliation, Error> {
-        self.inner.reconcile_multi(map, opts).await
+        self.inner.sync_multi(map, opts).await
     }
 
     /// Check if relay support negentropy protocol

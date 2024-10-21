@@ -75,7 +75,7 @@ async def main():
     # Negentropy reconciliation
     f = Filter().author(keys.public_key())
     opts = NegentropyOptions()
-    await client.reconcile(f, opts)
+    await client.sync(f, opts)
 
     # Query events from database
     f = Filter().author(keys.public_key()).limit(10)

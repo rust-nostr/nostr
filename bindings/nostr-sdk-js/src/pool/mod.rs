@@ -418,13 +418,13 @@ impl JsRelayPool {
     /// Negentropy reconciliation
     ///
     /// Use events stored in database
-    pub async fn reconcile(
+    pub async fn sync(
         &self,
         filter: &JsFilter,
         opts: &JsNegentropyOptions,
     ) -> Result<JsReconciliationOutput> {
         self.inner
-            .reconcile(filter.deref().clone(), **opts)
+            .sync(filter.deref().clone(), **opts)
             .await
             .map_err(into_err)
             .map(|o| o.into())

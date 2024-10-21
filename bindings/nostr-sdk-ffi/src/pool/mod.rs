@@ -376,17 +376,15 @@ impl RelayPool {
             .into())
     }
 
-    /// Negentropy reconciliation
-    ///
-    /// Use events stored in database
-    pub async fn reconcile(
+    /// Sync events with relays (negentropy reconciliation)
+    pub async fn sync(
         &self,
         filter: &Filter,
         opts: &NegentropyOptions,
     ) -> Result<ReconciliationOutput> {
         Ok(self
             .inner
-            .reconcile(filter.deref().clone(), **opts)
+            .sync(filter.deref().clone(), **opts)
             .await?
             .into())
     }

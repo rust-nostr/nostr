@@ -28,7 +28,7 @@ async fn main() -> Result<()> {
     // Negentropy reconcile
     let filter = Filter::new().author(my_keys.public_key());
     let output = client
-        .reconcile(
+        .sync(
             filter,
             NegentropyOptions::default().direction(NegentropyDirection::Down),
         )

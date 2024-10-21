@@ -1648,16 +1648,17 @@ impl InternalRelay {
         Ok(count)
     }
 
-    pub async fn reconcile(
+    // TODO: allow to keep track of progress of sync
+    pub async fn sync(
         &self,
         filter: Filter,
         opts: NegentropyOptions,
     ) -> Result<Reconciliation, Error> {
         let items = self.database.negentropy_items(filter.clone()).await?;
-        self.reconcile_with_items(filter, items, opts).await
+        self.sync_with_items(filter, items, opts).await
     }
 
-    pub async fn reconcile_with_items(
+    pub async fn sync_with_items(
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
@@ -1668,10 +1669,10 @@ impl InternalRelay {
         map.insert(filter, items);
 
         // Reconcile
-        self.reconcile_multi(map, opts).await
+        self.sync_multi(map, opts).await
     }
 
-    pub async fn reconcile_multi(
+    pub async fn sync_multi(
         &self,
         map: HashMap<Filter, Vec<(EventId, Timestamp)>>,
         opts: NegentropyOptions,
@@ -1687,10 +1688,7 @@ impl InternalRelay {
         let mut output: Reconciliation = Reconciliation::default();
 
         for (filter, items) in map.into_iter() {
-            match self
-                .reconcile_new(filter.clone(), items.clone(), opts)
-                .await
-            {
+            match self.sync_new(filter.clone(), items.clone(), opts).await {
                 Ok(res) => {
                     output.merge(res);
                 }
@@ -1698,7 +1696,7 @@ impl InternalRelay {
                     Error::NegentropyMaybeNotSupported
                     | Error::Negentropy(negentropy::Error::UnsupportedProtocolVersion) => {
                         tracing::warn!("Negentropy protocol '{}' (maybe) not supported, trying the deprecated one.", negentropy::PROTOCOL_VERSION);
-                        let res = self.reconcile_deprecated(filter, items, opts).await?;
+                        let res = self.sync_deprecated(filter, items, opts).await?;
                         output.merge(res);
                     }
                     e => return Err(e),
@@ -1710,7 +1708,7 @@ impl InternalRelay {
     }
 
     /// New negentropy protocol
-    async fn reconcile_new(
+    async fn sync_new(
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
@@ -1998,7 +1996,7 @@ impl InternalRelay {
     }
 
     /// Deprecated negentropy protocol
-    async fn reconcile_deprecated(
+    async fn sync_deprecated(
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
@@ -2291,7 +2289,7 @@ impl InternalRelay {
                 // Execute dry-run reconciliation to check if it's supported
                 let filter: Filter = Filter::new().limit(1);
                 match self
-                    .reconcile_with_items(
+                    .sync_with_items(
                         filter,
                         Vec::new(),
                         NegentropyOptions::new()

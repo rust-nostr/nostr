@@ -188,7 +188,7 @@ async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
 
             // Dry run
             let output: Output<Reconciliation> = client
-                .reconcile_with(list.iter(), filter.clone(), opts.dry_run())
+                .sync_with(list.iter(), filter.clone(), opts.dry_run())
                 .await?;
 
             println!(
@@ -198,7 +198,7 @@ async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
             );
 
             // Reconcile
-            let output: Output<Reconciliation> = client.reconcile_with(list, filter, opts).await?;
+            let output: Output<Reconciliation> = client.sync_with(list, filter, opts).await?;
 
             println!("Reconciliation terminated:");
             println!("- Sent {} events", output.sent.len());

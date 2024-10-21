@@ -17,7 +17,7 @@ async function main() {
     let direction = NegentropyDirection.Down;
     let opts = new NegentropyOptions().direction(direction);
     let filter = new Filter().kind(1).limit(1000);
-    await client.reconcile(filter, opts);
+    await client.sync(filter, opts);
 }
 
 main();

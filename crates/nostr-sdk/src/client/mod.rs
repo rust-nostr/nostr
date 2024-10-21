@@ -823,6 +823,42 @@ impl Client {
         self.pool.unsubscribe_all(opts).await;
     }
 
+    /// Sync events with relays (negentropy reconciliation)
+    ///
+    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be reconciled also from
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
+    ///
+    /// <https://github.com/hoytech/negentropy>
+    #[inline]
+    pub async fn sync(
+        &self,
+        filter: Filter,
+        opts: NegentropyOptions,
+    ) -> Result<Output<Reconciliation>, Error> {
+        if self.opts.gossip {
+            return self.gossip_sync_negentropy(filter, opts).await;
+        }
+
+        Ok(self.pool.sync(filter, opts).await?)
+    }
+
+    /// Sync events with specific relays (negentropy reconciliation)
+    ///
+    /// <https://github.com/hoytech/negentropy>
+    pub async fn sync_with<I, U>(
+        &self,
+        urls: I,
+        filter: Filter,
+        opts: NegentropyOptions,
+    ) -> Result<Output<Reconciliation>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        Ok(self.pool.sync_with(urls, filter, opts).await?)
+    }
+
     /// Fetch events from relays
     ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
@@ -1709,29 +1745,25 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
-    /// Negentropy reconciliation
+    /// Sync events with relays (negentropy reconciliation)
     ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be reconciled also from
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// <https://github.com/hoytech/negentropy>
-    #[inline]
+    #[deprecated(since = "0.36.0", note = "Use `sync` instead")]
     pub async fn reconcile(
         &self,
         filter: Filter,
         opts: NegentropyOptions,
     ) -> Result<Output<Reconciliation>, Error> {
-        if self.opts.gossip {
-            return self.gossip_reconcile(filter, opts).await;
-        }
-
-        Ok(self.pool.reconcile(filter, opts).await?)
+        self.sync(filter, opts).await
     }
 
-    /// Negentropy reconciliation with specified relays
+    /// Sync events with specific relays (negentropy reconciliation)
     ///
     /// <https://github.com/hoytech/negentropy>
-    #[inline]
+    #[deprecated(since = "0.36.0", note = "Use `sync_with` instead")]
     pub async fn reconcile_with<I, U>(
         &self,
         urls: I,
@@ -1743,7 +1775,7 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        Ok(self.pool.reconcile_with(urls, filter, opts).await?)
+        self.sync_with(urls, filter, opts).await
     }
 
     /// Handle notifications
@@ -1894,7 +1926,7 @@ impl Client {
         Ok(self.pool.subscribe_targeted(id, filters, opts).await?)
     }
 
-    async fn gossip_reconcile(
+    async fn gossip_sync_negentropy(
         &self,
         filter: Filter,
         opts: NegentropyOptions,
@@ -1923,6 +1955,6 @@ impl Client {
         }
 
         // Reconciliation
-        Ok(self.pool.reconcile_targeted(filters, opts).await?)
+        Ok(self.pool.sync_targeted(filters, opts).await?)
     }
 }

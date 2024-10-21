@@ -478,6 +478,47 @@ impl RelayPool {
         self.inner.unsubscribe_all(opts).await
     }
 
+    /// Sync events with relays (negentropy reconciliation)
+    #[inline]
+    pub async fn sync(
+        &self,
+        filter: Filter,
+        opts: NegentropyOptions,
+    ) -> Result<Output<Reconciliation>, Error> {
+        self.inner.sync(filter, opts).await
+    }
+
+    /// Sync events with specific relays (negentropy reconciliation)
+    #[inline]
+    pub async fn sync_with<I, U>(
+        &self,
+        urls: I,
+        filter: Filter,
+        opts: NegentropyOptions,
+    ) -> Result<Output<Reconciliation>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.inner.sync_with(urls, filter, opts).await
+    }
+
+    /// Sync events with specific relays and filters (negentropy reconciliation)
+    #[inline]
+    pub async fn sync_targeted<I, U>(
+        &self,
+        targets: I,
+        opts: NegentropyOptions,
+    ) -> Result<Output<Reconciliation>, Error>
+    where
+        I: IntoIterator<Item = (U, HashMap<Filter, Vec<(EventId, Timestamp)>>)>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.inner.sync_targeted(targets, opts).await
+    }
+
     /// Fetch events from relays with [`RelayServiceFlags::READ`] flag.
     #[inline]
     pub async fn fetch_events(
@@ -602,49 +643,6 @@ impl RelayPool {
         self.inner
             .stream_events_targeted(source, timeout, opts)
             .await
-    }
-
-    /// Negentropy reconciliation with all connected relays
-    #[inline]
-    pub async fn reconcile(
-        &self,
-        filter: Filter,
-        opts: NegentropyOptions,
-    ) -> Result<Output<Reconciliation>, Error> {
-        self.inner.reconcile(filter, opts).await
-    }
-
-    /// Negentropy reconciliation with specified relays
-    #[inline]
-    pub async fn reconcile_with<I, U>(
-        &self,
-        urls: I,
-        filter: Filter,
-        opts: NegentropyOptions,
-    ) -> Result<Output<Reconciliation>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
-        self.inner.reconcile_with(urls, filter, opts).await
-    }
-
-    /// Targeted negentropy reconciliation
-    ///
-    /// Reconcile events with specific relays and filters
-    #[inline]
-    pub async fn reconcile_targeted<I, U>(
-        &self,
-        targets: I,
-        opts: NegentropyOptions,
-    ) -> Result<Output<Reconciliation>, Error>
-    where
-        I: IntoIterator<Item = (U, HashMap<Filter, Vec<(EventId, Timestamp)>>)>,
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
-        self.inner.reconcile_targeted(targets, opts).await
     }
 
     /// Handle notifications

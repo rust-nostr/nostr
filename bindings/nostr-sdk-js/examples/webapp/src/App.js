@@ -52,7 +52,7 @@ class App extends Component {
     try {
       let filter = new Filter().author(this.state.public_key);
       let opts = new NegentropyOptions();
-      await this.state.client.reconcile(filter, opts);
+      await this.state.client.sync(filter, opts);
     } catch (error) {
         console.log(error) 
     }

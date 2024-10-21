@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
 
     let filter = Filter::new().author(public_key).limit(10);
     let opts = NegentropyOptions::default();
-    let output = client.reconcile(filter, opts).await?;
+    let output = client.sync(filter, opts).await?;
     println!("Success: {:?}", output.success);
     println!("Failed: {:?}", output.failed);
 

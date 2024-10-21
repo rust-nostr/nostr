@@ -718,6 +718,118 @@ impl InternalRelayPool {
         }
     }
 
+    #[inline]
+    pub async fn sync(
+        &self,
+        filter: Filter,
+        opts: NegentropyOptions,
+    ) -> Result<Output<Reconciliation>, Error> {
+        let urls: Vec<Url> = self.relay_urls().await;
+        self.sync_with(urls, filter, opts).await
+    }
+
+    #[inline]
+    pub async fn sync_with<I, U>(
+        &self,
+        urls: I,
+        filter: Filter,
+        opts: NegentropyOptions,
+    ) -> Result<Output<Reconciliation>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Get items
+        let items: Vec<(EventId, Timestamp)> =
+            self.database.negentropy_items(filter.clone()).await?;
+
+        // Compose filters
+        let mut filters: HashMap<Filter, Vec<(EventId, Timestamp)>> = HashMap::with_capacity(1);
+        filters.insert(filter, items);
+
+        // Reconcile
+        let targets = urls.into_iter().map(|u| (u, filters.clone()));
+        self.sync_targeted(targets, opts).await
+    }
+
+    pub async fn sync_targeted<I, U>(
+        &self,
+        targets: I,
+        opts: NegentropyOptions,
+    ) -> Result<Output<Reconciliation>, Error>
+    where
+        I: IntoIterator<Item = (U, HashMap<Filter, Vec<(EventId, Timestamp)>>)>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Collect targets map
+        let mut map: HashMap<Url, HashMap<Filter, Vec<(EventId, Timestamp)>>> = HashMap::new();
+        for (url, value) in targets.into_iter() {
+            map.insert(url.try_into_url()?, value);
+        }
+
+        // Check if urls set is empty
+        if map.is_empty() {
+            return Err(Error::NoRelaysSpecified);
+        }
+
+        // Lock with read shared access
+        let relays = self.relays.read().await;
+
+        // Check if empty
+        if relays.is_empty() {
+            return Err(Error::NoRelays);
+        }
+
+        // Check if urls set contains ONLY already added relays
+        if !map.keys().all(|url| relays.contains_key(url)) {
+            return Err(Error::RelayNotFound);
+        }
+
+        // Filter relays and start query
+        let result: Arc<Mutex<Output<Reconciliation>>> = Arc::new(Mutex::new(Output::default()));
+        let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(map.len());
+
+        // Filter relays and start query
+        for (url, filters) in map.into_iter() {
+            let relay: Relay = self.internal_relay(&relays, &url).cloned()?;
+            let result: Arc<Mutex<Output<Reconciliation>>> = result.clone();
+            let handle: JoinHandle<()> = thread::spawn(async move {
+                match relay.sync_multi(filters, opts).await {
+                    Ok(rec) => {
+                        // Success, insert relay url in 'success' set result
+                        let mut result = result.lock().await;
+                        result.success.insert(url);
+                        result.merge(rec);
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to sync events with '{url}': {e}");
+
+                        // Failed, insert relay url in 'failed' map result
+                        let mut result = result.lock().await;
+                        result.failed.insert(url, Some(e.to_string()));
+                    }
+                }
+            })?;
+            handles.push(handle);
+        }
+
+        // Join threads
+        for handle in handles.into_iter() {
+            handle.join().await?;
+        }
+
+        // Take output
+        let result: Output<Reconciliation> = util::take_mutex_ownership(result).await;
+
+        if result.success.is_empty() {
+            return Err(Error::NegentropyReconciliationFailed);
+        }
+
+        Ok(result)
+    }
+
     pub async fn fetch_events(
         &self,
         filters: Vec<Filter>,
@@ -932,117 +1044,5 @@ impl InternalRelayPool {
         relay.disconnect().await?;
 
         Ok(())
-    }
-
-    #[inline]
-    pub async fn reconcile(
-        &self,
-        filter: Filter,
-        opts: NegentropyOptions,
-    ) -> Result<Output<Reconciliation>, Error> {
-        let urls: Vec<Url> = self.relay_urls().await;
-        self.reconcile_with(urls, filter, opts).await
-    }
-
-    #[inline]
-    pub async fn reconcile_with<I, U>(
-        &self,
-        urls: I,
-        filter: Filter,
-        opts: NegentropyOptions,
-    ) -> Result<Output<Reconciliation>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
-        // Get items
-        let items: Vec<(EventId, Timestamp)> =
-            self.database.negentropy_items(filter.clone()).await?;
-
-        // Compose filters
-        let mut filters: HashMap<Filter, Vec<(EventId, Timestamp)>> = HashMap::with_capacity(1);
-        filters.insert(filter, items);
-
-        // Reconcile
-        let targets = urls.into_iter().map(|u| (u, filters.clone()));
-        self.reconcile_targeted(targets, opts).await
-    }
-
-    pub async fn reconcile_targeted<I, U>(
-        &self,
-        targets: I,
-        opts: NegentropyOptions,
-    ) -> Result<Output<Reconciliation>, Error>
-    where
-        I: IntoIterator<Item = (U, HashMap<Filter, Vec<(EventId, Timestamp)>>)>,
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
-        // Collect targets map
-        let mut map: HashMap<Url, HashMap<Filter, Vec<(EventId, Timestamp)>>> = HashMap::new();
-        for (url, value) in targets.into_iter() {
-            map.insert(url.try_into_url()?, value);
-        }
-
-        // Check if urls set is empty
-        if map.is_empty() {
-            return Err(Error::NoRelaysSpecified);
-        }
-
-        // Lock with read shared access
-        let relays = self.relays.read().await;
-
-        // Check if empty
-        if relays.is_empty() {
-            return Err(Error::NoRelays);
-        }
-
-        // Check if urls set contains ONLY already added relays
-        if !map.keys().all(|url| relays.contains_key(url)) {
-            return Err(Error::RelayNotFound);
-        }
-
-        // Filter relays and start query
-        let result: Arc<Mutex<Output<Reconciliation>>> = Arc::new(Mutex::new(Output::default()));
-        let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(map.len());
-
-        // Filter relays and start query
-        for (url, filters) in map.into_iter() {
-            let relay: Relay = self.internal_relay(&relays, &url).cloned()?;
-            let result: Arc<Mutex<Output<Reconciliation>>> = result.clone();
-            let handle: JoinHandle<()> = thread::spawn(async move {
-                match relay.reconcile_multi(filters, opts).await {
-                    Ok(rec) => {
-                        // Success, insert relay url in 'success' set result
-                        let mut result = result.lock().await;
-                        result.success.insert(url);
-                        result.merge(rec);
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to get reconcile with '{url}': {e}");
-
-                        // Failed, insert relay url in 'failed' map result
-                        let mut result = result.lock().await;
-                        result.failed.insert(url, Some(e.to_string()));
-                    }
-                }
-            })?;
-            handles.push(handle);
-        }
-
-        // Join threads
-        for handle in handles.into_iter() {
-            handle.join().await?;
-        }
-
-        // Take output
-        let result: Output<Reconciliation> = util::take_mutex_ownership(result).await;
-
-        if result.success.is_empty() {
-            return Err(Error::NegentropyReconciliationFailed);
-        }
-
-        Ok(result)
     }
 }

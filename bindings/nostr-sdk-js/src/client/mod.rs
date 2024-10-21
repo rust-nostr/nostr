@@ -332,6 +332,24 @@ impl JsClient {
         self.inner.unsubscribe_all().await;
     }
 
+    /// Sync events with relays (negentropy reconciliation)
+    ///
+    /// If `gossip` is enabled (see `Options`) the events will be reconciled also with
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
+    ///
+    /// <https://github.com/hoytech/negentropy>
+    pub async fn sync(
+        &self,
+        filter: &JsFilter,
+        opts: &JsNegentropyOptions,
+    ) -> Result<JsReconciliationOutput> {
+        self.inner
+            .sync(filter.deref().clone(), **opts)
+            .await
+            .map_err(into_err)
+            .map(|o| o.into())
+    }
+
     /// Fetch events from relays
     ///
     /// If `gossip` is enabled (see `Options`) the events will be requested also to
@@ -753,24 +771,6 @@ impl JsClient {
             .await
             .map_err(into_err)?
             .into())
-    }
-
-    /// Negentropy reconciliation
-    ///
-    /// If `gossip` is enabled (see `Options`) the events will be reconciled also with
-    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
-    ///
-    /// <https://github.com/hoytech/negentropy>
-    pub async fn reconcile(
-        &self,
-        filter: &JsFilter,
-        opts: &JsNegentropyOptions,
-    ) -> Result<JsReconciliationOutput> {
-        self.inner
-            .reconcile(filter.deref().clone(), **opts)
-            .await
-            .map_err(into_err)
-            .map(|o| o.into())
     }
 
     /// Handle notifications

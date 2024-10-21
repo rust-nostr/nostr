@@ -300,13 +300,13 @@ impl JsRelay {
     /// Use events stored in database
     ///
     /// <https://github.com/hoytech/negentropy>
-    pub async fn reconcile(
+    pub async fn sync(
         &self,
         filter: &JsFilter,
         opts: &JsNegentropyOptions,
     ) -> Result<JsReconciliation> {
         self.inner
-            .reconcile(filter.deref().clone(), **opts)
+            .sync(filter.deref().clone(), **opts)
             .await
             .map_err(into_err)
             .map(|o| o.into())

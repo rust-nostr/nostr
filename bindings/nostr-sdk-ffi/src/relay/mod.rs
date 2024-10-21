@@ -354,23 +354,17 @@ impl Relay {
         Ok(self.inner.count_events(filters, timeout).await? as u64)
     }
 
-    /// Negentropy reconciliation
-    ///
-    /// Use events stored in database
-    pub async fn reconcile(
-        &self,
-        filter: &Filter,
-        opts: &NegentropyOptions,
-    ) -> Result<Reconciliation> {
+    /// Sync events with relays (negentropy reconciliation)
+    pub async fn sync(&self, filter: &Filter, opts: &NegentropyOptions) -> Result<Reconciliation> {
         Ok(self
             .inner
-            .reconcile(filter.deref().clone(), **opts)
+            .sync(filter.deref().clone(), **opts)
             .await?
             .into())
     }
 
-    /// Negentropy reconciliation with custom items
-    pub async fn reconcile_with_items(
+    /// Sync events with relays (negentropy reconciliation)
+    pub async fn sync_with_items(
         &self,
         filter: &Filter,
         items: Vec<NegentropyItem>,
@@ -382,7 +376,7 @@ impl Relay {
             .collect();
         Ok(self
             .inner
-            .reconcile_with_items(filter.deref().clone(), items, **opts)
+            .sync_with_items(filter.deref().clone(), items, **opts)
             .await?
             .into())
     }

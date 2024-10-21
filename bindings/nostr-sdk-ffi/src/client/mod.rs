@@ -339,6 +339,24 @@ impl Client {
         self.inner.unsubscribe_all().await
     }
 
+    /// Sync events with relays (negentropy reconciliation)
+    ///
+    /// If `gossip` is enabled (see `Options`) the events will be reconciled also with
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
+    ///
+    /// <https://github.com/hoytech/negentropy>
+    pub async fn sync(
+        &self,
+        filter: Arc<Filter>,
+        opts: Arc<NegentropyOptions>,
+    ) -> Result<ReconciliationOutput> {
+        Ok(self
+            .inner
+            .sync(filter.as_ref().deref().clone(), **opts)
+            .await?
+            .into())
+    }
+
     /// Fetch events from relays
     ///
     /// If `gossip` is enabled (see `Options`) the events will be requested also to
@@ -617,24 +635,6 @@ impl Client {
         Ok(self
             .inner
             .file_metadata(description, metadata.as_ref().deref().clone())
-            .await?
-            .into())
-    }
-
-    /// Negentropy reconciliation
-    ///
-    /// If `gossip` is enabled (see `Options`) the events will be reconciled also with
-    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
-    ///
-    /// <https://github.com/hoytech/negentropy>
-    pub async fn reconcile(
-        &self,
-        filter: Arc<Filter>,
-        opts: Arc<NegentropyOptions>,
-    ) -> Result<ReconciliationOutput> {
-        Ok(self
-            .inner
-            .reconcile(filter.as_ref().deref().clone(), **opts)
             .await?
             .into())
     }
