@@ -4,6 +4,7 @@ const eventBuilder = require("./src/event/builder");
 const relayMessages = require("./src/messages/relay");
 const nip01 = require("./src/nip01");
 const nip05 = require("./src/nip05");
+const nip06 = require("./src/nip06");
 const nip19 = require("./src/nip19");
 const nip21 = require("./src/nip21");
 const nip44 = require("./src/nip44");
@@ -23,6 +24,7 @@ async function main() {
     
     nip01.run();
     await nip05.run();
+    nip06.run();
     nip19.run();
     nip21.run();
     nip44.run();
