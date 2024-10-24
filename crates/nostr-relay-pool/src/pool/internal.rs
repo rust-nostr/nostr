@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_utility::futures_util::StreamExt;
+use async_utility::futures_util::{future, StreamExt};
 use async_utility::thread::JoinHandle;
 use async_utility::{thread, time};
 use atomic_destructor::AtomicDestroyer;
@@ -964,33 +964,13 @@ impl InternalRelayPool {
         // Lock with read shared access
         let relays = self.relays.read().await;
 
-        match connection_timeout {
-            Some(..) => {
-                let mut handles = Vec::with_capacity(relays.len());
+        let mut handles = Vec::with_capacity(relays.len());
 
-                // False positive
-                // Relay is borrowed and then moved to a thread so MUST be cloned.
-                #[allow(clippy::unnecessary_to_owned)]
-                for relay in relays.values().cloned() {
-                    let handle = thread::spawn(async move {
-                        relay.connect(connection_timeout).await;
-                    });
-                    handles.push(handle);
-                }
-
-                for handle in handles.into_iter().flatten() {
-                    if let Err(e) = handle.join().await {
-                        tracing::error!("Impossible to join thread: {e}")
-                    }
-                }
-            }
-            None => {
-                // Iter values and connect
-                for relay in relays.values() {
-                    relay.connect(None).await;
-                }
-            }
+        for relay in relays.values() {
+            handles.push(relay.connect(connection_timeout));
         }
+
+        future::join_all(handles).await;
     }
 
     pub async fn disconnect(&self) -> Result<(), Error> {
