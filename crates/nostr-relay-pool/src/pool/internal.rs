@@ -164,7 +164,7 @@ impl InternalRelayPool {
     fn internal_relay<'a>(
         &self,
         txn: &'a RwLockReadGuard<'a, Relays>,
-        url: &'a Url,
+        url: &Url,
     ) -> Result<&'a Relay, Error> {
         txn.get(url).ok_or(Error::RelayNotFound)
     }
