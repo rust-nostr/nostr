@@ -764,6 +764,7 @@ impl InternalRelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Collect targets map
+        // TODO: create hashmap with capacity
         let mut map: HashMap<Url, HashMap<Filter, Vec<(EventId, Timestamp)>>> = HashMap::new();
         for (url, value) in targets.into_iter() {
             map.insert(url.try_into_url()?, value);
@@ -789,48 +790,43 @@ impl InternalRelayPool {
 
         // TODO: shared reconciliation output to avoid to request duplicates?
 
-        // Filter relays and start query
-        let result: Arc<Mutex<Output<Reconciliation>>> = Arc::new(Mutex::new(Output::default()));
-        let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(map.len());
+        let mut urls: Vec<Url> = Vec::with_capacity(map.len());
+        let mut futures = Vec::with_capacity(map.len());
 
-        // Filter relays and start query
+        // Compose futures
         for (url, filters) in map.into_iter() {
-            let relay: Relay = self.internal_relay(&relays, &url).cloned()?;
+            let relay: &Relay = self.internal_relay(&relays, &url)?;
             let opts: SyncOptions = opts.clone();
-            let result: Arc<Mutex<Output<Reconciliation>>> = result.clone();
-            let handle: JoinHandle<()> = thread::spawn(async move {
-                match relay.sync_multi(filters, opts).await {
-                    Ok(rec) => {
-                        // Success, insert relay url in 'success' set result
-                        let mut result = result.lock().await;
-                        result.success.insert(url);
-                        result.merge(rec);
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to sync events with '{url}': {e}");
+            urls.push(url);
+            futures.push(relay.sync_multi(filters, opts)); // TODO: pass opts as ref
+        }
 
-                        // Failed, insert relay url in 'failed' map result
-                        let mut result = result.lock().await;
-                        result.failed.insert(url, Some(e.to_string()));
-                    }
+        let mut output: Output<Reconciliation> = Output::default();
+
+        // Join futures
+        let list = future::join_all(futures).await;
+        
+        // Iter results and construct output
+        for (url, result) in urls.into_iter().zip(list.into_iter()) {
+            match result {
+                Ok(reconciliation) => {
+                    // Success, insert relay url in 'success' set result
+                    output.success.insert(url);
+                    output.merge(reconciliation);
                 }
-            })?;
-            handles.push(handle);
+                Err(e) => {
+                    tracing::error!("Failed to sync events with '{url}': {e}");
+                    output.failed.insert(url, Some(e.to_string()));
+                }
+            }
         }
 
-        // Join threads
-        for handle in handles.into_iter() {
-            handle.join().await?;
-        }
-
-        // Take output
-        let result: Output<Reconciliation> = util::take_mutex_ownership(result).await;
-
-        if result.success.is_empty() {
+        // Check if sync failed (no success)
+        if output.success.is_empty() {
             return Err(Error::NegentropyReconciliationFailed);
         }
 
-        Ok(result)
+        Ok(output)
     }
 
     pub async fn fetch_events(
