@@ -1,5 +1,5 @@
 import asyncio
-from nostr_sdk import Keys, Filter, ClientBuilder, NostrDatabase, NegentropyOptions, init_logger, LogLevel
+from nostr_sdk import Keys, Filter, ClientBuilder, NostrDatabase, SyncOptions, init_logger, LogLevel
 
 init_logger(LogLevel.INFO)
 
@@ -23,7 +23,7 @@ async def main():
 
     # Negentropy reconciliation
     f = Filter().author(keys.public_key())
-    opts = NegentropyOptions()
+    opts = SyncOptions()
     await client.sync(f, opts)
 
     # Query events from database

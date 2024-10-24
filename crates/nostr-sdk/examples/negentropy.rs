@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
         }
     });
 
-    let output = client.sync(filter, opts).await?;
+    let output = client.sync(filter, &opts).await?;
     println!("Success: {:?}", output.success);
     println!("Failed: {:?}", output.failed);
 

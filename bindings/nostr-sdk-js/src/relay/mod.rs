@@ -298,7 +298,7 @@ impl JsRelay {
     /// Sync events with relay (negentropy reconciliation)
     pub async fn sync(&self, filter: &JsFilter, opts: &JsSyncOptions) -> Result<JsReconciliation> {
         self.inner
-            .sync(filter.deref().clone(), opts.deref().clone())
+            .sync(filter.deref().clone(), opts.deref())
             .await
             .map_err(into_err)
             .map(|o| o.into())

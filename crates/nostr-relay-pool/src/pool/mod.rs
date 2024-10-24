@@ -483,7 +483,7 @@ impl RelayPool {
     pub async fn sync(
         &self,
         filter: Filter,
-        opts: SyncOptions,
+        opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
         self.inner.sync(filter, opts).await
     }
@@ -494,7 +494,7 @@ impl RelayPool {
         &self,
         urls: I,
         filter: Filter,
-        opts: SyncOptions,
+        opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -509,7 +509,7 @@ impl RelayPool {
     pub async fn sync_targeted<I, U>(
         &self,
         targets: I,
-        opts: SyncOptions,
+        opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = (U, HashMap<Filter, Vec<(EventId, Timestamp)>>)>,

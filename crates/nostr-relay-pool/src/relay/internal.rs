@@ -1681,7 +1681,7 @@ impl InternalRelay {
     }
 
     // TODO: allow to keep track of progress of sync
-    pub async fn sync(&self, filter: Filter, opts: SyncOptions) -> Result<Reconciliation, Error> {
+    pub async fn sync(&self, filter: Filter, opts: &SyncOptions) -> Result<Reconciliation, Error> {
         let items = self.database.negentropy_items(filter.clone()).await?;
         self.sync_with_items(filter, items, opts).await
     }
@@ -1690,7 +1690,7 @@ impl InternalRelay {
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
-        opts: SyncOptions,
+        opts: &SyncOptions,
     ) -> Result<Reconciliation, Error> {
         // Compose map
         let mut map = HashMap::with_capacity(1);
@@ -1703,7 +1703,7 @@ impl InternalRelay {
     pub async fn sync_multi(
         &self,
         map: HashMap<Filter, Vec<(EventId, Timestamp)>>,
-        opts: SyncOptions,
+        opts: &SyncOptions,
     ) -> Result<Reconciliation, Error> {
         // Check if relay is ready
         self.check_ready().await?;
@@ -1717,7 +1717,7 @@ impl InternalRelay {
 
         for (filter, items) in map.into_iter() {
             match self
-                .sync_new(filter.clone(), items.clone(), &opts, &mut output)
+                .sync_new(filter.clone(), items.clone(), opts, &mut output)
                 .await
             {
                 Ok(..) => {}
@@ -1725,7 +1725,7 @@ impl InternalRelay {
                     Error::NegentropyMaybeNotSupported
                     | Error::Negentropy(negentropy::Error::UnsupportedProtocolVersion) => {
                         tracing::warn!("Negentropy protocol '{}' (maybe) not supported, trying the deprecated one.", negentropy::PROTOCOL_VERSION);
-                        self.sync_deprecated(filter, items, &opts, &mut output)
+                        self.sync_deprecated(filter, items, opts, &mut output)
                             .await?;
                     }
                     e => return Err(e),
@@ -2381,7 +2381,7 @@ impl InternalRelay {
                     .sync_with_items(
                         filter,
                         Vec::new(),
-                        SyncOptions::new()
+                        &SyncOptions::new()
                             .initial_timeout(Duration::from_secs(5))
                             .dry_run(),
                     )

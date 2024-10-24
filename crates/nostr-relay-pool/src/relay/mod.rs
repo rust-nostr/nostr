@@ -426,7 +426,7 @@ impl Relay {
 
     /// Sync events with relays (negentropy reconciliation)
     #[inline]
-    pub async fn sync(&self, filter: Filter, opts: SyncOptions) -> Result<Reconciliation, Error> {
+    pub async fn sync(&self, filter: Filter, opts: &SyncOptions) -> Result<Reconciliation, Error> {
         self.inner.sync(filter, opts).await
     }
 
@@ -436,7 +436,7 @@ impl Relay {
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
-        opts: SyncOptions,
+        opts: &SyncOptions,
     ) -> Result<Reconciliation, Error> {
         self.inner.sync_with_items(filter, items, opts).await
     }
@@ -446,7 +446,7 @@ impl Relay {
     pub async fn sync_multi(
         &self,
         map: HashMap<Filter, Vec<(EventId, Timestamp)>>,
-        opts: SyncOptions,
+        opts: &SyncOptions,
     ) -> Result<Reconciliation, Error> {
         self.inner.sync_multi(map, opts).await
     }

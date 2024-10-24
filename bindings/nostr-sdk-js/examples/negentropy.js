@@ -1,4 +1,4 @@
-const { loadWasmAsync, initLogger, LogLevel, NegentropyOptions, NegentropyDirection, Filter, Client, NostrDatabase } = require("../");
+const { loadWasmAsync, initLogger, LogLevel, SyncOptions, SyncDirection, Filter, Client, NostrDatabase } = require("../");
 
 // NOTE: this code work only on browser (due to indexeddb)!
 
@@ -14,9 +14,8 @@ async function main() {
 
     await client.connect();
 
-    let direction = NegentropyDirection.Down;
-    let opts = new NegentropyOptions().direction(direction);
     let filter = new Filter().kind(1).limit(1000);
+    let opts = new SyncOptions().direction(SyncDirection.Down);
     await client.sync(filter, opts);
 }
 

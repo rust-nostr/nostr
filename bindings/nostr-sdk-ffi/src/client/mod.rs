@@ -352,7 +352,7 @@ impl Client {
     ) -> Result<ReconciliationOutput> {
         Ok(self
             .inner
-            .sync(filter.as_ref().deref().clone(), opts.deref().clone())
+            .sync(filter.as_ref().deref().clone(), opts.deref())
             .await?
             .into())
     }

@@ -722,7 +722,7 @@ impl InternalRelayPool {
     pub async fn sync(
         &self,
         filter: Filter,
-        opts: SyncOptions,
+        opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
         let urls: Vec<Url> = self.relay_urls().await;
         self.sync_with(urls, filter, opts).await
@@ -733,7 +733,7 @@ impl InternalRelayPool {
         &self,
         urls: I,
         filter: Filter,
-        opts: SyncOptions,
+        opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -756,7 +756,7 @@ impl InternalRelayPool {
     pub async fn sync_targeted<I, U>(
         &self,
         targets: I,
-        opts: SyncOptions,
+        opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = (U, HashMap<Filter, Vec<(EventId, Timestamp)>>)>,
@@ -796,16 +796,15 @@ impl InternalRelayPool {
         // Compose futures
         for (url, filters) in map.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
-            let opts: SyncOptions = opts.clone();
             urls.push(url);
-            futures.push(relay.sync_multi(filters, opts)); // TODO: pass opts as ref
+            futures.push(relay.sync_multi(filters, opts));
         }
 
         let mut output: Output<Reconciliation> = Output::default();
 
         // Join futures
         let list = future::join_all(futures).await;
-        
+
         // Iter results and construct output
         for (url, result) in urls.into_iter().zip(list.into_iter()) {
             match result {

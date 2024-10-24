@@ -358,7 +358,7 @@ impl Relay {
     pub async fn sync(&self, filter: &Filter, opts: &SyncOptions) -> Result<Reconciliation> {
         Ok(self
             .inner
-            .sync(filter.deref().clone(), opts.deref().clone())
+            .sync(filter.deref().clone(), opts.deref())
             .await?
             .into())
     }
@@ -376,7 +376,7 @@ impl Relay {
             .collect();
         Ok(self
             .inner
-            .sync_with_items(filter.deref().clone(), items, opts.deref().clone())
+            .sync_with_items(filter.deref().clone(), items, opts.deref())
             .await?
             .into())
     }

@@ -344,7 +344,7 @@ impl JsClient {
         opts: &JsSyncOptions,
     ) -> Result<JsReconciliationOutput> {
         self.inner
-            .sync(filter.deref().clone(), opts.deref().clone())
+            .sync(filter.deref().clone(), opts.deref())
             .await
             .map_err(into_err)
             .map(|o| o.into())

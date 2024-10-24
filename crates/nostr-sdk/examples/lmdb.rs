@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
 
     // Negentropy reconcile
     let filter = Filter::new().author(my_keys.public_key());
-    let output = client.sync(filter, SyncOptions::default()).await?;
+    let output = client.sync(filter, &SyncOptions::default()).await?;
 
     println!("Local: {}", output.local.len());
     println!("Remote: {}", output.remote.len());
