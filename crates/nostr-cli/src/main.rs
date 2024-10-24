@@ -190,11 +190,9 @@ async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
 
             // Compose filter and opts
             let filter: Filter = Filter::default().author(public_key);
-            let direction: NegentropyDirection = direction.into();
+            let direction: SyncDirection = direction.into();
             let (tx, mut rx) = SyncProgress::channel();
-            let opts: NegentropyOptions = NegentropyOptions::default()
-                .direction(direction)
-                .progress(tx);
+            let opts: SyncOptions = SyncOptions::default().direction(direction).progress(tx);
 
             tokio::spawn(async move {
                 let pb = ProgressBar::new(0);
@@ -204,15 +202,10 @@ async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
                     .progress_chars("#>-");
                 pb.set_style(style);
 
-                loop {
-                    match rx.changed().await {
-                        Ok(..) => {
-                            let SyncProgress { total, current } = *rx.borrow_and_update();
-                            pb.set_length(total);
-                            pb.set_position(current);
-                        }
-                        Err(..) => break,
-                    }
+                while rx.changed().await.is_ok() {
+                    let SyncProgress { total, current } = *rx.borrow_and_update();
+                    pb.set_length(total);
+                    pb.set_position(current);
                 }
             });
 

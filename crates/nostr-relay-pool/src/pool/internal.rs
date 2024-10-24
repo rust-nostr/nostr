@@ -19,7 +19,7 @@ use tokio_stream::wrappers::ReceiverStream;
 
 use super::options::RelayPoolOptions;
 use super::{Error, Output, RelayPoolNotification};
-use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
+use crate::relay::options::{FilterOptions, RelayOptions, RelaySendOptions, SyncOptions};
 use crate::relay::{FlagCheck, Reconciliation, Relay, RelayFiltering};
 use crate::{util, RelayServiceFlags, SubscribeOptions};
 
@@ -722,7 +722,7 @@ impl InternalRelayPool {
     pub async fn sync(
         &self,
         filter: Filter,
-        opts: NegentropyOptions,
+        opts: SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
         let urls: Vec<Url> = self.relay_urls().await;
         self.sync_with(urls, filter, opts).await
@@ -733,7 +733,7 @@ impl InternalRelayPool {
         &self,
         urls: I,
         filter: Filter,
-        opts: NegentropyOptions,
+        opts: SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -756,7 +756,7 @@ impl InternalRelayPool {
     pub async fn sync_targeted<I, U>(
         &self,
         targets: I,
-        opts: NegentropyOptions,
+        opts: SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = (U, HashMap<Filter, Vec<(EventId, Timestamp)>>)>,
@@ -796,7 +796,7 @@ impl InternalRelayPool {
         // Filter relays and start query
         for (url, filters) in map.into_iter() {
             let relay: Relay = self.internal_relay(&relays, &url).cloned()?;
-            let opts: NegentropyOptions = opts.clone();
+            let opts: SyncOptions = opts.clone();
             let result: Arc<Mutex<Output<Reconciliation>>> = result.clone();
             let handle: JoinHandle<()> = thread::spawn(async move {
                 match relay.sync_multi(filters, opts).await {

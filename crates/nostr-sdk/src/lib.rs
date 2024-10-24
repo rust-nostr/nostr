@@ -31,9 +31,10 @@ pub use nostr_lmdb::NostrLMDB;
 pub use nostr_ndb::{self as ndb, NdbDatabase};
 #[doc(hidden)]
 pub use nostr_relay_pool::{
-    self as pool, AtomicRelayServiceFlags, FilterOptions, NegentropyDirection, NegentropyOptions,
-    Relay, RelayConnectionStats, RelayOptions, RelayPool, RelayPoolNotification, RelayPoolOptions,
-    RelaySendOptions, RelayServiceFlags, RelayStatus, SubscribeAutoCloseOptions, SubscribeOptions,
+    self as pool, AtomicRelayServiceFlags, FilterOptions, Relay, RelayConnectionStats,
+    RelayOptions, RelayPool, RelayPoolNotification, RelayPoolOptions, RelaySendOptions,
+    RelayServiceFlags, RelayStatus, SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection,
+    SyncOptions,
 };
 #[doc(hidden)]
 pub use nostr_signer::{self as signer, NostrSigner, NostrSignerType};

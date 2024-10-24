@@ -20,7 +20,7 @@ use crate::database::JsNostrDatabase;
 use crate::duration::JsDuration;
 use crate::relay::filtering::JsRelayFiltering;
 use crate::relay::options::{
-    JsNegentropyOptions, JsRelayOptions, JsRelaySendOptions, JsSubscribeOptions,
+    JsRelayOptions, JsRelaySendOptions, JsSubscribeOptions, JsSyncOptions,
 };
 use crate::relay::{JsRelay, JsRelayArray};
 
@@ -415,16 +415,14 @@ impl JsRelayPool {
     //         .collect())
     // }
 
-    /// Negentropy reconciliation
-    ///
-    /// Use events stored in database
+    /// Sync events with relays (negentropy reconciliation)
     pub async fn sync(
         &self,
         filter: &JsFilter,
-        opts: &JsNegentropyOptions,
+        opts: &JsSyncOptions,
     ) -> Result<JsReconciliationOutput> {
         self.inner
-            .sync(filter.deref().clone(), **opts)
+            .sync(filter.deref().clone(), opts.deref().clone())
             .await
             .map_err(into_err)
             .map(|o| o.into())

@@ -25,7 +25,7 @@ use self::internal::InternalRelayPool;
 pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
 use crate::relay::flags::FlagCheck;
-use crate::relay::options::{FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions};
+use crate::relay::options::{FilterOptions, RelayOptions, RelaySendOptions, SyncOptions};
 use crate::relay::{Relay, RelayFiltering, RelayStatus};
 use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};
 
@@ -483,7 +483,7 @@ impl RelayPool {
     pub async fn sync(
         &self,
         filter: Filter,
-        opts: NegentropyOptions,
+        opts: SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
         self.inner.sync(filter, opts).await
     }
@@ -494,7 +494,7 @@ impl RelayPool {
         &self,
         urls: I,
         filter: Filter,
-        opts: NegentropyOptions,
+        opts: SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -509,7 +509,7 @@ impl RelayPool {
     pub async fn sync_targeted<I, U>(
         &self,
         targets: I,
-        opts: NegentropyOptions,
+        opts: SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = (U, HashMap<Filter, Vec<(EventId, Timestamp)>>)>,

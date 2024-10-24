@@ -31,8 +31,8 @@ pub use self::flags::{AtomicRelayServiceFlags, FlagCheck, RelayServiceFlags};
 use self::internal::InternalRelay;
 pub use self::limits::RelayLimits;
 pub use self::options::{
-    FilterOptions, NegentropyDirection, NegentropyOptions, RelayOptions, RelaySendOptions,
-    SubscribeAutoCloseOptions, SubscribeOptions, SyncProgress,
+    FilterOptions, RelayOptions, RelaySendOptions, SubscribeAutoCloseOptions, SubscribeOptions,
+    SyncDirection, SyncOptions, SyncProgress,
 };
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
@@ -426,11 +426,7 @@ impl Relay {
 
     /// Sync events with relays (negentropy reconciliation)
     #[inline]
-    pub async fn sync(
-        &self,
-        filter: Filter,
-        opts: NegentropyOptions,
-    ) -> Result<Reconciliation, Error> {
+    pub async fn sync(&self, filter: Filter, opts: SyncOptions) -> Result<Reconciliation, Error> {
         self.inner.sync(filter, opts).await
     }
 
@@ -440,7 +436,7 @@ impl Relay {
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
-        opts: NegentropyOptions,
+        opts: SyncOptions,
     ) -> Result<Reconciliation, Error> {
         self.inner.sync_with_items(filter, items, opts).await
     }
@@ -450,7 +446,7 @@ impl Relay {
     pub async fn sync_multi(
         &self,
         map: HashMap<Filter, Vec<(EventId, Timestamp)>>,
-        opts: NegentropyOptions,
+        opts: SyncOptions,
     ) -> Result<Reconciliation, Error> {
         self.inner.sync_multi(map, opts).await
     }

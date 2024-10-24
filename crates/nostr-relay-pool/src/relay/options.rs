@@ -301,7 +301,7 @@ pub enum FilterOptions {
 
 /// Negentropy Sync direction
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum NegentropyDirection {
+pub enum SyncDirection {
     /// Send events to relay
     Up,
     /// Get events from relay
@@ -328,28 +328,28 @@ impl SyncProgress {
     }
 }
 
-/// Negentropy reconciliation options
+/// Sync (negentropy reconciliation) options
 #[derive(Debug, Clone)]
-pub struct NegentropyOptions {
+pub struct SyncOptions {
     pub(super) initial_timeout: Duration,
-    pub(super) direction: NegentropyDirection,
+    pub(super) direction: SyncDirection,
     pub(super) dry_run: bool,
     pub(super) progress: Option<Sender<SyncProgress>>,
 }
 
-impl Default for NegentropyOptions {
+impl Default for SyncOptions {
     fn default() -> Self {
         Self {
             initial_timeout: Duration::from_secs(10),
-            direction: NegentropyDirection::default(),
+            direction: SyncDirection::default(),
             dry_run: false,
             progress: None,
         }
     }
 }
 
-impl NegentropyOptions {
-    /// New default [`NegentropyOptions`]
+impl SyncOptions {
+    /// New default [`SyncOptions`]
     #[inline]
     pub fn new() -> Self {
         Self::default()
@@ -366,7 +366,7 @@ impl NegentropyOptions {
     ///
     /// If `true`, perform the set reconciliation on each side.
     #[inline]
-    pub fn direction(mut self, direction: NegentropyDirection) -> Self {
+    pub fn direction(mut self, direction: SyncDirection) -> Self {
         self.direction = direction;
         self
     }
@@ -392,19 +392,11 @@ impl NegentropyOptions {
 
     #[inline]
     pub(super) fn do_up(&self) -> bool {
-        !self.dry_run
-            && matches!(
-                self.direction,
-                NegentropyDirection::Up | NegentropyDirection::Both
-            )
+        !self.dry_run && matches!(self.direction, SyncDirection::Up | SyncDirection::Both)
     }
 
     #[inline]
     pub(super) fn do_down(&self) -> bool {
-        !self.dry_run
-            && matches!(
-                self.direction,
-                NegentropyDirection::Down | NegentropyDirection::Both
-            )
+        !self.dry_run && matches!(self.direction, SyncDirection::Down | SyncDirection::Both)
     }
 }

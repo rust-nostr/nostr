@@ -18,7 +18,7 @@ use self::result::{Output, SendEventOutput, SubscribeOutput};
 use crate::database::events::Events;
 use crate::error::Result;
 use crate::pool::result::ReconciliationOutput;
-use crate::relay::options::{FilterOptions, NegentropyOptions};
+use crate::relay::options::{FilterOptions, SyncOptions};
 use crate::relay::{RelayFiltering, RelayOptions, RelaySendOptions, SubscribeOptions};
 use crate::{HandleNotification, NostrDatabase, Relay};
 
@@ -377,14 +377,10 @@ impl RelayPool {
     }
 
     /// Sync events with relays (negentropy reconciliation)
-    pub async fn sync(
-        &self,
-        filter: &Filter,
-        opts: &NegentropyOptions,
-    ) -> Result<ReconciliationOutput> {
+    pub async fn sync(&self, filter: &Filter, opts: &SyncOptions) -> Result<ReconciliationOutput> {
         Ok(self
             .inner
-            .sync(filter.deref().clone(), **opts)
+            .sync(filter.deref().clone(), opts.deref().clone())
             .await?
             .into())
     }

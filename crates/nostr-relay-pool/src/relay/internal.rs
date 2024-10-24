@@ -29,8 +29,8 @@ use super::constants::{
 use super::filtering::{CheckFiltering, RelayFiltering};
 use super::flags::AtomicRelayServiceFlags;
 use super::options::{
-    FilterOptions, NegentropyOptions, RelayOptions, RelaySendOptions, SubscribeAutoCloseOptions,
-    SubscribeOptions,
+    FilterOptions, RelayOptions, RelaySendOptions, SubscribeAutoCloseOptions, SubscribeOptions,
+    SyncOptions,
 };
 use super::stats::RelayConnectionStats;
 use super::{Error, Reconciliation, RelayNotification, RelayStatus};
@@ -1681,11 +1681,7 @@ impl InternalRelay {
     }
 
     // TODO: allow to keep track of progress of sync
-    pub async fn sync(
-        &self,
-        filter: Filter,
-        opts: NegentropyOptions,
-    ) -> Result<Reconciliation, Error> {
+    pub async fn sync(&self, filter: Filter, opts: SyncOptions) -> Result<Reconciliation, Error> {
         let items = self.database.negentropy_items(filter.clone()).await?;
         self.sync_with_items(filter, items, opts).await
     }
@@ -1694,7 +1690,7 @@ impl InternalRelay {
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
-        opts: NegentropyOptions,
+        opts: SyncOptions,
     ) -> Result<Reconciliation, Error> {
         // Compose map
         let mut map = HashMap::with_capacity(1);
@@ -1707,7 +1703,7 @@ impl InternalRelay {
     pub async fn sync_multi(
         &self,
         map: HashMap<Filter, Vec<(EventId, Timestamp)>>,
-        opts: NegentropyOptions,
+        opts: SyncOptions,
     ) -> Result<Reconciliation, Error> {
         // Check if relay is ready
         self.check_ready().await?;
@@ -1745,7 +1741,7 @@ impl InternalRelay {
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
-        opts: &NegentropyOptions,
+        opts: &SyncOptions,
         output: &mut Reconciliation,
     ) -> Result<(), Error> {
         // Compose negentropy storage, add items and seal
@@ -2062,7 +2058,7 @@ impl InternalRelay {
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
-        opts: &NegentropyOptions,
+        opts: &SyncOptions,
         output: &mut Reconciliation,
     ) -> Result<(), Error> {
         // Compose negentropy struct, add items and seal
@@ -2385,7 +2381,7 @@ impl InternalRelay {
                     .sync_with_items(
                         filter,
                         Vec::new(),
-                        NegentropyOptions::new()
+                        SyncOptions::new()
                             .initial_timeout(Duration::from_secs(5))
                             .dry_run(),
                     )

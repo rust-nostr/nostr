@@ -833,7 +833,7 @@ impl Client {
     pub async fn sync(
         &self,
         filter: Filter,
-        opts: NegentropyOptions,
+        opts: SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
         if self.opts.gossip {
             return self.gossip_sync_negentropy(filter, opts).await;
@@ -849,7 +849,7 @@ impl Client {
         &self,
         urls: I,
         filter: Filter,
-        opts: NegentropyOptions,
+        opts: SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -1755,7 +1755,7 @@ impl Client {
     pub async fn reconcile(
         &self,
         filter: Filter,
-        opts: NegentropyOptions,
+        opts: SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
         self.sync(filter, opts).await
     }
@@ -1768,7 +1768,7 @@ impl Client {
         &self,
         urls: I,
         filter: Filter,
-        opts: NegentropyOptions,
+        opts: SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -1929,7 +1929,7 @@ impl Client {
     async fn gossip_sync_negentropy(
         &self,
         filter: Filter,
-        opts: NegentropyOptions,
+        opts: SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
         // Break down filter
         let temp_filters = self.break_down_filters(vec![filter]).await?;

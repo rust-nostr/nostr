@@ -22,7 +22,7 @@ pub mod status;
 
 pub use self::filtering::{RelayFiltering, RelayFilteringMode};
 pub use self::limits::RelayLimits;
-use self::options::NegentropyOptions;
+use self::options::SyncOptions;
 pub use self::options::{ConnectionMode, RelayOptions, RelaySendOptions, SubscribeOptions};
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
@@ -355,10 +355,10 @@ impl Relay {
     }
 
     /// Sync events with relays (negentropy reconciliation)
-    pub async fn sync(&self, filter: &Filter, opts: &NegentropyOptions) -> Result<Reconciliation> {
+    pub async fn sync(&self, filter: &Filter, opts: &SyncOptions) -> Result<Reconciliation> {
         Ok(self
             .inner
-            .sync(filter.deref().clone(), **opts)
+            .sync(filter.deref().clone(), opts.deref().clone())
             .await?
             .into())
     }
@@ -368,7 +368,7 @@ impl Relay {
         &self,
         filter: &Filter,
         items: Vec<NegentropyItem>,
-        opts: &NegentropyOptions,
+        opts: &SyncOptions,
     ) -> Result<Reconciliation> {
         let items = items
             .into_iter()
@@ -376,7 +376,7 @@ impl Relay {
             .collect();
         Ok(self
             .inner
-            .sync_with_items(filter.deref().clone(), items, **opts)
+            .sync_with_items(filter.deref().clone(), items, opts.deref().clone())
             .await?
             .into())
     }

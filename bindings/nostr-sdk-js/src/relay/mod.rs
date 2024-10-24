@@ -20,7 +20,7 @@ pub mod options;
 use self::filtering::JsRelayFiltering;
 use self::flags::JsAtomicRelayServiceFlags;
 use self::options::{
-    JsFilterOptions, JsNegentropyOptions, JsRelayOptions, JsRelaySendOptions, JsSubscribeOptions,
+    JsFilterOptions, JsRelayOptions, JsRelaySendOptions, JsSubscribeOptions, JsSyncOptions,
 };
 use crate::database::JsEvents;
 use crate::duration::JsDuration;
@@ -295,18 +295,10 @@ impl JsRelay {
             .map_err(into_err)? as u64)
     }
 
-    /// Negentropy reconciliation
-    ///
-    /// Use events stored in database
-    ///
-    /// <https://github.com/hoytech/negentropy>
-    pub async fn sync(
-        &self,
-        filter: &JsFilter,
-        opts: &JsNegentropyOptions,
-    ) -> Result<JsReconciliation> {
+    /// Sync events with relay (negentropy reconciliation)
+    pub async fn sync(&self, filter: &JsFilter, opts: &JsSyncOptions) -> Result<JsReconciliation> {
         self.inner
-            .sync(filter.deref().clone(), **opts)
+            .sync(filter.deref().clone(), opts.deref().clone())
             .await
             .map_err(into_err)
             .map(|o| o.into())

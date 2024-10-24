@@ -50,8 +50,8 @@ pub enum ShellCommand {
         #[clap(long)]
         relays: Vec<Url>,
         /// Direction
-        #[clap(short, long, value_enum, default_value_t = ShellNegentropyDirection::Down)]
-        direction: ShellNegentropyDirection,
+        #[clap(short, long, value_enum, default_value_t = ShellSyncDirection::Down)]
+        direction: ShellSyncDirection,
     },
     /// Query
     Query {
@@ -112,7 +112,7 @@ pub enum ShellCommandDatabase {
 }
 
 #[derive(Debug, Clone, ValueEnum)]
-pub enum ShellNegentropyDirection {
+pub enum ShellSyncDirection {
     /// Send events to relay
     Up,
     /// Get events from relay
@@ -121,12 +121,12 @@ pub enum ShellNegentropyDirection {
     Both,
 }
 
-impl From<ShellNegentropyDirection> for NegentropyDirection {
-    fn from(value: ShellNegentropyDirection) -> Self {
+impl From<ShellSyncDirection> for SyncDirection {
+    fn from(value: ShellSyncDirection) -> Self {
         match value {
-            ShellNegentropyDirection::Up => Self::Up,
-            ShellNegentropyDirection::Down => Self::Down,
-            ShellNegentropyDirection::Both => Self::Both,
+            ShellSyncDirection::Up => Self::Up,
+            ShellSyncDirection::Down => Self::Down,
+            ShellSyncDirection::Both => Self::Both,
         }
     }
 }

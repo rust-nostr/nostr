@@ -30,7 +30,7 @@ use crate::database::events::Events;
 use crate::error::Result;
 use crate::pool::result::{Output, ReconciliationOutput, SendEventOutput, SubscribeOutput};
 use crate::pool::RelayPool;
-use crate::relay::options::{NegentropyOptions, SubscribeAutoCloseOptions};
+use crate::relay::options::{SubscribeAutoCloseOptions, SyncOptions};
 use crate::relay::RelayFiltering;
 use crate::{HandleNotification, NostrDatabase, Relay};
 
@@ -348,11 +348,11 @@ impl Client {
     pub async fn sync(
         &self,
         filter: Arc<Filter>,
-        opts: Arc<NegentropyOptions>,
+        opts: &SyncOptions,
     ) -> Result<ReconciliationOutput> {
         Ok(self
             .inner
-            .sync(filter.as_ref().deref().clone(), **opts)
+            .sync(filter.as_ref().deref().clone(), opts.deref().clone())
             .await?
             .into())
     }

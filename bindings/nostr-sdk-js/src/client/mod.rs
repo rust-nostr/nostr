@@ -31,7 +31,7 @@ use crate::duration::JsDuration;
 use crate::pool::result::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
 use crate::pool::JsRelayPool;
 use crate::relay::filtering::JsRelayFiltering;
-use crate::relay::options::{JsNegentropyOptions, JsSubscribeAutoCloseOptions};
+use crate::relay::options::{JsSubscribeAutoCloseOptions, JsSyncOptions};
 use crate::relay::{JsRelay, JsRelayArray};
 
 #[wasm_bindgen(js_name = Client)]
@@ -341,10 +341,10 @@ impl JsClient {
     pub async fn sync(
         &self,
         filter: &JsFilter,
-        opts: &JsNegentropyOptions,
+        opts: &JsSyncOptions,
     ) -> Result<JsReconciliationOutput> {
         self.inner
-            .sync(filter.deref().clone(), **opts)
+            .sync(filter.deref().clone(), opts.deref().clone())
             .await
             .map_err(into_err)
             .map(|o| o.into())

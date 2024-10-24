@@ -335,29 +335,29 @@ impl SubscribeOptions {
 }
 
 #[derive(Enum)]
-pub enum NegentropyDirection {
+pub enum SyncDirection {
     Up,
     Down,
     Both,
 }
 
-impl From<NegentropyDirection> for nostr_sdk::NegentropyDirection {
-    fn from(value: NegentropyDirection) -> Self {
+impl From<SyncDirection> for nostr_sdk::SyncDirection {
+    fn from(value: SyncDirection) -> Self {
         match value {
-            NegentropyDirection::Up => Self::Up,
-            NegentropyDirection::Down => Self::Down,
-            NegentropyDirection::Both => Self::Both,
+            SyncDirection::Up => Self::Up,
+            SyncDirection::Down => Self::Down,
+            SyncDirection::Both => Self::Both,
         }
     }
 }
 
 #[derive(Clone, Object)]
-pub struct NegentropyOptions {
-    inner: nostr_sdk::NegentropyOptions,
+pub struct SyncOptions {
+    inner: nostr_sdk::SyncOptions,
 }
 
-impl Deref for NegentropyOptions {
-    type Target = nostr_sdk::NegentropyOptions;
+impl Deref for SyncOptions {
+    type Target = nostr_sdk::SyncOptions;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -365,12 +365,12 @@ impl Deref for NegentropyOptions {
 }
 
 #[uniffi::export]
-impl NegentropyOptions {
+impl SyncOptions {
     /// New default options
     #[uniffi::constructor]
     pub fn new() -> Self {
         Self {
-            inner: nostr_sdk::NegentropyOptions::new(),
+            inner: nostr_sdk::SyncOptions::new(),
         }
     }
 
@@ -381,8 +381,8 @@ impl NegentropyOptions {
         builder
     }
 
-    /// Negentropy Sync direction (default: down)
-    pub fn direction(self: Arc<Self>, direction: NegentropyDirection) -> Self {
+    /// Sync Sync direction (default: down)
+    pub fn direction(self: Arc<Self>, direction: SyncDirection) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.direction(direction.into());
         builder

@@ -285,49 +285,49 @@ impl JsSubscribeOptions {
     } */
 }
 
-#[wasm_bindgen(js_name = NegentropyDirection)]
-pub enum JsNegentropyDirection {
+#[wasm_bindgen(js_name = SyncDirection)]
+pub enum JsSyncDirection {
     Up,
     Down,
     Both,
 }
 
-impl From<JsNegentropyDirection> for NegentropyDirection {
-    fn from(value: JsNegentropyDirection) -> Self {
+impl From<JsSyncDirection> for SyncDirection {
+    fn from(value: JsSyncDirection) -> Self {
         match value {
-            JsNegentropyDirection::Up => Self::Up,
-            JsNegentropyDirection::Down => Self::Down,
-            JsNegentropyDirection::Both => Self::Both,
+            JsSyncDirection::Up => Self::Up,
+            JsSyncDirection::Down => Self::Down,
+            JsSyncDirection::Both => Self::Both,
         }
     }
 }
 
-#[wasm_bindgen(js_name = NegentropyOptions)]
-pub struct JsNegentropyOptions {
-    inner: NegentropyOptions,
+#[wasm_bindgen(js_name = SyncOptions)]
+pub struct JsSyncOptions {
+    inner: SyncOptions,
 }
 
-impl Deref for JsNegentropyOptions {
-    type Target = NegentropyOptions;
+impl Deref for JsSyncOptions {
+    type Target = SyncOptions;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl From<NegentropyOptions> for JsNegentropyOptions {
-    fn from(inner: NegentropyOptions) -> Self {
+impl From<SyncOptions> for JsSyncOptions {
+    fn from(inner: SyncOptions) -> Self {
         Self { inner }
     }
 }
 
-#[wasm_bindgen(js_class = NegentropyOptions)]
-impl JsNegentropyOptions {
+#[wasm_bindgen(js_class = SyncOptions)]
+impl JsSyncOptions {
     /// New default options
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {
-            inner: NegentropyOptions::new(),
+            inner: SyncOptions::new(),
         }
     }
 
@@ -337,8 +337,8 @@ impl JsNegentropyOptions {
         self.inner.initial_timeout(*timeout).into()
     }
 
-    /// Negentropy Sync direction (default: down)
-    pub fn direction(self, direction: JsNegentropyDirection) -> Self {
+    /// Sync direction (default: down)
+    pub fn direction(self, direction: JsSyncDirection) -> Self {
         self.inner.direction(direction.into()).into()
     }
 

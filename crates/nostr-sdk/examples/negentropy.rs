@@ -20,18 +20,13 @@ async fn main() -> Result<()> {
         PublicKey::from_bech32("npub1xtscya34g58tk0z605fvr788k263gsu6cy9x0mhnm87echrgufzsevkk5s")?;
     let filter = Filter::new().author(public_key);
     let (tx, mut rx) = SyncProgress::channel();
-    let opts = NegentropyOptions::default().progress(tx);
+    let opts = SyncOptions::default().progress(tx);
 
     tokio::spawn(async move {
-        loop {
-            match rx.changed().await {
-                Ok(..) => {
-                    let SyncProgress { total, current } = *rx.borrow_and_update();
-                    if total > 0 {
-                        println!("{:.2}%", (current as f64 / total as f64) * 100.0);
-                    }
-                }
-                Err(..) => break,
+        while rx.changed().await.is_ok() {
+            let SyncProgress { total, current } = *rx.borrow_and_update();
+            if total > 0 {
+                println!("{:.2}%", (current as f64 / total as f64) * 100.0);
             }
         }
     });
