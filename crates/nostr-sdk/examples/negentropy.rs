@@ -24,9 +24,9 @@ async fn main() -> Result<()> {
 
     tokio::spawn(async move {
         while rx.changed().await.is_ok() {
-            let SyncProgress { total, current } = *rx.borrow_and_update();
-            if total > 0 {
-                println!("{:.2}%", (current as f64 / total as f64) * 100.0);
+            let progress = *rx.borrow_and_update();
+            if progress.total > 0 {
+                println!("{:.2}%", progress.percentage() * 100.0);
             }
         }
     });

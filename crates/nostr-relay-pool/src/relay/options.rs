@@ -326,6 +326,16 @@ impl SyncProgress {
     pub fn channel() -> (Sender<Self>, Receiver<Self>) {
         watch::channel(SyncProgress::default())
     }
+
+    /// Calculate progress %
+    #[inline]
+    pub fn percentage(&self) -> f64 {
+        if self.total > 0 {
+            self.current as f64 / self.total as f64
+        } else {
+            0.0
+        }
+    }
 }
 
 /// Sync (negentropy reconciliation) options
