@@ -1,0 +1,10 @@
+#!/usr/bin/env just --justfile
+
+init:
+    cargo install flutter_rust_bridge_codegen
+
+build:
+    cd rust && cargo build
+
+generate:
+    flutter_rust_bridge_codegen generate

@@ -3,6 +3,7 @@ members = [
     "bindings/nostr-ffi",
     "bindings/nostr-js",
     "bindings/nostr-sdk-ffi",
+    "bindings/nostr-sdk-flutter/rust",
     "bindings/nostr-sdk-js",
     "bindings/uniffi-bindgen",
     "crates/*",

@@ -6,6 +6,7 @@ set -euo pipefail
 buildargs=(
     "-p nostr-ffi"
     "-p nostr-sdk-ffi"
+    "-p nostr-sdk-flutter"
     "-p nostr-js --target wasm32-unknown-unknown"
     "-p nostr-sdk-js --target wasm32-unknown-unknown"
 )
