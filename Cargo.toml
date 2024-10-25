@@ -42,7 +42,7 @@ nwc = { version = "0.35", path = "./crates/nwc", default-features = false }
 once_cell = { version = "1.20", default-features = false }
 serde_json = { version = "1.0", default-features = false }
 thiserror = "1.0"
-tokio = { version = "1", default-features = false }
+tokio = { version = ">=1.37", default-features = false }
 tracing = { version = "0.1", default-features = false }
 tracing-subscriber = "0.3"
 uniffi = "=0.28.0" # v0.28.1 causes issues when checking MSRV
