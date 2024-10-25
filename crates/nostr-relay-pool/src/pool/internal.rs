@@ -458,19 +458,14 @@ impl InternalRelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Compose URLs
-        let urls: HashSet<Url> = urls
+        let set: HashSet<Url> = urls
             .into_iter()
             .map(|u| u.try_into_url())
             .collect::<Result<_, _>>()?;
 
         // Check if urls set is empty
-        if urls.is_empty() {
+        if set.is_empty() {
             return Err(Error::NoRelaysSpecified);
-        }
-
-        // Save events into database
-        for event in events.iter() {
-            self.database.save_event(event).await?;
         }
 
         // Lock with read shared access
@@ -480,57 +475,50 @@ impl InternalRelayPool {
             return Err(Error::NoRelays);
         }
 
-        // If passed only 1 url, not use threads
-        if urls.len() == 1 {
-            let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
-            let relay: &Relay = self.internal_relay(&relays, &url)?;
-            relay.batch_event(events, opts).await?;
-            Ok(Output::success(url, ()))
-        } else {
-            // Check if urls set contains ONLY already added relays
-            if !urls.iter().all(|url| relays.contains_key(url)) {
-                return Err(Error::RelayNotFound);
-            }
-
-            let result: Arc<Mutex<Output<()>>> = Arc::new(Mutex::new(Output::default()));
-            let mut handles = Vec::with_capacity(urls.len());
-
-            for (url, relay) in relays.iter().filter(|(url, ..)| urls.contains(url)) {
-                let url: Url = url.clone();
-                let relay: Relay = relay.clone();
-                let events: Vec<Event> = events.clone();
-                let result: Arc<Mutex<Output<()>>> = result.clone();
-                let handle = thread::spawn(async move {
-                    match relay.batch_event(events, opts).await {
-                        Ok(_) => {
-                            // Success, insert relay url in 'success' set result
-                            let mut result = result.lock().await;
-                            result.success.insert(url);
-                        }
-                        Err(e) => {
-                            tracing::error!("Impossible to send event to {url}: {e}");
-
-                            // Failed, insert relay url in 'failed' map result
-                            let mut result = result.lock().await;
-                            result.failed.insert(url, Some(e.to_string()));
-                        }
-                    }
-                })?;
-                handles.push(handle);
-            }
-
-            for handle in handles.into_iter() {
-                handle.join().await?;
-            }
-
-            let result: Output<()> = util::take_mutex_ownership(result).await;
-
-            if result.success.is_empty() {
-                return Err(Error::EventNotPublished);
-            }
-
-            Ok(result)
+        // Check if urls set contains ONLY already added relays
+        if !set.iter().all(|url| relays.contains_key(url)) {
+            return Err(Error::RelayNotFound);
         }
+
+        // Save events into database
+        for event in events.iter() {
+            self.database.save_event(event).await?;
+        }
+
+        let mut urls: Vec<Url> = Vec::with_capacity(set.len());
+        let mut futures = Vec::with_capacity(set.len());
+        let mut output: Output<()> = Output::default();
+
+        // Compose futures
+        for url in set.into_iter() {
+            let relay: &Relay = self.internal_relay(&relays, &url)?;
+            let events: Vec<Event> = events.clone();
+            urls.push(url);
+            futures.push(relay.batch_event(events, opts));
+        }
+
+        // Join futures
+        let list = future::join_all(futures).await;
+
+        // Iter results and construct output
+        for (url, result) in urls.into_iter().zip(list.into_iter()) {
+            match result {
+                Ok(..) => {
+                    // Success, insert relay url in 'success' set result
+                    output.success.insert(url);
+                }
+                Err(e) => {
+                    tracing::error!("Impossible to send event to '{url}': {e}");
+                    output.failed.insert(url, Some(e.to_string()));
+                }
+            }
+        }
+
+        if output.success.is_empty() {
+            return Err(Error::EventNotPublished);
+        }
+
+        Ok(output)
     }
 
     pub async fn subscribe(
@@ -792,6 +780,7 @@ impl InternalRelayPool {
 
         let mut urls: Vec<Url> = Vec::with_capacity(map.len());
         let mut futures = Vec::with_capacity(map.len());
+        let mut output: Output<Reconciliation> = Output::default();
 
         // Compose futures
         for (url, filters) in map.into_iter() {
@@ -799,8 +788,6 @@ impl InternalRelayPool {
             urls.push(url);
             futures.push(relay.sync_multi(filters, opts));
         }
-
-        let mut output: Output<Reconciliation> = Output::default();
 
         // Join futures
         let list = future::join_all(futures).await;
