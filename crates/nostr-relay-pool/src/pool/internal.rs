@@ -9,7 +9,6 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::futures_util::{future, StreamExt};
-use async_utility::thread::JoinHandle;
 use async_utility::{thread, time};
 use atomic_destructor::AtomicDestroyer;
 use nostr::prelude::*;
@@ -21,7 +20,7 @@ use super::options::RelayPoolOptions;
 use super::{Error, Output, RelayPoolNotification};
 use crate::relay::options::{FilterOptions, RelayOptions, RelaySendOptions, SyncOptions};
 use crate::relay::{FlagCheck, Reconciliation, Relay, RelayFiltering};
-use crate::{util, RelayServiceFlags, SubscribeOptions};
+use crate::{RelayServiceFlags, SubscribeOptions};
 
 type Relays = HashMap<Url, Relay>;
 
@@ -331,21 +330,14 @@ impl InternalRelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Compose URLs
-        let urls: HashSet<Url> = urls
+        let set: HashSet<Url> = urls
             .into_iter()
             .map(|u| u.try_into_url())
             .collect::<Result<_, _>>()?;
 
         // Check if urls set is empty
-        if urls.is_empty() {
+        if set.is_empty() {
             return Err(Error::NoRelaysSpecified);
-        }
-
-        // Save events into database
-        for msg in msgs.iter() {
-            if let ClientMessage::Event(event) = msg {
-                self.database.save_event(event).await?;
-            }
         }
 
         // Lock with read shared access
@@ -355,57 +347,52 @@ impl InternalRelayPool {
             return Err(Error::NoRelays);
         }
 
-        // If passed only 1 url, not use threads
-        if urls.len() == 1 {
-            let url: Url = urls.into_iter().next().ok_or(Error::RelayNotFound)?;
-            let relay: &Relay = self.internal_relay(&relays, &url)?;
-            relay.batch_msg(msgs, opts).await?;
-            Ok(Output::success(url, ()))
-        } else {
-            // Check if urls set contains ONLY already added relays
-            if !urls.iter().all(|url| relays.contains_key(url)) {
-                return Err(Error::RelayNotFound);
-            }
-
-            let result: Arc<Mutex<Output<()>>> = Arc::new(Mutex::new(Output::default()));
-            let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(urls.len());
-
-            for (url, relay) in relays.iter().filter(|(url, ..)| urls.contains(url)) {
-                let url: Url = url.clone();
-                let relay: Relay = relay.clone();
-                let msgs: Vec<ClientMessage> = msgs.clone();
-                let result: Arc<Mutex<Output<()>>> = result.clone();
-                let handle: JoinHandle<()> = thread::spawn(async move {
-                    match relay.batch_msg(msgs, opts).await {
-                        Ok(_) => {
-                            // Success, insert relay url in 'success' set result
-                            let mut result = result.lock().await;
-                            result.success.insert(url);
-                        }
-                        Err(e) => {
-                            tracing::error!("Impossible to send msg to {url}: {e}");
-
-                            // Failed, insert relay url in 'failed' map result
-                            let mut result = result.lock().await;
-                            result.failed.insert(url, Some(e.to_string()));
-                        }
-                    }
-                })?;
-                handles.push(handle);
-            }
-
-            for handle in handles.into_iter() {
-                handle.join().await?;
-            }
-
-            let result: Output<()> = util::take_mutex_ownership(result).await;
-
-            if result.success.is_empty() {
-                return Err(Error::MsgNotSent);
-            }
-
-            Ok(result)
+        // Check if urls set contains ONLY already added relays
+        if !set.iter().all(|url| relays.contains_key(url)) {
+            return Err(Error::RelayNotFound);
         }
+
+        // Save events
+        for msg in msgs.iter() {
+            if let ClientMessage::Event(event) = msg {
+                self.database.save_event(event).await?;
+            }
+        }
+
+        let mut urls: Vec<Url> = Vec::with_capacity(set.len());
+        let mut futures = Vec::with_capacity(set.len());
+        let mut output: Output<()> = Output::default();
+
+        // Compose futures
+        for url in set.into_iter() {
+            let relay: &Relay = self.internal_relay(&relays, &url)?;
+            let msgs: Vec<ClientMessage> = msgs.clone();
+            urls.push(url);
+            futures.push(relay.batch_msg(msgs, opts));
+        }
+
+        // Join futures
+        let list = future::join_all(futures).await;
+
+        // Iter results and construct output
+        for (url, result) in urls.into_iter().zip(list.into_iter()) {
+            match result {
+                Ok(..) => {
+                    // Success, insert relay url in 'success' set result
+                    output.success.insert(url);
+                }
+                Err(e) => {
+                    tracing::error!("Impossible to send message to '{url}': {e}");
+                    output.failed.insert(url, Some(e.to_string()));
+                }
+            }
+        }
+
+        if output.success.is_empty() {
+            return Err(Error::MsgNotSent);
+        }
+
+        Ok(output)
     }
 
     pub async fn send_event(
@@ -911,6 +898,7 @@ impl InternalRelayPool {
             let relay: Relay = self.internal_relay(&relays, &url).cloned()?;
             let tx = tx.clone();
             let ids = ids.clone();
+            // TODO: spawn a single thread?
             thread::spawn(async move {
                 if let Err(e) = relay
                     .fetch_events_with_callback(filters, timeout, opts, |event| async {

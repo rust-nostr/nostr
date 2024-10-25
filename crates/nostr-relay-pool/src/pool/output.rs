@@ -11,7 +11,6 @@ use nostr::{EventId, SubscriptionId, Url};
 /// Output
 ///
 /// Send or negentropy reconciliation output
-// TODO: use a better name?
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Output<T>
 where
@@ -23,21 +22,6 @@ where
     pub success: HashSet<Url>,
     /// Map of relays that failed, with related errors.
     pub failed: HashMap<Url, Option<String>>,
-}
-
-impl<T> Output<T>
-where
-    T: Debug,
-{
-    pub(super) fn success(url: Url, val: T) -> Self {
-        let mut success: HashSet<Url> = HashSet::with_capacity(1);
-        success.insert(url);
-        Self {
-            val,
-            success,
-            failed: HashMap::new(),
-        }
-    }
 }
 
 impl<T> Deref for Output<T>
