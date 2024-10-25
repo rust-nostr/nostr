@@ -623,57 +623,45 @@ impl InternalRelayPool {
             return Err(Error::NoRelays);
         }
 
-        // If passed only 1 url, not use threads
-        if map.len() == 1 {
-            let (url, filters) = map.into_iter().next().ok_or(Error::RelayNotFound)?;
-            let relay: &Relay = self.internal_relay(&relays, &url)?;
-            relay.subscribe_with_id(id, filters, opts).await?;
-            Ok(Output::success(url, ()))
-        } else {
-            // Check if urls set contains ONLY already added relays
-            if !map.keys().all(|url| relays.contains_key(url)) {
-                return Err(Error::RelayNotFound);
-            }
-
-            let result: Arc<Mutex<Output<()>>> = Arc::new(Mutex::new(Output::default()));
-            let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(map.len());
-
-            // Subscribe
-            for (url, filters) in map.into_iter() {
-                let relay: Relay = self.internal_relay(&relays, &url).cloned()?;
-                let id: SubscriptionId = id.clone();
-                let result: Arc<Mutex<Output<()>>> = result.clone();
-                let handle: JoinHandle<()> = thread::spawn(async move {
-                    match relay.subscribe_with_id(id, filters, opts).await {
-                        Ok(_) => {
-                            // Success, insert relay url in 'success' set result
-                            let mut result = result.lock().await;
-                            result.success.insert(url);
-                        }
-                        Err(e) => {
-                            tracing::error!("Impossible to subscribe to '{url}': {e}");
-
-                            // Failed, insert relay url in 'failed' map result
-                            let mut result = result.lock().await;
-                            result.failed.insert(url, Some(e.to_string()));
-                        }
-                    }
-                })?;
-                handles.push(handle);
-            }
-
-            for handle in handles.into_iter() {
-                handle.join().await?;
-            }
-
-            let result: Output<()> = util::take_mutex_ownership(result).await;
-
-            if result.success.is_empty() {
-                return Err(Error::NotSubscribed);
-            }
-
-            Ok(result)
+        // Check if urls set contains ONLY already added relays
+        if !map.keys().all(|url| relays.contains_key(url)) {
+            return Err(Error::RelayNotFound);
         }
+
+        let mut urls: Vec<Url> = Vec::with_capacity(map.len());
+        let mut futures = Vec::with_capacity(map.len());
+        let mut output: Output<()> = Output::default();
+
+        // Compose futures
+        for (url, filters) in map.into_iter() {
+            let relay: &Relay = self.internal_relay(&relays, &url)?;
+            let id: SubscriptionId = id.clone();
+            urls.push(url);
+            futures.push(relay.subscribe_with_id(id, filters, opts));
+        }
+
+        // Join futures
+        let list = future::join_all(futures).await;
+
+        // Iter results and construct output
+        for (url, result) in urls.into_iter().zip(list.into_iter()) {
+            match result {
+                Ok(..) => {
+                    // Success, insert relay url in 'success' set result
+                    output.success.insert(url);
+                }
+                Err(e) => {
+                    tracing::error!("Impossible to subscribe to '{url}': {e}");
+                    output.failed.insert(url, Some(e.to_string()));
+                }
+            }
+        }
+
+        if output.success.is_empty() {
+            return Err(Error::NotSubscribed);
+        }
+
+        Ok(output)
     }
 
     pub async fn unsubscribe(&self, id: SubscriptionId, opts: RelaySendOptions) {
