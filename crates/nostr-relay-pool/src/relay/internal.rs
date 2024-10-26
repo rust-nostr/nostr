@@ -155,7 +155,7 @@ pub(crate) struct InternalRelay {
     #[cfg(feature = "nip11")]
     document: Arc<RwLock<RelayInformationDocument>>,
     opts: RelayOptions,
-    stats: RelayConnectionStats,
+    pub(super) stats: RelayConnectionStats,
     filtering: RelayFiltering,
     database: Arc<DynNostrDatabase>,
     channels: RelayChannels,
@@ -196,7 +196,7 @@ impl InternalRelay {
             #[cfg(feature = "nip11")]
             document: Arc::new(RwLock::new(RelayInformationDocument::new())),
             opts,
-            stats: RelayConnectionStats::new(),
+            stats: RelayConnectionStats::default(),
             filtering,
             database,
             channels: RelayChannels::new(),
@@ -384,11 +384,6 @@ impl InternalRelay {
     #[inline]
     pub fn opts(&self) -> RelayOptions {
         self.opts.clone()
-    }
-
-    #[inline]
-    pub fn stats(&self) -> RelayConnectionStats {
-        self.stats.clone()
     }
 
     #[inline]
@@ -638,7 +633,7 @@ impl InternalRelay {
                         // Send WebSocket message
                         match send_ws_msgs(&mut ws_tx, [msg]).await {
                             Ok(()) => {
-                                self.stats.ping.just_sent().await;
+                                self.stats.ping().just_sent().await;
                                 tracing::debug!("Ping '{}' (nonce: {nonce})", self.url);
                             }
                             Err(e) => {
@@ -694,7 +689,7 @@ impl InternalRelay {
                                     let nonce: u64 = u64::from_be_bytes(nonce);
 
                                     // Get last nonce
-                                    let last_nonce: u64 = self.stats.ping.last_nonce();
+                                    let last_nonce: u64 = self.stats.ping().last_nonce();
 
                                     // Check if last nonce not match the current one
                                     if last_nonce != nonce {
@@ -708,10 +703,10 @@ impl InternalRelay {
                                     );
 
                                     // Set ping as replied
-                                    self.stats.ping.set_replied(true);
+                                    self.stats.ping().set_replied(true);
 
                                     // Save latency
-                                    let sent_at = self.stats.ping.sent_at().await;
+                                    let sent_at = self.stats.ping().sent_at().await;
                                     self.stats.save_latency(sent_at.elapsed()).await;
                                 }
                                 Err(e) => {
@@ -739,18 +734,20 @@ impl InternalRelay {
             let pinger = async {
                 if relay.opts.flags.has_ping() {
                     loop {
+                        let ping = relay.stats.ping();
+
                         // If last nonce is NOT 0, check if relay replied
                         // Break loop if relay not replied
-                        if relay.stats.ping.last_nonce() != 0 && !relay.stats.ping.replied() {
+                        if ping.last_nonce() != 0 && !ping.replied() {
                             tracing::warn!("'{}' not replied to ping", relay.url);
-                            relay.stats.ping.reset();
+                            ping.reset();
                             break;
                         }
 
                         // Generate and save nonce
                         let nonce: u64 = rand::random();
-                        relay.stats.ping.set_last_nonce(nonce);
-                        relay.stats.ping.set_replied(false);
+                        ping.set_last_nonce(nonce);
+                        ping.set_replied(false);
 
                         // Ping
                         if let Err(e) = relay.channels.ping(nonce) {

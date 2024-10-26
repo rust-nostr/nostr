@@ -227,8 +227,8 @@ impl Relay {
 
     /// Get [`RelayConnectionStats`]
     #[inline]
-    pub fn stats(&self) -> RelayConnectionStats {
-        self.inner.stats()
+    pub fn stats(&self) -> &RelayConnectionStats {
+        &self.inner.stats
     }
 
     /// Get queue len

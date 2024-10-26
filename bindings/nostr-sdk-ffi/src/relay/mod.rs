@@ -194,7 +194,7 @@ impl Relay {
     }
 
     pub fn stats(&self) -> Arc<RelayConnectionStats> {
-        Arc::new(self.inner.stats().into())
+        Arc::new(self.inner.stats().clone().into())
     }
 
     /// Get number of messages in queue
