@@ -42,20 +42,20 @@ impl RelayFilteringMode {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 struct AtomicRelayFilteringMode {
     /// Value
     ///
     /// * true -> whitelist
     /// * false -> blacklist
-    value: Arc<AtomicBool>,
+    value: AtomicBool,
 }
 
 impl AtomicRelayFilteringMode {
     #[inline]
     fn new(mode: RelayFilteringMode) -> Self {
         Self {
-            value: Arc::new(AtomicBool::new(mode.is_whitelist())),
+            value: AtomicBool::new(mode.is_whitelist()),
         }
     }
 
@@ -74,12 +74,27 @@ impl AtomicRelayFilteringMode {
     }
 }
 
+#[derive(Debug, Default)]
+struct InnerRelayFiltering {
+    mode: AtomicRelayFilteringMode,
+    ids: RwLock<HashSet<EventId>>,
+    public_keys: RwLock<HashSet<PublicKey>>,
+}
+
+impl InnerRelayFiltering {
+    #[inline]
+    fn new(mode: RelayFilteringMode) -> Self {
+        Self {
+            mode: AtomicRelayFilteringMode::new(mode),
+            ..Default::default()
+        }
+    }
+}
+
 /// Relay filtering
 #[derive(Debug, Clone, Default)]
 pub struct RelayFiltering {
-    mode: AtomicRelayFilteringMode,
-    ids: Arc<RwLock<HashSet<EventId>>>,
-    public_keys: Arc<RwLock<HashSet<PublicKey>>>,
+    inner: Arc<InnerRelayFiltering>,
 }
 
 impl RelayFiltering {
@@ -87,8 +102,7 @@ impl RelayFiltering {
     #[inline]
     pub fn new(mode: RelayFilteringMode) -> Self {
         Self {
-            mode: AtomicRelayFilteringMode::new(mode),
-            ..Default::default()
+            inner: Arc::new(InnerRelayFiltering::new(mode)),
         }
     }
 
@@ -107,13 +121,13 @@ impl RelayFiltering {
     /// Get mode
     #[inline]
     pub fn mode(&self) -> RelayFilteringMode {
-        self.mode.load()
+        self.inner.mode.load()
     }
 
     /// Update filtering mode
     #[inline]
     pub fn update_mode(&self, mode: RelayFilteringMode) {
-        self.mode.update(mode);
+        self.inner.mode.update(mode);
     }
 
     /// Add event IDs
@@ -123,7 +137,7 @@ impl RelayFiltering {
     where
         I: IntoIterator<Item = EventId>,
     {
-        let mut ids = self.ids.write().await;
+        let mut ids = self.inner.ids.write().await;
         ids.extend(i);
     }
 
@@ -134,7 +148,7 @@ impl RelayFiltering {
     where
         I: IntoIterator<Item = &'a EventId>,
     {
-        let mut ids = self.ids.write().await;
+        let mut ids = self.inner.ids.write().await;
         for id in iter.into_iter() {
             ids.remove(id);
         }
@@ -144,13 +158,13 @@ impl RelayFiltering {
     ///
     /// Note: IDs are ignored in whitelist mode!
     pub async fn remove_id(&self, id: &EventId) {
-        let mut ids = self.ids.write().await;
+        let mut ids = self.inner.ids.write().await;
         ids.remove(id);
     }
 
     /// Check if has event ID
     pub async fn has_id(&self, id: &EventId) -> bool {
-        let ids = self.ids.read().await;
+        let ids = self.inner.ids.read().await;
         ids.contains(id)
     }
 
@@ -159,7 +173,7 @@ impl RelayFiltering {
     where
         I: IntoIterator<Item = PublicKey>,
     {
-        let mut public_keys = self.public_keys.write().await;
+        let mut public_keys = self.inner.public_keys.write().await;
         public_keys.extend(iter);
     }
 
@@ -168,7 +182,7 @@ impl RelayFiltering {
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
-        let mut public_keys = self.public_keys.write().await;
+        let mut public_keys = self.inner.public_keys.write().await;
         for public_key in iter.into_iter() {
             public_keys.remove(public_key);
         }
@@ -176,7 +190,7 @@ impl RelayFiltering {
 
     /// Remove public key
     pub async fn remove_public_key(&self, public_key: &PublicKey) {
-        let mut public_keys = self.public_keys.write().await;
+        let mut public_keys = self.inner.public_keys.write().await;
         public_keys.remove(public_key);
     }
 
@@ -185,18 +199,18 @@ impl RelayFiltering {
     where
         I: IntoIterator<Item = PublicKey>,
     {
-        let mut p = self.public_keys.write().await;
+        let mut p = self.inner.public_keys.write().await;
         *p = public_keys.into_iter().collect();
     }
 
     /// Check if has public key
     pub async fn has_public_key(&self, public_key: &PublicKey) -> bool {
-        let public_keys = self.public_keys.read().await;
+        let public_keys = self.inner.public_keys.read().await;
         public_keys.contains(public_key)
     }
 
     pub(crate) async fn check_partial_event(&self, partial_event: &PartialEvent) -> CheckFiltering {
-        match self.mode.load() {
+        match self.inner.mode.load() {
             RelayFilteringMode::Whitelist => {
                 if !self.has_public_key(&partial_event.pubkey).await {
                     return CheckFiltering::PublicKeyNotInWhitelist(partial_event.pubkey);
@@ -218,10 +232,10 @@ impl RelayFiltering {
 
     /// Remove everything
     pub async fn clear(&self) {
-        let mut ids = self.ids.write().await;
+        let mut ids = self.inner.ids.write().await;
         ids.clear();
 
-        let mut public_keys = self.public_keys.write().await;
+        let mut public_keys = self.inner.public_keys.write().await;
         public_keys.clear();
     }
 }
