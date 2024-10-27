@@ -19,7 +19,7 @@ pub mod constants;
 mod error;
 mod filtering;
 pub mod flags;
-mod internal;
+mod inner;
 pub mod limits;
 pub mod options;
 pub mod stats;
@@ -28,7 +28,7 @@ mod status;
 pub use self::error::Error;
 pub use self::filtering::{RelayFiltering, RelayFilteringMode};
 pub use self::flags::{AtomicRelayServiceFlags, FlagCheck, RelayServiceFlags};
-use self::internal::InternalRelay;
+use self::inner::InnerRelay;
 pub use self::limits::RelayLimits;
 pub use self::options::{
     FilterOptions, RelayOptions, RelaySendOptions, SubscribeAutoCloseOptions, SubscribeOptions,
@@ -101,7 +101,7 @@ impl Reconciliation {
 /// Relay
 #[derive(Debug, Clone)]
 pub struct Relay {
-    pub(crate) inner: AtomicDestructor<InternalRelay>,
+    pub(crate) inner: AtomicDestructor<InnerRelay>,
 }
 
 impl PartialEq for Relay {
@@ -153,7 +153,7 @@ impl Relay {
         opts: RelayOptions,
     ) -> Self {
         Self {
-            inner: AtomicDestructor::new(InternalRelay::new(url, database, filtering, opts)),
+            inner: AtomicDestructor::new(InnerRelay::new(url, database, filtering, opts)),
         }
     }
 

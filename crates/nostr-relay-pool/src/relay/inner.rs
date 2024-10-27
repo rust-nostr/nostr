@@ -150,7 +150,7 @@ impl Default for SubscriptionData {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct InternalRelay {
+pub(crate) struct InnerRelay {
     pub(super) url: Url,
     status: Arc<AtomicRelayStatus>,
     #[cfg(feature = "nip11")]
@@ -167,7 +167,7 @@ pub(crate) struct InternalRelay {
     support_negentropy: TimedOnceCell<bool>,
 }
 
-impl AtomicDestroyer for InternalRelay {
+impl AtomicDestroyer for InnerRelay {
     fn name(&self) -> Option<String> {
         Some(format!("Relay {}", self.url))
     }
@@ -179,7 +179,7 @@ impl AtomicDestroyer for InternalRelay {
     }
 }
 
-impl InternalRelay {
+impl InnerRelay {
     pub fn new(
         url: Url,
         database: Arc<DynNostrDatabase>,
