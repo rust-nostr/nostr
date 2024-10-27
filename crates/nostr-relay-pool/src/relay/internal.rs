@@ -51,13 +51,13 @@ enum RelayServiceEvent {
     Terminate,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct RelayChannels {
-    nostr: (Sender<NostrMessage>, Arc<Mutex<Receiver<NostrMessage>>>),
-    ping: (watch::Sender<u64>, Arc<Mutex<watch::Receiver<u64>>>),
+    nostr: (Sender<NostrMessage>, Mutex<Receiver<NostrMessage>>),
+    ping: (watch::Sender<u64>, Mutex<watch::Receiver<u64>>),
     service: (
         watch::Sender<RelayServiceEvent>,
-        Arc<Mutex<watch::Receiver<RelayServiceEvent>>>,
+        Mutex<watch::Receiver<RelayServiceEvent>>,
     ),
 }
 
@@ -68,9 +68,9 @@ impl RelayChannels {
         let (tx_service, rx_service) = watch::channel::<RelayServiceEvent>(RelayServiceEvent::None);
 
         Self {
-            nostr: (tx_nostr, Arc::new(Mutex::new(rx_nostr))),
-            ping: (tx_ping, Arc::new(Mutex::new(rx_ping))),
-            service: (tx_service, Arc::new(Mutex::new(rx_service))),
+            nostr: (tx_nostr, Mutex::new(rx_nostr)),
+            ping: (tx_ping, Mutex::new(rx_ping)),
+            service: (tx_service, Mutex::new(rx_service)),
         }
     }
 
@@ -159,7 +159,7 @@ pub(crate) struct InternalRelay {
     pub(super) stats: RelayConnectionStats,
     filtering: RelayFiltering,
     database: Arc<DynNostrDatabase>,
-    channels: RelayChannels,
+    channels: Arc<RelayChannels>,
     scheduled_for_termination: Arc<AtomicBool>,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
     external_notification_sender: Arc<RwLock<Option<broadcast::Sender<RelayPoolNotification>>>>,
@@ -200,7 +200,7 @@ impl InternalRelay {
             stats: RelayConnectionStats::default(),
             filtering,
             database,
-            channels: RelayChannels::new(),
+            channels: Arc::new(RelayChannels::new()),
             scheduled_for_termination: Arc::new(AtomicBool::new(false)),
             internal_notification_sender: relay_notification_sender,
             external_notification_sender: Arc::new(RwLock::new(None)),
