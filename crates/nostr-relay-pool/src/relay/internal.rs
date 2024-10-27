@@ -407,12 +407,11 @@ impl InternalRelay {
     }
 
     fn send_notification(&self, notification: RelayNotification, external: bool) {
-        // Send internal notification
-        let _ = self.internal_notification_sender.send(notification.clone());
+        match (external, self.external_notification_sender.get()) {
+            (true, Some(external_notification_sender)) => {
+                // Clone and send internal notification
+                let _ = self.internal_notification_sender.send(notification.clone());
 
-        // Send external notification
-        if external {
-            if let Some(external_notification_sender) = self.external_notification_sender.get() {
                 // Convert relay to notification to pool notification
                 let notification: RelayPoolNotification = match notification {
                     RelayNotification::Event {
@@ -439,8 +438,12 @@ impl InternalRelay {
                     RelayNotification::Shutdown => RelayPoolNotification::Shutdown,
                 };
 
-                // Send notification
+                // Send external notification
                 let _ = external_notification_sender.send(notification);
+            }
+            _ => {
+                // Send internal notification
+                let _ = self.internal_notification_sender.send(notification);
             }
         }
     }
