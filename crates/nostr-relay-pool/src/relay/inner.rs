@@ -95,11 +95,6 @@ impl RelayChannels {
     }
 
     #[inline]
-    pub fn nostr_capacity(&self) -> usize {
-        self.nostr.0.capacity()
-    }
-
-    #[inline]
     #[cfg(not(target_arch = "wasm32"))]
     pub fn ping(&self, nonce: u64) -> Result<(), Error> {
         self.ping
@@ -229,7 +224,6 @@ impl InnerRelay {
         if log {
             match status {
                 RelayStatus::Initialized => tracing::trace!("'{}' relay initialized.", self.url),
-                RelayStatus::Pending => tracing::trace!("'{}' relay is pending.", self.url),
                 RelayStatus::Connecting => tracing::debug!("Connecting to '{}'", self.url),
                 RelayStatus::Connected => tracing::info!("Connected to '{}'", self.url),
                 RelayStatus::Disconnected => tracing::info!("Disconnected from '{}'", self.url),
@@ -472,71 +466,59 @@ impl InnerRelay {
     pub async fn connect(&self, connection_timeout: Option<Duration>) {
         self.schedule_for_termination(false); // TODO: remove?
 
-        if let RelayStatus::Initialized | RelayStatus::Terminated = self.status() {
-            if self.opts.get_reconnect() {
-                // If connection timeout is not null, try to connect
-                match connection_timeout {
-                    Some(..) => self.try_connect(connection_timeout).await,
-                    None => {
-                        // Set status to 'pending' so it'll connect in next step
-                        self.set_status(RelayStatus::Pending, true);
+        // Return if relay can't connect
+        if !self.status().can_connect() {
+            return;
+        }
+
+        // If connection timeout is `Some`, try to connect waiting for connection
+        match connection_timeout {
+            Some(timeout) => {
+                let mut notifications = self.internal_notification_sender.subscribe();
+
+                // Spawn and try connect
+                self.spawn_and_try_connect(timeout);
+
+                // Wait for status change (connected or disconnected)
+                tracing::debug!(
+                    "Waiting for status change for '{}' relay before continue",
+                    self.url
+                );
+                while let Ok(notification) = notifications.recv().await {
+                    if let RelayNotification::RelayStatus {
+                        status: RelayStatus::Connected | RelayStatus::Disconnected,
+                    } = notification
+                    {
+                        break;
                     }
                 }
-
-                tracing::debug!("Auto connect loop started for {}", self.url);
-
-                let relay = self.clone();
-                let _ = thread::spawn(async move {
-                    loop {
-                        let queue: usize = relay.queue();
-                        if queue > 0 {
-                            tracing::info!(
-                                "{} messages queued for {} (capacity: {})",
-                                queue,
-                                relay.url(),
-                                relay.channels.nostr_capacity()
-                            );
-                        }
-
-                        // Schedule relay for termination
-                        // Needed to terminate the auto reconnect loop, also if the relay is not connected yet.
-                        if relay.is_scheduled_for_termination() {
-                            relay.set_status(RelayStatus::Terminated, true);
-                            relay.schedule_for_termination(false);
-                            tracing::debug!(
-                                "Auto connect loop terminated for {} [schedule]",
-                                relay.url
-                            );
-                            break;
-                        }
-
-                        // Check status
-                        match relay.status() {
-                            RelayStatus::Initialized
-                            | RelayStatus::Pending
-                            | RelayStatus::Disconnected => {
-                                relay.try_connect(connection_timeout).await
-                            }
-                            RelayStatus::Terminated => {
-                                tracing::debug!("Auto connect loop terminated for {}", relay.url);
-                                break;
-                            }
-                            _ => (),
-                        };
-
-                        // Sleep
-                        let retry_sec: u64 = relay.calculate_retry_sec();
-                        tracing::trace!("{} retry time set to {retry_sec} secs", relay.url);
-                        thread::sleep(Duration::from_secs(retry_sec)).await;
-                    }
-                });
-            } else if connection_timeout.is_some() {
-                self.try_connect(connection_timeout).await
-            } else {
-                let relay = self.clone();
-                let _ = thread::spawn(async move { relay.try_connect(connection_timeout).await });
+            }
+            None => {
+                self.spawn_and_try_connect(Duration::from_secs(60));
             }
         }
+    }
+
+    fn spawn_and_try_connect(&self, connection_timeout: Duration) {
+        let relay = self.clone();
+        let _ = thread::spawn(async move {
+            loop {
+                // Connect and run message handler
+                relay.connect_and_run(connection_timeout).await;
+
+                // Check if reconnection is enabled
+                if relay.opts.get_reconnect() {
+                    // Sleep before retry to connect
+                    let retry_sec: u64 = relay.calculate_retry_sec();
+                    tracing::info!("Reconnecting to '{}' relay in {retry_sec} secs", relay.url);
+                    thread::sleep(Duration::from_secs(retry_sec)).await;
+                } else {
+                    // Break loop and exit
+                    tracing::info!("Reconnection disabled for '{}', breaking loop.", relay.url);
+                    break;
+                }
+            }
+        });
     }
 
     /// Depending on attempts and success, use default or incremental retry time
@@ -558,26 +540,82 @@ impl InnerRelay {
         self.opts.get_retry_sec()
     }
 
-    #[cfg(feature = "nip11")]
-    fn request_nip11_document(&self) {
-        let (allowed, proxy) = match self.opts.connection_mode {
-            ConnectionMode::Direct => (true, None),
-            #[cfg(not(target_arch = "wasm32"))]
-            ConnectionMode::Proxy(proxy) => (true, Some(proxy)),
-            #[cfg(all(feature = "tor", not(target_arch = "wasm32")))]
-            ConnectionMode::Tor { .. } => (false, None),
+    /// Connect and run message handler
+    async fn connect_and_run(&self, connection_timeout: Duration) {
+        // Update status
+        self.set_status(RelayStatus::Connecting, true);
+
+        // Add attempt
+        self.stats.new_attempt();
+
+        // Request information document
+        #[cfg(feature = "nip11")]
+        self.request_nip11_document();
+
+        // Compose timeout
+        let timeout: Duration = if self.stats.attempts() > 1 {
+            // Many attempts, use the default timeout
+            #[cfg(feature = "tor")]
+            if let ConnectionMode::Tor { .. } = self.connection_mode() {
+                Duration::from_secs(120)
+            } else {
+                Duration::from_secs(60)
+            }
+
+            #[cfg(not(feature = "tor"))]
+            Duration::from_secs(60)
+        } else {
+            // First attempt, use external timeout
+            connection_timeout
         };
 
-        if allowed {
-            let relay = self.clone();
-            let _ = thread::spawn(async move {
-                match RelayInformationDocument::get(relay.url(), proxy).await {
-                    Ok(document) => relay.set_document(document).await,
-                    Err(e) => {
-                        tracing::warn!("Can't get information document from '{}': {e}", relay.url)
-                    }
-                };
-            });
+        // Connect
+        match async_wsocket::connect(&self.url, self.connection_mode(), timeout).await {
+            Ok((ws_tx, ws_rx)) => {
+                // Update status
+                self.set_status(RelayStatus::Connected, true);
+
+                // Increment success stats
+                self.stats.new_success();
+
+                // Run message handler
+                self.run_message_handler(ws_tx, ws_rx).await;
+            }
+            Err(e) => {
+                // Update status
+                self.set_status(RelayStatus::Disconnected, false);
+
+                // Log error
+                tracing::error!("Impossible to connect to '{}': {e}", self.url);
+            }
+        }
+    }
+
+    async fn run_message_handler(&self, ws_tx: Sink, ws_rx: Stream) {
+        // (Re)subscribe to relay
+        if self.opts.flags.can_read() {
+            let opts: RelaySendOptions = RelaySendOptions::default().skip_send_confirmation(true);
+            if let Err(e) = self.resubscribe(opts).await {
+                tracing::error!("Impossible to subscribe to '{}': {e}", self.url)
+            }
+        }
+
+        // Wait that one of the futures terminate/complete
+        tokio::select! {
+            _ = self.receiver_message_handler(ws_rx) => {
+                tracing::trace!("Relay connection closed for '{}'", self.url);
+            }
+            _ = self.sender_message_handler(ws_tx) => {
+                tracing::trace!("Relay sender exited for '{}'", self.url);
+            }
+            _ = self.ping_handler() => {
+                tracing::trace!("Relay pinger exited for '{}'", self.url);
+            }
+        }
+
+        // Check if relay is marked as disconnected. If not, update status.
+        if !self.is_disconnected() {
+            self.set_status(RelayStatus::Disconnected, true);
         }
     }
 
@@ -744,137 +782,44 @@ impl InnerRelay {
         }
     }
 
-    fn spawn_message_handler(&self, ws_tx: Sink, ws_rx: Stream) -> Result<(), Error> {
-        let relay = self.clone();
-        thread::spawn(async move {
-            tracing::debug!("Relay Message Handler started for '{}'", relay.url);
+    async fn ping_handler(&self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.opts.flags.has_ping() {
+            loop {
+                let ping = self.stats.ping();
 
-            #[cfg(not(target_arch = "wasm32"))]
-            let pinger = async {
-                if relay.opts.flags.has_ping() {
-                    loop {
-                        let ping = relay.stats.ping();
-
-                        // If last nonce is NOT 0, check if relay replied
-                        // Break loop if relay not replied
-                        if ping.last_nonce() != 0 && !ping.replied() {
-                            tracing::warn!("'{}' not replied to ping", relay.url);
-                            ping.reset();
-                            break;
-                        }
-
-                        // Generate and save nonce
-                        let nonce: u64 = rand::random();
-                        ping.set_last_nonce(nonce);
-                        ping.set_replied(false);
-
-                        // Ping
-                        if let Err(e) = relay.channels.ping(nonce) {
-                            tracing::error!("Impossible to ping '{}': {e}", relay.url);
-                            break;
-                        };
-
-                        // Sleep
-                        thread::sleep(PING_INTERVAL).await;
-                    }
-                } else {
-                    loop {
-                        thread::sleep(PING_INTERVAL).await;
-                    }
+                // If last nonce is NOT 0, check if relay replied
+                // Break loop if relay not replied
+                if ping.last_nonce() != 0 && !ping.replied() {
+                    tracing::warn!("'{}' not replied to ping", self.url);
+                    ping.reset();
+                    break;
                 }
-            };
 
-            #[cfg(target_arch = "wasm32")]
-            let pinger = async {
-                loop {
-                    thread::sleep(PING_INTERVAL).await;
-                }
-            };
+                // Generate and save nonce
+                let nonce: u64 = rand::random();
+                ping.set_last_nonce(nonce);
+                ping.set_replied(false);
 
-            // Wait that one of the futures terminate/complete
-            tokio::select! {
-                _ = relay.receiver_message_handler(ws_rx) => {
-                    tracing::trace!("Relay connection closed for '{}'", relay.url);
-                }
-                _ = relay.sender_message_handler(ws_tx) => {
-                    tracing::trace!("Relay sender exited for '{}'", relay.url);
-                }
-                _ = pinger => {
-                    tracing::trace!("Relay pinger exited for '{}'", relay.url);
-                }
+                // Ping
+                if let Err(e) = self.channels.ping(nonce) {
+                    tracing::error!("Impossible to ping '{}': {e}", self.url);
+                    break;
+                };
+
+                // Sleep
+                thread::sleep(PING_INTERVAL).await;
             }
-
-            // Check if relay is marked as disconnected. If not, update status.
-            if !relay.is_disconnected() {
-                relay.set_status(RelayStatus::Disconnected, true);
-            }
-
-            tracing::debug!("Exited from Message Handler for '{}'", relay.url);
-        })?;
-        Ok(())
-    }
-
-    async fn try_connect(&self, connection_timeout: Option<Duration>) {
-        self.stats.new_attempt();
-
-        let url: String = self.url.to_string();
-
-        // Set RelayStatus to `Connecting`
-        self.set_status(RelayStatus::Connecting, true);
-
-        // Request `RelayInformationDocument`
-        #[cfg(feature = "nip11")]
-        self.request_nip11_document();
-
-        // Compose timeout
-        let timeout: Duration = if self.stats.attempts() > 1 {
-            // Many attempts, use the default timeout
-            #[cfg(feature = "tor")]
-            if let ConnectionMode::Tor { .. } = self.connection_mode() {
-                Duration::from_secs(120)
-            } else {
-                Duration::from_secs(60)
-            }
-
-            #[cfg(not(feature = "tor"))]
-            Duration::from_secs(60)
         } else {
-            // First attempt, use external timeout
-            connection_timeout.unwrap_or(Duration::from_secs(60))
-        };
-
-        // Connect
-        match async_wsocket::connect(&self.url, self.connection_mode(), timeout).await {
-            Ok((ws_tx, ws_rx)) => {
-                // Update status
-                self.set_status(RelayStatus::Connected, true);
-
-                // Increment success stats
-                self.stats.new_success();
-
-                // Spawn message handler
-                match self.spawn_message_handler(ws_tx, ws_rx) {
-                    Ok(()) => {
-                        // Subscribe to relay
-                        if self.opts.flags.can_read() {
-                            let opts: RelaySendOptions =
-                                RelaySendOptions::default().skip_send_confirmation(true);
-                            if let Err(e) = self.resubscribe(opts).await {
-                                tracing::error!("Impossible to subscribe to '{url}': {e}")
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        self.set_status(RelayStatus::Disconnected, false);
-                        tracing::error!("Impossible to spawn message handler for '{url}': {e}");
-                    }
-                }
+            loop {
+                thread::sleep(PING_INTERVAL).await;
             }
-            Err(e) => {
-                self.set_status(RelayStatus::Disconnected, false);
-                tracing::error!("Impossible to connect to '{url}': {e}");
-            }
-        };
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        loop {
+            thread::sleep(PING_INTERVAL).await;
+        }
     }
 
     #[inline(always)]

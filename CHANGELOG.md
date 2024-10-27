@@ -50,6 +50,7 @@
 * pool: convert `InternalRelay::send_notification` and linked methods to sync ([Yuki Kishimoto])
 * pool: avoid `RelayNotification` cloning when not needed in `InternalRelay::send_notification` ([Yuki Kishimoto])
 * pool: avoid full `InnerRelay` clone when requesting NIP11 document ([Yuki Kishimoto])
+* pool: rework relay connection methods and auto-connection logic ([Yuki Kishimoto])
 * sdk: deprecate `Client::get_events_of` and `Client::get_events_from` methods ([Yuki Kishimoto])
 * sdk: use `Events` instead of `Vec<Event>` in fetch and query methods ([Yuki Kishimoto])
 * sdk: rename `stream_events_of` to `stream_events` ([Yuki Kishimoto])

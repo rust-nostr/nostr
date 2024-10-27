@@ -35,11 +35,10 @@ impl AtomicRelayStatus {
         let val: u8 = self.value.load(Ordering::SeqCst);
         match val {
             0 => RelayStatus::Initialized,
-            1 => RelayStatus::Pending,
-            2 => RelayStatus::Connecting,
-            3 => RelayStatus::Connected,
-            4 => RelayStatus::Disconnected,
-            5 => RelayStatus::Terminated,
+            1 => RelayStatus::Connecting,
+            2 => RelayStatus::Connected,
+            3 => RelayStatus::Disconnected,
+            4 => RelayStatus::Terminated,
             _ => unreachable!(),
         }
     }
@@ -50,23 +49,20 @@ impl AtomicRelayStatus {
 pub enum RelayStatus {
     /// Relay initialized
     Initialized = 0,
-    /// Pending
-    Pending = 1,
     /// Connecting
-    Connecting = 2,
+    Connecting = 1,
     /// Relay connected
-    Connected = 3,
+    Connected = 2,
     /// Relay disconnected, will retry to connect again
-    Disconnected = 4,
+    Disconnected = 3,
     /// Relay completely disconnected
-    Terminated = 5,
+    Terminated = 4,
 }
 
 impl fmt::Display for RelayStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Initialized => write!(f, "Initialized"),
-            Self::Pending => write!(f, "Pending"),
             Self::Connecting => write!(f, "Connecting"),
             Self::Connected => write!(f, "Connected"),
             Self::Disconnected => write!(f, "Disconnected"),
@@ -90,5 +86,11 @@ impl RelayStatus {
     #[inline]
     pub(crate) fn is_disconnected(&self) -> bool {
         matches!(self, Self::Disconnected | Self::Terminated)
+    }
+
+    /// Check if relay can start connection (status is `initialized` or `terminated`)
+    #[inline]
+    pub(crate) fn can_connect(&self) -> bool {
+        matches!(self, Self::Initialized | Self::Terminated)
     }
 }

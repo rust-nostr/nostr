@@ -76,8 +76,6 @@ impl From<Relay> for JsRelay {
 pub enum JsRelayStatus {
     /// Relay initialized
     Initialized,
-    /// Pending
-    Pending,
     /// Connecting
     Connecting,
     /// Relay connected
@@ -92,7 +90,6 @@ impl From<RelayStatus> for JsRelayStatus {
     fn from(status: RelayStatus) -> Self {
         match status {
             RelayStatus::Initialized => Self::Initialized,
-            RelayStatus::Pending => Self::Pending,
             RelayStatus::Connecting => Self::Connecting,
             RelayStatus::Connected => Self::Connected,
             RelayStatus::Disconnected => Self::Disconnected,
