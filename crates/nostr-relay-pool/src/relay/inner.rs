@@ -308,9 +308,30 @@ impl InnerRelay {
     }
 
     #[cfg(feature = "nip11")]
-    async fn set_document(&self, document: RelayInformationDocument) {
-        let mut d = self.document.write().await;
-        *d = document;
+    fn request_nip11_document(&self) {
+        let (allowed, proxy) = match self.opts.connection_mode {
+            ConnectionMode::Direct => (true, None),
+            #[cfg(not(target_arch = "wasm32"))]
+            ConnectionMode::Proxy(proxy) => (true, Some(proxy)),
+            #[cfg(all(feature = "tor", not(target_arch = "wasm32")))]
+            ConnectionMode::Tor { .. } => (false, None),
+        };
+
+        if allowed {
+            let url = self.url();
+            let d = self.document.clone();
+            let _ = thread::spawn(async move {
+                match RelayInformationDocument::get(url.clone(), proxy).await {
+                    Ok(document) => {
+                        let mut d = d.write().await;
+                        *d = document
+                    }
+                    Err(e) => {
+                        tracing::warn!("Can't get information document from '{url}': {e}")
+                    }
+                };
+            });
+        }
     }
 
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
