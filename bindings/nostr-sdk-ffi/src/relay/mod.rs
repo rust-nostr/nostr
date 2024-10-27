@@ -210,8 +210,8 @@ impl Relay {
     }
 
     /// Disconnect from relay and set status to 'Terminated'
-    pub async fn disconnect(&self) -> Result<()> {
-        Ok(self.inner.disconnect().await?)
+    pub fn disconnect(&self) -> Result<()> {
+        Ok(self.inner.disconnect()?)
     }
 
     /// Send msg to relay

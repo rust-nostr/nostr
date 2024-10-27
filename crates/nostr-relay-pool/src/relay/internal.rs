@@ -173,12 +173,9 @@ impl AtomicDestroyer for InternalRelay {
     }
 
     fn on_destroy(&self) {
-        let relay = self.clone();
-        let _ = thread::spawn(async move {
-            if let Err(e) = relay.disconnect().await {
-                tracing::error!("Impossible to shutdown '{}': {e}", relay.url);
-            }
-        });
+        if let Err(e) = self.disconnect() {
+            tracing::error!("Impossible to shutdown '{}': {e}", self.url);
+        }
     }
 }
 
@@ -224,7 +221,7 @@ impl InternalRelay {
         self.status.load()
     }
 
-    async fn set_status(&self, status: RelayStatus, log: bool) {
+    fn set_status(&self, status: RelayStatus, log: bool) {
         // Change status
         self.status.set(status);
 
@@ -243,8 +240,7 @@ impl InternalRelay {
         }
 
         // Send notification
-        self.send_notification(RelayNotification::RelayStatus { status }, true)
-            .await;
+        self.send_notification(RelayNotification::RelayStatus { status }, true);
     }
 
     #[inline]
@@ -410,7 +406,7 @@ impl InternalRelay {
         Ok(())
     }
 
-    async fn send_notification(&self, notification: RelayNotification, external: bool) {
+    fn send_notification(&self, notification: RelayNotification, external: bool) {
         // Send internal notification
         let _ = self.internal_notification_sender.send(notification.clone());
 
@@ -459,7 +455,7 @@ impl InternalRelay {
                     Some(..) => self.try_connect(connection_timeout).await,
                     None => {
                         // Set status to 'pending' so it'll connect in next step
-                        self.set_status(RelayStatus::Pending, true).await;
+                        self.set_status(RelayStatus::Pending, true);
                     }
                 }
 
@@ -481,7 +477,7 @@ impl InternalRelay {
                         // Schedule relay for termination
                         // Needed to terminate the auto reconnect loop, also if the relay is not connected yet.
                         if relay.is_scheduled_for_termination() {
-                            relay.set_status(RelayStatus::Terminated, true).await;
+                            relay.set_status(RelayStatus::Terminated, true);
                             relay.schedule_for_termination(false);
                             tracing::debug!(
                                 "Auto connect loop terminated for {} [schedule]",
@@ -653,7 +649,7 @@ impl InternalRelay {
                         // Terminate
                         RelayServiceEvent::Terminate => {
                             if self.is_scheduled_for_termination() {
-                                self.set_status(RelayStatus::Terminated, true).await;
+                                self.set_status(RelayStatus::Terminated, true);
                                 self.schedule_for_termination(false);
                                 break;
                             }
@@ -786,7 +782,7 @@ impl InternalRelay {
 
             // Check if relay is marked as disconnected. If not, update status.
             if !relay.is_disconnected() {
-                relay.set_status(RelayStatus::Disconnected, true).await;
+                relay.set_status(RelayStatus::Disconnected, true);
             }
 
             tracing::debug!("Exited from Message Handler for '{}'", relay.url);
@@ -800,7 +796,7 @@ impl InternalRelay {
         let url: String = self.url.to_string();
 
         // Set RelayStatus to `Connecting`
-        self.set_status(RelayStatus::Connecting, true).await;
+        self.set_status(RelayStatus::Connecting, true);
 
         // Request `RelayInformationDocument`
         #[cfg(feature = "nip11")]
@@ -827,7 +823,7 @@ impl InternalRelay {
         match async_wsocket::connect(&self.url, self.connection_mode(), timeout).await {
             Ok((ws_tx, ws_rx)) => {
                 // Update status
-                self.set_status(RelayStatus::Connected, true).await;
+                self.set_status(RelayStatus::Connected, true);
 
                 // Increment success stats
                 self.stats.new_success();
@@ -845,13 +841,13 @@ impl InternalRelay {
                         }
                     }
                     Err(e) => {
-                        self.set_status(RelayStatus::Disconnected, false).await;
+                        self.set_status(RelayStatus::Disconnected, false);
                         tracing::error!("Impossible to spawn message handler for '{url}': {e}");
                     }
                 }
             }
             Err(e) => {
-                self.set_status(RelayStatus::Disconnected, false).await;
+                self.set_status(RelayStatus::Disconnected, false);
                 tracing::error!("Impossible to connect to '{url}': {e}");
             }
         };
@@ -891,8 +887,7 @@ impl InternalRelay {
                 }
 
                 // Send notification
-                self.send_notification(RelayNotification::Message { message }, true)
-                    .await;
+                self.send_notification(RelayNotification::Message { message }, true);
             }
             Ok(None) | Err(Error::MessageHandle(MessageHandleError::EmptyMsg)) => (),
             Err(e) => tracing::warn!(
@@ -1046,8 +1041,7 @@ impl InternalRelay {
                             event: Box::new(event.clone()),
                         },
                         true,
-                    )
-                    .await;
+                    );
                 }
 
                 Ok(Some(RelayMessage::Event {
@@ -1059,14 +1053,13 @@ impl InternalRelay {
         }
     }
 
-    pub async fn disconnect(&self) -> Result<(), Error> {
+    pub fn disconnect(&self) -> Result<(), Error> {
         self.schedule_for_termination(true); // TODO: remove?
         if !self.is_disconnected() {
             self.channels
                 .send_service_msg(RelayServiceEvent::Terminate)?;
         }
-        self.send_notification(RelayNotification::Shutdown, false)
-            .await;
+        self.send_notification(RelayNotification::Shutdown, false);
         Ok(())
     }
 
@@ -1274,8 +1267,7 @@ impl InternalRelay {
                         if id == event_id {
                             return if status {
                                 // Send notification
-                                self.send_notification(RelayNotification::Authenticated, true)
-                                    .await;
+                                self.send_notification(RelayNotification::Authenticated, true);
 
                                 Ok(())
                             } else {

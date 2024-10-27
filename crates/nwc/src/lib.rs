@@ -202,8 +202,8 @@ impl NWC {
 
     /// Completely shutdown [NWC] client
     #[inline]
-    pub async fn shutdown(self) -> Result<(), Error> {
-        Ok(self.relay.disconnect().await?)
+    pub fn shutdown(self) -> Result<(), Error> {
+        Ok(self.relay.disconnect()?)
     }
 }
 

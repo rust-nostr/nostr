@@ -36,7 +36,6 @@ pub use self::options::{
 };
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
-use crate::pool::RelayPoolNotification;
 
 /// Relay Notification
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -253,8 +252,8 @@ impl Relay {
 
     /// Disconnect from relay and set status to 'Terminated'
     #[inline]
-    pub async fn disconnect(&self) -> Result<(), Error> {
-        self.inner.disconnect().await
+    pub fn disconnect(&self) -> Result<(), Error> {
+        self.inner.disconnect()
     }
 
     /// Send msg to relay

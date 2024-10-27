@@ -298,7 +298,7 @@ impl InternalRelayPool {
             }
 
             // Disconnect
-            relay.disconnect().await?;
+            relay.disconnect()?;
         }
 
         Ok(())
@@ -937,7 +937,7 @@ impl InternalRelayPool {
 
         // Iter values and disconnect
         for relay in relays.values() {
-            relay.disconnect().await?;
+            relay.disconnect()?;
         }
 
         Ok(())
@@ -982,7 +982,7 @@ impl InternalRelayPool {
         let relay: &Relay = self.internal_relay(&relays, &url)?;
 
         // Disconnect
-        relay.disconnect().await?;
+        relay.disconnect()?;
 
         Ok(())
     }
