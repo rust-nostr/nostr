@@ -245,17 +245,6 @@ impl Relay {
         self.inner.internal_notification_sender.subscribe()
     }
 
-    /// Set external notification sender
-    #[inline]
-    pub async fn set_notification_sender(
-        &self,
-        notification_sender: Option<broadcast::Sender<RelayPoolNotification>>,
-    ) {
-        self.inner
-            .set_notification_sender(notification_sender)
-            .await
-    }
-
     /// Connect to relay and keep alive connection
     #[inline]
     pub async fn connect(&self, connection_timeout: Option<Duration>) {

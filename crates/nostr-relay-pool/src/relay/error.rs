@@ -11,6 +11,9 @@ use nostr::message::MessageHandleError;
 use nostr::{event, EventId, Kind};
 use nostr_database::DatabaseError;
 use thiserror::Error;
+use tokio::sync::{broadcast, SetError};
+
+use crate::RelayPoolNotification;
 
 /// [`Relay`](super::Relay) error
 #[derive(Debug, Error)]
@@ -36,6 +39,9 @@ pub enum Error {
     /// Thread error
     #[error(transparent)]
     Thread(#[from] thread::Error),
+    /// OnceCell error
+    #[error(transparent)]
+    OnceCell(#[from] SetError<broadcast::Sender<RelayPoolNotification>>),
     /// Message response timeout
     #[error("recv message response timeout")]
     RecvTimeout,

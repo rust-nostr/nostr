@@ -19,7 +19,7 @@ use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDe
 use nostr::secp256k1::rand::{self, Rng};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::{broadcast, oneshot, watch, Mutex, MutexGuard, RwLock};
+use tokio::sync::{broadcast, oneshot, watch, Mutex, MutexGuard, OnceCell, RwLock};
 
 use super::constants::{
     MAX_ADJ_RETRY_SEC, MIN_ATTEMPTS, MIN_RETRY_SEC, MIN_UPTIME, NEGENTROPY_BATCH_SIZE_DOWN,
@@ -162,7 +162,7 @@ pub(crate) struct InternalRelay {
     channels: Arc<RelayChannels>,
     scheduled_for_termination: Arc<AtomicBool>,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
-    external_notification_sender: Arc<RwLock<Option<broadcast::Sender<RelayPoolNotification>>>>,
+    external_notification_sender: OnceCell<broadcast::Sender<RelayPoolNotification>>,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, SubscriptionData>>>,
     support_negentropy: TimedOnceCell<bool>,
 }
@@ -203,7 +203,7 @@ impl InternalRelay {
             channels: Arc::new(RelayChannels::new()),
             scheduled_for_termination: Arc::new(AtomicBool::new(false)),
             internal_notification_sender: relay_notification_sender,
-            external_notification_sender: Arc::new(RwLock::new(None)),
+            external_notification_sender: OnceCell::new(),
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
             support_negentropy: TimedOnceCell::new(Duration::from_secs(60 * 60)), // Expire after 1h
         }
@@ -402,12 +402,12 @@ impl InternalRelay {
             .store(value, Ordering::SeqCst);
     }
 
-    pub async fn set_notification_sender(
+    pub(crate) fn set_notification_sender(
         &self,
-        notification_sender: Option<broadcast::Sender<RelayPoolNotification>>,
-    ) {
-        let mut external_notification_sender = self.external_notification_sender.write().await;
-        *external_notification_sender = notification_sender;
+        notification_sender: broadcast::Sender<RelayPoolNotification>,
+    ) -> Result<(), Error> {
+        self.external_notification_sender.set(notification_sender)?;
+        Ok(())
     }
 
     async fn send_notification(&self, notification: RelayNotification, external: bool) {
@@ -416,9 +416,7 @@ impl InternalRelay {
 
         // Send external notification
         if external {
-            // TODO: avoid this read? Make `external_notification_sender` writable only once?
-            let external_notification_sender = self.external_notification_sender.read().await;
-            if let Some(external_notification_sender) = external_notification_sender.as_ref() {
+            if let Some(external_notification_sender) = self.external_notification_sender.get() {
                 // Convert relay to notification to pool notification
                 let notification: RelayPoolNotification = match notification {
                     RelayNotification::Event {

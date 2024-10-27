@@ -230,8 +230,8 @@ impl InternalRelayPool {
 
         // Set notification sender
         relay
-            .set_notification_sender(Some(self.notification_sender.clone()))
-            .await;
+            .inner
+            .set_notification_sender(self.notification_sender.clone())?;
 
         // Set relay subscriptions
         if inherit_pool_subscriptions {
