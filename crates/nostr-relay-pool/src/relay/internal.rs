@@ -35,6 +35,7 @@ use super::options::{
 use super::stats::RelayConnectionStats;
 use super::{Error, Reconciliation, RelayNotification, RelayStatus};
 use crate::pool::RelayPoolNotification;
+use crate::relay::status::AtomicRelayStatus;
 use crate::util::cell::TimedOnceCell;
 
 struct NostrMessage {
@@ -151,7 +152,7 @@ impl Default for SubscriptionData {
 #[derive(Debug, Clone)]
 pub(crate) struct InternalRelay {
     pub(super) url: Url,
-    status: Arc<RwLock<RelayStatus>>,
+    status: Arc<AtomicRelayStatus>,
     #[cfg(feature = "nip11")]
     document: Arc<RwLock<RelayInformationDocument>>,
     opts: RelayOptions,
@@ -192,7 +193,7 @@ impl InternalRelay {
 
         Self {
             url,
-            status: Arc::new(RwLock::new(RelayStatus::Initialized)),
+            status: Arc::new(AtomicRelayStatus::default()),
             #[cfg(feature = "nip11")]
             document: Arc::new(RwLock::new(RelayInformationDocument::new())),
             opts,
@@ -218,15 +219,14 @@ impl InternalRelay {
         self.opts.connection_mode.clone()
     }
 
-    pub async fn status(&self) -> RelayStatus {
-        let status = self.status.read().await;
-        *status
+    #[inline]
+    pub fn status(&self) -> RelayStatus {
+        self.status.load()
     }
 
     async fn set_status(&self, status: RelayStatus, log: bool) {
         // Change status
-        let mut s = self.status.write().await;
-        *s = status;
+        self.status.set(status);
 
         // Log
         if log {
@@ -263,18 +263,18 @@ impl InternalRelay {
     }
 
     #[inline]
-    pub async fn is_connected(&self) -> bool {
-        self.status().await.is_connected()
+    pub fn is_connected(&self) -> bool {
+        self.status().is_connected()
     }
 
     /// Check if is `disconnected`, `stopped` or `terminated`
     #[inline]
-    pub async fn is_disconnected(&self) -> bool {
-        self.status().await.is_disconnected()
+    pub fn is_disconnected(&self) -> bool {
+        self.status().is_disconnected()
     }
 
     async fn check_ready(&self) -> Result<(), Error> {
-        let status: RelayStatus = self.status().await;
+        let status: RelayStatus = self.status();
 
         // Relay initialized, never called connect method
         if status.is_initialized() {
@@ -416,6 +416,7 @@ impl InternalRelay {
 
         // Send external notification
         if external {
+            // TODO: avoid this read? Make `external_notification_sender` writable only once?
             let external_notification_sender = self.external_notification_sender.read().await;
             if let Some(external_notification_sender) = external_notification_sender.as_ref() {
                 // Convert relay to notification to pool notification
@@ -453,7 +454,7 @@ impl InternalRelay {
     pub async fn connect(&self, connection_timeout: Option<Duration>) {
         self.schedule_for_termination(false); // TODO: remove?
 
-        if let RelayStatus::Initialized | RelayStatus::Terminated = self.status().await {
+        if let RelayStatus::Initialized | RelayStatus::Terminated = self.status() {
             if self.opts.get_reconnect() {
                 // If connection timeout is not null, try to connect
                 match connection_timeout {
@@ -492,7 +493,7 @@ impl InternalRelay {
                         }
 
                         // Check status
-                        match relay.status().await {
+                        match relay.status() {
                             RelayStatus::Initialized
                             | RelayStatus::Pending
                             | RelayStatus::Disconnected => {
@@ -786,7 +787,7 @@ impl InternalRelay {
             }
 
             // Check if relay is marked as disconnected. If not, update status.
-            if !relay.is_disconnected().await {
+            if !relay.is_disconnected() {
                 relay.set_status(RelayStatus::Disconnected, true).await;
             }
 
@@ -1062,7 +1063,7 @@ impl InternalRelay {
 
     pub async fn disconnect(&self) -> Result<(), Error> {
         self.schedule_for_termination(true); // TODO: remove?
-        if !self.is_disconnected().await {
+        if !self.is_disconnected() {
             self.channels
                 .send_service_msg(RelayServiceEvent::Terminate)?;
         }

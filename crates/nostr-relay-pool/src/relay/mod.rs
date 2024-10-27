@@ -170,10 +170,10 @@ impl Relay {
         self.inner.connection_mode()
     }
 
-    /// Get [`RelayStatus`]
+    /// Get status
     #[inline]
-    pub async fn status(&self) -> RelayStatus {
-        self.inner.status().await
+    pub fn status(&self) -> RelayStatus {
+        self.inner.status()
     }
 
     /// Get Relay Service Flags
@@ -194,10 +194,10 @@ impl Relay {
         self.inner.filtering()
     }
 
-    /// Check if [`Relay`] is connected
+    /// Check if relay is connected
     #[inline]
-    pub async fn is_connected(&self) -> bool {
-        self.inner.is_connected().await
+    pub fn is_connected(&self) -> bool {
+        self.inner.is_connected()
     }
 
     /// Get [`RelayInformationDocument`]
@@ -491,11 +491,11 @@ mod tests {
 
         let relay = Relay::new(url);
 
-        assert_eq!(relay.status().await, RelayStatus::Initialized);
+        assert_eq!(relay.status(), RelayStatus::Initialized);
 
         relay.connect(Some(Duration::from_millis(100))).await;
 
-        assert_eq!(relay.status().await, RelayStatus::Connected);
+        assert_eq!(relay.status(), RelayStatus::Connected);
 
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Test", []).to_event(&keys).unwrap();

@@ -142,9 +142,9 @@ impl Relay {
         self.inner.connection_mode().into()
     }
 
-    /// Get relay status
-    pub async fn status(&self) -> RelayStatus {
-        self.inner.status().await.into()
+    /// Get status
+    pub fn status(&self) -> RelayStatus {
+        self.inner.status().into()
     }
 
     /* /// Get Relay Service Flags
@@ -158,8 +158,8 @@ impl Relay {
     }
 
     /// Check if `Relay` is connected
-    pub async fn is_connected(&self) -> bool {
-        self.inner.is_connected().await
+    pub fn is_connected(&self) -> bool {
+        self.inner.is_connected()
     }
 
     pub async fn document(&self) -> Arc<RelayInformationDocument> {

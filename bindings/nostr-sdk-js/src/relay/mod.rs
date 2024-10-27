@@ -118,9 +118,9 @@ impl JsRelay {
         self.inner.url().to_string()
     }
 
-    // Get status
-    pub async fn status(&self) -> JsRelayStatus {
-        self.inner.status().await.into()
+    /// Get status
+    pub fn status(&self) -> JsRelayStatus {
+        self.inner.status().into()
     }
 
     /// Get Relay Service Flags
@@ -135,8 +135,8 @@ impl JsRelay {
 
     /// Check if relay is connected
     #[wasm_bindgen(js_name = isConnected)]
-    pub async fn is_connected(&self) -> bool {
-        self.inner.is_connected().await
+    pub fn is_connected(&self) -> bool {
+        self.inner.is_connected()
     }
 
     /// Get `RelayInformationDocument`

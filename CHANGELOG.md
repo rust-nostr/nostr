@@ -45,6 +45,7 @@
 * pool: rename `NegentropyOptions` and `NegentropyDirection` to `SyncOptions` and `SyncDirection` ([Yuki Kishimoto])
 * pool: join futures instead of spawning threads in `RelayPool` methods ([Yuki Kishimoto])
 * pool: reduce overhead by maintaining only one atomic reference count for `RelayConnectionStats` and `RelayFiltering` structs ([Yuki Kishimoto])
+* pool: switch to atomic operations for `RelayStatus` ([Yuki Kishimoto])
 * sdk: deprecate `Client::get_events_of` and `Client::get_events_from` methods ([Yuki Kishimoto])
 * sdk: use `Events` instead of `Vec<Event>` in fetch and query methods ([Yuki Kishimoto])
 * sdk: rename `stream_events_of` to `stream_events` ([Yuki Kishimoto])
