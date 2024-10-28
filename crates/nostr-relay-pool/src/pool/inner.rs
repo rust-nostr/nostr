@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::futures_util::{future, StreamExt};
-use async_utility::{thread, time};
+use async_utility::thread;
 use atomic_destructor::AtomicDestroyer;
 use nostr::prelude::*;
 use nostr_database::{DynNostrDatabase, Events, IntoNostrDatabase};
@@ -71,12 +71,9 @@ impl InnerRelayPool {
         self.disconnect().await?;
 
         // Send shutdown notification
-        time::timeout(Some(Duration::from_secs(1)), async move {
-            let _ = self
-                .notification_sender
-                .send(RelayPoolNotification::Shutdown);
-        })
-        .await;
+        let _ = self
+            .notification_sender
+            .send(RelayPoolNotification::Shutdown);
 
         tracing::info!("Relay pool shutdown");
 
