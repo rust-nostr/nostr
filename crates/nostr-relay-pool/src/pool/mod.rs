@@ -16,12 +16,12 @@ use tokio::sync::broadcast;
 pub use tokio_stream::wrappers::ReceiverStream;
 
 mod error;
-mod internal;
+mod inner;
 pub mod options;
 mod output;
 
 pub use self::error::Error;
-use self::internal::InternalRelayPool;
+use self::inner::InnerRelayPool;
 pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
 use crate::relay::flags::FlagCheck;
@@ -69,7 +69,7 @@ pub enum RelayPoolNotification {
 /// Relay Pool
 #[derive(Debug, Clone)]
 pub struct RelayPool {
-    inner: AtomicDestructor<InternalRelayPool>,
+    inner: AtomicDestructor<InnerRelayPool>,
 }
 
 impl Default for RelayPool {
@@ -101,7 +101,7 @@ impl RelayPool {
         D: IntoNostrDatabase,
     {
         Self {
-            inner: AtomicDestructor::new(InternalRelayPool::with_database(opts, database)),
+            inner: AtomicDestructor::new(InnerRelayPool::with_database(opts, database)),
         }
     }
 

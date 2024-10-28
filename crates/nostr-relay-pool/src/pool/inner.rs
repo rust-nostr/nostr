@@ -25,7 +25,7 @@ use crate::{RelayServiceFlags, SubscribeOptions};
 type Relays = HashMap<Url, Relay>;
 
 #[derive(Debug, Clone)]
-pub struct InternalRelayPool {
+pub struct InnerRelayPool {
     database: Arc<DynNostrDatabase>,
     relays: Arc<RwLock<Relays>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
@@ -34,7 +34,7 @@ pub struct InternalRelayPool {
     //opts: RelayPoolOptions,
 }
 
-impl AtomicDestroyer for InternalRelayPool {
+impl AtomicDestroyer for InnerRelayPool {
     fn name(&self) -> Option<String> {
         Some(String::from("Relay Pool"))
     }
@@ -49,7 +49,7 @@ impl AtomicDestroyer for InternalRelayPool {
     }
 }
 
-impl InternalRelayPool {
+impl InnerRelayPool {
     pub fn with_database<D>(opts: RelayPoolOptions, database: D) -> Self
     where
         D: IntoNostrDatabase,
