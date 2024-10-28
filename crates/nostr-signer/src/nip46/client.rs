@@ -5,6 +5,8 @@
 //! Nostr Connect client
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::time;
@@ -30,6 +32,7 @@ pub struct Nip46Signer {
     timeout: Duration,
     opts: RelayOptions,
     secret: Option<String>,
+    bootstrapped: Arc<AtomicBool>,
 }
 
 impl Nip46Signer {
@@ -47,14 +50,21 @@ impl Nip46Signer {
             }
         }
 
+        // Get signer public key
+        let signer_public_key: OnceCell<PublicKey> = match uri.signer_public_key() {
+            Some(public_key) => OnceCell::from(public_key),
+            None => OnceCell::new(),
+        };
+
         Ok(Self {
             app_keys,
-            signer_public_key: OnceCell::new(),
+            signer_public_key,
             pool: RelayPool::default(),
             timeout,
             opts: opts.unwrap_or_default(),
             secret: uri.secret(),
             uri,
+            bootstrapped: Arc::new(AtomicBool::new(false)),
         })
     }
 
@@ -80,6 +90,8 @@ impl Nip46Signer {
         if self.uri.is_bunker() {
             self.connect(signer_public_key).await?;
         }
+
+        self.bootstrapped.store(true, Ordering::SeqCst);
 
         Ok(signer_public_key)
     }
@@ -117,6 +129,7 @@ impl Nip46Signer {
     /// Get signer [PublicKey]
     #[inline]
     pub async fn signer_public_key(&self) -> Result<&PublicKey, Error> {
+        // The bootstrap here is executed only if URI is NOT `bunker://`
         self.signer_public_key
             .get_or_try_init(|| async { self.bootstrap().await })
             .await
@@ -133,7 +146,16 @@ impl Nip46Signer {
 
     #[inline]
     async fn send_request(&self, req: Request) -> Result<ResponseResult, Error> {
+        // Get signer public key
         let signer_public_key: PublicKey = *self.signer_public_key().await?;
+
+        // Check if bootstrap is executed
+        // If it's not executed, bootstrap.
+        if !self.bootstrapped.load(Ordering::SeqCst) {
+            self.bootstrap().await?;
+        }
+
+        // Send request
         self.send_request_with_pk(req, signer_public_key).await
     }
 
