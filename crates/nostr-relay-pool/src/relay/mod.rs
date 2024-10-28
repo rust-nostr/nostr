@@ -159,8 +159,8 @@ impl Relay {
 
     /// Get relay url
     #[inline]
-    pub fn url(&self) -> Url {
-        self.inner.url()
+    pub fn url(&self) -> &Url {
+        &self.inner.url
     }
 
     /// Get connection mode
@@ -177,20 +177,14 @@ impl Relay {
 
     /// Get Relay Service Flags
     #[inline]
-    pub fn flags(&self) -> AtomicRelayServiceFlags {
-        self.inner.flags()
-    }
-
-    /// Get Relay Service Flags
-    #[inline]
-    pub fn flags_ref(&self) -> &AtomicRelayServiceFlags {
-        self.inner.flags_ref()
+    pub fn flags(&self) -> &AtomicRelayServiceFlags {
+        &self.inner.opts.flags
     }
 
     /// Get relay filtering
     #[inline]
-    pub fn filtering(&self) -> RelayFiltering {
-        self.inner.filtering()
+    pub fn filtering(&self) -> &RelayFiltering {
+        &self.inner.filtering
     }
 
     /// Check if relay is connected
@@ -218,10 +212,10 @@ impl Relay {
         self.inner.subscription(id).await
     }
 
-    /// Get [`RelayOptions`]
+    /// Get options
     #[inline]
-    pub fn opts(&self) -> RelayOptions {
-        self.inner.opts()
+    pub fn opts(&self) -> &RelayOptions {
+        &self.inner.opts
     }
 
     /// Get [`RelayConnectionStats`]

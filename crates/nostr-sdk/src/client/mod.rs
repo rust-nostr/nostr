@@ -376,7 +376,7 @@ impl Client {
             .await?
         {
             Some(relay) => {
-                relay.flags_ref().add(flag);
+                relay.flags().add(flag);
                 Ok(false)
             }
             None => {

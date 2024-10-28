@@ -122,12 +122,12 @@ impl JsRelay {
 
     /// Get Relay Service Flags
     pub fn flags(&self) -> JsAtomicRelayServiceFlags {
-        self.inner.flags().into()
+        self.inner.flags().clone().into()
     }
 
     /// Get relay filtering
     pub fn filtering(&self) -> JsRelayFiltering {
-        self.inner.filtering().into()
+        self.inner.filtering().clone().into()
     }
 
     /// Check if relay is connected
@@ -147,7 +147,7 @@ impl JsRelay {
 
     /// Get options
     pub fn opts(&self) -> JsRelayOptions {
-        self.inner.opts().into()
+        self.inner.opts().clone().into()
     }
 
     // TODO: add stats

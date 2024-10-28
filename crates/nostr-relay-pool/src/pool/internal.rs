@@ -107,8 +107,7 @@ impl InternalRelayPool {
         flag: RelayServiceFlags,
         check: FlagCheck,
     ) -> impl Iterator<Item = (&'a Url, &'a Relay)> + 'a {
-        txn.iter()
-            .filter(move |(_, r)| r.flags_ref().has(flag, check))
+        txn.iter().filter(move |(_, r)| r.flags().has(flag, check))
     }
 
     /// Get relays that has `READ` or `WRITE` flags
@@ -242,7 +241,7 @@ impl InternalRelayPool {
         }
 
         // Insert relay into map
-        relays.insert(relay.url(), relay);
+        relays.insert(relay.url().clone(), relay);
 
         Ok(true)
     }
@@ -282,7 +281,7 @@ impl InternalRelayPool {
         if let Some(relay) = relays.remove(&url) {
             // It NOT force, check if has INBOX or OUTBOX flags
             if !force {
-                let flags = relay.flags_ref();
+                let flags = relay.flags();
                 if flags.has_any(RelayServiceFlags::INBOX | RelayServiceFlags::OUTBOX) {
                     // Remove READ, WRITE and DISCOVERY flags
                     flags.remove(

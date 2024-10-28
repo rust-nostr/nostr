@@ -27,7 +27,6 @@ use super::constants::{
     WEBSOCKET_TX_TIMEOUT,
 };
 use super::filtering::{CheckFiltering, RelayFiltering};
-use super::flags::AtomicRelayServiceFlags;
 use super::options::{
     FilterOptions, RelayOptions, RelaySendOptions, SubscribeAutoCloseOptions, SubscribeOptions,
     SyncOptions,
@@ -150,9 +149,9 @@ pub(crate) struct InnerRelay {
     status: Arc<AtomicRelayStatus>,
     #[cfg(feature = "nip11")]
     document: Arc<RwLock<RelayInformationDocument>>,
-    opts: RelayOptions,
+    pub(super) opts: RelayOptions,
     pub(super) stats: RelayConnectionStats,
-    filtering: RelayFiltering,
+    pub(super) filtering: RelayFiltering,
     database: Arc<DynNostrDatabase>,
     channels: Arc<RelayChannels>,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
@@ -200,11 +199,6 @@ impl InnerRelay {
     }
 
     #[inline]
-    pub fn url(&self) -> Url {
-        self.url.clone()
-    }
-
-    #[inline]
     pub fn connection_mode(&self) -> ConnectionMode {
         self.opts.connection_mode.clone()
     }
@@ -233,21 +227,6 @@ impl InnerRelay {
 
         // Send notification
         self.send_notification(RelayNotification::RelayStatus { status }, true);
-    }
-
-    #[inline]
-    pub fn flags(&self) -> AtomicRelayServiceFlags {
-        self.opts.flags.clone()
-    }
-
-    #[inline]
-    pub fn flags_ref(&self) -> &AtomicRelayServiceFlags {
-        &self.opts.flags
-    }
-
-    #[inline]
-    pub fn filtering(&self) -> RelayFiltering {
-        self.filtering.clone()
     }
 
     #[inline]
@@ -310,7 +289,7 @@ impl InnerRelay {
         };
 
         if allowed {
-            let url = self.url();
+            let url = self.url.clone();
             let d = self.document.clone();
             let _ = thread::spawn(async move {
                 match RelayInformationDocument::get(url.clone(), proxy).await {
@@ -362,7 +341,7 @@ impl InnerRelay {
         }
     }
 
-    /// Check if should subscribe for current websocket session
+    /// Check if it should subscribe for current websocket session
     pub(crate) async fn should_resubscribe(&self, id: &SubscriptionId) -> bool {
         let subscriptions = self.subscriptions.read().await;
         match subscriptions.get(id) {
@@ -391,11 +370,6 @@ impl InnerRelay {
     }
 
     #[inline]
-    pub fn opts(&self) -> RelayOptions {
-        self.opts.clone()
-    }
-
-    #[inline]
     pub fn queue(&self) -> usize {
         self.channels.nostr_queue()
     }
@@ -420,22 +394,22 @@ impl InnerRelay {
                         subscription_id,
                         event,
                     } => RelayPoolNotification::Event {
-                        relay_url: self.url(),
+                        relay_url: self.url.clone(),
                         subscription_id,
                         event,
                     },
                     RelayNotification::Message { message } => RelayPoolNotification::Message {
-                        relay_url: self.url(),
+                        relay_url: self.url.clone(),
                         message,
                     },
                     RelayNotification::RelayStatus { status } => {
                         RelayPoolNotification::RelayStatus {
-                            relay_url: self.url(),
+                            relay_url: self.url.clone(),
                             status,
                         }
                     }
                     RelayNotification::Authenticated => RelayPoolNotification::Authenticated {
-                        relay_url: self.url(),
+                        relay_url: self.url.clone(),
                     },
                     RelayNotification::Shutdown => RelayPoolNotification::Shutdown,
                 };
@@ -958,7 +932,7 @@ impl InnerRelay {
                 // Set event as seen by relay
                 if let Err(e) = self
                     .database
-                    .event_id_seen(partial_event.id, self.url())
+                    .event_id_seen(partial_event.id, self.url.clone())
                     .await
                 {
                     tracing::error!(
@@ -1857,7 +1831,7 @@ impl InnerRelay {
 
                                     output
                                         .send_failures
-                                        .entry(self.url())
+                                        .entry(self.url.clone())
                                         .and_modify(|map| {
                                             map.insert(event_id, message.clone());
                                         })
@@ -2167,7 +2141,7 @@ impl InnerRelay {
 
                                     output
                                         .send_failures
-                                        .entry(self.url())
+                                        .entry(self.url.clone())
                                         .and_modify(|map| {
                                             map.insert(event_id, message.clone());
                                         })

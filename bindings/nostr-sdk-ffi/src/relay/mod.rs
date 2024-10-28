@@ -154,7 +154,7 @@ impl Relay {
 
     /// Get relay filtering
     pub fn filtering(&self) -> RelayFiltering {
-        self.inner.filtering().into()
+        self.inner.filtering().clone().into()
     }
 
     /// Check if `Relay` is connected
@@ -190,7 +190,7 @@ impl Relay {
     }
 
     pub fn opts(&self) -> RelayOptions {
-        self.inner.opts().into()
+        self.inner.opts().clone().into()
     }
 
     pub fn stats(&self) -> Arc<RelayConnectionStats> {
