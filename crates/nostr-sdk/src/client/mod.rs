@@ -1855,15 +1855,17 @@ impl Client {
             .await;
 
         // Extend filters with read relays and "other" filters (the filters that aren't linked to public keys)
-        for url in read_relays.into_keys() {
-            broken_down
-                .filters
-                .entry(url)
-                .and_modify(|f| {
-                    f.extend(broken_down.other.clone());
-                })
-                .or_default()
-                .extend(broken_down.other.clone())
+        if let Some(other) = broken_down.other {
+            for url in read_relays.into_keys() {
+                broken_down
+                    .filters
+                    .entry(url)
+                    .and_modify(|f| {
+                        f.extend(other.clone());
+                    })
+                    .or_default()
+                    .extend(other.clone())
+            }
         }
 
         // Add outbox relays

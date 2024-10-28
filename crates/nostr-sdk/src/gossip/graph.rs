@@ -19,7 +19,7 @@ pub struct BrokenDownFilters {
     /// Filters by url
     pub filters: HashMap<Url, Vec<Filter>>,
     /// Filters that can be sent to read relays (generic query, not related to public keys)
-    pub other: Vec<Filter>,
+    pub other: Option<Vec<Filter>>,
     pub outbox_urls: HashSet<Url>,
     pub inbox_urls: HashSet<Url>,
 }
@@ -313,7 +313,7 @@ impl GossipGraph {
                 .into_iter()
                 .map(|(u, f)| (u, f.into_iter().collect::<Vec<_>>()))
                 .collect(),
-            other,
+            other: if other.is_empty() { None } else { Some(other) },
             outbox_urls,
             inbox_urls,
         }
@@ -387,7 +387,7 @@ mod tests {
         assert_eq!(broken_down.filters.get(&nostr_bg_url).unwrap(), &filters);
         assert_eq!(broken_down.filters.get(&nos_lol_url).unwrap(), &filters);
         assert!(!broken_down.filters.contains_key(&nostr_mom_url));
-        assert!(broken_down.other.is_empty());
+        assert!(broken_down.other.is_none());
 
         // Multiple filters, multiple authors
         let authors_filter = Filter::new().authors([keys_a.public_key, keys_b.public_key]);
@@ -417,7 +417,7 @@ mod tests {
             &vec![Filter::new().author(keys_b.public_key)]
         );
         assert!(!broken_down.filters.contains_key(&snort_url));
-        assert_eq!(broken_down.other, vec![search_filter]);
+        assert_eq!(broken_down.other, Some(vec![search_filter]));
 
         // Multiple filters, multiple authors and single p tags
         let authors_filter = Filter::new().authors([keys_a.public_key, keys_b.public_key]);
@@ -458,7 +458,7 @@ mod tests {
             &vec![Filter::new().author(keys_b.public_key)]
         );
         assert!(!broken_down.filters.contains_key(&snort_url));
-        assert_eq!(broken_down.other, vec![search_filter]);
+        assert_eq!(broken_down.other, Some(vec![search_filter]));
 
         // Single filter, both author and p tag
         let filters = vec![Filter::new()
@@ -473,6 +473,6 @@ mod tests {
         assert_eq!(broken_down.filters.get(&nostr_info_url).unwrap(), &filters);
         assert_eq!(broken_down.filters.get(&relay_rip_url).unwrap(), &filters);
         assert_eq!(broken_down.filters.get(&snort_url).unwrap(), &filters);
-        assert!(broken_down.other.is_empty());
+        assert!(broken_down.other.is_none());
     }
 }
