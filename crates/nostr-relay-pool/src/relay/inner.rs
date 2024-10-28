@@ -6,7 +6,6 @@
 
 use std::cmp;
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -155,7 +154,6 @@ pub(crate) struct InnerRelay {
     filtering: RelayFiltering,
     database: Arc<DynNostrDatabase>,
     channels: Arc<RelayChannels>,
-    scheduled_for_termination: Arc<AtomicBool>,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
     external_notification_sender: OnceCell<broadcast::Sender<RelayPoolNotification>>,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, SubscriptionData>>>,
@@ -193,7 +191,6 @@ impl InnerRelay {
             filtering,
             database,
             channels: Arc::new(RelayChannels::new()),
-            scheduled_for_termination: Arc::new(AtomicBool::new(false)),
             internal_notification_sender: relay_notification_sender,
             external_notification_sender: OnceCell::new(),
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
@@ -402,17 +399,6 @@ impl InnerRelay {
         self.channels.nostr_queue()
     }
 
-    #[inline]
-    fn is_scheduled_for_termination(&self) -> bool {
-        self.scheduled_for_termination.load(Ordering::SeqCst)
-    }
-
-    #[inline]
-    fn schedule_for_termination(&self, value: bool) {
-        self.scheduled_for_termination
-            .store(value, Ordering::SeqCst);
-    }
-
     pub(crate) fn set_notification_sender(
         &self,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
@@ -464,8 +450,6 @@ impl InnerRelay {
     }
 
     pub async fn connect(&self, connection_timeout: Option<Duration>) {
-        self.schedule_for_termination(false); // TODO: remove?
-
         // Return if relay can't connect
         if !self.status().can_connect() {
             return;
@@ -710,11 +694,8 @@ impl InnerRelay {
                         RelayServiceEvent::None => {},
                         // Terminate
                         RelayServiceEvent::Terminate => {
-                            if self.is_scheduled_for_termination() {
-                                self.set_status(RelayStatus::Terminated, true);
-                                self.schedule_for_termination(false);
-                                break;
-                            }
+                            self.set_status(RelayStatus::Terminated, true);
+                            break;
                         }
                     }
                 }
@@ -1023,7 +1004,6 @@ impl InnerRelay {
     }
 
     pub fn disconnect(&self) -> Result<(), Error> {
-        self.schedule_for_termination(true); // TODO: remove?
         if !self.is_disconnected() {
             self.channels
                 .send_service_msg(RelayServiceEvent::Terminate)?;
