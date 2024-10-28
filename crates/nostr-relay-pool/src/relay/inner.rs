@@ -15,7 +15,8 @@ use async_wsocket::{ConnectionMode, Sink, Stream, WsMessage};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
 use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
-use nostr::secp256k1::rand::{self, Rng};
+#[cfg(not(target_arch = "wasm32"))]
+use nostr::secp256k1::rand;
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, watch, Mutex, MutexGuard, OnceCell, RwLock};
@@ -513,10 +514,7 @@ impl InnerRelay {
 
             // Use incremental retry time if diff >= 3
             if diff >= 3 {
-                let retry_interval: i64 =
-                    cmp::min(MIN_RETRY_SEC * (1 + diff), MAX_ADJ_RETRY_SEC) as i64;
-                let jitter: i64 = rand::thread_rng().gen_range(-1..=1);
-                return retry_interval.saturating_add(jitter) as u64;
+                return cmp::min(MIN_RETRY_SEC * (1 + diff), MAX_ADJ_RETRY_SEC);
             }
         }
 
