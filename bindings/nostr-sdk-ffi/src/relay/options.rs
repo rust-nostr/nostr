@@ -211,13 +211,6 @@ impl RelaySendOptions {
         }
     }
 
-    /// Skip wait for disconnected relay (default: true)
-    pub fn skip_disconnected(self: Arc<Self>, value: bool) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.skip_disconnected(value);
-        builder
-    }
-
     /// Skip wait for confirmation that message is sent (default: false)
     pub fn skip_send_confirmation(self: Arc<Self>, value: bool) -> Self {
         let mut builder = unwrap_or_clone_arc(self);

@@ -144,11 +144,6 @@ impl JsRelaySendOptions {
         }
     }
 
-    /// Skip wait for disconnected relay (default: true)
-    pub fn skip_disconnected(self, value: bool) -> Self {
-        self.inner.skip_disconnected(value).into()
-    }
-
     /// Skip wait for confirmation that message is sent (default: false)
     pub fn skip_send_confirmation(self, value: bool) -> Self {
         self.inner.skip_send_confirmation(value).into()

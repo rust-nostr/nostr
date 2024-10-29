@@ -24,7 +24,6 @@ pub struct Options {
     new_events_difficulty: Arc<AtomicU8>,
     min_pow_difficulty: Arc<AtomicU8>,
     pub(super) req_filters_chunk_size: u8,
-    skip_disconnected_relays: bool,
     pub(super) timeout: Duration,
     pub(super) connection_timeout: Option<Duration>,
     send_timeout: Option<Duration>,
@@ -46,7 +45,6 @@ impl Default for Options {
             new_events_difficulty: Arc::new(AtomicU8::new(0)),
             min_pow_difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: 10,
-            skip_disconnected_relays: true,
             timeout: Duration::from_secs(60),
             connection_timeout: None,
             send_timeout: Some(DEFAULT_SEND_TIMEOUT),
@@ -79,7 +77,6 @@ impl Options {
         RelaySendOptions::new()
             .timeout(self.send_timeout)
             .skip_send_confirmation(!self.wait_for_send)
-            .skip_disconnected(self.skip_disconnected_relays)
     }
 
     /// Wait for the subscription msg to be sent (default: false)
@@ -95,7 +92,6 @@ impl Options {
         RelaySendOptions::new()
             .timeout(self.send_timeout)
             .skip_send_confirmation(!self.wait_for_subscription)
-            .skip_disconnected(self.skip_disconnected_relays)
     }
 
     /// Automatically start connection with relays (default: false)
@@ -153,9 +149,11 @@ impl Options {
     /// Skip disconnected relays during send methods (default: true)
     ///
     /// If the relay made just 1 attempt, the relay will not be skipped
-    #[inline]
-    pub fn skip_disconnected_relays(mut self, skip: bool) -> Self {
-        self.skip_disconnected_relays = skip;
+    #[deprecated(
+        since = "0.36.0",
+        note = "Disconnected relays will be skipped by default"
+    )]
+    pub fn skip_disconnected_relays(self, _skip: bool) -> Self {
         self
     }
 

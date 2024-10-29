@@ -83,12 +83,6 @@ impl Options {
         builder
     }
 
-    pub fn skip_disconnected_relays(self: Arc<Self>, skip: bool) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.skip_disconnected_relays(skip);
-        builder
-    }
-
     pub fn timeout(self: Arc<Self>, timeout: Duration) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.timeout(timeout);

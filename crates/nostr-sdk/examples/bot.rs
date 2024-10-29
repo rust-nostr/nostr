@@ -15,7 +15,6 @@ async fn main() -> Result<()> {
     let secret_key = SecretKey::from_bech32(BECH32_SK)?;
     let keys = Keys::new(secret_key);
     let opts = Options::new()
-        .skip_disconnected_relays(true)
         .connection_timeout(Some(Duration::from_secs(10)))
         .send_timeout(Some(Duration::from_secs(5)));
     let client = Client::with_opts(&keys, opts);

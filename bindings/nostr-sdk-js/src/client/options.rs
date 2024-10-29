@@ -73,11 +73,6 @@ impl JsOptions {
             .into()
     }
 
-    #[wasm_bindgen(js_name = skipDisconnectedRelays)]
-    pub fn skip_disconnected_relays(self, skip: bool) -> Self {
-        self.inner.skip_disconnected_relays(skip).into()
-    }
-
     pub fn timeout(self, timeout: &JsDuration) -> Self {
         self.inner.timeout(**timeout).into()
     }

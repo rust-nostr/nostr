@@ -996,9 +996,7 @@ impl InnerRelay {
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
         // Check if relay is ready
-        if opts.skip_disconnected {
-            self.check_ready().await?;
-        }
+        self.check_ready().await?;
 
         if !self.opts.flags.can_write() && msgs.iter().any(|msg| msg.is_event()) {
             return Err(Error::WriteDisabled);
@@ -1127,7 +1125,7 @@ impl InnerRelay {
                         }
                     }
                     RelayNotification::RelayStatus { status } => {
-                        if opts.skip_disconnected && status.is_disconnected() {
+                        if status.is_disconnected() {
                             return Err(Error::EventNotPublished(String::from(
                                 "relay not connected (status changed)",
                             )));
@@ -1197,7 +1195,7 @@ impl InnerRelay {
                         }
                     }
                     RelayNotification::RelayStatus { status } => {
-                        if opts.skip_disconnected && status.is_disconnected() {
+                        if status.is_disconnected() {
                             return Err(Error::EventNotPublished(String::from(
                                 "relay not connected (status changed)",
                             )));

@@ -199,7 +199,6 @@ impl RelayOptions {
 /// [`Relay`](super::Relay) send options
 #[derive(Debug, Clone, Copy)]
 pub struct RelaySendOptions {
-    pub(super) skip_disconnected: bool,
     pub(super) skip_send_confirmation: bool,
     pub(super) timeout: Duration,
 }
@@ -207,7 +206,6 @@ pub struct RelaySendOptions {
 impl Default for RelaySendOptions {
     fn default() -> Self {
         Self {
-            skip_disconnected: true,
             skip_send_confirmation: false,
             timeout: DEFAULT_SEND_TIMEOUT,
         }
@@ -221,8 +219,11 @@ impl RelaySendOptions {
     }
 
     /// Skip wait for disconnected relay (default: true)
-    pub fn skip_disconnected(mut self, value: bool) -> Self {
-        self.skip_disconnected = value;
+    #[deprecated(
+        since = "0.36.0",
+        note = "Disconnected relays will be skipped by default"
+    )]
+    pub fn skip_disconnected(self, _value: bool) -> Self {
         self
     }
 
