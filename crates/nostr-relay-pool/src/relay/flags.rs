@@ -32,31 +32,31 @@ impl RelayServiceFlags {
     /// NONE means no services supported.
     pub const NONE: Self = Self(0); // 0
 
-    /// READ means that client will perform read operations with relay.
+    /// READ means a manually added relay that will perform read operations.
     pub const READ: Self = Self(1 << 0); // 1
 
-    /// WRITE means that client will perform write operations with relay.
+    /// WRITE means a manually added relay that will perform write operations.
     pub const WRITE: Self = Self(1 << 1); // 2
 
-    /// PING means that client will ping relay to keep connection up
+    /// PING means that client will ping relay to keep connection up.
     pub const PING: Self = Self(1 << 2); // 4
 
-    /// INBOX means READ of kind 10002
+    /// INBOX means automatically added relay that will perform read operations (READ of kind 10002).
     pub const INBOX: Self = Self(1 << 3); // 8
 
-    /// OUTBOX means WRITE of kind 10002
+    /// OUTBOX means  automatically added relay that will perform write operations (WRITE of kind 10002).
     pub const OUTBOX: Self = Self(1 << 4); // 16
 
-    /// DISCOVERY means that relay has role to get metadata (i.e. events with kind 0 or 10002) of public keys
+    /// DISCOVERY means that relay has role to get relay lists (i.e. events with 10002) of public keys.
     pub const DISCOVERY: Self = Self(1 << 5); // 32
 
-    /// Add [RelayServiceFlags] together.
+    /// Add service flags together.
     #[inline]
     pub fn add(&mut self, other: Self) {
         self.0 |= other.0;
     }
 
-    /// Remove [RelayServiceFlags] from this.
+    /// Remove service flags from this one.
     #[inline]
     pub fn remove(&mut self, other: Self) {
         self.0 ^= other.0;
@@ -106,7 +106,7 @@ impl BitXorAssign for RelayServiceFlags {
     }
 }
 
-/// Realy Service Flags which can be safely shared between threads.
+/// Relay Service Flags which can be safely shared between threads.
 #[derive(Debug, Clone)]
 pub struct AtomicRelayServiceFlags {
     flags: Arc<AtomicU64>,
