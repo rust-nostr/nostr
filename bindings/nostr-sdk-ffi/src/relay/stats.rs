@@ -31,9 +31,9 @@ impl RelayConnectionStats {
         self.inner.success() as u64
     }
 
-    /// Uptime
-    pub fn uptime(&self) -> f64 {
-        self.inner.uptime()
+    /// Success rate
+    pub fn success_rate(&self) -> f64 {
+        self.inner.success_rate()
     }
 
     /// Bytes sent

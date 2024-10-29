@@ -27,7 +27,7 @@ pub(super) const NEGENTROPY_LOW_WATER_UP: usize = 50;
 pub(super) const NEGENTROPY_BATCH_SIZE_DOWN: usize = 50;
 
 pub(super) const MIN_ATTEMPTS: usize = 1;
-pub(super) const MIN_UPTIME: f64 = 0.90;
+pub(super) const MIN_SUCCESS_RATE: f64 = 0.90;
 
 pub(super) const PING_INTERVAL: Duration = Duration::from_secs(50); // Used also for latency calculation
 

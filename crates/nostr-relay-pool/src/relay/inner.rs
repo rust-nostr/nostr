@@ -22,7 +22,7 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, watch, Mutex, MutexGuard, OnceCell, RwLock};
 
 use super::constants::{
-    MAX_ADJ_RETRY_SEC, MIN_ATTEMPTS, MIN_RETRY_SEC, MIN_UPTIME, NEGENTROPY_BATCH_SIZE_DOWN,
+    MAX_ADJ_RETRY_SEC, MIN_ATTEMPTS, MIN_RETRY_SEC, MIN_SUCCESS_RATE, NEGENTROPY_BATCH_SIZE_DOWN,
     NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP, PING_INTERVAL,
     WEBSOCKET_TX_TIMEOUT,
 };
@@ -240,7 +240,8 @@ impl InnerRelay {
         self.status().is_disconnected()
     }
 
-    async fn check_ready(&self) -> Result<(), Error> {
+    /// Perform health checks
+    async fn health_check(&self) -> Result<(), Error> {
         let status: RelayStatus = self.status();
 
         // Relay initialized, never called connect method
@@ -250,7 +251,7 @@ impl InnerRelay {
 
         if !status.is_connected()
             && self.stats.attempts() > MIN_ATTEMPTS
-            && self.stats.uptime() < MIN_UPTIME
+            && self.stats.success_rate() < MIN_SUCCESS_RATE
         {
             return Err(Error::NotConnected);
         }
@@ -995,8 +996,8 @@ impl InnerRelay {
         msgs: Vec<ClientMessage>,
         opts: RelaySendOptions,
     ) -> Result<(), Error> {
-        // Check if relay is ready
-        self.check_ready().await?;
+        // Perform health checks
+        self.health_check().await?;
 
         if !self.opts.flags.can_write() && msgs.iter().any(|msg| msg.is_event()) {
             return Err(Error::WriteDisabled);
@@ -1421,8 +1422,8 @@ impl InnerRelay {
     where
         F: Future<Output = ()>,
     {
-        // Check if relay is ready
-        self.check_ready().await?;
+        // Perform health checks
+        self.health_check().await?;
 
         // Check if relay can read
         if !self.opts.flags.can_read() {
@@ -1612,8 +1613,8 @@ impl InnerRelay {
         map: HashMap<Filter, Vec<(EventId, Timestamp)>>,
         opts: &SyncOptions,
     ) -> Result<Reconciliation, Error> {
-        // Check if relay is ready
-        self.check_ready().await?;
+        // Perform health checks
+        self.health_check().await?;
 
         // Check if relay can read
         if !self.opts.flags.can_read() {

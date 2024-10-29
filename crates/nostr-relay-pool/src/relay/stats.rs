@@ -43,34 +43,41 @@ impl Default for PingStats {
 #[cfg(not(target_arch = "wasm32"))]
 impl PingStats {
     /// Get sent at
+    #[inline]
     pub async fn sent_at(&self) -> Instant {
         *self.sent_at.read().await
     }
 
     /// Last nonce
+    #[inline]
     pub fn last_nonce(&self) -> u64 {
         self.last_nonce.load(Ordering::SeqCst)
     }
 
     /// Replied
+    #[inline]
     pub fn replied(&self) -> bool {
         self.replied.load(Ordering::SeqCst)
     }
 
+    #[inline]
     pub(super) fn reset(&self) {
         self.set_last_nonce(0);
         self.set_replied(false);
     }
 
+    #[inline]
     pub(super) async fn just_sent(&self) {
         let mut sent_at = self.sent_at.write().await;
         *sent_at = Instant::now();
     }
 
+    #[inline]
     pub(super) fn set_last_nonce(&self, nonce: u64) {
         self.last_nonce.store(nonce, Ordering::SeqCst)
     }
 
+    #[inline]
     pub(super) fn set_replied(&self, replied: bool) {
         self.replied.store(replied, Ordering::SeqCst);
     }
@@ -83,7 +90,7 @@ struct InnerRelayConnectionStats {
     bytes_sent: AtomicUsize,
     bytes_received: AtomicUsize,
     connected_at: AtomicU64,
-    first_connection_timestamp: AtomicU64,
+    first_connection_at: AtomicU64,
     #[cfg(not(target_arch = "wasm32"))]
     latencies: RwLock<VecDeque<Duration>>,
     #[cfg(not(target_arch = "wasm32"))]
@@ -110,11 +117,16 @@ impl RelayConnectionStats {
     }
 
     /// Uptime
+    #[deprecated(since = "0.36.0", note = "Use `success_rate` instead")]
     pub fn uptime(&self) -> f64 {
-        let success: f64 = self.success() as f64;
-        let attempts: f64 = self.attempts() as f64;
-        if attempts != 0.0 {
-            success / attempts
+        self.success_rate()
+    }
+
+    /// Success rate
+    pub fn success_rate(&self) -> f64 {
+        let attempts: usize = self.attempts();
+        if attempts > 0 {
+            self.success() as f64 / attempts as f64
         } else {
             0.0
         }
@@ -141,7 +153,7 @@ impl RelayConnectionStats {
     /// Get UNIX timestamp of the first connection
     #[inline]
     pub fn first_connection_timestamp(&self) -> Timestamp {
-        Timestamp::from(self.inner.first_connection_timestamp.load(Ordering::SeqCst))
+        Timestamp::from(self.inner.first_connection_at.load(Ordering::SeqCst))
     }
 
     /// Calculate latency
@@ -173,9 +185,7 @@ impl RelayConnectionStats {
         self.inner.connected_at.store(now, Ordering::SeqCst);
 
         if self.first_connection_timestamp() == Timestamp::from(0) {
-            self.inner
-                .first_connection_timestamp
-                .store(now, Ordering::SeqCst);
+            self.inner.first_connection_at.store(now, Ordering::SeqCst);
         }
     }
 
