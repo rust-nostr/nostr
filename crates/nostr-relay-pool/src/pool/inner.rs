@@ -26,11 +26,11 @@ type Relays = HashMap<Url, Relay>;
 
 #[derive(Debug, Clone)]
 pub struct InnerRelayPool {
-    database: Arc<DynNostrDatabase>,
+    pub(super) database: Arc<DynNostrDatabase>,
     relays: Arc<RwLock<Relays>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,
-    filtering: RelayFiltering,
+    pub(super) filtering: RelayFiltering,
     //opts: RelayPoolOptions,
 }
 
@@ -82,14 +82,6 @@ impl InnerRelayPool {
 
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
         self.notification_sender.subscribe()
-    }
-
-    pub fn database(&self) -> Arc<DynNostrDatabase> {
-        self.database.clone()
-    }
-
-    pub fn filtering(&self) -> RelayFiltering {
-        self.filtering.clone()
     }
 
     pub async fn all_relays(&self) -> HashMap<Url, Relay> {

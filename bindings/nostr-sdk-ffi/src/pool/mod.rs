@@ -58,13 +58,13 @@ impl RelayPool {
     }
 
     /// Get database
-    pub fn database(&self) -> Arc<NostrDatabase> {
-        Arc::new(self.inner.database().into())
+    pub fn database(&self) -> NostrDatabase {
+        self.inner.database().clone().into()
     }
 
     /// Get relay filtering
     pub fn filtering(&self) -> RelayFiltering {
-        self.inner.filtering().into()
+        self.inner.filtering().clone().into()
     }
 
     /// Get relays with `READ` or `WRITE` flags

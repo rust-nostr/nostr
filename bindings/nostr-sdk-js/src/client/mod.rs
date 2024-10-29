@@ -107,12 +107,12 @@ impl JsClient {
 
     #[wasm_bindgen(getter)]
     pub fn database(&self) -> JsNostrDatabase {
-        self.inner.database().into()
+        self.inner.database().clone().into()
     }
 
     /// Get relay filtering
     pub fn filtering(&self) -> JsRelayFiltering {
-        self.inner.filtering().into()
+        self.inner.filtering().clone().into()
     }
 
     /// Completely shutdown `Client`

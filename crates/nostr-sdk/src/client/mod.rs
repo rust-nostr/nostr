@@ -266,13 +266,13 @@ impl Client {
 
     /// Get database
     #[inline]
-    pub fn database(&self) -> Arc<DynNostrDatabase> {
+    pub fn database(&self) -> &Arc<DynNostrDatabase> {
         self.pool.database()
     }
 
     /// Get filtering
     #[inline]
-    pub fn filtering(&self) -> RelayFiltering {
+    pub fn filtering(&self) -> &RelayFiltering {
         self.pool.filtering()
     }
 

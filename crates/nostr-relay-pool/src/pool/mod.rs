@@ -121,14 +121,14 @@ impl RelayPool {
 
     /// Get database
     #[inline]
-    pub fn database(&self) -> Arc<DynNostrDatabase> {
-        self.inner.database()
+    pub fn database(&self) -> &Arc<DynNostrDatabase> {
+        &self.inner.database
     }
 
     /// Get relay filtering
     #[inline]
-    pub fn filtering(&self) -> RelayFiltering {
-        self.inner.filtering()
+    pub fn filtering(&self) -> &RelayFiltering {
+        &self.inner.filtering
     }
 
     /// Get all relays

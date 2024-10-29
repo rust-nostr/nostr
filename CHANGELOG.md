@@ -52,7 +52,7 @@
 * pool: avoid full `InnerRelay` clone when requesting NIP11 document ([Yuki Kishimoto])
 * pool: rework relay connection methods and auto-connection logic ([Yuki Kishimoto])
 * pool: increase `MAX_ADJ_RETRY_SEC` to 120 secs ([Yuki Kishimoto])
-* pool: return reference instead of cloned structs for some getter methods of `Relay` ([Yuki Kishimoto])
+* pool: return reference instead of cloned structs for some getter methods of `Relay` and `RelayPool` ([Yuki Kishimoto])
 * pool: removed unnecessary timeout during the shutdown notification process ([Yuki Kishimoto])
 * pool: deprecate `RelaySendOptions::skip_disconnected` ([Yuki Kishimoto])
 * sdk: deprecate `Client::get_events_of` and `Client::get_events_from` methods ([Yuki Kishimoto])

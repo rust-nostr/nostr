@@ -98,13 +98,13 @@ impl Client {
         Arc::new(self.inner.pool().into())
     }
 
-    pub fn database(&self) -> Arc<NostrDatabase> {
-        Arc::new(self.inner.database().into())
+    pub fn database(&self) -> NostrDatabase {
+        self.inner.database().clone().into()
     }
 
     /// Get filtering
     pub fn filtering(&self) -> RelayFiltering {
-        self.inner.filtering().into()
+        self.inner.filtering().clone().into()
     }
 
     pub async fn shutdown(&self) -> Result<()> {
