@@ -9,24 +9,27 @@ use nostr::EventBuilder;
 use uniffi::Object;
 
 use crate::error::Result;
-use crate::{Event, Keys, PublicKey, Timestamp, UnsignedEvent};
+use crate::signer::{IntermediateNostrSigner, NostrSigner};
+use crate::{Event, PublicKey, Timestamp, UnsignedEvent};
 
 /// Build Gift Wrap
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-#[uniffi::export(default(expiration = None))]
-pub fn gift_wrap(
-    sender_keys: &Keys,
+#[uniffi::export(async_runtime = "tokio", default(expiration = None))]
+pub async fn gift_wrap(
+    signer: Arc<dyn NostrSigner>,
     receiver_pubkey: &PublicKey,
     rumor: &UnsignedEvent,
     expiration: Option<Arc<Timestamp>>,
 ) -> Result<Event> {
+    let signer = IntermediateNostrSigner::new(signer);
     Ok(EventBuilder::gift_wrap(
-        sender_keys.deref(),
+        &signer,
         receiver_pubkey.deref(),
         rumor.deref().clone(),
         expiration.map(|t| **t),
-    )?
+    )
+    .await?
     .into())
 }
 
@@ -55,20 +58,24 @@ pub struct UnwrappedGift {
 }
 
 impl From<nip59::UnwrappedGift> for UnwrappedGift {
-    fn from(inner: nostr::prelude::UnwrappedGift) -> Self {
+    fn from(inner: nip59::UnwrappedGift) -> Self {
         Self { inner }
     }
 }
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl UnwrappedGift {
+    // `#[uniffi::export(async_runtime = "tokio")]` require an async method
+    async fn _none(&self) {}
+
     /// Unwrap Gift Wrap event
     ///
     /// Internally verify the `seal` event
     #[uniffi::constructor]
-    pub fn from_gift_wrap(receiver_keys: &Keys, gift_wrap: &Event) -> Result<Self> {
+    pub async fn from_gift_wrap(signer: Arc<dyn NostrSigner>, gift_wrap: &Event) -> Result<Self> {
+        let signer = IntermediateNostrSigner::new(signer);
         Ok(Self {
-            inner: nip59::UnwrappedGift::from_gift_wrap(receiver_keys.deref(), gift_wrap.deref())?,
+            inner: nip59::UnwrappedGift::from_gift_wrap(&signer, gift_wrap.deref()).await?,
         })
     }
 

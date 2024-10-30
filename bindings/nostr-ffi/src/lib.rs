@@ -14,6 +14,7 @@ pub mod helper;
 pub mod key;
 pub mod message;
 pub mod nips;
+pub mod signer;
 pub mod types;
 pub mod util;
 

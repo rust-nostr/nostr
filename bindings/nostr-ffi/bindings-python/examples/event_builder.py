@@ -1,30 +1,37 @@
-from nostr_protocol import Keys, PublicKey, EventBuilder, Event, Tag, Kind
+import asyncio
+from nostr_protocol import Keys, EventBuilder, Kind
 
-keys = Keys.generate()
 
-# Build a text note
-event = EventBuilder.text_note("New note from Rust Nostr python bindings", []).to_event(keys)
-print(event.as_json())
+async def main():
+    keys = Keys.generate()
 
-# Build a DM
-receiver_pk = PublicKey.from_bech32("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
-event = EventBuilder.encrypted_direct_msg(keys, receiver_pk, "New note from Rust Nostr python bindings", None).to_event(keys)
-print(event.as_json())
+    # Build a text note
+    builder = EventBuilder.text_note("Note from rust-nostr python bindings", [])
+    event = await builder.sign(keys)
+    print(event.as_json())
 
-# Build a custom event
-kind = Kind(1234)
-content = "My custom content"
-tags = []
-builder = EventBuilder(kind, content, tags)
+    # Build a custom event
+    kind = Kind(1234)
+    content = "My custom content"
+    tags = []
+    builder = EventBuilder(kind, content, tags)
 
-# Normal
-event = builder.to_event(keys)
-print(f"Event: {event.as_json()}")
+    # Sign with generic signer
+    event = await builder.sign(keys)
+    print(f"Event: {event.as_json()}")
 
-# POW
-event = builder.to_pow_event(keys, 20)
-print(f"POW event: {event.as_json()}")
+    # Sign specifically with keys
+    event = builder.sign_with_keys(keys)
+    print(f"Event: {event.as_json()}")
 
-# Unsigned
-event = builder.to_unsigned_event(keys.public_key())
-print(f"Event: {event.as_json()}")
+    # POW
+    event = await builder.pow(24).sign(keys)
+    print(f"POW event: {event.as_json()}")
+
+    # Build unsigned event
+    event = builder.build(keys.public_key())
+    print(f"Event: {event.as_json()}")
+
+
+if __name__ == '__main__':
+    asyncio.run(main())

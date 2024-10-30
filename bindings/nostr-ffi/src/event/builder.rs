@@ -22,6 +22,7 @@ use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip90::JobFeedbackData;
 use crate::nips::nip98::HttpData;
+use crate::signer::{IntermediateNostrSigner, NostrSigner};
 use crate::types::{Contact, Metadata};
 use crate::{
     FileMetadata, Image, ImageDimensions, NostrConnectMessage, PublicKey, RelayMetadata, Tag,
@@ -48,8 +49,11 @@ impl Deref for EventBuilder {
     }
 }
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio")]
 impl EventBuilder {
+    // `#[uniffi::export(async_runtime = "tokio")]` require an async method
+    async fn _none(&self) {}
+
     #[uniffi::constructor]
     pub fn new(kind: &Kind, content: &str, tags: &[Arc<Tag>]) -> Self {
         let tags = tags.iter().map(|t| t.as_ref().deref().clone());
@@ -82,13 +86,19 @@ impl EventBuilder {
         builder
     }
 
-    pub fn to_event(&self, keys: &Keys) -> Result<Event> {
-        let event = self.inner.clone().to_event(keys.deref())?;
+    pub async fn sign(&self, signer: Arc<dyn NostrSigner>) -> Result<Event> {
+        let signer = IntermediateNostrSigner::new(signer);
+        let event = self.inner.clone().sign(&signer).await?;
         Ok(event.into())
     }
 
-    pub fn to_unsigned_event(&self, public_key: &PublicKey) -> UnsignedEvent {
-        self.inner.clone().to_unsigned_event(**public_key).into()
+    pub fn sign_with_keys(&self, keys: &Keys) -> Result<Event> {
+        let event = self.inner.clone().sign_with_keys(keys.deref())?;
+        Ok(event.into())
+    }
+
+    pub fn build(&self, public_key: &PublicKey) -> UnsignedEvent {
+        self.inner.clone().build(**public_key).into()
     }
 
     /// Profile metadata
@@ -549,17 +559,19 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[uniffi::constructor]
-    pub fn seal(
-        sender_keys: &Keys,
+    pub async fn seal(
+        signer: Arc<dyn NostrSigner>,
         receiver_public_key: &PublicKey,
         rumor: &UnsignedEvent,
     ) -> Result<Self> {
+        let signer = IntermediateNostrSigner::new(signer);
         Ok(Self {
             inner: nostr::EventBuilder::seal(
-                sender_keys.deref(),
+                &signer,
                 receiver_public_key.deref(),
                 rumor.deref().clone(),
-            )?,
+            )
+            .await?,
         })
     }
 

@@ -2832,6 +2832,7 @@ dependencies = [
 name = "nostr-ffi"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "nostr",
  "uniffi",
 ]
@@ -5905,9 +5906,9 @@ dependencies = [
 
 [[package]]
 name = "uniffi_checksum_derive"
-version = "0.28.1"
+version = "0.28.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a22dbe67c1c957ac6e7611bdf605a6218aa86b0eebeb8be58b70ae85ad7d73dc"
+checksum = "d2c801f0f05b06df456a2da4c41b9c2c4fdccc6b9916643c6c67275c4c9e4d07"
 dependencies = [
  "quote",
  "syn 2.0.77",

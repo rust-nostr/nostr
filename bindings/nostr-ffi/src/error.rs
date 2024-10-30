@@ -38,6 +38,12 @@ impl From<std::char::ParseCharError> for NostrError {
     }
 }
 
+impl From<nostr::signer::SignerError> for NostrError {
+    fn from(e: nostr::signer::SignerError) -> NostrError {
+        Self::Generic(e.to_string())
+    }
+}
+
 impl From<nostr::key::Error> for NostrError {
     fn from(e: nostr::key::Error) -> NostrError {
         Self::Generic(e.to_string())

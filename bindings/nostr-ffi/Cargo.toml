@@ -9,6 +9,7 @@ name = "nostr_ffi"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [dependencies]
+async-trait.workspace = true
 nostr = { workspace = true, features = ["std", "all-nips"] }
 uniffi = { workspace = true, features = ["tokio"] }
 
