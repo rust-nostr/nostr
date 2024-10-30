@@ -14,6 +14,7 @@ use wasm_bindgen::prelude::*;
 
 pub mod abortable;
 pub mod client;
+pub mod connect;
 pub mod database;
 pub mod duration;
 pub mod error;
@@ -23,6 +24,7 @@ pub mod pool;
 pub mod profile;
 pub mod protocol;
 pub mod relay;
+pub mod signer;
 
 #[wasm_bindgen]
 extern "C" {

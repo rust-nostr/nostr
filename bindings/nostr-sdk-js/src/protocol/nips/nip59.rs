@@ -9,7 +9,8 @@ use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
 use crate::protocol::event::{JsEvent, JsUnsignedEvent};
-use crate::protocol::key::{JsKeys, JsPublicKey};
+use crate::protocol::key::JsPublicKey;
+use crate::signer::JsNostrSigner;
 
 /// Unwrapped Gift Wrap
 ///
@@ -31,9 +32,13 @@ impl JsUnwrappedGift {
     ///
     /// Internally verify the `seal` event
     #[wasm_bindgen(js_name = fromGiftWrap)]
-    pub fn from_gift_wrap(receiver_keys: &JsKeys, gift_wrap: &JsEvent) -> Result<JsUnwrappedGift> {
+    pub async fn from_gift_wrap(
+        signer: &JsNostrSigner,
+        gift_wrap: &JsEvent,
+    ) -> Result<JsUnwrappedGift> {
         Ok(Self {
-            inner: UnwrappedGift::from_gift_wrap(receiver_keys.deref(), gift_wrap.deref())
+            inner: UnwrappedGift::from_gift_wrap(signer.deref(), gift_wrap.deref())
+                .await
                 .map_err(into_err)?,
         })
     }

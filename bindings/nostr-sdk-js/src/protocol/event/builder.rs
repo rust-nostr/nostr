@@ -25,6 +25,7 @@ use crate::protocol::nips::nip94::JsFileMetadata;
 use crate::protocol::nips::nip98::JsHttpData;
 use crate::protocol::types::image::{JsImageDimensions, JsThumbnails};
 use crate::protocol::types::{JsContact, JsMetadata, JsTimestamp};
+use crate::signer::JsNostrSigner;
 
 #[wasm_bindgen(js_name = EventBuilder)]
 pub struct JsEventBuilder {
@@ -76,21 +77,30 @@ impl JsEventBuilder {
         self.inner.pow(difficulty).into()
     }
 
-    /// Build event
+    /// Build, sign and return event
     ///
     /// **This method consume the builder, so it will no longer be usable!**
-    #[wasm_bindgen(js_name = toEvent)]
-    pub fn to_event(self, keys: &JsKeys) -> Result<JsEvent> {
-        let event = self.inner.to_event(keys.deref()).map_err(into_err)?;
+    #[wasm_bindgen(js_name = sign)]
+    pub async fn sign(self, signer: &JsNostrSigner) -> Result<JsEvent> {
+        let event = self.inner.sign(signer.deref()).await.map_err(into_err)?;
+        Ok(event.into())
+    }
+
+    /// Build, sign and return event using keys signer
+    ///
+    /// **This method consume the builder, so it will no longer be usable!**
+    #[wasm_bindgen(js_name = signWithKeys)]
+    pub fn sign_with_keys(self, keys: &JsKeys) -> Result<JsEvent> {
+        let event = self.inner.sign_with_keys(keys.deref()).map_err(into_err)?;
         Ok(event.into())
     }
 
     /// Build unsigned event
     ///
     /// **This method consume the builder, so it will no longer be usable!**
-    #[wasm_bindgen(js_name = toUnsignedEvent)]
-    pub fn to_unsigned_event(self, public_key: &JsPublicKey) -> JsUnsignedEvent {
-        self.inner.to_unsigned_event(**public_key).into()
+    #[wasm_bindgen(js_name = build)]
+    pub fn build(self, public_key: &JsPublicKey) -> JsUnsignedEvent {
+        self.inner.build(**public_key).into()
     }
 
     /// Profile metadata
@@ -520,17 +530,18 @@ impl JsEventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[wasm_bindgen]
-    pub fn seal(
-        sender_keys: &JsKeys,
+    pub async fn seal(
+        signer: &JsNostrSigner,
         receiver_public_key: &JsPublicKey,
         rumor: &JsUnsignedEvent,
     ) -> Result<JsEventBuilder> {
         Ok(Self {
-            inner: nostr::EventBuilder::seal(
-                sender_keys.deref(),
+            inner: EventBuilder::seal(
+                signer.deref(),
                 receiver_public_key.deref(),
                 rumor.deref().clone(),
             )
+            .await
             .map_err(into_err)?,
         })
     }
@@ -557,18 +568,19 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[wasm_bindgen(js_name = giftWrap)]
-    pub fn gift_wrap(
-        sender_keys: &JsKeys,
+    pub async fn gift_wrap(
+        signer: &JsNostrSigner,
         receiver: &JsPublicKey,
         rumor: &JsUnsignedEvent,
         expiration: Option<JsTimestamp>,
     ) -> Result<JsEvent> {
         Ok(EventBuilder::gift_wrap(
-            sender_keys.deref(),
+            signer.deref(),
             receiver.deref(),
             rumor.deref().clone(),
             expiration.map(|t| *t),
         )
+        .await
         .map_err(into_err)?
         .into())
     }

@@ -12,12 +12,10 @@ use wasm_bindgen::prelude::*;
 
 pub mod builder;
 pub mod options;
-pub mod signer;
 pub mod zapper;
 
 pub use self::builder::JsClientBuilder;
 use self::options::JsOptions;
-pub use self::signer::JsNostrSigner;
 use self::zapper::{JsZapDetails, JsZapEntity};
 use crate::abortable::JsAbortHandle;
 use crate::database::{JsEvents, JsNostrDatabase};
@@ -33,6 +31,7 @@ use crate::protocol::types::{JsContact, JsFilter, JsMetadata, JsTimestamp};
 use crate::relay::filtering::JsRelayFiltering;
 use crate::relay::options::{JsSubscribeAutoCloseOptions, JsSyncOptions};
 use crate::relay::{JsRelay, JsRelayArray};
+use crate::signer::JsNostrSigner;
 
 #[wasm_bindgen(js_name = Client)]
 pub struct JsClient {

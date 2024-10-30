@@ -3,34 +3,32 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
+use std::sync::Arc;
 
-use nostr_sdk::NostrSigner;
+use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
-pub mod nip46;
-
-use self::nip46::JsNostrConnect;
+use crate::connect::JsNostrConnect;
 use crate::error::{into_err, Result};
-use crate::protocol::event::{JsEvent, JsEventBuilder, JsUnsignedEvent};
+use crate::protocol::event::{JsEvent, JsUnsignedEvent};
 use crate::protocol::key::{JsKeys, JsPublicKey};
 use crate::protocol::nips::nip07::JsNip07Signer;
-use crate::protocol::nips::nip59::JsUnwrappedGift;
 
 #[wasm_bindgen(js_name = NostrSigner)]
 pub struct JsNostrSigner {
-    inner: nostr_sdk::NostrSigner,
+    inner: Arc<dyn NostrSigner>,
 }
 
 impl Deref for JsNostrSigner {
-    type Target = NostrSigner;
+    type Target = Arc<dyn NostrSigner>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl From<NostrSigner> for JsNostrSigner {
-    fn from(inner: NostrSigner) -> Self {
+impl From<Arc<dyn NostrSigner>> for JsNostrSigner {
+    fn from(inner: Arc<dyn NostrSigner>) -> Self {
         Self { inner }
     }
 }
@@ -40,38 +38,28 @@ impl JsNostrSigner {
     /// Private keys
     pub fn keys(keys: &JsKeys) -> Self {
         Self {
-            inner: NostrSigner::Keys(keys.deref().clone()),
+            inner: keys.deref().clone().into_nostr_signer(),
         }
     }
 
     /// NIP07
     pub fn nip07(signer: &JsNip07Signer) -> Self {
         Self {
-            inner: NostrSigner::NIP07(signer.deref().clone()),
+            inner: signer.deref().clone().into_nostr_signer(),
         }
     }
 
     /// NIP46
     pub fn nip46(signer: &JsNostrConnect) -> Self {
         Self {
-            inner: NostrSigner::nip46(signer.deref().clone()),
+            inner: signer.deref().clone().into_nostr_signer(),
         }
     }
 
     /// Get signer public key
     #[wasm_bindgen(js_name = publicKey)]
-    pub async fn public_key(&self) -> Result<JsPublicKey> {
-        Ok(self.inner.public_key().await.map_err(into_err)?.into())
-    }
-
-    #[wasm_bindgen(js_name = signEventBuilder)]
-    pub async fn sign_event_builder(&self, builder: &JsEventBuilder) -> Result<JsEvent> {
-        Ok(self
-            .inner
-            .sign_event_builder(builder.deref().clone())
-            .await
-            .map_err(into_err)?
-            .into())
+    pub async fn get_public_key(&self) -> Result<JsPublicKey> {
+        Ok(self.inner.get_public_key().await.map_err(into_err)?.into())
     }
 
     #[wasm_bindgen(js_name = signEvent)]
@@ -85,7 +73,7 @@ impl JsNostrSigner {
     }
 
     #[wasm_bindgen(js_name = nip04Encrypt)]
-    pub async fn nip04_encrypt(&self, public_key: &JsPublicKey, content: String) -> Result<String> {
+    pub async fn nip04_encrypt(&self, public_key: &JsPublicKey, content: &str) -> Result<String> {
         self.inner
             .nip04_encrypt(public_key.deref(), content)
             .await
@@ -96,7 +84,7 @@ impl JsNostrSigner {
     pub async fn nip04_decrypt(
         &self,
         public_key: &JsPublicKey,
-        encrypted_content: String,
+        encrypted_content: &str,
     ) -> Result<String> {
         self.inner
             .nip04_decrypt(public_key.deref(), encrypted_content)
@@ -105,7 +93,7 @@ impl JsNostrSigner {
     }
 
     #[wasm_bindgen(js_name = nip44Encrypt)]
-    pub async fn nip44_encrypt(&self, public_key: &JsPublicKey, content: String) -> Result<String> {
+    pub async fn nip44_encrypt(&self, public_key: &JsPublicKey, content: &str) -> Result<String> {
         self.inner
             .nip44_encrypt(public_key.deref(), content)
             .await
@@ -113,25 +101,10 @@ impl JsNostrSigner {
     }
 
     #[wasm_bindgen(js_name = nip44Decrypt)]
-    pub async fn nip44_decrypt(&self, public_key: &JsPublicKey, content: String) -> Result<String> {
+    pub async fn nip44_decrypt(&self, public_key: &JsPublicKey, content: &str) -> Result<String> {
         self.inner
             .nip44_decrypt(public_key.deref(), content)
             .await
             .map_err(into_err)
-    }
-
-    /// Unwrap Gift Wrap event
-    ///
-    /// Internally verify the `seal` event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-    #[wasm_bindgen(js_name = unwrapGiftWrap)]
-    pub async fn unwrap_gift_wrap(&self, gift_wrap: &JsEvent) -> Result<JsUnwrappedGift> {
-        Ok(self
-            .inner
-            .unwrap_gift_wrap(gift_wrap.deref())
-            .await
-            .map_err(into_err)?
-            .into())
     }
 }
