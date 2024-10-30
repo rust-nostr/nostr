@@ -8,8 +8,10 @@ use std::time::Duration;
 
 use nostr_connect::{client, signer};
 use nostr_ffi::nips::nip46::{Nip46Request, NostrConnectURI};
-use nostr_ffi::{Keys, PublicKey, SecretKey};
+use nostr_ffi::signer::NostrSigner;
+use nostr_ffi::{Event, Keys, NostrError, PublicKey, SecretKey, UnsignedEvent};
 use nostr_sdk::nostr::nips::nip46::Request;
+use nostr_sdk::signer::NostrSigner as _;
 use uniffi::Object;
 
 use crate::error::Result;
@@ -71,6 +73,70 @@ impl NostrConnect {
     /// Get `bunker` URI
     pub async fn bunker_uri(&self) -> Result<NostrConnectURI> {
         Ok(self.inner.bunker_uri().await?.into())
+    }
+}
+
+#[uniffi::export]
+#[async_trait::async_trait]
+impl NostrSigner for NostrConnect {
+    async fn get_public_key(&self) -> Result<Option<Arc<PublicKey>>, NostrError> {
+        Ok(Some(Arc::new(self.inner.get_public_key().await?.into())))
+    }
+
+    async fn sign_event(
+        &self,
+        unsigned: Arc<UnsignedEvent>,
+    ) -> Result<Option<Arc<Event>>, NostrError> {
+        Ok(Some(Arc::new(
+            self.inner
+                .sign_event(unsigned.as_ref().deref().clone())
+                .await?
+                .into(),
+        )))
+    }
+
+    async fn nip04_encrypt(
+        &self,
+        public_key: Arc<PublicKey>,
+        content: String,
+    ) -> Result<String, NostrError> {
+        Ok(self
+            .inner
+            .nip04_encrypt(public_key.as_ref().deref(), &content)
+            .await?)
+    }
+
+    async fn nip04_decrypt(
+        &self,
+        public_key: Arc<PublicKey>,
+        encrypted_content: String,
+    ) -> Result<String, NostrError> {
+        Ok(self
+            .inner
+            .nip04_decrypt(public_key.as_ref().deref(), &encrypted_content)
+            .await?)
+    }
+
+    async fn nip44_encrypt(
+        &self,
+        public_key: Arc<PublicKey>,
+        content: String,
+    ) -> Result<String, NostrError> {
+        Ok(self
+            .inner
+            .nip44_encrypt(public_key.as_ref().deref(), &content)
+            .await?)
+    }
+
+    async fn nip44_decrypt(
+        &self,
+        public_key: Arc<PublicKey>,
+        payload: String,
+    ) -> Result<String, NostrError> {
+        Ok(self
+            .inner
+            .nip44_decrypt(public_key.as_ref().deref(), &payload)
+            .await?)
     }
 }
 

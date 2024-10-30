@@ -9,7 +9,7 @@ use nostr::EventBuilder;
 use uniffi::Object;
 
 use crate::error::Result;
-use crate::signer::{IntermediateNostrSigner, NostrSigner};
+use crate::signer::{NostrSigner, NostrSignerFFI2Rust};
 use crate::{Event, PublicKey, Timestamp, UnsignedEvent};
 
 /// Build Gift Wrap
@@ -22,7 +22,7 @@ pub async fn gift_wrap(
     rumor: &UnsignedEvent,
     expiration: Option<Arc<Timestamp>>,
 ) -> Result<Event> {
-    let signer = IntermediateNostrSigner::new(signer);
+    let signer = NostrSignerFFI2Rust::new(signer);
     Ok(EventBuilder::gift_wrap(
         &signer,
         receiver_pubkey.deref(),
@@ -73,7 +73,7 @@ impl UnwrappedGift {
     /// Internally verify the `seal` event
     #[uniffi::constructor]
     pub async fn from_gift_wrap(signer: Arc<dyn NostrSigner>, gift_wrap: &Event) -> Result<Self> {
-        let signer = IntermediateNostrSigner::new(signer);
+        let signer = NostrSignerFFI2Rust::new(signer);
         Ok(Self {
             inner: nip59::UnwrappedGift::from_gift_wrap(&signer, gift_wrap.deref()).await?,
         })

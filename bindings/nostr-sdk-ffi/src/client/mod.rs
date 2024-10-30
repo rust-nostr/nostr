@@ -8,6 +8,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_ffi::nips::nip59::UnwrappedGift;
+use nostr_ffi::signer::{NostrSigner, NostrSignerFFI2Rust, NostrSignerRust2FFI};
 use nostr_ffi::{
     ClientMessage, Event, EventBuilder, EventId, FileMetadata, Filter, Metadata, PublicKey,
     Timestamp,
@@ -19,12 +20,10 @@ use uniffi::Object;
 
 mod builder;
 mod options;
-pub mod signer;
 pub mod zapper;
 
 pub use self::builder::ClientBuilder;
 pub use self::options::{EventSource, Options};
-pub use self::signer::NostrSigner;
 use self::zapper::{ZapDetails, ZapEntity};
 use crate::database::events::Events;
 use crate::error::Result;
@@ -48,16 +47,16 @@ impl From<ClientSdk> for Client {
 #[uniffi::export(async_runtime = "tokio")]
 impl Client {
     #[uniffi::constructor(default(signer = None))]
-    pub fn new(signer: Option<Arc<NostrSigner>>) -> Self {
+    pub fn new(signer: Option<Arc<dyn NostrSigner>>) -> Self {
         Self::with_opts(signer, Arc::new(Options::new()))
     }
 
     #[uniffi::constructor]
-    pub fn with_opts(signer: Option<Arc<NostrSigner>>, opts: Arc<Options>) -> Self {
+    pub fn with_opts(signer: Option<Arc<dyn NostrSigner>>, opts: Arc<Options>) -> Self {
         Self {
             inner: match signer {
                 Some(signer) => ClientSdk::with_opts(
-                    signer.as_ref().deref().clone(),
+                    NostrSignerFFI2Rust::new(signer),
                     opts.as_ref().deref().clone(),
                 ),
                 None => nostr_sdk::Client::builder()
@@ -89,8 +88,10 @@ impl Client {
         self.inner.automatic_authentication(enable);
     }
 
-    pub async fn signer(&self) -> Result<NostrSigner> {
-        Ok(self.inner.signer().await?.into())
+    pub async fn signer(&self) -> Result<Arc<dyn NostrSigner>> {
+        let signer = self.inner.signer().await?;
+        let intermediate = NostrSignerRust2FFI::new(signer);
+        Ok(Arc::new(intermediate) as Arc<dyn NostrSigner>)
     }
 
     /// Get relay pool

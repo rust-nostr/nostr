@@ -6,12 +6,13 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr_ffi::helper::unwrap_or_clone_arc;
+use nostr_ffi::signer::{NostrSigner, NostrSignerFFI2Rust};
 use nostr_sdk::database::DynNostrDatabase;
 use nostr_sdk::zapper::DynNostrZapper;
 use uniffi::Object;
 
 use super::zapper::NostrZapper;
-use super::{Client, ClientSdk, NostrSigner, Options};
+use super::{Client, ClientSdk, Options};
 use crate::database::NostrDatabase;
 
 #[derive(Clone, Default, Object)]
@@ -34,8 +35,8 @@ impl ClientBuilder {
         Self::default()
     }
 
-    pub fn signer(self: Arc<Self>, signer: Arc<NostrSigner>) -> Self {
-        let signer: nostr_sdk::NostrSigner = signer.as_ref().deref().clone();
+    pub fn signer(self: Arc<Self>, signer: Arc<dyn NostrSigner>) -> Self {
+        let signer = NostrSignerFFI2Rust::new(signer);
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.signer(signer);
         builder

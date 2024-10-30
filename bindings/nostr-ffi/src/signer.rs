@@ -3,6 +3,7 @@
 // Distributed under the MIT software license
 
 use std::fmt;
+use std::ops::Deref;
 use std::sync::Arc;
 
 use crate::error::Result;
@@ -37,19 +38,77 @@ pub trait NostrSigner: Send + Sync {
     async fn nip44_decrypt(&self, public_key: Arc<PublicKey>, payload: String) -> Result<String>;
 }
 
-pub struct IntermediateNostrSigner {
+pub struct NostrSignerFFI2Rust {
     pub(super) inner: Arc<dyn NostrSigner>,
 }
 
-impl fmt::Debug for IntermediateNostrSigner {
+impl fmt::Debug for NostrSignerFFI2Rust {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("IntermediateNostrSigner").finish()
+        f.debug_struct("NostrSignerFFI2Rust").finish()
     }
 }
 
-impl IntermediateNostrSigner {
+impl NostrSignerFFI2Rust {
     pub fn new(inner: Arc<dyn NostrSigner>) -> Self {
         Self { inner }
+    }
+}
+
+pub struct NostrSignerRust2FFI {
+    pub(super) inner: Arc<dyn nostr::signer::NostrSigner>,
+}
+
+impl NostrSignerRust2FFI {
+    pub fn new(inner: Arc<dyn nostr::signer::NostrSigner>) -> Self {
+        Self { inner }
+    }
+}
+
+#[async_trait::async_trait]
+impl NostrSigner for NostrSignerRust2FFI {
+    async fn get_public_key(&self) -> Result<Option<Arc<PublicKey>>> {
+        Ok(Some(Arc::new(self.inner.get_public_key().await?.into())))
+    }
+
+    async fn sign_event(&self, unsigned: Arc<UnsignedEvent>) -> Result<Option<Arc<Event>>> {
+        Ok(Some(Arc::new(
+            self.inner
+                .sign_event(unsigned.as_ref().deref().clone())
+                .await?
+                .into(),
+        )))
+    }
+
+    async fn nip04_encrypt(&self, public_key: Arc<PublicKey>, content: String) -> Result<String> {
+        Ok(self
+            .inner
+            .nip04_encrypt(public_key.as_ref().deref(), &content)
+            .await?)
+    }
+
+    async fn nip04_decrypt(
+        &self,
+        public_key: Arc<PublicKey>,
+        encrypted_content: String,
+    ) -> Result<String> {
+        Ok(self
+            .inner
+            .nip04_decrypt(public_key.as_ref().deref(), &encrypted_content)
+            .await?)
+    }
+
+    async fn nip44_encrypt(&self, public_key: Arc<PublicKey>, content: String) -> Result<String> {
+        Ok(self
+            .inner
+            .nip44_encrypt(public_key.as_ref().deref(), &content)
+            .await?)
+    }
+
+    async fn nip44_decrypt(&self, public_key: Arc<PublicKey>, payload: String) -> Result<String> {
+        Ok(self
+            .inner
+            .nip44_decrypt(public_key.as_ref().deref(), &payload)
+            .await?)
     }
 }
 
@@ -60,11 +119,11 @@ mod inner {
     use async_trait::async_trait;
     use nostr::prelude::*;
 
-    use super::IntermediateNostrSigner;
+    use super::NostrSignerFFI2Rust;
     use crate::NostrError;
 
     #[async_trait]
-    impl NostrSigner for IntermediateNostrSigner {
+    impl NostrSigner for NostrSignerFFI2Rust {
         async fn get_public_key(&self) -> Result<PublicKey, SignerError> {
             let public_key = self
                 .inner

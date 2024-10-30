@@ -7,6 +7,7 @@
 nostr_ffi::uniffi_reexport_scaffolding!();
 
 pub mod client;
+pub mod connect;
 pub mod database;
 pub mod error;
 pub mod logger;

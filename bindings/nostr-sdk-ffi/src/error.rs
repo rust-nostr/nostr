@@ -32,6 +32,12 @@ impl From<nostr_ffi::NostrError> for NostrSdkError {
     }
 }
 
+impl From<nostr_sdk::nips::nip59::Error> for NostrSdkError {
+    fn from(e: nostr_sdk::nips::nip59::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
 impl From<SetGlobalDefaultError> for NostrSdkError {
     fn from(e: SetGlobalDefaultError) -> NostrSdkError {
         Self::Generic(e.to_string())

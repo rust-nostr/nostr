@@ -22,7 +22,7 @@ use crate::nips::nip53::LiveEvent;
 use crate::nips::nip57::ZapRequestData;
 use crate::nips::nip90::JobFeedbackData;
 use crate::nips::nip98::HttpData;
-use crate::signer::{IntermediateNostrSigner, NostrSigner};
+use crate::signer::{NostrSigner, NostrSignerFFI2Rust};
 use crate::types::{Contact, Metadata};
 use crate::{
     FileMetadata, Image, ImageDimensions, NostrConnectMessage, PublicKey, RelayMetadata, Tag,
@@ -87,7 +87,7 @@ impl EventBuilder {
     }
 
     pub async fn sign(&self, signer: Arc<dyn NostrSigner>) -> Result<Event> {
-        let signer = IntermediateNostrSigner::new(signer);
+        let signer = NostrSignerFFI2Rust::new(signer);
         let event = self.inner.clone().sign(&signer).await?;
         Ok(event.into())
     }
@@ -564,7 +564,7 @@ impl EventBuilder {
         receiver_public_key: &PublicKey,
         rumor: &UnsignedEvent,
     ) -> Result<Self> {
-        let signer = IntermediateNostrSigner::new(signer);
+        let signer = NostrSignerFFI2Rust::new(signer);
         Ok(Self {
             inner: nostr::EventBuilder::seal(
                 &signer,
