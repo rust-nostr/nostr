@@ -69,6 +69,7 @@
 * lmdb: mark event as deleted only if database have the target event ([Yuki Kishimoto])
 * signer: bootstrap NIP46 signer on demand ([Yuki Kishimoto])
 * bindings(nostr): adj. `tag` module ([Yuki Kishimoto])
+* js: change `opt-level` to `z` ([Yuki Kishimoto])
 
 ### Added
 
