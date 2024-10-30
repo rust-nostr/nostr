@@ -1,0 +1,9 @@
+{
+  "name": "rust-nostr-benches",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "dependencies": {
+    "@rust-nostr/nostr-sdk": "file:../"
+  }
+}

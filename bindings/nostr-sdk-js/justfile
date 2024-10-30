@@ -6,6 +6,7 @@ init:
 clean:
     rm -rf ./pkg
     rm -f rust-nostr-*.tgz
+    cd benches && rm -rf node_modules package-lock.json
 
 publish:
 	npm publish --access public
@@ -13,3 +14,6 @@ publish:
 pack: init clean
 	bash ./scripts/build.sh
 	npm pack
+
+bench:
+    cd benches && npm install && deno bench
