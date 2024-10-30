@@ -5,18 +5,18 @@
 use std::ops::Deref;
 
 use js_sys::Array;
-use nostr_js::error::{into_err, Result};
-use nostr_js::nips::nip47::{
-    JsGetInfoResponseResult, JsListTransactionsRequestParams, JsLookupInvoiceRequestParams,
-    JsLookupInvoiceResponseResult, JsMakeInvoiceRequestParams, JsMakeInvoiceResponseResult,
-    JsNostrWalletConnectURI, JsPayKeysendRequestParams, JsPayKeysendResponseResult,
-};
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
 pub mod options;
 
 use self::options::JsNostrWalletConnectOptions;
+use crate::error::{into_err, Result};
+use crate::protocol::nips::nip47::{
+    JsGetInfoResponseResult, JsListTransactionsRequestParams, JsLookupInvoiceRequestParams,
+    JsLookupInvoiceResponseResult, JsMakeInvoiceRequestParams, JsMakeInvoiceResponseResult,
+    JsNostrWalletConnectURI, JsPayKeysendRequestParams, JsPayKeysendResponseResult,
+};
 
 #[wasm_bindgen]
 extern "C" {

@@ -8,9 +8,9 @@ publish = false
 crate-type = ["lib", "cdylib"]
 
 [dependencies]
+console_error_panic_hook = "0.1"
 js-sys.workspace = true
-nostr-js = { path = "../nostr-js" }
-nostr-sdk = { path = "../../crates/nostr-sdk", default-features = false, features = ["all-nips", "indexeddb", "webln"] }
+nostr-sdk = { workspace = true, default-features = false, features = ["all-nips", "indexeddb", "webln"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 wasm-bindgen = { workspace = true, features = ["std"] }

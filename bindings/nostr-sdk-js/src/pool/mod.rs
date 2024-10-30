@@ -6,10 +6,6 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use js_sys::Array;
-use nostr_js::error::{into_err, Result};
-use nostr_js::event::JsEvent;
-use nostr_js::message::JsClientMessage;
-use nostr_js::types::JsFilter;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -18,6 +14,10 @@ pub mod result;
 use self::result::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
 use crate::database::JsNostrDatabase;
 use crate::duration::JsDuration;
+use crate::error::{into_err, Result};
+use crate::protocol::event::JsEvent;
+use crate::protocol::message::JsClientMessage;
+use crate::protocol::types::JsFilter;
 use crate::relay::filtering::JsRelayFiltering;
 use crate::relay::options::{
     JsRelayOptions, JsRelaySendOptions, JsSubscribeOptions, JsSyncOptions,

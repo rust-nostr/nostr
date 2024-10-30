@@ -5,14 +5,14 @@
 use core::ops::Deref;
 
 use js_sys::Array;
-use nostr_js::error::{into_err, Result};
-use nostr_js::key::{JsKeys, JsPublicKey};
-use nostr_js::nips::nip46::JsNostrConnectURI;
-use nostr_js::JsStringArray;
 use nostr_sdk::signer::Nip46Signer;
 use wasm_bindgen::prelude::*;
 
 use crate::duration::JsDuration;
+use crate::error::{into_err, Result};
+use crate::protocol::key::{JsKeys, JsPublicKey};
+use crate::protocol::nips::nip46::JsNostrConnectURI;
+use crate::JsStringArray;
 
 #[wasm_bindgen(js_name = Nip46Signer)]
 pub struct JsNip46Signer {

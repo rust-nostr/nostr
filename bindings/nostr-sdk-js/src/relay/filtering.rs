@@ -4,10 +4,11 @@
 
 use std::ops::Deref;
 
-use nostr_js::event::JsEventId;
-use nostr_js::key::JsPublicKey;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
+
+use crate::protocol::event::JsEventId;
+use crate::protocol::key::JsPublicKey;
 
 #[wasm_bindgen(js_name = RelayFilteringMode)]
 pub enum JsRelayFilteringMode {

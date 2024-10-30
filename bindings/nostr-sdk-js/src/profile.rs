@@ -4,10 +4,11 @@
 
 use std::ops::Deref;
 
-use nostr_js::key::JsPublicKey;
-use nostr_js::types::JsMetadata;
 use nostr_sdk::database::Profile;
 use wasm_bindgen::prelude::*;
+
+use crate::protocol::key::JsPublicKey;
+use crate::protocol::types::JsMetadata;
 
 #[wasm_bindgen(js_name = Profile)]
 pub struct JsProfile {

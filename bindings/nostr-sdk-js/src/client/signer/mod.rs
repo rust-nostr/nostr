@@ -4,17 +4,17 @@
 
 use std::ops::Deref;
 
-use nostr_js::error::{into_err, Result};
-use nostr_js::event::{JsEvent, JsEventBuilder, JsUnsignedEvent};
-use nostr_js::key::{JsKeys, JsPublicKey};
-use nostr_js::nips::nip07::JsNip07Signer;
-use nostr_js::nips::nip59::JsUnwrappedGift;
 use nostr_sdk::NostrSigner;
 use wasm_bindgen::prelude::*;
 
 pub mod nip46;
 
 use self::nip46::JsNip46Signer;
+use crate::error::{into_err, Result};
+use crate::protocol::event::{JsEvent, JsEventBuilder, JsUnsignedEvent};
+use crate::protocol::key::{JsKeys, JsPublicKey};
+use crate::protocol::nips::nip07::JsNip07Signer;
+use crate::protocol::nips::nip59::JsUnwrappedGift;
 
 #[wasm_bindgen(js_name = NostrSigner)]
 pub struct JsNostrSigner {

@@ -4,11 +4,6 @@
 
 use std::ops::Deref;
 
-use nostr_js::error::{into_err, Result};
-use nostr_js::event::{JsEvent, JsEventId};
-use nostr_js::message::JsClientMessage;
-use nostr_js::nips::nip11::JsRelayInformationDocument;
-use nostr_js::types::JsFilter;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -24,6 +19,11 @@ use self::options::{
 };
 use crate::database::JsEvents;
 use crate::duration::JsDuration;
+use crate::error::{into_err, Result};
+use crate::protocol::event::{JsEvent, JsEventId};
+use crate::protocol::message::JsClientMessage;
+use crate::protocol::nips::nip11::JsRelayInformationDocument;
+use crate::protocol::types::JsFilter;
 
 #[derive(Clone)]
 #[wasm_bindgen(js_name = Reconciliation)]

@@ -5,9 +5,10 @@
 use core::ops::Deref;
 
 use js_sys::Function;
-use nostr_js::event::JsEvent;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
+
+use crate::protocol::event::JsEvent;
 
 #[wasm_bindgen(js_name = Events)]
 pub struct JsEvents {

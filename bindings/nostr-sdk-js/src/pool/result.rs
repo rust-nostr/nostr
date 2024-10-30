@@ -4,10 +4,10 @@
 
 use std::collections::{HashMap, HashSet};
 
-use nostr_js::event::JsEventId;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
+use crate::protocol::event::JsEventId;
 use crate::relay::JsReconciliation;
 
 #[derive(Clone)]

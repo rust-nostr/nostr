@@ -1,11 +1,15 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
 init:
-	cargo install wasm-pack
+	@wasm-pack --version || cargo install wasm-pack
 
-publish: pack
+clean:
+    rm -rf ./pkg
+    rm -f rust-nostr-*.tgz
+
+publish:
 	npm publish --access public
 
-pack:
-	rm -rf ./pkg
-	npm run package
+pack: init clean
+	bash ./scripts/build.sh
+	npm pack

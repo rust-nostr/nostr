@@ -39,7 +39,7 @@ Learn more about `rust-nostr` at <https://rust-nostr.org>.
     * Python: https://pypi.org/project/nostr-protocol
     * Kotlin: https://central.sonatype.com/artifact/org.rust-nostr/nostr
     * Swift: https://github.com/rust-nostr/nostr-swift
-    * JavaScript: https://www.npmjs.com/package/@rust-nostr/nostr
+    * JavaScript: https://www.npmjs.com/package/@rust-nostr/nostr-sdk
 * **nostr-sdk**:
     * Rust: https://crates.io/crates/nostr-sdk
     * Python: https://pypi.org/project/nostr-sdk

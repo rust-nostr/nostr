@@ -6,11 +6,6 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use js_sys::Array;
-use nostr_js::error::{into_err, Result};
-use nostr_js::event::{JsEvent, JsEventId};
-use nostr_js::key::JsPublicKey;
-use nostr_js::types::JsFilter;
-use nostr_js::JsStringArray;
 use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt};
 use nostr_sdk::WebDatabase;
 use wasm_bindgen::prelude::*;
@@ -18,7 +13,12 @@ use wasm_bindgen::prelude::*;
 pub mod events;
 
 pub use self::events::JsEvents;
+use crate::error::{into_err, Result};
 use crate::profile::JsProfile;
+use crate::protocol::event::{JsEvent, JsEventId};
+use crate::protocol::key::JsPublicKey;
+use crate::protocol::types::JsFilter;
+use crate::JsStringArray;
 
 /// Nostr Database
 #[wasm_bindgen(js_name = NostrDatabase)]

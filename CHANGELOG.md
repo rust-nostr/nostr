@@ -70,6 +70,7 @@
 * signer: bootstrap NIP46 signer on demand ([Yuki Kishimoto])
 * bindings(nostr): adj. `tag` module ([Yuki Kishimoto])
 * js: change `opt-level` to `z` ([Yuki Kishimoto])
+* js: merge `nostr-js` into `nostr-sdk-js` ([Yuki Kishimoto])
 
 ### Added
 

@@ -5,14 +5,15 @@
 use core::fmt::{self, Write};
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use nostr_js::error::{into_err, Result};
-use nostr_js::JsNostrLibrary;
 use tracing::dispatcher::SetGlobalDefaultError;
 use tracing::field::{Field, Visit};
 use tracing::{Level, Subscriber};
 use tracing_subscriber::layer::*;
 use tracing_subscriber::registry::*;
 use wasm_bindgen::prelude::*;
+
+use crate::error::{into_err, Result};
+use crate::JsNostrLibrary;
 
 #[wasm_bindgen(js_name = LogLevel)]
 pub struct JsLogLevel {

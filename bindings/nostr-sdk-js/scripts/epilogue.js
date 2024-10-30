@@ -1,3 +1,6 @@
+// gzip
+const { inflate } = require("pako");
+
 let WebSocketClass;
 
 // Check if WebSocket is available in the current environment
@@ -19,8 +22,9 @@ module.exports.loadWasmSync = function () {
     if (initPromise) {
         throw new Error("Asynchronous initialisation already in progress: cannot initialise synchronously");
     }
-    const bytes = unbase64(require("./nostr_sdk_js_bg.wasm.js"));
-    const mod = new WebAssembly.Module(bytes);
+    const compressedBytes = unbase64(require("./nostr_sdk_js_bg.wasm.js"));
+    const decompressedBytes = inflate(compressedBytes);
+    const mod = new WebAssembly.Module(decompressedBytes);
     const instance = new WebAssembly.Instance(mod, imports);
     wasm = instance.exports;
     wasm.__wbindgen_start();
@@ -43,7 +47,11 @@ module.exports.loadWasmAsync = function () {
     if (!initPromise) {
         initPromise = Promise.resolve()
             .then(() => require("./nostr_sdk_js_bg.wasm.js"))
-            .then((b64) => WebAssembly.instantiate(unbase64(b64), imports))
+            .then((b64) => {
+                const compressedBytes = unbase64(b64);
+                const decompressedBytes = inflate(compressedBytes);
+                return WebAssembly.instantiate(decompressedBytes, imports);
+            })
             .then((result) => {
                 wasm = result.instance.exports;
                 wasm.__wbindgen_start();
