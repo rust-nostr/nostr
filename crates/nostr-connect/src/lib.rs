@@ -15,7 +15,3 @@ pub mod client;
 pub mod error;
 pub mod prelude;
 pub mod signer;
-
-pub use self::client::Nip46Signer;
-pub use self::error::Error;
-pub use self::signer::{NostrConnectRemoteSigner, NostrConnectSignerActions};

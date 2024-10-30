@@ -12,7 +12,7 @@ use nostr_relay_pool::{
     pool, RelayOptions, RelayPool, RelayPoolNotification, RelaySendOptions, SubscribeOptions,
 };
 
-use super::Error;
+use crate::error::Error;
 
 /// Nostr Connect Signer
 ///

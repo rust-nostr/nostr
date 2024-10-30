@@ -1,6 +1,6 @@
 import asyncio
 from datetime import timedelta
-from nostr_sdk import Keys, Client, NostrSigner, EventBuilder, Filter, Metadata, init_logger, LogLevel
+from nostr_sdk import *
 
 
 async def main():
@@ -17,7 +17,7 @@ async def main():
     # Or, initialize with NIP46 signer
     # app_keys = Keys.parse("..")
     # uri = NostrConnectUri.parse("bunker://.. or nostrconnect://..")
-    # nip46 = Nip46Signer(uri, app_keys, timedelta(seconds=60), None)
+    # nip46 = NostrConnect(uri, app_keys, timedelta(seconds=60), None)
     # signer = NostrSigner.nip46(nip46)
 
     client = Client(signer)

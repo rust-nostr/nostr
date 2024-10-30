@@ -6,36 +6,36 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
+use nostr_connect::{client, signer};
 use nostr_ffi::nips::nip46::{Nip46Request, NostrConnectURI};
 use nostr_ffi::{Keys, PublicKey, SecretKey};
 use nostr_sdk::nostr::nips::nip46::Request;
-use nostr_sdk::signer;
 use uniffi::Object;
 
 use crate::error::Result;
 use crate::relay::RelayOptions;
 
 #[derive(Object)]
-pub struct Nip46Signer {
-    inner: signer::Nip46Signer,
+pub struct NostrConnect {
+    inner: client::NostrConnect,
 }
 
-impl Deref for Nip46Signer {
-    type Target = signer::Nip46Signer;
+impl Deref for NostrConnect {
+    type Target = client::NostrConnect;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl From<signer::Nip46Signer> for Nip46Signer {
-    fn from(inner: signer::Nip46Signer) -> Self {
+impl From<client::NostrConnect> for NostrConnect {
+    fn from(inner: client::NostrConnect) -> Self {
         Self { inner }
     }
 }
 
 #[uniffi::export(async_runtime = "tokio")]
-impl Nip46Signer {
+impl NostrConnect {
     /// Construct Nostr Connect client
     #[uniffi::constructor]
     pub fn new(
@@ -45,7 +45,7 @@ impl Nip46Signer {
         opts: Option<Arc<RelayOptions>>,
     ) -> Result<Self> {
         Ok(Self {
-            inner: signer::Nip46Signer::new(
+            inner: client::NostrConnect::new(
                 uri.deref().clone(),
                 app_keys.deref().clone(),
                 timeout,

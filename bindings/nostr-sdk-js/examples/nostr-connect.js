@@ -1,4 +1,4 @@
-const { Keys, Client, NostrSigner, Nip46Signer, NostrConnectURI, loadWasmAsync, initLogger, LogLevel, Duration } = require("../");
+const { Keys, Client, NostrSigner, NostrConnect, NostrConnectURI, loadWasmAsync, initLogger, LogLevel, Duration } = require("../");
 
 async function main() {
     await loadWasmAsync();
@@ -11,7 +11,7 @@ async function main() {
     // Remote signer (NIP46)
     let uri = NostrConnectURI.parse("bunker://..");
     let timeout = Duration.fromSecs(60);
-    let nip46 = new Nip46Signer(uri, appKeys, timeout);
+    let nip46 = new NostrConnect(uri, appKeys, timeout);
     let signer = NostrSigner.nip46(nip46);
 
     // Compose client and add relays

@@ -2950,6 +2950,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "async-utility",
+ "nostr-connect",
  "nostr-ffi",
  "nostr-relay-builder",
  "nostr-sdk",
@@ -2965,6 +2966,7 @@ version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
  "js-sys",
+ "nostr-connect",
  "nostr-sdk",
  "tracing",
  "tracing-subscriber",

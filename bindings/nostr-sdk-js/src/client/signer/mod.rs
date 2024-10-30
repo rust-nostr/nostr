@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 
 pub mod nip46;
 
-use self::nip46::JsNip46Signer;
+use self::nip46::JsNostrConnect;
 use crate::error::{into_err, Result};
 use crate::protocol::event::{JsEvent, JsEventBuilder, JsUnsignedEvent};
 use crate::protocol::key::{JsKeys, JsPublicKey};
@@ -52,7 +52,7 @@ impl JsNostrSigner {
     }
 
     /// NIP46
-    pub fn nip46(signer: &JsNip46Signer) -> Self {
+    pub fn nip46(signer: &JsNostrConnect) -> Self {
         Self {
             inner: NostrSigner::nip46(signer.deref().clone()),
         }

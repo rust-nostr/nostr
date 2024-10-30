@@ -19,13 +19,17 @@ use nostr_relay_pool::{
 use tokio::sync::broadcast::Receiver;
 use tokio::sync::OnceCell;
 
-use super::Error;
+use crate::error::Error;
+
+#[allow(missing_docs)]
+#[deprecated(since = "0.36.0", note = "Use `NostrConnect` instead")]
+pub type Nip46Signer = NostrConnect;
 
 /// Nostr Connect Client
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
 #[derive(Debug, Clone)]
-pub struct Nip46Signer {
+pub struct NostrConnect {
     app_keys: Keys,
     uri: NostrConnectURI,
     signer_public_key: OnceCell<PublicKey>,
@@ -36,7 +40,7 @@ pub struct Nip46Signer {
     bootstrapped: Arc<AtomicBool>,
 }
 
-impl Nip46Signer {
+impl NostrConnect {
     /// Construct Nostr Connect client
     pub fn new(
         uri: NostrConnectURI,
@@ -343,7 +347,7 @@ async fn get_signer_public_key(
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl NostrSigner for Nip46Signer {
+impl NostrSigner for NostrConnect {
     async fn get_public_key(&self) -> Result<PublicKey, SignerError> {
         // TODO: avoid copied?
         self.signer_public_key()

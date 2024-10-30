@@ -65,6 +65,7 @@
 * sdk: deprecate `Client::reconcile` and `Client::reconcile_with` ([Yuki Kishimoto])
 * sdk: use by default tor for onion relays if `tor` feature is enabled on non-mobile targets ([Yuki Kishimoto])
 * signer: auto enable `nip44` feature if `nip59` is enabled ([Yuki Kishimoto])
+* connect: rename `Nip46Signer` to `NostrConnect` ([Yuki Kishimoto])
 * database: improve `BTreeCappedSet` ([Yuki Kishimoto])
 * database: not save invalid event deletion ([Yuki Kishimoto])
 * lmdb: not save event deletion ([Yuki Kishimoto])

@@ -16,6 +16,7 @@ ndb = ["nostr-sdk/ndb"]
 [dependencies]
 async-trait.workspace = true
 async-utility.workspace = true
+nostr-connect.workspace = true
 nostr-ffi  = { path = "../nostr-ffi" }
 nostr-relay-builder.workspace = true
 nostr-sdk  = { workspace = true, default-features = false, features = ["all-nips", "tor"] }

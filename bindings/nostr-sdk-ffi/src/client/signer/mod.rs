@@ -11,7 +11,7 @@ use uniffi::Object;
 
 pub mod nip46;
 
-use self::nip46::Nip46Signer;
+use self::nip46::NostrConnect;
 use crate::error::Result;
 
 #[derive(Object)]
@@ -43,7 +43,7 @@ impl NostrSigner {
     }
 
     #[uniffi::constructor]
-    pub fn nip46(nip46: &Nip46Signer) -> Self {
+    pub fn nip46(nip46: &NostrConnect) -> Self {
         Self {
             inner: signer::NostrSigner::nip46(nip46.deref().clone()),
         }

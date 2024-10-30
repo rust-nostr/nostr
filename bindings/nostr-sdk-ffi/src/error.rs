@@ -74,14 +74,14 @@ impl From<nostr_sdk::database::DatabaseError> for NostrSdkError {
     }
 }
 
-impl From<nostr_sdk::signer::Error> for NostrSdkError {
-    fn from(e: nostr_sdk::signer::Error) -> NostrSdkError {
+impl From<nostr_sdk::signer::SignerError> for NostrSdkError {
+    fn from(e: nostr_sdk::signer::SignerError) -> NostrSdkError {
         Self::Generic(e.to_string())
     }
 }
 
-impl From<nostr_sdk::signer::nip46::Error> for NostrSdkError {
-    fn from(e: nostr_sdk::signer::nip46::Error) -> NostrSdkError {
+impl From<nostr_connect::error::Error> for NostrSdkError {
+    fn from(e: nostr_connect::error::Error) -> NostrSdkError {
         Self::Generic(e.to_string())
     }
 }

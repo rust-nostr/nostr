@@ -10,4 +10,6 @@
 
 pub use nostr::prelude::*;
 
-pub use crate::*;
+pub use crate::client::*;
+pub use crate::error::*;
+pub use crate::signer::*;
