@@ -1,4 +1,4 @@
-const { loadWasmSync, Keys, Metadata, EventBuilder } = require("@rust-nostr/nostr");
+const { loadWasmSync, Keys, Metadata, EventBuilder } = require("@rust-nostr/nostr-sdk");
 
 function run() {
     // Load WASM
@@ -25,7 +25,7 @@ function run() {
     // Signed event and print details
     console.log("Creating Metadata Event:");
     let event = builder.toEvent(keys);
-    
+
     console.log(" Event Details:");
     console.log(`     Author    : ${event.author.toBech32()}`);
     console.log(`     Kind      : ${event.kind.valueOf()}`);

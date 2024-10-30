@@ -1,4 +1,4 @@
-const { loadWasmSync, Keys, EventBuilder, Nip19Profile, Nip19Event, Coordinate, Kind } = require("@rust-nostr/nostr");
+const { loadWasmSync, Keys, EventBuilder, Nip19Profile, Nip19Event, Coordinate, Kind } = require("@rust-nostr/nostr-sdk");
 
 function run() {
     // Load WASM

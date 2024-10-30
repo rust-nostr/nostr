@@ -1,4 +1,4 @@
-const { Keys, SecretKey, PublicKey, loadWasmSync } = require("@rust-nostr/nostr");
+const { Keys, SecretKey, loadWasmSync } = require("@rust-nostr/nostr-sdk");
 
 // ANCHOR: generate
 function generate() {

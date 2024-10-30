@@ -1,4 +1,4 @@
-const { loadWasmSync, Keys} = require("@rust-nostr/nostr");
+const { loadWasmSync, Keys} = require("@rust-nostr/nostr-sdk");
 const { generateMnemonic } = require("bip39");
 
 function run() {

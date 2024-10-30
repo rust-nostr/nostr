@@ -1,4 +1,4 @@
-const { loadWasmAsync, PublicKey, Metadata, verifyNip05, getNip05Profile } = require("@rust-nostr/nostr");
+const { loadWasmAsync, PublicKey, Metadata, verifyNip05, getNip05Profile } = require("@rust-nostr/nostr-sdk");
 
 async function run() {
     // Load WASM

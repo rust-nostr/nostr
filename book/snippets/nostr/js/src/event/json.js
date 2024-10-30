@@ -1,4 +1,4 @@
-const { loadWasmSync, Event } = require("@rust-nostr/nostr");
+const { loadWasmSync, Event } = require("@rust-nostr/nostr-sdk");
 
 function eventJson() {
     // Load WASM

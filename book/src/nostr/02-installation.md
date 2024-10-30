@@ -92,7 +92,7 @@ uniffi_set_event_loop(asyncio.get_running_loop())
 The `nostr` package is available on the public [npmjs](https://npmjs.com):
 
 ```bash
-npm i @rust-nostr/nostr 
+npm i @rust-nostr/nostr-sdk 
 ```
 
 Alternatively, you can manually add the dependency in your `package.json` file:
@@ -100,7 +100,7 @@ Alternatively, you can manually add the dependency in your `package.json` file:
 ```json
 {
     "dependencies": {
-        "@rust-nostr/nostr": "0.35.0"
+        "@rust-nostr/nostr-sdk": "0.35.0"
     }
 }
 ```
@@ -112,7 +112,7 @@ This library to work **require** to load the WASM code.
 #### Load in **async** context
 
 ```javascript,ignore
-const { loadWasmAsync } = require("@rust-nostr/nostr");
+const { loadWasmAsync } = require("@rust-nostr/nostr-sdk");
 
 async function main() {
     // Load WASM
@@ -127,7 +127,7 @@ main();
 #### Load in **sync** context
 
 ```javascript,ignore
-const { loadWasmSync } = require("@rust-nostr/nostr");
+const { loadWasmSync } = require("@rust-nostr/nostr-sdk");
 
 function main() {
     // Load WASM

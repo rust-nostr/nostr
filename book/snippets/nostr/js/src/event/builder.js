@@ -1,4 +1,4 @@
-const { Keys, loadWasmSync, EventBuilder, Tag, Timestamp, Kind } = require("@rust-nostr/nostr");
+const { Keys, loadWasmSync, EventBuilder, Tag, Timestamp, Kind } = require("@rust-nostr/nostr-sdk");
 
 function eventBuilder() {
     // Load WASM

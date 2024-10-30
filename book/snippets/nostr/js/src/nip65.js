@@ -1,4 +1,4 @@
-const { loadWasmSync, Keys, EventBuilder, Tag, RelayMetadata, RelayListItem, Kind } = require("@rust-nostr/nostr");
+const { loadWasmSync, Keys, EventBuilder, Tag, RelayMetadata, RelayListItem, Kind } = require("@rust-nostr/nostr-sdk");
 
 function run(){
     // Load WASM

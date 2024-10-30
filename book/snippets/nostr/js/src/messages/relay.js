@@ -1,4 +1,4 @@
-const { RelayMessage, EventBuilder, Keys, loadWasmAsync } = require('@rust-nostr/nostr');
+const { RelayMessage, EventBuilder, Keys, loadWasmAsync } = require("@rust-nostr/nostr-sdk");
 
 async function run() {
     await loadWasmAsync();
@@ -50,7 +50,7 @@ async function run() {
     // ANCHOR_END: parse-message
 
     console.log();
-    // ANCHOR: auth-message 
+    // ANCHOR: auth-message
     console.log("  Auth Relay Message:");
     relayMessage = RelayMessage.auth("I Challenge You To A Duel! (or some other challenge string)");
     console.log(`     - JSON: ${relayMessage.asJson()}`);

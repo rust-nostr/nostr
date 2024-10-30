@@ -1,4 +1,4 @@
-const { Keys, EventBuilder, UnwrappedGift, loadWasmSync } = require("@rust-nostr/nostr");
+const { Keys, EventBuilder, UnwrappedGift, loadWasmSync } = require("@rust-nostr/nostr-sdk");
 
 function run() {
     loadWasmSync();
