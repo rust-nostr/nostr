@@ -1,7 +1,7 @@
 {
   "name": "@rust-nostr/nostr-sdk",
   "version": "0.35.0",
-  "description": "High level Nostr client library.",
+  "description": "Nostr protocol implementation, Relay, RelayPool, high-level client library, NWC client and more.",
   "keywords": [
     "nostr",
     "sdk",
