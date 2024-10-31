@@ -4,7 +4,7 @@
 
 #![allow(clippy::new_without_default)]
 
-nostr_ffi::uniffi_reexport_scaffolding!();
+use uniffi::Object;
 
 pub mod client;
 pub mod connect;
@@ -17,6 +17,7 @@ pub mod notifications;
 pub mod nwc;
 pub mod pool;
 pub mod profile;
+pub mod protocol;
 pub mod relay;
 
 pub use self::client::{Client, ClientBuilder, Options};
@@ -25,5 +26,22 @@ pub use self::error::NostrSdkError;
 pub use self::logger::{init_logger, LogLevel};
 pub use self::notifications::HandleNotification;
 pub use self::relay::{Relay, RelayConnectionStats, RelayStatus};
+
+#[derive(Object)]
+pub struct NostrLibrary;
+
+#[uniffi::export]
+impl NostrLibrary {
+    #[inline]
+    #[uniffi::constructor]
+    pub fn new() -> Self {
+        Self
+    }
+
+    #[inline]
+    pub fn git_hash_version(&self) -> Option<String> {
+        option_env!("GIT_HASH").map(|v| v.to_string())
+    }
+}
 
 uniffi::setup_scaffolding!();

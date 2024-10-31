@@ -5,14 +5,14 @@
 use core::ops::Deref;
 use std::sync::Arc;
 
-use nostr_ffi::helper::unwrap_or_clone_arc;
-use nostr_ffi::nips::nip57::ZapType;
-use nostr_ffi::{EventId, PublicKey};
 use nostr_sdk::zapper::{DynNostrZapper, IntoNostrZapper};
 use nostr_sdk::{client, nwc};
 use uniffi::Object;
 
 use crate::nwc::NWC;
+use crate::protocol::helper::unwrap_or_clone_arc;
+use crate::protocol::nips::nip57::ZapType;
+use crate::protocol::{EventId, PublicKey};
 
 /// Zap entity
 #[derive(Debug, PartialEq, Eq, Hash, Object)]

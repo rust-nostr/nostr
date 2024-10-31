@@ -124,8 +124,8 @@ python:
 	rm -rf bindings-python/dist
 	pip install -r bindings-python/requirements.txt
 	cargo build --release
-	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_sdk_ffi.so --language python --no-format -o bindings-python/src/nostr-sdk/
-	cp ../../target/release/libnostr_sdk_ffi.so bindings-python/src/nostr-sdk/
+	cargo run -p uniffi-bindgen generate --library ../../target/x86_64-unknown-linux-gnu/release/libnostr_sdk_ffi.so --language python --no-format -o bindings-python/src/nostr-sdk/
+	cp ../../target/x86_64-unknown-linux-gnu/release/libnostr_sdk_ffi.so bindings-python/src/nostr-sdk/
 	cd bindings-python && python setup.py --verbose bdist_wheel
 	pip install ./bindings-python/dist/nostr_sdk*.whl --force-reinstall
 

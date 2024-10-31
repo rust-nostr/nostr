@@ -2829,15 +2829,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nostr-ffi"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "nostr",
- "uniffi",
-]
-
-[[package]]
 name = "nostr-indexeddb"
 version = "0.35.0"
 dependencies = [
@@ -2951,8 +2942,8 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "async-utility",
+ "nostr",
  "nostr-connect",
- "nostr-ffi",
  "nostr-relay-builder",
  "nostr-sdk",
  "paranoid-android",

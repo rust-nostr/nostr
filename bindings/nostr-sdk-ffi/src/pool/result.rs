@@ -5,10 +5,10 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use nostr_ffi::EventId;
 use nostr_sdk::{pool, SubscriptionId, Url};
 use uniffi::Record;
 
+use crate::protocol::EventId;
 use crate::relay::Reconciliation;
 
 /// Output

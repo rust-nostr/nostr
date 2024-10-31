@@ -5,9 +5,10 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr_ffi::Event;
 use nostr_sdk::database;
 use uniffi::Object;
+
+use crate::protocol::Event;
 
 #[derive(Clone, Object)]
 pub struct Events {

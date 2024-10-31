@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use nostr_ffi::{Event, RelayMessage};
+use crate::protocol::{Event, RelayMessage};
 
 #[uniffi::export(with_foreign)]
 #[async_trait::async_trait]

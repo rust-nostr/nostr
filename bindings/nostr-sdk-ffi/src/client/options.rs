@@ -7,12 +7,12 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::helper::unwrap_or_clone_arc;
 use nostr_sdk::client::options;
 use nostr_sdk::pool;
 use uniffi::{Enum, Object};
 
 use crate::error::Result;
+use crate::protocol::helper::unwrap_or_clone_arc;
 use crate::relay::{ConnectionMode, RelayFilteringMode, RelayLimits};
 
 #[derive(Clone, Object)]

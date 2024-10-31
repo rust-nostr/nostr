@@ -73,10 +73,7 @@ async def main():
 asyncio.run(main())
 ```
 
-More examples can be found at:
-
-* https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-ffi/bindings-python/examples
-* https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-sdk-ffi/bindings-python/examples
+More examples can be found [here](https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-sdk-ffi/bindings-python/examples).
 
 ## Supported NIPs
 

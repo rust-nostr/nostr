@@ -7,12 +7,9 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::{ClientMessage, Event, EventId, Filter, RelayInformationDocument};
 use nostr_sdk::database::DynNostrDatabase;
 use nostr_sdk::{pool, FilterOptions, SubscriptionId, Url};
 use uniffi::{Object, Record};
-
-use crate::database::events::Events;
 
 pub mod filtering;
 pub mod limits;
@@ -26,8 +23,10 @@ use self::options::SyncOptions;
 pub use self::options::{ConnectionMode, RelayOptions, RelaySendOptions, SubscribeOptions};
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
+use crate::database::events::Events;
 use crate::error::Result;
 use crate::negentropy::NegentropyItem;
+use crate::protocol::{ClientMessage, Event, EventId, Filter, RelayInformationDocument};
 use crate::NostrDatabase;
 
 #[derive(Record)]

@@ -5,6 +5,7 @@
 use std::fmt;
 use std::net::AddrParseError;
 
+use nostr::message::MessageHandleError;
 use tracing::subscriber::SetGlobalDefaultError;
 use uniffi::Error;
 
@@ -26,14 +27,200 @@ impl fmt::Display for NostrSdkError {
     }
 }
 
-impl From<nostr_ffi::NostrError> for NostrSdkError {
-    fn from(e: nostr_ffi::NostrError) -> NostrSdkError {
+impl From<std::num::ParseIntError> for NostrSdkError {
+    fn from(e: std::num::ParseIntError) -> NostrSdkError {
         Self::Generic(e.to_string())
     }
 }
 
-impl From<nostr_sdk::nips::nip59::Error> for NostrSdkError {
-    fn from(e: nostr_sdk::nips::nip59::Error) -> NostrSdkError {
+impl From<std::char::ParseCharError> for NostrSdkError {
+    fn from(e: std::char::ParseCharError) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::signer::SignerError> for NostrSdkError {
+    fn from(e: nostr::signer::SignerError) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::key::Error> for NostrSdkError {
+    fn from(e: nostr::key::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::key::vanity::Error> for NostrSdkError {
+    fn from(e: nostr::key::vanity::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<MessageHandleError> for NostrSdkError {
+    fn from(e: MessageHandleError) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::types::metadata::Error> for NostrSdkError {
+    fn from(e: nostr::types::metadata::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::event::Error> for NostrSdkError {
+    fn from(e: nostr::event::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::event::builder::Error> for NostrSdkError {
+    fn from(e: nostr::event::builder::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::event::unsigned::Error> for NostrSdkError {
+    fn from(e: nostr::event::unsigned::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::event::tag::Error> for NostrSdkError {
+    fn from(e: nostr::event::tag::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::nips::nip01::Error> for NostrSdkError {
+    fn from(e: nostr::nips::nip01::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::nips::nip04::Error> for NostrSdkError {
+    fn from(e: nostr::nips::nip04::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::nips::nip05::Error> for NostrSdkError {
+    fn from(e: nostr::nips::nip05::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::nips::nip06::Error> for NostrSdkError {
+    fn from(e: nostr::nips::nip06::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::nips::nip11::Error> for NostrSdkError {
+    fn from(e: nostr::nips::nip11::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::nips::nip19::Error> for NostrSdkError {
+    fn from(e: nostr::nips::nip19::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::nips::nip21::Error> for NostrSdkError {
+    fn from(e: nostr::nips::nip21::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::nips::nip26::Error> for NostrSdkError {
+    fn from(e: nostr::nips::nip26::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::nips::nip44::Error> for NostrSdkError {
+    fn from(e: nostr::nips::nip44::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::nips::nip46::Error> for NostrSdkError {
+    fn from(e: nostr::nips::nip46::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::nips::nip47::Error> for NostrSdkError {
+    fn from(e: nostr::nips::nip47::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::nips::nip49::Error> for NostrSdkError {
+    fn from(e: nostr::nips::nip49::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::nips::nip53::Error> for NostrSdkError {
+    fn from(e: nostr::nips::nip53::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::nips::nip57::Error> for NostrSdkError {
+    fn from(e: nostr::nips::nip57::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::nips::nip59::Error> for NostrSdkError {
+    fn from(e: nostr::nips::nip59::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::nips::nip90::Error> for NostrSdkError {
+    fn from(e: nostr::nips::nip90::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::secp256k1::Error> for NostrSdkError {
+    fn from(e: nostr::secp256k1::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::types::url::ParseError> for NostrSdkError {
+    fn from(e: nostr::types::url::ParseError) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::hashes::hex::HexToArrayError> for NostrSdkError {
+    fn from(e: nostr::hashes::hex::HexToArrayError) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::serde_json::Error> for NostrSdkError {
+    fn from(e: nostr::serde_json::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<nostr::event::id::Error> for NostrSdkError {
+    fn from(e: nostr::event::id::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
+impl From<AddrParseError> for NostrSdkError {
+    fn from(e: AddrParseError) -> NostrSdkError {
         Self::Generic(e.to_string())
     }
 }
@@ -62,26 +249,8 @@ impl From<nostr_sdk::pool::pool::Error> for NostrSdkError {
     }
 }
 
-impl From<AddrParseError> for NostrSdkError {
-    fn from(e: AddrParseError) -> NostrSdkError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr_sdk::types::url::ParseError> for NostrSdkError {
-    fn from(e: nostr_sdk::types::url::ParseError) -> NostrSdkError {
-        Self::Generic(e.to_string())
-    }
-}
-
 impl From<nostr_sdk::database::DatabaseError> for NostrSdkError {
     fn from(e: nostr_sdk::database::DatabaseError) -> NostrSdkError {
-        Self::Generic(e.to_string())
-    }
-}
-
-impl From<nostr_sdk::signer::SignerError> for NostrSdkError {
-    fn from(e: nostr_sdk::signer::SignerError) -> NostrSdkError {
         Self::Generic(e.to_string())
     }
 }

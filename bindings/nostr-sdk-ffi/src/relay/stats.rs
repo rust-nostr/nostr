@@ -4,9 +4,10 @@
 
 use std::time::Duration;
 
-use nostr_ffi::Timestamp;
 use nostr_sdk::pool;
 use uniffi::Object;
+
+use crate::protocol::Timestamp;
 
 #[derive(Object)]
 pub struct RelayConnectionStats {

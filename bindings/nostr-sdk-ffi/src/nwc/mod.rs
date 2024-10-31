@@ -4,11 +4,6 @@
 
 use std::ops::Deref;
 
-use nostr_ffi::nips::nip47::{
-    GetInfoResponseResult, ListTransactionsRequestParams, LookupInvoiceRequestParams,
-    LookupInvoiceResponseResult, MakeInvoiceRequestParams, MakeInvoiceResponseResult,
-    NostrWalletConnectURI, PayKeysendRequestParams, PayKeysendResponseResult,
-};
 use nostr_sdk::nwc;
 use uniffi::Object;
 
@@ -16,6 +11,11 @@ pub mod options;
 
 use self::options::NostrWalletConnectOptions;
 use crate::error::Result;
+use crate::protocol::nips::nip47::{
+    GetInfoResponseResult, ListTransactionsRequestParams, LookupInvoiceRequestParams,
+    LookupInvoiceResponseResult, MakeInvoiceRequestParams, MakeInvoiceResponseResult,
+    NostrWalletConnectURI, PayKeysendRequestParams, PayKeysendResponseResult,
+};
 
 /// Nostr Wallet Connect client
 #[derive(Object)]

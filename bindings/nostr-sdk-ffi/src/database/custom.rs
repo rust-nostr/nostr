@@ -5,12 +5,12 @@
 use std::fmt;
 use std::sync::Arc;
 
-use nostr_ffi::nips::nip01::Coordinate;
-use nostr_ffi::{Event, EventId, Filter, Timestamp};
 use nostr_sdk::database;
 use uniffi::Enum;
 
 use crate::error::Result;
+use crate::protocol::nips::nip01::Coordinate;
+use crate::protocol::{Event, EventId, Filter, Timestamp};
 
 #[derive(Enum)]
 pub enum DatabaseEventStatus {

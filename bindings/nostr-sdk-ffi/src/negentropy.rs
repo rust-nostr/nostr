@@ -4,8 +4,9 @@
 
 use std::sync::Arc;
 
-use nostr_ffi::{EventId, Timestamp};
 use uniffi::Record;
+
+use crate::protocol::{EventId, Timestamp};
 
 #[derive(Record)]
 pub struct NegentropyItem {

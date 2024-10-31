@@ -7,12 +7,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::helper::unwrap_or_clone_arc;
 use nostr_sdk::pool;
 use uniffi::{Enum, Object};
 
 use super::{RelayFilteringMode, RelayLimits};
 use crate::error::{NostrSdkError, Result};
+use crate::protocol::helper::unwrap_or_clone_arc;
 
 #[derive(Enum)]
 pub enum ConnectionMode {

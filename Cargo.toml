@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "bindings/nostr-ffi",
     "bindings/nostr-sdk-ffi",
     "bindings/nostr-sdk-js",
     "bindings/uniffi-bindgen",

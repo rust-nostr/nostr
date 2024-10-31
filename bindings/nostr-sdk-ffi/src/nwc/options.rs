@@ -6,11 +6,11 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::helper::unwrap_or_clone_arc;
 use nostr_sdk::{nwc, pool};
 use uniffi::Object;
 
 use crate::error::Result;
+use crate::protocol::helper::unwrap_or_clone_arc;
 use crate::relay::options::ConnectionMode;
 
 /// NWC options

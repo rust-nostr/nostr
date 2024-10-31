@@ -5,9 +5,10 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr_ffi::{EventId, PublicKey};
 use nostr_sdk::pool::relay;
 use uniffi::{Enum, Object};
+
+use crate::protocol::{EventId, PublicKey};
 
 #[derive(Enum)]
 pub enum RelayFilteringMode {

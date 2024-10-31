@@ -7,7 +7,6 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::{ClientMessage, Event, Filter};
 use nostr_sdk::database::DynNostrDatabase;
 use nostr_sdk::{RelayPoolOptions, SubscriptionId};
 use uniffi::Object;
@@ -18,6 +17,7 @@ use self::result::{Output, SendEventOutput, SubscribeOutput};
 use crate::database::events::Events;
 use crate::error::Result;
 use crate::pool::result::ReconciliationOutput;
+use crate::protocol::{ClientMessage, Event, Filter};
 use crate::relay::options::{FilterOptions, SyncOptions};
 use crate::relay::{RelayFiltering, RelayOptions, RelaySendOptions, SubscribeOptions};
 use crate::{HandleNotification, NostrDatabase, Relay};

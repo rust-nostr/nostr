@@ -5,8 +5,6 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr_ffi::helper::unwrap_or_clone_arc;
-use nostr_ffi::signer::{NostrSigner, NostrSignerFFI2Rust};
 use nostr_sdk::database::DynNostrDatabase;
 use nostr_sdk::zapper::DynNostrZapper;
 use uniffi::Object;
@@ -14,6 +12,8 @@ use uniffi::Object;
 use super::zapper::NostrZapper;
 use super::{Client, ClientSdk, Options};
 use crate::database::NostrDatabase;
+use crate::protocol::helper::unwrap_or_clone_arc;
+use crate::protocol::signer::{NostrSigner, NostrSignerFFI2Rust};
 
 #[derive(Clone, Default, Object)]
 pub struct ClientBuilder {

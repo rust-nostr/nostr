@@ -5,10 +5,11 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr_ffi::helper::unwrap_or_clone_arc;
-use nostr_ffi::Kind;
 use nostr_sdk::pool::relay;
 use uniffi::Object;
+
+use crate::protocol::helper::unwrap_or_clone_arc;
+use crate::protocol::Kind;
 
 /// Relay Limits
 #[derive(Debug, Clone, PartialEq, Eq, Object)]

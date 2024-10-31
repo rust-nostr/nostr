@@ -7,12 +7,6 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_ffi::nips::nip59::UnwrappedGift;
-use nostr_ffi::signer::{NostrSigner, NostrSignerFFI2Rust, NostrSignerRust2FFI};
-use nostr_ffi::{
-    ClientMessage, Event, EventBuilder, EventId, FileMetadata, Filter, Metadata, PublicKey,
-    Timestamp,
-};
 use nostr_sdk::client::Client as ClientSdk;
 use nostr_sdk::pool::RelayPoolNotification as RelayPoolNotificationSdk;
 use nostr_sdk::{SubscriptionId, UncheckedUrl};
@@ -29,6 +23,12 @@ use crate::database::events::Events;
 use crate::error::Result;
 use crate::pool::result::{Output, ReconciliationOutput, SendEventOutput, SubscribeOutput};
 use crate::pool::RelayPool;
+use crate::protocol::nips::nip59::UnwrappedGift;
+use crate::protocol::signer::{NostrSigner, NostrSignerFFI2Rust, NostrSignerRust2FFI};
+use crate::protocol::{
+    ClientMessage, Event, EventBuilder, EventId, FileMetadata, Filter, Metadata, PublicKey,
+    Timestamp,
+};
 use crate::relay::options::{SubscribeAutoCloseOptions, SyncOptions};
 use crate::relay::RelayFiltering;
 use crate::{HandleNotification, NostrDatabase, Relay};

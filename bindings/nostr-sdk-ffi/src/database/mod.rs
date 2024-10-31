@@ -5,7 +5,6 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr_ffi::{Event, EventId, Filter, PublicKey};
 use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt};
 #[cfg(feature = "ndb")]
 use nostr_sdk::NdbDatabase;
@@ -19,6 +18,7 @@ pub mod events;
 use self::custom::{CustomNostrDatabase, IntermediateCustomNostrDatabase};
 use crate::error::Result;
 use crate::profile::Profile;
+use crate::protocol::{Event, EventId, Filter, PublicKey};
 
 #[derive(Object)]
 pub struct NostrDatabase {

@@ -2,7 +2,6 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use nostr_ffi::NostrLibrary;
 use tracing::Level;
 #[cfg(any(target_os = "android", target_os = "ios"))]
 use tracing_subscriber::filter::Targets;
@@ -15,6 +14,8 @@ use tracing_subscriber::util::SubscriberInitExt;
 #[cfg(any(target_os = "android", target_os = "ios"))]
 use tracing_subscriber::Layer;
 use uniffi::Enum;
+
+use crate::NostrLibrary;
 
 #[derive(Enum)]
 pub enum LogLevel {
