@@ -21,6 +21,7 @@
         * [NIP-05](./nostr/06-nip05.md)
         * [NIP-06](./nostr/06-nip06.md)
         * [NIP-07](./nostr/06-nip07.md)
+        * [NIP-17](./nostr/06-nip17.md)
         * [NIP-19](./nostr/06-nip19.md)
         * [NIP-21](./nostr/06-nip21.md)
         * [NIP-44](./nostr/06-nip44.md)
