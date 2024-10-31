@@ -14,6 +14,7 @@ use crate::error::{into_err, Result};
 use crate::protocol::event::{JsEvent, JsEventId, JsKind};
 use crate::protocol::key::{JsKeys, JsPublicKey};
 use crate::protocol::types::JsTimestamp;
+use crate::signer::JsNostrSigner;
 
 #[wasm_bindgen(js_name = UnsignedEvent)]
 pub struct JsUnsignedEvent {
@@ -91,6 +92,17 @@ impl JsUnsignedEvent {
     }
 
     /// Sign an unsigned event
+    #[wasm_bindgen]
+    pub async fn sign(self, signer: &JsNostrSigner) -> Result<JsEvent> {
+        Ok(self
+            .inner
+            .sign(signer.deref())
+            .await
+            .map_err(into_err)?
+            .into())
+    }
+
+    /// Sign an unsigned event with keys signer
     ///
     /// Internally: calculate event ID (if not set), sign it, compose and verify event.
     #[wasm_bindgen(js_name = signWithKeys)]

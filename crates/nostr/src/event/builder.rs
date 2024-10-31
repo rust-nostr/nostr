@@ -322,6 +322,8 @@ impl EventBuilder {
     }
 
     /// Build, sign and return [`Event`]
+    ///
+    /// Shortcut for `builder.build(public_key).sign(signer)`.
     #[inline]
     #[cfg(feature = "std")]
     pub async fn sign<T>(self, signer: &T) -> Result<Event, Error>
@@ -329,8 +331,7 @@ impl EventBuilder {
         T: NostrSigner,
     {
         let public_key: PublicKey = signer.get_public_key().await?;
-        let unsigned: UnsignedEvent = self.build(public_key);
-        Ok(signer.sign_event(unsigned).await?)
+        Ok(self.build(public_key).sign(signer).await?)
     }
 
     /// Build, sign and return [`Event`] using [`Keys`] signer

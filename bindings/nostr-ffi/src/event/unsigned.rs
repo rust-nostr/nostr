@@ -12,6 +12,7 @@ use uniffi::Object;
 
 use super::EventId;
 use crate::error::Result;
+use crate::signer::{NostrSigner, NostrSignerFFI2Rust};
 use crate::{Event, Keys, Kind, PublicKey, Tag, Timestamp};
 
 #[derive(Debug, PartialEq, Eq, Hash, Object)]
@@ -65,6 +66,12 @@ impl UnsignedEvent {
     }
 
     /// Sign an unsigned event
+    pub async fn sign(&self, signer: Arc<dyn NostrSigner>) -> Result<Event> {
+        let signer = NostrSignerFFI2Rust::new(signer);
+        Ok(self.inner.clone().sign(&signer).await?.into())
+    }
+
+    /// Sign an unsigned event with keys signer
     ///
     /// Internally: calculate event ID (if not set), sign it, compose and verify event.
     pub fn sign_with_keys(&self, keys: &Keys) -> Result<Event> {

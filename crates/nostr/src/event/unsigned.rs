@@ -11,21 +11,19 @@ use core::fmt;
 use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Message, Secp256k1, Signing, Verification};
+use bitcoin::secp256k1::{Message, Secp256k1, Signing, Verification};
 
+use crate::{Event, EventId, JsonUtil, Keys, Kind, PublicKey, SignerError, Tag, Tags, Timestamp};
 #[cfg(feature = "std")]
-use crate::SECP256K1;
-use crate::{Event, EventId, JsonUtil, Keys, Kind, PublicKey, Tag, Tags, Timestamp};
+use crate::{NostrSigner, SECP256K1};
 
-/// [`UnsignedEvent`] error
-#[derive(Debug, PartialEq, Eq)]
+/// Unsigned event error
+#[derive(Debug)]
 pub enum Error {
-    /// Key error
-    Key(crate::key::Error),
+    /// Signer error
+    Signer(SignerError),
     /// Error serializing or deserializing JSON data
     Json(String),
-    /// Secp256k1 error
-    Secp256k1(secp256k1::Error),
     /// Event error
     Event(super::Error),
 }
@@ -36,29 +34,22 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Key(e) => write!(f, "Key: {e}"),
+            Self::Signer(e) => write!(f, "{e}"),
             Self::Json(e) => write!(f, "Json: {e}"),
-            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
             Self::Event(e) => write!(f, "Event: {e}"),
         }
     }
 }
 
-impl From<crate::key::Error> for Error {
-    fn from(e: crate::key::Error) -> Self {
-        Self::Key(e)
+impl From<SignerError> for Error {
+    fn from(e: SignerError) -> Self {
+        Self::Signer(e)
     }
 }
 
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
         Self::Json(e.to_string())
-    }
-}
-
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Self::Secp256k1(e)
     }
 }
 
@@ -141,6 +132,16 @@ impl UnsignedEvent {
         }
 
         Ok(())
+    }
+
+    /// Sign an unsigned event
+    #[inline]
+    #[cfg(feature = "std")]
+    pub async fn sign<T>(self, signer: &T) -> Result<Event, Error>
+    where
+        T: NostrSigner,
+    {
+        Ok(signer.sign_event(self).await?)
     }
 
     /// Sign an unsigned event with [`Keys`] signer
