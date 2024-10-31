@@ -9,4 +9,5 @@ members = ["."]
 
 [dependencies]
 nostr-sdk = "0.35"
+nostr-relay-builder = "0.35"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

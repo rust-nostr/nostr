@@ -119,6 +119,7 @@
 * js(nostr): expose `from_nostr_uri` and `to_nostr_uri` for `PublicKey` and `EventId` ([Yuki Kishimoto])
 * cli: show negentropy sync progress ([Yuki Kishimoto])
 * book: add some examples ([RydalWater])
+* book: add NIP17 example ([rodant])
 
 ### Fixed
 
@@ -678,6 +679,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [reyamir]: https://github.com/reyamir
 [w3irdrobot]: https://github.com/w3irdrobot
 [nanikamado]: https://github.com/nanikamado
+[rodant]: https://github.com/rodant
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.35.0...HEAD
