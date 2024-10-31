@@ -55,6 +55,9 @@ pub enum Error {
         channel: String,
     },
     /// Relay not connected
+    #[error("relay is initialized but not ready")]
+    Initialized,
+    /// Relay not connected
     #[error("relay not connected")]
     NotConnected,
     /// Relay not connected

@@ -59,6 +59,7 @@
 * pool: removed unnecessary timeout during the shutdown notification process ([Yuki Kishimoto])
 * pool: deprecate `RelaySendOptions::skip_disconnected` ([Yuki Kishimoto])
 * pool: deprecate `RelayConnectionStats::uptime` ([Yuki Kishimoto])
+* pool: better error for health check if relay status is `Initialized` ([Yuki Kishimoto])
 * sdk: deprecate `Client::get_events_of` and `Client::get_events_from` methods ([Yuki Kishimoto])
 * sdk: use `Events` instead of `Vec<Event>` in fetch and query methods ([Yuki Kishimoto])
 * sdk: rename `stream_events_of` to `stream_events` ([Yuki Kishimoto])
