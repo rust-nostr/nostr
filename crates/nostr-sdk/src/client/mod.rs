@@ -1673,6 +1673,8 @@ impl Client {
     }
 
     /// Handle notifications
+    ///
+    /// The closure function expect a `bool` as result: `true` means "exit from the notifications loop".
     #[inline]
     pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
     where
