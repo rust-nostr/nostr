@@ -3008,6 +3008,9 @@ dependencies = [
  "cxx-build",
  "glob",
  "nostr-sdk",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

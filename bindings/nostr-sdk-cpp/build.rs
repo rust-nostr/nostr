@@ -3,10 +3,18 @@
 // Distributed under the MIT software license
 
 use std::fs;
+use std::process::Command;
 
 use glob::glob;
 
 fn main() {
+    if let Ok(output) = Command::new("git").args(["rev-parse", "HEAD"]).output() {
+        if let Ok(git_hash) = String::from_utf8(output.stdout) {
+            println!("cargo:rerun-if-changed={git_hash}");
+            println!("cargo:rustc-env=GIT_HASH={git_hash}");
+        }
+    }
+
     let mut files: Vec<String> = Vec::new();
 
     // Recursively find all .rs files in src/ directory
