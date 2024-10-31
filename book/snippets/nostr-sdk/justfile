@@ -1,0 +1,17 @@
+test: rust python js kotlin
+
+rust:
+	cd rust && cargo build
+
+python:
+	#cd python && just test
+	echo TODO
+
+js:
+	#cd js && npm i
+	#node js/index.js
+	echo TODO
+
+kotlin:
+	#cd kotlin && just test
+	echo TODO

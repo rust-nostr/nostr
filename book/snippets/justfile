@@ -1,2 +1,3 @@
 test:
 	cd nostr && just test
+	cd nostr-sdk && just test
