@@ -21,7 +21,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::json;
 
 use crate::event::unsigned::{self, UnsignedEvent};
-use crate::types::url::form_urlencoded::byte_serialize;
 use crate::types::url::{ParseError, Url};
 use crate::{key, Event, JsonUtil, PublicKey};
 
@@ -656,14 +655,6 @@ impl JsonUtil for Message {
     type Err = Error;
 }
 
-#[inline]
-fn url_encode<T>(data: T) -> String
-where
-    T: AsRef<[u8]>,
-{
-    byte_serialize(data.as_ref()).collect()
-}
-
 /// Nostr Connect Metadata
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct NostrConnectMetadata {
@@ -903,7 +894,7 @@ impl fmt::Display for NostrConnectURI {
                     }
 
                     query.push_str("relay=");
-                    query.push_str(&url_encode(relay_url));
+                    query.push_str(relay_url);
                 }
 
                 if let Some(secret) = secret {
@@ -936,14 +927,14 @@ impl fmt::Display for NostrConnectURI {
                     let relay_url = relay_url.strip_suffix('/').unwrap_or(&relay_url);
 
                     relays_str.push_str("&relay=");
-                    relays_str.push_str(&url_encode(relay_url));
+                    relays_str.push_str(relay_url);
                 }
 
                 write!(
                     f,
                     "{NOSTR_CONNECT_URI_SCHEME}://{}?metadata={}{relays_str}",
                     public_key,
-                    url_encode(metadata.as_json())
+                    metadata.as_json()
                 )
             }
         }
@@ -975,7 +966,7 @@ mod test {
 
     #[test]
     fn test_parse_client_uri() {
-        let uri = "nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?metadata=%7B%22name%22%3A%22Example%22%7D&relay=wss%3A%2F%2Frelay.damus.io";
+        let uri = r#"nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?metadata={"name":"Example"}&relay=wss://relay.damus.io"#;
         let uri = NostrConnectURI::parse(uri).unwrap();
 
         let pubkey =
@@ -988,7 +979,7 @@ mod test {
 
     #[test]
     fn test_bunker_uri_serialization() {
-        let uri = "bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss%3A%2F%2Frelay.nsec.app&secret=abcd";
+        let uri = "bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss://relay.nsec.app&secret=abcd";
 
         let signer_public_key =
             PublicKey::parse("79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3")
@@ -1007,7 +998,7 @@ mod test {
 
     #[test]
     fn test_client_uri_serialization() {
-        let uri = "nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?metadata=%7B%22name%22%3A%22Example%22%7D&relay=wss%3A%2F%2Frelay.damus.io";
+        let uri = r#"nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?metadata={"name":"Example"}&relay=wss://relay.damus.io"#;
 
         let pubkey =
             PublicKey::parse("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
