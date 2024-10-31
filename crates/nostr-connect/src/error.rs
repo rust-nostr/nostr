@@ -6,8 +6,9 @@
 
 use nostr::event::builder;
 use nostr::nips::{nip04, nip46};
-use nostr::{key, serde_json};
+use nostr::{key, serde_json, PublicKey};
 use thiserror::Error;
+use tokio::sync::SetError;
 
 /// Nostr Connect error
 #[derive(Debug, Error)]
@@ -33,6 +34,9 @@ pub enum Error {
     /// Pool
     #[error(transparent)]
     Pool(#[from] nostr_relay_pool::pool::Error),
+    /// Set user public key error
+    #[error(transparent)]
+    SetUserPublicKey(#[from] SetError<PublicKey>),
     /// NIP46 response error
     #[error("response error: {0}")]
     Response(String),

@@ -83,7 +83,7 @@ impl NostrConnectRemoteSigner {
     /// Get `bunker` URI
     pub async fn bunker_uri(&self) -> NostrConnectURI {
         NostrConnectURI::Bunker {
-            signer_public_key: self.keys.public_key(),
+            remote_signer_public_key: self.keys.public_key(),
             relays: self.relays().await,
             secret: self.secret.clone(),
         }

@@ -10,7 +10,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::duration::JsDuration;
 use crate::error::{into_err, Result};
-use crate::protocol::key::{JsKeys, JsPublicKey};
+use crate::protocol::key::JsKeys;
 use crate::protocol::nips::nip46::JsNostrConnectURI;
 use crate::JsStringArray;
 
@@ -62,18 +62,6 @@ impl JsNostrConnect {
             .map(|u| JsValue::from(u.to_string()))
             .collect::<Array>()
             .unchecked_into()
-    }
-
-    /// Get signer public key
-    #[wasm_bindgen(js_name = signerPublicKey)]
-    pub async fn signer_public_key(&self) -> Result<JsPublicKey> {
-        Ok(self
-            .inner
-            .signer_public_key()
-            .await
-            .copied()
-            .map_err(into_err)?
-            .into())
     }
 
     /// Get `bunker` URI

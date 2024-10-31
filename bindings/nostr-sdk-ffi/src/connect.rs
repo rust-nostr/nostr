@@ -65,11 +65,6 @@ impl NostrConnect {
             .collect()
     }
 
-    /// Get signer public key
-    pub async fn signer_public_key(&self) -> Result<PublicKey> {
-        Ok(self.inner.signer_public_key().await.copied()?.into())
-    }
-
     /// Get `bunker` URI
     pub async fn bunker_uri(&self) -> Result<NostrConnectURI> {
         Ok(self.inner.bunker_uri().await?.into())

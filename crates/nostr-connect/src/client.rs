@@ -5,8 +5,6 @@
 //! Nostr Connect client
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -30,14 +28,14 @@ pub type Nip46Signer = NostrConnect;
 /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
 #[derive(Debug, Clone)]
 pub struct NostrConnect {
-    app_keys: Keys,
     uri: NostrConnectURI,
-    signer_public_key: OnceCell<PublicKey>,
+    app_keys: Keys,
+    remote_signer_public_key: OnceCell<PublicKey>,
+    user_public_key: OnceCell<PublicKey>,
     pool: RelayPool,
     timeout: Duration,
     opts: RelayOptions,
     secret: Option<String>,
-    bootstrapped: Arc<AtomicBool>,
 }
 
 impl NostrConnect {
@@ -55,21 +53,17 @@ impl NostrConnect {
             }
         }
 
-        // Get signer public key
-        let signer_public_key: OnceCell<PublicKey> = match uri.signer_public_key() {
-            Some(public_key) => OnceCell::from(public_key),
-            None => OnceCell::new(),
-        };
-
         Ok(Self {
             app_keys,
-            signer_public_key,
+            // NOT set the remote_signer_public_key, also if bunker URI!
+            // If you already set remote_signer_public_key, you'll need another field to know if boostrap was already done.
+            remote_signer_public_key: OnceCell::new(),
+            user_public_key: OnceCell::new(),
             pool: RelayPool::default(),
             timeout,
             opts: opts.unwrap_or_default(),
             secret: uri.secret(),
             uri,
-            bootstrapped: Arc::new(AtomicBool::new(false)),
         })
     }
 
@@ -85,20 +79,31 @@ impl NostrConnect {
         // Subscribe
         let notifications = self.subscribe().await?;
 
-        // Get signer public key
-        let signer_public_key: PublicKey = match self.uri.signer_public_key() {
-            Some(public_key) => public_key,
-            None => get_signer_public_key(&self.app_keys, notifications, self.timeout).await?,
+        // Get remote signer public key
+        let remote_signer_public_key: PublicKey = match self.uri.remote_signer_public_key() {
+            Some(public_key) => *public_key,
+            None => {
+                match get_remote_signer_public_key(&self.app_keys, notifications, self.timeout)
+                    .await?
+                {
+                    GetRemoteSignerPublicKey::RemoteOnly(public_key) => public_key,
+                    GetRemoteSignerPublicKey::WithUserPublicKey { remote, user } => {
+                        // Set user public key
+                        self.user_public_key.set(user)?; // This shouldn't fails
+
+                        // Return remote signer public key
+                        remote
+                    }
+                }
+            }
         };
 
         // Send `connect` command if bunker URI
         if self.uri.is_bunker() {
-            self.connect(signer_public_key).await?;
+            self.connect(remote_signer_public_key).await?;
         }
 
-        self.bootstrapped.store(true, Ordering::SeqCst);
-
-        Ok(signer_public_key)
+        Ok(remote_signer_public_key)
     }
 
     async fn subscribe(&self) -> Result<Receiver<RelayPoolNotification>, Error> {
@@ -131,43 +136,36 @@ impl NostrConnect {
         self.uri.relays()
     }
 
-    /// Get signer [PublicKey]
-    #[inline]
-    pub async fn signer_public_key(&self) -> Result<&PublicKey, Error> {
-        // The bootstrap here is executed only if URI is NOT `bunker://`
-        self.signer_public_key
-            .get_or_try_init(|| async { self.bootstrap().await })
-            .await
-    }
-
     /// Get `bunker` URI
     pub async fn bunker_uri(&self) -> Result<NostrConnectURI, Error> {
         Ok(NostrConnectURI::Bunker {
-            signer_public_key: *self.signer_public_key().await?,
+            remote_signer_public_key: *self.remote_signer_public_key().await?,
             relays: self.relays(),
             secret: self.secret.clone(),
         })
     }
 
     #[inline]
-    async fn send_request(&self, req: Request) -> Result<ResponseResult, Error> {
-        // Get signer public key
-        let signer_public_key: PublicKey = *self.signer_public_key().await?;
+    async fn remote_signer_public_key(&self) -> Result<&PublicKey, Error> {
+        self.remote_signer_public_key
+            .get_or_try_init(|| async { self.bootstrap().await })
+            .await
+    }
 
-        // Check if bootstrap is executed
-        // If it's not executed, bootstrap.
-        if !self.bootstrapped.load(Ordering::SeqCst) {
-            self.bootstrap().await?;
-        }
+    #[inline]
+    async fn send_request(&self, req: Request) -> Result<ResponseResult, Error> {
+        // Get remote signer public key
+        let remote_signer_public_key: PublicKey = *self.remote_signer_public_key().await?;
 
         // Send request
-        self.send_request_with_pk(req, signer_public_key).await
+        self.send_request_with_pk(req, remote_signer_public_key)
+            .await
     }
 
     async fn send_request_with_pk(
         &self,
         req: Request,
-        signer_public_key: PublicKey,
+        remote_signer_public_key: PublicKey,
     ) -> Result<ResponseResult, Error> {
         let secret_key: &SecretKey = self.app_keys.secret_key();
 
@@ -176,8 +174,9 @@ impl NostrConnect {
         tracing::debug!("Sending '{msg}' NIP46 message");
 
         let req_id = msg.id().to_string();
-        let event: Event = EventBuilder::nostr_connect(&self.app_keys, signer_public_key, msg)?
-            .sign_with_keys(&self.app_keys)?;
+        let event: Event =
+            EventBuilder::nostr_connect(&self.app_keys, remote_signer_public_key, msg)?
+                .sign_with_keys(&self.app_keys)?;
 
         let mut notifications = self.pool.notifications();
 
@@ -221,12 +220,14 @@ impl NostrConnect {
     }
 
     /// Connect msg
-    async fn connect(&self, signer_public_key: PublicKey) -> Result<(), Error> {
+    async fn connect(&self, remote_signer_public_key: PublicKey) -> Result<(), Error> {
         let req = Request::Connect {
-            public_key: signer_public_key,
+            public_key: remote_signer_public_key,
             secret: self.secret.clone(),
         };
-        let res = self.send_request_with_pk(req, signer_public_key).await?;
+        let res = self
+            .send_request_with_pk(req, remote_signer_public_key)
+            .await?;
         Ok(res.to_connect()?)
     }
 
@@ -235,6 +236,15 @@ impl NostrConnect {
         let req = Request::GetRelays;
         let res = self.send_request(req).await?;
         Ok(res.to_get_relays()?)
+    }
+
+    async fn _get_public_key(&self) -> Result<&PublicKey, Error> {
+        self.user_public_key
+            .get_or_try_init(|| async {
+                let res = self.send_request(Request::GetPublicKey).await?;
+                Ok(res.to_get_public_key()?)
+            })
+            .await
     }
 
     /// Sign an [UnsignedEvent]
@@ -302,11 +312,16 @@ impl NostrConnect {
     }
 }
 
-async fn get_signer_public_key(
+enum GetRemoteSignerPublicKey {
+    WithUserPublicKey { remote: PublicKey, user: PublicKey },
+    RemoteOnly(PublicKey),
+}
+
+async fn get_remote_signer_public_key(
     app_keys: &Keys,
     mut notifications: Receiver<RelayPoolNotification>,
     timeout: Duration,
-) -> Result<PublicKey, Error> {
+) -> Result<GetRemoteSignerPublicKey, Error> {
     time::timeout(Some(timeout), async {
         while let Ok(notification) = notifications.recv().await {
             if let RelayPoolNotification::Event { event, .. } = notification {
@@ -326,13 +341,16 @@ async fn get_signer_public_key(
                             req: Request::Connect { public_key, .. },
                             ..
                         } => {
-                            return Ok(public_key);
+                            return Ok(GetRemoteSignerPublicKey::WithUserPublicKey {
+                                remote: event.pubkey,
+                                user: public_key,
+                            });
                         }
                         Message::Response {
                             result: Some(ResponseResult::Connect),
                             error: None,
                             ..
-                        } => return Ok(event.pubkey),
+                        } => return Ok(GetRemoteSignerPublicKey::RemoteOnly(event.pubkey)),
                         _ => {}
                     }
                 }
@@ -349,11 +367,10 @@ async fn get_signer_public_key(
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrSigner for NostrConnect {
     async fn get_public_key(&self) -> Result<PublicKey, SignerError> {
-        // TODO: avoid copied?
-        self.signer_public_key()
+        self._get_public_key()
             .await
-            .map_err(SignerError::backend)
             .copied()
+            .map_err(SignerError::backend)
     }
 
     async fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, SignerError> {

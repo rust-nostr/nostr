@@ -123,10 +123,10 @@
 ### Fixed
 
 * nostr: adj. `NostrConnectURI` de/serialization according to NIP46 ([Yuki Kishimoto])
+* connect: fix `NostrConnect` according to NIP46
 * lmdb: add missing commit method call in `Store::delete` ([Yuki Kishimoto])
 * lmdb: fix unit tests ([Yuki Kishimoto])
 * lmdb: fix `Store::save_event` issues ([Yuki Kishimoto])
-* signer: fix `Nip46Signer` bootstrap on demand when using `bunker` URI ([Yuki Kishimoto])
 * sdk: fix `filters empty` error when gossip option is enabled ([Yuki Kishimoto])
 
 ### Removed

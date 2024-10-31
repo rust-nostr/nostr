@@ -723,8 +723,8 @@ impl JsonUtil for NostrConnectMetadata {
 pub enum NostrConnectURI {
     /// Direct connection initiated by remote signer
     Bunker {
-        /// Signer public key
-        signer_public_key: PublicKey,
+        /// Remote signer public key
+        remote_signer_public_key: PublicKey,
         /// List of relays to use
         relays: Vec<Url>,
         /// Optional secret
@@ -786,7 +786,7 @@ impl NostrConnectURI {
                     }
 
                     return Ok(Self::Bunker {
-                        signer_public_key: public_key,
+                        remote_signer_public_key: public_key,
                         relays,
                         secret,
                     });
@@ -837,12 +837,21 @@ impl NostrConnectURI {
     }
 
     /// Get signer public key, if exists.
-    #[inline]
+    #[deprecated(since = "0.36.0", note = "Use `remote_signer_public_key` instead.")]
     pub fn signer_public_key(&self) -> Option<PublicKey> {
+        self.remote_signer_public_key().copied()
+    }
+
+    /// Get remote signer public key (exists only for `bunker` URIs)
+    ///
+    /// This public key MAY be same as the user one, but not necessarily.
+    #[inline]
+    pub fn remote_signer_public_key(&self) -> Option<&PublicKey> {
         match self {
             Self::Bunker {
-                signer_public_key, ..
-            } => Some(*signer_public_key),
+                remote_signer_public_key,
+                ..
+            } => Some(remote_signer_public_key),
             Self::Client { .. } => None,
         }
     }
@@ -879,7 +888,7 @@ impl fmt::Display for NostrConnectURI {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Bunker {
-                signer_public_key,
+                remote_signer_public_key,
                 relays,
                 secret,
             } => {
@@ -907,11 +916,14 @@ impl fmt::Display for NostrConnectURI {
                 }
 
                 if query.is_empty() {
-                    write!(f, "{NOSTR_CONNECT_BUNKER_URI_SCHEME}://{signer_public_key}")
+                    write!(
+                        f,
+                        "{NOSTR_CONNECT_BUNKER_URI_SCHEME}://{remote_signer_public_key}"
+                    )
                 } else {
                     write!(
                         f,
-                        "{NOSTR_CONNECT_BUNKER_URI_SCHEME}://{signer_public_key}?{query}"
+                        "{NOSTR_CONNECT_BUNKER_URI_SCHEME}://{remote_signer_public_key}?{query}"
                     )
                 }
             }
@@ -950,14 +962,15 @@ mod test {
         let uri = "bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss://relay.nsec.app";
         let uri = NostrConnectURI::parse(uri).unwrap();
 
-        let signer_public_key =
+        let remote_signer_public_key =
             PublicKey::parse("79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3")
                 .unwrap();
         let relay_url = Url::parse("wss://relay.nsec.app").unwrap();
+        assert_eq!(uri.relays(), vec![relay_url.clone()]);
         assert_eq!(
             uri,
             NostrConnectURI::Bunker {
-                signer_public_key,
+                remote_signer_public_key,
                 relays: vec![relay_url],
                 secret: None
             }
@@ -981,13 +994,13 @@ mod test {
     fn test_bunker_uri_serialization() {
         let uri = "bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss://relay.nsec.app&secret=abcd";
 
-        let signer_public_key =
+        let remote_signer_public_key =
             PublicKey::parse("79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3")
                 .unwrap();
         let relay_url = Url::parse("wss://relay.nsec.app").unwrap();
         assert_eq!(
             NostrConnectURI::Bunker {
-                signer_public_key,
+                remote_signer_public_key,
                 relays: vec![relay_url],
                 secret: Some(String::from("abcd"))
             }
