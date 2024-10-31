@@ -214,7 +214,8 @@ impl InnerRelay {
         // Log
         if log {
             match status {
-                RelayStatus::Initialized => tracing::trace!("'{}' relay initialized.", self.url),
+                RelayStatus::Initialized => tracing::trace!("'{}' initialized.", self.url),
+                RelayStatus::Pending => tracing::trace!("'{}' is pending.", self.url),
                 RelayStatus::Connecting => tracing::debug!("Connecting to '{}'", self.url),
                 RelayStatus::Connected => tracing::info!("Connected to '{}'", self.url),
                 RelayStatus::Disconnected => tracing::info!("Disconnected from '{}'", self.url),
@@ -429,6 +430,10 @@ impl InnerRelay {
         if !self.status().can_connect() {
             return;
         }
+
+        // Update status
+        // Change it to pending to avoid issues with the health check (initialized check)
+        self.set_status(RelayStatus::Pending, false);
 
         // If connection timeout is `Some`, try to connect waiting for connection
         match connection_timeout {

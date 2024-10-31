@@ -74,15 +74,17 @@ impl From<Relay> for JsRelay {
 
 #[wasm_bindgen(js_name = RelayStatus)]
 pub enum JsRelayStatus {
-    /// Relay initialized
+    /// Initialized
     Initialized,
+    /// Pending
+    Pending,
     /// Connecting
     Connecting,
-    /// Relay connected
+    /// Connected
     Connected,
-    /// Relay disconnected, will retry to connect again
+    /// Disconnected, will retry to connect again
     Disconnected,
-    /// Relay completely disconnected
+    /// Completely disconnected
     Terminated,
 }
 
@@ -90,6 +92,7 @@ impl From<RelayStatus> for JsRelayStatus {
     fn from(status: RelayStatus) -> Self {
         match status {
             RelayStatus::Initialized => Self::Initialized,
+            RelayStatus::Pending => Self::Pending,
             RelayStatus::Connecting => Self::Connecting,
             RelayStatus::Connected => Self::Connected,
             RelayStatus::Disconnected => Self::Disconnected,
