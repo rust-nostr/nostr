@@ -292,25 +292,19 @@ impl InnerRelayPool {
         Ok(())
     }
 
-    pub async fn send_msg_to<I, U>(
-        &self,
-        urls: I,
-        msg: ClientMessage,
-        opts: RelaySendOptions,
-    ) -> Result<Output<()>, Error>
+    pub async fn send_msg_to<I, U>(&self, urls: I, msg: ClientMessage) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.batch_msg_to(urls, vec![msg], opts).await
+        self.batch_msg_to(urls, vec![msg]).await
     }
 
     pub async fn batch_msg_to<I, U>(
         &self,
         urls: I,
         msgs: Vec<ClientMessage>,
-        opts: RelaySendOptions,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -356,7 +350,7 @@ impl InnerRelayPool {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
             let msgs: Vec<ClientMessage> = msgs.clone();
             urls.push(url);
-            futures.push(relay.batch_msg(msgs, opts));
+            futures.push(relay.batch_msg(msgs));
         }
 
         // Join futures
@@ -639,7 +633,7 @@ impl InnerRelayPool {
         Ok(output)
     }
 
-    pub async fn unsubscribe(&self, id: SubscriptionId, opts: RelaySendOptions) {
+    pub async fn unsubscribe(&self, id: SubscriptionId) {
         // Remove subscription from pool
         self.remove_subscription(&id).await;
 
@@ -648,13 +642,13 @@ impl InnerRelayPool {
 
         // Remove subscription from relays
         for relay in relays.values() {
-            if let Err(e) = relay.unsubscribe(id.clone(), opts).await {
+            if let Err(e) = relay.unsubscribe(id.clone()).await {
                 tracing::error!("{e}");
             }
         }
     }
 
-    pub async fn unsubscribe_all(&self, opts: RelaySendOptions) {
+    pub async fn unsubscribe_all(&self) {
         // Remove subscriptions from pool
         self.remove_all_subscriptions().await;
 
@@ -663,7 +657,7 @@ impl InnerRelayPool {
 
         // Unsubscribe relays
         for relay in relays.values() {
-            if let Err(e) = relay.unsubscribe_all(opts).await {
+            if let Err(e) = relay.unsubscribe_all().await {
                 tracing::error!("{e}");
             }
         }

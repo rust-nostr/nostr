@@ -19,7 +19,7 @@ use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDe
 use nostr::secp256k1::rand;
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::{broadcast, oneshot, watch, Mutex, MutexGuard, OnceCell, RwLock};
+use tokio::sync::{broadcast, watch, Mutex, MutexGuard, OnceCell, RwLock};
 
 use super::constants::{
     MAX_ADJ_RETRY_SEC, MIN_ATTEMPTS, MIN_RETRY_SEC, MIN_SUCCESS_RATE, NEGENTROPY_BATCH_SIZE_DOWN,
@@ -39,7 +39,6 @@ use crate::util::cell::TimedOnceCell;
 
 struct NostrMessage {
     msgs: Vec<ClientMessage>,
-    shot: Option<oneshot::Sender<bool>>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -551,8 +550,7 @@ impl InnerRelay {
     async fn run_message_handler(&self, ws_tx: Sink, ws_rx: Stream) {
         // (Re)subscribe to relay
         if self.opts.flags.can_read() {
-            let opts: RelaySendOptions = RelaySendOptions::default().skip_send_confirmation(true);
-            if let Err(e) = self.resubscribe(opts).await {
+            if let Err(e) = self.resubscribe().await {
                 tracing::error!("Impossible to subscribe to '{}': {e}", self.url)
             }
         }
@@ -585,7 +583,7 @@ impl InnerRelay {
         loop {
             tokio::select! {
                 // Nostr channel receiver
-                Some(NostrMessage { msgs, shot }) = rx_nostr.recv() => {
+                Some(NostrMessage { msgs }) = rx_nostr.recv() => {
                     // Serialize messages to JSON and compose WebSocket text message
                     let msgs: Vec<WsMessage> = msgs
                         .into_iter()
@@ -604,35 +602,23 @@ impl InnerRelay {
                         format!("{len} messages to '{}'", self.url)
                     };
 
-                    tracing::debug!("Sending {partial_log_msg} (size: {size} bytes)");
+                    tracing::trace!("Sending {partial_log_msg} (size: {size} bytes)");
 
                     // Send WebSocket messages
-                    let status: bool = match send_ws_msgs(&mut ws_tx, msgs).await {
+                    match send_ws_msgs(&mut ws_tx, msgs).await {
                         Ok(()) => {
-                            // TODO: tracing::debug!("Sent {partial_log_msg} (size: {size} bytes)");
+                            tracing::debug!("Sent {partial_log_msg} (size: {size} bytes)");
+
+                            // Increase sent bytes
                             self.stats.add_bytes_sent(size);
-                            true
                         }
                         Err(e) => {
                             tracing::error!("Impossible to send {partial_log_msg}: {e}");
-                            false
+
+                            // Break receiver loop
+                            break;
                         }
                     };
-
-                    // Send oneshot message
-                    if let Some(sender) = shot {
-                        if sender.send(status).is_err() {
-                            tracing::trace!(
-                                "Impossible to send '{status}' oneshot msg for '{}",
-                                self.url
-                            );
-                        }
-                    }
-
-                    // If error, break receiver loop
-                    if !status {
-                        break;
-                    }
                 }
                 // Ping channel receiver
                 Ok(()) = rx_ping.changed() => {
@@ -986,78 +972,44 @@ impl InnerRelay {
     }
 
     #[inline]
-    pub async fn send_msg(&self, msg: ClientMessage, opts: RelaySendOptions) -> Result<(), Error> {
-        self.batch_msg(vec![msg], opts).await
+    pub async fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
+        self.batch_msg(vec![msg]).await
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    pub async fn batch_msg(
-        &self,
-        msgs: Vec<ClientMessage>,
-        opts: RelaySendOptions,
-    ) -> Result<(), Error> {
+    pub async fn batch_msg(&self, msgs: Vec<ClientMessage>) -> Result<(), Error> {
         // Perform health checks
         self.health_check().await?;
 
+        // If it can't write, check if there are "write" messages
         if !self.opts.flags.can_write() && msgs.iter().any(|msg| msg.is_event()) {
             return Err(Error::WriteDisabled);
         }
 
+        // If it can't read, check if there are "read" messages
         if !self.opts.flags.can_read() && msgs.iter().any(|msg| msg.is_req() || msg.is_close()) {
             return Err(Error::ReadDisabled);
         }
 
-        if opts.skip_send_confirmation {
-            self.channels
-                .send_nostr_msg(NostrMessage { msgs, shot: None })
-        } else {
-            // Create new oneshot channel
-            let (tx, rx) = oneshot::channel::<bool>();
-
-            // Send message
-            self.channels.send_nostr_msg(NostrMessage {
-                msgs,
-                shot: Some(tx),
-            })?;
-
-            // Wait for oneshot reply
-            match time::timeout(Some(opts.timeout), rx).await {
-                Some(result) => match result {
-                    Ok(true) => Ok(()),
-                    Ok(false) | Err(_) => Err(Error::MessageNotSent),
-                },
-                None => Err(Error::RecvTimeout),
-            }
-        }
+        // Send message
+        self.channels.send_nostr_msg(NostrMessage { msgs })
     }
 
     #[inline]
-    async fn send_neg_msg(
-        &self,
-        id: SubscriptionId,
-        message: String,
-        send_opts: RelaySendOptions,
-    ) -> Result<(), Error> {
-        self.send_msg(
-            ClientMessage::NegMsg {
-                subscription_id: id,
-                message,
-            },
-            send_opts,
-        )
+    async fn send_neg_msg(&self, id: SubscriptionId, message: String) -> Result<(), Error> {
+        self.send_msg(ClientMessage::NegMsg {
+            subscription_id: id,
+            message,
+        })
         .await
     }
 
     #[inline]
-    async fn send_neg_close(
-        &self,
-        id: SubscriptionId,
-        send_opts: RelaySendOptions,
-    ) -> Result<(), Error> {
+    async fn send_neg_close(&self, id: SubscriptionId) -> Result<(), Error> {
         let close_msg = ClientMessage::NegClose {
             subscription_id: id,
         };
-        self.send_msg(close_msg, send_opts).await
+        self.send_msg(close_msg).await
     }
 
     #[inline]
@@ -1093,7 +1045,7 @@ impl InnerRelay {
         let mut notifications = self.internal_notification_sender.subscribe();
 
         // Batch send messages
-        self.batch_msg(msgs, opts).await?;
+        self.batch_msg(msgs).await?;
 
         // Handle responses
         time::timeout(Some(opts.timeout), async {
@@ -1169,8 +1121,7 @@ impl InnerRelay {
         let id: EventId = event.id;
 
         // Send message
-        let msg: ClientMessage = ClientMessage::auth(event);
-        self.send_msg(msg, opts).await?;
+        self.send_msg(ClientMessage::auth(event)).await?;
 
         // Handle responses
         time::timeout(Some(opts.timeout), async {
@@ -1212,7 +1163,7 @@ impl InnerRelay {
         .ok_or(Error::Timeout)?
     }
 
-    pub async fn resubscribe(&self, opts: RelaySendOptions) -> Result<(), Error> {
+    pub async fn resubscribe(&self) -> Result<(), Error> {
         if !self.opts.flags.can_read() {
             return Err(Error::ReadDisabled);
         }
@@ -1220,7 +1171,7 @@ impl InnerRelay {
         let subscriptions = self.subscriptions().await;
         for (id, filters) in subscriptions.into_iter() {
             if !filters.is_empty() && self.should_resubscribe(&id).await {
-                self.send_msg(ClientMessage::req(id, filters), opts).await?;
+                self.send_msg(ClientMessage::req(id, filters)).await?;
             } else {
                 tracing::debug!("Skip re-subscription of '{id}'");
             }
@@ -1258,7 +1209,7 @@ impl InnerRelay {
 
         // Compose and send REQ message
         let msg: ClientMessage = ClientMessage::req(id.clone(), filters.clone());
-        self.send_msg(msg, opts.send_opts).await?;
+        self.send_msg(msg).await?;
 
         // TODO: check if relay send CLOSED message?
 
@@ -1355,11 +1306,7 @@ impl InnerRelay {
 
                     if to_close {
                         // Unsubscribe
-                        this.send_msg(
-                            ClientMessage::close(sub_id.clone()),
-                            RelaySendOptions::default(),
-                        )
-                        .await?;
+                        this.send_msg(ClientMessage::close(sub_id.clone())).await?;
 
                         tracing::debug!("Subscription {sub_id} auto-closed");
                     }
@@ -1376,11 +1323,7 @@ impl InnerRelay {
         Ok(())
     }
 
-    pub async fn unsubscribe(
-        &self,
-        id: SubscriptionId,
-        opts: RelaySendOptions,
-    ) -> Result<(), Error> {
+    pub async fn unsubscribe(&self, id: SubscriptionId) -> Result<(), Error> {
         if !self.opts.flags.can_read() {
             return Err(Error::ReadDisabled);
         }
@@ -1389,11 +1332,10 @@ impl InnerRelay {
         self.remove_subscription(&id).await;
 
         // Send CLOSE message
-        let msg: ClientMessage = ClientMessage::close(id);
-        self.send_msg(msg, opts).await
+        self.send_msg(ClientMessage::close(id)).await
     }
 
-    pub async fn unsubscribe_all(&self, opts: RelaySendOptions) -> Result<(), Error> {
+    pub async fn unsubscribe_all(&self) -> Result<(), Error> {
         if !self.opts.flags.can_read() {
             return Err(Error::ReadDisabled);
         }
@@ -1405,8 +1347,7 @@ impl InnerRelay {
             self.remove_subscription(&id).await;
 
             // Send CLOSE message
-            let msg: ClientMessage = ClientMessage::close(id);
-            self.send_msg(msg, opts).await?;
+            self.send_msg(ClientMessage::close(id)).await?;
         }
 
         Ok(())
@@ -1434,10 +1375,8 @@ impl InnerRelay {
         let auto_close_opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
             .filter(opts)
             .timeout(Some(timeout));
-        let send_opts: RelaySendOptions = RelaySendOptions::default().timeout(Some(timeout));
-        let subscribe_opts: SubscribeOptions = SubscribeOptions::default()
-            .send_opts(send_opts)
-            .close_on(Some(auto_close_opts));
+        let subscribe_opts: SubscribeOptions =
+            SubscribeOptions::default().close_on(Some(auto_close_opts));
 
         // Subscribe to channel
         let mut notifications = self.internal_notification_sender.subscribe();
@@ -1555,8 +1494,7 @@ impl InnerRelay {
         timeout: Duration,
     ) -> Result<usize, Error> {
         let id = SubscriptionId::generate();
-        let send_opts = RelaySendOptions::default().skip_send_confirmation(true);
-        self.send_msg(ClientMessage::count(id.clone(), filters), send_opts)
+        self.send_msg(ClientMessage::count(id.clone(), filters))
             .await?;
 
         let mut count = 0;
@@ -1583,7 +1521,7 @@ impl InnerRelay {
         .ok_or(Error::Timeout)?;
 
         // Unsubscribe
-        self.send_msg(ClientMessage::close(id), send_opts).await?;
+        self.send_msg(ClientMessage::close(id)).await?;
 
         Ok(count)
     }
@@ -1664,9 +1602,8 @@ impl InnerRelay {
 
         // Send initial negentropy message
         let sub_id = SubscriptionId::generate();
-        let send_opts = RelaySendOptions::default().skip_send_confirmation(true);
         let open_msg = ClientMessage::neg_open(&mut negentropy, sub_id.clone(), filter)?;
-        self.send_msg(open_msg, send_opts).await?;
+        self.send_msg(open_msg).await?;
 
         let mut notifications = self.internal_notification_sender.subscribe();
         let mut temp_notifications = self.internal_notification_sender.subscribe();
@@ -1789,19 +1726,14 @@ impl InnerRelay {
                                             "Continue negentropy reconciliation with '{}'",
                                             self.url
                                         );
-                                        self.send_neg_msg(
-                                            subscription_id,
-                                            query.to_hex(),
-                                            send_opts,
-                                        )
-                                        .await?;
+                                        self.send_neg_msg(subscription_id, query.to_hex()).await?;
                                     }
                                     None => {
                                         // Mark sync as done
                                         sync_done = true;
 
                                         // Send NEG-CLOSE message
-                                        self.send_neg_close(subscription_id, send_opts).await?;
+                                        self.send_neg_close(subscription_id).await?;
                                     }
                                 }
                             }
@@ -1868,8 +1800,7 @@ impl InnerRelay {
                                 match self.database.event_by_id(&id).await {
                                     Ok(Some(event)) => {
                                         in_flight_up.insert(id);
-                                        self.send_msg(ClientMessage::event(event), send_opts)
-                                            .await?;
+                                        self.send_msg(ClientMessage::event(event)).await?;
                                         num_sent += 1;
                                     }
                                     Ok(None) => {
@@ -1926,11 +1857,8 @@ impl InnerRelay {
                         }
 
                         let filter = Filter::new().ids(ids);
-                        self.send_msg(
-                            ClientMessage::req(down_sub_id.clone(), vec![filter]),
-                            send_opts,
-                        )
-                        .await?;
+                        self.send_msg(ClientMessage::req(down_sub_id.clone(), vec![filter]))
+                            .await?;
 
                         in_flight_down = true
                     }
@@ -1979,9 +1907,8 @@ impl InnerRelay {
 
         // Send initial negentropy message
         let sub_id = SubscriptionId::generate();
-        let send_opts = RelaySendOptions::default().skip_send_confirmation(true);
         let open_msg = ClientMessage::neg_open_deprecated(&mut negentropy, sub_id.clone(), filter)?;
-        self.send_msg(open_msg, send_opts).await?;
+        self.send_msg(open_msg).await?;
 
         let mut notifications = self.internal_notification_sender.subscribe();
         let mut temp_notifications = self.internal_notification_sender.subscribe();
@@ -2099,19 +2026,14 @@ impl InnerRelay {
                                             "Continue negentropy reconciliation with '{}'",
                                             self.url
                                         );
-                                        self.send_neg_msg(
-                                            subscription_id,
-                                            query.to_hex(),
-                                            send_opts,
-                                        )
-                                        .await?;
+                                        self.send_neg_msg(subscription_id, query.to_hex()).await?;
                                     }
                                     None => {
                                         // Mark sync as done
                                         sync_done = true;
 
                                         // Send NEG-CLOSE message
-                                        self.send_neg_close(subscription_id, send_opts).await?;
+                                        self.send_neg_close(subscription_id).await?;
                                     }
                                 }
                             }
@@ -2178,8 +2100,7 @@ impl InnerRelay {
                                 match self.database.event_by_id(&id).await {
                                     Ok(Some(event)) => {
                                         in_flight_up.insert(id);
-                                        self.send_msg(ClientMessage::event(event), send_opts)
-                                            .await?;
+                                        self.send_msg(ClientMessage::event(event)).await?;
                                         num_sent += 1;
                                     }
                                     Ok(None) => {
@@ -2235,11 +2156,8 @@ impl InnerRelay {
                         }
 
                         let filter = Filter::new().ids(ids);
-                        self.send_msg(
-                            ClientMessage::req(down_sub_id.clone(), vec![filter]),
-                            send_opts,
-                        )
-                        .await?;
+                        self.send_msg(ClientMessage::req(down_sub_id.clone(), vec![filter]))
+                            .await?;
 
                         in_flight_down = true
                     }

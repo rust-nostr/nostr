@@ -39,16 +39,6 @@ impl JsOptions {
         }
     }
 
-    #[wasm_bindgen(js_name = waitForSend)]
-    pub fn wait_for_send(self, wait: bool) -> Self {
-        self.inner.wait_for_send(wait).into()
-    }
-
-    #[wasm_bindgen(js_name = waitForSubscription)]
-    pub fn wait_for_subscription(self, wait: bool) -> Self {
-        self.inner.wait_for_subscription(wait).into()
-    }
-
     /// Automatically start connection with relays (default: false)
     ///
     /// When set to `true`, there isn't the need of calling the connect methods.

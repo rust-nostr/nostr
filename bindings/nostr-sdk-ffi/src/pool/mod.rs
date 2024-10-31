@@ -147,15 +147,10 @@ impl RelayPool {
     /// Send client message to specific relays
     ///
     /// Note: **the relays must already be added!**
-    pub async fn send_msg_to(
-        &self,
-        urls: Vec<String>,
-        msg: Arc<ClientMessage>,
-        opts: Arc<RelaySendOptions>,
-    ) -> Result<Output> {
+    pub async fn send_msg_to(&self, urls: Vec<String>, msg: Arc<ClientMessage>) -> Result<Output> {
         Ok(self
             .inner
-            .send_msg_to(urls, msg.as_ref().deref().clone(), **opts)
+            .send_msg_to(urls, msg.as_ref().deref().clone())
             .await?
             .into())
     }
@@ -167,13 +162,12 @@ impl RelayPool {
         &self,
         urls: Vec<String>,
         msgs: Vec<Arc<ClientMessage>>,
-        opts: &RelaySendOptions,
     ) -> Result<Output> {
         let msgs = msgs
             .into_iter()
             .map(|msg| msg.as_ref().deref().clone())
             .collect();
-        Ok(self.inner.batch_msg_to(urls, msgs, **opts).await?.into())
+        Ok(self.inner.batch_msg_to(urls, msgs).await?.into())
     }
 
     /// Send event to all relays with `WRITE` flag
@@ -328,15 +322,13 @@ impl RelayPool {
     }
 
     /// Unsubscribe
-    pub async fn unsubscribe(&self, id: String, opts: Arc<RelaySendOptions>) {
-        self.inner
-            .unsubscribe(SubscriptionId::new(id), **opts)
-            .await
+    pub async fn unsubscribe(&self, id: String) {
+        self.inner.unsubscribe(SubscriptionId::new(id)).await
     }
 
     /// Unsubscribe from all subscriptions
-    pub async fn unsubscribe_all(&self, opts: Arc<RelaySendOptions>) {
-        self.inner.unsubscribe_all(**opts).await
+    pub async fn unsubscribe_all(&self) {
+        self.inner.unsubscribe_all().await
     }
 
     /// Fetch events from relays

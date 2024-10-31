@@ -288,18 +288,13 @@ impl RelayPool {
     ///
     /// Note: **the relays must already be added!**
     #[inline]
-    pub async fn send_msg_to<I, U>(
-        &self,
-        urls: I,
-        msg: ClientMessage,
-        opts: RelaySendOptions,
-    ) -> Result<Output<()>, Error>
+    pub async fn send_msg_to<I, U>(&self, urls: I, msg: ClientMessage) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.inner.send_msg_to(urls, msg, opts).await
+        self.inner.send_msg_to(urls, msg).await
     }
 
     /// Send multiple client messages at once to specific relays
@@ -310,14 +305,13 @@ impl RelayPool {
         &self,
         urls: I,
         msgs: Vec<ClientMessage>,
-        opts: RelaySendOptions,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.inner.batch_msg_to(urls, msgs, opts).await
+        self.inner.batch_msg_to(urls, msgs).await
     }
 
     /// Send event to all relays with `WRITE` flag (check [`RelayServiceFlags`] for more details).
@@ -468,14 +462,14 @@ impl RelayPool {
 
     /// Unsubscribe from subscription
     #[inline]
-    pub async fn unsubscribe(&self, id: SubscriptionId, opts: RelaySendOptions) {
-        self.inner.unsubscribe(id, opts).await
+    pub async fn unsubscribe(&self, id: SubscriptionId) {
+        self.inner.unsubscribe(id).await
     }
 
     /// Unsubscribe from all subscriptions
     #[inline]
-    pub async fn unsubscribe_all(&self, opts: RelaySendOptions) {
-        self.inner.unsubscribe_all(opts).await
+    pub async fn unsubscribe_all(&self) {
+        self.inner.unsubscribe_all().await
     }
 
     /// Sync events with relays (negentropy reconciliation)

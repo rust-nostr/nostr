@@ -252,18 +252,14 @@ impl Relay {
 
     /// Send msg to relay
     #[inline]
-    pub async fn send_msg(&self, msg: ClientMessage, opts: RelaySendOptions) -> Result<(), Error> {
-        self.batch_msg(vec![msg], opts).await
+    pub async fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
+        self.batch_msg(vec![msg]).await
     }
 
     /// Send multiple [`ClientMessage`] at once
     #[inline]
-    pub async fn batch_msg(
-        &self,
-        msgs: Vec<ClientMessage>,
-        opts: RelaySendOptions,
-    ) -> Result<(), Error> {
-        self.inner.batch_msg(msgs, opts).await
+    pub async fn batch_msg(&self, msgs: Vec<ClientMessage>) -> Result<(), Error> {
+        self.inner.batch_msg(msgs).await
     }
 
     /// Send event and wait for `OK` relay msg
@@ -292,8 +288,8 @@ impl Relay {
 
     /// Resubscribe to all **closed** or not yet initiated subscriptions
     #[inline]
-    pub async fn resubscribe(&self, opts: RelaySendOptions) -> Result<(), Error> {
-        self.inner.resubscribe(opts).await
+    pub async fn resubscribe(&self) -> Result<(), Error> {
+        self.inner.resubscribe().await
     }
 
     /// Subscribe to filters
@@ -333,18 +329,14 @@ impl Relay {
 
     /// Unsubscribe
     #[inline]
-    pub async fn unsubscribe(
-        &self,
-        id: SubscriptionId,
-        opts: RelaySendOptions,
-    ) -> Result<(), Error> {
-        self.inner.unsubscribe(id, opts).await
+    pub async fn unsubscribe(&self, id: SubscriptionId) -> Result<(), Error> {
+        self.inner.unsubscribe(id).await
     }
 
     /// Unsubscribe from all subscriptions
     #[inline]
-    pub async fn unsubscribe_all(&self, opts: RelaySendOptions) -> Result<(), Error> {
-        self.inner.unsubscribe_all(opts).await
+    pub async fn unsubscribe_all(&self) -> Result<(), Error> {
+        self.inner.unsubscribe_all().await
     }
 
     /// Get events of filters with custom callback
@@ -480,7 +472,9 @@ mod tests {
         assert_eq!(relay.status(), RelayStatus::Connected);
 
         let keys = Keys::generate();
-        let event = EventBuilder::text_note("Test", []).to_event(&keys).unwrap();
+        let event = EventBuilder::text_note("Test", [])
+            .sign_with_keys(&keys)
+            .unwrap();
         relay
             .send_event(event, RelaySendOptions::default())
             .await

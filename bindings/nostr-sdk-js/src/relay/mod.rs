@@ -169,22 +169,18 @@ impl JsRelay {
 
     /// Send msg to relay
     #[wasm_bindgen(js_name = sendMsg)]
-    pub async fn send_msg(&self, msg: &JsClientMessage, opts: &JsRelaySendOptions) -> Result<()> {
+    pub async fn send_msg(&self, msg: &JsClientMessage) -> Result<()> {
         self.inner
-            .send_msg(msg.deref().clone(), **opts)
+            .send_msg(msg.deref().clone())
             .await
             .map_err(into_err)
     }
 
     /// Send multiple `ClientMessage` at once
     #[wasm_bindgen(js_name = batchMsg)]
-    pub async fn batch_msg(
-        &self,
-        msgs: Vec<JsClientMessage>,
-        opts: &JsRelaySendOptions,
-    ) -> Result<()> {
+    pub async fn batch_msg(&self, msgs: Vec<JsClientMessage>) -> Result<()> {
         let msgs = msgs.into_iter().map(|msg| msg.deref().clone()).collect();
-        self.inner.batch_msg(msgs, **opts).await.map_err(into_err)
+        self.inner.batch_msg(msgs).await.map_err(into_err)
     }
 
     /// Send event and wait for `OK` relay msg
@@ -251,17 +247,17 @@ impl JsRelay {
     }
 
     /// Unsubscribe
-    pub async fn unsubscribe(&self, id: String, opts: &JsRelaySendOptions) -> Result<()> {
+    pub async fn unsubscribe(&self, id: String) -> Result<()> {
         self.inner
-            .unsubscribe(SubscriptionId::new(id), **opts)
+            .unsubscribe(SubscriptionId::new(id))
             .await
             .map_err(into_err)
     }
 
     /// Unsubscribe from all subscriptions
     #[wasm_bindgen(js_name = unsubscribeAll)]
-    pub async fn unsubscribe_all(&self, opts: &JsRelaySendOptions) -> Result<()> {
-        self.inner.unsubscribe_all(**opts).await.map_err(into_err)
+    pub async fn unsubscribe_all(&self) -> Result<()> {
+        self.inner.unsubscribe_all().await.map_err(into_err)
     }
 
     /// Fetch events

@@ -29,9 +29,7 @@ impl Client {
                                         tracing::info!("Authenticated to '{relay_url}' relay.");
 
                                         if let Ok(relay) = client.relay(relay_url).await {
-                                            let opts = RelaySendOptions::new()
-                                                .skip_send_confirmation(true);
-                                            if let Err(e) = relay.resubscribe(opts).await {
+                                            if let Err(e) = relay.resubscribe().await {
                                                 tracing::error!(
                                                     "Impossible to resubscribe to '{}': {e}",
                                                     relay.url()

@@ -11,8 +11,7 @@ async fn main() -> Result<()> {
     let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
     let public_key = keys.public_key();
 
-    let opts = Options::new().wait_for_send(false);
-    let client = Client::builder().opts(opts).build();
+    let client = Client::default();
 
     client.add_relay("wss://nostr.oxtr.dev").await?;
     client.add_relay("wss://relay.damus.io").await?;

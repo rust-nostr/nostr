@@ -42,9 +42,6 @@ pub enum Error {
     /// OnceCell error
     #[error(transparent)]
     OnceCell(#[from] SetError<broadcast::Sender<RelayPoolNotification>>),
-    /// Message response timeout
-    #[error("recv message response timeout")]
-    RecvTimeout,
     /// WebSocket timeout
     #[error("WebSocket timeout")]
     WebSocketTimeout,
@@ -57,9 +54,6 @@ pub enum Error {
         /// Name of channel
         channel: String,
     },
-    /// Message not sent
-    #[error("message not sent")]
-    MessageNotSent,
     /// Relay not connected
     #[error("relay not connected")]
     NotConnected,

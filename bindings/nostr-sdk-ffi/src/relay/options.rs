@@ -211,13 +211,6 @@ impl RelaySendOptions {
         }
     }
 
-    /// Skip wait for confirmation that message is sent (default: false)
-    pub fn skip_send_confirmation(self: Arc<Self>, value: bool) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.skip_send_confirmation(value);
-        builder
-    }
-
     /// Timeout for sending event (default: 20 secs)
     ///
     /// If `None`, the default timeout will be used
@@ -316,13 +309,6 @@ impl SubscribeOptions {
     pub fn close_on(self: Arc<Self>, opts: Option<Arc<SubscribeAutoCloseOptions>>) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.close_on(opts.map(|o| **o));
-        builder
-    }
-
-    /// Set [RelaySendOptions]
-    pub fn send_opts(self: Arc<Self>, opts: &RelaySendOptions) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.send_opts(**opts);
         builder
     }
 }

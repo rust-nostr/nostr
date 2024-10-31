@@ -18,8 +18,6 @@ use nostr_relay_pool::relay::constants::DEFAULT_SEND_TIMEOUT;
 /// Options
 #[derive(Debug, Clone)]
 pub struct Options {
-    wait_for_send: bool,
-    wait_for_subscription: bool,
     pub(super) autoconnect: bool,
     new_events_difficulty: Arc<AtomicU8>,
     min_pow_difficulty: Arc<AtomicU8>,
@@ -39,8 +37,6 @@ pub struct Options {
 impl Default for Options {
     fn default() -> Self {
         Self {
-            wait_for_send: true,
-            wait_for_subscription: false,
             autoconnect: false,
             new_events_difficulty: Arc::new(AtomicU8::new(0)),
             min_pow_difficulty: Arc::new(AtomicU8::new(0)),
@@ -66,32 +62,22 @@ impl Options {
         Self::default()
     }
 
-    /// Wait for the msg to be sent (default: true)
-    #[inline]
-    pub fn wait_for_send(mut self, wait: bool) -> Self {
-        self.wait_for_send = wait;
-        self
+    pub(crate) fn get_relay_send_opts(&self) -> RelaySendOptions {
+        RelaySendOptions::new().timeout(self.send_timeout)
     }
 
-    pub(crate) fn get_wait_for_send(&self) -> RelaySendOptions {
-        RelaySendOptions::new()
-            .timeout(self.send_timeout)
-            .skip_send_confirmation(!self.wait_for_send)
+    /// Wait for the msg to be sent (default: true)
+    #[deprecated(since = "0.36.0")]
+    pub fn wait_for_send(self, _wait: bool) -> Self {
+        self
     }
 
     /// Wait for the subscription msg to be sent (default: false)
     ///
     /// Used in `subscribe` and `unsubscribe` methods
-    #[inline]
-    pub fn wait_for_subscription(mut self, wait: bool) -> Self {
-        self.wait_for_subscription = wait;
+    #[deprecated(since = "0.36.0")]
+    pub fn wait_for_subscription(self, _wait: bool) -> Self {
         self
-    }
-
-    pub(crate) fn get_wait_for_subscription(&self) -> RelaySendOptions {
-        RelaySendOptions::new()
-            .timeout(self.send_timeout)
-            .skip_send_confirmation(!self.wait_for_subscription)
     }
 
     /// Automatically start connection with relays (default: false)

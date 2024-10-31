@@ -144,11 +144,6 @@ impl JsRelaySendOptions {
         }
     }
 
-    /// Skip wait for confirmation that message is sent (default: false)
-    pub fn skip_send_confirmation(self, value: bool) -> Self {
-        self.inner.skip_send_confirmation(value).into()
-    }
-
     /// Timeout for sending event (default: 20 secs)
     ///
     /// If `None`, the default timeout will be used
@@ -271,13 +266,6 @@ impl JsSubscribeOptions {
     pub fn close_on(self, opts: Option<JsSubscribeAutoCloseOptions>) -> Self {
         self.inner.close_on(opts.map(|o| *o)).into()
     }
-
-    /* /// Set [RelaySendOptions]
-    pub fn send_opts(self, opts: JsRelaySendOptions) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.send_opts(**opts);
-        builder
-    } */
 }
 
 #[wasm_bindgen(js_name = SyncDirection)]

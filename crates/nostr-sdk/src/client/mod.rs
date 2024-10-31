@@ -667,10 +667,7 @@ impl Client {
         filters: Vec<Filter>,
         opts: Option<SubscribeAutoCloseOptions>,
     ) -> Result<Output<()>, Error> {
-        let send_opts: RelaySendOptions = self.opts.get_wait_for_subscription();
-        let opts: SubscribeOptions = SubscribeOptions::default()
-            .close_on(opts)
-            .send_opts(send_opts);
+        let opts: SubscribeOptions = SubscribeOptions::default().close_on(opts);
 
         if self.opts.gossip {
             self.gossip_subscribe(id, filters, opts).await
@@ -699,10 +696,7 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let send_opts: RelaySendOptions = self.opts.get_wait_for_subscription();
-        let opts: SubscribeOptions = SubscribeOptions::default()
-            .close_on(opts)
-            .send_opts(send_opts);
+        let opts: SubscribeOptions = SubscribeOptions::default().close_on(opts);
         Ok(self.pool.subscribe_to(urls, filters, opts).await?)
     }
 
@@ -724,10 +718,7 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let send_opts: RelaySendOptions = self.opts.get_wait_for_subscription();
-        let opts: SubscribeOptions = SubscribeOptions::default()
-            .close_on(opts)
-            .send_opts(send_opts);
+        let opts: SubscribeOptions = SubscribeOptions::default().close_on(opts);
         Ok(self
             .pool
             .subscribe_with_id_to(urls, id, filters, opts)
@@ -755,15 +746,13 @@ impl Client {
     /// Unsubscribe
     #[inline]
     pub async fn unsubscribe(&self, id: SubscriptionId) {
-        let opts: RelaySendOptions = self.opts.get_wait_for_subscription();
-        self.pool.unsubscribe(id, opts).await;
+        self.pool.unsubscribe(id).await;
     }
 
     /// Unsubscribe from all subscriptions
     #[inline]
     pub async fn unsubscribe_all(&self) {
-        let opts: RelaySendOptions = self.opts.get_wait_for_subscription();
-        self.pool.unsubscribe_all(opts).await;
+        self.pool.unsubscribe_all().await;
     }
 
     /// Sync events with relays (negentropy reconciliation)
@@ -972,8 +961,7 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let opts: RelaySendOptions = self.opts.get_wait_for_send();
-        Ok(self.pool.send_msg_to(urls, msg, opts).await?)
+        Ok(self.pool.send_msg_to(urls, msg).await?)
     }
 
     /// Batch send client messages to **specific relays**
@@ -982,14 +970,13 @@ impl Client {
         &self,
         urls: I,
         msgs: Vec<ClientMessage>,
-        opts: RelaySendOptions,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        Ok(self.pool.batch_msg_to(urls, msgs, opts).await?)
+        Ok(self.pool.batch_msg_to(urls, msgs).await?)
     }
 
     /// Send event
@@ -998,7 +985,7 @@ impl Client {
     /// If `gossip` is enabled (see [`Options::gossip`]) the event will be sent also to NIP65 relays (automatically discovered).
     #[inline]
     pub async fn send_event(&self, event: Event) -> Result<Output<EventId>, Error> {
-        let opts: RelaySendOptions = self.opts.get_wait_for_send();
+        let opts: RelaySendOptions = self.opts.get_relay_send_opts();
 
         // NOT gossip, send event to all relays
         if !self.opts.gossip {
@@ -1076,7 +1063,7 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let opts: RelaySendOptions = self.opts.get_wait_for_send();
+        let opts: RelaySendOptions = self.opts.get_relay_send_opts();
         Ok(self.pool.send_event_to(urls, event, opts).await?)
     }
 
@@ -1513,7 +1500,7 @@ impl Client {
         let relay: Relay = self.relay(relay).await?;
 
         // Send AUTH message
-        relay.auth(event, self.opts.get_wait_for_send()).await?;
+        relay.auth(event, self.opts.get_relay_send_opts()).await?;
 
         Ok(())
     }

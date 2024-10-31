@@ -43,18 +43,6 @@ impl Options {
         }
     }
 
-    pub fn wait_for_send(self: Arc<Self>, wait: bool) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.wait_for_send(wait);
-        builder
-    }
-
-    pub fn wait_for_subscription(self: Arc<Self>, wait: bool) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.wait_for_subscription(wait);
-        builder
-    }
-
     /// Automatically start connection with relays (default: false)
     ///
     /// When set to `true`, there isn't the need of calling the connect methods.

@@ -199,14 +199,12 @@ impl RelayOptions {
 /// [`Relay`](super::Relay) send options
 #[derive(Debug, Clone, Copy)]
 pub struct RelaySendOptions {
-    pub(super) skip_send_confirmation: bool,
     pub(super) timeout: Duration,
 }
 
 impl Default for RelaySendOptions {
     fn default() -> Self {
         Self {
-            skip_send_confirmation: false,
             timeout: DEFAULT_SEND_TIMEOUT,
         }
     }
@@ -228,8 +226,8 @@ impl RelaySendOptions {
     }
 
     /// Skip wait for confirmation that message is sent (default: false)
-    pub fn skip_send_confirmation(mut self, value: bool) -> Self {
-        self.skip_send_confirmation = value;
+    #[deprecated(since = "0.36.0", note = "By default confirmation will not be skipped")]
+    pub fn skip_send_confirmation(self, _value: bool) -> Self {
         self
     }
 
@@ -267,7 +265,6 @@ impl SubscribeAutoCloseOptions {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SubscribeOptions {
     pub(super) auto_close: Option<SubscribeAutoCloseOptions>,
-    pub(super) send_opts: RelaySendOptions,
 }
 
 impl SubscribeOptions {
@@ -278,8 +275,8 @@ impl SubscribeOptions {
     }
 
     /// Set [RelaySendOptions]
-    pub fn send_opts(mut self, opts: RelaySendOptions) -> Self {
-        self.send_opts = opts;
+    #[deprecated(since = "0.36.0")]
+    pub fn send_opts(self, _opts: RelaySendOptions) -> Self {
         self
     }
 

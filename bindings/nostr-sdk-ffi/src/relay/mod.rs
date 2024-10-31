@@ -214,28 +214,17 @@ impl Relay {
     }
 
     /// Send msg to relay
-    pub async fn send_msg(
-        &self,
-        msg: Arc<ClientMessage>,
-        opts: Arc<RelaySendOptions>,
-    ) -> Result<()> {
-        Ok(self
-            .inner
-            .send_msg(msg.as_ref().deref().clone(), **opts)
-            .await?)
+    pub async fn send_msg(&self, msg: Arc<ClientMessage>) -> Result<()> {
+        Ok(self.inner.send_msg(msg.as_ref().deref().clone()).await?)
     }
 
     /// Send multiple `ClientMessage` at once
-    pub async fn batch_msg(
-        &self,
-        msgs: Vec<Arc<ClientMessage>>,
-        opts: &RelaySendOptions,
-    ) -> Result<()> {
+    pub async fn batch_msg(&self, msgs: Vec<Arc<ClientMessage>>) -> Result<()> {
         let msgs = msgs
             .into_iter()
             .map(|msg| msg.as_ref().deref().clone())
             .collect();
-        Ok(self.inner.batch_msg(msgs, **opts).await?)
+        Ok(self.inner.batch_msg(msgs).await?)
     }
 
     /// Send event and wait for `OK` relay msg
@@ -315,16 +304,13 @@ impl Relay {
     }
 
     /// Unsubscribe
-    pub async fn unsubscribe(&self, id: String, opts: Arc<RelaySendOptions>) -> Result<()> {
-        Ok(self
-            .inner
-            .unsubscribe(SubscriptionId::new(id), **opts)
-            .await?)
+    pub async fn unsubscribe(&self, id: String) -> Result<()> {
+        Ok(self.inner.unsubscribe(SubscriptionId::new(id)).await?)
     }
 
     /// Unsubscribe from all subscriptions
-    pub async fn unsubscribe_all(&self, opts: Arc<RelaySendOptions>) -> Result<()> {
-        Ok(self.inner.unsubscribe_all(**opts).await?)
+    pub async fn unsubscribe_all(&self) -> Result<()> {
+        Ok(self.inner.unsubscribe_all().await?)
     }
 
     /// Fetch events
