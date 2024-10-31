@@ -1,0 +1,17 @@
+[package]
+name = "nostr-sdk-cpp"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+anyhow = "1.0"
+cxx = "1.0"
+nostr-sdk = { workspace = true, features = ["all-nips"] }
+
+[build-dependencies]
+cxx-build = "1.0"
+glob = "0.3"
