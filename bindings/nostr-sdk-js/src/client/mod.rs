@@ -208,13 +208,13 @@ impl JsClient {
     /// Use [`Client::force_remove_all_relays`] to remove every relay.
     #[wasm_bindgen(js_name = removeAllRelays)]
     pub async fn remove_all_relays(&self) -> Result<()> {
-        Ok(self.inner.remove_all_relays().await?)
+        self.inner.remove_all_relays().await.map_err(into_err)
     }
 
     /// Disconnect and force remove all relays
     #[wasm_bindgen(js_name = forceRemoveAllRelays)]
     pub async fn force_remove_all_relays(&self) -> Result<()> {
-        Ok(self.inner.force_remove_all_relays().await?)
+        self.inner.force_remove_all_relays().await.map_err(into_err)
     }
 
     /// Connect to a previously added relay
