@@ -33,7 +33,7 @@ pub struct InnerRelayPool {
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,
     pub(super) filtering: RelayFiltering,
-    //opts: RelayPoolOptions,
+    opts: RelayPoolOptions,
 }
 
 impl AtomicDestroyer for InnerRelayPool {
@@ -64,7 +64,7 @@ impl InnerRelayPool {
             notification_sender,
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
             filtering: RelayFiltering::new(opts.filtering_mode),
-            //opts,
+            opts,
         }
     }
 
@@ -212,6 +212,13 @@ impl InnerRelayPool {
         // Check if map already contains url
         if relays.contains_key(&url) {
             return Ok(false);
+        }
+
+        // Check number fo relays and limit
+        if let Some(max) = self.opts.max_relays {
+            if relays.len() >= max {
+                return Err(Error::TooManyRelays { limit: max });
+            }
         }
 
         // Compose new relay

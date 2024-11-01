@@ -12,7 +12,7 @@ use thiserror::Error;
 
 use crate::relay;
 
-/// [`RelayPool`](super::RelayPool) error
+/// Relay Pool error
 #[derive(Debug, Error)]
 pub enum Error {
     /// Url parse error
@@ -30,6 +30,12 @@ pub enum Error {
     /// Thread error
     #[error(transparent)]
     Thread(#[from] thread::Error),
+    /// No relays
+    #[error("too many relays (limit: {limit})")]
+    TooManyRelays {
+        /// Max numer allowed
+        limit: usize,
+    },
     /// No relays
     #[error("no relays")]
     NoRelays,
