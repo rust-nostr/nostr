@@ -123,6 +123,12 @@ impl InnerRelayPool {
             .collect()
     }
 
+    /// Get all relay urls
+    async fn all_relay_urls(&self) -> Vec<Url> {
+        let relays = self.relays.read().await;
+        relays.keys().cloned().collect()
+    }
+
     /// Get relays with `READ` or `WRITE` relays
     async fn relay_urls(&self) -> Vec<Url> {
         let relays = self.relays.read().await;
@@ -264,7 +270,12 @@ impl InnerRelayPool {
         }
     }
 
-    pub async fn remove_relay<U>(&self, url: U, force: bool) -> Result<(), Error>
+    async fn internal_remove_relay<U>(
+        &self,
+        relays: &mut Relays,
+        url: U,
+        force: bool,
+    ) -> Result<(), Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
@@ -272,12 +283,9 @@ impl InnerRelayPool {
         // Convert into url
         let url: Url = url.try_into_url()?;
 
-        // Acquire write lock
-        let mut relays = self.relays.write().await;
-
         // Remove relay
         if let Some(relay) = relays.remove(&url) {
-            // It NOT force, check if has INBOX or OUTBOX flags
+            // If NOT force, check if has INBOX or OUTBOX flags
             if !force {
                 let flags = relay.flags();
                 if flags.has_any(RelayServiceFlags::INBOX | RelayServiceFlags::OUTBOX) {
@@ -296,6 +304,31 @@ impl InnerRelayPool {
 
             // Disconnect
             relay.disconnect()?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn remove_relay<U>(&self, url: U, force: bool) -> Result<(), Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Acquire write lock
+        let mut relays = self.relays.write().await;
+        self.internal_remove_relay(&mut relays, url, force).await
+    }
+
+    pub async fn remove_all_relays(&self, force: bool) -> Result<(), Error> {
+        // Get all relay urls
+        let urls = self.all_relay_urls().await;
+
+        // Acquire write lock
+        let mut relays = self.relays.write().await;
+
+        // Iter urls and remove relays
+        for url in urls.into_iter() {
+            self.internal_remove_relay(&mut relays, url, force).await?;
         }
 
         Ok(())

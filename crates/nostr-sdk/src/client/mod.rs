@@ -536,9 +536,19 @@ impl Client {
     }
 
     /// Disconnect and remove all relays
-    #[deprecated(since = "0.36.0")]
+    ///
+    /// Some relays used by some services could not be disconnected with this method
+    /// (like the ones used for gossip).
+    /// Use [`Client::force_remove_all_relays`] to remove every relay.
+    #[inline]
     pub async fn remove_all_relays(&self) -> Result<(), Error> {
-        Ok(())
+        Ok(self.pool.remove_all_relays().await?)
+    }
+
+    /// Disconnect and force remove all relays
+    #[inline]
+    pub async fn force_remove_all_relays(&self) -> Result<(), Error> {
+        Ok(self.pool.force_remove_all_relays().await?)
     }
 
     /// Connect to a previously added relay

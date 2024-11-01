@@ -201,6 +201,22 @@ impl JsClient {
         self.inner.force_remove_relay(url).await.map_err(into_err)
     }
 
+    /// Disconnect and remove all relays
+    ///
+    /// Some relays used by some services could not be disconnected with this method
+    /// (like the ones used for gossip).
+    /// Use [`Client::force_remove_all_relays`] to remove every relay.
+    #[wasm_bindgen(js_name = removeAllRelays)]
+    pub async fn remove_all_relays(&self) -> Result<()> {
+        Ok(self.inner.remove_all_relays().await?)
+    }
+
+    /// Disconnect and force remove all relays
+    #[wasm_bindgen(js_name = forceRemoveAllRelays)]
+    pub async fn force_remove_all_relays(&self) -> Result<()> {
+        Ok(self.inner.force_remove_all_relays().await?)
+    }
+
     /// Connect to a previously added relay
     #[wasm_bindgen(js_name = connectRelay)]
     pub async fn connect_relay(&self, url: String) -> Result<()> {
