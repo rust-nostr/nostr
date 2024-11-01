@@ -272,8 +272,8 @@ impl Client {
 
     /// Get [`RelayPool`]
     #[inline]
-    pub fn pool(&self) -> RelayPool {
-        self.pool.clone()
+    pub fn pool(&self) -> &RelayPool {
+        &self.pool
     }
 
     /// Get database
