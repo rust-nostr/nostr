@@ -96,7 +96,7 @@ impl Client {
 
     /// Get relay pool
     pub fn pool(&self) -> Arc<RelayPool> {
-        Arc::new(self.inner.pool().into())
+        Arc::new(self.inner.pool().clone().into())
     }
 
     pub fn database(&self) -> NostrDatabase {

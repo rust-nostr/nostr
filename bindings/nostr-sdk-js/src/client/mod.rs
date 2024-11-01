@@ -101,7 +101,7 @@ impl JsClient {
 
     #[wasm_bindgen(getter)]
     pub fn pool(&self) -> JsRelayPool {
-        self.inner.pool().into()
+        self.inner.pool().clone().into()
     }
 
     #[wasm_bindgen(getter)]
