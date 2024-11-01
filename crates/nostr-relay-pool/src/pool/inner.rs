@@ -4,6 +4,7 @@
 
 //! Relay Pool
 
+use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
@@ -16,6 +17,7 @@ use nostr_database::{DynNostrDatabase, Events, IntoNostrDatabase};
 use tokio::sync::{broadcast, mpsc, Mutex, RwLock, RwLockReadGuard};
 use tokio_stream::wrappers::ReceiverStream;
 
+use super::constants::MAX_CONNECTING_CHUNK;
 use super::options::RelayPoolOptions;
 use super::{Error, Output, RelayPoolNotification};
 use crate::relay::options::{FilterOptions, RelayOptions, RelaySendOptions, SyncOptions};
@@ -904,13 +906,30 @@ impl InnerRelayPool {
         // Lock with read shared access
         let relays = self.relays.read().await;
 
-        let mut handles = Vec::with_capacity(relays.len());
+        let mut futures = Vec::with_capacity(relays.len());
 
-        for relay in relays.values() {
-            handles.push(relay.connect(connection_timeout));
+        // Filter only relays that can connect and compose futures
+        for relay in relays.values().filter(|r| r.status().can_connect()) {
+            futures.push(relay.connect(connection_timeout));
         }
 
-        future::join_all(handles).await;
+        // Check number of futures
+        if futures.len() <= MAX_CONNECTING_CHUNK {
+            future::join_all(futures).await;
+            return;
+        }
+
+        tracing::warn!(
+            "Too many relays ({}). Connecting in chunks of {MAX_CONNECTING_CHUNK} relays...",
+            futures.len()
+        );
+
+        // Join in chunks
+        while !futures.is_empty() {
+            let upper: usize = cmp::min(MAX_CONNECTING_CHUNK, futures.len());
+            let chunk = futures.drain(..upper);
+            future::join_all(chunk).await;
+        }
     }
 
     pub async fn disconnect(&self) -> Result<(), Error> {

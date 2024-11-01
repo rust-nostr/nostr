@@ -15,6 +15,7 @@ use nostr_database::{DynNostrDatabase, Events, IntoNostrDatabase, MemoryDatabase
 use tokio::sync::broadcast;
 pub use tokio_stream::wrappers::ReceiverStream;
 
+mod constants;
 mod error;
 mod inner;
 pub mod options;
