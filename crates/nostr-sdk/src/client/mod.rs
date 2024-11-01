@@ -288,6 +288,31 @@ impl Client {
         self.pool.filtering()
     }
 
+    /// Reset client
+    ///
+    /// This method reset the client to simplify the switch to another account.
+    ///
+    /// This method will:
+    /// * unsubscribe from all subscriptions
+    /// * disconnect and force remove all relays
+    /// * unset the signer
+    /// * unset the zapper
+    /// * clear the [`RelayFiltering`]
+    ///
+    /// This method will NOT:
+    /// * reset [`Options`]
+    /// * remove the database
+    /// * clear the gossip graph
+    pub async fn reset(&self) -> Result<(), Error> {
+        self.unsubscribe_all().await;
+        self.force_remove_all_relays().await?;
+        self.unset_signer().await;
+        #[cfg(feature = "nip57")]
+        self.unset_zapper().await;
+        self.filtering().clear().await;
+        Ok(())
+    }
+
     /// Completely shutdown client
     #[inline]
     pub async fn shutdown(&self) -> Result<(), Error> {

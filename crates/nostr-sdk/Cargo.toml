@@ -108,6 +108,9 @@ name = "subscriptions"
 required-features = ["all-nips"]
 
 [[example]]
+name = "switch-account"
+
+[[example]]
 name = "tor"
 required-features = ["tor"]
 

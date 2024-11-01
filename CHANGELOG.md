@@ -116,6 +116,7 @@
 * sdk: add `Client::sync` and `Client::sync_with` methods ([Yuki Kishimoto])
 * sdk: add gossip support to `Client::sync` ([Yuki Kishimoto])
 * sdk: add `Client::force_remove_all_relays` ([Yuki Kishimoto])
+* sdk: add `Client::reset` and `switch-account` example ([Yuki Kishimoto])
 * signer: add `NostrSigner::gift_wrap` ([Yuki Kishimoto])
 * zapper: add `WebLNZapper` struct (moved from `nostr-webln` crate) ([Yuki Kishimoto])
 * ffi(nostr): add `tag_kind_to_string` func ([Yuki Kishimoto])
