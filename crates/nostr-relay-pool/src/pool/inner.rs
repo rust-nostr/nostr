@@ -837,6 +837,7 @@ impl InnerRelayPool {
         self.stream_events_targeted(targets, timeout, opts).await
     }
 
+    // TODO: change target type to `HashMap<Url, Vec<Filter>>`?
     pub async fn stream_events_targeted<I, U>(
         &self,
         targets: I,
@@ -859,8 +860,6 @@ impl InnerRelayPool {
             return Err(Error::NoRelaysSpecified);
         }
 
-        let (tx, rx) = mpsc::channel::<Event>(4096); // TODO: change to unbounded or allow to change this value?
-
         // Lock with read shared access
         let relays = self.relays.read().await;
 
@@ -873,6 +872,8 @@ impl InnerRelayPool {
         if !map.keys().all(|url| relays.contains_key(url)) {
             return Err(Error::RelayNotFound);
         }
+
+        let (tx, rx) = mpsc::channel::<Event>(map.len() * 512);
 
         // Compose events collections
         let ids: Arc<Mutex<HashSet<EventId>>> = Arc::new(Mutex::new(HashSet::new()));
