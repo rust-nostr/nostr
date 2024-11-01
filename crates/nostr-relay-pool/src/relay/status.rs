@@ -92,6 +92,11 @@ impl RelayStatus {
         matches!(self, Self::Disconnected | Self::Terminated)
     }
 
+    /// Check if is [`RelayStatus::Terminated`]
+    pub(crate) fn is_terminated(&self) -> bool {
+        matches!(self, Self::Terminated)
+    }
+
     /// Check if relay can start connection (status is `initialized` or `terminated`)
     #[inline]
     pub(crate) fn can_connect(&self) -> bool {

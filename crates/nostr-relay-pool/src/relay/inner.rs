@@ -470,6 +470,13 @@ impl InnerRelay {
                 // Connect and run message handler
                 relay.connect_and_run(connection_timeout).await;
 
+                // Check if status set to terminated
+                if relay.status().is_terminated() {
+                    // Break loop and exit
+                    tracing::debug!("Exiting from auto connect loop for '{}'", relay.url);
+                    break;
+                }
+
                 // Check if reconnection is enabled
                 if relay.opts.get_reconnect() {
                     // Sleep before retry to connect
