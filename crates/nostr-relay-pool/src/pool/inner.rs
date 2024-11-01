@@ -873,33 +873,57 @@ impl InnerRelayPool {
             return Err(Error::RelayNotFound);
         }
 
+        // Drop
+        drop(relays);
+
+        // Create channel
         let (tx, rx) = mpsc::channel::<Event>(map.len() * 512);
 
-        // Compose events collections
-        let ids: Arc<Mutex<HashSet<EventId>>> = Arc::new(Mutex::new(HashSet::new()));
+        // Spawn
+        let this = self.clone();
+        thread::spawn(async move {
+            // Lock with read shared access
+            let relays = this.relays.read().await;
 
-        // Filter relays and start query
-        for (url, filters) in map.into_iter() {
-            let relay: Relay = self.internal_relay(&relays, &url).cloned()?;
-            let tx = tx.clone();
-            let ids = ids.clone();
-            // TODO: spawn a single thread?
-            thread::spawn(async move {
-                if let Err(e) = relay
-                    .fetch_events_with_callback(filters, timeout, opts, |event| async {
-                        let mut ids = ids.lock().await;
-                        if ids.insert(event.id) {
-                            drop(ids);
-                            let _ = tx.try_send(event); // TODO: log error?
-                        }
-                    })
-                    .await
-                {
+            let ids: Mutex<HashSet<EventId>> = Mutex::new(HashSet::new());
+
+            let mut urls: Vec<Url> = Vec::with_capacity(map.len());
+            let mut futures = Vec::with_capacity(map.len());
+
+            // Filter relays and start query
+            for (url, filters) in map.into_iter() {
+                match this.internal_relay(&relays, &url) {
+                    Ok(relay) => {
+                        urls.push(url);
+                        futures.push(relay.fetch_events_with_callback(
+                            filters,
+                            timeout,
+                            opts,
+                            |event| async {
+                                let mut ids = ids.lock().await;
+                                if ids.insert(event.id) {
+                                    drop(ids);
+                                    let _ = tx.try_send(event);
+                                }
+                            },
+                        ));
+                    }
+                    Err(e) => tracing::error!("{e}"),
+                }
+            }
+
+            // Join futures
+            let list = future::join_all(futures).await;
+
+            // Iter results
+            for (url, result) in urls.into_iter().zip(list.into_iter()) {
+                if let Err(e) = result {
                     tracing::error!("Failed to stream events from '{url}': {e}");
                 }
-            })?;
-        }
+            }
+        })?;
 
+        // Return stream
         Ok(ReceiverStream::new(rx))
     }
 
