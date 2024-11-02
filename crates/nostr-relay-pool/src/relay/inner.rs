@@ -1165,6 +1165,7 @@ impl InnerRelay {
                             )));
                         }
                     }
+                    RelayNotification::Shutdown => break,
                     _ => (),
                 }
             }
