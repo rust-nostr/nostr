@@ -28,8 +28,7 @@ use super::constants::{
 };
 use super::filtering::{CheckFiltering, RelayFiltering};
 use super::options::{
-    FilterOptions, RelayOptions, RelaySendOptions, SubscribeAutoCloseOptions, SubscribeOptions,
-    SyncOptions,
+    FilterOptions, RelayOptions, SubscribeAutoCloseOptions, SubscribeOptions, SyncOptions,
 };
 use super::stats::RelayConnectionStats;
 use super::{Error, Reconciliation, RelayNotification, RelayStatus};
@@ -1066,7 +1065,7 @@ impl InnerRelay {
         // Iterate until missing set is empty
         while !missing.is_empty() {
             let (event_id, status, message) = self
-                .wait_for_ok(&mut notifications, BATCH_EVENT_ITERATION_TIMEOUT)
+                .wait_for_ok(&mut notifications, None, BATCH_EVENT_ITERATION_TIMEOUT)
                 .await?;
 
             if missing.remove(&event_id) {
@@ -1098,9 +1097,41 @@ impl InnerRelay {
         }
     }
 
+    pub async fn auth(&self, event: Event) -> Result<(), Error> {
+        // Check if NIP42 event
+        if event.kind != Kind::Authentication {
+            return Err(Error::UnexpectedKind {
+                expected: Kind::Authentication,
+                found: event.kind,
+            });
+        }
+
+        let mut notifications = self.internal_notification_sender.subscribe();
+
+        // Send message
+        let id: EventId = event.id;
+        self.send_msg(ClientMessage::auth(event)).await?;
+
+        // Wait for OK
+        // The event ID is already checked in `wait_for_ok` method
+        let (_, status, message) = self
+            .wait_for_ok(&mut notifications, Some(id), BATCH_EVENT_ITERATION_TIMEOUT)
+            .await?;
+
+        // Check status
+        if status {
+            // Send notification
+            self.send_notification(RelayNotification::Authenticated, true);
+            Ok(())
+        } else {
+            Err(Error::EventNotPublished(message))
+        }
+    }
+
     async fn wait_for_ok(
         &self,
         notifications: &mut broadcast::Receiver<RelayNotification>,
+        id: Option<EventId>,
         timeout: Duration,
     ) -> Result<(EventId, bool, String), Error> {
         time::timeout(Some(timeout), async {
@@ -1114,10 +1145,21 @@ impl InnerRelay {
                                 message,
                             },
                     } => {
-                        return Ok((event_id, status, message));
+                        // Check if can return
+                        let can_return: bool = match id {
+                            // It's specified an ID, check if match the received one.
+                            Some(id) => id == event_id,
+                            // Nothing to check, return.
+                            None => true,
+                        };
+
+                        if can_return {
+                            return Ok((event_id, status, message));
+                        }
                     }
                     RelayNotification::RelayStatus { status } => {
                         if status.is_disconnected() {
+                            // TODO: use another error?
                             return Err(Error::EventNotPublished(String::from(
                                 "relay not connected (status changed)",
                             )));
@@ -1130,62 +1172,6 @@ impl InnerRelay {
             Err(Error::EventNotPublished(String::from(
                 "loop prematurely terminated",
             )))
-        })
-        .await
-        .ok_or(Error::Timeout)?
-    }
-
-    pub async fn auth(&self, event: Event, opts: RelaySendOptions) -> Result<(), Error> {
-        // Check if NIP42 event
-        if event.kind != Kind::Authentication {
-            return Err(Error::UnexpectedKind {
-                expected: Kind::Authentication,
-                found: event.kind,
-            });
-        }
-
-        let mut notifications = self.internal_notification_sender.subscribe();
-
-        let id: EventId = event.id;
-
-        // Send message
-        self.send_msg(ClientMessage::auth(event)).await?;
-
-        // Handle responses
-        time::timeout(Some(opts.timeout), async {
-            while let Ok(notification) = notifications.recv().await {
-                match notification {
-                    RelayNotification::Message {
-                        message:
-                            RelayMessage::Ok {
-                                event_id,
-                                status,
-                                message,
-                            },
-                    } => {
-                        if id == event_id {
-                            return if status {
-                                // Send notification
-                                self.send_notification(RelayNotification::Authenticated, true);
-
-                                Ok(())
-                            } else {
-                                Err(Error::EventNotPublished(message))
-                            };
-                        }
-                    }
-                    RelayNotification::RelayStatus { status } => {
-                        if status.is_disconnected() {
-                            return Err(Error::EventNotPublished(String::from(
-                                "relay not connected (status changed)",
-                            )));
-                        }
-                    }
-                    _ => (),
-                }
-            }
-
-            Err(Error::EventNotPublished(String::from("loop terminated")))
         })
         .await
         .ok_or(Error::Timeout)?

@@ -31,8 +31,8 @@ pub use self::flags::{AtomicRelayServiceFlags, FlagCheck, RelayServiceFlags};
 use self::inner::InnerRelay;
 pub use self::limits::RelayLimits;
 pub use self::options::{
-    FilterOptions, RelayOptions, RelaySendOptions, SubscribeAutoCloseOptions, SubscribeOptions,
-    SyncDirection, SyncOptions, SyncProgress,
+    FilterOptions, RelayOptions, SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection,
+    SyncOptions, SyncProgress,
 };
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
@@ -278,8 +278,8 @@ impl Relay {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[inline]
-    pub async fn auth(&self, event: Event, opts: RelaySendOptions) -> Result<(), Error> {
-        self.inner.auth(event, opts).await
+    pub async fn auth(&self, event: Event) -> Result<(), Error> {
+        self.inner.auth(event).await
     }
 
     /// Resubscribe to all **closed** or not yet initiated subscriptions

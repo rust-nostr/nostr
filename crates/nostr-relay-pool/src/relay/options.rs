@@ -11,7 +11,7 @@ use std::time::Duration;
 use async_wsocket::ConnectionMode;
 use tokio::sync::watch::{self, Receiver, Sender};
 
-use super::constants::{DEFAULT_RETRY_SEC, DEFAULT_SEND_TIMEOUT, MIN_RETRY_SEC};
+use super::constants::{DEFAULT_RETRY_SEC, MIN_RETRY_SEC};
 use super::filtering::RelayFilteringMode;
 use super::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
 use crate::RelayLimits;
@@ -197,19 +197,11 @@ impl RelayOptions {
 }
 
 /// [`Relay`](super::Relay) send options
-#[derive(Debug, Clone, Copy)]
-pub struct RelaySendOptions {
-    pub(super) timeout: Duration,
-}
+#[deprecated(since = "0.36.0")]
+#[derive(Debug, Clone, Copy, Default)]
+pub struct RelaySendOptions {}
 
-impl Default for RelaySendOptions {
-    fn default() -> Self {
-        Self {
-            timeout: DEFAULT_SEND_TIMEOUT,
-        }
-    }
-}
-
+#[allow(deprecated)]
 impl RelaySendOptions {
     /// New default [`RelaySendOptions`]
     pub fn new() -> Self {
@@ -234,8 +226,7 @@ impl RelaySendOptions {
     /// Timeout for sending event (default: 20 secs)
     ///
     /// If `None`, the default timeout will be used
-    pub fn timeout(mut self, timeout: Option<Duration>) -> Self {
-        self.timeout = timeout.unwrap_or(DEFAULT_SEND_TIMEOUT);
+    pub fn timeout(self, _timeout: Option<Duration>) -> Self {
         self
     }
 }
@@ -275,6 +266,7 @@ impl SubscribeOptions {
     }
 
     /// Set [RelaySendOptions]
+    #[allow(deprecated)]
     #[deprecated(since = "0.36.0")]
     pub fn send_opts(self, _opts: RelaySendOptions) -> Self {
         self

@@ -6,10 +6,6 @@
 
 use core::time::Duration;
 
-/// Default send timeout
-// IF CHANGED, REMEMBER TO UPDATE THE DOCS!
-pub const DEFAULT_SEND_TIMEOUT: Duration = Duration::from_secs(20);
-
 pub(super) const BATCH_EVENT_ITERATION_TIMEOUT: Duration = Duration::from_secs(15);
 
 /// Max relay size

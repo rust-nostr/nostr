@@ -32,9 +32,8 @@ pub use nostr_ndb::{self as ndb, NdbDatabase};
 #[doc(hidden)]
 pub use nostr_relay_pool::{
     self as pool, AtomicRelayServiceFlags, FilterOptions, Relay, RelayConnectionStats,
-    RelayOptions, RelayPool, RelayPoolNotification, RelayPoolOptions, RelaySendOptions,
-    RelayServiceFlags, RelayStatus, SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection,
-    SyncOptions,
+    RelayOptions, RelayPool, RelayPoolNotification, RelayPoolOptions, RelayServiceFlags,
+    RelayStatus, SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection, SyncOptions,
 };
 #[doc(hidden)]
 #[cfg(feature = "nip57")]

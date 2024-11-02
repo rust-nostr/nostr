@@ -1580,7 +1580,7 @@ impl Client {
         let relay: Relay = self.relay(relay).await?;
 
         // Send AUTH message
-        relay.auth(event, RelaySendOptions::default()).await?;
+        relay.auth(event).await?;
 
         Ok(())
     }
