@@ -70,10 +70,7 @@ async function main() {
 main();
 ```
 
-More examples can be found at:
-
-* https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-js/examples
-* https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-sdk-js/examples
+More examples can be found [here](https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-sdk-js/examples).
 
 ## Supported NIPs
 
