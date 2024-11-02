@@ -22,7 +22,7 @@ jobs:
           - cp312-cp312
     defaults:
       run:
-        working-directory: bindings/nostr-sdk-ffi/bindings-python
+        working-directory: bindings/nostr-sdk-ffi/python
     container:
       image: quay.io/pypa/manylinux_2_28_x86_64
       env:
@@ -46,7 +46,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: nostr_sdk-manylinux_2_28_x86_64-${{ matrix.python }}
-          path: /home/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/bindings-python/dist/*.whl
+          path: /home/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/python/dist/*.whl
 
   build-linux-aarch64:
     name: "Build manylinux_2_31 aarch64 wheel"
@@ -56,7 +56,7 @@ jobs:
         python: ["3.9", "3.10", "3.11", "3.12"]
     defaults:
       run:
-        working-directory: bindings/nostr-sdk-ffi/bindings-python
+        working-directory: bindings/nostr-sdk-ffi/python
     steps:
       - name: "Checkout"
         uses: actions/checkout@v3
@@ -80,14 +80,14 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: nostr_sdk-manylinux_2_31_aarch64-${{ matrix.python }}
-          path: /home/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/bindings-python/dist/*.whl
+          path: /home/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/python/dist/*.whl
 
   build-macos-arm64:
     name: "Build macOS arm64 wheel"
     runs-on: macos-13
     defaults:
       run:
-        working-directory: bindings/nostr-sdk-ffi/bindings-python
+        working-directory: bindings/nostr-sdk-ffi/python
     strategy:
       matrix:
         python: ["3.9", "3.10", "3.11", "3.12"]
@@ -114,14 +114,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nostr_sdk-macos-arm64-${{ matrix.python }}
-          path: /Users/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/bindings-python/dist/*.whl
+          path: /Users/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/python/dist/*.whl
 
   build-macos-x86_64:
     name: "Build macOS x86_64 wheel"
     runs-on: macos-13
     defaults:
       run:
-        working-directory: bindings/nostr-sdk-ffi/bindings-python
+        working-directory: bindings/nostr-sdk-ffi/python
     strategy:
       matrix:
         python: ["3.9", "3.10", "3.11", "3.12"]
@@ -147,14 +147,14 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: nostr_sdk-macos-x86_64-${{ matrix.python }}
-          path: /Users/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/bindings-python/dist/*.whl
+          path: /Users/runner/work/nostr/nostr/bindings/nostr-sdk-ffi/python/dist/*.whl
 
   build-windows:
     name: "Build Windows wheel"
     runs-on: windows-2022
     defaults:
       run:
-        working-directory: bindings/nostr-sdk-ffi/bindings-python
+        working-directory: bindings/nostr-sdk-ffi/python
     strategy:
       matrix:
         python: ["3.9", "3.10", "3.11", "3.12"]
@@ -177,14 +177,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nostr_sdk-win-${{ matrix.python }}
-          path: D:\a\nostr\nostr\bindings\nostr-sdk-ffi\bindings-python\dist\*.whl
+          path: D:\a\nostr\nostr\bindings\nostr-sdk-ffi\python\dist\*.whl
 
   publish-pypi:
     name: "Publish on PyPI"
     runs-on: ubuntu-20.04
     defaults:
       run:
-        working-directory: bindings/nostr-sdk-ffi/bindings-python
+        working-directory: bindings/nostr-sdk-ffi/python
     needs: [build-linux-x86_64, build-linux-aarch64, build-macos-arm64, build-macos-x86_64, build-windows]
     if: github.event.inputs.dry-run == 'false'
     steps:

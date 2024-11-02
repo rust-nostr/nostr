@@ -10,9 +10,9 @@ CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc cargo build 
 
 echo "Generating nostr_sdk.py..."
 cd ../
-cargo run -p uniffi-bindgen generate --library ../../target/aarch64-unknown-linux-gnu/release/libnostr_sdk_ffi.so --language python --no-format -o bindings-python/src/nostr-sdk/
+cargo run -p uniffi-bindgen generate --library ../../target/aarch64-unknown-linux-gnu/release/libnostr_sdk_ffi.so --language python --no-format -o python/src/nostr-sdk/
 
 echo "Copying linux libnostr_sdk_ffi.so..."
-cp ../../target/aarch64-unknown-linux-gnu/release/libnostr_sdk_ffi.so bindings-python/src/nostr-sdk/
+cp ../../target/aarch64-unknown-linux-gnu/release/libnostr_sdk_ffi.so python/src/nostr-sdk/
 
 echo "All done!"

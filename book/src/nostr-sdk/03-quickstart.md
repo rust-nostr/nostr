@@ -36,7 +36,7 @@ Listen for notifications from the relays based on the subscribed filters and pro
 <div slot="title">Python</div>
 <section>
 
-Docs aren't ready yet, please check the examples at <https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-sdk-ffi/bindings-python/examples>.
+Docs aren't ready yet, please check the examples at <https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-sdk-ffi/python/examples>.
 
 </section>
 

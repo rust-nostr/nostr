@@ -121,30 +121,30 @@ bindings-swift: ios-universal darwin-universal assemble-swift-package
 
 [linux]
 python:
-	rm -rf bindings-python/dist
-	pip install -r bindings-python/requirements.txt
+	rm -rf python/dist
+	pip install -r python/requirements.txt
 	cargo build --release
-	cargo run -p uniffi-bindgen generate --library ../../target/x86_64-unknown-linux-gnu/release/libnostr_sdk_ffi.so --language python --no-format -o bindings-python/src/nostr-sdk/
-	cp ../../target/x86_64-unknown-linux-gnu/release/libnostr_sdk_ffi.so bindings-python/src/nostr-sdk/
-	cd bindings-python && python setup.py --verbose bdist_wheel
-	pip install ./bindings-python/dist/nostr_sdk*.whl --force-reinstall
+	cargo run -p uniffi-bindgen generate --library ../../target/x86_64-unknown-linux-gnu/release/libnostr_sdk_ffi.so --language python --no-format -o python/src/nostr-sdk/
+	cp ../../target/x86_64-unknown-linux-gnu/release/libnostr_sdk_ffi.so python/src/nostr-sdk/
+	cd python && python setup.py --verbose bdist_wheel
+	pip install ./python/dist/nostr_sdk*.whl --force-reinstall
 
 [macos]
 python:
-	rm -rf bindings-python/dist
-	pip install -r bindings-python/requirements.txt
+	rm -rf python/dist
+	pip install -r python/requirements.txt
 	cargo build --release
-	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_sdk_ffi.dylib --language python --no-format -o bindings-python/src/nostr-sdk/
-	cp ../../target/release/libnostr_sdk_ffi.dylib bindings-python/src/nostr-sdk/
-	cd bindings-python && python setup.py --verbose bdist_wheel
-	pip install ./bindings-python/dist/nostr_sdk*.whl --force-reinstall
+	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_sdk_ffi.dylib --language python --no-format -o python/src/nostr-sdk/
+	cp ../../target/release/libnostr_sdk_ffi.dylib python/src/nostr-sdk/
+	cd python && python setup.py --verbose bdist_wheel
+	pip install ./python/dist/nostr_sdk*.whl --force-reinstall
 
 [windows]
 python:
-	pip install -r bindings-python\requirements.txt
+	pip install -r python\requirements.txt
 	cargo build --release
-	cargo run -p uniffi-bindgen generate --library ..\..\target\release\nostr_sdk_ffi.dll --language python --no-format -o bindings-python\src\nostr-sdk\
-	copy ..\..\target\release\nostr_sdk_ffi.dll bindings-python\src\nostr-sdk
-	del /F /Q bindings-python\dist\* 2>nul || exit /b 0
-	cd bindings-python && python setup.py --verbose bdist_wheel
-	FOR %%i in (.\bindings-python\dist\*.whl) DO pip install %i --force-reinstall
+	cargo run -p uniffi-bindgen generate --library ..\..\target\release\nostr_sdk_ffi.dll --language python --no-format -o python\src\nostr-sdk\
+	copy ..\..\target\release\nostr_sdk_ffi.dll python\src\nostr-sdk
+	del /F /Q python\dist\* 2>nul || exit /b 0
+	cd python && python setup.py --verbose bdist_wheel
+	FOR %%i in (.\python\dist\*.whl) DO pip install %i --force-reinstall
