@@ -55,6 +55,7 @@ kotlin: clean-android android
 	cargo run -p uniffi-bindgen generate --library ../../target/x86_64-linux-android/release/libnostr_sdk_ffi.so --language kotlin --no-format -o ffi/kotlin
 
 # Copy required modules and libs and assemble AAR
+[private]
 assemble-aar:
     rm -rf android/lib/src/main/jniLibs
     rm -rf android/lib/src/main/kotlin
@@ -66,11 +67,11 @@ assemble-aar:
     cp android/lib/build/outputs/aar/lib-release.aar ffi/android
 
 # Compile and build Android Archive (AAR)
-android: sdk-root kotlin assemble-aar
+aar: sdk-root kotlin assemble-aar
 
 # Publish android bindings
 [confirm]
-publish-android: android
+publish-android: aar
 	cd android && ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
 
 [private]
