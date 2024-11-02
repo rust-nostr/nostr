@@ -49,7 +49,7 @@ just kotlin
 This command will build an AAR file in `ffi/android/lib-release.aar`:
 
 ```bash
-just bindings-android
+just android
 ```
 
 See [Add your AAR or JAR as a dependency](https://developer.android.com/studio/projects/android-library#psd-add-aar-jar-dependency) in Android's docs for more information on how to integrate such an archive into your project.

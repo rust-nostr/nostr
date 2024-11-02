@@ -56,22 +56,22 @@ kotlin: clean-android android
 
 # Copy required modules and libs and assemble AAR
 assemble-aar:
-    rm -rf bindings-android/lib/src/main/jniLibs
-    rm -rf bindings-android/lib/src/main/kotlin
-    cp -r ffi/kotlin/jniLibs bindings-android/lib/src/main
-    mkdir -p bindings-android/lib/src/main/kotlin/
-    cp -r ffi/kotlin/rust bindings-android/lib/src/main/kotlin/
-    cd bindings-android && ./gradlew assembleRelease
+    rm -rf android/lib/src/main/jniLibs
+    rm -rf android/lib/src/main/kotlin
+    cp -r ffi/kotlin/jniLibs android/lib/src/main
+    mkdir -p android/lib/src/main/kotlin/
+    cp -r ffi/kotlin/rust android/lib/src/main/kotlin/
+    cd android && ./gradlew assembleRelease
     mkdir -p ffi/android
-    cp bindings-android/lib/build/outputs/aar/lib-release.aar ffi/android
+    cp android/lib/build/outputs/aar/lib-release.aar ffi/android
 
 # Compile and build Android Archive (AAR)
-bindings-android: sdk-root kotlin assemble-aar
+android: sdk-root kotlin assemble-aar
 
 # Publish android bindings
 [confirm]
-publish-android: bindings-android
-	cd bindings-android && ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
+publish-android: android
+	cd android && ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
 
 [private]
 ios-universal:
