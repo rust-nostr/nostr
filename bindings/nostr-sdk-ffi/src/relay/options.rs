@@ -188,39 +188,6 @@ impl RelayOptions {
     }
 }
 
-#[derive(Clone, Object)]
-pub struct RelaySendOptions {
-    inner: nostr_sdk::RelaySendOptions,
-}
-
-impl Deref for RelaySendOptions {
-    type Target = nostr_sdk::RelaySendOptions;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-#[uniffi::export]
-impl RelaySendOptions {
-    /// New default `RelaySendOptions`
-    #[uniffi::constructor]
-    pub fn new() -> Self {
-        Self {
-            inner: nostr_sdk::RelaySendOptions::default(),
-        }
-    }
-
-    /// Timeout for sending event (default: 20 secs)
-    ///
-    /// If `None`, the default timeout will be used
-    pub fn timeout(self: Arc<Self>, timeout: Option<Duration>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.timeout(timeout);
-        builder
-    }
-}
-
 /// Filter options
 #[derive(Enum)]
 pub enum FilterOptions {

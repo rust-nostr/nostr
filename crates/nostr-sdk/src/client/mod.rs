@@ -1073,11 +1073,9 @@ impl Client {
     /// If `gossip` is enabled (see [`Options::gossip`]) the event will be sent also to NIP65 relays (automatically discovered).
     #[inline]
     pub async fn send_event(&self, event: Event) -> Result<Output<EventId>, Error> {
-        let opts: RelaySendOptions = self.opts.get_relay_send_opts();
-
         // NOT gossip, send event to all relays
         if !self.opts.gossip {
-            return Ok(self.pool.send_event(event, opts).await?);
+            return Ok(self.pool.send_event(event).await?);
         }
 
         // ########## Gossip ##########
@@ -1130,17 +1128,13 @@ impl Client {
         let urls = outbox.union(&inbox);
 
         // Send event
-        Ok(self.pool.send_event_to(urls, event, opts).await?)
+        Ok(self.pool.send_event_to(urls, event).await?)
     }
 
     /// Send multiple events at once to all relays with `WRITE` flag (check [`RelayServiceFlags`] for more details).
     #[inline]
-    pub async fn batch_event(
-        &self,
-        events: Vec<Event>,
-        opts: RelaySendOptions,
-    ) -> Result<Output<()>, Error> {
-        Ok(self.pool.batch_event(events, opts).await?)
+    pub async fn batch_event(&self, events: Vec<Event>) -> Result<Output<()>, Error> {
+        Ok(self.pool.batch_event(events).await?)
     }
 
     /// Send event to specific relays.
@@ -1151,8 +1145,7 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let opts: RelaySendOptions = self.opts.get_relay_send_opts();
-        Ok(self.pool.send_event_to(urls, event, opts).await?)
+        Ok(self.pool.send_event_to(urls, event).await?)
     }
 
     /// Send multiple events at once to specific relays
@@ -1161,14 +1154,13 @@ impl Client {
         &self,
         urls: I,
         events: Vec<Event>,
-        opts: RelaySendOptions,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        Ok(self.pool.batch_event_to(urls, events, opts).await?)
+        Ok(self.pool.batch_event_to(urls, events).await?)
     }
 
     /// Signs the [`EventBuilder`] into an [`Event`] using the [`NostrSigner`]
@@ -1588,7 +1580,7 @@ impl Client {
         let relay: Relay = self.relay(relay).await?;
 
         // Send AUTH message
-        relay.auth(event, self.opts.get_relay_send_opts()).await?;
+        relay.auth(event, RelaySendOptions::default()).await?;
 
         Ok(())
     }

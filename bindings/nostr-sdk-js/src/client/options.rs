@@ -77,11 +77,6 @@ impl JsOptions {
             .into()
     }
 
-    #[wasm_bindgen(js_name = sendTimeout)]
-    pub fn send_timeout(self, send_timeout: Option<JsDuration>) -> Self {
-        self.inner.send_timeout(send_timeout.map(|d| *d)).into()
-    }
-
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>

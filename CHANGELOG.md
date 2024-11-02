@@ -62,6 +62,7 @@
 * pool: connect in chunks if too many relays ([Yuki Kishimoto])
 * pool: dynamic channel size for streaming of events ([Yuki Kishimoto])
 * pool: allow to define a limit of relays allowed in `RelayPool` ([Yuki Kishimoto])
+* pool: refactor `Relay::batch_event` ([Yuki Kishimoto])
 * sdk: deprecate `Client::get_events_of` and `Client::get_events_from` methods ([Yuki Kishimoto])
 * sdk: use `Events` instead of `Vec<Event>` in fetch and query methods ([Yuki Kishimoto])
 * sdk: rename `stream_events_of` to `stream_events` ([Yuki Kishimoto])

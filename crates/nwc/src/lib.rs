@@ -20,15 +20,9 @@ pub extern crate nostr_zapper as zapper;
 
 use async_trait::async_trait;
 use async_utility::time;
-use nostr::nips::nip47::{
-    GetBalanceResponseResult, GetInfoResponseResult, ListTransactionsRequestParams,
-    LookupInvoiceRequestParams, LookupInvoiceResponseResult, MakeInvoiceRequestParams,
-    MakeInvoiceResponseResult, NostrWalletConnectURI, PayInvoiceRequestParams,
-    PayInvoiceResponseResult, PayKeysendRequestParams, PayKeysendResponseResult, Request, Response,
-};
-use nostr::{Event, EventId, Filter, Kind, SubscriptionId, Timestamp};
-use nostr_relay_pool::{Relay, RelayNotification, RelaySendOptions, SubscribeOptions};
-use nostr_zapper::{NostrZapper, ZapperBackend, ZapperError};
+use nostr::nips::nip47::{Request, Response};
+use nostr_relay_pool::prelude::*;
+use nostr_zapper::prelude::*;
 
 pub mod error;
 pub mod options;
@@ -110,9 +104,7 @@ impl NWC {
         let mut notifications = self.relay.notifications();
 
         // Send request
-        self.relay
-            .send_event(event, RelaySendOptions::new())
-            .await?;
+        self.relay.send_event(event).await?;
 
         time::timeout(Some(self.opts.timeout), async {
             while let Ok(notification) = notifications.recv().await {

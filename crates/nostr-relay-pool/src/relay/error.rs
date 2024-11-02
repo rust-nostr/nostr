@@ -80,9 +80,9 @@ pub enum Error {
         /// Not published events
         not_published: HashMap<EventId, String>,
     },
-    /// Batch event empty
-    #[error("batch event cannot be empty")]
-    BatchEventEmpty,
+    /// Batch messages empty
+    #[error("can't batch empty list of messages")]
+    BatchMessagesEmpty,
     /// Read actions disabled
     #[error("read actions are disabled for this relay")]
     ReadDisabled,

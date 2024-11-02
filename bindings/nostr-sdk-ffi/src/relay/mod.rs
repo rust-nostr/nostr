@@ -20,7 +20,7 @@ pub mod status;
 pub use self::filtering::{RelayFiltering, RelayFilteringMode};
 pub use self::limits::RelayLimits;
 use self::options::SyncOptions;
-pub use self::options::{ConnectionMode, RelayOptions, RelaySendOptions, SubscribeOptions};
+pub use self::options::{ConnectionMode, RelayOptions, SubscribeOptions};
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
 use crate::database::events::Events;
@@ -228,26 +228,19 @@ impl Relay {
     }
 
     /// Send event and wait for `OK` relay msg
-    pub async fn send_event(&self, event: &Event, opts: &RelaySendOptions) -> Result<Arc<EventId>> {
+    pub async fn send_event(&self, event: &Event) -> Result<Arc<EventId>> {
         Ok(Arc::new(
-            self.inner
-                .send_event(event.deref().clone(), **opts)
-                .await?
-                .into(),
+            self.inner.send_event(event.deref().clone()).await?.into(),
         ))
     }
 
     /// Send multiple `Event` at once
-    pub async fn batch_event(
-        &self,
-        events: Vec<Arc<Event>>,
-        opts: &RelaySendOptions,
-    ) -> Result<()> {
+    pub async fn batch_event(&self, events: Vec<Arc<Event>>) -> Result<()> {
         let events = events
             .into_iter()
             .map(|e| e.as_ref().deref().clone())
             .collect();
-        Ok(self.inner.batch_event(events, **opts).await?)
+        Ok(self.inner.batch_event(events).await?)
     }
 
     /// Subscribe to filters

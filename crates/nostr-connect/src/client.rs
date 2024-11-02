@@ -9,11 +9,8 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use async_utility::time;
-use nostr::nips::nip46::{Message, NostrConnectURI, Request, ResponseResult};
-use nostr::prelude::*;
-use nostr_relay_pool::{
-    RelayOptions, RelayPool, RelayPoolNotification, RelaySendOptions, SubscribeOptions,
-};
+use nostr::nips::nip46::{Message, Request, ResponseResult};
+use nostr_relay_pool::prelude::*;
 use tokio::sync::broadcast::Receiver;
 use tokio::sync::OnceCell;
 
@@ -181,7 +178,7 @@ impl NostrConnect {
         let mut notifications = self.pool.notifications();
 
         // Send request
-        self.pool.send_event(event, RelaySendOptions::new()).await?;
+        self.pool.send_event(event).await?;
 
         time::timeout(Some(self.timeout), async {
             while let Ok(notification) = notifications.recv().await {

@@ -86,12 +86,6 @@ impl Options {
         builder
     }
 
-    pub fn send_timeout(self: Arc<Self>, send_timeout: Option<Duration>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.send_timeout(send_timeout);
-        builder
-    }
-
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>

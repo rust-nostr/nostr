@@ -22,9 +22,9 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, watch, Mutex, MutexGuard, OnceCell, RwLock};
 
 use super::constants::{
-    MAX_ADJ_RETRY_SEC, MIN_ATTEMPTS, MIN_RETRY_SEC, MIN_SUCCESS_RATE, NEGENTROPY_BATCH_SIZE_DOWN,
-    NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP, PING_INTERVAL,
-    WEBSOCKET_TX_TIMEOUT,
+    BATCH_EVENT_ITERATION_TIMEOUT, MAX_ADJ_RETRY_SEC, MIN_ATTEMPTS, MIN_RETRY_SEC,
+    MIN_SUCCESS_RATE, NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT,
+    NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, WEBSOCKET_TX_TIMEOUT,
 };
 use super::filtering::{CheckFiltering, RelayFiltering};
 use super::options::{
@@ -993,6 +993,11 @@ impl InnerRelay {
         // Perform health checks
         self.health_check().await?;
 
+        // Check if list is empty
+        if msgs.is_empty() {
+            return Err(Error::BatchMessagesEmpty);
+        }
+
         // If it can't write, check if there are "write" messages
         if !self.opts.flags.can_write() && msgs.iter().any(|msg| msg.is_event()) {
             return Err(Error::WriteDisabled);
@@ -1025,44 +1030,80 @@ impl InnerRelay {
     }
 
     #[inline]
-    pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
+    pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
         let id: EventId = event.id;
-        self.batch_event(vec![event], opts).await?;
+        self.batch_event(vec![event]).await?;
         Ok(id)
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    pub async fn batch_event(
-        &self,
-        events: Vec<Event>,
-        opts: RelaySendOptions,
-    ) -> Result<(), Error> {
-        if !self.opts.flags.can_write() {
-            return Err(Error::WriteDisabled);
-        }
-
-        if events.is_empty() {
-            return Err(Error::BatchEventEmpty);
-        }
+    pub async fn batch_event(&self, events: Vec<Event>) -> Result<(), Error> {
+        // Health, write permission and number of messages checks are executed in `batch_msg` method.
 
         let events_len: usize = events.len();
         let mut msgs: Vec<ClientMessage> = Vec::with_capacity(events_len);
         let mut missing: HashSet<EventId> = HashSet::with_capacity(events_len);
 
+        // Construct client messages
         for event in events.into_iter() {
-            missing.insert(event.id);
-            msgs.push(ClientMessage::event(event));
+            // Insert ID into the hashset.
+            // If the value it's new, push it also to vector.
+            if missing.insert(event.id) {
+                msgs.push(ClientMessage::event(event));
+            }
         }
 
+        // Subscribe to notifications
         let mut notifications = self.internal_notification_sender.subscribe();
 
         // Batch send messages
         self.batch_msg(msgs).await?;
 
-        // Handle responses
-        time::timeout(Some(opts.timeout), async {
-            let mut published: HashSet<EventId> = HashSet::new();
-            let mut not_published: HashMap<EventId, String> = HashMap::new();
+        // Keep track of published and not published event IDs
+        let mut published: HashSet<EventId> = HashSet::new();
+        let mut not_published: HashMap<EventId, String> = HashMap::new();
+
+        // Iterate until missing set is empty
+        while !missing.is_empty() {
+            let (event_id, status, message) = self
+                .wait_for_ok(&mut notifications, BATCH_EVENT_ITERATION_TIMEOUT)
+                .await?;
+
+            if missing.remove(&event_id) {
+                if events_len == 1 {
+                    return if status {
+                        Ok(())
+                    } else {
+                        Err(Error::EventNotPublished(message))
+                    };
+                }
+
+                if status {
+                    published.insert(event_id);
+                } else {
+                    not_published.insert(event_id, message);
+                }
+            }
+        }
+
+        if !published.is_empty() && not_published.is_empty() {
+            Ok(())
+        } else if !published.is_empty() && !not_published.is_empty() {
+            Err(Error::PartialPublish {
+                published: published.into_iter().collect(),
+                not_published,
+            })
+        } else {
+            Err(Error::EventsNotPublished(not_published))
+        }
+    }
+
+    async fn wait_for_ok(
+        &self,
+        notifications: &mut broadcast::Receiver<RelayNotification>,
+        timeout: Duration,
+    ) -> Result<(EventId, bool, String), Error> {
+        time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
                 match notification {
                     RelayNotification::Message {
@@ -1073,21 +1114,7 @@ impl InnerRelay {
                                 message,
                             },
                     } => {
-                        if missing.remove(&event_id) {
-                            if events_len == 1 {
-                                return if status {
-                                    Ok(())
-                                } else {
-                                    Err(Error::EventNotPublished(message))
-                                };
-                            }
-
-                            if status {
-                                published.insert(event_id);
-                            } else {
-                                not_published.insert(event_id, message);
-                            }
-                        }
+                        return Ok((event_id, status, message));
                     }
                     RelayNotification::RelayStatus { status } => {
                         if status.is_disconnected() {
@@ -1098,22 +1125,11 @@ impl InnerRelay {
                     }
                     _ => (),
                 }
-
-                if missing.is_empty() {
-                    break;
-                }
             }
 
-            if !published.is_empty() && not_published.is_empty() {
-                Ok(())
-            } else if !published.is_empty() && !not_published.is_empty() {
-                Err(Error::PartialPublish {
-                    published: published.into_iter().collect(),
-                    not_published,
-                })
-            } else {
-                Err(Error::EventsNotPublished(not_published))
-            }
+            Err(Error::EventNotPublished(String::from(
+                "loop prematurely terminated",
+            )))
         })
         .await
         .ok_or(Error::Timeout)?

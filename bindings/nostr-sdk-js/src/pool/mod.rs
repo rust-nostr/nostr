@@ -19,9 +19,7 @@ use crate::protocol::event::JsEvent;
 use crate::protocol::message::JsClientMessage;
 use crate::protocol::types::JsFilter;
 use crate::relay::filtering::JsRelayFiltering;
-use crate::relay::options::{
-    JsRelayOptions, JsRelaySendOptions, JsSubscribeOptions, JsSyncOptions,
-};
+use crate::relay::options::{JsRelayOptions, JsSubscribeOptions, JsSyncOptions};
 use crate::relay::{JsRelay, JsRelayArray};
 
 #[wasm_bindgen(js_name = RelayPool)]
@@ -201,14 +199,10 @@ impl JsRelayPool {
 
     /// Send event to all relays with `WRITE` flag
     #[wasm_bindgen(js_name = sendEvent)]
-    pub async fn send_event(
-        &self,
-        event: &JsEvent,
-        opts: &JsRelaySendOptions,
-    ) -> Result<JsSendEventOutput> {
+    pub async fn send_event(&self, event: &JsEvent) -> Result<JsSendEventOutput> {
         Ok(self
             .inner
-            .send_event(event.deref().clone(), **opts)
+            .send_event(event.deref().clone())
             .await
             .map_err(into_err)?
             .into())
@@ -216,15 +210,11 @@ impl JsRelayPool {
 
     /// Send multiple events at once to all relays with `WRITE` flag
     #[wasm_bindgen(js_name = batchEvent)]
-    pub async fn batch_event(
-        &self,
-        events: Vec<JsEvent>,
-        opts: &JsRelaySendOptions,
-    ) -> Result<JsOutput> {
+    pub async fn batch_event(&self, events: Vec<JsEvent>) -> Result<JsOutput> {
         let events = events.into_iter().map(|e| e.deref().clone()).collect();
         Ok(self
             .inner
-            .batch_event(events, **opts)
+            .batch_event(events)
             .await
             .map_err(into_err)?
             .into())
@@ -236,11 +226,10 @@ impl JsRelayPool {
         &self,
         urls: Vec<String>,
         event: &JsEvent,
-        opts: &JsRelaySendOptions,
     ) -> Result<JsSendEventOutput> {
         Ok(self
             .inner
-            .send_event_to(urls, event.deref().clone(), **opts)
+            .send_event_to(urls, event.deref().clone())
             .await
             .map_err(into_err)?
             .into())
@@ -252,12 +241,11 @@ impl JsRelayPool {
         &self,
         urls: Vec<String>,
         events: Vec<JsEvent>,
-        opts: &JsRelaySendOptions,
     ) -> Result<JsOutput> {
         let events = events.into_iter().map(|e| e.deref().clone()).collect();
         Ok(self
             .inner
-            .batch_event_to(urls, events, **opts)
+            .batch_event_to(urls, events)
             .await
             .map_err(into_err)?
             .into())

@@ -20,7 +20,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use super::constants::MAX_CONNECTING_CHUNK;
 use super::options::RelayPoolOptions;
 use super::{Error, Output, RelayPoolNotification};
-use crate::relay::options::{FilterOptions, RelayOptions, RelaySendOptions, SyncOptions};
+use crate::relay::options::{FilterOptions, RelayOptions, SyncOptions};
 use crate::relay::{FlagCheck, Reconciliation, Relay, RelayFiltering};
 use crate::{RelayServiceFlags, SubscribeOptions};
 
@@ -419,37 +419,24 @@ impl InnerRelayPool {
         Ok(output)
     }
 
-    pub async fn send_event(
-        &self,
-        event: Event,
-        opts: RelaySendOptions,
-    ) -> Result<Output<EventId>, Error> {
+    pub async fn send_event(&self, event: Event) -> Result<Output<EventId>, Error> {
         let urls: Vec<Url> = self.write_relay_urls().await;
-        self.send_event_to(urls, event, opts).await
+        self.send_event_to(urls, event).await
     }
 
-    pub async fn batch_event(
-        &self,
-        events: Vec<Event>,
-        opts: RelaySendOptions,
-    ) -> Result<Output<()>, Error> {
+    pub async fn batch_event(&self, events: Vec<Event>) -> Result<Output<()>, Error> {
         let urls: Vec<Url> = self.write_relay_urls().await;
-        self.batch_event_to(urls, events, opts).await
+        self.batch_event_to(urls, events).await
     }
 
-    pub async fn send_event_to<I, U>(
-        &self,
-        urls: I,
-        event: Event,
-        opts: RelaySendOptions,
-    ) -> Result<Output<EventId>, Error>
+    pub async fn send_event_to<I, U>(&self, urls: I, event: Event) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let event_id: EventId = event.id;
-        let output: Output<()> = self.batch_event_to(urls, vec![event], opts).await?;
+        let output: Output<()> = self.batch_event_to(urls, vec![event]).await?;
         Ok(Output {
             val: event_id,
             success: output.success,
@@ -461,7 +448,6 @@ impl InnerRelayPool {
         &self,
         urls: I,
         events: Vec<Event>,
-        opts: RelaySendOptions,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -505,7 +491,7 @@ impl InnerRelayPool {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
             let events: Vec<Event> = events.clone();
             urls.push(url);
-            futures.push(relay.batch_event(events, opts));
+            futures.push(relay.batch_event(events));
         }
 
         // Join futures

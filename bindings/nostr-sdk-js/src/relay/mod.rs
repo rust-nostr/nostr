@@ -14,9 +14,7 @@ pub mod options;
 
 use self::filtering::JsRelayFiltering;
 use self::flags::JsAtomicRelayServiceFlags;
-use self::options::{
-    JsFilterOptions, JsRelayOptions, JsRelaySendOptions, JsSubscribeOptions, JsSyncOptions,
-};
+use self::options::{JsFilterOptions, JsRelayOptions, JsSubscribeOptions, JsSyncOptions};
 use crate::database::JsEvents;
 use crate::duration::JsDuration;
 use crate::error::{into_err, Result};
@@ -188,14 +186,10 @@ impl JsRelay {
 
     /// Send event and wait for `OK` relay msg
     #[wasm_bindgen(js_name = sendEvent)]
-    pub async fn send_event(
-        &self,
-        event: &JsEvent,
-        opts: &JsRelaySendOptions,
-    ) -> Result<JsEventId> {
+    pub async fn send_event(&self, event: &JsEvent) -> Result<JsEventId> {
         Ok(self
             .inner
-            .send_event(event.deref().clone(), **opts)
+            .send_event(event.deref().clone())
             .await
             .map_err(into_err)?
             .into())
@@ -203,12 +197,9 @@ impl JsRelay {
 
     /// Send multiple `Event` at once
     #[wasm_bindgen(js_name = batchEvent)]
-    pub async fn batch_event(&self, events: Vec<JsEvent>, opts: &JsRelaySendOptions) -> Result<()> {
+    pub async fn batch_event(&self, events: Vec<JsEvent>) -> Result<()> {
         let events = events.into_iter().map(|e| e.deref().clone()).collect();
-        self.inner
-            .batch_event(events, **opts)
-            .await
-            .map_err(into_err)
+        self.inner.batch_event(events).await.map_err(into_err)
     }
 
     /// Subscribe to filters

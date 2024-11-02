@@ -264,18 +264,14 @@ impl Relay {
 
     /// Send event and wait for `OK` relay msg
     #[inline]
-    pub async fn send_event(&self, event: Event, opts: RelaySendOptions) -> Result<EventId, Error> {
-        self.inner.send_event(event, opts).await
+    pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
+        self.inner.send_event(event).await
     }
 
     /// Send multiple [`Event`] at once
     #[inline]
-    pub async fn batch_event(
-        &self,
-        events: Vec<Event>,
-        opts: RelaySendOptions,
-    ) -> Result<(), Error> {
-        self.inner.batch_event(events, opts).await
+    pub async fn batch_event(&self, events: Vec<Event>) -> Result<(), Error> {
+        self.inner.batch_event(events).await
     }
 
     /// Send client authentication event
@@ -475,9 +471,6 @@ mod tests {
         let event = EventBuilder::text_note("Test", [])
             .sign_with_keys(&keys)
             .unwrap();
-        relay
-            .send_event(event, RelaySendOptions::default())
-            .await
-            .unwrap();
+        relay.send_event(event).await.unwrap();
     }
 }

@@ -13,7 +13,6 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_relay_pool::prelude::*;
-use nostr_relay_pool::relay::constants::DEFAULT_SEND_TIMEOUT;
 
 /// Options
 #[derive(Debug, Clone)]
@@ -24,7 +23,6 @@ pub struct Options {
     pub(super) req_filters_chunk_size: u8,
     pub(super) timeout: Duration,
     pub(super) connection_timeout: Option<Duration>,
-    send_timeout: Option<Duration>,
     nip42_auto_authentication: Arc<AtomicBool>,
     pub(super) gossip: bool,
     #[cfg(not(target_arch = "wasm32"))]
@@ -43,7 +41,6 @@ impl Default for Options {
             req_filters_chunk_size: 10,
             timeout: Duration::from_secs(60),
             connection_timeout: None,
-            send_timeout: Some(DEFAULT_SEND_TIMEOUT),
             nip42_auto_authentication: Arc::new(AtomicBool::new(true)),
             gossip: false,
             #[cfg(not(target_arch = "wasm32"))]
@@ -60,10 +57,6 @@ impl Options {
     #[inline]
     pub fn new() -> Self {
         Self::default()
-    }
-
-    pub(crate) fn get_relay_send_opts(&self) -> RelaySendOptions {
-        RelaySendOptions::new().timeout(self.send_timeout)
     }
 
     /// Wait for the msg to be sent (default: true)
@@ -162,9 +155,8 @@ impl Options {
     }
 
     /// Send timeout (default: 20 secs)
-    #[inline]
-    pub fn send_timeout(mut self, timeout: Option<Duration>) -> Self {
-        self.send_timeout = timeout;
+    #[deprecated(since = "0.36.0")]
+    pub fn send_timeout(self, _timeout: Option<Duration>) -> Self {
         self
     }
 

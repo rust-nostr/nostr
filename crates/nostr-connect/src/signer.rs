@@ -6,11 +6,8 @@
 
 use std::time::Duration;
 
-use nostr::nips::nip46::{Message, NostrConnectURI, Request, ResponseResult};
-use nostr::prelude::*;
-use nostr_relay_pool::{
-    pool, RelayOptions, RelayPool, RelayPoolNotification, RelaySendOptions, SubscribeOptions,
-};
+use nostr::nips::nip46::{Message, Request, ResponseResult};
+use nostr_relay_pool::prelude::*;
 
 use crate::error::Error;
 
@@ -96,9 +93,7 @@ impl NostrConnectRemoteSigner {
         });
         let event =
             EventBuilder::nostr_connect(&self.keys, public_key, msg)?.sign_with_keys(&self.keys)?;
-        self.pool
-            .send_event(event, RelaySendOptions::default())
-            .await?;
+        self.pool.send_event(event).await?;
         Ok(())
     }
 
@@ -249,7 +244,7 @@ impl NostrConnectRemoteSigner {
                                 let event =
                                     EventBuilder::nostr_connect(&self.keys, event.pubkey, msg)?
                                         .sign_with_keys(&self.keys)?;
-                                self.pool.send_event(event, RelaySendOptions::new()).await?;
+                                self.pool.send_event(event).await?;
                             }
                         } else {
                             eprintln!("Impossible to decrypt NIP46 message");

@@ -26,7 +26,7 @@ use self::inner::InnerRelayPool;
 pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
 use crate::relay::flags::FlagCheck;
-use crate::relay::options::{FilterOptions, RelayOptions, RelaySendOptions, SyncOptions};
+use crate::relay::options::{FilterOptions, RelayOptions, SyncOptions};
 use crate::relay::{Relay, RelayFiltering, RelayStatus};
 use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};
 
@@ -326,38 +326,25 @@ impl RelayPool {
 
     /// Send event to all relays with `WRITE` flag (check [`RelayServiceFlags`] for more details).
     #[inline]
-    pub async fn send_event(
-        &self,
-        event: Event,
-        opts: RelaySendOptions,
-    ) -> Result<Output<EventId>, Error> {
-        self.inner.send_event(event, opts).await
+    pub async fn send_event(&self, event: Event) -> Result<Output<EventId>, Error> {
+        self.inner.send_event(event).await
     }
 
     /// Send multiple events at once to all relays with `WRITE` flag (check [`RelayServiceFlags`] for more details).
     #[inline]
-    pub async fn batch_event(
-        &self,
-        events: Vec<Event>,
-        opts: RelaySendOptions,
-    ) -> Result<Output<()>, Error> {
-        self.inner.batch_event(events, opts).await
+    pub async fn batch_event(&self, events: Vec<Event>) -> Result<Output<()>, Error> {
+        self.inner.batch_event(events).await
     }
 
     /// Send event to specific relays
     #[inline]
-    pub async fn send_event_to<I, U>(
-        &self,
-        urls: I,
-        event: Event,
-        opts: RelaySendOptions,
-    ) -> Result<Output<EventId>, Error>
+    pub async fn send_event_to<I, U>(&self, urls: I, event: Event) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.inner.send_event_to(urls, event, opts).await
+        self.inner.send_event_to(urls, event).await
     }
 
     /// Send multiple events at once to specific relays
@@ -366,14 +353,13 @@ impl RelayPool {
         &self,
         urls: I,
         events: Vec<Event>,
-        opts: RelaySendOptions,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.inner.batch_event_to(urls, events, opts).await
+        self.inner.batch_event_to(urls, events).await
     }
 
     /// Subscribe to filters to all relays with `READ` flag.

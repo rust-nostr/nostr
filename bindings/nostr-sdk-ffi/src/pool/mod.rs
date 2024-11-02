@@ -19,7 +19,7 @@ use crate::error::Result;
 use crate::pool::result::ReconciliationOutput;
 use crate::protocol::{ClientMessage, Event, Filter};
 use crate::relay::options::{FilterOptions, SyncOptions};
-use crate::relay::{RelayFiltering, RelayOptions, RelaySendOptions, SubscribeOptions};
+use crate::relay::{RelayFiltering, RelayOptions, SubscribeOptions};
 use crate::{HandleNotification, NostrDatabase, Relay};
 
 #[derive(Object)]
@@ -171,41 +171,24 @@ impl RelayPool {
     }
 
     /// Send event to all relays with `WRITE` flag
-    pub async fn send_event(
-        &self,
-        event: &Event,
-        opts: &RelaySendOptions,
-    ) -> Result<SendEventOutput> {
-        Ok(self
-            .inner
-            .send_event(event.deref().clone(), **opts)
-            .await?
-            .into())
+    pub async fn send_event(&self, event: &Event) -> Result<SendEventOutput> {
+        Ok(self.inner.send_event(event.deref().clone()).await?.into())
     }
 
     /// Send multiple events at once to all relays with `WRITE` flag
-    pub async fn batch_event(
-        &self,
-        events: Vec<Arc<Event>>,
-        opts: &RelaySendOptions,
-    ) -> Result<Output> {
+    pub async fn batch_event(&self, events: Vec<Arc<Event>>) -> Result<Output> {
         let events = events
             .into_iter()
             .map(|e| e.as_ref().deref().clone())
             .collect();
-        Ok(self.inner.batch_event(events, **opts).await?.into())
+        Ok(self.inner.batch_event(events).await?.into())
     }
 
     /// Send event to specific relays
-    pub async fn send_event_to(
-        &self,
-        urls: Vec<String>,
-        event: &Event,
-        opts: &RelaySendOptions,
-    ) -> Result<SendEventOutput> {
+    pub async fn send_event_to(&self, urls: Vec<String>, event: &Event) -> Result<SendEventOutput> {
         Ok(self
             .inner
-            .send_event_to(urls, event.deref().clone(), **opts)
+            .send_event_to(urls, event.deref().clone())
             .await?
             .into())
     }
@@ -215,17 +198,12 @@ impl RelayPool {
         &self,
         urls: Vec<String>,
         events: Vec<Arc<Event>>,
-        opts: &RelaySendOptions,
     ) -> Result<Output> {
         let events = events
             .into_iter()
             .map(|e| e.as_ref().deref().clone())
             .collect();
-        Ok(self
-            .inner
-            .batch_event_to(urls, events, **opts)
-            .await?
-            .into())
+        Ok(self.inner.batch_event_to(urls, events).await?.into())
     }
 
     /// Subscribe to filters to relays with `READ` flag.

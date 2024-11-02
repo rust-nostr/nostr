@@ -116,42 +116,6 @@ impl JsRelayOptions {
     }
 }
 
-#[wasm_bindgen(js_name = RelaySendOptions)]
-pub struct JsRelaySendOptions {
-    inner: RelaySendOptions,
-}
-
-impl Deref for JsRelaySendOptions {
-    type Target = RelaySendOptions;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl From<RelaySendOptions> for JsRelaySendOptions {
-    fn from(inner: RelaySendOptions) -> Self {
-        Self { inner }
-    }
-}
-
-#[wasm_bindgen(js_class = RelaySendOptions)]
-impl JsRelaySendOptions {
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
-        Self {
-            inner: RelaySendOptions::default(),
-        }
-    }
-
-    /// Timeout for sending event (default: 20 secs)
-    ///
-    /// If `None`, the default timeout will be used
-    pub fn timeout(self, timeout: Option<JsDuration>) -> Self {
-        self.inner.timeout(timeout.map(|d| *d)).into()
-    }
-}
-
 /// Filter options
 #[wasm_bindgen(js_name = FilterOptions)]
 pub struct JsFilterOptions {
