@@ -52,7 +52,7 @@ impl PublicKey {
     /// Public Key len
     pub const LEN: usize = 32;
 
-    /// Try to parse [PublicKey] from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
+    /// Parse from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
     pub fn parse<S>(public_key: S) -> Result<Self, Error>
     where
         S: AsRef<str>,

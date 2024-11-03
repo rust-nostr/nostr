@@ -2,4 +2,4 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-pub mod keys;
+pub mod key;

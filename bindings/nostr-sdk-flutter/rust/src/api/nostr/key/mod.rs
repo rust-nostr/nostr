@@ -6,6 +6,10 @@ use anyhow::Result;
 use flutter_rust_bridge::frb;
 use nostr_sdk::prelude::*;
 
+pub mod public_key;
+
+use self::public_key::_PublicKey;
+
 #[frb(name = "Keys")]
 pub struct _Keys {
     inner: Keys,
@@ -30,9 +34,8 @@ impl _Keys {
         })
     }
 
-    // TODO: add PublicKey struct
-    pub fn public_key(&self) -> String {
-        self.inner.public_key().to_string()
+    pub fn public_key(&self) -> _PublicKey {
+        self.inner.public_key().into()
     }
 
     // TODO: add SecretKey struct
