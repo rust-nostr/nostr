@@ -27,6 +27,7 @@ use super::constants::{
     NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, WEBSOCKET_TX_TIMEOUT,
 };
 use super::filtering::{CheckFiltering, RelayFiltering};
+use super::flags::AtomicRelayServiceFlags;
 use super::options::{
     FilterOptions, RelayOptions, SubscribeAutoCloseOptions, SubscribeOptions, SyncOptions,
 };
@@ -148,6 +149,7 @@ pub(crate) struct InnerRelay {
     #[cfg(feature = "nip11")]
     document: Arc<RwLock<RelayInformationDocument>>,
     pub(super) opts: RelayOptions,
+    pub(super) flags: AtomicRelayServiceFlags,
     pub(super) stats: RelayConnectionStats,
     pub(super) filtering: RelayFiltering,
     database: Arc<DynNostrDatabase>,
@@ -184,6 +186,7 @@ impl InnerRelay {
             status: Arc::new(AtomicRelayStatus::default()),
             #[cfg(feature = "nip11")]
             document: Arc::new(RwLock::new(RelayInformationDocument::new())),
+            flags: AtomicRelayServiceFlags::new(opts.flags),
             opts,
             stats: RelayConnectionStats::default(),
             filtering,
@@ -560,7 +563,7 @@ impl InnerRelay {
 
     async fn run_message_handler(&self, ws_tx: Sink, ws_rx: Stream) {
         // (Re)subscribe to relay
-        if self.opts.flags.can_read() {
+        if self.flags.can_read() {
             if let Err(e) = self.resubscribe().await {
                 tracing::error!("Impossible to subscribe to '{}': {e}", self.url)
             }
@@ -690,7 +693,7 @@ impl InnerRelay {
                 match msg {
                     #[cfg(not(target_arch = "wasm32"))]
                     WsMessage::Pong(bytes) => {
-                        if self.opts.flags.has_ping() {
+                        if self.flags.has_ping() {
                             match bytes.try_into() {
                                 Ok(nonce) => {
                                     // Nonce from big-endian bytes
@@ -735,7 +738,7 @@ impl InnerRelay {
 
     async fn ping_handler(&self) {
         #[cfg(not(target_arch = "wasm32"))]
-        if self.opts.flags.has_ping() {
+        if self.flags.has_ping() {
             loop {
                 let ping = self.stats.ping();
 
@@ -998,12 +1001,12 @@ impl InnerRelay {
         }
 
         // If it can't write, check if there are "write" messages
-        if !self.opts.flags.can_write() && msgs.iter().any(|msg| msg.is_event()) {
+        if !self.flags.can_write() && msgs.iter().any(|msg| msg.is_event()) {
             return Err(Error::WriteDisabled);
         }
 
         // If it can't read, check if there are "read" messages
-        if !self.opts.flags.can_read() && msgs.iter().any(|msg| msg.is_req() || msg.is_close()) {
+        if !self.flags.can_read() && msgs.iter().any(|msg| msg.is_req() || msg.is_close()) {
             return Err(Error::ReadDisabled);
         }
 
@@ -1179,7 +1182,7 @@ impl InnerRelay {
     }
 
     pub async fn resubscribe(&self) -> Result<(), Error> {
-        if !self.opts.flags.can_read() {
+        if !self.flags.can_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1213,7 +1216,7 @@ impl InnerRelay {
         opts: SubscribeOptions,
     ) -> Result<(), Error> {
         // Check if relay can read
-        if !self.opts.flags.can_read() {
+        if !self.flags.can_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1339,7 +1342,7 @@ impl InnerRelay {
     }
 
     pub async fn unsubscribe(&self, id: SubscriptionId) -> Result<(), Error> {
-        if !self.opts.flags.can_read() {
+        if !self.flags.can_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1351,7 +1354,7 @@ impl InnerRelay {
     }
 
     pub async fn unsubscribe_all(&self) -> Result<(), Error> {
-        if !self.opts.flags.can_read() {
+        if !self.flags.can_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1382,7 +1385,7 @@ impl InnerRelay {
         self.health_check().await?;
 
         // Check if relay can read
-        if !self.opts.flags.can_read() {
+        if !self.flags.can_read() {
             return Err(Error::ReadDisabled);
         }
 
@@ -1570,7 +1573,7 @@ impl InnerRelay {
         self.health_check().await?;
 
         // Check if relay can read
-        if !self.opts.flags.can_read() {
+        if !self.flags.can_read() {
             return Err(Error::ReadDisabled);
         }
 

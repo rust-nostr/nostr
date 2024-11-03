@@ -178,7 +178,7 @@ impl Relay {
     /// Get Relay Service Flags
     #[inline]
     pub fn flags(&self) -> &AtomicRelayServiceFlags {
-        &self.inner.opts.flags
+        &self.inner.flags
     }
 
     /// Get relay filtering

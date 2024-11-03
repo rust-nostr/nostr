@@ -13,14 +13,14 @@ use tokio::sync::watch::{self, Receiver, Sender};
 
 use super::constants::{DEFAULT_RETRY_SEC, MIN_RETRY_SEC};
 use super::filtering::RelayFilteringMode;
-use super::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
+use super::flags::RelayServiceFlags;
 use crate::RelayLimits;
 
 /// [`Relay`](super::Relay) options
 #[derive(Debug, Clone)]
 pub struct RelayOptions {
     pub(super) connection_mode: ConnectionMode,
-    pub(super) flags: AtomicRelayServiceFlags,
+    pub(super) flags: RelayServiceFlags,
     pow: Arc<AtomicU8>,
     reconnect: Arc<AtomicBool>,
     retry_sec: Arc<AtomicU64>,
@@ -34,7 +34,7 @@ impl Default for RelayOptions {
     fn default() -> Self {
         Self {
             connection_mode: ConnectionMode::default(),
-            flags: AtomicRelayServiceFlags::default(),
+            flags: RelayServiceFlags::default(),
             pow: Arc::new(AtomicU8::new(0)),
             reconnect: Arc::new(AtomicBool::new(true)),
             retry_sec: Arc::new(AtomicU64::new(DEFAULT_RETRY_SEC)),
@@ -61,12 +61,12 @@ impl RelayOptions {
 
     /// Set Relay Service Flags
     pub fn flags(mut self, flags: RelayServiceFlags) -> Self {
-        self.flags = AtomicRelayServiceFlags::new(flags);
+        self.flags = flags;
         self
     }
 
     /// Set read flag
-    pub fn read(self, read: bool) -> Self {
+    pub fn read(mut self, read: bool) -> Self {
         if read {
             self.flags.add(RelayServiceFlags::READ);
         } else {
@@ -76,7 +76,7 @@ impl RelayOptions {
     }
 
     /// Set write flag
-    pub fn write(self, write: bool) -> Self {
+    pub fn write(mut self, write: bool) -> Self {
         if write {
             self.flags.add(RelayServiceFlags::WRITE);
         } else {
@@ -86,7 +86,7 @@ impl RelayOptions {
     }
 
     /// Set ping flag
-    pub fn ping(self, ping: bool) -> Self {
+    pub fn ping(mut self, ping: bool) -> Self {
         if ping {
             self.flags.add(RelayServiceFlags::PING);
         } else {
