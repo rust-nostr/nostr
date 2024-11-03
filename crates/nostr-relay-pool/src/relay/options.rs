@@ -4,7 +4,7 @@
 
 //! Relay options
 
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -16,15 +16,16 @@ use super::filtering::RelayFilteringMode;
 use super::flags::RelayServiceFlags;
 use crate::RelayLimits;
 
-/// [`Relay`](super::Relay) options
+/// Relay options
 #[derive(Debug, Clone)]
 pub struct RelayOptions {
     pub(super) connection_mode: ConnectionMode,
     pub(super) flags: RelayServiceFlags,
+    // TODO: what to do with this atomic?
     pow: Arc<AtomicU8>,
-    reconnect: Arc<AtomicBool>,
-    retry_sec: Arc<AtomicU64>,
-    adjust_retry_sec: Arc<AtomicBool>,
+    pub(super) reconnect: bool,
+    pub(super) retry_sec: u64,
+    pub(super) adjust_retry_sec: bool,
     pub(super) limits: RelayLimits,
     pub(super) max_avg_latency: Option<Duration>,
     pub(super) filtering_mode: RelayFilteringMode,
@@ -36,9 +37,9 @@ impl Default for RelayOptions {
             connection_mode: ConnectionMode::default(),
             flags: RelayServiceFlags::default(),
             pow: Arc::new(AtomicU8::new(0)),
-            reconnect: Arc::new(AtomicBool::new(true)),
-            retry_sec: Arc::new(AtomicU64::new(DEFAULT_RETRY_SEC)),
-            adjust_retry_sec: Arc::new(AtomicBool::new(true)),
+            reconnect: true,
+            retry_sec: DEFAULT_RETRY_SEC,
+            adjust_retry_sec: true,
             limits: RelayLimits::default(),
             max_avg_latency: None,
             filtering_mode: RelayFilteringMode::default(),
@@ -47,7 +48,8 @@ impl Default for RelayOptions {
 }
 
 impl RelayOptions {
-    /// New [`RelayOptions`]
+    /// New default options
+    #[inline]
     pub fn new() -> Self {
         Self::default()
     }
@@ -111,67 +113,38 @@ impl RelayOptions {
     }
 
     /// Enable/disable auto reconnection (default: true)
-    pub fn reconnect(self, reconnect: bool) -> Self {
-        Self {
-            reconnect: Arc::new(AtomicBool::new(reconnect)),
-            ..self
-        }
-    }
-
-    pub(crate) fn get_reconnect(&self) -> bool {
-        self.reconnect.load(Ordering::SeqCst)
+    pub fn reconnect(mut self, reconnect: bool) -> Self {
+        self.reconnect = reconnect;
+        self
     }
 
     /// Set `reconnect` option
-    pub fn update_reconnect(&self, reconnect: bool) {
-        self.reconnect.store(reconnect, Ordering::SeqCst);
-    }
+    #[deprecated(since = "0.36.0")]
+    pub fn update_reconnect(&self, _reconnect: bool) {}
 
     /// Retry connection time (default: 10 sec)
     ///
     /// Are allowed values `>=` 5 secs
-    pub fn retry_sec(self, retry_sec: u64) -> Self {
-        let retry_sec = if retry_sec >= MIN_RETRY_SEC {
-            retry_sec
-        } else {
-            DEFAULT_RETRY_SEC
+    pub fn retry_sec(mut self, retry_sec: u64) -> Self {
+        if retry_sec >= MIN_RETRY_SEC {
+            self.retry_sec = retry_sec;
         };
-        Self {
-            retry_sec: Arc::new(AtomicU64::new(retry_sec)),
-            ..self
-        }
-    }
-
-    pub(crate) fn get_retry_sec(&self) -> u64 {
-        self.retry_sec.load(Ordering::SeqCst)
+        self
     }
 
     /// Set retry_sec option
-    pub fn update_retry_sec(&self, retry_sec: u64) {
-        if retry_sec >= MIN_RETRY_SEC {
-            self.retry_sec.store(retry_sec, Ordering::SeqCst);
-        } else {
-            tracing::warn!("Relay options: retry_sec it's less then the minimum value allowed (min: {MIN_RETRY_SEC} secs)");
-        }
-    }
+    #[deprecated(since = "0.36.0")]
+    pub fn update_retry_sec(&self, _retry_sec: u64) {}
 
     /// Automatically adjust retry seconds based on success/attempts (default: true)
-    pub fn adjust_retry_sec(self, adjust_retry_sec: bool) -> Self {
-        Self {
-            adjust_retry_sec: Arc::new(AtomicBool::new(adjust_retry_sec)),
-            ..self
-        }
-    }
-
-    pub(crate) fn get_adjust_retry_sec(&self) -> bool {
-        self.adjust_retry_sec.load(Ordering::SeqCst)
+    pub fn adjust_retry_sec(mut self, adjust_retry_sec: bool) -> Self {
+        self.adjust_retry_sec = adjust_retry_sec;
+        self
     }
 
     /// Set adjust_retry_sec option
-    pub fn update_adjust_retry_sec(&self, adjust_retry_sec: bool) {
-        self.adjust_retry_sec
-            .store(adjust_retry_sec, Ordering::SeqCst);
-    }
+    #[deprecated(since = "0.36.0")]
+    pub fn update_adjust_retry_sec(&self, _adjust_retry_sec: bool) {}
 
     /// Set custom limits
     pub fn limits(mut self, limits: RelayLimits) -> Self {

@@ -480,7 +480,7 @@ impl InnerRelay {
                 }
 
                 // Check if reconnection is enabled
-                if relay.opts.get_reconnect() {
+                if relay.opts.reconnect {
                     // Sleep before retry to connect
                     let retry_sec: u64 = relay.calculate_retry_sec();
                     tracing::info!("Reconnecting to '{}' relay in {retry_sec} secs", relay.url);
@@ -496,7 +496,7 @@ impl InnerRelay {
 
     /// Depending on attempts and success, use default or incremental retry time
     fn calculate_retry_sec(&self) -> u64 {
-        if self.opts.get_adjust_retry_sec() {
+        if self.opts.adjust_retry_sec {
             // diff = attempts - success
             let diff: u64 = self.stats.attempts().saturating_sub(self.stats.success()) as u64;
 
@@ -507,7 +507,7 @@ impl InnerRelay {
         }
 
         // Use default retry time
-        self.opts.get_retry_sec()
+        self.opts.retry_sec
     }
 
     /// Connect and run message handler

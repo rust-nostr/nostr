@@ -77,11 +77,6 @@ impl JsRelayOptions {
         self.inner.reconnect(reconnect).into()
     }
 
-    /// Update `reconnect` option
-    pub fn update_reconnect(&self, reconnect: bool) {
-        self.inner.update_reconnect(reconnect);
-    }
-
     /// Retry connection time (default: 10 sec)
     ///
     /// Are allowed values `>=` 5 secs
@@ -89,19 +84,9 @@ impl JsRelayOptions {
         self.inner.retry_sec(retry_sec).into()
     }
 
-    /// Set retry_sec option
-    pub fn update_retry_sec(&self, retry_sec: u64) {
-        self.inner.update_retry_sec(retry_sec);
-    }
-
     /// Automatically adjust retry seconds based on success/attempts (default: true)
     pub fn adjust_retry_sec(self, adjust_retry_sec: bool) -> Self {
         self.inner.adjust_retry_sec(adjust_retry_sec).into()
-    }
-
-    /// Set adjust_retry_sec option
-    pub fn update_adjust_retry_sec(&self, adjust_retry_sec: bool) {
-        self.inner.update_adjust_retry_sec(adjust_retry_sec);
     }
 
     /// Set custom limits
