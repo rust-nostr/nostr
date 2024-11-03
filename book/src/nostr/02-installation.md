@@ -211,4 +211,19 @@ import Nostr
 ```
 
 </section>
+
+<div slot="title">Flutter</div>
+<section>
+
+Add the following code to your package:
+
+```yaml
+nostr_sdk:
+    git:
+        url: https://github.com/rust-nostr/nostr.git
+        ref: <tag-or-commit>
+        path: bindings/nostr-sdk-flutter
+```
+
+</section>
 </custom-tabs>

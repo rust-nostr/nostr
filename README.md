@@ -42,6 +42,7 @@ Learn more about `rust-nostr` at <https://rust-nostr.org>.
     * Kotlin: https://central.sonatype.com/artifact/org.rust-nostr/nostr-sdk
     * Swift: https://github.com/rust-nostr/nostr-sdk-swift
     * JavaScript: https://www.npmjs.com/package/@rust-nostr/nostr-sdk
+    * Flutter: [bindings/nostr-sdk-flutter](./bindings/nostr-sdk-flutter)
 
 ## State
 
