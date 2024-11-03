@@ -3,9 +3,9 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
-import 'api/nostr/key.dart';
-import 'api/nostr/key/public_key.dart';
-import 'api/sdk/client.dart';
+import 'api/client.dart';
+import 'api/protocol/key.dart';
+import 'api/protocol/key/public_key.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;

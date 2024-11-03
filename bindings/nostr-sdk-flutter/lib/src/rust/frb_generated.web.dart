@@ -6,9 +6,9 @@
 // Static analysis wrongly picks the IO variant, thus ignore this
 // ignore_for_file: argument_type_not_assignable
 
-import 'api/nostr/key.dart';
-import 'api/nostr/key/public_key.dart';
-import 'api/sdk/client.dart';
+import 'api/client.dart';
+import 'api/protocol/key.dart';
+import 'api/protocol/key/public_key.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';

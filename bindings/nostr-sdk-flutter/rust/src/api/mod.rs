@@ -4,8 +4,8 @@
 
 use flutter_rust_bridge::frb;
 
-pub mod nostr;
-pub mod sdk;
+pub mod protocol;
+pub mod client;
 
 #[frb(init)]
 pub fn init_app() {

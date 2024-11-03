@@ -3,9 +3,9 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
-import 'api/nostr/key.dart';
-import 'api/nostr/key/public_key.dart';
-import 'api/sdk/client.dart';
+import 'api/client.dart';
+import 'api/protocol/key.dart';
+import 'api/protocol/key/public_key.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -70,7 +70,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.5.1';
 
   @override
-  int get rustContentHash => -1029252943;
+  int get rustContentHash => 1346251131;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -83,41 +83,41 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 abstract class RustLibApi extends BaseApi {
   Future<void> crateApiInitApp();
 
-  Keys crateApiNostrKeyKeysGenerate();
-
-  Keys crateApiNostrKeyKeysParse({required String secretKey});
-
-  Future<PublicKey> crateApiNostrKeyKeysPublicKey({required Keys that});
-
-  Future<String> crateApiNostrKeyKeysSecretKey({required Keys that});
-
-  PublicKey crateApiNostrKeyPublicKeyPublicKeyFromHex(
-      {required String publicKey});
-
-  PublicKey crateApiNostrKeyPublicKeyPublicKeyFromSlice(
-      {required List<int> publicKey});
-
-  PublicKey crateApiNostrKeyPublicKeyPublicKeyParse(
-      {required String publicKey});
-
-  Future<String> crateApiNostrKeyPublicKeyPublicKeyToBech32(
-      {required PublicKey that});
-
-  Future<String> crateApiNostrKeyPublicKeyPublicKeyToHex(
-      {required PublicKey that});
-
-  Future<String> crateApiNostrKeyPublicKeyPublicKeyToNostrUri(
-      {required PublicKey that});
-
-  Future<bool> crateApiSdkClientClientAddRelay(
+  Future<bool> crateApiClientClientAddRelay(
       {required Client that, required String url});
 
-  Future<void> crateApiSdkClientClientConnect({required Client that});
+  Future<void> crateApiClientClientConnect({required Client that});
 
-  Client crateApiSdkClientClientDefault();
+  Client crateApiClientClientDefault();
 
-  Future<String> crateApiSdkClientClientSendEvent(
+  Future<String> crateApiClientClientSendEvent(
       {required Client that, required String eventJson});
+
+  Keys crateApiProtocolKeyKeysGenerate();
+
+  Keys crateApiProtocolKeyKeysParse({required String secretKey});
+
+  Future<PublicKey> crateApiProtocolKeyKeysPublicKey({required Keys that});
+
+  Future<String> crateApiProtocolKeyKeysSecretKey({required Keys that});
+
+  PublicKey crateApiProtocolKeyPublicKeyPublicKeyFromHex(
+      {required String publicKey});
+
+  PublicKey crateApiProtocolKeyPublicKeyPublicKeyFromSlice(
+      {required List<int> publicKey});
+
+  PublicKey crateApiProtocolKeyPublicKeyPublicKeyParse(
+      {required String publicKey});
+
+  Future<String> crateApiProtocolKeyPublicKeyPublicKeyToBech32(
+      {required PublicKey that});
+
+  Future<String> crateApiProtocolKeyPublicKeyPublicKeyToHex(
+      {required PublicKey that});
+
+  Future<String> crateApiProtocolKeyPublicKeyPublicKeyToNostrUri(
+      {required PublicKey that});
 
   RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Client;
 
@@ -172,267 +172,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Keys crateApiNostrKeyKeysGenerate() {
-    return handler.executeSync(SyncTask(
-      callFfi: () {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
-      },
-      codec: SseCodec(
-        decodeSuccessData:
-            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Keys,
-        decodeErrorData: null,
-      ),
-      constMeta: kCrateApiNostrKeyKeysGenerateConstMeta,
-      argValues: [],
-      apiImpl: this,
-    ));
-  }
-
-  TaskConstMeta get kCrateApiNostrKeyKeysGenerateConstMeta =>
-      const TaskConstMeta(
-        debugName: "Keys_generate",
-        argNames: [],
-      );
-
-  @override
-  Keys crateApiNostrKeyKeysParse({required String secretKey}) {
-    return handler.executeSync(SyncTask(
-      callFfi: () {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_String(secretKey, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
-      },
-      codec: SseCodec(
-        decodeSuccessData:
-            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Keys,
-        decodeErrorData: sse_decode_AnyhowException,
-      ),
-      constMeta: kCrateApiNostrKeyKeysParseConstMeta,
-      argValues: [secretKey],
-      apiImpl: this,
-    ));
-  }
-
-  TaskConstMeta get kCrateApiNostrKeyKeysParseConstMeta => const TaskConstMeta(
-        debugName: "Keys_parse",
-        argNames: ["secretKey"],
-      );
-
-  @override
-  Future<PublicKey> crateApiNostrKeyKeysPublicKey({required Keys that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Keys(
-            that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 4, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData:
-            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey,
-        decodeErrorData: null,
-      ),
-      constMeta: kCrateApiNostrKeyKeysPublicKeyConstMeta,
-      argValues: [that],
-      apiImpl: this,
-    ));
-  }
-
-  TaskConstMeta get kCrateApiNostrKeyKeysPublicKeyConstMeta =>
-      const TaskConstMeta(
-        debugName: "Keys_public_key",
-        argNames: ["that"],
-      );
-
-  @override
-  Future<String> crateApiNostrKeyKeysSecretKey({required Keys that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Keys(
-            that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 5, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_String,
-        decodeErrorData: null,
-      ),
-      constMeta: kCrateApiNostrKeyKeysSecretKeyConstMeta,
-      argValues: [that],
-      apiImpl: this,
-    ));
-  }
-
-  TaskConstMeta get kCrateApiNostrKeyKeysSecretKeyConstMeta =>
-      const TaskConstMeta(
-        debugName: "Keys_secret_key",
-        argNames: ["that"],
-      );
-
-  @override
-  PublicKey crateApiNostrKeyPublicKeyPublicKeyFromHex(
-      {required String publicKey}) {
-    return handler.executeSync(SyncTask(
-      callFfi: () {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_String(publicKey, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
-      },
-      codec: SseCodec(
-        decodeSuccessData:
-            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey,
-        decodeErrorData: sse_decode_AnyhowException,
-      ),
-      constMeta: kCrateApiNostrKeyPublicKeyPublicKeyFromHexConstMeta,
-      argValues: [publicKey],
-      apiImpl: this,
-    ));
-  }
-
-  TaskConstMeta get kCrateApiNostrKeyPublicKeyPublicKeyFromHexConstMeta =>
-      const TaskConstMeta(
-        debugName: "PublicKey_from_hex",
-        argNames: ["publicKey"],
-      );
-
-  @override
-  PublicKey crateApiNostrKeyPublicKeyPublicKeyFromSlice(
-      {required List<int> publicKey}) {
-    return handler.executeSync(SyncTask(
-      callFfi: () {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_list_prim_u_8_loose(publicKey, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
-      },
-      codec: SseCodec(
-        decodeSuccessData:
-            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey,
-        decodeErrorData: sse_decode_AnyhowException,
-      ),
-      constMeta: kCrateApiNostrKeyPublicKeyPublicKeyFromSliceConstMeta,
-      argValues: [publicKey],
-      apiImpl: this,
-    ));
-  }
-
-  TaskConstMeta get kCrateApiNostrKeyPublicKeyPublicKeyFromSliceConstMeta =>
-      const TaskConstMeta(
-        debugName: "PublicKey_from_slice",
-        argNames: ["publicKey"],
-      );
-
-  @override
-  PublicKey crateApiNostrKeyPublicKeyPublicKeyParse(
-      {required String publicKey}) {
-    return handler.executeSync(SyncTask(
-      callFfi: () {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_String(publicKey, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
-      },
-      codec: SseCodec(
-        decodeSuccessData:
-            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey,
-        decodeErrorData: sse_decode_AnyhowException,
-      ),
-      constMeta: kCrateApiNostrKeyPublicKeyPublicKeyParseConstMeta,
-      argValues: [publicKey],
-      apiImpl: this,
-    ));
-  }
-
-  TaskConstMeta get kCrateApiNostrKeyPublicKeyPublicKeyParseConstMeta =>
-      const TaskConstMeta(
-        debugName: "PublicKey_parse",
-        argNames: ["publicKey"],
-      );
-
-  @override
-  Future<String> crateApiNostrKeyPublicKeyPublicKeyToBech32(
-      {required PublicKey that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey(
-            that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 9, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_String,
-        decodeErrorData: sse_decode_AnyhowException,
-      ),
-      constMeta: kCrateApiNostrKeyPublicKeyPublicKeyToBech32ConstMeta,
-      argValues: [that],
-      apiImpl: this,
-    ));
-  }
-
-  TaskConstMeta get kCrateApiNostrKeyPublicKeyPublicKeyToBech32ConstMeta =>
-      const TaskConstMeta(
-        debugName: "PublicKey_to_bech32",
-        argNames: ["that"],
-      );
-
-  @override
-  Future<String> crateApiNostrKeyPublicKeyPublicKeyToHex(
-      {required PublicKey that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey(
-            that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 10, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_String,
-        decodeErrorData: null,
-      ),
-      constMeta: kCrateApiNostrKeyPublicKeyPublicKeyToHexConstMeta,
-      argValues: [that],
-      apiImpl: this,
-    ));
-  }
-
-  TaskConstMeta get kCrateApiNostrKeyPublicKeyPublicKeyToHexConstMeta =>
-      const TaskConstMeta(
-        debugName: "PublicKey_to_hex",
-        argNames: ["that"],
-      );
-
-  @override
-  Future<String> crateApiNostrKeyPublicKeyPublicKeyToNostrUri(
-      {required PublicKey that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
-        final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey(
-            that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 11, port: port_);
-      },
-      codec: SseCodec(
-        decodeSuccessData: sse_decode_String,
-        decodeErrorData: sse_decode_AnyhowException,
-      ),
-      constMeta: kCrateApiNostrKeyPublicKeyPublicKeyToNostrUriConstMeta,
-      argValues: [that],
-      apiImpl: this,
-    ));
-  }
-
-  TaskConstMeta get kCrateApiNostrKeyPublicKeyPublicKeyToNostrUriConstMeta =>
-      const TaskConstMeta(
-        debugName: "PublicKey_to_nostr_uri",
-        argNames: ["that"],
-      );
-
-  @override
-  Future<bool> crateApiSdkClientClientAddRelay(
+  Future<bool> crateApiClientClientAddRelay(
       {required Client that, required String url}) {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
@@ -441,76 +181,76 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that, serializer);
         sse_encode_String(url, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 12, port: port_);
+            funcId: 2, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_bool,
         decodeErrorData: sse_decode_AnyhowException,
       ),
-      constMeta: kCrateApiSdkClientClientAddRelayConstMeta,
+      constMeta: kCrateApiClientClientAddRelayConstMeta,
       argValues: [that, url],
       apiImpl: this,
     ));
   }
 
-  TaskConstMeta get kCrateApiSdkClientClientAddRelayConstMeta =>
+  TaskConstMeta get kCrateApiClientClientAddRelayConstMeta =>
       const TaskConstMeta(
         debugName: "Client_add_relay",
         argNames: ["that", "url"],
       );
 
   @override
-  Future<void> crateApiSdkClientClientConnect({required Client that}) {
+  Future<void> crateApiClientClientConnect({required Client that}) {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Client(
             that, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 13, port: port_);
+            funcId: 3, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_unit,
         decodeErrorData: null,
       ),
-      constMeta: kCrateApiSdkClientClientConnectConstMeta,
+      constMeta: kCrateApiClientClientConnectConstMeta,
       argValues: [that],
       apiImpl: this,
     ));
   }
 
-  TaskConstMeta get kCrateApiSdkClientClientConnectConstMeta =>
+  TaskConstMeta get kCrateApiClientClientConnectConstMeta =>
       const TaskConstMeta(
         debugName: "Client_connect",
         argNames: ["that"],
       );
 
   @override
-  Client crateApiSdkClientClientDefault() {
+  Client crateApiClientClientDefault() {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
       },
       codec: SseCodec(
         decodeSuccessData:
             sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Client,
         decodeErrorData: null,
       ),
-      constMeta: kCrateApiSdkClientClientDefaultConstMeta,
+      constMeta: kCrateApiClientClientDefaultConstMeta,
       argValues: [],
       apiImpl: this,
     ));
   }
 
-  TaskConstMeta get kCrateApiSdkClientClientDefaultConstMeta =>
+  TaskConstMeta get kCrateApiClientClientDefaultConstMeta =>
       const TaskConstMeta(
         debugName: "Client_default",
         argNames: [],
       );
 
   @override
-  Future<String> crateApiSdkClientClientSendEvent(
+  Future<String> crateApiClientClientSendEvent(
       {required Client that, required String eventJson}) {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
@@ -519,22 +259,283 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that, serializer);
         sse_encode_String(eventJson, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 5, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_String,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateApiClientClientSendEventConstMeta,
+      argValues: [that, eventJson],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiClientClientSendEventConstMeta =>
+      const TaskConstMeta(
+        debugName: "Client_send_event",
+        argNames: ["that", "eventJson"],
+      );
+
+  @override
+  Keys crateApiProtocolKeyKeysGenerate() {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
+      },
+      codec: SseCodec(
+        decodeSuccessData:
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Keys,
+        decodeErrorData: null,
+      ),
+      constMeta: kCrateApiProtocolKeyKeysGenerateConstMeta,
+      argValues: [],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiProtocolKeyKeysGenerateConstMeta =>
+      const TaskConstMeta(
+        debugName: "Keys_generate",
+        argNames: [],
+      );
+
+  @override
+  Keys crateApiProtocolKeyKeysParse({required String secretKey}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_String(secretKey, serializer);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
+      },
+      codec: SseCodec(
+        decodeSuccessData:
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Keys,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateApiProtocolKeyKeysParseConstMeta,
+      argValues: [secretKey],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiProtocolKeyKeysParseConstMeta =>
+      const TaskConstMeta(
+        debugName: "Keys_parse",
+        argNames: ["secretKey"],
+      );
+
+  @override
+  Future<PublicKey> crateApiProtocolKeyKeysPublicKey({required Keys that}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Keys(
+            that, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 8, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData:
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey,
+        decodeErrorData: null,
+      ),
+      constMeta: kCrateApiProtocolKeyKeysPublicKeyConstMeta,
+      argValues: [that],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiProtocolKeyKeysPublicKeyConstMeta =>
+      const TaskConstMeta(
+        debugName: "Keys_public_key",
+        argNames: ["that"],
+      );
+
+  @override
+  Future<String> crateApiProtocolKeyKeysSecretKey({required Keys that}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Keys(
+            that, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 9, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_String,
+        decodeErrorData: null,
+      ),
+      constMeta: kCrateApiProtocolKeyKeysSecretKeyConstMeta,
+      argValues: [that],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiProtocolKeyKeysSecretKeyConstMeta =>
+      const TaskConstMeta(
+        debugName: "Keys_secret_key",
+        argNames: ["that"],
+      );
+
+  @override
+  PublicKey crateApiProtocolKeyPublicKeyPublicKeyFromHex(
+      {required String publicKey}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_String(publicKey, serializer);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
+      },
+      codec: SseCodec(
+        decodeSuccessData:
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateApiProtocolKeyPublicKeyPublicKeyFromHexConstMeta,
+      argValues: [publicKey],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiProtocolKeyPublicKeyPublicKeyFromHexConstMeta =>
+      const TaskConstMeta(
+        debugName: "PublicKey_from_hex",
+        argNames: ["publicKey"],
+      );
+
+  @override
+  PublicKey crateApiProtocolKeyPublicKeyPublicKeyFromSlice(
+      {required List<int> publicKey}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_list_prim_u_8_loose(publicKey, serializer);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
+      },
+      codec: SseCodec(
+        decodeSuccessData:
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateApiProtocolKeyPublicKeyPublicKeyFromSliceConstMeta,
+      argValues: [publicKey],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiProtocolKeyPublicKeyPublicKeyFromSliceConstMeta =>
+      const TaskConstMeta(
+        debugName: "PublicKey_from_slice",
+        argNames: ["publicKey"],
+      );
+
+  @override
+  PublicKey crateApiProtocolKeyPublicKeyPublicKeyParse(
+      {required String publicKey}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_String(publicKey, serializer);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
+      },
+      codec: SseCodec(
+        decodeSuccessData:
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateApiProtocolKeyPublicKeyPublicKeyParseConstMeta,
+      argValues: [publicKey],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiProtocolKeyPublicKeyPublicKeyParseConstMeta =>
+      const TaskConstMeta(
+        debugName: "PublicKey_parse",
+        argNames: ["publicKey"],
+      );
+
+  @override
+  Future<String> crateApiProtocolKeyPublicKeyPublicKeyToBech32(
+      {required PublicKey that}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey(
+            that, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 13, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_String,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateApiProtocolKeyPublicKeyPublicKeyToBech32ConstMeta,
+      argValues: [that],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiProtocolKeyPublicKeyPublicKeyToBech32ConstMeta =>
+      const TaskConstMeta(
+        debugName: "PublicKey_to_bech32",
+        argNames: ["that"],
+      );
+
+  @override
+  Future<String> crateApiProtocolKeyPublicKeyPublicKeyToHex(
+      {required PublicKey that}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey(
+            that, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 14, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_String,
+        decodeErrorData: null,
+      ),
+      constMeta: kCrateApiProtocolKeyPublicKeyPublicKeyToHexConstMeta,
+      argValues: [that],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiProtocolKeyPublicKeyPublicKeyToHexConstMeta =>
+      const TaskConstMeta(
+        debugName: "PublicKey_to_hex",
+        argNames: ["that"],
+      );
+
+  @override
+  Future<String> crateApiProtocolKeyPublicKeyPublicKeyToNostrUri(
+      {required PublicKey that}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey(
+            that, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
             funcId: 15, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
         decodeErrorData: sse_decode_AnyhowException,
       ),
-      constMeta: kCrateApiSdkClientClientSendEventConstMeta,
-      argValues: [that, eventJson],
+      constMeta: kCrateApiProtocolKeyPublicKeyPublicKeyToNostrUriConstMeta,
+      argValues: [that],
       apiImpl: this,
     ));
   }
 
-  TaskConstMeta get kCrateApiSdkClientClientSendEventConstMeta =>
+  TaskConstMeta get kCrateApiProtocolKeyPublicKeyPublicKeyToNostrUriConstMeta =>
       const TaskConstMeta(
-        debugName: "Client_send_event",
-        argNames: ["that", "eventJson"],
+        debugName: "PublicKey_to_nostr_uri",
+        argNames: ["that"],
       );
 
   RustArcIncrementStrongCountFnType
@@ -977,15 +978,15 @@ class ClientImpl extends RustOpaque implements Client {
         RustLib.instance.api.rust_arc_decrement_strong_count_ClientPtr,
   );
 
-  Future<bool> addRelay({required String url}) => RustLib.instance.api
-      .crateApiSdkClientClientAddRelay(that: this, url: url);
+  Future<bool> addRelay({required String url}) =>
+      RustLib.instance.api.crateApiClientClientAddRelay(that: this, url: url);
 
-  Future<void> connect() => RustLib.instance.api.crateApiSdkClientClientConnect(
+  Future<void> connect() => RustLib.instance.api.crateApiClientClientConnect(
         that: this,
       );
 
   Future<String> sendEvent({required String eventJson}) => RustLib.instance.api
-      .crateApiSdkClientClientSendEvent(that: this, eventJson: eventJson);
+      .crateApiClientClientSendEvent(that: this, eventJson: eventJson);
 }
 
 @sealed
@@ -1008,12 +1009,12 @@ class KeysImpl extends RustOpaque implements Keys {
   );
 
   Future<PublicKey> publicKey() =>
-      RustLib.instance.api.crateApiNostrKeyKeysPublicKey(
+      RustLib.instance.api.crateApiProtocolKeyKeysPublicKey(
         that: this,
       );
 
   Future<String> secretKey() =>
-      RustLib.instance.api.crateApiNostrKeyKeysSecretKey(
+      RustLib.instance.api.crateApiProtocolKeyKeysSecretKey(
         that: this,
       );
 }
@@ -1038,17 +1039,17 @@ class PublicKeyImpl extends RustOpaque implements PublicKey {
   );
 
   Future<String> toBech32() =>
-      RustLib.instance.api.crateApiNostrKeyPublicKeyPublicKeyToBech32(
+      RustLib.instance.api.crateApiProtocolKeyPublicKeyPublicKeyToBech32(
         that: this,
       );
 
   Future<String> toHex() =>
-      RustLib.instance.api.crateApiNostrKeyPublicKeyPublicKeyToHex(
+      RustLib.instance.api.crateApiProtocolKeyPublicKeyPublicKeyToHex(
         that: this,
       );
 
   Future<String> toNostrUri() =>
-      RustLib.instance.api.crateApiNostrKeyPublicKeyPublicKeyToNostrUri(
+      RustLib.instance.api.crateApiProtocolKeyPublicKeyPublicKeyToNostrUri(
         that: this,
       );
 }
