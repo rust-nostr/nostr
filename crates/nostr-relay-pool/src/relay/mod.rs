@@ -165,8 +165,8 @@ impl Relay {
 
     /// Get connection mode
     #[inline]
-    pub fn connection_mode(&self) -> ConnectionMode {
-        self.inner.connection_mode()
+    pub fn connection_mode(&self) -> &ConnectionMode {
+        &self.inner.opts.connection_mode
     }
 
     /// Get status

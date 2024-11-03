@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use async_utility::{thread, time};
 use async_wsocket::futures_util::{self, Future, SinkExt, StreamExt};
-use async_wsocket::{ConnectionMode, Sink, Stream, WsMessage};
+use async_wsocket::{Sink, Stream, WsMessage, *};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
 use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
@@ -197,11 +197,6 @@ impl InnerRelay {
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
             support_negentropy: TimedOnceCell::new(Duration::from_secs(60 * 60)), // Expire after 1h
         }
-    }
-
-    #[inline]
-    pub fn connection_mode(&self) -> ConnectionMode {
-        self.opts.connection_mode.clone()
     }
 
     #[inline]
@@ -526,7 +521,7 @@ impl InnerRelay {
         let timeout: Duration = if self.stats.attempts() > 1 {
             // Many attempts, use the default timeout
             #[cfg(feature = "tor")]
-            if let ConnectionMode::Tor { .. } = self.connection_mode() {
+            if let ConnectionMode::Tor { .. } = &self.opts.connection_mode {
                 Duration::from_secs(120)
             } else {
                 Duration::from_secs(60)
@@ -540,7 +535,7 @@ impl InnerRelay {
         };
 
         // Connect
-        match async_wsocket::connect(&self.url, self.connection_mode(), timeout).await {
+        match async_wsocket::connect(&self.url, self.opts.connection_mode.clone(), timeout).await {
             Ok((ws_tx, ws_rx)) => {
                 // Update status
                 self.set_status(RelayStatus::Connected, true);

@@ -138,7 +138,7 @@ impl Relay {
 
     /// Get connection mode
     pub fn connection_mode(&self) -> ConnectionMode {
-        self.inner.connection_mode().into()
+        self.inner.connection_mode().clone().into()
     }
 
     /// Get status
