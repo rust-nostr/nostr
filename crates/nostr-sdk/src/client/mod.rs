@@ -327,7 +327,7 @@ impl Client {
         self.pool.notifications()
     }
 
-    /// Get relays with `READ` or `WRITE` flags
+    /// Get relays with [`RelayServiceFlags::READ`] or [`RelayServiceFlags::WRITE`] flags
     ///
     /// Call [`RelayPool::all_relays`] to get all relays
     /// or [`RelayPool::relays_with_flag`] to get relays with specific [`RelayServiceFlags`].
@@ -429,18 +429,17 @@ impl Client {
 
     /// Add relay
     ///
-    /// Relays added with this method will have both `READ` and `WRITE` flags enabled
-    /// (check [`RelayServiceFlags`] for more details).
+    /// Relays added with this method will have both [`RelayServiceFlags::READ`] and [`RelayServiceFlags::WRITE`] flags enabled.
     ///
     /// If the relay already exists, the flags will be updated and `false` returned.
     ///
-    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
+    /// If are set pool subscriptions, the new added relay will inherit them. Use [`Client::subscribe_to`] method instead of [`Client::subscribe`],
     /// to avoid to set pool subscriptions.
     ///
-    /// This method use previously set or default [Options] to configure the [Relay] (ex. set proxy, set min POW, set relay limits, ...).
+    /// This method use previously set or default [`Options`] to configure the [`Relay`] (ex. set proxy, set min POW, set relay limits, ...).
     /// To use custom [`RelayOptions`] use [`RelayPool::add_relay`].
     ///
-    /// Connection is **NOT** automatically started with relay, remember to call `client.connect()`!
+    /// Connection is **NOT** automatically started with relay, remember to call [`Client::connect`]!
     #[inline]
     pub async fn add_relay<U>(&self, url: U) -> Result<bool, Error>
     where
@@ -453,7 +452,7 @@ impl Client {
 
     /// Add discovery relay
     ///
-    /// If relay already exists, this method automatically add the `DISCOVERY` flag to it and return `false`.
+    /// If relay already exists, this method automatically add the [`RelayServiceFlags::DISCOVERY`] flag to it and return `false`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     #[inline]
@@ -472,7 +471,7 @@ impl Client {
 
     /// Add read relay
     ///
-    /// If relay already exists, this method add the `READ` flag to it and return `false`.
+    /// If relay already exists, this method add the [`RelayServiceFlags::READ`] flag to it and return `false`.
     ///
     /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
     /// to avoid to set pool subscriptions.
@@ -492,7 +491,7 @@ impl Client {
 
     /// Add write relay
     ///
-    /// If relay already exists, this method add the `WRITE` flag to it and return `false`.
+    /// If relay already exists, this method add the [`RelayServiceFlags::WRITE`] flag to it and return `false`.
     #[inline]
     pub async fn add_write_relay<U>(&self, url: U) -> Result<bool, Error>
     where
@@ -537,8 +536,10 @@ impl Client {
 
     /// Remove and disconnect relay
     ///
-    /// If the relay has `INBOX` or `OUTBOX` flags, it will not be removed from the pool and its
-    /// flags will be updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
+    /// If the relay has [`RelayServiceFlags::INBOX`] or [`RelayServiceFlags::OUTBOX`] flags, it will not be removed from the pool and its
+    /// flags will be updated (remove [`RelayServiceFlags::READ`], [`RelayServiceFlags::WRITE`] and [`RelayServiceFlags::DISCOVERY`] flags).
+    ///
+    /// To fore remove it use [`Client::force_remove_relay`].
     #[inline]
     pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
     where
@@ -1069,7 +1070,7 @@ impl Client {
 
     /// Send event
     ///
-    /// Send [`Event`] to all relays with `WRITE` flag.
+    /// Send [`Event`] to all relays with [`RelayServiceFlags::WRITE`] flag.
     /// If `gossip` is enabled (see [`Options::gossip`]) the event will be sent also to NIP65 relays (automatically discovered).
     #[inline]
     pub async fn send_event(&self, event: Event) -> Result<Output<EventId>, Error> {
@@ -1131,7 +1132,7 @@ impl Client {
         Ok(self.pool.send_event_to(urls, event).await?)
     }
 
-    /// Send multiple events at once to all relays with `WRITE` flag (check [`RelayServiceFlags`] for more details).
+    /// Send multiple events at once to all relays with [`RelayServiceFlags::WRITE`] flag.
     #[inline]
     pub async fn batch_event(&self, events: Vec<Event>) -> Result<Output<()>, Error> {
         Ok(self.pool.batch_event(events).await?)
