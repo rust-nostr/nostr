@@ -1,7 +1,0 @@
-#!/usr/bin/env just --justfile
-
-build:
-    cargo build --release
-
-example: build
-    g++ examples/client.cpp -o client -I include/ -I ../../target/x86_64-unknown-linux-gnu/cxxbridge/ -L ../../target/x86_64-unknown-linux-gnu/release/ -lnostr_sdk_cpp

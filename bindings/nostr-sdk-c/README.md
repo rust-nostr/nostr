@@ -1,4 +1,4 @@
-# Nostr SDK for C++
+# C/C++ bindings for Nostr SDK
 
 ## Supported NIPs
 

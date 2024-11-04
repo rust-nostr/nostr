@@ -1,0 +1,10 @@
+#!/usr/bin/env just --justfile
+
+build:
+    cargo build --release
+
+examples: build
+    mkdir -p bin/
+    gcc examples/keys.c -o bin/keys -I include/ -L ../../target/release/ -lnostr_sdk_c -lpthread -ldl -lm -lrt
+    gcc examples/client.c -o bin/client -I include/ -L ../../target/release/ -lnostr_sdk_c -lpthread -ldl -lm -lrt
+

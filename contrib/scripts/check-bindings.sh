@@ -4,7 +4,7 @@ set -euo pipefail
 
 # Check bindings
 buildargs=(
-    "-p nostr-sdk-cpp"
+    "-p nostr-sdk-c"
     "-p nostr-sdk-ffi"
     "-p nostr-sdk-js --target wasm32-unknown-unknown"
 )
