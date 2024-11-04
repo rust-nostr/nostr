@@ -70,6 +70,7 @@
 * sdk: deprecate `Client::reconcile` and `Client::reconcile_with` ([Yuki Kishimoto])
 * sdk: use by default tor for onion relays if `tor` feature is enabled on non-mobile targets ([Yuki Kishimoto])
 * sdk: return reference to `RelayPool` instead of clone in `Client:pool` ([Yuki Kishimoto])
+* sdk: immediately return error if gossip filters are empty ([Yuki Kishimoto])
 * signer: auto enable `nip44` feature if `nip59` is enabled ([Yuki Kishimoto])
 * connect: rename `Nip46Signer` to `NostrConnect` ([Yuki Kishimoto])
 * database: improve `BTreeCappedSet` ([Yuki Kishimoto])

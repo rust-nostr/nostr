@@ -83,6 +83,9 @@ pub enum Error {
     /// Impossible to zap
     #[error("impossible to send zap: {0}")]
     ImpossibleToZap(String),
+    /// Broken down filters for gossip are empty
+    #[error("gossip broken down filters are empty")]
+    GossipFiltersEmpty,
     /// Metadata not found
     #[error("metadata not found")]
     MetadataNotFound,
@@ -1844,6 +1847,11 @@ impl Client {
             if self.add_inbox_relay(&url).await? {
                 self.connect_relay(url).await?;
             }
+        }
+
+        // Check if filters aren't empty
+        if broken_down.filters.is_empty() {
+            return Err(Error::GossipFiltersEmpty);
         }
 
         Ok(broken_down.filters)
