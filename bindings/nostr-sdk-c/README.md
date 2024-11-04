@@ -1,5 +1,35 @@
 # C/C++ bindings for Nostr SDK
 
+## Integration
+
+### Clone the repository
+
+```bash
+git clone https://github.com/rust-nostr/nostr.git
+cd nostr
+```
+
+### Configure your CMake
+
+```cmake
+# Add the external library project
+add_subdirectory(<path>/nostr/bindings/nostr-sdk-c nostr_sdk)
+include_directories("<path>/nostr/bindings/nostr-sdk-c/include")
+link_directories("<path>/nostr/target/release")
+
+# Link library to a binary
+target_link_libraries(<binary> PRIVATE nostr_sdk_interface)
+```
+
+### Build your project
+
+```bash
+mkdir build
+cd build
+cmake ..
+make
+```
+
 ## Supported NIPs
 
 Look at <https://github.com/rust-nostr/nostr/tree/master/crates/nostr#supported-nips>
