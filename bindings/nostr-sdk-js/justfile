@@ -8,12 +8,12 @@ clean:
     rm -f rust-nostr-*.tgz
     cd benches && rm -rf node_modules package-lock.json
 
-publish:
-	npm publish --access public
-
 pack: init clean
 	bash ./scripts/build.sh
 	npm pack
+
+publish: pack
+	npm publish --access public
 
 bench:
     cd benches && npm install && deno bench
