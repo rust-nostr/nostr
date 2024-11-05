@@ -1,6 +1,6 @@
 [package]
 name = "nostr-relay-builder"
-version = "0.35.0"
+version = "0.36.0"
 edition = "2021"
 description = "Nostr Relay Builder"
 authors.workspace = true
