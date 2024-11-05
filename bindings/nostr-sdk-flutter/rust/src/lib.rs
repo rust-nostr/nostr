@@ -3,4 +3,5 @@
 // Distributed under the MIT software license
 
 pub mod api;
+#[rustfmt::skip]
 mod frb_generated;
