@@ -20,11 +20,12 @@ sdk-root:
 init:
 	rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim
 	rustup target add aarch64-apple-darwin x86_64-apple-darwin
-	rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
-	#@if os() == "macos" { cargo install cargo-lipo }
 	cargo install cargo-lipo
 	cargo install cbindgen
-	cargo install cargo-ndk
+
+[private]
+ndk: ndk-home
+    @cargo ndk --version || cargo install cargo-ndk
 
 [private]
 clean-android:
@@ -32,19 +33,23 @@ clean-android:
 	rm -rf ffi/kotlin
 
 [private]
-aarch64-linux-android: ndk-home
+aarch64-linux-android: ndk
+	rustup target add aarch64-linux-android
 	cargo ndk -t aarch64-linux-android -o ffi/kotlin/jniLibs build --release
 
 [private]
-armv7-linux-androideabi: ndk-home
+armv7-linux-androideabi: ndk
+	rustup target add armv7-linux-androideabi
 	cargo ndk -t armv7-linux-androideabi -o ffi/kotlin/jniLibs build --release
 
 [private]
-i686-linux-android: ndk-home
+i686-linux-android: ndk
+	rustup target add i686-linux-android
 	cargo ndk -t i686-linux-android -o ffi/kotlin/jniLibs build --release
 
 [private]
-x86_64-linux-android: ndk-home
+x86_64-linux-android: ndk
+	rustup target add x86_64-linux-android
 	cargo ndk -t x86_64-linux-android -o ffi/kotlin/jniLibs build --release
 
 [private]

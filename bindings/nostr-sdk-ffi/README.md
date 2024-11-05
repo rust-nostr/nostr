@@ -11,12 +11,6 @@
 
 ## Build
 
-On first usage you will need to run:
-
-```bash
-just init
-```
-
 ### Python
 
 For most users, we recommend using our official Python package: [nostr-sdk](https://pypi.org/project/nostr-sdk/).
@@ -59,6 +53,14 @@ See [Add your AAR or JAR as a dependency](https://developer.android.com/studio/p
 For most users, we recommend using our official Swift package: [rust-nostr/nostr-sdk-swift](https://github.com/rust-nostr/nostr-sdk-swift).
 
 If you want to compile from source or need more options, read on.
+
+#### Init
+
+On first usage you will need to run:
+
+```bash
+just init
+```
 
 #### Swift Module
 
