@@ -6,6 +6,7 @@
 import 'api/client.dart';
 import 'api/protocol/key.dart';
 import 'api/protocol/key/public_key.dart';
+import 'api/protocol/key/secret_key.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -70,7 +71,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.5.1';
 
   @override
-  int get rustContentHash => 1346251131;
+  int get rustContentHash => -2058218523;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -95,11 +96,13 @@ abstract class RustLibApi extends BaseApi {
 
   Keys crateApiProtocolKeyKeysGenerate();
 
+  Keys crateApiProtocolKeyKeysNew({required SecretKey secretKey});
+
   Keys crateApiProtocolKeyKeysParse({required String secretKey});
 
   Future<PublicKey> crateApiProtocolKeyKeysPublicKey({required Keys that});
 
-  Future<String> crateApiProtocolKeyKeysSecretKey({required Keys that});
+  Future<SecretKey> crateApiProtocolKeyKeysSecretKey({required Keys that});
 
   PublicKey crateApiProtocolKeyPublicKeyPublicKeyFromHex(
       {required String publicKey});
@@ -118,6 +121,23 @@ abstract class RustLibApi extends BaseApi {
 
   Future<String> crateApiProtocolKeyPublicKeyPublicKeyToNostrUri(
       {required PublicKey that});
+
+  SecretKey crateApiProtocolKeySecretKeySecretKeyFromHex(
+      {required String secretKey});
+
+  SecretKey crateApiProtocolKeySecretKeySecretKeyFromSlice(
+      {required List<int> secretKey});
+
+  SecretKey crateApiProtocolKeySecretKeySecretKeyGenerate();
+
+  SecretKey crateApiProtocolKeySecretKeySecretKeyParse(
+      {required String secretKey});
+
+  Future<String> crateApiProtocolKeySecretKeySecretKeyToBech32(
+      {required SecretKey that});
+
+  Future<String> crateApiProtocolKeySecretKeySecretKeyToSecretHex(
+      {required SecretKey that});
 
   RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Client;
 
@@ -138,6 +158,14 @@ abstract class RustLibApi extends BaseApi {
       get rust_arc_decrement_strong_count_PublicKey;
 
   CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_PublicKeyPtr;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_SecretKey;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_SecretKey;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_SecretKeyPtr;
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -302,12 +330,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Keys crateApiProtocolKeyKeysNew({required SecretKey secretKey}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey(
+            secretKey, serializer);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
+      },
+      codec: SseCodec(
+        decodeSuccessData:
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Keys,
+        decodeErrorData: null,
+      ),
+      constMeta: kCrateApiProtocolKeyKeysNewConstMeta,
+      argValues: [secretKey],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiProtocolKeyKeysNewConstMeta => const TaskConstMeta(
+        debugName: "Keys_new",
+        argNames: ["secretKey"],
+      );
+
+  @override
   Keys crateApiProtocolKeyKeysParse({required String secretKey}) {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_String(secretKey, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
       },
       codec: SseCodec(
         decodeSuccessData:
@@ -334,7 +387,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Keys(
             that, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 8, port: port_);
+            funcId: 9, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData:
@@ -354,17 +407,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<String> crateApiProtocolKeyKeysSecretKey({required Keys that}) {
+  Future<SecretKey> crateApiProtocolKeyKeysSecretKey({required Keys that}) {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Keys(
             that, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 9, port: port_);
+            funcId: 10, port: port_);
       },
       codec: SseCodec(
-        decodeSuccessData: sse_decode_String,
+        decodeSuccessData:
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey,
         decodeErrorData: null,
       ),
       constMeta: kCrateApiProtocolKeyKeysSecretKeyConstMeta,
@@ -386,7 +440,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_String(publicKey, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
       },
       codec: SseCodec(
         decodeSuccessData:
@@ -412,7 +466,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_list_prim_u_8_loose(publicKey, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
       },
       codec: SseCodec(
         decodeSuccessData:
@@ -438,7 +492,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_String(publicKey, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
       },
       codec: SseCodec(
         decodeSuccessData:
@@ -466,7 +520,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey(
             that, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 13, port: port_);
+            funcId: 14, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -493,7 +547,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey(
             that, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 14, port: port_);
+            funcId: 15, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -520,7 +574,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey(
             that, serializer);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 15, port: port_);
+            funcId: 16, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -537,6 +591,163 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         debugName: "PublicKey_to_nostr_uri",
         argNames: ["that"],
       );
+
+  @override
+  SecretKey crateApiProtocolKeySecretKeySecretKeyFromHex(
+      {required String secretKey}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_String(secretKey, serializer);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 17)!;
+      },
+      codec: SseCodec(
+        decodeSuccessData:
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateApiProtocolKeySecretKeySecretKeyFromHexConstMeta,
+      argValues: [secretKey],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiProtocolKeySecretKeySecretKeyFromHexConstMeta =>
+      const TaskConstMeta(
+        debugName: "SecretKey_from_hex",
+        argNames: ["secretKey"],
+      );
+
+  @override
+  SecretKey crateApiProtocolKeySecretKeySecretKeyFromSlice(
+      {required List<int> secretKey}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_list_prim_u_8_loose(secretKey, serializer);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18)!;
+      },
+      codec: SseCodec(
+        decodeSuccessData:
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateApiProtocolKeySecretKeySecretKeyFromSliceConstMeta,
+      argValues: [secretKey],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiProtocolKeySecretKeySecretKeyFromSliceConstMeta =>
+      const TaskConstMeta(
+        debugName: "SecretKey_from_slice",
+        argNames: ["secretKey"],
+      );
+
+  @override
+  SecretKey crateApiProtocolKeySecretKeySecretKeyGenerate() {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
+      },
+      codec: SseCodec(
+        decodeSuccessData:
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey,
+        decodeErrorData: null,
+      ),
+      constMeta: kCrateApiProtocolKeySecretKeySecretKeyGenerateConstMeta,
+      argValues: [],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiProtocolKeySecretKeySecretKeyGenerateConstMeta =>
+      const TaskConstMeta(
+        debugName: "SecretKey_generate",
+        argNames: [],
+      );
+
+  @override
+  SecretKey crateApiProtocolKeySecretKeySecretKeyParse(
+      {required String secretKey}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_String(secretKey, serializer);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 20)!;
+      },
+      codec: SseCodec(
+        decodeSuccessData:
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateApiProtocolKeySecretKeySecretKeyParseConstMeta,
+      argValues: [secretKey],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiProtocolKeySecretKeySecretKeyParseConstMeta =>
+      const TaskConstMeta(
+        debugName: "SecretKey_parse",
+        argNames: ["secretKey"],
+      );
+
+  @override
+  Future<String> crateApiProtocolKeySecretKeySecretKeyToBech32(
+      {required SecretKey that}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey(
+            that, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 21, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_String,
+        decodeErrorData: sse_decode_AnyhowException,
+      ),
+      constMeta: kCrateApiProtocolKeySecretKeySecretKeyToBech32ConstMeta,
+      argValues: [that],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta get kCrateApiProtocolKeySecretKeySecretKeyToBech32ConstMeta =>
+      const TaskConstMeta(
+        debugName: "SecretKey_to_bech32",
+        argNames: ["that"],
+      );
+
+  @override
+  Future<String> crateApiProtocolKeySecretKeySecretKeyToSecretHex(
+      {required SecretKey that}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey(
+            that, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 22, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_String,
+        decodeErrorData: null,
+      ),
+      constMeta: kCrateApiProtocolKeySecretKeySecretKeyToSecretHexConstMeta,
+      argValues: [that],
+      apiImpl: this,
+    ));
+  }
+
+  TaskConstMeta
+      get kCrateApiProtocolKeySecretKeySecretKeyToSecretHexConstMeta =>
+          const TaskConstMeta(
+            debugName: "SecretKey_to_secret_hex",
+            argNames: ["that"],
+          );
 
   RustArcIncrementStrongCountFnType
       get rust_arc_increment_strong_count_Client => wire
@@ -559,6 +770,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   RustArcDecrementStrongCountFnType
       get rust_arc_decrement_strong_count_PublicKey => wire
           .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_SecretKey => wire
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_SecretKey => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey;
 
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw) {
@@ -591,6 +810,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  SecretKey
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SecretKeyImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
   Client
       dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Client(
           dynamic raw) {
@@ -615,6 +842,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  SecretKey
+      dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SecretKeyImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
   Client
       dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Client(
           dynamic raw) {
@@ -636,6 +871,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return PublicKeyImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  SecretKey
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SecretKeyImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
 
   @protected
@@ -715,6 +958,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  SecretKey
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return SecretKeyImpl.frbInternalSseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
   Client
       sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Client(
           SseDeserializer deserializer) {
@@ -742,6 +994,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  SecretKey
+      sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return SecretKeyImpl.frbInternalSseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
   Client
       sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Client(
           SseDeserializer deserializer) {
@@ -765,6 +1026,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return PublicKeyImpl.frbInternalSseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  SecretKey
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return SecretKeyImpl.frbInternalSseDecode(
         sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
@@ -854,6 +1124,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey(
+          SecretKey self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+        (self as SecretKeyImpl).frbInternalSseEncode(move: true), serializer);
+  }
+
+  @protected
+  void
       sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Client(
           Client self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -881,6 +1160,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
+      sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey(
+          SecretKey self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+        (self as SecretKeyImpl).frbInternalSseEncode(move: false), serializer);
+  }
+
+  @protected
+  void
       sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Client(
           Client self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -904,6 +1192,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
         (self as PublicKeyImpl).frbInternalSseEncode(move: null), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey(
+          SecretKey self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+        (self as SecretKeyImpl).frbInternalSseEncode(move: null), serializer);
   }
 
   @protected
@@ -1013,7 +1310,7 @@ class KeysImpl extends RustOpaque implements Keys {
         that: this,
       );
 
-  Future<String> secretKey() =>
+  Future<SecretKey> secretKey() =>
       RustLib.instance.api.crateApiProtocolKeyKeysSecretKey(
         that: this,
       );
@@ -1050,6 +1347,36 @@ class PublicKeyImpl extends RustOpaque implements PublicKey {
 
   Future<String> toNostrUri() =>
       RustLib.instance.api.crateApiProtocolKeyPublicKeyPublicKeyToNostrUri(
+        that: this,
+      );
+}
+
+@sealed
+class SecretKeyImpl extends RustOpaque implements SecretKey {
+  // Not to be used by end users
+  SecretKeyImpl.frbInternalDcoDecode(List<dynamic> wire)
+      : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  SecretKeyImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+      : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_SecretKey,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_SecretKey,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_SecretKeyPtr,
+  );
+
+  Future<String> toBech32() =>
+      RustLib.instance.api.crateApiProtocolKeySecretKeySecretKeyToBech32(
+        that: this,
+      );
+
+  Future<String> toSecretHex() =>
+      RustLib.instance.api.crateApiProtocolKeySecretKeySecretKeyToSecretHex(
         that: this,
       );
 }

@@ -5,6 +5,7 @@
 
 import '../../frb_generated.dart';
 import 'key/public_key.dart';
+import 'key/secret_key.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<_Keys>>
@@ -15,11 +16,14 @@ abstract class Keys implements RustOpaqueInterface {
   static Keys generate() =>
       RustLib.instance.api.crateApiProtocolKeyKeysGenerate();
 
+  factory Keys({required SecretKey secretKey}) =>
+      RustLib.instance.api.crateApiProtocolKeyKeysNew(secretKey: secretKey);
+
   /// Parse secret key from `hex` or `bech32`
   static Keys parse({required String secretKey}) =>
       RustLib.instance.api.crateApiProtocolKeyKeysParse(secretKey: secretKey);
 
   Future<PublicKey> publicKey();
 
-  Future<String> secretKey();
+  Future<SecretKey> secretKey();
 }

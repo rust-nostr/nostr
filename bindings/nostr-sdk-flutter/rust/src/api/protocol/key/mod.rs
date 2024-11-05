@@ -7,8 +7,10 @@ use flutter_rust_bridge::frb;
 use nostr_sdk::prelude::*;
 
 pub mod public_key;
+pub mod secret_key;
 
 use self::public_key::_PublicKey;
+use self::secret_key::_SecretKey;
 
 #[frb(name = "Keys")]
 pub struct _Keys {
@@ -16,6 +18,13 @@ pub struct _Keys {
 }
 
 impl _Keys {
+    #[frb(sync)]
+    pub fn new(secret_key: _SecretKey) -> Self {
+        Self {
+            inner: Keys::new(secret_key.into()),
+        }
+    }
+
     /// Generate random keys
     ///
     /// This constructor use a random number generator that retrieves randomness from the operating system.
@@ -38,8 +47,7 @@ impl _Keys {
         self.inner.public_key().into()
     }
 
-    // TODO: add SecretKey struct
-    pub fn secret_key(&self) -> String {
-        self.inner.secret_key().to_secret_hex()
+    pub fn secret_key(&self) -> _SecretKey {
+        self.inner.secret_key().clone().into()
     }
 }

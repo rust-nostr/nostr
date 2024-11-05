@@ -52,7 +52,7 @@ impl SecretKey {
     /// Secret Key len
     pub const LEN: usize = 32;
 
-    /// Try to parse [SecretKey] from `hex` or `bech32`
+    /// Parse from `hex` or `bech32`
     pub fn parse<S>(secret_key: S) -> Result<Self, Error>
     where
         S: AsRef<str>,
