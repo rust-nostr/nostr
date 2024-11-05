@@ -74,11 +74,11 @@ just swift-darwin
 
 #### Swift Package
 
-This command will produce a fully configured Swift Package in `bindings-swift/`.
+This command will produce a fully configured Swift Package in `swift/`.
 See [Adding package dependencies to your app](https://developer.apple.com/documentation/xcode/adding-package-dependencies-to-your-app) in Apple's docs for more information on how to integrate such a package into your project.
 
 ```bash
-just bindings-swift
+just swift
 ```
 
 ## License
