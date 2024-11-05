@@ -1,4 +1,4 @@
-from nostr_protocol import Keys, PublicKey, EventBuilder, EventId, Nip21, Nip19Profile, Nip19Event, Kind, Coordinate
+from nostr_sdk import Keys, PublicKey, EventBuilder, EventId, Nip21, Nip19Profile, Nip19Event, Kind, Coordinate
 
 
 def nip21():
@@ -21,7 +21,7 @@ def nip21():
     print()
 
     # ANCHOR: note
-    event = EventBuilder.text_note("Hello from Rust Nostr Python bindings!", []).to_event(keys)
+    event = EventBuilder.text_note("Hello from Rust Nostr Python bindings!", []).sign_with_keys(keys)
 
     # URI note
     note_uri = event.id().to_nostr_uri()

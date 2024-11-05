@@ -1,4 +1,4 @@
-from nostr_protocol import Timestamp, EventBuilder, Keys, Kind, gift_wrap, Tag
+from nostr_sdk import Timestamp, EventBuilder, Keys, Kind, gift_wrap, Tag
 
 
 def timestamps():
@@ -26,7 +26,7 @@ def timestamps():
     print()
     # ANCHOR: timestamp-created
     print("  Created at timestamp:")
-    event = EventBuilder(Kind(1), "This is some event text.", []).custom_created_at(timestamp).to_event(alice_keys)
+    event = EventBuilder(Kind(1), "This is some event text.", []).custom_created_at(timestamp).sign_with_keys(alice_keys)
     print(f"     Created at: {event.created_at().to_human_datetime()}")
     # ANCHOR_END: timestamp-created
 
@@ -36,11 +36,3 @@ def timestamps():
     tag = Tag.expiration(timestamp)
     print(f"     Tag: {tag.as_standardized()}")
     # ANCHOR_END: timestamp-tag
-
-    print()
-    # ANCHOR: timestamp-expiration
-    print("  Expiration timestamp:")
-    gw = gift_wrap(alice_keys, bob_keys.public_key(),
-                   EventBuilder.text_note("Test", []).to_unsigned_event(alice_keys.public_key()), Timestamp.now())
-    print(f"     Expiration: {gw.expiration().to_human_datetime()}")
-    # ANCHOR_END: timestamp-expiration

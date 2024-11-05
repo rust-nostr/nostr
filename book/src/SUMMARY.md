@@ -4,8 +4,8 @@
 
 # Libraries
 
-* [Nostr](./nostr/01-index.md)
-    * [Installation](./nostr/02-installation.md)
+* [Nostr](./nostr/index.md)
+    * [Installation](./nostr/installation.md)
     * [Keys](./nostr/03-keys.md)
     * [Event](./nostr/04_00-event.md)
         * [Event ID](./nostr/04_01-event-id.md)
@@ -27,8 +27,8 @@
         * [NIP-59](./nostr/06-nip59.md)
         * [NIP-65](./nostr/06-nip65.md)
         
-* [Nostr SDK](./nostr-sdk/01-index.md)
-    * [Installation](./nostr-sdk/02-installation.md)
+* [Nostr SDK](./nostr-sdk/index.md)
+    * [Installation](./nostr-sdk/installation.md)
     * [Quickstart](./nostr-sdk/03-quickstart.md)
     * [Private Messages (NIP-17)](./nostr-sdk/nip17.md)
     * [Options](./nostr-sdk/04-00-options.md)

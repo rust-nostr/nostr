@@ -21,7 +21,7 @@ async function main() {
     eventBuilder.eventBuilder();
 
     await relayMessages.run();
-    
+
     nip01.run();
     await nip05.run();
     nip06.run();
@@ -29,7 +29,7 @@ async function main() {
     nip21.run();
     nip44.run();
 
-    nip59.run();
+    await nip59.run();
     nip65.run();
 }
 

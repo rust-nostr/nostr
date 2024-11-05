@@ -1,10 +1,11 @@
-from nostr_protocol import EventBuilder, Keys, Tag, Contact, Coordinate, Kind, RelayMetadata, TagKind
+from nostr_sdk import EventBuilder, Keys, Tag, Contact, Coordinate, Kind, RelayMetadata, TagKind
+
 
 def tags():
     # Generate keys and events
     keys = Keys.generate()
-    event = EventBuilder.contact_list([Contact(keys.public_key(), "", "")]).to_event(keys)
-    
+    event = EventBuilder.contact_list([Contact(keys.public_key(), "", "")]).sign_with_keys(keys)
+
     print()
     print("Tags:")
 

@@ -1,4 +1,4 @@
-from nostr_protocol import Keys, EventBuilder, Nip19Profile, Nip19, Nip19Event, Coordinate, Kind
+from nostr_sdk import Keys, EventBuilder, Nip19Profile, Nip19, Nip19Event, Coordinate, Kind
 def nip19():
     keys = Keys.generate()
 
@@ -13,7 +13,7 @@ def nip19():
     # ANCHOR_END: nip19-nsec
 
     # ANCHOR: nip19-note
-    event = EventBuilder.text_note("Hello from Rust Nostr Python bindings!", []).to_event(keys)
+    event = EventBuilder.text_note("Hello from Rust Nostr Python bindings!", []).sign_with_keys(keys)
     print(f" Event     : {event.id().to_bech32()}")
     # ANCHOR_END: nip19-note
 
@@ -44,7 +44,7 @@ def nip19():
     decode_nevent = Nip19.from_bech32(nevent.to_bech32())
     print(f" Event (decoded): {decode_nevent}")
     # ANCHOR_END: nip19-nevent-decode
-  
+
     print()
     # ANCHOR: nip19-naddr-encode
     # Create NIP-19 coordinate

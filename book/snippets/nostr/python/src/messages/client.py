@@ -1,8 +1,9 @@
-from nostr_protocol import Keys, EventBuilder, ClientMessage, Filter, ClientMessageEnum
+from nostr_sdk import Keys, EventBuilder, ClientMessage, Filter, ClientMessageEnum
+
 
 def client_message():
     keys = Keys.generate()
-    event = EventBuilder.text_note("TestTextNoTe",[]).to_event(keys)
+    event = EventBuilder.text_note("TestTextNoTe",[]).sign_with_keys(keys)
 
     print()
     print("Client Messages:")

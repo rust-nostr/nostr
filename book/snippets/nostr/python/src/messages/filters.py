@@ -1,13 +1,14 @@
-from nostr_protocol import Filter, FilterRecord, Keys, Kind, EventBuilder, Timestamp, Tag
+from nostr_sdk import Filter, FilterRecord, Keys, Kind, EventBuilder, Timestamp, Tag
 import time, datetime
+
 
 def filters():
     # Generate keys and Events
     keys = Keys.generate()
     keys2 = Keys.generate()
-    event = EventBuilder.text_note("Hello World!",[]).to_event(keys)
-    event2 = EventBuilder(Kind(1),"Goodbye World!", [Tag.identifier("Identification D Tag")]).to_event(keys2)
-    
+    event = EventBuilder.text_note("Hello World!",[]).sign_with_keys(keys)
+    event2 = EventBuilder(Kind(1),"Goodbye World!", [Tag.identifier("Identification D Tag")]).sign_with_keys(keys2)
+
     print()
     print("Creating Filters:")
 
@@ -32,7 +33,7 @@ def filters():
     print("  Filter with PK and Kinds:")
     f = Filter()\
         .pubkey(keys.public_key())\
-        .kind(Kind(1))    
+        .kind(Kind(1))
     print(f"     {f.as_json()}")
     # ANCHOR_END: create-filter-kind-pk
 
@@ -91,7 +92,7 @@ def filters():
     # ANCHOR: create-filter-identifier
     # Filter for Identifier
     print("  Filter for a Identifier:")
-    f = Filter().identifier(event2.identifier())
+    f = Filter().identifier(event2.tags().identifier())
     print(f"     {f.as_json()}")
     # ANCHOR_END: create-filter-identifier
 
@@ -121,7 +122,7 @@ def filters():
     f = f.remove_kinds([Kind(0), Kind(4)])
     print("  After (remove kinds):")
     print(f"     {f.as_json()}")
-    
+
     f = f.remove_ids([event2.id()])
     print("  After (remove IDs):")
     print(f"     {f.as_json()}")

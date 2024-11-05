@@ -30,9 +30,9 @@
 
 ## Libraries
 
-* [Nostr](./nostr/01-index.md): Implementation of the `nostr` protocol
+* [Nostr](./nostr/index.md): Implementation of the `nostr` protocol
 * [Nostr Database](): Databases abstraction, indexes and in-memory database implementation
-* [Nostr SDK](./nostr-sdk/01-index.md): High level nostr client library
+* [Nostr SDK](./nostr-sdk/index.md): High level nostr client library
 
 ## Communication
 

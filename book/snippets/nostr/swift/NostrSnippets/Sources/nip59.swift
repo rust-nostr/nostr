@@ -1,4 +1,4 @@
-import Nostr
+import NostrSDK
 import Foundation
 
 func nip59() {

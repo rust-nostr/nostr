@@ -1,11 +1,12 @@
+[private]
 init:
-	cargo install mdbook --version 0.4.36
-	cargo install mdbook-admonish --version 1.15.0
+	@mdbook --version || cargo install mdbook --version 0.4.36
+	@mdbook-admonish --version || cargo install mdbook-admonish --version 1.15.0
 
-build:
+build: init
 	mdbook build
 
-serve:
+serve: init
 	mdbook serve
 
 test:

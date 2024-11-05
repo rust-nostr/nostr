@@ -1,4 +1,4 @@
-from nostr_protocol import *
+from nostr_sdk import *
 
 def event_json():
     # Deserialize from json

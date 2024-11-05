@@ -21,6 +21,7 @@ from src.nip44 import nip44
 from src.nip59 import nip59
 from src.nip65 import nip65
 
+
 async def main():
     generate()
     restore()
@@ -40,8 +41,9 @@ async def main():
     nip19()
     nip21()
     nip44()
-    nip59()
+    await nip59()
     nip65()
+
 
 if __name__ == '__main__':
     asyncio.run(main())

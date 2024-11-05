@@ -1,6 +1,6 @@
 package rust.nostr.snippets
 
-import rust.nostr.protocol.*
+import rust.nostr.sdk.*
 
 // ANCHOR: json
 fun json() {
@@ -19,20 +19,20 @@ fun builder() {
     val keys = Keys.generate();
 
     // Compose custom event
-    val customEvent = EventBuilder(Kind(1111u), "", listOf()).toEvent(keys);
+    val customEvent = EventBuilder(Kind(1111u), "", listOf()).signWithKeys(keys);
 
     // Compose text note
-    val textNoteEvent = EventBuilder.textNote("Hello", listOf()).toEvent(keys);
+    val textNoteEvent = EventBuilder.textNote("Hello", listOf()).signWithKeys(keys);
 
     // Compose reply to above text note
     val replyEvent = EventBuilder.textNote("Reply to hello", listOf(Tag.event(textNoteEvent.id())))
-        .toEvent(keys);
+        .signWithKeys(keys);
 
     // Compose POW event
     val powEvent =
     EventBuilder.textNote("Another reply with POW", listOf(Tag.event(textNoteEvent.id())))
         .pow(20u)
-        .toEvent(keys);
+        .signWithKeys(keys);
     println(powEvent.asJson())
 }
 // ANCHOR_END: builder

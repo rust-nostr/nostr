@@ -21,9 +21,17 @@
 
 -->
 
-## [Unreleased]
+## [v0.36.0]
 
 ### Summary
+
+Many, many improvements to `Relay` and `RelayPool` performance (reduced atomic operations and switched to async concurrency),
+add `NostrSigner` trait, better methods and struct names (`fetch_events` instead of `get_events_of`, `sync` instead of `reconcile`,
+`NostrConnect` instead of `Nip46Signer` and so on), add `LocalRelay` and allow to easily serve it as hidden onion service with the embedded
+tor client, allow to keep track of negentropy sync progress, almost halved the weight of JavaScript SDK bindings (from ~6.3MB to ~3.6MB), some fixes and many more!
+
+Note for Python, Kotlin, Swift and JavaScript devs: unfortunately I can't mark things as deprecated in bindings, so this release have many breaking changes, sorry :(
+Note for devs who are using `nostr-protocol` (Python), `org.rust-nostr:nostr` (Kotlin), `nostr-swift` (Swift) or `@rust-nostr/nostr` (JavaScript) libraries: these packages are now deprecated. Only the `nostr-sdk` library will be released, which include everything that was in the `nostr` library.
 
 ### Changed
 
@@ -692,7 +700,8 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [rodant]: https://github.com/rodant
 
 <!-- Tags -->
-[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.35.0...HEAD
+[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.36.0...HEAD
+[v0.36.0]: https://github.com/rust-nostr/nostr/compare/v0.35.0...v0.36.0
 [v0.35.0]: https://github.com/rust-nostr/nostr/compare/v0.34.0...v0.35.0
 [v0.34.0]: https://github.com/rust-nostr/nostr/compare/v0.33.0...v0.34.0
 [v0.33.0]: https://github.com/rust-nostr/nostr/compare/v0.32.0...v0.33.0

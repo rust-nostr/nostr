@@ -7,13 +7,13 @@ let package = Package(
     name: "NostrSnippets",
     platforms: [.macOS(.v13)],
     dependencies: [
-        .package(url: "https://github.com/rust-nostr/nostr-swift", from:"0.35.0")
+        .package(url: "https://github.com/rust-nostr/nostr-sdk-swift", from:"0.36.0")
     ],
     targets: [
         .executableTarget(
             name: "NostrSnippets",
             dependencies: [
-                .product(name: "Nostr", package: "nostr-swift"),
+                .product(name: "NostrSDK", package: "nostr-sdk-swift"),
             ],
             path: "Sources"),
     ]

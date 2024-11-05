@@ -6,13 +6,7 @@
 
 * [Just](https://github.com/casey/just): install with `cargo install just`
 
-Init
-
-```bash
-just init
-```
-
-You can serve the site with:
+Serve the site with:
 
 ```bash
 just serve

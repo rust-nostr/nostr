@@ -2,9 +2,9 @@ use nostr_sdk::prelude::*;
 
 pub async fn quickstart() -> Result<()> {
     // ANCHOR: create-client
-    let my_keys: Keys = Keys::generate();
+    let keys: Keys = Keys::generate();
 
-    let client = Client::new(&my_keys);
+    let client = Client::new(keys);
 
     client.add_relay("wss://relay.damus.io").await?;
     client.add_read_relay("wss://relay.nostr.info").await?;

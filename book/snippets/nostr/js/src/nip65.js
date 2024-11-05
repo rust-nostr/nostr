@@ -19,7 +19,7 @@ function run(){
 
     // Build/sign event
     let builder = EventBuilder.relayList(relays);
-    let event = builder.toEvent(keys);
+    let event = builder.signWithKeys(keys);
 
     // Print event as json
     console.log(` Event: ${event.asJson()}`);
@@ -28,8 +28,8 @@ function run(){
     console.log();
     // ANCHOR: relay-metadata-custom
     // Create relay metadata tags
-    let tag1 = Tag.relayMetadata("wss://relay.damus.io", RelayMetadata.READ);
-    let tag2 = Tag.relayMetadata("wss://relay.primal.net", RelayMetadata.WRITE);
+    let tag1 = Tag.relayMetadata("wss://relay.damus.io", RelayMetadata.Read);
+    let tag2 = Tag.relayMetadata("wss://relay.primal.net", RelayMetadata.Write);
     let tag3 = Tag.relayMetadata("wss://relay.nostr.band");
 
     // Build/sign event
@@ -37,7 +37,7 @@ function run(){
     let content = "";
     let tags = [tag1, tag2, tag3];
     builder = new EventBuilder(kind, content, tags);
-    event = builder.toEvent(keys);
+    event = builder.signWithKeys(keys);
 
     // Print event as json
     console.log(` Event: ${event.asJson()}`);

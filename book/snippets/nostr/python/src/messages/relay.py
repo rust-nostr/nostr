@@ -1,10 +1,10 @@
-from nostr_protocol import RelayMessage, RelayMessageEnum, EventBuilder, Keys
+from nostr_sdk import RelayMessage, RelayMessageEnum, EventBuilder, Keys
 
 
 def relay_message():
 
     keys = Keys.generate()
-    event = EventBuilder.text_note("TestTextNoTe",[]).to_event(keys)
+    event = EventBuilder.text_note("TestTextNoTe",[]).sign_with_keys(keys)
 
     print()
     print("Relay Messages:")

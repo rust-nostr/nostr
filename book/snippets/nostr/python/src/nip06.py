@@ -1,6 +1,6 @@
 # Leverages Python-Mnemonic package (ref implementation of BIP39) https://github.com/trezor/python-mnemonic
 from mnemonic import Mnemonic
-from nostr_protocol import Keys
+from nostr_sdk import Keys
 
 def nip06():
     print()
@@ -17,7 +17,7 @@ def nip06():
     print(f" Public key bech32: {keys.public_key().to_bech32()}")
     print(f" Secret key bech32: {keys.secret_key().to_bech32()}")
     # ANCHOR_END: keys-from-seed24
-  
+
     print()
     # ANCHOR: keys-from-seed12
     # Generate random Seed Phrase (12 words e.g. 128 bits entropy)

@@ -8,6 +8,6 @@ edition = "2021"
 members = ["."]
 
 [dependencies]
-nostr-sdk = "0.35"
-nostr-relay-builder = "0.35"
+nostr-sdk = "0.36"
+nostr-relay-builder = "0.36"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

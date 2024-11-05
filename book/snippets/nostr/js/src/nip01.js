@@ -24,7 +24,7 @@ function run() {
 
     // Signed event and print details
     console.log("Creating Metadata Event:");
-    let event = builder.toEvent(keys);
+    let event = builder.signWithKeys(keys);
 
     console.log(" Event Details:");
     console.log(`     Author    : ${event.author.toBech32()}`);

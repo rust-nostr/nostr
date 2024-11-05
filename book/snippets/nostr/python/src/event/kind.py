@@ -1,4 +1,5 @@
-from nostr_protocol import Kind, KindEnum, EventBuilder, Keys, Metadata
+from nostr_sdk import Kind, KindEnum, EventBuilder, Keys, Metadata
+
 
 def kind():
     print()
@@ -29,11 +30,11 @@ def kind():
     print()
     # ANCHOR: kind-methods
     print("  Kind methods EventBuilder:")
-    event  = EventBuilder.text_note("This is a note", []).to_event(keys)
+    event  = EventBuilder.text_note("This is a note", []).sign_with_keys(keys)
     print(f"     - Kind text_note(): {event.kind().as_u16()} - {event.kind().as_enum()}")
-    event  = EventBuilder.metadata(Metadata()).to_event(keys)
+    event  = EventBuilder.metadata(Metadata()).sign_with_keys(keys)
     print(f"     - Kind metadata(): {event.kind().as_u16()} - {event.kind().as_enum()}")
-    event  = EventBuilder.contact_list([]).to_event(keys)
+    event  = EventBuilder.contact_list([]).sign_with_keys(keys)
     print(f"     - Kind contact_list(): {event.kind().as_u16()} - {event.kind().as_enum()}")
     # ANCHOR_END: kind-methods
 

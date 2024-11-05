@@ -4,7 +4,7 @@ As a part of the Nostr protocol, events include a `created_at` field which conta
 Note that this field can be useful in conjunction with the `since` and `until` properties of filters (see [Filters section](05_01_01-filters.md)) to help clients surface recent/relevant content.
 
 The [Timestamp](https://docs.rs/nostr/latest/nostr/types/time/struct.Timestamp.html) struct is responsible for handling the creation and/or parsing of timestamp objects. 
-This section also covers the `custom_created_at()` method from the `EventBuilder` struct and the `expiration` tag used in functions like `gift_wrap()`. 
+This section also covers the `custom_created_at()` method from the `EventBuilder` struct. 
 
 ## Creating, Parsing and Presenting Timestamps
 
@@ -84,12 +84,6 @@ To create expiration tags for inclusion within events the `Tag` class is used al
 
 ```python,ignore
 {{#include ../../snippets/nostr/python/src/timestamps.py:timestamp-tag}}
-```
-
-This example shows how the expiration tag can be set directly during the calling of the `gift_wrap()` function. 
-
-```python,ignore
-{{#include ../../snippets/nostr/python/src/timestamps.py:timestamp-expiration}}
 ```
 
 </section>

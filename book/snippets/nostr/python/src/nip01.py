@@ -1,4 +1,4 @@
-from nostr_protocol import Keys, Metadata, EventBuilder
+from nostr_sdk import Keys, Metadata, EventBuilder
 def nip01():
     # Generate random keys
     keys = Keys.generate()
@@ -20,7 +20,7 @@ def nip01():
 
     # Signed event and print details
     print("Creating Metadata Event:")
-    event = builder.to_event(keys)
+    event = builder.sign_with_keys(keys)
 
     print(" Event Details:")
     print(f"     Author    : {event.author().to_bech32()}")
@@ -37,7 +37,7 @@ def nip01():
     # Deserialize Metadata from event
     print("Deserializing Metadata Event:")
     metadata = Metadata().from_json(event.content())
-    
+
     print(" Metadata Details:")
     print(f"     Name      : {metadata.get_name()}")
     print(f"     Display   : {metadata.get_display_name()}")

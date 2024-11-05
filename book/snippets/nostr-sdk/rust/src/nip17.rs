@@ -9,13 +9,13 @@ pub async fn run() -> Result<()> {
     // Sender
     let alice_keys =
         Keys::parse("5c0c523f52a5b6fad39ed2403092df8cebc36318b39383bca6c00808626fab3a")?;
-    let alice_client = Client::new(&alice_keys);
+    let alice_client = Client::new(alice_keys);
     alice_client.add_relay(url.clone()).await?;
     alice_client.connect().await;
 
     // Receiver
     let bob_keys = Keys::parse("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")?;
-    let bob_client = Client::new(&bob_keys);
+    let bob_client = Client::new(bob_keys.clone());
     bob_client.add_relay(url.clone()).await?;
     bob_client.connect().await;
 

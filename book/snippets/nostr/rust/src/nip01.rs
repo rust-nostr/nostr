@@ -16,14 +16,14 @@ pub fn nip01() -> Result<()> {
         "lud16": "w3irdrobot@vlt.ge"
       }"#;
     // ANCHOR: create-metadata
-    let event = EventBuilder::new(Kind::Metadata, content, vec![]).to_event(&keys)?;
+    let event = EventBuilder::new(Kind::Metadata, content, vec![]).sign_with_keys(&keys)?;
     let metadata = Metadata::from_json(&event.content)?;
     // ANCHOR_END: create-metadata
     println!("nostr address: {}", metadata.lud16.unwrap());
 
     // ANCHOR: create-event
     let metadata = Metadata::from_json(content)?;
-    let event = EventBuilder::metadata(&metadata).to_event(&keys)?;
+    let event = EventBuilder::metadata(&metadata).sign_with_keys(&keys)?;
     // ANCHOR_END: create-event
     println!("event: {:?}", event);
 

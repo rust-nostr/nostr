@@ -1,4 +1,4 @@
-from nostr_protocol import Metadata, PublicKey, verify_nip05, get_nip05_profile
+from nostr_sdk import Metadata, PublicKey, verify_nip05, get_nip05_profile
 
 
 async def nip05():

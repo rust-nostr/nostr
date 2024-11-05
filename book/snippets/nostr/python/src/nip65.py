@@ -1,4 +1,4 @@
-from nostr_protocol import EventBuilder, Tag, Kind, Keys, RelayMetadata
+from nostr_sdk import EventBuilder, Tag, Kind, Keys, RelayMetadata
 
 def nip65():
     # Get Keys
@@ -13,10 +13,10 @@ def nip65():
         "wss://relay.primal.net": RelayMetadata.WRITE,
         "wss://relay.nostr.band": None
     }
-    
+
     # Build/sign event
     builder = EventBuilder.relay_list(relays_dict)
-    event = builder.to_event(keys)
+    event = builder.sign_with_keys(keys)
 
     # Print event as json
     print(f" Event: {event.as_json()}")
@@ -35,7 +35,7 @@ def nip65():
     content = ""
     tags = [tag1,tag2,tag3]
     builder = EventBuilder(kind,content,tags)
-    event = builder.to_event(keys)
+    event = builder.sign_with_keys(keys)
 
     # Print event as json
     print(f" Event: {event.as_json()}")

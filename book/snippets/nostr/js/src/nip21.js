@@ -10,15 +10,15 @@ function run(){
     console.log("Nostr URIs:");
 
     // ANCHOR: npub
-    // UNCOMMENT_ON_RELEASE: let pk_uri = keys.publicKey.toNostrUri();
-    // UNCOMMENT_ON_RELEASE: console.log(` Public key (URI): ${pk_uri}`);
+    let pk_uri = keys.publicKey.toNostrUri();
+    console.log(` Public key (URI): ${pk_uri}`);
     // ANCHOR_END: npub
 
     console.log();
     // ANCHOR: note
-    let event = EventBuilder.textNote("Hello from rust-nostr JS bindings!", []).toEvent(keys);
-    // UNCOMMENT_ON_RELEASE: let note_uri = event.id.toNostrUri()
-    // UNCOMMENT_ON_RELEASE: console.log(` Event (URI): ${note_uri}`);
+    let event = EventBuilder.textNote("Hello from rust-nostr JS bindings!", []).signWithKeys(keys);
+    let note_uri = event.id.toNostrUri()
+    console.log(` Event (URI): ${note_uri}`);
     // ANCHOR_END: note
 
     console.log();

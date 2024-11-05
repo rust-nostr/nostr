@@ -1,4 +1,4 @@
-from nostr_protocol import Keys, PublicKey, nip44_encrypt, nip44_decrypt, Nip44Version
+from nostr_sdk import Keys, PublicKey, nip44_encrypt, nip44_decrypt, Nip44Version
 
 def nip44():
     print("\nEncrypting and Decrypting Messages (NIP-44):")

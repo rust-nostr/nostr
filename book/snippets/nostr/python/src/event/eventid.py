@@ -1,9 +1,9 @@
-from nostr_protocol import EventId, Keys, Timestamp, Kind, EventBuilder
+from nostr_sdk import EventId, Keys, Timestamp, Kind, EventBuilder
 
 
 def event_id():
     keys = Keys.generate()
-    
+
     print()
     print("Event ID:")
 
@@ -21,7 +21,7 @@ def event_id():
     print(f"     - Hex: {event_id_hex}")
     print(f"     - Parse: {EventId.parse(event_id_hex)}")
     print(f"     - From Hex: {EventId.from_hex(event_id_hex)}")
-    # ANCHOR_END: format-parse-hex  
+    # ANCHOR_END: format-parse-hex
 
     print()
     # ANCHOR: format-parse-bech32
@@ -56,7 +56,7 @@ def event_id():
     # ANCHOR: access-verify
     # Event ID from Event & Verfiy
     print("  Event ID from Event & Verify:")
-    event = EventBuilder.text_note("This is a note", []).to_event(keys)
+    event = EventBuilder.text_note("This is a note", []).sign_with_keys(keys)
     print(f"     - Event ID: {event.id()}")
     print(f"     - Verify the ID & Signature: {event.verify()}")
     # ANCHOR_END: access-verify

@@ -1,6 +1,6 @@
 package rust.nostr.snippets
 
-import rust.nostr.protocol.*
+import rust.nostr.sdk.*
 
 // ANCHOR: generate
 fun generate() {

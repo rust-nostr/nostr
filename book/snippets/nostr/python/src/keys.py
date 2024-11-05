@@ -1,4 +1,4 @@
-from nostr_protocol import Keys, SecretKey
+from nostr_sdk import Keys, SecretKey
 
 
 # ANCHOR: generate
