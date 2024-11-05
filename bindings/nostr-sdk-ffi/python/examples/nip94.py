@@ -1,13 +1,12 @@
 import asyncio
-from nostr_sdk import Keys, Client, NostrSigner, FileMetadata, RelayOptions
+from nostr_sdk import Keys, Client, FileMetadata
 
 
 async def main():
     keys = Keys.generate()
     print(keys.public_key().to_bech32())
 
-    signer = NostrSigner.keys(keys)
-    client = Client(signer)
+    client = Client(keys)
 
     await client.add_relay("wss://relay.damus.io")
     await client.connect()
@@ -18,10 +17,10 @@ async def main():
             "application/zip",
             "3951c152d38317e9ef2c095ddb280613e22b14b166f5fa5950d18773ac0a1d00"
         )
-        event_id = await client.file_metadata("Coinstr Alpha Release v0.3.0", metadata)
+        output = await client.file_metadata("Coinstr Alpha Release v0.3.0", metadata)
         print("Event sent:")
-        print(f" hex:    {event_id.to_hex()}")
-        print(f" bech32: {event_id.to_bech32()}")
+        print(f" hex:    {output.id.to_hex()}")
+        print(f" bech32: {output.id.to_bech32()}")
     except Exception as e:
         print(f"{e}")
 

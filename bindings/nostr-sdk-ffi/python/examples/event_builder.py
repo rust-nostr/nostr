@@ -1,5 +1,5 @@
 import asyncio
-from nostr_sdk import Keys, EventBuilder, Kind
+from nostr_sdk import *
 
 
 async def main():

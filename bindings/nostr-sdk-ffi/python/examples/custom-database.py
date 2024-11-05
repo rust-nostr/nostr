@@ -1,12 +1,12 @@
 import asyncio
-from nostr_sdk import Keys, Filter, ClientBuilder, CustomNostrDatabase, NostrDatabase, NegentropyOptions, Event, \
-    init_logger, LogLevel, uniffi_set_event_loop
+from nostr_sdk import *
+from nostr_sdk import uniffi_set_event_loop
 from typing import List, Optional, Set
-
-init_logger(LogLevel.INFO)
 
 
 async def main():
+    init_logger(LogLevel.INFO)
+
     uniffi_set_event_loop(asyncio.get_running_loop())
 
     # Example of custom in-memory database
@@ -22,14 +22,17 @@ async def main():
             self.events[e.id()] = e
             return True
 
+        async def check_id(self, event_id: "EventId") -> DatabaseEventStatus:
+            if event_id in self.events:
+                return DatabaseEventStatus.SAVED
+            else:
+                return DatabaseEventStatus.NOT_EXISTENT
+
         async def has_event_already_been_saved(self, event_id) -> bool:
             return event_id in self.events
 
         async def has_event_already_been_seen(self, event_id) -> bool:
             return event_id in self.seen_event_ids
-
-        async def has_event_id_been_deleted(self, event_id) -> bool:
-            return False
 
         async def has_coordinate_been_deleted(self, coordinate, timestamp) -> bool:
             return False
@@ -44,7 +47,7 @@ async def main():
         async def event_seen_on_relays(self, event_id) -> Optional[Set[str]]:
             return self.seen_event_ids.get(event_id)
 
-        async def event_by_id(self, event_id) -> Event:
+        async def event_by_id(self, event_id) -> Event | None:
             return self.events.get(event_id, None)
 
         async def count(self, filters) -> int:
@@ -54,7 +57,7 @@ async def main():
             # Fake algorithm
             return list(self.events.values())[:10]
 
-        async def delete(self, f: Filter):
+        async def delete(self, filter):
             return
 
         async def wipe(self):
@@ -74,7 +77,7 @@ async def main():
 
     # Negentropy reconciliation
     f = Filter().author(keys.public_key())
-    opts = NegentropyOptions()
+    opts = SyncOptions()
     await client.sync(f, opts)
 
     # Query events from database

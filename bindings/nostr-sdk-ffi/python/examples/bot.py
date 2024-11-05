@@ -1,6 +1,6 @@
 import asyncio
-from nostr_sdk import Client, NostrSigner, Keys, Event, UnsignedEvent, Filter, \
-    HandleNotification, Timestamp, nip04_decrypt, UnwrappedGift, init_logger, LogLevel, Kind, KindEnum
+from nostr_sdk import Client, Keys, Event, UnsignedEvent, Filter, \
+    HandleNotification, Timestamp, UnwrappedGift, init_logger, LogLevel, Kind, KindEnum
 
 
 async def main():
@@ -15,8 +15,7 @@ async def main():
     pk = keys.public_key()
     print(f"Bot public key: {pk.to_bech32()}")
 
-    signer = NostrSigner.keys(keys)
-    client = Client(signer)
+    client = Client(keys)
 
     await client.add_relay("wss://relay.damus.io")
     await client.add_relay("wss://nostr.mom")
@@ -32,19 +31,11 @@ async def main():
     class NotificationHandler(HandleNotification):
         async def handle(self, relay_url, subscription_id, event: Event):
             print(f"Received new event from {relay_url}: {event.as_json()}")
-            if event.kind().as_enum() == KindEnum.ENCRYPTED_DIRECT_MESSAGE():
-                print("Decrypting NIP04 event")
-                try:
-                    msg = nip04_decrypt(sk, event.author(), event.content())
-                    print(f"Received new msg: {msg}")
-                    await client.send_direct_msg(event.author(), f"Echo: {msg}", event.id())
-                except Exception as e:
-                    print(f"Error during content NIP04 decryption: {e}")
-            elif event.kind().as_enum() == KindEnum.GIFT_WRAP():
+            if event.kind().as_enum() == KindEnum.GIFT_WRAP():
                 print("Decrypting NIP59 event")
                 try:
                     # Extract rumor
-                    unwrapped_gift = UnwrappedGift.from_gift_wrap(keys, event)
+                    unwrapped_gift = await UnwrappedGift.from_gift_wrap(keys, event)
                     sender = unwrapped_gift.sender()
                     rumor: UnsignedEvent = unwrapped_gift.rumor()
 

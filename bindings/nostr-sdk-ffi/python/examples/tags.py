@@ -1,4 +1,4 @@
-from nostr_sdk import Keys, EventBuilder, PublicKey, Tag, TagEnum
+from nostr_sdk import Keys, EventBuilder, PublicKey, Tag, TagStandard
 
 keys = Keys.generate()
 
@@ -6,15 +6,13 @@ other_user_pk = PublicKey.from_bech32("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8n
 
 tag = Tag.parse(["p", other_user_pk.to_hex()])
 # OR
-tag = Tag.from_enum(TagEnum.PUBLIC_KEY_TAG(other_user_pk, None, None, False))
+tag = Tag.from_standardized(TagStandard.PUBLIC_KEY_TAG(other_user_pk, None, None, False))
 # OR
 tag = Tag.public_key(other_user_pk)
 
-event = EventBuilder.text_note("New note from Rust Nostr python bindings", [tag]).to_event(keys)
+event = EventBuilder.text_note("New note from Rust Nostr python bindings", [tag]).sign_with_keys(keys)
 print(event.as_json())
 
 print("\nTags:")
-for tag in event.tags():
+for tag in event.tags().to_vec():
     print(tag.as_vec())
-    # OR handle it as enum
-    # TODO

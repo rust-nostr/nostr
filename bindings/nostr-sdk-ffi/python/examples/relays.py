@@ -16,8 +16,8 @@ async def main():
         for url, relay in relays.items():
             stats = relay.stats()
             print(f"Relay: {url}")
-            print(f"Connected: {await relay.is_connected()}")
-            print(f"Status: {await relay.status()}")
+            print(f"Connected: {relay.is_connected()}")
+            print(f"Status: {relay.status()}")
             print("Stats:")
             print(f"    Attempts: {stats.attempts()}")
             print(f"    Success: {stats.success()}")

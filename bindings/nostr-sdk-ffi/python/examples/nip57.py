@@ -8,7 +8,7 @@ relays = ["wss://relay.damus.io"]
 msg = "Zap!"
 data = ZapRequestData(public_key, relays).message(msg)
 
-public_zap = EventBuilder.public_zap_request(data).to_event(keys)
+public_zap = EventBuilder.public_zap_request(data).sign_with_keys(keys)
 print(f"Public zap request: {public_zap.as_json()}\n")
 
 anon_zap = nip57_anonymous_zap_request(data)

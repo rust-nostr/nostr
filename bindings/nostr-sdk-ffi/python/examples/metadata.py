@@ -1,13 +1,12 @@
 import asyncio
-from nostr_sdk import Metadata, Client, NostrSigner, Keys, Filter, PublicKey, Kind
+from nostr_sdk import Metadata, Client, Keys, Filter, PublicKey, Kind
 from datetime import timedelta
 
 
 async def main():
     keys = Keys.generate()
 
-    signer = NostrSigner.keys(keys)
-    client = Client(signer)
+    client = Client(keys)
 
     await client.add_relay("wss://relay.damus.io")
     await client.connect()
@@ -31,7 +30,7 @@ async def main():
     print(f"\nGetting profile metadata for {pk.to_bech32()}...")
     f = Filter().kind(Kind(0)).author(pk).limit(1)
     events = await client.fetch_events([f], timedelta(seconds=10))
-    for event in events:
+    for event in events.to_vec():
         metadata = Metadata.from_json(event.content())
         print(f"Name: {metadata.get_name()}")
         print(f"NIP05: {metadata.get_nip05()}")

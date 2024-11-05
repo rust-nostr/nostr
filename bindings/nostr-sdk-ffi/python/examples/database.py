@@ -1,10 +1,10 @@
 import asyncio
-from nostr_sdk import Keys, Filter, ClientBuilder, NostrDatabase, SyncOptions, init_logger, LogLevel
-
-init_logger(LogLevel.INFO)
+from nostr_sdk import *
 
 
 async def main():
+    init_logger(LogLevel.INFO)
+
     keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
     print(keys.public_key().to_bech32())
 

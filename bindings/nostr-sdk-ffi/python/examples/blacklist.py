@@ -23,7 +23,7 @@ async def main():
     # Get events
     f = Filter().authors([muted_public_key, other_public_key]).kind(Kind(0))
     events = await client.fetch_events([f], timedelta(seconds=10))
-    print(f"Received {events.__len__()} events")
+    print(f"Received {events.len()} events")
 
 
 if __name__ == '__main__':

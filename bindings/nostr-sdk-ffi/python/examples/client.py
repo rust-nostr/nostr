@@ -11,14 +11,12 @@ async def main():
     # client = Client()
 
     # Or, initialize with Keys signer
-    keys = Keys.generate()
-    signer = NostrSigner.keys(keys)
+    signer = Keys.generate()
 
     # Or, initialize with NIP46 signer
     # app_keys = Keys.parse("..")
     # uri = NostrConnectUri.parse("bunker://.. or nostrconnect://..")
-    # nip46 = NostrConnect(uri, app_keys, timedelta(seconds=60), None)
-    # signer = NostrSigner.nip46(nip46)
+    # signer = NostrConnect(uri, app_keys, timedelta(seconds=60), None)
 
     client = Client(signer)
 
@@ -35,21 +33,21 @@ async def main():
     # Mine a POW event and sign it with custom keys
     custom_keys = Keys.generate()
     print("Mining a POW text note...")
-    event = EventBuilder.text_note("Hello from rust-nostr Python bindings!", []).to_pow_event(custom_keys, 20)
+    event = EventBuilder.text_note("Hello from rust-nostr Python bindings!", []).pow(20).sign_with_keys(custom_keys)
     output = await client.send_event(event)
     print("Event sent:")
     print(f" hex:    {output.id.to_hex()}")
     print(f" bech32: {output.id.to_bech32()}")
-    print(f" Successfully sent to:    {output.success}")
-    print(f" Failed to send to: {output.failed}")
+    print(f" Successfully sent to:    {output.output.success}")
+    print(f" Failed to send to: {output.output.failed}")
 
     await asyncio.sleep(2.0)
 
     # Get events from relays
     print("Getting events from relays...")
-    f = Filter().authors([keys.public_key(), custom_keys.public_key()])
+    f = Filter().authors([signer.public_key(), custom_keys.public_key()])
     events = await client.fetch_events([f], timedelta(seconds=10))
-    for event in events:
+    for event in events.to_vec():
         print(event.as_json())
 
 
