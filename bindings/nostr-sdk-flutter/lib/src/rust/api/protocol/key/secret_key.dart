@@ -6,29 +6,40 @@
 import '../../../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`, `from`
+
+            // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`, `from`
 // These functions have error during generation (see debug logs or enable `stop_on_error: true` for more details): `to_secret_bytes`
 
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<_SecretKey>>
-abstract class SecretKey implements RustOpaqueInterface {
-  static SecretKey fromHex({required String secretKey}) => RustLib.instance.api
-      .crateApiProtocolKeySecretKeySecretKeyFromHex(secretKey: secretKey);
 
-  static SecretKey fromSlice({required List<int> secretKey}) =>
-      RustLib.instance.api
-          .crateApiProtocolKeySecretKeySecretKeyFromSlice(secretKey: secretKey);
+            
 
-  /// Generate random secret key
-  ///
-  /// This constructor use a random number generator that retrieves randomness from the operating system.
-  static SecretKey generate() =>
-      RustLib.instance.api.crateApiProtocolKeySecretKeySecretKeyGenerate();
+            
+                // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<_SecretKey>>
+                abstract class SecretKey implements RustOpaqueInterface {
+                    static SecretKey  fromHex({required String secretKey })=>RustLib.instance.api.crateApiProtocolKeySecretKeySecretKeyFromHex(secretKey: secretKey);
 
-  /// Parse from `hex` or `bech32`
-  static SecretKey parse({required String secretKey}) => RustLib.instance.api
-      .crateApiProtocolKeySecretKeySecretKeyParse(secretKey: secretKey);
 
-  Future<String> toBech32();
+static SecretKey  fromSlice({required List<int> secretKey })=>RustLib.instance.api.crateApiProtocolKeySecretKeySecretKeyFromSlice(secretKey: secretKey);
 
-  Future<String> toSecretHex();
-}
+
+/// Generate random secret key
+///
+/// This constructor use a random number generator that retrieves randomness from the operating system.
+static SecretKey  generate()=>RustLib.instance.api.crateApiProtocolKeySecretKeySecretKeyGenerate();
+
+
+/// Parse from `hex` or `bech32`
+static SecretKey  parse({required String secretKey })=>RustLib.instance.api.crateApiProtocolKeySecretKeySecretKeyParse(secretKey: secretKey);
+
+
+ Future<String>  toBech32();
+
+
+ Future<String>  toSecretHex();
+
+
+
+                    
+                }
+                
+            

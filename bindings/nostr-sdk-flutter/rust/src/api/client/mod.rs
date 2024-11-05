@@ -6,6 +6,8 @@ use anyhow::Result;
 use flutter_rust_bridge::frb;
 use nostr_sdk::prelude::*;
 
+use super::protocol::event::_Event;
+
 #[frb(name = "Client")]
 pub struct _Client {
     inner: Client,
@@ -27,9 +29,8 @@ impl _Client {
         self.inner.connect().await
     }
 
-    pub async fn send_event(&self, event_json: &str) -> Result<String> {
-        let event = Event::from_json(event_json)?;
-        let output = self.inner.send_event(event).await?;
+    pub async fn send_event(&self, event: _Event) -> Result<String> {
+        let output = self.inner.send_event(event.inner).await?;
         Ok(output.id().to_string())
     }
 }

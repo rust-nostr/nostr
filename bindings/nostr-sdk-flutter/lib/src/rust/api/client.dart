@@ -5,15 +5,30 @@
 
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'protocol/event.dart';
 
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<_Client>>
-abstract class Client implements RustOpaqueInterface {
-  Future<bool> addRelay({required String url});
 
-  Future<void> connect();
+            
 
-  static Client default_() =>
-      RustLib.instance.api.crateApiClientClientDefault();
+            
 
-  Future<String> sendEvent({required String eventJson});
-}
+            
+                // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<_Client>>
+                abstract class Client implements RustOpaqueInterface {
+                     Future<bool>  addRelay({required String url });
+
+
+ Future<void>  connect();
+
+
+static Client  default_()=>RustLib.instance.api.crateApiClientClientDefault();
+
+
+ Future<String>  sendEvent({required Event event });
+
+
+
+                    
+                }
+                
+            
