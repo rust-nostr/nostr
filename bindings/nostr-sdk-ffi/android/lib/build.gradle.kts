@@ -58,7 +58,7 @@ mavenPublishing {
 
     pom {
       name.set("nostr-sdk")
-      description.set("High level Nostr client library.")
+      description.set("Nostr protocol implementation, Relay, RelayPool, high-level client library, NWC client and more.")
       url.set("https://rust-nostr.org")
       licenses {
           license {

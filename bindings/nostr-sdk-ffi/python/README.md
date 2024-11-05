@@ -1,14 +1,8 @@
-# Nostr SDK - Python Package
+# Nostr SDK
 
 ## Description
 
-A high-level, [Nostr](https://github.com/nostr-protocol/nostr) client library.
-
-If you're writing a typical Nostr client or bot, this is likely the crate you need.
-
-However, the crate is designed in a modular way and depends on several other lower-level libraries. If you're attempting something more custom, you might be interested in these:
-
-- [`nostr-protocol`](https://pypi.org/project/nostr-protocol/): Implementation of Nostr protocol
+Nostr protocol implementation, Relay, RelayPool, high-level client library, NWC client and more.
 
 ## Getting started
 
@@ -29,17 +23,15 @@ async def main():
     # Initialize client without signer
     # client = Client()
 
-    # Or, initialize with Keys signer
+    # Initialize with Keys signer
     keys = Keys.generate()
-    signer = NostrSigner.keys(keys)
+    client = Client(keys)
 
-    # Or, initialize with NIP46 signer
+    # Initialize with NIP46 signer
     # app_keys = Keys.parse("..")
     # uri = NostrConnectUri.parse("bunker://.. or nostrconnect://..")
-    # nip46 = NostrConnect(uri, app_keys, timedelta(seconds=60), None)
-    # signer = NostrSigner.nip46(nip46)
-
-    client = Client(signer)
+    # connect = NostrConnect(uri, app_keys, timedelta(seconds=60), None)
+    # client = Client(connect)
 
     # Add relays and connect
     await client.add_relay("wss://relay.damus.io")
@@ -54,7 +46,7 @@ async def main():
     # Mine a POW event and sign it with custom keys
     custom_keys = Keys.generate()
     print("Mining a POW text note...")
-    event = EventBuilder.text_note("Hello from Rust Nostr Python bindings!", []).to_pow_event(custom_keys, 20)
+    event = EventBuilder.text_note("Hello from Rust Nostr Python bindings!", []).pow(20).sign_with_keys(custom_keys)
     event_id = await client.send_event(event)
     print("Event sent:")
     print(f" hex:    {event_id.to_hex()}")
@@ -66,7 +58,7 @@ async def main():
     print("Getting events from relays...")
     f = Filter().authors([keys.public_key(), custom_keys.public_key()])
     events = await client.fetch_events([f], timedelta(seconds=10))
-    for event in events:
+    for event in events.to_vec():
         print(event.as_json())
 
 

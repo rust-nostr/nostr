@@ -1,5 +1,5 @@
 name: nostr_sdk
-description: "A new Flutter plugin project."
+description: "Nostr protocol implementation, Relay, RelayPool, high-level client library, NWC client and more."
 version: 0.0.1
 homepage:
 
