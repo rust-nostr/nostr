@@ -1,7 +1,2 @@
 [build-system]
-requires = ["setuptools", "wheel"]
-
-[tool.pytest.ini_options]
-pythonpath = [
-  "."
-]
+requires = ["setuptools"]
