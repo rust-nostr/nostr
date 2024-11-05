@@ -535,7 +535,7 @@ impl InnerRelay {
         };
 
         // Connect
-        match async_wsocket::connect(&self.url, self.opts.connection_mode.clone(), timeout).await {
+        match async_wsocket::connect(&self.url, &self.opts.connection_mode, timeout).await {
             Ok((ws_tx, ws_rx)) => {
                 // Update status
                 self.set_status(RelayStatus::Connected, true);

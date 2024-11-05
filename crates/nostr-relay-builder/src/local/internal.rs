@@ -68,9 +68,13 @@ impl InternalLocalRelay {
         #[cfg(feature = "tor")]
         let hidden_service: Option<String> = match builder.tor {
             Some(opts) => {
-                let service =
-                    native::tor::launch_onion_service(opts.nickname, addr, 80, opts.custom_path)
-                        .await?;
+                let service = native::tor::launch_onion_service(
+                    opts.nickname,
+                    addr,
+                    80,
+                    opts.custom_path.as_ref(),
+                )
+                .await?;
                 service.onion_name().map(|n| format!("ws://{n}"))
             }
             None => None,
