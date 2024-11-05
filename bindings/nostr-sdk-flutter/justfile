@@ -1,10 +1,4 @@
-#!/usr/bin/env just --justfile
-
-init:
-    cargo install flutter_rust_bridge_codegen
+set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
 build:
     cd rust && cargo build
-
-generate:
-    flutter_rust_bridge_codegen generate
