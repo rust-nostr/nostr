@@ -56,7 +56,6 @@ x86_64-linux-android: ndk
 android: aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
 kotlin: clean-android android
-	find ./ffi/kotlin/jniLibs -name libnostr_ffi.so -type f -delete
 	cargo run -p uniffi-bindgen generate --library ../../target/x86_64-linux-android/release/libnostr_sdk_ffi.so --language kotlin --no-format -o ffi/kotlin
 
 # Copy required modules and libs and assemble AAR
@@ -111,7 +110,6 @@ swift-darwin: darwin-universal
 assemble-swift-package:
     mkdir -p swift/Sources/NostrSDK
     cargo run -p uniffi-bindgen generate --library ../../target/aarch64-apple-ios/release/libnostr_sdk_ffi.a --no-format --language swift --out-dir swift/Sources/NostrSDK
-    mv swift/Sources/NostrSDK/nostr_ffi.swift swift/Sources/NostrSDK/Nostr.swift
     mv swift/Sources/NostrSDK/nostr_sdk_ffi.swift swift/Sources/NostrSDK/NostrSDK.swift
     cp swift/Sources/NostrSDK/*.h swift/nostr_sdkFFI.xcframework/ios-arm64/Headers
     cp swift/Sources/NostrSDK/*.h swift/nostr_sdkFFI.xcframework/ios-arm64_x86_64-simulator/Headers
