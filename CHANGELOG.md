@@ -30,6 +30,7 @@
 * nostr: disable all default features except `std` ([Yuki Kishimoto])
 * pool: rework latency tracking ([Yuki Kishimoto])
 * pool: switch from async to sync message sending for `Relay` ([Yuki Kishimoto])
+* sdk: disable all default features ([Yuki Kishimoto])
 
 ### Added
 

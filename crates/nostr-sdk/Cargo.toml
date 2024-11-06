@@ -16,7 +16,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["all-nips"]
+default = []
 tor = ["nostr-relay-pool/tor"]
 lmdb = ["dep:nostr-lmdb"]
 ndb = ["dep:nostr-ndb"]
@@ -112,7 +112,7 @@ name = "switch-account"
 
 [[example]]
 name = "tor"
-required-features = ["tor"]
+required-features = ["all-nips", "tor"]
 
 [[example]]
 name = "lmdb"

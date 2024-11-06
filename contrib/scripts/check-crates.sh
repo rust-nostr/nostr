@@ -40,11 +40,8 @@ buildargs=(
     "-p nostr-lmdb"
     "-p nostr-relay-builder"
     "-p nostr-connect"
-    "-p nostr-sdk"
-    "-p nostr-sdk --no-default-features"
-    "-p nostr-sdk --features nip47,nip57"
-    "-p nostr-sdk --features nip47,nip57 --target wasm32-unknown-unknown"
-    "-p nostr-sdk --features indexeddb,webln --target wasm32-unknown-unknown"
+    "-p nostr-sdk" # No default features
+    "-p nostr-sdk --features all-nips"
     "-p nostr-sdk --features lmdb"
     "-p nostr-sdk --features ndb"
     "-p nostr-sdk --features tor"
