@@ -20,7 +20,7 @@ impl From<pool::RelayConnectionStats> for RelayConnectionStats {
     }
 }
 
-#[uniffi::export(async_runtime = "tokio")]
+#[uniffi::export]
 impl RelayConnectionStats {
     /// The number of times a connection has been attempted
     pub fn attempts(&self) -> u64 {
@@ -57,7 +57,7 @@ impl RelayConnectionStats {
         self.inner.first_connection_timestamp().into()
     }
 
-    pub async fn latency(&self) -> Option<Duration> {
-        self.inner.latency().await
+    pub fn latency(&self) -> Option<Duration> {
+        self.inner.latency()
     }
 }

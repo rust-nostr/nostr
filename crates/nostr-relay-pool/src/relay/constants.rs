@@ -31,9 +31,5 @@ pub(super) const PING_INTERVAL: Duration = Duration::from_secs(50); // Used also
 
 pub(super) const WEBSOCKET_TX_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// Maximum number of reads to be saved in memory to calculate latency
 #[cfg(not(target_arch = "wasm32"))]
-pub const LATENCY_MAX_VALUES: usize = 50;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) const LATENCY_MIN_READS: usize = 3;
+pub(crate) const LATENCY_MIN_READS: u64 = 3;

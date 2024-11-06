@@ -27,6 +27,8 @@
 
 ### Changed
 
+* pool: rework latency tracking ([Yuki Kishimoto])
+
 ### Added
 
 * nostr: add `SingleLetterTag::as_str` and `TagKind::as_str` ([Yuki Kishimoto])

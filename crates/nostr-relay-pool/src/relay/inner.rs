@@ -259,7 +259,7 @@ impl InnerRelay {
             // Check if max avg latency is set
             if let Some(max) = self.opts.max_avg_latency {
                 // ONLY LATER get the latency, to avoid unnecessary calculation
-                if let Some(current) = self.stats.latency().await {
+                if let Some(current) = self.stats.latency() {
                     if current > max {
                         return Err(Error::MaximumLatencyExceeded { max, current });
                     }
@@ -713,7 +713,7 @@ impl InnerRelay {
 
                                     // Save latency
                                     let sent_at = self.stats.ping().sent_at().await;
-                                    self.stats.save_latency(sent_at.elapsed()).await;
+                                    self.stats.save_latency(sent_at.elapsed());
                                 }
                                 Err(e) => {
                                     tracing::error!("Can't parse pong nonce: {e:?}");

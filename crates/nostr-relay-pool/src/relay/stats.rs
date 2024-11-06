@@ -5,8 +5,6 @@
 //! Relay Stats
 
 #[cfg(not(target_arch = "wasm32"))]
-use std::collections::VecDeque;
-#[cfg(not(target_arch = "wasm32"))]
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -18,7 +16,7 @@ use nostr::Timestamp;
 use tokio::sync::RwLock;
 
 #[cfg(not(target_arch = "wasm32"))]
-use super::constants::{LATENCY_MAX_VALUES, LATENCY_MIN_READS};
+use super::constants::LATENCY_MIN_READS;
 
 /// Ping Stats
 #[cfg(not(target_arch = "wasm32"))]
@@ -83,6 +81,15 @@ impl PingStats {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug, Default)]
+struct AverageLatency {
+    /// Sum of all latencies in milliseconds
+    total: AtomicU64,
+    /// Count of latencies
+    count: AtomicU64,
+}
+
 #[derive(Debug, Default)]
 struct InnerRelayConnectionStats {
     attempts: AtomicUsize,
@@ -92,7 +99,7 @@ struct InnerRelayConnectionStats {
     connected_at: AtomicU64,
     first_connection_at: AtomicU64,
     #[cfg(not(target_arch = "wasm32"))]
-    latencies: RwLock<VecDeque<Duration>>,
+    latency: AverageLatency,
     #[cfg(not(target_arch = "wasm32"))]
     ping: PingStats,
 }
@@ -158,18 +165,17 @@ impl RelayConnectionStats {
 
     /// Calculate latency
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn latency(&self) -> Option<Duration> {
-        // Acquire list
-        let latencies = self.inner.latencies.read().await;
+    pub fn latency(&self) -> Option<Duration> {
+        let total: u64 = self.inner.latency.total.load(Ordering::SeqCst);
+        let count: u64 = self.inner.latency.count.load(Ordering::SeqCst);
 
         // Check number of reads
-        if latencies.len() < LATENCY_MIN_READS {
+        if count < LATENCY_MIN_READS {
             return None;
         }
 
         // Calc latency
-        let sum: Duration = latencies.iter().sum();
-        sum.checked_div(latencies.len() as u32)
+        total.checked_div(count).map(Duration::from_millis)
     }
 
     #[inline]
@@ -204,12 +210,15 @@ impl RelayConnectionStats {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(super) async fn save_latency(&self, latency: Duration) {
-        let mut latencies = self.inner.latencies.write().await;
-        if latencies.len() >= LATENCY_MAX_VALUES {
-            latencies.pop_back();
+    pub(super) fn save_latency(&self, latency: Duration) {
+        let ms: u128 = latency.as_millis();
+        if ms <= u64::MAX as u128 {
+            self.inner
+                .latency
+                .total
+                .fetch_add(ms as u64, Ordering::SeqCst);
+            self.inner.latency.count.fetch_add(1, Ordering::SeqCst);
         }
-        latencies.push_front(latency)
     }
 
     #[inline]
