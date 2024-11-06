@@ -383,24 +383,12 @@ impl InnerRelayPool {
             }
         }
 
-        let mut urls: Vec<Url> = Vec::with_capacity(set.len());
-        let mut futures = Vec::with_capacity(set.len());
         let mut output: Output<()> = Output::default();
 
-        // Compose futures
+        // Batch messages and construct outputs
         for url in set.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
-            let msgs: Vec<ClientMessage> = msgs.clone();
-            urls.push(url);
-            futures.push(relay.batch_msg(msgs));
-        }
-
-        // Join futures
-        let list = future::join_all(futures).await;
-
-        // Iter results and construct output
-        for (url, result) in urls.into_iter().zip(list.into_iter()) {
-            match result {
+            match relay.batch_msg(msgs.clone()) {
                 Ok(..) => {
                     // Success, insert relay url in 'success' set result
                     output.success.insert(url);

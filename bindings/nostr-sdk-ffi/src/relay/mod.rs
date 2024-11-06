@@ -214,17 +214,17 @@ impl Relay {
     }
 
     /// Send msg to relay
-    pub async fn send_msg(&self, msg: Arc<ClientMessage>) -> Result<()> {
-        Ok(self.inner.send_msg(msg.as_ref().deref().clone()).await?)
+    pub fn send_msg(&self, msg: Arc<ClientMessage>) -> Result<()> {
+        Ok(self.inner.send_msg(msg.as_ref().deref().clone())?)
     }
 
     /// Send multiple `ClientMessage` at once
-    pub async fn batch_msg(&self, msgs: Vec<Arc<ClientMessage>>) -> Result<()> {
+    pub fn batch_msg(&self, msgs: Vec<Arc<ClientMessage>>) -> Result<()> {
         let msgs = msgs
             .into_iter()
             .map(|msg| msg.as_ref().deref().clone())
             .collect();
-        Ok(self.inner.batch_msg(msgs).await?)
+        Ok(self.inner.batch_msg(msgs)?)
     }
 
     /// Send event and wait for `OK` relay msg

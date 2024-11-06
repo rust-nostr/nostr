@@ -28,6 +28,7 @@
 ### Changed
 
 * pool: rework latency tracking ([Yuki Kishimoto])
+* pool: switch from async to sync message sending for `Relay` ([Yuki Kishimoto])
 
 ### Added
 

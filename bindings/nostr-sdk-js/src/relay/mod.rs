@@ -170,18 +170,15 @@ impl JsRelay {
 
     /// Send msg to relay
     #[wasm_bindgen(js_name = sendMsg)]
-    pub async fn send_msg(&self, msg: &JsClientMessage) -> Result<()> {
-        self.inner
-            .send_msg(msg.deref().clone())
-            .await
-            .map_err(into_err)
+    pub fn send_msg(&self, msg: &JsClientMessage) -> Result<()> {
+        self.inner.send_msg(msg.deref().clone()).map_err(into_err)
     }
 
     /// Send multiple `ClientMessage` at once
     #[wasm_bindgen(js_name = batchMsg)]
-    pub async fn batch_msg(&self, msgs: Vec<JsClientMessage>) -> Result<()> {
+    pub fn batch_msg(&self, msgs: Vec<JsClientMessage>) -> Result<()> {
         let msgs = msgs.into_iter().map(|msg| msg.deref().clone()).collect();
-        self.inner.batch_msg(msgs).await.map_err(into_err)
+        self.inner.batch_msg(msgs).map_err(into_err)
     }
 
     /// Send event and wait for `OK` relay msg
