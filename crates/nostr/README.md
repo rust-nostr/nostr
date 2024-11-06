@@ -23,14 +23,13 @@ use nostr::prelude::*;
 
 fn main() -> Result<()> {
     // Generate new random keys
-    let my_keys = Keys::generate();
+    let keys = Keys::generate();
 
     // Or use your already existing (from hex or bech32)
-    let my_keys = Keys::parse("hex-or-bech32-secret-key")?;
+    let keys = Keys::parse("hex-or-bech32-secret-key")?;
 
-    // Show bech32 public key
-    let bech32_pubkey: String = my_keys.public_key().to_bech32()?;
-    println!("Bech32 PubKey: {}", bech32_pubkey);
+    // Convert public key to bech32
+    println!("Public key: {}", keys.public_key().to_bech32()?);
 
     let metadata = Metadata::new()
         .name("username")
@@ -42,13 +41,13 @@ fn main() -> Result<()> {
         .lud16("yuki@getalby.com")
         .custom_field("custom_field", "my value");
 
-    let event: Event = EventBuilder::metadata(&metadata).to_event(&my_keys)?;
+    let event: Event = EventBuilder::metadata(&metadata).sign_with_keys(&keys)?;
 
     // New text note
-    let event: Event = EventBuilder::text_note("Hello from rust-nostr", []).to_event(&my_keys)?;
+    let event: Event = EventBuilder::text_note("Hello from rust-nostr", []).sign_with_keys(&keys)?;
 
     // New POW text note
-    let event: Event = EventBuilder::text_note("My first POW text note from rust-nostr", []).pow(20).to_event(&my_keys)?;
+    let event: Event = EventBuilder::text_note("My first POW text note from rust-nostr", []).pow(20).sign_with_keys(&keys)?;
 
     // Convert client nessage to JSON
     let json = ClientMessage::event(event).as_json();
@@ -88,19 +87,19 @@ The following crate feature flags are available:
 |------------|:-------:|----------------------------------------------------------------------------------------------|
 | `std`      |   Yes   | Enable `std` library                                                                         |
 | `alloc`    |   No    | Needed to use this library in `no_std` context                                               |
-| `all-nips` |   Yes   | Enable all NIPs                                                                              |
+| `all-nips` |   No    | Enable all NIPs                                                                              |
 | `nip03`    |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                        |
-| `nip04`    |   Yes   | Enable NIP-04: Encrypted Direct Message                                                      |
-| `nip05`    |   Yes   | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                          |
-| `nip06`    |   Yes   | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                |
-| `nip07`    |   Yes   | Enable NIP-07: `window.nostr` capability for web browsers (**available only for `wasm32`!**) |
-| `nip11`    |   Yes   | Enable NIP-11: Relay Information Document                                                    |
-| `nip44`    |   Yes   | Enable NIP-44: Encrypted Payloads (Versioned)                                                |
-| `nip46`    |   Yes   | Enable NIP-46: Nostr Connect                                                                 |
-| `nip47`    |   Yes   | Enable NIP-47: Nostr Wallet Connect                                                          |
-| `nip49`    |   Yes   | Enable NIP-49: Private Key Encryption                                                        |
-| `nip57`    |   Yes   | Enable NIP-57: Zaps                                                                          |
-| `nip59`    |   Yes   | Enable NIP-59: Gift Wrap                                                                     |
+| `nip04`    |   No    | Enable NIP-04: Encrypted Direct Message                                                      |
+| `nip05`    |   No    | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                          |
+| `nip06`    |   No    | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                |
+| `nip07`    |   No    | Enable NIP-07: `window.nostr` capability for web browsers (**available only for `wasm32`!**) |
+| `nip11`    |   No    | Enable NIP-11: Relay Information Document                                                    |
+| `nip44`    |   No    | Enable NIP-44: Encrypted Payloads (Versioned)                                                |
+| `nip46`    |   No    | Enable NIP-46: Nostr Connect                                                                 |
+| `nip47`    |   No    | Enable NIP-47: Nostr Wallet Connect                                                          |
+| `nip49`    |   No    | Enable NIP-49: Private Key Encryption                                                        |
+| `nip57`    |   No    | Enable NIP-57: Zaps                                                                          |
+| `nip59`    |   No    | Enable NIP-59: Gift Wrap                                                                     |
 
 ## Supported NIPs
 

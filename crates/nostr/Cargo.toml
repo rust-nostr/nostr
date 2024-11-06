@@ -16,7 +16,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["std", "all-nips"]
+default = ["std"]
 std = [
     "dep:url",
     "base64?/std",

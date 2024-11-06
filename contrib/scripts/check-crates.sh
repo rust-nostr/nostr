@@ -32,9 +32,10 @@ echo "CI: $is_ci"
 echo "MSRV: $is_msrv"
 
 buildargs=(
-    "-p nostr"
-    "-p nostr --no-default-features --features alloc"
-    "-p nostr --no-default-features --features alloc,all-nips"
+    "-p nostr" # Only std feature
+    "-p nostr --features all-nips" # std + all-nips
+    "-p nostr --no-default-features --features alloc" # Only alloc feature
+    "-p nostr --no-default-features --features alloc,all-nips" # alloc + all-nips
     "-p nostr-database"
     "-p nostr-lmdb"
     "-p nostr-relay-builder"
