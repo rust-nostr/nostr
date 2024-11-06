@@ -142,7 +142,7 @@ impl SingleLetterTag {
         })
     }
 
-    /// Get as char
+    /// Convert to `char`
     pub fn as_char(&self) -> char {
         if self.uppercase {
             match self.character {
@@ -205,6 +205,69 @@ impl SingleLetterTag {
         }
     }
 
+    /// Convert to `&str`
+    pub fn as_str(&self) -> &str {
+        if self.uppercase {
+            match self.character {
+                Alphabet::A => "A",
+                Alphabet::B => "B",
+                Alphabet::C => "C",
+                Alphabet::D => "D",
+                Alphabet::E => "E",
+                Alphabet::F => "F",
+                Alphabet::G => "G",
+                Alphabet::H => "H",
+                Alphabet::I => "I",
+                Alphabet::J => "J",
+                Alphabet::K => "K",
+                Alphabet::L => "L",
+                Alphabet::M => "M",
+                Alphabet::N => "N",
+                Alphabet::O => "O",
+                Alphabet::P => "P",
+                Alphabet::Q => "Q",
+                Alphabet::R => "R",
+                Alphabet::S => "S",
+                Alphabet::T => "T",
+                Alphabet::U => "U",
+                Alphabet::V => "V",
+                Alphabet::W => "W",
+                Alphabet::X => "X",
+                Alphabet::Y => "Y",
+                Alphabet::Z => "Z",
+            }
+        } else {
+            match self.character {
+                Alphabet::A => "a",
+                Alphabet::B => "b",
+                Alphabet::C => "c",
+                Alphabet::D => "d",
+                Alphabet::E => "e",
+                Alphabet::F => "f",
+                Alphabet::G => "g",
+                Alphabet::H => "h",
+                Alphabet::I => "i",
+                Alphabet::J => "j",
+                Alphabet::K => "k",
+                Alphabet::L => "l",
+                Alphabet::M => "m",
+                Alphabet::N => "n",
+                Alphabet::O => "o",
+                Alphabet::P => "p",
+                Alphabet::Q => "q",
+                Alphabet::R => "r",
+                Alphabet::S => "s",
+                Alphabet::T => "t",
+                Alphabet::U => "u",
+                Alphabet::V => "v",
+                Alphabet::W => "w",
+                Alphabet::X => "x",
+                Alphabet::Y => "y",
+                Alphabet::Z => "z",
+            }
+        }
+    }
+
     /// Check if single-letter tag is `lowercase`
     #[inline]
     pub fn is_lowercase(&self) -> bool {
@@ -220,7 +283,7 @@ impl SingleLetterTag {
 
 impl fmt::Display for SingleLetterTag {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_char())
+        write!(f, "{}", self.as_str())
     }
 }
 

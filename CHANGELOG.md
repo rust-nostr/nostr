@@ -21,6 +21,20 @@
 
 -->
 
+## [Unreleased]
+
+### Summary
+
+### Changed
+
+### Added
+
+* nostr: add `SingleLetterTag::as_str` and `TagKind::as_str` ([Yuki Kishimoto])
+
+### Fixed
+
+### Removed
+
 ## [v0.36.0]
 
 ### Summary
