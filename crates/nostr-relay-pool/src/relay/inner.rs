@@ -2,8 +2,6 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Internal Relay
-
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -11,7 +9,7 @@ use std::time::Duration;
 
 use async_utility::{thread, time};
 use async_wsocket::futures_util::{self, Future, SinkExt, StreamExt};
-use async_wsocket::{Sink, Stream, WsMessage, *};
+use async_wsocket::{connect as wsocket_connect, Sink, Stream, WsMessage, *};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
 use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
@@ -35,7 +33,6 @@ use super::stats::RelayConnectionStats;
 use super::{Error, Reconciliation, RelayNotification, RelayStatus};
 use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
-use crate::util::cell::TimedOnceCell;
 
 struct NostrMessage {
     msgs: Vec<ClientMessage>,
@@ -157,7 +154,6 @@ pub(crate) struct InnerRelay {
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
     external_notification_sender: OnceCell<broadcast::Sender<RelayPoolNotification>>,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, SubscriptionData>>>,
-    support_negentropy: TimedOnceCell<bool>,
 }
 
 impl AtomicDestroyer for InnerRelay {
@@ -195,7 +191,6 @@ impl InnerRelay {
             internal_notification_sender: relay_notification_sender,
             external_notification_sender: OnceCell::new(),
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
-            support_negentropy: TimedOnceCell::new(Duration::from_secs(60 * 60)), // Expire after 1h
         }
     }
 
@@ -535,7 +530,7 @@ impl InnerRelay {
         };
 
         // Connect
-        match async_wsocket::connect(&self.url, &self.opts.connection_mode, timeout).await {
+        match wsocket_connect(&self.url, &self.opts.connection_mode, timeout).await {
             Ok((ws_tx, ws_rx)) => {
                 // Update status
                 self.set_status(RelayStatus::Connected, true);
@@ -1141,7 +1136,7 @@ impl InnerRelay {
                                 message,
                             },
                     } => {
-                        // Check if can return
+                        // Check if it can return
                         let can_return: bool = match id {
                             // It's specified an ID, check if match the received one.
                             Some(id) => id == event_id,
@@ -1221,8 +1216,6 @@ impl InnerRelay {
         // Compose and send REQ message
         let msg: ClientMessage = ClientMessage::req(id.clone(), filters.clone());
         self.send_msg(msg)?;
-
-        // TODO: check if relay send CLOSED message?
 
         // Check if auto-close condition is set
         match opts.auto_close {
@@ -2192,41 +2185,6 @@ impl InnerRelay {
         tracing::info!("Negentropy reconciliation terminated for {}", self.url);
 
         Ok(())
-    }
-
-    pub async fn support_negentropy(&self) -> Result<bool, Error> {
-        self.support_negentropy
-            .get_or_try_init(|| async {
-                // Check if NIP77 is marked as supported in relay document
-                #[cfg(feature = "nip11")]
-                {
-                    let document = self.document().await;
-                    if let Some(nips) = document.supported_nips {
-                        if nips.contains(&77) {
-                            return Ok(true);
-                        }
-                    }
-                }
-
-                // Not declared in relay document or relay document not found
-                // Execute dry-run reconciliation to check if it's supported
-                let filter: Filter = Filter::new().limit(1);
-                match self
-                    .sync_with_items(
-                        filter,
-                        Vec::new(),
-                        &SyncOptions::new()
-                            .initial_timeout(Duration::from_secs(5))
-                            .dry_run(),
-                    )
-                    .await
-                {
-                    Ok(_) => Ok(true),
-                    Err(Error::NegentropyMaybeNotSupported) => Ok(false),
-                    Err(e) => Err(e),
-                }
-            })
-            .await
     }
 }
 

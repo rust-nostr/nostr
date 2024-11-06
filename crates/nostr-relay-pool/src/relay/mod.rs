@@ -421,12 +421,6 @@ impl Relay {
         self.inner.sync_multi(map, opts).await
     }
 
-    /// Check if relay support negentropy protocol
-    #[inline]
-    pub async fn support_negentropy(&self) -> Result<bool, Error> {
-        self.inner.support_negentropy().await
-    }
-
     /// Handle notifications
     pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
     where

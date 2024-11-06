@@ -358,9 +358,4 @@ impl Relay {
             .await?
             .into())
     }
-
-    /// Check if relay support negentropy protocol
-    pub async fn support_negentropy(&self) -> Result<bool> {
-        Ok(self.inner.support_negentropy().await?)
-    }
 }

@@ -38,6 +38,8 @@
 
 ### Removed
 
+* pool: remove `Relay::support_negentropy` ([Yuki Kishimoto])
+
 ## [v0.36.0]
 
 ### Summary
