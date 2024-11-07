@@ -11,7 +11,7 @@ async def main():
     opts = (Options()
             .connection_timeout(timedelta(seconds=60))
             .connection(connection))
-    client = Client.with_opts(None, opts)
+    client = ClientBuilder().opts(opts).build()
 
     await client.add_relay("wss://relay.damus.io")
     await client.add_relay("ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion")

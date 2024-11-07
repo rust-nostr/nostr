@@ -11,7 +11,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let database = NostrLMDB::open("./db/nostr-lmdb")?;
-    let client: Client = ClientBuilder::default().database(database).build();
+    let client: Client = Client::builder().database(database).build();
     client.add_relay("wss://relay.damus.io").await?;
 
     client.connect().await;

@@ -9,7 +9,7 @@ async def main():
 
     # Init client
     opts = Options().filtering_mode(RelayFilteringMode.WHITELIST)
-    client = Client.with_opts(None, opts)
+    client = ClientBuilder().opts(opts).build()
     await client.add_relay("wss://relay.damus.io")
     await client.add_relay("wss://nos.lol")
     await client.connect()

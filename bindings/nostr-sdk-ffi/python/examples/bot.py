@@ -11,7 +11,6 @@ async def main():
     # OR
     keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")
 
-    sk = keys.secret_key()
     pk = keys.public_key()
     print(f"Bot public key: {pk.to_bech32()}")
 

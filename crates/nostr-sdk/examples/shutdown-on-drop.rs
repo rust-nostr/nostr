@@ -11,8 +11,7 @@ use nostr_sdk::prelude::*;
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let keys = Keys::generate();
-    let client = Client::new(keys); // Counter set to 1
+    let client = Client::default(); // Counter set to 1
 
     client.add_relay("wss://relay.rip").await?;
     client.add_relay("wss://relay.damus.io").await?;

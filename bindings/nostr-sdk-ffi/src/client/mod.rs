@@ -48,20 +48,10 @@ impl From<ClientSdk> for Client {
 impl Client {
     #[uniffi::constructor(default(signer = None))]
     pub fn new(signer: Option<Arc<dyn NostrSigner>>) -> Self {
-        Self::with_opts(signer, Arc::new(Options::new()))
-    }
-
-    #[uniffi::constructor]
-    pub fn with_opts(signer: Option<Arc<dyn NostrSigner>>, opts: Arc<Options>) -> Self {
         Self {
             inner: match signer {
-                Some(signer) => ClientSdk::with_opts(
-                    NostrSignerFFI2Rust::new(signer),
-                    opts.as_ref().deref().clone(),
-                ),
-                None => nostr_sdk::Client::builder()
-                    .opts(opts.as_ref().deref().clone())
-                    .build(),
+                Some(signer) => ClientSdk::new(NostrSignerFFI2Rust::new(signer)),
+                None => ClientSdk::default(),
             },
         }
     }

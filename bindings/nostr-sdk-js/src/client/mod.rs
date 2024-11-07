@@ -15,7 +15,6 @@ pub mod options;
 pub mod zapper;
 
 pub use self::builder::JsClientBuilder;
-use self::options::JsOptions;
 use self::zapper::{JsZapDetails, JsZapEntity};
 use crate::abortable::JsAbortHandle;
 use crate::database::{JsEvents, JsNostrDatabase};
@@ -48,16 +47,10 @@ impl From<Client> for JsClient {
 impl JsClient {
     #[wasm_bindgen(constructor)]
     pub fn new(signer: Option<JsNostrSigner>) -> Self {
-        Self::with_opts(signer, &JsOptions::new())
-    }
-
-    /// Create a new Client with Options
-    #[wasm_bindgen(js_name = withOpts)]
-    pub fn with_opts(signer: Option<JsNostrSigner>, opts: &JsOptions) -> Self {
         Self {
             inner: match signer {
-                Some(signer) => Client::with_opts(signer.deref().clone(), opts.deref().clone()),
-                None => Client::builder().opts(opts.deref().clone()).build(),
+                Some(signer) => Client::new(signer.deref().clone()),
+                None => Client::default(),
             },
         }
     }

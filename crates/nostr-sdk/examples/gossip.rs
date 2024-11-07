@@ -6,16 +6,13 @@ use std::time::Duration;
 
 use nostr_sdk::prelude::*;
 
-const BECH32_SK: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85";
-
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let my_keys = Keys::parse(BECH32_SK)?;
-
+    let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
     let opts = Options::new().gossip(true);
-    let client = Client::with_opts(my_keys, opts);
+    let client = Client::builder().signer(keys).opts(opts).build();
 
     client.add_discovery_relay("wss://relay.damus.io").await?;
     client.add_discovery_relay("wss://purplepag.es").await?;

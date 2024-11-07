@@ -647,7 +647,7 @@ impl InnerRelay {
                         }
                     }
                 }
-                // Service channel receiver (stop, shutdown, ..)
+                // Service channel receiver (shutdown, ..)
                 Ok(()) = rx_service.changed() => {
                     // Get service and mark as seen
                     let service: RelayServiceEvent = *rx_service.borrow_and_update();
@@ -1529,7 +1529,6 @@ impl InnerRelay {
         Ok(count)
     }
 
-    // TODO: allow to keep track of progress of sync
     pub async fn sync(&self, filter: Filter, opts: &SyncOptions) -> Result<Reconciliation, Error> {
         let items = self.database.negentropy_items(filter.clone()).await?;
         self.sync_with_items(filter, items, opts).await

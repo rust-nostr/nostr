@@ -125,7 +125,7 @@ impl StealthClone for Client {
 impl Client {
     /// Construct client with signer
     ///
-    /// To construct one without signer use [`Client::default()`].
+    /// To construct a client without signer use [`Client::default`].
     ///
     /// # Example
     /// ```rust,no_run
@@ -143,18 +143,7 @@ impl Client {
     }
 
     /// Construct client with signer and options
-    ///
-    /// Check [`ClientBuilder`] to construct more customized clients (i.e. with persistent database).
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// let keys = Keys::generate();
-    /// let opts = Options::new().wait_for_send(true);
-    /// let client = Client::with_opts(keys, opts);
-    /// ```
-    #[inline]
+    #[deprecated(since = "0.37.0", note = "Use `Client::builder` instead")]
     pub fn with_opts<T>(signer: T, opts: Options) -> Self
     where
         T: IntoNostrSigner,
@@ -162,7 +151,7 @@ impl Client {
         Self::builder().signer(signer).opts(opts).build()
     }
 
-    /// Construct client builder
+    /// Construct client
     ///
     /// # Example
     /// ```rust,no_run

@@ -16,7 +16,7 @@ async fn main() -> Result<()> {
         .embedded_tor()
         .target(ConnectionTarget::Onion);
     let opts = Options::new().connection(connection);
-    let client = Client::with_opts(keys.clone(), opts);
+    let client = Client::builder().signer(keys.clone()).opts(opts).build();
 
     // Add relays
     client.add_relay("wss://relay.damus.io").await?;

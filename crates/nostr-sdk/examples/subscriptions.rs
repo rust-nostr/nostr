@@ -8,9 +8,6 @@ use nostr_sdk::prelude::*;
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
-    let public_key = keys.public_key();
-
     let client = Client::default();
 
     client.add_relay("wss://nostr.oxtr.dev").await?;
@@ -18,6 +15,9 @@ async fn main() -> Result<()> {
     client.add_relay("wss://nostr.openchain.fr").await?;
 
     client.connect().await;
+
+    let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
+    let public_key = keys.public_key();
 
     let subscription = Filter::new()
         .author(public_key)
