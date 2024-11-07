@@ -27,3 +27,10 @@ tracing = { workspace = true, features = ["std", "attributes"] }
 [dev-dependencies]
 dialoguer = "0.11"
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
+webbrowser = "1.0"
+
+[[example]]
+name = "handle-auth-url"
+
+[[example]]
+name = "nostr-connect-signer"

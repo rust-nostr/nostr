@@ -5,6 +5,7 @@
 //! Nostr Connect client
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -33,6 +34,7 @@ pub struct NostrConnect {
     timeout: Duration,
     opts: RelayOptions,
     secret: Option<String>,
+    auth_url_handler: Option<Arc<dyn AuthUrlHandler>>,
 }
 
 impl NostrConnect {
@@ -61,7 +63,50 @@ impl NostrConnect {
             opts: opts.unwrap_or_default(),
             secret: uri.secret(),
             uri,
+            auth_url_handler: None,
         })
+    }
+
+    /// Set an `auth_url` handler
+    ///
+    /// ```rust
+    /// use std::time::Duration;
+    ///
+    /// use nostr_connect::prelude::*;
+    ///
+    /// #[derive(Debug, Clone)]
+    /// struct MyAuthUrlHandler;
+    ///
+    /// #[async_trait::async_trait]
+    /// impl AuthUrlHandler for MyAuthUrlHandler {
+    ///     async fn on_auth_url(&self, auth_url: Url) -> Result<()> {
+    ///         webbrowser::open(auth_url.as_str())?;
+    ///         Ok(())
+    ///     }
+    /// }
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<()> {
+    ///     let uri = NostrConnectURI::parse("bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss://relay.nsec.app")?;
+    ///     let app_keys = Keys::generate();
+    ///     let timeout = Duration::from_secs(60);
+    ///
+    ///     let mut connect = NostrConnect::new(uri, app_keys, timeout, None)?;
+    ///
+    ///     // Set auth_url handler
+    ///     connect.auth_url_handler(MyAuthUrlHandler);
+    ///
+    ///     // ...
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
+    #[inline]
+    pub fn auth_url_handler<T>(&mut self, handler: T)
+    where
+        T: IntoAuthUrlHandler,
+    {
+        self.auth_url_handler = Some(handler.into_auth_url_handler());
     }
 
     async fn bootstrap(&self) -> Result<PublicKey, Error> {
@@ -192,7 +237,22 @@ impl NostrConnect {
                         if let Message::Response { id, result, error } = &msg {
                             if &req_id == id {
                                 if msg.is_auth_url() {
-                                    tracing::warn!("Received 'auth_url': {error:?}");
+                                    if let (Some(auth_url), Some(handler)) =
+                                        (error, &self.auth_url_handler)
+                                    {
+                                        match Url::parse(auth_url) {
+                                            Ok(url) => {
+                                                if let Err(e) = handler.on_auth_url(url).await {
+                                                    tracing::error!(
+                                                        "Impossible to handle `auth_url`: {e}"
+                                                    );
+                                                }
+                                            }
+                                            Err(e) => {
+                                                tracing::error!("Can't parse `auth_url`: {e}")
+                                            }
+                                        }
+                                    }
                                 } else {
                                     if let Some(result) = result {
                                         return Ok(result.clone());
@@ -358,6 +418,28 @@ async fn get_remote_signer_public_key(
     })
     .await
     .ok_or(Error::Timeout)?
+}
+
+/// Nostr Connect auth_url handler
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+pub trait AuthUrlHandler: AsyncTraitDeps {
+    /// Handle `auth_url` message
+    async fn on_auth_url(&self, auth_url: Url) -> Result<()>;
+}
+
+#[doc(hidden)]
+pub trait IntoAuthUrlHandler {
+    fn into_auth_url_handler(self) -> Arc<dyn AuthUrlHandler>;
+}
+
+impl<T> IntoAuthUrlHandler for T
+where
+    T: AuthUrlHandler + 'static,
+{
+    fn into_auth_url_handler(self) -> Arc<dyn AuthUrlHandler> {
+        Arc::new(self)
+    }
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
