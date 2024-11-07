@@ -179,8 +179,7 @@ impl Client {
         ClientBuilder::default()
     }
 
-    /// Compose [`Client`] from [`ClientBuilder`]
-    pub fn from_builder(builder: ClientBuilder) -> Self {
+    fn from_builder(builder: ClientBuilder) -> Self {
         let client = Self {
             pool: RelayPool::with_database(builder.opts.pool, builder.database),
             signer: Arc::new(RwLock::new(builder.signer)),

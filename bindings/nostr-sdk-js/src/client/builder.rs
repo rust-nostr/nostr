@@ -1,12 +1,11 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
-// Copyright (c) 2023-2024 Rust Nostr Developersopers
+// Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr_sdk::database::DynNostrDatabase;
-use nostr_sdk::{Client, ClientBuilder};
+use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use super::options::JsOptions;
@@ -56,6 +55,6 @@ impl JsClientBuilder {
     ///
     /// This method **consume** the `ClientBuilder`!
     pub fn build(self) -> JsClient {
-        Client::from_builder(self.inner).into()
+        self.inner.build().into()
     }
 }

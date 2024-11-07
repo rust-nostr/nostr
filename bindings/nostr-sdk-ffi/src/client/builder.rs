@@ -10,7 +10,7 @@ use nostr_sdk::zapper::DynNostrZapper;
 use uniffi::Object;
 
 use super::zapper::NostrZapper;
-use super::{Client, ClientSdk, Options};
+use super::{Client, Options};
 use crate::database::NostrDatabase;
 use crate::protocol::helper::unwrap_or_clone_arc;
 use crate::protocol::signer::{NostrSigner, NostrSignerFFI2Rust};
@@ -66,6 +66,6 @@ impl ClientBuilder {
     /// Build [`Client`]
     pub fn build(&self) -> Arc<Client> {
         let inner = self.inner.clone();
-        Arc::new(ClientSdk::from_builder(inner).into())
+        Arc::new(inner.build().into())
     }
 }
