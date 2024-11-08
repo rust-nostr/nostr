@@ -23,9 +23,14 @@ async fn main() -> Result<()> {
         .await?;
 
     let reply_to = events.first().unwrap();
-    let builder = EventBuilder::comment("This is a reply", reply_to, None, None);
 
-    let output = client.send_event_builder(builder).await?;
+    // let builder = EventBuilder::comment("This is a reply", reply_to, None, None);
+    // let output = client.send_event_builder(builder).await?;
+
+    let output = client
+        .comment("This is a reply", reply_to, None, None)
+        .await?;
+
     println!("Output: {:?}", output);
 
     Ok(())

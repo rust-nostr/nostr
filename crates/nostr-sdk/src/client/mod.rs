@@ -1413,6 +1413,24 @@ impl Client {
         self.gift_wrap_to(urls, &receiver, rumor, None).await
     }
 
+    /// Comment
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/22.md>
+    #[inline]
+    pub async fn comment<S>(
+        &self,
+        content: S,
+        reply_to: &Event,
+        root: Option<&Event>,
+        relay_url: Option<UncheckedUrl>,
+    ) -> Result<Output<EventId>, Error>
+    where
+        S: Into<String>,
+    {
+        let builder = EventBuilder::comment(content, reply_to, root, relay_url);
+        self.send_event_builder(builder).await
+    }
+
     /// Repost
     #[inline]
     pub async fn repost(
