@@ -576,7 +576,7 @@ impl EventBuilder {
         );
 
         // Compose event
-        Self::new(Kind::TextNote, content, tags)
+        Self::new(Kind::Comment, content, tags)
     }
 
     /// Long-form text note (generally referred to as "articles" or "blog posts").
