@@ -2,6 +2,7 @@ const keys = require("./src/keys");
 const eventJson = require("./src/event/json");
 const eventBuilder = require("./src/event/builder");
 const filters = require("./src/messages/filters");
+const clientMessages = require("./src/messages/client");
 const relayMessages = require("./src/messages/relay");
 const nip01 = require("./src/nip01");
 const nip05 = require("./src/nip05");
@@ -21,8 +22,9 @@ async function main() {
     eventJson.eventJson();
     eventBuilder.eventBuilder();
 
+    filters.run();
+    await clientMessages.run();
     await relayMessages.run();
-    await filters.run();
 
     nip01.run();
     await nip05.run();

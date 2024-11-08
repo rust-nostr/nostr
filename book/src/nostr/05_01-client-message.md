@@ -56,7 +56,31 @@ When presented with a client message object as either a JSON or an instance of t
 <div slot="title">JavaScript</div>
 <section>
 
-TODO
+The `ClientMessage` class easily handles the construction of the 3 main message types `EVENT`, `REQ`, and `CLOSE`. 
+In the examples below we can utilize the relevant class methods `event()`, `req()` and `close()`, respectively, to create the client message objects.
+
+Once we have the `ClientMessage` objects we can use the `asJson()` method to present their content. 
+
+
+```javascript,ignore
+{{#include ../../snippets/nostr/js/src/messages/client.js:event-message}}
+```
+
+Note that when constructing a `REQ` we want to pass through a `Filter` object which will allow the relay to return data meeting a given set of criteria. 
+Please jump to the [Filter](05_01_01-filter.md) section for more details on how to construct these objects. 
+
+```javascript,ignore
+{{#include ../../snippets/nostr/js/src/messages/client.js:req-message}}
+```
+
+```javascript,ignore
+{{#include ../../snippets/nostr/js/src/messages/client.js:close-message}}
+```
+
+When presented with a client message object as either a JSON using the `fromJson()` method.
+
+```javascript,ignore
+{{#include ../../snippets/nostr/js/src/messages/client.js:parse-message}}
 
 </section>
 
@@ -112,7 +136,21 @@ Note that `COUNT` is effectively a specific type of `REQ` message therefore it u
 <div slot="title">JavaScript</div>
 <section>
 
-TODO
+As an extension of the client messaging section of the protocol [NIP-42](https://github.com/nostr-protocol/nips/blob/master/42.md) and [NIP-45](https://github.com/nostr-protocol/nips/blob/master/45.md) introduce two new messaging types `AUTH` and `COUNT`.
+
+The `AUTH` type is designed to facilitate a method by which clients can authenticate with a given relay. 
+Whereas the `COUNT` type offers a method for clients can request simple counts of events from relays. 
+These are constructed in much the same way as the earlier message examples, by using the `ClientMessage` class in conjunction with the relevant methods `auth()` and `count()`. 
+
+```python,ignore
+{{#include ../../snippets/nostr/python/src/messages/client.py:auth-message}}
+```
+
+Note that `COUNT` is effectively a specific type of `REQ` message therefore it utilizes the `Filter` object in constructing the criteria which should be used by the relay to return the count value.
+
+```python,ignore
+{{#include ../../snippets/nostr/python/src/messages/client.py:count-message}}
+```
 
 </section>
 
@@ -132,7 +170,7 @@ TODO
 
 </custom-tabs>
 
-## Error Messages
+## Negentropy Messages
 
 <custom-tabs category="lang">
 
@@ -147,7 +185,8 @@ TODO
 <section>
 
 Finally, the `ClientMessageEnum` class also opens up three additional message types `NEG_OPEN()`, `NEG_CLOSE()` and `NEG_MSG()`. 
-These do not form part of the standard protocol specification but do have specific uses when it comes to providing methods by which error messaging can be handled by clients. 
+These do not form part of the standard protocol specification but instead form part of an additional protocol [Negentropy](https://github.com/hoytech/negentropy) for handling set-reconciliation.
+
 To construct these we need to first create them as instance of the `ClientMessageEnum` class and then pass these into a `ClientMessage` object using the `from_enum()` method.
 
 ```python,ignore
@@ -167,7 +206,7 @@ To construct these we need to first create them as instance of the `ClientMessag
 <div slot="title">JavaScript</div>
 <section>
 
-TODO
+Not currently available in the Javascript Bindings.
 
 </section>
 
