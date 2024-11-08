@@ -604,9 +604,13 @@ impl From<TagStandard> for Vec<String> {
                 if let Some(marker) = marker {
                     tag.resize_with(3, String::new);
                     tag.push(marker.to_string());
-                }
-                if let Some(public_key) = public_key {
-                    tag.resize_with(4, String::new);
+
+                    if let Some(public_key) = public_key {
+                        tag.resize_with(4, String::new);
+                        tag.push(public_key.to_string());
+                    }
+                } else if let Some(public_key) = public_key {
+                    tag.resize_with(3, String::new);
                     tag.push(public_key.to_string());
                 }
                 tag
