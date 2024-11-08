@@ -304,6 +304,7 @@ impl GitPatch {
                     relay_url: None,
                     marker: Some(Marker::Reply),
                     public_key: None,
+                    uppercase: false,
                 }));
             }
             None => tags.push(Tag::hashtag("root")),

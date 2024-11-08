@@ -44,6 +44,8 @@ pub enum TagStandard {
         marker: Option<Marker>,
         /// Should be the public key of the author of the referenced event
         public_key: Option<PublicKey>,
+        /// Whether the e tag is an uppercase E or not
+        uppercase: bool,
     },
     /// Report event
     ///
@@ -428,6 +430,7 @@ impl TagStandard {
             relay_url: None,
             marker: None,
             public_key: None,
+            uppercase: false,
         }
     }
 
@@ -459,9 +462,11 @@ impl TagStandard {
     /// Get tag kind
     pub fn kind(&self) -> TagKind {
         match self {
-            Self::Event { .. } | Self::EventReport(..) => {
-                TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E))
-            }
+            Self::Event { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::E,
+                uppercase: *uppercase,
+            }),
+            Self::EventReport(..) => TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E)),
             Self::GitClone(..) => TagKind::Clone,
             Self::GitCommit(..) => TagKind::Commit,
             Self::GitEarliestUniqueCommitId(..) => {
@@ -590,6 +595,7 @@ impl From<TagStandard> for Vec<String> {
                 relay_url,
                 marker,
                 public_key,
+                ..
             } => {
                 let mut tag = vec![tag_kind, event_id.to_hex()];
                 if let Some(relay_url) = relay_url {
@@ -880,6 +886,7 @@ where
                         Some(public_key) => Some(PublicKey::from_hex(public_key)?),
                         None => None,
                     },
+                    uppercase: false,
                 }),
             };
         }

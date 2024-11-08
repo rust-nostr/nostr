@@ -37,6 +37,8 @@ pub enum TagStandard {
         marker: Option<Marker>,
         /// Should be the public key of the author of the referenced event
         public_key: Option<Arc<PublicKey>>,
+        /// Whether the e tag is an uppercase E or not
+        uppercase: bool,
     },
     /// Git clone (`clone` tag)
     ///
@@ -279,11 +281,13 @@ impl From<tag::TagStandard> for TagStandard {
                 relay_url,
                 marker,
                 public_key,
+                uppercase,
             } => Self::EventTag {
                 event_id: Arc::new(event_id.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
                 marker: marker.map(|m| m.into()),
                 public_key: public_key.map(|p| Arc::new(p.into())),
+                uppercase,
             },
             tag::TagStandard::GitClone(urls) => Self::GitClone {
                 urls: urls.into_iter().map(|r| r.to_string()).collect(),
@@ -475,11 +479,13 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 relay_url,
                 marker,
                 public_key,
+                uppercase,
             } => Ok(Self::Event {
                 event_id: **event_id,
                 relay_url: relay_url.map(UncheckedUrl::from),
                 marker: marker.map(nip10::Marker::from),
                 public_key: public_key.map(|p| **p),
+                uppercase,
             }),
             TagStandard::GitClone { urls } => {
                 let mut parsed_urls: Vec<Url> = Vec::with_capacity(urls.len());

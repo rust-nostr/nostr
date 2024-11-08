@@ -443,6 +443,7 @@ mod tests {
             relay_url: None,
             marker: Some(Marker::Reply),
             public_key: None,
+            uppercase: false,
         };
         assert!(tag.is_reply());
 
@@ -454,6 +455,7 @@ mod tests {
             relay_url: None,
             marker: Some(Marker::Root),
             public_key: None,
+            uppercase: false,
         };
         assert!(!tag.is_reply());
     }
@@ -628,6 +630,7 @@ mod tests {
                 relay_url: Some(UncheckedUrl::empty()),
                 marker: None,
                 public_key: None,
+                uppercase: false,
             })
             .to_vec()
         );
@@ -646,6 +649,7 @@ mod tests {
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
                 marker: None,
                 public_key: None,
+                uppercase: false,
             })
             .to_vec()
         );
@@ -794,6 +798,7 @@ mod tests {
                 relay_url: None,
                 marker: Some(Marker::Reply),
                 public_key: None,
+                uppercase: false,
             })
             .to_vec()
         );
@@ -819,6 +824,7 @@ mod tests {
                     )
                     .unwrap()
                 ),
+                uppercase: false,
             }
             .to_vec()
         );
@@ -1101,6 +1107,7 @@ mod tests {
                 relay_url: Some(UncheckedUrl::empty()),
                 marker: None,
                 public_key: None,
+                uppercase: false,
             })
         );
 
@@ -1119,6 +1126,7 @@ mod tests {
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
                 marker: None,
                 public_key: None,
+                uppercase: false,
             })
         );
 
@@ -1296,6 +1304,7 @@ mod tests {
                 relay_url: None,
                 marker: Some(Marker::Reply),
                 public_key: None,
+                uppercase: false,
             })
         );
 
@@ -1321,6 +1330,7 @@ mod tests {
                     )
                     .unwrap()
                 ),
+                uppercase: false,
             })
         );
 
