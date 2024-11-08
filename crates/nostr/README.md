@@ -122,6 +122,7 @@ The following crate feature flags are available:
 |     ✅     | [18 - Reposts](https://github.com/nostr-protocol/nips/blob/master/18.md)                                        |
 |     ✅     | [19 - bech32-encoded entities](https://github.com/nostr-protocol/nips/blob/master/19.md)                        |
 |     ✅     | [21 - URI scheme](https://github.com/nostr-protocol/nips/blob/master/21.md)                                     |
+|     ✅     | [22 - Comment](https://github.com/nostr-protocol/nips/blob/master/22.md)                                        |
 |     ✅     | [23 - Long-form Content](https://github.com/nostr-protocol/nips/blob/master/23.md)                              |
 |     ✅     | [24 - Extra metadata fields and tags](https://github.com/nostr-protocol/nips/blob/master/24.md)                 |
 |     ✅     | [25 - Reactions](https://github.com/nostr-protocol/nips/blob/master/25.md)                                      |

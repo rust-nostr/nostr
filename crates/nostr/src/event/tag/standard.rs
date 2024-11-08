@@ -44,6 +44,8 @@ pub enum TagStandard {
         marker: Option<Marker>,
         /// Should be the public key of the author of the referenced event
         public_key: Option<PublicKey>,
+        /// Whether the e tag is an uppercase E or not
+        uppercase: bool,
     },
     /// Report event
     ///
@@ -101,7 +103,11 @@ pub enum TagStandard {
         coordinate: Coordinate,
         relay_url: Option<UncheckedUrl>,
     },
-    Kind(Kind),
+    Kind {
+        kind: Kind,
+        /// Whether the k tag is an uppercase K or not
+        uppercase: bool,
+    },
     Relay(UncheckedUrl),
     /// Proof of Work
     ///
@@ -314,10 +320,6 @@ impl TagStandard {
                     uppercase: false,
                 }) => Ok(Self::Identifier(tag_1.to_string())),
                 TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::K,
-                    uppercase: false,
-                }) => Ok(Self::Kind(Kind::from_str(tag_1)?)),
-                TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::M,
                     uppercase: false,
                 }) => Ok(Self::MimeType(tag_1.to_string())),
@@ -431,6 +433,7 @@ impl TagStandard {
             relay_url: None,
             marker: None,
             public_key: None,
+            uppercase: false,
         }
     }
 
@@ -462,9 +465,11 @@ impl TagStandard {
     /// Get tag kind
     pub fn kind(&self) -> TagKind {
         match self {
-            Self::Event { .. } | Self::EventReport(..) => {
-                TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E))
-            }
+            Self::Event { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::E,
+                uppercase: *uppercase,
+            }),
+            Self::EventReport(..) => TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E)),
             Self::GitClone(..) => TagKind::Clone,
             Self::GitCommit(..) => TagKind::Commit,
             Self::GitEarliestUniqueCommitId(..) => {
@@ -507,9 +512,9 @@ impl TagStandard {
                 character: Alphabet::A,
                 uppercase: false,
             }),
-            Self::Kind(..) => TagKind::SingleLetter(SingleLetterTag {
+            Self::Kind { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::K,
-                uppercase: false,
+                uppercase: *uppercase,
             }),
             Self::Relay(..) => TagKind::Relay,
             Self::POW { .. } => TagKind::Nonce,
@@ -593,6 +598,7 @@ impl From<TagStandard> for Vec<String> {
                 relay_url,
                 marker,
                 public_key,
+                ..
             } => {
                 // ["e", <event-id>, <relay-url>, <marker>, <pubkey>]
                 // <relay-url>, <marker> and <pubkey> are optional
@@ -702,7 +708,7 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::ExternalIdentity(identity) => {
                 vec![tag_kind, identity.tag_platform_identity(), identity.proof]
             }
-            TagStandard::Kind(kind) => vec![tag_kind, kind.to_string()],
+            TagStandard::Kind { kind, .. } => vec![tag_kind, kind.to_string()],
             TagStandard::Relay(url) => vec![tag_kind, url.to_string()],
             TagStandard::POW { nonce, difficulty } => {
                 vec![tag_kind, nonce.to_string(), difficulty.to_string()]
@@ -927,6 +933,7 @@ where
                     relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
                     marker,
                     public_key,
+                    uppercase: false,
                 })
             }
         };
@@ -1135,6 +1142,7 @@ mod tests {
             relay_url: None,
             marker: Some(Marker::Reply),
             public_key: None,
+            uppercase: false,
         };
         assert!(tag.is_reply());
 
@@ -1146,6 +1154,7 @@ mod tests {
             relay_url: None,
             marker: Some(Marker::Root),
             public_key: None,
+            uppercase: false,
         };
         assert!(!tag.is_reply());
     }
@@ -1247,6 +1256,7 @@ mod tests {
                 relay_url: Some(UncheckedUrl::empty()),
                 marker: None,
                 public_key: None,
+                uppercase: false,
             }
             .to_vec()
         );
@@ -1265,6 +1275,7 @@ mod tests {
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
                 marker: None,
                 public_key: None,
+                uppercase: false,
             }
             .to_vec()
         );
@@ -1421,6 +1432,7 @@ mod tests {
                 relay_url: None,
                 marker: Some(Marker::Reply),
                 public_key: None,
+                uppercase: false,
             }
             .to_vec()
         );
@@ -1446,6 +1458,7 @@ mod tests {
                     )
                     .unwrap()
                 ),
+                uppercase: false,
             }
             .to_vec()
         );
@@ -1470,6 +1483,7 @@ mod tests {
                     )
                     .unwrap()
                 ),
+                uppercase: false,
             }
             .to_vec()
         );
@@ -1712,6 +1726,7 @@ mod tests {
                 relay_url: None,
                 marker: None,
                 public_key: None,
+                uppercase: false,
             }
         );
 
@@ -1730,6 +1745,7 @@ mod tests {
                 relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
                 marker: None,
                 public_key: None,
+                uppercase: false,
             }
         );
 
@@ -1884,6 +1900,7 @@ mod tests {
                 relay_url: None,
                 marker: Some(Marker::Reply),
                 public_key: None,
+                uppercase: false,
             }
         );
 
@@ -1909,6 +1926,7 @@ mod tests {
                     )
                     .unwrap()
                 ),
+                uppercase: false,
             }
         );
 
@@ -1933,6 +1951,7 @@ mod tests {
                     )
                     .unwrap()
                 ),
+                uppercase: false,
             }
         );
 

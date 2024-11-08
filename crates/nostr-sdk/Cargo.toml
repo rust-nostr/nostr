@@ -69,12 +69,15 @@ name = "blacklist"
 required-features = ["all-nips"]
 
 [[example]]
+name = "client"
+required-features = ["all-nips"]
+
+[[example]]
 name = "client-with-opts"
 required-features = ["all-nips"]
 
 [[example]]
-name = "client"
-required-features = ["all-nips"]
+name = "comment"
 
 [[example]]
 name = "fetch-events"

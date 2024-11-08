@@ -160,6 +160,28 @@ impl JsEventBuilder {
         }
     }
 
+    /// Comment
+    ///
+    /// If no `root` is passed, the `rely_to` will be used for root `e` tag.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/22.md>
+    #[wasm_bindgen(js_name = comment)]
+    pub fn comment(
+        content: &str,
+        comment_to: &JsEvent,
+        root: Option<JsEvent>,
+        relay_url: Option<String>,
+    ) -> Self {
+        Self {
+            inner: EventBuilder::comment(
+                content,
+                comment_to.deref(),
+                root.as_deref(),
+                relay_url.map(UncheckedUrl::from),
+            ),
+        }
+    }
+
     /// Long-form text note (generally referred to as "articles" or "blog posts").
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/23.md>

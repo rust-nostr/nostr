@@ -162,6 +162,28 @@ impl EventBuilder {
         }
     }
 
+    /// Comment
+    ///
+    /// If no `root` is passed, the `rely_to` will be used for root `e` tag.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/22.md>
+    #[uniffi::constructor(default(root = None, relay_url = None))]
+    pub fn comment(
+        content: String,
+        comment_to: &Event,
+        root: Option<Arc<Event>>,
+        relay_url: Option<String>,
+    ) -> Self {
+        Self {
+            inner: nostr::EventBuilder::comment(
+                content,
+                comment_to.deref(),
+                root.as_ref().map(|e| e.as_ref().deref()),
+                relay_url.map(UncheckedUrl::from),
+            ),
+        }
+    }
+
     /// Long-form text note (generally referred to as "articles" or "blog posts").
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/23.md>

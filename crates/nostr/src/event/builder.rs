@@ -440,6 +440,7 @@ impl EventBuilder {
                     relay_url: relay_url.clone(),
                     marker: Some(Marker::Root),
                     public_key: Some(root.pubkey),
+                    uppercase: false,
                 }));
                 tags.push(Tag::public_key(root.pubkey));
 
@@ -464,6 +465,7 @@ impl EventBuilder {
                     relay_url: relay_url.clone(),
                     marker: Some(Marker::Root),
                     public_key: Some(reply_to.pubkey),
+                    uppercase: false,
                 }));
             }
         }
@@ -474,6 +476,7 @@ impl EventBuilder {
             relay_url,
             marker: Some(Marker::Reply),
             public_key: Some(reply_to.pubkey),
+            uppercase: false,
         }));
         tags.push(Tag::public_key(reply_to.pubkey));
 
@@ -494,6 +497,104 @@ impl EventBuilder {
 
         // Compose event
         Self::new(Kind::TextNote, content, tags)
+    }
+
+    /// Comment
+    ///
+    /// If no `root` is passed, the `comment_to` will be used for root `e` tag.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/22.md>
+    pub fn comment<S>(
+        content: S,
+        comment_to: &Event,
+        root: Option<&Event>,
+        relay_url: Option<UncheckedUrl>,
+    ) -> Self
+    where
+        S: Into<String>,
+    {
+        // The added tags will be at least 4
+        let mut tags: Vec<Tag> = Vec::with_capacity(4);
+
+        // Add `E` and `K` tag of **root** event
+        if let Some(root) = root {
+            // ID and author
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
+                event_id: root.id,
+                relay_url: relay_url.clone(),
+                marker: None,
+                public_key: Some(root.pubkey),
+                uppercase: true,
+            }));
+
+            // Kind
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
+                kind: root.kind,
+                uppercase: true,
+            }));
+
+            // Add others `p` tags
+            tags.extend(
+                root.tags
+                    .iter()
+                    .filter(|t| {
+                        t.kind()
+                            == TagKind::SingleLetter(SingleLetterTag {
+                                character: Alphabet::P,
+                                uppercase: false,
+                            })
+                    })
+                    .cloned(),
+            );
+        } else {
+            // ID and author
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
+                event_id: comment_to.id,
+                relay_url: relay_url.clone(),
+                marker: None,
+                public_key: Some(comment_to.pubkey),
+                uppercase: true,
+            }));
+
+            // Kind
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
+                kind: comment_to.kind,
+                uppercase: true,
+            }));
+        }
+
+        // Add `e` tag of event author
+        tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
+            event_id: comment_to.id,
+            relay_url,
+            marker: None,
+            public_key: Some(comment_to.pubkey),
+            uppercase: false,
+        }));
+
+        // Add `k` tag of event kind
+        tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
+            kind: comment_to.kind,
+            uppercase: false,
+        }));
+
+        // Add others `p` tags of comment_to event
+        tags.extend(
+            comment_to
+                .tags
+                .iter()
+                .filter(|t| {
+                    t.kind()
+                        == TagKind::SingleLetter(SingleLetterTag {
+                            character: Alphabet::P,
+                            uppercase: false,
+                        })
+                })
+                .cloned(),
+        );
+
+        // Compose event
+        Self::new(Kind::Comment, content, tags)
     }
 
     /// Long-form text note (generally referred to as "articles" or "blog posts").
@@ -561,6 +662,7 @@ impl EventBuilder {
                 relay_url,
                 marker: None,
                 public_key: None,
+                uppercase: false,
             })],
         ))
     }
@@ -580,6 +682,7 @@ impl EventBuilder {
                         marker: None,
                         // NOTE: not add public key since it's already included as `p` tag
                         public_key: None,
+                        uppercase: false,
                     }),
                     Tag::public_key(event.pubkey),
                 ],
@@ -595,9 +698,13 @@ impl EventBuilder {
                         marker: None,
                         // NOTE: not add public key since it's already included as `p` tag
                         public_key: None,
+                        uppercase: false,
                     }),
                     Tag::public_key(event.pubkey),
-                    Tag::from_standardized_without_cell(TagStandard::Kind(event.kind)),
+                    Tag::from_standardized_without_cell(TagStandard::Kind {
+                        kind: event.kind,
+                        uppercase: false,
+                    }),
                 ],
             )
         }
@@ -660,7 +767,10 @@ impl EventBuilder {
         tags.push(Tag::public_key(public_key));
 
         if let Some(kind) = kind {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Kind(kind)));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
+                kind,
+                uppercase: false,
+            }));
         }
 
         Self::new(Kind::Reaction, reaction, tags)
@@ -691,6 +801,7 @@ impl EventBuilder {
                 relay_url: relay_url.map(|u| u.into()),
                 marker: None,
                 public_key: None,
+                uppercase: false,
             })],
         )
     }
@@ -711,6 +822,7 @@ impl EventBuilder {
                 relay_url: Some(relay_url.into()),
                 marker: Some(Marker::Root),
                 public_key: None,
+                uppercase: false,
             })],
         )
     }
@@ -1133,6 +1245,7 @@ impl EventBuilder {
                             relay_url: relay_url.clone(),
                             marker: None,
                             public_key: None,
+                            uppercase: false,
                         });
                     tags.extend_from_slice(&[a_tag.clone(), badge_award_event_tag]);
                 }
