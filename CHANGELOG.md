@@ -44,6 +44,7 @@
 * nostr: add `TagStandard::Quote` ([reyamir])
 * nostr: add `Event::coordinate` ([Yuki Kishimoto])
 * nostr: add `A/a` tags in `EventBuilder::comment` (NIP22) events ([Yuki Kishimoto])
+* book: add some examples ([RydalWater])
 
 ### Fixed
 
