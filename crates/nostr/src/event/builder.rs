@@ -521,7 +521,7 @@ impl EventBuilder {
             tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
                 event_id: root.id,
                 relay_url: relay_url.clone(),
-                marker: Some(Marker::Root),
+                marker: None,
                 public_key: Some(root.pubkey),
                 uppercase: true,
             }));
@@ -550,7 +550,7 @@ impl EventBuilder {
         tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
             event_id: reply_to.id,
             relay_url,
-            marker: Some(Marker::Reply),
+            marker: None,
             public_key: Some(reply_to.pubkey),
             uppercase: false,
         }));
