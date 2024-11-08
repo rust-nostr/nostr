@@ -100,6 +100,7 @@ kind_variants! {
     EventDeletion => 5, "Event Deletion (NIP09)",
     Repost => 6, "Repost (NIP18)",
     GenericRepost => 16, "Generic Repost (NIP18)",
+    Comment => 1111, "Comment (NIP22)",
     Reaction => 7, "Reaction (NIP25)",
     BadgeAward => 8, "Badge Award (NIP58)",
     ChannelCreation => 40, "Channel Creation (NIP28)",

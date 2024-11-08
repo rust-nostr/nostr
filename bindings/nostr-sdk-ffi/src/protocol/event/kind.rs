@@ -135,6 +135,8 @@ pub enum KindEnum {
     Repost,
     /// Generic Repost (NIP18)
     GenericRepost,
+    /// Comment (NIP22)
+    Comment,
     /// Reaction (NIP25)
     Reaction,
     /// Badge Award (NIP58)
@@ -352,6 +354,7 @@ impl From<nostr::Kind> for KindEnum {
             nostr::Kind::EventDeletion => Self::EventDeletion,
             nostr::Kind::Repost => Self::Repost,
             nostr::Kind::GenericRepost => Self::GenericRepost,
+            nostr::Kind::Comment => Self::Comment,
             nostr::Kind::Reaction => Self::Reaction,
             nostr::Kind::BadgeAward => Self::BadgeAward,
             nostr::Kind::ChannelCreation => Self::ChannelCreation,
@@ -438,6 +441,7 @@ impl From<KindEnum> for nostr::Kind {
             KindEnum::EventDeletion => Self::EventDeletion,
             KindEnum::Repost => Self::Repost,
             KindEnum::GenericRepost => Self::GenericRepost,
+            KindEnum::Comment => Self::Comment,
             KindEnum::Reaction => Self::Reaction,
             KindEnum::BadgeAward => Self::BadgeAward,
             KindEnum::ChannelCreation => Self::ChannelCreation,
