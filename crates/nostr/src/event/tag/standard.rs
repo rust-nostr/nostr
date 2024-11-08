@@ -103,7 +103,11 @@ pub enum TagStandard {
         coordinate: Coordinate,
         relay_url: Option<UncheckedUrl>,
     },
-    Kind(Kind),
+    Kind {
+        kind: Kind,
+        /// Whether the k tag is an uppercase K or not
+        uppercase: bool,
+    },
     Relay(UncheckedUrl),
     /// Proof of Work
     ///
@@ -309,10 +313,6 @@ impl TagStandard {
                     uppercase: false,
                 }) => Ok(Self::Identifier(tag_1.to_string())),
                 TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::K,
-                    uppercase: false,
-                }) => Ok(Self::Kind(Kind::from_str(tag_1)?)),
-                TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::M,
                     uppercase: false,
                 }) => Ok(Self::MimeType(tag_1.to_string())),
@@ -509,9 +509,9 @@ impl TagStandard {
                 character: Alphabet::A,
                 uppercase: false,
             }),
-            Self::Kind(..) => TagKind::SingleLetter(SingleLetterTag {
+            Self::Kind { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::K,
-                uppercase: false,
+                uppercase: *uppercase,
             }),
             Self::Relay(..) => TagKind::Relay,
             Self::POW { .. } => TagKind::Nonce,
@@ -693,7 +693,7 @@ impl From<TagStandard> for Vec<String> {
                 vec
             }
             TagStandard::ExternalIdentity(identity) => identity.into(),
-            TagStandard::Kind(kind) => vec![tag_kind, kind.to_string()],
+            TagStandard::Kind { kind, .. } => vec![tag_kind, kind.to_string()],
             TagStandard::Relay(url) => vec![tag_kind, url.to_string()],
             TagStandard::POW { nonce, difficulty } => {
                 vec![tag_kind, nonce.to_string(), difficulty.to_string()]

@@ -526,9 +526,10 @@ impl EventBuilder {
                 uppercase: true,
             }));
             // Kind
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Kind(
-                root.kind,
-            )));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
+                kind: root.kind,
+                uppercase: true,
+            }));
 
             // Add others `p` tags
             tags.extend(
@@ -554,9 +555,10 @@ impl EventBuilder {
             uppercase: false,
         }));
         // Add `k` tag of event kind
-        tags.push(Tag::from_standardized_without_cell(TagStandard::Kind(
-            reply_to.kind,
-        )));
+        tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
+            kind: reply_to.kind,
+            uppercase: false,
+        }));
 
         // Add others `p` tags of reply_to event
         tags.extend(
@@ -680,7 +682,10 @@ impl EventBuilder {
                         uppercase: false,
                     }),
                     Tag::public_key(event.pubkey),
-                    Tag::from_standardized_without_cell(TagStandard::Kind(event.kind)),
+                    Tag::from_standardized_without_cell(TagStandard::Kind {
+                        kind: event.kind,
+                        uppercase: false,
+                    }),
                 ],
             )
         }
@@ -743,7 +748,10 @@ impl EventBuilder {
         tags.push(Tag::public_key(public_key));
 
         if let Some(kind) = kind {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Kind(kind)));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
+                kind,
+                uppercase: false,
+            }));
         }
 
         Self::new(Kind::Reaction, reaction, tags)

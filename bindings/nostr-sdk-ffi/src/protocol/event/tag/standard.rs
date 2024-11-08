@@ -110,6 +110,8 @@ pub enum TagStandard {
     },
     Kind {
         kind: KindEnum,
+        /// Whether the k tag is an uppercase K or not
+        uppercase: bool,
     },
     RelayUrl {
         relay_url: String,
@@ -355,7 +357,10 @@ impl From<tag::TagStandard> for TagStandard {
             tag::TagStandard::ExternalIdentity(identity) => Self::ExternalIdentity {
                 identity: identity.into(),
             },
-            tag::TagStandard::Kind(kind) => Self::Kind { kind: kind.into() },
+            tag::TagStandard::Kind { kind, uppercase } => Self::Kind {
+                kind: kind.into(),
+                uppercase,
+            },
             tag::TagStandard::Relay(url) => Self::RelayUrl {
                 relay_url: url.to_string(),
             },
@@ -550,7 +555,10 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 coordinate: coordinate.as_ref().deref().clone(),
                 relay_url: relay_url.map(UncheckedUrl::from),
             }),
-            TagStandard::Kind { kind } => Ok(Self::Kind(kind.into())),
+            TagStandard::Kind { kind, uppercase } => Ok(Self::Kind {
+                kind: kind.into(),
+                uppercase,
+            }),
             TagStandard::RelayUrl { relay_url } => Ok(Self::Relay(UncheckedUrl::from(relay_url))),
             TagStandard::POW { nonce, difficulty } => Ok(Self::POW {
                 nonce: nonce.parse()?,
