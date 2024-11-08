@@ -4,7 +4,7 @@ async function run() {
     await loadWasmAsync();
 
     const keys = Keys.generate();
-    const event = EventBuilder.textNote("TestTextNoTe", []).toEvent(keys);
+    const event = EventBuilder.textNote("TestTextNoTe", []).signWithKeys(keys);
 
     console.log()
     console.log("Client Messages:");
