@@ -1,4 +1,4 @@
-const { ClientMessage, EventBuilder, Filter, Keys, loadWasmAsync } = require('@rust-nostr/nostr');
+const { ClientMessage, EventBuilder, Filter, Keys, loadWasmAsync } = require('@rust-nostr/nostr-sdk');
 
 async function run() {
     await loadWasmAsync();
