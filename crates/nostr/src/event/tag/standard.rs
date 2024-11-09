@@ -102,6 +102,8 @@ pub enum TagStandard {
     Coordinate {
         coordinate: Coordinate,
         relay_url: Option<UncheckedUrl>,
+        /// Whether the a tag is an uppercase A or not
+        uppercase: bool,
     },
     Kind {
         kind: Kind,
@@ -508,9 +510,9 @@ impl TagStandard {
                 character: Alphabet::I,
                 uppercase: false,
             }),
-            Self::Coordinate { .. } => TagKind::SingleLetter(SingleLetterTag {
+            Self::Coordinate { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::A,
-                uppercase: false,
+                uppercase: *uppercase,
             }),
             Self::Kind { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::K,
@@ -698,6 +700,7 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::Coordinate {
                 coordinate,
                 relay_url,
+                ..
             } => {
                 let mut vec = vec![tag_kind, coordinate.to_string()];
                 if let Some(relay) = relay_url {
@@ -872,6 +875,7 @@ where
         Ok(TagStandard::Coordinate {
             coordinate,
             relay_url,
+            uppercase: false,
         })
     } else {
         Err(Error::UnknownStardardizedTag)
@@ -1336,6 +1340,7 @@ mod tests {
                 )
                 .identifier("ipsum"),
                 relay_url: None,
+                uppercase: false,
             }
             .to_vec()
         );
@@ -1355,7 +1360,8 @@ mod tests {
                     .unwrap()
                 )
                 .identifier("ipsum"),
-                relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org").unwrap())
+                relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org").unwrap()),
+                uppercase: false,
             }
             .to_vec()
         );
@@ -1837,7 +1843,8 @@ mod tests {
                     .unwrap()
                 )
                 .identifier("ipsum"),
-                relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org").unwrap())
+                relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org").unwrap()),
+                uppercase: false,
             }
         );
 

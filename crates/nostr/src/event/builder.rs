@@ -930,6 +930,7 @@ impl EventBuilder {
                     coordinate: Coordinate::new(Kind::LiveEvent, live_event_host)
                         .identifier(live_event_id),
                     relay_url: relay_url.map(|u| u.into()),
+                    uppercase: false,
                 },
             )],
         )
@@ -1165,6 +1166,7 @@ impl EventBuilder {
                 coordinate: Coordinate::new(Kind::BadgeDefinition, badge_definition.pubkey)
                     .identifier(badge_id),
                 relay_url: None,
+                uppercase: false,
             },
         ));
 
