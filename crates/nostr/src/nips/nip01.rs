@@ -160,6 +160,7 @@ impl From<Coordinate> for Tag {
         Self::from_standardized(TagStandard::Coordinate {
             relay_url: coordinate.relays.first().cloned().map(UncheckedUrl::from),
             coordinate,
+            uppercase: false,
         })
     }
 }

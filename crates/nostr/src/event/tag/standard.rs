@@ -106,6 +106,8 @@ pub enum TagStandard {
     Coordinate {
         coordinate: Coordinate,
         relay_url: Option<UncheckedUrl>,
+        /// Whether the a tag is an uppercase A or not
+        uppercase: bool,
     },
     Kind {
         kind: Kind,
@@ -505,9 +507,9 @@ impl TagStandard {
                 character: Alphabet::I,
                 uppercase: *uppercase,
             }),
-            Self::Coordinate { .. } => TagKind::SingleLetter(SingleLetterTag {
+            Self::Coordinate { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::A,
-                uppercase: false,
+                uppercase: *uppercase,
             }),
             Self::Kind { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::K,
@@ -689,6 +691,7 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::Coordinate {
                 coordinate,
                 relay_url,
+                ..
             } => {
                 let mut vec = vec![tag_kind, coordinate.to_string()];
                 if let Some(relay) = relay_url {
@@ -861,6 +864,7 @@ where
         Ok(TagStandard::Coordinate {
             coordinate,
             relay_url,
+            uppercase: false,
         })
     } else {
         Err(Error::UnknownStardardizedTag)

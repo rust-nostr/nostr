@@ -109,6 +109,8 @@ pub enum TagStandard {
     CoordinateTag {
         coordinate: Arc<Coordinate>,
         relay_url: Option<String>,
+        /// Whether the a tag is an uppercase A or not
+        uppercase: bool,
     },
     Kind {
         kind: KindEnum,
@@ -352,9 +354,11 @@ impl From<tag::TagStandard> for TagStandard {
             tag::TagStandard::Coordinate {
                 coordinate,
                 relay_url,
+                uppercase,
             } => Self::CoordinateTag {
                 coordinate: Arc::new(coordinate.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
+                uppercase,
             },
             tag::TagStandard::ExternalIdentity {
                 identity,
@@ -561,9 +565,11 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::CoordinateTag {
                 coordinate,
                 relay_url,
+                uppercase,
             } => Ok(Self::Coordinate {
                 coordinate: coordinate.as_ref().deref().clone(),
                 relay_url: relay_url.map(UncheckedUrl::from),
+                uppercase,
             }),
             TagStandard::Kind { kind, uppercase } => Ok(Self::Kind {
                 kind: kind.into(),

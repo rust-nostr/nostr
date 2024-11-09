@@ -207,6 +207,7 @@ impl Tag {
         Self::from_standardized_without_cell(TagStandard::Coordinate {
             coordinate,
             relay_url: None,
+            uppercase: false,
         })
     }
 
@@ -721,7 +722,8 @@ mod tests {
                     .unwrap()
                 )
                 .identifier("ipsum"),
-                relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org").unwrap())
+                relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org").unwrap()),
+                uppercase: false
             })
             .to_vec()
         );
@@ -1214,7 +1216,8 @@ mod tests {
                     .unwrap()
                 )
                 .identifier("ipsum"),
-                relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org").unwrap())
+                relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org").unwrap()),
+                uppercase: false
             })
         );
 
