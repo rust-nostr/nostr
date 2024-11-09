@@ -1066,11 +1066,14 @@ mod tests {
 
         assert_eq!(
             Tag::parse(&["i", "github:12345678", "abcdefghijklmnop"]).unwrap(),
-            Tag::from_standardized_without_cell(TagStandard::ExternalIdentity(Identity {
-                platform: ExternalIdentity::GitHub,
-                ident: "12345678".to_string(),
-                proof: "abcdefghijklmnop".to_string()
-            }))
+            Tag::from_standardized_without_cell(TagStandard::ExternalIdentity {
+                identity: Identity {
+                    platform: ExternalIdentity::GitHub,
+                    ident: "12345678".to_string(),
+                    proof: "abcdefghijklmnop".to_string()
+                },
+                uppercase: false
+            })
         );
 
         assert_eq!(

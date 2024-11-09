@@ -103,6 +103,8 @@ pub enum TagStandard {
     },
     ExternalIdentity {
         identity: Identity,
+        /// Whether the i tag is an uppercase I or not
+        uppercase: bool,
     },
     CoordinateTag {
         coordinate: Arc<Coordinate>,
@@ -354,8 +356,12 @@ impl From<tag::TagStandard> for TagStandard {
                 coordinate: Arc::new(coordinate.into()),
                 relay_url: relay_url.map(|u| u.to_string()),
             },
-            tag::TagStandard::ExternalIdentity(identity) => Self::ExternalIdentity {
+            tag::TagStandard::ExternalIdentity {
+                identity,
+                uppercase,
+            } => Self::ExternalIdentity {
                 identity: identity.into(),
+                uppercase,
             },
             tag::TagStandard::Kind { kind, uppercase } => Self::Kind {
                 kind: kind.into(),
@@ -545,9 +551,13 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::Hashtag { hashtag } => Ok(Self::Hashtag(hashtag)),
             TagStandard::Geohash { geohash } => Ok(Self::Geohash(geohash)),
             TagStandard::Identifier { identifier } => Ok(Self::Identifier(identifier)),
-            TagStandard::ExternalIdentity { identity } => {
-                Ok(Self::ExternalIdentity(identity.into()))
-            }
+            TagStandard::ExternalIdentity {
+                identity,
+                uppercase,
+            } => Ok(Self::ExternalIdentity {
+                identity: identity.into(),
+                uppercase,
+            }),
             TagStandard::CoordinateTag {
                 coordinate,
                 relay_url,

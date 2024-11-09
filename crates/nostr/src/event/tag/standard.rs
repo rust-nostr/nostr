@@ -98,7 +98,11 @@ pub enum TagStandard {
     Hashtag(String),
     Geohash(String),
     Identifier(String),
-    ExternalIdentity(Identity),
+    ExternalIdentity {
+        identity: Identity,
+        /// Whether the i tag is an uppercase I or not
+        uppercase: bool,
+    },
     Coordinate {
         coordinate: Coordinate,
         relay_url: Option<UncheckedUrl>,
@@ -378,10 +382,6 @@ impl TagStandard {
             let tag_2: &str = tag[2].as_ref();
 
             return match tag_kind {
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::I,
-                    uppercase: false,
-                }) => Ok(Self::ExternalIdentity(Identity::new(tag_1, tag_2)?)),
                 TagKind::Nonce => Ok(Self::POW {
                     nonce: tag_1.parse()?,
                     difficulty: tag_2.parse()?,
@@ -501,9 +501,9 @@ impl TagStandard {
                 character: Alphabet::D,
                 uppercase: false,
             }),
-            Self::ExternalIdentity(..) => TagKind::SingleLetter(SingleLetterTag {
+            Self::ExternalIdentity { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::I,
-                uppercase: false,
+                uppercase: *uppercase,
             }),
             Self::Coordinate { .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::A,
@@ -696,7 +696,7 @@ impl From<TagStandard> for Vec<String> {
                 }
                 vec
             }
-            TagStandard::ExternalIdentity(identity) => identity.into(),
+            TagStandard::ExternalIdentity { identity, .. } => identity.into(),
             TagStandard::Kind { kind, .. } => vec![tag_kind, kind.to_string()],
             TagStandard::Relay(url) => vec![tag_kind, url.to_string()],
             TagStandard::POW { nonce, difficulty } => {
