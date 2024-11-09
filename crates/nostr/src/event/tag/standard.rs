@@ -47,6 +47,15 @@ pub enum TagStandard {
         /// Whether the e tag is an uppercase E or not
         uppercase: bool,
     },
+    /// Quote
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
+    Quote {
+        event_id: EventId,
+        relay_url: Option<UncheckedUrl>,
+        /// Should be the public key of the author of the referenced event
+        public_key: Option<PublicKey>,
+    },
     /// Report event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
@@ -468,6 +477,10 @@ impl TagStandard {
                 character: Alphabet::E,
                 uppercase: *uppercase,
             }),
+            Self::Quote { .. } => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::E,
+                uppercase: false,
+            }),
             Self::EventReport(..) => TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E)),
             Self::GitClone(..) => TagKind::Clone,
             Self::GitCommit(..) => TagKind::Commit,
@@ -612,6 +625,22 @@ impl From<TagStandard> for Vec<String> {
                         tag.push(public_key.to_string());
                     }
                 } else if let Some(public_key) = public_key {
+                    tag.resize_with(3, String::new);
+                    tag.push(public_key.to_string());
+                }
+                tag
+            }
+            TagStandard::Quote {
+                event_id,
+                relay_url,
+                public_key,
+                ..
+            } => {
+                let mut tag = vec![tag_kind, event_id.to_hex()];
+                if let Some(relay_url) = relay_url {
+                    tag.push(relay_url.to_string());
+                }
+                if let Some(public_key) = public_key {
                     tag.resize_with(3, String::new);
                     tag.push(public_key.to_string());
                 }
