@@ -1420,14 +1420,14 @@ impl Client {
     pub async fn comment<S>(
         &self,
         content: S,
-        reply_to: &Event,
+        comment_to: &Event,
         root: Option<&Event>,
         relay_url: Option<UncheckedUrl>,
     ) -> Result<Output<EventId>, Error>
     where
         S: Into<String>,
     {
-        let builder = EventBuilder::comment(content, reply_to, root, relay_url);
+        let builder = EventBuilder::comment(content, comment_to, root, relay_url);
         self.send_event_builder(builder).await
     }
 

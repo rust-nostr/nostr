@@ -506,7 +506,7 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/22.md>
     pub fn comment<S>(
         content: S,
-        reply_to: &Event,
+        comment_to: &Event,
         root: Option<&Event>,
         relay_url: Option<UncheckedUrl>,
     ) -> Self
@@ -548,21 +548,21 @@ impl EventBuilder {
 
         // Add `e` tag of event author
         tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
-            event_id: reply_to.id,
+            event_id: comment_to.id,
             relay_url,
             marker: None,
-            public_key: Some(reply_to.pubkey),
+            public_key: Some(comment_to.pubkey),
             uppercase: false,
         }));
         // Add `k` tag of event kind
         tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
-            kind: reply_to.kind,
+            kind: comment_to.kind,
             uppercase: false,
         }));
 
         // Add others `p` tags of reply_to event
         tags.extend(
-            reply_to
+            comment_to
                 .tags
                 .iter()
                 .filter(|t| {
@@ -644,6 +644,7 @@ impl EventBuilder {
                 relay_url,
                 marker: None,
                 public_key: None,
+                uppercase: false,
             })],
         ))
     }
