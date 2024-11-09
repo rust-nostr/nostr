@@ -420,7 +420,6 @@ impl EventBuilder {
     /// If no `root` is passed, the `rely_to` will be used for root `e` tag.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/10.md>
-    #[deprecated(since = "0.36.0", note = "Use `EventBuilder::comment` method instead.")]
     pub fn text_note_reply<S>(
         content: S,
         reply_to: &Event,
