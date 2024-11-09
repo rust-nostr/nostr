@@ -420,6 +420,7 @@ impl EventBuilder {
     /// If no `root` is passed, the `rely_to` will be used for root `e` tag.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/10.md>
+    #[deprecated(since = "0.36.0", note = "Use `EventBuilder::comment` method instead.")]
     pub fn text_note_reply<S>(
         content: S,
         reply_to: &Event,
@@ -525,6 +526,7 @@ impl EventBuilder {
                 public_key: Some(root.pubkey),
                 uppercase: true,
             }));
+
             // Kind
             tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
                 kind: root.kind,
@@ -544,6 +546,21 @@ impl EventBuilder {
                     })
                     .cloned(),
             );
+        } else {
+            // ID and author
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
+                event_id: comment_to.id,
+                relay_url: relay_url.clone(),
+                marker: None,
+                public_key: Some(comment_to.pubkey),
+                uppercase: true,
+            }));
+
+            // Kind
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
+                kind: comment_to.kind,
+                uppercase: true,
+            }));
         }
 
         // Add `e` tag of event author
@@ -554,6 +571,7 @@ impl EventBuilder {
             public_key: Some(comment_to.pubkey),
             uppercase: false,
         }));
+
         // Add `k` tag of event kind
         tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
             kind: comment_to.kind,
