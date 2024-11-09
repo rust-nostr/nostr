@@ -41,6 +41,7 @@
 * nostr: add `Kind::Comment` ([reyamir])
 * nostr: add `EventBuilder::comment` ([reyamir])
 * nostr: add uppercase field to `TagStandard::Coordinate` and `TagStandard::ExternalIdentity` variants ([reyamir])
+* nostr: add `TagStandard::Quote` ([reyamir])
 
 ### Fixed
 

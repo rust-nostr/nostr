@@ -47,6 +47,15 @@ pub enum TagStandard {
         /// Whether the e tag is an uppercase E or not
         uppercase: bool,
     },
+    /// Quote
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
+    Quote {
+        event_id: EventId,
+        relay_url: Option<Url>,
+        /// Should be the public key of the author of the referenced event
+        public_key: Option<PublicKey>,
+    },
     /// Report event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
@@ -269,6 +278,13 @@ impl TagStandard {
                 } => {
                     return parse_r_tag(tag, uppercase);
                 }
+                // Parse `q` tag
+                SingleLetterTag {
+                    character: Alphabet::Q,
+                    uppercase: false,
+                } => {
+                    return parse_q_tag(tag);
+                }
                 _ => (), // Covered later
             },
             TagKind::Anon => {
@@ -471,6 +487,10 @@ impl TagStandard {
                 character: Alphabet::E,
                 uppercase: *uppercase,
             }),
+            Self::Quote { .. } => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::Q,
+                uppercase: false,
+            }),
             Self::EventReport(..) => TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E)),
             Self::GitClone(..) => TagKind::Clone,
             Self::GitCommit(..) => TagKind::Commit,
@@ -624,6 +644,22 @@ impl From<TagStandard> for Vec<String> {
                     tag.push(public_key.to_string());
                 }
 
+                tag
+            }
+            TagStandard::Quote {
+                event_id,
+                relay_url,
+                public_key,
+            } => {
+                let mut tag = vec![tag_kind, event_id.to_hex()];
+                if let Some(relay_url) = relay_url {
+                    tag.push(relay_url.to_string());
+                }
+                if let Some(public_key) = public_key {
+                    // If <relay-url> is `None`, push an empty string
+                    tag.resize_with(3, String::new);
+                    tag.push(public_key.to_hex());
+                }
                 tag
             }
             TagStandard::PublicKey {
@@ -1074,6 +1110,36 @@ where
     Err(Error::UnknownStardardizedTag)
 }
 
+fn parse_q_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
+where
+    S: AsRef<str>,
+{
+    if tag.len() < 2 {
+        return Err(Error::UnknownStardardizedTag);
+    }
+
+    let event_id: EventId = EventId::from_hex(tag[1].as_ref())?;
+
+    let tag_2: Option<&str> = tag.get(2).map(|r| r.as_ref());
+    let tag_3: Option<&str> = tag.get(3).map(|r| r.as_ref());
+
+    let relay_url: Option<Url> = match tag_2 {
+        Some(url) if !url.is_empty() => Some(Url::parse(url)?),
+        _ => None,
+    };
+
+    let public_key: Option<PublicKey> = match tag_3 {
+        Some(public_key) => Some(PublicKey::from_hex(public_key)?),
+        None => None,
+    };
+
+    Ok(TagStandard::Quote {
+        event_id,
+        relay_url,
+        public_key,
+    })
+}
+
 fn parse_delegation_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
 where
     S: AsRef<str>,
@@ -1202,6 +1268,62 @@ mod tests {
                 )
                 .unwrap()
             )
+            .to_vec()
+        );
+
+        assert_eq!(
+            vec![
+                "q",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+            ],
+            TagStandard::Quote {
+                event_id: EventId::from_hex(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )
+                .unwrap(),
+                relay_url: None,
+                public_key: None,
+            }
+            .to_vec()
+        );
+
+        assert_eq!(
+            vec![
+                "q",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+                "wss://relay.damus.io/"
+            ],
+            TagStandard::Quote {
+                event_id: EventId::from_hex(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )
+                .unwrap(),
+                relay_url: Some(Url::from_str("wss://relay.damus.io").unwrap()),
+                public_key: None,
+            }
+            .to_vec()
+        );
+
+        assert_eq!(
+            vec![
+                "q",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+                "",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+            ],
+            TagStandard::Quote {
+                event_id: EventId::from_hex(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )
+                .unwrap(),
+                relay_url: None,
+                public_key: Some(
+                    PublicKey::from_str(
+                        "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                    )
+                    .unwrap()
+                ),
+            }
             .to_vec()
         );
 
@@ -1661,6 +1783,62 @@ mod tests {
                 )
                 .unwrap()
             )
+        );
+
+        assert_eq!(
+            TagStandard::parse(&[
+                "q",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+            ])
+            .unwrap(),
+            TagStandard::Quote {
+                event_id: EventId::from_hex(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )
+                .unwrap(),
+                relay_url: None,
+                public_key: None,
+            }
+        );
+
+        assert_eq!(
+            TagStandard::parse(&[
+                "q",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+                "wss://relay.damus.io/"
+            ])
+            .unwrap(),
+            TagStandard::Quote {
+                event_id: EventId::from_hex(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )
+                .unwrap(),
+                relay_url: Some(Url::from_str("wss://relay.damus.io").unwrap()),
+                public_key: None,
+            }
+        );
+
+        assert_eq!(
+            TagStandard::parse(&[
+                "q",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+                "",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+            ])
+            .unwrap(),
+            TagStandard::Quote {
+                event_id: EventId::from_hex(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )
+                .unwrap(),
+                relay_url: None,
+                public_key: Some(
+                    PublicKey::from_str(
+                        "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                    )
+                    .unwrap()
+                ),
+            }
         );
 
         assert_eq!(

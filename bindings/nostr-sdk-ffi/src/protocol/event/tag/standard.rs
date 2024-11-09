@@ -40,6 +40,12 @@ pub enum TagStandard {
         /// Whether the e tag is an uppercase E or not
         uppercase: bool,
     },
+    Quote {
+        event_id: Arc<EventId>,
+        relay_url: Option<String>,
+        /// Should be the public key of the author of the referenced event
+        public_key: Option<Arc<PublicKey>>,
+    },
     /// Git clone (`clone` tag)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
@@ -293,6 +299,15 @@ impl From<tag::TagStandard> for TagStandard {
                 public_key: public_key.map(|p| Arc::new(p.into())),
                 uppercase,
             },
+            tag::TagStandard::Quote {
+                event_id,
+                relay_url,
+                public_key,
+            } => Self::Quote {
+                event_id: Arc::new(event_id.into()),
+                relay_url: relay_url.map(|u| u.to_string()),
+                public_key: public_key.map(|p| Arc::new(p.into())),
+            },
             tag::TagStandard::GitClone(urls) => Self::GitClone {
                 urls: urls.into_iter().map(|r| r.to_string()).collect(),
             },
@@ -495,6 +510,18 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 marker: marker.map(nip10::Marker::from),
                 public_key: public_key.map(|p| **p),
                 uppercase,
+            }),
+            TagStandard::Quote {
+                event_id,
+                relay_url,
+                public_key,
+            } => Ok(Self::Quote {
+                event_id: **event_id,
+                relay_url: match relay_url {
+                    Some(url) => Some(Url::parse(&url)?),
+                    None => None,
+                },
+                public_key: public_key.map(|p| **p),
             }),
             TagStandard::GitClone { urls } => {
                 let mut parsed_urls: Vec<Url> = Vec::with_capacity(urls.len());
