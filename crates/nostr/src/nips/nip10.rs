@@ -6,13 +6,31 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/10.md>
 
-use alloc::string::{String, ToString};
 use core::fmt;
+use core::str::FromStr;
+
+/// NIP10 error
+#[derive(Debug, PartialEq, Eq)]
+pub enum Error {
+    /// Invalid marker
+    InvalidMarker,
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidMarker => write!(f, "invalid marker"),
+        }
+    }
+}
 
 /// Marker
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/10.md>
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Marker {
     /// Root
     Root,
@@ -20,8 +38,6 @@ pub enum Marker {
     Reply,
     /// Mention
     Mention,
-    /// Custom
-    Custom(String),
 }
 
 impl fmt::Display for Marker {
@@ -30,21 +46,19 @@ impl fmt::Display for Marker {
             Self::Root => write!(f, "root"),
             Self::Reply => write!(f, "reply"),
             Self::Mention => write!(f, "mention"),
-            Self::Custom(m) => write!(f, "{m}"),
         }
     }
 }
 
-impl<S> From<S> for Marker
-where
-    S: AsRef<str>,
-{
-    fn from(s: S) -> Self {
-        match s.as_ref() {
-            "root" => Self::Root,
-            "reply" => Self::Reply,
-            "mention" => Self::Mention,
-            v => Self::Custom(v.to_string()),
+impl FromStr for Marker {
+    type Err = Error;
+
+    fn from_str(marker: &str) -> Result<Self, Self::Err> {
+        match marker {
+            "root" => Ok(Self::Root),
+            "reply" => Ok(Self::Reply),
+            "mention" => Ok(Self::Mention),
+            _ => Err(Error::InvalidMarker),
         }
     }
 }
