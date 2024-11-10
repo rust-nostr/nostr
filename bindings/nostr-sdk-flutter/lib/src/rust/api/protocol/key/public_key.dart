@@ -6,37 +6,25 @@
 import '../../../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-
-            // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`
 // These functions have error during generation (see debug logs or enable `stop_on_error: true` for more details): `to_bytes`
 
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<_PublicKey>>
+abstract class PublicKey implements RustOpaqueInterface {
+  static PublicKey fromHex({required String publicKey}) => RustLib.instance.api
+      .crateApiProtocolKeyPublicKeyPublicKeyFromHex(publicKey: publicKey);
 
-            
+  static PublicKey fromSlice({required List<int> publicKey}) =>
+      RustLib.instance.api
+          .crateApiProtocolKeyPublicKeyPublicKeyFromSlice(publicKey: publicKey);
 
-            
-                // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<_PublicKey>>
-                abstract class PublicKey implements RustOpaqueInterface {
-                    static PublicKey  fromHex({required String publicKey })=>RustLib.instance.api.crateApiProtocolKeyPublicKeyPublicKeyFromHex(publicKey: publicKey);
+  /// Parse from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) URI
+  static PublicKey parse({required String publicKey}) => RustLib.instance.api
+      .crateApiProtocolKeyPublicKeyPublicKeyParse(publicKey: publicKey);
 
+  Future<String> toBech32();
 
-static PublicKey  fromSlice({required List<int> publicKey })=>RustLib.instance.api.crateApiProtocolKeyPublicKeyPublicKeyFromSlice(publicKey: publicKey);
+  Future<String> toHex();
 
-
-/// Parse from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) URI
-static PublicKey  parse({required String publicKey })=>RustLib.instance.api.crateApiProtocolKeyPublicKeyPublicKeyParse(publicKey: publicKey);
-
-
- Future<String>  toBech32();
-
-
- Future<String>  toHex();
-
-
- Future<String>  toNostrUri();
-
-
-
-                    
-                }
-                
-            
+  Future<String> toNostrUri();
+}
