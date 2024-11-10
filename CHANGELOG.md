@@ -43,6 +43,7 @@
 * nostr: add uppercase field to `TagStandard::Coordinate` and `TagStandard::ExternalIdentity` variants ([reyamir])
 * nostr: add `TagStandard::Quote` ([reyamir])
 * nostr: add `Event::coordinate` ([Yuki Kishimoto])
+* nostr: add `A/a` tags in `EventBuilder::comment` (NIP22) events ([Yuki Kishimoto])
 
 ### Fixed
 

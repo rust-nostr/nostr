@@ -516,16 +516,30 @@ impl EventBuilder {
         // The added tags will be at least 4
         let mut tags: Vec<Tag> = Vec::with_capacity(4);
 
-        // Add `E` and `K` tag of **root** event
+        // Add `A`, `E` and `K` tag of **root** event
         if let Some(root) = root {
-            // ID and author
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
-                event_id: root.id,
-                relay_url: relay_url.clone(),
-                marker: None,
-                public_key: Some(root.pubkey),
-                uppercase: true,
-            }));
+            // If event has coordinate, add it to tags otherwise push the event ID
+            match root.coordinate() {
+                Some(coordinate) => {
+                    tags.push(Tag::from_standardized_without_cell(
+                        TagStandard::Coordinate {
+                            coordinate,
+                            relay_url: relay_url.clone(),
+                            uppercase: true,
+                        },
+                    ));
+                }
+                None => {
+                    // ID and author
+                    tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
+                        event_id: root.id,
+                        relay_url: relay_url.clone(),
+                        marker: None,
+                        public_key: Some(root.pubkey),
+                        uppercase: true,
+                    }));
+                }
+            }
 
             // Kind
             tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
@@ -547,20 +561,44 @@ impl EventBuilder {
                     .cloned(),
             );
         } else {
-            // ID and author
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
-                event_id: comment_to.id,
-                relay_url: relay_url.clone(),
-                marker: None,
-                public_key: Some(comment_to.pubkey),
-                uppercase: true,
-            }));
+            match comment_to.coordinate() {
+                Some(coordinate) => {
+                    tags.push(Tag::from_standardized_without_cell(
+                        TagStandard::Coordinate {
+                            coordinate,
+                            relay_url: relay_url.clone(),
+                            uppercase: true,
+                        },
+                    ));
+                }
+                None => {
+                    // ID and author
+                    tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
+                        event_id: comment_to.id,
+                        relay_url: relay_url.clone(),
+                        marker: None,
+                        public_key: Some(comment_to.pubkey),
+                        uppercase: true,
+                    }));
+                }
+            }
 
             // Kind
             tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
                 kind: comment_to.kind,
                 uppercase: true,
             }));
+        }
+
+        // Add `a` tag (if event has it)
+        if let Some(coordinate) = comment_to.coordinate() {
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::Coordinate {
+                    coordinate,
+                    relay_url: relay_url.clone(),
+                    uppercase: false, // <--- Same as root event but lowercase
+                },
+            ));
         }
 
         // Add `e` tag of event author
@@ -579,6 +617,7 @@ impl EventBuilder {
         }));
 
         // Add others `p` tags of comment_to event
+        // TODO: avoid `p` tag duplicates (are added also before from root event)
         tags.extend(
             comment_to
                 .tags
