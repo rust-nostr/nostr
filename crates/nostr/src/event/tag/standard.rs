@@ -591,18 +591,28 @@ impl From<TagStandard> for Vec<String> {
                 marker,
                 public_key,
             } => {
-                let mut tag = vec![tag_kind, event_id.to_hex()];
-                if let Some(relay_url) = relay_url {
-                    tag.push(relay_url.to_string());
+                // ["e", <event-id>, <relay-url>, <marker>, <pubkey>]
+                // <relay-url>, <marker> and <pubkey> are optional
+                // <relay-url>, if empty, may be set to "" (if there are additional fields later)
+                // <marker> is optional and if present is one of "reply", "root", or "mention" (so not an empty string)
+
+                let mut tag: Vec<String> = vec![tag_kind, event_id.to_hex()];
+
+                // Check if <relay-url> exists or if there are additional fields after
+                match (relay_url, marker.is_some() || public_key.is_some()) {
+                    (Some(relay_url), ..) => tag.push(relay_url.to_string()),
+                    (None, true) => tag.push(String::new()),
+                    (None, false) => {}
                 }
+
                 if let Some(marker) = marker {
-                    tag.resize_with(3, String::new);
                     tag.push(marker.to_string());
                 }
+
                 if let Some(public_key) = public_key {
-                    tag.resize_with(4, String::new);
                     tag.push(public_key.to_string());
                 }
+
                 tag
             }
             TagStandard::PublicKey {
@@ -861,33 +871,63 @@ fn parse_e_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
 where
     S: AsRef<str>,
 {
-    if tag.len() >= 2 {
-        let event_id: EventId = EventId::from_hex(tag[1].as_ref())?;
+    if tag.len() < 2 {
+        return Err(Error::UnknownStardardizedTag);
+    }
 
-        let tag_2: Option<&str> = tag.get(2).map(|r| r.as_ref());
-        let tag_3: Option<&str> = tag.get(3).map(|r| r.as_ref());
-        let tag_4: Option<&str> = tag.get(4).map(|r| r.as_ref());
+    let event_id: EventId = EventId::from_hex(tag[1].as_ref())?;
 
-        // Check if it's a report
-        if let Some(tag_2) = tag_2 {
-            return match Report::from_str(tag_2) {
-                Ok(report) => Ok(TagStandard::EventReport(event_id, report)),
-                Err(_) => Ok(TagStandard::Event {
+    let tag_2: Option<&str> = tag.get(2).map(|r| r.as_ref());
+    let tag_3: Option<&str> = tag.get(3).map(|r| r.as_ref());
+    let tag_4: Option<&str> = tag.get(4).map(|r| r.as_ref());
+
+    // Check if it's a report
+    if let Some(tag_2) = tag_2 {
+        return match Report::from_str(tag_2) {
+            Ok(report) => Ok(TagStandard::EventReport(event_id, report)),
+            Err(_) => {
+                // Check if 3rd arg is a marker or a public key
+                let (marker, public_key) = match (tag_3, tag_4) {
+                    (Some(marker), Some(public_key)) => {
+                        let marker = if marker.is_empty() {
+                            None
+                        } else {
+                            Some(Marker::from_str(marker)?)
+                        };
+                        let public_key = PublicKey::from_hex(public_key)?;
+                        (marker, Some(public_key))
+                    }
+                    (Some(marker), None) => {
+                        if marker.is_empty() {
+                            (None, None)
+                        } else {
+                            match Marker::from_str(marker) {
+                                Ok(marker) => (Some(marker), None),
+                                Err(..) => {
+                                    let public_key = PublicKey::from_hex(marker)?;
+                                    (None, Some(public_key))
+                                }
+                            }
+                        }
+                    }
+                    (None, Some(public_key)) => {
+                        let public_key = PublicKey::from_hex(public_key)?;
+                        (None, Some(public_key))
+                    }
+                    (None, None) => (None, None),
+                };
+
+                Ok(TagStandard::Event {
                     event_id,
                     relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
-                    marker: tag_3.and_then(|t| (!t.is_empty()).then_some(Marker::from(t))),
-                    public_key: match tag_4 {
-                        Some(public_key) => Some(PublicKey::from_hex(public_key)?),
-                        None => None,
-                    },
-                }),
-            };
-        }
-
-        Ok(TagStandard::event(event_id))
-    } else {
-        Err(Error::UnknownStardardizedTag)
+                    marker,
+                    public_key,
+                })
+            }
+        };
     }
+
+    Ok(TagStandard::event(event_id))
 }
 
 fn parse_p_tag<S>(tag: &[S], uppercase: bool) -> Result<TagStandard, Error>

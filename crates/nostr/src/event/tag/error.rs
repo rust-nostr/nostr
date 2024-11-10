@@ -7,7 +7,7 @@ use core::num::ParseIntError;
 
 use crate::event::id;
 use crate::hashes::hex::HexToArrayError;
-use crate::nips::{nip01, nip26, nip39, nip53, nip65, nip98};
+use crate::nips::{nip01, nip10, nip26, nip39, nip53, nip65, nip98};
 use crate::types::image;
 use crate::types::url::ParseError;
 use crate::{key, secp256k1};
@@ -17,8 +17,6 @@ use crate::{key, secp256k1};
 pub enum Error {
     /// Keys
     Keys(key::Error),
-    /// Impossible to parse marker
-    MarkerParseError,
     /// Impossible to find tag kind
     KindNotFound,
     /// Empty tag
@@ -37,6 +35,8 @@ pub enum Error {
     EventId(id::Error),
     /// NIP01 error
     NIP01(nip01::Error),
+    /// NIP10 error
+    NIP10(nip10::Error),
     /// NIP26 error
     NIP26(nip26::Error),
     /// NIP39 error
@@ -61,25 +61,25 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Keys(e) => write!(f, "Keys: {e}"),
-            Self::MarkerParseError => write!(f, "Impossible to parse marker"),
+            Self::Keys(e) => write!(f, "{e}"),
+            Self::ParseIntError(e) => write!(f, "{e}"),
+            Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::Hex(e) => write!(f, "{e}"),
+            Self::Url(e) => write!(f, "{e}"),
+            Self::EventId(e) => write!(f, "{e}"),
+            Self::NIP01(e) => write!(f, "{e}"),
+            Self::NIP10(e) => write!(f, "{e}"),
+            Self::NIP26(e) => write!(f, "{e}"),
+            Self::NIP39(e) => write!(f, "{e}"),
+            Self::NIP53(e) => write!(f, "{e}"),
+            Self::NIP65(e) => write!(f, "{e}"),
+            Self::NIP98(e) => write!(f, "{e}"),
+            Self::Event(e) => write!(f, "{e}"),
+            Self::Image(e) => write!(f, "{e}"),
+            Self::UnknownStardardizedTag => write!(f, "Unknown standardized tag"),
             Self::KindNotFound => write!(f, "Impossible to find tag kind"),
             Self::EmptyTag => write!(f, "Empty tag"),
             Self::InvalidZapRequest => write!(f, "Invalid Zap request"),
-            Self::ParseIntError(e) => write!(f, "Parse integer: {e}"),
-            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
-            Self::Hex(e) => write!(f, "Hex: {e}"),
-            Self::Url(e) => write!(f, "Url: {e}"),
-            Self::EventId(e) => write!(f, "Event ID: {e}"),
-            Self::NIP01(e) => write!(f, "NIP01: {e}"),
-            Self::NIP26(e) => write!(f, "NIP26: {e}"),
-            Self::NIP39(e) => write!(f, "NIP39: {e}"),
-            Self::NIP53(e) => write!(f, "NIP53: {e}"),
-            Self::NIP65(e) => write!(f, "NIP65: {e}"),
-            Self::NIP98(e) => write!(f, "NIP98: {e}"),
-            Self::Event(e) => write!(f, "Event: {e}"),
-            Self::Image(e) => write!(f, "Image: {e}"),
-            Self::UnknownStardardizedTag => write!(f, "Unknown standardized tag"),
         }
     }
 }
@@ -123,6 +123,12 @@ impl From<id::Error> for Error {
 impl From<nip01::Error> for Error {
     fn from(e: nip01::Error) -> Self {
         Self::NIP01(e)
+    }
+}
+
+impl From<nip10::Error> for Error {
+    fn from(e: nip10::Error) -> Self {
+        Self::NIP10(e)
     }
 }
 

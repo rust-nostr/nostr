@@ -803,6 +803,30 @@ mod tests {
                 "e",
                 "0000000000000000000000000000000000000000000000000000000000000001",
                 "",
+                "root",
+                "0000000000000000000000000000000000000000000000000000000000000001",
+            ],
+            TagStandard::Event {
+                event_id: EventId::from_hex(
+                    "0000000000000000000000000000000000000000000000000000000000000001"
+                )
+                .unwrap(),
+                relay_url: None,
+                marker: Some(Marker::Root),
+                public_key: Some(
+                    PublicKey::parse(
+                        "0000000000000000000000000000000000000000000000000000000000000001"
+                    )
+                    .unwrap()
+                ),
+            }
+            .to_vec()
+        );
+
+        assert_eq!(
+            vec![
+                "e",
+                "0000000000000000000000000000000000000000000000000000000000000001",
                 "",
                 "0000000000000000000000000000000000000000000000000000000000000001",
             ],
@@ -1322,6 +1346,30 @@ mod tests {
                     .unwrap()
                 ),
             })
+        );
+
+        assert_eq!(
+            TagStandard::parse(&[
+                "e",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
+                "",
+                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+            ])
+            .unwrap(),
+            TagStandard::Event {
+                event_id: EventId::from_hex(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )
+                .unwrap(),
+                relay_url: None,
+                marker: None,
+                public_key: Some(
+                    PublicKey::from_hex(
+                        "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
+                    )
+                    .unwrap()
+                ),
+            }
         );
 
         assert_eq!(
