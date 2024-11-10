@@ -232,6 +232,13 @@ impl TagStandard {
                 } => {
                     return parse_e_tag(tag);
                 }
+                // Parse `i` tag
+                SingleLetterTag {
+                    character: Alphabet::I,
+                    uppercase: false,
+                } => {
+                    return parse_i_tag(tag);
+                }
                 // Parse `l` tag
                 SingleLetterTag {
                     character: Alphabet::L,
@@ -376,10 +383,6 @@ impl TagStandard {
             let tag_2: &str = tag[2].as_ref();
 
             return match tag_kind {
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::I,
-                    uppercase: false,
-                }) => Ok(Self::ExternalIdentity(Identity::new(tag_1, tag_2)?)),
                 TagKind::Nonce => Ok(Self::POW {
                     nonce: tag_1.parse()?,
                     difficulty: tag_2.parse()?,
@@ -930,6 +933,21 @@ where
     }
 
     Ok(TagStandard::event(event_id))
+}
+
+fn parse_i_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
+where
+    S: AsRef<str>,
+{
+    // External Identity tag (NIP39) have at max 3 values at the moment
+    if tag.len() < 3 {
+        return Err(Error::UnknownStardardizedTag);
+    }
+
+    let tag_1: &str = tag[1].as_ref();
+    let tag_2: &str = tag[2].as_ref();
+
+    Ok(TagStandard::ExternalIdentity(Identity::new(tag_1, tag_2)?))
 }
 
 fn parse_p_tag<S>(tag: &[S], uppercase: bool) -> Result<TagStandard, Error>
