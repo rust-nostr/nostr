@@ -315,6 +315,23 @@ impl Event {
         false
     }
 
+    /// Get the coordinate of this event
+    ///
+    /// Return a coordinate only if the event kind is [`Kind::Replaceable`] or [`Kind::ParameterizedReplaceable`]
+    pub fn coordinate(&self) -> Option<Coordinate> {
+        if self.kind.is_replaceable() || self.kind.is_parameterized_replaceable() {
+            let mut coordinate: Coordinate = Coordinate::new(self.kind, self.pubkey);
+
+            if let Some(identifier) = self.tags.identifier() {
+                coordinate = coordinate.identifier(identifier);
+            }
+
+            return Some(coordinate);
+        }
+
+        None
+    }
+
     /// Extract identifier (`d` tag), if exists.
     #[deprecated(since = "0.36.0", note = "Use `Tags::identifier` method instead.")]
     pub fn identifier(&self) -> Option<&str> {
@@ -679,6 +696,28 @@ mod tests {
 
         let expected_json: &str = r##"{"content":"#JoininBox is a minimalistic, security focused Linux environment for #JoinMarket with a terminal based graphical menu.\n\nnostr:npub14tq8m9ggnnn2muytj9tdg0q6f26ef3snpd7ukyhvrxgq33vpnghs8shy62 👍🧡\n\nhttps://www.nobsbitcoin.com/joininbox-v0-8-0/","created_at":1687070234,"id":"c8acc12a232ea6caedfaaf0c52148635de6ffd312c3f432c6eca11720c102e54","kind":1,"pubkey":"27154fb873badf69c3ea83a0da6e65d6a150d2bf8f7320fc3314248d74645c64","sig":"e27062b1b7187ffa0b521dab23fff6c6b62c00fd1b029e28368d7d070dfb225f7e598e3b1c6b1e2335b286ec3702492bce152035105b934f594cd7323d84f0ee","tags":[["t","joininbox"],["t","joinmarket"],["p","aac07d95089ce6adf08b9156d43c1a4ab594c6130b7dcb12ec199008c5819a2f"]]}"##;
         assert_eq!(re_serialized_json, expected_json.trim());
+    }
+
+    #[test]
+    fn test_get_event_coordinate() {
+        // Text note
+        let json: &str = r#"{"id":"cb8feca582979d91fe90455867b34dbf4d65e4b86e86b3c68c368ca9f9eef6f2","pubkey":"79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798","created_at":1707409439,"kind":1,"tags":[["-"]],"content":"hello members of the secret group","sig":"fa163f5cfb75d77d9b6269011872ee22b34fb48d23251e9879bb1e4ccbdd8aaaf4b6dc5f5084a65ef42c52fbcde8f3178bac3ba207de827ec513a6aa39fa684c"}"#;
+        let event = Event::from_json(json).unwrap();
+        assert!(event.coordinate().is_none());
+
+        // Replaceable
+        let json: &str = r#"{"id":"8b19ce08cc0b20fd6c30e73b102fd3092c4f95f1c2a23d44064f9634b4593da5","pubkey":"2f35aaff0c870f0510a8bed198e1f8c35e95c996148f2d0c0fb1825b05b8dd35","created_at":1731251995,"kind":0,"tags":[],"content":"{\"name\":\"username\",\"display_name\":\"My Username\",\"about\":\"Description\",\"picture\":\"https://example.com/avatar.png\",\"banner\":\"https://example.com/banner.png\",\"nip05\":\"username@example.com\",\"lud16\":\"yuki@getalby.com\"}","sig":"b26e4dfea18d4ecb072c665f9ed34b66d8dd9a45093790ea17cb618d85319587aa094f5c091efa3e237cd50976884e02c64c2f2b187c3ebdc4f773b2d74a61a4"}"#;
+        let event = Event::from_json(json).unwrap();
+        assert_eq!(
+            event.coordinate(),
+            Some(Coordinate::new(
+                Kind::Metadata,
+                PublicKey::from_hex(
+                    "2f35aaff0c870f0510a8bed198e1f8c35e95c996148f2d0c0fb1825b05b8dd35"
+                )
+                .unwrap()
+            ))
+        );
     }
 
     #[test]
