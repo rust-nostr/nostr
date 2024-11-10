@@ -41,6 +41,8 @@
 
 ### Fixed
 
+* nostr: fix `TagStandard` de/serialization unit tests ([Yuki Kishimoto])
+
 ### Removed
 
 * nostr: remove `Marker::Custom` variant ([Yuki Kishimoto])
