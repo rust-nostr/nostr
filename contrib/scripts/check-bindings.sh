@@ -12,7 +12,7 @@ buildargs=(
 for arg in "${buildargs[@]}"; do
     echo  "Checking '$arg'"
 
-    cargo build $arg
+    cargo check $arg
 
     if [[ $arg != *"--target wasm32-unknown-unknown"* ]];
     then
