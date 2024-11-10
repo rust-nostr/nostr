@@ -696,7 +696,9 @@ impl From<TagStandard> for Vec<String> {
                 }
                 vec
             }
-            TagStandard::ExternalIdentity(identity) => identity.into(),
+            TagStandard::ExternalIdentity(identity) => {
+                vec![tag_kind, identity.tag_platform_identity(), identity.proof]
+            }
             TagStandard::Kind(kind) => vec![tag_kind, kind.to_string()],
             TagStandard::Relay(url) => vec![tag_kind, url.to_string()],
             TagStandard::POW { nonce, difficulty } => {

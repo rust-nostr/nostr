@@ -7,11 +7,8 @@
 //! <https://github.com/nostr-protocol/nips/blob/master/39.md>
 
 use alloc::string::{String, ToString};
-use alloc::vec;
-use alloc::vec::Vec;
 use core::fmt;
-
-use crate::{Alphabet, SingleLetterTag, TagKind, TagStandard};
+use core::str::FromStr;
 
 /// NIP56 error
 #[derive(Debug, PartialEq, Eq)]
@@ -57,11 +54,11 @@ impl fmt::Display for ExternalIdentity {
     }
 }
 
-impl TryFrom<String> for ExternalIdentity {
-    type Error = Error;
+impl FromStr for ExternalIdentity {
+    type Err = Error;
 
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        match value.as_str() {
+    fn from_str(identity: &str) -> Result<Self, Self::Err> {
+        match identity {
             "github" => Ok(Self::GitHub),
             "twitter" => Ok(Self::Twitter),
             "mastodon" => Ok(Self::Mastodon),
@@ -86,49 +83,23 @@ pub struct Identity {
 
 impl Identity {
     /// Construct new identity
-    pub fn new<S>(platform_iden: S, proof: S) -> Result<Self, Error>
+    pub fn new<S1, S2>(platform_iden: S1, proof: S2) -> Result<Self, Error>
     where
-        S: Into<String>,
+        S1: AsRef<str>,
+        S2: Into<String>,
     {
-        let i: String = platform_iden.into();
+        let i: &str = platform_iden.as_ref();
         let (platform, ident) = i.rsplit_once(':').ok_or(Error::InvalidIdentity)?;
-        let platform: ExternalIdentity = platform.to_string().try_into()?;
 
         Ok(Self {
-            platform,
+            platform: ExternalIdentity::from_str(platform)?,
             ident: ident.to_string(),
             proof: proof.into(),
         })
     }
-}
 
-impl TryFrom<TagStandard> for Identity {
-    type Error = Error;
-
-    fn try_from(value: TagStandard) -> Result<Self, Self::Error> {
-        match value {
-            TagStandard::ExternalIdentity(iden) => Ok(iden),
-            _ => Err(Error::InvalidIdentity),
-        }
-    }
-}
-
-impl From<Identity> for TagStandard {
-    fn from(value: Identity) -> Self {
-        Self::ExternalIdentity(value)
-    }
-}
-
-impl From<Identity> for Vec<String> {
-    fn from(value: Identity) -> Self {
-        vec![
-            TagKind::SingleLetter(SingleLetterTag {
-                character: Alphabet::I,
-                uppercase: false,
-            })
-            .to_string(),
-            format!("{}:{}", value.platform, value.ident),
-            value.proof,
-        ]
+    #[inline]
+    pub(crate) fn tag_platform_identity(&self) -> String {
+        format!("{}:{}", self.platform, self.ident)
     }
 }
