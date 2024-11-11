@@ -1503,6 +1503,69 @@ impl EventBuilder {
         Self::gift_wrap_from_seal(receiver, &seal, expiration)
     }
 
+    /// Gift Wrap from seal with tags
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[cfg(all(feature = "std", feature = "nip59"))]
+    pub fn gift_wrap_from_seal_with_tags(
+        receiver: &PublicKey,
+        seal: &Event,
+        expiration: Option<Timestamp>,
+        extra_tags: Vec<Tag>,
+    ) -> Result<Event, Error> {
+        if seal.kind != Kind::Seal {
+            return Err(Error::WrongKind {
+                received: seal.kind,
+                expected: WrongKindError::Single(Kind::Seal),
+            });
+        }
+
+        let keys: Keys = Keys::generate();
+        let content: String = nip44::encrypt(
+            keys.secret_key(),
+            receiver,
+            seal.as_json(),
+            nip44::Version::default(),
+        )?;
+
+        let mut tags: Vec<Tag> =
+            Vec::with_capacity(1 + usize::from(expiration.is_some()) + extra_tags.len());
+
+        tags.push(Tag::public_key(*receiver));
+
+        if let Some(timestamp) = expiration {
+            tags.push(Tag::expiration(timestamp));
+        }
+
+        tags.extend(extra_tags);
+
+        Self::new(Kind::GiftWrap, content, tags)
+            .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK))
+            .sign_with_keys(&keys)
+    }
+
+    /// Gift Wrap with Tags
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[inline]
+    #[cfg(all(feature = "std", feature = "nip59"))]
+    pub async fn gift_wrap_with_tags<T>(
+        signer: &T,
+        receiver: &PublicKey,
+        rumor: UnsignedEvent,
+        tags: Vec<Tag>,
+        expiration: Option<Timestamp>,
+    ) -> Result<Event, Error>
+    where
+        T: NostrSigner,
+    {
+        let seal: Event = Self::seal(signer, receiver, rumor)
+            .await?
+            .sign(signer)
+            .await?;
+        Self::gift_wrap_from_seal_with_tags(receiver, &seal, expiration, tags)
+    }
+
     /// Private Direct message rumor
     ///
     /// <div class="warning">

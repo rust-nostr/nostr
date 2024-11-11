@@ -301,6 +301,16 @@ pub enum KindEnum {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     PrivateDirectMessage,
+    /// Inbox Relays (NIP17)
+    InboxRelays,
+    /// MLS Key Package Relays (NIP104)
+    MlsKeyPackageRelays,
+    /// MLS Key Package (NIP104)
+    MlsKeyPackage,
+    /// MLS Welcome (NIP104)
+    MlsWelcome,
+    /// MLS Group Message (NIP104)
+    MlsGroupMessage,
     /// Long-form Text Note (NIP23)
     LongFormTextNote,
     /// Git Repository Announcement
@@ -420,6 +430,11 @@ impl From<nostr::Kind> for KindEnum {
             nostr::Kind::JobFeedback => Self::JobFeedback,
             nostr::Kind::JobRequest(kind) => Self::JobRequest { kind },
             nostr::Kind::JobResult(kind) => Self::JobResult { kind },
+            nostr::Kind::InboxRelays => Self::InboxRelays,
+            nostr::Kind::MlsKeyPackageRelays => Self::MlsKeyPackageRelays,
+            nostr::Kind::MlsKeyPackage => Self::MlsKeyPackage,
+            nostr::Kind::MlsWelcome => Self::MlsWelcome,
+            nostr::Kind::MlsGroupMessage => Self::MlsGroupMessage,
             nostr::Kind::Regular(u) => Self::Regular { kind: u },
             nostr::Kind::Replaceable(u) => Self::Replaceable { kind: u },
             nostr::Kind::Ephemeral(u) => Self::Ephemeral { kind: u },
@@ -507,6 +522,11 @@ impl From<KindEnum> for nostr::Kind {
             KindEnum::JobFeedback => Self::JobFeedback,
             KindEnum::JobRequest { kind } => Self::JobRequest(kind),
             KindEnum::JobResult { kind } => Self::JobResult(kind),
+            KindEnum::InboxRelays => Self::InboxRelays,
+            KindEnum::MlsKeyPackageRelays => Self::MlsKeyPackageRelays,
+            KindEnum::MlsKeyPackage => Self::MlsKeyPackage,
+            KindEnum::MlsWelcome => Self::MlsWelcome,
+            KindEnum::MlsGroupMessage => Self::MlsGroupMessage,
             KindEnum::Regular { kind } => Self::Regular(kind),
             KindEnum::Replaceable { kind } => Self::Replaceable(kind),
             KindEnum::Ephemeral { kind } => Self::Ephemeral(kind),
