@@ -37,6 +37,8 @@
 
 ### Added
 
+* nostr: add MLS tags and event kinds ([erskingardner])
+* nostr: add gift wrap with tags methods ([erskingardner])
 * nostr: add `SingleLetterTag::as_str` and `TagKind::as_str` ([Yuki Kishimoto])
 * nostr: add `Kind::Comment` ([reyamir])
 * nostr: add `EventBuilder::comment` ([reyamir])
