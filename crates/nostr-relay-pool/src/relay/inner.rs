@@ -492,7 +492,7 @@ impl InnerRelay {
                 if relay.opts.reconnect {
                     // Sleep before retry to connect
                     let interval: Duration = relay.calculate_retry_interval();
-                    tracing::info!(
+                    tracing::debug!(
                         "Reconnecting to '{}' relay in {} secs",
                         relay.url,
                         interval.as_secs()
@@ -500,7 +500,7 @@ impl InnerRelay {
                     thread::sleep(interval).await;
                 } else {
                     // Break loop and exit
-                    tracing::info!("Reconnection disabled for '{}', breaking loop.", relay.url);
+                    tracing::debug!("Reconnection disabled for '{}', breaking loop.", relay.url);
                     break;
                 }
             }
