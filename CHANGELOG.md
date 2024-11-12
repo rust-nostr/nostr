@@ -37,7 +37,8 @@
 
 * nostr: rewrite `e` tag de/serialization ([Yuki Kishimoto])
 * pool: rework latency tracking ([Yuki Kishimoto])
-* pool: increase negentropy batch size down to 100 ([Yuki Kishimoto]) 
+* pool: increase negentropy batch size down to 100 ([Yuki Kishimoto])
+* pool: increase ping interval to 55 secs ([Yuki Kishimoto])
 * sdk: deprecate `Client::with_opts` ([Yuki Kishimoto])
 * sdk: deprecate `Options::connection_timeout` ([Yuki Kishimoto])
 
