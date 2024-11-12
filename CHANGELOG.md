@@ -25,15 +25,18 @@
 
 ### Summary
 
-### Changed
+### Breaking changes
 
-* nostr: changed args for Gift Wrapping using `EventBuilder::gift_wrap` and `EventBuilder::gift_wrap_from_seal`: removed `expiration` in favor of `extra_tags` ([erskinagrdner])
+* nostr: change `EventBuilder::gift_wrap` (and linked methods) args to take `extra_tags` instead of `expiration` ([erskingardner])
 * nostr: disable all default features except `std` ([Yuki Kishimoto])
-* nostr: rewrite `e` tag de/serialization ([Yuki Kishimoto])
-* pool: rework latency tracking ([Yuki Kishimoto])
 * pool: switch from async to sync message sending for `Relay` ([Yuki Kishimoto])
 * sdk: disable all default features ([Yuki Kishimoto])
 * sdk: set `Client::from_builder` as private ([Yuki Kishimoto])
+
+### Changed
+
+* nostr: rewrite `e` tag de/serialization ([Yuki Kishimoto])
+* pool: rework latency tracking ([Yuki Kishimoto])
 * sdk: deprecate `Client::with_opts` ([Yuki Kishimoto])
 
 ### Added
