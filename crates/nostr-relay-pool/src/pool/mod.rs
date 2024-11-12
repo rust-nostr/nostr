@@ -607,3 +607,37 @@ impl RelayPool {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use nostr_relay_builder::MockRelay;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_shutdown() {
+        let mock = MockRelay::run().await.unwrap();
+        let url = mock.url();
+
+        let pool = RelayPool::default();
+
+        pool.add_relay(&url, RelayOptions::default()).await.unwrap();
+
+        pool.connect(None).await;
+
+        assert!(!pool.inner.is_shutdown());
+
+        tokio::time::sleep(Duration::from_secs(1)).await;
+
+        pool.shutdown().await.unwrap();
+
+        assert!(pool.inner.is_shutdown());
+
+        assert!(matches!(
+            pool.add_relay(&url, RelayOptions::default())
+                .await
+                .unwrap_err(),
+            Error::Shutdown
+        ));
+    }
+}

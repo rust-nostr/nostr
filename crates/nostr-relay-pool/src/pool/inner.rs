@@ -6,6 +6,7 @@
 
 use std::cmp;
 use std::collections::{HashMap, HashSet};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -34,6 +35,7 @@ pub struct InnerRelayPool {
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,
     pub(super) filtering: RelayFiltering,
     opts: RelayPoolOptions,
+    shutdown: Arc<AtomicBool>,
 }
 
 impl AtomicDestroyer for InnerRelayPool {
@@ -65,6 +67,7 @@ impl InnerRelayPool {
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
             filtering: RelayFiltering::new(opts.filtering_mode),
             opts,
+            shutdown: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -77,9 +80,17 @@ impl InnerRelayPool {
             .notification_sender
             .send(RelayPoolNotification::Shutdown);
 
+        // Mark as shutdown
+        self.shutdown.store(true, Ordering::SeqCst);
+
         tracing::info!("Relay pool shutdown");
 
         Ok(())
+    }
+
+    #[inline]
+    pub(super) fn is_shutdown(&self) -> bool {
+        self.shutdown.load(Ordering::SeqCst)
     }
 
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
@@ -211,6 +222,11 @@ impl InnerRelayPool {
     {
         // Convert into url
         let url: Url = url.try_into_url()?;
+
+        // Check if the pool has been shutdown
+        if self.is_shutdown() {
+            return Err(Error::Shutdown);
+        }
 
         // Get relays
         let mut relays = self.relays.write().await;
