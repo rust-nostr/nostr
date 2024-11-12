@@ -725,6 +725,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [Daniel Cadenas]: https://github.com/dcadenas
 [rustedmoon]: https://github.com/rustedmoon
 [benthecarman]: https://github.com/benthecarman
+[Janek]: https://github.com/Janek
 [Xiao Yu]: https://github.com/kasugamirai
 [RydalWater]: https://github.com/RydalWater
 [lnbc1QWFyb24]: https://github.com/lnbc1QWFyb24
