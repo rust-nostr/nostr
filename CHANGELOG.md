@@ -41,6 +41,7 @@
 * pool: increase ping interval to 55 secs ([Yuki Kishimoto])
 * pool: increase max retry interval to 10 min ([Yuki Kishimoto])
 * pool: update retry interval calculation ([Yuki Kishimoto])
+* pool: try fetch relay information document only once every hour ([Yuki Kishimoto])
 * pool: rename `RelayOptions::retry_sec` to `RelayOptions::retry_interval` ([Yuki Kishimoto]) 
 * pool: rename `RelayOptions::adjust_retry_sec` to `RelayOptions::adjust_retry_interval` ([Yuki Kishimoto])
 * sdk: deprecate `Client::with_opts` ([Yuki Kishimoto])

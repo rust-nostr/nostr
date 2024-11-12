@@ -4,6 +4,8 @@
 
 use std::cmp;
 use std::collections::{HashMap, HashSet};
+#[cfg(feature = "nip11")]
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -145,6 +147,8 @@ pub(crate) struct InnerRelay {
     status: Arc<AtomicRelayStatus>,
     #[cfg(feature = "nip11")]
     document: Arc<RwLock<RelayInformationDocument>>,
+    #[cfg(feature = "nip11")]
+    last_document_fetch: Arc<AtomicU64>,
     pub(super) opts: RelayOptions,
     pub(super) flags: AtomicRelayServiceFlags,
     pub(super) stats: RelayConnectionStats,
@@ -182,6 +186,8 @@ impl InnerRelay {
             status: Arc::new(AtomicRelayStatus::default()),
             #[cfg(feature = "nip11")]
             document: Arc::new(RwLock::new(RelayInformationDocument::new())),
+            #[cfg(feature = "nip11")]
+            last_document_fetch: Arc::new(AtomicU64::new(0)),
             flags: AtomicRelayServiceFlags::new(opts.flags),
             opts,
             stats: RelayConnectionStats::default(),
@@ -282,19 +288,28 @@ impl InnerRelay {
         };
 
         if allowed {
-            let url = self.url.clone();
-            let d = self.document.clone();
-            let _ = thread::spawn(async move {
-                match RelayInformationDocument::get(url.clone(), proxy).await {
-                    Ok(document) => {
-                        let mut d = d.write().await;
-                        *d = document
-                    }
-                    Err(e) => {
-                        tracing::warn!("Can't get information document from '{url}': {e}")
-                    }
-                };
-            });
+            let now: u64 = Timestamp::now().as_u64();
+
+            // Check last fetch
+            if self.last_document_fetch.load(Ordering::SeqCst) + 3600 < now {
+                // Update last fetch
+                self.last_document_fetch.store(now, Ordering::SeqCst);
+
+                // Fetch
+                let url = self.url.clone();
+                let d = self.document.clone();
+                let _ = thread::spawn(async move {
+                    match RelayInformationDocument::get(url.clone(), proxy).await {
+                        Ok(document) => {
+                            let mut d = d.write().await;
+                            *d = document
+                        }
+                        Err(e) => {
+                            tracing::warn!("Can't get information document from '{url}': {e}")
+                        }
+                    };
+                });
+            }
         }
     }
 
@@ -526,7 +541,6 @@ impl InnerRelay {
         self.stats.new_attempt();
 
         // Request information document
-        // TODO: not request NIP11 here, instead request it on `document` method call and store it in `OnceCell`?
         #[cfg(feature = "nip11")]
         self.request_nip11_document();
 
