@@ -26,7 +26,7 @@ use crate::protocol::event::{JsEvent, JsEventBuilder, JsEventId, JsTag};
 use crate::protocol::key::JsPublicKey;
 use crate::protocol::message::{JsClientMessage, JsRelayMessage};
 use crate::protocol::nips::nip59::JsUnwrappedGift;
-use crate::protocol::types::{JsContact, JsFilter, JsMetadata, JsTimestamp};
+use crate::protocol::types::{JsContact, JsFilter, JsMetadata};
 use crate::relay::filtering::JsRelayFiltering;
 use crate::relay::options::{JsSubscribeAutoCloseOptions, JsSyncOptions};
 use crate::relay::{JsRelay, JsRelayArray};
