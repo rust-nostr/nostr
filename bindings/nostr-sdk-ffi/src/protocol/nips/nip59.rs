@@ -10,24 +10,24 @@ use uniffi::Object;
 
 use crate::error::Result;
 use crate::protocol::signer::{NostrSigner, NostrSignerFFI2Rust};
-use crate::protocol::{Event, PublicKey, Timestamp, UnsignedEvent};
+use crate::protocol::{Event, PublicKey, Tag, UnsignedEvent};
 
 /// Build Gift Wrap
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-#[uniffi::export(async_runtime = "tokio", default(expiration = None))]
+#[uniffi::export(async_runtime = "tokio", default(extra_tags = []))]
 pub async fn gift_wrap(
     signer: Arc<dyn NostrSigner>,
     receiver_pubkey: &PublicKey,
     rumor: &UnsignedEvent,
-    expiration: Option<Arc<Timestamp>>,
+    extra_tags: Vec<Arc<Tag>>,
 ) -> Result<Event> {
     let signer = NostrSignerFFI2Rust::new(signer);
     Ok(EventBuilder::gift_wrap(
         &signer,
         receiver_pubkey.deref(),
         rumor.deref().clone(),
-        expiration.map(|t| **t),
+        extra_tags.into_iter().map(|t| t.as_ref().deref().clone()),
     )
     .await?
     .into())
@@ -36,16 +36,18 @@ pub async fn gift_wrap(
 /// Build Gift Wrap from Seal
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-#[uniffi::export(default(expiration = None))]
+#[uniffi::export(default(extra_tags = []))]
 pub fn gift_wrap_from_seal(
     receiver: &PublicKey,
     seal: &Event,
-    expiration: Option<Arc<Timestamp>>,
+    extra_tags: Vec<Arc<Tag>>,
 ) -> Result<Event> {
-    Ok(
-        EventBuilder::gift_wrap_from_seal(receiver.deref(), seal.deref(), expiration.map(|t| **t))?
-            .into(),
-    )
+    Ok(EventBuilder::gift_wrap_from_seal(
+        receiver.deref(),
+        seal.deref(),
+        extra_tags.into_iter().map(|t| t.as_ref().deref().clone()),
+    )?
+    .into())
 }
 
 /// Unwrapped Gift Wrap

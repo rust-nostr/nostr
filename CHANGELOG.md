@@ -27,6 +27,7 @@
 
 ### Changed
 
+* nostr: changed args for Gift Wrapping using `EventBuilder::gift_wrap` and `EventBuilder::gift_wrap_from_seal`: removed `expiration` in favor of `extra_tags` ([erskinagrdner])
 * nostr: disable all default features except `std` ([Yuki Kishimoto])
 * nostr: rewrite `e` tag de/serialization ([Yuki Kishimoto])
 * pool: rework latency tracking ([Yuki Kishimoto])

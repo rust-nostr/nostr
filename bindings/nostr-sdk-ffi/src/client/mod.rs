@@ -26,8 +26,7 @@ use crate::pool::RelayPool;
 use crate::protocol::nips::nip59::UnwrappedGift;
 use crate::protocol::signer::{NostrSigner, NostrSignerFFI2Rust, NostrSignerRust2FFI};
 use crate::protocol::{
-    ClientMessage, Event, EventBuilder, EventId, FileMetadata, Filter, Metadata, PublicKey,
-    Timestamp,
+    ClientMessage, Event, EventBuilder, EventId, FileMetadata, Filter, Metadata, PublicKey, Tag,
 };
 use crate::relay::options::{SubscribeAutoCloseOptions, SyncOptions};
 use crate::relay::RelayFiltering;
@@ -616,14 +615,14 @@ impl Client {
         &self,
         receiver: &PublicKey,
         rumor: Arc<EventBuilder>,
-        expiration: Option<Arc<Timestamp>>,
+        extra_tags: Vec<Arc<Tag>>,
     ) -> Result<SendEventOutput> {
         Ok(self
             .inner
             .gift_wrap(
                 receiver.deref(),
                 rumor.as_ref().deref().clone(),
-                expiration.map(|t| **t),
+                extra_tags.into_iter().map(|t| t.as_ref().deref().clone()),
             )
             .await?
             .into())
@@ -637,7 +636,7 @@ impl Client {
         urls: Vec<String>,
         receiver: &PublicKey,
         rumor: Arc<EventBuilder>,
-        expiration: Option<Arc<Timestamp>>,
+        extra_tags: Vec<Arc<Tag>>,
     ) -> Result<SendEventOutput> {
         Ok(self
             .inner
@@ -645,7 +644,7 @@ impl Client {
                 urls,
                 receiver.deref(),
                 rumor.as_ref().deref().clone(),
-                expiration.map(|t| **t),
+                extra_tags.into_iter().map(|t| t.as_ref().deref().clone()),
             )
             .await?
             .into())

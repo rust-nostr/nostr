@@ -758,13 +758,13 @@ impl JsClient {
         &self,
         receiver: &JsPublicKey,
         rumor: &JsEventBuilder,
-        expiration: Option<JsTimestamp>,
+        extra_tags: Option<Vec<JsTag>>,
     ) -> Result<JsSendEventOutput> {
         self.inner
             .gift_wrap(
                 receiver.deref(),
                 rumor.deref().clone(),
-                expiration.map(|t| *t),
+                extra_tags.unwrap_or_default().into_iter().map(|t| t.inner),
             )
             .await
             .map_err(into_err)
@@ -780,14 +780,14 @@ impl JsClient {
         urls: Vec<String>,
         receiver: &JsPublicKey,
         rumor: &JsEventBuilder,
-        expiration: Option<JsTimestamp>,
+        extra_tags: Option<Vec<JsTag>>,
     ) -> Result<JsSendEventOutput> {
         self.inner
             .gift_wrap_to(
                 urls,
                 receiver.deref(),
                 rumor.deref().clone(),
-                expiration.map(|t| *t),
+                extra_tags.unwrap_or_default().into_iter().map(|t| t.inner),
             )
             .await
             .map_err(into_err)

@@ -173,14 +173,10 @@ mod tests {
         // Compose Gift Wrap event
         let rumor: UnsignedEvent =
             EventBuilder::text_note("Test", []).build(sender_keys.public_key());
-        let event: Event = EventBuilder::gift_wrap(
-            &sender_keys,
-            &receiver_keys.public_key(),
-            rumor.clone(),
-            None,
-        )
-        .await
-        .unwrap();
+        let event: Event =
+            EventBuilder::gift_wrap(&sender_keys, &receiver_keys.public_key(), rumor.clone(), [])
+                .await
+                .unwrap();
         assert_eq!(
             extract_rumor(&receiver_keys, &event).await.unwrap(),
             UnwrappedGift {

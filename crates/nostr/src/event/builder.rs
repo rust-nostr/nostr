@@ -1445,16 +1445,18 @@ impl EventBuilder {
         Ok(nip59::make_seal(signer, receiver_pubkey, rumor).await?)
     }
 
-    // TODO: remove expiration arg and return event builder (this will allow to build POW events and add custom tags)
     /// Gift Wrap from seal
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[cfg(all(feature = "std", feature = "nip59"))]
-    pub fn gift_wrap_from_seal(
+    pub fn gift_wrap_from_seal<I>(
         receiver: &PublicKey,
         seal: &Event,
-        expiration: Option<Timestamp>,
-    ) -> Result<Event, Error> {
+        extra_tags: I,
+    ) -> Result<Event, Error>
+    where
+        I: IntoIterator<Item = Tag>,
+    {
         if seal.kind != Kind::Seal {
             return Err(Error::WrongKind {
                 received: seal.kind,
@@ -1470,12 +1472,11 @@ impl EventBuilder {
             nip44::Version::default(),
         )?;
 
-        let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(expiration.is_some()));
-        tags.push(Tag::public_key(*receiver));
+        // Collect extra tags
+        let mut tags: Vec<Tag> = extra_tags.into_iter().collect();
 
-        if let Some(timestamp) = expiration {
-            tags.push(Tag::expiration(timestamp));
-        }
+        // Push received public key
+        tags.push(Tag::public_key(*receiver));
 
         Self::new(Kind::GiftWrap, content, tags)
             .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK))
@@ -1487,20 +1488,21 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[cfg(all(feature = "std", feature = "nip59"))]
-    pub async fn gift_wrap<T>(
+    pub async fn gift_wrap<T, I>(
         signer: &T,
         receiver: &PublicKey,
         rumor: UnsignedEvent,
-        expiration: Option<Timestamp>,
+        extra_tags: I,
     ) -> Result<Event, Error>
     where
         T: NostrSigner,
+        I: IntoIterator<Item = Tag>,
     {
         let seal: Event = Self::seal(signer, receiver, rumor)
             .await?
             .sign(signer)
             .await?;
-        Self::gift_wrap_from_seal(receiver, &seal, expiration)
+        Self::gift_wrap_from_seal(receiver, &seal, extra_tags)
     }
 
     /// Private Direct message rumor

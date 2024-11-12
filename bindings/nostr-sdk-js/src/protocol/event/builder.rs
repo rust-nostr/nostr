@@ -575,12 +575,12 @@ impl JsEventBuilder {
     pub fn gift_wrap_from_seal(
         receiver: &JsPublicKey,
         seal: &JsEvent,
-        expiration: Option<JsTimestamp>,
+        extra_tags: Option<Vec<JsTag>>,
     ) -> Result<JsEvent> {
         Ok(EventBuilder::gift_wrap_from_seal(
             receiver.deref(),
             seal.deref(),
-            expiration.map(|t| *t),
+            extra_tags.unwrap_or_default().into_iter().map(|t| t.inner),
         )
         .map_err(into_err)?
         .into())
@@ -594,13 +594,13 @@ impl JsEventBuilder {
         signer: &JsNostrSigner,
         receiver: &JsPublicKey,
         rumor: &JsUnsignedEvent,
-        expiration: Option<JsTimestamp>,
+        extra_tags: Option<Vec<JsTag>>,
     ) -> Result<JsEvent> {
         Ok(EventBuilder::gift_wrap(
             signer.deref(),
             receiver.deref(),
             rumor.deref().clone(),
-            expiration.map(|t| *t),
+            extra_tags.unwrap_or_default().into_iter().map(|t| t.inner),
         )
         .await
         .map_err(into_err)?

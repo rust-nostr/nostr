@@ -1388,7 +1388,7 @@ impl Client {
         S: Into<String>,
     {
         let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
-        self.gift_wrap(&receiver, rumor, None).await
+        self.gift_wrap(&receiver, rumor, []).await
     }
 
     /// Send private direct message to specific relays
@@ -1410,7 +1410,7 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
-        self.gift_wrap_to(urls, &receiver, rumor, None).await
+        self.gift_wrap_to(urls, &receiver, rumor, []).await
     }
 
     /// Repost
@@ -1617,12 +1617,15 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub async fn gift_wrap(
+    pub async fn gift_wrap<I>(
         &self,
         receiver: &PublicKey,
         rumor: EventBuilder,
-        expiration: Option<Timestamp>,
-    ) -> Result<Output<EventId>, Error> {
+        extra_tags: I,
+    ) -> Result<Output<EventId>, Error>
+    where
+        I: IntoIterator<Item = Tag>,
+    {
         // Acquire signer
         let signer = self.signer().await?;
 
@@ -1632,7 +1635,7 @@ impl Client {
 
         // Build gift wrap
         let gift_wrap: Event =
-            EventBuilder::gift_wrap(&signer, receiver, rumor, expiration).await?;
+            EventBuilder::gift_wrap(&signer, receiver, rumor, extra_tags).await?;
 
         // Send
         self.send_event(gift_wrap).await
@@ -1643,16 +1646,17 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub async fn gift_wrap_to<I, U>(
+    pub async fn gift_wrap_to<I, U, IT>(
         &self,
         urls: I,
         receiver: &PublicKey,
         rumor: EventBuilder,
-        expiration: Option<Timestamp>,
+        extra_tags: IT,
     ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
+        IT: IntoIterator<Item = Tag>,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         // Acquire signer
@@ -1664,7 +1668,7 @@ impl Client {
 
         // Build gift wrap
         let gift_wrap: Event =
-            EventBuilder::gift_wrap(&signer, receiver, rumor, expiration).await?;
+            EventBuilder::gift_wrap(&signer, receiver, rumor, extra_tags).await?;
 
         // Send
         self.send_event_to(urls, gift_wrap).await
