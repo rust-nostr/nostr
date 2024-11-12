@@ -1388,7 +1388,7 @@ impl Client {
         S: Into<String>,
     {
         let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
-        self.gift_wrap(&receiver, rumor, None).await
+        self.gift_wrap(&receiver, rumor, vec![]).await
     }
 
     /// Send private direct message to specific relays
@@ -1410,7 +1410,7 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
-        self.gift_wrap_to(urls, &receiver, rumor, None).await
+        self.gift_wrap_to(urls, &receiver, rumor, vec![]).await
     }
 
     /// Repost
@@ -1621,7 +1621,7 @@ impl Client {
         &self,
         receiver: &PublicKey,
         rumor: EventBuilder,
-        expiration: Option<Timestamp>,
+        extra_tags: Vec<Tag>,
     ) -> Result<Output<EventId>, Error> {
         // Acquire signer
         let signer = self.signer().await?;
@@ -1632,7 +1632,7 @@ impl Client {
 
         // Build gift wrap
         let gift_wrap: Event =
-            EventBuilder::gift_wrap(&signer, receiver, rumor, expiration).await?;
+            EventBuilder::gift_wrap(&signer, receiver, rumor, extra_tags).await?;
 
         // Send
         self.send_event(gift_wrap).await
@@ -1648,7 +1648,7 @@ impl Client {
         urls: I,
         receiver: &PublicKey,
         rumor: EventBuilder,
-        expiration: Option<Timestamp>,
+        extra_tags: Vec<Tag>,
     ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -1664,7 +1664,7 @@ impl Client {
 
         // Build gift wrap
         let gift_wrap: Event =
-            EventBuilder::gift_wrap(&signer, receiver, rumor, expiration).await?;
+            EventBuilder::gift_wrap(&signer, receiver, rumor, extra_tags).await?;
 
         // Send
         self.send_event_to(urls, gift_wrap).await

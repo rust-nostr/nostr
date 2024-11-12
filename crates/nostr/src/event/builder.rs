@@ -1445,7 +1445,6 @@ impl EventBuilder {
         Ok(nip59::make_seal(signer, receiver_pubkey, rumor).await?)
     }
 
-    // TODO: remove expiration arg and return event builder (this will allow to build POW events and add custom tags)
     /// Gift Wrap from seal
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
@@ -1453,64 +1452,6 @@ impl EventBuilder {
     pub fn gift_wrap_from_seal(
         receiver: &PublicKey,
         seal: &Event,
-        expiration: Option<Timestamp>,
-    ) -> Result<Event, Error> {
-        if seal.kind != Kind::Seal {
-            return Err(Error::WrongKind {
-                received: seal.kind,
-                expected: WrongKindError::Single(Kind::Seal),
-            });
-        }
-
-        let keys: Keys = Keys::generate();
-        let content: String = nip44::encrypt(
-            keys.secret_key(),
-            receiver,
-            seal.as_json(),
-            nip44::Version::default(),
-        )?;
-
-        let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(expiration.is_some()));
-        tags.push(Tag::public_key(*receiver));
-
-        if let Some(timestamp) = expiration {
-            tags.push(Tag::expiration(timestamp));
-        }
-
-        Self::new(Kind::GiftWrap, content, tags)
-            .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK))
-            .sign_with_keys(&keys)
-    }
-
-    /// Gift Wrap
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-    #[inline]
-    #[cfg(all(feature = "std", feature = "nip59"))]
-    pub async fn gift_wrap<T>(
-        signer: &T,
-        receiver: &PublicKey,
-        rumor: UnsignedEvent,
-        expiration: Option<Timestamp>,
-    ) -> Result<Event, Error>
-    where
-        T: NostrSigner,
-    {
-        let seal: Event = Self::seal(signer, receiver, rumor)
-            .await?
-            .sign(signer)
-            .await?;
-        Self::gift_wrap_from_seal(receiver, &seal, expiration)
-    }
-
-    /// Gift Wrap from seal with tags
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-    #[cfg(all(feature = "std", feature = "nip59"))]
-    pub fn gift_wrap_from_seal_with_tags(
-        receiver: &PublicKey,
-        seal: &Event,
-        expiration: Option<Timestamp>,
         extra_tags: Vec<Tag>,
     ) -> Result<Event, Error> {
         if seal.kind != Kind::Seal {
@@ -1528,33 +1469,28 @@ impl EventBuilder {
             nip44::Version::default(),
         )?;
 
-        let mut tags: Vec<Tag> =
-            Vec::with_capacity(1 + usize::from(expiration.is_some()) + extra_tags.len());
-
+        let mut tags: Vec<Tag> = Vec::with_capacity(1 + extra_tags.len());
         tags.push(Tag::public_key(*receiver));
 
-        if let Some(timestamp) = expiration {
-            tags.push(Tag::expiration(timestamp));
+        for tag in extra_tags {
+            tags.push(tag);
         }
-
-        tags.extend(extra_tags);
 
         Self::new(Kind::GiftWrap, content, tags)
             .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK))
             .sign_with_keys(&keys)
     }
 
-    /// Gift Wrap with Tags
+    /// Gift Wrap
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[cfg(all(feature = "std", feature = "nip59"))]
-    pub async fn gift_wrap_with_tags<T>(
+    pub async fn gift_wrap<T>(
         signer: &T,
         receiver: &PublicKey,
         rumor: UnsignedEvent,
-        tags: Vec<Tag>,
-        expiration: Option<Timestamp>,
+        extra_tags: Vec<Tag>,
     ) -> Result<Event, Error>
     where
         T: NostrSigner,
@@ -1563,7 +1499,7 @@ impl EventBuilder {
             .await?
             .sign(signer)
             .await?;
-        Self::gift_wrap_from_seal_with_tags(receiver, &seal, expiration, tags)
+        Self::gift_wrap_from_seal(receiver, &seal, extra_tags)
     }
 
     /// Private Direct message rumor

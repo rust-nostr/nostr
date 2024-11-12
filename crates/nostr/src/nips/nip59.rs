@@ -177,7 +177,7 @@ mod tests {
             &sender_keys,
             &receiver_keys.public_key(),
             rumor.clone(),
-            None,
+            vec![],
         )
         .await
         .unwrap();

@@ -1196,7 +1196,7 @@ mod tests {
         assert!(!filter.match_event(&event_with_empty_tags));
 
         // Test match search
-        let filter: Filter = Filter::new().search("test").into();
+        let filter: Filter = Filter::new().search("test");
         assert!(filter.match_event(&event));
     }
 
