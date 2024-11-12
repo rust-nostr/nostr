@@ -20,9 +20,9 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, watch, Mutex, MutexGuard, OnceCell, RwLock};
 
 use super::constants::{
-    BATCH_EVENT_ITERATION_TIMEOUT, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_RETRY_INTERVAL,
-    MIN_SUCCESS_RATE, NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT,
-    NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, WEBSOCKET_TX_TIMEOUT,
+    BATCH_EVENT_ITERATION_TIMEOUT, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE,
+    NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP,
+    NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, WEBSOCKET_TX_TIMEOUT,
 };
 use super::filtering::{CheckFiltering, RelayFiltering};
 use super::flags::AtomicRelayServiceFlags;
@@ -500,12 +500,15 @@ impl InnerRelay {
             // diff = attempts - success
             let diff: u32 = self.stats.attempts().saturating_sub(self.stats.success()) as u32;
 
-            // Use incremental retry time if diff >= 3
-            if diff >= 3 {
-                // Calculate incremental interval
-                let interval: Duration = MIN_RETRY_INTERVAL * (1 + diff);
+            // Diff must be at least 2
+            if diff >= 2 {
+                // Calculate multiplier
+                let multiplier: u32 = diff / 2;
 
-                // If incremental interval is too big, use the max one.
+                // Calculate interval
+                let interval: Duration = self.opts.retry_interval * multiplier;
+
+                // If interval is too big, use the max one.
                 return cmp::min(interval, MAX_RETRY_INTERVAL);
             }
         }
