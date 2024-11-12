@@ -22,7 +22,6 @@ pub struct Options {
     min_pow_difficulty: Arc<AtomicU8>,
     pub(super) req_filters_chunk_size: u8,
     pub(super) timeout: Duration,
-    pub(super) connection_timeout: Option<Duration>,
     nip42_auto_authentication: Arc<AtomicBool>,
     pub(super) gossip: bool,
     #[cfg(not(target_arch = "wasm32"))]
@@ -40,7 +39,6 @@ impl Default for Options {
             min_pow_difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: 10,
             timeout: Duration::from_secs(60),
-            connection_timeout: None,
             nip42_auto_authentication: Arc::new(AtomicBool::new(true)),
             gossip: false,
             #[cfg(not(target_arch = "wasm32"))]
@@ -148,9 +146,8 @@ impl Options {
     /// Relay connection timeout (default: None)
     ///
     /// If set to `None`, the client will try to connect to relay without waiting.
-    #[inline]
-    pub fn connection_timeout(mut self, timeout: Option<Duration>) -> Self {
-        self.connection_timeout = timeout;
+    #[deprecated(since = "0.37.0")]
+    pub fn connection_timeout(self, _timeout: Option<Duration>) -> Self {
         self
     }
 

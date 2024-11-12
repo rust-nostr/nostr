@@ -38,6 +38,7 @@
 * nostr: rewrite `e` tag de/serialization ([Yuki Kishimoto])
 * pool: rework latency tracking ([Yuki Kishimoto])
 * sdk: deprecate `Client::with_opts` ([Yuki Kishimoto])
+* sdk: deprecate `Options::connection_timeout` ([Yuki Kishimoto])
 
 ### Added
 

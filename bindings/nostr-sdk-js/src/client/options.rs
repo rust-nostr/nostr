@@ -67,16 +67,6 @@ impl JsOptions {
         self.inner.timeout(**timeout).into()
     }
 
-    /// Connection timeout (default: None)
-    ///
-    /// If set to `None`, the client will try to connect to the relays without waiting.
-    #[wasm_bindgen(js_name = connectionTimeout)]
-    pub fn connection_timeout(self, connection_timeout: Option<JsDuration>) -> Self {
-        self.inner
-            .connection_timeout(connection_timeout.map(|d| *d))
-            .into()
-    }
-
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>

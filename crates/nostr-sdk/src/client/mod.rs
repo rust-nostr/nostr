@@ -575,10 +575,7 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        Ok(self
-            .pool
-            .connect_relay(url, self.opts.connection_timeout)
-            .await?)
+        Ok(self.pool.connect_relay(url, None).await?)
     }
 
     /// Disconnect relay
@@ -594,7 +591,7 @@ impl Client {
     /// Connect to all added relays
     #[inline]
     pub async fn connect(&self) {
-        self.pool.connect(self.opts.connection_timeout).await;
+        self.pool.connect(None).await;
     }
 
     /// Connect to all added relays

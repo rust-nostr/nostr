@@ -77,15 +77,6 @@ impl Options {
         builder
     }
 
-    /// Connection timeout (default: None)
-    ///
-    /// If set to `None`, the client will try to connect to the relays without waiting.
-    pub fn connection_timeout(self: Arc<Self>, timeout: Option<Duration>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.connection_timeout(timeout);
-        builder
-    }
-
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
