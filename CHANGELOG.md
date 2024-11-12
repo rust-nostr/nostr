@@ -27,6 +27,7 @@
 
 ### Changed
 
+* nostr: changed args for Gift Wrapping using `EventBuilder::gift_wrap` and `EventBuilder::gift_wrap_from_seal`: removed `expiration` in favor of `extra_tags` ([erskinagrdner])
 * nostr: disable all default features except `std` ([Yuki Kishimoto])
 * nostr: rewrite `e` tag de/serialization ([Yuki Kishimoto])
 * pool: rework latency tracking ([Yuki Kishimoto])
@@ -38,7 +39,6 @@
 ### Added
 
 * nostr: add MLS tags and event kinds ([erskingardner])
-* nostr: add gift wrap with tags methods ([erskingardner])
 * nostr: add `SingleLetterTag::as_str` and `TagKind::as_str` ([Yuki Kishimoto])
 * nostr: add `Kind::Comment` ([reyamir])
 * nostr: add `EventBuilder::comment` ([reyamir])
@@ -733,6 +733,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [w3irdrobot]: https://github.com/w3irdrobot
 [nanikamado]: https://github.com/nanikamado
 [rodant]: https://github.com/rodant
+[erskingardner]: https://github.com/erskingardner
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.36.0...HEAD
