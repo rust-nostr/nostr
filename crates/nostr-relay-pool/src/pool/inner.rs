@@ -69,8 +69,8 @@ impl InnerRelayPool {
     }
 
     pub async fn shutdown(&self) -> Result<(), Error> {
-        // Disconnect all relays
-        self.disconnect().await?;
+        // Disconnect and force remove all relays
+        self.remove_all_relays(true).await?;
 
         // Send shutdown notification
         let _ = self
