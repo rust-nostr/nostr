@@ -23,10 +23,10 @@ TODO
 The `EventId` class can be called in order to construct event ids, although this is not necessary when building `Event` objects as it will be done automatically at that time. 
 
 Upon instantiation the following content are passed to the class instance to generate the event ID: `public_key`, `created_at`, `kind`, `tags` and `content`. 
-For more information about these individual objects please refer to the relevant sections: [Keys](03-keys.md), [Timestamp](04_03-timestamp.md), [Kind](04_02-kind.md) and [Tag](04_04-tag.md), respectively.
+For more information about these individual objects please refer to the relevant sections: [Keys](../signers/keys.md), [Timestamp](timestamp.md), [Kind](kind.md) and [Tag](tag.md), respectively.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/eventid.py:build-event-id}}
+{{#include ../../../snippets/nostr/python/src/event/eventid.py:build-event-id}}
 ```
 
 Once we have an event id object we are able to format and parse this using a few simple methods. 
@@ -35,22 +35,22 @@ Similarly, we can parse these different representations of the event ID by using
 
 In the event that we want to generalise and simplify this process, across hex/bech32 or nostr uri formats, we can instead simply call `parse()` method and pass this the event id string matching one of these formats. 
 
-For more information/examples on the formatting of Nostr objects please refer to [NIP-19](06-nip19.md) and [NIP-21](06-nip21.md).
+For more information/examples on the formatting of Nostr objects please refer to [NIP-19](../nips/19.md) and [NIP-21](../nips/21.md).
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/eventid.py:format-parse-hex}}
+{{#include ../../../snippets/nostr/python/src/event/eventid.py:format-parse-hex}}
 ```
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/eventid.py:format-parse-bech32}}
+{{#include ../../../snippets/nostr/python/src/event/eventid.py:format-parse-bech32}}
 ```
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/eventid.py:format-parse-nostr-uri}}
+{{#include ../../../snippets/nostr/python/src/event/eventid.py:format-parse-nostr-uri}}
 ```
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/eventid.py:format-parse-bytes}}
+{{#include ../../../snippets/nostr/python/src/event/eventid.py:format-parse-bytes}}
 ```
 
 </section>
@@ -94,7 +94,7 @@ TODO
 In addition to directly creating/manipulating event ID objects we can also easily access these directly from events, by calling the `id()` method on and instance of the `Event` class, or, verify that the event id (and signature) for an event is valid, by using the `verify()` method.  
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/eventid.py:access-verify}}
+{{#include ../../../snippets/nostr/python/src/event/eventid.py:access-verify}}
 ```
 
 </section>

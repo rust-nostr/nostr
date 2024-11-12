@@ -28,49 +28,49 @@ The following code examples all utilise the `Filters()` along with associated me
 Filtering events based on a specific event ID using `id()`.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/filters.py:create-filter-id}}
+{{#include ../../../snippets/nostr/python/src/messages/filters.py:create-filter-id}}
 ```
 
 Filtering events by author using `author()`.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/filters.py:create-filter-author}}
+{{#include ../../../snippets/nostr/python/src/messages/filters.py:create-filter-author}}
 ```
 
 Filtering events based on multiple criteria. In this case, by public key using `pubkey()` and kind using `kind()`.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/filters.py:create-filter-kind-pk}}
+{{#include ../../../snippets/nostr/python/src/messages/filters.py:create-filter-kind-pk}}
 ```
 
 Filtering for specific text strings using `search()`.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/filters.py:create-filter-search}}
+{{#include ../../../snippets/nostr/python/src/messages/filters.py:create-filter-search}}
 ```
 
 Restricting query results to specific timeframes (using `since()` and `until()`), as well as limiting search results to a maximum of 10 records using `limit()`.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/filters.py:create-filter-timeframe}}
+{{#include ../../../snippets/nostr/python/src/messages/filters.py:create-filter-timeframe}}
 ```
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/filters.py:create-filter-limit}}
+{{#include ../../../snippets/nostr/python/src/messages/filters.py:create-filter-limit}}
 ```
 
 Finally, filtering using hashtags (`hashtag()`), NIP-12 reference tags (`reference()`) and identifiers (`identifiers()`), respectively.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/filters.py:create-filter-hashtag}}
+{{#include ../../../snippets/nostr/python/src/messages/filters.py:create-filter-hashtag}}
 ```
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/filters.py:create-filter-reference}}
+{{#include ../../../snippets/nostr/python/src/messages/filters.py:create-filter-reference}}
 ```
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/filters.py:create-filter-identifier}}
+{{#include ../../../snippets/nostr/python/src/messages/filters.py:create-filter-identifier}}
 ```
 
 </section>
@@ -83,49 +83,49 @@ The following code examples all utilise the `Filters()` along with associated me
 Filtering events based on a specific event ID using `id()`.
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/filters.js:create-filter-id}}
+{{#include ../../../snippets/nostr/js/src/messages/filters.js:create-filter-id}}
 ```
 
 Filtering events by author using `author()`.
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/filters.js:create-filter-author}}
+{{#include ../../../snippets/nostr/js/src/messages/filters.js:create-filter-author}}
 ```
 
 Filtering events based on multiple criteria. In this case, by public key using `pubkey()` and kind using `kind()`.
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/filters.js:create-filter-kind-pk}}
+{{#include ../../../snippets/nostr/js/src/messages/filters.js:create-filter-kind-pk}}
 ```
 
 Filtering for specific text strings using `search()`.
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/filters.js:create-filter-search}}
+{{#include ../../../snippets/nostr/js/src/messages/filters.js:create-filter-search}}
 ```
 
 Restricting query results to specific timeframes (using `since()` and `until()`), as well as limiting search results to a maximum of 10 records using `limit()`.
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/filters.js:create-filter-timeframe}}
+{{#include ../../../snippets/nostr/js/src/messages/filters.js:create-filter-timeframe}}
 ```
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/filters.js:create-filter-limit}}
+{{#include ../../../snippets/nostr/js/src/messages/filters.js:create-filter-limit}}
 ```
 
 Finally, filtering using hashtags (`hashtags()`), NIP-12 reference tags (`reference()`) and identifiers (`identifiers()`), respectively.
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/filters.js:create-filter-hashtag}}
+{{#include ../../../snippets/nostr/js/src/messages/filters.js:create-filter-hashtag}}
 ```
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/filters.js:create-filter-reference}}
+{{#include ../../../snippets/nostr/js/src/messages/filters.js:create-filter-reference}}
 ```
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/filters.js:create-filter-identifier}}
+{{#include ../../../snippets/nostr/js/src/messages/filters.js:create-filter-identifier}}
 ```
 
 </section>
@@ -165,7 +165,7 @@ In this example we create a initial filter with `pubkeys()`, `ids()`, `kinds()` 
 Similarly, the range of 'remove' methods (e.g. `remove_kinds()`) allow us to take an existing filter and remove unwanted conditions without needed to reconstruct the filter object from scratch.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/filters.py:modify-filter}}
+{{#include ../../../snippets/nostr/python/src/messages/filters.py:modify-filter}}
 ```
 
 </section>
@@ -179,7 +179,7 @@ In this example we create a initial filter with `pubkeys()`, `ids()`, `kinds()` 
 Similarly, the range of 'remove' methods (e.g. `removekinds()`) allow us to take an existing filter and remove unwanted conditions without needed to reconstruct the filter object from scratch.
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/filters.js:modify-filter}}
+{{#include ../../../snippets/nostr/js/src/messages/filters.js:modify-filter}}
 ```
 </section>
 
@@ -215,19 +215,19 @@ TODO
 We can parse existing filter JSON object using the `from_json()` method when instantiating a filter object.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/filters.py:other-parse}}
+{{#include ../../../snippets/nostr/python/src/messages/filters.py:other-parse}}
 ```
 
 Furthermore, it is possible to create filter records more formally using the `FilterRecord` class.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/filters.py:other-record}}
+{{#include ../../../snippets/nostr/python/src/messages/filters.py:other-record}}
 ```
 
 To perform a logical test and determine if a given event object matches existing filter conditions the `match_event()` method can be used. 
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/filters.py:other-match}}
+{{#include ../../../snippets/nostr/python/src/messages/filters.py:other-match}}
 ```
 
 </section>
@@ -238,13 +238,13 @@ To perform a logical test and determine if a given event object matches existing
 We can parse existing filter JSON object using the `fromJson()` method when instantiating a filter object.
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/filters.js:other-parse}}
+{{#include ../../../snippets/nostr/js/src/messages/filters.js:other-parse}}
 ```
 
 To perform a logical test and determine if a given event object matches existing filter conditions the `matchEvent()` method can be used. 
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/filters.js:other-match}}
+{{#include ../../../snippets/nostr/js/src/messages/filters.js:other-match}}
 ```
 
 </section>

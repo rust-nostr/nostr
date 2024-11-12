@@ -8,7 +8,7 @@
 <section>
 
 ```rust,ignore
-{{#include ../../snippets/nostr/rust/src/event/json.rs}}
+{{#include ../../../snippets/nostr/rust/src/event/json.rs}}
 ```
 
 </section>
@@ -17,7 +17,7 @@
 <section>
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/json.py}}
+{{#include ../../../snippets/nostr/python/src/event/json.py}}
 ```
 
 </section>
@@ -26,7 +26,7 @@
 <section>
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/event/json.js}}
+{{#include ../../../snippets/nostr/js/src/event/json.js}}
 ```
 
 </section>
@@ -35,7 +35,7 @@
 <section>
 
 ```kotlin
-{{#include ../../snippets/nostr/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Event.kt:json}}
+{{#include ../../../snippets/nostr/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Event.kt:json}}
 ```
 
 </section>
@@ -44,7 +44,7 @@
 <section>
 
 ```swift
-{{#include ../../snippets/nostr/swift/NostrSnippets/Sources/Event/Json.swift}}
+{{#include ../../../snippets/nostr/swift/NostrSnippets/Sources/Event/Json.swift}}
 ```
 
 </section>
@@ -60,7 +60,7 @@ A convenient way to compose events is by using the `EventBuilder`. It allow to c
 <section>
 
 ```rust,ignore
-{{#include ../../snippets/nostr/rust/src/event/builder.rs}}
+{{#include ../../../snippets/nostr/rust/src/event/builder.rs}}
 ```
 
 </section>
@@ -69,7 +69,7 @@ A convenient way to compose events is by using the `EventBuilder`. It allow to c
 <section>
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/builder.py}}
+{{#include ../../../snippets/nostr/python/src/event/builder.py}}
 ```
 
 </section>
@@ -78,7 +78,7 @@ A convenient way to compose events is by using the `EventBuilder`. It allow to c
 <section>
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/event/builder.js}}
+{{#include ../../../snippets/nostr/js/src/event/builder.js}}
 ```
 
 </section>
@@ -87,7 +87,7 @@ A convenient way to compose events is by using the `EventBuilder`. It allow to c
 <section>
 
 ```kotlin
-{{#include ../../snippets/nostr/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Event.kt:builder}}
+{{#include ../../../snippets/nostr/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Event.kt:builder}}
 ```
 
 </section>
@@ -96,7 +96,7 @@ A convenient way to compose events is by using the `EventBuilder`. It allow to c
 <section>
 
 ```swift
-{{#include ../../snippets/nostr/swift/NostrSnippets/Sources/Event/Builder.swift}}
+{{#include ../../../snippets/nostr/swift/NostrSnippets/Sources/Event/Builder.swift}}
 ```
 
 </section>

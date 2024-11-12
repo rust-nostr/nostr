@@ -31,24 +31,24 @@ Note that when using `as_enum()` we unlock some additional methods associated wi
 These allow for logical tests to be performed to establish the type of message object being assessed (for example, `is_req()` will return a bool result assessing if the object represents an `REQ` message type).  
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/client.py:event-message}}
+{{#include ../../../snippets/nostr/python/src/messages/client.py:event-message}}
 ```
 
 Note that when constructing a `REQ` we want to pass through a `Filter` object which will allow the relay to return data meeting a given set of criteria. 
-Please jump to the [Filter](05_01_01-filter.md) section for more details on how to construct these objects. 
+Please jump to the [Filter](filters.md) section for more details on how to construct these objects. 
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/client.py:req-message}}
+{{#include ../../../snippets/nostr/python/src/messages/client.py:req-message}}
 ```
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/client.py:close-message}}
+{{#include ../../../snippets/nostr/python/src/messages/client.py:close-message}}
 ```
 
 When presented with a client message object as either a JSON or an instance of the `ClientMessageEnum` class we can parse these data using the `from_json()` or `from_enum()` methods, respectively.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/client.py:parse-message}}
+{{#include ../../../snippets/nostr/python/src/messages/client.py:parse-message}}
 ```
 
 </section>
@@ -63,24 +63,24 @@ Once we have the `ClientMessage` objects we can use the `asJson()` method to pre
 
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/client.js:event-message}}
+{{#include ../../../snippets/nostr/js/src/messages/client.js:event-message}}
 ```
 
 Note that when constructing a `REQ` we want to pass through a `Filter` object which will allow the relay to return data meeting a given set of criteria. 
-Please jump to the [Filter](05_01_01-filter.md) section for more details on how to construct these objects. 
+Please jump to the [Filter](filters.md) section for more details on how to construct these objects. 
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/client.js:req-message}}
+{{#include ../../../snippets/nostr/js/src/messages/client.js:req-message}}
 ```
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/client.js:close-message}}
+{{#include ../../../snippets/nostr/js/src/messages/client.js:close-message}}
 ```
 
 When presented with a client message object as either a JSON using the `fromJson()` method.
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/client.js:parse-message}}
+{{#include ../../../snippets/nostr/js/src/messages/client.js:parse-message}}
 ```
 
 </section>
@@ -123,13 +123,13 @@ These are constructed in much the same way as the earlier message examples, by u
 As before the `as_enum()` method can be used to unlock logical test methods (e.g., `is_auth()`) associated with these message objects.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/client.py:auth-message}}
+{{#include ../../../snippets/nostr/python/src/messages/client.py:auth-message}}
 ```
 
 Note that `COUNT` is effectively a specific type of `REQ` message therefore it utilizes the `Filter` object in constructing the criteria which should be used by the relay to return the count value.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/client.py:count-message}}
+{{#include ../../../snippets/nostr/python/src/messages/client.py:count-message}}
 ```
 
 </section>
@@ -144,13 +144,13 @@ Whereas the `COUNT` type offers a method for clients can request simple counts o
 These are constructed in much the same way as the earlier message examples, by using the `ClientMessage` class in conjunction with the relevant methods `auth()` and `count()`. 
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/client.js:auth-message}}
+{{#include ../../../snippets/nostr/js/src/messages/client.js:auth-message}}
 ```
 
 Note that `COUNT` is effectively a specific type of `REQ` message therefore it utilizes the `Filter` object in constructing the criteria which should be used by the relay to return the count value.
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/client.js:count-message}}
+{{#include ../../../snippets/nostr/js/src/messages/client.js:count-message}}
 ```
 
 </section>
@@ -191,15 +191,15 @@ These do not form part of the standard protocol specification but instead form p
 To construct these we need to first create them as instance of the `ClientMessageEnum` class and then pass these into a `ClientMessage` object using the `from_enum()` method.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/client.py:neg-open}}
+{{#include ../../../snippets/nostr/python/src/messages/client.py:neg-open}}
 ```
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/client.py:neg-close}}
+{{#include ../../../snippets/nostr/python/src/messages/client.py:neg-close}}
 ```
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/client.py:neg-msg}}
+{{#include ../../../snippets/nostr/python/src/messages/client.py:neg-msg}}
 ```
 
 </section>

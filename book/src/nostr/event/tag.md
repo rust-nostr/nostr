@@ -23,19 +23,19 @@ TODO
 There are multiple methods by which we can create tag objects all of which form part of the `Tag` class. The simplest of which are the more commonly used single letter tags. In the example below the `e`, `p`, `a`, `d`, `r` and `t` tags are created passing the relevant object/string values to the tag methods `event()`, `public_key()`, `coordinate()`, `identifier()`, `relay_metadata()` and `hashtag()`, respectively.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/tags.py:single-letter}}
+{{#include ../../../snippets/nostr/python/src/event/tags.py:single-letter}}
 ```
 
 For the less commonly used but well defined tags the combination of the `custom()` method is used with an appropriate instance of the `TagKind` class. Please refer to the documentation for a more comprehensive list of the available options.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/tags.py:custom}}
+{{#include ../../../snippets/nostr/python/src/event/tags.py:custom}}
 ```
 
 Finally, if you are looking to parse lists into tag objects the `parse()` method can be called and passed a list of strings where the first position in the list would represent the tag name and the subsequent strings represent the values. 
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/tags.py:parse}}
+{{#include ../../../snippets/nostr/python/src/event/tags.py:parse}}
 ```
 
 </section>
@@ -81,13 +81,13 @@ Once you have a Tag object, it is relatively straight forward to access the attr
 The `as_standardized()` and `as_vec()` methods will return the tag in both TagStandard (enum) format or as an array of strings, respectively. 
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/tags.py:access}}
+{{#include ../../../snippets/nostr/python/src/event/tags.py:access}}
 ```
 
 One last point of note is that when processing non-single letter tags it is useful to be able to easily perform tests on these. We can use the `kind()` method to first surface the `TagKind` and then call the relevant "is_x" method (e.g. `is_title()` or `is_summary()` per the example below) to return a boolean result.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/tags.py:logical}}
+{{#include ../../../snippets/nostr/python/src/event/tags.py:logical}}
 ```
 
 </section>

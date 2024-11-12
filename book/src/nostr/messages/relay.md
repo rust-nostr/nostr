@@ -15,7 +15,7 @@ For a more detailed explanation regarding the rules and handling of relay messag
 <section>
 
 ```rust,ignore
-{{#include ../../snippets/nostr/rust/src/messages/relay.rs}}
+{{#include ../../../snippets/nostr/rust/src/messages/relay.rs}}
 ```
 
 </section>
@@ -31,29 +31,29 @@ Note that when using `as_enum()` we unlock some additional methods associated wi
 These allow for logical tests to be performed to establish the type of message object being assessed (for example, `is_ok()` will return a bool result assessing if the object represents an `OK` message type).  
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/relay.py:event-message}}
+{{#include ../../../snippets/nostr/python/src/messages/relay.py:event-message}}
 ```
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/relay.py:ok-message}}
+{{#include ../../../snippets/nostr/python/src/messages/relay.py:ok-message}}
 ```
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/relay.py:eose-message}}
+{{#include ../../../snippets/nostr/python/src/messages/relay.py:eose-message}}
 ```
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/relay.py:closed-message}}
+{{#include ../../../snippets/nostr/python/src/messages/relay.py:closed-message}}
 ```
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/relay.py:notice-message}}
+{{#include ../../../snippets/nostr/python/src/messages/relay.py:notice-message}}
 ```
 
 When presented with a relay message object as either a JSON or an instance of the `RelayMessageEnum` class we can parse these data using the `from_json()` or `from_enum()` methods, respectively.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/relay.py:parse-message}}
+{{#include ../../../snippets/nostr/python/src/messages/relay.py:parse-message}}
 ```
 
 </section>
@@ -67,29 +67,29 @@ In the examples below we can utilize the relevant class methods `event()`, `ok()
 Once we have the `RelayMessage` objects we can use the `asJson()` method to present their content. 
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/relay.js:event-message}}
+{{#include ../../../snippets/nostr/js/src/messages/relay.js:event-message}}
 ```
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/relay.js:ok-message}}
+{{#include ../../../snippets/nostr/js/src/messages/relay.js:ok-message}}
 ```
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/relay.js:eose-message}}
+{{#include ../../../snippets/nostr/js/src/messages/relay.js:eose-message}}
 ```
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/relay.js:closed-message}}
+{{#include ../../../snippets/nostr/js/src/messages/relay.js:closed-message}}
 ```
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/relay.js:notice-message}}
+{{#include ../../../snippets/nostr/js/src/messages/relay.js:notice-message}}
 ```
 
 When presented with a relay message object as either a JSON we can parse these data using the `fromJson()` method.
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/relay.js:parse-message}}
+{{#include ../../../snippets/nostr/js/src/messages/relay.js:parse-message}}
 ```
 
 </section>
@@ -132,11 +132,11 @@ These are constructed in much the same way as the earlier message examples, by u
 As before the `as_enum()` method can be used to unlock logical test methods (e.g., `is_auth()`) associated with these message objects.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/relay.py:auth-message}}
+{{#include ../../../snippets/nostr/python/src/messages/relay.py:auth-message}}
 ```
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/relay.py:count-message}}
+{{#include ../../../snippets/nostr/python/src/messages/relay.py:count-message}}
 ```
 
 </section>
@@ -151,11 +151,11 @@ Whereas the `COUNT` type offers a method for relays to provide simple counts of 
 These are constructed in much the same way as the earlier message examples, by using the `RelayMessage` class in conjunction with the relevant methods `auth()` and `count()`. 
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/relay.js:auth-message}}
+{{#include ../../../snippets/nostr/js/src/messages/relay.js:auth-message}}
 ```
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/messages/relay.js:count-message}}
+{{#include ../../../snippets/nostr/js/src/messages/relay.js:count-message}}
 ```
 
 </section>
@@ -194,11 +194,11 @@ Finally, the `RelayMessageEnum` class also opens up two additional message types
 These do not form part of the standard protocol specification but do have specific uses when it comes to providing methods by which error messaging (or error codes) can be handled by relays. To construct these we need to first create them as instance of the `RelayMessageEnum` class and then pass these into a `RelayMessage` object using the `from_enum()` method.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/relay.py:neg-code}}
+{{#include ../../../snippets/nostr/python/src/messages/relay.py:neg-code}}
 ```
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/messages/relay.py:neg-msg}}
+{{#include ../../../snippets/nostr/python/src/messages/relay.py:neg-msg}}
 ```
 
 </section>

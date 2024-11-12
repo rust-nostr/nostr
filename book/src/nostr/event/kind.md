@@ -27,7 +27,7 @@ In the example below we've used the common `0`/`1`/`3` Kinds (user metadata, tex
 Once we've created the `Kind` object we can use the `as_enum()` method to present the Kind object as an easy to read `KindEnum` object.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/kind.py:kind-int}}
+{{#include ../../../snippets/nostr/python/src/event/kind.py:kind-int}}
 ```
 
 Alternatively, if you are less familiar with the specific integer values for a Kind we can use the individual Kind classes, in conjunction with the `KindEnum` class, to generate the objects. 
@@ -36,7 +36,7 @@ Below we see the `TEXT_NOTE()`, `METADATA()` and `CONTACT_LIST()` enums being pa
 In order to present these as their integer values we can use the `as_u16()` or `as_u64()` methods.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/kind.py:kind-enum}}
+{{#include ../../../snippets/nostr/python/src/event/kind.py:kind-enum}}
 ```
 
 </section>
@@ -77,12 +77,12 @@ TODO
 <div slot="title">Python</div>
 <section>
 
-Although it's possible to construct `EventBuilder` objects by passing the `Kind` class as the first argument (see [Event](./04_00-event.md) section for examples), 
+Although it's possible to construct `EventBuilder` objects by passing the `Kind` class as the first argument (see [Event](index.md) section for examples), 
 one of the simplest ways of constructing `Event` objects is by using the purpose built methods available to the `EventBuilder` class. 
 For example, the `text_note()` method can be used to quickly and efficiently create Kind 1 events, the `metadata()` and `contact_list()` methods can be used in much the same way.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/kind.py:kind-methods}}
+{{#include ../../../snippets/nostr/python/src/event/kind.py:kind-methods}}
 ```
 
 Occasionally you may want more generic usage of kinds, like if you wanted to create your own custom (or experimental) event type, 
@@ -97,7 +97,7 @@ Therefore, if we wanted to extend this to say create a new list event of our fav
 then we could do this using the `PARAMETERIZED_REPLACEABLE(30420)` enum to define the type of event as in the example below.
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/event/kind.py:kind-representations}}
+{{#include ../../../snippets/nostr/python/src/event/kind.py:kind-representations}}
 ```
 
 </section>

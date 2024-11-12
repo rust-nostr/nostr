@@ -10,7 +10,7 @@ To generate a new key pair use the `generate()` method:
 <section>
 
 ```rust,ignore
-{{#include ../../snippets/nostr/rust/src/keys.rs:generate}}
+{{#include ../../../snippets/nostr/rust/src/keys.rs:generate}}
 ```
 
 </section>
@@ -19,7 +19,7 @@ To generate a new key pair use the `generate()` method:
 <section>
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/keys.py:generate}}
+{{#include ../../../snippets/nostr/python/src/keys.py:generate}}
 ```
 
 </section>
@@ -28,7 +28,7 @@ To generate a new key pair use the `generate()` method:
 <section>
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/keys.js:generate}}
+{{#include ../../../snippets/nostr/js/src/keys.js:generate}}
 ```
 
 </section>
@@ -37,7 +37,7 @@ To generate a new key pair use the `generate()` method:
 <section>
 
 ```kotlin
-{{#include ../../snippets/nostr/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Keys.kt:generate}}
+{{#include ../../../snippets/nostr/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Keys.kt:generate}}
 ```
 
 </section>
@@ -46,7 +46,7 @@ To generate a new key pair use the `generate()` method:
 <section>
 
 ```swift
-{{#include ../../snippets/nostr/swift/NostrSnippets/Sources/Keys.swift}}
+{{#include ../../../snippets/nostr/swift/NostrSnippets/Sources/Keys.swift}}
 ```
 
 </section>
@@ -60,7 +60,7 @@ To generate a new key pair use the `generate()` method:
 <section>
 
 ```rust,ignore
-{{#include ../../snippets/nostr/rust/src/keys.rs:restore}}
+{{#include ../../../snippets/nostr/rust/src/keys.rs:restore}}
 ```
 
 </section>
@@ -69,7 +69,7 @@ To generate a new key pair use the `generate()` method:
 <section>
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/keys.py:restore}}
+{{#include ../../../snippets/nostr/python/src/keys.py:restore}}
 ```
 
 </section>
@@ -78,7 +78,7 @@ To generate a new key pair use the `generate()` method:
 <section>
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/keys.js:restore}}
+{{#include ../../../snippets/nostr/js/src/keys.js:restore}}
 ```
 
 </section>
@@ -87,7 +87,7 @@ To generate a new key pair use the `generate()` method:
 <section>
 
 ```kotlin
-{{#include ../../snippets/nostr/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Keys.kt:restore}}
+{{#include ../../../snippets/nostr/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Keys.kt:restore}}
 ```
 
 </section>
@@ -108,7 +108,7 @@ TODO
 <section>
 
 ```rust,ignore
-{{#include ../../snippets/nostr/rust/src/keys.rs:vanity}}
+{{#include ../../../snippets/nostr/rust/src/keys.rs:vanity}}
 ```
 
 </section>
@@ -117,7 +117,7 @@ TODO
 <section>
 
 ```python,ignore
-{{#include ../../snippets/nostr/python/src/keys.py:vanity}}
+{{#include ../../../snippets/nostr/python/src/keys.py:vanity}}
 ```
 
 </section>
@@ -126,7 +126,7 @@ TODO
 <section>
 
 ```javascript,ignore
-{{#include ../../snippets/nostr/js/src/keys.js:vanity}}
+{{#include ../../../snippets/nostr/js/src/keys.js:vanity}}
 ```
 
 </section>
@@ -135,7 +135,7 @@ TODO
 <section>
 
 ```kotlin
-{{#include ../../snippets/nostr/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Keys.kt:vanity}}
+{{#include ../../../snippets/nostr/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Keys.kt:vanity}}
 ```
 
 </section>
@@ -144,7 +144,7 @@ TODO
 <section>
 
 ```swift
-{{#include ../../snippets/nostr/swift/NostrSnippets/Sources/Vanity.swift}}
+{{#include ../../../snippets/nostr/swift/NostrSnippets/Sources/Vanity.swift}}
 ```
 
 </section>
