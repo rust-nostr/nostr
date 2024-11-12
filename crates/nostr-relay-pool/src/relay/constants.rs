@@ -15,9 +15,9 @@ pub const MAX_EVENT_SIZE: u32 = 70 * 1024; // 70 kB
 /// Max event size for contact list kind
 pub const MAX_CONTACT_LIST_EVENT_SIZE: u32 = 840 * 1024; // 840 kB
 
-pub(super) const DEFAULT_RETRY_SEC: u64 = 10;
-pub(super) const MIN_RETRY_SEC: u64 = 5;
-pub(super) const MAX_ADJ_RETRY_SEC: u64 = 120;
+pub(super) const DEFAULT_RETRY_INTERVAL: Duration = Duration::from_secs(10);
+pub(super) const MIN_RETRY_INTERVAL: Duration = Duration::from_secs(5);
+pub(super) const MAX_RETRY_INTERVAL: Duration = Duration::from_secs(120);
 
 pub(super) const NEGENTROPY_FRAME_SIZE_LIMIT: u64 = 60_000; // Default frame limit is 128k. Halve that (hex encoding) and subtract a bit (JSON msg overhead)
 pub(super) const NEGENTROPY_HIGH_WATER_UP: usize = 100;

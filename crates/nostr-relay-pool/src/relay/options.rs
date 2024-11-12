@@ -11,7 +11,7 @@ use std::time::Duration;
 use async_wsocket::ConnectionMode;
 use tokio::sync::watch::{self, Receiver, Sender};
 
-use super::constants::{DEFAULT_RETRY_SEC, MIN_RETRY_SEC};
+use super::constants::{DEFAULT_RETRY_INTERVAL, MIN_RETRY_INTERVAL};
 use super::filtering::RelayFilteringMode;
 use super::flags::RelayServiceFlags;
 use crate::RelayLimits;
@@ -24,8 +24,8 @@ pub struct RelayOptions {
     // TODO: what to do with this atomic?
     pow: Arc<AtomicU8>,
     pub(super) reconnect: bool,
-    pub(super) retry_sec: u64,
-    pub(super) adjust_retry_sec: bool,
+    pub(super) retry_interval: Duration,
+    pub(super) adjust_retry_interval: bool,
     pub(super) limits: RelayLimits,
     pub(super) max_avg_latency: Option<Duration>,
     pub(super) filtering_mode: RelayFilteringMode,
@@ -38,8 +38,8 @@ impl Default for RelayOptions {
             flags: RelayServiceFlags::default(),
             pow: Arc::new(AtomicU8::new(0)),
             reconnect: true,
-            retry_sec: DEFAULT_RETRY_SEC,
-            adjust_retry_sec: true,
+            retry_interval: DEFAULT_RETRY_INTERVAL,
+            adjust_retry_interval: true,
             limits: RelayLimits::default(),
             max_avg_latency: None,
             filtering_mode: RelayFilteringMode::default(),
@@ -118,19 +118,33 @@ impl RelayOptions {
         self
     }
 
+    /// Retry interval (default: 10 sec)
+    ///
+    /// Minimum allowed value is `5 secs`
+    #[deprecated(since = "0.37.0", note = "use `retry_interval` instead")]
+    pub fn retry_sec(self, retry_sec: u64) -> Self {
+        self.retry_interval(Duration::from_secs(retry_sec))
+    }
+
     /// Retry connection time (default: 10 sec)
     ///
-    /// Are allowed values `>=` 5 secs
-    pub fn retry_sec(mut self, retry_sec: u64) -> Self {
-        if retry_sec >= MIN_RETRY_SEC {
-            self.retry_sec = retry_sec;
+    /// Minimum allowed value is `5 secs`
+    pub fn retry_interval(mut self, interval: Duration) -> Self {
+        if interval >= MIN_RETRY_INTERVAL {
+            self.retry_interval = interval;
         };
         self
     }
 
     /// Automatically adjust retry seconds based on success/attempts (default: true)
-    pub fn adjust_retry_sec(mut self, adjust_retry_sec: bool) -> Self {
-        self.adjust_retry_sec = adjust_retry_sec;
+    #[deprecated(since = "0.37.0", note = "use `adjust_retry_interval` instead")]
+    pub fn adjust_retry_sec(self, adjust_retry_sec: bool) -> Self {
+        self.adjust_retry_interval(adjust_retry_sec)
+    }
+
+    /// Automatically adjust retry interval based on success/attempts (default: true)
+    pub fn adjust_retry_interval(mut self, adjust_retry_interval: bool) -> Self {
+        self.adjust_retry_interval = adjust_retry_interval;
         self
     }
 

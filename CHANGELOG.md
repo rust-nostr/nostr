@@ -39,6 +39,8 @@
 * pool: rework latency tracking ([Yuki Kishimoto])
 * pool: increase negentropy batch size down to 100 ([Yuki Kishimoto])
 * pool: increase ping interval to 55 secs ([Yuki Kishimoto])
+* pool: rename `RelayOptions::retry_sec` to `RelayOptions::retry_interval` ([Yuki Kishimoto]) 
+* pool: rename `RelayOptions::adjust_retry_sec` to `RelayOptions::adjust_retry_interval` ([Yuki Kishimoto])
 * sdk: deprecate `Client::with_opts` ([Yuki Kishimoto])
 * sdk: deprecate `Options::connection_timeout` ([Yuki Kishimoto])
 

@@ -20,7 +20,7 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, watch, Mutex, MutexGuard, OnceCell, RwLock};
 
 use super::constants::{
-    BATCH_EVENT_ITERATION_TIMEOUT, MAX_ADJ_RETRY_SEC, MIN_ATTEMPTS, MIN_RETRY_SEC,
+    BATCH_EVENT_ITERATION_TIMEOUT, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_RETRY_INTERVAL,
     MIN_SUCCESS_RATE, NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT,
     NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, WEBSOCKET_TX_TIMEOUT,
 };
@@ -459,6 +459,10 @@ impl InnerRelay {
         let relay = self.clone();
         let _ = thread::spawn(async move {
             loop {
+                // TODO: check in the relays state database if relay can connect (different from the previous check)
+                // TODO: if the relay score is too low, immediately exit.
+                // TODO: at every loop iteration check the score and if it's too low, exit
+
                 // Connect and run message handler
                 relay.connect_and_run(connection_timeout).await;
 
@@ -472,9 +476,13 @@ impl InnerRelay {
                 // Check if reconnection is enabled
                 if relay.opts.reconnect {
                     // Sleep before retry to connect
-                    let retry_sec: u64 = relay.calculate_retry_sec();
-                    tracing::info!("Reconnecting to '{}' relay in {retry_sec} secs", relay.url);
-                    thread::sleep(Duration::from_secs(retry_sec)).await;
+                    let interval: Duration = relay.calculate_retry_interval();
+                    tracing::info!(
+                        "Reconnecting to '{}' relay in {} secs",
+                        relay.url,
+                        interval.as_secs()
+                    );
+                    thread::sleep(interval).await;
                 } else {
                     // Break loop and exit
                     tracing::info!("Reconnection disabled for '{}', breaking loop.", relay.url);
@@ -484,20 +492,26 @@ impl InnerRelay {
         });
     }
 
-    /// Depending on attempts and success, use default or incremental retry time
-    fn calculate_retry_sec(&self) -> u64 {
-        if self.opts.adjust_retry_sec {
+    /// Depending on attempts and success, use default or incremental retry interval
+    fn calculate_retry_interval(&self) -> Duration {
+        // Check if incremental interval is enabled
+        if self.opts.adjust_retry_interval {
+            // Calculate difference between attempts and success
             // diff = attempts - success
-            let diff: u64 = self.stats.attempts().saturating_sub(self.stats.success()) as u64;
+            let diff: u32 = self.stats.attempts().saturating_sub(self.stats.success()) as u32;
 
             // Use incremental retry time if diff >= 3
             if diff >= 3 {
-                return cmp::min(MIN_RETRY_SEC * (1 + diff), MAX_ADJ_RETRY_SEC);
+                // Calculate incremental interval
+                let interval: Duration = MIN_RETRY_INTERVAL * (1 + diff);
+
+                // If incremental interval is too big, use the max one.
+                return cmp::min(interval, MAX_RETRY_INTERVAL);
             }
         }
 
-        // Use default retry time
-        self.opts.retry_sec
+        // Use default internal
+        self.opts.retry_interval
     }
 
     /// Connect and run message handler
@@ -509,6 +523,7 @@ impl InnerRelay {
         self.stats.new_attempt();
 
         // Request information document
+        // TODO: not request NIP11 here, instead request it on `document` method call and store it in `OnceCell`?
         #[cfg(feature = "nip11")]
         self.request_nip11_document();
 

@@ -133,19 +133,19 @@ impl RelayOptions {
         builder
     }
 
-    /// Retry connection time (default: 10 sec)
+    /// Retry interval (default: 10 sec)
     ///
-    /// Are allowed values `>=` 5 secs
-    pub fn retry_sec(self: Arc<Self>, retry_sec: u64) -> Self {
+    /// Minimum allowed value is `5 secs`
+    pub fn retry_interval(self: Arc<Self>, interval: Duration) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.retry_sec(retry_sec);
+        builder.inner = builder.inner.retry_interval(interval);
         builder
     }
 
-    /// Automatically adjust retry seconds based on success/attempts (default: true)
-    pub fn adjust_retry_sec(self: Arc<Self>, adjust_retry_sec: bool) -> Self {
+    /// Automatically adjust retry interval based on success/attempts (default: true)
+    pub fn adjust_retry_interval(self: Arc<Self>, adjust_retry_interval: bool) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.adjust_retry_sec(adjust_retry_sec);
+        builder.inner = builder.inner.adjust_retry_interval(adjust_retry_interval);
         builder
     }
 
