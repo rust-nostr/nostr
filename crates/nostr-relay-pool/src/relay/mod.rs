@@ -363,17 +363,6 @@ impl Relay {
         self.inner.fetch_events(filters, timeout, opts).await
     }
 
-    /// Get events of filters
-    #[deprecated(since = "0.36.0", note = "Use `fetch_events` instead")]
-    pub async fn get_events_of(
-        &self,
-        filters: Vec<Filter>,
-        timeout: Duration,
-        opts: FilterOptions,
-    ) -> Result<Vec<Event>, Error> {
-        Ok(self.fetch_events(filters, timeout, opts).await?.to_vec())
-    }
-
     /// Count events
     #[inline]
     pub async fn count_events(
@@ -382,16 +371,6 @@ impl Relay {
         timeout: Duration,
     ) -> Result<usize, Error> {
         self.inner.count_events(filters, timeout).await
-    }
-
-    /// Count events of filters
-    #[deprecated(since = "0.36.0", note = "Use `count_events` instead")]
-    pub async fn count_events_of(
-        &self,
-        filters: Vec<Filter>,
-        timeout: Duration,
-    ) -> Result<usize, Error> {
-        self.count_events(filters, timeout).await
     }
 
     /// Sync events with relays (negentropy reconciliation)

@@ -26,9 +26,9 @@ pub mod options;
 mod zapper;
 
 pub use self::builder::ClientBuilder;
+pub use self::options::Options;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Connection, ConnectionTarget};
-pub use self::options::{EventSource, Options};
 #[cfg(feature = "nip57")]
 pub use self::zapper::{ZapDetails, ZapEntity};
 use crate::gossip::graph::GossipGraph;
@@ -855,16 +855,6 @@ impl Client {
             .await?)
     }
 
-    /// Get events of filters
-    #[deprecated(since = "0.36.0", note = "Use `fetch_events` instead")]
-    pub async fn get_events_of(
-        &self,
-        filters: Vec<Filter>,
-        _source: EventSource,
-    ) -> Result<Vec<Event>, Error> {
-        Ok(self.fetch_events(filters, None).await?.to_vec())
-    }
-
     /// Fetch events from specific relays
     #[inline]
     pub async fn fetch_events_from<I, U>(
@@ -883,25 +873,6 @@ impl Client {
             .pool
             .fetch_events_from(urls, filters, timeout, FilterOptions::ExitOnEOSE)
             .await?)
-    }
-
-    /// Fetch events of filters from specific relays
-    #[deprecated(since = "0.36.0", note = "Use `fetch_events_from` instead")]
-    pub async fn get_events_from<I, U>(
-        &self,
-        urls: I,
-        filters: Vec<Filter>,
-        timeout: Option<Duration>,
-    ) -> Result<Vec<Event>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
-    {
-        Ok(self
-            .fetch_events_from(urls, filters, timeout)
-            .await?
-            .to_vec())
     }
 
     /// Get events both from database and relays
@@ -955,16 +926,6 @@ impl Client {
 
         // Merge result
         Ok(stored_events.merge(fetched_events))
-    }
-
-    /// Stream events
-    #[deprecated(since = "0.36.0", note = "Use `stream_events` instead")]
-    pub async fn stream_events_of(
-        &self,
-        filters: Vec<Filter>,
-        timeout: Option<Duration>,
-    ) -> Result<ReceiverStream<Event>, Error> {
-        self.stream_events(filters, timeout).await
     }
 
     /// Stream events from relays
@@ -1697,39 +1658,6 @@ impl Client {
     {
         let builder = EventBuilder::file_metadata(description, metadata);
         self.send_event_builder(builder).await
-    }
-
-    /// Sync events with relays (negentropy reconciliation)
-    ///
-    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be reconciled also from
-    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
-    ///
-    /// <https://github.com/hoytech/negentropy>
-    #[deprecated(since = "0.36.0", note = "Use `sync` instead")]
-    pub async fn reconcile(
-        &self,
-        filter: Filter,
-        opts: SyncOptions,
-    ) -> Result<Output<Reconciliation>, Error> {
-        self.sync(filter, &opts).await
-    }
-
-    /// Sync events with specific relays (negentropy reconciliation)
-    ///
-    /// <https://github.com/hoytech/negentropy>
-    #[deprecated(since = "0.36.0", note = "Use `sync_with` instead")]
-    pub async fn reconcile_with<I, U>(
-        &self,
-        urls: I,
-        filter: Filter,
-        opts: SyncOptions,
-    ) -> Result<Output<Reconciliation>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
-    {
-        self.sync_with(urls, filter, &opts).await
     }
 
     /// Handle notifications

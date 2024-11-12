@@ -118,10 +118,6 @@ impl RelayOptions {
         self
     }
 
-    /// Set `reconnect` option
-    #[deprecated(since = "0.36.0")]
-    pub fn update_reconnect(&self, _reconnect: bool) {}
-
     /// Retry connection time (default: 10 sec)
     ///
     /// Are allowed values `>=` 5 secs
@@ -132,19 +128,11 @@ impl RelayOptions {
         self
     }
 
-    /// Set retry_sec option
-    #[deprecated(since = "0.36.0")]
-    pub fn update_retry_sec(&self, _retry_sec: u64) {}
-
     /// Automatically adjust retry seconds based on success/attempts (default: true)
     pub fn adjust_retry_sec(mut self, adjust_retry_sec: bool) -> Self {
         self.adjust_retry_sec = adjust_retry_sec;
         self
     }
-
-    /// Set adjust_retry_sec option
-    #[deprecated(since = "0.36.0")]
-    pub fn update_adjust_retry_sec(&self, _adjust_retry_sec: bool) {}
 
     /// Set custom limits
     pub fn limits(mut self, limits: RelayLimits) -> Self {
@@ -165,41 +153,6 @@ impl RelayOptions {
     #[inline]
     pub fn filtering_mode(mut self, mode: RelayFilteringMode) -> Self {
         self.filtering_mode = mode;
-        self
-    }
-}
-
-/// [`Relay`](super::Relay) send options
-#[deprecated(since = "0.36.0")]
-#[derive(Debug, Clone, Copy, Default)]
-pub struct RelaySendOptions {}
-
-#[allow(deprecated)]
-impl RelaySendOptions {
-    /// New default [`RelaySendOptions`]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Skip wait for disconnected relay (default: true)
-    #[deprecated(
-        since = "0.36.0",
-        note = "Disconnected relays will be skipped by default"
-    )]
-    pub fn skip_disconnected(self, _value: bool) -> Self {
-        self
-    }
-
-    /// Skip wait for confirmation that message is sent (default: false)
-    #[deprecated(since = "0.36.0", note = "By default confirmation will not be skipped")]
-    pub fn skip_send_confirmation(self, _value: bool) -> Self {
-        self
-    }
-
-    /// Timeout for sending event (default: 20 secs)
-    ///
-    /// If `None`, the default timeout will be used
-    pub fn timeout(self, _timeout: Option<Duration>) -> Self {
         self
     }
 }
@@ -235,13 +188,6 @@ impl SubscribeOptions {
     /// Set auto-close conditions
     pub fn close_on(mut self, opts: Option<SubscribeAutoCloseOptions>) -> Self {
         self.auto_close = opts;
-        self
-    }
-
-    /// Set [RelaySendOptions]
-    #[allow(deprecated)]
-    #[deprecated(since = "0.36.0")]
-    pub fn send_opts(self, _opts: RelaySendOptions) -> Self {
         self
     }
 

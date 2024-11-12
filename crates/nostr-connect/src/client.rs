@@ -17,10 +17,6 @@ use tokio::sync::OnceCell;
 
 use crate::error::Error;
 
-#[allow(missing_docs)]
-#[deprecated(since = "0.36.0", note = "Use `NostrConnect` instead")]
-pub type Nip46Signer = NostrConnect;
-
 /// Nostr Connect Client
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/46.md>

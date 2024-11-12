@@ -836,12 +836,6 @@ impl NostrConnectURI {
         matches!(self, Self::Bunker { .. })
     }
 
-    /// Get signer public key, if exists.
-    #[deprecated(since = "0.36.0", note = "Use `remote_signer_public_key` instead.")]
-    pub fn signer_public_key(&self) -> Option<PublicKey> {
-        self.remote_signer_public_key().copied()
-    }
-
     /// Get remote signer public key (exists only for `bunker` URIs)
     ///
     /// This public key MAY be same as the user one, but not necessarily.

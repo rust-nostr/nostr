@@ -17,7 +17,7 @@ mod options;
 pub mod zapper;
 
 pub use self::builder::ClientBuilder;
-pub use self::options::{EventSource, Options};
+pub use self::options::Options;
 use self::zapper::{ZapDetails, ZapEntity};
 use crate::database::events::Events;
 use crate::error::Result;

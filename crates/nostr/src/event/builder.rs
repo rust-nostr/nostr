@@ -279,46 +279,8 @@ impl EventBuilder {
     /// Build unsigned event
     #[inline]
     #[cfg(feature = "std")]
-    #[deprecated(since = "0.36.0", note = "Use `build` method instead")]
-    pub fn to_unsigned_event(self, pubkey: PublicKey) -> UnsignedEvent {
-        self.build_with_ctx(&Instant::now(), pubkey)
-    }
-
-    /// Build unsigned event
-    #[inline]
-    #[cfg(feature = "std")]
     pub fn build(self, pubkey: PublicKey) -> UnsignedEvent {
         self.build_with_ctx(&Instant::now(), pubkey)
-    }
-
-    /// Build, sign and return [`Event`]
-    #[inline]
-    #[cfg(feature = "std")]
-    #[deprecated(since = "0.36.0", note = "Use `sign_with_ctx` method instead")]
-    pub fn to_event_with_ctx<C, R, T>(
-        self,
-        secp: &Secp256k1<C>,
-        rng: &mut R,
-        supplier: &T,
-        keys: &Keys,
-    ) -> Result<Event, Error>
-    where
-        C: Signing + Verification,
-        R: Rng + CryptoRng,
-        T: TimeSupplier,
-    {
-        self.sign_with_ctx(secp, rng, supplier, keys)
-    }
-
-    /// Build event
-    #[inline]
-    #[cfg(feature = "std")]
-    #[deprecated(
-        since = "0.36.0",
-        note = "Use `sign` or `sign_with_keys` method instead"
-    )]
-    pub fn to_event(self, keys: &Keys) -> Result<Event, Error> {
-        self.sign_with_keys(keys)
     }
 
     /// Build, sign and return [`Event`]

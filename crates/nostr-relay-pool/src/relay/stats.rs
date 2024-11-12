@@ -123,12 +123,6 @@ impl RelayConnectionStats {
         self.inner.success.load(Ordering::SeqCst)
     }
 
-    /// Uptime
-    #[deprecated(since = "0.36.0", note = "Use `success_rate` instead")]
-    pub fn uptime(&self) -> f64 {
-        self.success_rate()
-    }
-
     /// Success rate
     pub fn success_rate(&self) -> f64 {
         let attempts: usize = self.attempts();

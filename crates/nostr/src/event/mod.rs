@@ -31,8 +31,6 @@ pub use self::builder::EventBuilder;
 pub use self::id::EventId;
 pub use self::kind::Kind;
 pub use self::partial::{MissingPartialEvent, PartialEvent};
-#[cfg(feature = "std")]
-use self::tag::list::TagsIndexes;
 pub use self::tag::{Tag, TagKind, TagStandard, Tags};
 pub use self::unsigned::UnsignedEvent;
 use crate::nips::nip01::Coordinate;
@@ -193,22 +191,6 @@ impl Event {
         }
     }
 
-    /// Get content of **first** tag that match [TagKind].
-    #[deprecated(since = "0.36.0", note = "Use `Tags::find` method instead.")]
-    pub fn get_tag_content(&self, kind: TagKind) -> Option<&str> {
-        self.tags.find(kind).and_then(|t| t.content())
-    }
-
-    /// Get content of all tags that match [TagKind].
-    #[deprecated(since = "0.36.0")]
-    pub fn get_tags_content(&self, kind: TagKind) -> Vec<&str> {
-        self.tags
-            .iter()
-            .filter(|t| t.kind() == kind)
-            .filter_map(|t| t.content())
-            .collect()
-    }
-
     /// Verify both [`EventId`] and [`Signature`]
     #[inline]
     #[cfg(feature = "std")]
@@ -273,12 +255,6 @@ impl Event {
         self.id.check_pow(difficulty)
     }
 
-    /// Get [`Timestamp`] expiration if set
-    #[deprecated(since = "0.36.0", note = "Use `Tags::expiration` method instead.")]
-    pub fn expiration(&self) -> Option<&Timestamp> {
-        self.tags.expiration()
-    }
-
     /// Returns `true` if the event has an expiration tag that is expired.
     /// If an event has no expiration tag, then it will return `false`.
     ///
@@ -330,51 +306,6 @@ impl Event {
         }
 
         None
-    }
-
-    /// Extract identifier (`d` tag), if exists.
-    #[deprecated(since = "0.36.0", note = "Use `Tags::identifier` method instead.")]
-    pub fn identifier(&self) -> Option<&str> {
-        self.tags.identifier()
-    }
-
-    /// Extract public keys from tags (`p` tag)
-    ///
-    /// **This method extract ONLY `TagStandard::PublicKey`, `TagStandard::PublicKeyReport` and `TagStandard::PublicKeyLiveEvent` variants**
-    #[deprecated(since = "0.36.0", note = "Use `Tags::public_keys` method instead.")]
-    pub fn public_keys(&self) -> impl Iterator<Item = &PublicKey> {
-        self.tags.public_keys()
-    }
-
-    /// Extract event IDs from tags (`e` tag)
-    ///
-    /// **This method extract ONLY `TagStandard::Event` and `TagStandard::EventReport` variants**
-    #[deprecated(since = "0.36.0", note = "Use `Tags::event_ids` method instead.")]
-    pub fn event_ids(&self) -> impl Iterator<Item = &EventId> {
-        self.tags.event_ids()
-    }
-
-    /// Extract coordinates from tags (`a` tag)
-    ///
-    /// **This method extract ONLY `TagStandard::Coordinate`**
-    #[deprecated(since = "0.36.0", note = "Use `Tags::coordinates` method instead.")]
-    pub fn coordinates(&self) -> impl Iterator<Item = &Coordinate> {
-        self.tags.coordinates()
-    }
-
-    /// Extract hashtags from tags (`t` tag)
-    ///
-    /// **This method extract ONLY `TagStandard::Hashtag`**
-    #[deprecated(since = "0.36.0", note = "Use `Tags::hashtags` method instead.")]
-    pub fn hashtags(&self) -> impl Iterator<Item = &str> {
-        self.tags.hashtags()
-    }
-
-    /// Get tags indexes
-    #[deprecated(since = "0.36.0", note = "Use `Tags::indexes` method instead.")]
-    #[cfg(feature = "std")]
-    pub fn tags_indexes(&self) -> &TagsIndexes {
-        self.tags.indexes()
     }
 
     /// Check if it's a protected event

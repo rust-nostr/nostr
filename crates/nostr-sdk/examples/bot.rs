@@ -2,8 +2,6 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::time::Duration;
-
 use nostr_sdk::prelude::*;
 
 #[tokio::main]
@@ -11,8 +9,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let keys = Keys::parse("nsec12kcgs78l06p30jz7z7h3n2x2cy99nw2z6zspjdp7qc206887mwvs95lnkx")?;
-    let opts = Options::new().connection_timeout(Some(Duration::from_secs(10)));
-    let client = Client::builder().signer(keys.clone()).opts(opts).build();
+    let client = Client::new(keys.clone());
 
     println!("Bot public key: {}", keys.public_key().to_bech32()?);
 

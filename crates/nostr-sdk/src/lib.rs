@@ -46,4 +46,4 @@ pub mod client;
 mod gossip;
 pub mod prelude;
 
-pub use self::client::{Client, ClientBuilder, EventSource, Options};
+pub use self::client::{Client, ClientBuilder, Options};
