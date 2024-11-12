@@ -309,11 +309,11 @@ mod tests {
 
     #[test]
     fn test_backend_is_persistent() {
-        assert_eq!(Backend::Memory.is_persistent(), false);
-        assert_eq!(Backend::RocksDB.is_persistent(), true);
-        assert_eq!(Backend::LMDB.is_persistent(), true);
-        assert_eq!(Backend::SQLite.is_persistent(), true);
-        assert_eq!(Backend::IndexedDB.is_persistent(), true);
-        assert_eq!(Backend::Custom("custom".to_string()).is_persistent(), true);
+        assert!(!Backend::Memory.is_persistent());
+        assert!(Backend::RocksDB.is_persistent());
+        assert!(Backend::LMDB.is_persistent());
+        assert!(Backend::SQLite.is_persistent());
+        assert!(Backend::IndexedDB.is_persistent());
+        assert!(Backend::Custom("custom".to_string()).is_persistent());
     }
 }
