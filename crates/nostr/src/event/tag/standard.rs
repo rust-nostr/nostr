@@ -23,6 +23,7 @@ use crate::nips::nip48::Protocol;
 use crate::nips::nip53::{LiveEventMarker, LiveEventStatus};
 use crate::nips::nip56::Report;
 use crate::nips::nip65::RelayMetadata;
+use crate::nips::nip73::ExternalContentId;
 use crate::nips::nip90::DataVendingMachineStatus;
 use crate::nips::nip98::HttpMethod;
 use crate::types::url::Url;
@@ -44,7 +45,7 @@ pub enum TagStandard {
         marker: Option<Marker>,
         /// Should be the public key of the author of the referenced event
         public_key: Option<PublicKey>,
-        /// Whether the e tag is an uppercase E or not
+        /// Whether the tag is an uppercase or not
         uppercase: bool,
     },
     /// Quote
@@ -83,7 +84,7 @@ pub enum TagStandard {
         public_key: PublicKey,
         relay_url: Option<UncheckedUrl>,
         alias: Option<String>,
-        /// Whether the p tag is an uppercase P or not
+        /// Whether the tag is an uppercase or not
         uppercase: bool,
     },
     /// Report public key
@@ -107,16 +108,29 @@ pub enum TagStandard {
     Hashtag(String),
     Geohash(String),
     Identifier(String),
+    /// External Content ID
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/73.md>
+    ExternalContent {
+        content: ExternalContentId,
+        /// Optional URL hint to redirect people to a website if the client isn't opinionated about how to interpret the id.
+        hint: Option<Url>,
+        /// Whether the tag is an uppercase or not
+        uppercase: bool,
+    },
+    /// External Identity
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/39.md>
     ExternalIdentity(Identity),
     Coordinate {
         coordinate: Coordinate,
         relay_url: Option<UncheckedUrl>,
-        /// Whether the a tag is an uppercase A or not
+        /// Whether the tag is an uppercase or not
         uppercase: bool,
     },
     Kind {
         kind: Kind,
-        /// Whether the k tag is an uppercase K or not
+        /// Whether the tag is an uppercase or not
         uppercase: bool,
     },
     Relay(UncheckedUrl),
@@ -252,9 +266,9 @@ impl TagStandard {
                 // Parse `i` tag
                 SingleLetterTag {
                     character: Alphabet::I,
-                    uppercase: false,
+                    uppercase,
                 } => {
-                    return parse_i_tag(tag);
+                    return parse_i_tag(tag, uppercase);
                 }
                 // Parse `l` tag
                 SingleLetterTag {
@@ -526,6 +540,10 @@ impl TagStandard {
                 character: Alphabet::D,
                 uppercase: false,
             }),
+            Self::ExternalContent { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::I,
+                uppercase: *uppercase,
+            }),
             Self::ExternalIdentity(..) => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::I,
                 uppercase: false,
@@ -743,6 +761,15 @@ impl From<TagStandard> for Vec<String> {
                     vec.push(relay.to_string());
                 }
                 vec
+            }
+            TagStandard::ExternalContent { content, hint, .. } => {
+                let mut tag = vec![tag_kind, content.to_string()];
+
+                if let Some(hint) = hint {
+                    tag.push(hint.to_string());
+                }
+
+                tag
             }
             TagStandard::ExternalIdentity(identity) => {
                 vec![tag_kind, identity.tag_platform_identity(), identity.proof]
@@ -982,19 +1009,41 @@ where
     Ok(TagStandard::event(event_id))
 }
 
-fn parse_i_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
+fn parse_i_tag<S>(tag: &[S], uppercase: bool) -> Result<TagStandard, Error>
 where
     S: AsRef<str>,
 {
-    // External Identity tag (NIP39) have at max 3 values at the moment
-    if tag.len() < 3 {
+    // External Content ID (NIP73) has min 2 values
+    // External Identity (NI39) has min 3 values
+    if tag.len() < 2 {
         return Err(Error::UnknownStardardizedTag);
     }
 
     let tag_1: &str = tag[1].as_ref();
-    let tag_2: &str = tag[2].as_ref();
+    let tag_2: Option<&str> = tag.get(2).map(|t| t.as_ref());
 
-    Ok(TagStandard::ExternalIdentity(Identity::new(tag_1, tag_2)?))
+    // Check if External Identity (NIP39)
+    if !uppercase {
+        if let Some(tag_2) = tag_2 {
+            if let Ok(identity) = Identity::new(tag_1, tag_2) {
+                return Ok(TagStandard::ExternalIdentity(identity));
+            }
+        }
+    }
+
+    // Check if External Content ID (NIP73)
+    if let Ok(content) = ExternalContentId::from_str(tag_1) {
+        return Ok(TagStandard::ExternalContent {
+            content,
+            hint: match tag_2 {
+                Some(url) => Some(Url::parse(url)?),
+                None => None,
+            },
+            uppercase,
+        });
+    }
+
+    Err(Error::UnknownStardardizedTag)
 }
 
 fn parse_p_tag<S>(tag: &[S], uppercase: bool) -> Result<TagStandard, Error>
@@ -1866,6 +1915,36 @@ mod tests {
         assert_eq!(
             TagStandard::parse(&["r", "https://example.com"]).unwrap(),
             TagStandard::Reference(String::from("https://example.com"))
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["i", "isbn:9780765382030"]).unwrap(),
+            TagStandard::ExternalContent {
+                content: ExternalContentId::Book(String::from("9780765382030")),
+                hint: None,
+                uppercase: false,
+            }
+        );
+
+        assert_eq!(
+            TagStandard::parse(&[
+                "i",
+                "podcast:guid:c90e609a-df1e-596a-bd5e-57bcc8aad6cc",
+                "https://podcastindex.org/podcast/c90e609a-df1e-596a-bd5e-57bcc8aad6cc"
+            ])
+            .unwrap(),
+            TagStandard::ExternalContent {
+                content: ExternalContentId::PodcastFeed(String::from(
+                    "c90e609a-df1e-596a-bd5e-57bcc8aad6cc"
+                )),
+                hint: Some(
+                    Url::parse(
+                        "https://podcastindex.org/podcast/c90e609a-df1e-596a-bd5e-57bcc8aad6cc"
+                    )
+                    .unwrap()
+                ),
+                uppercase: false,
+            }
         );
 
         assert_eq!(

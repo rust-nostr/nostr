@@ -160,6 +160,7 @@ The following crate feature flags are available:
 |     ✅     | [70 - Protected Events](https://github.com/nostr-protocol/nips/blob/master/70.md)                               |
 |     ❌     | [71 - Video Events](https://github.com/nostr-protocol/nips/blob/master/71.md)                                   |
 |     ❌     | [72 - Moderated Communities](https://github.com/nostr-protocol/nips/blob/master/72.md)                          |
+|     ✅     | [73 - External Content IDs](https://github.com/nostr-protocol/nips/blob/master/73.md)                           |
 |     ❌     | [75 - Zap Goals](https://github.com/nostr-protocol/nips/blob/master/75.md)                                      |
 |     ✅     | [78 - Arbitrary custom app data](https://github.com/nostr-protocol/nips/blob/master/78.md)                      |
 |     ❌     | [89 - Recommended Application Handlers](https://github.com/nostr-protocol/nips/blob/master/89.md)               |

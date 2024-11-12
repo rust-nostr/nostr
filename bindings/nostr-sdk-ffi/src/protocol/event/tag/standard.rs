@@ -24,6 +24,7 @@ use crate::protocol::nips::nip48::Protocol;
 use crate::protocol::nips::nip53::LiveEventMarker;
 use crate::protocol::nips::nip56::Report;
 use crate::protocol::nips::nip65::RelayMetadata;
+use crate::protocol::nips::nip73::ExternalContentId;
 use crate::protocol::nips::nip90::DataVendingMachineStatus;
 use crate::protocol::nips::nip98::HttpMethod;
 use crate::protocol::{Event, EventId, ImageDimensions, LiveEventStatus, PublicKey, Timestamp};
@@ -106,6 +107,12 @@ pub enum TagStandard {
     },
     Identifier {
         identifier: String,
+    },
+    ExternalContent {
+        content: ExternalContentId,
+        /// Hint URL
+        hint: Option<String>,
+        uppercase: bool,
     },
     ExternalIdentity {
         identity: Identity,
@@ -373,6 +380,15 @@ impl From<tag::TagStandard> for TagStandard {
                 relay_url: relay_url.map(|u| u.to_string()),
                 uppercase,
             },
+            tag::TagStandard::ExternalContent {
+                content,
+                hint,
+                uppercase,
+            } => Self::ExternalContent {
+                content: content.into(),
+                hint: hint.map(|u| u.to_string()),
+                uppercase,
+            },
             tag::TagStandard::ExternalIdentity(identity) => Self::ExternalIdentity {
                 identity: identity.into(),
             },
@@ -576,6 +592,18 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::Hashtag { hashtag } => Ok(Self::Hashtag(hashtag)),
             TagStandard::Geohash { geohash } => Ok(Self::Geohash(geohash)),
             TagStandard::Identifier { identifier } => Ok(Self::Identifier(identifier)),
+            TagStandard::ExternalContent {
+                content,
+                hint,
+                uppercase,
+            } => Ok(Self::ExternalContent {
+                content: content.try_into()?,
+                hint: match hint {
+                    Some(url) => Some(Url::parse(&url)?),
+                    None => None,
+                },
+                uppercase,
+            }),
             TagStandard::ExternalIdentity { identity } => {
                 Ok(Self::ExternalIdentity(identity.into()))
             }
