@@ -57,9 +57,6 @@ jobs:
       - name: Install just
         run: cargo install just
 
-      - name: Init
-        run: cd book && just init
-
       - name: Build
         run: cd book && just build
 
