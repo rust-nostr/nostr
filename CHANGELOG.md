@@ -59,7 +59,9 @@
 * nostr: add `Event::coordinate` ([Yuki Kishimoto])
 * nostr: add `A/a` tags in `EventBuilder::comment` (NIP22) events ([Yuki Kishimoto])
 * nostr: add NIP73 support ([Yuki Kishimoto])
+* nostr: add `NostrSigner::backend` ([Yuki Kishimoto])
 * pool: add relay reconnection and disconnection unit tests ([Yuki Kishimoto])
+* connect: add `NostrConnect::set_user_public_key` ([Yuki Kishimoto])
 * book: add some examples ([RydalWater])
 
 ### Fixed

@@ -183,6 +183,14 @@ impl NostrConnect {
         })
     }
 
+    /// Manually set the user public key
+    ///
+    /// Be cautious when using this method, as providing an incorrect can lead to potential issues.
+    #[inline]
+    pub fn set_user_public_key(&self, user_public_key: PublicKey) -> Result<(), Error> {
+        Ok(self.user_public_key.set(user_public_key)?)
+    }
+
     #[inline]
     async fn remote_signer_public_key(&self) -> Result<&PublicKey, Error> {
         self.remote_signer_public_key
