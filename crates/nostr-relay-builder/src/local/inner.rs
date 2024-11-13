@@ -6,6 +6,11 @@ use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 
+use super::session::{RateLimiterResponse, Session, Tokens};
+use super::util;
+use crate::builder::{PolicyResult, RateLimit, RelayBuilder, RelayBuilderMode, WritePolicy};
+use crate::error::Error;
+use crate::prelude::QueryPolicy;
 use async_utility::futures_util::stream::{self, SplitSink};
 use async_utility::futures_util::{SinkExt, StreamExt};
 use async_wsocket::native::{self, Message, WebSocketStream};
@@ -21,6 +26,7 @@ use crate::builder::{
     RateLimit, RelayBuilder, RelayBuilderMode, RelayBuilderNip42, RelayTestOptions,
 };
 use crate::error::Error;
+use tracing::warn;
 
 type WsTx = SplitSink<WebSocketStream<TcpStream>, Message>;
 
@@ -39,6 +45,8 @@ pub(super) struct InnerLocalRelay {
     min_pow: Option<u8>, // TODO: use AtomicU8 to allow to change it?
     #[cfg(feature = "tor")]
     hidden_service: Option<String>,
+    write_policy: Vec<Arc<Box<dyn WritePolicy>>>,
+    query_policy: Vec<Arc<Box<dyn QueryPolicy>>>,
     nip42: Option<RelayBuilderNip42>,
     test: RelayTestOptions,
 }
@@ -102,6 +110,8 @@ impl InnerLocalRelay {
             min_pow: builder.min_pow,
             #[cfg(feature = "tor")]
             hidden_service,
+            write_policy: builder.write_plugins,
+            query_policy: builder.query_plugins,
             nip42: builder.nip42,
             test: builder.test,
         };
@@ -187,7 +197,7 @@ impl InnerLocalRelay {
                             match msg {
                                 Message::Text(json) => {
                                     tracing::trace!("Received {json}");
-                                    self.handle_client_msg(&mut session, &mut tx, ClientMessage::from_json(json)?)
+                                    self.handle_client_msg(&mut session, &mut tx, ClientMessage::from_json(json)?, &addr)
                                         .await?;
                                 }
                                 Message::Binary(..) => {
@@ -238,6 +248,7 @@ impl InnerLocalRelay {
         session: &mut Session,
         ws_tx: &mut WsTx,
         msg: ClientMessage,
+        addr: &SocketAddr,
     ) -> Result<()> {
         match msg {
             ClientMessage::Event(event) => {
@@ -420,6 +431,23 @@ impl InnerLocalRelay {
                         .await;
                 }
 
+                // check write policy
+                for ref policy in &self.write_policy {
+                    let event_id = event.id;
+                    if let PolicyResult::Reject(m) = policy.admit_event(&event, addr).await {
+                        return self
+                            .send_msg(
+                                ws_tx,
+                                RelayMessage::Ok {
+                                    event_id,
+                                    status: false,
+                                    message: format!("{}: {}", MachineReadablePrefix::Blocked, m),
+                                },
+                            )
+                            .await;
+                    }
+                }
+
                 let msg: RelayMessage = match self.database.save_event(&event).await {
                     Ok(status) => {
                         // TODO: match status
@@ -502,6 +530,21 @@ impl InnerLocalRelay {
                                         "{}: you must auth",
                                         MachineReadablePrefix::AuthRequired
                                     ),
+                                },
+                            )
+                            .await;
+                    }
+                }
+
+                // check query policy plugins
+                for ref plugin in &self.query_policy {
+                    if let PolicyResult::Reject(msg) = plugin.admit_query(&filters, addr).await {
+                        return self
+                            .send_msg(
+                                ws_tx,
+                                RelayMessage::Closed {
+                                    subscription_id,
+                                    message: format!("{}: {}", MachineReadablePrefix::Error, msg),
                                 },
                             )
                             .await;
