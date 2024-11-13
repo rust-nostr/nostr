@@ -5,7 +5,6 @@
 use core::convert::Infallible;
 
 use async_utility::thread;
-use nostr::message::MessageHandleError;
 use nostr::types::url;
 use nostr_database::DatabaseError;
 use thiserror::Error;
@@ -21,9 +20,6 @@ pub enum Error {
     /// Relay error
     #[error(transparent)]
     Relay(#[from] relay::Error),
-    /// Message handler error
-    #[error(transparent)]
-    MessageHandler(#[from] MessageHandleError),
     /// Database error
     #[error(transparent)]
     Database(#[from] DatabaseError),

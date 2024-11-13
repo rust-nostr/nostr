@@ -11,14 +11,12 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
-use core::convert::From;
 use core::fmt;
 
 use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use base64::engine::{general_purpose, Engine};
-use bitcoin::secp256k1;
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand;
 use bitcoin::secp256k1::rand::RngCore;
@@ -40,8 +38,6 @@ pub enum Error {
     Utf8Encode,
     /// Wrong encryption block mode
     WrongBlockMode,
-    /// Secp256k1 error
-    Secp256k1(secp256k1::Error),
 }
 
 #[cfg(feature = "std")]
@@ -57,14 +53,7 @@ impl fmt::Display for Error {
                 f,
                 "Wrong encryption block mode. The content must be encrypted using CBC mode!"
             ),
-            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
         }
-    }
-}
-
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Self::Secp256k1(e)
     }
 }
 

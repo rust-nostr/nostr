@@ -12,7 +12,7 @@ use core::ops::Range;
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng};
-use bitcoin::secp256k1::{self, Secp256k1, Signing, Verification};
+use bitcoin::secp256k1::{Secp256k1, Signing, Verification};
 use serde_json::{json, Value};
 
 #[cfg(all(feature = "std", feature = "nip04", feature = "nip46"))]
@@ -40,12 +40,6 @@ impl fmt::Display for WrongKindError {
 /// [`EventBuilder`] error
 #[derive(Debug)]
 pub enum Error {
-    /// Key error
-    Key(key::Error),
-    /// JSON error
-    Json(serde_json::Error),
-    /// Secp256k1 error
-    Secp256k1(secp256k1::Error),
     /// Signer error
     Signer(SignerError),
     /// Unsigned event error
@@ -79,42 +73,21 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Key(e) => write!(f, "Key: {e}"),
-            Self::Json(e) => write!(f, "Json: {e}"),
-            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
             Self::Signer(e) => write!(f, "{e}"),
-            Self::Unsigned(e) => write!(f, "Unsigned event: {e}"),
+            Self::Unsigned(e) => write!(f, "{e}"),
             #[cfg(feature = "nip03")]
-            Self::OpenTimestamps(e) => write!(f, "NIP03: {e}"),
+            Self::OpenTimestamps(e) => write!(f, "{e}"),
             #[cfg(feature = "nip04")]
-            Self::NIP04(e) => write!(f, "NIP04: {e}"),
+            Self::NIP04(e) => write!(f, "{e}"),
             #[cfg(all(feature = "std", feature = "nip44"))]
-            Self::NIP44(e) => write!(f, "NIP44: {e}"),
-            Self::NIP58(e) => write!(f, "NIP58: {e}"),
+            Self::NIP44(e) => write!(f, "{e}"),
+            Self::NIP58(e) => write!(f, "{e}"),
             #[cfg(all(feature = "std", feature = "nip59"))]
             Self::NIP59(e) => write!(f, "{e}"),
             Self::WrongKind { received, expected } => {
                 write!(f, "Wrong kind: received={received}, expected={expected}")
             }
         }
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Key(e)
-    }
-}
-
-impl From<serde_json::Error> for Error {
-    fn from(e: serde_json::Error) -> Self {
-        Self::Json(e)
-    }
-}
-
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Self::Secp256k1(e)
     }
 }
 
