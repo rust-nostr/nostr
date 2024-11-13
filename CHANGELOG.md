@@ -64,6 +64,7 @@
 ### Fixed
 
 * nostr: fix `TagStandard` de/serialization unit tests ([Yuki Kishimoto])
+* pool: fix relay can't manually connect if reconnection is disabled ([Yuki Kishimoto])
 
 ### Removed
 

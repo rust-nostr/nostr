@@ -232,7 +232,7 @@ impl InnerRelay {
         self.status().is_connected()
     }
 
-    /// Check if is `disconnected`, `stopped` or `terminated`
+    /// Check if is `disconnected` or `terminated`
     #[inline]
     pub fn is_disconnected(&self) -> bool {
         self.status().is_disconnected()
@@ -481,15 +481,24 @@ impl InnerRelay {
                 // Connect and run message handler
                 relay.connect_and_run(connection_timeout).await;
 
+                // Get status
+                let status: RelayStatus = relay.status();
+
                 // Check if status set to terminated
-                if relay.status().is_terminated() {
+                if status.is_terminated() {
                     // Break loop and exit
-                    tracing::debug!("Exiting from auto connect loop for '{}'", relay.url);
+                    tracing::debug!(url = %relay.url, "Exiting from auto connect loop.");
                     break;
                 }
 
                 // Check if reconnection is enabled
                 if relay.opts.reconnect {
+                    // Check if relay is marked as disconnected. If not, update status.
+                    // TODO: is this check unnecessary?
+                    if !status.is_disconnected() {
+                        relay.set_status(RelayStatus::Disconnected, true);
+                    }
+
                     // Sleep before retry to connect
                     let interval: Duration = relay.calculate_retry_interval();
                     tracing::debug!(
@@ -499,8 +508,11 @@ impl InnerRelay {
                     );
                     thread::sleep(interval).await;
                 } else {
+                    // Reconnection disabled, set status to terminated
+                    relay.set_status(RelayStatus::Terminated, true);
+
                     // Break loop and exit
-                    tracing::debug!("Reconnection disabled for '{}', breaking loop.", relay.url);
+                    tracing::debug!(url = %relay.url, "Reconnection disabled, breaking loop.");
                     break;
                 }
             }
@@ -604,11 +616,6 @@ impl InnerRelay {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay pinger exited."),
                 Err(e) => tracing::error!(url = %self.url, error = %e, "Relay pinger exited with error.")
             }
-        }
-
-        // Check if relay is marked as disconnected. If not, update status.
-        if !self.is_disconnected() {
-            self.set_status(RelayStatus::Disconnected, true);
         }
     }
 
