@@ -199,9 +199,13 @@ impl NostrConnect {
 
     /// Manually set the user public key
     ///
-    /// Be cautious when using this method, as providing an incorrect can lead to potential issues.
+    /// Be cautious when using this method, as providing an incorrect [`PublicKey`] can lead to potential issues.
+    ///
+    /// According to [`NIP46`](https://github.com/nostr-protocol/nips/blob/926a51e72206dfa71b9950a0ce58b54a7422aad2/46.md) the user public key must be requested from the signer.
+    /// Once you set the user public key with this method, it can't be longer changed ans you'll have to create a new client.
+    /// This method is intended to be used only if you are certain that public key stored by the signer match your (stored) one.
     #[inline]
-    pub fn set_user_public_key(&self, user_public_key: PublicKey) -> Result<(), Error> {
+    pub fn non_secure_set_user_public_key(&self, user_public_key: PublicKey) -> Result<(), Error> {
         Ok(self.user_public_key.set(user_public_key)?)
     }
 
