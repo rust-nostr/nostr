@@ -43,7 +43,7 @@ impl NostrConnect {
     ) -> Result<Self, Error> {
         // Check app keys
         if let NostrConnectURI::Client { public_key, .. } = &uri {
-            if *public_key != app_keys.public_key() {
+            if public_key != &app_keys.public_key {
                 return Err(Error::PublicKeyNotMatchAppKeys);
             }
         }
@@ -126,8 +126,22 @@ impl NostrConnect {
                 {
                     GetRemoteSignerPublicKey::RemoteOnly(public_key) => public_key,
                     GetRemoteSignerPublicKey::WithUserPublicKey { remote, user } => {
-                        // Set user public key
-                        self.user_public_key.set(user)?; // This shouldn't fails
+                        // Check if user public key was already set
+                        match self.user_public_key.get().copied() {
+                            Some(set_user_public_key) => {
+                                // User public key was already set but not match the one received by the signer.
+                                if set_user_public_key != user {
+                                    return Err(Error::UserPublicKeyNotMatch {
+                                        expected: Box::new(user),
+                                        local: Box::new(set_user_public_key),
+                                    });
+                                }
+                            }
+                            None => {
+                                // No user public key in cell, set it.
+                                self.user_public_key.set(user)?;
+                            }
+                        }
 
                         // Return remote signer public key
                         remote

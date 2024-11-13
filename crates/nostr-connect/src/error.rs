@@ -6,19 +6,13 @@
 
 use nostr::event::builder;
 use nostr::nips::{nip04, nip46};
-use nostr::{key, serde_json, PublicKey};
+use nostr::PublicKey;
 use thiserror::Error;
 use tokio::sync::SetError;
 
 /// Nostr Connect error
 #[derive(Debug, Error)]
 pub enum Error {
-    /// Json
-    #[error(transparent)]
-    Json(#[from] serde_json::Error),
-    /// Keys error
-    #[error(transparent)]
-    Keys(#[from] key::Error),
     /// Event builder error
     #[error(transparent)]
     Builder(#[from] builder::Error),
@@ -28,9 +22,6 @@ pub enum Error {
     /// NIP46 error
     #[error(transparent)]
     NIP46(#[from] nip46::Error),
-    /// Relay
-    #[error(transparent)]
-    Relay(#[from] nostr_relay_pool::relay::Error),
     /// Pool
     #[error(transparent)]
     Pool(#[from] nostr_relay_pool::pool::Error),
@@ -52,4 +43,13 @@ pub enum Error {
     /// Public key not match
     #[error("public key from URI not match the app keys")]
     PublicKeyNotMatchAppKeys,
+    /// User public key not match
+    // TODO: remove these `Box<T>`. Currently clippy return the following warning: "the `Err`-variant returned from this function is very large"
+    #[error("user public key not match: expected={expected}, local={local}")]
+    UserPublicKeyNotMatch {
+        /// The expected user public key, sent by the signer
+        expected: Box<PublicKey>,
+        /// The local set user public key
+        local: Box<PublicKey>,
+    },
 }
