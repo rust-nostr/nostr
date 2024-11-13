@@ -60,7 +60,6 @@
 * nostr: add `A/a` tags in `EventBuilder::comment` (NIP22) events ([Yuki Kishimoto])
 * nostr: add NIP73 support ([Yuki Kishimoto])
 * nostr: add `NostrSigner::backend` ([Yuki Kishimoto])
-* nostr: impl<T: Deref> NostrSigner for T ([Yuki Kishimoto])
 * pool: add relay reconnection and disconnection unit tests ([Yuki Kishimoto])
 * connect: add `NostrConnect::non_secure_set_user_public_key` ([Yuki Kishimoto])
 * book: add some examples ([RydalWater])

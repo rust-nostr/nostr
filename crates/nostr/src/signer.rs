@@ -10,7 +10,6 @@ use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::sync::Arc;
 use core::fmt;
-use core::ops::Deref;
 
 use async_trait::async_trait;
 
@@ -135,24 +134,20 @@ pub trait NostrSigner: AsyncTraitDeps {
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl<T> NostrSigner for T
-where
-    T: Deref + AsyncTraitDeps,
-    T::Target: NostrSigner,
-{
+impl NostrSigner for Arc<dyn NostrSigner> {
     #[inline]
     fn backend(&self) -> SignerBackend {
-        self.deref().backend()
+        self.as_ref().backend()
     }
 
     #[inline]
     async fn get_public_key(&self) -> Result<PublicKey, SignerError> {
-        self.deref().get_public_key().await
+        self.as_ref().get_public_key().await
     }
 
     #[inline]
     async fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, SignerError> {
-        self.deref().sign_event(unsigned).await
+        self.as_ref().sign_event(unsigned).await
     }
 
     #[inline]
@@ -162,7 +157,7 @@ where
         public_key: &PublicKey,
         content: &str,
     ) -> Result<String, SignerError> {
-        self.deref().nip04_encrypt(public_key, content).await
+        self.as_ref().nip04_encrypt(public_key, content).await
     }
 
     #[inline]
@@ -172,7 +167,7 @@ where
         public_key: &PublicKey,
         encrypted_content: &str,
     ) -> Result<String, SignerError> {
-        self.deref()
+        self.as_ref()
             .nip04_decrypt(public_key, encrypted_content)
             .await
     }
@@ -184,7 +179,7 @@ where
         public_key: &PublicKey,
         content: &str,
     ) -> Result<String, SignerError> {
-        self.deref().nip44_encrypt(public_key, content).await
+        self.as_ref().nip44_encrypt(public_key, content).await
     }
 
     #[inline]
@@ -194,7 +189,7 @@ where
         public_key: &PublicKey,
         payload: &str,
     ) -> Result<String, SignerError> {
-        self.deref().nip44_decrypt(public_key, payload).await
+        self.as_ref().nip44_decrypt(public_key, payload).await
     }
 }
 
