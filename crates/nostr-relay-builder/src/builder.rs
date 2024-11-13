@@ -4,7 +4,7 @@
 
 //! Relay Builder
 
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 #[cfg(all(feature = "tor", any(target_os = "android", target_os = "ios")))]
 use std::path::Path;
 #[cfg(feature = "tor")]
@@ -91,6 +91,24 @@ pub enum RelayBuilderMode {
     PublicKey(PublicKey),
 }
 
+pub enum PolicyResult {
+    /// Policy enforces that the event should be accepted
+    Accept,
+    /// Policy enforces that the event should be rejected
+    Reject(String),
+}
+
+/// Event admission handler
+#[async_trait]
+pub trait WritePolicy: std::fmt::Debug + Send + Sync {
+    async fn admit_event(&self, event: &Event, addr: &SocketAddr) -> PolicyResult;
+}
+
+#[async_trait]
+pub trait QueryPolicy: std::fmt::Debug + Send + Sync {
+    async fn admit_query(&self, query: &Vec<Filter>, addr: &SocketAddr) -> PolicyResult;
+}
+
 /// Relay builder
 pub struct RelayBuilder {
     /// IP address
@@ -110,6 +128,10 @@ pub struct RelayBuilder {
     pub max_connections: Option<usize>,
     /// Min POW difficulty
     pub min_pow: Option<u8>,
+    /// Write policy plugins
+    pub write_plugins: Vec<Arc<Box<dyn WritePolicy>>>,
+    /// Query policy plugins
+    pub query_plugins: Vec<Arc<Box<dyn QueryPolicy>>>,
 }
 
 impl Default for RelayBuilder {
@@ -127,6 +149,8 @@ impl Default for RelayBuilder {
             tor: None,
             max_connections: None,
             min_pow: None,
+            write_plugins: Vec::new(),
+            query_plugins: Vec::new(),
         }
     }
 }
@@ -189,6 +213,20 @@ impl RelayBuilder {
     #[inline]
     pub fn min_pow(mut self, difficulty: u8) -> Self {
         self.min_pow = Some(difficulty);
+        self
+    }
+
+    /// Add a write policy plugin
+    #[inline]
+    pub fn write_policy<T: WritePolicy + 'static>(mut self, policy: T) -> Self {
+        self.write_plugins.push(Arc::new(Box::new(policy)));
+        self
+    }
+
+    /// Add a query policy plugin
+    #[inline]
+    pub fn query_policy<T: QueryPolicy + 'static>(mut self, policy: T) -> Self {
+        self.query_plugins.push(Arc::new(Box::new(policy)));
         self
     }
 }
