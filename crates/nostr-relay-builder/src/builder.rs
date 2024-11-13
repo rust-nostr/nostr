@@ -4,7 +4,8 @@
 
 //! Relay Builder
 
-use std::net::IpAddr;
+use std::fmt;
+use std::net::{IpAddr, SocketAddr};
 #[cfg(all(feature = "tor", any(target_os = "android", target_os = "ios")))]
 use std::path::Path;
 #[cfg(feature = "tor")]
@@ -93,6 +94,28 @@ pub enum RelayBuilderMode {
     PublicKey(PublicKey),
 }
 
+/// Generic plugin policy response
+pub enum PolicyResult {
+    /// Policy enforces that the event/query should be accepted
+    Accept,
+    /// Policy enforces that the event/query should be rejected
+    Reject(String),
+}
+
+/// Custom policy for accepting events into the relay database
+#[async_trait]
+pub trait WritePolicy: fmt::Debug + Send + Sync {
+    /// Check if the policy should accept an event
+    async fn admit_event(&self, event: &Event, addr: &SocketAddr) -> PolicyResult;
+}
+
+/// Filters REQ's to the internal relay database
+#[async_trait]
+pub trait QueryPolicy: fmt::Debug + Send + Sync {
+    /// Check if the policy should accept a query
+    async fn admit_query(&self, query: &[Filter], addr: &SocketAddr) -> PolicyResult;
+}
+
 /// Testing options
 #[derive(Debug, Clone, Default)]
 pub struct RelayTestOptions {
@@ -157,6 +180,10 @@ pub struct RelayBuilder {
     pub(crate) max_connections: Option<usize>,
     /// Min POW difficulty
     pub(crate) min_pow: Option<u8>,
+    /// Write policy plugins
+    pub(crate) write_plugins: Vec<Arc<dyn WritePolicy>>,
+    /// Query policy plugins
+    pub(crate) query_plugins: Vec<Arc<dyn QueryPolicy>>,
     /// Test options
     pub(crate) test: RelayTestOptions,
 }
@@ -177,6 +204,8 @@ impl Default for RelayBuilder {
             tor: None,
             max_connections: None,
             min_pow: None,
+            write_plugins: Vec::new(),
+            query_plugins: Vec::new(),
             test: RelayTestOptions::default(),
         }
     }
@@ -247,6 +276,26 @@ impl RelayBuilder {
     #[inline]
     pub fn min_pow(mut self, difficulty: u8) -> Self {
         self.min_pow = Some(difficulty);
+        self
+    }
+
+    /// Add a write policy plugin
+    #[inline]
+    pub fn write_policy<T>(mut self, policy: T) -> Self
+    where
+        T: WritePolicy + 'static,
+    {
+        self.write_plugins.push(Arc::new(policy));
+        self
+    }
+
+    /// Add a query policy plugin
+    #[inline]
+    pub fn query_policy<T>(mut self, policy: T) -> Self
+    where
+        T: QueryPolicy + 'static,
+    {
+        self.query_plugins.push(Arc::new(policy));
         self
     }
 

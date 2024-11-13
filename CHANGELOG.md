@@ -71,6 +71,7 @@
 * sdk: automatically resend event after NIP-42 authentication ([Yuki Kishimoto])
 * relay-builder: add NIP42 support ([Yuki Kishimoto])
 * relay-builder: add negentropy support ([Yuki Kishimoto])
+* relay-builder: add read/write policy plugins ([v0l])
 
 ### Fixed
 
@@ -894,6 +895,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [rodant]: https://github.com/rodant
 [erskingardner]: https://github.com/erskingardner
 [J. Azad EMERY]: https://github.com/ethicnology
+[v0l]: https://github.com/v0l
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.37.0...HEAD
