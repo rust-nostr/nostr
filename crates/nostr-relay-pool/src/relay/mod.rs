@@ -422,6 +422,7 @@ impl Relay {
 
 #[cfg(test)]
 mod tests {
+    use async_utility::thread;
     use nostr_relay_builder::prelude::*;
 
     use super::*;
@@ -434,16 +435,75 @@ mod tests {
 
         let relay = Relay::new(url);
 
-        assert_eq!(relay.status(), RelayStatus::Initialized);
-
         relay.connect(Some(Duration::from_millis(100))).await;
-
-        assert_eq!(relay.status(), RelayStatus::Connected);
 
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Test", [])
             .sign_with_keys(&keys)
             .unwrap();
         relay.send_event(event).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_status_with_reconnection_enabled() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = Url::parse(&mock.url()).unwrap();
+
+        let relay = Relay::new(url);
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.connect(Some(Duration::from_millis(100))).await;
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        mock.shutdown();
+
+        thread::sleep(Duration::from_millis(100)).await;
+
+        assert_eq!(relay.status(), RelayStatus::Disconnected);
+    }
+
+    #[tokio::test]
+    async fn test_status_with_reconnection_disabled() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = Url::parse(&mock.url()).unwrap();
+
+        let relay = Relay::with_opts(url, RelayOptions::default().reconnect(false));
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.connect(Some(Duration::from_millis(100))).await;
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        mock.shutdown();
+
+        thread::sleep(Duration::from_millis(100)).await;
+
+        assert_eq!(relay.status(), RelayStatus::Terminated);
+    }
+
+    #[tokio::test]
+    async fn test_disconnect() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = Url::parse(&mock.url()).unwrap();
+
+        let relay = Relay::new(url);
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.connect(Some(Duration::from_millis(100))).await;
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        relay.disconnect().unwrap();
+
+        thread::sleep(Duration::from_millis(100)).await;
+
+        assert_eq!(relay.status(), RelayStatus::Terminated);
     }
 }
