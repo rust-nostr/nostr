@@ -594,13 +594,15 @@ impl InnerRelay {
         // Wait that one of the futures terminate/complete
         tokio::select! {
             _ = self.receiver_message_handler(ws_rx) => {
-                tracing::trace!("Relay connection closed for '{}'", self.url);
-            }
-            _ = self.sender_message_handler(ws_tx) => {
-                tracing::trace!("Relay sender exited for '{}'", self.url);
-            }
-            _ = self.ping_handler() => {
-                tracing::trace!("Relay pinger exited for '{}'", self.url);
+                tracing::trace!(url = %self.url, "Relay received exited.");
+            },
+            res = self.sender_message_handler(ws_tx) => match res {
+                Ok(()) => tracing::trace!(url = %self.url, "Relay sender exited."),
+                Err(e) => tracing::error!(url = %self.url, error = %e, "Relay sender exited with error.")
+            },
+            res = self.ping_handler() => match res {
+                Ok(()) => tracing::trace!(url = %self.url, "Relay pinger exited."),
+                Err(e) => tracing::error!(url = %self.url, error = %e, "Relay pinger exited with error.")
             }
         }
 
@@ -610,7 +612,7 @@ impl InnerRelay {
         }
     }
 
-    async fn sender_message_handler(&self, mut ws_tx: Sink) {
+    async fn sender_message_handler(&self, mut ws_tx: Sink) -> Result<(), Error> {
         // Lock receivers
         let mut rx_nostr = self.channels.rx_nostr().await;
         let mut rx_ping = self.channels.rx_ping().await;
@@ -641,20 +643,12 @@ impl InnerRelay {
                     tracing::trace!("Sending {partial_log_msg} (size: {size} bytes)");
 
                     // Send WebSocket messages
-                    match send_ws_msgs(&mut ws_tx, msgs).await {
-                        Ok(()) => {
-                            tracing::debug!("Sent {partial_log_msg} (size: {size} bytes)");
+                    send_ws_msgs(&mut ws_tx, msgs).await?;
 
-                            // Increase sent bytes
-                            self.stats.add_bytes_sent(size);
-                        }
-                        Err(e) => {
-                            tracing::error!("Impossible to send {partial_log_msg}: {e}");
+                    // Increase sent bytes
+                    self.stats.add_bytes_sent(size);
 
-                            // Break receiver loop
-                            break;
-                        }
-                    };
+                    tracing::debug!("Sent {partial_log_msg} (size: {size} bytes)");
                 }
                 // Ping channel receiver
                 Ok(()) = rx_ping.changed() => {
@@ -667,16 +661,12 @@ impl InnerRelay {
                         let msg = WsMessage::Ping(nonce.to_be_bytes().to_vec());
 
                         // Send WebSocket message
-                        match send_ws_msgs(&mut ws_tx, [msg]).await {
-                            Ok(()) => {
-                                self.stats.ping().just_sent().await;
-                                tracing::debug!("Ping '{}' (nonce: {nonce})", self.url);
-                            }
-                            Err(e) => {
-                                tracing::error!("Impossible to ping '{}': {e}", self.url);
-                                break;
-                            }
-                        }
+                        send_ws_msgs(&mut ws_tx, [msg]).await?;
+
+                        // Set ping as just sent
+                        self.stats.ping().just_sent().await;
+
+                        tracing::debug!("Ping '{}' (nonce: {nonce})", self.url);
                     }
                 }
                 // Service channel receiver (shutdown, ..)
@@ -699,14 +689,7 @@ impl InnerRelay {
         }
 
         // Close WebSocket
-        match close_ws(&mut ws_tx).await {
-            Ok(..) => {
-                tracing::debug!("WebSocket closed for '{}'", self.url);
-            }
-            Err(e) => {
-                tracing::error!("Impossible to close WebSocket for '{}': {e}", self.url);
-            }
-        }
+        close_ws(&mut ws_tx).await
     }
 
     async fn receiver_message_handler(&self, mut ws_rx: Stream) {
@@ -758,18 +741,20 @@ impl InnerRelay {
         }
     }
 
-    async fn ping_handler(&self) {
+    async fn ping_handler(&self) -> Result<(), Error> {
         #[cfg(not(target_arch = "wasm32"))]
         if self.flags.has_ping() {
             loop {
                 let ping = self.stats.ping();
 
                 // If last nonce is NOT 0, check if relay replied
-                // Break loop if relay not replied
+                // Return error if relay not replied
                 if ping.last_nonce() != 0 && !ping.replied() {
-                    tracing::warn!("'{}' not replied to ping", self.url);
+                    // Reset ping status
                     ping.reset();
-                    break;
+
+                    // Return error
+                    return Err(Error::NotRepliedToPing);
                 }
 
                 // Generate and save nonce
@@ -777,11 +762,8 @@ impl InnerRelay {
                 ping.set_last_nonce(nonce);
                 ping.set_replied(false);
 
-                // Ping
-                if let Err(e) = self.channels.ping(nonce) {
-                    tracing::error!("Impossible to ping '{}': {e}", self.url);
-                    break;
-                };
+                // Try to ping
+                self.channels.ping(nonce)?;
 
                 // Sleep
                 thread::sleep(PING_INTERVAL).await;

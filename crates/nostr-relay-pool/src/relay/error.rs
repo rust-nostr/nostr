@@ -48,6 +48,9 @@ pub enum Error {
     /// Generic timeout
     #[error("timeout")]
     Timeout,
+    /// Not replied to ping
+    #[error("not replied to ping")]
+    NotRepliedToPing,
     /// Message response timeout
     #[error("Can't send message to the '{channel}' channel")]
     CantSendChannelMessage {
