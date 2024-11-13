@@ -19,7 +19,7 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::Window;
 
 use crate::event::{self, unsigned};
-use crate::signer::{NostrSigner, SignerError};
+use crate::signer::{NostrSigner, SignerBackend, SignerError};
 use crate::{key, Event, PublicKey, UnsignedEvent};
 
 /// NIP07 error
@@ -315,6 +315,10 @@ impl Nip07Signer {
 
 #[async_trait(?Send)]
 impl NostrSigner for Nip07Signer {
+    fn backend(&self) -> SignerBackend {
+        SignerBackend::BrowserExtension
+    }
+
     async fn get_public_key(&self) -> Result<PublicKey, SignerError> {
         self._get_public_key().await.map_err(SignerError::backend)
     }

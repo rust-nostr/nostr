@@ -2,19 +2,65 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::borrow::Cow;
 use std::fmt;
 use std::ops::Deref;
 use std::sync::Arc;
 
+use nostr::signer;
+use uniffi::Enum;
+
 use super::event::{Event, UnsignedEvent};
 use super::key::PublicKey;
 use crate::error::Result;
+
+#[derive(Enum)]
+pub enum SignerBackend {
+    /// Secret key
+    Keys,
+    /// Browser extension (NIP07)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/07.md>
+    BrowserExtension,
+    /// Nostr Connect (NIP46)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
+    NostrConnect,
+    /// Custom
+    Custom { backend: String },
+}
+
+impl<'a> From<signer::SignerBackend<'a>> for SignerBackend {
+    fn from(backend: signer::SignerBackend<'a>) -> Self {
+        match backend {
+            signer::SignerBackend::Keys => Self::Keys,
+            signer::SignerBackend::BrowserExtension => Self::BrowserExtension,
+            signer::SignerBackend::NostrConnect => Self::NostrConnect,
+            signer::SignerBackend::Custom(backend) => Self::Custom {
+                backend: backend.into_owned(),
+            },
+        }
+    }
+}
+
+impl<'a> From<SignerBackend> for signer::SignerBackend<'a> {
+    fn from(backend: SignerBackend) -> Self {
+        match backend {
+            SignerBackend::Keys => Self::Keys,
+            SignerBackend::BrowserExtension => Self::BrowserExtension,
+            SignerBackend::NostrConnect => Self::NostrConnect,
+            SignerBackend::Custom { backend } => Self::Custom(Cow::Owned(backend)),
+        }
+    }
+}
 
 // NOTE: for some weird reason the `Arc<T>` as output must be wrapped inside a `Vec<T>` or an `Option<T>`
 // otherwise compilation will fail.
 #[uniffi::export(with_foreign)]
 #[async_trait::async_trait]
 pub trait NostrSigner: Send + Sync {
+    fn backend(&self) -> SignerBackend;
+
     /// Get signer public key
     async fn get_public_key(&self) -> Result<Option<Arc<PublicKey>>>;
 
@@ -66,6 +112,10 @@ impl NostrSignerRust2FFI {
 
 #[async_trait::async_trait]
 impl NostrSigner for NostrSignerRust2FFI {
+    fn backend(&self) -> SignerBackend {
+        self.inner.backend().into()
+    }
+
     async fn get_public_key(&self) -> Result<Option<Arc<PublicKey>>> {
         Ok(Some(Arc::new(self.inner.get_public_key().await?.into())))
     }
@@ -124,6 +174,10 @@ mod inner {
 
     #[async_trait]
     impl NostrSigner for NostrSignerFFI2Rust {
+        fn backend(&self) -> SignerBackend {
+            self.inner.backend().into()
+        }
+
         async fn get_public_key(&self) -> Result<PublicKey, SignerError> {
             let public_key = self
                 .inner

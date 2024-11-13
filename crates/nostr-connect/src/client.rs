@@ -441,6 +441,10 @@ where
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrSigner for NostrConnect {
+    fn backend(&self) -> SignerBackend {
+        SignerBackend::NostrConnect
+    }
+
     async fn get_public_key(&self) -> Result<PublicKey, SignerError> {
         self._get_public_key()
             .await

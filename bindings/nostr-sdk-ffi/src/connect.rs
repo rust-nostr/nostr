@@ -13,7 +13,7 @@ use uniffi::Object;
 
 use crate::error::Result;
 use crate::protocol::nips::nip46::{Nip46Request, NostrConnectURI};
-use crate::protocol::signer::NostrSigner;
+use crate::protocol::signer::{NostrSigner, SignerBackend};
 use crate::protocol::{Event, Keys, PublicKey, SecretKey, UnsignedEvent};
 use crate::relay::RelayOptions;
 
@@ -74,6 +74,10 @@ impl NostrConnect {
 #[uniffi::export]
 #[async_trait::async_trait]
 impl NostrSigner for NostrConnect {
+    fn backend(&self) -> SignerBackend {
+        self.inner.backend().into()
+    }
+
     async fn get_public_key(&self) -> Result<Option<Arc<PublicKey>>> {
         Ok(Some(Arc::new(self.inner.get_public_key().await?.into())))
     }

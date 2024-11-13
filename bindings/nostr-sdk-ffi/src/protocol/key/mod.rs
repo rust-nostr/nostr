@@ -15,8 +15,8 @@ mod secret_key;
 
 pub use self::public_key::PublicKey;
 pub use self::secret_key::SecretKey;
+use super::signer::{NostrSigner, SignerBackend};
 use crate::error::Result;
-use crate::protocol::signer::NostrSigner;
 use crate::protocol::{Event, UnsignedEvent};
 
 /// Nostr keys
@@ -117,6 +117,10 @@ impl Keys {
 #[uniffi::export]
 #[async_trait::async_trait]
 impl NostrSigner for Keys {
+    fn backend(&self) -> SignerBackend {
+        self.inner.backend().into()
+    }
+
     async fn get_public_key(&self) -> Result<Option<Arc<PublicKey>>> {
         Ok(Some(Arc::new(self.inner.get_public_key().await?.into())))
     }

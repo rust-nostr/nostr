@@ -31,7 +31,9 @@ pub mod vanity;
 pub use self::public_key::PublicKey;
 pub use self::secret_key::SecretKey;
 #[cfg(feature = "std")]
-use crate::{Event, NostrSigner, SignerError, UnsignedEvent, SECP256K1};
+use crate::signer::{NostrSigner, SignerBackend, SignerError};
+#[cfg(feature = "std")]
+use crate::{Event, UnsignedEvent, SECP256K1};
 
 /// [`Keys`] error
 #[derive(Debug, PartialEq, Eq)]
@@ -264,6 +266,10 @@ impl FromStr for Keys {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrSigner for Keys {
+    fn backend(&self) -> SignerBackend {
+        SignerBackend::Keys
+    }
+
     async fn get_public_key(&self) -> Result<PublicKey, SignerError> {
         Ok(self.public_key)
     }

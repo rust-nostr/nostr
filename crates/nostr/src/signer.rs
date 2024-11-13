@@ -4,6 +4,7 @@
 
 //! Nostr Signer
 
+use alloc::borrow::Cow;
 use alloc::boxed::Box;
 #[cfg(any(not(feature = "std"), feature = "nip04", feature = "nip44"))]
 use alloc::string::String;
@@ -68,11 +69,30 @@ where
     }
 }
 
+/// Signer backend
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum SignerBackend<'a> {
+    /// Secret key
+    Keys,
+    /// Browser extension (NIP07)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/07.md>
+    BrowserExtension,
+    /// Nostr Connect (NIP46)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
+    NostrConnect,
+    /// Custom
+    Custom(Cow<'a, str>),
+}
+
 /// Nostr signer abstraction
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait NostrSigner: AsyncTraitDeps {
-    // TODO: use `Cow<'a, PublicKey>`?
+    /// Signer backend
+    fn backend(&self) -> SignerBackend;
+
     /// Get signer public key
     async fn get_public_key(&self) -> Result<PublicKey, SignerError>;
 
@@ -115,14 +135,22 @@ pub trait NostrSigner: AsyncTraitDeps {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrSigner for Arc<dyn NostrSigner> {
+    #[inline]
+    fn backend(&self) -> SignerBackend {
+        self.as_ref().backend()
+    }
+
+    #[inline]
     async fn get_public_key(&self) -> Result<PublicKey, SignerError> {
         self.as_ref().get_public_key().await
     }
 
+    #[inline]
     async fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, SignerError> {
         self.as_ref().sign_event(unsigned).await
     }
 
+    #[inline]
     #[cfg(feature = "nip04")]
     async fn nip04_encrypt(
         &self,
@@ -132,6 +160,7 @@ impl NostrSigner for Arc<dyn NostrSigner> {
         self.as_ref().nip04_encrypt(public_key, content).await
     }
 
+    #[inline]
     #[cfg(feature = "nip04")]
     async fn nip04_decrypt(
         &self,
@@ -143,6 +172,7 @@ impl NostrSigner for Arc<dyn NostrSigner> {
             .await
     }
 
+    #[inline]
     #[cfg(feature = "nip44")]
     async fn nip44_encrypt(
         &self,
@@ -152,6 +182,7 @@ impl NostrSigner for Arc<dyn NostrSigner> {
         self.as_ref().nip44_encrypt(public_key, content).await
     }
 
+    #[inline]
     #[cfg(feature = "nip44")]
     async fn nip44_decrypt(
         &self,
