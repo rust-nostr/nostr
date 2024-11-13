@@ -4,8 +4,7 @@
 
 //! Time
 
-use alloc::borrow::Cow;
-use alloc::string::ToString;
+use alloc::string::{String, ToString};
 use core::fmt;
 use core::ops::{Add, Range, Sub};
 use core::str::{self, FromStr};
@@ -134,12 +133,12 @@ impl Timestamp {
     }
 
     /// Convert [`Timestamp`] to human datetime
-    pub fn to_human_datetime<'a>(&self) -> Cow<'a, str> {
+    pub fn to_human_datetime(&self) -> String {
         let timestamp: u64 = self.as_u64();
 
         if timestamp >= 253_402_300_800 {
             // Year 9999
-            return Cow::Borrowed("Unavailable");
+            return String::from("Unavailable");
         }
 
         let days = (timestamp / 86400) as i64 - LEAPOCH;
@@ -207,7 +206,7 @@ impl Timestamp {
         buf[17] = b'0' + (secs_of_day / 10 % 6) as u8;
         buf[18] = b'0' + (secs_of_day % 10) as u8;
 
-        Cow::Owned(str::from_utf8(&buf).unwrap_or_default().to_string())
+        str::from_utf8(&buf).unwrap_or_default().to_string()
     }
 }
 
@@ -294,7 +293,7 @@ mod tests {
         let timestamp = Timestamp::from(1682060685);
         assert_eq!(
             timestamp.to_human_datetime(),
-            Cow::from("2023-04-21T07:04:45Z")
+            String::from("2023-04-21T07:04:45Z")
         );
     }
 }

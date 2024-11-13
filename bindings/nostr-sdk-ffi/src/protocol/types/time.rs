@@ -50,6 +50,6 @@ impl Timestamp {
 
     /// Convert [`Timestamp`] to human datetime
     pub fn to_human_datetime(&self) -> String {
-        self.inner.to_human_datetime().into_owned()
+        self.inner.to_human_datetime()
     }
 }
