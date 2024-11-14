@@ -553,10 +553,6 @@ impl InnerRelay {
         // Add attempt
         self.stats.new_attempt();
 
-        // Request information document
-        #[cfg(feature = "nip11")]
-        self.request_nip11_document();
-
         // Compose timeout
         let timeout: Duration = if self.stats.attempts() > 1 {
             // Many attempts, use the default timeout
@@ -582,6 +578,10 @@ impl InnerRelay {
 
                 // Increment success stats
                 self.stats.new_success();
+
+                // Request information document
+                #[cfg(feature = "nip11")]
+                self.request_nip11_document();
 
                 // Run message handler
                 self.run_message_handler(ws_tx, ws_rx).await;
