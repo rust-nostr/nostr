@@ -13,6 +13,8 @@ pub use async_utility::futures_util::StreamExt; // Needed for `RelayPool::stream
 pub use nostr::prelude::*;
 pub use nostr_database::*;
 
+pub use crate::pool::constants::*;
+pub use crate::pool::options::*;
 // Internal modules
 pub use crate::pool::{self, *};
 pub use crate::relay::{self, *};

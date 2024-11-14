@@ -62,6 +62,7 @@
 * nostr: add NIP73 support ([Yuki Kishimoto])
 * nostr: add `NostrSigner::backend` ([Yuki Kishimoto])
 * pool: add relay reconnection and disconnection unit tests ([Yuki Kishimoto])
+* sdk: allow to specify relay pool notification channel size in `Options` ([Yuki Kishimoto])
 * connect: add `NostrConnect::non_secure_set_user_public_key` ([Yuki Kishimoto])
 * book: add some examples ([RydalWater])
 

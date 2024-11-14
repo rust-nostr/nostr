@@ -183,6 +183,13 @@ impl Options {
         self.pool = self.pool.filtering_mode(mode);
         self
     }
+
+    /// Notification channel size (default: [`DEFAULT_NOTIFICATION_CHANNEL_SIZE`])
+    #[inline]
+    pub fn notification_channel_size(mut self, size: usize) -> Self {
+        self.pool = self.pool.notification_channel_size(size);
+        self
+    }
 }
 
 /// Connection target
