@@ -50,6 +50,7 @@ pub enum RelayPoolNotification {
         message: RelayMessage,
     },
     /// Relay status changed
+    #[deprecated(since = "0.37.0")]
     RelayStatus {
         /// Relay url
         relay_url: Url,

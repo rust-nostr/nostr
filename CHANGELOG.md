@@ -11,6 +11,8 @@
 
 ### Summary
 
+### Breaking changes
+
 ### Changed
 
 ### Added
@@ -18,6 +20,8 @@
 ### Fixed
 
 ### Removed
+
+### Deprecated
 
 -->
 
@@ -46,8 +50,6 @@
 * pool: not allow to add relays after `RelayPool` shutdown ([Yuki Kishimoto])
 * pool: rename `RelayOptions::retry_sec` to `RelayOptions::retry_interval` ([Yuki Kishimoto]) 
 * pool: rename `RelayOptions::adjust_retry_sec` to `RelayOptions::adjust_retry_interval` ([Yuki Kishimoto])
-* sdk: deprecate `Client::with_opts` ([Yuki Kishimoto])
-* sdk: deprecate `Options::connection_timeout` ([Yuki Kishimoto])
 
 ### Added
 
@@ -75,6 +77,12 @@
 
 * nostr: remove `Marker::Custom` variant ([Yuki Kishimoto])
 * pool: remove `Relay::support_negentropy` ([Yuki Kishimoto])
+
+### Deprecated
+
+* pool: deprecate `RelayPoolNotification::RelayStatus` variant ([Yuki Kishimoto])
+* sdk: deprecate `Client::with_opts` ([Yuki Kishimoto])
+* sdk: deprecate `Options::connection_timeout` ([Yuki Kishimoto])
 
 ## [v0.36.0]
 

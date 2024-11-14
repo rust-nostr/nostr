@@ -397,33 +397,34 @@ impl InnerRelay {
                 let _ = self.internal_notification_sender.send(notification.clone());
 
                 // Convert relay to notification to pool notification
-                let notification: RelayPoolNotification = match notification {
+                let notification: Option<RelayPoolNotification> = match notification {
                     RelayNotification::Event {
                         subscription_id,
                         event,
-                    } => RelayPoolNotification::Event {
+                    } => Some(RelayPoolNotification::Event {
                         relay_url: self.url.clone(),
                         subscription_id,
                         event,
-                    },
-                    RelayNotification::Message { message } => RelayPoolNotification::Message {
-                        relay_url: self.url.clone(),
-                        message,
-                    },
-                    RelayNotification::RelayStatus { status } => {
-                        RelayPoolNotification::RelayStatus {
+                    }),
+                    RelayNotification::Message { message } => {
+                        Some(RelayPoolNotification::Message {
                             relay_url: self.url.clone(),
-                            status,
-                        }
+                            message,
+                        })
                     }
-                    RelayNotification::Authenticated => RelayPoolNotification::Authenticated {
-                        relay_url: self.url.clone(),
-                    },
-                    RelayNotification::Shutdown => RelayPoolNotification::Shutdown,
+                    RelayNotification::RelayStatus { .. } => None,
+                    RelayNotification::Authenticated => {
+                        Some(RelayPoolNotification::Authenticated {
+                            relay_url: self.url.clone(),
+                        })
+                    }
+                    RelayNotification::Shutdown => Some(RelayPoolNotification::Shutdown),
                 };
 
                 // Send external notification
-                let _ = external_notification_sender.send(notification);
+                if let Some(notification) = notification {
+                    let _ = external_notification_sender.send(notification);
+                }
             }
             _ => {
                 // Send internal notification
