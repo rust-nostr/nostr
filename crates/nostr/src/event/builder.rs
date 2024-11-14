@@ -1372,7 +1372,7 @@ impl EventBuilder {
     pub async fn seal<T>(
         signer: &T,
         receiver_pubkey: &PublicKey,
-        rumor: UnsignedEvent,
+        rumor: EventBuilder,
     ) -> Result<Self, Error>
     where
         T: NostrSigner,
@@ -1426,7 +1426,7 @@ impl EventBuilder {
     pub async fn gift_wrap<T, I>(
         signer: &T,
         receiver: &PublicKey,
-        rumor: UnsignedEvent,
+        rumor: EventBuilder,
         extra_tags: I,
     ) -> Result<Event, Error>
     where

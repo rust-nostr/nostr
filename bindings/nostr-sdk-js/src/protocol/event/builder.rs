@@ -555,7 +555,7 @@ impl JsEventBuilder {
     pub async fn seal(
         signer: &JsNostrSigner,
         receiver_public_key: &JsPublicKey,
-        rumor: &JsUnsignedEvent,
+        rumor: &JsEventBuilder,
     ) -> Result<JsEventBuilder> {
         Ok(Self {
             inner: EventBuilder::seal(
@@ -593,7 +593,7 @@ impl JsEventBuilder {
     pub async fn gift_wrap(
         signer: &JsNostrSigner,
         receiver: &JsPublicKey,
-        rumor: &JsUnsignedEvent,
+        rumor: &JsEventBuilder,
         extra_tags: Option<Vec<JsTag>>,
     ) -> Result<JsEvent> {
         Ok(EventBuilder::gift_wrap(

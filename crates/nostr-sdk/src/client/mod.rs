@@ -1612,10 +1612,6 @@ impl Client {
         // Acquire signer
         let signer = self.signer().await?;
 
-        // Compose rumor
-        let public_key: PublicKey = signer.get_public_key().await?;
-        let rumor: UnsignedEvent = rumor.build(public_key);
-
         // Build gift wrap
         let gift_wrap: Event =
             EventBuilder::gift_wrap(&signer, receiver, rumor, extra_tags).await?;
@@ -1644,10 +1640,6 @@ impl Client {
     {
         // Acquire signer
         let signer = self.signer().await?;
-
-        // Compose rumor
-        let public_key: PublicKey = signer.get_public_key().await?;
-        let rumor: UnsignedEvent = rumor.build(public_key);
 
         // Build gift wrap
         let gift_wrap: Event =

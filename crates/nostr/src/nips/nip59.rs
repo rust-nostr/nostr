@@ -137,11 +137,17 @@ where
 pub async fn make_seal<T>(
     signer: &T,
     receiver_pubkey: &PublicKey,
-    mut rumor: UnsignedEvent,
+    rumor: EventBuilder,
 ) -> Result<EventBuilder, Error>
 where
     T: NostrSigner,
 {
+    // Get public key
+    let public_key = signer.get_public_key().await?;
+
+    // Build unsigned event
+    let mut rumor: UnsignedEvent = rumor.build(public_key);
+
     // Make sure that rumor has event ID
     rumor.ensure_id();
 
@@ -171,19 +177,16 @@ mod tests {
                 .unwrap();
 
         // Compose Gift Wrap event
-        let rumor: UnsignedEvent =
-            EventBuilder::text_note("Test", []).build(sender_keys.public_key());
+        let rumor: EventBuilder = EventBuilder::text_note("Test", []);
         let event: Event =
             EventBuilder::gift_wrap(&sender_keys, &receiver_keys.public_key(), rumor.clone(), [])
                 .await
                 .unwrap();
-        assert_eq!(
-            extract_rumor(&receiver_keys, &event).await.unwrap(),
-            UnwrappedGift {
-                sender: sender_keys.public_key(),
-                rumor,
-            }
-        );
+        let unwrapped = extract_rumor(&receiver_keys, &event).await.unwrap();
+        assert_eq!(unwrapped.sender, sender_keys.public_key());
+        assert_eq!(unwrapped.rumor.kind, Kind::TextNote);
+        assert_eq!(unwrapped.rumor.content, "Test");
+        assert!(unwrapped.rumor.tags.is_empty());
         assert!(extract_rumor(&sender_keys, &event).await.is_err());
 
         let event: Event = EventBuilder::text_note("", [])

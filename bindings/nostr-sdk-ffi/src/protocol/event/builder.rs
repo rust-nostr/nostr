@@ -586,7 +586,7 @@ impl EventBuilder {
     pub async fn seal(
         signer: Arc<dyn NostrSigner>,
         receiver_public_key: &PublicKey,
-        rumor: &UnsignedEvent,
+        rumor: &EventBuilder,
     ) -> Result<Self> {
         let signer = NostrSignerFFI2Rust::new(signer);
         Ok(Self {

@@ -32,6 +32,7 @@
 ### Breaking changes
 
 * nostr: change `EventBuilder::gift_wrap` (and linked methods) args to take `extra_tags` instead of `expiration` ([erskingardner])
+* nostr: change `EventBuilder::gift_wrap` (and linked methods) args to take an `EventBuilder` rumor instead of `UnsignedEvent` ([Yuki Kishimoto])
 * nostr: disable all default features except `std` ([Yuki Kishimoto])
 * nostr: change `Timestamp::to_human_datetime` fingerprint ([Yuki Kishimoto])
 * pool: switch from async to sync message sending for `Relay` ([Yuki Kishimoto])

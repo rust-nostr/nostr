@@ -5,12 +5,11 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::nips::nip59;
-use nostr::EventBuilder;
 use uniffi::Object;
 
 use crate::error::Result;
 use crate::protocol::signer::{NostrSigner, NostrSignerFFI2Rust};
-use crate::protocol::{Event, PublicKey, Tag, UnsignedEvent};
+use crate::protocol::{Event, EventBuilder, PublicKey, Tag, UnsignedEvent};
 
 /// Build Gift Wrap
 ///
@@ -19,11 +18,11 @@ use crate::protocol::{Event, PublicKey, Tag, UnsignedEvent};
 pub async fn gift_wrap(
     signer: Arc<dyn NostrSigner>,
     receiver_pubkey: &PublicKey,
-    rumor: &UnsignedEvent,
+    rumor: &EventBuilder,
     extra_tags: Vec<Arc<Tag>>,
 ) -> Result<Event> {
     let signer = NostrSignerFFI2Rust::new(signer);
-    Ok(EventBuilder::gift_wrap(
+    Ok(nostr::EventBuilder::gift_wrap(
         &signer,
         receiver_pubkey.deref(),
         rumor.deref().clone(),
@@ -42,7 +41,7 @@ pub fn gift_wrap_from_seal(
     seal: &Event,
     extra_tags: Vec<Arc<Tag>>,
 ) -> Result<Event> {
-    Ok(EventBuilder::gift_wrap_from_seal(
+    Ok(nostr::EventBuilder::gift_wrap_from_seal(
         receiver.deref(),
         seal.deref(),
         extra_tags.into_iter().map(|t| t.as_ref().deref().clone()),
