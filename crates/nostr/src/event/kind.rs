@@ -15,9 +15,9 @@ use serde::de::{Deserialize, Deserializer, Error, Visitor};
 use serde::ser::{Serialize, Serializer};
 
 /// NIP90 - Job request range
-pub const NIP90_JOB_REQUEST_RANGE: Range<u16> = 5_000..5_999;
+pub const NIP90_JOB_REQUEST_RANGE: Range<u16> = 5_000..6_000;
 /// NIP90 - Job result range
-pub const NIP90_JOB_RESULT_RANGE: Range<u16> = 6_000..6_999;
+pub const NIP90_JOB_RESULT_RANGE: Range<u16> = 6_000..7_000;
 /// Regular range
 pub const REGULAR_RANGE: Range<u16> = 1_000..10_000;
 /// Replaceable range
