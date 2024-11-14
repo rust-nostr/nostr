@@ -21,6 +21,14 @@ impl From<database::Events> for Events {
     }
 }
 
+impl Deref for Events {
+    type Target = database::Events;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
 #[uniffi::export]
 impl Events {
     /// Returns the number of events in the collection.

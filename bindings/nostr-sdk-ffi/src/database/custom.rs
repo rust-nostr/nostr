@@ -8,6 +8,7 @@ use std::sync::Arc;
 use nostr_sdk::database;
 use uniffi::Enum;
 
+use super::events::Events;
 use crate::error::Result;
 use crate::protocol::nips::nip01::Coordinate;
 use crate::protocol::{Event, EventId, Filter, Timestamp};
@@ -70,8 +71,9 @@ pub trait CustomNostrDatabase: Send + Sync {
     /// Use `Filter::new()` or `Filter::default()` to count all events.
     async fn count(&self, filters: Vec<Arc<Filter>>) -> Result<u64>;
 
+    // TODO: remove the `Option` when possible, without it currenlty cause compilation issues due to UniFFI
     /// Query store with filters
-    async fn query(&self, filters: Vec<Arc<Filter>>) -> Result<Vec<Arc<Event>>>;
+    async fn query(&self, filters: Vec<Arc<Filter>>) -> Result<Option<Arc<Events>>>;
 
     /// Delete all events that match the `Filter`
     async fn delete(&self, filter: Arc<Filter>) -> Result<()>;
@@ -183,17 +185,14 @@ mod inner {
         }
 
         async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
-            let mut events = Events::new(&filters);
-
             let filters = filters.into_iter().map(|f| Arc::new(f.into())).collect();
-            let res = self
+            let events = self
                 .inner
                 .query(filters)
                 .await
-                .map_err(DatabaseError::backend)?;
-
-            events.extend(res.into_iter().map(|e| e.as_ref().deref().clone()));
-            Ok(events)
+                .map_err(DatabaseError::backend)?
+                .ok_or(DatabaseError::NotSupported)?;
+            Ok(events.as_ref().deref().clone())
         }
 
         async fn negentropy_items(
@@ -201,14 +200,17 @@ mod inner {
             filter: Filter,
         ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
             let filter = Arc::new(filter.into());
-            let res = self
+            let events = self
                 .inner
                 .query(vec![filter])
                 .await
-                .map_err(DatabaseError::backend)?;
-            Ok(res
-                .into_iter()
-                .map(|e| (*e.id(), *e.created_at()))
+                .map_err(DatabaseError::backend)?
+                .ok_or(DatabaseError::NotSupported)?;
+            Ok(events
+                .as_ref()
+                .deref()
+                .iter()
+                .map(|e| (e.id, e.created_at))
                 .collect())
         }
 

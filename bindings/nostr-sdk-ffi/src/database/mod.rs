@@ -16,6 +16,7 @@ pub mod custom;
 pub mod events;
 
 use self::custom::{CustomNostrDatabase, IntermediateCustomNostrDatabase};
+use self::events::Events;
 use crate::error::Result;
 use crate::profile::Profile;
 use crate::protocol::{Event, EventId, Filter, PublicKey};
@@ -104,18 +105,12 @@ impl NostrDatabase {
         Ok(self.inner.count(filters).await? as u64)
     }
 
-    pub async fn query(&self, filters: Vec<Arc<Filter>>) -> Result<Vec<Arc<Event>>> {
+    pub async fn query(&self, filters: Vec<Arc<Filter>>) -> Result<Arc<Events>> {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-        Ok(self
-            .inner
-            .query(filters)
-            .await?
-            .into_iter()
-            .map(|e| Arc::new(e.into()))
-            .collect())
+        Ok(Arc::new(self.inner.query(filters).await?.into()))
     }
 
     /// Delete all events that match the `Filter`
