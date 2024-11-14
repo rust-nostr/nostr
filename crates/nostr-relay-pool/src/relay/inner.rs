@@ -1452,7 +1452,7 @@ impl InnerRelay {
                     },
                     RelayNotification::RelayStatus { status } => {
                         if status.is_disconnected() {
-                            return Err(Error::NotConnectedStatusChanged);
+                            return Err(Error::NotConnected);
                         }
                     }
                     RelayNotification::Shutdown => return Err(Error::Shutdown),
@@ -1888,7 +1888,7 @@ impl InnerRelay {
                 }
                 RelayNotification::RelayStatus { status } => {
                     if status.is_disconnected() {
-                        return Err(Error::NotConnectedStatusChanged);
+                        return Err(Error::NotConnected);
                     }
                 }
                 RelayNotification::Shutdown => {
@@ -2186,7 +2186,7 @@ impl InnerRelay {
                 }
                 RelayNotification::RelayStatus { status } => {
                     if status.is_disconnected() {
-                        return Err(Error::NotConnectedStatusChanged);
+                        return Err(Error::NotConnected);
                     }
                 }
                 RelayNotification::Shutdown => return Err(Error::Shutdown),

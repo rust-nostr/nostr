@@ -63,9 +63,6 @@ pub enum Error {
     /// Relay not connected
     #[error("relay not connected")]
     NotConnected,
-    /// Relay not connected
-    #[error("relay not connected (status changed)")]
-    NotConnectedStatusChanged,
     /// Received shutdown
     #[error("received shutdown")]
     Shutdown,
