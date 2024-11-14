@@ -50,7 +50,8 @@ async function main() {
     await client.setMetadata(metadata);
 
     // Publish text note
-    await client.publishTextNote("My first text note from rust-nostr!", []);
+    let textNoteBuilder = EventBuilder.textNote("My first text note from rust-nostr!", []);
+    await client.sendEventBuilder(textNoteBuilder);
 
     // Compose and publish custom event (automatically signed with `NostrSigner`)
     let builder = new EventBuilder(1111, "My custom event signer with the NostrSigner", []);

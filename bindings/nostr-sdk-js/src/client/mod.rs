@@ -22,11 +22,11 @@ use crate::duration::JsDuration;
 use crate::error::{into_err, Result};
 use crate::pool::result::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
 use crate::pool::JsRelayPool;
-use crate::protocol::event::{JsEvent, JsEventBuilder, JsEventId, JsTag};
+use crate::protocol::event::{JsEvent, JsEventBuilder, JsTag};
 use crate::protocol::key::JsPublicKey;
 use crate::protocol::message::{JsClientMessage, JsRelayMessage};
 use crate::protocol::nips::nip59::JsUnwrappedGift;
-use crate::protocol::types::{JsContact, JsFilter, JsMetadata};
+use crate::protocol::types::{JsFilter, JsMetadata};
 use crate::relay::filtering::JsRelayFiltering;
 use crate::relay::options::{JsSubscribeAutoCloseOptions, JsSyncOptions};
 use crate::relay::{JsRelay, JsRelayArray};
@@ -530,35 +530,6 @@ impl JsClient {
             .map(|id| id.into())
     }
 
-    /// Publish text note
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[wasm_bindgen(js_name = publishTextNote)]
-    pub async fn publish_text_note(
-        &self,
-        content: String,
-        tags: Vec<JsTag>,
-    ) -> Result<JsSendEventOutput> {
-        self.inner
-            .publish_text_note(content, tags.into_iter().map(|t| t.into()))
-            .await
-            .map_err(into_err)
-            .map(|id| id.into())
-    }
-
-    /// Set contact list
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
-    #[wasm_bindgen(js_name = setContactList)]
-    pub async fn set_contact_list(&self, list: Vec<JsContact>) -> Result<JsSendEventOutput> {
-        let list = list.into_iter().map(|c| c.into());
-        self.inner
-            .set_contact_list(list)
-            .await
-            .map_err(into_err)
-            .map(|id| id.into())
-    }
-
     /// Send private direct message to all relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
@@ -592,147 +563,6 @@ impl JsClient {
             .await
             .map_err(into_err)
             .map(Into::into)
-    }
-
-    /// Repost
-    pub async fn repost(
-        &self,
-        event: &JsEvent,
-        relay_url: Option<String>,
-    ) -> Result<JsSendEventOutput> {
-        self.inner
-            .repost(event.deref(), relay_url.map(UncheckedUrl::from))
-            .await
-            .map_err(into_err)
-            .map(|id| id.into())
-    }
-
-    /// Delete event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
-    #[wasm_bindgen(js_name = deleteEvent)]
-    pub async fn delete_event(&self, event_id: &JsEventId) -> Result<JsSendEventOutput> {
-        self.inner
-            .delete_event(**event_id)
-            .await
-            .map_err(into_err)
-            .map(|id| id.into())
-    }
-
-    /// Like event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub async fn like(&self, event: &JsEvent) -> Result<JsSendEventOutput> {
-        self.inner
-            .like(event.deref())
-            .await
-            .map_err(into_err)
-            .map(|id| id.into())
-    }
-
-    /// Disike event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub async fn dislike(&self, event: &JsEvent) -> Result<JsSendEventOutput> {
-        self.inner
-            .dislike(event.deref())
-            .await
-            .map_err(into_err)
-            .map(|id| id.into())
-    }
-
-    /// React to an [`Event`]
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub async fn reaction(&self, event: &JsEvent, reaction: &str) -> Result<JsSendEventOutput> {
-        self.inner
-            .reaction(event.deref(), reaction)
-            .await
-            .map_err(into_err)
-            .map(|id| id.into())
-    }
-
-    /// Create new channel
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[wasm_bindgen(js_name = newChannel)]
-    pub async fn new_channel(&self, metadata: &JsMetadata) -> Result<JsSendEventOutput> {
-        self.inner
-            .new_channel(metadata.deref())
-            .await
-            .map_err(into_err)
-            .map(|id| id.into())
-    }
-
-    /// Update channel metadata
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[wasm_bindgen(js_name = setChannelMetadata)]
-    pub async fn set_channel_metadata(
-        &self,
-        channel_id: &JsEventId,
-        relay_url: Option<String>,
-        metadata: &JsMetadata,
-    ) -> Result<JsSendEventOutput> {
-        let relay_url: Option<Url> = match relay_url {
-            Some(relay_url) => Some(Url::parse(&relay_url).map_err(into_err)?),
-            None => None,
-        };
-        self.inner
-            .set_channel_metadata(**channel_id, relay_url, metadata.deref())
-            .await
-            .map_err(into_err)
-            .map(|id| id.into())
-    }
-
-    /// Send message to channel
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[wasm_bindgen(js_name = sendChannelMsg)]
-    pub async fn send_channel_msg(
-        &self,
-        channel_id: &JsEventId,
-        relay_url: &str,
-        msg: &str,
-    ) -> Result<JsSendEventOutput> {
-        let relay_url: Url = Url::parse(relay_url).map_err(into_err)?;
-        self.inner
-            .send_channel_msg(**channel_id, relay_url, msg)
-            .await
-            .map_err(into_err)
-            .map(|id| id.into())
-    }
-
-    /// Hide channel message
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[wasm_bindgen(js_name = hideChannelUser)]
-    pub async fn hide_channel_msg(
-        &self,
-        message_id: &JsEventId,
-        reason: Option<String>,
-    ) -> Result<JsSendEventOutput> {
-        self.inner
-            .hide_channel_msg(**message_id, reason)
-            .await
-            .map_err(into_err)
-            .map(|id| id.into())
-    }
-
-    /// Mute channel user
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[wasm_bindgen(js_name = muteChannelUser)]
-    pub async fn mute_channel_user(
-        &self,
-        pubkey: &JsPublicKey,
-        reason: Option<String>,
-    ) -> Result<JsSendEventOutput> {
-        self.inner
-            .mute_channel_user(**pubkey, reason)
-            .await
-            .map_err(into_err)
-            .map(|id| id.into())
     }
 
     /// Send a Zap!

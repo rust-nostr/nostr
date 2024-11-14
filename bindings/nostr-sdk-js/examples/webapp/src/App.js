@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import { ClientBuilder, NostrSigner, NostrZapper, Filter, LogLevel, NegentropyOptions, Nip07Signer, NostrDatabase, PublicKey, ZapDetails, ZapEntity, ZapType, initLogger, loadWasmAsync } from '@rust-nostr/nostr-sdk'
 import './App.css';
+import {EventBuilder} from "../../../pkg/nostr_sdk_js";
 
 class App extends Component {
   constructor() {
@@ -73,7 +74,8 @@ class App extends Component {
 
   handlePublishTextNote = async () => {
     try {
-      await this.state.client.publishTextNote("Test from Rust Nostr SDK JavaScript bindings with NIP07 signer!", []);
+      let builder = EventBuilder.textNote("Test from rust-nostr JavaScript bindings with NIP07 signer!", []);
+      await this.state.client.sendEventBuilder(builder);
     } catch (error) {
         console.log(error) 
     }

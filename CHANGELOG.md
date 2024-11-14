@@ -51,6 +51,7 @@
 * pool: rename `RelayOptions::retry_sec` to `RelayOptions::retry_interval` ([Yuki Kishimoto]) 
 * pool: rename `RelayOptions::adjust_retry_sec` to `RelayOptions::adjust_retry_interval` ([Yuki Kishimoto])
 * pool: request NIP11 document only after a successful WebSocket connection ([Yuki Kishimoto])
+* sdk: cleanup `Client` methods
 
 ### Added
 

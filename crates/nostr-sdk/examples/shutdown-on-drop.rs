@@ -26,7 +26,8 @@ async fn main() -> Result<()> {
 
     thread::sleep(Duration::from_secs(5)).await;
 
-    client.publish_text_note("Hello world", []).await?;
+    let builder = EventBuilder::text_note("Hello world", []);
+    client.send_event_builder(builder).await?;
 
     thread::sleep(Duration::from_secs(5)).await;
 

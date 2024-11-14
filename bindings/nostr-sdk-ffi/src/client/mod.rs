@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use nostr_sdk::client::Client as ClientSdk;
 use nostr_sdk::pool::RelayPoolNotification as RelayPoolNotificationSdk;
-use nostr_sdk::{SubscriptionId, UncheckedUrl};
+use nostr_sdk::SubscriptionId;
 use uniffi::Object;
 
 mod builder;
@@ -25,9 +25,7 @@ use crate::pool::result::{Output, ReconciliationOutput, SendEventOutput, Subscri
 use crate::pool::RelayPool;
 use crate::protocol::nips::nip59::UnwrappedGift;
 use crate::protocol::signer::{NostrSigner, NostrSignerFFI2Rust, NostrSignerRust2FFI};
-use crate::protocol::{
-    ClientMessage, Event, EventBuilder, EventId, FileMetadata, Filter, Metadata, PublicKey, Tag,
-};
+use crate::protocol::{ClientMessage, Event, EventBuilder, Filter, Metadata, PublicKey, Tag};
 use crate::relay::options::{SubscribeAutoCloseOptions, SyncOptions};
 use crate::relay::RelayFiltering;
 use crate::{HandleNotification, NostrDatabase, Relay};
@@ -555,44 +553,6 @@ impl Client {
             .into())
     }
 
-    /// Repost
-    pub async fn repost(
-        &self,
-        event: Arc<Event>,
-        relay_url: Option<String>,
-    ) -> Result<SendEventOutput> {
-        Ok(self
-            .inner
-            .repost(event.as_ref().deref(), relay_url.map(UncheckedUrl::from))
-            .await?
-            .into())
-    }
-
-    /// Like event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub async fn like(&self, event: Arc<Event>) -> Result<SendEventOutput> {
-        Ok(self.inner.like(event.as_ref().deref()).await?.into())
-    }
-
-    /// Disike event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub async fn dislike(&self, event: Arc<Event>) -> Result<SendEventOutput> {
-        Ok(self.inner.dislike(event.as_ref().deref()).await?.into())
-    }
-
-    /// React to an [`Event`]
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub async fn reaction(&self, event: Arc<Event>, reaction: String) -> Result<SendEventOutput> {
-        Ok(self
-            .inner
-            .reaction(event.as_ref().deref(), reaction)
-            .await?
-            .into())
-    }
-
     /// Send a Zap!
     pub async fn zap(
         &self,
@@ -657,18 +617,6 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     pub async fn unwrap_gift_wrap(&self, gift_wrap: &Event) -> Result<UnwrappedGift> {
         Ok(self.inner.unwrap_gift_wrap(gift_wrap.deref()).await?.into())
-    }
-
-    pub async fn file_metadata(
-        &self,
-        description: String,
-        metadata: Arc<FileMetadata>,
-    ) -> Result<SendEventOutput> {
-        Ok(self
-            .inner
-            .file_metadata(description, metadata.as_ref().deref().clone())
-            .await?
-            .into())
     }
 
     /// Handle notifications

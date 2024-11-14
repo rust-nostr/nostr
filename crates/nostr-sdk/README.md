@@ -71,7 +71,8 @@ async fn main() -> Result<()> {
     client.set_metadata(&metadata).await?;
 
     // Publish a text note
-    client.publish_text_note("My first text note from rust-nostr!", []).await?;
+    let builder = EventBuilder::text_note("My first text note from rust-nostr!", []);
+    client.send_event_builder(builder).await?;
 
     // Create a POW text note
     let event: Event = EventBuilder::text_note("POW text note from nostr-sdk", []).pow(20).sign(&keys).await?;

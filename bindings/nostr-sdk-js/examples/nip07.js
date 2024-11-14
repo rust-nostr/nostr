@@ -1,4 +1,5 @@
 const { loadWasmAsync, Client, NostrSigner, Nip07Signer } = require("../");
+const {EventBuilder} = require("../pkg/nostr_sdk_js");
 
 // NOTE: this code work only on browser!
 
@@ -15,8 +16,9 @@ async function main() {
         await client.addRelay("wss://nostr.oxtr.dev");
 
         await client.connect();
-
-        await client.publishTextNote("Test from rust-nostr JavaScript bindings with NIP07 signer!", []);
+        
+        let builder = EventBuilder.textNote("Test from rust-nostr JavaScript bindings with NIP07 signer!", []);
+        await client.sendEventBuilder(builder);
     } catch (error) {
         console.log(error)
     }

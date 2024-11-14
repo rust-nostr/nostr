@@ -1,4 +1,5 @@
 const { Keys, Client, NostrSigner, NostrConnect, NostrConnectURI, loadWasmAsync, initLogger, LogLevel, Duration } = require("../");
+const {EventBuilder} = require("../pkg/nostr_sdk_js");
 
 async function main() {
     await loadWasmAsync();
@@ -20,8 +21,9 @@ async function main() {
     await client.addRelay("wss://nos.lol");
     await client.addRelay("wss://nostr.oxtr.dev");
     await client.connect();
-
-    await client.publishTextNote("My first text note from rust-nostr WASM with NIP46 signer!", []);
+    
+    let builder = EventBuilder.textNote("My first text note from rust-nostr WASM with NIP46 signer!", []);
+    await client.sendEventBuilder(builder);
 }
 
 main();

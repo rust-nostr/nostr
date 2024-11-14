@@ -1,4 +1,4 @@
-const { Keys, Client, NostrSigner, Metadata, EventId, PublicKey, EventBuilder, loadWasmAsync, initLogger, LogLevel } = require("../");
+const { Keys, Client, NostrSigner, Metadata, EventId, PublicKey, EventBuilder, loadWasmAsync, initLogger, LogLevel, Kind } = require("../");
 
 async function main() {
     await loadWasmAsync();
@@ -36,10 +36,11 @@ async function main() {
     
     await client.setMetadata(metadata);
 
-    let output = await client.publishTextNote("My first text note from rust-nostr WASM!", []);
+    let b = EventBuilder.textNote("My first text note from rust-nostr WASM!", []);
+    let output = await client.sendEventBuilder(b);
     console.log("Event ID", output.id.toBech32());
-    console.log("Successfully sent to:", output.success);
-    console.log("Failed to sent to:", output.failed);
+    console.log("Successfully sent to:", output.output.success);
+    console.log("Failed to sent to:", output.output.failed);
 
     // Send custom event
     let event_id = EventId.fromBech32("note1z3lwphdc7gdf6n0y4vaaa0x7ck778kg638lk0nqv2yd343qda78sf69t6r");
@@ -52,7 +53,7 @@ async function main() {
     // Send custom event to a specific previously added relay
     // await client.sendEventTo(["wss://relay.damus.io"], event);
 
-    let builder = new EventBuilder(1111, "My custom event signer with the NostrSigner", []);
+    let builder = new EventBuilder(new Kind(1111), "My custom event signer with the NostrSigner", []);
     await client.sendEventBuilder(builder);
 }
 
