@@ -607,17 +607,17 @@ impl EventBuilder {
     /// </div>
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
-    #[uniffi::constructor(default(reply_to = None))]
+    #[uniffi::constructor(default(extra_tags = []))]
     pub fn private_msg_rumor(
         receiver: &PublicKey,
         message: &str,
-        reply_to: Option<Arc<EventId>>,
+        extra_tags: Vec<Arc<Tag>>,
     ) -> Self {
         Self {
             inner: nostr::EventBuilder::private_msg_rumor(
                 **receiver,
                 message,
-                reply_to.map(|id| **id),
+                extra_tags.into_iter().map(|t| t.as_ref().deref().clone()),
             ),
         }
     }

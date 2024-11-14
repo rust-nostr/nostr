@@ -1344,16 +1344,18 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub async fn send_private_msg<S>(
+    pub async fn send_private_msg<S, I>(
         &self,
         receiver: PublicKey,
         message: S,
-        reply_to: Option<EventId>,
+        rumor_extra_tags: I,
     ) -> Result<Output<EventId>, Error>
     where
         S: Into<String>,
+        I: IntoIterator<Item = Tag>,
     {
-        let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
+        let rumor: EventBuilder =
+            EventBuilder::private_msg_rumor(receiver, message, rumor_extra_tags);
         self.gift_wrap(&receiver, rumor, []).await
     }
 
@@ -1362,20 +1364,22 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub async fn send_private_msg_to<I, S, U>(
+    pub async fn send_private_msg_to<I, S, U, IT>(
         &self,
         urls: I,
         receiver: PublicKey,
         message: S,
-        reply_to: Option<EventId>,
+        rumor_extra_tags: IT,
     ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
         S: Into<String>,
         U: TryIntoUrl,
+        IT: IntoIterator<Item = Tag>,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let rumor: EventBuilder = EventBuilder::private_msg_rumor(receiver, message, reply_to);
+        let rumor: EventBuilder =
+            EventBuilder::private_msg_rumor(receiver, message, rumor_extra_tags);
         self.gift_wrap_to(urls, &receiver, rumor, []).await
     }
 

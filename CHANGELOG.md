@@ -33,6 +33,7 @@
 
 * nostr: change `EventBuilder::gift_wrap` (and linked methods) args to take `extra_tags` instead of `expiration` ([erskingardner])
 * nostr: change `EventBuilder::gift_wrap` (and linked methods) args to take an `EventBuilder` rumor instead of `UnsignedEvent` ([Yuki Kishimoto])
+* nostr: change `EventBuilder::private_msg_rumor` arg to take `extra_tags` instead of `reply_to` ([Yuki Kishimoto])
 * nostr: disable all default features except `std` ([Yuki Kishimoto])
 * nostr: change `Timestamp::to_human_datetime` fingerprint ([Yuki Kishimoto])
 * pool: switch from async to sync message sending for `Relay` ([Yuki Kishimoto])
@@ -66,9 +67,11 @@
 * nostr: add `A/a` tags in `EventBuilder::comment` (NIP22) events ([Yuki Kishimoto])
 * nostr: add NIP73 support ([Yuki Kishimoto])
 * nostr: add `NostrSigner::backend` ([Yuki Kishimoto])
+* nostr: add `EventBuilder::private_msg` ([Yuki Kishimoto])
 * pool: add relay reconnection and disconnection unit tests ([Yuki Kishimoto])
 * sdk: allow to specify relay pool notification channel size in `Options` ([Yuki Kishimoto])
 * connect: add `NostrConnect::non_secure_set_user_public_key` ([Yuki Kishimoto])
+* ffi: add `make_private_msg` func ([Yuki Kishimoto])
 * book: add some examples ([RydalWater])
 
 ### Fixed

@@ -1,6 +1,6 @@
 import asyncio
 from nostr_sdk import Client, Keys, Event, UnsignedEvent, Filter, \
-    HandleNotification, Timestamp, UnwrappedGift, init_logger, LogLevel, Kind, KindEnum
+    HandleNotification, Timestamp, UnwrappedGift, init_logger, LogLevel, Kind, KindEnum, make_private_msg
 
 
 async def main():
@@ -43,7 +43,8 @@ async def main():
                         if rumor.kind().as_enum() == KindEnum.PRIVATE_DIRECT_MESSAGE():
                             msg = rumor.content()
                             print(f"Received new msg [sealed]: {msg}")
-                            await client.send_private_msg(sender, f"Echo: {msg}", None)
+                            event = await make_private_msg(keys, sender, f"Echo: {msg}")
+                            await client.send_event(event)
                         else:
                             print(f"{rumor.as_json()}")
                 except Exception as e:

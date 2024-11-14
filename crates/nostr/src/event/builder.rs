@@ -1442,6 +1442,8 @@ impl EventBuilder {
 
     /// Private Direct message rumor
     ///
+    /// You probably are looking for [`EventBuilder::private_msg`] method.
+    ///
     /// <div class="warning">
     /// This constructor compose ONLY the rumor for the private direct message!
     /// NOT USE THIS IF YOU DON'T KNOW WHAT YOU ARE DOING!
@@ -1450,18 +1452,37 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub fn private_msg_rumor<S>(receiver: PublicKey, message: S, reply_to: Option<EventId>) -> Self
+    pub fn private_msg_rumor<S, I>(receiver: PublicKey, message: S, extra_tags: I) -> Self
     where
         S: Into<String>,
+        I: IntoIterator<Item = Tag>,
     {
-        let mut tags: Vec<Tag> = Vec::with_capacity(1 + usize::from(reply_to.is_some()));
+        // Compose tags
+        let mut tags: Vec<Tag> = extra_tags.into_iter().collect();
         tags.push(Tag::public_key(receiver));
 
-        if let Some(id) = reply_to {
-            tags.push(Tag::event(id));
-        }
-
+        // Compose builder
         Self::new(Kind::PrivateDirectMessage, message, tags)
+    }
+
+    /// Private Direct message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[inline]
+    #[cfg(all(feature = "std", feature = "nip59"))]
+    pub async fn private_msg<T, S, I>(
+        signer: &T,
+        receiver: PublicKey,
+        message: S,
+        rumor_extra_tags: I,
+    ) -> Result<Event, Error>
+    where
+        T: NostrSigner,
+        S: Into<String>,
+        I: IntoIterator<Item = Tag>,
+    {
+        let rumor: Self = Self::private_msg_rumor(receiver, message, rumor_extra_tags);
+        Self::gift_wrap(signer, &receiver, rumor, []).await
     }
 
     /// Mute list

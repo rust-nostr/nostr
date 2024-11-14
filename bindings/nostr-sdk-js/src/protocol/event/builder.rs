@@ -619,11 +619,39 @@ impl JsEventBuilder {
     pub fn private_msg_rumor(
         receiver: &JsPublicKey,
         message: &str,
-        reply_to: Option<JsEventId>,
+        extra_tags: Option<Vec<JsTag>>,
     ) -> Self {
         Self {
-            inner: EventBuilder::private_msg_rumor(**receiver, message, reply_to.map(|id| *id)),
+            inner: EventBuilder::private_msg_rumor(
+                **receiver,
+                message,
+                extra_tags.unwrap_or_default().into_iter().map(|t| t.inner),
+            ),
         }
+    }
+
+    /// Private Direct message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[wasm_bindgen(js_name = privateMsg)]
+    pub async fn private_msg(
+        signer: &JsNostrSigner,
+        receiver: &JsPublicKey,
+        message: &str,
+        rumor_extra_tags: Option<Vec<JsTag>>,
+    ) -> Result<JsEvent> {
+        Ok(EventBuilder::private_msg(
+            signer.deref(),
+            **receiver,
+            message,
+            rumor_extra_tags
+                .unwrap_or_default()
+                .into_iter()
+                .map(|t| t.inner),
+        )
+        .await
+        .map_err(into_err)?
+        .into())
     }
 
     /// Mute list

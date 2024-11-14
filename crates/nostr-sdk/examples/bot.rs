@@ -50,17 +50,16 @@ async fn main() -> Result<()> {
                                     ),
                                 };
 
-                                // Send private message to general relays
-                                // client.send_private_msg(sender, content, None).await?;
+                                // Build private message
+                                let event =
+                                    EventBuilder::private_msg(&keys, sender, content, []).await?;
+
+                                // Send private message
+                                // client.send_event(event).await?;
 
                                 // Send private message to specific relays
                                 client
-                                    .send_private_msg_to(
-                                        ["wss://auth.nostr1.com"],
-                                        sender,
-                                        content,
-                                        None,
-                                    )
+                                    .send_event_to(["wss://auth.nostr1.com"], event)
                                     .await?;
                             }
                         }

@@ -538,10 +538,9 @@ impl JsClient {
         &self,
         receiver: &JsPublicKey,
         message: &str,
-        reply_to: Option<JsEventId>,
     ) -> Result<JsSendEventOutput> {
         self.inner
-            .send_private_msg(**receiver, message, reply_to.map(|t| *t))
+            .send_private_msg(**receiver, message, [])
             .await
             .map_err(into_err)
             .map(Into::into)
@@ -556,10 +555,9 @@ impl JsClient {
         urls: Vec<String>,
         receiver: &JsPublicKey,
         message: &str,
-        reply_to: Option<JsEventId>,
     ) -> Result<JsSendEventOutput> {
         self.inner
-            .send_private_msg_to(urls, **receiver, message, reply_to.map(|t| *t))
+            .send_private_msg_to(urls, **receiver, message, [])
             .await
             .map_err(into_err)
             .map(Into::into)

@@ -521,16 +521,14 @@ impl Client {
     /// Send private direct message to all relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
-    #[uniffi::method(default(reply_to = None))]
     pub async fn send_private_msg(
         &self,
         receiver: &PublicKey,
         message: String,
-        reply_to: Option<Arc<EventId>>,
     ) -> Result<SendEventOutput> {
         Ok(self
             .inner
-            .send_private_msg(**receiver, message, reply_to.map(|t| **t))
+            .send_private_msg(**receiver, message, [])
             .await?
             .into())
     }
@@ -538,17 +536,15 @@ impl Client {
     /// Send private direct message to specific relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
-    #[uniffi::method(default(reply_to = None))]
     pub async fn send_private_msg_to(
         &self,
         urls: Vec<String>,
         receiver: &PublicKey,
         message: String,
-        reply_to: Option<Arc<EventId>>,
     ) -> Result<SendEventOutput> {
         Ok(self
             .inner
-            .send_private_msg_to(urls, **receiver, message, reply_to.map(|t| **t))
+            .send_private_msg_to(urls, **receiver, message, [])
             .await?
             .into())
     }

@@ -1,4 +1,4 @@
-const { Keys, Client, NostrSigner, Filter, UnwrappedGift, initLogger, LogLevel, loadWasmAsync } = require("../");
+const { Keys, Client, NostrSigner, Filter, UnwrappedGift, initLogger, LogLevel, loadWasmAsync, EventBuilder } = require("../");
 
 async function main() {
     await loadWasmAsync();
@@ -8,7 +8,7 @@ async function main() {
     } catch (error) {
         console.log(error);
     }
-    
+
 
     let keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85");
 
@@ -24,7 +24,7 @@ async function main() {
     const filter = new Filter().pubkey(keys.publicKey).kind(1059).limit(0); // Limit set to 0 to get only new events! Timestamp.now() CAN'T be used for gift wrap since the timestamps are tweaked!
     console.log('filter', filter.asJson());
 
-    await client.subscribe([filter]); 
+    await client.subscribe([filter]);
 
     const handle = {
         // Handle event
@@ -32,7 +32,7 @@ async function main() {
             console.log("Received new event from ", relayUrl);
             if (event.kind === 1059) {
                 try {
-                    let content = UnwrappedGift.fromGiftWrap(keys, event);
+                    let content = await UnwrappedGift.fromGiftWrap(signer, event);
                     let sender = content.sender;
                     let rumor = content.rumor;
 
@@ -40,7 +40,8 @@ async function main() {
                         return true
                     }
 
-                    await client.sendPrivateMsg(sender, "Echo: " + rumor.content);
+                    let event = await EventBuilder.privateMsg(signer, sender, "Echo: " + rumor.content)
+                    await client.sendEvent(event);
                 } catch (error) {
                     console.log("Impossible to decrypt DM:", error);
                 }
