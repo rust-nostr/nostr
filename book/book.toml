@@ -13,6 +13,8 @@ additional-js = ["./tabs.js"]
 additional-css = ["./mdbook-admonish.css"]
 git-repository-url = "https://github.com/rust-nostr/nostr"
 
+# This line change the path of the main book build from `book/` to `book/html`.
+# If this line will be removed, the deploy book CI must be updated.
 [output.linkcheck]
 
 [preprocessor]
