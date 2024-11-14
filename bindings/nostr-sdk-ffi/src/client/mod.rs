@@ -23,9 +23,8 @@ use crate::database::events::Events;
 use crate::error::Result;
 use crate::pool::result::{Output, ReconciliationOutput, SendEventOutput, SubscribeOutput};
 use crate::pool::RelayPool;
-use crate::protocol::nips::nip59::UnwrappedGift;
 use crate::protocol::signer::{NostrSigner, NostrSignerFFI2Rust, NostrSignerRust2FFI};
-use crate::protocol::{ClientMessage, Event, EventBuilder, Filter, Metadata, PublicKey, Tag};
+use crate::protocol::{ClientMessage, Event, EventBuilder, Filter, Metadata, PublicKey};
 use crate::relay::options::{SubscribeAutoCloseOptions, SyncOptions};
 use crate::relay::RelayFiltering;
 use crate::{HandleNotification, NostrDatabase, Relay};
@@ -518,37 +517,6 @@ impl Client {
             .into())
     }
 
-    /// Send private direct message to all relays
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
-    pub async fn send_private_msg(
-        &self,
-        receiver: &PublicKey,
-        message: String,
-    ) -> Result<SendEventOutput> {
-        Ok(self
-            .inner
-            .send_private_msg(**receiver, message, [])
-            .await?
-            .into())
-    }
-
-    /// Send private direct message to specific relays
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
-    pub async fn send_private_msg_to(
-        &self,
-        urls: Vec<String>,
-        receiver: &PublicKey,
-        message: String,
-    ) -> Result<SendEventOutput> {
-        Ok(self
-            .inner
-            .send_private_msg_to(urls, **receiver, message, [])
-            .await?
-            .into())
-    }
-
     /// Send a Zap!
     pub async fn zap(
         &self,
@@ -560,59 +528,6 @@ impl Client {
             .inner
             .zap(**to, satoshi, details.map(|d| d.as_ref().deref().clone()))
             .await?)
-    }
-
-    /// Construct Gift Wrap and send to relays
-    ///
-    /// Check `send_event` method to know how sending events works.
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-    pub async fn gift_wrap(
-        &self,
-        receiver: &PublicKey,
-        rumor: Arc<EventBuilder>,
-        extra_tags: Vec<Arc<Tag>>,
-    ) -> Result<SendEventOutput> {
-        Ok(self
-            .inner
-            .gift_wrap(
-                receiver.deref(),
-                rumor.as_ref().deref().clone(),
-                extra_tags.into_iter().map(|t| t.as_ref().deref().clone()),
-            )
-            .await?
-            .into())
-    }
-
-    /// Construct Gift Wrap and send to specific relays
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-    pub async fn gift_wrap_to(
-        &self,
-        urls: Vec<String>,
-        receiver: &PublicKey,
-        rumor: Arc<EventBuilder>,
-        extra_tags: Vec<Arc<Tag>>,
-    ) -> Result<SendEventOutput> {
-        Ok(self
-            .inner
-            .gift_wrap_to(
-                urls,
-                receiver.deref(),
-                rumor.as_ref().deref().clone(),
-                extra_tags.into_iter().map(|t| t.as_ref().deref().clone()),
-            )
-            .await?
-            .into())
-    }
-
-    /// Unwrap Gift Wrap event
-    ///
-    /// Internally verify the `seal` event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-    pub async fn unwrap_gift_wrap(&self, gift_wrap: &Event) -> Result<UnwrappedGift> {
-        Ok(self.inner.unwrap_gift_wrap(gift_wrap.deref()).await?.into())
     }
 
     /// Handle notifications
