@@ -17,7 +17,7 @@ use tokio::sync::{broadcast, Semaphore};
 
 use super::session::{RateLimiterResponse, Session, Tokens};
 use super::util;
-use crate::builder::{RateLimit, RelayBuilder, RelayBuilderMode};
+use crate::builder::{RateLimit, RelayBuilder, RelayBuilderMode, RelayTestOptions};
 use crate::error::Error;
 
 type WsTx = SplitSink<WebSocketStream<TcpStream>, Message>;
@@ -37,6 +37,7 @@ pub(super) struct InternalLocalRelay {
     min_pow: Option<u8>, // TODO: use AtomicU8 to allow to change it?
     #[cfg(feature = "tor")]
     hidden_service: Option<String>,
+    test: RelayTestOptions,
 }
 
 impl AtomicDestroyer for InternalLocalRelay {
@@ -98,6 +99,7 @@ impl InternalLocalRelay {
             min_pow: builder.min_pow,
             #[cfg(feature = "tor")]
             hidden_service,
+            test: builder.test,
         };
 
         let r: Self = relay.clone();
@@ -149,6 +151,10 @@ impl InternalLocalRelay {
     }
 
     async fn handle_connection(&self, raw_stream: TcpStream, addr: SocketAddr) -> Result<()> {
+        if let Some(unresponsive_connection) = self.test.unresponsive_connection {
+            tokio::time::sleep(unresponsive_connection).await;
+        }
+
         // Accept websocket
         let ws_stream = native::accept(raw_stream).await?;
 

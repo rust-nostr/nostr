@@ -76,6 +76,7 @@
 * nostr: add `EventBuilder::tag` and `EventBuilder::tags` ([Yuki Kishimoto])
 * pool: add relay reconnection and disconnection unit tests ([Yuki Kishimoto])
 * sdk: allow to specify relay pool notification channel size in `Options` ([Yuki Kishimoto])
+* relay-builder: add `RelayTestOptions` ([Yuki Kishimoto])
 * connect: add `NostrConnect::non_secure_set_user_public_key` ([Yuki Kishimoto])
 * ffi: add `make_private_msg` func ([Yuki Kishimoto])
 * book: add some examples ([RydalWater])

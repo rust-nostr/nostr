@@ -9,7 +9,7 @@ use std::ops::Deref;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
 
-use crate::builder::RelayBuilder;
+use crate::builder::{RelayBuilder, RelayTestOptions};
 use crate::error::Error;
 use crate::local::LocalRelay;
 
@@ -32,6 +32,15 @@ impl MockRelay {
     #[inline]
     pub async fn run() -> Result<Self, Error> {
         let builder = RelayBuilder::default();
+        Ok(Self {
+            local: LocalRelay::run(builder).await?,
+        })
+    }
+
+    /// Run unresponsive relay
+    #[inline]
+    pub async fn run_with_opts(opts: RelayTestOptions) -> Result<Self, Error> {
+        let builder = RelayBuilder::default().test(opts);
         Ok(Self {
             local: LocalRelay::run(builder).await?,
         })

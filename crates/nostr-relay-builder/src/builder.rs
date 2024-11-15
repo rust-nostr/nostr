@@ -10,6 +10,7 @@ use std::path::Path;
 #[cfg(feature = "tor")]
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use nostr_database::prelude::*;
 
@@ -33,6 +34,7 @@ impl Default for RateLimit {
 }
 
 /// Relay builder tor hidden service options
+#[derive(Debug)]
 #[cfg(feature = "tor")]
 pub struct RelayBuilderHiddenService {
     /// Nickname (local identifier) for a Tor hidden service
@@ -91,25 +93,35 @@ pub enum RelayBuilderMode {
     PublicKey(PublicKey),
 }
 
+/// Testing options
+#[derive(Debug, Clone, Default)]
+pub struct RelayTestOptions {
+    /// Simulate unresponsive connection
+    pub unresponsive_connection: Option<Duration>,
+}
+
 /// Relay builder
+#[derive(Debug)]
 pub struct RelayBuilder {
     /// IP address
-    pub addr: Option<IpAddr>,
+    pub(crate) addr: Option<IpAddr>,
     /// Port
-    pub port: Option<u16>,
+    pub(crate) port: Option<u16>,
     /// Database
-    pub database: Arc<DynNostrDatabase>,
+    pub(crate) database: Arc<DynNostrDatabase>,
     /// Mode
-    pub mode: RelayBuilderMode,
+    pub(crate) mode: RelayBuilderMode,
     /// Rate limit
-    pub rate_limit: RateLimit,
+    pub(crate) rate_limit: RateLimit,
     /// Tor hidden service
     #[cfg(feature = "tor")]
-    pub tor: Option<RelayBuilderHiddenService>,
+    pub(crate) tor: Option<RelayBuilderHiddenService>,
     /// Max connections allowed
-    pub max_connections: Option<usize>,
+    pub(crate) max_connections: Option<usize>,
     /// Min POW difficulty
-    pub min_pow: Option<u8>,
+    pub(crate) min_pow: Option<u8>,
+    /// Test options
+    pub(crate) test: RelayTestOptions,
 }
 
 impl Default for RelayBuilder {
@@ -127,6 +139,7 @@ impl Default for RelayBuilder {
             tor: None,
             max_connections: None,
             min_pow: None,
+            test: RelayTestOptions::default(),
         }
     }
 }
@@ -189,6 +202,13 @@ impl RelayBuilder {
     #[inline]
     pub fn min_pow(mut self, difficulty: u8) -> Self {
         self.min_pow = Some(difficulty);
+        self
+    }
+
+    /// Testing options
+    #[inline]
+    pub(crate) fn test(mut self, test: RelayTestOptions) -> Self {
+        self.test = test;
         self
     }
 }
