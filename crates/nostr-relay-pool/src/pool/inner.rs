@@ -300,27 +300,27 @@ impl InnerRelayPool {
         let url: Url = url.try_into_url()?;
 
         // Remove relay
-        if let Some(relay) = relays.remove(&url) {
-            // If NOT force, check if has INBOX or OUTBOX flags
-            if !force {
-                let flags = relay.flags();
-                if flags.has_any(RelayServiceFlags::INBOX | RelayServiceFlags::OUTBOX) {
-                    // Remove READ, WRITE and DISCOVERY flags
-                    flags.remove(
-                        RelayServiceFlags::READ
-                            | RelayServiceFlags::WRITE
-                            | RelayServiceFlags::DISCOVERY,
-                    );
+        let relay = relays.remove(&url).ok_or(Error::RelayNotFound)?;
 
-                    // Re-insert
-                    relays.insert(url, relay);
-                    return Ok(());
-                }
+        // If NOT force, check if has INBOX or OUTBOX flags
+        if !force {
+            let flags = relay.flags();
+            if flags.has_any(RelayServiceFlags::INBOX | RelayServiceFlags::OUTBOX) {
+                // Remove READ, WRITE and DISCOVERY flags
+                flags.remove(
+                    RelayServiceFlags::READ
+                        | RelayServiceFlags::WRITE
+                        | RelayServiceFlags::DISCOVERY,
+                );
+
+                // Re-insert
+                relays.insert(url, relay);
+                return Ok(());
             }
-
-            // Disconnect
-            relay.disconnect()?;
         }
+
+        // Disconnect
+        relay.disconnect()?;
 
         Ok(())
     }
