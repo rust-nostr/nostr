@@ -71,47 +71,9 @@ aar: sdk-root kotlin assemble-aar
 publish-android: aar
 	cd android && ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
 
-[private]
-swift-deps:
-	cargo lipo --version || cargo install cargo-lipo
-	cbindgen --version || cargo install cbindgen
-
-[private]
-ios-universal: swift-deps
-    rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim
-    mkdir -p ../../target/ios-universal/release
-    mkdir -p ../../target/ios-universal-sim/release
-    cargo build --release --target aarch64-apple-ios
-    cargo build --release --target x86_64-apple-ios
-    cargo build --release --target aarch64-apple-ios-sim
-    lipo -create -output ../../target/ios-universal/release/libnostr_sdk_ffi.a ../../target/aarch64-apple-ios/release/libnostr_sdk_ffi.a ../../target/x86_64-apple-ios/release/libnostr_sdk_ffi.a
-    lipo -create -output ../../target/ios-universal-sim/release/libnostr_sdk_ffi.a ../../target/aarch64-apple-ios-sim/release/libnostr_sdk_ffi.a ../../target/x86_64-apple-ios/release/libnostr_sdk_ffi.a
-
-[private]
-darwin-universal: swift-deps
-	rustup target add aarch64-apple-darwin x86_64-apple-darwin
-	mkdir -p ../../target/darwin-universal/release
-	cargo lipo --release --targets aarch64-apple-darwin
-	cargo lipo --release --targets x86_64-apple-darwin
-	lipo -create -output ../../target/darwin-universal/release/libnostr_sdk_ffi.dylib ../../target/aarch64-apple-darwin/release/libnostr_sdk_ffi.dylib ../../target/x86_64-apple-darwin/release/libnostr_sdk_ffi.dylib
-	lipo -create -output ../../target/darwin-universal/release/libnostr_sdk_ffi.a ../../target/aarch64-apple-darwin/release/libnostr_sdk_ffi.a ../../target/x86_64-apple-darwin/release/libnostr_sdk_ffi.a
-
-[private]
-assemble-swift-package:
-    mkdir -p swift/Sources/NostrSDK
-    cargo run --bin uniffi-bindgen generate --library ../../target/aarch64-apple-ios/release/libnostr_sdk_ffi.a --no-format --language swift --out-dir swift/Sources/NostrSDK
-    mv swift/Sources/NostrSDK/nostr_sdk.swift swift/Sources/NostrSDK/NostrSDK.swift
-    cp swift/Sources/NostrSDK/*.h swift/nostr_sdkFFI.xcframework/ios-arm64/Headers
-    cp swift/Sources/NostrSDK/*.h swift/nostr_sdkFFI.xcframework/ios-arm64_x86_64-simulator/Headers
-    cp swift/Sources/NostrSDK/*.h swift/nostr_sdkFFI.xcframework/macos-arm64_x86_64/Headers
-    cp ../../target/aarch64-apple-ios/release/libnostr_sdk_ffi.a swift/nostr_sdkFFI.xcframework/ios-arm64/nostr_sdkFFI.a
-    cp ../../target/ios-universal-sim/release/libnostr_sdk_ffi.a swift/nostr_sdkFFI.xcframework/ios-arm64_x86_64-simulator/nostr_sdkFFI.a
-    cp ../../target/darwin-universal/release/libnostr_sdk_ffi.a swift/nostr_sdkFFI.xcframework/macos-arm64_x86_64/nostr_sdkFFI.a
-    rm swift/Sources/NostrSDK/*.h
-    rm swift/Sources/NostrSDK/*.modulemap
-
 # Compile and build Swift Package
-swift: ios-universal darwin-universal assemble-swift-package
+swift:
+    @cd swift && bash build-xcframework.sh
 
 [linux]
 python:
