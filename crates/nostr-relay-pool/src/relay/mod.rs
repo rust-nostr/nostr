@@ -438,7 +438,7 @@ mod tests {
         relay.connect(Some(Duration::from_millis(100))).await;
 
         let keys = Keys::generate();
-        let event = EventBuilder::text_note("Test", [])
+        let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
             .unwrap();
         relay.send_event(event).await.unwrap();

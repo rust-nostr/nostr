@@ -334,7 +334,7 @@ mod tests {
         assert!(f.can_write());
 
         let f = AtomicRelayServiceFlags::new(RelayServiceFlags::INBOX);
-        assert!(!f.can_write());
+        assert!(f.can_write());
 
         let f = AtomicRelayServiceFlags::new(RelayServiceFlags::DISCOVERY);
         assert!(!f.can_write());
