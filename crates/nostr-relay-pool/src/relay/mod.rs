@@ -534,7 +534,7 @@ mod tests {
 
         relay.disconnect().unwrap();
 
-        thread::sleep(Duration::from_secs(3)).await;
+        thread::sleep(Duration::from_millis(100)).await;
 
         assert_eq!(relay.status(), RelayStatus::Terminated);
 

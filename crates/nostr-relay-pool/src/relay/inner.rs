@@ -494,24 +494,31 @@ impl InnerRelay {
                 // Acquire service watcher
                 let mut rx_service = relay.channels.rx_service().await;
 
-                // Connect and run message handler
-                relay
-                    .connect_and_run(connection_timeout, &mut rx_service)
-                    .await;
+                tokio::select! {
+                    // Connect and run message handler
+                    _ = relay.connect_and_run(connection_timeout) => {},
+                    // Handle terminate
+                    _ = relay.handle_terminate(&mut rx_service) => {
+                        // Update status
+                        relay.set_status(RelayStatus::Terminated, true);
+
+                        // Break loop
+                        break;
+                    }
+                }
 
                 // Get status
                 let status: RelayStatus = relay.status();
 
-                // Check if status set to terminated
+                // If status is set to terminated, break loop.
                 if status.is_terminated() {
-                    // Break loop and exit
-                    tracing::debug!(url = %relay.url, "Exiting from auto connect loop.");
                     break;
                 }
 
                 // Check if reconnection is enabled
                 if relay.opts.reconnect {
                     // Check if relay is marked as disconnected. If not, update status.
+                    // Check if disconnected to avoid a possible double log
                     if !status.is_disconnected() {
                         relay.set_status(RelayStatus::Disconnected, true);
                     }
@@ -577,11 +584,7 @@ impl InnerRelay {
     }
 
     /// Connect and run message handler
-    async fn connect_and_run(
-        &self,
-        connection_timeout: Duration,
-        rx_service: &mut watch::Receiver<RelayServiceEvent>,
-    ) {
+    async fn connect_and_run(&self, connection_timeout: Duration) {
         // Update status
         self.set_status(RelayStatus::Connecting, true);
 
@@ -605,47 +608,33 @@ impl InnerRelay {
             connection_timeout
         };
 
-        tokio::select! {
-            // Connect
-            res = wsocket_connect(&self.url, &self.opts.connection_mode, timeout) => {
-                match res {
-                    Ok((ws_tx, ws_rx)) => {
-                        // Update status
-                        self.set_status(RelayStatus::Connected, true);
-
-                        // Increment success stats
-                        self.stats.new_success();
-
-                        // Request information document
-                        #[cfg(feature = "nip11")]
-                        self.request_nip11_document();
-
-                        // Run message handler
-                        self.run_message_handler(ws_tx, ws_rx, rx_service).await;
-                    }
-                    Err(e) => {
-                        // Update status
-                        self.set_status(RelayStatus::Disconnected, false);
-
-                        // Log error
-                        tracing::error!("Impossible to connect to '{}': {e}", self.url);
-                    }
-                }
-            }
-            // Handle terminate
-            _ = self.handle_terminate(rx_service) => {
+        // Connect
+        match wsocket_connect(&self.url, &self.opts.connection_mode, timeout).await {
+            Ok((ws_tx, ws_rx)) => {
                 // Update status
-                self.set_status(RelayStatus::Terminated, true);
+                self.set_status(RelayStatus::Connected, true);
+
+                // Increment success stats
+                self.stats.new_success();
+
+                // Request information document
+                #[cfg(feature = "nip11")]
+                self.request_nip11_document();
+
+                // Run message handler
+                self.run_message_handler(ws_tx, ws_rx).await;
+            }
+            Err(e) => {
+                // Update status
+                self.set_status(RelayStatus::Disconnected, false);
+
+                // Log error
+                tracing::error!("Impossible to connect to '{}': {e}", self.url);
             }
         }
     }
 
-    async fn run_message_handler(
-        &self,
-        ws_tx: Sink,
-        ws_rx: Stream,
-        rx_service: &mut watch::Receiver<RelayServiceEvent>,
-    ) {
+    async fn run_message_handler(&self, ws_tx: Sink, ws_rx: Stream) {
         // (Re)subscribe to relay
         if self.flags.can_read() {
             if let Err(e) = self.resubscribe().await {
@@ -658,7 +647,7 @@ impl InnerRelay {
             _ = self.receiver_message_handler(ws_rx) => {
                 tracing::trace!(url = %self.url, "Relay received exited.");
             },
-            res = self.sender_message_handler(ws_tx, rx_service) => match res {
+            res = self.sender_message_handler(ws_tx) => match res {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay sender exited."),
                 Err(e) => tracing::error!(url = %self.url, error = %e, "Relay sender exited with error.")
             },
@@ -669,11 +658,7 @@ impl InnerRelay {
         }
     }
 
-    async fn sender_message_handler(
-        &self,
-        mut ws_tx: Sink,
-        rx_service: &mut watch::Receiver<RelayServiceEvent>,
-    ) -> Result<(), Error> {
+    async fn sender_message_handler(&self, mut ws_tx: Sink) -> Result<(), Error> {
         // Lock receivers
         let mut rx_nostr = self.channels.rx_nostr().await;
         let mut rx_ping = self.channels.rx_ping().await;
@@ -728,14 +713,6 @@ impl InnerRelay {
 
                         tracing::debug!("Ping '{}' (nonce: {nonce})", self.url);
                     }
-                }
-                // Handle terminate
-                _ = self.handle_terminate(rx_service) => {
-                    // Update status
-                    self.set_status(RelayStatus::Terminated, true);
-
-                    // Break loop
-                    break;
                 }
                 else => break
             }
