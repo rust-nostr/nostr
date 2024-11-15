@@ -7,14 +7,14 @@ Your donation directly supports the continued development of `rust-nostr`!
 ### Bitcoin
 
 * 🔗 On-chain: `bc1quk478kpm45744q5pt3p9j42fnv72ykytmt3z0j`
-* ⚡ Lightning:
-    * `yuki@minibits.cash`
-    * `rustnostr@geyser.fund` (<https://geyser.fund/project/rustnostr> - 4% Geyser fee)
-* 💧 Liquid: `TODO`
+* ⚡ Lightning: `pay@yukikishimoto.com`
+* 💧 Liquid: `lq1qqdwn93gehkq4mtz2amsagawgfd6y9ksrkekal5u8tmle07f9fa0kgcnfez4lguhekeeyhy78nfqy8tyqvxayywgpwvm73t6av`
 
 ### Altcoins
 
-We not accept coins different from bitcoin. If you are interested to support `rust-nostr` with these ones, are available some swap services to convert them directly into bitcoin:
+We don't accept coins different from bitcoin.
+If you are interested to support `rust-nostr` with these,
+are available some swap services to convert them directly into bitcoin:
 
 * <https://sideshift.ai/>
 * <https://fixedfloat.com/>

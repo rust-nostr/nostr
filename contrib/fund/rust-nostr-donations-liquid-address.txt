@@ -1,0 +1,5 @@
+The Rust Nostr Project has one official bitcoin liquid (L-BTC) donation address:
+
+lq1qqdwn93gehkq4mtz2amsagawgfd6y9ksrkekal5u8tmle07f9fa0kgcnfez4lguhekeeyhy78nfqy8tyqvxayywgpwvm73t6av
+
+Last updated: 2024-11-15
