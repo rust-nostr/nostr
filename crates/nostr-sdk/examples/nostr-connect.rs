@@ -40,12 +40,12 @@ async fn main() -> Result<()> {
     let output = client.send_event_builder(builder).await?;
     println!("Published text note: {}\n", output.id());
 
+    let signer = client.signer().await?;
     let receiver =
         PublicKey::from_bech32("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")?;
-    let output = client
-        .send_private_msg(receiver, "Hello from rust-nostr", None)
-        .await?;
-    println!("Sent DM: {}", output.val);
+    let event = EventBuilder::private_msg(&signer, receiver, "Hello from rust-nostr", []).await?;
+    let output = client.send_event(event).await?;
+    println!("Sent DM: {}", output.id());
 
     Ok(())
 }
