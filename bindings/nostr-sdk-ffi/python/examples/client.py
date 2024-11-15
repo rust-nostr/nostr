@@ -33,7 +33,7 @@ async def main():
     # Mine a POW event and sign it with custom keys
     custom_keys = Keys.generate()
     print("Mining a POW text note...")
-    event = EventBuilder.text_note("Hello from rust-nostr Python bindings!", []).pow(20).sign_with_keys(custom_keys)
+    event = EventBuilder.text_note("Hello from rust-nostr Python bindings!").pow(20).sign_with_keys(custom_keys)
     output = await client.send_event(event)
     print("Event sent:")
     print(f" hex:    {output.id.to_hex()}")

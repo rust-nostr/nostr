@@ -20,7 +20,7 @@ async def main():
     keys = Keys.generate()
     print(keys.public_key().to_bech32())
 
-    event = EventBuilder.text_note("Hello from rust-nostr Python bindings!", []).sign_with_keys(keys)
+    event = EventBuilder.text_note("Hello from rust-nostr Python bindings!").sign_with_keys(keys)
     event_id = await client.send_event(event)
     print("Event sent:")
     print(f" hex:    {event_id.to_hex()}")

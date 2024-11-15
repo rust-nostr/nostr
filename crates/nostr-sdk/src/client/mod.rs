@@ -1234,7 +1234,7 @@ impl Client {
         S: Into<String>,
         I: IntoIterator<Item = Tag>,
     {
-        let builder = EventBuilder::text_note(content, tags);
+        let builder = EventBuilder::text_note(content).tags(tags);
         self.send_event_builder(builder).await
     }
 

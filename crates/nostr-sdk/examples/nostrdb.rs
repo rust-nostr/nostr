@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     // Publish a text note
-    let builder = EventBuilder::text_note("Hello world", []);
+    let builder = EventBuilder::text_note("Hello world");
     client.send_event_builder(builder).await?;
 
     // Negentropy reconcile

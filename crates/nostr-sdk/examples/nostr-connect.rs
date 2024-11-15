@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     // Publish events
-    let builder = EventBuilder::text_note("Testing rust-nostr NIP46 signer [bunker]", []);
+    let builder = EventBuilder::text_note("Testing rust-nostr NIP46 signer [bunker]");
     let output = client.send_event_builder(builder).await?;
     println!("Published text note: {}\n", output.id());
 

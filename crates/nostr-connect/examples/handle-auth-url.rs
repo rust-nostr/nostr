@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
     let content = connect.nip44_encrypt(&receiver, "Hi").await?;
     println!("Content: {content}");
 
-    let event = EventBuilder::text_note("Testing rust-nostr", [])
+    let event = EventBuilder::text_note("Testing rust-nostr")
         .sign(&connect)
         .await?;
     println!("Event: {}", event.as_json());

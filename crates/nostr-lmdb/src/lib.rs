@@ -211,12 +211,12 @@ mod tests {
 
             // Add some text notes
             events.push(
-                EventBuilder::text_note("Text Note A", [])
+                EventBuilder::text_note("Text Note A")
                     .sign_with_keys(&keys_a)
                     .unwrap(),
             );
             events.push(
-                EventBuilder::text_note("Text Note B", [])
+                EventBuilder::text_note("Text Note B")
                     .sign_with_keys(&keys_b)
                     .unwrap(),
             );
@@ -239,22 +239,16 @@ mod tests {
 
             // Add some param replaceable events
             events.push(
-                EventBuilder::new(
-                    Kind::ParameterizedReplaceable(33_333),
-                    "",
-                    [Tag::identifier("my-id-a")],
-                )
-                .sign_with_keys(&keys_a)
-                .unwrap(),
+                EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "")
+                    .tag(Tag::identifier("my-id-a"))
+                    .sign_with_keys(&keys_a)
+                    .unwrap(),
             );
             events.push(
-                EventBuilder::new(
-                    Kind::ParameterizedReplaceable(33_333),
-                    "",
-                    [Tag::identifier("my-id-b")],
-                )
-                .sign_with_keys(&keys_b)
-                .unwrap(),
+                EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "")
+                    .tag(Tag::identifier("my-id-b"))
+                    .sign_with_keys(&keys_b)
+                    .unwrap(),
             );
 
             // Store
@@ -289,7 +283,7 @@ mod tests {
 
         let added_events: usize = db.add_random_events().await;
 
-        let (_keys, expected_event) = db.add_event(EventBuilder::text_note("Test", [])).await;
+        let (_keys, expected_event) = db.add_event(EventBuilder::text_note("Test")).await;
 
         let event = db.event_by_id(&expected_event.id).await.unwrap().unwrap();
         assert_eq!(event, expected_event);
@@ -374,12 +368,9 @@ mod tests {
 
         let (keys, expected_event) = db
             .add_event(
-                EventBuilder::new(
-                    Kind::ParameterizedReplaceable(33_333),
-                    "",
-                    [Tag::identifier("my-id-a")],
-                )
-                .custom_created_at(now - Duration::from_secs(120)),
+                EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "")
+                    .tag(Tag::identifier("my-id-a"))
+                    .custom_created_at(now - Duration::from_secs(120)),
             )
             .await;
         let coordinate = Coordinate::new(Kind::from(33_333), keys.public_key).identifier("my-id-a");
@@ -398,12 +389,9 @@ mod tests {
         // Replace previous event
         let (new_expected_event, stored) = db
             .add_event_with_keys(
-                EventBuilder::new(
-                    Kind::ParameterizedReplaceable(33_333),
-                    "Test replace",
-                    [Tag::identifier("my-id-a")],
-                )
-                .custom_created_at(now),
+                EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "Test replace")
+                    .tag(Tag::identifier("my-id-a"))
+                    .custom_created_at(now),
                 &keys,
             )
             .await;
@@ -430,12 +418,9 @@ mod tests {
         // Trey to add param replaceable event with older timestamp (MUSTN'T be stored)
         let (_, stored) = db
             .add_event_with_keys(
-                EventBuilder::new(
-                    Kind::ParameterizedReplaceable(33_333),
-                    "Test replace 2",
-                    [Tag::identifier("my-id-a")],
-                )
-                .custom_created_at(now - Duration::from_secs(2000)),
+                EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "Test replace 2")
+                    .tag(Tag::identifier("my-id-a"))
+                    .custom_created_at(now - Duration::from_secs(2000)),
                 &keys,
             )
             .await;

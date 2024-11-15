@@ -44,10 +44,10 @@ fn main() -> Result<()> {
     let event: Event = EventBuilder::metadata(&metadata).sign_with_keys(&keys)?;
 
     // New text note
-    let event: Event = EventBuilder::text_note("Hello from rust-nostr", []).sign_with_keys(&keys)?;
+    let event: Event = EventBuilder::text_note("Hello from rust-nostr").sign_with_keys(&keys)?;
 
     // New POW text note
-    let event: Event = EventBuilder::text_note("My first POW text note from rust-nostr", []).pow(20).sign_with_keys(&keys)?;
+    let event: Event = EventBuilder::text_note("POW text note from rust-nostr").pow(20).sign_with_keys(&keys)?;
 
     // Convert client nessage to JSON
     let json = ClientMessage::event(event).as_json();

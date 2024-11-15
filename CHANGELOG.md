@@ -34,6 +34,10 @@
 * nostr: change `EventBuilder::gift_wrap` (and linked methods) args to take `extra_tags` instead of `expiration` ([erskingardner])
 * nostr: change `EventBuilder::gift_wrap` (and linked methods) args to take an `EventBuilder` rumor instead of `UnsignedEvent` ([Yuki Kishimoto])
 * nostr: change `EventBuilder::private_msg_rumor` arg to take `extra_tags` instead of `reply_to` ([Yuki Kishimoto])
+* nostr: remove `tags` arg from `EventBuilder::new` ([Yuki Kishimoto])
+* nostr: remove `tags` arg from `EventBuilder::text_note` ([Yuki Kishimoto])
+* nostr: remove `tags` arg from `EventBuilder::long_form_text_note` ([Yuki Kishimoto])
+* nostr: remove `tags` arg from `EventBuilder::job_request` ([Yuki Kishimoto])
 * nostr: disable all default features except `std` ([Yuki Kishimoto])
 * nostr: change `Timestamp::to_human_datetime` fingerprint ([Yuki Kishimoto])
 * pool: switch from async to sync message sending for `Relay` ([Yuki Kishimoto])
@@ -68,6 +72,7 @@
 * nostr: add NIP73 support ([Yuki Kishimoto])
 * nostr: add `NostrSigner::backend` ([Yuki Kishimoto])
 * nostr: add `EventBuilder::private_msg` ([Yuki Kishimoto])
+* nostr: add `EventBuilder::tag` and `EventBuilder::tags` ([Yuki Kishimoto])
 * pool: add relay reconnection and disconnection unit tests ([Yuki Kishimoto])
 * sdk: allow to specify relay pool notification channel size in `Options` ([Yuki Kishimoto])
 * connect: add `NostrConnect::non_secure_set_user_public_key` ([Yuki Kishimoto])
@@ -87,6 +92,7 @@
 
 ### Deprecated
 
+* nostr: deprecate `EventBuilder::add_tags` ([Yuki Kishimoto])
 * pool: deprecate `RelayPoolNotification::RelayStatus` variant ([Yuki Kishimoto])
 * sdk: deprecate `Client::with_opts` ([Yuki Kishimoto])
 * sdk: deprecate `Options::connection_timeout` ([Yuki Kishimoto])

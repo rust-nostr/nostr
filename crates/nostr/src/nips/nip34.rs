@@ -115,7 +115,7 @@ impl GitRepositoryAnnouncement {
         tags.push(Tag::alt(GIT_REPO_ANNOUNCEMENT_ALT));
 
         // Build
-        EventBuilder::new(Kind::GitRepoAnnouncement, "", tags)
+        EventBuilder::new(Kind::GitRepoAnnouncement, "").tags(tags)
     }
 }
 
@@ -158,7 +158,7 @@ impl GitIssue {
         tags.push(Tag::alt(GIT_ISSUE_ALT));
 
         // Build
-        EventBuilder::new(Kind::GitIssue, self.content, tags)
+        EventBuilder::new(Kind::GitIssue, self.content).tags(tags)
     }
 }
 
@@ -315,6 +315,6 @@ impl GitPatch {
         tags.extend(self.maintainers.into_iter().map(Tag::public_key));
 
         // Build
-        EventBuilder::new(Kind::GitPatch, content, tags)
+        EventBuilder::new(Kind::GitPatch, content).tags(tags)
     }
 }

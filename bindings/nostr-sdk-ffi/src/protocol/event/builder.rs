@@ -57,18 +57,19 @@ impl EventBuilder {
     async fn _none(&self) {}
 
     #[uniffi::constructor]
-    pub fn new(kind: &Kind, content: &str, tags: &[Arc<Tag>]) -> Self {
-        let tags = tags.iter().map(|t| t.as_ref().deref().clone());
+    pub fn new(kind: &Kind, content: &str) -> Self {
         Self {
-            inner: nostr::EventBuilder::new(**kind, content, tags),
+            inner: nostr::EventBuilder::new(**kind, content),
         }
     }
 
     /// Add tags
-    pub fn add_tags(self: Arc<Self>, tags: &[Arc<Tag>]) -> Self {
+    ///
+    /// This method extend the current tags (if any).
+    pub fn tags(self: Arc<Self>, tags: &[Arc<Tag>]) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
         let tags = tags.iter().map(|t| t.as_ref().deref().clone());
-        builder.inner = builder.inner.add_tags(tags);
+        builder.inner = builder.inner.tags(tags);
         builder
     }
 
@@ -133,10 +134,9 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[uniffi::constructor]
-    pub fn text_note(content: &str, tags: &[Arc<Tag>]) -> Self {
-        let tags = tags.iter().map(|t| t.as_ref().deref().clone());
+    pub fn text_note(content: &str) -> Self {
         Self {
-            inner: nostr::EventBuilder::text_note(content, tags),
+            inner: nostr::EventBuilder::text_note(content),
         }
     }
 
@@ -188,10 +188,9 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/23.md>
     #[uniffi::constructor]
-    pub fn long_form_text_note(content: &str, tags: &[Arc<Tag>]) -> Self {
-        let tags = tags.iter().map(|t| t.as_ref().deref().clone());
+    pub fn long_form_text_note(content: &str) -> Self {
         Self {
-            inner: nostr::EventBuilder::long_form_text_note(content, tags),
+            inner: nostr::EventBuilder::long_form_text_note(content),
         }
     }
 
@@ -499,12 +498,9 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     #[uniffi::constructor]
-    pub fn job_request(kind: &Kind, tags: &[Arc<Tag>]) -> Result<Self> {
+    pub fn job_request(kind: &Kind) -> Result<Self> {
         Ok(Self {
-            inner: nostr::EventBuilder::job_request(
-                **kind,
-                tags.iter().map(|t| t.as_ref().deref().clone()),
-            )?,
+            inner: nostr::EventBuilder::job_request(**kind)?,
         })
     }
 
@@ -607,18 +603,10 @@ impl EventBuilder {
     /// </div>
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
-    #[uniffi::constructor(default(extra_tags = []))]
-    pub fn private_msg_rumor(
-        receiver: &PublicKey,
-        message: &str,
-        extra_tags: Vec<Arc<Tag>>,
-    ) -> Self {
+    #[uniffi::constructor]
+    pub fn private_msg_rumor(receiver: &PublicKey, message: &str) -> Self {
         Self {
-            inner: nostr::EventBuilder::private_msg_rumor(
-                **receiver,
-                message,
-                extra_tags.into_iter().map(|t| t.as_ref().deref().clone()),
-            ),
+            inner: nostr::EventBuilder::private_msg_rumor(**receiver, message),
         }
     }
 

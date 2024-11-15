@@ -149,16 +149,15 @@ pub struct EventBuilder {
 }
 
 impl EventBuilder {
-    /// New [`EventBuilder`]
+    /// New event builder
     #[inline]
-    pub fn new<S, I>(kind: Kind, content: S, tags: I) -> Self
+    pub fn new<S>(kind: Kind, content: S) -> Self
     where
         S: Into<String>,
-        I: IntoIterator<Item = Tag>,
     {
         Self {
             kind,
-            tags: tags.into_iter().collect(),
+            tags: Vec::new(),
             content: content.into(),
             custom_created_at: None,
             pow: None,
@@ -166,8 +165,27 @@ impl EventBuilder {
     }
 
     /// Add tags
-    #[inline]
+    #[deprecated(since = "0.37.0", note = "Use `tags` instead")]
     pub fn add_tags<I>(mut self, tags: I) -> Self
+    where
+        I: IntoIterator<Item = Tag>,
+    {
+        self.tags.extend(tags);
+        self
+    }
+
+    /// Add tag
+    #[inline]
+    pub fn tag(mut self, tag: Tag) -> Self {
+        self.tags.push(tag);
+        self
+    }
+
+    /// Add tags
+    ///
+    /// This method extend the current tags (if any).
+    #[inline]
+    pub fn tags<I>(mut self, tags: I) -> Self
     where
         I: IntoIterator<Item = Tag>,
     {
@@ -315,7 +333,7 @@ impl EventBuilder {
     /// ```
     #[inline]
     pub fn metadata(metadata: &Metadata) -> Self {
-        Self::new(Kind::Metadata, metadata.as_json(), [])
+        Self::new(Kind::Metadata, metadata.as_json())
     }
 
     /// Relay list metadata
@@ -328,7 +346,7 @@ impl EventBuilder {
         let tags = iter
             .into_iter()
             .map(|(url, metadata)| Tag::relay_metadata(url, metadata));
-        Self::new(Kind::RelayList, "", tags)
+        Self::new(Kind::RelayList, "").tags(tags)
     }
 
     /// Text note
@@ -339,15 +357,14 @@ impl EventBuilder {
     /// ```rust,no_run
     /// use nostr::EventBuilder;
     ///
-    /// let builder = EventBuilder::text_note("My first text note from rust-nostr!", []);
+    /// let builder = EventBuilder::text_note("My first text note from rust-nostr!");
     /// ```
     #[inline]
-    pub fn text_note<S, I>(content: S, tags: I) -> Self
+    pub fn text_note<S>(content: S) -> Self
     where
         S: Into<String>,
-        I: IntoIterator<Item = Tag>,
     {
-        Self::new(Kind::TextNote, content, tags)
+        Self::new(Kind::TextNote, content)
     }
 
     /// Text note reply
@@ -431,7 +448,7 @@ impl EventBuilder {
         );
 
         // Compose event
-        Self::new(Kind::TextNote, content, tags)
+        Self::new(Kind::TextNote, content).tags(tags)
     }
 
     /// Comment
@@ -568,7 +585,7 @@ impl EventBuilder {
         );
 
         // Compose event
-        Self::new(Kind::Comment, content, tags)
+        Self::new(Kind::Comment, content).tags(tags)
     }
 
     /// Long-form text note (generally referred to as "articles" or "blog posts").
@@ -590,15 +607,14 @@ impl EventBuilder {
     ///     Tag::hashtag("placeholder".to_string()),
     ///     Tag::event(event_id),
     /// ];
-    /// let builder = EventBuilder::long_form_text_note("My first text note from rust-nostr!", []);
+    /// let builder = EventBuilder::long_form_text_note("My first text note from rust-nostr!");
     /// ```
     #[inline]
-    pub fn long_form_text_note<S, I>(content: S, tags: I) -> Self
+    pub fn long_form_text_note<S>(content: S) -> Self
     where
         S: Into<String>,
-        I: IntoIterator<Item = Tag>,
     {
-        Self::new(Kind::LongFormTextNote, content, tags)
+        Self::new(Kind::LongFormTextNote, content)
     }
 
     /// Contact/Follow list
@@ -616,7 +632,7 @@ impl EventBuilder {
                 uppercase: false,
             })
         });
-        Self::new(Kind::ContactList, "", tags)
+        Self::new(Kind::ContactList, "").tags(tags)
     }
 
     /// OpenTimestamps Attestations for Events
@@ -628,17 +644,17 @@ impl EventBuilder {
         relay_url: Option<UncheckedUrl>,
     ) -> Result<Self, Error> {
         let ots: String = nostr_ots::timestamp_event(&event_id.to_hex())?;
-        Ok(Self::new(
-            Kind::OpenTimestamps,
-            ots,
-            [Tag::from_standardized_without_cell(TagStandard::Event {
-                event_id,
-                relay_url,
-                marker: None,
-                public_key: None,
-                uppercase: false,
-            })],
-        ))
+        Ok(
+            Self::new(Kind::OpenTimestamps, ots).tags([Tag::from_standardized_without_cell(
+                TagStandard::Event {
+                    event_id,
+                    relay_url,
+                    marker: None,
+                    public_key: None,
+                    uppercase: false,
+                },
+            )]),
+        )
     }
 
     /// Repost
@@ -646,41 +662,33 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
     pub fn repost(event: &Event, relay_url: Option<UncheckedUrl>) -> Self {
         if event.kind == Kind::TextNote {
-            Self::new(
-                Kind::Repost,
-                event.as_json(),
-                [
-                    Tag::from_standardized_without_cell(TagStandard::Event {
-                        event_id: event.id,
-                        relay_url,
-                        marker: None,
-                        // NOTE: not add public key since it's already included as `p` tag
-                        public_key: None,
-                        uppercase: false,
-                    }),
-                    Tag::public_key(event.pubkey),
-                ],
-            )
+            Self::new(Kind::Repost, event.as_json()).tags([
+                Tag::from_standardized_without_cell(TagStandard::Event {
+                    event_id: event.id,
+                    relay_url,
+                    marker: None,
+                    // NOTE: not add public key since it's already included as `p` tag
+                    public_key: None,
+                    uppercase: false,
+                }),
+                Tag::public_key(event.pubkey),
+            ])
         } else {
-            Self::new(
-                Kind::GenericRepost,
-                event.as_json(),
-                [
-                    Tag::from_standardized_without_cell(TagStandard::Event {
-                        event_id: event.id,
-                        relay_url,
-                        marker: None,
-                        // NOTE: not add public key since it's already included as `p` tag
-                        public_key: None,
-                        uppercase: false,
-                    }),
-                    Tag::public_key(event.pubkey),
-                    Tag::from_standardized_without_cell(TagStandard::Kind {
-                        kind: event.kind,
-                        uppercase: false,
-                    }),
-                ],
-            )
+            Self::new(Kind::GenericRepost, event.as_json()).tags([
+                Tag::from_standardized_without_cell(TagStandard::Event {
+                    event_id: event.id,
+                    relay_url,
+                    marker: None,
+                    // NOTE: not add public key since it's already included as `p` tag
+                    public_key: None,
+                    uppercase: false,
+                }),
+                Tag::public_key(event.pubkey),
+                Tag::from_standardized_without_cell(TagStandard::Kind {
+                    kind: event.kind,
+                    uppercase: false,
+                }),
+            ])
         }
     }
 
@@ -709,7 +717,7 @@ impl EventBuilder {
             let middle: EventIdOrCoordinate = t.into();
             middle.into()
         });
-        Self::new(Kind::EventDeletion, reason.into(), tags)
+        Self::new(Kind::EventDeletion, reason.into()).tags(tags)
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
@@ -747,7 +755,7 @@ impl EventBuilder {
             }));
         }
 
-        Self::new(Kind::Reaction, reaction, tags)
+        Self::new(Kind::Reaction, reaction).tags(tags)
     }
 
     /// Create new channel
@@ -755,7 +763,7 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     #[inline]
     pub fn channel(metadata: &Metadata) -> Self {
-        Self::new(Kind::ChannelCreation, metadata.as_json(), [])
+        Self::new(Kind::ChannelCreation, metadata.as_json())
     }
 
     /// Channel metadata
@@ -767,17 +775,15 @@ impl EventBuilder {
         relay_url: Option<Url>,
         metadata: &Metadata,
     ) -> Self {
-        Self::new(
-            Kind::ChannelMetadata,
-            metadata.as_json(),
-            [Tag::from_standardized_without_cell(TagStandard::Event {
+        Self::new(Kind::ChannelMetadata, metadata.as_json()).tags([
+            Tag::from_standardized_without_cell(TagStandard::Event {
                 event_id: channel_id,
                 relay_url: relay_url.map(|u| u.into()),
                 marker: None,
                 public_key: None,
                 uppercase: false,
-            })],
-        )
+            }),
+        ])
     }
 
     /// Channel message
@@ -788,26 +794,23 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        Self::new(
-            Kind::ChannelMessage,
-            content,
-            [Tag::from_standardized_without_cell(TagStandard::Event {
+        Self::new(Kind::ChannelMessage, content).tags([Tag::from_standardized_without_cell(
+            TagStandard::Event {
                 event_id: channel_id,
                 relay_url: Some(relay_url.into()),
                 marker: Some(Marker::Root),
                 public_key: None,
                 uppercase: false,
-            })],
-        )
+            },
+        )])
     }
 
     /// Hide message
     ///
+    /// The `message_id` must be the [`EventId`] of the kind `42`.
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    pub fn hide_channel_msg<S>(
-        message_id: EventId, // event id of kind 42
-        reason: Option<S>,
-    ) -> Self
+    pub fn hide_channel_msg<S>(message_id: EventId, reason: Option<S>) -> Self
     where
         S: Into<String>,
     {
@@ -815,11 +818,7 @@ impl EventBuilder {
             "reason": reason.map(|s| s.into()).unwrap_or_default(),
         });
 
-        Self::new(
-            Kind::ChannelHideMessage,
-            content.to_string(),
-            [Tag::event(message_id)],
-        )
+        Self::new(Kind::ChannelHideMessage, content.to_string()).tag(Tag::event(message_id))
     }
 
     /// Mute channel user
@@ -833,11 +832,7 @@ impl EventBuilder {
             "reason": reason.map(|s| s.into()).unwrap_or_default(),
         });
 
-        Self::new(
-            Kind::ChannelMuteUser,
-            content.to_string(),
-            [Tag::public_key(public_key)],
-        )
+        Self::new(Kind::ChannelMuteUser, content.to_string()).tag(Tag::public_key(public_key))
     }
 
     /// Authentication of clients to relays
@@ -848,14 +843,10 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        Self::new(
-            Kind::Authentication,
-            "",
-            [
-                Tag::from_standardized_without_cell(TagStandard::Challenge(challenge.into())),
-                Tag::from_standardized_without_cell(TagStandard::Relay(relay.into())),
-            ],
-        )
+        Self::new(Kind::Authentication, "").tags([
+            Tag::from_standardized_without_cell(TagStandard::Challenge(challenge.into())),
+            Tag::from_standardized_without_cell(TagStandard::Relay(relay.into())),
+        ])
     }
 
     /// Nostr Connect / Nostr Remote Signing
@@ -871,8 +862,8 @@ impl EventBuilder {
         Ok(Self::new(
             Kind::NostrConnect,
             nip04::encrypt(sender_keys.secret_key(), &receiver_pubkey, msg.as_json())?,
-            [Tag::public_key(receiver_pubkey)],
-        ))
+        )
+        .tag(Tag::public_key(receiver_pubkey)))
     }
 
     /// Live Event
@@ -881,7 +872,7 @@ impl EventBuilder {
     #[inline]
     pub fn live_event(live_event: LiveEvent) -> Self {
         let tags: Vec<Tag> = live_event.into();
-        Self::new(Kind::LiveEvent, "", tags)
+        Self::new(Kind::LiveEvent, "").tags(tags)
     }
 
     /// Live Event Message
@@ -896,18 +887,14 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        Self::new(
-            Kind::LiveEventMessage,
-            content,
-            [Tag::from_standardized_without_cell(
-                TagStandard::Coordinate {
-                    coordinate: Coordinate::new(Kind::LiveEvent, live_event_host)
-                        .identifier(live_event_id),
-                    relay_url: relay_url.map(|u| u.into()),
-                    uppercase: false,
-                },
-            )],
-        )
+        Self::new(Kind::LiveEventMessage, content).tag(Tag::from_standardized_without_cell(
+            TagStandard::Coordinate {
+                coordinate: Coordinate::new(Kind::LiveEvent, live_event_host)
+                    .identifier(live_event_id),
+                relay_url: relay_url.map(|u| u.into()),
+                uppercase: false,
+            },
+        ))
     }
 
     /// Reporting
@@ -919,7 +906,7 @@ impl EventBuilder {
         I: IntoIterator<Item = Tag>,
         S: Into<String>,
     {
-        Self::new(Kind::Reporting, content, tags)
+        Self::new(Kind::Reporting, content).tags(tags)
     }
 
     /// Create **public** zap request event
@@ -956,7 +943,7 @@ impl EventBuilder {
     pub fn public_zap_request(data: ZapRequestData) -> Self {
         let message: String = data.message.clone();
         let tags: Vec<Tag> = data.into();
-        Self::new(Kind::ZapRequest, message, tags)
+        Self::new(Kind::ZapRequest, message).tags(tags)
     }
 
     /// Zap Receipt
@@ -1038,7 +1025,7 @@ impl EventBuilder {
             },
         ));
 
-        Self::new(Kind::ZapReceipt, "", tags)
+        Self::new(Kind::ZapReceipt, "").tags(tags)
     }
 
     /// Badge definition
@@ -1112,7 +1099,7 @@ impl EventBuilder {
             tags.push(thumb_tag);
         }
 
-        Self::new(Kind::BadgeDefinition, "", tags)
+        Self::new(Kind::BadgeDefinition, "").tags(tags)
     }
 
     /// Badge award
@@ -1148,7 +1135,7 @@ impl EventBuilder {
         tags.extend(awarded_public_keys.into_iter().map(Tag::public_key));
 
         // Build event
-        Ok(Self::new(Kind::BadgeAward, "", tags))
+        Ok(Self::new(Kind::BadgeAward, "").tags(tags))
     }
 
     /// Profile badges
@@ -1229,24 +1216,21 @@ impl EventBuilder {
             }
         }
 
-        Ok(EventBuilder::new(Kind::ProfileBadges, "", tags))
+        Ok(EventBuilder::new(Kind::ProfileBadges, "").tags(tags))
     }
 
     /// Data Vending Machine (DVM) - Job Request
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    pub fn job_request<I>(kind: Kind, tags: I) -> Result<Self, Error>
-    where
-        I: IntoIterator<Item = Tag>,
-    {
-        if kind.is_job_request() {
-            Ok(Self::new(kind, "", tags))
-        } else {
-            Err(Error::WrongKind {
+    pub fn job_request(kind: Kind) -> Result<Self, Error> {
+        if !kind.is_job_request() {
+            return Err(Error::WrongKind {
                 received: kind,
                 expected: WrongKindError::Range(NIP90_JOB_REQUEST_RANGE),
-            })
+            });
         }
+
+        Ok(Self::new(kind, ""))
     }
 
     /// Data Vending Machine (DVM) - Job Result
@@ -1295,7 +1279,7 @@ impl EventBuilder {
             Tag::from_standardized_without_cell(TagStandard::Amount { millisats, bolt11 }),
         ]);
 
-        Ok(Self::new(kind, payload, tags))
+        Ok(Self::new(kind, payload).tags(tags))
     }
 
     /// Data Vending Machine (DVM) - Job Feedback
@@ -1320,7 +1304,7 @@ impl EventBuilder {
             }));
         }
 
-        Self::new(Kind::JobFeedback, data.payload.unwrap_or_default(), tags)
+        Self::new(Kind::JobFeedback, data.payload.unwrap_or_default()).tags(tags)
     }
 
     /// File metadata
@@ -1332,7 +1316,7 @@ impl EventBuilder {
         S: Into<String>,
     {
         let tags: Vec<Tag> = metadata.into();
-        Self::new(Kind::FileMetadata, description.into(), tags)
+        Self::new(Kind::FileMetadata, description.into()).tags(tags)
     }
 
     /// HTTP Auth
@@ -1341,7 +1325,7 @@ impl EventBuilder {
     #[inline]
     pub fn http_auth(data: HttpData) -> Self {
         let tags: Vec<Tag> = data.into();
-        Self::new(Kind::HttpAuth, "", tags)
+        Self::new(Kind::HttpAuth, "").tags(tags)
     }
 
     /// Set stall data
@@ -1351,7 +1335,7 @@ impl EventBuilder {
     pub fn stall_data(data: StallData) -> Self {
         let content: String = data.as_json();
         let tags: Vec<Tag> = data.into();
-        Self::new(Kind::SetStall, content, tags)
+        Self::new(Kind::SetStall, content).tags(tags)
     }
 
     /// Set product data
@@ -1361,7 +1345,7 @@ impl EventBuilder {
     pub fn product_data(data: ProductData) -> Self {
         let content: String = data.as_json();
         let tags: Vec<Tag> = data.into();
-        Self::new(Kind::SetProduct, content, tags)
+        Self::new(Kind::SetProduct, content).tags(tags)
     }
 
     /// Seal
@@ -1413,7 +1397,8 @@ impl EventBuilder {
         // Push received public key
         tags.push(Tag::public_key(*receiver));
 
-        Self::new(Kind::GiftWrap, content, tags)
+        Self::new(Kind::GiftWrap, content)
+            .tags(tags)
             .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK))
             .sign_with_keys(&keys)
     }
@@ -1452,17 +1437,11 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub fn private_msg_rumor<S, I>(receiver: PublicKey, message: S, extra_tags: I) -> Self
+    pub fn private_msg_rumor<S>(receiver: PublicKey, message: S) -> Self
     where
         S: Into<String>,
-        I: IntoIterator<Item = Tag>,
     {
-        // Compose tags
-        let mut tags: Vec<Tag> = extra_tags.into_iter().collect();
-        tags.push(Tag::public_key(receiver));
-
-        // Compose builder
-        Self::new(Kind::PrivateDirectMessage, message, tags)
+        Self::new(Kind::PrivateDirectMessage, message).tags([Tag::public_key(receiver)])
     }
 
     /// Private Direct message
@@ -1481,7 +1460,7 @@ impl EventBuilder {
         S: Into<String>,
         I: IntoIterator<Item = Tag>,
     {
-        let rumor: Self = Self::private_msg_rumor(receiver, message, rumor_extra_tags);
+        let rumor: Self = Self::private_msg_rumor(receiver, message).tags(rumor_extra_tags);
         Self::gift_wrap(signer, &receiver, rumor, []).await
     }
 
@@ -1491,7 +1470,7 @@ impl EventBuilder {
     #[inline]
     pub fn mute_list(list: MuteList) -> Self {
         let tags: Vec<Tag> = list.into();
-        Self::new(Kind::MuteList, "", tags)
+        Self::new(Kind::MuteList, "").tags(tags)
     }
 
     /// Pinned notes
@@ -1502,7 +1481,7 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = EventId>,
     {
-        Self::new(Kind::PinList, "", ids.into_iter().map(Tag::event))
+        Self::new(Kind::PinList, "").tags(ids.into_iter().map(Tag::event))
     }
 
     /// Bookmarks
@@ -1511,7 +1490,7 @@ impl EventBuilder {
     #[inline]
     pub fn bookmarks(list: Bookmarks) -> Self {
         let tags: Vec<Tag> = list.into();
-        Self::new(Kind::Bookmarks, "", tags)
+        Self::new(Kind::Bookmarks, "").tags(tags)
     }
 
     /// Communities
@@ -1522,11 +1501,7 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = Coordinate>,
     {
-        Self::new(
-            Kind::Communities,
-            "",
-            communities.into_iter().map(Tag::from),
-        )
+        Self::new(Kind::Communities, "").tags(communities.into_iter().map(Tag::from))
     }
 
     /// Public chats
@@ -1537,7 +1512,7 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = EventId>,
     {
-        Self::new(Kind::PublicChats, "", chat.into_iter().map(Tag::event))
+        Self::new(Kind::PublicChats, "").tags(chat.into_iter().map(Tag::event))
     }
 
     /// Blocked relays
@@ -1548,9 +1523,7 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = UncheckedUrl>,
     {
-        Self::new(
-            Kind::BlockedRelays,
-            "",
+        Self::new(Kind::BlockedRelays, "").tags(
             relay
                 .into_iter()
                 .map(|r| Tag::from_standardized_without_cell(TagStandard::Relay(r))),
@@ -1565,9 +1538,7 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = UncheckedUrl>,
     {
-        Self::new(
-            Kind::SearchRelays,
-            "",
+        Self::new(Kind::SearchRelays, "").tags(
             relay
                 .into_iter()
                 .map(|r| Tag::from_standardized_without_cell(TagStandard::Relay(r))),
@@ -1580,7 +1551,7 @@ impl EventBuilder {
     #[inline]
     pub fn interests(list: Interests) -> Self {
         let tags: Vec<Tag> = list.into();
-        Self::new(Kind::Interests, "", tags)
+        Self::new(Kind::Interests, "").tags(tags)
     }
 
     /// Emojis
@@ -1589,7 +1560,7 @@ impl EventBuilder {
     #[inline]
     pub fn emojis(list: Emojis) -> Self {
         let tags: Vec<Tag> = list.into();
-        Self::new(Kind::Emojis, "", tags)
+        Self::new(Kind::Emojis, "").tags(tags)
     }
 
     /// Follow set
@@ -1601,9 +1572,7 @@ impl EventBuilder {
         I: IntoIterator<Item = PublicKey>,
     {
         let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
-        Self::new(
-            Kind::FollowSet,
-            "",
+        Self::new(Kind::FollowSet, "").tags(
             tags.into_iter()
                 .chain(public_keys.into_iter().map(Tag::public_key)),
         )
@@ -1618,9 +1587,7 @@ impl EventBuilder {
         I: IntoIterator<Item = UncheckedUrl>,
     {
         let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
-        Self::new(
-            Kind::RelaySet,
-            "",
+        Self::new(Kind::RelaySet, "").tags(
             tags.into_iter().chain(
                 relays
                     .into_iter()
@@ -1638,7 +1605,7 @@ impl EventBuilder {
     {
         let mut tags: Vec<Tag> = list.into();
         tags.push(Tag::identifier(identifier));
-        Self::new(Kind::BookmarkSet, "", tags)
+        Self::new(Kind::BookmarkSet, "").tags(tags)
     }
 
     /// Article Curation set
@@ -1650,7 +1617,7 @@ impl EventBuilder {
     {
         let mut tags: Vec<Tag> = list.into();
         tags.push(Tag::identifier(identifier));
-        Self::new(Kind::ArticlesCurationSet, "", tags)
+        Self::new(Kind::ArticlesCurationSet, "").tags(tags)
     }
 
     /// Videos Curation set
@@ -1662,9 +1629,7 @@ impl EventBuilder {
         I: IntoIterator<Item = Coordinate>,
     {
         let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
-        Self::new(
-            Kind::VideosCurationSet,
-            "",
+        Self::new(Kind::VideosCurationSet, "").tags(
             tags.into_iter()
                 .chain(video.into_iter().map(Tag::coordinate)),
         )
@@ -1680,9 +1645,7 @@ impl EventBuilder {
         S: Into<String>,
     {
         let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
-        Self::new(
-            Kind::InterestSet,
-            "",
+        Self::new(Kind::InterestSet, "").tags(
             tags.into_iter()
                 .chain(hashtags.into_iter().map(Tag::hashtag)),
         )
@@ -1697,13 +1660,11 @@ impl EventBuilder {
         I: IntoIterator<Item = (String, UncheckedUrl)>,
     {
         let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
-        Self::new(
-            Kind::EmojiSet,
-            "",
-            tags.into_iter().chain(emojis.into_iter().map(|(s, url)| {
+        Self::new(Kind::EmojiSet, "").tags(tags.into_iter().chain(emojis.into_iter().map(
+            |(s, url)| {
                 Tag::from_standardized_without_cell(TagStandard::Emoji { shortcode: s, url })
-            })),
-        )
+            },
+        )))
     }
 
     /// Label
@@ -1716,14 +1677,10 @@ impl EventBuilder {
     {
         let namespace: String = namespace.into();
         let labels: Vec<String> = labels.into_iter().chain([namespace.clone()]).collect();
-        Self::new(
-            Kind::Label,
-            "",
-            [
-                Tag::from_standardized_without_cell(TagStandard::LabelNamespace(namespace)),
-                Tag::from_standardized_without_cell(TagStandard::Label(labels)),
-            ],
-        )
+        Self::new(Kind::Label, "").tags([
+            Tag::from_standardized_without_cell(TagStandard::LabelNamespace(namespace)),
+            Tag::from_standardized_without_cell(TagStandard::Label(labels)),
+        ])
     }
 
     /// Git Repository Announcement
@@ -1768,7 +1725,7 @@ mod tests {
                 .unwrap(),
         );
 
-        let event = EventBuilder::text_note("hello", [])
+        let event = EventBuilder::text_note("hello")
             .sign_with_keys(&keys)
             .unwrap();
 

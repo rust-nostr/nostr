@@ -29,8 +29,8 @@ async fn main() -> Result<()> {
 
     let builder = EventBuilder::text_note(
         "Hello world nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
-        [Tag::public_key(pubkey)],
-    );
+    )
+    .tag(Tag::public_key(pubkey));
     let output = client.send_event_builder(builder).await?;
     println!("Event ID: {}", output.to_bech32()?);
 

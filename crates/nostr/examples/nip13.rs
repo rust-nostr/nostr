@@ -10,11 +10,10 @@ fn main() -> Result<()> {
     let difficulty = 20; // leading zero bits
     let msg_content = "This is a Nostr message with embedded proof-of-work";
 
-    let builder = EventBuilder::text_note(msg_content, []);
-    // or
-    // let builder = EventBuilder::new(Kind::TextNote, msg_content, &[]);
+    let event: Event = EventBuilder::text_note(msg_content)
+        .pow(difficulty)
+        .sign_with_keys(&keys)?;
 
-    let event: Event = builder.pow(difficulty).sign_with_keys(&keys)?;
     println!("{}", event.as_json());
 
     Ok(())

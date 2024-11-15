@@ -157,7 +157,7 @@ where
         .await?;
 
     // Compose builder
-    Ok(EventBuilder::new(Kind::Seal, content, [])
+    Ok(EventBuilder::new(Kind::Seal, content)
         .custom_created_at(Timestamp::tweaked(RANGE_RANDOM_TIMESTAMP_TWEAK)))
 }
 
@@ -177,7 +177,7 @@ mod tests {
                 .unwrap();
 
         // Compose Gift Wrap event
-        let rumor: EventBuilder = EventBuilder::text_note("Test", []);
+        let rumor: EventBuilder = EventBuilder::text_note("Test");
         let event: Event =
             EventBuilder::gift_wrap(&sender_keys, &receiver_keys.public_key(), rumor.clone(), [])
                 .await
@@ -189,7 +189,7 @@ mod tests {
         assert!(unwrapped.rumor.tags.is_empty());
         assert!(extract_rumor(&sender_keys, &event).await.is_err());
 
-        let event: Event = EventBuilder::text_note("", [])
+        let event: Event = EventBuilder::text_note("")
             .sign(&sender_keys)
             .await
             .unwrap();

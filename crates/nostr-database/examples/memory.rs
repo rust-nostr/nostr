@@ -33,17 +33,15 @@ async fn main() {
     let database = MemoryDatabase::with_opts(opts);
 
     for i in 0..100_000 {
-        let event = EventBuilder::text_note(format!("Event #{i}"), [])
+        let event = EventBuilder::text_note(format!("Event #{i}"))
             .sign_with_keys(&keys_a)
             .unwrap();
         database.save_event(&event).await.unwrap();
 
-        let event = EventBuilder::text_note(
-            format!("Reply to event #{i}"),
-            [Tag::event(event.id), Tag::public_key(event.pubkey)],
-        )
-        .sign_with_keys(&keys_b)
-        .unwrap();
+        let event = EventBuilder::text_note(format!("Reply to event #{i}"))
+            .tags([Tag::event(event.id), Tag::public_key(event.pubkey)])
+            .sign_with_keys(&keys_b)
+            .unwrap();
         database.save_event(&event).await.unwrap();
     }
 
@@ -56,13 +54,10 @@ async fn main() {
     }
 
     for i in 0..500_000 {
-        let event = EventBuilder::new(
-            Kind::Custom(123),
-            "Custom with d tag",
-            [Tag::identifier(format!("myid{i}"))],
-        )
-        .sign_with_keys(&keys_a)
-        .unwrap();
+        let event = EventBuilder::new(Kind::Custom(123), "Custom with d tag")
+            .tag(Tag::identifier(format!("myid{i}")))
+            .sign_with_keys(&keys_a)
+            .unwrap();
         database.save_event(&event).await.unwrap();
     }
 

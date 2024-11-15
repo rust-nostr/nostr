@@ -49,18 +49,18 @@ impl From<EventBuilder> for JsEventBuilder {
 #[wasm_bindgen(js_class = EventBuilder)]
 impl JsEventBuilder {
     #[wasm_bindgen(constructor)]
-    pub fn new(kind: &JsKind, content: &str, tags: Vec<JsTag>) -> Self {
+    pub fn new(kind: &JsKind, content: &str) -> Self {
         Self {
-            inner: EventBuilder::new(**kind, content, tags.into_iter().map(|t| t.into())),
+            inner: EventBuilder::new(**kind, content),
         }
     }
 
     /// Add tags
-    #[wasm_bindgen(js_name = addTags)]
-    pub fn add_tags(self, tags: Vec<JsTag>) -> Self {
-        self.inner
-            .add_tags(tags.into_iter().map(|t| t.into()))
-            .into()
+    ///
+    /// This method extend the current tags (if any).
+    #[wasm_bindgen]
+    pub fn tags(self, tags: Vec<JsTag>) -> Self {
+        self.inner.tags(tags.into_iter().map(|t| t.into())).into()
     }
 
     /// Set a custom `created_at` UNIX timestamp
@@ -132,9 +132,9 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[wasm_bindgen(js_name = textNote)]
-    pub fn text_note(content: &str, tags: Vec<JsTag>) -> Self {
+    pub fn text_note(content: &str) -> Self {
         Self {
-            inner: EventBuilder::text_note(content, tags.into_iter().map(|t| t.into())),
+            inner: EventBuilder::text_note(content),
         }
     }
 
@@ -186,9 +186,9 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/23.md>
     #[wasm_bindgen(js_name = longFormTextNote)]
-    pub fn long_form_text_note(content: &str, tags: Vec<JsTag>) -> Self {
+    pub fn long_form_text_note(content: &str) -> Self {
         Self {
-            inner: EventBuilder::long_form_text_note(content, tags.into_iter().map(|t| t.into())),
+            inner: EventBuilder::long_form_text_note(content),
         }
     }
 
@@ -469,10 +469,9 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
     #[wasm_bindgen(js_name = jobRequest)]
-    pub fn job_request(kind: &JsKind, tags: Vec<JsTag>) -> Result<JsEventBuilder> {
+    pub fn job_request(kind: &JsKind) -> Result<JsEventBuilder> {
         Ok(Self {
-            inner: EventBuilder::job_request(**kind, tags.into_iter().map(|t| t.into()))
-                .map_err(into_err)?,
+            inner: EventBuilder::job_request(**kind).map_err(into_err)?,
         })
     }
 
@@ -616,17 +615,9 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[wasm_bindgen(js_name = privateMsgRumor)]
-    pub fn private_msg_rumor(
-        receiver: &JsPublicKey,
-        message: &str,
-        extra_tags: Option<Vec<JsTag>>,
-    ) -> Self {
+    pub fn private_msg_rumor(receiver: &JsPublicKey, message: &str) -> Self {
         Self {
-            inner: EventBuilder::private_msg_rumor(
-                **receiver,
-                message,
-                extra_tags.unwrap_or_default().into_iter().map(|t| t.inner),
-            ),
+            inner: EventBuilder::private_msg_rumor(**receiver, message),
         }
     }
 

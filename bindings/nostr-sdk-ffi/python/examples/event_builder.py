@@ -6,15 +6,14 @@ async def main():
     keys = Keys.generate()
 
     # Build a text note
-    builder = EventBuilder.text_note("Note from rust-nostr python bindings", [])
+    builder = EventBuilder.text_note("Note from rust-nostr python bindings")
     event = await builder.sign(keys)
     print(event.as_json())
 
     # Build a custom event
     kind = Kind(1234)
     content = "My custom content"
-    tags = []
-    builder = EventBuilder(kind, content, tags)
+    builder = EventBuilder(kind, content)
 
     # Sign with generic signer
     event = await builder.sign(keys)

@@ -19,7 +19,7 @@ async def main():
     await client.add_relay("ws://2jsnlhfnelig5acq6iacydmzdbdmg7xwunm4xl6qwbvzacw4lwrjmlyd.onion")
     await client.connect()
 
-    event = EventBuilder.text_note("Hello from rust-nostr Python bindings!", [])
+    event = EventBuilder.text_note("Hello from rust-nostr Python bindings!")
     res = await client.send_event_builder(event)
     print("Event sent:")
     print(f" hex:    {res.id.to_hex()}")
