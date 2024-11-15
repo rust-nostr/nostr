@@ -506,4 +506,60 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Terminated);
     }
+
+    #[tokio::test]
+    async fn test_disconnect_unresponsive_relay_that_connect() {
+        // Mock relay
+        let opts = RelayTestOptions {
+            unresponsive_connection: Some(Duration::from_secs(2)),
+        };
+        let mock = MockRelay::run_with_opts(opts).await.unwrap();
+        let url = Url::parse(&mock.url()).unwrap();
+
+        let relay = Relay::new(url);
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.connect(None).await;
+
+        thread::sleep(Duration::from_secs(1)).await;
+
+        assert_eq!(relay.status(), RelayStatus::Connecting);
+
+        thread::sleep(Duration::from_secs(2)).await;
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        relay.disconnect().unwrap();
+
+        thread::sleep(Duration::from_millis(100)).await;
+
+        assert_eq!(relay.status(), RelayStatus::Terminated);
+    }
+
+    #[tokio::test]
+    async fn test_disconnect_unresponsive_relay_that_not_connect() {
+        // Mock relay
+        let opts = RelayTestOptions {
+            unresponsive_connection: Some(Duration::from_secs(10)),
+        };
+        let mock = MockRelay::run_with_opts(opts).await.unwrap();
+        let url = Url::parse(&mock.url()).unwrap();
+
+        let relay = Relay::new(url);
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.connect(None).await;
+
+        thread::sleep(Duration::from_secs(1)).await;
+
+        assert_eq!(relay.status(), RelayStatus::Connecting);
+
+        relay.disconnect().unwrap();
+
+        thread::sleep(Duration::from_millis(100)).await;
+
+        assert_eq!(relay.status(), RelayStatus::Terminated);
+    }
 }

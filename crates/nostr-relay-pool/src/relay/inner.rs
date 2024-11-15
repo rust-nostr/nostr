@@ -495,7 +495,6 @@ impl InnerRelay {
                 // Check if reconnection is enabled
                 if relay.opts.reconnect {
                     // Check if relay is marked as disconnected. If not, update status.
-                    // TODO: is this check unnecessary?
                     if !status.is_disconnected() {
                         relay.set_status(RelayStatus::Disconnected, true);
                     }
@@ -570,33 +569,50 @@ impl InnerRelay {
             connection_timeout
         };
 
-        // Connect
-        match wsocket_connect(&self.url, &self.opts.connection_mode, timeout).await {
-            Ok((ws_tx, ws_rx)) => {
-                // Update status
-                self.set_status(RelayStatus::Connected, true);
+        // Acquire service watcher
+        let mut rx_service = self.channels.rx_service().await;
 
-                // Increment success stats
-                self.stats.new_success();
+        tokio::select! {
+            // Connect
+            res = wsocket_connect(&self.url, &self.opts.connection_mode, timeout) => {
+                match res {
+                    Ok((ws_tx, ws_rx)) => {
+                        // Update status
+                        self.set_status(RelayStatus::Connected, true);
 
-                // Request information document
-                #[cfg(feature = "nip11")]
-                self.request_nip11_document();
+                        // Increment success stats
+                        self.stats.new_success();
 
-                // Run message handler
-                self.run_message_handler(ws_tx, ws_rx).await;
+                        // Request information document
+                        #[cfg(feature = "nip11")]
+                        self.request_nip11_document();
+
+                        // Run message handler
+                        self.run_message_handler(ws_tx, ws_rx, &mut rx_service).await;
+                    }
+                    Err(e) => {
+                        // Update status
+                        self.set_status(RelayStatus::Disconnected, false);
+
+                        // Log error
+                        tracing::error!("Impossible to connect to '{}': {e}", self.url);
+                    }
+                }
             }
-            Err(e) => {
+            // Handle terminate
+            _ = self.handle_terminate(&mut rx_service) => {
                 // Update status
-                self.set_status(RelayStatus::Disconnected, false);
-
-                // Log error
-                tracing::error!("Impossible to connect to '{}': {e}", self.url);
+                self.set_status(RelayStatus::Terminated, true);
             }
         }
     }
 
-    async fn run_message_handler(&self, ws_tx: Sink, ws_rx: Stream) {
+    async fn run_message_handler(
+        &self,
+        ws_tx: Sink,
+        ws_rx: Stream,
+        rx_service: &mut watch::Receiver<RelayServiceEvent>,
+    ) {
         // (Re)subscribe to relay
         if self.flags.can_read() {
             if let Err(e) = self.resubscribe().await {
@@ -609,7 +625,7 @@ impl InnerRelay {
             _ = self.receiver_message_handler(ws_rx) => {
                 tracing::trace!(url = %self.url, "Relay received exited.");
             },
-            res = self.sender_message_handler(ws_tx) => match res {
+            res = self.sender_message_handler(ws_tx, rx_service) => match res {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay sender exited."),
                 Err(e) => tracing::error!(url = %self.url, error = %e, "Relay sender exited with error.")
             },
@@ -620,11 +636,14 @@ impl InnerRelay {
         }
     }
 
-    async fn sender_message_handler(&self, mut ws_tx: Sink) -> Result<(), Error> {
+    async fn sender_message_handler(
+        &self,
+        mut ws_tx: Sink,
+        rx_service: &mut watch::Receiver<RelayServiceEvent>,
+    ) -> Result<(), Error> {
         // Lock receivers
         let mut rx_nostr = self.channels.rx_nostr().await;
         let mut rx_ping = self.channels.rx_ping().await;
-        let mut rx_service = self.channels.rx_service().await;
 
         loop {
             tokio::select! {
@@ -677,20 +696,13 @@ impl InnerRelay {
                         tracing::debug!("Ping '{}' (nonce: {nonce})", self.url);
                     }
                 }
-                // Service channel receiver (shutdown, ..)
-                Ok(()) = rx_service.changed() => {
-                    // Get service and mark as seen
-                    let service: RelayServiceEvent = *rx_service.borrow_and_update();
+                // Handle terminate
+                _ = self.handle_terminate(rx_service) => {
+                    // Update status
+                    self.set_status(RelayStatus::Terminated, true);
 
-                    match service {
-                        // Do nothing
-                        RelayServiceEvent::None => {},
-                        // Terminate
-                        RelayServiceEvent::Terminate => {
-                            self.set_status(RelayStatus::Terminated, true);
-                            break;
-                        }
-                    }
+                    // Break loop
+                    break;
                 }
                 else => break
             }
@@ -698,6 +710,20 @@ impl InnerRelay {
 
         // Close WebSocket
         close_ws(&mut ws_tx).await
+    }
+
+    async fn handle_terminate(&self, rx_service: &mut watch::Receiver<RelayServiceEvent>) {
+        loop {
+            if rx_service.changed().await.is_ok() {
+                // Get service and mark as seen
+                match *rx_service.borrow_and_update() {
+                    // Do nothing
+                    RelayServiceEvent::None => {}
+                    // Terminate
+                    RelayServiceEvent::Terminate => break,
+                }
+            }
+        }
     }
 
     async fn receiver_message_handler(&self, mut ws_rx: Stream) {
