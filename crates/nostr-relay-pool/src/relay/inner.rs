@@ -232,12 +232,6 @@ impl InnerRelay {
         self.status().is_connected()
     }
 
-    /// Check if is `disconnected` or `terminated`
-    #[inline]
-    pub fn is_disconnected(&self) -> bool {
-        self.status().is_disconnected()
-    }
-
     /// Perform health checks
     fn health_check(&self) -> Result<(), Error> {
         let status: RelayStatus = self.status();
@@ -479,8 +473,13 @@ impl InnerRelay {
                 // TODO: if the relay score is too low, immediately exit.
                 // TODO: at every loop iteration check the score and if it's too low, exit
 
+                // Acquire service watcher
+                let mut rx_service = relay.channels.rx_service().await;
+
                 // Connect and run message handler
-                relay.connect_and_run(connection_timeout).await;
+                relay
+                    .connect_and_run(connection_timeout, &mut rx_service)
+                    .await;
 
                 // Get status
                 let status: RelayStatus = relay.status();
@@ -506,7 +505,17 @@ impl InnerRelay {
                         relay.url,
                         interval.as_secs()
                     );
-                    thread::sleep(interval).await;
+
+                    tokio::select! {
+                        // Sleep
+                        _ = thread::sleep(interval) => {},
+                        // Handle terminate
+                        _ = relay.handle_terminate(&mut rx_service) => {
+                            // Update status
+                            relay.set_status(RelayStatus::Terminated, true);
+                            break;
+                        }
+                    }
                 } else {
                     // Reconnection disabled, set status to terminated
                     relay.set_status(RelayStatus::Terminated, true);
@@ -545,7 +554,11 @@ impl InnerRelay {
     }
 
     /// Connect and run message handler
-    async fn connect_and_run(&self, connection_timeout: Duration) {
+    async fn connect_and_run(
+        &self,
+        connection_timeout: Duration,
+        rx_service: &mut watch::Receiver<RelayServiceEvent>,
+    ) {
         // Update status
         self.set_status(RelayStatus::Connecting, true);
 
@@ -569,9 +582,6 @@ impl InnerRelay {
             connection_timeout
         };
 
-        // Acquire service watcher
-        let mut rx_service = self.channels.rx_service().await;
-
         tokio::select! {
             // Connect
             res = wsocket_connect(&self.url, &self.opts.connection_mode, timeout) => {
@@ -588,7 +598,7 @@ impl InnerRelay {
                         self.request_nip11_document();
 
                         // Run message handler
-                        self.run_message_handler(ws_tx, ws_rx, &mut rx_service).await;
+                        self.run_message_handler(ws_tx, ws_rx, rx_service).await;
                     }
                     Err(e) => {
                         // Update status
@@ -600,7 +610,7 @@ impl InnerRelay {
                 }
             }
             // Handle terminate
-            _ = self.handle_terminate(&mut rx_service) => {
+            _ = self.handle_terminate(rx_service) => {
                 // Update status
                 self.set_status(RelayStatus::Terminated, true);
             }
@@ -1015,11 +1025,13 @@ impl InnerRelay {
     }
 
     pub fn disconnect(&self) -> Result<(), Error> {
-        if !self.is_disconnected() {
+        // Check if it's NOT terminated
+        if !self.status().is_terminated() {
             self.channels
                 .send_service_msg(RelayServiceEvent::Terminate)?;
+            self.send_notification(RelayNotification::Shutdown, false);
         }
-        self.send_notification(RelayNotification::Shutdown, false);
+
         Ok(())
     }
 

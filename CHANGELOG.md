@@ -88,6 +88,7 @@
 * nostr: fix `TagStandard` de/serialization unit tests ([Yuki Kishimoto])
 * nostr: fix NIP90 kind ranges ([Janek])
 * pool: fix relay can't manually connect if reconnection is disabled ([Yuki Kishimoto])
+* pool: fix reconnect loop not break if relay is disconnected while calling `Relay::disconnect` ([Yuki Kishimoto])
 
 ### Removed
 

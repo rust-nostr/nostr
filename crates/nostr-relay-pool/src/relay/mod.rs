@@ -508,6 +508,32 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_disconnect_non_connected_relay() {
+        let url = Url::parse("wss://127.0.0.1:666").unwrap();
+
+        let opts = RelayOptions::default()
+            .adjust_retry_interval(false)
+            .retry_interval(Duration::from_secs(1));
+        let relay = Relay::with_opts(url, opts);
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.connect(Some(Duration::from_millis(100))).await;
+
+        assert!(relay.inner.is_running());
+
+        assert_eq!(relay.status(), RelayStatus::Disconnected);
+
+        thread::sleep(Duration::from_secs(3)).await;
+
+        relay.disconnect().unwrap();
+
+        thread::sleep(Duration::from_secs(3)).await;
+
+        assert_eq!(relay.status(), RelayStatus::Terminated);
+    }
+
+    #[tokio::test]
     async fn test_disconnect_unresponsive_relay_that_connect() {
         // Mock relay
         let opts = RelayTestOptions {
