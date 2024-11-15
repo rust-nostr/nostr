@@ -463,6 +463,8 @@ mod tests {
         thread::sleep(Duration::from_millis(100)).await;
 
         assert_eq!(relay.status(), RelayStatus::Disconnected);
+
+        assert!(relay.inner.is_running());
     }
 
     #[tokio::test]
@@ -484,6 +486,8 @@ mod tests {
         thread::sleep(Duration::from_millis(100)).await;
 
         assert_eq!(relay.status(), RelayStatus::Terminated);
+
+        assert!(!relay.inner.is_running());
     }
 
     #[tokio::test]
@@ -505,6 +509,8 @@ mod tests {
         thread::sleep(Duration::from_millis(100)).await;
 
         assert_eq!(relay.status(), RelayStatus::Terminated);
+
+        assert!(!relay.inner.is_running());
     }
 
     #[tokio::test]
@@ -531,6 +537,8 @@ mod tests {
         thread::sleep(Duration::from_secs(3)).await;
 
         assert_eq!(relay.status(), RelayStatus::Terminated);
+
+        assert!(!relay.inner.is_running());
     }
 
     #[tokio::test]
@@ -561,6 +569,8 @@ mod tests {
         thread::sleep(Duration::from_millis(100)).await;
 
         assert_eq!(relay.status(), RelayStatus::Terminated);
+
+        assert!(!relay.inner.is_running());
     }
 
     #[tokio::test]
@@ -587,5 +597,7 @@ mod tests {
         thread::sleep(Duration::from_millis(100)).await;
 
         assert_eq!(relay.status(), RelayStatus::Terminated);
+
+        assert!(!relay.inner.is_running());
     }
 }

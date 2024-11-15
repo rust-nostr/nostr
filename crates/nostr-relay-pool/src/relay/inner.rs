@@ -5,7 +5,8 @@
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 #[cfg(feature = "nip11")]
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -158,6 +159,7 @@ pub(crate) struct InnerRelay {
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
     external_notification_sender: OnceCell<broadcast::Sender<RelayPoolNotification>>,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, SubscriptionData>>>,
+    running: Arc<AtomicBool>,
 }
 
 impl AtomicDestroyer for InnerRelay {
@@ -197,7 +199,14 @@ impl InnerRelay {
             internal_notification_sender: relay_notification_sender,
             external_notification_sender: OnceCell::new(),
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
+            running: Arc::new(AtomicBool::new(false)),
         }
+    }
+
+    /// Is connection thread running?
+    #[inline]
+    pub(super) fn is_running(&self) -> bool {
+        self.running.load(Ordering::SeqCst)
     }
 
     #[inline]
@@ -466,8 +475,17 @@ impl InnerRelay {
     }
 
     fn spawn_and_try_connect(&self, connection_timeout: Duration) {
+        if self.is_running() {
+            tracing::warn!(url = %self.url, "Connection thread is already running.");
+            return;
+        }
+
         let relay = self.clone();
         let _ = thread::spawn(async move {
+            // Set that connection thread is running
+            relay.running.store(true, Ordering::SeqCst);
+
+            // Auto-connect loop
             loop {
                 // TODO: check in the relays state database if relay can connect (different from the previous check)
                 // TODO: if the relay score is too low, immediately exit.
@@ -525,6 +543,11 @@ impl InnerRelay {
                     break;
                 }
             }
+
+            // Set that connection thread is no longer running
+            relay.running.store(false, Ordering::SeqCst);
+
+            tracing::debug!(url = %relay.url, "Auto connect loop terminated.");
         });
     }
 
