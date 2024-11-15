@@ -16,13 +16,6 @@ sdk-root:
 		exit 1 ; \
 	fi
 
-# Get toolchain targets and required binaries for compilation
-init:
-	rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim
-	rustup target add aarch64-apple-darwin x86_64-apple-darwin
-	cargo install cargo-lipo
-	cargo install cbindgen
-
 [private]
 ndk: ndk-home
     @cargo ndk --version || cargo install cargo-ndk
@@ -79,7 +72,13 @@ publish-android: aar
 	cd android && ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
 
 [private]
-ios-universal:
+swift-deps:
+	cargo lipo --version || cargo install cargo-lipo
+	cbindgen --version || cargo install cbindgen
+
+[private]
+ios-universal: swift-deps
+    rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim
     mkdir -p ../../target/ios-universal/release
     mkdir -p ../../target/ios-universal-sim/release
     cargo build --release --target aarch64-apple-ios
@@ -89,24 +88,15 @@ ios-universal:
     lipo -create -output ../../target/ios-universal-sim/release/libnostr_sdk_ffi.a ../../target/aarch64-apple-ios-sim/release/libnostr_sdk_ffi.a ../../target/x86_64-apple-ios/release/libnostr_sdk_ffi.a
 
 [private]
-darwin-universal:
+darwin-universal: swift-deps
+	rustup target add aarch64-apple-darwin x86_64-apple-darwin
 	mkdir -p ../../target/darwin-universal/release
 	cargo lipo --release --targets aarch64-apple-darwin
 	cargo lipo --release --targets x86_64-apple-darwin
 	lipo -create -output ../../target/darwin-universal/release/libnostr_sdk_ffi.dylib ../../target/aarch64-apple-darwin/release/libnostr_sdk_ffi.dylib ../../target/x86_64-apple-darwin/release/libnostr_sdk_ffi.dylib
 	lipo -create -output ../../target/darwin-universal/release/libnostr_sdk_ffi.a ../../target/aarch64-apple-darwin/release/libnostr_sdk_ffi.a ../../target/x86_64-apple-darwin/release/libnostr_sdk_ffi.a
 
-swift-ios: ios-universal
-    cargo run -p uniffi-bindgen generate --library ../../target/aarch64-apple-ios/release/libnostr_sdk_ffi.a -l swift -o ffi/swift-ios
-    cp ../../target/ios-universal/release/libnostr_sdk_ffi.a ffi/swift-ios
-    cd ffi/swift-ios && "swiftc" "-emit-module" "-module-name" "nostr_sdk_ffi"  "-Xcc" "-fmodule-map-file={{invocation_directory()}}/ffi/swift-ios/nostr_sdkFFI.modulemap" "-I" "."  "-L" "." "-lnostr_sdk_ffi" nostr_sdk_ffi.swift
-
-swift-darwin: darwin-universal
-	cargo run -p uniffi-bindgen generate --library ../../target/aarch64-apple-darwin/release/libnostr_sdk_ffi.a -l swift -o ffi/swift-darwin
-	cp ../../target/darwin-universal/release/libnostr_sdk_ffi.dylib ffi/swift-darwin
-	cd ffi/swift-darwin && "swiftc" "-emit-module" "-module-name" "nostr_sdk_ffi"  "-Xcc" "-fmodule-map-file={{invocation_directory()}}/ffi/swift-darwin/nostr_sdkFFI.modulemap" "-I" "."  "-L" "." "-lnostr_sdk_ffi" nostr_sdk_ffi.swift
-
-# Copy required modules and libs and assemble Swift Package
+[private]
 assemble-swift-package:
     mkdir -p swift/Sources/NostrSDK
     cargo run -p uniffi-bindgen generate --library ../../target/aarch64-apple-ios/release/libnostr_sdk_ffi.a --no-format --language swift --out-dir swift/Sources/NostrSDK
