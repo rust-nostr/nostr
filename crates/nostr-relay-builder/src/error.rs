@@ -20,7 +20,4 @@ pub enum Error {
     #[cfg(feature = "tor")]
     #[error(transparent)]
     Tor(#[from] tor::Error),
-    /// No port available
-    #[error("No port available")]
-    NoPortAvailable,
 }

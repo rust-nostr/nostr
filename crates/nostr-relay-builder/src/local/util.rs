@@ -4,18 +4,17 @@
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
+use nostr::secp256k1::rand::{self, Rng};
 use tokio::net::TcpListener;
 
-use crate::error::Error;
-
-pub async fn find_available_port() -> nostr::Result<u16, Error> {
-    for port in 8000..u16::MAX {
+pub async fn find_available_port() -> u16 {
+    let mut rng = rand::thread_rng();
+    loop {
+        let port: u16 = rng.gen_range(1024..=u16::MAX);
         if port_is_available(port).await {
-            return Ok(port);
+            return port;
         }
     }
-
-    Err(Error::NoPortAvailable)
 }
 
 #[inline]

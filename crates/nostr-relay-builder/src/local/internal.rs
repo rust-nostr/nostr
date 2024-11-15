@@ -55,7 +55,7 @@ impl InternalLocalRelay {
         // Get port
         let port: u16 = match builder.port {
             Some(port) => port,
-            None => util::find_available_port().await?,
+            None => util::find_available_port().await,
         };
 
         // Compose local address
