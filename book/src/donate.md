@@ -8,9 +8,8 @@ Your donation directly supports the continued development of `rust-nostr`!
 
 * 🔗 On-chain: `bc1quk478kpm45744q5pt3p9j42fnv72ykytmt3z0j`
 * ⚡ Lightning:
-    * `yuki@getalby.com` (<https://getalby.com/p/yuki>)
+    * `yuki@minibits.cash`
     * `rustnostr@geyser.fund` (<https://geyser.fund/project/rustnostr> - 4% Geyser fee)
-* 🕸️ Fedimint: `TODO`
 * 💧 Liquid: `TODO`
 
 ### Altcoins
