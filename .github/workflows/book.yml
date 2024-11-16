@@ -24,13 +24,18 @@ concurrency:
 jobs:
   check-book:
     name: Check book
-    runs-on: ubuntu-latest
+    runs-on: macos-latest # Use macOS to check also Swift snippets
     steps:
     - name: Checkout
       uses: actions/checkout@v3
 
     - name: Install just
       run: cargo install just
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
 
     # Required for kotlin snippets
     - name: Set up Java 17

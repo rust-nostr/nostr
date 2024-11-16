@@ -1,4 +1,4 @@
-test: rust python js kotlin
+test: rust python js kotlin swift
 
 rust:
 	cd rust && cargo build
@@ -11,3 +11,6 @@ js:
 
 kotlin:
 	cd kotlin && just test
+
+swift:
+	cd swift && just test
