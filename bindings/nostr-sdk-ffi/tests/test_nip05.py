@@ -1,5 +1,5 @@
 import asyncio
-from nostr_sdk_ffi import *
+from nostr_sdk import *
 
 async def main():
     nip_05 = "yuki@yukikishimoto.com"

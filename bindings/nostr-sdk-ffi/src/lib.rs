@@ -44,4 +44,6 @@ impl NostrLibrary {
     }
 }
 
-uniffi::setup_scaffolding!();
+// Changes to this arg will break binding packages (in particular Swift).
+// If this is removed, make sure to update `uniffi.toml`
+uniffi::setup_scaffolding!("nostr_sdk");

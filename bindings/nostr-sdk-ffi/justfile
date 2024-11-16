@@ -100,7 +100,7 @@ darwin-universal: swift-deps
 assemble-swift-package:
     mkdir -p swift/Sources/NostrSDK
     cargo run -p uniffi-bindgen generate --library ../../target/aarch64-apple-ios/release/libnostr_sdk_ffi.a --no-format --language swift --out-dir swift/Sources/NostrSDK
-    mv swift/Sources/NostrSDK/nostr_sdk_ffi.swift swift/Sources/NostrSDK/NostrSDK.swift
+    mv swift/Sources/NostrSDK/nostr_sdk.swift swift/Sources/NostrSDK/NostrSDK.swift
     cp swift/Sources/NostrSDK/*.h swift/nostr_sdkFFI.xcframework/ios-arm64/Headers
     cp swift/Sources/NostrSDK/*.h swift/nostr_sdkFFI.xcframework/ios-arm64_x86_64-simulator/Headers
     cp swift/Sources/NostrSDK/*.h swift/nostr_sdkFFI.xcframework/macos-arm64_x86_64/Headers

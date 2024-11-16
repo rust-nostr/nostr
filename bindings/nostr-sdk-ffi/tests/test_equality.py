@@ -1,4 +1,4 @@
-from nostr_sdk_ffi import *
+from nostr_sdk import *
 
 # Test PublicKey
 pk1 = PublicKey.from_hex("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a")
