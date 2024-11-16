@@ -12,4 +12,6 @@ js:
 
 kotlin:
     cd kotlin && just test
-	
+
+swift:
+    cd swift && just test

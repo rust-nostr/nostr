@@ -15,3 +15,7 @@ js:
 kotlin:
 	#cd kotlin && just test
 	echo TODO
+
+swift:
+    #cd swift && just test
+	echo TODO

@@ -1,3 +1,8 @@
 test:
 	cd nostr && just test
 	cd nostr-sdk && just test
+
+[macos]
+test-swift:
+	cd nostr && just swift
+	cd nostr-sdk && just swift

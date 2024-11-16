@@ -1,0 +1,4 @@
+#!/usr/bin/env just --justfile
+
+test:
+    cd NostrSnippets && swift build && swift run

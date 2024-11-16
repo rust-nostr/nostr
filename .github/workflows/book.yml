@@ -42,9 +42,23 @@ jobs:
     - name: Check
       run: just check-book
 
+  check-swift:
+    name: Check book (Swift)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install just
+        run: cargo install just
+
+      - name: Test Swift
+        working-directory: book/snippets
+        run: just test-swift
+
   deploy:
     name: Deploy book
-    needs: [check-book]
+    needs: [check-book, check-swift]
     if: github.ref == 'refs/heads/master'
     environment:
       name: github-pages
