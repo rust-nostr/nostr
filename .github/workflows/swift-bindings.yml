@@ -1,0 +1,29 @@
+name: Test Swift Bindings
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "bindings/nostr-sdk-ffi/**"
+  pull_request:
+    paths:
+      - "bindings/nostr-sdk-ffi/**"
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install just
+        run: cargo install just
+
+      - name: Build Swift Package
+        working-directory: bindings/nostr-sdk-ffi
+        run: just swift
+
+      - name: Test
+        working-directory: bindings/nostr-sdk-ffi/swift
+        run: swift test
