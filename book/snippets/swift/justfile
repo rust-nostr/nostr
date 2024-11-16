@@ -1,0 +1,13 @@
+#!/usr/bin/env just --justfile
+
+[macos]
+test:
+    cd NostrSnippets && swift build && swift run
+
+[linux]
+test:
+    @echo "This command is not supported on Linux platforms (require macOS)."
+
+[windows]
+test:
+    @echo "This command is not supported on Windows platforms (require macOS)."
