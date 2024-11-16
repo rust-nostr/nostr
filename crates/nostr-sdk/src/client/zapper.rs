@@ -114,9 +114,13 @@ impl Client {
 
         // Parse lud
         let lud: Lud06OrLud16 = if let Some(lud16) = &metadata.lud16 {
-            LightningAddress::parse(lud16)?.into()
+            let address: LightningAddress = LightningAddress::parse(lud16)?;
+            tracing::debug!(%address, "Zap to lightning address.");
+            address.into()
         } else if let Some(lud06) = &metadata.lud06 {
-            LnUrl::from_str(lud06)?.into()
+            let lnurl: LnUrl = LnUrl::from_str(lud06)?;
+            tracing::debug!(lnurl = &lud06, "Zap to lnurl.");
+            lnurl.into()
         } else {
             return Err(Error::ImpossibleToZap(String::from("LUD06/LUD16 not set")));
         };
@@ -148,6 +152,7 @@ impl Client {
             Some(details) => {
                 let mut data = ZapRequestData::new(
                     public_key,
+                    // TODO: replace these 2 relays
                     [
                         Url::parse("wss://nostr.mutinywallet.com").expect("Url must be valid"),
                         Url::parse("wss://relay.mutinywallet.com").expect("Url must be valid"),
