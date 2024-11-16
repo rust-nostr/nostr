@@ -19,7 +19,7 @@ impl Default for NostrWalletConnectOptions {
     fn default() -> Self {
         Self {
             relay: RelayOptions::default(),
-            timeout: Duration::from_secs(10),
+            timeout: Duration::from_secs(60),
         }
     }
 }

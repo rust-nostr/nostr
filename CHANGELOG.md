@@ -61,6 +61,7 @@
 * pool: return error if relay not exists when removing it ([Yuki Kishimoto])
 * sdk: cleanup `Client` methods
 * relay-builder: port selection by using random port generation ([Yuki Kishimoto])
+* nwc: increase default timeout to 60 secs ([Yuki Kishimoto])
 
 ### Added
 
