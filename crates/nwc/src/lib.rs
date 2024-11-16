@@ -117,7 +117,7 @@ impl NWC {
                 }
             }
 
-            Err(Error::Timeout)
+            Err(Error::PrematureExit)
         })
         .await
         .ok_or(Error::Timeout)?

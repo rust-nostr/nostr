@@ -18,8 +18,11 @@ pub enum Error {
     #[error(transparent)]
     NIP47(#[from] nip47::Error),
     /// Relay
-    #[error(transparent)]
+    #[error("relay: {0}")]
     Relay(#[from] nostr_relay_pool::relay::Error),
+    /// Premature exit from listener
+    #[error("premature exit from listener")]
+    PrematureExit,
     /// Request timeout
     #[error("timeout")]
     Timeout,
