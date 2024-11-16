@@ -73,10 +73,10 @@ impl NostrConnect {
         Ok(self.inner.get_public_key().await?.into())
     }
 
-    pub async fn sign_event(&self, unsigned: &UnsignedEvent) -> Result<Event> {
+    pub async fn sign_event(&self, unsigned_event: &UnsignedEvent) -> Result<Event> {
         Ok(self
             .inner
-            .sign_event(unsigned.deref().clone())
+            .sign_event(unsigned_event.deref().clone())
             .await?
             .into())
     }

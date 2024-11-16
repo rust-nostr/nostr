@@ -27,7 +27,7 @@ pub enum Nip46Request {
     /// Get public key
     GetPublicKey,
     /// Sign [`UnsignedEvent`]
-    SignEvent { unsigned: Arc<UnsignedEvent> },
+    SignEvent { unsigned_event: Arc<UnsignedEvent> },
     /// Get relays
     GetRelays,
     /// Encrypt text (NIP04)
@@ -71,7 +71,7 @@ impl From<Request> for Nip46Request {
             },
             Request::GetPublicKey => Self::GetPublicKey,
             Request::SignEvent(unsigned) => Self::SignEvent {
-                unsigned: Arc::new(unsigned.into()),
+                unsigned_event: Arc::new(unsigned.into()),
             },
             Request::GetRelays => Self::GetRelays,
             Request::Nip04Encrypt { public_key, text } => Self::Nip04Encrypt {

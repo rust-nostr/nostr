@@ -20,7 +20,7 @@ pub trait CustomNostrSigner: Send + Sync {
     async fn get_public_key(&self) -> Result<Option<Arc<PublicKey>>>;
 
     /// Sign an unsigned event
-    async fn sign_event(&self, unsigned: Arc<UnsignedEvent>) -> Result<Option<Arc<Event>>>;
+    async fn sign_event(&self, unsigned_event: Arc<UnsignedEvent>) -> Result<Option<Arc<Event>>>;
 
     /// NIP04 encrypt (deprecate and unsecure)
     async fn nip04_encrypt(&self, public_key: Arc<PublicKey>, content: String) -> Result<String>;
