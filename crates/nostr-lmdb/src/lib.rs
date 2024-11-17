@@ -207,49 +207,32 @@ mod tests {
             let keys_a = Keys::generate();
             let keys_b = Keys::generate();
 
-            let mut events = Vec::new();
-
-            // Add some text notes
-            events.push(
+            let events = vec![
                 EventBuilder::text_note("Text Note A")
                     .sign_with_keys(&keys_a)
                     .unwrap(),
-            );
-            events.push(
                 EventBuilder::text_note("Text Note B")
                     .sign_with_keys(&keys_b)
                     .unwrap(),
-            );
-
-            // Add some replaceable events
-            events.push(
                 EventBuilder::metadata(
                     &Metadata::new().name("account-a").display_name("Account A"),
                 )
                 .sign_with_keys(&keys_a)
                 .unwrap(),
-            );
-            events.push(
                 EventBuilder::metadata(
                     &Metadata::new().name("account-b").display_name("Account B"),
                 )
                 .sign_with_keys(&keys_b)
                 .unwrap(),
-            );
-
-            // Add some param replaceable events
-            events.push(
                 EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "")
                     .tag(Tag::identifier("my-id-a"))
                     .sign_with_keys(&keys_a)
                     .unwrap(),
-            );
-            events.push(
                 EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "")
                     .tag(Tag::identifier("my-id-b"))
                     .sign_with_keys(&keys_b)
                     .unwrap(),
-            );
+            ];
 
             // Store
             for event in events.iter() {
@@ -267,7 +250,7 @@ mod tests {
         }
 
         async fn add_event_with_keys(&self, builder: EventBuilder, keys: &Keys) -> (Event, bool) {
-            let event = builder.sign_with_keys(&keys).unwrap();
+            let event = builder.sign_with_keys(keys).unwrap();
             let stored = self.db.save_event(&event).await.unwrap();
             (event, stored)
         }
