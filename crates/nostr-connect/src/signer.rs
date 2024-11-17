@@ -6,6 +6,7 @@
 
 use std::time::Duration;
 
+use async_utility::futures_util::future::try_join_all;
 use nostr::nips::nip46::{Message, Request, ResponseResult};
 use nostr_relay_pool::prelude::*;
 
@@ -36,13 +37,14 @@ impl NostrConnectRemoteSigner {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        // Compose pool
         let pool: RelayPool = RelayPool::default();
-
         let opts: RelayOptions = opts.unwrap_or_default();
-        for url in relays.into_iter() {
-            pool.add_relay(url, opts.clone()).await?;
-        }
+
+        let futures: Vec<_> = relays
+            .into_iter()
+            .map(|url| pool.add_relay(url, opts.clone()))
+            .collect();
+        try_join_all(futures).await?;
 
         pool.connect(Some(Duration::from_secs(10))).await;
 
