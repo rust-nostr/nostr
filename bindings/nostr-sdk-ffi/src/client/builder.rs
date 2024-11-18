@@ -13,7 +13,7 @@ use super::zapper::NostrZapper;
 use super::{Client, Options};
 use crate::database::NostrDatabase;
 use crate::protocol::helper::unwrap_or_clone_arc;
-use crate::protocol::signer::{NostrSigner, NostrSignerFFI2Rust};
+use crate::protocol::signer::NostrSigner;
 
 #[derive(Clone, Default, Object)]
 pub struct ClientBuilder {
@@ -35,15 +35,14 @@ impl ClientBuilder {
         Self::default()
     }
 
-    pub fn signer(self: Arc<Self>, signer: Arc<dyn NostrSigner>) -> Self {
-        let signer = NostrSignerFFI2Rust::new(signer);
+    pub fn signer(self: Arc<Self>, signer: &NostrSigner) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.signer(signer);
+        builder.inner = builder.inner.signer(signer.deref().clone());
         builder
     }
 
-    pub fn zapper(self: Arc<Self>, zapper: Arc<NostrZapper>) -> Self {
-        let zapper: Arc<DynNostrZapper> = zapper.as_ref().deref().clone();
+    pub fn zapper(self: Arc<Self>, zapper: &NostrZapper) -> Self {
+        let zapper: Arc<DynNostrZapper> = zapper.deref().clone();
         let mut builder = unwrap_or_clone_arc(self);
         builder.inner = builder.inner.zapper(zapper);
         builder

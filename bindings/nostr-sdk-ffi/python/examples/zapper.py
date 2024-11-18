@@ -1,6 +1,6 @@
 import asyncio
 from nostr_sdk import Keys, ClientBuilder, NostrZapper, NostrWalletConnectUri, PublicKey, ZapEntity, \
-    init_logger, LogLevel
+    init_logger, LogLevel, NostrSigner
 
 
 async def main():
@@ -12,8 +12,9 @@ async def main():
 
     # Compose client
     keys = Keys.generate()
+    signer = NostrSigner.keys(keys)
     zapper = NostrZapper.nwc(uri)
-    client = ClientBuilder().signer(keys).zapper(zapper).build()
+    client = ClientBuilder().signer(signer).zapper(zapper).build()
 
     await client.add_relay("wss://relay.damus.io")
     await client.connect()

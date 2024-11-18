@@ -1,6 +1,5 @@
 import asyncio
-from nostr_sdk import Keys, Client, ClientBuilder, Options, EventBuilder, Connection, ConnectionTarget, init_logger, LogLevel
-from datetime import timedelta
+from nostr_sdk import Keys, ClientBuilder, Options, EventBuilder, Connection, ConnectionTarget, init_logger, LogLevel, NostrSigner
 
 
 async def main():
@@ -11,8 +10,9 @@ async def main():
 
     # Configure client to use embedded tor for `.onion` relays
     connection = Connection().embedded_tor().target(ConnectionTarget.ONION)
-    opts = Options().connection(connection).connection_timeout(timedelta(seconds=60))
-    client = ClientBuilder().signer(keys).opts(opts).build()
+    opts = Options().connection(connection)
+    signer = NostrSigner.keys(keys)
+    client = ClientBuilder().signer(signer).opts(opts).build()
 
     await client.add_relay("wss://relay.damus.io")
     await client.add_relay("ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion")

@@ -29,7 +29,7 @@ async def main():
     # Query events from database
     f = Filter().author(keys.public_key()).limit(10)
     events = await client.database().query([f])
-    for event in events:
+    for event in events.to_vec():
         print(event.as_json())
 
 if __name__ == '__main__':

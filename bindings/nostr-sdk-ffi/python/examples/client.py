@@ -11,12 +11,14 @@ async def main():
     # client = Client()
 
     # Or, initialize with Keys signer
-    signer = Keys.generate()
+    keys = Keys.generate()
+    signer = NostrSigner.keys(keys)
 
     # Or, initialize with NIP46 signer
     # app_keys = Keys.parse("..")
     # uri = NostrConnectUri.parse("bunker://.. or nostrconnect://..")
-    # signer = NostrConnect(uri, app_keys, timedelta(seconds=60), None)
+    # connect = NostrConnect(uri, app_keys, timedelta(seconds=60), None)
+    # signer = NostrSigner.nostr_connect(connect)
 
     client = Client(signer)
 
@@ -45,7 +47,7 @@ async def main():
 
     # Get events from relays
     print("Getting events from relays...")
-    f = Filter().authors([signer.public_key(), custom_keys.public_key()])
+    f = Filter().authors([keys.public_key(), custom_keys.public_key()])
     events = await client.fetch_events([f], timedelta(seconds=10))
     for event in events.to_vec():
         print(event.as_json())

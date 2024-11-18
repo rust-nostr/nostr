@@ -1,6 +1,6 @@
 import asyncio
 from nostr_sdk import Client, Keys, Event, UnsignedEvent, Filter, \
-    HandleNotification, Timestamp, UnwrappedGift, init_logger, LogLevel, Kind, KindEnum, make_private_msg
+    HandleNotification, Timestamp, UnwrappedGift, init_logger, LogLevel, Kind, KindEnum, make_private_msg, NostrSigner
 
 
 async def main():
@@ -14,7 +14,8 @@ async def main():
     pk = keys.public_key()
     print(f"Bot public key: {pk.to_bech32()}")
 
-    client = Client(keys)
+    signer = NostrSigner.keys(keys)
+    client = Client(signer)
 
     await client.add_relay("wss://relay.damus.io")
     await client.add_relay("wss://nostr.mom")
@@ -34,7 +35,7 @@ async def main():
                 print("Decrypting NIP59 event")
                 try:
                     # Extract rumor
-                    unwrapped_gift = await UnwrappedGift.from_gift_wrap(keys, event)
+                    unwrapped_gift = await UnwrappedGift.from_gift_wrap(signer, event)
                     sender = unwrapped_gift.sender()
                     rumor: UnsignedEvent = unwrapped_gift.rumor()
 

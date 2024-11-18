@@ -1,4 +1,4 @@
-from nostr_sdk import Client, Options, RelayLimits
+from nostr_sdk import ClientBuilder, Options, RelayLimits
 
 # Custom relay limits
 limits = RelayLimits().event_max_size(128000)
@@ -7,6 +7,6 @@ limits = RelayLimits().event_max_size(128000)
 limits = RelayLimits.disable()
 
 opts = Options().relay_limits(limits)
-client = Client.with_opts(None, opts)
+client = ClientBuilder().opts(opts).build()
 
 # ...

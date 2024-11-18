@@ -24,7 +24,7 @@ use crate::protocol::nips::nip53::LiveEvent;
 use crate::protocol::nips::nip57::ZapRequestData;
 use crate::protocol::nips::nip90::JobFeedbackData;
 use crate::protocol::nips::nip98::HttpData;
-use crate::protocol::signer::{NostrSigner, NostrSignerFFI2Rust};
+use crate::protocol::signer::NostrSigner;
 use crate::protocol::types::{Contact, Metadata};
 use crate::protocol::{
     FileMetadata, Image, ImageDimensions, NostrConnectMessage, PublicKey, RelayMetadata, Tag,
@@ -89,9 +89,8 @@ impl EventBuilder {
         builder
     }
 
-    pub async fn sign(&self, signer: Arc<dyn NostrSigner>) -> Result<Event> {
-        let signer = NostrSignerFFI2Rust::new(signer);
-        let event = self.inner.clone().sign(&signer).await?;
+    pub async fn sign(&self, signer: &NostrSigner) -> Result<Event> {
+        let event = self.inner.clone().sign(signer.deref()).await?;
         Ok(event.into())
     }
 
@@ -580,14 +579,13 @@ impl EventBuilder {
     #[inline]
     #[uniffi::constructor]
     pub async fn seal(
-        signer: Arc<dyn NostrSigner>,
+        signer: &NostrSigner,
         receiver_public_key: &PublicKey,
         rumor: &EventBuilder,
     ) -> Result<Self> {
-        let signer = NostrSignerFFI2Rust::new(signer);
         Ok(Self {
             inner: nostr::EventBuilder::seal(
-                &signer,
+                signer.deref(),
                 receiver_public_key.deref(),
                 rumor.deref().clone(),
             )

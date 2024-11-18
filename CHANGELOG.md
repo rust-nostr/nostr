@@ -43,6 +43,7 @@
 * pool: switch from async to sync message sending for `Relay` ([Yuki Kishimoto])
 * sdk: disable all default features ([Yuki Kishimoto])
 * sdk: set `Client::from_builder` as private ([Yuki Kishimoto])
+* ffi: convert `NostrSigner` trait to an object ([Yuki Kishimoto])
 
 ### Changed
 
@@ -83,6 +84,7 @@
 * relay-builder: add `RelayTestOptions` ([Yuki Kishimoto])
 * connect: add `NostrConnect::non_secure_set_user_public_key` ([Yuki Kishimoto])
 * ffi: add `make_private_msg` func ([Yuki Kishimoto])
+* ffi: add `CustomNostrSigner` trait ([Yuki Kishimoto])
 * book: add some examples ([RydalWater])
 
 ### Fixed

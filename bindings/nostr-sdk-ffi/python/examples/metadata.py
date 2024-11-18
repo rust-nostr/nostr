@@ -1,12 +1,13 @@
 import asyncio
-from nostr_sdk import Metadata, Client, Keys, Filter, PublicKey, Kind
+from nostr_sdk import Metadata, Client, Keys, Filter, PublicKey, Kind, NostrSigner
 from datetime import timedelta
 
 
 async def main():
     keys = Keys.generate()
 
-    client = Client(keys)
+    signer = NostrSigner.keys(keys)
+    client = Client(signer)
 
     await client.add_relay("wss://relay.damus.io")
     await client.connect()

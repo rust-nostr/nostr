@@ -8,7 +8,7 @@ use nostr::nips::nip59;
 use uniffi::Object;
 
 use crate::error::Result;
-use crate::protocol::signer::{NostrSigner, NostrSignerFFI2Rust};
+use crate::protocol::signer::NostrSigner;
 use crate::protocol::{Event, EventBuilder, PublicKey, Tag, UnsignedEvent};
 
 /// Build Gift Wrap
@@ -16,14 +16,13 @@ use crate::protocol::{Event, EventBuilder, PublicKey, Tag, UnsignedEvent};
 /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
 #[uniffi::export(async_runtime = "tokio", default(extra_tags = []))]
 pub async fn gift_wrap(
-    signer: Arc<dyn NostrSigner>,
+    signer: &NostrSigner,
     receiver_pubkey: &PublicKey,
     rumor: &EventBuilder,
     extra_tags: Vec<Arc<Tag>>,
 ) -> Result<Event> {
-    let signer = NostrSignerFFI2Rust::new(signer);
     Ok(nostr::EventBuilder::gift_wrap(
-        &signer,
+        signer.deref(),
         receiver_pubkey.deref(),
         rumor.deref().clone(),
         extra_tags.into_iter().map(|t| t.as_ref().deref().clone()),
@@ -73,10 +72,9 @@ impl UnwrappedGift {
     ///
     /// Internally verify the `seal` event
     #[uniffi::constructor]
-    pub async fn from_gift_wrap(signer: Arc<dyn NostrSigner>, gift_wrap: &Event) -> Result<Self> {
-        let signer = NostrSignerFFI2Rust::new(signer);
+    pub async fn from_gift_wrap(signer: &NostrSigner, gift_wrap: &Event) -> Result<Self> {
         Ok(Self {
-            inner: nip59::UnwrappedGift::from_gift_wrap(&signer, gift_wrap.deref()).await?,
+            inner: nip59::UnwrappedGift::from_gift_wrap(signer.deref(), gift_wrap.deref()).await?,
         })
     }
 

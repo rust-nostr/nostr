@@ -1,6 +1,5 @@
 import asyncio
-from nostr_sdk import Keys, Client, Options, EventBuilder, Connection, ConnectionTarget, init_logger, LogLevel
-from datetime import timedelta
+from nostr_sdk import Keys, ClientBuilder, Options, EventBuilder, Connection, ConnectionTarget, init_logger, LogLevel
 
 
 async def main():
@@ -8,9 +7,7 @@ async def main():
 
     # Configure client to use proxy for `.onion` relays
     connection = Connection().addr("127.0.0.1:9050").target(ConnectionTarget.ONION)
-    opts = (Options()
-            .connection_timeout(timedelta(seconds=60))
-            .connection(connection))
+    opts = Options().connection(connection)
     client = ClientBuilder().opts(opts).build()
 
     await client.add_relay("wss://relay.damus.io")

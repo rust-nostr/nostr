@@ -25,13 +25,15 @@ async def main():
 
     # Initialize with Keys signer
     keys = Keys.generate()
-    client = Client(keys)
+    signer = NostrSigner.keys(keys)
+    client = Client(signer)
 
     # Initialize with NIP46 signer
     # app_keys = Keys.parse("..")
     # uri = NostrConnectUri.parse("bunker://.. or nostrconnect://..")
     # connect = NostrConnect(uri, app_keys, timedelta(seconds=60), None)
-    # client = Client(connect)
+    # signer = NostrSigner.nostr_connect(connect)
+    # client = Client(signer)
 
     # Add relays and connect
     await client.add_relay("wss://relay.damus.io")
@@ -39,7 +41,7 @@ async def main():
     await client.connect()
 
     # Send an event using the Nostr Signer
-    builder = EventBuilder.text_note("Test from Rust Nostr Python!", [])
+    builder = EventBuilder.text_note("Test from Rust Nostr Python!")
     await client.send_event_builder(builder)
     await client.set_metadata(Metadata().set_name("Testing Rust Nostr"))
 

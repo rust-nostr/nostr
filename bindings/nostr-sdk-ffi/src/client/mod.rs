@@ -23,7 +23,7 @@ use crate::database::events::Events;
 use crate::error::Result;
 use crate::pool::result::{Output, ReconciliationOutput, SendEventOutput, SubscribeOutput};
 use crate::pool::RelayPool;
-use crate::protocol::signer::{NostrSigner, NostrSignerFFI2Rust, NostrSignerRust2FFI};
+use crate::protocol::signer::NostrSigner;
 use crate::protocol::{ClientMessage, Event, EventBuilder, Filter, Metadata, PublicKey};
 use crate::relay::options::{SubscribeAutoCloseOptions, SyncOptions};
 use crate::relay::RelayFiltering;
@@ -43,10 +43,10 @@ impl From<ClientSdk> for Client {
 #[uniffi::export(async_runtime = "tokio")]
 impl Client {
     #[uniffi::constructor(default(signer = None))]
-    pub fn new(signer: Option<Arc<dyn NostrSigner>>) -> Self {
+    pub fn new(signer: Option<Arc<NostrSigner>>) -> Self {
         Self {
             inner: match signer {
-                Some(signer) => ClientSdk::new(NostrSignerFFI2Rust::new(signer)),
+                Some(signer) => ClientSdk::new(signer.as_ref().deref().clone()),
                 None => ClientSdk::default(),
             },
         }
@@ -74,10 +74,9 @@ impl Client {
         self.inner.automatic_authentication(enable);
     }
 
-    pub async fn signer(&self) -> Result<Arc<dyn NostrSigner>> {
+    pub async fn signer(&self) -> Result<NostrSigner> {
         let signer = self.inner.signer().await?;
-        let intermediate = NostrSignerRust2FFI::new(signer);
-        Ok(Arc::new(intermediate) as Arc<dyn NostrSigner>)
+        Ok(signer.into())
     }
 
     /// Get relay pool

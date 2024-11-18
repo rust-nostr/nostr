@@ -1,5 +1,5 @@
 import asyncio
-from nostr_sdk import Keys, Client, FileMetadata
+from nostr_sdk import Keys, Client, FileMetadata, EventBuilder
 
 
 async def main():
@@ -17,7 +17,8 @@ async def main():
             "application/zip",
             "3951c152d38317e9ef2c095ddb280613e22b14b166f5fa5950d18773ac0a1d00"
         )
-        output = await client.file_metadata("Coinstr Alpha Release v0.3.0", metadata)
+        builder = EventBuilder.file_metadata("Coinstr Alpha Release v0.3.0", metadata)
+        output = await client.send_event_builder(builder)
         print("Event sent:")
         print(f" hex:    {output.id.to_hex()}")
         print(f" bech32: {output.id.to_bech32()}")
