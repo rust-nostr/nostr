@@ -461,4 +461,19 @@ mod tests {
         );
         assert_eq!(db.count_all().await, 8);
     }
+
+    #[tokio::test]
+    async fn test_delete_events_with_filter() {
+        let db = TempDatabase::new();
+
+        let added_events: usize = db.add_random_events().await;
+
+        assert_eq!(db.count_all().await, added_events);
+
+        // Delete all kinds except text note
+        let filter = Filter::new().kinds([Kind::Metadata, Kind::ParameterizedReplaceable(33_333)]);
+        db.delete(filter).await.unwrap();
+
+        assert_eq!(db.count_all().await, 2);
+    }
 }
