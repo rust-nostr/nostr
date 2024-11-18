@@ -135,12 +135,10 @@ impl Lmdb {
         })
     }
 
-    // /// Sync the data to disk. This happens periodically, but sometimes it's useful to force
-    // /// it.
-    // pub(crate) fn sync(&self) -> Result<(), Error> {
-    //     self.env.force_sync()?;
-    //     Ok(())
-    // }
+    pub(crate) fn force_sync(&self) -> Result<(), Error> {
+        self.env.force_sync()?;
+        Ok(())
+    }
 
     // pub(crate) fn close(self) -> Result<(), Error> {
     //     self.env.force_sync()?;

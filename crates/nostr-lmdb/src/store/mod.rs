@@ -169,6 +169,8 @@ impl Store {
 
             txn.commit()?;
 
+            // TODO: force_sync?
+
             Ok(true)
         })
         .await?
@@ -189,6 +191,8 @@ impl Store {
                 db.remove_by_id(&read_txn, txn, id.as_bytes())?;
             }
         }
+
+        read_txn.commit()?;
 
         for coordinate in event.tags.coordinates() {
             // Author must match
@@ -215,10 +219,12 @@ impl Store {
         let bytes = id.to_bytes();
         self.interact(move |db| {
             let txn = db.read_txn()?;
-            match db.get_event_by_id(&txn, &bytes)? {
-                Some(e) => Ok(Some(e.to_event()?)),
-                None => Ok(None),
-            }
+            let event: Option<Event> = match db.get_event_by_id(&txn, &bytes)? {
+                Some(e) => Some(e.to_event()?),
+                None => None,
+            };
+            txn.commit()?;
+            Ok(event)
         })
         .await?
     }
@@ -228,7 +234,9 @@ impl Store {
         let bytes = id.to_bytes();
         self.interact(move |db| {
             let txn = db.read_txn()?;
-            db.has_event(&txn, &bytes)
+            let has: bool = db.has_event(&txn, &bytes)?;
+            txn.commit()?;
+            Ok(has)
         })
         .await?
     }
@@ -237,7 +245,9 @@ impl Store {
     pub async fn event_is_deleted(&self, id: EventId) -> Result<bool, Error> {
         self.interact(move |db| {
             let txn = db.read_txn()?;
-            db.is_deleted(&txn, &id)
+            let deleted: bool = db.is_deleted(&txn, &id)?;
+            txn.commit()?;
+            Ok(deleted)
         })
         .await?
     }
@@ -249,7 +259,9 @@ impl Store {
     ) -> Result<Option<Timestamp>, Error> {
         self.interact(move |db| {
             let txn = db.read_txn()?;
-            db.when_is_coordinate_deleted(&txn, &coordinate)
+            let when = db.when_is_coordinate_deleted(&txn, &coordinate)?;
+            txn.commit()?;
+            Ok(when)
         })
         .await?
     }
@@ -258,7 +270,9 @@ impl Store {
         self.interact(move |db| {
             let txn = db.read_txn()?;
             let output = db.query(&txn, filters)?;
-            Ok(output.len())
+            let len: usize = output.len();
+            txn.commit()?;
+            Ok(len)
         })
         .await?
     }
@@ -271,6 +285,7 @@ impl Store {
             let txn: RoTxn = db.read_txn()?;
             let output: BTreeSet<DatabaseEvent> = db.query(&txn, filters)?;
             events.extend(output.into_iter().filter_map(|e| e.to_event().ok()));
+            txn.commit()?;
 
             Ok(events)
         })
@@ -284,10 +299,12 @@ impl Store {
         self.interact(move |db| {
             let txn = db.read_txn()?;
             let events = db.query(&txn, vec![filter])?;
-            Ok(events
+            let items = events
                 .into_iter()
                 .map(|e| (EventId::from_byte_array(*e.id()), e.created_at))
-                .collect())
+                .collect();
+            txn.commit()?;
+            Ok(items)
         })
         .await?
     }
@@ -301,7 +318,10 @@ impl Store {
             for event in events.into_iter() {
                 db.remove(&mut txn, &event)?;
             }
+            read_txn.commit()?;
             txn.commit()?;
+
+            db.force_sync()?;
 
             Ok(())
         })
@@ -313,6 +333,7 @@ impl Store {
             let mut txn = db.write_txn()?;
             db.wipe(&mut txn)?;
             txn.commit()?;
+            db.force_sync()?;
             Ok(())
         })
         .await?

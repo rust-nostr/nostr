@@ -59,10 +59,11 @@
 * pool: rename `RelayOptions::adjust_retry_sec` to `RelayOptions::adjust_retry_interval` ([Yuki Kishimoto])
 * pool: request NIP11 document only after a successful WebSocket connection ([Yuki Kishimoto])
 * pool: immediately terminate relay connection on `Relay::disconnect` call ([Yuki Kishimoto])
-* pool: return error if relay not exists when removing it ([Yuki Kishimoto])
-* sdk: cleanup `Client` methods
+* pool: return error if relay doesn't exist when removing it ([Yuki Kishimoto])
+* sdk: cleanup `Client` methods ([Yuki Kishimoto])
 * relay-builder: port selection by using random port generation ([Yuki Kishimoto])
 * lmdb: optimize vector initialization in unit tests ([Xiao Yu])
+* lmdb: commit also read txn and force sync after delete operations ([Yuki Kishimoto])
 * nwc: increase default timeout to 60 secs ([Yuki Kishimoto])
 
 ### Added
