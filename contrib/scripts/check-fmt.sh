@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-version="nightly-2024-01-11"
+version="nightly-2024-11-18"
 flags=""
 
 # Check if "check" is passed as an argument
