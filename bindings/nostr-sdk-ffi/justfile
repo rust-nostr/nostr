@@ -49,7 +49,7 @@ x86_64-linux-android: ndk
 android: aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
 kotlin: clean-android android
-	cargo run -p uniffi-bindgen generate --library ../../target/x86_64-linux-android/release/libnostr_sdk_ffi.so --language kotlin --no-format -o ffi/kotlin
+	cargo run --bin uniffi-bindgen generate --library ../../target/x86_64-linux-android/release/libnostr_sdk_ffi.so --language kotlin --no-format -o ffi/kotlin
 
 # Copy required modules and libs and assemble AAR
 [private]
@@ -99,7 +99,7 @@ darwin-universal: swift-deps
 [private]
 assemble-swift-package:
     mkdir -p swift/Sources/NostrSDK
-    cargo run -p uniffi-bindgen generate --library ../../target/aarch64-apple-ios/release/libnostr_sdk_ffi.a --no-format --language swift --out-dir swift/Sources/NostrSDK
+    cargo run --bin uniffi-bindgen generate --library ../../target/aarch64-apple-ios/release/libnostr_sdk_ffi.a --no-format --language swift --out-dir swift/Sources/NostrSDK
     mv swift/Sources/NostrSDK/nostr_sdk.swift swift/Sources/NostrSDK/NostrSDK.swift
     cp swift/Sources/NostrSDK/*.h swift/nostr_sdkFFI.xcframework/ios-arm64/Headers
     cp swift/Sources/NostrSDK/*.h swift/nostr_sdkFFI.xcframework/ios-arm64_x86_64-simulator/Headers
@@ -118,7 +118,7 @@ python:
 	rm -rf python/dist
 	pip install -r python/requirements.txt
 	cargo build --release
-	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_sdk_ffi.so --language python --no-format -o python/src/nostr-sdk/
+	cargo run --bin uniffi-bindgen generate --library ../../target/release/libnostr_sdk_ffi.so --language python --no-format -o python/src/nostr-sdk/
 	cp ../../target/release/libnostr_sdk_ffi.so python/src/nostr-sdk/
 	cd python && python setup.py bdist_wheel
 	pip install ./python/dist/nostr_sdk*.whl --force-reinstall
@@ -128,7 +128,7 @@ python:
 	rm -rf python/dist
 	pip install -r python/requirements.txt
 	cargo build --release
-	cargo run -p uniffi-bindgen generate --library ../../target/release/libnostr_sdk_ffi.dylib --language python --no-format -o python/src/nostr-sdk/
+	cargo run --bin uniffi-bindgen generate --library ../../target/release/libnostr_sdk_ffi.dylib --language python --no-format -o python/src/nostr-sdk/
 	cp ../../target/release/libnostr_sdk_ffi.dylib python/src/nostr-sdk/
 	cd python && python setup.py bdist_wheel
 	pip install ./python/dist/nostr_sdk*.whl --force-reinstall
@@ -137,7 +137,7 @@ python:
 python:
 	pip install -r python\requirements.txt
 	cargo build --release
-	cargo run -p uniffi-bindgen generate --library ..\..\target\release\nostr_sdk_ffi.dll --language python --no-format -o python\src\nostr-sdk\
+	cargo run --bin uniffi-bindgen generate --library ..\..\target\release\nostr_sdk_ffi.dll --language python --no-format -o python\src\nostr-sdk\
 	copy ..\..\target\release\nostr_sdk_ffi.dll python\src\nostr-sdk
 	del /F /Q python\dist\* 2>nul || exit /b 0
 	cd python && python setup.py bdist_wheel
