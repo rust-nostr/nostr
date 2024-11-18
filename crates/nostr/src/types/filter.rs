@@ -1218,7 +1218,7 @@ mod tests {
                   "69d9980b6e6b5d77a3e1e369ccaca9ba"
                 ]
               ],
-              "content": "{\"banner\":\"https://i.imgur.com/f1h1GgJ.jpg\",\"website\":\"https://yukikishimoto.com\",\"nip05\":\"_@yukikishimoto.com\",\"picture\":\"https://yukikishimoto.com/images/avatar.jpg\",\"lud16\":\"yuki@getalby.com\",\"display_name\":\"Yuki Kishimoto\",\"about\":\"GitHub: https://github.com/yukibtc\\nPGP: 86F3 105A DFA8 AB58 7268  DCD7 8D3D CD04 2496 19D1\",\"name\":\"Yuki Kishimoto\",\"displayName\":\"Yuki Kishimoto\"}",
+              "content": "{\"banner\":\"https://i.imgur.com/f1h1GgJ.jpg\",\"website\":\"https://yukikishimoto.com\",\"nip05\":\"_@yukikishimoto.com\",\"picture\":\"https://yukikishimoto.com/images/avatar.jpg\",\"lud16\":\"pay@yukikishimoto.com\",\"display_name\":\"Yuki Kishimoto\",\"about\":\"GitHub: https://github.com/yukibtc\\nPGP: 86F3 105A DFA8 AB58 7268  DCD7 8D3D CD04 2496 19D1\",\"name\":\"Yuki Kishimoto\",\"displayName\":\"Yuki Kishimoto\"}",
               "sig": "27dddf90036cb7ea893eb13827342c49cbb72c442b3ac7b1f09081868b752d4c6e85882a881599e02a1374d4825e492e81703d44bce9728adccf66bb49f14220"
             }
         "#;

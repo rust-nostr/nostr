@@ -12,7 +12,7 @@ fn main() -> Result<()> {
         .picture(Url::parse("https://example.com/avatar.png")?)
         .banner(Url::parse("https://example.com/banner.png")?)
         .nip05("username@example.com")
-        .lud16("yuki@getalby.com");
+        .lud16("pay@yukikishimoto.com");
 
     println!("{}", metadata.as_json());
 

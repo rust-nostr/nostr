@@ -19,7 +19,7 @@ async def main():
         .set_picture("https://example.com/avatar.png") \
         .set_banner("https://example.com/banner.png") \
         .set_nip05("username@example.com") \
-        .set_lud16("yuki@getalby.com")
+        .set_lud16("pay@yukikishimoto.com")
 
     print(f"Setting profile metadata for {keys.public_key().to_bech32()}...")
     print(metadata.as_json())

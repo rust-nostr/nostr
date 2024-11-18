@@ -28,12 +28,6 @@
 
 * **Customizable**: The libraries are built in modular way, allowing to build customized nostr apps.
 
-## Libraries
-
-* [Nostr](./nostr/index.md): Implementation of the `nostr` protocol
-* [Nostr Database](): Databases abstraction, indexes and in-memory database implementation
-* [Nostr SDK](./nostr-sdk/index.md): High level nostr client library
-
 ## Communication
 
 * Nostr community: <nostr:naddr1qvzqqqyx7cpzq6xcz9jerqgqkldy8lpg7lglcyj4g3nwzy2cs6u70wejdaj7csnjqyg8wumn8ghj7mn0wd68ytnddakj7qgawaehxw309ahx7um5wghx6at5d9h8jampd3kx2apwvdhk6tcqpfe82um594hx7um5wguyvg2q>

@@ -1,3 +1,15 @@
-test:
-	cd nostr && just test
-	cd nostr-sdk && just test
+test: rust python js kotlin
+
+rust:
+	cd rust && cargo build
+
+python:
+	cd python && just test
+
+js:
+	cd js && npm i
+	node js/index.js
+
+kotlin:
+    cd kotlin && just test
+	
