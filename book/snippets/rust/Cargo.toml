@@ -1,0 +1,13 @@
+[package]
+name = "snippets-rust"
+version = "0.1.0"
+edition = "2021"
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[dependencies]
+nostr-sdk = "0.36"
+nostr-relay-builder = "0.36"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

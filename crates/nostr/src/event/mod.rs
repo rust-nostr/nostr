@@ -635,7 +635,7 @@ mod tests {
         assert!(event.coordinate().is_none());
 
         // Replaceable
-        let json: &str = r#"{"id":"8b19ce08cc0b20fd6c30e73b102fd3092c4f95f1c2a23d44064f9634b4593da5","pubkey":"2f35aaff0c870f0510a8bed198e1f8c35e95c996148f2d0c0fb1825b05b8dd35","created_at":1731251995,"kind":0,"tags":[],"content":"{\"name\":\"username\",\"display_name\":\"My Username\",\"about\":\"Description\",\"picture\":\"https://example.com/avatar.png\",\"banner\":\"https://example.com/banner.png\",\"nip05\":\"username@example.com\",\"lud16\":\"yuki@getalby.com\"}","sig":"b26e4dfea18d4ecb072c665f9ed34b66d8dd9a45093790ea17cb618d85319587aa094f5c091efa3e237cd50976884e02c64c2f2b187c3ebdc4f773b2d74a61a4"}"#;
+        let json: &str = r#"{"id":"8b19ce08cc0b20fd6c30e73b102fd3092c4f95f1c2a23d44064f9634b4593da5","pubkey":"2f35aaff0c870f0510a8bed198e1f8c35e95c996148f2d0c0fb1825b05b8dd35","created_at":1731251995,"kind":0,"tags":[],"content":"{\"name\":\"username\",\"display_name\":\"My Username\",\"about\":\"Description\",\"picture\":\"https://example.com/avatar.png\",\"banner\":\"https://example.com/banner.png\",\"nip05\":\"username@example.com\",\"lud16\":\"pay@yukikishimoto.com\"}","sig":"b26e4dfea18d4ecb072c665f9ed34b66d8dd9a45093790ea17cb618d85319587aa094f5c091efa3e237cd50976884e02c64c2f2b187c3ebdc4f773b2d74a61a4"}"#;
         let event = Event::from_json(json).unwrap();
         assert_eq!(
             event.coordinate(),

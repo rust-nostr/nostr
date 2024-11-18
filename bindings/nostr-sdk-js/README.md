@@ -45,7 +45,7 @@ async function main() {
         .picture("https://example.com/avatar.png")
         .banner("https://example.com/banner.png")
         .nip05("username@example.com")
-        .lud16("yuki@getalby.com");
+        .lud16("pay@yukikishimoto.com");
     
     await client.setMetadata(metadata);
 

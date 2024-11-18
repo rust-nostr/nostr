@@ -16,7 +16,7 @@
 
 ## Why rust-nostr?
 
-* **Multi-Language Support**: We support native API's including `Rust`, `Python`, `JavaScript`, `Kotlin` and `Swift` so you can build `nostr` apps in your preferred programming language.
+* **Multi-Language Support**: We support native API's including `Rust`, `Python`, `JavaScript`, `Kotlin`, `Swift` and `Flutter` so you can build nostr apps in your preferred programming language.
 
 * **Multi-Platform Support**: Write nostr apps for `desktop`, `server`, `mobile`, `web` and/or `embedded` devices!
 
@@ -27,12 +27,6 @@
 * **Broad NIP Support**: Support to most relevant `NIPs`. 
 
 * **Customizable**: The libraries are built in modular way, allowing to build customized nostr apps.
-
-## Libraries
-
-* [Nostr](./nostr/index.md): Implementation of the `nostr` protocol
-* [Nostr Database](): Databases abstraction, indexes and in-memory database implementation
-* [Nostr SDK](./nostr-sdk/index.md): High level nostr client library
 
 ## Communication
 

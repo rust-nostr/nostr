@@ -327,7 +327,7 @@ impl EventBuilder {
     ///     .about("Description")
     ///     .picture(Url::parse("https://example.com/avatar.png").unwrap())
     ///     .nip05("username@example.com")
-    ///     .lud16("yuki@getalby.com");
+    ///     .lud16("pay@yukikishimoto.com");
     ///
     /// let builder = EventBuilder::metadata(&metadata);
     /// ```
