@@ -267,12 +267,6 @@ impl From<nostr_sdk::nwc::Error> for NostrSdkError {
     }
 }
 
-impl From<async_utility::thread::Error> for NostrSdkError {
-    fn from(e: async_utility::thread::Error) -> NostrSdkError {
-        Self::Generic(e.to_string())
-    }
-}
-
 impl From<nostr_relay_builder::error::Error> for NostrSdkError {
     fn from(e: nostr_relay_builder::error::Error) -> NostrSdkError {
         Self::Generic(e.to_string())

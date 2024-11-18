@@ -15,7 +15,6 @@ ndb = ["nostr-sdk/ndb"]
 
 [dependencies]
 async-trait.workspace = true
-async-utility.workspace = true
 nostr = { workspace = true, features = ["std", "all-nips"] }
 nostr-connect.workspace = true
 nostr-relay-builder.workspace = true
