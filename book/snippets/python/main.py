@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import asyncio
+from nostr_sdk import MockRelay
 
 from src.keys import generate, restore, vanity
 from src.event.json import event_json
@@ -20,9 +21,14 @@ from src.nip21 import nip21
 from src.nip44 import nip44
 from src.nip59 import nip59
 from src.nip65 import nip65
+from src.hello import hello
 
 
 async def main():
+    relay = await MockRelay.run()
+    relay_url = relay.url()
+
+    await hello(relay_url)
     generate()
     restore()
     vanity()

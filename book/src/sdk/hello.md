@@ -2,39 +2,14 @@
 
 Now that you’ve installed the SDK, it’s time to write your first nostr program.
 
-<custom-tabs category="lang">
+### Generate random keys and construct the client
 
+<custom-tabs category="lang">
 <div slot="title">Rust</div>
 <section>
 
-### Generate random keys
-
-```rust,ignore
-{{#include ../../snippets/rust/src/hello.rs:keys}}
-```
-
-### Create a client
-
 ```rust,ignore
 {{#include ../../snippets/rust/src/hello.rs:client}}
-```
-
-### Add some relays and connect
-
-```rust,ignore
-{{#include ../../snippets/rust/src/hello.rs:connect}}
-```
-
-### Publish a text note
-
-```rust,ignore
-{{#include ../../snippets/rust/src/hello.rs:publish}}
-```
-
-### Full example
-
-```rust,ignore
-{{#include ../../snippets/rust/src/hello.rs:all}}
 ```
 
 </section>
@@ -42,21 +17,182 @@ Now that you’ve installed the SDK, it’s time to write your first nostr progr
 <div slot="title">Python</div>
 <section>
 
-Docs aren't ready yet, please check the examples at <https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-sdk-ffi/python/examples>.
+```python,ignore
+{{#include ../../snippets/python/src/hello.py:client}}
+```
 
 </section>
 
 <div slot="title">JavaScript</div>
 <section>
 
-Docs aren't ready yet, please check the examples at <https://github.com/rust-nostr/nostr/tree/master/bindings/nostr-sdk-js/examples>.
+TODO
 
 </section>
 
 <div slot="title">Kotlin</div>
 <section>
 
+```kotlin,ignore
+{{#include ../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Hello.kt:client}}
+```
+
+</section>
+
+<div slot="title">Swift</div>
+<section>
+
 TODO
+
+</section>
+
+<div slot="title">Flutter</div>
+<section>
+
+TODO
+
+</section>
+</custom-tabs>
+
+### Add some relays and connect
+
+<custom-tabs category="lang">
+<div slot="title">Rust</div>
+<section>
+
+```rust,ignore
+{{#include ../../snippets/rust/src/hello.rs:connect}}
+```
+
+</section>
+
+<div slot="title">Python</div>
+<section>
+
+```python,ignore
+{{#include ../../snippets/python/src/hello.py:connect}}
+```
+
+</section>
+
+<div slot="title">JavaScript</div>
+<section>
+
+TODO
+
+</section>
+
+<div slot="title">Kotlin</div>
+<section>
+
+```kotlin,ignore
+{{#include ../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Hello.kt:connect}}
+```
+
+</section>
+
+<div slot="title">Swift</div>
+<section>
+
+TODO
+
+</section>
+
+<div slot="title">Flutter</div>
+<section>
+
+TODO
+
+</section>
+</custom-tabs>
+
+
+### Publish a text note
+
+<custom-tabs category="lang">
+<div slot="title">Rust</div>
+<section>
+
+```rust,ignore
+{{#include ../../snippets/rust/src/hello.rs:publish}}
+```
+
+</section>
+
+<div slot="title">Python</div>
+<section>
+
+```python,ignore
+{{#include ../../snippets/python/src/hello.py:publish}}
+```
+
+</section>
+
+<div slot="title">JavaScript</div>
+<section>
+
+TODO
+
+</section>
+
+<div slot="title">Kotlin</div>
+<section>
+
+```kotlin,ignore
+{{#include ../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Hello.kt:publish}}
+```
+
+</section>
+
+<div slot="title">Swift</div>
+<section>
+
+TODO
+
+</section>
+
+<div slot="title">Flutter</div>
+<section>
+
+TODO
+
+</section>
+</custom-tabs>
+
+### Full example
+
+<custom-tabs category="lang">
+<div slot="title">Rust</div>
+<section>
+
+```rust,ignore
+{{#include ../../snippets/rust/src/hello.rs:full}}
+```
+
+</section>
+
+<div slot="title">Python</div>
+<section>
+
+```python,ignore
+{{#include ../../snippets/python/src/hello.py:full}}
+```
+
+</section>
+
+<div slot="title">JavaScript</div>
+<section>
+
+TODO
+
+</section>
+
+<div slot="title">Kotlin</div>
+<section>
+
+```kotlin,ignore
+{{#include ../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Hello.kt:full}}
+```
 
 </section>
 

@@ -1,18 +1,14 @@
-// ANCHOR: all
+// ANCHOR: full
 use nostr_sdk::prelude::*;
 
 pub async fn hello() -> Result<()> {
-    // ANCHOR: keys
-    let keys: Keys = Keys::generate();
-    // ANCHOR_END: keys
-    
     // ANCHOR: client
+    let keys: Keys = Keys::generate();
     let client = Client::new(keys);
     // ANCHOR_END: client
 
     // ANCHOR: connect
     client.add_relay("wss://relay.damus.io").await?;
-    client.add_read_relay("wss://relay.nostr.info").await?;
 
     client.connect().await;
     // ANCHOR_END: connect
@@ -25,4 +21,4 @@ pub async fn hello() -> Result<()> {
     Ok(())
 }
 
-// ANCHOR_END: all
+// ANCHOR_END: full
