@@ -9,8 +9,8 @@ crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 anyhow = "1.0"
-flutter_rust_bridge = "=2.5.1"
+flutter_rust_bridge = "=2.6.0"
 nostr-sdk  = { workspace = true, default-features = false, features = ["all-nips"] }
 
 [build-dependencies]
-flutter_rust_bridge_codegen = "=2.5.1"
+flutter_rust_bridge_codegen = "=2.6.0"
