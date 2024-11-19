@@ -56,5 +56,6 @@
 * [Shell]()
 ---
 
-[Changelog](changelog.md)
 [Donate](donate.md)
+[Changelog](changelog.md)
+[License](license.md)
