@@ -9,6 +9,7 @@ mod nip44;
 mod nip59;
 mod hello;
 mod nip17;
+mod nip47;
 
 #[tokio::main]
 async fn main() {}
