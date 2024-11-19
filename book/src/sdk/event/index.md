@@ -25,8 +25,8 @@
 <div slot="title">JavaScript</div>
 <section>
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/event/json.js}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/event/json.ts}}
 ```
 
 </section>
@@ -84,8 +84,8 @@ A convenient way to compose events is by using the `EventBuilder`. It allow to c
 <div slot="title">JavaScript</div>
 <section>
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/event/builder.js}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/event/builder.ts}}
 ```
 
 </section>

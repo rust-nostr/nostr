@@ -64,30 +64,30 @@ In the examples below we can utilize the relevant class methods `event()`, `ok()
 
 Once we have the `RelayMessage` objects we can use the `asJson()` method to present their content. 
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/relay.js:event-message}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/relay.ts:event-message}}
 ```
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/relay.js:ok-message}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/relay.ts:ok-message}}
 ```
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/relay.js:eose-message}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/relay.ts:eose-message}}
 ```
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/relay.js:closed-message}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/relay.ts:closed-message}}
 ```
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/relay.js:notice-message}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/relay.ts:notice-message}}
 ```
 
 When presented with a relay message object as either a JSON we can parse these data using the `fromJson()` method.
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/relay.js:parse-message}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/relay.ts:parse-message}}
 ```
 
 </section>
@@ -154,12 +154,12 @@ The `AUTH` type is designed to facilitate a method by which clients can authenti
 Whereas the `COUNT` type offers a method for relays to provide simple counts of events to clients (upon request). 
 These are constructed in much the same way as the earlier message examples, by using the `RelayMessage` class in conjunction with the relevant methods `auth()` and `count()`. 
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/relay.js:auth-message}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/relay.ts:auth-message}}
 ```
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/relay.js:count-message}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/relay.ts:count-message}}
 ```
 
 </section>

@@ -1,0 +1,5 @@
+#!/usr/bin/env just --justfile
+
+test:
+    npm i
+    npx tsc

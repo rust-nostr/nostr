@@ -48,7 +48,7 @@ nostr-sdk==0.36.0
 
 Import the library in your code:
 
-```python
+```python,ignore
 from nostr_sdk import *
 ```
 
@@ -77,7 +77,7 @@ If your `version`/`platform` is not currently supported, you can compile the whe
 
 If you receive `no running event loop` error at runtime, add the following line to your code:
 
-```python
+```python,ignore
 import asyncio
 from nostr_sdk import uniffi_set_event_loop
 
@@ -111,8 +111,8 @@ This library to work **require** to load the WASM code.
 
 #### Load in **async** context
 
-```javascript,ignore
-const { loadWasmAsync } = require("@rust-nostr/nostr-sdk");
+```typescript,ignore
+import { loadWasmAsync } from "@rust-nostr/nostr-sdk";
 
 async function main() {
     // Load WASM
@@ -126,8 +126,8 @@ main();
 
 #### Load in **sync** context
 
-```javascript,ignore
-const { loadWasmSync } = require("@rust-nostr/nostr-sdk");
+```typescript,ignore
+import { loadWasmSync } from "@rust-nostr/nostr-sdk";
 
 function main() {
     // Load WASM

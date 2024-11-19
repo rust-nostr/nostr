@@ -60,25 +60,25 @@ In the examples below we can utilize the relevant class methods `event()`, `req(
 Once we have the `ClientMessage` objects we can use the `asJson()` method to present their content. 
 
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/client.js:event-message}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/client.ts:event-message}}
 ```
 
 Note that when constructing a `REQ` we want to pass through a `Filter` object which will allow the relay to return data meeting a given set of criteria. 
 Please jump to the [Filter](filters.md) section for more details on how to construct these objects. 
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/client.js:req-message}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/client.ts:req-message}}
 ```
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/client.js:close-message}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/client.ts:close-message}}
 ```
 
 When presented with a client message object as either a JSON using the `fromJson()` method.
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/client.js:parse-message}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/client.ts:parse-message}}
 ```
 
 </section>
@@ -147,14 +147,14 @@ The `AUTH` type is designed to facilitate a method by which clients can authenti
 Whereas the `COUNT` type offers a method for clients can request simple counts of events from relays. 
 These are constructed in much the same way as the earlier message examples, by using the `ClientMessage` class in conjunction with the relevant methods `auth()` and `count()`. 
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/client.js:auth-message}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/client.ts:auth-message}}
 ```
 
 Note that `COUNT` is effectively a specific type of `REQ` message therefore it utilizes the `Filter` object in constructing the criteria which should be used by the relay to return the count value.
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/client.js:count-message}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/client.ts:count-message}}
 ```
 
 </section>

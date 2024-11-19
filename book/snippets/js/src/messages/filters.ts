@@ -1,13 +1,11 @@
-const { Filter, Keys, Kind, EventBuilder, Timestamp, Tag, loadWasmSync } = require('@rust-nostr/nostr-sdk');    
+import { Filter, Keys, Kind, EventBuilder, Timestamp, Tag } from "@rust-nostr/nostr-sdk";
 
-async function run() {
-    loadWasmSync();
-    
+export async function run() {
     // Generate keys and Events
     const keys = Keys.generate();
     const keys2 = Keys.generate();
-    
-    const kind0 = new Kind(0); 
+
+    const kind0 = new Kind(0);
     const kind1 = new Kind(1);
     const kind4 = new Kind(4);
 
@@ -110,7 +108,7 @@ async function run() {
         .ids([event.id, event2.id])
         .kinds([kind0, kind1])
         .author(keys.publicKey);
-    
+
     // Add an additional Kind to existing filter
     f = f.kinds([kind4]);
 
@@ -123,8 +121,8 @@ async function run() {
     f = f.removePubkeys([keys2.publicKey]);
     console.log(" After (remove pubkeys):");
     console.log(`     ${f.asJson()}`);
-    kind_rem0 = new Kind(0);
-    kind_rem4 = new Kind(4);
+    const kind_rem0 = new Kind(0);
+    const kind_rem4 = new Kind(4);
     f = f.removeKinds([kind_rem0, kind_rem4]);
     console.log("  After (remove kinds):");
     console.log(`     ${f.asJson()}`);
@@ -147,11 +145,9 @@ async function run() {
     console.log();
     // ANCHOR: other-match
     console.log("  Logical tests:");
-    kind_match = new Kind(1);
+    const kind_match = new Kind(1);
     f = new Filter().author(keys.publicKey).kind(kind_match);
     console.log(`     Event match for filter: ${f.matchEvent(event)}`);
     console.log(`     Event2 match for filter: ${f.matchEvent(event2)}`);
     // ANCHOR_END: other-match
 }
-
-module.exports.run = run;

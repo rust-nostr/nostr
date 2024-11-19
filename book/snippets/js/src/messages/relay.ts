@@ -1,8 +1,6 @@
-const { RelayMessage, EventBuilder, Keys, loadWasmAsync } = require("@rust-nostr/nostr-sdk");
+import { RelayMessage, EventBuilder, Keys } from "@rust-nostr/nostr-sdk";
 
-async function run() {
-    await loadWasmAsync();
-
+export async function run() {
     const keys = Keys.generate();
     const event = EventBuilder.textNote("TestTextNoTe", []).signWithKeys(keys);
 
@@ -63,5 +61,3 @@ async function run() {
     console.log(`     - JSON: ${relayMessage.asJson()}`);
     // ANCHOR_END: count-message
 }
-
-module.exports.run = run;

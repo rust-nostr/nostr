@@ -27,8 +27,8 @@ To generate a new key pair use the `generate()` method:
 <div slot="title">JavaScript</div>
 <section>
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/keys.js:generate}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/keys.ts:generate}}
 ```
 
 </section>
@@ -84,8 +84,8 @@ TODO
 <div slot="title">JavaScript</div>
 <section>
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/keys.js:restore}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/keys.ts:restore}}
 ```
 
 </section>
@@ -139,8 +139,8 @@ TODO
 <div slot="title">JavaScript</div>
 <section>
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/keys.js:vanity}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/keys.ts:vanity}}
 ```
 
 </section>

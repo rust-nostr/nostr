@@ -7,9 +7,7 @@ python:
 	cd python && just test
 
 js:
-	cd js && npm i
-	node js/index.js
+	cd js && just test
 
 kotlin:
-    cd kotlin && just test
-	
+	cd kotlin && just test

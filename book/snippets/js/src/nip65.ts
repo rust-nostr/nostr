@@ -1,9 +1,6 @@
-const { loadWasmSync, Keys, EventBuilder, Tag, RelayMetadata, RelayListItem, Kind } = require("@rust-nostr/nostr-sdk");
+import {Keys, EventBuilder, Tag, RelayMetadata, RelayListItem, Kind} from "@rust-nostr/nostr-sdk";
 
-function run(){
-    // Load WASM
-    loadWasmSync();
-
+export function run(){
     // Generate Keys
     let keys = Keys.generate();
 
@@ -12,8 +9,8 @@ function run(){
     // ANCHOR: relay-metadata-simple
     // Create relay list
     let relays = [
-        new RelayListItem("wss://relay.damus.io", RelayMetadata.READ),
-        new RelayListItem("wss://relay.primal.net", RelayMetadata.WRITE),
+        new RelayListItem("wss://relay.damus.io", RelayMetadata.Read),
+        new RelayListItem("wss://relay.primal.net", RelayMetadata.Write),
         new RelayListItem("wss://relay.nostr.band")
     ];
 
@@ -43,5 +40,3 @@ function run(){
     console.log(` Event: ${event.asJson()}`);
     // ANCHOR_END: relay-metadata-custom
 }
-
-module.exports.run = run;

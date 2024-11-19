@@ -1,9 +1,6 @@
-const { loadWasmSync, Keys, EventBuilder, Nip19Profile, Nip19Event, Coordinate} = require("@rust-nostr/nostr-sdk");
+import {Keys, EventBuilder, Nip19Profile, Nip19Event, Coordinate} from "@rust-nostr/nostr-sdk";
 
-function run(){
-    // Load WASM
-    loadWasmSync();
-
+export function run(){
     let keys = Keys.generate();
 
     console.log();
@@ -37,7 +34,7 @@ function run(){
 
     console.log();
     // ANCHOR: nevent
-    let nevent = new Nip19Event(event.id, keys.publicKey, null, relays);
+    let nevent = new Nip19Event(event.id, keys.publicKey, undefined, relays);
 
     // URI nevent
     let nevent_uri = nevent.toNostrUri();
@@ -60,5 +57,3 @@ function run(){
     // ANCHOR_END: naddr
 
 }
-
-module.exports.run = run;

@@ -1,9 +1,6 @@
-const { loadWasmAsync, PublicKey, Metadata, verifyNip05, getNip05Profile } = require("@rust-nostr/nostr-sdk");
+import { PublicKey, Metadata, verifyNip05, getNip05Profile } from "@rust-nostr/nostr-sdk";
 
-async function run() {
-    // Load WASM
-    await loadWasmAsync();
-
+export async function run() {
     console.log();
     // ANCHOR: set-metadata
     // Create metadata object with name and NIP05
@@ -33,5 +30,3 @@ async function run() {
     console.log(`     ${nip_05} Public key: ${profile.publicKey().toBech32()}`);
     // ANCHOR_END: nip05-profile
 }
-
-module.exports.run = run;

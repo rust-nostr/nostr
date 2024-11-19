@@ -1,10 +1,7 @@
-const { loadWasmSync, Keys} = require("@rust-nostr/nostr-sdk");
-const { generateMnemonic } = require("bip39");
+import { Keys} from "@rust-nostr/nostr-sdk";
+import { generateMnemonic } from "bip39";
 
-function run() {
-    // Load WASM
-    loadWasmSync();
-
+export function run() {
     console.log();
     // ANCHOR: keys-from-seed24
     // Generate random Seed Phrase (24 words e.g. 256 bits entropy)
@@ -73,5 +70,3 @@ function run() {
     }
     // ANCHOR_END: keys-from-seed-accounts-pass
 }
-
-module.exports.run = run;

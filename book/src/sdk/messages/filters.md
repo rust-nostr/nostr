@@ -77,50 +77,50 @@ The following code examples all utilize the `Filters()` along with associated me
 
 Filtering events based on a specific event ID using `id()`.
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/filters.js:create-filter-id}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/filters.ts:create-filter-id}}
 ```
 
 Filtering events by author using `author()`.
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/filters.js:create-filter-author}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/filters.ts:create-filter-author}}
 ```
 
 Filtering events based on multiple criteria. In this case, by public key using `pubkey()` and kind using `kind()`.
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/filters.js:create-filter-kind-pk}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/filters.ts:create-filter-kind-pk}}
 ```
 
 Filtering for specific text strings using `search()`.
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/filters.js:create-filter-search}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/filters.ts:create-filter-search}}
 ```
 
 Restricting query results to specific timeframes (using `since()` and `until()`), as well as limiting search results to a maximum of 10 records using `limit()`.
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/filters.js:create-filter-timeframe}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/filters.ts:create-filter-timeframe}}
 ```
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/filters.js:create-filter-limit}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/filters.ts:create-filter-limit}}
 ```
 
 Finally, filtering using hashtags (`hashtags()`), NIP-12 reference tags (`reference()`) and identifiers (`identifiers()`), respectively.
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/filters.js:create-filter-hashtag}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/filters.ts:create-filter-hashtag}}
 ```
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/filters.js:create-filter-reference}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/filters.ts:create-filter-reference}}
 ```
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/filters.js:create-filter-identifier}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/filters.ts:create-filter-identifier}}
 ```
 
 </section>
@@ -180,8 +180,8 @@ In this example we create a initial filter with `pubkeys()`, `ids()`, `kinds()` 
 
 Similarly, the range of 'remove' methods (e.g. `removekinds()`) allow us to take an existing filter and remove unwanted conditions without needed to reconstruct the filter object from scratch.
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/filters.js:modify-filter}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/filters.ts:modify-filter}}
 ```
 </section>
 
@@ -246,14 +246,14 @@ To perform a logical test and determine if a given event object matches existing
 
 We can parse existing filter JSON object using the `fromJson()` method when instantiating a filter object.
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/filters.js:other-parse}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/filters.ts:other-parse}}
 ```
 
 To perform a logical test and determine if a given event object matches existing filter conditions the `matchEvent()` method can be used. 
 
-```javascript,ignore
-{{#include ../../../snippets/js/src/messages/filters.js:other-match}}
+```typescript,ignore
+{{#include ../../../snippets/js/src/messages/filters.ts:other-match}}
 ```
 
 </section>

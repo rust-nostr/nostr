@@ -1,9 +1,6 @@
-const { loadWasmSync, Keys, EventBuilder, Nip19Profile, Nip19Event, Coordinate, Kind } = require("@rust-nostr/nostr-sdk");
+import { Keys, EventBuilder, Nip19Profile, Nip19Event, Coordinate, Kind } from "@rust-nostr/nostr-sdk";
 
-function run() {
-    // Load WASM
-    loadWasmSync();
-
+export function run() {
     // Generate random keys
     let keys = Keys.generate();
 
@@ -40,7 +37,7 @@ function run() {
     console.log();
     // ANCHOR: nip19-nevent-encode
     // Create NIP-19 event including author and relays data
-    let nevent = new Nip19Event(event.id, keys.publicKey, null, relays);
+    let nevent = new Nip19Event(event.id, keys.publicKey, undefined, relays);
     console.log(` Event (encoded): ${nevent.toBech32()}`);
     // ANCHOR_END: nip19-nevent-encode
 
@@ -65,5 +62,3 @@ function run() {
     // ANCHOR_END: nip19-naddr-decode
 
 }
-
-module.exports.run = run;
