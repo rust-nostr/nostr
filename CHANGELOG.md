@@ -66,6 +66,7 @@
 * lmdb: commit also read txn and force sync after delete operations ([Yuki Kishimoto])
 * nwc: increase default timeout to 60 secs ([Yuki Kishimoto])
 * book: convert JS snippets to TypeScript ([Yuki Kishimoto])
+* book: use `pyright` to check python snippets ([Yuki Kishimoto])
 
 ### Added
 

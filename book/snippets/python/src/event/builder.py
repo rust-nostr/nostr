@@ -1,4 +1,4 @@
-from nostr_sdk import *
+from nostr_sdk import Keys, EventBuilder, Kind, Tag
 
 
 def event_builder():

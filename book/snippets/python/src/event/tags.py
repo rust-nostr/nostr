@@ -1,3 +1,4 @@
+from typing import cast
 from nostr_sdk import EventBuilder, Keys, Tag, Contact, Coordinate, Kind, RelayMetadata, TagKind
 
 
@@ -34,17 +35,17 @@ def tags():
     print()
     # ANCHOR: custom
     print("  Custom Tags:")
-    tag = Tag.custom(TagKind.SUMMARY(), ["This is a summary"])
+    tag = Tag.custom(cast(TagKind, TagKind.SUMMARY()), ["This is a summary"])
     print(f"     - Summary    : {tag.as_vec()}")
-    tag = Tag.custom(TagKind.AMOUNT(), ["42"])
+    tag = Tag.custom(cast(TagKind, TagKind.AMOUNT()), ["42"])
     print(f"     - Amount     : {tag.as_vec()}")
-    tag = Tag.custom(TagKind.TITLE(), ["This is a title"])
+    tag = Tag.custom(cast(TagKind, TagKind.TITLE()), ["This is a title"])
     print(f"     - Title      : {tag.as_vec()}")
-    tag = Tag.custom(TagKind.SUBJECT(), ["This is a subject"])
+    tag = Tag.custom(cast(TagKind, TagKind.SUBJECT()), ["This is a subject"])
     print(f"     - Subject    : {tag.as_vec()}")
-    tag = Tag.custom(TagKind.DESCRIPTION(), ["This is a description"])
+    tag = Tag.custom(cast(TagKind, TagKind.DESCRIPTION()), ["This is a description"])
     print(f"     - Description: {tag.as_vec()}")
-    tag = Tag.custom(TagKind.URL(), ["https://example.com"])
+    tag = Tag.custom(cast(TagKind, TagKind.URL()), ["https://example.com"])
     print(f"     - URL        : {tag.as_vec()}")
     # ANCHOR_END: custom
 
@@ -71,7 +72,7 @@ def tags():
     print()
     # ANCHOR: logical
     print("  Logical Tests:")
-    tag = Tag.custom(TagKind.SUMMARY(), ["This is a summary"])
+    tag = Tag.custom(cast(TagKind, TagKind.SUMMARY()), ["This is a summary"])
     print(f"     - Tag1 (Title?)  : {tag.kind().is_title()}")
     print(f"     - Tag1 (Summary?): {tag.kind().is_summary()}")
     # ANCHOR_END: logical

@@ -6,7 +6,7 @@ def filters():
     # Generate keys and Events
     keys = Keys.generate()
     keys2 = Keys.generate()
-    event = EventBuilder.text_note("Hello World!",[]).sign_with_keys(keys)
+    event = EventBuilder.text_note("Hello World!", []).sign_with_keys(keys)
     event2 = EventBuilder(Kind(1),"Goodbye World!", [Tag.identifier("Identification D Tag")]).sign_with_keys(keys2)
 
     print()
@@ -92,8 +92,10 @@ def filters():
     # ANCHOR: create-filter-identifier
     # Filter for Identifier
     print("  Filter for a Identifier:")
-    f = Filter().identifier(event2.tags().identifier())
-    print(f"     {f.as_json()}")
+    identifier = event2.tags().identifier()
+    if identifier is not None:
+        f = Filter().identifier(identifier)
+        print(f"     {f.as_json()}")
     # ANCHOR_END: create-filter-identifier
 
     print()

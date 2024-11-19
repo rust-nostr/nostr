@@ -1,3 +1,4 @@
+from typing import cast
 from nostr_sdk import Kind, KindEnum, EventBuilder, Keys, Metadata
 
 
@@ -19,11 +20,11 @@ def kind():
     print()
     # ANCHOR: kind-enum
     print("  Kind from enum:")
-    kind = Kind.from_enum(KindEnum.TEXT_NOTE())
+    kind = Kind.from_enum(cast(KindEnum, KindEnum.TEXT_NOTE()))
     print(f"     - Kind TEXT_NOTE: {kind.as_u16()}")
-    kind = Kind.from_enum(KindEnum.METADATA())
+    kind = Kind.from_enum(cast(KindEnum, KindEnum.METADATA()))
     print(f"     - Kind METADATA: {kind.as_u16()}")
-    kind = Kind.from_enum(KindEnum.CONTACT_LIST())
+    kind = Kind.from_enum(cast(KindEnum, KindEnum.CONTACT_LIST()))
     print(f"     - Kind CONTRACT_LIST: {kind.as_u16()}")
     # ANCHOR_END: kind-enum
 
@@ -41,18 +42,18 @@ def kind():
     print()
     # ANCHOR: kind-representations
     print("  Kinds Representing types of Events:")
-    kind = Kind.from_enum(KindEnum.CUSTOM(1337))
+    kind = Kind.from_enum(cast(KindEnum, KindEnum.CUSTOM(1337)))
     print(f"     - Custom Event Kind: {kind.as_u16()} - {kind.as_enum()}")
-    kind = Kind.from_enum(KindEnum.REPLACEABLE(10420))
+    kind = Kind.from_enum(cast(KindEnum, KindEnum.REPLACEABLE(10420)))
     print(f"     - Replacable Event Kind: {kind.as_u16()} - {kind.as_enum()}")
-    kind = Kind.from_enum(KindEnum.PARAMETERIZED_REPLACEABLE(30420))
+    kind = Kind.from_enum(cast(KindEnum, KindEnum.PARAMETERIZED_REPLACEABLE(30420)))
     print(f"     - Parameterised Replaceable Event Kind: {kind.as_u16()} - {kind.as_enum()}")
-    kind = Kind.from_enum(KindEnum.EPHEMERAL(21420))
+    kind = Kind.from_enum(cast(KindEnum, KindEnum.EPHEMERAL(21420)))
     print(f"     - Ephemeral Event Kind: {kind.as_u16()} - {kind.as_enum()}")
-    kind = Kind.from_enum(KindEnum.REGULAR(420))
+    kind = Kind.from_enum(cast(KindEnum, KindEnum.REGULAR(420)))
     print(f"     - Regular Event Kind: {kind.as_u16()} - {kind.as_enum()}")
-    kind = Kind.from_enum(KindEnum.JOB_REQUEST(123))
+    kind = Kind.from_enum(cast(KindEnum, KindEnum.JOB_REQUEST(123)))
     print(f"     - Job Request Event Kind: {kind.as_u16()} - {kind.as_enum()}")
-    kind = Kind.from_enum(KindEnum.JOB_RESULT(321))
+    kind = Kind.from_enum(cast(KindEnum, KindEnum.JOB_RESULT(321)))
     print(f"     - Job Result Event Kind: {kind.as_u16()} - {kind.as_enum()}")
     # ANCHOR_END: kind-representations
