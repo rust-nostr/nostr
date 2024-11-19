@@ -10,7 +10,6 @@ use async_utility::futures_util::stream::{self, SplitSink};
 use async_utility::futures_util::{SinkExt, StreamExt};
 use async_wsocket::native::{self, Message, WebSocketStream};
 use atomic_destructor::AtomicDestroyer;
-use nostr::prelude::*;
 use nostr_database::prelude::*;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{broadcast, Semaphore};
@@ -25,7 +24,7 @@ type WsTx = SplitSink<WebSocketStream<TcpStream>, Message>;
 #[derive(Debug, Clone)]
 pub(super) struct InternalLocalRelay {
     addr: SocketAddr,
-    database: Arc<DynNostrDatabase>,
+    database: Arc<dyn NostrEventsDatabase>,
     shutdown: broadcast::Sender<()>,
     /// Channel to notify new event received
     ///

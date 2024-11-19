@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::sync::Arc;
 
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
@@ -43,8 +42,7 @@ impl JsClientBuilder {
     }
 
     pub fn database(self, database: &JsNostrDatabase) -> Self {
-        let database: Arc<DynNostrDatabase> = database.into();
-        self.inner.database(database).into()
+        self.inner.database(database.deref().clone()).into()
     }
 
     pub fn opts(self, opts: &JsOptions) -> Self {

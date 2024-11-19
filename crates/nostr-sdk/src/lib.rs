@@ -19,8 +19,6 @@ pub use async_utility;
 #[doc(hidden)]
 pub use nostr::{self, *};
 #[doc(hidden)]
-pub use nostr_database::{self as database, NostrDatabase, NostrDatabaseExt, Profile};
-#[doc(hidden)]
 #[cfg(all(target_arch = "wasm32", feature = "indexeddb"))]
 pub use nostr_indexeddb::WebDatabase;
 #[doc(hidden)]

@@ -2,7 +2,9 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Nostr Database Helper
+//! Nostr Event Store Helper
+//!
+//! Used for the in-memory database.
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::iter;
@@ -13,7 +15,7 @@ use nostr::nips::nip01::Coordinate;
 use nostr::{Alphabet, Event, EventId, Filter, Kind, PublicKey, SingleLetterTag, Timestamp};
 use tokio::sync::{OwnedRwLockReadGuard, RwLock};
 
-use crate::tree::{BTreeCappedSet, Capacity, InsertResult, OverCapacityPolicy};
+use crate::collections::tree::{BTreeCappedSet, Capacity, InsertResult, OverCapacityPolicy};
 use crate::Events;
 
 type DatabaseEvent = Arc<Event>;

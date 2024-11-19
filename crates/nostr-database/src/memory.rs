@@ -14,9 +14,10 @@ use nostr::nips::nip01::Coordinate;
 use nostr::{Event, EventId, Filter, Timestamp, Url};
 use tokio::sync::Mutex;
 
+use crate::collections::new_lru_cache;
 use crate::{
-    util, Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper, Events,
-    NostrDatabase,
+    Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper, Events,
+    NostrDatabase, NostrEventsDatabase,
 };
 
 /// Database options
@@ -70,7 +71,7 @@ impl MemoryDatabase {
     pub fn with_opts(opts: MemoryDatabaseOptions) -> Self {
         Self {
             opts,
-            seen_event_ids: Arc::new(Mutex::new(util::new_lru_cache(opts.max_events))),
+            seen_event_ids: Arc::new(Mutex::new(new_lru_cache(opts.max_events))),
             helper: match opts.max_events {
                 Some(max) => DatabaseHelper::bounded(max),
                 None => DatabaseHelper::unbounded(),
@@ -110,6 +111,20 @@ impl NostrDatabase for MemoryDatabase {
         Backend::Memory
     }
 
+    async fn wipe(&self) -> Result<(), DatabaseError> {
+        // Clear helper
+        self.helper.clear().await;
+
+        // Clear
+        let mut seen_event_ids = self.seen_event_ids.lock().await;
+        seen_event_ids.clear();
+        Ok(())
+    }
+}
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl NostrEventsDatabase for MemoryDatabase {
     async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
         if self.opts.events {
             let DatabaseEventResult { to_store, .. } = self.helper.index_event(event).await;
@@ -190,16 +205,6 @@ impl NostrDatabase for MemoryDatabase {
 
     async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {
         self.helper.delete(filter).await;
-        Ok(())
-    }
-
-    async fn wipe(&self) -> Result<(), DatabaseError> {
-        // Clear helper
-        self.helper.clear().await;
-
-        // Clear
-        let mut seen_event_ids = self.seen_event_ids.lock().await;
-        seen_event_ids.clear();
         Ok(())
     }
 }

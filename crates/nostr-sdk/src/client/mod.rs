@@ -12,7 +12,7 @@ use std::time::Duration;
 
 use atomic_destructor::StealthClone;
 use nostr::prelude::*;
-use nostr_database::DynNostrDatabase;
+use nostr_database::prelude::*;
 use nostr_relay_pool::prelude::*;
 #[cfg(feature = "nip57")]
 use nostr_zapper::{DynNostrZapper, IntoNostrZapper, ZapperError};
@@ -269,7 +269,7 @@ impl Client {
 
     /// Get database
     #[inline]
-    pub fn database(&self) -> &Arc<DynNostrDatabase> {
+    pub fn database(&self) -> &Arc<dyn NostrDatabase> {
         self.pool.database()
     }
 

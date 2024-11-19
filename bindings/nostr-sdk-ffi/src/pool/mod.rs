@@ -7,7 +7,6 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_sdk::database::DynNostrDatabase;
 use nostr_sdk::{RelayPoolOptions, SubscriptionId};
 use uniffi::Object;
 
@@ -46,9 +45,11 @@ impl RelayPool {
     /// Create new `RelayPool` with `custom` database
     #[uniffi::constructor]
     pub fn with_database(database: &NostrDatabase) -> Self {
-        let database: Arc<DynNostrDatabase> = database.into();
         Self {
-            inner: nostr_sdk::RelayPool::with_database(RelayPoolOptions::default(), database),
+            inner: nostr_sdk::RelayPool::with_database(
+                RelayPoolOptions::default(),
+                database.deref().clone(),
+            ),
         }
     }
 

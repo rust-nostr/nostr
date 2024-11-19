@@ -82,6 +82,13 @@ impl NostrDatabase for NdbDatabase {
         Backend::LMDB
     }
 
+    async fn wipe(&self) -> Result<(), DatabaseError> {
+        Err(DatabaseError::NotSupported)
+    }
+}
+
+#[async_trait]
+impl NostrEventsDatabase for NdbDatabase {
     #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
         let msg = RelayMessage::event(SubscriptionId::new("ndb"), event.clone());
@@ -167,10 +174,6 @@ impl NostrDatabase for NdbDatabase {
     }
 
     async fn delete(&self, _filter: Filter) -> Result<(), DatabaseError> {
-        Err(DatabaseError::NotSupported)
-    }
-
-    async fn wipe(&self) -> Result<(), DatabaseError> {
         Err(DatabaseError::NotSupported)
     }
 }

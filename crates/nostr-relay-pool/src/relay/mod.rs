@@ -140,7 +140,11 @@ impl Relay {
 
     /// Create new `Relay` with **custom** `database` and/or `options`
     #[inline]
-    pub fn custom(url: Url, database: Arc<DynNostrDatabase>, opts: RelayOptions) -> Self {
+    pub fn custom<T>(url: Url, database: T, opts: RelayOptions) -> Self
+    where
+        T: IntoNostrDatabase,
+    {
+        let database: Arc<dyn NostrDatabase> = database.into_nostr_database();
         let filtering: RelayFiltering = RelayFiltering::new(opts.filtering_mode);
         Self::internal_custom(url, database, filtering, opts)
     }
@@ -148,7 +152,7 @@ impl Relay {
     #[inline]
     pub(crate) fn internal_custom(
         url: Url,
-        database: Arc<DynNostrDatabase>,
+        database: Arc<dyn NostrDatabase>,
         filtering: RelayFiltering,
         opts: RelayOptions,
     ) -> Self {

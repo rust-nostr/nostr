@@ -13,8 +13,7 @@ use std::time::Duration;
 use async_utility::futures_util::{future, StreamExt};
 use async_utility::thread;
 use atomic_destructor::AtomicDestroyer;
-use nostr::prelude::*;
-use nostr_database::{DynNostrDatabase, Events, IntoNostrDatabase};
+use nostr_database::prelude::*;
 use tokio::sync::{broadcast, mpsc, Mutex, RwLock, RwLockReadGuard};
 use tokio_stream::wrappers::ReceiverStream;
 
@@ -29,7 +28,7 @@ type Relays = HashMap<Url, Relay>;
 
 #[derive(Debug, Clone)]
 pub struct InnerRelayPool {
-    pub(super) database: Arc<DynNostrDatabase>,
+    pub(super) database: Arc<dyn NostrDatabase>,
     relays: Arc<RwLock<Relays>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,

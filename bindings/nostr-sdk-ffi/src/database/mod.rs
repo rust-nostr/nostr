@@ -5,7 +5,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt};
+use nostr_sdk::prelude::{self, IntoNostrDatabase, NostrEventsDatabaseExt};
 #[cfg(feature = "ndb")]
 use nostr_sdk::NdbDatabase;
 #[cfg(feature = "lmdb")]
@@ -16,23 +16,24 @@ pub mod events;
 
 use self::events::Events;
 use crate::error::Result;
-use crate::profile::Profile;
-use crate::protocol::{Event, EventId, Filter, PublicKey};
+use crate::protocol::{Event, EventId, Filter, Metadata, PublicKey};
 
 #[derive(Object)]
 pub struct NostrDatabase {
-    inner: Arc<DynNostrDatabase>,
+    inner: Arc<dyn prelude::NostrDatabase>,
 }
 
-impl From<Arc<DynNostrDatabase>> for NostrDatabase {
-    fn from(inner: Arc<DynNostrDatabase>) -> Self {
-        Self { inner }
+impl Deref for NostrDatabase {
+    type Target = Arc<dyn prelude::NostrDatabase>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 
-impl From<&NostrDatabase> for Arc<DynNostrDatabase> {
-    fn from(db: &NostrDatabase) -> Self {
-        db.inner.clone()
+impl From<Arc<dyn prelude::NostrDatabase>> for NostrDatabase {
+    fn from(inner: Arc<dyn prelude::NostrDatabase>) -> Self {
+        Self { inner }
     }
 }
 
@@ -112,7 +113,11 @@ impl NostrDatabase {
         Ok(self.inner.wipe().await?)
     }
 
-    pub async fn profile(&self, public_key: &PublicKey) -> Result<Arc<Profile>> {
-        Ok(Arc::new(self.inner.profile(**public_key).await?.into()))
+    pub async fn metadata(&self, public_key: &PublicKey) -> Result<Option<Arc<Metadata>>> {
+        Ok(self
+            .inner
+            .metadata(**public_key)
+            .await?
+            .map(|m| Arc::new(m.into())))
     }
 }

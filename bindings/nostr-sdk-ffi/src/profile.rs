@@ -5,7 +5,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr_sdk::database;
+use nostr_sdk::prelude;
 use uniffi::Object;
 
 use crate::protocol::{Metadata, PublicKey};
@@ -13,11 +13,11 @@ use crate::protocol::{Metadata, PublicKey};
 #[derive(Debug, PartialEq, Eq, Hash, Object)]
 #[uniffi::export(Debug, Eq, Hash)]
 pub struct Profile {
-    inner: database::Profile,
+    inner: prelude::Profile,
 }
 
-impl From<database::Profile> for Profile {
-    fn from(inner: database::Profile) -> Self {
+impl From<prelude::Profile> for Profile {
+    fn from(inner: prelude::Profile) -> Self {
         Self { inner }
     }
 }
@@ -28,7 +28,7 @@ impl Profile {
     #[uniffi::constructor]
     pub fn new(public_key: &PublicKey, metadata: Arc<Metadata>) -> Self {
         Self {
-            inner: database::Profile::new(**public_key, metadata.as_ref().deref().clone()),
+            inner: prelude::Profile::new(**public_key, metadata.as_ref().deref().clone()),
         }
     }
 

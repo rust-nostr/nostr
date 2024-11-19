@@ -10,8 +10,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use atomic_destructor::{AtomicDestructor, StealthClone};
-use nostr::prelude::*;
-use nostr_database::{DynNostrDatabase, Events, IntoNostrDatabase, MemoryDatabase};
+use nostr_database::prelude::*;
 use tokio::sync::broadcast;
 pub use tokio_stream::wrappers::ReceiverStream;
 
@@ -123,7 +122,7 @@ impl RelayPool {
 
     /// Get database
     #[inline]
-    pub fn database(&self) -> &Arc<DynNostrDatabase> {
+    pub fn database(&self) -> &Arc<dyn NostrDatabase> {
         &self.inner.database
     }
 

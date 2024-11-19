@@ -249,8 +249,8 @@ impl From<nostr_sdk::pool::pool::Error> for NostrSdkError {
     }
 }
 
-impl From<nostr_sdk::database::DatabaseError> for NostrSdkError {
-    fn from(e: nostr_sdk::database::DatabaseError) -> NostrSdkError {
+impl From<nostr_sdk::prelude::DatabaseError> for NostrSdkError {
+    fn from(e: nostr_sdk::prelude::DatabaseError) -> NostrSdkError {
         Self::Generic(e.to_string())
     }
 }

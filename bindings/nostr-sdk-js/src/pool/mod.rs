@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::sync::Arc;
 
 use js_sys::Array;
 use nostr_sdk::prelude::*;
@@ -46,9 +45,8 @@ impl JsRelayPool {
     /// Create new `RelayPool` with `custom` database
     #[wasm_bindgen(js_name = withDatabase)]
     pub fn with_database(database: &JsNostrDatabase) -> Self {
-        let database: Arc<DynNostrDatabase> = database.into();
         Self {
-            inner: RelayPool::with_database(RelayPoolOptions::default(), database),
+            inner: RelayPool::with_database(RelayPoolOptions::default(), database.deref().clone()),
         }
     }
 

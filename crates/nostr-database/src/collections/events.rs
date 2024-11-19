@@ -8,7 +8,7 @@ use std::hash::{Hash, Hasher};
 
 use nostr::{Event, Filter};
 
-use crate::tree::{BTreeCappedSet, Capacity, OverCapacityPolicy};
+use super::tree::{BTreeCappedSet, Capacity, OverCapacityPolicy};
 
 // Lookup ID: EVENT_ORD_IMPL
 const POLICY: OverCapacityPolicy = OverCapacityPolicy::Last;

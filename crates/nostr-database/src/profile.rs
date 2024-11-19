@@ -7,7 +7,7 @@
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 
-use crate::{Metadata, PublicKey};
+use nostr::{Metadata, PublicKey};
 
 /// Profile
 #[derive(Debug, Clone)]

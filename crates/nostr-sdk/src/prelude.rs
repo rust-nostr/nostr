@@ -10,7 +10,7 @@
 
 // External crates
 pub use nostr::prelude::*;
-pub use nostr_database::*;
+pub use nostr_database::prelude::*;
 pub use nostr_relay_pool::prelude::*;
 #[cfg(feature = "nip57")]
 pub use nostr_zapper::prelude::*;

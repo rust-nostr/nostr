@@ -7,7 +7,6 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_sdk::database::DynNostrDatabase;
 use nostr_sdk::{pool, FilterOptions, SubscriptionId, Url};
 use uniffi::{Object, Record};
 
@@ -124,10 +123,8 @@ impl Relay {
     #[uniffi::constructor]
     pub fn custom(url: String, database: &NostrDatabase, opts: &RelayOptions) -> Result<Self> {
         let url: Url = Url::parse(&url)?;
-        let database: Arc<DynNostrDatabase> = database.into();
-        let opts = opts.deref().clone();
         Ok(Self {
-            inner: nostr_sdk::Relay::custom(url, database, opts),
+            inner: nostr_sdk::Relay::custom(url, database.deref().clone(), opts.deref().clone()),
         })
     }
 

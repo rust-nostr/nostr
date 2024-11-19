@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use nostr::signer::{IntoNostrSigner, NostrSigner};
 use nostr_database::memory::MemoryDatabase;
-use nostr_database::{DynNostrDatabase, IntoNostrDatabase};
+use nostr_database::{IntoNostrDatabase, NostrDatabase};
 #[cfg(feature = "nip57")]
 use nostr_zapper::{DynNostrZapper, IntoNostrZapper};
 
@@ -23,7 +23,7 @@ pub struct ClientBuilder {
     #[cfg(feature = "nip57")]
     pub zapper: Option<Arc<DynNostrZapper>>,
     /// Database
-    pub database: Arc<DynNostrDatabase>,
+    pub database: Arc<dyn NostrDatabase>,
     /// Client options
     pub opts: Options,
 }

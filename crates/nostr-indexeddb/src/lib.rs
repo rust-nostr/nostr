@@ -337,11 +337,45 @@ macro_rules! impl_nostr_database {
     };
 }
 
+// Small hack to have the following macro invocation act as the appropriate
+// trait impl block on wasm, but still be compiled on non-wasm as a regular
+// impl block otherwise.
+//
+// The trait impl doesn't compile on non-wasm due to unfulfilled trait bounds,
+// this hack allows us to still have most of rust-analyzer's IDE functionality
+// within the impl block without having to set it up to check things against
+// the wasm target (which would disable many other parts of the codebase).
+#[cfg(target_arch = "wasm32")]
+macro_rules! impl_nostr_events_database {
+    ({ $($body:tt)* }) => {
+        #[async_trait(?Send)]
+        impl NostrEventsDatabase for WebDatabase {
+            $($body)*
+        }
+    };
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+macro_rules! impl_nostr_events_database {
+    ({ $($body:tt)* }) => {
+        impl WebDatabase {
+            $($body)*
+        }
+    };
+}
+
 impl_nostr_database!({
     fn backend(&self) -> Backend {
         Backend::IndexedDB
     }
 
+    #[inline]
+    async fn wipe(&self) -> Result<(), DatabaseError> {
+        self._wipe().await.map_err(DatabaseError::backend)
+    }
+});
+
+impl_nostr_events_database!({
     #[inline]
     #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
@@ -476,11 +510,6 @@ impl_nostr_database!({
     #[inline]
     async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {
         self._delete(filter).await.map_err(DatabaseError::backend)
-    }
-
-    #[inline]
-    async fn wipe(&self) -> Result<(), DatabaseError> {
-        self._wipe().await.map_err(DatabaseError::backend)
     }
 });
 

@@ -6,35 +6,35 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use js_sys::Array;
-use nostr_sdk::database::{DynNostrDatabase, IntoNostrDatabase, NostrDatabaseExt};
-use nostr_sdk::WebDatabase;
+use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
 pub mod events;
 
 pub use self::events::JsEvents;
 use crate::error::{into_err, Result};
-use crate::profile::JsProfile;
 use crate::protocol::event::{JsEvent, JsEventId};
 use crate::protocol::key::JsPublicKey;
-use crate::protocol::types::JsFilter;
+use crate::protocol::types::{JsFilter, JsMetadata};
 use crate::JsStringArray;
 
 /// Nostr Database
 #[wasm_bindgen(js_name = NostrDatabase)]
 pub struct JsNostrDatabase {
-    inner: Arc<DynNostrDatabase>,
+    inner: Arc<dyn NostrDatabase>,
 }
 
-impl From<Arc<DynNostrDatabase>> for JsNostrDatabase {
-    fn from(inner: Arc<DynNostrDatabase>) -> Self {
-        Self { inner }
+impl Deref for JsNostrDatabase {
+    type Target = Arc<dyn NostrDatabase>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }
 
-impl From<&JsNostrDatabase> for Arc<DynNostrDatabase> {
-    fn from(db: &JsNostrDatabase) -> Self {
-        db.inner.clone()
+impl From<Arc<dyn NostrDatabase>> for JsNostrDatabase {
+    fn from(inner: Arc<dyn NostrDatabase>) -> Self {
+        Self { inner }
     }
 }
 
@@ -42,7 +42,7 @@ impl From<&JsNostrDatabase> for Arc<DynNostrDatabase> {
 impl JsNostrDatabase {
     /// Open/Create database with **unlimited** capacity
     pub async fn indexeddb(name: &str) -> Result<JsNostrDatabase> {
-        let db = Arc::new(WebDatabase::open(name).await.map_err(into_err)?);
+        let db = WebDatabase::open(name).await.map_err(into_err)?;
         Ok(Self {
             inner: db.into_nostr_database(),
         })
@@ -114,12 +114,12 @@ impl JsNostrDatabase {
         self.inner.wipe().await.map_err(into_err)
     }
 
-    pub async fn profile(&self, public_key: &JsPublicKey) -> Result<JsProfile> {
+    pub async fn metadata(&self, public_key: &JsPublicKey) -> Result<Option<JsMetadata>> {
         Ok(self
             .inner
-            .profile(**public_key)
+            .metadata(**public_key)
             .await
             .map_err(into_err)?
-            .into())
+            .map(|m| m.into()))
     }
 }

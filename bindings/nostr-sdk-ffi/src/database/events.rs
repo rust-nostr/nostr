@@ -5,24 +5,24 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr_sdk::database;
+use nostr_sdk::prelude;
 use uniffi::Object;
 
 use crate::protocol::Event;
 
 #[derive(Clone, Object)]
 pub struct Events {
-    inner: database::Events,
+    inner: prelude::Events,
 }
 
-impl From<database::Events> for Events {
-    fn from(inner: database::Events) -> Self {
+impl From<prelude::Events> for Events {
+    fn from(inner: prelude::Events) -> Self {
         Self { inner }
     }
 }
 
 impl Deref for Events {
-    type Target = database::Events;
+    type Target = prelude::Events;
 
     fn deref(&self) -> &Self::Target {
         &self.inner

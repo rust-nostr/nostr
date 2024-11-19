@@ -5,8 +5,6 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr_sdk::database::DynNostrDatabase;
-use nostr_sdk::zapper::DynNostrZapper;
 use uniffi::Object;
 
 use super::zapper::NostrZapper;
@@ -42,16 +40,14 @@ impl ClientBuilder {
     }
 
     pub fn zapper(self: Arc<Self>, zapper: &NostrZapper) -> Self {
-        let zapper: Arc<DynNostrZapper> = zapper.deref().clone();
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.zapper(zapper);
+        builder.inner = builder.inner.zapper(zapper.deref().clone());
         builder
     }
 
-    pub fn database(self: Arc<Self>, database: Arc<NostrDatabase>) -> Self {
-        let database: Arc<DynNostrDatabase> = database.as_ref().into();
+    pub fn database(self: Arc<Self>, database: &NostrDatabase) -> Self {
         let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.database(database);
+        builder.inner = builder.inner.database(database.deref().clone());
         builder
     }
 

@@ -154,7 +154,7 @@ pub(crate) struct InnerRelay {
     pub(super) flags: AtomicRelayServiceFlags,
     pub(super) stats: RelayConnectionStats,
     pub(super) filtering: RelayFiltering,
-    database: Arc<DynNostrDatabase>,
+    database: Arc<dyn NostrDatabase>,
     channels: Arc<RelayChannels>,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
     external_notification_sender: OnceCell<broadcast::Sender<RelayPoolNotification>>,
@@ -177,7 +177,7 @@ impl AtomicDestroyer for InnerRelay {
 impl InnerRelay {
     pub fn new(
         url: Url,
-        database: Arc<DynNostrDatabase>,
+        database: Arc<dyn NostrDatabase>,
         filtering: RelayFiltering,
         opts: RelayOptions,
     ) -> Self {

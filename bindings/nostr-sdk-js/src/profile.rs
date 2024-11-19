@@ -4,7 +4,7 @@
 
 use std::ops::Deref;
 
-use nostr_sdk::database::Profile;
+use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::protocol::key::JsPublicKey;
