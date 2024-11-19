@@ -38,13 +38,14 @@ buildargs=(
     "-p nostr --no-default-features --features alloc,all-nips" # alloc + all-nips
     "-p nostr-database"
     "-p nostr-lmdb"
+    "-p nostr-indexeddb --target wasm32-unknown-unknown"
+    "-p nostr-ndb"
     "-p nostr-relay-pool"
     "-p nostr-relay-builder"
     "-p nostr-connect"
+    "-p nwc"
     "-p nostr-sdk" # No default features
     "-p nostr-sdk --features all-nips"
-    "-p nostr-sdk --features lmdb"
-    "-p nostr-sdk --features ndb"
     "-p nostr-sdk --features tor"
     "-p nostr-cli"
 )
