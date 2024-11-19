@@ -18,7 +18,6 @@ async def main():
     client = ClientBuilder().database(database).build()
 
     await client.add_relay("wss://relay.damus.io")
-    await client.add_relay("wss://atl.purplerelay.com")
     await client.connect()
 
     # Negentropy reconciliation

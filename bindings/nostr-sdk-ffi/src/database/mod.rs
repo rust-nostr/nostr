@@ -12,10 +12,8 @@ use nostr_sdk::NdbDatabase;
 use nostr_sdk::NostrLMDB;
 use uniffi::Object;
 
-pub mod custom;
 pub mod events;
 
-use self::custom::{CustomNostrDatabase, IntermediateCustomNostrDatabase};
 use self::events::Events;
 use crate::error::Result;
 use crate::profile::Profile;
@@ -66,15 +64,6 @@ impl NostrDatabase {
 
 #[uniffi::export(async_runtime = "tokio")]
 impl NostrDatabase {
-    #[uniffi::constructor]
-    pub fn custom(database: Arc<dyn CustomNostrDatabase>) -> Self {
-        let intermediate = IntermediateCustomNostrDatabase { inner: database };
-
-        Self {
-            inner: intermediate.into_nostr_database(),
-        }
-    }
-
     /// Save [`Event`] into store
     ///
     /// Return `true` if event was successfully saved into database.
