@@ -26,7 +26,9 @@ Now that you’ve installed the SDK, it’s time to write your first nostr progr
 <div slot="title">JavaScript</div>
 <section>
 
-TODO
+```typescript,ignore
+{{#include ../../snippets/js/src/hello.ts:client}}
+```
 
 </section>
 
@@ -78,7 +80,9 @@ TODO
 <div slot="title">JavaScript</div>
 <section>
 
-TODO
+```typescript,ignore
+{{#include ../../snippets/js/src/hello.ts:connect}}
+```
 
 </section>
 
@@ -131,7 +135,9 @@ TODO
 <div slot="title">JavaScript</div>
 <section>
 
-TODO
+```typescript,ignore
+{{#include ../../snippets/js/src/hello.ts:publish}}
+```
 
 </section>
 
@@ -183,7 +189,9 @@ TODO
 <div slot="title">JavaScript</div>
 <section>
 
-TODO
+```typescript,ignore
+{{#include ../../snippets/js/src/hello.ts:full}}
+```
 
 </section>
 
