@@ -63,7 +63,7 @@ mavenPublishing {
       licenses {
           license {
               name.set("MIT")
-              url.set("https://github.com/rust-nostr/nostr/blob/master/LICENSE")
+              url.set("https://rust-nostr.org/license")
           }
       }
       developers {
