@@ -47,7 +47,7 @@ impl JsTag {
     #[wasm_bindgen]
     pub fn parse(tag: Vec<String>) -> Result<JsTag> {
         Ok(Self {
-            inner: Tag::parse(&tag).map_err(into_err)?,
+            inner: Tag::parse(tag).map_err(into_err)?,
         })
     }
 

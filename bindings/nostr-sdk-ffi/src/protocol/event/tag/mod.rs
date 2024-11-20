@@ -52,7 +52,7 @@ impl Tag {
     /// Return error if the tag is empty!
     #[inline]
     #[uniffi::constructor]
-    pub fn parse(data: &[String]) -> Result<Self> {
+    pub fn parse(data: Vec<String>) -> Result<Self> {
         Ok(Self {
             inner: tag::Tag::parse(data)?,
         })

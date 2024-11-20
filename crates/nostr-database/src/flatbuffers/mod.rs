@@ -107,10 +107,7 @@ impl FlatBufferDecode for Event {
             .tags()
             .ok_or(Error::NotFound)?
             .into_iter()
-            .filter_map(|tag| {
-                tag.data()
-                    .map(|tag| Tag::parse(&tag.into_iter().collect::<Vec<&str>>()))
-            })
+            .filter_map(|tag| tag.data().map(Tag::parse))
             .collect::<Result<Vec<Tag>, _>>()?;
 
         Ok(Self::new(

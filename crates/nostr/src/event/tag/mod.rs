@@ -94,19 +94,21 @@ impl Tag {
     /// Parse tag
     ///
     /// Return error if the tag is empty!
-    pub fn parse<S>(tag: &[S]) -> Result<Self, Error>
+    pub fn parse<I, S>(tag: I) -> Result<Self, Error>
     where
-        S: AsRef<str>,
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
     {
+        // Collect
+        let tag: Vec<String> = tag.into_iter().map(|v| v.into()).collect();
+
         // Check if it's empty
         if tag.is_empty() {
             return Err(Error::EmptyTag);
         }
 
-        // NOT USE `Self::new`!
-        Ok(Self::new_with_empty_cell(
-            tag.iter().map(|v| v.as_ref().to_string()).collect(),
-        ))
+        // Construct without cell
+        Ok(Self::new_with_empty_cell(tag))
     }
 
     /// Construct from standardized tag
@@ -409,18 +411,21 @@ mod tests {
 
     #[test]
     fn test_parse_empty_tag() {
-        assert_eq!(Tag::parse::<String>(&[]).unwrap_err(), Error::EmptyTag);
+        assert_eq!(
+            Tag::parse::<Vec<_>, String>(vec![]).unwrap_err(),
+            Error::EmptyTag
+        );
     }
 
     #[test]
     fn test_tag_match_standardized() {
-        let tag: Tag = Tag::parse(&["d", "bravery"]).unwrap();
+        let tag: Tag = Tag::parse(["d", "bravery"]).unwrap();
         assert_eq!(
             tag.as_standardized(),
             Some(&TagStandard::Identifier(String::from("bravery")))
         );
 
-        let tag: Tag = Tag::parse(&["d", "test"]).unwrap();
+        let tag: Tag = Tag::parse(["d", "test"]).unwrap();
         assert_eq!(
             tag.to_standardized(),
             Some(TagStandard::Identifier(String::from("test")))
@@ -429,11 +434,11 @@ mod tests {
 
     #[test]
     fn test_extract_tag_content() {
-        let t: Tag = Tag::parse(&["aaaaaa", "bbbbbb"]).unwrap();
+        let t: Tag = Tag::parse(["aaaaaa", "bbbbbb"]).unwrap();
         assert_eq!(t.content(), Some("bbbbbb"));
 
         // Test extract public key
-        let t: Tag = Tag::parse(&[
+        let t: Tag = Tag::parse([
             "custom-p",
             "f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785",
         ])
@@ -444,7 +449,7 @@ mod tests {
         );
 
         // Test extract event ID
-        let t: Tag = Tag::parse(&[
+        let t: Tag = Tag::parse([
             "custom-e",
             "2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45",
         ])
@@ -506,7 +511,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(&["r", "wss://atlas.nostr.land", ""]).unwrap(),
+            Tag::parse(["r", "wss://atlas.nostr.land", ""]).unwrap(),
             Tag::custom(
                 TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::R)),
                 ["wss://atlas.nostr.land", ""]
@@ -530,7 +535,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(&[
+            Tag::parse([
                 "r",
                 "3dbee968d1ddcdf07521e246e405e1fbb549080f1f4ef4e42526c4528f124220",
                 ""
@@ -551,7 +556,7 @@ mod tests {
         );
 
         assert_eq!(
-            Tag::parse(&["client", "nostr-sdk"]).unwrap(),
+            Tag::parse(["client", "nostr-sdk"]).unwrap(),
             Tag::custom(TagKind::Client, ["nostr-sdk"])
         );
     }

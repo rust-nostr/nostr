@@ -93,10 +93,7 @@ impl<'a> DatabaseEvent<'a> {
         let tags: Vec<Tag> = self
             .tags
             .into_iter()
-            .filter_map(|tag| {
-                tag.data()
-                    .map(|tag| Tag::parse(&tag.into_iter().collect::<Vec<&str>>()).ok())
-            })
+            .filter_map(|tag| tag.data().map(Tag::parse))
             .flatten()
             .collect();
         let sig = Signature::from_slice(&self.sig.0)?;

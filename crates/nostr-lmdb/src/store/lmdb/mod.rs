@@ -510,7 +510,7 @@ impl Lmdb {
             }
         }
 
-        // Reverse order, optionally apply limit
+        // Optionally apply limit
         Ok(match limit {
             Some(limit) => Box::new(output.into_iter().take(limit)),
             None => Box::new(output.into_iter()),
