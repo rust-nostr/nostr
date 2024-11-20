@@ -12,7 +12,7 @@ const CREATED_AT_BE: usize = 8;
 const KIND_BE: usize = 2;
 const TAG_VALUE_PAD_LEN: usize = 182;
 
-/// Reverse created ad and convert `u64` to big-endian byte order
+/// Reverse created_at and convert `u64` to big-endian byte order
 #[inline]
 fn reverse_and_conv_to_be64(created_at: &Timestamp) -> [u8; 8] {
     // Reverse
