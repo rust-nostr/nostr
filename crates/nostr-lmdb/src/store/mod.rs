@@ -75,17 +75,17 @@ impl Store {
         let event = event.clone();
 
         self.interact_with_fbb(move |db, fbb| {
-            // Acquire write transaction
-            let mut txn = db.write_txn()?;
+            // Acquire read transaction
+            let read_txn = db.read_txn()?;
 
             // Already exists
-            if db.has_event(&txn, event.id.as_bytes())? {
+            if db.has_event(&read_txn, event.id.as_bytes())? {
                 //return Err(Error::Duplicate);
                 return Ok(false);
             }
 
             // Reject event if ID was deleted
-            if db.is_deleted(&txn, &event.id)? {
+            if db.is_deleted(&read_txn, &event.id)? {
                 //return Err(Error::Deleted);
                 return Ok(false);
             }
@@ -94,7 +94,7 @@ impl Store {
             // (non-parameterized)
             if event.kind.is_replaceable() {
                 let coordinate: Coordinate = Coordinate::new(event.kind, event.pubkey);
-                if let Some(time) = db.when_is_coordinate_deleted(&txn, &coordinate)? {
+                if let Some(time) = db.when_is_coordinate_deleted(&read_txn, &coordinate)? {
                     if event.created_at <= time {
                         //return Err(Error::Deleted);
                         return Ok(false);
@@ -108,7 +108,7 @@ impl Store {
                 if let Some(identifier) = event.tags.identifier() {
                     let coordinate: Coordinate =
                         Coordinate::new(event.kind, event.pubkey).identifier(identifier);
-                    if let Some(time) = db.when_is_coordinate_deleted(&txn, &coordinate)? {
+                    if let Some(time) = db.when_is_coordinate_deleted(&read_txn, &coordinate)? {
                         if event.created_at <= time {
                             //return Err(Error::Deleted);
                             return Ok(false);
@@ -117,17 +117,23 @@ impl Store {
                 }
             }
 
+            // Acquire write transaction
+            let mut txn = db.write_txn()?;
+
             // Remove replaceable events being replaced
             if event.kind.is_replaceable() {
                 // Find replaceable event
-                if let Some(stored) = db.find_replaceable_event(&txn, &event.pubkey, event.kind)? {
+                if let Some(stored) =
+                    db.find_replaceable_event(&read_txn, &event.pubkey, event.kind)?
+                {
                     if stored.created_at > event.created_at {
                         // return Err(Error::Replaced);
+                        txn.abort();
                         return Ok(false);
                     }
 
                     let coordinate: Coordinate = Coordinate::new(event.kind, event.pubkey);
-                    db.remove_replaceable(&mut txn, &coordinate, event.created_at)?;
+                    db.remove_replaceable(&read_txn, &mut txn, &coordinate, event.created_at)?;
                 }
             }
 
@@ -139,14 +145,16 @@ impl Store {
 
                     // Find param replaceable event
                     if let Some(stored) =
-                        db.find_parameterized_replaceable_event(&txn, &coordinate)?
+                        db.find_parameterized_replaceable_event(&read_txn, &coordinate)?
                     {
                         if stored.created_at > event.created_at {
                             // return Err(Error::Replaced);
+                            txn.abort();
                             return Ok(false);
                         }
 
                         db.remove_parameterized_replaceable(
+                            &read_txn,
                             &mut txn,
                             &coordinate,
                             Timestamp::max(),
@@ -155,32 +163,35 @@ impl Store {
                 }
             }
 
-            // Store and index the event
-            db.store(&mut txn, fbb, &event)?;
-
             // Handle deletion events
             if let Kind::EventDeletion = event.kind {
-                let invalid: bool = Self::handle_deletion_event(&db, &mut txn, &event)?;
+                let invalid: bool = Self::handle_deletion_event(&db, &read_txn, &mut txn, &event)?;
 
                 if invalid {
+                    txn.abort();
                     return Ok(false);
                 }
             }
 
-            txn.commit()?;
+            // Store and index the event
+            db.store(&mut txn, fbb, &event)?;
 
-            // TODO: force_sync?
+            read_txn.commit()?;
+            txn.commit()?;
 
             Ok(true)
         })
         .await?
     }
 
-    fn handle_deletion_event(db: &Lmdb, txn: &mut RwTxn, event: &Event) -> Result<bool, Error> {
-        let read_txn = db.read_txn()?;
-
+    fn handle_deletion_event(
+        db: &Lmdb,
+        read_txn: &RoTxn,
+        txn: &mut RwTxn,
+        event: &Event,
+    ) -> Result<bool, Error> {
         for id in event.tags.event_ids() {
-            if let Some(target) = db.get_event_by_id(txn, id.as_bytes())? {
+            if let Some(target) = db.get_event_by_id(read_txn, id.as_bytes())? {
                 // Author must match
                 if target.author() != &event.pubkey.to_bytes() {
                     return Ok(true);
@@ -188,11 +199,9 @@ impl Store {
 
                 // Mark as deleted and remove event
                 db.mark_deleted(txn, id)?;
-                db.remove_by_id(&read_txn, txn, id.as_bytes())?;
+                db.remove(txn, &target)?;
             }
         }
-
-        read_txn.commit()?;
 
         for coordinate in event.tags.coordinates() {
             // Author must match
@@ -205,9 +214,9 @@ impl Store {
 
             // Remove events (up to the created_at of the deletion event)
             if coordinate.kind.is_replaceable() {
-                db.remove_replaceable(txn, coordinate, event.created_at)?;
+                db.remove_replaceable(read_txn, txn, coordinate, event.created_at)?;
             } else if coordinate.kind.is_parameterized_replaceable() {
-                db.remove_parameterized_replaceable(txn, coordinate, event.created_at)?;
+                db.remove_parameterized_replaceable(read_txn, txn, coordinate, event.created_at)?;
             }
         }
 
@@ -312,16 +321,12 @@ impl Store {
     pub async fn delete(&self, filter: Filter) -> Result<(), Error> {
         self.interact(move |db| {
             let read_txn = db.read_txn()?;
-            let events = db.query(&read_txn, vec![filter])?;
-
             let mut txn = db.write_txn()?;
-            for event in events.into_iter() {
-                db.remove(&mut txn, &event)?;
-            }
+
+            db.delete(&read_txn, &mut txn, filter)?;
+
             read_txn.commit()?;
             txn.commit()?;
-
-            db.force_sync()?;
 
             Ok(())
         })
@@ -333,7 +338,6 @@ impl Store {
             let mut txn = db.write_txn()?;
             db.wipe(&mut txn)?;
             txn.commit()?;
-            db.force_sync()?;
             Ok(())
         })
         .await?
