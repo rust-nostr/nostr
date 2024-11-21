@@ -388,8 +388,8 @@ impl<'de> Deserialize<'de> for Tag {
         D: Deserializer<'de>,
     {
         type Data = Vec<String>;
-        let tag: Vec<String> = Data::deserialize(deserializer)?;
-        Self::parse(&tag).map_err(DeserializerError::custom)
+        let tag: Data = Data::deserialize(deserializer)?;
+        Self::parse(tag).map_err(DeserializerError::custom)
     }
 }
 

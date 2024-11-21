@@ -101,7 +101,7 @@ impl TryFrom<RawEvent> for Event {
         let tags: Vec<Tag> = raw
             .tags
             .into_iter()
-            .map(|t| Tag::parse(&t))
+            .map(Tag::parse)
             .collect::<Result<Vec<_>, _>>()?;
         let sig: Signature = Signature::from_str(&raw.sig)?;
         Ok(Self::new(
