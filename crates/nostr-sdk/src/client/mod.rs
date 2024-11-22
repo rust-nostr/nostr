@@ -1342,11 +1342,8 @@ impl Client {
     /// Send private direct message to all relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[inline]
     #[cfg(feature = "nip59")]
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event` or similar method."
-    )]
     pub async fn send_private_msg<S, I>(
         &self,
         receiver: PublicKey,
@@ -1366,11 +1363,8 @@ impl Client {
     /// Send private direct message to specific relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[inline]
     #[cfg(feature = "nip59")]
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event` or similar method."
-    )]
     pub async fn send_private_msg_to<I, S, U, IT>(
         &self,
         urls: I,
@@ -1610,11 +1604,8 @@ impl Client {
     /// Check [`Client::send_event`] to know how sending events works.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[inline]
     #[cfg(feature = "nip59")]
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event` or similar method."
-    )]
     pub async fn gift_wrap<I>(
         &self,
         receiver: &PublicKey,
@@ -1638,11 +1629,8 @@ impl Client {
     /// Construct Gift Wrap and send to specific relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[inline]
     #[cfg(feature = "nip59")]
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event` or similar method."
-    )]
     pub async fn gift_wrap_to<I, U, IT>(
         &self,
         urls: I,
@@ -1672,11 +1660,8 @@ impl Client {
     /// Internally verify the `seal` event.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[inline]
     #[cfg(feature = "nip59")]
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use `UnwrappedGift::from_gift_wrap` instead."
-    )]
     pub async fn unwrap_gift_wrap(&self, gift_wrap: &Event) -> Result<UnwrappedGift, Error> {
         let signer = self.signer().await?;
         Ok(UnwrappedGift::from_gift_wrap(&signer, gift_wrap).await?)

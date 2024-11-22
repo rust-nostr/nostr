@@ -39,9 +39,8 @@ async function main() {
                     if (rumor.content === "stop") {
                         return true
                     }
-
-                    let event = await EventBuilder.privateMsg(signer, sender, "Echo: " + rumor.content)
-                    await client.sendEvent(event);
+                    
+                    await client.sendPrivateMsg(sender, "Echo: " + rumor.content);
                 } catch (error) {
                     console.log("Impossible to decrypt DM:", error);
                 }

@@ -44,8 +44,7 @@ async def main():
                         if rumor.kind().as_enum() == KindEnum.PRIVATE_DIRECT_MESSAGE():
                             msg = rumor.content()
                             print(f"Received new msg [sealed]: {msg}")
-                            event = await make_private_msg(keys, sender, f"Echo: {msg}")
-                            await client.send_event(event)
+                            await client.send_private_msg(sender, f"Echo: {msg}", None)
                         else:
                             print(f"{rumor.as_json()}")
                 except Exception as e:

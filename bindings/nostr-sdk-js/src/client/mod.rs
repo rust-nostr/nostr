@@ -22,9 +22,10 @@ use crate::duration::JsDuration;
 use crate::error::{into_err, Result};
 use crate::pool::result::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
 use crate::pool::JsRelayPool;
-use crate::protocol::event::{JsEvent, JsEventBuilder};
+use crate::protocol::event::{JsEvent, JsEventBuilder, JsTag};
 use crate::protocol::key::JsPublicKey;
 use crate::protocol::message::{JsClientMessage, JsRelayMessage};
+use crate::protocol::nips::nip59::JsUnwrappedGift;
 use crate::protocol::types::{JsFilter, JsMetadata};
 use crate::relay::filtering::JsRelayFiltering;
 use crate::relay::options::{JsSubscribeAutoCloseOptions, JsSyncOptions};
@@ -529,6 +530,39 @@ impl JsClient {
             .map(|id| id.into())
     }
 
+    /// Send private direct message to all relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[wasm_bindgen(js_name = sendPrivateMsg)]
+    pub async fn send_private_msg(
+        &self,
+        receiver: &JsPublicKey,
+        message: &str,
+    ) -> Result<JsSendEventOutput> {
+        self.inner
+            .send_private_msg(**receiver, message, [])
+            .await
+            .map_err(into_err)
+            .map(Into::into)
+    }
+
+    /// Send private direct message to specific relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[wasm_bindgen(js_name = sendPrivateMsgTo)]
+    pub async fn send_private_msg_to(
+        &self,
+        urls: Vec<String>,
+        receiver: &JsPublicKey,
+        message: &str,
+    ) -> Result<JsSendEventOutput> {
+        self.inner
+            .send_private_msg_to(urls, **receiver, message, [])
+            .await
+            .map_err(into_err)
+            .map(Into::into)
+    }
+
     /// Send a Zap!
     pub async fn zap(
         &self,
@@ -540,6 +574,67 @@ impl JsClient {
             .zap(**to, satoshi as u64, details.map(|d| d.into()))
             .await
             .map_err(into_err)
+    }
+
+    /// Construct Gift Wrap and send to relays
+    ///
+    /// Check `sendEvent` method to know how sending events works.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[wasm_bindgen(js_name = giftWrap)]
+    pub async fn gift_wrap(
+        &self,
+        receiver: &JsPublicKey,
+        rumor: &JsEventBuilder,
+        extra_tags: Option<Vec<JsTag>>,
+    ) -> Result<JsSendEventOutput> {
+        self.inner
+            .gift_wrap(
+                receiver.deref(),
+                rumor.deref().clone(),
+                extra_tags.unwrap_or_default().into_iter().map(|t| t.inner),
+            )
+            .await
+            .map_err(into_err)
+            .map(Into::into)
+    }
+
+    /// Construct Gift Wrap and send to specific relays
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[wasm_bindgen(js_name = giftWrapTo)]
+    pub async fn gift_wrap_to(
+        &self,
+        urls: Vec<String>,
+        receiver: &JsPublicKey,
+        rumor: &JsEventBuilder,
+        extra_tags: Option<Vec<JsTag>>,
+    ) -> Result<JsSendEventOutput> {
+        self.inner
+            .gift_wrap_to(
+                urls,
+                receiver.deref(),
+                rumor.deref().clone(),
+                extra_tags.unwrap_or_default().into_iter().map(|t| t.inner),
+            )
+            .await
+            .map_err(into_err)
+            .map(Into::into)
+    }
+
+    /// Unwrap Gift Wrap event
+    ///
+    /// Internally verify the `seal` event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[wasm_bindgen(js_name = unwrapGiftWrap)]
+    pub async fn unwrap_gift_wrap(&self, gift_wrap: &JsEvent) -> Result<JsUnwrappedGift> {
+        Ok(self
+            .inner
+            .unwrap_gift_wrap(gift_wrap.deref())
+            .await
+            .map_err(into_err)?
+            .into())
     }
 
     /// Handle notifications
