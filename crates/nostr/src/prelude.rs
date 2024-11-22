@@ -4,6 +4,7 @@
 
 //! Prelude
 
+#![allow(unused_imports)]
 #![allow(unknown_lints)]
 #![allow(ambiguous_glob_reexports)]
 #![doc(hidden)]
@@ -40,6 +41,7 @@ pub use crate::nips::nip10::{self, *};
 pub use crate::nips::nip11::{self, *};
 pub use crate::nips::nip13::{self, *};
 pub use crate::nips::nip15::{self, *};
+pub use crate::nips::nip17::{self, *};
 pub use crate::nips::nip19::{self, *};
 pub use crate::nips::nip21::{self, *};
 pub use crate::nips::nip26::{self, *};

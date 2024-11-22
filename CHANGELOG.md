@@ -85,6 +85,7 @@
 * nostr: add `NostrSigner::backend` ([Yuki Kishimoto])
 * nostr: add `EventBuilder::private_msg` ([Yuki Kishimoto])
 * nostr: add `EventBuilder::tag` and `EventBuilder::tags` ([Yuki Kishimoto])
+* nostr: add `nip17::extract_relay_list` and `nip17::extract_owned_relay_list` ([Yuki Kishimoto])
 * database: add `NostrEventsDatabase` trait ([Yuki Kishimoto])
 * pool: add relay reconnection and disconnection unit tests ([Yuki Kishimoto])
 * sdk: allow to specify relay pool notification channel size in `Options` ([Yuki Kishimoto])
