@@ -2,6 +2,9 @@
 
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
+default:
+    @just --list
+
 # Build nostr CLI (release)
 cli:
 	cargo build -p nostr-cli --release
