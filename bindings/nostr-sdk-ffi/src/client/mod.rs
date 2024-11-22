@@ -517,7 +517,10 @@ impl Client {
             .into())
     }
 
-    /// Send private direct message to all relays
+    /// Send a private direct message
+    ///
+    /// If gossip is enabled, the message will be sent to the NIP17 relays (automatically discovered).
+    /// If gossip is not enabled will be sent to all relays with WRITE` relay service flag.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[uniffi::method(default(rumor_extra_tags = []))]

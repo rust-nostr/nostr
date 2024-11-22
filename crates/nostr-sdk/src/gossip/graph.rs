@@ -8,7 +8,7 @@ use std::sync::Arc;
 use nostr::prelude::*;
 use tokio::sync::{RwLock, RwLockReadGuard};
 
-use super::constant::{MAX_RELAYS_LIST, PUBKEY_METADATA_OUTDATED_AFTER};
+use super::constant::{CHECK_OUTDATED_INTERVAL, MAX_RELAYS_LIST, PUBKEY_METADATA_OUTDATED_AFTER};
 
 // TODO: add support to DM relay list
 
@@ -23,16 +23,24 @@ pub struct BrokenDownFilters {
     pub urls: HashSet<Url>,
 }
 
-#[derive(Debug, Clone)]
-struct RelayListMetadata {
-    pub map: HashMap<Url, Option<RelayMetadata>>,
+#[derive(Debug, Clone, Default)]
+struct RelayList<T> {
+    pub collection: T,
     /// Timestamp of when the event metadata was created
     pub event_created_at: Timestamp,
     /// Timestamp of when the metadata was updated
     pub last_update: Timestamp,
 }
 
-type PublicKeyMap = HashMap<PublicKey, RelayListMetadata>;
+#[derive(Debug, Clone, Default)]
+struct RelayLists {
+    pub nip17: RelayList<HashSet<Url>>,
+    pub nip65: RelayList<HashMap<Url, Option<RelayMetadata>>>,
+    /// Timestamp of the last check
+    pub last_check: Timestamp,
+}
+
+type PublicKeyMap = HashMap<PublicKey, RelayLists>;
 
 #[derive(Debug, Clone)]
 pub struct GossipGraph {
@@ -56,34 +64,66 @@ impl GossipGraph {
     {
         let mut public_keys = self.public_keys.write().await;
 
-        for event in events.into_iter().filter(|e| e.kind == Kind::RelayList) {
-            public_keys
-                .entry(event.pubkey)
-                .and_modify(|m| {
-                    // Update only if new metadata has more recent timestamp
-                    if event.created_at >= m.event_created_at {
-                        *m = RelayListMetadata {
-                            map: nip65::extract_relay_list(&event)
-                                .map(|(u, m)| (u.clone(), *m))
+        for event in events.into_iter() {
+            if event.kind == Kind::RelayList {
+                public_keys
+                    .entry(event.pubkey)
+                    .and_modify(|lists| {
+                        // Update only if new metadata has more recent timestamp
+                        if event.created_at >= lists.nip65.event_created_at {
+                            lists.nip65 = RelayList {
+                                collection: nip65::extract_relay_list(&event)
+                                    .take(MAX_RELAYS_LIST)
+                                    .map(|(u, m)| (u.clone(), *m))
+                                    .collect(),
+                                event_created_at: event.created_at,
+                                last_update: Timestamp::now(),
+                            };
+                        }
+                    })
+                    .or_insert_with(|| RelayLists {
+                        nip65: RelayList {
+                            collection: nip65::extract_relay_list(&event)
                                 .take(MAX_RELAYS_LIST)
+                                .map(|(u, m)| (u.clone(), *m))
                                 .collect(),
                             event_created_at: event.created_at,
                             last_update: Timestamp::now(),
-                        };
-                    }
-                })
-                .or_insert_with(|| RelayListMetadata {
-                    map: nip65::extract_relay_list(&event)
-                        .map(|(u, m)| (u.clone(), *m))
-                        .take(MAX_RELAYS_LIST)
-                        .collect(),
-                    event_created_at: event.created_at,
-                    last_update: Timestamp::now(),
-                });
+                        },
+                        ..Default::default()
+                    });
+            } else if event.kind == Kind::InboxRelays {
+                public_keys
+                    .entry(event.pubkey)
+                    .and_modify(|lists| {
+                        // Update only if new metadata has more recent timestamp
+                        if event.created_at >= lists.nip17.event_created_at {
+                            lists.nip17 = RelayList {
+                                collection: nip17::extract_relay_list(&event)
+                                    .take(MAX_RELAYS_LIST)
+                                    .cloned()
+                                    .collect(),
+                                event_created_at: event.created_at,
+                                last_update: Timestamp::now(),
+                            };
+                        }
+                    })
+                    .or_insert_with(|| RelayLists {
+                        nip17: RelayList {
+                            collection: nip17::extract_relay_list(&event)
+                                .take(MAX_RELAYS_LIST)
+                                .cloned()
+                                .collect(),
+                            event_created_at: event.created_at,
+                            last_update: Timestamp::now(),
+                        },
+                        ..Default::default()
+                    });
+            }
         }
     }
 
-    /// Check for what public keys the metadata are outdated or not existent
+    /// Check for what public keys the metadata are outdated or not existent (both for NIP17 and NIP65)
     pub async fn check_outdated<I>(&self, public_keys: I) -> HashSet<PublicKey>
     where
         I: IntoIterator<Item = PublicKey>,
@@ -95,9 +135,19 @@ impl GossipGraph {
 
         for public_key in public_keys.into_iter() {
             match map.get(&public_key) {
-                Some(meta) => {
-                    let empty: bool = meta.map.is_empty();
-                    let expired: bool = meta.last_update + PUBKEY_METADATA_OUTDATED_AFTER < now;
+                Some(lists) => {
+                    if lists.last_check + CHECK_OUTDATED_INTERVAL > now {
+                        continue;
+                    }
+
+                    // Check if collections are empty
+                    let empty: bool =
+                        lists.nip17.collection.is_empty() || lists.nip65.collection.is_empty();
+
+                    // Check if expired
+                    let expired: bool = lists.nip17.last_update + PUBKEY_METADATA_OUTDATED_AFTER
+                        < now
+                        || lists.nip65.last_update + PUBKEY_METADATA_OUTDATED_AFTER < now;
 
                     if empty || expired {
                         outdated.insert(public_key);
@@ -113,6 +163,46 @@ impl GossipGraph {
         outdated
     }
 
+    pub async fn update_last_check<I>(&self, public_keys: I)
+    where
+        I: IntoIterator<Item = PublicKey>,
+    {
+        let mut map = self.public_keys.write().await;
+        let now = Timestamp::now();
+
+        for public_key in public_keys.into_iter() {
+            map.entry(public_key)
+                .and_modify(|lists| {
+                    lists.last_check = now;
+                })
+                .or_insert_with(|| RelayLists {
+                    last_check: now,
+                    ..Default::default()
+                });
+        }
+    }
+
+    fn get_nip17_relays<'a, I>(
+        &self,
+        txn: &RwLockReadGuard<PublicKeyMap>,
+        public_keys: I,
+    ) -> HashSet<Url>
+    where
+        I: IntoIterator<Item = &'a PublicKey>,
+    {
+        let mut urls: HashSet<Url> = HashSet::new();
+
+        for public_key in public_keys.into_iter() {
+            if let Some(lists) = txn.get(public_key) {
+                for url in lists.nip17.collection.iter() {
+                    urls.insert(url.clone());
+                }
+            }
+        }
+
+        urls
+    }
+
     fn get_nip65_relays<'a, I>(
         &self,
         txn: &RwLockReadGuard<PublicKeyMap>,
@@ -125,8 +215,8 @@ impl GossipGraph {
         let mut urls: HashSet<Url> = HashSet::new();
 
         for public_key in public_keys.into_iter() {
-            if let Some(meta) = txn.get(public_key) {
-                for (url, m) in meta.map.iter() {
+            if let Some(lists) = txn.get(public_key) {
+                for (url, m) in lists.nip65.collection.iter() {
                     let insert: bool = match m {
                         Some(val) => match metadata {
                             Some(metadata) => val == &metadata,
@@ -138,6 +228,32 @@ impl GossipGraph {
                     if insert {
                         urls.insert(url.clone());
                     }
+                }
+            }
+        }
+
+        urls
+    }
+
+    fn map_nip17_relays<'a, I>(
+        &self,
+        txn: &RwLockReadGuard<PublicKeyMap>,
+        public_keys: I,
+    ) -> HashMap<Url, BTreeSet<PublicKey>>
+    where
+        I: IntoIterator<Item = &'a PublicKey>,
+    {
+        let mut urls: HashMap<Url, BTreeSet<PublicKey>> = HashMap::new();
+
+        for public_key in public_keys.into_iter() {
+            if let Some(lists) = txn.get(public_key) {
+                for url in lists.nip17.collection.iter() {
+                    urls.entry(url.clone())
+                        .and_modify(|s| {
+                            s.insert(*public_key);
+                        })
+                        .or_default()
+                        .insert(*public_key);
                 }
             }
         }
@@ -157,8 +273,8 @@ impl GossipGraph {
         let mut urls: HashMap<Url, BTreeSet<PublicKey>> = HashMap::new();
 
         for public_key in public_keys.into_iter() {
-            if let Some(meta) = txn.get(public_key) {
-                for (url, m) in meta.map.iter() {
+            if let Some(lists) = txn.get(public_key) {
+                for (url, m) in lists.nip65.collection.iter() {
                     let insert: bool = match m {
                         Some(val) => val == &metadata,
                         None => true,
@@ -181,7 +297,7 @@ impl GossipGraph {
 
     /// Get outbox (write) relays for public keys
     #[inline]
-    pub async fn get_outbox_relays<'a, I>(&self, public_keys: I) -> HashSet<Url>
+    pub async fn get_nip65_outbox_relays<'a, I>(&self, public_keys: I) -> HashSet<Url>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
@@ -191,7 +307,7 @@ impl GossipGraph {
 
     /// Get inbox (read) relays for public keys
     #[inline]
-    pub async fn get_inbox_relays<'a, I>(&self, public_keys: I) -> HashSet<Url>
+    pub async fn get_nip65_inbox_relays<'a, I>(&self, public_keys: I) -> HashSet<Url>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
@@ -199,9 +315,19 @@ impl GossipGraph {
         self.get_nip65_relays(&txn, public_keys, Some(RelayMetadata::Read))
     }
 
+    /// Get NIP17 inbox (read) relays for public keys
+    #[inline]
+    pub async fn get_nip17_inbox_relays<'a, I>(&self, public_keys: I) -> HashSet<Url>
+    where
+        I: IntoIterator<Item = &'a PublicKey>,
+    {
+        let txn = self.public_keys.read().await;
+        self.get_nip17_relays(&txn, public_keys)
+    }
+
     /// Map outbox (write) relays for public keys
     #[inline]
-    fn map_outbox_relays<'a, I>(
+    fn map_nip65_outbox_relays<'a, I>(
         &self,
         txn: &RwLockReadGuard<PublicKeyMap>,
         public_keys: I,
@@ -212,9 +338,9 @@ impl GossipGraph {
         self.map_nip65_relays(txn, public_keys, RelayMetadata::Write)
     }
 
-    /// Map inbox (read) relays for public keys
+    /// Map NIP65 inbox (read) relays for public keys
     #[inline]
-    fn map_inbox_relays<'a, I>(
+    fn map_nip65_inbox_relays<'a, I>(
         &self,
         txn: &RwLockReadGuard<PublicKeyMap>,
         public_keys: I,
@@ -243,7 +369,10 @@ impl GossipGraph {
             match (&filter.authors, &p_tag) {
                 (Some(authors), None) => {
                     // Get map of outbox relays
-                    let outbox = self.map_outbox_relays(&txn, authors);
+                    let mut outbox = self.map_nip65_outbox_relays(&txn, authors);
+
+                    // Extend with NIP17 relays
+                    outbox.extend(self.map_nip17_relays(&txn, authors));
 
                     // Construct new filters
                     for (relay, pk_set) in outbox.into_iter() {
@@ -264,7 +393,10 @@ impl GossipGraph {
                 }
                 (None, Some(p_public_keys)) => {
                     // Get map of inbox relays
-                    let inbox = self.map_inbox_relays(&txn, p_public_keys);
+                    let mut inbox = self.map_nip65_inbox_relays(&txn, p_public_keys);
+
+                    // Extend with NIP17 relays
+                    inbox.extend(self.map_nip17_relays(&txn, p_public_keys));
 
                     // Construct new filters
                     for (relay, pk_set) in inbox.into_iter() {
@@ -287,8 +419,11 @@ impl GossipGraph {
                 }
                 (Some(authors), Some(p_public_keys)) => {
                     // Get map of outbox and inbox relays
-                    let pks = authors.union(p_public_keys);
-                    let relays = self.get_nip65_relays(&txn, pks, None);
+                    let mut relays =
+                        self.get_nip65_relays(&txn, authors.union(p_public_keys), None);
+
+                    // Extend with NIP17 relays
+                    relays.extend(self.get_nip17_relays(&txn, authors.union(p_public_keys)));
 
                     for relay in relays.into_iter() {
                         urls.insert(relay.clone());

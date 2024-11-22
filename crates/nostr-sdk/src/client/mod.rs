@@ -86,6 +86,9 @@ pub enum Error {
     /// Broken down filters for gossip are empty
     #[error("gossip broken down filters are empty")]
     GossipFiltersEmpty,
+    /// DMs relays not found
+    #[error("DMs relays not found")]
+    DMsRelaysNotFound,
     /// Metadata not found
     #[error("metadata not found")]
     MetadataNotFound,
@@ -1014,57 +1017,7 @@ impl Client {
             return Ok(self.pool.send_event(event).await?);
         }
 
-        // ########## Gossip ##########
-
-        // Get all public keys involved in the event
-        let public_keys = event
-            .tags
-            .public_keys()
-            .copied()
-            .chain(iter::once(event.pubkey));
-
-        // Check what are up-to-date in the gossip graph and which ones require an update
-        let outdated_public_keys = self.gossip_graph.check_outdated(public_keys).await;
-        self.update_outdated_gossip_graph(outdated_public_keys)
-            .await?;
-
-        // Get relays
-        let mut outbox = self.gossip_graph.get_outbox_relays(&[event.pubkey]).await;
-        let inbox = self
-            .gossip_graph
-            .get_inbox_relays(event.tags.public_keys())
-            .await;
-
-        // Add outbox relays
-        for url in outbox.iter() {
-            if self.add_gossip_relay(url).await? {
-                self.connect_relay(url).await?;
-            }
-        }
-
-        // Add inbox relays
-        for url in inbox.iter() {
-            if self.add_gossip_relay(url).await? {
-                self.connect_relay(url).await?;
-            }
-        }
-
-        // Get WRITE relays
-        // TODO: avoid clone of both url and relay
-        let write_relays = self
-            .pool
-            .relays_with_flag(RelayServiceFlags::WRITE, FlagCheck::All)
-            .await
-            .into_keys();
-
-        // Extend OUTBOX relays with WRITE ones
-        outbox.extend(write_relays);
-
-        // Union of OUTBOX (and WRITE) with INBOX relays
-        let urls = outbox.union(&inbox);
-
-        // Send event
-        Ok(self.pool.send_event_to(urls, event).await?)
+        self.gossip_send_event(event, false).await
     }
 
     /// Send multiple events at once to all relays with [`RelayServiceFlags::WRITE`] flag.
@@ -1325,7 +1278,10 @@ impl Client {
         Ok(contacts)
     }
 
-    /// Send private direct message to all relays
+    /// Send a private direct message
+    ///
+    /// If `gossip` is enabled (see [`Options::gossip`]) the message will be sent to the NIP17 relays (automatically discovered).
+    /// If gossip is not enabled will be sent to all relays with [`RelayServiceFlags::WRITE`] flag.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
@@ -1343,10 +1299,16 @@ impl Client {
         let signer = self.signer().await?;
         let event: Event =
             EventBuilder::private_msg(&signer, receiver, message, rumor_extra_tags).await?;
-        self.send_event(event).await
+
+        // NOT gossip, send to all relays
+        if !self.opts.gossip {
+            return self.send_event(event).await;
+        }
+
+        self.gossip_send_event(event, true).await
     }
 
-    /// Send private direct message to specific relays
+    /// Send a private direct message to specific relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
@@ -1693,8 +1655,8 @@ impl Client {
         if !outdated_public_keys.is_empty() {
             // Compose filters
             let filter: Filter = Filter::default()
-                .authors(outdated_public_keys)
-                .kind(Kind::RelayList);
+                .authors(outdated_public_keys.clone())
+                .kinds([Kind::RelayList, Kind::InboxRelays]);
 
             // Query from database
             let database = self.database();
@@ -1715,6 +1677,11 @@ impl Client {
             let events: Events = self
                 .fetch_events_from(relays, vec![filter], Some(Duration::from_secs(10)))
                 .await?;
+
+            // Update last check for these public keys
+            self.gossip_graph
+                .update_last_check(outdated_public_keys)
+                .await;
 
             // Merge database and relays events
             let merged: Events = events.merge(stored_events);
@@ -1777,6 +1744,76 @@ impl Client {
         }
 
         Ok(broken_down.filters)
+    }
+
+    async fn gossip_send_event(&self, event: Event, nip17: bool) -> Result<Output<EventId>, Error> {
+        // Get all public keys involved in the event
+        let public_keys = event
+            .tags
+            .public_keys()
+            .copied()
+            .chain(iter::once(event.pubkey));
+
+        // Check what are up to date in the gossip graph and which ones require an update
+        let outdated_public_keys = self.gossip_graph.check_outdated(public_keys).await;
+        self.update_outdated_gossip_graph(outdated_public_keys)
+            .await?;
+
+        let urls: HashSet<Url> = if nip17 && event.kind == Kind::GiftWrap {
+            // Get NIP17 relays
+            // Get only for relays for p tags since gift wraps are signed with random key (random author)
+            let relays = self
+                .gossip_graph
+                .get_nip17_inbox_relays(event.tags.public_keys())
+                .await;
+
+            if relays.is_empty() {
+                return Err(Error::DMsRelaysNotFound);
+            }
+
+            // Add outbox and inbox relays
+            for url in relays.iter() {
+                if self.add_gossip_relay(url).await? {
+                    self.connect_relay(url).await?;
+                }
+            }
+
+            relays
+        } else {
+            // Get NIP65 relays
+            let mut outbox = self
+                .gossip_graph
+                .get_nip65_outbox_relays(&[event.pubkey])
+                .await;
+            let inbox = self
+                .gossip_graph
+                .get_nip65_inbox_relays(event.tags.public_keys())
+                .await;
+
+            // Add outbox and inbox relays
+            for url in outbox.iter().chain(inbox.iter()) {
+                if self.add_gossip_relay(url).await? {
+                    self.connect_relay(url).await?;
+                }
+            }
+
+            // Get WRITE relays
+            // TODO: avoid clone of both url and relay
+            let write_relays = self
+                .pool
+                .relays_with_flag(RelayServiceFlags::WRITE, FlagCheck::All)
+                .await
+                .into_keys();
+
+            // Extend OUTBOX relays with WRITE ones
+            outbox.extend(write_relays);
+
+            // Union of OUTBOX (and WRITE) with INBOX relays
+            outbox.union(&inbox).cloned().collect()
+        };
+
+        // Send event
+        Ok(self.pool.send_event_to(urls, event).await?)
     }
 
     async fn gossip_stream_events(

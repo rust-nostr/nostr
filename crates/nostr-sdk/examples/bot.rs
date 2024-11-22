@@ -9,7 +9,10 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let keys = Keys::parse("nsec12kcgs78l06p30jz7z7h3n2x2cy99nw2z6zspjdp7qc206887mwvs95lnkx")?;
-    let client = Client::new(keys.clone());
+    let client = Client::builder()
+        .signer(keys.clone())
+        .opts(Options::new().gossip(true))
+        .build();
 
     println!("Bot public key: {}", keys.public_key().to_bech32()?);
 
@@ -50,17 +53,8 @@ async fn main() -> Result<()> {
                                     ),
                                 };
 
-                                // Build private message
-                                let event =
-                                    EventBuilder::private_msg(&keys, sender, content, []).await?;
-
                                 // Send private message
-                                // client.send_event(event).await?;
-
-                                // Send private message to specific relays
-                                client
-                                    .send_event_to(["wss://auth.nostr1.com"], event)
-                                    .await?;
+                                client.send_private_msg(sender, content, []).await?;
                             }
                         }
                         Err(e) => tracing::error!("Impossible to decrypt direct message: {e}"),
