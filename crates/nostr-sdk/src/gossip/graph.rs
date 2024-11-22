@@ -8,7 +8,7 @@ use std::sync::Arc;
 use nostr::prelude::*;
 use tokio::sync::{RwLock, RwLockReadGuard};
 
-use super::constant::PUBKEY_METADATA_OUTDATED_AFTER;
+use super::constant::{MAX_RELAYS_LIST, PUBKEY_METADATA_OUTDATED_AFTER};
 
 // TODO: add support to DM relay list
 
@@ -49,6 +49,8 @@ impl GossipGraph {
     }
 
     /// Update graph
+    ///
+    /// Only the first [`MAX_RELAYS_LIST`] relays will be used.
     pub async fn update<I>(&self, events: I)
     where
         I: IntoIterator<Item = Event>,
@@ -64,6 +66,7 @@ impl GossipGraph {
                         *m = RelayListMetadata {
                             map: nip65::extract_relay_list(&event)
                                 .map(|(u, m)| (u.clone(), *m))
+                                .take(MAX_RELAYS_LIST)
                                 .collect(),
                             event_created_at: event.created_at,
                             last_update: Timestamp::now(),
@@ -73,6 +76,7 @@ impl GossipGraph {
                 .or_insert_with(|| RelayListMetadata {
                     map: nip65::extract_relay_list(&event)
                         .map(|(u, m)| (u.clone(), *m))
+                        .take(MAX_RELAYS_LIST)
                         .collect(),
                     event_created_at: event.created_at,
                     last_update: Timestamp::now(),
