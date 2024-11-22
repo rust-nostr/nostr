@@ -301,10 +301,10 @@ impl InnerRelayPool {
         // Remove relay
         let relay = relays.remove(&url).ok_or(Error::RelayNotFound)?;
 
-        // If NOT force, check if has INBOX or OUTBOX flags
+        // If NOT force, check if has GOSSIP flag
         if !force {
             let flags = relay.flags();
-            if flags.has_any(RelayServiceFlags::INBOX | RelayServiceFlags::OUTBOX) {
+            if flags.has_any(RelayServiceFlags::GOSSIP) {
                 // Remove READ, WRITE and DISCOVERY flags
                 flags.remove(
                     RelayServiceFlags::READ

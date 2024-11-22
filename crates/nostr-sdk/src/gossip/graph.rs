@@ -20,8 +20,7 @@ pub struct BrokenDownFilters {
     pub filters: HashMap<Url, Vec<Filter>>,
     /// Filters that can be sent to read relays (generic query, not related to public keys)
     pub other: Option<Vec<Filter>>,
-    pub outbox_urls: HashSet<Url>,
-    pub inbox_urls: HashSet<Url>,
+    pub urls: HashSet<Url>,
 }
 
 #[derive(Debug, Clone)]
@@ -229,8 +228,7 @@ impl GossipGraph {
     pub async fn break_down_filters(&self, filters: Vec<Filter>) -> BrokenDownFilters {
         let mut map: HashMap<Url, BTreeSet<Filter>> = HashMap::new();
         let mut other = Vec::new();
-        let mut outbox_urls = HashSet::new();
-        let mut inbox_urls = HashSet::new();
+        let mut urls = HashSet::new();
 
         let txn = self.public_keys.read().await;
 
@@ -249,7 +247,7 @@ impl GossipGraph {
 
                     // Construct new filters
                     for (relay, pk_set) in outbox.into_iter() {
-                        outbox_urls.insert(relay.clone());
+                        urls.insert(relay.clone());
 
                         // Clone filter and change authors
                         let mut new_filter: Filter = filter.clone();
@@ -270,7 +268,7 @@ impl GossipGraph {
 
                     // Construct new filters
                     for (relay, pk_set) in inbox.into_iter() {
-                        inbox_urls.insert(relay.clone());
+                        urls.insert(relay.clone());
 
                         // Clone filter and change p tags
                         let mut new_filter: Filter = filter.clone();
@@ -293,8 +291,7 @@ impl GossipGraph {
                     let relays = self.get_nip65_relays(&txn, pks, None);
 
                     for relay in relays.into_iter() {
-                        outbox_urls.insert(relay.clone());
-                        inbox_urls.insert(relay.clone());
+                        urls.insert(relay.clone());
 
                         // Update map
                         map.entry(relay)
@@ -318,8 +315,7 @@ impl GossipGraph {
                 .map(|(u, f)| (u, f.into_iter().collect::<Vec<_>>()))
                 .collect(),
             other: if other.is_empty() { None } else { Some(other) },
-            outbox_urls,
-            inbox_urls,
+            urls,
         }
     }
 }

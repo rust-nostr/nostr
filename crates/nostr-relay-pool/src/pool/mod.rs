@@ -200,8 +200,9 @@ impl RelayPool {
 
     /// Remove and disconnect relay
     ///
-    /// If the relay has `INBOX` or `OUTBOX` flags, it will not be removed from the pool and its
-    /// flags will be updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
+    /// If the relay has [`RelayServiceFlags::GOSSIP`], it will not be removed from the pool and its
+    /// flags will be updated (remove [`RelayServiceFlags::READ`],
+    /// [`RelayServiceFlags::WRITE`] and [`RelayServiceFlags::DISCOVERY`] flags).
     #[inline]
     pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
     where

@@ -41,14 +41,13 @@ impl RelayServiceFlags {
     /// PING means that client will ping relay to keep connection up.
     pub const PING: Self = Self(1 << 2); // 4
 
-    /// INBOX means automatically added relay that will perform read operations (READ of kind 10002).
-    pub const INBOX: Self = Self(1 << 3); // 8
+    /// GOSSIP means automatically added relay that will perform read/write operations.
+    ///
+    /// Use for NIP17, NIP65 or similar NIPs.
+    pub const GOSSIP: Self = Self(1 << 3); // 8
 
-    /// OUTBOX means  automatically added relay that will perform write operations (WRITE of kind 10002).
-    pub const OUTBOX: Self = Self(1 << 4); // 16
-
-    /// DISCOVERY means that relay has role to get relay lists (i.e. events with 10002) of public keys.
-    pub const DISCOVERY: Self = Self(1 << 5); // 32
+    /// DISCOVERY means that relay has role to get relay lists (i.e., events with kind `10002`) of public keys.
+    pub const DISCOVERY: Self = Self(1 << 4); // 16
 
     /// Add service flags together.
     #[inline]
@@ -186,16 +185,10 @@ impl AtomicRelayServiceFlags {
         self.has_all(RelayServiceFlags::PING)
     }
 
-    /// Check if `INBOX` service is enabled
+    /// Check if `GOSSIP` service is enabled
     #[inline]
-    pub fn has_inbox(&self) -> bool {
-        self.has_all(RelayServiceFlags::INBOX)
-    }
-
-    /// Check if `OUTBOX` service is enabled
-    #[inline]
-    pub fn has_outbox(&self) -> bool {
-        self.has_all(RelayServiceFlags::OUTBOX)
+    pub fn has_gossip(&self) -> bool {
+        self.has_all(RelayServiceFlags::GOSSIP)
     }
 
     /// Check if `DISCOVERY` service is enabled
@@ -204,23 +197,18 @@ impl AtomicRelayServiceFlags {
         self.has_all(RelayServiceFlags::DISCOVERY)
     }
 
-    /// Check if `READ`, `INBOX`, `OUTBOX` or `DISCOVERY` services are enabled
+    /// Check if `READ`, `GOSSIP` or `DISCOVERY` services are enabled
     #[inline]
     pub fn can_read(&self) -> bool {
         self.has_any(
-            RelayServiceFlags::READ
-                | RelayServiceFlags::INBOX
-                | RelayServiceFlags::OUTBOX
-                | RelayServiceFlags::DISCOVERY,
+            RelayServiceFlags::READ | RelayServiceFlags::GOSSIP | RelayServiceFlags::DISCOVERY,
         )
     }
 
-    /// Check if `WRITE`, `INBOX` or `OUTBOX` services are enabled
+    /// Check if `WRITE` or `GOSSIP` services are enabled
     #[inline]
     pub fn can_write(&self) -> bool {
-        self.has_any(
-            RelayServiceFlags::WRITE | RelayServiceFlags::INBOX | RelayServiceFlags::OUTBOX,
-        )
+        self.has_any(RelayServiceFlags::WRITE | RelayServiceFlags::GOSSIP)
     }
 }
 
@@ -245,8 +233,7 @@ mod tests {
         assert!(flags.has(RelayServiceFlags::READ, FlagCheck::All));
         assert!(flags.has(RelayServiceFlags::WRITE, FlagCheck::All));
         assert!(!flags.has(RelayServiceFlags::PING, FlagCheck::All));
-        assert!(!flags.has(RelayServiceFlags::INBOX, FlagCheck::All));
-        assert!(!flags.has(RelayServiceFlags::OUTBOX, FlagCheck::All));
+        assert!(!flags.has(RelayServiceFlags::GOSSIP, FlagCheck::All));
         assert!(!flags.has(RelayServiceFlags::DISCOVERY, FlagCheck::All));
 
         // Try to add flag
@@ -266,7 +253,7 @@ mod tests {
         // Try to remove multiple flags
         flags.add(RelayServiceFlags::WRITE | RelayServiceFlags::DISCOVERY);
         flags.remove(
-            RelayServiceFlags::WRITE | RelayServiceFlags::OUTBOX | RelayServiceFlags::DISCOVERY,
+            RelayServiceFlags::WRITE | RelayServiceFlags::GOSSIP | RelayServiceFlags::DISCOVERY,
         );
         assert!(flags.has(
             RelayServiceFlags::PING | RelayServiceFlags::READ,
@@ -288,20 +275,16 @@ mod tests {
         ));
 
         // Try to add flag
-        flags.add(RelayServiceFlags::INBOX);
-        assert!(flags.has(RelayServiceFlags::INBOX, FlagCheck::All));
-
-        // Try to add flag
-        flags.add(RelayServiceFlags::OUTBOX);
-        assert!(flags.has(RelayServiceFlags::OUTBOX, FlagCheck::All));
+        flags.add(RelayServiceFlags::GOSSIP);
+        assert!(flags.has(RelayServiceFlags::GOSSIP, FlagCheck::All));
 
         // Try to add flag
         flags.add(RelayServiceFlags::DISCOVERY);
         assert!(flags.has(RelayServiceFlags::DISCOVERY, FlagCheck::All));
 
-        let flags = RelayServiceFlags::READ | RelayServiceFlags::INBOX | RelayServiceFlags::PING;
+        let flags = RelayServiceFlags::READ | RelayServiceFlags::GOSSIP | RelayServiceFlags::PING;
         assert!(flags.has(
-            RelayServiceFlags::READ | RelayServiceFlags::INBOX,
+            RelayServiceFlags::READ | RelayServiceFlags::GOSSIP,
             FlagCheck::All
         ));
         assert!(!flags.has(
@@ -318,7 +301,7 @@ mod tests {
         let f = AtomicRelayServiceFlags::new(RelayServiceFlags::READ | RelayServiceFlags::WRITE);
         assert!(f.can_read());
 
-        let f = AtomicRelayServiceFlags::new(RelayServiceFlags::INBOX);
+        let f = AtomicRelayServiceFlags::new(RelayServiceFlags::GOSSIP);
         assert!(f.can_read());
 
         let f = AtomicRelayServiceFlags::new(RelayServiceFlags::DISCOVERY);
@@ -333,7 +316,7 @@ mod tests {
         let f = AtomicRelayServiceFlags::new(RelayServiceFlags::READ | RelayServiceFlags::WRITE);
         assert!(f.can_write());
 
-        let f = AtomicRelayServiceFlags::new(RelayServiceFlags::INBOX);
+        let f = AtomicRelayServiceFlags::new(RelayServiceFlags::GOSSIP);
         assert!(f.can_write());
 
         let f = AtomicRelayServiceFlags::new(RelayServiceFlags::DISCOVERY);

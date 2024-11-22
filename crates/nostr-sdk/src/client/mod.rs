@@ -498,7 +498,7 @@ impl Client {
     }
 
     #[inline]
-    async fn add_inbox_relay<U>(&self, url: U) -> Result<bool, Error>
+    async fn add_gossip_relay<U>(&self, url: U) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
@@ -506,21 +506,7 @@ impl Client {
         self.get_or_add_relay_with_flag(
             url,
             false,
-            RelayServiceFlags::PING | RelayServiceFlags::INBOX,
-        )
-        .await
-    }
-
-    #[inline]
-    async fn add_outbox_relay<U>(&self, url: U) -> Result<bool, Error>
-    where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
-    {
-        self.get_or_add_relay_with_flag(
-            url,
-            false,
-            RelayServiceFlags::PING | RelayServiceFlags::OUTBOX,
+            RelayServiceFlags::PING | RelayServiceFlags::GOSSIP,
         )
         .await
     }
@@ -1051,14 +1037,14 @@ impl Client {
 
         // Add outbox relays
         for url in outbox.iter() {
-            if self.add_outbox_relay(url).await? {
+            if self.add_gossip_relay(url).await? {
                 self.connect_relay(url).await?;
             }
         }
 
         // Add inbox relays
         for url in inbox.iter() {
-            if self.add_inbox_relay(url).await? {
+            if self.add_gossip_relay(url).await? {
                 self.connect_relay(url).await?;
             }
         }
@@ -1778,16 +1764,9 @@ impl Client {
             }
         }
 
-        // Add outbox relays
-        for url in broken_down.outbox_urls.into_iter() {
-            if self.add_outbox_relay(&url).await? {
-                self.connect_relay(url).await?;
-            }
-        }
-
-        // Add inbox relays
-        for url in broken_down.inbox_urls.into_iter() {
-            if self.add_inbox_relay(&url).await? {
+        // Add outbox and inbox relays
+        for url in broken_down.urls.into_iter() {
+            if self.add_gossip_relay(&url).await? {
                 self.connect_relay(url).await?;
             }
         }

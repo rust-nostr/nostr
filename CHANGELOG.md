@@ -88,6 +88,7 @@
 * nostr: add `nip17::extract_relay_list` and `nip17::extract_owned_relay_list` ([Yuki Kishimoto])
 * database: add `NostrEventsDatabase` trait ([Yuki Kishimoto])
 * pool: add relay reconnection and disconnection unit tests ([Yuki Kishimoto])
+* pool: add `RelayServiceFlags::GOSSIP` flag ([Yuki Kishimoto])
 * sdk: allow to specify relay pool notification channel size in `Options` ([Yuki Kishimoto])
 * relay-builder: add `RelayTestOptions` ([Yuki Kishimoto])
 * connect: add `NostrConnect::non_secure_set_user_public_key` ([Yuki Kishimoto])
@@ -107,6 +108,7 @@
 * nostr: remove `Marker::Custom` variant ([Yuki Kishimoto])
 * pool: remove `Relay::support_negentropy` ([Yuki Kishimoto])
 * pool: remove `Error::NotConnectedStatusChanged` variant ([Yuki Kishimoto])
+* pool: remove `INBOX` and `OUTBOX` flags ([Yuki Kishimoto])
 * ffi: remove `CustomNostrDatabase` trait ([Yuki Kishimoto])
 
 ### Deprecated
