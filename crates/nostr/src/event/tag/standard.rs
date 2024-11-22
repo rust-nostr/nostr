@@ -133,7 +133,7 @@ pub enum TagStandard {
         /// Whether the tag is an uppercase or not
         uppercase: bool,
     },
-    Relay(UncheckedUrl),
+    Relay(Url),
     /// Proof of Work
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
@@ -363,7 +363,7 @@ impl TagStandard {
                     character: Alphabet::U,
                     uppercase: false,
                 }) => Ok(Self::AbsoluteURL(UncheckedUrl::from(tag_1))),
-                TagKind::Relay => Ok(Self::Relay(UncheckedUrl::from(tag_1))),
+                TagKind::Relay => Ok(Self::Relay(Url::parse(tag_1)?)),
                 TagKind::Expiration => Ok(Self::Expiration(Timestamp::from_str(tag_1)?)),
                 TagKind::Subject => Ok(Self::Subject(tag_1.to_string())),
                 TagKind::Challenge => Ok(Self::Challenge(tag_1.to_string())),
@@ -1250,7 +1250,7 @@ mod tests {
 
     #[test]
     fn test_tag_standard_is_reply() {
-        let tag = TagStandard::Relay(UncheckedUrl::new("wss://relay.damus.io"));
+        let tag = TagStandard::Relay(Url::parse("wss://relay.damus.io").unwrap());
         assert!(!tag.is_reply());
 
         let tag = TagStandard::Event {

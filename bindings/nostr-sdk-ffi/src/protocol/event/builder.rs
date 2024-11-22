@@ -665,8 +665,11 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn blocked_relays(relay: Vec<String>) -> Self {
+        // TODO: return error if invalid url
         Self {
-            inner: nostr::EventBuilder::blocked_relays(relay.into_iter().map(UncheckedUrl::from)),
+            inner: nostr::EventBuilder::blocked_relays(
+                relay.into_iter().filter_map(|u| Url::parse(&u).ok()),
+            ),
         }
     }
 
@@ -675,8 +678,11 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn search_relays(relay: Vec<String>) -> Self {
+        // TODO: return error if invalid url
         Self {
-            inner: nostr::EventBuilder::search_relays(relay.into_iter().map(UncheckedUrl::from)),
+            inner: nostr::EventBuilder::search_relays(
+                relay.into_iter().filter_map(|u| Url::parse(&u).ok()),
+            ),
         }
     }
 
@@ -718,10 +724,11 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn relay_set(identifier: &str, relays: Vec<String>) -> Self {
+        // TODO: return error if invalid url
         Self {
             inner: nostr::EventBuilder::relay_set(
                 identifier,
-                relays.into_iter().map(UncheckedUrl::from),
+                relays.into_iter().filter_map(|u| Url::parse(&u).ok()),
             ),
         }
     }

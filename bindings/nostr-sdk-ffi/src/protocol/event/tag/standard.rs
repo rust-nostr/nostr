@@ -620,7 +620,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 kind: kind.into(),
                 uppercase,
             }),
-            TagStandard::RelayUrl { relay_url } => Ok(Self::Relay(UncheckedUrl::from(relay_url))),
+            TagStandard::RelayUrl { relay_url } => Ok(Self::Relay(Url::parse(&relay_url)?)),
             TagStandard::POW { nonce, difficulty } => Ok(Self::POW {
                 nonce: nonce.parse()?,
                 difficulty,

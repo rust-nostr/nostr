@@ -41,6 +41,7 @@
 * nostr: disable all default features except `std` ([Yuki Kishimoto])
 * nostr: change `Timestamp::to_human_datetime` fingerprint ([Yuki Kishimoto])
 * nostr: change `Tag::parse` arg from slice to iterator ([Yuki Kishimoto])
+* nostr: change `TagStandard::Relay` variant inner type ([Yuki Kishimoto])
 * pool: switch from async to sync message sending for `Relay` ([Yuki Kishimoto])
 * sdk: disable all default features ([Yuki Kishimoto])
 * sdk: set `Client::from_builder` as private ([Yuki Kishimoto])

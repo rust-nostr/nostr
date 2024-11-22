@@ -700,8 +700,11 @@ impl JsEventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[wasm_bindgen(js_name = blockedRelays)]
     pub fn blocked_relays(relays: Vec<String>) -> Self {
+        // TODO: return error if invalid url
         Self {
-            inner: EventBuilder::blocked_relays(relays.into_iter().map(UncheckedUrl::from)),
+            inner: EventBuilder::blocked_relays(
+                relays.into_iter().filter_map(|u| Url::parse(&u).ok()),
+            ),
         }
     }
 
@@ -710,8 +713,11 @@ impl JsEventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[wasm_bindgen(js_name = searchRelays)]
     pub fn search_relays(relays: Vec<String>) -> Self {
+        // TODO: return error if invalid url
         Self {
-            inner: EventBuilder::search_relays(relays.into_iter().map(UncheckedUrl::from)),
+            inner: EventBuilder::search_relays(
+                relays.into_iter().filter_map(|u| Url::parse(&u).ok()),
+            ),
         }
     }
 
@@ -750,8 +756,12 @@ impl JsEventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[wasm_bindgen(js_name = relaySet)]
     pub fn relay_set(identifier: &str, relays: Vec<String>) -> Self {
+        // TODO: return error if invalid url
         Self {
-            inner: EventBuilder::relay_set(identifier, relays.into_iter().map(UncheckedUrl::from)),
+            inner: EventBuilder::relay_set(
+                identifier,
+                relays.into_iter().filter_map(|u| Url::parse(&u).ok()),
+            ),
         }
     }
 

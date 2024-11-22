@@ -845,7 +845,7 @@ impl EventBuilder {
     {
         Self::new(Kind::Authentication, "").tags([
             Tag::from_standardized_without_cell(TagStandard::Challenge(challenge.into())),
-            Tag::from_standardized_without_cell(TagStandard::Relay(relay.into())),
+            Tag::from_standardized_without_cell(TagStandard::Relay(relay)),
         ])
     }
 
@@ -1521,7 +1521,7 @@ impl EventBuilder {
     #[inline]
     pub fn blocked_relays<I>(relay: I) -> Self
     where
-        I: IntoIterator<Item = UncheckedUrl>,
+        I: IntoIterator<Item = Url>,
     {
         Self::new(Kind::BlockedRelays, "").tags(
             relay
@@ -1536,7 +1536,7 @@ impl EventBuilder {
     #[inline]
     pub fn search_relays<I>(relay: I) -> Self
     where
-        I: IntoIterator<Item = UncheckedUrl>,
+        I: IntoIterator<Item = Url>,
     {
         Self::new(Kind::SearchRelays, "").tags(
             relay
@@ -1584,7 +1584,7 @@ impl EventBuilder {
     pub fn relay_set<ID, I>(identifier: ID, relays: I) -> Self
     where
         ID: Into<String>,
-        I: IntoIterator<Item = UncheckedUrl>,
+        I: IntoIterator<Item = Url>,
     {
         let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
         Self::new(Kind::RelaySet, "").tags(
