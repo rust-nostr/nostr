@@ -520,14 +520,22 @@ impl Client {
     /// Send private direct message to all relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[uniffi::method(default(rumor_extra_tags = []))]
     pub async fn send_private_msg(
         &self,
         receiver: &PublicKey,
         message: String,
+        rumor_extra_tags: Vec<Arc<Tag>>,
     ) -> Result<SendEventOutput> {
         Ok(self
             .inner
-            .send_private_msg(**receiver, message, [])
+            .send_private_msg(
+                **receiver,
+                message,
+                rumor_extra_tags
+                    .into_iter()
+                    .map(|t| t.as_ref().deref().clone()),
+            )
             .await?
             .into())
     }
@@ -535,15 +543,24 @@ impl Client {
     /// Send private direct message to specific relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[uniffi::method(default(rumor_extra_tags = []))]
     pub async fn send_private_msg_to(
         &self,
         urls: Vec<String>,
         receiver: &PublicKey,
         message: String,
+        rumor_extra_tags: Vec<Arc<Tag>>,
     ) -> Result<SendEventOutput> {
         Ok(self
             .inner
-            .send_private_msg_to(urls, **receiver, message, [])
+            .send_private_msg_to(
+                urls,
+                **receiver,
+                message,
+                rumor_extra_tags
+                    .into_iter()
+                    .map(|t| t.as_ref().deref().clone()),
+            )
             .await?
             .into())
     }

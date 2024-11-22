@@ -538,9 +538,17 @@ impl JsClient {
         &self,
         receiver: &JsPublicKey,
         message: &str,
+        rumor_extra_tags: Option<Vec<JsTag>>,
     ) -> Result<JsSendEventOutput> {
         self.inner
-            .send_private_msg(**receiver, message, [])
+            .send_private_msg(
+                **receiver,
+                message,
+                rumor_extra_tags
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|t| t.inner),
+            )
             .await
             .map_err(into_err)
             .map(Into::into)
@@ -555,9 +563,18 @@ impl JsClient {
         urls: Vec<String>,
         receiver: &JsPublicKey,
         message: &str,
+        rumor_extra_tags: Option<Vec<JsTag>>,
     ) -> Result<JsSendEventOutput> {
         self.inner
-            .send_private_msg_to(urls, **receiver, message, [])
+            .send_private_msg_to(
+                urls,
+                **receiver,
+                message,
+                rumor_extra_tags
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|t| t.inner),
+            )
             .await
             .map_err(into_err)
             .map(Into::into)
