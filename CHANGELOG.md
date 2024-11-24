@@ -63,6 +63,7 @@
 * pool: immediately terminate relay connection on `Relay::disconnect` call ([Yuki Kishimoto])
 * pool: return error if relay doesn't exist when removing it ([Yuki Kishimoto])
 * sdk: cleanup `Client` methods ([Yuki Kishimoto])
+* sdk: fallback to READ relays if no relay list is set when breaking down filters ([Yuki Kishimoto])
 * relay-builder: port selection by using random port generation ([Yuki Kishimoto])
 * lmdb: optimize vector initialization in unit tests ([Xiao Yu])
 * lmdb: commit also read txn ([Yuki Kishimoto])

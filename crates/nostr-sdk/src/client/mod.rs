@@ -4,7 +4,7 @@
 
 //! Client
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::future::Future;
 use std::iter;
 use std::sync::Arc;
@@ -1709,7 +1709,9 @@ impl Client {
             .await?;
 
         // Broken down filters
-        let mut broken_down = self.gossip_graph.break_down_filters(filters).await;
+        let broken_down = self.gossip_graph.break_down_filters(filters).await;
+
+        let mut filters: HashMap<Url, BTreeSet<Filter>> = broken_down.filters;
 
         // Get read relays
         let read_relays = self
@@ -1717,17 +1719,54 @@ impl Client {
             .relays_with_flag(RelayServiceFlags::READ, FlagCheck::All)
             .await;
 
-        // Extend filters with read relays and "other" filters (the filters that aren't linked to public keys)
-        if let Some(other) = broken_down.other {
-            for url in read_relays.into_keys() {
-                broken_down
-                    .filters
-                    .entry(url)
-                    .and_modify(|f| {
-                        f.extend(other.clone());
-                    })
-                    .or_default()
-                    .extend(other.clone())
+        match (broken_down.orphans, broken_down.others) {
+            (Some(orphans), Some(others)) => {
+                for url in read_relays.into_keys() {
+                    filters
+                        .entry(url)
+                        .and_modify(|f| {
+                            f.extend(orphans.clone());
+                            f.extend(others.clone());
+                        })
+                        .or_insert_with(|| {
+                            let mut new = BTreeSet::new();
+                            new.extend(orphans.clone());
+                            new.extend(others.clone());
+                            new
+                        });
+                }
+            }
+            (Some(orphans), None) => {
+                for url in read_relays.into_keys() {
+                    filters
+                        .entry(url)
+                        .and_modify(|f| {
+                            f.extend(orphans.clone());
+                        })
+                        .or_insert_with(|| {
+                            let mut new = BTreeSet::new();
+                            new.extend(orphans.clone());
+                            new
+                        });
+                }
+            }
+            (None, Some(others)) => {
+                // Extend filters with read relays and "other" filters (the filters that aren't linked to public keys)
+                for url in read_relays.into_keys() {
+                    filters
+                        .entry(url)
+                        .and_modify(|f| {
+                            f.extend(others.clone());
+                        })
+                        .or_insert_with(|| {
+                            let mut new = BTreeSet::new();
+                            new.extend(others.clone());
+                            new
+                        });
+                }
+            }
+            (None, None) => {
+                // Nothing to do
             }
         }
 
@@ -1738,12 +1777,16 @@ impl Client {
             }
         }
 
-        // Check if filters aren't empty
-        if broken_down.filters.is_empty() {
+        // Check if filters are empty
+        if filters.is_empty() {
             return Err(Error::GossipFiltersEmpty);
         }
 
-        Ok(broken_down.filters)
+        // Convert btree filters to vec
+        Ok(filters
+            .into_iter()
+            .map(|(u, f)| (u, f.into_iter().collect()))
+            .collect())
     }
 
     async fn gossip_send_event(&self, event: Event, nip17: bool) -> Result<Output<EventId>, Error> {
