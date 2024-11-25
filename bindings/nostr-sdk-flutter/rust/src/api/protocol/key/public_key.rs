@@ -17,23 +17,21 @@ impl From<PublicKey> for _PublicKey {
     }
 }
 
+#[frb(sync)]
 impl _PublicKey {
     /// Parse from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) URI
-    #[frb(sync)]
     pub fn parse(public_key: &str) -> Result<Self> {
         Ok(Self {
             inner: PublicKey::parse(public_key)?,
         })
     }
 
-    #[frb(sync)]
     pub fn from_hex(public_key: &str) -> Result<Self> {
         Ok(Self {
             inner: PublicKey::from_hex(public_key)?,
         })
     }
 
-    #[frb(sync)]
     pub fn from_slice(public_key: &[u8]) -> Result<Self> {
         Ok(Self {
             inner: PublicKey::from_slice(public_key)?,

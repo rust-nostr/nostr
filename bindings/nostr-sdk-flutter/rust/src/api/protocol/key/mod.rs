@@ -17,8 +17,8 @@ pub struct _Keys {
     inner: Keys,
 }
 
+#[frb(sync)]
 impl _Keys {
-    #[frb(sync)]
     pub fn new(secret_key: _SecretKey) -> Self {
         Self {
             inner: Keys::new(secret_key.into()),
@@ -28,7 +28,6 @@ impl _Keys {
     /// Generate random keys
     ///
     /// This constructor use a random number generator that retrieves randomness from the operating system.
-    #[frb(sync)]
     pub fn generate() -> Self {
         Self {
             inner: Keys::generate(),
@@ -36,7 +35,6 @@ impl _Keys {
     }
 
     /// Parse secret key from `hex` or `bech32`
-    #[frb(sync)]
     pub fn parse(secret_key: &str) -> Result<Self> {
         Ok(Self {
             inner: Keys::parse(secret_key)?,

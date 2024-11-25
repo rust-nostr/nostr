@@ -10,45 +10,45 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<_Event>>
 abstract class Event implements RustOpaqueInterface {
-  Future<String> asJson();
+  String asJson();
 
-  Future<String> asPrettyJson();
+  String asPrettyJson();
 
   /// Get event author (`pubkey` field)
-  Future<PublicKey> author();
+  PublicKey author();
 
-  Future<String> content();
+  String content();
 
-  Future<BigInt> createdAt();
+  BigInt createdAt();
 
   static Event fromJson({required String json}) =>
       RustLib.instance.api.crateApiProtocolEventEventFromJson(json: json);
 
-  Future<String> id();
+  String id();
 
   /// Returns `true` if the event has an expiration tag that is expired.
   /// If an event has no expiration tag, then it will return `false`.
   ///
   /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
-  Future<bool> isExpired();
+  bool isExpired();
 
   /// Check if it's a protected event
   ///
   /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
-  Future<bool> isProtected();
+  bool isProtected();
 
-  Future<int> kind();
+  int kind();
 
-  Future<String> signature();
+  String signature();
 
-  Future<List<Tag>> tags();
+  List<Tag> tags();
 
   /// Verify both `EventId` and `Signature`
-  Future<void> verify();
+  void verify();
 
   /// Verify if the `EventId` it's composed correctly
-  Future<bool> verifyId();
+  bool verifyId();
 
   /// Verify only event `Signature`
-  Future<bool> verifySignature();
+  bool verifySignature();
 }

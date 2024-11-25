@@ -23,11 +23,11 @@ impl From<_SecretKey> for SecretKey {
     }
 }
 
+#[frb(sync)]
 impl _SecretKey {
     /// Generate random secret key
     ///
-    /// This constructor use a random number generator that retrieves randomness from the operating system.
-    #[frb(sync)]
+    /// This constructor uses a random number generator that retrieves randomness from the operating system.
     pub fn generate() -> Self {
         Self {
             inner: SecretKey::generate(),
@@ -35,21 +35,18 @@ impl _SecretKey {
     }
 
     /// Parse from `hex` or `bech32`
-    #[frb(sync)]
     pub fn parse(secret_key: &str) -> Result<Self> {
         Ok(Self {
             inner: SecretKey::parse(secret_key)?,
         })
     }
 
-    #[frb(sync)]
     pub fn from_hex(secret_key: &str) -> Result<Self> {
         Ok(Self {
             inner: SecretKey::from_hex(secret_key)?,
         })
     }
 
-    #[frb(sync)]
     pub fn from_slice(secret_key: &[u8]) -> Result<Self> {
         Ok(Self {
             inner: SecretKey::from_slice(secret_key)?,

@@ -20,7 +20,7 @@ abstract class SecretKey implements RustOpaqueInterface {
 
   /// Generate random secret key
   ///
-  /// This constructor use a random number generator that retrieves randomness from the operating system.
+  /// This constructor uses a random number generator that retrieves randomness from the operating system.
   static SecretKey generate() =>
       RustLib.instance.api.crateApiProtocolKeySecretKeySecretKeyGenerate();
 
@@ -28,7 +28,7 @@ abstract class SecretKey implements RustOpaqueInterface {
   static SecretKey parse({required String secretKey}) => RustLib.instance.api
       .crateApiProtocolKeySecretKeySecretKeyParse(secretKey: secretKey);
 
-  Future<String> toBech32();
+  String toBech32();
 
-  Future<String> toSecretHex();
+  String toSecretHex();
 }

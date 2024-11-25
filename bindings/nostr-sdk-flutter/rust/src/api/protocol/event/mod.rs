@@ -16,6 +16,7 @@ pub struct _Event {
     pub(crate) inner: Event,
 }
 
+#[frb(sync)]
 impl _Event {
     pub fn id(&self) -> String {
         self.inner.id.to_hex()

@@ -94,35 +94,35 @@ abstract class RustLibApi extends BaseApi {
   Future<String> crateApiClientClientSendEvent(
       {required Client that, required Event event});
 
-  Future<String> crateApiProtocolEventEventAsJson({required Event that});
+  String crateApiProtocolEventEventAsJson({required Event that});
 
-  Future<String> crateApiProtocolEventEventAsPrettyJson({required Event that});
+  String crateApiProtocolEventEventAsPrettyJson({required Event that});
 
-  Future<PublicKey> crateApiProtocolEventEventAuthor({required Event that});
+  PublicKey crateApiProtocolEventEventAuthor({required Event that});
 
-  Future<String> crateApiProtocolEventEventContent({required Event that});
+  String crateApiProtocolEventEventContent({required Event that});
 
-  Future<BigInt> crateApiProtocolEventEventCreatedAt({required Event that});
+  BigInt crateApiProtocolEventEventCreatedAt({required Event that});
 
   Event crateApiProtocolEventEventFromJson({required String json});
 
-  Future<String> crateApiProtocolEventEventId({required Event that});
+  String crateApiProtocolEventEventId({required Event that});
 
-  Future<bool> crateApiProtocolEventEventIsExpired({required Event that});
+  bool crateApiProtocolEventEventIsExpired({required Event that});
 
-  Future<bool> crateApiProtocolEventEventIsProtected({required Event that});
+  bool crateApiProtocolEventEventIsProtected({required Event that});
 
-  Future<int> crateApiProtocolEventEventKind({required Event that});
+  int crateApiProtocolEventEventKind({required Event that});
 
-  Future<String> crateApiProtocolEventEventSignature({required Event that});
+  String crateApiProtocolEventEventSignature({required Event that});
 
-  Future<List<Tag>> crateApiProtocolEventEventTags({required Event that});
+  List<Tag> crateApiProtocolEventEventTags({required Event that});
 
-  Future<void> crateApiProtocolEventEventVerify({required Event that});
+  void crateApiProtocolEventEventVerify({required Event that});
 
-  Future<bool> crateApiProtocolEventEventVerifyId({required Event that});
+  bool crateApiProtocolEventEventVerifyId({required Event that});
 
-  Future<bool> crateApiProtocolEventEventVerifySignature({required Event that});
+  bool crateApiProtocolEventEventVerifySignature({required Event that});
 
   Keys crateApiProtocolKeyKeysGenerate();
 
@@ -130,9 +130,9 @@ abstract class RustLibApi extends BaseApi {
 
   Keys crateApiProtocolKeyKeysParse({required String secretKey});
 
-  Future<PublicKey> crateApiProtocolKeyKeysPublicKey({required Keys that});
+  PublicKey crateApiProtocolKeyKeysPublicKey({required Keys that});
 
-  Future<SecretKey> crateApiProtocolKeyKeysSecretKey({required Keys that});
+  SecretKey crateApiProtocolKeyKeysSecretKey({required Keys that});
 
   PublicKey crateApiProtocolKeyPublicKeyPublicKeyFromHex(
       {required String publicKey});
@@ -143,13 +143,12 @@ abstract class RustLibApi extends BaseApi {
   PublicKey crateApiProtocolKeyPublicKeyPublicKeyParse(
       {required String publicKey});
 
-  Future<String> crateApiProtocolKeyPublicKeyPublicKeyToBech32(
+  String crateApiProtocolKeyPublicKeyPublicKeyToBech32(
       {required PublicKey that});
 
-  Future<String> crateApiProtocolKeyPublicKeyPublicKeyToHex(
-      {required PublicKey that});
+  String crateApiProtocolKeyPublicKeyPublicKeyToHex({required PublicKey that});
 
-  Future<String> crateApiProtocolKeyPublicKeyPublicKeyToNostrUri(
+  String crateApiProtocolKeyPublicKeyPublicKeyToNostrUri(
       {required PublicKey that});
 
   SecretKey crateApiProtocolKeySecretKeySecretKeyFromHex(
@@ -163,10 +162,10 @@ abstract class RustLibApi extends BaseApi {
   SecretKey crateApiProtocolKeySecretKeySecretKeyParse(
       {required String secretKey});
 
-  Future<String> crateApiProtocolKeySecretKeySecretKeyToBech32(
+  String crateApiProtocolKeySecretKeySecretKeyToBech32(
       {required SecretKey that});
 
-  Future<String> crateApiProtocolKeySecretKeySecretKeyToSecretHex(
+  String crateApiProtocolKeySecretKeySecretKeyToSecretHex(
       {required SecretKey that});
 
   List<String> crateApiProtocolEventTagTagAsVec({required Tag that});
@@ -344,14 +343,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<String> crateApiProtocolEventEventAsJson({required Event that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  String crateApiProtocolEventEventAsJson({required Event that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Event(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 5, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -370,14 +368,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<String> crateApiProtocolEventEventAsPrettyJson({required Event that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  String crateApiProtocolEventEventAsPrettyJson({required Event that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Event(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 6, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -396,14 +393,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<PublicKey> crateApiProtocolEventEventAuthor({required Event that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  PublicKey crateApiProtocolEventEventAuthor({required Event that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Event(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 7, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
       },
       codec: SseCodec(
         decodeSuccessData:
@@ -423,14 +419,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<String> crateApiProtocolEventEventContent({required Event that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  String crateApiProtocolEventEventContent({required Event that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Event(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 8, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -449,14 +444,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<BigInt> crateApiProtocolEventEventCreatedAt({required Event that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  BigInt crateApiProtocolEventEventCreatedAt({required Event that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Event(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 9, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_u_64,
@@ -500,14 +494,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<String> crateApiProtocolEventEventId({required Event that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  String crateApiProtocolEventEventId({required Event that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Event(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 11, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -526,14 +519,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<bool> crateApiProtocolEventEventIsExpired({required Event that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  bool crateApiProtocolEventEventIsExpired({required Event that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Event(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 12, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_bool,
@@ -552,14 +544,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<bool> crateApiProtocolEventEventIsProtected({required Event that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  bool crateApiProtocolEventEventIsProtected({required Event that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Event(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 13, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_bool,
@@ -578,14 +569,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<int> crateApiProtocolEventEventKind({required Event that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  int crateApiProtocolEventEventKind({required Event that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Event(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 14, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_u_16,
@@ -604,14 +594,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<String> crateApiProtocolEventEventSignature({required Event that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  String crateApiProtocolEventEventSignature({required Event that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Event(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 15, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -630,14 +619,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<List<Tag>> crateApiProtocolEventEventTags({required Event that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  List<Tag> crateApiProtocolEventEventTags({required Event that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Event(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 16, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16)!;
       },
       codec: SseCodec(
         decodeSuccessData:
@@ -657,14 +645,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<void> crateApiProtocolEventEventVerify({required Event that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  void crateApiProtocolEventEventVerify({required Event that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Event(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 17, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 17)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_unit,
@@ -683,14 +670,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<bool> crateApiProtocolEventEventVerifyId({required Event that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  bool crateApiProtocolEventEventVerifyId({required Event that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Event(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 18, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_bool,
@@ -709,15 +695,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<bool> crateApiProtocolEventEventVerifySignature(
-      {required Event that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  bool crateApiProtocolEventEventVerifySignature({required Event that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Event(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 19, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_bool,
@@ -810,14 +794,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<PublicKey> crateApiProtocolKeyKeysPublicKey({required Keys that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  PublicKey crateApiProtocolKeyKeysPublicKey({required Keys that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Keys(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 23, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 23)!;
       },
       codec: SseCodec(
         decodeSuccessData:
@@ -837,14 +820,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<SecretKey> crateApiProtocolKeyKeysSecretKey({required Keys that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  SecretKey crateApiProtocolKeyKeysSecretKey({required Keys that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Keys(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 24, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 24)!;
       },
       codec: SseCodec(
         decodeSuccessData:
@@ -942,15 +924,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<String> crateApiProtocolKeyPublicKeyPublicKeyToBech32(
+  String crateApiProtocolKeyPublicKeyPublicKeyToBech32(
       {required PublicKey that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 28, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 28)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -969,15 +950,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<String> crateApiProtocolKeyPublicKeyPublicKeyToHex(
-      {required PublicKey that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+  String crateApiProtocolKeyPublicKeyPublicKeyToHex({required PublicKey that}) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 29, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 29)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -996,15 +975,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<String> crateApiProtocolKeyPublicKeyPublicKeyToNostrUri(
+  String crateApiProtocolKeyPublicKeyPublicKeyToNostrUri(
       {required PublicKey that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_PublicKey(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 30, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 30)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -1125,15 +1103,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<String> crateApiProtocolKeySecretKeySecretKeyToBech32(
+  String crateApiProtocolKeySecretKeySecretKeyToBech32(
       {required SecretKey that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 35, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 35)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -1152,15 +1129,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<String> crateApiProtocolKeySecretKeySecretKeyToSecretHex(
+  String crateApiProtocolKeySecretKeySecretKeyToSecretHex(
       {required SecretKey that}) {
-    return handler.executeNormal(NormalTask(
-      callFfi: (port_) {
+    return handler.executeSync(SyncTask(
+      callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_SecretKey(
             that, serializer);
-        pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 36, port: port_);
+        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 36)!;
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_String,
@@ -2249,33 +2225,30 @@ class EventImpl extends RustOpaque implements Event {
         RustLib.instance.api.rust_arc_decrement_strong_count_EventPtr,
   );
 
-  Future<String> asJson() =>
-      RustLib.instance.api.crateApiProtocolEventEventAsJson(
+  String asJson() => RustLib.instance.api.crateApiProtocolEventEventAsJson(
         that: this,
       );
 
-  Future<String> asPrettyJson() =>
+  String asPrettyJson() =>
       RustLib.instance.api.crateApiProtocolEventEventAsPrettyJson(
         that: this,
       );
 
   /// Get event author (`pubkey` field)
-  Future<PublicKey> author() =>
-      RustLib.instance.api.crateApiProtocolEventEventAuthor(
+  PublicKey author() => RustLib.instance.api.crateApiProtocolEventEventAuthor(
         that: this,
       );
 
-  Future<String> content() =>
-      RustLib.instance.api.crateApiProtocolEventEventContent(
+  String content() => RustLib.instance.api.crateApiProtocolEventEventContent(
         that: this,
       );
 
-  Future<BigInt> createdAt() =>
+  BigInt createdAt() =>
       RustLib.instance.api.crateApiProtocolEventEventCreatedAt(
         that: this,
       );
 
-  Future<String> id() => RustLib.instance.api.crateApiProtocolEventEventId(
+  String id() => RustLib.instance.api.crateApiProtocolEventEventId(
         that: this,
       );
 
@@ -2283,47 +2256,43 @@ class EventImpl extends RustOpaque implements Event {
   /// If an event has no expiration tag, then it will return `false`.
   ///
   /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
-  Future<bool> isExpired() =>
-      RustLib.instance.api.crateApiProtocolEventEventIsExpired(
+  bool isExpired() => RustLib.instance.api.crateApiProtocolEventEventIsExpired(
         that: this,
       );
 
   /// Check if it's a protected event
   ///
   /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
-  Future<bool> isProtected() =>
+  bool isProtected() =>
       RustLib.instance.api.crateApiProtocolEventEventIsProtected(
         that: this,
       );
 
-  Future<int> kind() => RustLib.instance.api.crateApiProtocolEventEventKind(
+  int kind() => RustLib.instance.api.crateApiProtocolEventEventKind(
         that: this,
       );
 
-  Future<String> signature() =>
+  String signature() =>
       RustLib.instance.api.crateApiProtocolEventEventSignature(
         that: this,
       );
 
-  Future<List<Tag>> tags() =>
-      RustLib.instance.api.crateApiProtocolEventEventTags(
+  List<Tag> tags() => RustLib.instance.api.crateApiProtocolEventEventTags(
         that: this,
       );
 
   /// Verify both `EventId` and `Signature`
-  Future<void> verify() =>
-      RustLib.instance.api.crateApiProtocolEventEventVerify(
+  void verify() => RustLib.instance.api.crateApiProtocolEventEventVerify(
         that: this,
       );
 
   /// Verify if the `EventId` it's composed correctly
-  Future<bool> verifyId() =>
-      RustLib.instance.api.crateApiProtocolEventEventVerifyId(
+  bool verifyId() => RustLib.instance.api.crateApiProtocolEventEventVerifyId(
         that: this,
       );
 
   /// Verify only event `Signature`
-  Future<bool> verifySignature() =>
+  bool verifySignature() =>
       RustLib.instance.api.crateApiProtocolEventEventVerifySignature(
         that: this,
       );
@@ -2348,12 +2317,12 @@ class KeysImpl extends RustOpaque implements Keys {
         RustLib.instance.api.rust_arc_decrement_strong_count_KeysPtr,
   );
 
-  Future<PublicKey> publicKey() =>
+  PublicKey publicKey() =>
       RustLib.instance.api.crateApiProtocolKeyKeysPublicKey(
         that: this,
       );
 
-  Future<SecretKey> secretKey() =>
+  SecretKey secretKey() =>
       RustLib.instance.api.crateApiProtocolKeyKeysSecretKey(
         that: this,
       );
@@ -2378,17 +2347,17 @@ class PublicKeyImpl extends RustOpaque implements PublicKey {
         RustLib.instance.api.rust_arc_decrement_strong_count_PublicKeyPtr,
   );
 
-  Future<String> toBech32() =>
+  String toBech32() =>
       RustLib.instance.api.crateApiProtocolKeyPublicKeyPublicKeyToBech32(
         that: this,
       );
 
-  Future<String> toHex() =>
+  String toHex() =>
       RustLib.instance.api.crateApiProtocolKeyPublicKeyPublicKeyToHex(
         that: this,
       );
 
-  Future<String> toNostrUri() =>
+  String toNostrUri() =>
       RustLib.instance.api.crateApiProtocolKeyPublicKeyPublicKeyToNostrUri(
         that: this,
       );
@@ -2413,12 +2382,12 @@ class SecretKeyImpl extends RustOpaque implements SecretKey {
         RustLib.instance.api.rust_arc_decrement_strong_count_SecretKeyPtr,
   );
 
-  Future<String> toBech32() =>
+  String toBech32() =>
       RustLib.instance.api.crateApiProtocolKeySecretKeySecretKeyToBech32(
         that: this,
       );
 
-  Future<String> toSecretHex() =>
+  String toSecretHex() =>
       RustLib.instance.api.crateApiProtocolKeySecretKeySecretKeyToSecretHex(
         that: this,
       );

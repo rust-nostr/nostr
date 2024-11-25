@@ -23,7 +23,7 @@ abstract class Keys implements RustOpaqueInterface {
   static Keys parse({required String secretKey}) =>
       RustLib.instance.api.crateApiProtocolKeyKeysParse(secretKey: secretKey);
 
-  Future<PublicKey> publicKey();
+  PublicKey publicKey();
 
-  Future<SecretKey> secretKey();
+  SecretKey secretKey();
 }

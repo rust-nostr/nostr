@@ -22,9 +22,9 @@ abstract class PublicKey implements RustOpaqueInterface {
   static PublicKey parse({required String publicKey}) => RustLib.instance.api
       .crateApiProtocolKeyPublicKeyPublicKeyParse(publicKey: publicKey);
 
-  Future<String> toBech32();
+  String toBech32();
 
-  Future<String> toHex();
+  String toHex();
 
-  Future<String> toNostrUri();
+  String toNostrUri();
 }
