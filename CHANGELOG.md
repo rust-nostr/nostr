@@ -96,6 +96,7 @@
 * connect: add `NostrConnect::non_secure_set_user_public_key` ([Yuki Kishimoto])
 * ffi: add `make_private_msg` func ([Yuki Kishimoto])
 * ffi: add `CustomNostrSigner` trait ([Yuki Kishimoto])
+* flutter: add `Tag` struct ([Yuki Kishimoto])
 * book: add some examples ([RydalWater] and [Yuki Kishimoto])
 
 ### Fixed

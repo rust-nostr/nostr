@@ -4,6 +4,7 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../../frb_generated.dart';
+import 'event/tag.dart';
 import 'key/public_key.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
@@ -40,7 +41,7 @@ abstract class Event implements RustOpaqueInterface {
 
   Future<String> signature();
 
-  Future<List<List<String>>> tags();
+  Future<List<Tag>> tags();
 
   /// Verify both `EventId` and `Signature`
   Future<void> verify();

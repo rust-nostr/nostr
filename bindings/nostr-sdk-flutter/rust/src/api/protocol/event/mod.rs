@@ -6,6 +6,9 @@ use anyhow::Result;
 use flutter_rust_bridge::frb;
 use nostr_sdk::prelude::*;
 
+pub mod tag;
+
+use self::tag::_Tag;
 use super::key::public_key::_PublicKey;
 
 #[frb(name = "Event")]
@@ -31,11 +34,12 @@ impl _Event {
         self.inner.kind.as_u16()
     }
 
-    pub fn tags(&self) -> Vec<Vec<String>> {
+    pub fn tags(&self) -> Vec<_Tag> {
         self.inner
             .tags
             .iter()
-            .map(|tag| tag.as_slice().to_vec())
+            .cloned()
+            .map(|tag| tag.into())
             .collect()
     }
 
