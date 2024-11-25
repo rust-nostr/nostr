@@ -46,7 +46,7 @@ impl AtomicDestroyer for InnerRelayPool {
         let pool = self.clone();
         let _ = thread::spawn(async move {
             if let Err(e) = pool.shutdown().await {
-                tracing::error!("Impossible to shutdown Relay Pool: {e}");
+                tracing::error!("Impossible to shutdown pool: {e}");
             }
         });
     }
@@ -82,6 +82,7 @@ impl InnerRelayPool {
         // Mark as shutdown
         self.shutdown.store(true, Ordering::SeqCst);
 
+        // Log
         tracing::info!("Relay pool shutdown");
 
         Ok(())
@@ -409,7 +410,6 @@ impl InnerRelayPool {
                     output.success.insert(url);
                 }
                 Err(e) => {
-                    tracing::error!("Impossible to send message to '{url}': {e}");
                     output.failed.insert(url, Some(e.to_string()));
                 }
             }
@@ -508,7 +508,6 @@ impl InnerRelayPool {
                     output.success.insert(url);
                 }
                 Err(e) => {
-                    tracing::error!("Impossible to send event to '{url}': {e}");
                     output.failed.insert(url, Some(e.to_string()));
                 }
             }
@@ -651,7 +650,6 @@ impl InnerRelayPool {
                     output.success.insert(url);
                 }
                 Err(e) => {
-                    tracing::error!("Impossible to subscribe to '{url}': {e}");
                     output.failed.insert(url, Some(e.to_string()));
                 }
             }
@@ -789,7 +787,6 @@ impl InnerRelayPool {
                     output.merge(reconciliation);
                 }
                 Err(e) => {
-                    tracing::error!("Failed to sync events with '{url}': {e}");
                     output.failed.insert(url, Some(e.to_string()));
                 }
             }
