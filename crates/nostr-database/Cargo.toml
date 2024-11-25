@@ -26,4 +26,3 @@ tracing = { workspace = true, features = ["std", "attributes"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
-tracing-subscriber.workspace = true

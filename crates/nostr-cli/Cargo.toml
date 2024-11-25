@@ -23,5 +23,4 @@ once_cell.workspace = true
 prettytable-rs = "0.10"
 regex = "1.11.1"
 rustyline = { version = "14.0", default-features = false, features = ["with-file-history"] }
-serde_json = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = ["full"] }

@@ -20,6 +20,3 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true, features = ["std", "attributes"] }
 wasm-bindgen.workspace = true
-
-[dev-dependencies]
-wasm-bindgen-test = "0.3"
