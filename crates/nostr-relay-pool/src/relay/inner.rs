@@ -1230,10 +1230,6 @@ impl InnerRelay {
     }
 
     pub async fn resubscribe(&self) -> Result<(), Error> {
-        if !self.flags.can_read() {
-            return Err(Error::ReadDisabled);
-        }
-
         let subscriptions = self.subscriptions().await;
         for (id, filters) in subscriptions.into_iter() {
             if !filters.is_empty() && self.should_resubscribe(&id).await {
@@ -1263,11 +1259,6 @@ impl InnerRelay {
         filters: Vec<Filter>,
         opts: SubscribeOptions,
     ) -> Result<(), Error> {
-        // Check if relay can read
-        if !self.flags.can_read() {
-            return Err(Error::ReadDisabled);
-        }
-
         // Check if filters are empty
         if filters.is_empty() {
             return Err(Error::FiltersEmpty);
@@ -1388,10 +1379,6 @@ impl InnerRelay {
     }
 
     pub async fn unsubscribe(&self, id: SubscriptionId) -> Result<(), Error> {
-        if !self.flags.can_read() {
-            return Err(Error::ReadDisabled);
-        }
-
         // Remove subscription
         self.remove_subscription(&id).await;
 
@@ -1400,10 +1387,6 @@ impl InnerRelay {
     }
 
     pub async fn unsubscribe_all(&self) -> Result<(), Error> {
-        if !self.flags.can_read() {
-            return Err(Error::ReadDisabled);
-        }
-
         let subscriptions = self.subscriptions().await;
 
         for id in subscriptions.into_keys() {
@@ -1429,11 +1412,6 @@ impl InnerRelay {
     {
         // Perform health checks
         self.health_check()?;
-
-        // Check if relay can read
-        if !self.flags.can_read() {
-            return Err(Error::ReadDisabled);
-        }
 
         // Compose options
         let auto_close_opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
