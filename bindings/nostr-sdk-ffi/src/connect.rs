@@ -9,11 +9,11 @@ use std::time::Duration;
 use nostr::NostrSigner;
 use nostr_connect::{client, signer};
 use nostr_sdk::nostr::nips::nip46::Request;
-use uniffi::Object;
+use uniffi::{Object, Record};
 
 use crate::error::Result;
 use crate::protocol::nips::nip46::{Nip46Request, NostrConnectURI};
-use crate::protocol::{Event, Keys, PublicKey, SecretKey, UnsignedEvent};
+use crate::protocol::{Event, Keys, PublicKey, UnsignedEvent};
 use crate::relay::RelayOptions;
 
 #[derive(Object)]
@@ -114,6 +114,21 @@ impl NostrConnect {
     }
 }
 
+#[derive(Record)]
+pub struct NostrConnectKeys {
+    pub signer: Arc<Keys>,
+    pub user: Arc<Keys>,
+}
+
+impl From<NostrConnectKeys> for signer::NostrConnectKeys {
+    fn from(keys: NostrConnectKeys) -> Self {
+        Self {
+            signer: keys.signer.as_ref().deref().clone(),
+            user: keys.user.as_ref().deref().clone(),
+        }
+    }
+}
+
 /// Nostr Connect Signer
 ///
 /// Signer that listen for requests from client, handle them and send the response.
@@ -129,14 +144,14 @@ impl NostrConnectRemoteSigner {
     // TODO: change again to `new` (currently python not support async constructor)
     #[uniffi::constructor(default(secret = None, opts = None))]
     pub async fn init(
-        secret_key: &SecretKey,
+        keys: NostrConnectKeys,
         relays: Vec<String>,
         secret: Option<String>,
         opts: Option<Arc<RelayOptions>>,
     ) -> Result<Self> {
         Ok(Self {
             inner: signer::NostrConnectRemoteSigner::new(
-                secret_key.deref().clone(),
+                keys.into(),
                 relays,
                 secret,
                 opts.map(|o| o.as_ref().deref().clone()),
@@ -149,14 +164,14 @@ impl NostrConnectRemoteSigner {
     #[uniffi::constructor(default(secret = None, opts = None))]
     pub async fn from_uri(
         uri: &NostrConnectURI,
-        secret_key: &SecretKey,
+        keys: NostrConnectKeys,
         secret: Option<String>,
         opts: Option<Arc<RelayOptions>>,
     ) -> Result<Self> {
         Ok(Self {
             inner: signer::NostrConnectRemoteSigner::from_uri(
                 uri.deref().clone(),
-                secret_key.deref().clone(),
+                keys.into(),
                 secret,
                 opts.map(|o| o.as_ref().deref().clone()),
             )

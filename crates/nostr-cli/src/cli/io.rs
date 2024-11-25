@@ -3,7 +3,7 @@
 // Distributed under the MIT software license
 
 use dialoguer::{Confirm, Input, Password};
-use nostr_sdk::{Result, SecretKey};
+use nostr_sdk::{Keys, Result};
 
 pub fn get_optional_input<S>(prompt: S) -> Result<Option<String>>
 where
@@ -22,9 +22,12 @@ where
     }
 }
 
-pub fn get_secret_key() -> Result<SecretKey> {
-    let secret_key = Password::new().with_prompt("Secret key").interact()?;
-    Ok(SecretKey::parse(secret_key)?)
+pub fn get_keys<S>(prompt: S) -> Result<Keys>
+where
+    S: Into<String>,
+{
+    let secret_key = Password::new().with_prompt(prompt).interact()?;
+    Ok(Keys::parse(secret_key)?)
 }
 
 /* pub fn get_password_with_confirmation() -> Result<String> {

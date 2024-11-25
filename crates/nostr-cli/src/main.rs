@@ -124,8 +124,11 @@ async fn run() -> Result<()> {
             }
         }
         Command::Bunker => {
-            // Ask secret key
-            let secret_key: SecretKey = io::get_secret_key()?;
+            // Ask keys
+            let keys = NostrConnectKeys {
+                signer: io::get_keys("Signer Keys")?,
+                user: io::get_keys("User Keys")?,
+            };
 
             // Ask URI
             let uri: Option<String> = io::get_optional_input("Nostr Connect URI")?;
@@ -134,10 +137,10 @@ async fn run() -> Result<()> {
             let signer: NostrConnectRemoteSigner = match uri {
                 Some(uri) => {
                     let uri: NostrConnectURI = NostrConnectURI::parse(&uri)?;
-                    NostrConnectRemoteSigner::from_uri(uri, secret_key, None, None).await?
+                    NostrConnectRemoteSigner::from_uri(uri, keys, None, None).await?
                 }
                 None => {
-                    NostrConnectRemoteSigner::new(secret_key, ["wss://relay.nsec.app"], None, None)
+                    NostrConnectRemoteSigner::new(keys, ["wss://relay.nsec.app"], None, None)
                         .await?
                 }
             };

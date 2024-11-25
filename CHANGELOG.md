@@ -43,6 +43,7 @@
 * nostr: change `Tag::parse` arg from slice to iterator ([Yuki Kishimoto])
 * nostr: change `TagStandard::Relay` variant inner type ([Yuki Kishimoto])
 * pool: switch from async to sync message sending for `Relay` ([Yuki Kishimoto])
+* connect: refactor `NostrConnectRemoteSigner` to use distinct keys for signer and user ([Yuki Kishimoto])
 * sdk: disable all default features ([Yuki Kishimoto])
 * sdk: set `Client::from_builder` as private ([Yuki Kishimoto])
 * ffi: convert `NostrSigner` trait to an object ([Yuki Kishimoto])

@@ -11,14 +11,25 @@ use nostr_relay_pool::prelude::*;
 
 use crate::error::Error;
 
+/// Nostr Connect Keys
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct NostrConnectKeys {
+    /// The keys used for communication with the client.
+    ///
+    /// This may be the same as the `user` one.
+    pub signer: Keys,
+    /// The keys used to sign events and so on.
+    pub user: Keys,
+}
+
 /// Nostr Connect Signer
 ///
-/// Signer that listen for requests from client, handle them and send the response.
+/// Signer that listen for requests from a client, handle them and send the response.
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
 #[derive(Debug, Clone)]
 pub struct NostrConnectRemoteSigner {
-    keys: Keys,
+    keys: NostrConnectKeys,
     pool: RelayPool,
     secret: Option<String>,
 }
@@ -26,7 +37,7 @@ pub struct NostrConnectRemoteSigner {
 impl NostrConnectRemoteSigner {
     /// Construct new remote signer
     pub async fn new<I, U>(
-        secret_key: SecretKey,
+        keys: NostrConnectKeys,
         relays: I,
         secret: Option<String>,
         opts: Option<RelayOptions>,
@@ -46,17 +57,13 @@ impl NostrConnectRemoteSigner {
 
         pool.connect(Some(Duration::from_secs(10))).await;
 
-        Ok(Self {
-            keys: Keys::new(secret_key),
-            pool,
-            secret,
-        })
+        Ok(Self { keys, pool, secret })
     }
 
     /// Construct remote signer from client URI (`nostrconnect://..`)
     pub async fn from_uri(
         uri: NostrConnectURI,
-        secret_key: SecretKey,
+        keys: NostrConnectKeys,
         secret: Option<String>,
         opts: Option<RelayOptions>,
     ) -> Result<Self, Error> {
@@ -64,7 +71,7 @@ impl NostrConnectRemoteSigner {
             NostrConnectURI::Client {
                 public_key, relays, ..
             } => {
-                let this = Self::new(secret_key, relays, secret, opts).await?;
+                let this = Self::new(keys, relays, secret, opts).await?;
                 this.send_connect_ack(public_key).await?;
                 Ok(this)
             }
@@ -80,7 +87,7 @@ impl NostrConnectRemoteSigner {
     /// Get `bunker` URI
     pub async fn bunker_uri(&self) -> NostrConnectURI {
         NostrConnectURI::Bunker {
-            remote_signer_public_key: self.keys.public_key(),
+            remote_signer_public_key: self.keys.signer.public_key(),
             relays: self.relays().await,
             secret: self.secret.clone(),
         }
@@ -88,17 +95,17 @@ impl NostrConnectRemoteSigner {
 
     async fn send_connect_ack(&self, public_key: PublicKey) -> Result<(), Error> {
         let msg = Message::request(Request::Connect {
-            public_key: self.keys.public_key(),
-            secret: None,
+            public_key: self.keys.user.public_key(),
+            secret: self.secret.clone(),
         });
-        let event =
-            EventBuilder::nostr_connect(&self.keys, public_key, msg)?.sign_with_keys(&self.keys)?;
+        let event = EventBuilder::nostr_connect(&self.keys.signer, public_key, msg)?
+            .sign_with_keys(&self.keys.signer)?;
         self.pool.send_event(event).await?;
         Ok(())
     }
 
     async fn subscribe(&self) -> Result<(), Error> {
-        let public_key: PublicKey = self.keys.public_key();
+        let public_key: PublicKey = self.keys.signer.public_key();
 
         let filter = Filter::new()
             .pubkey(public_key)
@@ -124,9 +131,11 @@ impl NostrConnectRemoteSigner {
             .handle_notifications(|notification| async {
                 if let RelayPoolNotification::Event { event, .. } = notification {
                     if event.kind == Kind::NostrConnect {
-                        if let Ok(msg) =
-                            nip04::decrypt(self.keys.secret_key(), &event.pubkey, event.content)
-                        {
+                        if let Ok(msg) = nip04::decrypt(
+                            self.keys.signer.secret_key(),
+                            &event.pubkey,
+                            event.content,
+                        ) {
                             tracing::debug!("New Nostr Connect message received: {msg}");
 
                             let msg: Message = Message::from_json(msg)?;
@@ -146,7 +155,7 @@ impl NostrConnectRemoteSigner {
                                         }
                                         Request::GetPublicKey => (
                                             Some(ResponseResult::GetPublicKey(
-                                                self.keys.public_key(),
+                                                self.keys.user.public_key(),
                                             )),
                                             None,
                                         ),
@@ -155,7 +164,7 @@ impl NostrConnectRemoteSigner {
                                         }
                                         Request::Nip04Encrypt { public_key, text } => {
                                             match nip04::encrypt(
-                                                self.keys.secret_key(),
+                                                self.keys.user.secret_key(),
                                                 &public_key,
                                                 text,
                                             ) {
@@ -173,7 +182,7 @@ impl NostrConnectRemoteSigner {
                                             ciphertext,
                                         } => {
                                             match nip04::decrypt(
-                                                self.keys.secret_key(),
+                                                self.keys.user.secret_key(),
                                                 &public_key,
                                                 ciphertext,
                                             ) {
@@ -188,7 +197,7 @@ impl NostrConnectRemoteSigner {
                                         }
                                         Request::Nip44Encrypt { public_key, text } => {
                                             match nip44::encrypt(
-                                                self.keys.secret_key(),
+                                                self.keys.user.secret_key(),
                                                 &public_key,
                                                 text,
                                                 nip44::Version::default(),
@@ -207,7 +216,7 @@ impl NostrConnectRemoteSigner {
                                             ciphertext,
                                         } => {
                                             match nip44::decrypt(
-                                                self.keys.secret_key(),
+                                                self.keys.user.secret_key(),
                                                 &public_key,
                                                 ciphertext,
                                             ) {
@@ -221,7 +230,7 @@ impl NostrConnectRemoteSigner {
                                             }
                                         }
                                         Request::SignEvent(unsigned) => {
-                                            match unsigned.sign_with_keys(&self.keys) {
+                                            match unsigned.sign_with_keys(&self.keys.user) {
                                                 Ok(event) => (
                                                     Some(ResponseResult::SignEvent(Box::new(
                                                         event,
@@ -241,9 +250,12 @@ impl NostrConnectRemoteSigner {
                                 let msg: Message = Message::response(id, result, error);
 
                                 // Compose and publish event
-                                let event =
-                                    EventBuilder::nostr_connect(&self.keys, event.pubkey, msg)?
-                                        .sign_with_keys(&self.keys)?;
+                                let event = EventBuilder::nostr_connect(
+                                    &self.keys.signer,
+                                    event.pubkey,
+                                    msg,
+                                )?
+                                .sign_with_keys(&self.keys.signer)?;
                                 self.pool.send_event(event).await?;
                             }
                         } else {
