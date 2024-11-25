@@ -134,12 +134,6 @@ impl InnerRelayPool {
             .collect()
     }
 
-    /// Get all relay urls
-    async fn all_relay_urls(&self) -> Vec<Url> {
-        let relays = self.relays.read().await;
-        relays.keys().cloned().collect()
-    }
-
     /// Get relays with `READ` or `WRITE` relays
     async fn relay_urls(&self) -> Vec<Url> {
         let relays = self.relays.read().await;
@@ -286,23 +280,16 @@ impl InnerRelayPool {
         }
     }
 
-    async fn internal_remove_relay<U>(
+    async fn internal_remove_relay(
         &self,
         relays: &mut Relays,
-        url: U,
+        url: Url,
         force: bool,
-    ) -> Result<(), Error>
-    where
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
-        // Convert into url
-        let url: Url = url.try_into_url()?;
-
+    ) -> Result<(), Error> {
         // Remove relay
         let relay = relays.remove(&url).ok_or(Error::RelayNotFound)?;
 
-        // If NOT force, check if has GOSSIP flag
+        // If NOT force, check if has `GOSSIP` flag
         if !force {
             let flags = relay.flags();
             if flags.has_any(RelayServiceFlags::GOSSIP) {
@@ -330,17 +317,22 @@ impl InnerRelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
+        // Convert into url
+        let url: Url = url.try_into_url()?;
+
         // Acquire write lock
         let mut relays = self.relays.write().await;
+
+        // Remove
         self.internal_remove_relay(&mut relays, url, force).await
     }
 
     pub async fn remove_all_relays(&self, force: bool) -> Result<(), Error> {
-        // Get all relay urls
-        let urls = self.all_relay_urls().await;
-
         // Acquire write lock
         let mut relays = self.relays.write().await;
+
+        // Collect all relay urls
+        let urls: Vec<Url> = relays.keys().cloned().collect();
 
         // Iter urls and remove relays
         for url in urls.into_iter() {
@@ -669,6 +661,8 @@ impl InnerRelayPool {
         // Lock with read shared access
         let relays = self.relays.read().await;
 
+        // TODO: use join_all and return `Output`?
+
         // Remove subscription from relays
         for relay in relays.values() {
             if let Err(e) = relay.unsubscribe(id.clone()).await {
@@ -683,6 +677,8 @@ impl InnerRelayPool {
 
         // Lock with read shared access
         let relays = self.relays.read().await;
+
+        // TODO: use join_all and return `Output`?
 
         // Unsubscribe relays
         for relay in relays.values() {
@@ -778,7 +774,7 @@ impl InnerRelayPool {
         // Join futures
         let list = future::join_all(futures).await;
 
-        // Iter results and construct output
+        // Iter results and constructs output
         for (url, result) in urls.into_iter().zip(list.into_iter()) {
             match result {
                 Ok(reconciliation) => {
