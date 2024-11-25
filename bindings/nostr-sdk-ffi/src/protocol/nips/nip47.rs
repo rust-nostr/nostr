@@ -6,7 +6,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use nostr::nips::nip47;
-use nostr::{JsonUtil, Url};
+use nostr::{JsonUtil, RelayUrl};
 use uniffi::{Enum, Object, Record};
 
 use crate::error::Result;
@@ -940,13 +940,13 @@ impl NostrWalletConnectURI {
     #[uniffi::constructor]
     pub fn new(
         public_key: &PublicKey,
-        relay_url: String,
+        relay_url: &str,
         random_secret_key: &SecretKey,
         lud16: Option<String>,
     ) -> Result<Self> {
         Ok(nip47::NostrWalletConnectURI::new(
             **public_key,
-            Url::parse(&relay_url)?,
+            RelayUrl::parse(relay_url)?,
             random_secret_key.deref().clone(),
             lud16,
         )

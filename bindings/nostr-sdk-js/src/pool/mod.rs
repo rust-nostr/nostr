@@ -8,9 +8,9 @@ use js_sys::Array;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
-pub mod result;
+pub mod output;
 
-use self::result::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
+use self::output::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
 use crate::database::JsNostrDatabase;
 use crate::duration::JsDuration;
 use crate::error::{into_err, Result};

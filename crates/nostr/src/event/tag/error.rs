@@ -9,7 +9,7 @@ use crate::event::id;
 use crate::hashes::hex::HexToArrayError;
 use crate::nips::{nip01, nip10, nip26, nip39, nip53, nip65, nip98};
 use crate::types::image;
-use crate::types::url::ParseError;
+use crate::types::url::{Error as RelayUrlError, ParseError};
 use crate::{key, secp256k1};
 
 /// Tag error
@@ -29,6 +29,8 @@ pub enum Error {
     Secp256k1(secp256k1::Error),
     /// Hex decoding error
     Hex(HexToArrayError),
+    /// Relay Url parse error
+    RelayUrl(RelayUrlError),
     /// Url parse error
     Url(ParseError),
     /// EventId error
@@ -65,6 +67,7 @@ impl fmt::Display for Error {
             Self::ParseIntError(e) => write!(f, "{e}"),
             Self::Secp256k1(e) => write!(f, "{e}"),
             Self::Hex(e) => write!(f, "{e}"),
+            Self::RelayUrl(e) => write!(f, "{e}"),
             Self::Url(e) => write!(f, "{e}"),
             Self::EventId(e) => write!(f, "{e}"),
             Self::NIP01(e) => write!(f, "{e}"),
@@ -105,6 +108,12 @@ impl From<secp256k1::Error> for Error {
 impl From<HexToArrayError> for Error {
     fn from(e: HexToArrayError) -> Self {
         Self::Hex(e)
+    }
+}
+
+impl From<RelayUrlError> for Error {
+    fn from(e: RelayUrlError) -> Self {
+        Self::RelayUrl(e)
     }
 }
 

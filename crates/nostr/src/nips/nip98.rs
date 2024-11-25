@@ -16,7 +16,7 @@ use core::str::FromStr;
 
 use bitcoin::hashes::sha256::Hash as Sha256Hash;
 
-use crate::{Tag, TagStandard, UncheckedUrl};
+use crate::{Tag, TagStandard, Url};
 
 /// [`HttpData`] required tags
 #[derive(Debug, PartialEq, Eq)]
@@ -103,7 +103,7 @@ impl FromStr for HttpMethod {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct HttpData {
     /// Absolute request URL
-    pub url: UncheckedUrl,
+    pub url: Url,
     /// HTTP method
     pub method: HttpMethod,
     /// SHA256 hash of the request body
@@ -113,7 +113,7 @@ pub struct HttpData {
 impl HttpData {
     /// New [`HttpData`]
     #[inline]
-    pub fn new(url: UncheckedUrl, method: HttpMethod) -> Self {
+    pub fn new(url: Url, method: HttpMethod) -> Self {
         Self {
             url,
             method,

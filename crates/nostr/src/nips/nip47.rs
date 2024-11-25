@@ -17,7 +17,7 @@ use serde_json::Value;
 
 use super::nip04;
 use crate::types::url::form_urlencoded::byte_serialize;
-use crate::types::url::{ParseError, Url};
+use crate::types::url::{self, ParseError, RelayUrl, Url};
 use crate::{key, Event, JsonUtil, PublicKey, SecretKey, Timestamp};
 #[cfg(feature = "std")]
 use crate::{EventBuilder, Keys, Kind, Tag};
@@ -27,6 +27,8 @@ use crate::{EventBuilder, Keys, Kind, Tag};
 pub enum Error {
     /// JSON error
     JSON(serde_json::Error),
+    /// Relay Url parse error
+    RelayUrl(url::Error),
     /// Url parse error
     Url(ParseError),
     /// Keys error
@@ -61,7 +63,8 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::JSON(e) => write!(f, "Json: {e}"),
-            Self::Url(e) => write!(f, "Url: {e}"),
+            Self::RelayUrl(e) => write!(f, "{e}"),
+            Self::Url(e) => write!(f, "{e}"),
             Self::Keys(e) => write!(f, "Keys: {e}"),
             Self::NIP04(e) => write!(f, "NIP04: {e}"),
             #[cfg(feature = "std")]
@@ -81,6 +84,12 @@ impl fmt::Display for Error {
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
         Self::JSON(e)
+    }
+}
+
+impl From<url::Error> for Error {
+    fn from(e: url::Error) -> Self {
+        Self::RelayUrl(e)
     }
 }
 
@@ -886,7 +895,7 @@ pub struct NostrWalletConnectURI {
     /// App Pubkey
     pub public_key: PublicKey,
     /// URL of the relay of choice where the `App` is connected and the `Signer` must send and listen for messages.
-    pub relay_url: Url,
+    pub relay_url: RelayUrl,
     /// 32-byte randomly generated hex encoded string
     pub secret: SecretKey,
     /// A lightning address that clients can use to automatically setup the lud16 field on the user's profile if they have none configured.
@@ -898,7 +907,7 @@ impl NostrWalletConnectURI {
     #[inline]
     pub fn new(
         public_key: PublicKey,
-        relay_url: Url,
+        relay_url: RelayUrl,
         random_secret_key: SecretKey,
         lud16: Option<String>,
     ) -> Self {
@@ -924,14 +933,14 @@ impl NostrWalletConnectURI {
         if let Some(pubkey) = url.domain() {
             let public_key = PublicKey::from_hex(pubkey)?;
 
-            let mut relay_url: Option<Url> = None;
+            let mut relay_url: Option<RelayUrl> = None;
             let mut secret: Option<SecretKey> = None;
             let mut lud16: Option<String> = None;
 
             for (key, value) in url.query_pairs() {
                 match key {
                     Cow::Borrowed("relay") => {
-                        relay_url = Some(Url::parse(value.as_ref())?);
+                        relay_url = Some(RelayUrl::parse(value.as_ref())?);
                     }
                     Cow::Borrowed("secret") => {
                         secret = Some(SecretKey::from_hex(value.as_ref())?);
@@ -1014,7 +1023,7 @@ mod tests {
         let pubkey =
             PublicKey::from_str("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
                 .unwrap();
-        let relay_url = Url::parse("wss://relay.damus.io").unwrap();
+        let relay_url = RelayUrl::parse("wss://relay.damus.io").unwrap();
         let secret =
             SecretKey::from_str("71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c")
                 .unwrap();
@@ -1038,7 +1047,7 @@ mod tests {
         let pubkey =
             PublicKey::from_str("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
                 .unwrap();
-        let relay_url = Url::parse("wss://relay.damus.io").unwrap();
+        let relay_url = RelayUrl::parse("wss://relay.damus.io").unwrap();
         let secret =
             SecretKey::from_str("71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c")
                 .unwrap();

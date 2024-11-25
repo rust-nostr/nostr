@@ -421,8 +421,12 @@ impl_nostr_events_database!({
             .await)
     }
 
-    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), DatabaseError> {
-        let mut set: HashSet<Url> = self
+    async fn event_id_seen(
+        &self,
+        event_id: EventId,
+        relay_url: RelayUrl,
+    ) -> Result<(), DatabaseError> {
+        let mut set: HashSet<RelayUrl> = self
             .event_seen_on_relays(&event_id)
             .await?
             .unwrap_or_else(|| HashSet::with_capacity(1));
@@ -463,7 +467,7 @@ impl_nostr_events_database!({
     async fn event_seen_on_relays(
         &self,
         event_id: &EventId,
-    ) -> Result<Option<HashSet<Url>>, DatabaseError> {
+    ) -> Result<Option<HashSet<RelayUrl>>, DatabaseError> {
         let tx = self
             .db
             .transaction_on_one_with_mode(EVENTS_SEEN_BY_RELAYS_CF, IdbTransactionMode::Readonly)

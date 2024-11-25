@@ -32,7 +32,7 @@ pub struct NostrConnectKeys {
 #[derive(Debug, Clone)]
 pub struct NostrConnectRemoteSigner {
     keys: NostrConnectKeys,
-    relays: Vec<Url>,
+    relays: Vec<RelayUrl>,
     pool: RelayPool,
     opts: RelayOptions,
     secret: Option<String>,
@@ -93,7 +93,7 @@ impl NostrConnectRemoteSigner {
     }
 
     /// Get signer relays
-    pub fn relays(&self) -> &[Url] {
+    pub fn relays(&self) -> &[RelayUrl] {
         &self.relays
     }
 

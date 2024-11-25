@@ -46,13 +46,13 @@ pub struct NWC {
 }
 
 impl NWC {
-    /// Compose new [NWC] client
+    /// New `NWC` client
     #[inline]
     pub fn new(uri: NostrWalletConnectURI) -> Self {
         Self::with_opts(uri, NostrWalletConnectOptions::default())
     }
 
-    /// Compose new [NWC] client with [NostrWalletConnectOptions]
+    /// New `NWC` client with custom [`NostrWalletConnectOptions`].
     pub fn with_opts(uri: NostrWalletConnectURI, opts: NostrWalletConnectOptions) -> Self {
         Self {
             relay: Relay::with_opts(uri.relay_url.clone(), opts.relay.clone()),

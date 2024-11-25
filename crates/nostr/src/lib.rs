@@ -66,8 +66,8 @@ pub use self::nips::nip19::{FromBech32, ToBech32};
 pub use self::signer::{NostrSigner, SignerError};
 #[doc(hidden)]
 pub use self::types::{
-    Alphabet, Contact, Filter, ImageDimensions, Metadata, SingleLetterTag, Timestamp, TryIntoUrl,
-    UncheckedUrl, Url,
+    Alphabet, Contact, Filter, ImageDimensions, Metadata, RelayUrl, SingleLetterTag, Timestamp,
+    TryIntoUrl, Url,
 };
 #[doc(hidden)]
 pub use self::util::JsonUtil;

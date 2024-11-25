@@ -2,153 +2,215 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Url
+//! Urls
 
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use core::convert::Infallible;
 use core::fmt::{self, Debug};
 use core::str::FromStr;
 
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[cfg(feature = "std")]
 pub use url::*;
 #[cfg(not(feature = "std"))]
 pub use url_fork::*;
 
-/// Try into [`Url`]
+/// Relay URL error
+#[derive(Debug, PartialEq, Eq)]
+pub enum Error {
+    /// Url parse error
+    Url(ParseError),
+    /// Unsupported URL scheme
+    UnsupportedScheme(String),
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Url(e) => write!(f, "{e}"),
+            Self::UnsupportedScheme(scheme) => write!(f, "Unsupported scheme: {scheme}"),
+        }
+    }
+}
+
+impl From<ParseError> for Error {
+    fn from(e: ParseError) -> Self {
+        Self::Url(e)
+    }
+}
+
+/// Relay URL
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RelayUrl {
+    url: Url,
+}
+
+impl RelayUrl {
+    /// Parse relay URL
+    #[inline]
+    pub fn parse<S>(url: S) -> Result<Self, Error>
+    where
+        S: AsRef<str>,
+    {
+        let url = Url::parse(url.as_ref())?;
+        Self::from_url(url)
+    }
+
+    fn from_url(url: Url) -> Result<Self, Error> {
+        match url.scheme() {
+            "ws" | "wss" => {
+                // TODO: check max len?
+
+                Ok(Self { url })
+            }
+            scheme => Err(Error::UnsupportedScheme(scheme.to_string())),
+        }
+    }
+
+    // TODO: add is_onion method
+
+    /// Return the serialization of this relay URL.
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        self.url.as_str()
+    }
+}
+
+impl fmt::Display for RelayUrl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // TODO: if no path, remove last "/"
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl FromStr for RelayUrl {
+    type Err = Error;
+
+    fn from_str(relay_url: &str) -> Result<Self, Self::Err> {
+        Self::parse(relay_url)
+    }
+}
+
+impl Serialize for RelayUrl {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for RelayUrl {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let url: String = String::deserialize(deserializer)?;
+        Self::parse(url).map_err(serde::de::Error::custom)
+    }
+}
+
+impl From<RelayUrl> for Url {
+    fn from(relay_url: RelayUrl) -> Self {
+        relay_url.url
+    }
+}
+
+impl<'a> From<&'a RelayUrl> for &'a Url {
+    fn from(relay_url: &'a RelayUrl) -> Self {
+        &relay_url.url
+    }
+}
+
+/// Try into relay URL
 pub trait TryIntoUrl {
     /// Error
     type Err: Debug;
 
-    /// Try into [`Url`]
-    fn try_into_url(self) -> Result<Url, Self::Err>;
+    /// Try into relay URL
+    fn try_into_url(self) -> Result<RelayUrl, Self::Err>;
 }
 
-impl TryIntoUrl for Url {
+impl TryIntoUrl for RelayUrl {
     type Err = Infallible;
 
     #[inline]
-    fn try_into_url(self) -> Result<Url, Self::Err> {
+    fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
         Ok(self)
     }
 }
 
-impl TryIntoUrl for &Url {
+impl TryIntoUrl for &RelayUrl {
     type Err = Infallible;
 
     #[inline]
-    fn try_into_url(self) -> Result<Url, Self::Err> {
+    fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
         Ok(self.clone())
     }
 }
 
-impl TryIntoUrl for String {
-    type Err = ParseError;
+impl TryIntoUrl for Url {
+    type Err = Error;
 
     #[inline]
-    fn try_into_url(self) -> Result<Url, Self::Err> {
-        Url::parse(&self)
+    fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
+        RelayUrl::from_url(self)
+    }
+}
+
+impl TryIntoUrl for &Url {
+    type Err = Error;
+
+    #[inline]
+    fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
+        RelayUrl::from_url(self.clone())
+    }
+}
+
+impl TryIntoUrl for String {
+    type Err = Error;
+
+    #[inline]
+    fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
+        RelayUrl::parse(self)
     }
 }
 
 impl TryIntoUrl for &String {
-    type Err = ParseError;
+    type Err = Error;
 
     #[inline]
-    fn try_into_url(self) -> Result<Url, Self::Err> {
-        Url::parse(self)
+    fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
+        RelayUrl::parse(self)
     }
 }
 
 impl TryIntoUrl for &str {
-    type Err = ParseError;
+    type Err = Error;
 
     #[inline]
-    fn try_into_url(self) -> Result<Url, Self::Err> {
-        Url::parse(self)
-    }
-}
-
-/// Unchecked Url
-#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct UncheckedUrl(String);
-
-impl UncheckedUrl {
-    /// New unchecked url
-    #[inline]
-    pub fn new<S>(url: S) -> Self
-    where
-        S: Into<String>,
-    {
-        Self(url.into())
-    }
-
-    /// Empty unchecked url
-    #[inline]
-    pub fn empty() -> Self {
-        Self(String::new())
-    }
-
-    /// Get unchecked url as `&str`
-    #[inline]
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl<S> From<S> for UncheckedUrl
-where
-    S: Into<String>,
-{
-    #[inline]
-    fn from(url: S) -> Self {
-        Self(url.into())
-    }
-}
-
-impl FromStr for UncheckedUrl {
-    type Err = ParseError;
-
-    #[inline]
-    fn from_str(url: &str) -> Result<Self, Self::Err> {
-        Ok(Self::from(url))
-    }
-}
-
-impl TryFrom<UncheckedUrl> for Url {
-    type Error = ParseError;
-
-    #[inline]
-    fn try_from(unchecked_url: UncheckedUrl) -> Result<Url, Self::Error> {
-        Self::parse(&unchecked_url.0)
-    }
-}
-
-impl fmt::Display for UncheckedUrl {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+    fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
+        RelayUrl::parse(self)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use alloc::string::ToString;
-
     use super::*;
 
     #[test]
-    fn test_unchecked_relay_url() {
-        let relay = "wss://relay.damus.io/";
-        let relay_url = Url::from_str(relay).unwrap();
+    fn test_relay_url() {
+        // Valid
+        assert!(RelayUrl::parse("ws://127.0.0.1:7777").is_ok());
+        assert!(RelayUrl::parse("wss://relay.damus.io").is_ok());
 
-        let unchecked_relay_url = UncheckedUrl::from(relay_url.clone());
-
-        assert_eq!(unchecked_relay_url, UncheckedUrl::from(relay));
-
+        // Invalid
         assert_eq!(
-            Url::try_from(unchecked_relay_url.clone()).unwrap(),
-            relay_url
+            RelayUrl::parse("https://relay.damus.io").unwrap_err(),
+            Error::UnsupportedScheme(String::from("https"))
         );
-
-        assert_eq!(relay, unchecked_relay_url.to_string());
     }
 }

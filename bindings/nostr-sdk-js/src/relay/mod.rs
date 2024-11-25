@@ -104,7 +104,7 @@ impl JsRelay {
     /// Create new `Relay` with `in-memory` database
     #[wasm_bindgen(constructor)]
     pub fn new(url: &str, opts: Option<JsRelayOptions>) -> Result<JsRelay> {
-        let url: Url = Url::parse(url).map_err(into_err)?;
+        let url: RelayUrl = RelayUrl::parse(url).map_err(into_err)?;
         let opts: RelayOptions = opts.map(|o| o.deref().clone()).unwrap_or_default();
         Ok(Self {
             inner: Relay::with_opts(url, opts),

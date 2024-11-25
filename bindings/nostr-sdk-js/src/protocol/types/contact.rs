@@ -7,6 +7,7 @@ use std::ops::Deref;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
+use crate::error::{into_err, Result};
 use crate::protocol::key::JsPublicKey;
 
 #[wasm_bindgen(js_name = Contact)]
@@ -37,11 +38,18 @@ impl From<JsContact> for Contact {
 #[wasm_bindgen(js_class = Contact)]
 impl JsContact {
     #[wasm_bindgen(constructor)]
-    pub fn new(public_key: &JsPublicKey, relay_url: Option<String>, alias: Option<String>) -> Self {
-        let relay_url: Option<UncheckedUrl> = relay_url.map(UncheckedUrl::from);
-        Self {
+    pub fn new(
+        public_key: &JsPublicKey,
+        relay_url: Option<String>,
+        alias: Option<String>,
+    ) -> Result<JsContact> {
+        let relay_url = match relay_url {
+            Some(url) => Some(RelayUrl::parse(url).map_err(into_err)?),
+            None => None,
+        };
+        Ok(Self {
             inner: Contact::new(**public_key, relay_url, alias),
-        }
+        })
     }
 
     #[wasm_bindgen(getter)]

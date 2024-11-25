@@ -13,9 +13,9 @@ use core::str::FromStr;
 
 use bitcoin::secp256k1::schnorr::Signature;
 
+use crate::types::{RelayUrl, Url};
 use crate::{
     Alphabet, ImageDimensions, PublicKey, SingleLetterTag, Tag, TagKind, TagStandard, Timestamp,
-    UncheckedUrl, Url,
 };
 
 /// NIP53 Error
@@ -115,7 +115,7 @@ pub struct LiveEventHost {
     /// Host public key
     pub public_key: PublicKey,
     /// Host relay URL
-    pub relay_url: Option<UncheckedUrl>,
+    pub relay_url: Option<RelayUrl>,
     /// Host proof
     pub proof: Option<Signature>,
 }
@@ -130,13 +130,13 @@ pub struct LiveEvent {
     /// Event summary
     pub summary: Option<String>,
     /// Event image
-    pub image: Option<(UncheckedUrl, Option<ImageDimensions>)>,
+    pub image: Option<(Url, Option<ImageDimensions>)>,
     /// Hashtags
     pub hashtags: Vec<String>,
     /// Steaming URL
-    pub streaming: Option<UncheckedUrl>,
+    pub streaming: Option<Url>,
     /// Recording URL
-    pub recording: Option<UncheckedUrl>,
+    pub recording: Option<Url>,
     /// Starts at
     pub starts: Option<Timestamp>,
     /// Ends at
@@ -152,9 +152,9 @@ pub struct LiveEvent {
     /// Host
     pub host: Option<LiveEventHost>,
     /// Speakers
-    pub speakers: Vec<(PublicKey, Option<UncheckedUrl>)>,
+    pub speakers: Vec<(PublicKey, Option<RelayUrl>)>,
     /// Participants
-    pub participants: Vec<(PublicKey, Option<UncheckedUrl>)>,
+    pub participants: Vec<(PublicKey, Option<RelayUrl>)>,
 }
 
 impl LiveEvent {

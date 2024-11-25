@@ -3,11 +3,10 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use nostr::event::tag;
-use nostr::{UncheckedUrl, Url};
+use nostr::{RelayUrl, Url};
 use uniffi::Object;
 
 pub mod kind;
@@ -196,7 +195,7 @@ impl Tag {
     #[inline]
     #[uniffi::constructor]
     pub fn relay_metadata(relay_url: &str, metadata: Option<RelayMetadata>) -> Result<Self> {
-        let relay_url: Url = Url::from_str(relay_url)?;
+        let relay_url: RelayUrl = RelayUrl::parse(relay_url)?;
         Ok(Self {
             inner: tag::Tag::relay_metadata(relay_url, metadata.map(|m| m.into())),
         })
@@ -232,10 +231,10 @@ impl Tag {
     /// Compose image tag
     #[inline]
     #[uniffi::constructor(default(dimensions = None))]
-    pub fn image(url: &str, dimensions: Option<Arc<ImageDimensions>>) -> Self {
-        Self {
-            inner: tag::Tag::image(UncheckedUrl::from(url), dimensions.map(|d| **d)),
-        }
+    pub fn image(url: &str, dimensions: Option<Arc<ImageDimensions>>) -> Result<Self> {
+        Ok(Self {
+            inner: tag::Tag::image(Url::parse(url)?, dimensions.map(|d| **d)),
+        })
     }
 
     /// Compose `["description", "<description>"]` tag

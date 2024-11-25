@@ -81,13 +81,17 @@ pub trait NostrEventsDatabase: fmt::Debug + Send + Sync {
     /// Set [`EventId`] as seen by relay
     ///
     /// Useful for NIP65 (aka gossip)
-    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), DatabaseError>;
+    async fn event_id_seen(
+        &self,
+        event_id: EventId,
+        relay_url: RelayUrl,
+    ) -> Result<(), DatabaseError>;
 
     /// Get list of relays that have seen the [`EventId`]
     async fn event_seen_on_relays(
         &self,
         event_id: &EventId,
-    ) -> Result<Option<HashSet<Url>>, DatabaseError>;
+    ) -> Result<Option<HashSet<RelayUrl>>, DatabaseError>;
 
     /// Get [`Event`] by [`EventId`]
     async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Event>, DatabaseError>;
@@ -191,7 +195,7 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
     async fn relay_list(
         &self,
         public_key: PublicKey,
-    ) -> Result<HashMap<Url, Option<RelayMetadata>>, DatabaseError> {
+    ) -> Result<HashMap<RelayUrl, Option<RelayMetadata>>, DatabaseError> {
         // Query
         let filter: Filter = Filter::default()
             .author(public_key)
@@ -215,7 +219,7 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
     async fn relay_lists<I>(
         &self,
         public_keys: I,
-    ) -> Result<HashMap<PublicKey, HashMap<Url, Option<RelayMetadata>>>, DatabaseError>
+    ) -> Result<HashMap<PublicKey, HashMap<RelayUrl, Option<RelayMetadata>>>, DatabaseError>
     where
         I: IntoIterator<Item = PublicKey> + Send,
     {

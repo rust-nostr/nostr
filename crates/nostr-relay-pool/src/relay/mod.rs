@@ -85,7 +85,7 @@ pub struct Reconciliation {
     /// Event that are **successfully** received from relay during reconciliation
     pub received: HashSet<EventId>,
     /// Send failures
-    pub send_failures: HashMap<Url, HashMap<EventId, String>>,
+    pub send_failures: HashMap<RelayUrl, HashMap<EventId, String>>,
 }
 
 impl Reconciliation {
@@ -125,22 +125,22 @@ impl Ord for Relay {
 }
 
 impl Relay {
-    /// Create new `Relay` with **default** `options` and `in-memory database`
+    /// Create new relay with **default** options and in-memory database
     #[inline]
-    pub fn new(url: Url) -> Self {
+    pub fn new(url: RelayUrl) -> Self {
         Self::with_opts(url, RelayOptions::default())
     }
 
-    /// Create new `Relay` with default `in-memory database` and custom `options`
+    /// Create new relay with default in-memory database and custom options
     #[inline]
-    pub fn with_opts(url: Url, opts: RelayOptions) -> Self {
+    pub fn with_opts(url: RelayUrl, opts: RelayOptions) -> Self {
         let database = Arc::new(MemoryDatabase::default());
         Self::custom(url, database, opts)
     }
 
-    /// Create new `Relay` with **custom** `database` and/or `options`
+    /// Create new relay with **custom** database and/or options
     #[inline]
-    pub fn custom<T>(url: Url, database: T, opts: RelayOptions) -> Self
+    pub fn custom<T>(url: RelayUrl, database: T, opts: RelayOptions) -> Self
     where
         T: IntoNostrDatabase,
     {
@@ -151,7 +151,7 @@ impl Relay {
 
     #[inline]
     pub(crate) fn internal_custom(
-        url: Url,
+        url: RelayUrl,
         database: Arc<dyn NostrDatabase>,
         filtering: RelayFiltering,
         opts: RelayOptions,
@@ -163,14 +163,14 @@ impl Relay {
 
     /// Get relay url
     #[inline]
-    pub fn url(&self) -> &Url {
+    pub fn url(&self) -> &RelayUrl {
         &self.inner.url
     }
 
     /// Get connection mode
     #[inline]
     pub fn connection_mode(&self) -> &ConnectionMode {
-        &self.inner.opts.connection_mode
+        self.inner.connection_mode()
     }
 
     /// Get status
@@ -435,7 +435,7 @@ mod tests {
     async fn test_ok_msg() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = Url::parse(&mock.url()).unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
 
         let relay = Relay::new(url);
 
@@ -452,7 +452,7 @@ mod tests {
     async fn test_status_with_reconnection_enabled() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = Url::parse(&mock.url()).unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
 
         let relay = Relay::new(url);
 
@@ -475,7 +475,7 @@ mod tests {
     async fn test_status_with_reconnection_disabled() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = Url::parse(&mock.url()).unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
 
         let relay = Relay::with_opts(url, RelayOptions::default().reconnect(false));
 
@@ -498,7 +498,7 @@ mod tests {
     async fn test_disconnect() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = Url::parse(&mock.url()).unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
 
         let relay = Relay::new(url);
 
@@ -519,7 +519,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_disconnect_non_connected_relay() {
-        let url = Url::parse("wss://127.0.0.1:666").unwrap();
+        let url = RelayUrl::parse("wss://127.0.0.1:666").unwrap();
 
         let opts = RelayOptions::default()
             .adjust_retry_interval(false)
@@ -552,7 +552,7 @@ mod tests {
             unresponsive_connection: Some(Duration::from_secs(2)),
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
-        let url = Url::parse(&mock.url()).unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
 
         let relay = Relay::new(url);
 
@@ -584,7 +584,7 @@ mod tests {
             unresponsive_connection: Some(Duration::from_secs(10)),
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
-        let url = Url::parse(&mock.url()).unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
 
         let relay = Relay::new(url);
 

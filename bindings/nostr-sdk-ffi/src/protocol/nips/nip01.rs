@@ -9,6 +9,7 @@ use std::sync::Arc;
 use nostr::nips::nip01;
 use nostr::nips::nip19::{FromBech32, ToBech32};
 use nostr::nips::nip21::NostrURI;
+use nostr::RelayUrl;
 use uniffi::Object;
 
 use crate::error::Result;
@@ -66,7 +67,11 @@ impl Coordinate {
                 kind: **kind,
                 public_key: **public_key,
                 identifier,
-                relays,
+                // TODO: propagate error
+                relays: relays
+                    .into_iter()
+                    .filter_map(|u| RelayUrl::parse(u).ok())
+                    .collect(),
             },
         }
     }
@@ -107,6 +112,6 @@ impl Coordinate {
     }
 
     pub fn relays(&self) -> Vec<String> {
-        self.inner.relays.clone()
+        self.inner.relays.iter().map(|u| u.to_string()).collect()
     }
 }

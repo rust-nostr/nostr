@@ -12,7 +12,7 @@ use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::nips::nip10;
 use nostr::nips::nip26::Conditions;
 use nostr::secp256k1::schnorr::Signature;
-use nostr::{UncheckedUrl, Url};
+use nostr::{RelayUrl, Url};
 use uniffi::Enum;
 
 use crate::error::NostrSdkError;
@@ -512,7 +512,7 @@ impl From<tag::TagStandard> for TagStandard {
 impl TryFrom<TagStandard> for tag::TagStandard {
     type Error = NostrSdkError;
 
-    fn try_from(value: TagStandard) -> crate::error::Result<Self, Self::Error> {
+    fn try_from(value: TagStandard) -> Result<Self, Self::Error> {
         match value {
             TagStandard::EventTag {
                 event_id,
@@ -522,7 +522,10 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 uppercase,
             } => Ok(Self::Event {
                 event_id: **event_id,
-                relay_url: relay_url.map(UncheckedUrl::from),
+                relay_url: match relay_url {
+                    Some(url) => Some(RelayUrl::parse(&url)?),
+                    None => None,
+                },
                 marker: marker.map(nip10::Marker::from),
                 public_key: public_key.map(|p| **p),
                 uppercase,
@@ -534,7 +537,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             } => Ok(Self::Quote {
                 event_id: **event_id,
                 relay_url: match relay_url {
-                    Some(url) => Some(Url::parse(&url)?),
+                    Some(url) => Some(RelayUrl::parse(&url)?),
                     None => None,
                 },
                 public_key: public_key.map(|p| **p),
@@ -560,7 +563,10 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 uppercase,
             } => Ok(Self::PublicKey {
                 public_key: **public_key,
-                relay_url: relay_url.map(UncheckedUrl::from),
+                relay_url: match relay_url {
+                    Some(url) => Some(RelayUrl::parse(&url)?),
+                    None => None,
+                },
                 alias,
                 uppercase,
             }),
@@ -577,7 +583,10 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 proof,
             } => Ok(Self::PublicKeyLiveEvent {
                 public_key: **public_key,
-                relay_url: relay_url.map(UncheckedUrl::from),
+                relay_url: match relay_url {
+                    Some(url) => Some(RelayUrl::parse(&url)?),
+                    None => None,
+                },
                 marker: marker.into(),
                 proof: match proof {
                     Some(proof) => Some(Signature::from_str(&proof)?),
@@ -586,7 +595,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             }),
             TagStandard::Reference { reference } => Ok(Self::Reference(reference)),
             TagStandard::RelayMetadataTag { relay_url, rw } => Ok(Self::RelayMetadata {
-                relay_url: Url::from_str(&relay_url)?,
+                relay_url: RelayUrl::parse(relay_url)?,
                 metadata: rw.map(|rw| rw.into()),
             }),
             TagStandard::Hashtag { hashtag } => Ok(Self::Hashtag(hashtag)),
@@ -613,14 +622,17 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 uppercase,
             } => Ok(Self::Coordinate {
                 coordinate: coordinate.as_ref().deref().clone(),
-                relay_url: relay_url.map(UncheckedUrl::from),
+                relay_url: match relay_url {
+                    Some(url) => Some(RelayUrl::parse(&url)?),
+                    None => None,
+                },
                 uppercase,
             }),
             TagStandard::Kind { kind, uppercase } => Ok(Self::Kind {
                 kind: kind.into(),
                 uppercase,
             }),
-            TagStandard::RelayUrl { relay_url } => Ok(Self::Relay(Url::parse(&relay_url)?)),
+            TagStandard::RelayUrl { relay_url } => Ok(Self::Relay(RelayUrl::parse(relay_url)?)),
             TagStandard::POW { nonce, difficulty } => Ok(Self::POW {
                 nonce: nonce.parse()?,
                 difficulty,
@@ -639,14 +651,12 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::Subject { subject } => Ok(Self::Subject(subject)),
             TagStandard::Challenge { challenge } => Ok(Self::Challenge(challenge)),
             TagStandard::Title { title } => Ok(Self::Title(title)),
-            TagStandard::Image { url, dimensions } => Ok(Self::Image(
-                UncheckedUrl::from(url),
-                dimensions.map(|d| **d),
-            )),
-            TagStandard::Thumb { url, dimensions } => Ok(Self::Thumb(
-                UncheckedUrl::from(url),
-                dimensions.map(|d| **d),
-            )),
+            TagStandard::Image { url, dimensions } => {
+                Ok(Self::Image(Url::parse(&url)?, dimensions.map(|d| **d)))
+            }
+            TagStandard::Thumb { url, dimensions } => {
+                Ok(Self::Thumb(Url::parse(&url)?, dimensions.map(|d| **d)))
+            }
             TagStandard::Summary { summary } => Ok(Self::Summary(summary)),
             TagStandard::Description { desc } => Ok(Self::Description(desc)),
             TagStandard::Bolt11 { bolt11 } => Ok(Self::Bolt11(bolt11)),
@@ -670,14 +680,14 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::Dim { dimensions } => Ok(Self::Dim(**dimensions)),
             TagStandard::Magnet { uri } => Ok(Self::Magnet(uri)),
             TagStandard::Blurhash { blurhash } => Ok(Self::Blurhash(blurhash)),
-            TagStandard::Streaming { url } => Ok(Self::Streaming(UncheckedUrl::from(url))),
-            TagStandard::Recording { url } => Ok(Self::Recording(UncheckedUrl::from(url))),
+            TagStandard::Streaming { url } => Ok(Self::Streaming(Url::parse(&url)?)),
+            TagStandard::Recording { url } => Ok(Self::Recording(Url::parse(&url)?)),
             TagStandard::Starts { timestamp } => Ok(Self::Starts(**timestamp)),
             TagStandard::Ends { timestamp } => Ok(Self::Ends(**timestamp)),
             TagStandard::LiveEventStatusTag { status } => Ok(Self::LiveEventStatus(status.into())),
             TagStandard::CurrentParticipants { num } => Ok(Self::CurrentParticipants(num)),
             TagStandard::TotalParticipants { num } => Ok(Self::CurrentParticipants(num)),
-            TagStandard::AbsoluteURL { url } => Ok(Self::AbsoluteURL(UncheckedUrl::from(url))),
+            TagStandard::AbsoluteURL { url } => Ok(Self::AbsoluteURL(Url::parse(&url)?)),
             TagStandard::Method { method } => Ok(Self::Method(method.into())),
             TagStandard::Payload { hash } => Ok(Self::Payload(Sha256Hash::from_str(&hash)?)),
             TagStandard::Anon { msg } => Ok(Self::Anon { msg }),
@@ -687,7 +697,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             }),
             TagStandard::Emoji { shortcode, url } => Ok(Self::Emoji {
                 shortcode,
-                url: UncheckedUrl::from(url),
+                url: Url::parse(&url)?,
             }),
             TagStandard::Encrypted => Ok(Self::Encrypted),
             TagStandard::Request { event } => Ok(Self::Request(event.as_ref().deref().clone())),

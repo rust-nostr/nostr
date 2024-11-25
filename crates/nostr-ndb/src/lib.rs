@@ -120,15 +120,15 @@ impl NostrEventsDatabase for NdbDatabase {
     async fn event_id_seen(
         &self,
         _event_id: EventId,
-        _relay_url: Url,
-    ) -> std::result::Result<(), DatabaseError> {
+        _relay_url: RelayUrl,
+    ) -> Result<(), DatabaseError> {
         Ok(())
     }
 
     async fn event_seen_on_relays(
         &self,
         _event_id: &EventId,
-    ) -> std::result::Result<Option<HashSet<Url>>, DatabaseError> {
+    ) -> Result<Option<HashSet<RelayUrl>>, DatabaseError> {
         // TODO: use in-memory map to keep track of seen relays
         Err(DatabaseError::NotSupported)
     }

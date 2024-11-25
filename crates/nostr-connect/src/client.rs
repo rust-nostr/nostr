@@ -184,7 +184,7 @@ impl NostrConnect {
 
     /// Get signer relays
     #[inline]
-    pub fn relays(&self) -> Vec<Url> {
+    pub fn relays(&self) -> Vec<RelayUrl> {
         self.uri.relays()
     }
 
@@ -311,7 +311,7 @@ impl NostrConnect {
     }
 
     /// Sign an [UnsignedEvent]
-    pub async fn get_relays(&self) -> Result<HashMap<Url, RelayPermissions>, Error> {
+    pub async fn get_relays(&self) -> Result<HashMap<RelayUrl, RelayPermissions>, Error> {
         let req = Request::GetRelays;
         let res = self.send_request(req).await?;
         Ok(res.to_get_relays()?)

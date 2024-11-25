@@ -173,7 +173,7 @@ impl JsTag {
     #[inline]
     #[wasm_bindgen(js_name = relayMetadata)]
     pub fn relay_metadata(relay_url: &str, metadata: Option<JsRelayMetadata>) -> Result<JsTag> {
-        let relay_url: Url = Url::parse(relay_url).map_err(into_err)?;
+        let relay_url: RelayUrl = RelayUrl::parse(relay_url).map_err(into_err)?;
         Ok(Self {
             inner: Tag::relay_metadata(relay_url, metadata.map(|m| m.into())),
         })
@@ -205,10 +205,13 @@ impl JsTag {
 
     /// Compose image tag
     #[inline]
-    pub fn image(url: &str, dimensions: Option<JsImageDimensions>) -> Self {
-        Self {
-            inner: Tag::image(UncheckedUrl::from(url), dimensions.map(|d| d.into())),
-        }
+    pub fn image(url: &str, dimensions: Option<JsImageDimensions>) -> Result<JsTag> {
+        Ok(Self {
+            inner: Tag::image(
+                Url::parse(url).map_err(into_err)?,
+                dimensions.map(|d| d.into()),
+            ),
+        })
     }
 
     /// Compose `["description", "<description>"]` tag

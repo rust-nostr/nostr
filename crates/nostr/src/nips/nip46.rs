@@ -21,7 +21,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::json;
 
 use crate::event::unsigned::{self, UnsignedEvent};
-use crate::types::url::{ParseError, Url};
+use crate::types::url::{self, ParseError, RelayUrl, Url};
 use crate::{key, Event, JsonUtil, PublicKey};
 
 /// NIP46 URI Scheme
@@ -36,6 +36,8 @@ pub enum Error {
     Key(key::Error),
     /// JSON error
     Json(serde_json::Error),
+    /// Relay Url parse error
+    RelayUrl(url::Error),
     /// Url parse error
     Url(ParseError),
     /// Unsigned event error
@@ -64,7 +66,8 @@ impl fmt::Display for Error {
         match self {
             Self::Key(e) => write!(f, "Key: {e}"),
             Self::Json(e) => write!(f, "Json: {e}"),
-            Self::Url(e) => write!(f, "Url: {e}"),
+            Self::RelayUrl(e) => write!(f, "{e}"),
+            Self::Url(e) => write!(f, "{e}"),
             Self::Unsigned(e) => write!(f, "Unsigned event: {e}"),
             Self::InvalidRequest => write!(f, "Invalid request"),
             Self::InvalidParamsLength => write!(f, "Too many/few params"),
@@ -86,6 +89,12 @@ impl From<key::Error> for Error {
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
         Self::Json(e)
+    }
+}
+
+impl From<url::Error> for Error {
+    fn from(e: url::Error) -> Self {
+        Self::RelayUrl(e)
     }
 }
 
@@ -350,7 +359,7 @@ pub enum ResponseResult {
     /// Sign event
     SignEvent(Box<Event>),
     /// Get relays
-    GetRelays(HashMap<Url, RelayPermissions>),
+    GetRelays(HashMap<RelayUrl, RelayPermissions>),
     /// NIP04/NIP44 encryption/decryption
     EncryptionDecryption(String),
     /// Pong
@@ -426,7 +435,7 @@ impl ResponseResult {
     }
 
     #[inline]
-    pub fn to_get_relays(self) -> Result<HashMap<Url, RelayPermissions>, Error> {
+    pub fn to_get_relays(self) -> Result<HashMap<RelayUrl, RelayPermissions>, Error> {
         if let Self::GetRelays(val) = self {
             Ok(val)
         } else {
@@ -726,7 +735,7 @@ pub enum NostrConnectURI {
         /// Remote signer public key
         remote_signer_public_key: PublicKey,
         /// List of relays to use
-        relays: Vec<Url>,
+        relays: Vec<RelayUrl>,
         /// Optional secret
         secret: Option<String>,
     },
@@ -735,7 +744,7 @@ pub enum NostrConnectURI {
         /// App Pubkey
         public_key: PublicKey,
         /// URLs of the relays of choice where the `App` is connected and the `Signer` must send and listen for messages.
-        relays: Vec<Url>,
+        relays: Vec<RelayUrl>,
         /// Metadata
         metadata: NostrConnectMetadata,
     },
@@ -746,7 +755,7 @@ impl NostrConnectURI {
     #[inline]
     pub fn client<I, S>(public_key: PublicKey, relays: I, app_name: S) -> Self
     where
-        I: IntoIterator<Item = Url>,
+        I: IntoIterator<Item = RelayUrl>,
         S: Into<String>,
     {
         Self::Client {
@@ -769,14 +778,14 @@ impl NostrConnectURI {
                 if let Some(pubkey) = uri.domain() {
                     let public_key = PublicKey::from_hex(pubkey)?;
 
-                    let mut relays: Vec<Url> = Vec::new();
+                    let mut relays: Vec<RelayUrl> = Vec::new();
                     let mut secret: Option<String> = None;
 
                     for (key, value) in uri.query_pairs() {
                         match key {
                             Cow::Borrowed("relay") => {
                                 let value = value.to_string();
-                                relays.push(Url::parse(&value)?);
+                                relays.push(RelayUrl::parse(&value)?);
                             }
                             Cow::Borrowed("secret") => {
                                 secret = Some(value.to_string());
@@ -798,14 +807,14 @@ impl NostrConnectURI {
                 if let Some(pubkey) = uri.domain() {
                     let public_key = PublicKey::from_hex(pubkey)?;
 
-                    let mut relays: Vec<Url> = Vec::new();
+                    let mut relays: Vec<RelayUrl> = Vec::new();
                     let mut metadata: Option<NostrConnectMetadata> = None;
 
                     for (key, value) in uri.query_pairs() {
                         match key {
                             Cow::Borrowed("relay") => {
                                 let value = value.to_string();
-                                relays.push(Url::parse(&value)?);
+                                relays.push(RelayUrl::parse(&value)?);
                             }
                             Cow::Borrowed("metadata") => {
                                 let value = value.to_string();
@@ -852,7 +861,8 @@ impl NostrConnectURI {
 
     /// Get relays
     #[inline]
-    pub fn relays(&self) -> Vec<Url> {
+    // TODO: return slice
+    pub fn relays(&self) -> Vec<RelayUrl> {
         match self {
             Self::Bunker { relays, .. } => relays.clone(),
             Self::Client { relays, .. } => relays.clone(),
@@ -861,6 +871,7 @@ impl NostrConnectURI {
 
     /// Get optional secret
     #[inline]
+    // TODO: return &str
     pub fn secret(&self) -> Option<String> {
         match self {
             Self::Bunker { secret, .. } => secret.clone(),
@@ -959,7 +970,7 @@ mod test {
         let remote_signer_public_key =
             PublicKey::parse("79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3")
                 .unwrap();
-        let relay_url = Url::parse("wss://relay.nsec.app").unwrap();
+        let relay_url = RelayUrl::parse("wss://relay.nsec.app").unwrap();
         assert_eq!(uri.relays(), vec![relay_url.clone()]);
         assert_eq!(
             uri,
@@ -979,7 +990,7 @@ mod test {
         let pubkey =
             PublicKey::parse("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
                 .unwrap();
-        let relay_url = Url::parse("wss://relay.damus.io").unwrap();
+        let relay_url = RelayUrl::parse("wss://relay.damus.io").unwrap();
         let app_name = "Example";
         assert_eq!(uri, NostrConnectURI::client(pubkey, [relay_url], app_name));
     }
@@ -991,7 +1002,7 @@ mod test {
         let remote_signer_public_key =
             PublicKey::parse("79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3")
                 .unwrap();
-        let relay_url = Url::parse("wss://relay.nsec.app").unwrap();
+        let relay_url = RelayUrl::parse("wss://relay.nsec.app").unwrap();
         assert_eq!(
             NostrConnectURI::Bunker {
                 remote_signer_public_key,
@@ -1010,7 +1021,7 @@ mod test {
         let pubkey =
             PublicKey::parse("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
                 .unwrap();
-        let relay_url = Url::parse("wss://relay.damus.io").unwrap();
+        let relay_url = RelayUrl::parse("wss://relay.damus.io").unwrap();
         let app_name = "Example";
         assert_eq!(
             NostrConnectURI::client(pubkey, [relay_url], app_name).to_string(),

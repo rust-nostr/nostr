@@ -15,9 +15,8 @@ use std::net::SocketAddr;
 use reqwest::Proxy;
 use reqwest::{Client, Response};
 use serde_json::Value;
-use url::Url;
 
-use crate::{key, PublicKey};
+use crate::{key, PublicKey, RelayUrl};
 
 /// `NIP05` error
 #[derive(Debug)]
@@ -77,11 +76,11 @@ pub struct Nip05Profile {
     /// Relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/05.md>
-    pub relays: Vec<Url>,
+    pub relays: Vec<RelayUrl>,
     /// NIP46 relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
-    pub nip46: Vec<Url>,
+    pub nip46: Vec<RelayUrl>,
 }
 
 fn compose_url(nip05: &str) -> Result<(String, &str), Error> {
@@ -102,7 +101,7 @@ fn get_key_from_json(json: &Value, name: &str) -> Option<PublicKey> {
 }
 
 #[inline]
-fn get_relays_from_json(json: &Value, pk: &PublicKey) -> Vec<Url> {
+fn get_relays_from_json(json: &Value, pk: &PublicKey) -> Vec<RelayUrl> {
     json.get("relays")
         .and_then(|relays| relays.get(pk.to_hex()))
         .and_then(|value| serde_json::from_value(value.clone()).ok())
@@ -110,7 +109,7 @@ fn get_relays_from_json(json: &Value, pk: &PublicKey) -> Vec<Url> {
 }
 
 #[inline]
-fn get_nip46_relays_from_json(json: &Value, pk: &PublicKey) -> Vec<Url> {
+fn get_nip46_relays_from_json(json: &Value, pk: &PublicKey) -> Vec<RelayUrl> {
     json.get("nip46")
         .and_then(|relays| relays.get(pk.to_hex()))
         .and_then(|value| serde_json::from_value(value.clone()).ok())
@@ -178,8 +177,8 @@ where
     let (json, name) = make_req(nip05.as_ref(), _proxy).await?;
 
     let public_key: PublicKey = get_key_from_json(&json, name).ok_or(Error::ImpossibleToVerify)?;
-    let relays: Vec<Url> = get_relays_from_json(&json, &public_key);
-    let nip46: Vec<Url> = get_nip46_relays_from_json(&json, &public_key);
+    let relays: Vec<RelayUrl> = get_relays_from_json(&json, &public_key);
+    let nip46: Vec<RelayUrl> = get_nip46_relays_from_json(&json, &public_key);
 
     Ok(Nip05Profile {
         public_key,

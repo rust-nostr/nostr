@@ -326,7 +326,7 @@ impl Client {
     /// Call [`RelayPool::all_relays`] to get all relays
     /// or [`RelayPool::relays_with_flag`] to get relays with specific [`RelayServiceFlags`].
     #[inline]
-    pub async fn relays(&self) -> HashMap<Url, Relay> {
+    pub async fn relays(&self) -> HashMap<RelayUrl, Relay> {
         self.pool.relays().await
     }
 
@@ -340,8 +340,11 @@ impl Client {
         Ok(self.pool.relay(url).await?)
     }
 
-    async fn compose_relay_opts(&self, _url: &Url) -> RelayOptions {
+    async fn compose_relay_opts(&self, _url: &RelayUrl) -> RelayOptions {
         let opts: RelayOptions = RelayOptions::new();
+
+        // TODO: remove
+        let _url: &Url = _url.into();
 
         // Set connection mode
         #[cfg(not(target_arch = "wasm32"))]
@@ -350,6 +353,7 @@ impl Client {
             ConnectionMode::Proxy(..) => match self.opts.connection.target {
                 ConnectionTarget::All => opts.connection_mode(self.opts.connection.mode.clone()),
                 ConnectionTarget::Onion => {
+                    // TODO: use url.is_onion()
                     let domain: &str = _url.domain().unwrap_or_default();
 
                     if domain.ends_with(".onion") {
@@ -392,7 +396,7 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         // Convert into url
-        let url: Url = url.try_into_url().map_err(pool::Error::from)?;
+        let url: RelayUrl = url.try_into_url().map_err(pool::Error::from)?;
 
         // Compose relay options
         let opts: RelayOptions = self.compose_relay_opts(&url).await;
@@ -403,7 +407,7 @@ impl Client {
         // Add relay with opts or edit current one
         match self
             .pool
-            .get_or_add_relay::<&Url>(&url, inherit_pool_subscriptions, opts)
+            .get_or_add_relay::<&RelayUrl>(&url, inherit_pool_subscriptions, opts)
             .await?
         {
             Some(relay) => {
@@ -413,7 +417,7 @@ impl Client {
             None => {
                 // Connect if `autoconnect` is enabled
                 if self.opts.autoconnect {
-                    self.connect_relay::<Url>(url).await?;
+                    self.connect_relay::<RelayUrl>(url).await?;
                 }
 
                 Ok(true)
@@ -1152,7 +1156,7 @@ impl Client {
     )]
     pub async fn set_relay_list<I>(&self, relays: I) -> Result<Output<EventId>, Error>
     where
-        I: IntoIterator<Item = (Url, Option<RelayMetadata>)>,
+        I: IntoIterator<Item = (RelayUrl, Option<RelayMetadata>)>,
     {
         let builder = EventBuilder::relay_list(relays);
         self.send_event_builder(builder).await
@@ -1342,7 +1346,7 @@ impl Client {
     pub async fn repost(
         &self,
         event: &Event,
-        relay_url: Option<UncheckedUrl>,
+        relay_url: Option<RelayUrl>,
     ) -> Result<Output<EventId>, Error> {
         let builder = EventBuilder::repost(event, relay_url);
         self.send_event_builder(builder).await
@@ -1424,7 +1428,7 @@ impl Client {
     pub async fn set_channel_metadata(
         &self,
         channel_id: EventId,
-        relay_url: Option<Url>,
+        relay_url: Option<RelayUrl>,
         metadata: &Metadata,
     ) -> Result<Output<EventId>, Error> {
         let builder = EventBuilder::channel_metadata(channel_id, relay_url, metadata);
@@ -1441,7 +1445,7 @@ impl Client {
     pub async fn send_channel_msg<S>(
         &self,
         channel_id: EventId,
-        relay_url: Url,
+        relay_url: RelayUrl,
         msg: S,
     ) -> Result<Output<EventId>, Error>
     where
@@ -1495,7 +1499,7 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[inline]
-    pub async fn auth<S>(&self, challenge: S, relay: Url) -> Result<(), Error>
+    pub async fn auth<S>(&self, challenge: S, relay: RelayUrl) -> Result<(), Error>
     where
         S: Into<String>,
     {
@@ -1698,7 +1702,7 @@ impl Client {
     async fn break_down_filters(
         &self,
         filters: Vec<Filter>,
-    ) -> Result<HashMap<Url, Vec<Filter>>, Error> {
+    ) -> Result<HashMap<RelayUrl, Vec<Filter>>, Error> {
         // Extract all public keys from filters
         let public_keys = filters.iter().flat_map(|f| f.extract_public_keys());
 
@@ -1712,7 +1716,7 @@ impl Client {
         // Broken down filters
         let broken_down = self.gossip_graph.break_down_filters(filters).await;
 
-        let mut filters: HashMap<Url, BTreeSet<Filter>> = broken_down.filters;
+        let mut filters: HashMap<RelayUrl, BTreeSet<Filter>> = broken_down.filters;
 
         // Get read relays
         let read_relays = self
@@ -1803,7 +1807,7 @@ impl Client {
         self.update_outdated_gossip_graph(outdated_public_keys)
             .await?;
 
-        let urls: HashSet<Url> = if nip17 && event.kind == Kind::GiftWrap {
+        let urls: HashSet<RelayUrl> = if nip17 && event.kind == Kind::GiftWrap {
             // Get NIP17 relays
             // Get only for relays for p tags since gift wraps are signed with random key (random author)
             let relays = self

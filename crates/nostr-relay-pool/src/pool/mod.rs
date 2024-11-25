@@ -35,7 +35,7 @@ pub enum RelayPoolNotification {
     /// Received an [`Event`]. Does not include events sent by this client.
     Event {
         /// Relay url
-        relay_url: Url,
+        relay_url: RelayUrl,
         /// Subscription ID
         subscription_id: SubscriptionId,
         /// Event
@@ -44,7 +44,7 @@ pub enum RelayPoolNotification {
     /// Received a [`RelayMessage`]. Includes messages wrapping events that were sent by this client.
     Message {
         /// Relay url
-        relay_url: Url,
+        relay_url: RelayUrl,
         /// Relay Message
         message: RelayMessage,
     },
@@ -52,7 +52,7 @@ pub enum RelayPoolNotification {
     #[deprecated(since = "0.37.0")]
     RelayStatus {
         /// Relay url
-        relay_url: Url,
+        relay_url: RelayUrl,
         /// Relay Status
         status: RelayStatus,
     },
@@ -61,7 +61,7 @@ pub enum RelayPoolNotification {
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     Authenticated {
         /// Relay url
-        relay_url: Url,
+        relay_url: RelayUrl,
     },
     /// Shutdown
     Shutdown,
@@ -136,13 +136,13 @@ impl RelayPool {
     ///
     /// This method return all relays added to the pool, including the ones for gossip protocol or other services.
     #[inline]
-    pub async fn all_relays(&self) -> HashMap<Url, Relay> {
+    pub async fn all_relays(&self) -> HashMap<RelayUrl, Relay> {
         self.inner.all_relays().await
     }
 
     /// Get relays with `READ` or `WRITE` flags
     #[inline]
-    pub async fn relays(&self) -> HashMap<Url, Relay> {
+    pub async fn relays(&self) -> HashMap<RelayUrl, Relay> {
         self.inner.relays().await
     }
 
@@ -152,7 +152,7 @@ impl RelayPool {
         &self,
         flag: RelayServiceFlags,
         check: FlagCheck,
-    ) -> HashMap<Url, Relay> {
+    ) -> HashMap<RelayUrl, Relay> {
         self.inner.relays_with_flag(flag, check).await
     }
 

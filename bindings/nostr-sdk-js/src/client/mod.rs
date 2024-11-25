@@ -20,7 +20,7 @@ use crate::abortable::JsAbortHandle;
 use crate::database::{JsEvents, JsNostrDatabase};
 use crate::duration::JsDuration;
 use crate::error::{into_err, Result};
-use crate::pool::result::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
+use crate::pool::output::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
 use crate::pool::JsRelayPool;
 use crate::protocol::event::{JsEvent, JsEventBuilder, JsTag};
 use crate::protocol::key::JsPublicKey;

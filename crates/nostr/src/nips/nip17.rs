@@ -9,11 +9,10 @@
 use alloc::boxed::Box;
 use core::iter;
 
-use crate::types::Url;
-use crate::{Event, Kind, TagStandard};
+use crate::{Event, Kind, RelayUrl, TagStandard};
 
 /// Extracts the relay list
-pub fn extract_relay_list<'a>(event: &'a Event) -> Box<dyn Iterator<Item = &'a Url> + 'a> {
+pub fn extract_relay_list<'a>(event: &'a Event) -> Box<dyn Iterator<Item = &'a RelayUrl> + 'a> {
     if event.kind != Kind::InboxRelays {
         return Box::new(iter::empty());
     }
@@ -28,7 +27,7 @@ pub fn extract_relay_list<'a>(event: &'a Event) -> Box<dyn Iterator<Item = &'a U
 }
 
 /// Extracts the relay list
-pub fn extract_owned_relay_list(event: Event) -> Box<dyn Iterator<Item = Url>> {
+pub fn extract_owned_relay_list(event: Event) -> Box<dyn Iterator<Item = RelayUrl>> {
     if event.kind != Kind::InboxRelays {
         return Box::new(iter::empty());
     }

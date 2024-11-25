@@ -5,7 +5,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use nostr_sdk::{pool, SubscriptionId, Url};
+use nostr_sdk::{pool, RelayUrl, SubscriptionId};
 use uniffi::Record;
 
 use crate::protocol::EventId;
@@ -87,7 +87,7 @@ impl From<pool::Output<pool::Reconciliation>> for ReconciliationOutput {
     }
 }
 
-fn convert_output(success: HashSet<Url>, failed: HashMap<Url, Option<String>>) -> Output {
+fn convert_output(success: HashSet<RelayUrl>, failed: HashMap<RelayUrl, Option<String>>) -> Output {
     Output {
         success: success.into_iter().map(|u| u.to_string()).collect(),
         failed: failed

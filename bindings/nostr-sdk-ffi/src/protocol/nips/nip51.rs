@@ -6,7 +6,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use nostr::nips::nip51;
-use nostr::{UncheckedUrl, Url};
+use nostr::Url;
 use uniffi::Record;
 
 use super::nip01::Coordinate;
@@ -110,9 +110,11 @@ pub struct EmojiInfo {
     pub url: String,
 }
 
-impl From<EmojiInfo> for (String, UncheckedUrl) {
-    fn from(value: EmojiInfo) -> Self {
-        (value.shortcode, UncheckedUrl::from(value.url))
+impl TryFrom<EmojiInfo> for (String, Url) {
+    type Error = NostrSdkError;
+
+    fn try_from(value: EmojiInfo) -> Result<Self, Self::Error> {
+        Ok((value.shortcode, Url::parse(&value.url)?))
     }
 }
 
@@ -132,7 +134,12 @@ pub struct Emojis {
 impl From<Emojis> for nip51::Emojis {
     fn from(value: Emojis) -> Self {
         Self {
-            emojis: value.emojis.into_iter().map(|e| e.into()).collect(),
+            // TODO: propagate error
+            emojis: value
+                .emojis
+                .into_iter()
+                .filter_map(|e| e.try_into().ok())
+                .collect(),
             coordinate: value
                 .coordinate
                 .into_iter()

@@ -24,7 +24,7 @@ use crate::relay::options::{FilterOptions, RelayOptions, SyncOptions};
 use crate::relay::{FlagCheck, Reconciliation, Relay, RelayFiltering};
 use crate::{RelayServiceFlags, SubscribeOptions};
 
-type Relays = HashMap<Url, Relay>;
+type Relays = HashMap<RelayUrl, Relay>;
 
 #[derive(Debug, Clone)]
 pub struct InnerRelayPool {
@@ -97,7 +97,7 @@ impl InnerRelayPool {
         self.notification_sender.subscribe()
     }
 
-    pub async fn all_relays(&self) -> HashMap<Url, Relay> {
+    pub async fn all_relays(&self) -> Relays {
         let relays = self.relays.read().await;
         relays.clone()
     }
@@ -108,13 +108,13 @@ impl InnerRelayPool {
         txn: &'a RwLockReadGuard<'a, Relays>,
         flag: RelayServiceFlags,
         check: FlagCheck,
-    ) -> impl Iterator<Item = (&'a Url, &'a Relay)> + 'a {
+    ) -> impl Iterator<Item = (&'a RelayUrl, &'a Relay)> + 'a {
         txn.iter().filter(move |(_, r)| r.flags().has(flag, check))
     }
 
     /// Get relays that has `READ` or `WRITE` flags
     #[inline]
-    pub async fn relays(&self) -> HashMap<Url, Relay> {
+    pub async fn relays(&self) -> Relays {
         self.relays_with_flag(
             RelayServiceFlags::READ | RelayServiceFlags::WRITE,
             FlagCheck::Any,
@@ -123,11 +123,7 @@ impl InnerRelayPool {
     }
 
     /// Get relays that have a certain [RelayServiceFlag] enabled
-    pub async fn relays_with_flag(
-        &self,
-        flag: RelayServiceFlags,
-        check: FlagCheck,
-    ) -> HashMap<Url, Relay> {
+    pub async fn relays_with_flag(&self, flag: RelayServiceFlags, check: FlagCheck) -> Relays {
         let relays = self.relays.read().await;
         self.internal_relays_with_flag(&relays, flag, check)
             .map(|(k, v)| (k.clone(), v.clone()))
@@ -135,7 +131,7 @@ impl InnerRelayPool {
     }
 
     /// Get relays with `READ` or `WRITE` relays
-    async fn relay_urls(&self) -> Vec<Url> {
+    async fn relay_urls(&self) -> Vec<RelayUrl> {
         let relays = self.relays.read().await;
         self.internal_relays_with_flag(
             &relays,
@@ -146,14 +142,14 @@ impl InnerRelayPool {
         .collect()
     }
 
-    async fn read_relay_urls(&self) -> Vec<Url> {
+    async fn read_relay_urls(&self) -> Vec<RelayUrl> {
         let relays = self.relays.read().await;
         self.internal_relays_with_flag(&relays, RelayServiceFlags::READ, FlagCheck::All)
             .map(|(k, ..)| k.clone())
             .collect()
     }
 
-    async fn write_relay_urls(&self) -> Vec<Url> {
+    async fn write_relay_urls(&self) -> Vec<RelayUrl> {
         let relays = self.relays.read().await;
         self.internal_relays_with_flag(&relays, RelayServiceFlags::WRITE, FlagCheck::All)
             .map(|(k, ..)| k.clone())
@@ -164,7 +160,7 @@ impl InnerRelayPool {
     fn internal_relay<'a>(
         &self,
         txn: &'a RwLockReadGuard<'a, Relays>,
-        url: &Url,
+        url: &RelayUrl,
     ) -> Result<&'a Relay, Error> {
         txn.get(url).ok_or(Error::RelayNotFound)
     }
@@ -174,7 +170,7 @@ impl InnerRelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let url: Url = url.try_into_url()?;
+        let url: RelayUrl = url.try_into_url()?;
         let relays = self.relays.read().await;
         self.internal_relay(&relays, &url).cloned()
     }
@@ -215,7 +211,7 @@ impl InnerRelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Convert into url
-        let url: Url = url.try_into_url()?;
+        let url: RelayUrl = url.try_into_url()?;
 
         // Check if the pool has been shutdown
         if self.is_shutdown() {
@@ -283,7 +279,7 @@ impl InnerRelayPool {
     async fn internal_remove_relay(
         &self,
         relays: &mut Relays,
-        url: Url,
+        url: RelayUrl,
         force: bool,
     ) -> Result<(), Error> {
         // Remove relay
@@ -318,7 +314,7 @@ impl InnerRelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Convert into url
-        let url: Url = url.try_into_url()?;
+        let url: RelayUrl = url.try_into_url()?;
 
         // Acquire write lock
         let mut relays = self.relays.write().await;
@@ -332,7 +328,7 @@ impl InnerRelayPool {
         let mut relays = self.relays.write().await;
 
         // Collect all relay urls
-        let urls: Vec<Url> = relays.keys().cloned().collect();
+        let urls: Vec<RelayUrl> = relays.keys().cloned().collect();
 
         // Iter urls and remove relays
         for url in urls.into_iter() {
@@ -362,7 +358,7 @@ impl InnerRelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Compose URLs
-        let set: HashSet<Url> = urls
+        let set: HashSet<RelayUrl> = urls
             .into_iter()
             .map(|u| u.try_into_url())
             .collect::<Result<_, _>>()?;
@@ -415,12 +411,12 @@ impl InnerRelayPool {
     }
 
     pub async fn send_event(&self, event: Event) -> Result<Output<EventId>, Error> {
-        let urls: Vec<Url> = self.write_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.write_relay_urls().await;
         self.send_event_to(urls, event).await
     }
 
     pub async fn batch_event(&self, events: Vec<Event>) -> Result<Output<()>, Error> {
-        let urls: Vec<Url> = self.write_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.write_relay_urls().await;
         self.batch_event_to(urls, events).await
     }
 
@@ -450,7 +446,7 @@ impl InnerRelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Compose URLs
-        let set: HashSet<Url> = urls
+        let set: HashSet<RelayUrl> = urls
             .into_iter()
             .map(|u| u.try_into_url())
             .collect::<Result<_, _>>()?;
@@ -477,7 +473,7 @@ impl InnerRelayPool {
             self.database.save_event(event).await?;
         }
 
-        let mut urls: Vec<Url> = Vec::with_capacity(set.len());
+        let mut urls: Vec<RelayUrl> = Vec::with_capacity(set.len());
         let mut futures = Vec::with_capacity(set.len());
         let mut output: Output<()> = Output::default();
 
@@ -539,7 +535,7 @@ impl InnerRelayPool {
         }
 
         // Get relay urls
-        let urls: Vec<Url> = self.read_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.read_relay_urls().await;
 
         // Subscribe
         self.subscribe_with_id_to(urls, id, filters, opts).await
@@ -596,7 +592,7 @@ impl InnerRelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Collect targets map
-        let mut map: HashMap<Url, Vec<Filter>> = HashMap::new();
+        let mut map: HashMap<RelayUrl, Vec<Filter>> = HashMap::new();
         for (url, filters) in targets.into_iter() {
             map.insert(url.try_into_url()?, filters);
         }
@@ -619,7 +615,7 @@ impl InnerRelayPool {
             return Err(Error::RelayNotFound);
         }
 
-        let mut urls: Vec<Url> = Vec::with_capacity(map.len());
+        let mut urls: Vec<RelayUrl> = Vec::with_capacity(map.len());
         let mut futures = Vec::with_capacity(map.len());
         let mut output: Output<()> = Output::default();
 
@@ -694,7 +690,7 @@ impl InnerRelayPool {
         filter: Filter,
         opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
-        let urls: Vec<Url> = self.relay_urls().await;
+        let urls: Vec<RelayUrl> = self.relay_urls().await;
         self.sync_with(urls, filter, opts).await
     }
 
@@ -735,7 +731,7 @@ impl InnerRelayPool {
     {
         // Collect targets map
         // TODO: create hashmap with capacity
-        let mut map: HashMap<Url, HashMap<Filter, Vec<(EventId, Timestamp)>>> = HashMap::new();
+        let mut map: HashMap<RelayUrl, HashMap<Filter, Vec<(EventId, Timestamp)>>> = HashMap::new();
         for (url, value) in targets.into_iter() {
             map.insert(url.try_into_url()?, value);
         }
@@ -760,7 +756,7 @@ impl InnerRelayPool {
 
         // TODO: shared reconciliation output to avoid to request duplicates?
 
-        let mut urls: Vec<Url> = Vec::with_capacity(map.len());
+        let mut urls: Vec<RelayUrl> = Vec::with_capacity(map.len());
         let mut futures = Vec::with_capacity(map.len());
         let mut output: Output<Reconciliation> = Output::default();
 
@@ -802,7 +798,7 @@ impl InnerRelayPool {
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<Events, Error> {
-        let urls: Vec<Url> = self.read_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.read_relay_urls().await;
         self.fetch_events_from(urls, filters, timeout, opts).await
     }
 
@@ -838,7 +834,7 @@ impl InnerRelayPool {
         timeout: Duration,
         opts: FilterOptions,
     ) -> Result<ReceiverStream<Event>, Error> {
-        let urls: Vec<Url> = self.read_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.read_relay_urls().await;
         self.stream_events_from(urls, filters, timeout, opts).await
     }
 
@@ -872,7 +868,7 @@ impl InnerRelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Collect targets map
-        let mut map: HashMap<Url, Vec<Filter>> = HashMap::new();
+        let mut map: HashMap<RelayUrl, Vec<Filter>> = HashMap::new();
         for (url, filters) in targets.into_iter() {
             map.insert(url.try_into_url()?, filters);
         }
@@ -909,7 +905,7 @@ impl InnerRelayPool {
 
             let ids: Mutex<HashSet<EventId>> = Mutex::new(HashSet::new());
 
-            let mut urls: Vec<Url> = Vec::with_capacity(map.len());
+            let mut urls: Vec<RelayUrl> = Vec::with_capacity(map.len());
             let mut futures = Vec::with_capacity(map.len());
 
             // Filter relays and start query
@@ -1001,7 +997,7 @@ impl InnerRelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Convert url
-        let url: Url = url.try_into_url()?;
+        let url: RelayUrl = url.try_into_url()?;
 
         // Lock with read shared access
         let relays = self.relays.read().await;
@@ -1021,7 +1017,7 @@ impl InnerRelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Convert url
-        let url: Url = url.try_into_url()?;
+        let url: RelayUrl = url.try_into_url()?;
 
         // Lock with read shared access
         let relays = self.relays.read().await;

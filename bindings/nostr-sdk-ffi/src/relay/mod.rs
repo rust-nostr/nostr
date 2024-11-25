@@ -7,7 +7,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_sdk::{pool, FilterOptions, SubscriptionId, Url};
+use nostr_sdk::{pool, FilterOptions, RelayUrl, SubscriptionId};
 use uniffi::{Object, Record};
 
 pub mod filtering;
@@ -103,7 +103,7 @@ impl Relay {
     /// Create new `Relay` with **default** `options` and `in-memory database`
     #[uniffi::constructor]
     pub fn new(url: &str) -> Result<Self> {
-        let url: Url = Url::parse(url)?;
+        let url: RelayUrl = RelayUrl::parse(url)?;
         Ok(Self {
             inner: nostr_sdk::Relay::new(url),
         })
@@ -112,7 +112,7 @@ impl Relay {
     /// Create new `Relay` with default `in-memory database` and custom `options`
     #[uniffi::constructor]
     pub fn with_opts(url: &str, opts: &RelayOptions) -> Result<Self> {
-        let url: Url = Url::parse(url)?;
+        let url: RelayUrl = RelayUrl::parse(url)?;
         let opts = opts.deref().clone();
         Ok(Self {
             inner: nostr_sdk::Relay::with_opts(url, opts),
@@ -121,8 +121,8 @@ impl Relay {
 
     /// Create new `Relay` with **custom** `database` and/or `options`
     #[uniffi::constructor]
-    pub fn custom(url: String, database: &NostrDatabase, opts: &RelayOptions) -> Result<Self> {
-        let url: Url = Url::parse(&url)?;
+    pub fn custom(url: &str, database: &NostrDatabase, opts: &RelayOptions) -> Result<Self> {
+        let url: RelayUrl = RelayUrl::parse(url)?;
         Ok(Self {
             inner: nostr_sdk::Relay::custom(url, database.deref().clone(), opts.deref().clone()),
         })

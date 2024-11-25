@@ -17,12 +17,14 @@ const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
 #[derive(Debug)]
 pub struct BrokenDownFilters {
     /// Filters by url
-    pub filters: HashMap<Url, BTreeSet<Filter>>,
+    pub filters: HashMap<RelayUrl, BTreeSet<Filter>>,
     /// Filters that match a certain pattern but where no relays are available
     pub orphans: Option<BTreeSet<Filter>>,
     /// Filters that can be sent to read relays (generic query, not related to public keys)
     pub others: Option<BTreeSet<Filter>>,
-    pub urls: HashSet<Url>,
+    /// All inbox and outbox relays
+    // TODO: remove?
+    pub urls: HashSet<RelayUrl>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -36,8 +38,8 @@ struct RelayList<T> {
 
 #[derive(Debug, Clone, Default)]
 struct RelayLists {
-    pub nip17: RelayList<HashSet<Url>>,
-    pub nip65: RelayList<HashMap<Url, Option<RelayMetadata>>>,
+    pub nip17: RelayList<HashSet<RelayUrl>>,
+    pub nip65: RelayList<HashMap<RelayUrl, Option<RelayMetadata>>>,
     /// Timestamp of the last check
     pub last_check: Timestamp,
 }
@@ -188,11 +190,11 @@ impl GossipGraph {
         &self,
         txn: &RwLockReadGuard<PublicKeyMap>,
         public_keys: I,
-    ) -> HashSet<Url>
+    ) -> HashSet<RelayUrl>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
-        let mut urls: HashSet<Url> = HashSet::new();
+        let mut urls: HashSet<RelayUrl> = HashSet::new();
 
         for public_key in public_keys.into_iter() {
             if let Some(lists) = txn.get(public_key) {
@@ -210,11 +212,11 @@ impl GossipGraph {
         txn: &RwLockReadGuard<PublicKeyMap>,
         public_keys: I,
         metadata: Option<RelayMetadata>,
-    ) -> HashSet<Url>
+    ) -> HashSet<RelayUrl>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
-        let mut urls: HashSet<Url> = HashSet::new();
+        let mut urls: HashSet<RelayUrl> = HashSet::new();
 
         for public_key in public_keys.into_iter() {
             if let Some(lists) = txn.get(public_key) {
@@ -241,11 +243,11 @@ impl GossipGraph {
         &self,
         txn: &RwLockReadGuard<PublicKeyMap>,
         public_keys: I,
-    ) -> HashMap<Url, BTreeSet<PublicKey>>
+    ) -> HashMap<RelayUrl, BTreeSet<PublicKey>>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
-        let mut urls: HashMap<Url, BTreeSet<PublicKey>> = HashMap::new();
+        let mut urls: HashMap<RelayUrl, BTreeSet<PublicKey>> = HashMap::new();
 
         for public_key in public_keys.into_iter() {
             if let Some(lists) = txn.get(public_key) {
@@ -268,11 +270,11 @@ impl GossipGraph {
         txn: &RwLockReadGuard<PublicKeyMap>,
         public_keys: I,
         metadata: RelayMetadata,
-    ) -> HashMap<Url, BTreeSet<PublicKey>>
+    ) -> HashMap<RelayUrl, BTreeSet<PublicKey>>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
-        let mut urls: HashMap<Url, BTreeSet<PublicKey>> = HashMap::new();
+        let mut urls: HashMap<RelayUrl, BTreeSet<PublicKey>> = HashMap::new();
 
         for public_key in public_keys.into_iter() {
             if let Some(lists) = txn.get(public_key) {
@@ -299,7 +301,7 @@ impl GossipGraph {
 
     /// Get outbox (write) relays for public keys
     #[inline]
-    pub async fn get_nip65_outbox_relays<'a, I>(&self, public_keys: I) -> HashSet<Url>
+    pub async fn get_nip65_outbox_relays<'a, I>(&self, public_keys: I) -> HashSet<RelayUrl>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
@@ -309,7 +311,7 @@ impl GossipGraph {
 
     /// Get inbox (read) relays for public keys
     #[inline]
-    pub async fn get_nip65_inbox_relays<'a, I>(&self, public_keys: I) -> HashSet<Url>
+    pub async fn get_nip65_inbox_relays<'a, I>(&self, public_keys: I) -> HashSet<RelayUrl>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
@@ -319,7 +321,7 @@ impl GossipGraph {
 
     /// Get NIP17 inbox (read) relays for public keys
     #[inline]
-    pub async fn get_nip17_inbox_relays<'a, I>(&self, public_keys: I) -> HashSet<Url>
+    pub async fn get_nip17_inbox_relays<'a, I>(&self, public_keys: I) -> HashSet<RelayUrl>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
@@ -333,7 +335,7 @@ impl GossipGraph {
         &self,
         txn: &RwLockReadGuard<PublicKeyMap>,
         public_keys: I,
-    ) -> HashMap<Url, BTreeSet<PublicKey>>
+    ) -> HashMap<RelayUrl, BTreeSet<PublicKey>>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
@@ -346,7 +348,7 @@ impl GossipGraph {
         &self,
         txn: &RwLockReadGuard<PublicKeyMap>,
         public_keys: I,
-    ) -> HashMap<Url, BTreeSet<PublicKey>>
+    ) -> HashMap<RelayUrl, BTreeSet<PublicKey>>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
@@ -357,10 +359,10 @@ impl GossipGraph {
     where
         I: IntoIterator<Item = Filter>,
     {
-        let mut map: HashMap<Url, BTreeSet<Filter>> = HashMap::new();
+        let mut map: HashMap<RelayUrl, BTreeSet<Filter>> = HashMap::new();
         let mut orphans: BTreeSet<Filter> = BTreeSet::new();
         let mut others: BTreeSet<Filter> = BTreeSet::new();
-        let mut urls: HashSet<Url> = HashSet::new();
+        let mut urls: HashSet<RelayUrl> = HashSet::new();
 
         let txn = self.public_keys.read().await;
 
@@ -528,7 +530,7 @@ mod tests {
         let keys = Keys::parse(secret_key).unwrap();
         let list = relays
             .into_iter()
-            .filter_map(|(url, m)| Some((Url::parse(url).ok()?, m)));
+            .filter_map(|(url, m)| Some((RelayUrl::parse(url).ok()?, m)));
         EventBuilder::relay_list(list)
             .sign_with_keys(&keys)
             .unwrap()
@@ -551,13 +553,13 @@ mod tests {
         let keys_a = Keys::parse(SECRET_KEY_A).unwrap();
         let keys_b = Keys::parse(SECRET_KEY_B).unwrap();
 
-        let damus_url = Url::parse("wss://relay.damus.io").unwrap();
-        let nostr_bg_url = Url::parse("wss://relay.nostr.bg").unwrap();
-        let nos_lol_url = Url::parse("wss://nos.lol").unwrap();
-        let nostr_mom_url = Url::parse("wss://nostr.mom").unwrap();
-        let nostr_info_url = Url::parse("wss://relay.nostr.info").unwrap();
-        let relay_rip_url = Url::parse("wss://relay.rip").unwrap();
-        let snort_url = Url::parse("wss://relay.snort.social").unwrap();
+        let damus_url = RelayUrl::parse("wss://relay.damus.io").unwrap();
+        let nostr_bg_url = RelayUrl::parse("wss://relay.nostr.bg").unwrap();
+        let nos_lol_url = RelayUrl::parse("wss://nos.lol").unwrap();
+        let nostr_mom_url = RelayUrl::parse("wss://nostr.mom").unwrap();
+        let nostr_info_url = RelayUrl::parse("wss://relay.nostr.info").unwrap();
+        let relay_rip_url = RelayUrl::parse("wss://relay.rip").unwrap();
+        let snort_url = RelayUrl::parse("wss://relay.snort.social").unwrap();
 
         let graph = setup_graph().await;
 

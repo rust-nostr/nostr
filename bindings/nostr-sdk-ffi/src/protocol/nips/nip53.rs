@@ -6,10 +6,11 @@ use std::sync::Arc;
 
 use nostr::nips::nip53;
 use nostr::secp256k1::schnorr::Signature;
-use nostr::types::url::{UncheckedUrl, Url};
+use nostr::types::url::{RelayUrl, Url};
 use uniffi::{Enum, Record};
 
 use crate::protocol::{ImageDimensions, PublicKey, Timestamp};
+use crate::NostrSdkError;
 
 #[derive(Enum)]
 /// Live Event Marker
@@ -79,16 +80,21 @@ pub struct LiveEventHost {
     pub proof: Option<String>,
 }
 
-impl From<LiveEventHost> for nip53::LiveEventHost {
-    fn from(value: LiveEventHost) -> Self {
-        Self {
+impl TryFrom<LiveEventHost> for nip53::LiveEventHost {
+    type Error = NostrSdkError;
+
+    fn try_from(value: LiveEventHost) -> Result<Self, Self::Error> {
+        Ok(Self {
             public_key: **value.public_key,
-            relay_url: value.relay_url.map(UncheckedUrl::from),
+            relay_url: match value.relay_url {
+                Some(url) => Some(RelayUrl::parse(url)?),
+                None => None,
+            },
             proof: match value.proof {
                 Some(sig) => Signature::from_str(&sig).ok(),
                 None => None,
             },
-        }
+        })
     }
 }
 
@@ -118,24 +124,33 @@ pub struct LiveEvent {
     pub status: Option<LiveEventStatus>,
     pub current_participants: Option<u64>,
     pub total_participants: Option<u64>,
-    pub relays: Vec<String>, // TODO: create and use `Url` struct instead
+    pub relays: Vec<String>,
     pub host: Option<LiveEventHost>,
     pub speakers: Vec<Person>,
     pub participants: Vec<Person>,
 }
 
-impl From<LiveEvent> for nip53::LiveEvent {
-    fn from(value: LiveEvent) -> Self {
-        Self {
+impl TryFrom<LiveEvent> for nip53::LiveEvent {
+    type Error = NostrSdkError;
+
+    fn try_from(value: LiveEvent) -> Result<Self, Self::Error> {
+        Ok(Self {
             id: value.id,
             title: value.title,
             summary: value.summary,
-            image: value
-                .image
-                .map(|i: Image| (UncheckedUrl::from(i.url), i.dimensions.map(|d| **d))),
+            image: match value.image {
+                Some(i) => Some((Url::parse(&i.url)?, i.dimensions.map(|d| **d))),
+                None => None,
+            },
             hashtags: value.hashtags,
-            streaming: value.streaming.map(UncheckedUrl::from),
-            recording: value.recording.map(UncheckedUrl::from),
+            streaming: match value.streaming {
+                Some(url) => Some(Url::parse(&url)?),
+                None => None,
+            },
+            recording: match value.recording {
+                Some(url) => Some(Url::parse(&url)?),
+                None => None,
+            },
             starts: value.start.map(|t| **t),
             ends: value.ends.map(|t| **t),
             status: value.status.map(|s| s.into()),
@@ -146,17 +161,21 @@ impl From<LiveEvent> for nip53::LiveEvent {
                 .into_iter()
                 .filter_map(|u| Url::parse(&u).ok())
                 .collect(),
-            host: value.host.map(|h| h.into()),
+            host: match value.host {
+                Some(h) => Some(h.try_into()?),
+                None => None,
+            },
+            // TODO: propagate error
             speakers: value
                 .speakers
                 .into_iter()
-                .map(|s| (**s.public_key, s.url.map(UncheckedUrl::from)))
+                .map(|s| (**s.public_key, s.url.and_then(|u| RelayUrl::parse(u).ok())))
                 .collect(),
             participants: value
                 .participants
                 .into_iter()
-                .map(|s| (**s.public_key, s.url.map(UncheckedUrl::from)))
+                .map(|s| (**s.public_key, s.url.and_then(|u| RelayUrl::parse(u).ok())))
                 .collect(),
-        }
+        })
     }
 }

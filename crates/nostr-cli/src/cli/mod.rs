@@ -24,7 +24,7 @@ pub enum Command {
     /// Open nostr shell
     Shell {
         #[clap(long)]
-        relays: Vec<Url>,
+        relays: Vec<RelayUrl>,
         // tor: bool,
         // proxy: Option<SocketAddr>,
     },
@@ -48,7 +48,7 @@ pub enum ShellCommand {
         public_key: PublicKey,
         /// Relays
         #[clap(long)]
-        relays: Vec<Url>,
+        relays: Vec<RelayUrl>,
         /// Direction
         #[clap(short, long, value_enum, default_value_t = ShellSyncDirection::Down)]
         direction: ShellSyncDirection,

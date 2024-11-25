@@ -9,7 +9,8 @@
 use alloc::vec::Vec;
 use core::fmt;
 
-use crate::{Event, Kind, PublicKey, Tag, TagStandard, UncheckedUrl};
+use crate::types::RelayUrl;
+use crate::{Event, Kind, PublicKey, Tag, TagStandard};
 
 #[derive(Debug)]
 /// Badge Award error
@@ -57,7 +58,7 @@ pub(crate) fn filter_for_kind(events: Vec<Event>, kind_needed: &Kind) -> Vec<Eve
 pub(crate) fn extract_awarded_public_key<'a>(
     tags: &'a [Tag],
     awarded_public_key: &PublicKey,
-) -> Option<(&'a PublicKey, &'a Option<UncheckedUrl>)> {
+) -> Option<(&'a PublicKey, &'a Option<RelayUrl>)> {
     tags.iter().find_map(|t| match t.as_standardized() {
         Some(TagStandard::PublicKey {
             public_key,

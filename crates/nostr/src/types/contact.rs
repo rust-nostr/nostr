@@ -6,7 +6,8 @@
 
 use alloc::string::String;
 
-use crate::{PublicKey, UncheckedUrl};
+use crate::key::PublicKey;
+use crate::types::RelayUrl;
 
 /// Contact
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
@@ -14,7 +15,7 @@ pub struct Contact {
     /// Public key
     pub public_key: PublicKey,
     /// Relay url
-    pub relay_url: Option<UncheckedUrl>,
+    pub relay_url: Option<RelayUrl>,
     /// Alias
     pub alias: Option<String>,
 }
@@ -22,7 +23,7 @@ pub struct Contact {
 impl Contact {
     /// Create new [`Contact`]
     #[inline]
-    pub fn new<S>(public_key: PublicKey, relay_url: Option<UncheckedUrl>, alias: Option<S>) -> Self
+    pub fn new<S>(public_key: PublicKey, relay_url: Option<RelayUrl>, alias: Option<S>) -> Self
     where
         S: Into<String>,
     {

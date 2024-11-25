@@ -32,8 +32,8 @@ use crate::nips::nip01::Coordinate;
 use crate::nips::nip10::Marker;
 use crate::nips::nip56::Report;
 use crate::nips::nip65::RelayMetadata;
-use crate::types::url::Url;
-use crate::{ImageDimensions, PublicKey, SingleLetterTag, Timestamp, UncheckedUrl};
+use crate::types::Url;
+use crate::{ImageDimensions, PublicKey, RelayUrl, SingleLetterTag, Timestamp};
 
 /// Tag
 #[derive(Clone)]
@@ -249,7 +249,7 @@ impl Tag {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     #[inline]
-    pub fn relay_metadata(relay_url: Url, metadata: Option<RelayMetadata>) -> Self {
+    pub fn relay_metadata(relay_url: RelayUrl, metadata: Option<RelayMetadata>) -> Self {
         Self::from_standardized_without_cell(TagStandard::RelayMetadata {
             relay_url,
             metadata,
@@ -285,7 +285,7 @@ impl Tag {
 
     /// Compose image tag
     #[inline]
-    pub fn image(url: UncheckedUrl, dimensions: Option<ImageDimensions>) -> Self {
+    pub fn image(url: Url, dimensions: Option<ImageDimensions>) -> Self {
         Self::from_standardized_without_cell(TagStandard::Image(url, dimensions))
     }
 

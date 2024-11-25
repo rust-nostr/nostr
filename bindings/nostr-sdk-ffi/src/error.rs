@@ -195,6 +195,12 @@ impl From<nostr::secp256k1::Error> for NostrSdkError {
     }
 }
 
+impl From<nostr::types::url::Error> for NostrSdkError {
+    fn from(e: nostr::types::url::Error) -> NostrSdkError {
+        Self::Generic(e.to_string())
+    }
+}
+
 impl From<nostr::types::url::ParseError> for NostrSdkError {
     fn from(e: nostr::types::url::ParseError) -> NostrSdkError {
         Self::Generic(e.to_string())

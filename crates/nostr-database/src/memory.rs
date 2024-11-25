@@ -10,8 +10,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use lru::LruCache;
-use nostr::nips::nip01::Coordinate;
-use nostr::{Event, EventId, Filter, Timestamp, Url};
+use nostr::prelude::*;
 use tokio::sync::Mutex;
 
 use crate::collections::new_lru_cache;
@@ -51,7 +50,7 @@ impl MemoryDatabaseOptions {
 #[derive(Debug, Clone)]
 pub struct MemoryDatabase {
     opts: MemoryDatabaseOptions,
-    seen_event_ids: Arc<Mutex<LruCache<EventId, HashSet<Url>>>>,
+    seen_event_ids: Arc<Mutex<LruCache<EventId, HashSet<RelayUrl>>>>,
     helper: DatabaseHelper,
 }
 
@@ -81,9 +80,9 @@ impl MemoryDatabase {
 
     fn _event_id_seen(
         &self,
-        seen_event_ids: &mut LruCache<EventId, HashSet<Url>>,
+        seen_event_ids: &mut LruCache<EventId, HashSet<RelayUrl>>,
         event_id: EventId,
-        relay_url: Option<Url>,
+        relay_url: Option<RelayUrl>,
     ) {
         match seen_event_ids.get_mut(&event_id) {
             Some(set) => {
@@ -92,7 +91,7 @@ impl MemoryDatabase {
                 }
             }
             None => {
-                let mut set: HashSet<Url> = HashSet::new();
+                let mut set: HashSet<RelayUrl> = HashSet::new();
 
                 if let Some(url) = relay_url {
                     set.insert(url);
@@ -168,7 +167,11 @@ impl NostrEventsDatabase for MemoryDatabase {
             .await)
     }
 
-    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), DatabaseError> {
+    async fn event_id_seen(
+        &self,
+        event_id: EventId,
+        relay_url: RelayUrl,
+    ) -> Result<(), DatabaseError> {
         let mut seen_event_ids = self.seen_event_ids.lock().await;
         self._event_id_seen(&mut seen_event_ids, event_id, Some(relay_url));
         Ok(())
@@ -177,7 +180,7 @@ impl NostrEventsDatabase for MemoryDatabase {
     async fn event_seen_on_relays(
         &self,
         event_id: &EventId,
-    ) -> Result<Option<HashSet<Url>>, DatabaseError> {
+    ) -> Result<Option<HashSet<RelayUrl>>, DatabaseError> {
         let mut seen_event_ids = self.seen_event_ids.lock().await;
         Ok(seen_event_ids.get(event_id).cloned())
     }

@@ -16,8 +16,8 @@ pub struct JsImage {
     pub dimensions: Option<JsImageDimensions>,
 }
 
-impl From<(UncheckedUrl, Option<ImageDimensions>)> for JsImage {
-    fn from(value: (UncheckedUrl, Option<ImageDimensions>)) -> Self {
+impl From<(Url, Option<ImageDimensions>)> for JsImage {
+    fn from(value: (Url, Option<ImageDimensions>)) -> Self {
         Self {
             url: value.0.to_string(),
             dimensions: value.1.map(|d| d.into()),
@@ -41,8 +41,8 @@ pub struct JsUser {
     pub url: Option<String>,
 }
 
-impl From<(PublicKey, Option<UncheckedUrl>)> for JsUser {
-    fn from(value: (PublicKey, Option<UncheckedUrl>)) -> Self {
+impl From<(PublicKey, Option<RelayUrl>)> for JsUser {
+    fn from(value: (PublicKey, Option<RelayUrl>)) -> Self {
         Self {
             public_key: value.0.into(),
             url: value.1.map(|url| url.to_string()),

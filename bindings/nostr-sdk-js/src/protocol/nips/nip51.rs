@@ -116,9 +116,11 @@ pub struct JsEmojiInfo {
     pub url: String,
 }
 
-impl From<JsEmojiInfo> for (String, UncheckedUrl) {
-    fn from(value: JsEmojiInfo) -> Self {
-        (value.shortcode, UncheckedUrl::from(value.url))
+impl TryFrom<JsEmojiInfo> for (String, Url) {
+    type Error = JsValue;
+
+    fn try_from(value: JsEmojiInfo) -> Result<Self, Self::Error> {
+        Ok((value.shortcode, Url::parse(&value.url).map_err(into_err)?))
     }
 }
 
@@ -137,7 +139,12 @@ pub struct JsEmojis {
 impl From<JsEmojis> for Emojis {
     fn from(value: JsEmojis) -> Self {
         Self {
-            emojis: value.emojis.into_iter().map(|e| e.into()).collect(),
+            // TODO: propagate error
+            emojis: value
+                .emojis
+                .into_iter()
+                .filter_map(|e| e.try_into().ok())
+                .collect(),
             coordinate: value
                 .coordinate
                 .into_iter()

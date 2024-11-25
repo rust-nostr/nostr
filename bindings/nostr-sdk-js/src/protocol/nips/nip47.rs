@@ -610,7 +610,7 @@ impl JsNostrWalletConnectURI {
         random_secret_key: &JsSecretKey,
         lud16: Option<String>,
     ) -> Result<JsNostrWalletConnectURI> {
-        let relay_url = Url::parse(relay_url).map_err(into_err)?;
+        let relay_url = RelayUrl::parse(relay_url).map_err(into_err)?;
         Ok(Self {
             inner: NostrWalletConnectURI::new(
                 **public_key,

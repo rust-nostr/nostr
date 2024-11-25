@@ -5,9 +5,10 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::UncheckedUrl;
+use nostr::RelayUrl;
 use uniffi::Object;
 
+use crate::error::Result;
 use crate::protocol::PublicKey;
 
 #[derive(Debug, PartialEq, Eq, Hash, Object)]
@@ -27,11 +28,14 @@ impl Deref for Contact {
 #[uniffi::export]
 impl Contact {
     #[uniffi::constructor(default(relay_url = None, alias = None))]
-    pub fn new(pk: &PublicKey, relay_url: Option<String>, alias: Option<String>) -> Self {
-        let relay_url = relay_url.map(|relay_url| UncheckedUrl::from(&relay_url));
-        Self {
+    pub fn new(pk: &PublicKey, relay_url: Option<String>, alias: Option<String>) -> Result<Self> {
+        let relay_url = match relay_url {
+            Some(url) => Some(RelayUrl::parse(url)?),
+            None => None,
+        };
+        Ok(Self {
             inner: nostr::Contact::new(**pk, relay_url, alias),
-        }
+        })
     }
 
     pub fn alias(&self) -> Option<String> {

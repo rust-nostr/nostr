@@ -6,6 +6,8 @@ use std::ops::Deref;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
+use crate::error::{into_err, Result};
+
 #[wasm_bindgen(js_name = HttpMethod)]
 pub enum JsHttpMethod {
     GET,
@@ -58,10 +60,10 @@ impl From<HttpData> for JsHttpData {
 #[wasm_bindgen(js_class = HttpData)]
 impl JsHttpData {
     #[wasm_bindgen(constructor)]
-    pub fn new(url: &str, method: JsHttpMethod) -> Self {
-        Self {
-            inner: HttpData::new(UncheckedUrl::from(url), method.into()),
-        }
+    pub fn new(url: &str, method: JsHttpMethod) -> Result<JsHttpData> {
+        Ok(Self {
+            inner: HttpData::new(Url::parse(url).map_err(into_err)?, method.into()),
+        })
     }
 
     #[wasm_bindgen(getter)]

@@ -10,7 +10,7 @@ use alloc::string::{String, ToString};
 use core::fmt;
 use core::str::FromStr;
 
-use crate::{Event, TagStandard, Url};
+use crate::{Event, RelayUrl, TagStandard};
 
 /// NIP56 error
 #[derive(Debug, PartialEq, Eq)]
@@ -62,7 +62,9 @@ impl FromStr for RelayMetadata {
 
 /// Extracts the relay info (url, optional read/write flag) from the event
 #[inline]
-pub fn extract_relay_list(event: &Event) -> impl Iterator<Item = (&Url, &Option<RelayMetadata>)> {
+pub fn extract_relay_list(
+    event: &Event,
+) -> impl Iterator<Item = (&RelayUrl, &Option<RelayMetadata>)> {
     event.tags.iter().filter_map(|tag| {
         if let Some(TagStandard::RelayMetadata {
             relay_url,
@@ -80,7 +82,7 @@ pub fn extract_relay_list(event: &Event) -> impl Iterator<Item = (&Url, &Option<
 #[inline]
 pub fn extract_owned_relay_list(
     event: Event,
-) -> impl Iterator<Item = (Url, Option<RelayMetadata>)> {
+) -> impl Iterator<Item = (RelayUrl, Option<RelayMetadata>)> {
     event.tags.into_iter().filter_map(|tag| {
         if let Some(TagStandard::RelayMetadata {
             relay_url,

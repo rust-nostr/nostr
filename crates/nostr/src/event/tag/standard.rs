@@ -26,10 +26,9 @@ use crate::nips::nip65::RelayMetadata;
 use crate::nips::nip73::ExternalContentId;
 use crate::nips::nip90::DataVendingMachineStatus;
 use crate::nips::nip98::HttpMethod;
-use crate::types::url::Url;
+use crate::types::{RelayUrl, Url};
 use crate::{
     Alphabet, Event, ImageDimensions, JsonUtil, Kind, PublicKey, SingleLetterTag, Timestamp,
-    UncheckedUrl,
 };
 
 /// Standardized tag
@@ -41,7 +40,7 @@ pub enum TagStandard {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md> and <https://github.com/nostr-protocol/nips/blob/master/10.md>
     Event {
         event_id: EventId,
-        relay_url: Option<UncheckedUrl>,
+        relay_url: Option<RelayUrl>,
         marker: Option<Marker>,
         /// Should be the public key of the author of the referenced event
         public_key: Option<PublicKey>,
@@ -53,7 +52,7 @@ pub enum TagStandard {
     /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
     Quote {
         event_id: EventId,
-        relay_url: Option<Url>,
+        relay_url: Option<RelayUrl>,
         /// Should be the public key of the author of the referenced event
         public_key: Option<PublicKey>,
     },
@@ -82,7 +81,7 @@ pub enum TagStandard {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     PublicKey {
         public_key: PublicKey,
-        relay_url: Option<UncheckedUrl>,
+        relay_url: Option<RelayUrl>,
         alias: Option<String>,
         /// Whether the tag is an uppercase or not
         uppercase: bool,
@@ -93,7 +92,7 @@ pub enum TagStandard {
     PublicKeyReport(PublicKey, Report),
     PublicKeyLiveEvent {
         public_key: PublicKey,
-        relay_url: Option<UncheckedUrl>,
+        relay_url: Option<RelayUrl>,
         marker: LiveEventMarker,
         proof: Option<Signature>,
     },
@@ -102,7 +101,7 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     RelayMetadata {
-        relay_url: Url,
+        relay_url: RelayUrl,
         metadata: Option<RelayMetadata>,
     },
     Hashtag(String),
@@ -124,7 +123,7 @@ pub enum TagStandard {
     ExternalIdentity(Identity),
     Coordinate {
         coordinate: Coordinate,
-        relay_url: Option<UncheckedUrl>,
+        relay_url: Option<RelayUrl>,
         /// Whether the tag is an uppercase or not
         uppercase: bool,
     },
@@ -133,7 +132,7 @@ pub enum TagStandard {
         /// Whether the tag is an uppercase or not
         uppercase: bool,
     },
-    Relay(Url),
+    Relay(RelayUrl),
     /// Proof of Work
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
@@ -153,8 +152,8 @@ pub enum TagStandard {
     Subject(String),
     Challenge(String),
     Title(String),
-    Image(UncheckedUrl, Option<ImageDimensions>),
-    Thumb(UncheckedUrl, Option<ImageDimensions>),
+    Image(Url, Option<ImageDimensions>),
+    Thumb(Url, Option<ImageDimensions>),
     Summary(String),
     Description(String),
     Bolt11(String),
@@ -178,14 +177,14 @@ pub enum TagStandard {
     Dim(ImageDimensions),
     Magnet(String),
     Blurhash(String),
-    Streaming(UncheckedUrl),
-    Recording(UncheckedUrl),
+    Streaming(Url),
+    Recording(Url),
     Starts(Timestamp),
     Ends(Timestamp),
     LiveEventStatus(LiveEventStatus),
     CurrentParticipants(u64),
     TotalParticipants(u64),
-    AbsoluteURL(UncheckedUrl),
+    AbsoluteURL(Url),
     Method(HttpMethod),
     Payload(Sha256Hash),
     Anon {
@@ -199,7 +198,7 @@ pub enum TagStandard {
         /// Name given for the emoji, which MUST be comprised of only alphanumeric characters and underscores
         shortcode: String,
         /// URL to the corresponding image file of the emoji
-        url: UncheckedUrl,
+        url: Url,
     },
     Encrypted,
     Request(Event),
@@ -362,15 +361,15 @@ impl TagStandard {
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::U,
                     uppercase: false,
-                }) => Ok(Self::AbsoluteURL(UncheckedUrl::from(tag_1))),
-                TagKind::Relay => Ok(Self::Relay(Url::parse(tag_1)?)),
+                }) => Ok(Self::AbsoluteURL(Url::parse(tag_1)?)),
+                TagKind::Relay => Ok(Self::Relay(RelayUrl::parse(tag_1)?)),
                 TagKind::Expiration => Ok(Self::Expiration(Timestamp::from_str(tag_1)?)),
                 TagKind::Subject => Ok(Self::Subject(tag_1.to_string())),
                 TagKind::Challenge => Ok(Self::Challenge(tag_1.to_string())),
                 TagKind::Commit => Ok(Self::GitCommit(Sha1Hash::from_str(tag_1)?)),
                 TagKind::Title => Ok(Self::Title(tag_1.to_string())),
-                TagKind::Image => Ok(Self::Image(UncheckedUrl::from(tag_1), None)),
-                TagKind::Thumb => Ok(Self::Thumb(UncheckedUrl::from(tag_1), None)),
+                TagKind::Image => Ok(Self::Image(Url::parse(tag_1)?, None)),
+                TagKind::Thumb => Ok(Self::Thumb(Url::parse(tag_1)?, None)),
                 TagKind::Summary => Ok(Self::Summary(tag_1.to_string())),
                 TagKind::PublishedAt => Ok(Self::PublishedAt(Timestamp::from_str(tag_1)?)),
                 TagKind::Description => Ok(Self::Description(tag_1.to_string())),
@@ -385,8 +384,8 @@ impl TagStandard {
                 TagKind::Url => Ok(Self::Url(Url::parse(tag_1)?)),
                 TagKind::Magnet => Ok(Self::Magnet(tag_1.to_string())),
                 TagKind::Blurhash => Ok(Self::Blurhash(tag_1.to_string())),
-                TagKind::Streaming => Ok(Self::Streaming(UncheckedUrl::from(tag_1))),
-                TagKind::Recording => Ok(Self::Recording(UncheckedUrl::from(tag_1))),
+                TagKind::Streaming => Ok(Self::Streaming(Url::parse(tag_1)?)),
+                TagKind::Recording => Ok(Self::Recording(Url::parse(tag_1)?)),
                 TagKind::Starts => Ok(Self::Starts(Timestamp::from_str(tag_1)?)),
                 TagKind::Ends => Ok(Self::Ends(Timestamp::from_str(tag_1)?)),
                 TagKind::Status => match DataVendingMachineStatus::from_str(tag_1) {
@@ -422,11 +421,11 @@ impl TagStandard {
                     difficulty: tag_2.parse()?,
                 }),
                 TagKind::Image => Ok(Self::Image(
-                    UncheckedUrl::from(tag_1),
+                    Url::parse(tag_1)?,
                     Some(ImageDimensions::from_str(tag_2)?),
                 )),
                 TagKind::Thumb => Ok(Self::Thumb(
-                    UncheckedUrl::from(tag_1),
+                    Url::parse(tag_1)?,
                     Some(ImageDimensions::from_str(tag_2)?),
                 )),
                 TagKind::Aes256Gcm => Ok(Self::Aes256Gcm {
@@ -439,7 +438,7 @@ impl TagStandard {
                 }),
                 TagKind::Emoji => Ok(Self::Emoji {
                     shortcode: tag_1.to_string(),
-                    url: UncheckedUrl::from(tag_2),
+                    url: Url::parse(tag_2)?,
                 }),
                 TagKind::Status => match DataVendingMachineStatus::from_str(tag_1) {
                     Ok(status) => Ok(Self::DataVendingMachineStatus {
@@ -930,14 +929,12 @@ where
     S: AsRef<str>,
 {
     if tag.len() >= 2 {
-        let coordinate = Coordinate::from_str(tag[1].as_ref())?;
-        let relay_url: Option<UncheckedUrl> = tag
-            .get(2)
-            .map(|r| r.as_ref())
-            .and_then(|t| (!t.is_empty()).then_some(UncheckedUrl::from(t)));
         Ok(TagStandard::Coordinate {
-            coordinate,
-            relay_url,
+            coordinate: Coordinate::from_str(tag[1].as_ref())?,
+            relay_url: match tag.get(2).map(|u| u.as_ref()) {
+                Some(url) if !url.is_empty() => Some(RelayUrl::parse(url)?),
+                _ => None,
+            },
             uppercase: false,
         })
     } else {
@@ -997,7 +994,11 @@ where
 
                 Ok(TagStandard::Event {
                     event_id,
-                    relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
+                    relay_url: if !tag_2.is_empty() {
+                        Some(RelayUrl::parse(tag_2)?)
+                    } else {
+                        None
+                    },
                     marker,
                     public_key,
                     uppercase: false,
@@ -1060,7 +1061,11 @@ where
 
             return Ok(TagStandard::PublicKeyLiveEvent {
                 public_key,
-                relay_url: (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2)),
+                relay_url: if !tag_2.is_empty() {
+                    Some(RelayUrl::parse(tag_2)?)
+                } else {
+                    None
+                },
                 marker: LiveEventMarker::from_str(tag_3)?,
                 proof: Signature::from_str(tag_4).ok(),
             });
@@ -1070,8 +1075,11 @@ where
             let tag_2: &str = tag[2].as_ref();
             let tag_3: &str = tag[3].as_ref();
 
-            let relay_url: Option<UncheckedUrl> =
-                (!tag_2.is_empty()).then_some(UncheckedUrl::from(tag_2));
+            let relay_url: Option<RelayUrl> = if !tag_2.is_empty() {
+                Some(RelayUrl::parse(tag_2)?)
+            } else {
+                None
+            };
 
             return match LiveEventMarker::from_str(tag_3) {
                 Ok(marker) => Ok(TagStandard::PublicKeyLiveEvent {
@@ -1104,7 +1112,7 @@ where
                     Ok(report) => Ok(TagStandard::PublicKeyReport(public_key, report)),
                     Err(_) => Ok(TagStandard::PublicKey {
                         public_key,
-                        relay_url: Some(UncheckedUrl::from(tag_2)),
+                        relay_url: Some(RelayUrl::parse(tag_2)?),
                         alias: None,
                         uppercase,
                     }),
@@ -1133,7 +1141,7 @@ where
 
         return if tag_1.starts_with("ws://") || tag_1.starts_with("wss://") {
             Ok(TagStandard::RelayMetadata {
-                relay_url: Url::parse(tag_1)?,
+                relay_url: RelayUrl::parse(tag_1)?,
                 metadata: Some(RelayMetadata::from_str(tag_2)?),
             })
         } else if tag_2 == EUC {
@@ -1148,7 +1156,7 @@ where
 
         return if tag_1.starts_with("ws://") || tag_1.starts_with("wss://") {
             Ok(TagStandard::RelayMetadata {
-                relay_url: Url::parse(tag_1)?,
+                relay_url: RelayUrl::parse(tag_1)?,
                 metadata: None,
             })
         } else {
@@ -1172,8 +1180,8 @@ where
     let tag_2: Option<&str> = tag.get(2).map(|r| r.as_ref());
     let tag_3: Option<&str> = tag.get(3).map(|r| r.as_ref());
 
-    let relay_url: Option<Url> = match tag_2 {
-        Some(url) if !url.is_empty() => Some(Url::parse(url)?),
+    let relay_url: Option<RelayUrl> = match tag_2 {
+        Some(url) if !url.is_empty() => Some(RelayUrl::parse(url)?),
         _ => None,
     };
 
@@ -1250,7 +1258,7 @@ mod tests {
 
     #[test]
     fn test_tag_standard_is_reply() {
-        let tag = TagStandard::Relay(Url::parse("wss://relay.damus.io").unwrap());
+        let tag = TagStandard::Relay(RelayUrl::parse("wss://relay.damus.io").unwrap());
         assert!(!tag.is_reply());
 
         let tag = TagStandard::Event {
@@ -1347,7 +1355,7 @@ mod tests {
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
-                relay_url: Some(Url::from_str("wss://relay.damus.io").unwrap()),
+                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
                 public_key: None,
             }
             .to_vec()
@@ -1403,14 +1411,14 @@ mod tests {
             vec![
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io"
+                "wss://relay.damus.io/"
             ],
             TagStandard::PublicKey {
                 public_key: PublicKey::from_str(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
-                relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
+                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
                 alias: None,
                 uppercase: false,
             }
@@ -1421,14 +1429,13 @@ mod tests {
             vec![
                 "e",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                ""
             ],
             TagStandard::Event {
                 event_id: EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
-                relay_url: Some(UncheckedUrl::empty()),
+                relay_url: None,
                 marker: None,
                 public_key: None,
                 uppercase: false,
@@ -1440,14 +1447,14 @@ mod tests {
             vec![
                 "e",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "wss://relay.damus.io"
+                "wss://relay.damus.io/"
             ],
             TagStandard::Event {
                 event_id: EventId::from_hex(
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
-                relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
+                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
                 marker: None,
                 public_key: None,
                 uppercase: false,
@@ -1520,7 +1527,7 @@ mod tests {
             vec![
                 "a",
                 "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum",
-                "wss://relay.nostr.org"
+                "wss://relay.nostr.org/"
             ],
             TagStandard::Coordinate {
                 coordinate: Coordinate::new(
@@ -1531,7 +1538,7 @@ mod tests {
                     .unwrap()
                 )
                 .identifier("ipsum"),
-                relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org").unwrap()),
+                relay_url: Some(RelayUrl::parse("wss://relay.nostr.org").unwrap()),
                 uppercase: false,
             }
             .to_vec()
@@ -1541,7 +1548,7 @@ mod tests {
             vec![
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io",
+                "wss://relay.damus.io/",
                 "Speaker",
             ],
             TagStandard::PublicKeyLiveEvent {
@@ -1549,7 +1556,7 @@ mod tests {
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
-                relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
+                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
                 marker: LiveEventMarker::Speaker,
                 proof: None
             }
@@ -1579,7 +1586,7 @@ mod tests {
             vec![
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io",
+                "wss://relay.damus.io/",
                 "alias",
             ],
             TagStandard::PublicKey {
@@ -1587,7 +1594,7 @@ mod tests {
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
-                relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
+                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
                 alias: Some(String::from("alias")),
                 uppercase: false,
             }
@@ -1687,15 +1694,15 @@ mod tests {
             vec![
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io",
+                "wss://relay.damus.io/",
                 "Host",
                 "a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd"
             ],
             TagStandard::PublicKeyLiveEvent {
-                public_key: PublicKey::from_str(
+                public_key: PublicKey::from_hex(
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 ).unwrap(),
-                relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
+                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
                 marker: LiveEventMarker::Host,
                 proof: Some(Signature::from_str("a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd").unwrap())
             }.to_vec()
@@ -1719,7 +1726,7 @@ mod tests {
         assert_eq!(
             vec!["r", "wss://atlas.nostr.land/"],
             TagStandard::RelayMetadata {
-                relay_url: Url::from_str("wss://atlas.nostr.land").unwrap(),
+                relay_url: RelayUrl::parse("wss://atlas.nostr.land").unwrap(),
                 metadata: None
             }
             .to_vec()
@@ -1728,7 +1735,7 @@ mod tests {
         assert_eq!(
             vec!["r", "wss://atlas.nostr.land/", "read"],
             TagStandard::RelayMetadata {
-                relay_url: Url::from_str("wss://atlas.nostr.land").unwrap(),
+                relay_url: RelayUrl::parse("wss://atlas.nostr.land").unwrap(),
                 metadata: Some(RelayMetadata::Read)
             }
             .to_vec()
@@ -1737,7 +1744,7 @@ mod tests {
         assert_eq!(
             vec!["r", "wss://atlas.nostr.land/", "write"],
             TagStandard::RelayMetadata {
-                relay_url: Url::from_str("wss://atlas.nostr.land").unwrap(),
+                relay_url: RelayUrl::parse("wss://atlas.nostr.land").unwrap(),
                 metadata: Some(RelayMetadata::Write)
             }
             .to_vec()
@@ -1862,7 +1869,7 @@ mod tests {
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
-                relay_url: Some(Url::from_str("wss://relay.damus.io").unwrap()),
+                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
                 public_key: None,
             }
         );
@@ -1882,7 +1889,7 @@ mod tests {
                 .unwrap(),
                 relay_url: None,
                 public_key: Some(
-                    PublicKey::from_str(
+                    PublicKey::from_hex(
                         "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                     )
                     .unwrap()
@@ -1960,7 +1967,7 @@ mod tests {
             TagStandard::parse(&[
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io"
+                "wss://relay.damus.io/"
             ])
             .unwrap(),
             TagStandard::PublicKey {
@@ -1968,7 +1975,7 @@ mod tests {
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
-                relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
+                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
                 alias: None,
                 uppercase: false
             }
@@ -1997,7 +2004,7 @@ mod tests {
             TagStandard::parse(&[
                 "e",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "wss://relay.damus.io"
+                "wss://relay.damus.io/"
             ])
             .unwrap(),
             TagStandard::Event {
@@ -2005,7 +2012,7 @@ mod tests {
                     "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
                 )
                 .unwrap(),
-                relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
+                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
                 marker: None,
                 public_key: None,
                 uppercase: false,
@@ -2088,7 +2095,7 @@ mod tests {
             TagStandard::parse(&[
                 "a",
                 "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum",
-                "wss://relay.nostr.org"
+                "wss://relay.nostr.org/"
             ])
             .unwrap(),
             TagStandard::Coordinate {
@@ -2100,7 +2107,7 @@ mod tests {
                     .unwrap()
                 )
                 .identifier("ipsum"),
-                relay_url: Some(UncheckedUrl::from_str("wss://relay.nostr.org").unwrap()),
+                relay_url: Some(RelayUrl::parse("wss://relay.nostr.org").unwrap()),
                 uppercase: false,
             }
         );
@@ -2108,7 +2115,7 @@ mod tests {
         assert_eq!(
             TagStandard::parse(&["r", "wss://atlas.nostr.land/"]).unwrap(),
             TagStandard::RelayMetadata {
-                relay_url: Url::from_str("wss://atlas.nostr.land").unwrap(),
+                relay_url: RelayUrl::parse("wss://atlas.nostr.land").unwrap(),
                 metadata: None
             }
         );
@@ -2116,7 +2123,7 @@ mod tests {
         assert_eq!(
             TagStandard::parse(&["r", "wss://atlas.nostr.land/", "read"]).unwrap(),
             TagStandard::RelayMetadata {
-                relay_url: Url::from_str("wss://atlas.nostr.land").unwrap(),
+                relay_url: RelayUrl::parse("wss://atlas.nostr.land").unwrap(),
                 metadata: Some(RelayMetadata::Read)
             }
         );
@@ -2124,7 +2131,7 @@ mod tests {
         assert_eq!(
             TagStandard::parse(&["r", "wss://atlas.nostr.land/", "write"]).unwrap(),
             TagStandard::RelayMetadata {
-                relay_url: Url::from_str("wss://atlas.nostr.land").unwrap(),
+                relay_url: RelayUrl::parse("wss://atlas.nostr.land").unwrap(),
                 metadata: Some(RelayMetadata::Write)
             }
         );
@@ -2133,7 +2140,7 @@ mod tests {
             TagStandard::parse(&[
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io",
+                "wss://relay.damus.io/",
                 "alias",
             ])
             .unwrap(),
@@ -2142,7 +2149,7 @@ mod tests {
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
-                relay_url: Some(UncheckedUrl::from("wss://relay.damus.io")),
+                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
                 alias: Some(String::from("alias")),
                 uppercase: false,
             }

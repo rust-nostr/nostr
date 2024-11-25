@@ -5,8 +5,10 @@ use std::str::FromStr;
 
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::nips::nip98;
-use nostr::UncheckedUrl;
+use nostr::Url;
 use uniffi::{Enum, Record};
+
+use crate::NostrSdkError;
 
 #[derive(Enum)]
 pub enum HttpMethod {
@@ -45,15 +47,17 @@ pub struct HttpData {
     pub payload: Option<String>,
 }
 
-impl From<HttpData> for nip98::HttpData {
-    fn from(value: HttpData) -> Self {
-        Self {
-            url: UncheckedUrl::from(value.url),
+impl TryFrom<HttpData> for nip98::HttpData {
+    type Error = NostrSdkError;
+
+    fn try_from(value: HttpData) -> Result<Self, Self::Error> {
+        Ok(Self {
+            url: Url::parse(&value.url)?,
             method: value.method.into(),
             payload: match value.payload {
                 Some(p) => Sha256Hash::from_str(&p).ok(),
                 None => None,
             },
-        }
+        })
     }
 }

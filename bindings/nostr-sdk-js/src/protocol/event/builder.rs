@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 use core::ops::Deref;
-use std::str::FromStr;
 
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
@@ -119,7 +118,7 @@ impl JsEventBuilder {
     pub fn relay_list(relays: Vec<JsRelayListItem>) -> Result<JsEventBuilder> {
         let mut list = Vec::with_capacity(relays.len());
         for JsRelayListItem { url, metadata } in relays.into_iter() {
-            let relay_url: Url = Url::parse(&url).map_err(into_err)?;
+            let relay_url: RelayUrl = RelayUrl::parse(url).map_err(into_err)?;
             let metadata = metadata.map(|m| m.into());
             list.push((relay_url, metadata))
         }
@@ -149,15 +148,19 @@ impl JsEventBuilder {
         reply_to: &JsEvent,
         root: Option<JsEvent>,
         relay_url: Option<String>,
-    ) -> Self {
-        Self {
+    ) -> Result<JsEventBuilder> {
+        let relay_url = match relay_url {
+            Some(url) => Some(RelayUrl::parse(url).map_err(into_err)?),
+            None => None,
+        };
+        Ok(Self {
             inner: EventBuilder::text_note_reply(
                 content,
                 reply_to.deref(),
                 root.as_deref(),
-                relay_url.map(UncheckedUrl::from),
+                relay_url,
             ),
-        }
+        })
     }
 
     /// Comment
@@ -171,15 +174,14 @@ impl JsEventBuilder {
         comment_to: &JsEvent,
         root: Option<JsEvent>,
         relay_url: Option<String>,
-    ) -> Self {
-        Self {
-            inner: EventBuilder::comment(
-                content,
-                comment_to.deref(),
-                root.as_deref(),
-                relay_url.map(UncheckedUrl::from),
-            ),
-        }
+    ) -> Result<JsEventBuilder> {
+        let relay_url = match relay_url {
+            Some(url) => Some(RelayUrl::parse(url).map_err(into_err)?),
+            None => None,
+        };
+        Ok(Self {
+            inner: EventBuilder::comment(content, comment_to.deref(), root.as_deref(), relay_url),
+        })
     }
 
     /// Long-form text note (generally referred to as "articles" or "blog posts").
@@ -206,10 +208,14 @@ impl JsEventBuilder {
     /// Repost
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
-    pub fn repost(event: &JsEvent, relay_url: Option<String>) -> Self {
-        Self {
-            inner: EventBuilder::repost(event.deref(), relay_url.map(UncheckedUrl::from)),
-        }
+    pub fn repost(event: &JsEvent, relay_url: Option<String>) -> Result<JsEventBuilder> {
+        let relay_url = match relay_url {
+            Some(url) => Some(RelayUrl::parse(url).map_err(into_err)?),
+            None => None,
+        };
+        Ok(Self {
+            inner: EventBuilder::repost(event.deref(), relay_url),
+        })
     }
 
     /// Event deletion
@@ -281,8 +287,8 @@ impl JsEventBuilder {
         relay_url: Option<String>,
         metadata: &JsMetadata,
     ) -> Result<JsEventBuilder> {
-        let relay_url: Option<Url> = match relay_url {
-            Some(relay_url) => Some(Url::parse(&relay_url).map_err(into_err)?),
+        let relay_url = match relay_url {
+            Some(relay_url) => Some(RelayUrl::parse(relay_url).map_err(into_err)?),
             None => None,
         };
         Ok(Self {
@@ -299,7 +305,7 @@ impl JsEventBuilder {
         relay_url: &str,
         content: &str,
     ) -> Result<JsEventBuilder> {
-        let relay_url: Url = Url::parse(relay_url).map_err(into_err)?;
+        let relay_url: RelayUrl = RelayUrl::parse(relay_url).map_err(into_err)?;
         Ok(Self {
             inner: EventBuilder::channel_msg(**channel_id, relay_url, content),
         })
@@ -330,7 +336,7 @@ impl JsEventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[wasm_bindgen]
     pub fn auth(challenge: &str, relay: &str) -> Result<JsEventBuilder> {
-        let url = Url::parse(relay).map_err(into_err)?;
+        let url = RelayUrl::parse(relay).map_err(into_err)?;
         Ok(Self {
             inner: EventBuilder::auth(challenge, url),
         })
@@ -341,6 +347,7 @@ impl JsEventBuilder {
     /// Live Event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/53.md>
+    // TODO: fix this. `JsLiveEvent` can't be constructed from JS bindings
     #[wasm_bindgen(js_name = liveEvent)]
     pub fn live_event(live_event: &JsLiveEvent) -> Self {
         Self {
@@ -364,7 +371,7 @@ impl JsEventBuilder {
                 **live_event_host,
                 content,
                 match relay_url {
-                    Some(url) => Some(Url::from_str(&url).map_err(into_err)?),
+                    Some(url) => Some(RelayUrl::parse(url).map_err(into_err)?),
                     None => None,
                 },
             ),
@@ -416,17 +423,25 @@ impl JsEventBuilder {
         image: Option<String>,
         image_dimensions: Option<JsImageDimensions>,
         thumbnails: Vec<JsThumbnails>,
-    ) -> Self {
-        Self {
+    ) -> Result<JsEventBuilder> {
+        let image = match image {
+            Some(url) => Some(Url::parse(&url).map_err(into_err)?),
+            None => None,
+        };
+        Ok(Self {
             inner: EventBuilder::define_badge(
                 badge_id,
                 name,
                 description,
-                image.map(UncheckedUrl::from),
+                image,
                 image_dimensions.map(|i| i.into()),
-                thumbnails.into_iter().map(|t| t.into()).collect(),
+                // TODO: propagate error
+                thumbnails
+                    .into_iter()
+                    .filter_map(|t| t.try_into().ok())
+                    .collect(),
             ),
-        }
+        })
     }
 
     /// Badge award
@@ -703,7 +718,7 @@ impl JsEventBuilder {
         // TODO: return error if invalid url
         Self {
             inner: EventBuilder::blocked_relays(
-                relays.into_iter().filter_map(|u| Url::parse(&u).ok()),
+                relays.into_iter().filter_map(|u| RelayUrl::parse(&u).ok()),
             ),
         }
     }
@@ -716,7 +731,7 @@ impl JsEventBuilder {
         // TODO: return error if invalid url
         Self {
             inner: EventBuilder::search_relays(
-                relays.into_iter().filter_map(|u| Url::parse(&u).ok()),
+                relays.into_iter().filter_map(|u| RelayUrl::parse(u).ok()),
             ),
         }
     }
@@ -760,7 +775,7 @@ impl JsEventBuilder {
         Self {
             inner: EventBuilder::relay_set(
                 identifier,
-                relays.into_iter().filter_map(|u| Url::parse(&u).ok()),
+                relays.into_iter().filter_map(|u| RelayUrl::parse(u).ok()),
             ),
         }
     }
@@ -813,8 +828,12 @@ impl JsEventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[wasm_bindgen(js_name = emojiSet)]
     pub fn emoji_set(identifier: &str, emoji: Vec<JsEmojiInfo>) -> Self {
+        // TODO: propagate error
         Self {
-            inner: EventBuilder::emoji_set(identifier, emoji.into_iter().map(|e| e.into())),
+            inner: EventBuilder::emoji_set(
+                identifier,
+                emoji.into_iter().filter_map(|e| e.try_into().ok()),
+            ),
         }
     }
 

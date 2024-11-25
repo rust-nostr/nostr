@@ -15,8 +15,8 @@ use crate::relay;
 #[derive(Debug, Error)]
 pub enum Error {
     /// Url parse error
-    #[error("impossible to parse URL: {0}")]
-    Url(#[from] url::ParseError),
+    #[error("impossible to parse relay URL: {0}")]
+    RelayUrl(#[from] url::Error),
     /// Relay error
     #[error(transparent)]
     Relay(#[from] relay::Error),

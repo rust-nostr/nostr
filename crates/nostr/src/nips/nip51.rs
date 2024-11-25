@@ -9,7 +9,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use super::nip01::Coordinate;
-use crate::{EventId, PublicKey, Tag, TagStandard, UncheckedUrl, Url};
+use crate::{EventId, PublicKey, Tag, TagStandard, Url};
 
 /// Things the user doesn't want to see in their feeds
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -117,7 +117,7 @@ impl From<Interests> for Vec<Tag> {
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Emojis {
     /// Emojis
-    pub emojis: Vec<(String, UncheckedUrl)>,
+    pub emojis: Vec<(String, Url)>,
     /// Coordinates
     pub coordinate: Vec<Coordinate>,
 }

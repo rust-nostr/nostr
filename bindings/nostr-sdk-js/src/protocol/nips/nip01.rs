@@ -44,7 +44,12 @@ impl JsCoordinate {
                 kind: **kind,
                 public_key: **public_key,
                 identifier: identifier.unwrap_or_default(),
-                relays: relays.unwrap_or_default(),
+                // TODO: propagate error
+                relays: relays
+                    .unwrap_or_default()
+                    .into_iter()
+                    .filter_map(|u| RelayUrl::parse(u).ok())
+                    .collect(),
             },
         }
     }
@@ -75,7 +80,7 @@ impl JsCoordinate {
 
     #[wasm_bindgen(getter)]
     pub fn relays(&self) -> Vec<String> {
-        self.inner.relays.clone()
+        self.inner.relays.iter().map(|u| u.to_string()).collect()
     }
 
     #[wasm_bindgen(js_name = toString)]

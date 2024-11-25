@@ -170,7 +170,7 @@ async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
             let term = Term::stdout();
             let current_relays = client.relays().await;
 
-            let list: Vec<Url> = if !relays.is_empty() {
+            let list: Vec<RelayUrl> = if !relays.is_empty() {
                 // Add relays
                 for url in relays.iter() {
                     client.add_relay(url).await?;

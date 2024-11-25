@@ -108,7 +108,11 @@ impl NostrEventsDatabase for NostrLMDB {
     }
 
     #[inline]
-    async fn event_id_seen(&self, event_id: EventId, relay_url: Url) -> Result<(), DatabaseError> {
+    async fn event_id_seen(
+        &self,
+        event_id: EventId,
+        relay_url: RelayUrl,
+    ) -> Result<(), DatabaseError> {
         self.temp.event_id_seen(event_id, relay_url).await
     }
 
@@ -116,7 +120,7 @@ impl NostrEventsDatabase for NostrLMDB {
     async fn event_seen_on_relays(
         &self,
         event_id: &EventId,
-    ) -> Result<Option<HashSet<Url>>, DatabaseError> {
+    ) -> Result<Option<HashSet<RelayUrl>>, DatabaseError> {
         self.temp.event_seen_on_relays(event_id).await
     }
 

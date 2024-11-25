@@ -21,7 +21,7 @@ use super::nip05::Nip05Profile;
 #[cfg(feature = "nip49")]
 use super::nip49::{self, EncryptedSecretKey};
 use crate::event::id::{self, EventId};
-use crate::types::url::{self, TryIntoUrl, Url};
+use crate::types::url::{self, RelayUrl, TryIntoUrl};
 use crate::{key, Kind, PublicKey, SecretKey};
 
 pub const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
@@ -57,8 +57,8 @@ const FIXED_KIND_BYTES_TVL: usize = 1 + 1 + 4;
 pub enum Error {
     /// Fmt error.
     Fmt(fmt::Error),
-    /// Url parse error
-    Url(url::ParseError),
+    /// Relay Url parse error
+    RelayUrl(url::Error),
     /// Bech32 decode error.
     Bech32Decode(bech32::DecodeError),
     /// Bech32 encode error
@@ -93,7 +93,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Fmt(e) => write!(f, "{e}"),
-            Self::Url(e) => write!(f, "Url: {e}"),
+            Self::RelayUrl(e) => write!(f, "{e}"),
             Self::Bech32Decode(e) => write!(f, "{e}"),
             Self::Bech32Encode(e) => write!(f, "{e}"),
             Self::FromUTF8(e) => write!(f, "UTF8: {e}"),
@@ -117,9 +117,9 @@ impl From<fmt::Error> for Error {
     }
 }
 
-impl From<url::ParseError> for Error {
-    fn from(e: url::ParseError) -> Self {
-        Self::Url(e)
+impl From<url::Error> for Error {
+    fn from(e: url::Error) -> Self {
+        Self::RelayUrl(e)
     }
 }
 
@@ -557,7 +557,7 @@ impl ToBech32 for Nip05Profile {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Nip19Profile {
     pub public_key: PublicKey,
-    pub relays: Vec<Url>,
+    pub relays: Vec<RelayUrl>,
 }
 
 impl Nip19Profile {
@@ -573,13 +573,13 @@ impl Nip19Profile {
             relays: relays
                 .into_iter()
                 .map(|u| u.try_into_url())
-                .collect::<Result<Vec<Url>, _>>()?,
+                .collect::<Result<_, _>>()?,
         })
     }
 
     fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
         let mut public_key: Option<PublicKey> = None;
-        let mut relays: Vec<Url> = Vec::new();
+        let mut relays: Vec<RelayUrl> = Vec::new();
 
         while !data.is_empty() {
             let t = data.first().ok_or(Error::TLV)?;
@@ -596,7 +596,7 @@ impl Nip19Profile {
                 }
                 RELAY => {
                     let url = String::from_utf8(bytes.to_vec())?;
-                    let url = Url::parse(&url)?;
+                    let url = RelayUrl::parse(&url)?;
                     relays.push(url);
                 }
                 _ => (),
@@ -657,7 +657,7 @@ impl Coordinate {
         let mut identifier: Option<String> = None;
         let mut pubkey: Option<PublicKey> = None;
         let mut kind: Option<Kind> = None;
-        let mut relays: Vec<String> = Vec::new();
+        let mut relays: Vec<RelayUrl> = Vec::new();
 
         while !data.is_empty() {
             let t = data.first().ok_or(Error::TLV)?;
@@ -673,7 +673,8 @@ impl Coordinate {
                     }
                 }
                 RELAY => {
-                    relays.push(String::from_utf8(bytes.to_vec())?);
+                    let url = String::from_utf8(bytes.to_vec())?;
+                    relays.push(RelayUrl::parse(url)?);
                 }
                 AUTHOR => {
                     if pubkey.is_none() {
@@ -728,7 +729,7 @@ impl ToBech32 for Coordinate {
     fn to_bech32(&self) -> Result<String, Self::Err> {
         // Allocate capacity
         let identifier_len: usize = 2 + self.identifier.len();
-        let relays_len: usize = self.relays.iter().map(|u| 2 + u.len()).sum();
+        let relays_len: usize = self.relays.iter().map(|u| 2 + u.as_str().len()).sum();
         let mut bytes: Vec<u8> = Vec::with_capacity(
             identifier_len + FIXED_1_1_32_BYTES_TVL + FIXED_KIND_BYTES_TVL + relays_len,
         );
@@ -750,8 +751,8 @@ impl ToBech32 for Coordinate {
 
         for relay in self.relays.iter() {
             bytes.push(RELAY); // Type
-            bytes.push(relay.len() as u8); // Len
-            bytes.extend(relay.as_bytes()); // Value
+            bytes.push(relay.as_str().len() as u8); // Len
+            bytes.extend(relay.as_str().as_bytes()); // Value
         }
 
         Ok(bech32::encode::<Bech32>(HRP_COORDINATE, &bytes)?)

@@ -341,7 +341,7 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     pub fn relay_list<I>(iter: I) -> Self
     where
-        I: IntoIterator<Item = (Url, Option<RelayMetadata>)>,
+        I: IntoIterator<Item = (RelayUrl, Option<RelayMetadata>)>,
     {
         let tags = iter
             .into_iter()
@@ -376,7 +376,7 @@ impl EventBuilder {
         content: S,
         reply_to: &Event,
         root: Option<&Event>,
-        relay_url: Option<UncheckedUrl>,
+        relay_url: Option<RelayUrl>,
     ) -> Self
     where
         S: Into<String>,
@@ -460,7 +460,7 @@ impl EventBuilder {
         content: S,
         comment_to: &Event,
         root: Option<&Event>,
-        relay_url: Option<UncheckedUrl>,
+        relay_url: Option<RelayUrl>,
     ) -> Self
     where
         S: Into<String>,
@@ -639,10 +639,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/03.md>
     #[cfg(feature = "nip03")]
-    pub fn opentimestamps(
-        event_id: EventId,
-        relay_url: Option<UncheckedUrl>,
-    ) -> Result<Self, Error> {
+    pub fn opentimestamps(event_id: EventId, relay_url: Option<RelayUrl>) -> Result<Self, Error> {
         let ots: String = nostr_ots::timestamp_event(&event_id.to_hex())?;
         Ok(
             Self::new(Kind::OpenTimestamps, ots).tags([Tag::from_standardized_without_cell(
@@ -660,7 +657,7 @@ impl EventBuilder {
     /// Repost
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
-    pub fn repost(event: &Event, relay_url: Option<UncheckedUrl>) -> Self {
+    pub fn repost(event: &Event, relay_url: Option<RelayUrl>) -> Self {
         if event.kind == Kind::TextNote {
             Self::new(Kind::Repost, event.as_json()).tags([
                 Tag::from_standardized_without_cell(TagStandard::Event {
@@ -772,13 +769,13 @@ impl EventBuilder {
     #[inline]
     pub fn channel_metadata(
         channel_id: EventId,
-        relay_url: Option<Url>,
+        relay_url: Option<RelayUrl>,
         metadata: &Metadata,
     ) -> Self {
         Self::new(Kind::ChannelMetadata, metadata.as_json()).tags([
             Tag::from_standardized_without_cell(TagStandard::Event {
                 event_id: channel_id,
-                relay_url: relay_url.map(|u| u.into()),
+                relay_url,
                 marker: None,
                 public_key: None,
                 uppercase: false,
@@ -790,14 +787,14 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     #[inline]
-    pub fn channel_msg<S>(channel_id: EventId, relay_url: Url, content: S) -> Self
+    pub fn channel_msg<S>(channel_id: EventId, relay_url: RelayUrl, content: S) -> Self
     where
         S: Into<String>,
     {
         Self::new(Kind::ChannelMessage, content).tags([Tag::from_standardized_without_cell(
             TagStandard::Event {
                 event_id: channel_id,
-                relay_url: Some(relay_url.into()),
+                relay_url: Some(relay_url),
                 marker: Some(Marker::Root),
                 public_key: None,
                 uppercase: false,
@@ -839,7 +836,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[inline]
-    pub fn auth<S>(challenge: S, relay: Url) -> Self
+    pub fn auth<S>(challenge: S, relay: RelayUrl) -> Self
     where
         S: Into<String>,
     {
@@ -882,7 +879,7 @@ impl EventBuilder {
         live_event_id: S,
         live_event_host: PublicKey,
         content: S,
-        relay_url: Option<Url>,
+        relay_url: Option<RelayUrl>,
     ) -> Self
     where
         S: Into<String>,
@@ -891,7 +888,7 @@ impl EventBuilder {
             TagStandard::Coordinate {
                 coordinate: Coordinate::new(Kind::LiveEvent, live_event_host)
                     .identifier(live_event_id),
-                relay_url: relay_url.map(|u| u.into()),
+                relay_url,
                 uppercase: false,
             },
         ))
@@ -1039,10 +1036,10 @@ impl EventBuilder {
     /// let badge_id = String::from("nostr-sdk-test-badge");
     /// let name = Some(String::from("rust-nostr test badge"));
     /// let description = Some(String::from("This is a test badge"));
-    /// let image_url = Some(UncheckedUrl::from("https://nostr.build/someimage/1337"));
+    /// let image_url = Some(Url::parse("https://nostr.build/someimage/1337").unwrap());
     /// let image_size = Some(ImageDimensions::new(1024, 1024));
     /// let thumbs = vec![(
-    ///     UncheckedUrl::from("https://nostr.build/somethumbnail/1337"),
+    ///     Url::parse("https://nostr.build/somethumbnail/1337").unwrap(),
     ///     Some(ImageDimensions::new(256, 256)),
     /// )];
     ///
@@ -1053,9 +1050,9 @@ impl EventBuilder {
         badge_id: S,
         name: Option<S>,
         description: Option<S>,
-        image: Option<UncheckedUrl>,
+        image: Option<Url>,
         image_dimensions: Option<ImageDimensions>,
-        thumbnails: Vec<(UncheckedUrl, Option<ImageDimensions>)>,
+        thumbnails: Vec<(Url, Option<ImageDimensions>)>,
     ) -> Self
     where
         S: Into<String>,
@@ -1521,7 +1518,7 @@ impl EventBuilder {
     #[inline]
     pub fn blocked_relays<I>(relay: I) -> Self
     where
-        I: IntoIterator<Item = Url>,
+        I: IntoIterator<Item = RelayUrl>,
     {
         Self::new(Kind::BlockedRelays, "").tags(
             relay
@@ -1536,7 +1533,7 @@ impl EventBuilder {
     #[inline]
     pub fn search_relays<I>(relay: I) -> Self
     where
-        I: IntoIterator<Item = Url>,
+        I: IntoIterator<Item = RelayUrl>,
     {
         Self::new(Kind::SearchRelays, "").tags(
             relay
@@ -1584,7 +1581,7 @@ impl EventBuilder {
     pub fn relay_set<ID, I>(identifier: ID, relays: I) -> Self
     where
         ID: Into<String>,
-        I: IntoIterator<Item = Url>,
+        I: IntoIterator<Item = RelayUrl>,
     {
         let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
         Self::new(Kind::RelaySet, "").tags(
@@ -1657,7 +1654,7 @@ impl EventBuilder {
     pub fn emoji_set<ID, I>(identifier: ID, emojis: I) -> Self
     where
         ID: Into<String>,
-        I: IntoIterator<Item = (String, UncheckedUrl)>,
+        I: IntoIterator<Item = (String, Url)>,
     {
         let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
         Self::new(Kind::EmojiSet, "").tags(tags.into_iter().chain(emojis.into_iter().map(
@@ -1794,10 +1791,10 @@ mod tests {
         let badge_id = String::from("bravery");
         let name = Some(String::from("Bravery"));
         let description = Some(String::from("Brave pubkey"));
-        let image_url = Some(UncheckedUrl::from("https://nostr.build/someimage/1337"));
+        let image_url = Some(Url::parse("https://nostr.build/someimage/1337").unwrap());
         let image_size = Some(ImageDimensions::new(1024, 1024));
         let thumbs = vec![(
-            UncheckedUrl::from("https://nostr.build/somethumbnail/1337"),
+            Url::parse("https://nostr.build/somethumbnail/1337").unwrap(),
             Some(ImageDimensions::new(256, 256)),
         )];
 

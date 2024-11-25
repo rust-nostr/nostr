@@ -16,7 +16,8 @@ use core::str::FromStr;
 use super::nip19::FromBech32;
 use super::nip21::NostrURI;
 use crate::event::id;
-use crate::{key, Filter, Kind, PublicKey, Tag, TagStandard, UncheckedUrl};
+use crate::types::RelayUrl;
+use crate::{key, Filter, Kind, PublicKey, Tag, TagStandard};
 
 /// Raw Event error
 #[derive(Debug, PartialEq, Eq)]
@@ -76,7 +77,7 @@ pub struct Coordinate {
     /// Leave empty for a replaceable event.
     pub identifier: String,
     /// Relays
-    pub relays: Vec<String>,
+    pub relays: Vec<RelayUrl>,
 }
 
 impl Coordinate {
@@ -158,7 +159,7 @@ impl Coordinate {
 impl From<Coordinate> for Tag {
     fn from(coordinate: Coordinate) -> Self {
         Self::from_standardized(TagStandard::Coordinate {
-            relay_url: coordinate.relays.first().cloned().map(UncheckedUrl::from),
+            relay_url: coordinate.relays.first().cloned(),
             coordinate,
             uppercase: false,
         })

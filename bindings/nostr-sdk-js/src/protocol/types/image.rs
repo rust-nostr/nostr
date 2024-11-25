@@ -5,6 +5,8 @@
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
+use crate::error::into_err;
+
 #[wasm_bindgen(js_name = Thumbnails)]
 pub struct JsThumbnails {
     #[wasm_bindgen(getter_with_clone)]
@@ -12,12 +14,14 @@ pub struct JsThumbnails {
     pub dimensions: Option<JsImageDimensions>,
 }
 
-impl From<JsThumbnails> for (UncheckedUrl, Option<ImageDimensions>) {
-    fn from(value: JsThumbnails) -> Self {
-        (
-            UncheckedUrl::from(value.url),
+impl TryFrom<JsThumbnails> for (Url, Option<ImageDimensions>) {
+    type Error = JsValue;
+
+    fn try_from(value: JsThumbnails) -> Result<Self, Self::Error> {
+        Ok((
+            Url::parse(&value.url).map_err(into_err)?,
             value.dimensions.map(|r| r.into()),
-        )
+        ))
     }
 }
 

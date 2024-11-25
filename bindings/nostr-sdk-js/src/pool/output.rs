@@ -106,7 +106,10 @@ impl From<Output<Reconciliation>> for JsReconciliationOutput {
     }
 }
 
-fn convert_output(success: HashSet<Url>, failed: HashMap<Url, Option<String>>) -> JsOutput {
+fn convert_output(
+    success: HashSet<RelayUrl>,
+    failed: HashMap<RelayUrl, Option<String>>,
+) -> JsOutput {
     JsOutput {
         success: success.into_iter().map(|u| u.to_string()).collect(),
         failed: failed

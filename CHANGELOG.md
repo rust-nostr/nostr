@@ -31,6 +31,7 @@
 
 ### Breaking changes
 
+* Use `RelayUrl` struct instead of `Url` for relay urls ([Yuki Kishimoto])
 * nostr: change `EventBuilder::gift_wrap` (and linked methods) args to take `extra_tags` instead of `expiration` ([erskingardner])
 * nostr: change `EventBuilder::gift_wrap` (and linked methods) args to take an `EventBuilder` rumor instead of `UnsignedEvent` ([Yuki Kishimoto])
 * nostr: change `EventBuilder::private_msg_rumor` arg to take `extra_tags` instead of `reply_to` ([Yuki Kishimoto])
@@ -42,6 +43,7 @@
 * nostr: change `Timestamp::to_human_datetime` fingerprint ([Yuki Kishimoto])
 * nostr: change `Tag::parse` arg from slice to iterator ([Yuki Kishimoto])
 * nostr: change `TagStandard::Relay` variant inner type ([Yuki Kishimoto])
+* nostr: remove `UncheckedUrl` struct ([Yuki Kishimoto])
 * pool: switch from async to sync message sending for `Relay` ([Yuki Kishimoto])
 * connect: refactor `NostrConnectRemoteSigner` to use distinct keys for signer and user ([Yuki Kishimoto])
 * connect: refactor `NostrConnectRemoteSigner` to use synchronous constructors ([Yuki Kishimoto])
@@ -89,6 +91,7 @@
 * nostr: add `EventBuilder::private_msg` ([Yuki Kishimoto])
 * nostr: add `EventBuilder::tag` and `EventBuilder::tags` ([Yuki Kishimoto])
 * nostr: add `nip17::extract_relay_list` and `nip17::extract_owned_relay_list` ([Yuki Kishimoto])
+* nostr: add `RelayUrl` struct ([Yuki Kishimoto])
 * database: add `NostrEventsDatabase` trait ([Yuki Kishimoto])
 * pool: add relay reconnection and disconnection unit tests ([Yuki Kishimoto])
 * pool: add `RelayServiceFlags::GOSSIP` flag ([Yuki Kishimoto])

@@ -8,8 +8,9 @@ use std::collections::HashSet;
 
 use flatbuffers::InvalidFlatbuffer;
 pub use flatbuffers::{FlatBufferBuilder, ForwardsUOffset, Vector};
+use nostr::prelude::*;
+use nostr::secp256k1;
 use nostr::secp256k1::schnorr::Signature;
-use nostr::{key, secp256k1, Event, EventId, Kind, PublicKey, Tag, Timestamp, Url};
 use thiserror::Error;
 
 #[allow(unused_imports, dead_code, clippy::all, unsafe_code, missing_docs)]
@@ -122,14 +123,14 @@ impl FlatBufferDecode for Event {
     }
 }
 
-impl FlatBufferEncode for HashSet<Url> {
+impl FlatBufferEncode for HashSet<RelayUrl> {
     #[tracing::instrument(skip_all, level = "trace")]
     fn encode<'a>(&self, fbb: &'a mut FlatBufferBuilder) -> &'a [u8] {
         fbb.reset();
 
         let urls: Vec<_> = self
             .iter()
-            .map(|url| fbb.create_string(url.as_ref()))
+            .map(|url| fbb.create_string(url.as_str()))
             .collect();
         let args = event_seen_by_fbs::EventSeenByArgs {
             relay_urls: Some(fbb.create_vector(&urls)),
@@ -143,7 +144,7 @@ impl FlatBufferEncode for HashSet<Url> {
     }
 }
 
-impl FlatBufferDecode for HashSet<Url> {
+impl FlatBufferDecode for HashSet<RelayUrl> {
     #[tracing::instrument(skip_all, level = "trace")]
     fn decode(buf: &[u8]) -> Result<Self, Error> {
         let ev = event_seen_by_fbs::root_as_event_seen_by(buf)?;
@@ -151,7 +152,7 @@ impl FlatBufferDecode for HashSet<Url> {
             .relay_urls()
             .ok_or(Error::NotFound)?
             .into_iter()
-            .filter_map(|url| Url::parse(url).ok())
-            .collect::<HashSet<Url>>())
+            .filter_map(|url| RelayUrl::parse(url).ok())
+            .collect::<HashSet<RelayUrl>>())
     }
 }

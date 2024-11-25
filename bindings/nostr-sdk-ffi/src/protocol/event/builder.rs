@@ -7,7 +7,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::util::EventIdOrCoordinate;
-use nostr::{Contact as ContactSdk, UncheckedUrl, Url};
+use nostr::{Contact as ContactSdk, RelayUrl, Url};
 use uniffi::Object;
 
 use super::{Event, EventId, Kind};
@@ -120,7 +120,7 @@ impl EventBuilder {
     pub fn relay_list(map: HashMap<String, Option<RelayMetadata>>) -> Result<Self> {
         let mut list = Vec::with_capacity(map.len());
         for (url, metadata) in map.into_iter() {
-            let relay_url: Url = Url::parse(&url)?;
+            let relay_url: RelayUrl = RelayUrl::parse(&url)?;
             let metadata = metadata.map(|m| m.into());
             list.push((relay_url, metadata))
         }
@@ -150,15 +150,19 @@ impl EventBuilder {
         reply_to: &Event,
         root: Option<Arc<Event>>,
         relay_url: Option<String>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self> {
+        let relay_url = match relay_url {
+            Some(url) => Some(RelayUrl::parse(url)?),
+            None => None,
+        };
+        Ok(Self {
             inner: nostr::EventBuilder::text_note_reply(
                 content,
                 reply_to.deref(),
                 root.as_ref().map(|e| e.as_ref().deref()),
-                relay_url.map(UncheckedUrl::from),
+                relay_url,
             ),
-        }
+        })
     }
 
     /// Comment
@@ -172,15 +176,19 @@ impl EventBuilder {
         comment_to: &Event,
         root: Option<Arc<Event>>,
         relay_url: Option<String>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self> {
+        let relay_url = match relay_url {
+            Some(url) => Some(RelayUrl::parse(url)?),
+            None => None,
+        };
+        Ok(Self {
             inner: nostr::EventBuilder::comment(
                 content,
                 comment_to.deref(),
                 root.as_ref().map(|e| e.as_ref().deref()),
-                relay_url.map(UncheckedUrl::from),
+                relay_url,
             ),
-        }
+        })
     }
 
     /// Long-form text note (generally referred to as "articles" or "blog posts").
@@ -209,10 +217,14 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
     #[uniffi::constructor(default(relay_url = None))]
-    pub fn repost(event: &Event, relay_url: Option<String>) -> Self {
-        Self {
-            inner: nostr::EventBuilder::repost(event.deref(), relay_url.map(UncheckedUrl::from)),
-        }
+    pub fn repost(event: &Event, relay_url: Option<String>) -> Result<Self> {
+        let relay_url = match relay_url {
+            Some(url) => Some(RelayUrl::parse(url)?),
+            None => None,
+        };
+        Ok(Self {
+            inner: nostr::EventBuilder::repost(event.deref(), relay_url),
+        })
     }
 
     /// Event deletion
@@ -291,7 +303,7 @@ impl EventBuilder {
         relay_url: Option<String>,
     ) -> Result<Self> {
         let relay_url = match relay_url {
-            Some(url) => Some(Url::parse(&url)?),
+            Some(url) => Some(RelayUrl::parse(url)?),
             None => None,
         };
         Ok(Self {
@@ -305,7 +317,11 @@ impl EventBuilder {
     #[uniffi::constructor]
     pub fn channel_msg(channel_id: &EventId, relay_url: &str, content: &str) -> Result<Self> {
         Ok(Self {
-            inner: nostr::EventBuilder::channel_msg(**channel_id, Url::parse(relay_url)?, content),
+            inner: nostr::EventBuilder::channel_msg(
+                **channel_id,
+                RelayUrl::parse(relay_url)?,
+                content,
+            ),
         })
     }
 
@@ -335,7 +351,7 @@ impl EventBuilder {
     #[uniffi::constructor]
     pub fn auth(challenge: &str, relay_url: &str) -> Result<Self> {
         Ok(Self {
-            inner: nostr::EventBuilder::auth(challenge, Url::parse(relay_url)?),
+            inner: nostr::EventBuilder::auth(challenge, RelayUrl::parse(relay_url)?),
         })
     }
 
@@ -361,10 +377,10 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/53.md>
     #[uniffi::constructor]
-    pub fn live_event(live_event: LiveEvent) -> Self {
-        Self {
-            inner: nostr::EventBuilder::live_event(live_event.into()),
-        }
+    pub fn live_event(live_event: LiveEvent) -> Result<Self> {
+        Ok(Self {
+            inner: nostr::EventBuilder::live_event(live_event.try_into()?),
+        })
     }
 
     /// Live Event Message
@@ -378,7 +394,7 @@ impl EventBuilder {
         relay_url: Option<String>,
     ) -> Result<Self> {
         let relay_url = match relay_url {
-            Some(url) => Some(Url::parse(&url)?),
+            Some(url) => Some(RelayUrl::parse(&url)?),
             None => None,
         };
         Ok(Self {
@@ -437,20 +453,27 @@ impl EventBuilder {
         image: Option<String>,
         image_dimensions: Option<Arc<ImageDimensions>>,
         thumbnails: Vec<Image>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self> {
+        let image = match image {
+            Some(url) => Some(Url::parse(&url)?),
+            None => None,
+        };
+        Ok(Self {
             inner: nostr::EventBuilder::define_badge(
                 badge_id,
                 name,
                 description,
-                image.map(UncheckedUrl::from),
+                image,
                 image_dimensions.map(|i| **i),
                 thumbnails
                     .into_iter()
-                    .map(|i: Image| (UncheckedUrl::from(i.url), i.dimensions.map(|d| **d)))
+                    // TODO: propagate error
+                    .filter_map(|i: Image| {
+                        Some((Url::parse(&i.url).ok()?, i.dimensions.map(|d| **d)))
+                    })
                     .collect(),
             ),
-        }
+        })
     }
 
     /// Badge award
@@ -547,10 +570,10 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/98.md>
     #[uniffi::constructor]
-    pub fn http_auth(data: HttpData) -> Self {
-        Self {
-            inner: nostr::EventBuilder::http_auth(data.into()),
-        }
+    pub fn http_auth(data: HttpData) -> Result<Self> {
+        Ok(Self {
+            inner: nostr::EventBuilder::http_auth(data.try_into()?),
+        })
     }
 
     /// Set stall data
@@ -668,7 +691,7 @@ impl EventBuilder {
         // TODO: return error if invalid url
         Self {
             inner: nostr::EventBuilder::blocked_relays(
-                relay.into_iter().filter_map(|u| Url::parse(&u).ok()),
+                relay.into_iter().filter_map(|u| RelayUrl::parse(&u).ok()),
             ),
         }
     }
@@ -681,7 +704,7 @@ impl EventBuilder {
         // TODO: return error if invalid url
         Self {
             inner: nostr::EventBuilder::search_relays(
-                relay.into_iter().filter_map(|u| Url::parse(&u).ok()),
+                relay.into_iter().filter_map(|u| RelayUrl::parse(&u).ok()),
             ),
         }
     }
@@ -728,7 +751,7 @@ impl EventBuilder {
         Self {
             inner: nostr::EventBuilder::relay_set(
                 identifier,
-                relays.into_iter().filter_map(|u| Url::parse(&u).ok()),
+                relays.into_iter().filter_map(|u| RelayUrl::parse(&u).ok()),
             ),
         }
     }
@@ -781,8 +804,12 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
     #[uniffi::constructor]
     pub fn emoji_set(identifier: &str, emojis: Vec<EmojiInfo>) -> Self {
+        // TODO: propagate error
         Self {
-            inner: nostr::EventBuilder::emoji_set(identifier, emojis.into_iter().map(|e| e.into())),
+            inner: nostr::EventBuilder::emoji_set(
+                identifier,
+                emojis.into_iter().filter_map(|e| e.try_into().ok()),
+            ),
         }
     }
 

@@ -6,7 +6,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
-use nostr::{EventId, SubscriptionId, Url};
+use nostr::{EventId, RelayUrl, SubscriptionId};
 
 /// Output
 ///
@@ -19,9 +19,9 @@ where
     /// Value
     pub val: T,
     /// Set of relays that success
-    pub success: HashSet<Url>,
+    pub success: HashSet<RelayUrl>,
     /// Map of relays that failed, with related errors.
-    pub failed: HashMap<Url, Option<String>>,
+    pub failed: HashMap<RelayUrl, Option<String>>,
 }
 
 impl<T> Deref for Output<T>

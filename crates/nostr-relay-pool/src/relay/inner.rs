@@ -12,7 +12,7 @@ use std::time::Duration;
 
 use async_utility::{thread, time};
 use async_wsocket::futures_util::{self, Future, SinkExt, StreamExt};
-use async_wsocket::{connect as wsocket_connect, Sink, Stream, WsMessage, *};
+use async_wsocket::{connect as wsocket_connect, ConnectionMode, Sink, Stream, WsMessage};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
 use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
@@ -144,7 +144,7 @@ impl Default for SubscriptionData {
 
 #[derive(Debug, Clone)]
 pub(crate) struct InnerRelay {
-    pub(super) url: Url,
+    pub(super) url: RelayUrl,
     status: Arc<AtomicRelayStatus>,
     #[cfg(feature = "nip11")]
     document: Arc<RwLock<RelayInformationDocument>>,
@@ -176,7 +176,7 @@ impl AtomicDestroyer for InnerRelay {
 
 impl InnerRelay {
     pub fn new(
-        url: Url,
+        url: RelayUrl,
         database: Arc<dyn NostrDatabase>,
         filtering: RelayFiltering,
         opts: RelayOptions,
@@ -201,6 +201,11 @@ impl InnerRelay {
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
             running: Arc::new(AtomicBool::new(false)),
         }
+    }
+
+    #[inline]
+    pub fn connection_mode(&self) -> &ConnectionMode {
+        &self.opts.connection_mode
     }
 
     /// Is connection thread running?
@@ -302,7 +307,7 @@ impl InnerRelay {
                 let url = self.url.clone();
                 let d = self.document.clone();
                 let _ = thread::spawn(async move {
-                    match RelayInformationDocument::get(url.clone(), proxy).await {
+                    match RelayInformationDocument::get(url.clone().into(), proxy).await {
                         Ok(document) => {
                             let mut d = d.write().await;
                             *d = document
@@ -609,7 +614,7 @@ impl InnerRelay {
         };
 
         // Connect
-        match wsocket_connect(&self.url, &self.opts.connection_mode, timeout).await {
+        match wsocket_connect((&self.url).into(), &self.opts.connection_mode, timeout).await {
             Ok((ws_tx, ws_rx)) => {
                 // Update status
                 self.set_status(RelayStatus::Connected, true);
