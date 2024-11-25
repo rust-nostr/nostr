@@ -179,7 +179,7 @@ impl JsClient {
 
     /// Remove and disconnect relay
     ///
-    /// If the relay has `INBOX` or `OUTBOX` flags, it will not be removed from the pool and its
+    /// If the relay has `GOSSIP` flag, it will not be removed from the pool and its
     /// flags will be updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
     #[wasm_bindgen(js_name = removeRelay)]
     pub async fn remove_relay(&self, url: &str) -> Result<()> {

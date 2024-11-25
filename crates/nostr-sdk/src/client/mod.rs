@@ -516,10 +516,11 @@ impl Client {
 
     /// Remove and disconnect relay
     ///
-    /// If the relay has [`RelayServiceFlags::INBOX`] or [`RelayServiceFlags::OUTBOX`] flags, it will not be removed from the pool and its
-    /// flags will be updated (remove [`RelayServiceFlags::READ`], [`RelayServiceFlags::WRITE`] and [`RelayServiceFlags::DISCOVERY`] flags).
+    /// If the relay has [`RelayServiceFlags::GOSSIP`], it will not be removed from the pool and its
+    /// flags will be updated (remove [`RelayServiceFlags::READ`],
+    /// [`RelayServiceFlags::WRITE`] and [`RelayServiceFlags::DISCOVERY`] flags).
     ///
-    /// To fore remove it use [`Client::force_remove_relay`].
+    /// To force remove the relay, use [`Client::force_remove_relay`].
     #[inline]
     pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
     where

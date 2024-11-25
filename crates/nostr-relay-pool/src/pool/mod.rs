@@ -203,6 +203,8 @@ impl RelayPool {
     /// If the relay has [`RelayServiceFlags::GOSSIP`], it will not be removed from the pool and its
     /// flags will be updated (remove [`RelayServiceFlags::READ`],
     /// [`RelayServiceFlags::WRITE`] and [`RelayServiceFlags::DISCOVERY`] flags).
+    ///
+    /// To fore remove a relay use [`RelayPool::force_remove_relay`].
     #[inline]
     pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
     where
