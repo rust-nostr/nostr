@@ -141,9 +141,8 @@ pub struct NostrConnectRemoteSigner {
 
 #[uniffi::export(async_runtime = "tokio")]
 impl NostrConnectRemoteSigner {
-    // TODO: change again to `new` (currently python not support async constructor)
     #[uniffi::constructor(default(secret = None, opts = None))]
-    pub async fn init(
+    pub fn new(
         keys: NostrConnectKeys,
         relays: Vec<String>,
         secret: Option<String>,
@@ -155,14 +154,13 @@ impl NostrConnectRemoteSigner {
                 relays,
                 secret,
                 opts.map(|o| o.as_ref().deref().clone()),
-            )
-            .await?,
+            )?,
         })
     }
 
     /// Construct remote signer from client URI (`nostrconnect://..`)
     #[uniffi::constructor(default(secret = None, opts = None))]
-    pub async fn from_uri(
+    pub fn from_uri(
         uri: &NostrConnectURI,
         keys: NostrConnectKeys,
         secret: Option<String>,
@@ -174,24 +172,18 @@ impl NostrConnectRemoteSigner {
                 keys.into(),
                 secret,
                 opts.map(|o| o.as_ref().deref().clone()),
-            )
-            .await?,
+            )?,
         })
     }
 
     /// Get signer relays
-    pub async fn relays(&self) -> Vec<String> {
-        self.inner
-            .relays()
-            .await
-            .into_iter()
-            .map(|r| r.to_string())
-            .collect()
+    pub fn relays(&self) -> Vec<String> {
+        self.inner.relays().iter().map(|r| r.to_string()).collect()
     }
 
     /// Get `bunker` URI
-    pub async fn bunker_uri(&self) -> NostrConnectURI {
-        self.inner.bunker_uri().await.into()
+    pub fn bunker_uri(&self) -> NostrConnectURI {
+        self.inner.bunker_uri().into()
     }
 
     /// Serve signer

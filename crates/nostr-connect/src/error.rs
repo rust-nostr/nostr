@@ -4,6 +4,8 @@
 
 //! Nostr Connect error
 
+use std::convert::Infallible;
+
 use nostr::event::builder;
 use nostr::nips::{nip04, nip46};
 use nostr::PublicKey;
@@ -52,4 +54,7 @@ pub enum Error {
         /// The local set user public key
         local: Box<PublicKey>,
     },
+    /// Infallible
+    #[error(transparent)]
+    Infallible(#[from] Infallible),
 }

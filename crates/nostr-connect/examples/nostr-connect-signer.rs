@@ -19,14 +19,14 @@ async fn main() -> Result<()> {
     };
 
     // Compose signer
-    let signer = NostrConnectRemoteSigner::new(keys, ["wss://relay.nsec.app"], None, None).await?;
+    let signer = NostrConnectRemoteSigner::new(keys, ["wss://relay.nsec.app"], None, None)?;
 
     // Compose signer from URI
     // let uri = NostrConnectURI::parse("nostrconnect://...")?;
-    // let signer = NostrConnectRemoteSigner::from_uri(uri, keys, None, None).await?;
+    // let signer = NostrConnectRemoteSigner::from_uri(uri, keys, None, None)?;
 
     // Print bunker URI
-    let uri = signer.bunker_uri().await;
+    let uri = signer.bunker_uri();
     println!("\n{uri}\n");
 
     // Serve signer

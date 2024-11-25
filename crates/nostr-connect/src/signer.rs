@@ -4,6 +4,8 @@
 
 //! Nostr Connect signer
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use nostr::nips::nip46::{Message, Request, ResponseResult};
@@ -30,15 +32,19 @@ pub struct NostrConnectKeys {
 #[derive(Debug, Clone)]
 pub struct NostrConnectRemoteSigner {
     keys: NostrConnectKeys,
+    relays: Vec<Url>,
     pool: RelayPool,
+    opts: RelayOptions,
     secret: Option<String>,
+    nostr_connect_client_public_key: Option<PublicKey>,
+    bootstrapped: Arc<AtomicBool>,
 }
 
 impl NostrConnectRemoteSigner {
     /// Construct new remote signer
-    pub async fn new<I, U>(
+    pub fn new<I, U>(
         keys: NostrConnectKeys,
-        relays: I,
+        urls: I,
         secret: Option<String>,
         opts: Option<RelayOptions>,
     ) -> Result<Self, Error>
@@ -47,21 +53,28 @@ impl NostrConnectRemoteSigner {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        // Compose pool
-        let pool: RelayPool = RelayPool::default();
-
-        let opts: RelayOptions = opts.unwrap_or_default();
-        for url in relays.into_iter() {
-            pool.add_relay(url, opts.clone()).await?;
+        let mut relays = Vec::new();
+        for relay in urls.into_iter() {
+            relays.push(
+                relay
+                    .try_into_url()
+                    .map_err(|e| Error::Pool(pool::Error::from(e)))?,
+            );
         }
 
-        pool.connect(Some(Duration::from_secs(10))).await;
-
-        Ok(Self { keys, pool, secret })
+        Ok(Self {
+            keys,
+            relays,
+            pool: RelayPool::default(),
+            opts: opts.unwrap_or_default(),
+            secret,
+            nostr_connect_client_public_key: None,
+            bootstrapped: Arc::new(AtomicBool::new(false)),
+        })
     }
 
     /// Construct remote signer from client URI (`nostrconnect://..`)
-    pub async fn from_uri(
+    pub fn from_uri(
         uri: NostrConnectURI,
         keys: NostrConnectKeys,
         secret: Option<String>,
@@ -71,24 +84,24 @@ impl NostrConnectRemoteSigner {
             NostrConnectURI::Client {
                 public_key, relays, ..
             } => {
-                let this = Self::new(keys, relays, secret, opts).await?;
-                this.send_connect_ack(public_key).await?;
-                Ok(this)
+                let mut signer = Self::new(keys, relays, secret, opts)?;
+                signer.nostr_connect_client_public_key = Some(public_key);
+                Ok(signer)
             }
             NostrConnectURI::Bunker { .. } => Err(Error::UnexpectedUri),
         }
     }
 
     /// Get signer relays
-    pub async fn relays(&self) -> Vec<Url> {
-        self.pool.relays().await.into_keys().collect()
+    pub fn relays(&self) -> &[Url] {
+        &self.relays
     }
 
     /// Get `bunker` URI
-    pub async fn bunker_uri(&self) -> NostrConnectURI {
+    pub fn bunker_uri(&self) -> NostrConnectURI {
         NostrConnectURI::Bunker {
             remote_signer_public_key: self.keys.signer.public_key(),
-            relays: self.relays().await,
+            relays: self.relays().to_vec(),
             secret: self.secret.clone(),
         }
     }
@@ -104,11 +117,22 @@ impl NostrConnectRemoteSigner {
         Ok(())
     }
 
-    async fn subscribe(&self) -> Result<(), Error> {
-        let public_key: PublicKey = self.keys.signer.public_key();
+    async fn bootstrap(&self) -> Result<(), Error> {
+        // Check if already bootstrapped
+        if self.bootstrapped.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+
+        // Add relays to pool
+        for url in self.relays.iter() {
+            self.pool.add_relay(url, self.opts.clone()).await?;
+        }
+
+        // Connect
+        self.pool.connect(Some(Duration::from_secs(10))).await;
 
         let filter = Filter::new()
-            .pubkey(public_key)
+            .pubkey(self.keys.signer.public_key())
             .kind(Kind::NostrConnect)
             .since(Timestamp::now());
 
@@ -116,6 +140,9 @@ impl NostrConnectRemoteSigner {
         self.pool
             .subscribe(vec![filter], SubscribeOptions::default())
             .await?;
+
+        // Mark as bootstrapped
+        self.bootstrapped.store(true, Ordering::SeqCst);
 
         Ok(())
     }
@@ -125,7 +152,12 @@ impl NostrConnectRemoteSigner {
     where
         T: NostrConnectSignerActions,
     {
-        self.subscribe().await?;
+        self.bootstrap().await?;
+
+        // TODO: move into bootstrap method?
+        if let Some(public_key) = self.nostr_connect_client_public_key {
+            self.send_connect_ack(public_key).await?;
+        }
 
         self.pool
             .handle_notifications(|notification| async {

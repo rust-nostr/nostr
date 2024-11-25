@@ -137,16 +137,13 @@ async fn run() -> Result<()> {
             let signer: NostrConnectRemoteSigner = match uri {
                 Some(uri) => {
                     let uri: NostrConnectURI = NostrConnectURI::parse(&uri)?;
-                    NostrConnectRemoteSigner::from_uri(uri, keys, None, None).await?
+                    NostrConnectRemoteSigner::from_uri(uri, keys, None, None)?
                 }
-                None => {
-                    NostrConnectRemoteSigner::new(keys, ["wss://relay.nsec.app"], None, None)
-                        .await?
-                }
+                None => NostrConnectRemoteSigner::new(keys, ["wss://relay.nsec.app"], None, None)?,
             };
 
             // Print bunker URI
-            let uri: NostrConnectURI = signer.bunker_uri().await;
+            let uri: NostrConnectURI = signer.bunker_uri();
             println!("\nBunker URI: {uri}\n");
 
             // Serve signer
