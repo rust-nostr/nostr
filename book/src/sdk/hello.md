@@ -4,6 +4,8 @@ Now that you’ve installed the SDK, it’s time to write your first nostr progr
 
 ### Generate random keys and construct the client
 
+The first step is to generate random keys needed for the client and construct the client instance.
+
 <custom-tabs category="lang">
 <div slot="title">Rust</div>
 <section>
@@ -57,6 +59,8 @@ TODO
 </custom-tabs>
 
 ### Add some relays and connect
+
+Next, add some relays to your client and connect to them.
 
 <custom-tabs category="lang">
 <div slot="title">Rust</div>
@@ -113,6 +117,9 @@ TODO
 
 ### Publish a text note
 
+Now that the client is constructed and the relays are connected, 
+build a text note with the [EventBuilder](event/builder.md) and publish it to relays.
+
 <custom-tabs category="lang">
 <div slot="title">Rust</div>
 <section>
@@ -167,6 +174,8 @@ TODO
 
 ### Inspect the output
 
+Published the event, you can inspect the output to ensure everything worked correctly.
+
 <custom-tabs category="lang">
 <div slot="title">Rust</div>
 <section>
@@ -220,6 +229,8 @@ TODO
 </custom-tabs>
 
 ### Full example
+
+Here’s the full example that includes all the steps from generating keys to inspecting the output.
 
 <custom-tabs category="lang">
 <div slot="title">Rust</div>

@@ -10,7 +10,6 @@ export async function hello() {
 
     // ANCHOR: connect
     await client.addRelay("wss://relay.damus.io")
-
     await client.connect();
     // ANCHOR_END: connect
 

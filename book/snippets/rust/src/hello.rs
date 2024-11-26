@@ -9,7 +9,6 @@ pub async fn hello() -> Result<()> {
 
     // ANCHOR: connect
     client.add_relay("wss://relay.damus.io").await?;
-
     client.connect().await;
     // ANCHOR_END: connect
 

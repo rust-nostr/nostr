@@ -10,7 +10,6 @@ async def hello():
 
     # ANCHOR: connect
     await client.add_relay("wss://relay.damus.io")
-
     await client.connect()
     # ANCHOR_END: connect
 

@@ -11,7 +11,6 @@ suspend fun hello() {
 
     // ANCHOR: connect
     //client.addRelay("wss://relay.damus.io")
-
     //client.connect()
     // ANCHOR_END: connect
 
