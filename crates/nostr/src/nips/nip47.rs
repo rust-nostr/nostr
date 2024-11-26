@@ -977,8 +977,7 @@ impl FromStr for NostrWalletConnectURI {
 impl fmt::Display for NostrWalletConnectURI {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // trailing slash is removed, this breaks some clients
-        let relay_url = self.relay_url.to_string();
-        let relay_url = relay_url.strip_suffix('/').unwrap_or(&relay_url);
+        let relay_url: &str = self.relay_url.as_str_without_trailing_slash();
         write!(
             f,
             "{NOSTR_WALLET_CONNECT_URI_SCHEME}://{}?relay={}&secret={}",
@@ -1041,7 +1040,7 @@ mod tests {
 
     #[test]
     fn test_parse_uri() {
-        let uri = "nostr+walletconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?relay=wss%3A%2F%2Frelay.damus.io%2F&secret=71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c&lud16=nostr%40nostr.com";
+        let uri = "nostr+walletconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?relay=wss%3A%2F%2Frelay.damus.io&secret=71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c&lud16=nostr%40nostr.com";
         let uri = NostrWalletConnectURI::from_str(uri).unwrap();
 
         let pubkey =

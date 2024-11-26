@@ -49,6 +49,7 @@ impl From<ParseError> for Error {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RelayUrl {
     url: Url,
+    has_trailing_slash: bool,
 }
 
 impl RelayUrl {
@@ -65,12 +66,18 @@ impl RelayUrl {
             return Err(Error::MultipleSchemeSeparators);
         }
 
+        // Check if has trailing slash
+        let has_trailing_slash: bool = url.ends_with('/');
+
         // Parse URL
         let url: Url = Url::parse(url)?;
 
         // Check scheme
         match url.scheme() {
-            "ws" | "wss" => Ok(Self { url }),
+            "ws" | "wss" => Ok(Self {
+                url,
+                has_trailing_slash,
+            }),
             scheme => Err(Error::UnsupportedScheme(scheme.to_string())),
         }
     }
@@ -83,16 +90,29 @@ impl RelayUrl {
             .map_or(false, |host| host.ends_with(".onion"))
     }
 
+    /// Return the serialization of this relay URL without the trailing slash.
+    ///
+    /// This method will always remove the trailing slash.
+    #[inline]
+    pub fn as_str_without_trailing_slash(&self) -> &str {
+        self.url.as_str().trim_end_matches('/')
+    }
+
     /// Return the serialization of this relay URL.
+    ///
+    /// The trailing slash will be removed only if the parsed URL hadn't it.
     #[inline]
     pub fn as_str(&self) -> &str {
+        if !self.has_trailing_slash {
+            return self.as_str_without_trailing_slash();
+        }
+
         self.url.as_str()
     }
 }
 
 impl fmt::Display for RelayUrl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO: if no path, remove last "/"
         write!(f, "{}", self.as_str())
     }
 }
@@ -245,9 +265,18 @@ mod tests {
     }
 
     #[test]
-    fn test_relay_url_display() {
+    fn test_relay_url_as_str() {
         let relay_url = RelayUrl::parse("ws://example.com").unwrap();
-        assert_eq!(relay_url.to_string(), "ws://example.com/");
+        assert_eq!(relay_url.as_str(), "ws://example.com");
+
+        let relay_url = RelayUrl::parse("ws://example.com/").unwrap();
+        assert_eq!(relay_url.as_str(), "ws://example.com/");
+
+        let relay_url = RelayUrl::parse("ws://example.com/").unwrap();
+        assert_eq!(
+            relay_url.as_str_without_trailing_slash(),
+            "ws://example.com"
+        );
     }
 
     #[test]

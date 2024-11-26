@@ -822,8 +822,11 @@ mod tests {
 
         assert_eq!(
             Nip19::Profile(
-                Nip19Profile::new(expected_pubkey, ["wss://r.x.com", "wss://djbas.sadkb.com"])
-                    .unwrap()
+                Nip19Profile::new(
+                    expected_pubkey,
+                    ["wss://r.x.com/", "wss://djbas.sadkb.com/"]
+                )
+                .unwrap()
             ),
             nip19
         );

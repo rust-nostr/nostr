@@ -1348,7 +1348,7 @@ mod tests {
             vec![
                 "q",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "wss://relay.damus.io/"
+                "wss://relay.damus.io"
             ],
             TagStandard::Quote {
                 event_id: EventId::from_hex(
@@ -1411,7 +1411,7 @@ mod tests {
             vec![
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io/"
+                "wss://relay.damus.io"
             ],
             TagStandard::PublicKey {
                 public_key: PublicKey::from_str(
@@ -1447,7 +1447,7 @@ mod tests {
             vec![
                 "e",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "wss://relay.damus.io/"
+                "wss://relay.damus.io"
             ],
             TagStandard::Event {
                 event_id: EventId::from_hex(
@@ -1527,7 +1527,7 @@ mod tests {
             vec![
                 "a",
                 "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum",
-                "wss://relay.nostr.org/"
+                "wss://relay.nostr.org"
             ],
             TagStandard::Coordinate {
                 coordinate: Coordinate::new(
@@ -1548,7 +1548,7 @@ mod tests {
             vec![
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io/",
+                "wss://relay.damus.io",
                 "Speaker",
             ],
             TagStandard::PublicKeyLiveEvent {
@@ -1586,7 +1586,7 @@ mod tests {
             vec![
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io/",
+                "wss://relay.damus.io",
                 "alias",
             ],
             TagStandard::PublicKey {
@@ -1694,7 +1694,7 @@ mod tests {
             vec![
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io/",
+                "wss://relay.damus.io",
                 "Host",
                 "a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd"
             ],
@@ -1726,7 +1726,7 @@ mod tests {
         assert_eq!(
             vec!["r", "wss://atlas.nostr.land/"],
             TagStandard::RelayMetadata {
-                relay_url: RelayUrl::parse("wss://atlas.nostr.land").unwrap(),
+                relay_url: RelayUrl::parse("wss://atlas.nostr.land/").unwrap(),
                 metadata: None
             }
             .to_vec()
@@ -1735,14 +1735,14 @@ mod tests {
         assert_eq!(
             vec!["r", "wss://atlas.nostr.land/", "read"],
             TagStandard::RelayMetadata {
-                relay_url: RelayUrl::parse("wss://atlas.nostr.land").unwrap(),
+                relay_url: RelayUrl::parse("wss://atlas.nostr.land/").unwrap(),
                 metadata: Some(RelayMetadata::Read)
             }
             .to_vec()
         );
 
         assert_eq!(
-            vec!["r", "wss://atlas.nostr.land/", "write"],
+            vec!["r", "wss://atlas.nostr.land", "write"],
             TagStandard::RelayMetadata {
                 relay_url: RelayUrl::parse("wss://atlas.nostr.land").unwrap(),
                 metadata: Some(RelayMetadata::Write)
@@ -1861,7 +1861,7 @@ mod tests {
             TagStandard::parse(&[
                 "q",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "wss://relay.damus.io/"
+                "wss://relay.damus.io"
             ])
             .unwrap(),
             TagStandard::Quote {
@@ -1967,7 +1967,7 @@ mod tests {
             TagStandard::parse(&[
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io/"
+                "wss://relay.damus.io"
             ])
             .unwrap(),
             TagStandard::PublicKey {
@@ -2004,7 +2004,7 @@ mod tests {
             TagStandard::parse(&[
                 "e",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "wss://relay.damus.io/"
+                "wss://relay.damus.io"
             ])
             .unwrap(),
             TagStandard::Event {
@@ -2095,7 +2095,7 @@ mod tests {
             TagStandard::parse(&[
                 "a",
                 "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum",
-                "wss://relay.nostr.org/"
+                "wss://relay.nostr.org"
             ])
             .unwrap(),
             TagStandard::Coordinate {
@@ -2115,13 +2115,13 @@ mod tests {
         assert_eq!(
             TagStandard::parse(&["r", "wss://atlas.nostr.land/"]).unwrap(),
             TagStandard::RelayMetadata {
-                relay_url: RelayUrl::parse("wss://atlas.nostr.land").unwrap(),
+                relay_url: RelayUrl::parse("wss://atlas.nostr.land/").unwrap(),
                 metadata: None
             }
         );
 
         assert_eq!(
-            TagStandard::parse(&["r", "wss://atlas.nostr.land/", "read"]).unwrap(),
+            TagStandard::parse(&["r", "wss://atlas.nostr.land", "read"]).unwrap(),
             TagStandard::RelayMetadata {
                 relay_url: RelayUrl::parse("wss://atlas.nostr.land").unwrap(),
                 metadata: Some(RelayMetadata::Read)
@@ -2129,7 +2129,7 @@ mod tests {
         );
 
         assert_eq!(
-            TagStandard::parse(&["r", "wss://atlas.nostr.land/", "write"]).unwrap(),
+            TagStandard::parse(&["r", "wss://atlas.nostr.land", "write"]).unwrap(),
             TagStandard::RelayMetadata {
                 relay_url: RelayUrl::parse("wss://atlas.nostr.land").unwrap(),
                 metadata: Some(RelayMetadata::Write)
@@ -2149,7 +2149,7 @@ mod tests {
                     "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
                 )
                 .unwrap(),
-                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
+                relay_url: Some(RelayUrl::parse("wss://relay.damus.io/").unwrap()),
                 alias: Some(String::from("alias")),
                 uppercase: false,
             }
