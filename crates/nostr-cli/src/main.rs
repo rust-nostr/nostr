@@ -9,7 +9,6 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use clap::Parser;
-use console::Term;
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 use nostr_connect::prelude::*;
 use nostr_relay_builder::prelude::*;
@@ -167,7 +166,6 @@ async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
             relays,
             direction,
         } => {
-            let term = Term::stdout();
             let current_relays = client.relays().await;
 
             let list: Vec<RelayUrl> = if !relays.is_empty() {
@@ -176,7 +174,7 @@ async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
                     client.add_relay(url).await?;
                 }
 
-                term.write_str("Connecting to relays...")?;
+                println!("Connecting to relays...");
 
                 // Connect and wait for connection
                 client.connect_with_timeout(Duration::from_secs(60)).await;
@@ -186,8 +184,7 @@ async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
                 current_relays.keys().cloned().collect()
             };
 
-            term.clear_line()?;
-            term.write_line("Syncing...")?;
+            println!("Syncing...");
 
             // Compose filter and opts
             let filter: Filter = Filter::default().author(public_key);
