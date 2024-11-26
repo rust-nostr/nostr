@@ -70,7 +70,13 @@ impl RelayUrl {
         }
     }
 
-    // TODO: add is_onion method
+    /// Check if the URL is a hidden onion service address
+    #[inline]
+    pub fn is_onion(&self) -> bool {
+        self.url
+            .domain()
+            .map_or(false, |host| host.ends_with(".onion"))
+    }
 
     /// Return the serialization of this relay URL.
     #[inline]
@@ -212,5 +218,22 @@ mod tests {
             RelayUrl::parse("https://relay.damus.io").unwrap_err(),
             Error::UnsupportedScheme(String::from("https"))
         );
+    }
+
+    #[test]
+    fn test_is_onion() {
+        // Onion
+        let onion_url =
+            RelayUrl::parse("ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion")
+                .unwrap();
+        assert!(onion_url.is_onion());
+
+        // Non onion
+        let non_onion_url = RelayUrl::parse("wss://relay.damus.io").unwrap();
+        assert!(!non_onion_url.is_onion());
+        let non_onion_url = RelayUrl::parse("ws://example.com:81").unwrap();
+        assert!(!non_onion_url.is_onion());
+        let non_onion_url = RelayUrl::parse("ws://127.0.0.1:7777").unwrap();
+        assert!(!non_onion_url.is_onion());
     }
 }

@@ -343,9 +343,6 @@ impl Client {
     async fn compose_relay_opts(&self, _url: &RelayUrl) -> RelayOptions {
         let opts: RelayOptions = RelayOptions::new();
 
-        // TODO: remove
-        let _url: &Url = _url.into();
-
         // Set connection mode
         #[cfg(not(target_arch = "wasm32"))]
         let opts: RelayOptions = match &self.opts.connection.mode {
@@ -353,10 +350,7 @@ impl Client {
             ConnectionMode::Proxy(..) => match self.opts.connection.target {
                 ConnectionTarget::All => opts.connection_mode(self.opts.connection.mode.clone()),
                 ConnectionTarget::Onion => {
-                    // TODO: use url.is_onion()
-                    let domain: &str = _url.domain().unwrap_or_default();
-
-                    if domain.ends_with(".onion") {
+                    if _url.is_onion() {
                         opts.connection_mode(self.opts.connection.mode.clone())
                     } else {
                         opts
@@ -367,9 +361,7 @@ impl Client {
             ConnectionMode::Tor { .. } => match self.opts.connection.target {
                 ConnectionTarget::All => opts.connection_mode(self.opts.connection.mode.clone()),
                 ConnectionTarget::Onion => {
-                    let domain: &str = _url.domain().unwrap_or_default();
-
-                    if domain.ends_with(".onion") {
+                    if _url.is_onion() {
                         opts.connection_mode(self.opts.connection.mode.clone())
                     } else {
                         opts
