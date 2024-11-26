@@ -21,7 +21,7 @@ pub use self::options::Options;
 use self::zapper::{ZapDetails, ZapEntity};
 use crate::database::events::Events;
 use crate::error::Result;
-use crate::pool::result::{Output, ReconciliationOutput, SendEventOutput, SubscribeOutput};
+use crate::pool::output::{Output, ReconciliationOutput, SendEventOutput, SubscribeOutput};
 use crate::pool::RelayPool;
 use crate::protocol::nips::nip59::UnwrappedGift;
 use crate::protocol::signer::NostrSigner;

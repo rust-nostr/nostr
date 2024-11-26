@@ -10,12 +10,12 @@ use std::time::Duration;
 use nostr_sdk::{RelayPoolOptions, SubscriptionId};
 use uniffi::Object;
 
-pub mod result;
+pub mod output;
 
-use self::result::{Output, SendEventOutput, SubscribeOutput};
+use self::output::{Output, SendEventOutput, SubscribeOutput};
 use crate::database::events::Events;
 use crate::error::Result;
-use crate::pool::result::ReconciliationOutput;
+use crate::pool::output::ReconciliationOutput;
 use crate::protocol::{ClientMessage, Event, Filter};
 use crate::relay::options::{FilterOptions, SyncOptions};
 use crate::relay::{RelayFiltering, RelayOptions, SubscribeOptions};
