@@ -13,7 +13,6 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 
 pub extern crate nostr;
 pub extern crate nostr_zapper as zapper;
@@ -41,8 +40,7 @@ pub struct NWC {
     uri: NostrWalletConnectURI,
     relay: Relay,
     opts: NostrWalletConnectOptions,
-    /// Is NWC client initialized?
-    initialized: Arc<AtomicBool>,
+    bootstrapped: Arc<AtomicBool>,
 }
 
 impl NWC {
@@ -58,7 +56,7 @@ impl NWC {
             relay: Relay::with_opts(uri.relay_url.clone(), opts.relay.clone()),
             uri,
             opts,
-            initialized: Arc::new(AtomicBool::new(false)),
+            bootstrapped: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -68,55 +66,53 @@ impl NWC {
         self.relay.status()
     }
 
-    #[inline]
-    fn is_initialized(&self) -> bool {
-        self.initialized.load(Ordering::SeqCst)
-    }
-
     /// Connect and subscribe
-    async fn init(&self) -> Result<(), Error> {
-        if !self.is_initialized() {
-            self.relay.connect(Some(Duration::from_secs(10))).await;
-
-            let filter = Filter::new()
-                .author(self.uri.public_key)
-                .kind(Kind::WalletConnectResponse)
-                .since(Timestamp::now());
-
-            // Subscribe
-            self.relay
-                .subscribe_with_id(
-                    SubscriptionId::new(ID),
-                    vec![filter],
-                    SubscribeOptions::default(),
-                )
-                .await?;
-
-            // Mark as initialized
-            self.initialized.store(true, Ordering::SeqCst);
+    async fn bootstrap(&self) -> Result<(), Error> {
+        // Check if already bootstrapped
+        if self.bootstrapped.load(Ordering::SeqCst) {
+            return Ok(());
         }
+
+        // Connect
+        self.relay.connect(None).await;
+
+        let filter = Filter::new()
+            .author(self.uri.public_key)
+            .kind(Kind::WalletConnectResponse)
+            .limit(0); // Limit to 0 means give me 0 events until EOSE
+
+        // Subscribe
+        self.relay
+            .subscribe_with_id(
+                SubscriptionId::new(ID),
+                vec![filter],
+                SubscribeOptions::default(),
+            )
+            .await?;
+
+        // Mark as bootstrapped
+        self.bootstrapped.store(true, Ordering::SeqCst);
 
         Ok(())
     }
 
     async fn send_request(&self, req: Request) -> Result<Response, Error> {
-        // Initialize
-        self.init().await?;
+        // Bootstrap
+        self.bootstrap().await?;
 
         // Convert request to event
         let event: Event = req.to_event(&self.uri)?;
-        let event_id: EventId = event.id;
 
         let mut notifications = self.relay.notifications();
 
         // Send request
-        self.relay.send_event(event).await?;
+        let id: EventId = self.relay.send_event(event).await?;
 
         time::timeout(Some(self.opts.timeout), async {
             while let Ok(notification) = notifications.recv().await {
                 if let RelayNotification::Event { event, .. } = notification {
                     if event.kind == Kind::WalletConnectResponse
-                        && event.tags.event_ids().next().copied() == Some(event_id)
+                        && event.tags.event_ids().next().copied() == Some(id)
                     {
                         return Ok(Response::from_event(&self.uri, &event)?);
                     }
