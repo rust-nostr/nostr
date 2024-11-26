@@ -57,7 +57,7 @@ impl NostrConnect {
             pool: RelayPool::default(),
             timeout,
             opts: opts.unwrap_or_default(),
-            secret: uri.secret(),
+            secret: uri.secret().map(|secret| secret.to_string()),
             uri,
             auth_url_handler: None,
         })

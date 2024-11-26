@@ -868,12 +868,11 @@ impl NostrConnectURI {
         }
     }
 
-    /// Get optional secret
+    /// Get secret
     #[inline]
-    // TODO: return &str
-    pub fn secret(&self) -> Option<String> {
+    pub fn secret(&self) -> Option<&str> {
         match self {
-            Self::Bunker { secret, .. } => secret.clone(),
+            Self::Bunker { secret, .. } => secret.as_deref(),
             Self::Client { .. } => None,
         }
     }

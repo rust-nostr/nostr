@@ -45,6 +45,7 @@
 * nostr: change `TagStandard::Relay` variant inner type ([Yuki Kishimoto])
 * nostr: remove `UncheckedUrl` struct ([Yuki Kishimoto])
 * nostr: update `NostrConnectURI::relays` to return slice ([Yuki Kishimoto])
+* nostr: update `NostrConnectURI::secret` to return string slice ([Yuki Kishimoto])
 * pool: switch from async to sync message sending for `Relay` ([Yuki Kishimoto])
 * connect: refactor `NostrConnectRemoteSigner` to use distinct keys for signer and user ([Yuki Kishimoto])
 * connect: refactor `NostrConnectRemoteSigner` to use synchronous constructors ([Yuki Kishimoto])
