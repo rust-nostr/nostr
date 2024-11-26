@@ -107,7 +107,7 @@ impl NostrConnect {
 
     async fn bootstrap(&self) -> Result<PublicKey, Error> {
         // Add relays
-        for url in self.uri.relays().into_iter() {
+        for url in self.uri.relays().iter() {
             self.pool.add_relay(url, self.opts.clone()).await?;
         }
 
@@ -184,7 +184,7 @@ impl NostrConnect {
 
     /// Get signer relays
     #[inline]
-    pub fn relays(&self) -> Vec<RelayUrl> {
+    pub fn relays(&self) -> &[RelayUrl] {
         self.uri.relays()
     }
 
@@ -192,7 +192,7 @@ impl NostrConnect {
     pub async fn bunker_uri(&self) -> Result<NostrConnectURI, Error> {
         Ok(NostrConnectURI::Bunker {
             remote_signer_public_key: *self.remote_signer_public_key().await?,
-            relays: self.relays(),
+            relays: self.relays().to_vec(),
             secret: self.secret.clone(),
         })
     }

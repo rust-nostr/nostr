@@ -58,7 +58,7 @@ impl JsNostrConnect {
     pub fn relays(&self) -> JsStringArray {
         self.inner
             .relays()
-            .into_iter()
+            .iter()
             .map(|u| JsValue::from(u.to_string()))
             .collect::<Array>()
             .unchecked_into()

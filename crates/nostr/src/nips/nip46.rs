@@ -861,11 +861,10 @@ impl NostrConnectURI {
 
     /// Get relays
     #[inline]
-    // TODO: return slice
-    pub fn relays(&self) -> Vec<RelayUrl> {
+    pub fn relays(&self) -> &[RelayUrl] {
         match self {
-            Self::Bunker { relays, .. } => relays.clone(),
-            Self::Client { relays, .. } => relays.clone(),
+            Self::Bunker { relays, .. } => relays.as_slice(),
+            Self::Client { relays, .. } => relays.as_slice(),
         }
     }
 

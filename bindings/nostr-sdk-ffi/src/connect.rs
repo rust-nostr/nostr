@@ -57,11 +57,7 @@ impl NostrConnect {
 
     /// Get signer relays
     pub fn relays(&self) -> Vec<String> {
-        self.inner
-            .relays()
-            .into_iter()
-            .map(|u| u.to_string())
-            .collect()
+        self.inner.relays().iter().map(|u| u.to_string()).collect()
     }
 
     /// Get `bunker` URI
