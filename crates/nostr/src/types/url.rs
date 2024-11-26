@@ -208,16 +208,47 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_relay_url() {
-        // Valid
+    fn test_relay_url_valid() {
         assert!(RelayUrl::parse("ws://127.0.0.1:7777").is_ok());
         assert!(RelayUrl::parse("wss://relay.damus.io").is_ok());
+        assert!(RelayUrl::parse("ws://example.com").is_ok());
+        assert!(RelayUrl::parse("wss://example.com/path/to/resource").is_ok());
+    }
 
-        // Invalid
+    #[test]
+    fn test_relay_url_invalid() {
         assert_eq!(
             RelayUrl::parse("https://relay.damus.io").unwrap_err(),
             Error::UnsupportedScheme(String::from("https"))
         );
+        assert_eq!(
+            RelayUrl::parse("ftp://relay.damus.io").unwrap_err(),
+            Error::UnsupportedScheme(String::from("ftp"))
+        );
+        assert_eq!(
+            RelayUrl::parse("wss://").unwrap_err(),
+            Error::Url(ParseError::EmptyHost)
+        );
+    }
+
+    #[test]
+    fn test_relay_url_display() {
+        let relay_url = RelayUrl::parse("ws://example.com").unwrap();
+        assert_eq!(relay_url.to_string(), "ws://example.com/");
+    }
+
+    #[test]
+    fn test_relay_url_from_str() {
+        let relay_url: Result<RelayUrl, _> = "ws://example.com".parse();
+        assert!(relay_url.is_ok());
+    }
+
+    #[test]
+    fn test_serde_relay_url() {
+        let relay_url = RelayUrl::parse("ws://example.com").unwrap();
+        let serialized = serde_json::to_string(&relay_url).unwrap();
+        let deserialized: RelayUrl = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(relay_url, deserialized);
     }
 
     #[test]
