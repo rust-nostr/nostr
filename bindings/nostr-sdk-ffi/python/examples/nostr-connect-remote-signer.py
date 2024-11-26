@@ -18,7 +18,7 @@ async def main():
 
     # Print bunker URI
     bunker_uri = await signer.bunker_uri()
-    print(f"Bunker URI: {bunker_uri.as_string()}")
+    print(f"Bunker URI: {bunker_uri.__str__()}")
 
     # Define signer actions
     class SignerActions(NostrConnectSignerActions):

@@ -52,6 +52,7 @@
 * sdk: disable all default features ([Yuki Kishimoto])
 * sdk: set `Client::from_builder` as private ([Yuki Kishimoto])
 * ffi: convert `NostrSigner` trait to an object ([Yuki Kishimoto])
+* ffi: remove `NostrConnectURI::as_string` ([Yuki Kishimoto])
 
 ### Changed
 
@@ -104,6 +105,7 @@
 * nwc: add `NWC::status` ([Yuki Kishimoto])
 * ffi: add `make_private_msg` func ([Yuki Kishimoto])
 * ffi: add `CustomNostrSigner` trait ([Yuki Kishimoto])
+* ffi: impl `fmt::Display` for `NostrConnectURI` ([Yuki Kishimoto])
 * flutter: add `Tag` struct ([Yuki Kishimoto])
 * book: add some examples ([RydalWater] and [Yuki Kishimoto])
 
