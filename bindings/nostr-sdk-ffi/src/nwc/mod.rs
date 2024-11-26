@@ -16,6 +16,7 @@ use crate::protocol::nips::nip47::{
     LookupInvoiceResponseResult, MakeInvoiceRequestParams, MakeInvoiceResponseResult,
     NostrWalletConnectURI, PayKeysendRequestParams, PayKeysendResponseResult,
 };
+use crate::relay::RelayStatus;
 
 /// Nostr Wallet Connect client
 #[derive(Object)]
@@ -47,6 +48,11 @@ impl NWC {
         Self {
             inner: nwc::NWC::with_opts(uri.deref().clone(), opts.deref().clone()),
         }
+    }
+
+    /// Get relay status
+    pub fn status(&self) -> RelayStatus {
+        self.inner.status().into()
     }
 
     /// Pay invoice

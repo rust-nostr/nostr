@@ -99,6 +99,7 @@
 * sdk: add support to NIP17 relay list ([Yuki Kishimoto])
 * relay-builder: add `RelayTestOptions` ([Yuki Kishimoto])
 * connect: add `NostrConnect::non_secure_set_user_public_key` ([Yuki Kishimoto])
+* nwc: add `NWC::status` ([Yuki Kishimoto])
 * ffi: add `make_private_msg` func ([Yuki Kishimoto])
 * ffi: add `CustomNostrSigner` trait ([Yuki Kishimoto])
 * flutter: add `Tag` struct ([Yuki Kishimoto])

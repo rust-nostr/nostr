@@ -62,6 +62,12 @@ impl NWC {
         }
     }
 
+    /// Get relay status
+    #[inline]
+    pub fn status(&self) -> RelayStatus {
+        self.relay.status()
+    }
+
     #[inline]
     fn is_initialized(&self) -> bool {
         self.initialized.load(Ordering::SeqCst)
