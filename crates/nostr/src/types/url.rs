@@ -6,7 +6,7 @@
 
 use alloc::string::{String, ToString};
 use core::convert::Infallible;
-use core::fmt::{self, Debug};
+use core::fmt;
 use core::str::FromStr;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -46,10 +46,17 @@ impl From<ParseError> for Error {
 }
 
 /// Relay URL
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RelayUrl {
     url: Url,
     has_trailing_slash: bool,
+}
+
+impl fmt::Debug for RelayUrl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let url: &str = self.as_str();
+        f.debug_tuple("RelayUrl").field(&url).finish()
+    }
 }
 
 impl RelayUrl {
@@ -159,7 +166,7 @@ impl<'a> From<&'a RelayUrl> for &'a Url {
 /// Try into relay URL
 pub trait TryIntoUrl {
     /// Error
-    type Err: Debug;
+    type Err: fmt::Debug;
 
     /// Try into relay URL
     fn try_into_url(self) -> Result<RelayUrl, Self::Err>;
