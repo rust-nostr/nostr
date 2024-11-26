@@ -22,6 +22,8 @@ pub enum Error {
     Url(ParseError),
     /// Unsupported URL scheme
     UnsupportedScheme(String),
+    /// Multiple scheme separators
+    MultipleSchemeSeparators,
 }
 
 #[cfg(feature = "std")]
@@ -32,6 +34,7 @@ impl fmt::Display for Error {
         match self {
             Self::Url(e) => write!(f, "{e}"),
             Self::UnsupportedScheme(scheme) => write!(f, "Unsupported scheme: {scheme}"),
+            Self::MultipleSchemeSeparators => write!(f, "Multiple scheme separators"),
         }
     }
 }
@@ -55,17 +58,19 @@ impl RelayUrl {
     where
         S: AsRef<str>,
     {
-        let url = Url::parse(url.as_ref())?;
-        Self::from_url(url)
-    }
+        let url: &str = url.as_ref();
 
-    fn from_url(url: Url) -> Result<Self, Error> {
+        // Check that "://" appears only once in the URL
+        if url.matches("://").count() > 1 {
+            return Err(Error::MultipleSchemeSeparators);
+        }
+
+        // Parse URL
+        let url: Url = Url::parse(url)?;
+
+        // Check scheme
         match url.scheme() {
-            "ws" | "wss" => {
-                // TODO: check max len?
-
-                Ok(Self { url })
-            }
+            "ws" | "wss" => Ok(Self { url }),
             scheme => Err(Error::UnsupportedScheme(scheme.to_string())),
         }
     }
@@ -163,7 +168,7 @@ impl TryIntoUrl for Url {
 
     #[inline]
     fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
-        RelayUrl::from_url(self)
+        RelayUrl::parse(self.as_str())
     }
 }
 
@@ -172,7 +177,7 @@ impl TryIntoUrl for &Url {
 
     #[inline]
     fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
-        RelayUrl::from_url(self.clone())
+        RelayUrl::parse(self.as_str())
     }
 }
 
@@ -224,6 +229,14 @@ mod tests {
         assert_eq!(
             RelayUrl::parse("ftp://relay.damus.io").unwrap_err(),
             Error::UnsupportedScheme(String::from("ftp"))
+        );
+        assert_eq!(
+            RelayUrl::parse("wss://relay.damus.io,ws://127.0.0.1:7777").unwrap_err(),
+            Error::MultipleSchemeSeparators
+        );
+        assert_eq!(
+            RelayUrl::parse("wss://relay.damus.iowss://127.0.0.1:8888").unwrap_err(),
+            Error::MultipleSchemeSeparators
         );
         assert_eq!(
             RelayUrl::parse("wss://").unwrap_err(),
