@@ -15,8 +15,14 @@ pub async fn hello() -> Result<()> {
 
     // ANCHOR: publish
     let builder = EventBuilder::text_note("Hello, rust-nostr!", []);
-    client.send_event_builder(builder).await?;
+    let output = client.send_event_builder(builder).await?;
     // ANCHOR_END: publish
+
+    // ANCHOR: output
+    println!("Event ID: {}", output.id().to_bech32()?);
+    println!("Sent to: {:?}", output.success);
+    println!("Not sent to: {:?}", output.failed);
+    // ANCHOR_END: output
 
     Ok(())
 }

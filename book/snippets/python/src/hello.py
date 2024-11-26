@@ -16,7 +16,13 @@ async def hello():
 
     # ANCHOR: publish
     builder = EventBuilder.text_note("Hello, rust-nostr!", [])
-    await client.send_event_builder(builder)
+    res = await client.send_event_builder(builder)
     # ANCHOR_END: publish
+
+    # ANCHOR: output
+    print(f"Event ID: {res.id.to_bech32()}")
+    print(f"Successfully sent to: {res.output.success}")
+    print(f"Failed to send to: {res.output.failed}")
+    # ANCHOR_END: output
 
 # ANCHOR_END: full

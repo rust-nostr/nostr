@@ -19,5 +19,9 @@ suspend fun hello() {
     //val builder = EventBuilder.textNote("Hello, rust-nostr!", listOf())
     //client.sendEventBuilder(builder)
     // ANCHOR_END: publish
+    
+    // ANCHOR: output
+    // TODO
+    // ANCHOR_END: output
 }
 // ANCHOR_END: full

@@ -165,6 +165,60 @@ TODO
 </section>
 </custom-tabs>
 
+### Inspect the output
+
+<custom-tabs category="lang">
+<div slot="title">Rust</div>
+<section>
+
+```rust,ignore
+{{#include ../../snippets/rust/src/hello.rs:output}}
+```
+
+</section>
+
+<div slot="title">Python</div>
+<section>
+
+```python,ignore
+{{#include ../../snippets/python/src/hello.py:output}}
+```
+
+</section>
+
+<div slot="title">JavaScript</div>
+<section>
+
+```typescript,ignore
+{{#include ../../snippets/js/src/hello.ts:output}}
+```
+
+</section>
+
+<div slot="title">Kotlin</div>
+<section>
+
+```kotlin,ignore
+{{#include ../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Hello.kt:output}}
+```
+
+</section>
+
+<div slot="title">Swift</div>
+<section>
+
+TODO
+
+</section>
+
+<div slot="title">Flutter</div>
+<section>
+
+TODO
+
+</section>
+</custom-tabs>
+
 ### Full example
 
 <custom-tabs category="lang">
