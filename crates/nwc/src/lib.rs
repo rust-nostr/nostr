@@ -126,18 +126,13 @@ impl NWC {
     }
 
     /// Pay invoice
-    pub async fn pay_invoice<S>(&self, invoice: S) -> Result<String, Error>
-    where
-        S: Into<String>,
-    {
-        let req = Request::pay_invoice(PayInvoiceRequestParams {
-            id: None,
-            invoice: invoice.into(),
-            amount: None,
-        });
+    pub async fn pay_invoice(
+        &self,
+        params: PayInvoiceRequestParams,
+    ) -> Result<PayInvoiceResponseResult, Error> {
+        let req = Request::pay_invoice(params);
         let res: Response = self.send_request(req).await?;
-        let PayInvoiceResponseResult { preimage } = res.to_pay_invoice()?;
-        Ok(preimage)
+        Ok(res.to_pay_invoice()?)
     }
 
     /// Pay keysend
@@ -212,7 +207,12 @@ impl NostrZapper for NWC {
 
     #[inline]
     async fn pay(&self, invoice: String) -> Result<(), ZapperError> {
-        self.pay_invoice(invoice)
+        let params = PayInvoiceRequestParams {
+            invoice,
+            id: None,
+            amount: None,
+        };
+        self.pay_invoice(params)
             .await
             .map_err(ZapperError::backend)?;
         Ok(())

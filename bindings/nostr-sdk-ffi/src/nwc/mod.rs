@@ -14,7 +14,8 @@ use crate::error::Result;
 use crate::protocol::nips::nip47::{
     GetInfoResponseResult, ListTransactionsRequestParams, LookupInvoiceRequestParams,
     LookupInvoiceResponseResult, MakeInvoiceRequestParams, MakeInvoiceResponseResult,
-    NostrWalletConnectURI, PayKeysendRequestParams, PayKeysendResponseResult,
+    NostrWalletConnectURI, PayInvoiceRequestParams, PayInvoiceResponseResult,
+    PayKeysendRequestParams, PayKeysendResponseResult,
 };
 use crate::relay::RelayStatus;
 
@@ -56,8 +57,11 @@ impl NWC {
     }
 
     /// Pay invoice
-    pub async fn pay_invoice(&self, invoice: String) -> Result<String> {
-        Ok(self.inner.pay_invoice(invoice).await?)
+    pub async fn pay_invoice(
+        &self,
+        params: PayInvoiceRequestParams,
+    ) -> Result<PayInvoiceResponseResult> {
+        Ok(self.inner.pay_invoice(params.into()).await?.into())
     }
 
     /// Pay keysend

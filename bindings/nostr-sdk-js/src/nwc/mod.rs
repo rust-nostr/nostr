@@ -15,7 +15,8 @@ use crate::error::{into_err, Result};
 use crate::protocol::nips::nip47::{
     JsGetInfoResponseResult, JsListTransactionsRequestParams, JsLookupInvoiceRequestParams,
     JsLookupInvoiceResponseResult, JsMakeInvoiceRequestParams, JsMakeInvoiceResponseResult,
-    JsNostrWalletConnectURI, JsPayKeysendRequestParams, JsPayKeysendResponseResult,
+    JsNostrWalletConnectURI, JsPayInvoiceRequestParams, JsPayInvoiceResponseResult,
+    JsPayKeysendRequestParams, JsPayKeysendResponseResult,
 };
 use crate::relay::JsRelayStatus;
 
@@ -65,8 +66,16 @@ impl JsNwc {
 
     /// Pay invoice
     #[wasm_bindgen(js_name = payInvoice)]
-    pub async fn pay_invoice(&self, invoice: &str) -> Result<String> {
-        self.inner.pay_invoice(invoice).await.map_err(into_err)
+    pub async fn pay_invoice(
+        &self,
+        params: &JsPayInvoiceRequestParams,
+    ) -> Result<JsPayInvoiceResponseResult> {
+        Ok(self
+            .inner
+            .pay_invoice(params.to_owned().into())
+            .await
+            .map_err(into_err)?
+            .into())
     }
 
     /// Pay keysend
