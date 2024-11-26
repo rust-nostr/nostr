@@ -9,10 +9,7 @@ use core::convert::Infallible;
 use core::fmt::{self, Debug};
 use core::str::FromStr;
 
-#[cfg(feature = "std")]
 pub use url::*;
-#[cfg(not(feature = "std"))]
-pub use url_fork::*;
 
 /// Try into [`Url`]
 pub trait TryIntoUrl {

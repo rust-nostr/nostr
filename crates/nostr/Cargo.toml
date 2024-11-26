@@ -18,7 +18,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = ["std"]
 std = [
-    "dep:url",
+    "url/std",
     "base64?/std",
     "bech32/std",
     "bitcoin/std",
@@ -37,7 +37,6 @@ std = [
     "unicode-normalization?/std",
 ]
 alloc = [
-    "dep:url-fork",
     "base64?/alloc",
     "bech32/alloc",
     "cbc?/alloc",
@@ -79,8 +78,7 @@ scrypt = { version = "0.11", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json.workspace = true
 unicode-normalization = { version = "0.1", default-features = false, optional = true }
-url = { version = "2.5", default-features = false, features = ["serde"], optional = true } # Used in std
-url-fork = { version = "3.0", default-features = false, features = ["serde"], optional = true } # Used for no_std
+url = { version = "2.5.4", default-features = false, features = ["serde"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }

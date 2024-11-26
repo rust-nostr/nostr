@@ -111,6 +111,7 @@
 ### Removed
 
 * nostr: remove `Marker::Custom` variant ([Yuki Kishimoto])
+* nostr: remove `url-fork` dep ([Yuki Kishimoto])
 * pool: remove `Relay::support_negentropy` ([Yuki Kishimoto])
 * pool: remove `Error::NotConnectedStatusChanged` variant ([Yuki Kishimoto])
 * pool: remove `INBOX` and `OUTBOX` flags ([Yuki Kishimoto])
