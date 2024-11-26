@@ -72,7 +72,12 @@ impl DatabaseFilter {
         match &self.search {
             Some(query) => {
                 // NOTE: `query` was already converted to lowercase
-                event.content.to_lowercase().contains(query)
+                let query: &[u8] = query.as_bytes();
+                event
+                    .content
+                    .as_bytes()
+                    .windows(query.len())
+                    .any(|window| window.eq_ignore_ascii_case(query))
             }
             None => true,
         }

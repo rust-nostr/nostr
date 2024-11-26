@@ -76,6 +76,7 @@
 * lmdb: optimize vector initialization in unit tests ([Xiao Yu])
 * lmdb: commit also read txn ([Yuki Kishimoto])
 * lmdb: transactions improvements ([Yuki Kishimoto])
+* lmdb: improve NIP50 search performance ([Yuki Kishimoto])
 * nwc: increase default timeout to 60 secs ([Yuki Kishimoto])
 * book: convert JS snippets to TypeScript ([Yuki Kishimoto])
 * book: use `pyright` to check python snippets ([Yuki Kishimoto])

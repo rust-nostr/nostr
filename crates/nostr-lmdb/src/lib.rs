@@ -430,10 +430,22 @@ mod tests {
         assert_eq!(events.len(), 1);
 
         let events = db
+            .query(vec![Filter::new().search("account a")])
+            .await
+            .unwrap();
+        assert_eq!(events.len(), 1);
+
+        let events = db
             .query(vec![Filter::new().search("text note")])
             .await
             .unwrap();
         assert_eq!(events.len(), 2);
+
+        let events = db.query(vec![Filter::new().search("notes")]).await.unwrap();
+        assert_eq!(events.len(), 0);
+
+        let events = db.query(vec![Filter::new().search("hola")]).await.unwrap();
+        assert_eq!(events.len(), 0);
     }
 
     #[tokio::test]
