@@ -50,6 +50,7 @@ impl fmt::Debug for IntermediateCustomNostrSigner {
 }
 
 mod inner {
+    use std::fmt;
     use std::ops::Deref;
     use std::sync::Arc;
 
@@ -57,7 +58,17 @@ mod inner {
     use nostr::prelude::*;
 
     use super::IntermediateCustomNostrSigner;
-    use crate::error::NostrSdkError;
+
+    #[derive(Debug)]
+    struct Error(String);
+
+    impl std::error::Error for Error {}
+
+    impl fmt::Display for Error {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "{}", self.0)
+        }
+    }
 
     #[async_trait]
     impl NostrSigner for IntermediateCustomNostrSigner {
@@ -70,11 +81,9 @@ mod inner {
                 .inner
                 .get_public_key()
                 .await
-                .map_err(SignerError::backend)?
+                .map_err(|e| SignerError::backend(Error(e.to_string())))?
                 .ok_or_else(|| {
-                    SignerError::backend(NostrSdkError::Generic(String::from(
-                        "Received None instead of public key",
-                    )))
+                    SignerError::backend(Error(String::from("Received None instead of public key")))
                 })?;
             Ok(**public_key)
         }
@@ -85,11 +94,9 @@ mod inner {
                 .inner
                 .sign_event(unsigned)
                 .await
-                .map_err(SignerError::backend)?
+                .map_err(|e| SignerError::backend(Error(e.to_string())))?
                 .ok_or_else(|| {
-                    SignerError::backend(NostrSdkError::Generic(String::from(
-                        "Received None instead of event",
-                    )))
+                    SignerError::backend(Error(String::from("Received None instead of event")))
                 })?;
             Ok(event.as_ref().deref().clone())
         }
@@ -103,7 +110,7 @@ mod inner {
             self.inner
                 .nip04_encrypt(public_key, content.to_string())
                 .await
-                .map_err(SignerError::backend)
+                .map_err(|e| SignerError::backend(Error(e.to_string())))
         }
 
         async fn nip04_decrypt(
@@ -115,7 +122,7 @@ mod inner {
             self.inner
                 .nip04_decrypt(public_key, encrypted_content.to_string())
                 .await
-                .map_err(SignerError::backend)
+                .map_err(|e| SignerError::backend(Error(e.to_string())))
         }
 
         async fn nip44_encrypt(
@@ -127,7 +134,7 @@ mod inner {
             self.inner
                 .nip44_encrypt(public_key, content.to_string())
                 .await
-                .map_err(SignerError::backend)
+                .map_err(|e| SignerError::backend(Error(e.to_string())))
         }
 
         async fn nip44_decrypt(
@@ -139,7 +146,7 @@ mod inner {
             self.inner
                 .nip44_decrypt(public_key, payload.to_string())
                 .await
-                .map_err(SignerError::backend)
+                .map_err(|e| SignerError::backend(Error(e.to_string())))
         }
     }
 }
