@@ -13,18 +13,17 @@ pub mod options;
 use self::options::JsNostrWalletConnectOptions;
 use crate::error::{into_err, Result};
 use crate::protocol::nips::nip47::{
-    JsGetInfoResponseResult, JsListTransactionsRequestParams, JsLookupInvoiceRequestParams,
-    JsLookupInvoiceResponseResult, JsMakeInvoiceRequestParams, JsMakeInvoiceResponseResult,
-    JsNostrWalletConnectURI, JsPayInvoiceRequestParams, JsPayInvoiceResponseResult,
-    JsPayKeysendRequestParams, JsPayKeysendResponseResult,
+    JsGetInfoResponse, JsListTransactionsRequest, JsLookupInvoiceRequest, JsLookupInvoiceResponse,
+    JsMakeInvoiceRequest, JsMakeInvoiceResponse, JsNostrWalletConnectURI, JsPayInvoiceRequest,
+    JsPayInvoiceResponse, JsPayKeysendRequest, JsPayKeysendResponse,
 };
 use crate::relay::JsRelayStatus;
 
 #[wasm_bindgen]
 extern "C" {
     /// Array
-    #[wasm_bindgen(typescript_type = "LookupInvoiceResponseResult[]")]
-    pub type JsLookupInvoiceResponseResultArray;
+    #[wasm_bindgen(typescript_type = "LookupInvoiceResponse[]")]
+    pub type JsLookupInvoiceResponseArray;
 }
 
 /// Nostr Wallet Connect client
@@ -66,10 +65,7 @@ impl JsNwc {
 
     /// Pay invoice
     #[wasm_bindgen(js_name = payInvoice)]
-    pub async fn pay_invoice(
-        &self,
-        params: &JsPayInvoiceRequestParams,
-    ) -> Result<JsPayInvoiceResponseResult> {
+    pub async fn pay_invoice(&self, params: &JsPayInvoiceRequest) -> Result<JsPayInvoiceResponse> {
         Ok(self
             .inner
             .pay_invoice(params.to_owned().into())
@@ -80,10 +76,7 @@ impl JsNwc {
 
     /// Pay keysend
     #[wasm_bindgen(js_name = payKeysend)]
-    pub async fn pay_keysend(
-        &self,
-        params: &JsPayKeysendRequestParams,
-    ) -> Result<JsPayKeysendResponseResult> {
+    pub async fn pay_keysend(&self, params: &JsPayKeysendRequest) -> Result<JsPayKeysendResponse> {
         Ok(self
             .inner
             .pay_keysend(params.to_owned().into())
@@ -96,8 +89,8 @@ impl JsNwc {
     #[wasm_bindgen(js_name = makeInvoice)]
     pub async fn make_invoice(
         &self,
-        params: &JsMakeInvoiceRequestParams,
-    ) -> Result<JsMakeInvoiceResponseResult> {
+        params: &JsMakeInvoiceRequest,
+    ) -> Result<JsMakeInvoiceResponse> {
         Ok(self
             .inner
             .make_invoice(params.to_owned().into())
@@ -110,8 +103,8 @@ impl JsNwc {
     #[wasm_bindgen(js_name = lookupInvoice)]
     pub async fn lookup_invoice(
         &self,
-        params: &JsLookupInvoiceRequestParams,
-    ) -> Result<JsLookupInvoiceResponseResult> {
+        params: &JsLookupInvoiceRequest,
+    ) -> Result<JsLookupInvoiceResponse> {
         Ok(self
             .inner
             .lookup_invoice(params.to_owned().into())
@@ -124,8 +117,8 @@ impl JsNwc {
     #[wasm_bindgen(js_name = listTransactions)]
     pub async fn list_transactions(
         &self,
-        params: &JsListTransactionsRequestParams,
-    ) -> Result<JsLookupInvoiceResponseResultArray> {
+        params: &JsListTransactionsRequest,
+    ) -> Result<JsLookupInvoiceResponseArray> {
         let list = self
             .inner
             .list_transactions(params.to_owned().into())
@@ -134,7 +127,7 @@ impl JsNwc {
         Ok(list
             .into_iter()
             .map(|e| {
-                let e: JsLookupInvoiceResponseResult = e.into();
+                let e: JsLookupInvoiceResponse = e.into();
                 JsValue::from(e)
             })
             .collect::<Array>()
@@ -149,7 +142,7 @@ impl JsNwc {
 
     /// Get info
     #[wasm_bindgen(js_name = getInfo)]
-    pub async fn get_info(&self) -> Result<JsGetInfoResponseResult> {
+    pub async fn get_info(&self) -> Result<JsGetInfoResponse> {
         Ok(self.inner.get_info().await.map_err(into_err)?.into())
     }
 }

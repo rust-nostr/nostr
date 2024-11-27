@@ -22,13 +22,13 @@ async fn main() -> Result<()> {
         NostrWalletConnectURI::from_str(&nwc_uri_string).expect("Failed to parse NWC URI");
     let nwc: NWC = NWC::new(uri);
 
-    // Get info
-    let info: GetInfoResponseResult = nwc.get_info().await?;
-    println!("{info:?}");
-
     // Get balance
-    let balance: u64 = nwc.get_balance().await?;
-    println!("Balance: {balance}");
+    let balance = nwc.get_balance().await?;
+    println!("Balance: {balance} msat");
+
+    let request: PayInvoiceRequest = PayInvoiceRequest::new("<invoice>");
+    let response = nwc.pay_invoice(request).await?;
+    println!("Response: {response:?}");
 
     Ok(())
 }

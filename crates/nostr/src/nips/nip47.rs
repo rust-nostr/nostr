@@ -235,23 +235,23 @@ pub enum Method {
     GetInfo,
 }
 
-/// Nostr Wallet Connect Request Params
+/// Nostr Wallet Connect Request
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RequestParams {
     /// Pay Invoice
-    PayInvoice(PayInvoiceRequestParams),
+    PayInvoice(PayInvoiceRequest),
     /// Multiple Pay Invoice
-    MultiPayInvoice(MultiPayInvoiceRequestParams),
+    MultiPayInvoice(MultiPayInvoiceRequest),
     /// Pay Keysend
-    PayKeysend(PayKeysendRequestParams),
+    PayKeysend(PayKeysendRequest),
     /// Multiple Pay Keysend
-    MultiPayKeysend(MultiPayKeysendRequestParams),
+    MultiPayKeysend(MultiPayKeysendRequest),
     /// Make Invoice
-    MakeInvoice(MakeInvoiceRequestParams),
+    MakeInvoice(MakeInvoiceRequest),
     /// Lookup Invoice
-    LookupInvoice(LookupInvoiceRequestParams),
+    LookupInvoice(LookupInvoiceRequest),
     /// List Transactions
-    ListTransactions(ListTransactionsRequestParams),
+    ListTransactions(ListTransactionsRequest),
     /// Get Balance
     GetBalance,
     /// Get Info
@@ -277,9 +277,9 @@ impl Serialize for RequestParams {
     }
 }
 
-/// Pay Invoice Request Params
+/// Pay Invoice Request
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct PayInvoiceRequestParams {
+pub struct PayInvoiceRequest {
     /// Optional id
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -290,11 +290,26 @@ pub struct PayInvoiceRequestParams {
     pub amount: Option<u64>,
 }
 
-/// Multiple Pay Invoice Request Params
+impl PayInvoiceRequest {
+    /// New pay invoice request
+    #[inline]
+    pub fn new<S>(invoice: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            id: None,
+            invoice: invoice.into(),
+            amount: None,
+        }
+    }
+}
+
+/// Multiple Pay Invoice Request
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct MultiPayInvoiceRequestParams {
+pub struct MultiPayInvoiceRequest {
     /// Requested invoices
-    pub invoices: Vec<PayInvoiceRequestParams>,
+    pub invoices: Vec<PayInvoiceRequest>,
 }
 
 /// TLVs to be added to the keysend payment
@@ -307,9 +322,9 @@ pub struct KeysendTLVRecord {
     pub value: String,
 }
 
-/// Pay Invoice Request Params
+/// Pay Invoice Request
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct PayKeysendRequestParams {
+pub struct PayKeysendRequest {
     /// Optional id
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
@@ -326,16 +341,16 @@ pub struct PayKeysendRequestParams {
     pub tlv_records: Vec<KeysendTLVRecord>,
 }
 
-/// Multiple Pay Keysend Request Params
+/// Multiple Pay Keysend Request
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct MultiPayKeysendRequestParams {
+pub struct MultiPayKeysendRequest {
     /// Requested keysends
-    pub keysends: Vec<PayKeysendRequestParams>,
+    pub keysends: Vec<PayKeysendRequest>,
 }
 
-/// Make Invoice Request Params
+/// Make Invoice Request
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct MakeInvoiceRequestParams {
+pub struct MakeInvoiceRequest {
     /// Amount in millisatoshis
     pub amount: u64,
     /// Invoice description
@@ -346,9 +361,9 @@ pub struct MakeInvoiceRequestParams {
     pub expiry: Option<u64>,
 }
 
-/// Lookup Invoice Request Params
+/// Lookup Invoice Request
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct LookupInvoiceRequestParams {
+pub struct LookupInvoiceRequest {
     /// Payment hash of invoice
     pub payment_hash: Option<String>,
     /// Bolt11 invoice
@@ -366,9 +381,9 @@ pub enum TransactionType {
     Outgoing,
 }
 
-/// List Transactions Request Params
+/// List Transactions Request
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ListTransactionsRequestParams {
+pub struct ListTransactionsRequest {
     /// Starting timestamp in seconds since epoch
     #[serde(skip_serializing_if = "Option::is_none")]
     pub from: Option<Timestamp>,
@@ -411,7 +426,7 @@ struct RequestTemplate {
 impl Request {
     /// Compose `pay_invoice` request
     #[inline]
-    pub fn pay_invoice(params: PayInvoiceRequestParams) -> Self {
+    pub fn pay_invoice(params: PayInvoiceRequest) -> Self {
         Self {
             method: Method::PayInvoice,
             params: RequestParams::PayInvoice(params),
@@ -420,7 +435,7 @@ impl Request {
 
     /// Compose `multi_pay_invoice` request
     #[inline]
-    pub fn multi_pay_invoice(params: MultiPayInvoiceRequestParams) -> Self {
+    pub fn multi_pay_invoice(params: MultiPayInvoiceRequest) -> Self {
         Self {
             method: Method::MultiPayInvoice,
             params: RequestParams::MultiPayInvoice(params),
@@ -429,7 +444,7 @@ impl Request {
 
     /// Compose `pay_keysend` request
     #[inline]
-    pub fn pay_keysend(params: PayKeysendRequestParams) -> Self {
+    pub fn pay_keysend(params: PayKeysendRequest) -> Self {
         Self {
             method: Method::PayKeysend,
             params: RequestParams::PayKeysend(params),
@@ -438,7 +453,7 @@ impl Request {
 
     /// Compose `make_invoice` request
     #[inline]
-    pub fn make_invoice(params: MakeInvoiceRequestParams) -> Self {
+    pub fn make_invoice(params: MakeInvoiceRequest) -> Self {
         Self {
             method: Method::MakeInvoice,
             params: RequestParams::MakeInvoice(params),
@@ -447,7 +462,7 @@ impl Request {
 
     /// Compose `lookup_invoice` request
     #[inline]
-    pub fn lookup_invoice(params: LookupInvoiceRequestParams) -> Self {
+    pub fn lookup_invoice(params: LookupInvoiceRequest) -> Self {
         Self {
             method: Method::LookupInvoice,
             params: RequestParams::LookupInvoice(params),
@@ -456,7 +471,7 @@ impl Request {
 
     /// Compose `list_transactions` request
     #[inline]
-    pub fn list_transactions(params: ListTransactionsRequestParams) -> Self {
+    pub fn list_transactions(params: ListTransactionsRequest) -> Self {
         Self {
             method: Method::ListTransactions,
             params: RequestParams::ListTransactions(params),
@@ -487,32 +502,31 @@ impl Request {
 
         let params = match template.method {
             Method::PayInvoice => {
-                let params: PayInvoiceRequestParams = serde_json::from_value(template.params)?;
+                let params: PayInvoiceRequest = serde_json::from_value(template.params)?;
                 RequestParams::PayInvoice(params)
             }
             Method::MultiPayInvoice => {
-                let params: MultiPayInvoiceRequestParams = serde_json::from_value(template.params)?;
+                let params: MultiPayInvoiceRequest = serde_json::from_value(template.params)?;
                 RequestParams::MultiPayInvoice(params)
             }
             Method::PayKeysend => {
-                let params: PayKeysendRequestParams = serde_json::from_value(template.params)?;
+                let params: PayKeysendRequest = serde_json::from_value(template.params)?;
                 RequestParams::PayKeysend(params)
             }
             Method::MultiPayKeysend => {
-                let params: MultiPayKeysendRequestParams = serde_json::from_value(template.params)?;
+                let params: MultiPayKeysendRequest = serde_json::from_value(template.params)?;
                 RequestParams::MultiPayKeysend(params)
             }
             Method::MakeInvoice => {
-                let params: MakeInvoiceRequestParams = serde_json::from_value(template.params)?;
+                let params: MakeInvoiceRequest = serde_json::from_value(template.params)?;
                 RequestParams::MakeInvoice(params)
             }
             Method::LookupInvoice => {
-                let params: LookupInvoiceRequestParams = serde_json::from_value(template.params)?;
+                let params: LookupInvoiceRequest = serde_json::from_value(template.params)?;
                 RequestParams::LookupInvoice(params)
             }
             Method::ListTransactions => {
-                let params: ListTransactionsRequestParams =
-                    serde_json::from_value(template.params)?;
+                let params: ListTransactionsRequest = serde_json::from_value(template.params)?;
                 RequestParams::ListTransactions(params)
             }
             Method::GetBalance => RequestParams::GetBalance,
@@ -552,30 +566,30 @@ impl<'de> Deserialize<'de> for Request {
 
 /// NIP47 Response Result
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct PayInvoiceResponseResult {
+pub struct PayInvoiceResponse {
     /// Response preimage
     pub preimage: String,
 }
 
 /// NIP47 Response Result
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct PayKeysendResponseResult {
+pub struct PayKeysendResponse {
     /// Response preimage
     pub preimage: String,
 }
 
-/// NIP47 Response Result
+/// Make Invoice Response
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct MakeInvoiceResponseResult {
+pub struct MakeInvoiceResponse {
     /// Bolt 11 invoice
     pub invoice: String,
     /// Invoice's payment hash
     pub payment_hash: String,
 }
 
-/// NIP47 Response Result
+/// Lookup Invoice Response
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct LookupInvoiceResponseResult {
+pub struct LookupInvoiceResponse {
     /// Transaction type
     #[serde(rename = "type")]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -611,16 +625,16 @@ pub struct LookupInvoiceResponseResult {
     pub metadata: Option<Value>,
 }
 
-/// NIP47 `get_balance` Response Result
+/// Get Balance Response
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct GetBalanceResponseResult {
+pub struct GetBalanceResponse {
     /// Balance amount in msats
     pub balance: u64,
 }
 
-/// NIP47 `get_info` Response Result
+/// Get Info Response
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct GetInfoResponseResult {
+pub struct GetInfoResponse {
     /// The alias of the lightning node
     pub alias: String,
     /// The color of the current node in hex code format
@@ -641,23 +655,23 @@ pub struct GetInfoResponseResult {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResponseResult {
     /// Pay Invoice
-    PayInvoice(PayInvoiceResponseResult),
+    PayInvoice(PayInvoiceResponse),
     /// Multiple Pay Invoice
-    MultiPayInvoice(PayInvoiceResponseResult),
+    MultiPayInvoice(PayInvoiceResponse),
     /// Pay Keysend
-    PayKeysend(PayKeysendResponseResult),
+    PayKeysend(PayKeysendResponse),
     /// Multiple Pay Keysend
-    MultiPayKeysend(PayKeysendResponseResult),
+    MultiPayKeysend(PayKeysendResponse),
     /// Make Invoice
-    MakeInvoice(MakeInvoiceResponseResult),
+    MakeInvoice(MakeInvoiceResponse),
     /// Lookup Invoice
-    LookupInvoice(LookupInvoiceResponseResult),
+    LookupInvoice(LookupInvoiceResponse),
     /// List Invoices
-    ListTransactions(Vec<LookupInvoiceResponseResult>),
+    ListTransactions(Vec<LookupInvoiceResponse>),
     /// Get Balance
-    GetBalance(GetBalanceResponseResult),
+    GetBalance(GetBalanceResponse),
     /// Get Info
-    GetInfo(GetInfoResponseResult),
+    GetInfo(GetInfoResponse),
 }
 
 impl Serialize for ResponseResult {
@@ -716,27 +730,27 @@ impl Response {
         if let Some(result) = template.result {
             let result = match template.result_type {
                 Method::PayInvoice => {
-                    let result: PayInvoiceResponseResult = serde_json::from_value(result)?;
+                    let result: PayInvoiceResponse = serde_json::from_value(result)?;
                     ResponseResult::PayInvoice(result)
                 }
                 Method::MultiPayInvoice => {
-                    let result: PayInvoiceResponseResult = serde_json::from_value(result)?;
+                    let result: PayInvoiceResponse = serde_json::from_value(result)?;
                     ResponseResult::MultiPayInvoice(result)
                 }
                 Method::PayKeysend => {
-                    let result: PayKeysendResponseResult = serde_json::from_value(result)?;
+                    let result: PayKeysendResponse = serde_json::from_value(result)?;
                     ResponseResult::PayKeysend(result)
                 }
                 Method::MultiPayKeysend => {
-                    let result: PayKeysendResponseResult = serde_json::from_value(result)?;
+                    let result: PayKeysendResponse = serde_json::from_value(result)?;
                     ResponseResult::MultiPayKeysend(result)
                 }
                 Method::MakeInvoice => {
-                    let result: MakeInvoiceResponseResult = serde_json::from_value(result)?;
+                    let result: MakeInvoiceResponse = serde_json::from_value(result)?;
                     ResponseResult::MakeInvoice(result)
                 }
                 Method::LookupInvoice => {
-                    let result: LookupInvoiceResponseResult = serde_json::from_value(result)?;
+                    let result: LookupInvoiceResponse = serde_json::from_value(result)?;
                     ResponseResult::LookupInvoice(result)
                 }
                 Method::ListTransactions => {
@@ -744,16 +758,15 @@ impl Response {
                         result.get("transactions").cloned().ok_or_else(|| {
                             Error::UnexpectedResult(String::from("Missing 'transactions' field"))
                         })?;
-                    let result: Vec<LookupInvoiceResponseResult> =
-                        serde_json::from_value(transactions)?;
+                    let result: Vec<LookupInvoiceResponse> = serde_json::from_value(transactions)?;
                     ResponseResult::ListTransactions(result)
                 }
                 Method::GetBalance => {
-                    let result: GetBalanceResponseResult = serde_json::from_value(result)?;
+                    let result: GetBalanceResponse = serde_json::from_value(result)?;
                     ResponseResult::GetBalance(result)
                 }
                 Method::GetInfo => {
-                    let result: GetInfoResponseResult = serde_json::from_value(result)?;
+                    let result: GetInfoResponse = serde_json::from_value(result)?;
                     ResponseResult::GetInfo(result)
                 }
             };
@@ -772,8 +785,8 @@ impl Response {
         }
     }
 
-    /// Covert [Response] to [PayInvoiceResponseResult]
-    pub fn to_pay_invoice(self) -> Result<PayInvoiceResponseResult, Error> {
+    /// Covert [Response] to [PayInvoiceResponse]
+    pub fn to_pay_invoice(self) -> Result<PayInvoiceResponse, Error> {
         if let Some(e) = self.error {
             return Err(Error::ErrorCode(e));
         }
@@ -785,8 +798,8 @@ impl Response {
         Err(Error::UnexpectedResult(self.as_json()))
     }
 
-    /// Covert [Response] to [PayKeysendResponseResult]
-    pub fn to_pay_keysend(self) -> Result<PayKeysendResponseResult, Error> {
+    /// Covert [Response] to [PayKeysendResponse]
+    pub fn to_pay_keysend(self) -> Result<PayKeysendResponse, Error> {
         if let Some(e) = self.error {
             return Err(Error::ErrorCode(e));
         }
@@ -798,8 +811,8 @@ impl Response {
         Err(Error::UnexpectedResult(self.as_json()))
     }
 
-    /// Covert [Response] to [MakeInvoiceResponseResult]
-    pub fn to_make_invoice(self) -> Result<MakeInvoiceResponseResult, Error> {
+    /// Covert [Response] to [MakeInvoiceResponse]
+    pub fn to_make_invoice(self) -> Result<MakeInvoiceResponse, Error> {
         if let Some(e) = self.error {
             return Err(Error::ErrorCode(e));
         }
@@ -811,8 +824,8 @@ impl Response {
         Err(Error::UnexpectedResult(self.as_json()))
     }
 
-    /// Covert [Response] to [LookupInvoiceResponseResult]
-    pub fn to_lookup_invoice(self) -> Result<LookupInvoiceResponseResult, Error> {
+    /// Covert [Response] to [LookupInvoiceResponse]
+    pub fn to_lookup_invoice(self) -> Result<LookupInvoiceResponse, Error> {
         if let Some(e) = self.error {
             return Err(Error::ErrorCode(e));
         }
@@ -824,8 +837,8 @@ impl Response {
         Err(Error::UnexpectedResult(self.as_json()))
     }
 
-    /// Covert [Response] to list of [LookupInvoiceResponseResult]
-    pub fn to_list_transactions(self) -> Result<Vec<LookupInvoiceResponseResult>, Error> {
+    /// Covert [Response] to list of [LookupInvoiceResponse]
+    pub fn to_list_transactions(self) -> Result<Vec<LookupInvoiceResponse>, Error> {
         if let Some(e) = self.error {
             return Err(Error::ErrorCode(e));
         }
@@ -837,8 +850,8 @@ impl Response {
         Err(Error::UnexpectedResult(self.as_json()))
     }
 
-    /// Covert [Response] to [GetBalanceResponseResult]
-    pub fn to_get_balance(self) -> Result<GetBalanceResponseResult, Error> {
+    /// Covert [Response] to [GetBalanceResponse]
+    pub fn to_get_balance(self) -> Result<GetBalanceResponse, Error> {
         if let Some(e) = self.error {
             return Err(Error::ErrorCode(e));
         }
@@ -850,8 +863,8 @@ impl Response {
         Err(Error::UnexpectedResult(self.as_json()))
     }
 
-    /// Covert [Response] to [GetInfoResponseResult]
-    pub fn to_get_info(self) -> Result<GetInfoResponseResult, Error> {
+    /// Covert [Response] to [GetInfoResponse]
+    pub fn to_get_info(self) -> Result<GetInfoResponse, Error> {
         if let Some(e) = self.error {
             return Err(Error::ErrorCode(e));
         }
@@ -1065,7 +1078,7 @@ mod tests {
     fn serialize_request() {
         let request = Request {
             method: Method::PayInvoice,
-            params: RequestParams::PayInvoice(PayInvoiceRequestParams { id: None, invoice: "lnbc210n1pj99rx0pp5ehevgz9nf7d97h05fgkdeqxzytm6yuxd7048axru03fpzxxvzt7shp5gv7ef0s26pw5gy5dpwvsh6qgc8se8x2lmz2ev90l9vjqzcns6u6scqzzsxqyz5vqsp".to_string(), amount: None }),
+            params: RequestParams::PayInvoice(PayInvoiceRequest { id: None, invoice: "lnbc210n1pj99rx0pp5ehevgz9nf7d97h05fgkdeqxzytm6yuxd7048axru03fpzxxvzt7shp5gv7ef0s26pw5gy5dpwvsh6qgc8se8x2lmz2ev90l9vjqzcns6u6scqzzsxqyz5vqsp".to_string(), amount: None }),
         };
 
         assert_eq!(Request::from_json(request.as_json()).unwrap(), request);
@@ -1113,7 +1126,7 @@ mod tests {
         assert_eq!(
             result.result,
             Some(ResponseResult::ListTransactions(vec![
-                LookupInvoiceResponseResult {
+                LookupInvoiceResponse {
                     transaction_type: Some(TransactionType::Incoming),
                     invoice: Some(String::from("abcd")),
                     description: Some(String::from("string")),

@@ -71,10 +71,10 @@ impl From<JsErrorCode> for ErrorCode {
     }
 }
 
-/// Pay Invoice Request Params
+/// Pay Invoice Request
 #[derive(Clone)]
-#[wasm_bindgen(js_name = PayInvoiceRequestParams)]
-pub struct JsPayInvoiceRequestParams {
+#[wasm_bindgen(js_name = PayInvoiceRequest)]
+pub struct JsPayInvoiceRequest {
     /// Optional id
     #[wasm_bindgen(getter_with_clone)]
     pub id: Option<String>,
@@ -85,8 +85,8 @@ pub struct JsPayInvoiceRequestParams {
     pub amount: Option<u64>,
 }
 
-impl From<PayInvoiceRequestParams> for JsPayInvoiceRequestParams {
-    fn from(value: PayInvoiceRequestParams) -> Self {
+impl From<PayInvoiceRequest> for JsPayInvoiceRequest {
+    fn from(value: PayInvoiceRequest) -> Self {
         Self {
             id: value.id,
             invoice: value.invoice,
@@ -95,8 +95,8 @@ impl From<PayInvoiceRequestParams> for JsPayInvoiceRequestParams {
     }
 }
 
-impl From<JsPayInvoiceRequestParams> for PayInvoiceRequestParams {
-    fn from(value: JsPayInvoiceRequestParams) -> Self {
+impl From<JsPayInvoiceRequest> for PayInvoiceRequest {
+    fn from(value: JsPayInvoiceRequest) -> Self {
         Self {
             id: value.id,
             invoice: value.invoice,
@@ -106,23 +106,23 @@ impl From<JsPayInvoiceRequestParams> for PayInvoiceRequestParams {
 }
 
 /// Multi Pay Invoice Request Params
-#[wasm_bindgen(js_name = MultiPayInvoiceRequestParams)]
-pub struct JsMultiPayInvoiceRequestParams {
+#[wasm_bindgen(js_name = MultiPayInvoiceRequest)]
+pub struct JsMultiPayInvoiceRequest {
     /// Invoices to pay
     #[wasm_bindgen(getter_with_clone)]
-    pub invoices: Vec<JsPayInvoiceRequestParams>,
+    pub invoices: Vec<JsPayInvoiceRequest>,
 }
 
-impl From<MultiPayInvoiceRequestParams> for JsMultiPayInvoiceRequestParams {
-    fn from(value: MultiPayInvoiceRequestParams) -> Self {
+impl From<MultiPayInvoiceRequest> for JsMultiPayInvoiceRequest {
+    fn from(value: MultiPayInvoiceRequest) -> Self {
         Self {
             invoices: value.invoices.into_iter().map(|i| i.into()).collect(),
         }
     }
 }
 
-impl From<JsMultiPayInvoiceRequestParams> for MultiPayInvoiceRequestParams {
-    fn from(value: JsMultiPayInvoiceRequestParams) -> Self {
+impl From<JsMultiPayInvoiceRequest> for MultiPayInvoiceRequest {
+    fn from(value: JsMultiPayInvoiceRequest) -> Self {
         Self {
             invoices: value.invoices.into_iter().map(|i| i.into()).collect(),
         }
@@ -160,8 +160,8 @@ impl From<JsKeysendTLVRecord> for KeysendTLVRecord {
 
 /// Pay Invoice Request Params
 #[derive(Clone)]
-#[wasm_bindgen(js_name = PayKeysendRequestParams)]
-pub struct JsPayKeysendRequestParams {
+#[wasm_bindgen(js_name = PayKeysendRequest)]
+pub struct JsPayKeysendRequest {
     /// Optional id
     #[wasm_bindgen(getter_with_clone)]
     pub id: Option<String>,
@@ -178,8 +178,8 @@ pub struct JsPayKeysendRequestParams {
     pub tlv_records: Vec<JsKeysendTLVRecord>,
 }
 
-impl From<PayKeysendRequestParams> for JsPayKeysendRequestParams {
-    fn from(value: PayKeysendRequestParams) -> Self {
+impl From<PayKeysendRequest> for JsPayKeysendRequest {
+    fn from(value: PayKeysendRequest) -> Self {
         Self {
             id: value.id,
             amount: value.amount,
@@ -190,8 +190,8 @@ impl From<PayKeysendRequestParams> for JsPayKeysendRequestParams {
     }
 }
 
-impl From<JsPayKeysendRequestParams> for PayKeysendRequestParams {
-    fn from(value: JsPayKeysendRequestParams) -> Self {
+impl From<JsPayKeysendRequest> for PayKeysendRequest {
+    fn from(value: JsPayKeysendRequest) -> Self {
         Self {
             id: value.id,
             amount: value.amount,
@@ -204,23 +204,23 @@ impl From<JsPayKeysendRequestParams> for PayKeysendRequestParams {
 
 /// Multi Pay Keysend Request Params
 #[derive(Clone)]
-#[wasm_bindgen(js_name = MultiPayKeysendRequestParams)]
-pub struct JsMultiPayKeysendRequestParams {
+#[wasm_bindgen(js_name = MultiPayKeysendRequest)]
+pub struct JsMultiPayKeysendRequest {
     /// Keysends
     #[wasm_bindgen(getter_with_clone)]
-    pub keysends: Vec<JsPayKeysendRequestParams>,
+    pub keysends: Vec<JsPayKeysendRequest>,
 }
 
-impl From<MultiPayKeysendRequestParams> for JsMultiPayKeysendRequestParams {
-    fn from(value: MultiPayKeysendRequestParams) -> Self {
+impl From<MultiPayKeysendRequest> for JsMultiPayKeysendRequest {
+    fn from(value: MultiPayKeysendRequest) -> Self {
         Self {
             keysends: value.keysends.into_iter().map(|i| i.into()).collect(),
         }
     }
 }
 
-impl From<JsMultiPayKeysendRequestParams> for MultiPayKeysendRequestParams {
-    fn from(value: JsMultiPayKeysendRequestParams) -> Self {
+impl From<JsMultiPayKeysendRequest> for MultiPayKeysendRequest {
+    fn from(value: JsMultiPayKeysendRequest) -> Self {
         Self {
             keysends: value.keysends.into_iter().map(|i| i.into()).collect(),
         }
@@ -257,8 +257,8 @@ impl From<TransactionType> for JsTransactionType {
 
 /// Make Invoice Request Params
 #[derive(Clone)]
-#[wasm_bindgen(js_name = MakeInvoiceRequestParams)]
-pub struct JsMakeInvoiceRequestParams {
+#[wasm_bindgen(js_name = MakeInvoiceRequest)]
+pub struct JsMakeInvoiceRequest {
     /// Amount in millisatoshis
     pub amount: u64,
     /// Invoice description
@@ -271,8 +271,8 @@ pub struct JsMakeInvoiceRequestParams {
     pub expiry: Option<u64>,
 }
 
-impl From<MakeInvoiceRequestParams> for JsMakeInvoiceRequestParams {
-    fn from(value: MakeInvoiceRequestParams) -> Self {
+impl From<MakeInvoiceRequest> for JsMakeInvoiceRequest {
+    fn from(value: MakeInvoiceRequest) -> Self {
         Self {
             amount: value.amount,
             description: value.description,
@@ -282,8 +282,8 @@ impl From<MakeInvoiceRequestParams> for JsMakeInvoiceRequestParams {
     }
 }
 
-impl From<JsMakeInvoiceRequestParams> for MakeInvoiceRequestParams {
-    fn from(value: JsMakeInvoiceRequestParams) -> Self {
+impl From<JsMakeInvoiceRequest> for MakeInvoiceRequest {
+    fn from(value: JsMakeInvoiceRequest) -> Self {
         Self {
             amount: value.amount,
             description: value.description,
@@ -295,8 +295,8 @@ impl From<JsMakeInvoiceRequestParams> for MakeInvoiceRequestParams {
 
 /// Lookup Invoice Request Params
 #[derive(Clone)]
-#[wasm_bindgen(js_name = LookupInvoiceRequestParams)]
-pub struct JsLookupInvoiceRequestParams {
+#[wasm_bindgen(js_name = LookupInvoiceRequest)]
+pub struct JsLookupInvoiceRequest {
     /// Payment hash of invoice
     #[wasm_bindgen(getter_with_clone)]
     pub payment_hash: Option<String>,
@@ -305,8 +305,8 @@ pub struct JsLookupInvoiceRequestParams {
     pub invoice: Option<String>,
 }
 
-impl From<LookupInvoiceRequestParams> for JsLookupInvoiceRequestParams {
-    fn from(value: LookupInvoiceRequestParams) -> Self {
+impl From<LookupInvoiceRequest> for JsLookupInvoiceRequest {
+    fn from(value: LookupInvoiceRequest) -> Self {
         Self {
             payment_hash: value.payment_hash,
             invoice: value.invoice,
@@ -314,8 +314,8 @@ impl From<LookupInvoiceRequestParams> for JsLookupInvoiceRequestParams {
     }
 }
 
-impl From<JsLookupInvoiceRequestParams> for LookupInvoiceRequestParams {
-    fn from(value: JsLookupInvoiceRequestParams) -> Self {
+impl From<JsLookupInvoiceRequest> for LookupInvoiceRequest {
+    fn from(value: JsLookupInvoiceRequest) -> Self {
         Self {
             payment_hash: value.payment_hash,
             invoice: value.invoice,
@@ -325,8 +325,8 @@ impl From<JsLookupInvoiceRequestParams> for LookupInvoiceRequestParams {
 
 /// List Invoice Request Params
 #[derive(Clone)]
-#[wasm_bindgen(js_name = ListTransactionsRequestParams)]
-pub struct JsListTransactionsRequestParams {
+#[wasm_bindgen(js_name = ListTransactionsRequest)]
+pub struct JsListTransactionsRequest {
     /// Starting timestamp in seconds since epoch
     pub from: Option<JsTimestamp>,
     /// Ending timestamp in seconds since epoch
@@ -341,8 +341,8 @@ pub struct JsListTransactionsRequestParams {
     pub transaction_type: Option<JsTransactionType>,
 }
 
-impl From<ListTransactionsRequestParams> for JsListTransactionsRequestParams {
-    fn from(value: ListTransactionsRequestParams) -> Self {
+impl From<ListTransactionsRequest> for JsListTransactionsRequest {
+    fn from(value: ListTransactionsRequest) -> Self {
         Self {
             from: value.from.map(|t| t.into()),
             until: value.until.map(|t| t.into()),
@@ -354,8 +354,8 @@ impl From<ListTransactionsRequestParams> for JsListTransactionsRequestParams {
     }
 }
 
-impl From<JsListTransactionsRequestParams> for ListTransactionsRequestParams {
-    fn from(value: JsListTransactionsRequestParams) -> Self {
+impl From<JsListTransactionsRequest> for ListTransactionsRequest {
+    fn from(value: JsListTransactionsRequest) -> Self {
         Self {
             from: value.from.map(|t| *t),
             until: value.until.map(|t| *t),
@@ -367,54 +367,54 @@ impl From<JsListTransactionsRequestParams> for ListTransactionsRequestParams {
     }
 }
 
-#[wasm_bindgen(js_name = PayInvoiceResponseResult)]
-pub struct JsPayInvoiceResponseResult {
+#[wasm_bindgen(js_name = PayInvoiceResponse)]
+pub struct JsPayInvoiceResponse {
     /// Response preimage
     #[wasm_bindgen(getter_with_clone)]
     pub preimage: String,
 }
 
-impl From<PayInvoiceResponseResult> for JsPayInvoiceResponseResult {
-    fn from(value: PayInvoiceResponseResult) -> Self {
+impl From<PayInvoiceResponse> for JsPayInvoiceResponse {
+    fn from(value: PayInvoiceResponse) -> Self {
         Self {
             preimage: value.preimage,
         }
     }
 }
 
-impl From<JsPayInvoiceResponseResult> for PayInvoiceResponseResult {
-    fn from(value: JsPayInvoiceResponseResult) -> Self {
+impl From<JsPayInvoiceResponse> for PayInvoiceResponse {
+    fn from(value: JsPayInvoiceResponse) -> Self {
         Self {
             preimage: value.preimage,
         }
     }
 }
 
-#[wasm_bindgen(js_name = PayKeysendResponseResult)]
-pub struct JsPayKeysendResponseResult {
+#[wasm_bindgen(js_name = PayKeysendResponse)]
+pub struct JsPayKeysendResponse {
     /// Response preimage
     #[wasm_bindgen(getter_with_clone)]
     pub preimage: String,
 }
 
-impl From<PayKeysendResponseResult> for JsPayKeysendResponseResult {
-    fn from(value: PayKeysendResponseResult) -> Self {
+impl From<PayKeysendResponse> for JsPayKeysendResponse {
+    fn from(value: PayKeysendResponse) -> Self {
         Self {
             preimage: value.preimage,
         }
     }
 }
 
-impl From<JsPayKeysendResponseResult> for PayKeysendResponseResult {
-    fn from(value: JsPayKeysendResponseResult) -> Self {
+impl From<JsPayKeysendResponse> for PayKeysendResponse {
+    fn from(value: JsPayKeysendResponse) -> Self {
         Self {
             preimage: value.preimage,
         }
     }
 }
 
-#[wasm_bindgen(js_name = MakeInvoiceResponseResult)]
-pub struct JsMakeInvoiceResponseResult {
+#[wasm_bindgen(js_name = MakeInvoiceResponse)]
+pub struct JsMakeInvoiceResponse {
     /// Bolt 11 invoice
     #[wasm_bindgen(getter_with_clone)]
     pub invoice: String,
@@ -423,8 +423,8 @@ pub struct JsMakeInvoiceResponseResult {
     pub payment_hash: String,
 }
 
-impl From<MakeInvoiceResponseResult> for JsMakeInvoiceResponseResult {
-    fn from(value: MakeInvoiceResponseResult) -> Self {
+impl From<MakeInvoiceResponse> for JsMakeInvoiceResponse {
+    fn from(value: MakeInvoiceResponse) -> Self {
         Self {
             invoice: value.invoice,
             payment_hash: value.payment_hash,
@@ -432,8 +432,8 @@ impl From<MakeInvoiceResponseResult> for JsMakeInvoiceResponseResult {
     }
 }
 
-impl From<JsMakeInvoiceResponseResult> for MakeInvoiceResponseResult {
-    fn from(value: JsMakeInvoiceResponseResult) -> Self {
+impl From<JsMakeInvoiceResponse> for MakeInvoiceResponse {
+    fn from(value: JsMakeInvoiceResponse) -> Self {
         Self {
             invoice: value.invoice,
             payment_hash: value.payment_hash,
@@ -441,8 +441,8 @@ impl From<JsMakeInvoiceResponseResult> for MakeInvoiceResponseResult {
     }
 }
 
-#[wasm_bindgen(js_name = LookupInvoiceResponseResult)]
-pub struct JsLookupInvoiceResponseResult {
+#[wasm_bindgen(js_name = LookupInvoiceResponse)]
+pub struct JsLookupInvoiceResponse {
     /// Transaction type
     pub transaction_type: Option<JsTransactionType>,
     /// Bolt11 invoice
@@ -475,8 +475,8 @@ pub struct JsLookupInvoiceResponseResult {
     // pub metadata: String, // TODO: this is not a string
 }
 
-impl From<LookupInvoiceResponseResult> for JsLookupInvoiceResponseResult {
-    fn from(value: LookupInvoiceResponseResult) -> Self {
+impl From<LookupInvoiceResponse> for JsLookupInvoiceResponse {
+    fn from(value: LookupInvoiceResponse) -> Self {
         Self {
             transaction_type: value.transaction_type.map(|t| t.into()),
             invoice: value.invoice,
@@ -494,8 +494,8 @@ impl From<LookupInvoiceResponseResult> for JsLookupInvoiceResponseResult {
     }
 }
 
-impl From<JsLookupInvoiceResponseResult> for LookupInvoiceResponseResult {
-    fn from(value: JsLookupInvoiceResponseResult) -> Self {
+impl From<JsLookupInvoiceResponse> for LookupInvoiceResponse {
+    fn from(value: JsLookupInvoiceResponse) -> Self {
         Self {
             transaction_type: value.transaction_type.map(|t| t.into()),
             invoice: value.invoice,
@@ -513,30 +513,30 @@ impl From<JsLookupInvoiceResponseResult> for LookupInvoiceResponseResult {
     }
 }
 
-#[wasm_bindgen(js_name = GetBalanceResponseResult)]
-pub struct JsGetBalanceResponseResult {
+#[wasm_bindgen(js_name = GetBalanceResponse)]
+pub struct JsGetBalanceResponse {
     /// Balance amount in msats
     pub balance: u64,
 }
 
-impl From<GetBalanceResponseResult> for JsGetBalanceResponseResult {
-    fn from(value: GetBalanceResponseResult) -> Self {
+impl From<GetBalanceResponse> for JsGetBalanceResponse {
+    fn from(value: GetBalanceResponse) -> Self {
         Self {
             balance: value.balance,
         }
     }
 }
 
-impl From<JsGetBalanceResponseResult> for GetBalanceResponseResult {
-    fn from(value: JsGetBalanceResponseResult) -> Self {
+impl From<JsGetBalanceResponse> for GetBalanceResponse {
+    fn from(value: JsGetBalanceResponse) -> Self {
         Self {
             balance: value.balance,
         }
     }
 }
 
-#[wasm_bindgen(js_name = GetInfoResponseResult)]
-pub struct JsGetInfoResponseResult {
+#[wasm_bindgen(js_name = GetInfoResponse)]
+pub struct JsGetInfoResponse {
     /// The alias of the lightning node
     #[wasm_bindgen(getter_with_clone)]
     pub alias: String,
@@ -559,8 +559,8 @@ pub struct JsGetInfoResponseResult {
     pub methods: Vec<String>,
 }
 
-impl From<GetInfoResponseResult> for JsGetInfoResponseResult {
-    fn from(value: GetInfoResponseResult) -> Self {
+impl From<GetInfoResponse> for JsGetInfoResponse {
+    fn from(value: GetInfoResponse) -> Self {
         Self {
             alias: value.alias,
             color: value.color,
@@ -573,8 +573,8 @@ impl From<GetInfoResponseResult> for JsGetInfoResponseResult {
     }
 }
 
-impl From<JsGetInfoResponseResult> for GetInfoResponseResult {
-    fn from(value: JsGetInfoResponseResult) -> Self {
+impl From<JsGetInfoResponse> for GetInfoResponse {
+    fn from(value: JsGetInfoResponse) -> Self {
         Self {
             alias: value.alias,
             color: value.color,

@@ -12,10 +12,9 @@ pub mod options;
 use self::options::NostrWalletConnectOptions;
 use crate::error::Result;
 use crate::protocol::nips::nip47::{
-    GetInfoResponseResult, ListTransactionsRequestParams, LookupInvoiceRequestParams,
-    LookupInvoiceResponseResult, MakeInvoiceRequestParams, MakeInvoiceResponseResult,
-    NostrWalletConnectURI, PayInvoiceRequestParams, PayInvoiceResponseResult,
-    PayKeysendRequestParams, PayKeysendResponseResult,
+    GetInfoResponse, ListTransactionsRequest, LookupInvoiceRequest, LookupInvoiceResponse,
+    MakeInvoiceRequest, MakeInvoiceResponse, NostrWalletConnectURI, PayInvoiceRequest,
+    PayInvoiceResponse, PayKeysendRequest, PayKeysendResponse,
 };
 use crate::relay::RelayStatus;
 
@@ -57,42 +56,33 @@ impl NWC {
     }
 
     /// Pay invoice
-    pub async fn pay_invoice(
-        &self,
-        params: PayInvoiceRequestParams,
-    ) -> Result<PayInvoiceResponseResult> {
+    pub async fn pay_invoice(&self, params: PayInvoiceRequest) -> Result<PayInvoiceResponse> {
         Ok(self.inner.pay_invoice(params.into()).await?.into())
     }
 
     /// Pay keysend
-    pub async fn pay_keysend(
-        &self,
-        params: PayKeysendRequestParams,
-    ) -> Result<PayKeysendResponseResult> {
+    pub async fn pay_keysend(&self, params: PayKeysendRequest) -> Result<PayKeysendResponse> {
         Ok(self.inner.pay_keysend(params.into()).await?.into())
     }
 
     /// Create invoice
-    pub async fn make_invoice(
-        &self,
-        params: MakeInvoiceRequestParams,
-    ) -> Result<MakeInvoiceResponseResult> {
+    pub async fn make_invoice(&self, params: MakeInvoiceRequest) -> Result<MakeInvoiceResponse> {
         Ok(self.inner.make_invoice(params.into()).await?.into())
     }
 
     /// Lookup invoice
     pub async fn lookup_invoice(
         &self,
-        params: LookupInvoiceRequestParams,
-    ) -> Result<LookupInvoiceResponseResult> {
+        params: LookupInvoiceRequest,
+    ) -> Result<LookupInvoiceResponse> {
         Ok(self.inner.lookup_invoice(params.into()).await?.into())
     }
 
     /// List transactions
     pub async fn list_transactions(
         &self,
-        params: ListTransactionsRequestParams,
-    ) -> Result<Vec<LookupInvoiceResponseResult>> {
+        params: ListTransactionsRequest,
+    ) -> Result<Vec<LookupInvoiceResponse>> {
         let list = self.inner.list_transactions(params.into()).await?;
         Ok(list.into_iter().map(|l| l.into()).collect())
     }
@@ -103,7 +93,7 @@ impl NWC {
     }
 
     /// Get info
-    pub async fn get_info(&self) -> Result<GetInfoResponseResult> {
+    pub async fn get_info(&self) -> Result<GetInfoResponse> {
         Ok(self.inner.get_info().await?.into())
     }
 }

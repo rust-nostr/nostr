@@ -128,9 +128,9 @@ impl NWC {
     /// Pay invoice
     pub async fn pay_invoice(
         &self,
-        params: PayInvoiceRequestParams,
-    ) -> Result<PayInvoiceResponseResult, Error> {
-        let req = Request::pay_invoice(params);
+        request: PayInvoiceRequest,
+    ) -> Result<PayInvoiceResponse, Error> {
+        let req = Request::pay_invoice(request);
         let res: Response = self.send_request(req).await?;
         Ok(res.to_pay_invoice()?)
     }
@@ -138,9 +138,9 @@ impl NWC {
     /// Pay keysend
     pub async fn pay_keysend(
         &self,
-        params: PayKeysendRequestParams,
-    ) -> Result<PayKeysendResponseResult, Error> {
-        let req = Request::pay_keysend(params);
+        request: PayKeysendRequest,
+    ) -> Result<PayKeysendResponse, Error> {
+        let req = Request::pay_keysend(request);
         let res: Response = self.send_request(req).await?;
         Ok(res.to_pay_keysend()?)
     }
@@ -148,9 +148,9 @@ impl NWC {
     /// Create invoice
     pub async fn make_invoice(
         &self,
-        params: MakeInvoiceRequestParams,
-    ) -> Result<MakeInvoiceResponseResult, Error> {
-        let req: Request = Request::make_invoice(params);
+        request: MakeInvoiceRequest,
+    ) -> Result<MakeInvoiceResponse, Error> {
+        let req: Request = Request::make_invoice(request);
         let res: Response = self.send_request(req).await?;
         Ok(res.to_make_invoice()?)
     }
@@ -158,9 +158,9 @@ impl NWC {
     /// Lookup invoice
     pub async fn lookup_invoice(
         &self,
-        params: LookupInvoiceRequestParams,
-    ) -> Result<LookupInvoiceResponseResult, Error> {
-        let req = Request::lookup_invoice(params);
+        request: LookupInvoiceRequest,
+    ) -> Result<LookupInvoiceResponse, Error> {
+        let req = Request::lookup_invoice(request);
         let res: Response = self.send_request(req).await?;
         Ok(res.to_lookup_invoice()?)
     }
@@ -168,23 +168,23 @@ impl NWC {
     /// List transactions
     pub async fn list_transactions(
         &self,
-        params: ListTransactionsRequestParams,
-    ) -> Result<Vec<LookupInvoiceResponseResult>, Error> {
+        params: ListTransactionsRequest,
+    ) -> Result<Vec<LookupInvoiceResponse>, Error> {
         let req = Request::list_transactions(params);
         let res: Response = self.send_request(req).await?;
         Ok(res.to_list_transactions()?)
     }
 
-    /// Get balance
+    /// Get balance (msat)
     pub async fn get_balance(&self) -> Result<u64, Error> {
         let req = Request::get_balance();
         let res: Response = self.send_request(req).await?;
-        let GetBalanceResponseResult { balance } = res.to_get_balance()?;
+        let GetBalanceResponse { balance } = res.to_get_balance()?;
         Ok(balance)
     }
 
     /// Get info
-    pub async fn get_info(&self) -> Result<GetInfoResponseResult, Error> {
+    pub async fn get_info(&self) -> Result<GetInfoResponse, Error> {
         let req = Request::get_info();
         let res: Response = self.send_request(req).await?;
         Ok(res.to_get_info()?)
@@ -207,12 +207,8 @@ impl NostrZapper for NWC {
 
     #[inline]
     async fn pay(&self, invoice: String) -> Result<(), ZapperError> {
-        let params = PayInvoiceRequestParams {
-            invoice,
-            id: None,
-            amount: None,
-        };
-        self.pay_invoice(params)
+        let request: PayInvoiceRequest = PayInvoiceRequest::new(invoice);
+        self.pay_invoice(request)
             .await
             .map_err(ZapperError::backend)?;
         Ok(())
