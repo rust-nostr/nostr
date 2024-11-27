@@ -6,7 +6,7 @@ pip install --user -r requirements.txt
 
 echo "Generating native binaries..."
 rustup target add aarch64-apple-darwin
-cargo build --release --target aarch64-apple-darwin
+cargo build --lib --release --target aarch64-apple-darwin
 
 echo "Generating nostr_sdk.py..."
 cd ../

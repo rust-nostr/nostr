@@ -21,11 +21,11 @@ rustup target add aarch64-apple-darwin   # mac M1
 rustup target add x86_64-apple-darwin    # mac x86_64
 
 # Build iOS and Darwin targets
-cargo build -p nostr-sdk-ffi --release --target x86_64-apple-darwin
-cargo build -p nostr-sdk-ffi --release --target aarch64-apple-darwin
-cargo build -p nostr-sdk-ffi --release --target x86_64-apple-ios
-cargo build -p nostr-sdk-ffi --release --target aarch64-apple-ios
-cargo build -p nostr-sdk-ffi --release --target aarch64-apple-ios-sim
+cargo build -p nostr-sdk-ffi --lib --release --target x86_64-apple-darwin
+cargo build -p nostr-sdk-ffi --lib --release --target aarch64-apple-darwin
+cargo build -p nostr-sdk-ffi --lib --release --target x86_64-apple-ios
+cargo build -p nostr-sdk-ffi --lib --release --target aarch64-apple-ios
+cargo build -p nostr-sdk-ffi --lib --release --target aarch64-apple-ios-sim
 
 # Make universal dirs (only for iOS simulator and Darwin)
 mkdir -p "${TARGET_DIR}/ios-universal-sim/release" # iOS Simulator

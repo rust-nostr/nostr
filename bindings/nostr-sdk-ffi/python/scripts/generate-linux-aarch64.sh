@@ -6,7 +6,7 @@ pip install -r requirements.txt
 
 echo "Generating native binaries..."
 rustup target add aarch64-unknown-linux-gnu
-CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc cargo build --release --target aarch64-unknown-linux-gnu
+CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc cargo build --lib --release --target aarch64-unknown-linux-gnu
 
 echo "Generating nostr_sdk.py..."
 cd ../

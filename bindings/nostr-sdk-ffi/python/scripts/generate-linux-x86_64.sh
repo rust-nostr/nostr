@@ -6,7 +6,7 @@ ${PYBIN}/pip install -r requirements.txt
 
 echo "Generating native binaries..."
 rustup target add x86_64-unknown-linux-gnu
-cargo build --release --target x86_64-unknown-linux-gnu
+cargo build --lib --release --target x86_64-unknown-linux-gnu
 
 echo "Generating nostr_sdk.py..."
 cd ../

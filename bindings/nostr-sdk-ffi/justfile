@@ -28,22 +28,22 @@ clean-android:
 [private]
 aarch64-linux-android: ndk
 	rustup target add aarch64-linux-android
-	cargo ndk -t aarch64-linux-android -o ffi/kotlin/jniLibs build --release
+	cargo ndk -t aarch64-linux-android -o ffi/kotlin/jniLibs build --lib --release
 
 [private]
 armv7-linux-androideabi: ndk
 	rustup target add armv7-linux-androideabi
-	cargo ndk -t armv7-linux-androideabi -o ffi/kotlin/jniLibs build --release
+	cargo ndk -t armv7-linux-androideabi -o ffi/kotlin/jniLibs build --lib --release
 
 [private]
 i686-linux-android: ndk
 	rustup target add i686-linux-android
-	cargo ndk -t i686-linux-android -o ffi/kotlin/jniLibs build --release
+	cargo ndk -t i686-linux-android -o ffi/kotlin/jniLibs build --lib --release
 
 [private]
 x86_64-linux-android: ndk
 	rustup target add x86_64-linux-android
-	cargo ndk -t x86_64-linux-android -o ffi/kotlin/jniLibs build --release
+	cargo ndk -t x86_64-linux-android -o ffi/kotlin/jniLibs build --lib --release
 
 [private]
 android: aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
