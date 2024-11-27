@@ -51,6 +51,10 @@ android: aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64
 kotlin: clean-android android
 	cargo run --bin uniffi-bindgen generate --library ../../target/x86_64-linux-android/release/libnostr_sdk_ffi.so --language kotlin --no-format -o ffi/kotlin
 
+[private]
+compress-android:
+	upx --best --android-shlib ffi/kotlin/jniLibs/*/*.so
+
 # Copy required modules and libs and assemble AAR
 [private]
 assemble-aar:
@@ -64,7 +68,7 @@ assemble-aar:
     cp android/lib/build/outputs/aar/lib-release.aar ffi/android
 
 # Compile and build Android Archive (AAR)
-aar: sdk-root kotlin assemble-aar
+aar: sdk-root kotlin compress-android assemble-aar
 
 # Publish android bindings
 [confirm]
