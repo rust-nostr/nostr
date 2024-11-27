@@ -102,7 +102,9 @@ TODO
 <div slot="title">Swift</div>
 <section>
 
-TODO
+```swift,ignore
+{{#include ../../../snippets/swift/NostrSnippets/Sources/Keys.swift:restore}}
+```
 
 </section>
 
@@ -158,7 +160,7 @@ TODO
 <section>
 
 ```swift,ignore
-{{#include ../../../snippets/swift/NostrSnippets/Sources/Vanity.swift}}
+{{#include ../../../snippets/swift/NostrSnippets/Sources/Keys.swift:vanity}}
 ```
 
 </section>

@@ -2,8 +2,8 @@ import { Keys } from "@rust-nostr/nostr-sdk"
 
 // ANCHOR: generate
 export function generate() {
-    // Generate new random keys
     let keys = Keys.generate();
+
     console.log("Public key (hex): ", keys.publicKey.toHex());
     console.log("Secret key (hex): ", keys.secretKey.toHex());
 
@@ -14,7 +14,6 @@ export function generate() {
 
 // ANCHOR: restore
 export function restore() {
-    // Parse directly from secret key
     let keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85");
     console.log("Secret key (hex): ", keys.secretKey.toHex());
 }

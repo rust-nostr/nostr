@@ -8,8 +8,9 @@ pub fn generate() -> Result<()> {
     let secret_key = keys.secret_key();
 
     println!("Public key (hex): {}", public_key);
+    println!("Secret key (hex): {}", secret_key.to_secret_hex());
+
     println!("Public key (bech32): {}", public_key.to_bech32()?);
-    println!("Secret key (hex): {}", keys.secret_key().to_secret_hex());
     println!("Secret key (bech32): {}", secret_key.to_bech32()?);
 
     Ok(())
@@ -19,11 +20,11 @@ pub fn generate() -> Result<()> {
 // ANCHOR: restore
 pub fn restore() -> Result<()> {
     // Parse keys directly from secret key
-    let keys = Keys::parse("secret-key")?;
+    let keys = Keys::parse("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")?;
 
     // Parse secret key and construct keys
     let secret_key =
-        SecretKey::parse("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")?;
+        SecretKey::parse("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")?;
     let keys = Keys::new(secret_key);
 
     // Restore from bech32
