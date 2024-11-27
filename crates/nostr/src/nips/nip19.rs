@@ -595,9 +595,10 @@ impl Nip19Profile {
                     }
                 }
                 RELAY => {
-                    let url = String::from_utf8(bytes.to_vec())?;
-                    let url = RelayUrl::parse(&url)?;
-                    relays.push(url);
+                    let url: &str = str::from_utf8(bytes)?;
+                    if let Ok(url) = RelayUrl::parse(url) {
+                        relays.push(url);
+                    }
                 }
                 _ => (),
             };
@@ -673,8 +674,10 @@ impl Coordinate {
                     }
                 }
                 RELAY => {
-                    let url = String::from_utf8(bytes.to_vec())?;
-                    relays.push(RelayUrl::parse(url)?);
+                    let url: &str = str::from_utf8(bytes)?;
+                    if let Ok(url) = RelayUrl::parse(url) {
+                        relays.push(url);
+                    }
                 }
                 AUTHOR => {
                     if pubkey.is_none() {
