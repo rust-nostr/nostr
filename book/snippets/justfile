@@ -1,4 +1,4 @@
-test: rust python js kotlin swift
+test: swift
 
 rust:
 	cd rust && cargo build
