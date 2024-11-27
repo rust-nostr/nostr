@@ -31,9 +31,7 @@ export function run(){
 
     // Build/sign event
     let kind = new Kind(10002);
-    let content = "";
-    let tags = [tag1, tag2, tag3];
-    builder = new EventBuilder(kind, content, tags);
+    builder = new EventBuilder(kind, "").tags([tag1, tag2, tag3]);
     event = builder.signWithKeys(keys);
 
     // Print event as json

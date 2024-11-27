@@ -25,9 +25,14 @@
 
 -->
 
-## [Unreleased]
+## [v0.37.0]
 
 ### Summary
+
+Add support to NIP17 relay list in SDK (when `gossip` option is enabled), add NIP22 and NIP73 support, 
+fix Swift Package, many performance improvements and bug fixes (mainly related to SDK `disconnect` methods) and more!
+
+From this release all the rust features are be disabled by default (except `std` feature in `nostr` crate).
 
 ### Breaking changes
 
@@ -40,7 +45,7 @@
 * nostr: remove `tags` arg from `EventBuilder::long_form_text_note` ([Yuki Kishimoto])
 * nostr: remove `tags` arg from `EventBuilder::job_request` ([Yuki Kishimoto])
 * nostr: disable all default features except `std` ([Yuki Kishimoto])
-* nostr: change `Timestamp::to_human_datetime` fingerprint ([Yuki Kishimoto])
+* nostr: change `Timestamp::to_human_datetime` method signature ([Yuki Kishimoto])
 * nostr: change `Tag::parse` arg from slice to iterator ([Yuki Kishimoto])
 * nostr: change `TagStandard::Relay` variant inner type ([Yuki Kishimoto])
 * nostr: remove `UncheckedUrl` struct ([Yuki Kishimoto])
@@ -815,7 +820,8 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [erskingardner]: https://github.com/erskingardner
 
 <!-- Tags -->
-[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.36.0...HEAD
+[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.37.0...HEAD
+[v0.37.0]: https://github.com/rust-nostr/nostr/compare/v0.36.0...v0.37.0
 [v0.36.0]: https://github.com/rust-nostr/nostr/compare/v0.35.0...v0.36.0
 [v0.35.0]: https://github.com/rust-nostr/nostr/compare/v0.34.0...v0.35.0
 [v0.34.0]: https://github.com/rust-nostr/nostr/compare/v0.33.0...v0.34.0

@@ -19,11 +19,12 @@ suspend fun nip47() {
     println("Balance: $balance SAT")
 
     // Pay an invoice
-    nwc.payInvoice("lnbc..")
+    val payInvoiceParams = PayInvoiceRequest(invoice = "lnbc...", amount = null, id = null)
+    nwc.payInvoice(payInvoiceParams)
 
     // Make an invoice
-    val params = MakeInvoiceRequestParams(amount = 100u, description = null, descriptionHash = null, expiry = null)
-    val result = nwc.makeInvoice(params)
+    val makeInvoiceParams = MakeInvoiceRequest(amount = 100u, description = null, descriptionHash = null, expiry = null)
+    val result = nwc.makeInvoice(makeInvoiceParams)
     println("Invoice: ${result.invoice}")
 }
 // ANCHOR_END: full

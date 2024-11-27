@@ -14,7 +14,7 @@ export async function hello() {
     // ANCHOR_END: connect
 
     // ANCHOR: publish
-    let builder = EventBuilder.textNote("Hello, rust-nostr!", []);
+    let builder = EventBuilder.textNote("Hello, rust-nostr!");
     let res = await client.sendEventBuilder(builder);
     // ANCHOR_END: publish
 

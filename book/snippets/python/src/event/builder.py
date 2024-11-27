@@ -5,13 +5,13 @@ def event_builder():
     keys = Keys.generate()
 
     # Compose custom event
-    custom_event = EventBuilder(Kind(1111), "", []).sign_with_keys(keys)
+    custom_event = EventBuilder(Kind(1111), "").sign_with_keys(keys)
 
     # Compose text note
-    textnote_event = EventBuilder.text_note("Hello", []).sign_with_keys(keys)
+    textnote_event = EventBuilder.text_note("Hello").sign_with_keys(keys)
 
     # Compose reply to above text note
-    reply_event = EventBuilder.text_note("Reply to hello", [Tag.event(textnote_event.id())]).sign_with_keys(keys)
+    reply_event = EventBuilder.text_note("Reply to hello").tags([Tag.event(textnote_event.id())]).sign_with_keys(keys)
 
     # Compose POW event
-    pow_event = EventBuilder.text_note("Another reply with POW", [Tag.event(textnote_event.id())]).pow(20).sign_with_keys(keys)
+    pow_event = EventBuilder.text_note("Another reply with POW").tags([Tag.event(textnote_event.id())]).pow(20).sign_with_keys(keys)

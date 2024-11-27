@@ -1,5 +1,5 @@
 // ANCHOR: full
-import { NWC, NostrWalletConnectURI, MakeInvoiceRequestParams } from "@rust-nostr/nostr-sdk";
+import { NWC, NostrWalletConnectURI, PayInvoiceRequest, MakeInvoiceRequest } from "@rust-nostr/nostr-sdk";
 
 export async function main() {
     // Parse NWC uri
@@ -17,12 +17,14 @@ export async function main() {
     console.log("Balance: " + balance + " SAT");
 
     // Pay an invoice
-    await nwc.payInvoice("lnbc..")
+    let payInvoiceParams = new PayInvoiceRequest();
+    payInvoiceParams.invoice = "lnbc..";
+    await nwc.payInvoice(payInvoiceParams);
 
     // Make an invoice
-    let params = new MakeInvoiceRequestParams();
-    params.amount = BigInt(100);
-    const result = await nwc.makeInvoice(params)
+    let makeInvoiceParams = new MakeInvoiceRequest();
+    makeInvoiceParams.amount = BigInt(100);
+    const result = await nwc.makeInvoice(makeInvoiceParams)
     console.log("Invoice: " + result.invoice);
 
     // Drop client

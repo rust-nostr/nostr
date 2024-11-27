@@ -1,5 +1,5 @@
 # ANCHOR: full
-from nostr_sdk import NostrWalletConnectUri, Nwc, MakeInvoiceRequestParams
+from nostr_sdk import NostrWalletConnectUri, Nwc, PayInvoiceRequest, MakeInvoiceRequest
 
 
 async def main():
@@ -18,10 +18,11 @@ async def main():
     print(f"Balance: {balance} SAT")
 
     # Pay an invoice
-    await nwc.pay_invoice("lnbc..")
+    params = PayInvoiceRequest(invoice = "lnbc..", id = None, amount = None)
+    await nwc.pay_invoice(params)
 
     # Make an invoice
-    params = MakeInvoiceRequestParams(amount=100, description=None, description_hash=None, expiry=None)
+    params = MakeInvoiceRequest(amount = 100, description = None, description_hash = None, expiry = None)
     result = await nwc.make_invoice(params)
     print(f"Invoice: {result.invoice}")
 

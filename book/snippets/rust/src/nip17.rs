@@ -29,7 +29,7 @@ pub async fn run() -> Result<()> {
     let subscription_id = bob_client.subscribe(vec![message_filter], None).await?;
 
     // Alice sends private message to Bob
-    alice_client.send_private_msg(bob_keys.public_key(), "Hello Bob!".to_string(), None).await?;
+    alice_client.send_private_msg(bob_keys.public_key(), "Hello Bob!", []).await?;
     println!("Sent private message to Bob");
 
     // Bob receives private message

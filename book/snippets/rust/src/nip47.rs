@@ -17,10 +17,11 @@ pub async fn run() -> Result<()> {
     println!("Balance: {balance} SAT");
 
     // Pay an invoice
-    nwc.pay_invoice("lnbc..").await?;
+    let params = PayInvoiceRequest::new("lnbc..");
+    nwc.pay_invoice(params).await?;
 
     // Make an invoice
-    let params = MakeInvoiceRequestParams {
+    let params = MakeInvoiceRequest {
         amount: 100,
         description: None,
         description_hash: None,

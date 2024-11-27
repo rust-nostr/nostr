@@ -56,7 +56,7 @@ def event_id():
     # ANCHOR: access-verify
     # Event ID from Event & Verfiy
     print("  Event ID from Event & Verify:")
-    event = EventBuilder.text_note("This is a note", []).sign_with_keys(keys)
+    event = EventBuilder.text_note("This is a note").sign_with_keys(keys)
     print(f"     - Event ID: {event.id()}")
     print(f"     - Verify the ID & Signature: {event.verify()}")
     # ANCHOR_END: access-verify

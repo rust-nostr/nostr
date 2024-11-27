@@ -15,7 +15,7 @@ export function run() {
     // ANCHOR_END: nip19-nsec
 
     // ANCHOR: nip19-note
-    let event = EventBuilder.textNote("Hello from Rust Nostr JS Bindings!", []).signWithKeys(keys);
+    let event = EventBuilder.textNote("Hello from Rust Nostr JS Bindings!").signWithKeys(keys);
     console.log(` Event     : ${event.id.toBech32()}`);
     // ANCHOR_END: nip19-note
 

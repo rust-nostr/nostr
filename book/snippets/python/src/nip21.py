@@ -21,7 +21,7 @@ def nip21():
     print()
 
     # ANCHOR: note
-    event = EventBuilder.text_note("Hello from Rust Nostr Python bindings!", []).sign_with_keys(keys)
+    event = EventBuilder.text_note("Hello from rust-nostr Python bindings!").sign_with_keys(keys)
 
     # URI note
     note_uri = event.id().to_nostr_uri()

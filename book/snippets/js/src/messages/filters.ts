@@ -9,8 +9,10 @@ export async function run() {
     const kind1 = new Kind(1);
     const kind4 = new Kind(4);
 
-    const event = EventBuilder.textNote("Hello World!", []).signWithKeys(keys);
-    const event2 = new EventBuilder(kind0, "Goodbye World!", [Tag.identifier("Identification D Tag")]).signWithKeys(keys2);
+    const event = EventBuilder.textNote("Hello World!").signWithKeys(keys);
+    const event2 = new EventBuilder(kind0, "Goodbye World!")
+        .tags([Tag.identifier("Identification D Tag")])
+        .signWithKeys(keys2);
 
     console.log();
     console.log("Creating Filters:");

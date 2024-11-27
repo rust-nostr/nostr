@@ -31,7 +31,7 @@ def kind():
     print()
     # ANCHOR: kind-methods
     print("  Kind methods EventBuilder:")
-    event  = EventBuilder.text_note("This is a note", []).sign_with_keys(keys)
+    event  = EventBuilder.text_note("This is a note").sign_with_keys(keys)
     print(f"     - Kind text_note(): {event.kind().as_u16()} - {event.kind().as_enum()}")
     event  = EventBuilder.metadata(Metadata()).sign_with_keys(keys)
     print(f"     - Kind metadata(): {event.kind().as_u16()} - {event.kind().as_enum()}")

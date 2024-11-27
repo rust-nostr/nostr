@@ -13,7 +13,7 @@ pub async fn hello() -> Result<()> {
     // ANCHOR_END: connect
 
     // ANCHOR: publish
-    let builder = EventBuilder::text_note("Hello, rust-nostr!", []);
+    let builder = EventBuilder::text_note("Hello, rust-nostr!");
     let output = client.send_event_builder(builder).await?;
     // ANCHOR_END: publish
 

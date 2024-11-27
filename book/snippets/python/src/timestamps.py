@@ -26,7 +26,7 @@ def timestamps():
     print()
     # ANCHOR: timestamp-created
     print("  Created at timestamp:")
-    event = EventBuilder(Kind(1), "This is some event text.", []).custom_created_at(timestamp).sign_with_keys(alice_keys)
+    event = EventBuilder(Kind(1), "This is some event text.").custom_created_at(timestamp).sign_with_keys(alice_keys)
     print(f"     Created at: {event.created_at().to_human_datetime()}")
     # ANCHOR_END: timestamp-created
 

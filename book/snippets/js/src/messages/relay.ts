@@ -2,7 +2,7 @@ import { RelayMessage, EventBuilder, Keys } from "@rust-nostr/nostr-sdk";
 
 export async function run() {
     const keys = Keys.generate();
-    const event = EventBuilder.textNote("TestTextNoTe", []).signWithKeys(keys);
+    const event = EventBuilder.textNote("TestTextNoTe").signWithKeys(keys);
 
     console.log("\nRelay Messages:");
 

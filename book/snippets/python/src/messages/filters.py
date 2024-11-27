@@ -6,8 +6,8 @@ def filters():
     # Generate keys and Events
     keys = Keys.generate()
     keys2 = Keys.generate()
-    event = EventBuilder.text_note("Hello World!", []).sign_with_keys(keys)
-    event2 = EventBuilder(Kind(1),"Goodbye World!", [Tag.identifier("Identification D Tag")]).sign_with_keys(keys2)
+    event = EventBuilder.text_note("Hello World!").sign_with_keys(keys)
+    event2 = EventBuilder(Kind(1), "Goodbye World!").tags([Tag.identifier("Identification D Tag")]).sign_with_keys(keys2)
 
     print()
     print("Creating Filters:")

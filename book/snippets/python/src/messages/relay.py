@@ -5,7 +5,7 @@ from nostr_sdk import RelayMessage, RelayMessageEnum, EventBuilder, Keys
 def relay_message():
 
     keys = Keys.generate()
-    event = EventBuilder.text_note("TestTextNoTe",[]).sign_with_keys(keys)
+    event = EventBuilder.text_note("TestTextNoTe").sign_with_keys(keys)
 
     print()
     print("Relay Messages:")

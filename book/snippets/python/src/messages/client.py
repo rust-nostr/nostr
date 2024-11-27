@@ -4,7 +4,7 @@ from nostr_sdk import Keys, EventBuilder, ClientMessage, Filter, ClientMessageEn
 
 def client_message():
     keys = Keys.generate()
-    event = EventBuilder.text_note("TestTextNoTe",[]).sign_with_keys(keys)
+    event = EventBuilder.text_note("TestTextNoTe").sign_with_keys(keys)
 
     print()
     print("Client Messages:")

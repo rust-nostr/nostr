@@ -13,7 +13,7 @@ export function run(){
 
     console.log();
     // ANCHOR: note
-    let event = EventBuilder.textNote("Hello from rust-nostr JS bindings!", []).signWithKeys(keys);
+    let event = EventBuilder.textNote("Hello from rust-nostr JS bindings!").signWithKeys(keys);
     let note_uri = event.id.toNostrUri()
     console.log(` Event (URI): ${note_uri}`);
     // ANCHOR_END: note

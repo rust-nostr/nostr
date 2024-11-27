@@ -32,9 +32,7 @@ def nip65():
 
     # Build/sign event
     kind = Kind(10002)
-    content = ""
-    tags = [tag1,tag2,tag3]
-    builder = EventBuilder(kind,content,tags)
+    builder = EventBuilder(kind = kind, content = "").tags([tag1, tag2, tag3])
     event = builder.sign_with_keys(keys)
 
     # Print event as json

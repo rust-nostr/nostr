@@ -13,7 +13,7 @@ def nip19():
     # ANCHOR_END: nip19-nsec
 
     # ANCHOR: nip19-note
-    event = EventBuilder.text_note("Hello from Rust Nostr Python bindings!", []).sign_with_keys(keys)
+    event = EventBuilder.text_note("Hello from rust-nostr Python bindings!").sign_with_keys(keys)
     print(f" Event     : {event.id().to_bech32()}")
     # ANCHOR_END: nip19-note
 

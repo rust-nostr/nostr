@@ -4,16 +4,16 @@ import rust.nostr.sdk.*
 
 // ANCHOR: generate
 fun generate() {
-    val keys = Keys.generate();
+    val keys = Keys.generate()
 
-    val publicKey = keys.publicKey();
-    val secretKey = keys.secretKey();
+    val publicKey = keys.publicKey()
+    val secretKey = keys.secretKey()
 
-    println("Public key (hex): ${publicKey.toHex()}");
-    println("Public key (bech32): ${publicKey.toBech32()}");
+    println("Public key (hex): ${publicKey.toHex()}")
+    println("Public key (bech32): ${publicKey.toBech32()}")
 
-    println("Secret key (hex): ${secretKey.toHex()}");
-    println("Secret key (bech32): ${secretKey.toHex()}");
+    println("Secret key (hex): ${secretKey.toHex()}")
+    println("Secret key (bech32): ${secretKey.toHex()}")
 }
 // ANCHOR_END: generate
 
@@ -34,7 +34,7 @@ fun restore() {
 fun vanity() {
     val keys = Keys.vanity(listOf("yuk0"), true, 4u)
 
-    println("Public key: ${keys.publicKey().toBech32()}");
-    println("Secret key: ${keys.secretKey().toHex()}");
+    println("Public key: ${keys.publicKey().toBech32()}")
+    println("Secret key: ${keys.secretKey().toHex()}")
 }
 // ANCHOR_END: vanity

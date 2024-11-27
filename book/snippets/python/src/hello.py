@@ -14,7 +14,7 @@ async def hello():
     # ANCHOR_END: connect
 
     # ANCHOR: publish
-    builder = EventBuilder.text_note("Hello, rust-nostr!", [])
+    builder = EventBuilder.text_note("Hello, rust-nostr!")
     res = await client.send_event_builder(builder)
     # ANCHOR_END: publish
 
