@@ -1,6 +1,6 @@
 name: nostr_sdk
 description: "Nostr protocol implementation, Relay, RelayPool, high-level client library, NWC client and more."
-version: 0.36.0
+version: 0.37.0
 homepage:
 
 environment:

@@ -8,7 +8,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name='nostr-sdk',
-    version='0.36.0',
+    version='0.37.0',
     description="Nostr protocol implementation, Relay, RelayPool, high-level client library, NWC client and more.",
     long_description=long_description,
     long_description_content_type='text/markdown',
