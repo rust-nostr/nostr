@@ -20,8 +20,8 @@ async def hello():
 
     # ANCHOR: output
     print(f"Event ID: {res.id.to_bech32()}")
-    print(f"Successfully sent to: {res.output.success}")
-    print(f"Failed to send to: {res.output.failed}")
+    print(f"Sent to: {res.output.success}")
+    print(f"Not send to: {res.output.failed}")
     # ANCHOR_END: output
 
 # ANCHOR_END: full

@@ -20,8 +20,8 @@ export async function hello() {
 
     // ANCHOR: output
     console.log("Event ID:", res.id.toBech32());
-    console.log("Successfully sent to:", res.output.success);
-    console.log("Failed to sent to:", res.output.failed);
+    console.log("Sent to:", res.output.success);
+    console.log("Not sent to:", res.output.failed);
     // ANCHOR_END: output
 }
 // ANCHOR_END: full

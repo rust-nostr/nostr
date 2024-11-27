@@ -46,7 +46,9 @@ The first step is to generate random keys needed for the client and construct th
 <div slot="title">Swift</div>
 <section>
 
-TODO
+```swift,ignore
+{{#include ../../snippets/swift/NostrSnippets/Sources/Hello.swift:client}}
+```
 
 </section>
 
@@ -102,7 +104,9 @@ Next, add some relays to your client and connect to them.
 <div slot="title">Swift</div>
 <section>
 
-TODO
+```swift,ignore
+{{#include ../../snippets/swift/NostrSnippets/Sources/Hello.swift:connect}}
+```
 
 </section>
 
@@ -160,7 +164,9 @@ build a text note with the [EventBuilder](event/builder.md) and publish it to re
 <div slot="title">Swift</div>
 <section>
 
-TODO
+```swift,ignore
+{{#include ../../snippets/swift/NostrSnippets/Sources/Hello.swift:publish}}
+```
 
 </section>
 
@@ -216,7 +222,9 @@ Published the event, you can inspect the output to ensure everything worked corr
 <div slot="title">Swift</div>
 <section>
 
-TODO
+```swift,ignore
+{{#include ../../snippets/swift/NostrSnippets/Sources/Hello.swift:output}}
+```
 
 </section>
 
@@ -272,7 +280,9 @@ Here’s the full example that includes all the steps from generating keys to in
 <div slot="title">Swift</div>
 <section>
 
-TODO
+```swift,ignore
+{{#include ../../snippets/swift/NostrSnippets/Sources/Hello.swift:full}}
+```
 
 </section>
 
