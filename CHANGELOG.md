@@ -30,7 +30,7 @@
 ### Summary
 
 Add support to NIP17 relay list in SDK (when `gossip` option is enabled), add NIP22 and NIP73 support, 
-fix Swift Package, many performance improvements and bug fixes (mainly related to SDK `disconnect` methods) and more!
+fix Swift Package, many performance improvements and bug fixes and more!
 
 From this release all the rust features are be disabled by default (except `std` feature in `nostr` crate).
 
