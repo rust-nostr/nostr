@@ -10,7 +10,7 @@ cargo build --lib --release --target aarch64-apple-darwin
 
 echo "Generating nostr_sdk.py..."
 cd ../
-cargo run -p uniffi-bindgen generate --library ../../target/aarch64-apple-darwin/release/libnostr_sdk_ffi.dylib --language python --no-format -o python/src/nostr-sdk/
+cargo run --bin uniffi-bindgen generate --library ../../target/aarch64-apple-darwin/release/libnostr_sdk_ffi.dylib --language python --no-format -o python/src/nostr-sdk/
 
 echo "Copying libraries libnostr_sdk_ffi.dylib..."
 cp ../../target/aarch64-apple-darwin/release/libnostr_sdk_ffi.dylib python/src/nostr-sdk/
