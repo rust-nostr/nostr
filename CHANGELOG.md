@@ -25,6 +25,24 @@
 
 -->
 
+## [Unreleased]
+
+### Summary
+
+### Breaking changes
+
+### Changed
+
+### Added
+
+### Fixed
+
+### Removed
+
+* ffi: drop support for `i686-linux-android` target ([Yuki Kishimoto])
+
+### Deprecated
+
 ## [v0.37.0]
 
 ### Summary

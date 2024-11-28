@@ -26,29 +26,13 @@ clean-android:
 	rm -rf ffi/kotlin
 
 [private]
-aarch64-linux-android: ndk
+jni-libs: ndk
 	rustup target add aarch64-linux-android
-	cargo ndk -t aarch64-linux-android -o ffi/kotlin/jniLibs build --lib --release
-
-[private]
-armv7-linux-androideabi: ndk
-	rustup target add armv7-linux-androideabi
-	cargo ndk -t armv7-linux-androideabi -o ffi/kotlin/jniLibs build --lib --release
-
-[private]
-i686-linux-android: ndk
-	rustup target add i686-linux-android
-	cargo ndk -t i686-linux-android -o ffi/kotlin/jniLibs build --lib --release
-
-[private]
-x86_64-linux-android: ndk
 	rustup target add x86_64-linux-android
-	cargo ndk -t x86_64-linux-android -o ffi/kotlin/jniLibs build --lib --release
+	rustup target add armv7-linux-androideabi
+	cargo ndk -t aarch64-linux-android -t x86_64-linux-android -t armv7-linux-androideabi -o ffi/kotlin/jniLibs build --lib --release
 
-[private]
-android: aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
-
-kotlin: clean-android android
+kotlin: clean-android jni-libs
 	cargo run --bin uniffi-bindgen generate --library ../../target/x86_64-linux-android/release/libnostr_sdk_ffi.so --language kotlin --no-format -o ffi/kotlin
 
 [private]
