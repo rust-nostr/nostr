@@ -369,7 +369,7 @@ impl EventBuilder {
 
     /// Text note reply
     ///
-    /// If no `root` is passed, the `rely_to` will be used for root `e` tag.
+    /// If no `root` is passed, the `reply_to` will be used for root `e` tag.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/10.md>
     pub fn text_note_reply<S>(
@@ -396,6 +396,18 @@ impl EventBuilder {
                 }));
                 tags.push(Tag::public_key(root.pubkey));
 
+                // Check if root event is different from reply event
+                if root != reply_to {
+                    tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
+                        event_id: reply_to.id,
+                        relay_url,
+                        marker: Some(Marker::Reply),
+                        public_key: Some(reply_to.pubkey),
+                        uppercase: false,
+                    }));
+                    tags.push(Tag::public_key(reply_to.pubkey));
+                }
+
                 // Add others `p` tags
                 tags.extend(
                     root.tags
@@ -419,18 +431,9 @@ impl EventBuilder {
                     public_key: Some(reply_to.pubkey),
                     uppercase: false,
                 }));
+                tags.push(Tag::public_key(reply_to.pubkey));
             }
         }
-
-        // Add `e` and `p` tag of event author
-        tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
-            event_id: reply_to.id,
-            relay_url,
-            marker: Some(Marker::Reply),
-            public_key: Some(reply_to.pubkey),
-            uppercase: false,
-        }));
-        tags.push(Tag::public_key(reply_to.pubkey));
 
         // Add others `p` tags of reply_to event
         tags.extend(

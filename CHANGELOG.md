@@ -35,11 +35,13 @@
 
 * Bump `async-utility` to 0.3 and `async-wsocket` to 0.11 ([Yuki Kishimoto])
 * lmdb: use `async-utility` to spawn blocking tasks ([Yuki Kishimoto])
-* pool: add `PingTracker` and improve relay ping management
+* pool: add `PingTracker` and improve relay ping management ([Yuki Kishimoto])
 
 ### Added
 
 ### Fixed
+
+* nostr: remove redundant NIP10 tags from `EventBuilder::text_note_reply` ([Yuki Kishimoto])
 
 ### Removed
 
@@ -54,7 +56,7 @@
 Add support to NIP17 relay list in SDK (when `gossip` option is enabled), add NIP22 and NIP73 support, 
 fix Swift Package, many performance improvements and bug fixes and more!
 
-From this release all the rust features are be disabled by default (except `std` feature in `nostr` crate).
+From this release all the rust features are disabled by default (except `std` feature in `nostr` crate).
 
 ### Breaking changes
 
