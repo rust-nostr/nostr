@@ -426,7 +426,7 @@ impl EventBuilder {
                 // No root event is passed, use `reply_to` event ID for `root` marker
                 tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
                     event_id: reply_to.id,
-                    relay_url: relay_url.clone(),
+                    relay_url,
                     marker: Some(Marker::Root),
                     public_key: Some(reply_to.pubkey),
                     uppercase: false,
