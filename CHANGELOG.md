@@ -42,6 +42,7 @@
 ### Fixed
 
 * nostr: remove redundant NIP10 tags from `EventBuilder::text_note_reply` ([Yuki Kishimoto])
+* bindings: allow passing empty string as relay url without return an error ([Yuki Kishimoto])
 
 ### Removed
 

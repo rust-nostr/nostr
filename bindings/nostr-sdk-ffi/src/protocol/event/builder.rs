@@ -30,6 +30,7 @@ use crate::protocol::{
     FileMetadata, Image, ImageDimensions, NostrConnectMessage, PublicKey, RelayMetadata, Tag,
     Timestamp, UnsignedEvent,
 };
+use crate::util::parse_optional_relay_url;
 
 #[derive(Debug, Clone, PartialEq, Eq, Object)]
 #[uniffi::export(Debug, Eq)]
@@ -151,16 +152,12 @@ impl EventBuilder {
         root: Option<Arc<Event>>,
         relay_url: Option<String>,
     ) -> Result<Self> {
-        let relay_url = match relay_url {
-            Some(url) => Some(RelayUrl::parse(url)?),
-            None => None,
-        };
         Ok(Self {
             inner: nostr::EventBuilder::text_note_reply(
                 content,
                 reply_to.deref(),
                 root.as_ref().map(|e| e.as_ref().deref()),
-                relay_url,
+                parse_optional_relay_url(relay_url)?,
             ),
         })
     }
@@ -177,16 +174,12 @@ impl EventBuilder {
         root: Option<Arc<Event>>,
         relay_url: Option<String>,
     ) -> Result<Self> {
-        let relay_url = match relay_url {
-            Some(url) => Some(RelayUrl::parse(url)?),
-            None => None,
-        };
         Ok(Self {
             inner: nostr::EventBuilder::comment(
                 content,
                 comment_to.deref(),
                 root.as_ref().map(|e| e.as_ref().deref()),
-                relay_url,
+                parse_optional_relay_url(relay_url)?,
             ),
         })
     }
@@ -218,12 +211,8 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
     #[uniffi::constructor(default(relay_url = None))]
     pub fn repost(event: &Event, relay_url: Option<String>) -> Result<Self> {
-        let relay_url = match relay_url {
-            Some(url) => Some(RelayUrl::parse(url)?),
-            None => None,
-        };
         Ok(Self {
-            inner: nostr::EventBuilder::repost(event.deref(), relay_url),
+            inner: nostr::EventBuilder::repost(event.deref(), parse_optional_relay_url(relay_url)?),
         })
     }
 
@@ -302,12 +291,12 @@ impl EventBuilder {
         metadata: &Metadata,
         relay_url: Option<String>,
     ) -> Result<Self> {
-        let relay_url = match relay_url {
-            Some(url) => Some(RelayUrl::parse(url)?),
-            None => None,
-        };
         Ok(Self {
-            inner: nostr::EventBuilder::channel_metadata(**channel_id, relay_url, metadata.deref()),
+            inner: nostr::EventBuilder::channel_metadata(
+                **channel_id,
+                parse_optional_relay_url(relay_url)?,
+                metadata.deref(),
+            ),
         })
     }
 
@@ -393,16 +382,12 @@ impl EventBuilder {
         content: &str,
         relay_url: Option<String>,
     ) -> Result<Self> {
-        let relay_url = match relay_url {
-            Some(url) => Some(RelayUrl::parse(&url)?),
-            None => None,
-        };
         Ok(Self {
             inner: nostr::EventBuilder::live_event_msg(
                 live_event_id,
                 **live_event_host,
                 content,
-                relay_url,
+                parse_optional_relay_url(relay_url)?,
             ),
         })
     }

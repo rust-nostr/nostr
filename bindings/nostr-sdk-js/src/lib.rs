@@ -25,6 +25,7 @@ pub mod profile;
 pub mod protocol;
 pub mod relay;
 pub mod signer;
+mod util;
 
 #[wasm_bindgen]
 extern "C" {

@@ -25,6 +25,7 @@ use crate::protocol::nips::nip98::JsHttpData;
 use crate::protocol::types::image::{JsImageDimensions, JsThumbnails};
 use crate::protocol::types::{JsContact, JsMetadata, JsTimestamp};
 use crate::signer::JsNostrSigner;
+use crate::util::parse_optional_relay_url;
 
 #[wasm_bindgen(js_name = EventBuilder)]
 pub struct JsEventBuilder {
@@ -149,16 +150,12 @@ impl JsEventBuilder {
         root: Option<JsEvent>,
         relay_url: Option<String>,
     ) -> Result<JsEventBuilder> {
-        let relay_url = match relay_url {
-            Some(url) => Some(RelayUrl::parse(url).map_err(into_err)?),
-            None => None,
-        };
         Ok(Self {
             inner: EventBuilder::text_note_reply(
                 content,
                 reply_to.deref(),
                 root.as_deref(),
-                relay_url,
+                parse_optional_relay_url(relay_url)?,
             ),
         })
     }
@@ -175,12 +172,13 @@ impl JsEventBuilder {
         root: Option<JsEvent>,
         relay_url: Option<String>,
     ) -> Result<JsEventBuilder> {
-        let relay_url = match relay_url {
-            Some(url) => Some(RelayUrl::parse(url).map_err(into_err)?),
-            None => None,
-        };
         Ok(Self {
-            inner: EventBuilder::comment(content, comment_to.deref(), root.as_deref(), relay_url),
+            inner: EventBuilder::comment(
+                content,
+                comment_to.deref(),
+                root.as_deref(),
+                parse_optional_relay_url(relay_url)?,
+            ),
         })
     }
 
@@ -209,12 +207,8 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
     pub fn repost(event: &JsEvent, relay_url: Option<String>) -> Result<JsEventBuilder> {
-        let relay_url = match relay_url {
-            Some(url) => Some(RelayUrl::parse(url).map_err(into_err)?),
-            None => None,
-        };
         Ok(Self {
-            inner: EventBuilder::repost(event.deref(), relay_url),
+            inner: EventBuilder::repost(event.deref(), parse_optional_relay_url(relay_url)?),
         })
     }
 
@@ -287,12 +281,12 @@ impl JsEventBuilder {
         relay_url: Option<String>,
         metadata: &JsMetadata,
     ) -> Result<JsEventBuilder> {
-        let relay_url = match relay_url {
-            Some(relay_url) => Some(RelayUrl::parse(relay_url).map_err(into_err)?),
-            None => None,
-        };
         Ok(Self {
-            inner: EventBuilder::channel_metadata(**channel_id, relay_url, metadata.deref()),
+            inner: EventBuilder::channel_metadata(
+                **channel_id,
+                parse_optional_relay_url(relay_url)?,
+                metadata.deref(),
+            ),
         })
     }
 
@@ -370,10 +364,7 @@ impl JsEventBuilder {
                 live_event_id,
                 **live_event_host,
                 content,
-                match relay_url {
-                    Some(url) => Some(RelayUrl::parse(url).map_err(into_err)?),
-                    None => None,
-                },
+                parse_optional_relay_url(relay_url)?,
             ),
         })
     }

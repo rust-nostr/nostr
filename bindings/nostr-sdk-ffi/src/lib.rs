@@ -19,6 +19,7 @@ pub mod pool;
 pub mod profile;
 pub mod protocol;
 pub mod relay;
+mod util;
 
 pub use self::client::{Client, ClientBuilder, Options};
 pub use self::database::NostrDatabase;
