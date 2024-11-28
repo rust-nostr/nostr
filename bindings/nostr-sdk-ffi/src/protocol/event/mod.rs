@@ -44,23 +44,19 @@ impl Deref for Event {
 
 #[uniffi::export]
 impl Event {
-    #[inline]
     pub fn id(&self) -> EventId {
         self.inner.id.into()
     }
 
     /// Get event author (`pubkey` field)
-    #[inline]
     pub fn author(&self) -> PublicKey {
         self.inner.pubkey.into()
     }
 
-    #[inline]
     pub fn created_at(&self) -> Timestamp {
         self.inner.created_at.into()
     }
 
-    #[inline]
     pub fn kind(&self) -> Kind {
         self.inner.kind.into()
     }
@@ -69,31 +65,26 @@ impl Event {
         self.inner.tags.clone().into()
     }
 
-    #[inline]
     pub fn content(&self) -> String {
         self.inner.content.to_string()
     }
 
-    #[inline]
     pub fn signature(&self) -> String {
         self.inner.sig.to_string()
     }
 
     /// Verify both `EventId` and `Signature`
-    #[inline]
     pub fn verify(&self) -> bool {
         // TODO: return `Result` instead?
         self.inner.verify().is_ok()
     }
 
     /// Verify if the `EventId` it's composed correctly
-    #[inline]
     pub fn verify_id(&self) -> bool {
         self.inner.verify_id()
     }
 
     /// Verify only event `Signature`
-    #[inline]
     pub fn verify_signature(&self) -> bool {
         self.inner.verify_signature()
     }
@@ -102,7 +93,6 @@ impl Event {
     /// If an event has no expiration tag, then it will return `false`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
-    #[inline]
     pub fn is_expired(&self) -> bool {
         self.inner.is_expired()
     }
@@ -114,7 +104,6 @@ impl Event {
         self.inner.is_protected()
     }
 
-    #[inline]
     #[uniffi::constructor]
     pub fn from_json(json: &str) -> Result<Self> {
         Ok(Self {
@@ -122,12 +111,10 @@ impl Event {
         })
     }
 
-    #[inline]
     pub fn as_json(&self) -> Result<String> {
         Ok(self.inner.try_as_json()?)
     }
 
-    #[inline]
     pub fn as_pretty_json(&self) -> Result<String> {
         Ok(self.inner.try_as_pretty_json()?)
     }

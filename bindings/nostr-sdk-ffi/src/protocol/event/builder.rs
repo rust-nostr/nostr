@@ -584,7 +584,6 @@ impl EventBuilder {
     /// Seal
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-    #[inline]
     #[uniffi::constructor]
     pub async fn seal(
         signer: &NostrSigner,

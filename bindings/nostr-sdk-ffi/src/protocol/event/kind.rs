@@ -61,7 +61,6 @@ impl Kind {
     /// Regular means that event is expected to be stored by relays.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[inline]
     pub fn is_regular(&self) -> bool {
         self.inner.is_regular()
     }
@@ -72,7 +71,6 @@ impl Kind {
     /// only the latest event MUST be stored by relays, older versions MAY be discarded.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[inline]
     pub fn is_replaceable(&self) -> bool {
         self.inner.is_replaceable()
     }
@@ -82,7 +80,6 @@ impl Kind {
     /// Ephemeral means that event is not expected to be stored by relays.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[inline]
     pub fn is_ephemeral(&self) -> bool {
         self.inner.is_ephemeral()
     }
@@ -93,7 +90,6 @@ impl Kind {
     /// only the latest event MUST be stored by relays, older versions MAY be discarded.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[inline]
     pub fn is_parameterized_replaceable(&self) -> bool {
         self.inner.is_parameterized_replaceable()
     }
@@ -101,7 +97,6 @@ impl Kind {
     /// Check if it's a NIP90 job request
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    #[inline]
     pub fn is_job_request(&self) -> bool {
         self.inner.is_job_request()
     }
@@ -109,7 +104,6 @@ impl Kind {
     /// Check if it's a NIP90 job result
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    #[inline]
     pub fn is_job_result(&self) -> bool {
         self.inner.is_job_result()
     }

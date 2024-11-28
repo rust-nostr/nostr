@@ -406,7 +406,6 @@ impl Filter {
     }
 
     /// Determine if `Filter` match given `Event`.
-    #[inline]
     pub fn match_event(&self, event: &Event) -> bool {
         self.inner.match_event(event.deref())
     }

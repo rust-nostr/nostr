@@ -54,7 +54,6 @@ impl Client {
     }
 
     /// Update default difficulty for new `Event`
-    #[inline]
     pub fn update_difficulty(&self, difficulty: u8) {
         self.inner.update_difficulty(difficulty);
     }
@@ -62,7 +61,6 @@ impl Client {
     /// Update minimum POW difficulty for received events
     ///
     /// Events with a POW lower than the current value will be ignored to prevent resources exhaustion.
-    #[inline]
     pub fn update_min_pow_difficulty(&self, difficulty: u8) {
         self.inner.update_min_pow_difficulty(difficulty);
     }
@@ -70,7 +68,6 @@ impl Client {
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
-    #[inline]
     pub fn automatic_authentication(&self, enable: bool) {
         self.inner.automatic_authentication(enable);
     }
@@ -202,7 +199,6 @@ impl Client {
     ///
     /// Try to connect to the relays and wait for them to be connected at most for the specified `timeout`.
     /// The code continues if the `timeout` is reached or if all relays connect.
-    #[inline]
     pub async fn connect_with_timeout(&self, timeout: Duration) {
         self.inner.connect_with_timeout(timeout).await
     }

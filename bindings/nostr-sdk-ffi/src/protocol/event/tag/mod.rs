@@ -49,7 +49,6 @@ impl Tag {
     /// Parse tag
     ///
     /// Return error if the tag is empty!
-    #[inline]
     #[uniffi::constructor]
     pub fn parse(data: Vec<String>) -> Result<Self> {
         Ok(Self {
@@ -58,7 +57,6 @@ impl Tag {
     }
 
     /// Construct from standardized tag
-    #[inline]
     #[uniffi::constructor]
     pub fn from_standardized(standardized: TagStandard) -> Result<Self> {
         let standardized: tag::TagStandard = tag::TagStandard::try_from(standardized)?;
@@ -68,25 +66,21 @@ impl Tag {
     }
 
     /// Get tag kind
-    #[inline]
     pub fn kind(&self) -> TagKind {
         self.inner.kind().into()
     }
 
     /// Get tag kind as string
-    #[inline]
     pub fn kind_str(&self) -> String {
         self.inner.kind().to_string()
     }
 
     /// Return the **first** tag value (index `1`), if exists.
-    #[inline]
     pub fn content(&self) -> Option<String> {
         self.inner.content().map(|c| c.to_string())
     }
 
     /// Get `SingleLetterTag`
-    #[inline]
     pub fn single_letter_tag(&self) -> Option<Arc<SingleLetterTag>> {
         self.inner.single_letter_tag().map(|s| Arc::new(s.into()))
     }
@@ -104,7 +98,6 @@ impl Tag {
     /// Compose `["e", "<event-id">]`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[inline]
     #[uniffi::constructor]
     pub fn event(event_id: &EventId) -> Self {
         Self {
@@ -115,7 +108,6 @@ impl Tag {
     /// Compose `["p", "<public-key>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[inline]
     #[uniffi::constructor]
     pub fn public_key(public_key: &PublicKey) -> Self {
         Self {
@@ -126,7 +118,6 @@ impl Tag {
     /// Compose `["d", "<identifier>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[inline]
     #[uniffi::constructor]
     pub fn identifier(identifier: &str) -> Self {
         Self {
@@ -137,7 +128,6 @@ impl Tag {
     /// Compose `["a", "<coordinate>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[inline]
     #[uniffi::constructor]
     pub fn coordinate(coordinate: &Coordinate) -> Self {
         Self {
@@ -148,7 +138,6 @@ impl Tag {
     /// Compose `["nonce", "<nonce>", "<difficulty>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
-    #[inline]
     #[uniffi::constructor]
     pub fn pow(nonce: u64, difficulty: u8) -> Self {
         Self {
@@ -159,7 +148,6 @@ impl Tag {
     /// Compose `["expiration", "<timestamp>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
-    #[inline]
     #[uniffi::constructor]
     pub fn expiration(timestamp: &Timestamp) -> Self {
         Self {
@@ -170,7 +158,6 @@ impl Tag {
     /// Compose `["e", "<event-id>", "<report>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
-    #[inline]
     #[uniffi::constructor]
     pub fn event_report(event_id: &EventId, report: Report) -> Self {
         Self {
@@ -181,7 +168,6 @@ impl Tag {
     /// Compose `["p", "<public-key>", "<report>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
-    #[inline]
     #[uniffi::constructor]
     pub fn public_key_report(public_key: &PublicKey, report: Report) -> Self {
         Self {
@@ -192,7 +178,6 @@ impl Tag {
     /// Compose `["r", "<relay-url>", "<metadata>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
-    #[inline]
     #[uniffi::constructor]
     pub fn relay_metadata(relay_url: &str, metadata: Option<RelayMetadata>) -> Result<Self> {
         let relay_url: RelayUrl = RelayUrl::parse(relay_url)?;
@@ -202,7 +187,6 @@ impl Tag {
     }
 
     /// Compose `["t", "<hashtag>"]` tag
-    #[inline]
     #[uniffi::constructor]
     pub fn hashtag(hashtag: &str) -> Self {
         Self {
@@ -211,7 +195,6 @@ impl Tag {
     }
 
     /// Compose `["r", "<value>"]` tag
-    #[inline]
     #[uniffi::constructor]
     pub fn reference(reference: &str) -> Self {
         Self {
@@ -220,7 +203,6 @@ impl Tag {
     }
 
     /// Compose `["title", "<title>"]` tag
-    #[inline]
     #[uniffi::constructor]
     pub fn title(title: &str) -> Self {
         Self {
@@ -229,7 +211,6 @@ impl Tag {
     }
 
     /// Compose image tag
-    #[inline]
     #[uniffi::constructor(default(dimensions = None))]
     pub fn image(url: &str, dimensions: Option<Arc<ImageDimensions>>) -> Result<Self> {
         Ok(Self {
@@ -238,7 +219,6 @@ impl Tag {
     }
 
     /// Compose `["description", "<description>"]` tag
-    #[inline]
     #[uniffi::constructor]
     pub fn description(description: &str) -> Self {
         Self {
@@ -251,7 +231,6 @@ impl Tag {
     /// JSON: `["-"]`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
-    #[inline]
     #[uniffi::constructor]
     pub fn protected() -> Self {
         Self {
@@ -264,7 +243,6 @@ impl Tag {
     /// JSON: `["alt", "<summary>"]`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
-    #[inline]
     #[uniffi::constructor]
     pub fn alt(summary: &str) -> Self {
         Self {
@@ -275,7 +253,6 @@ impl Tag {
     /// Compose custom tag
     ///
     /// JSON: `["<kind>", "<value-1>", "<value-2>", ...]`
-    #[inline]
     #[uniffi::constructor]
     pub fn custom(kind: TagKind, values: &[String]) -> Self {
         Self {

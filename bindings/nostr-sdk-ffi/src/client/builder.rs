@@ -27,7 +27,6 @@ impl From<nostr_sdk::ClientBuilder> for ClientBuilder {
 #[uniffi::export]
 impl ClientBuilder {
     /// New client builder
-    #[inline]
     #[uniffi::constructor]
     pub fn new() -> Self {
         Self::default()
