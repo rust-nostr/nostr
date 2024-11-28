@@ -33,6 +33,8 @@
 
 ### Changed
 
+* Bump `async-utility` to 0.3 and `async-wsocket` to 0.11
+
 ### Added
 
 ### Fixed

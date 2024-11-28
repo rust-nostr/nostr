@@ -6,7 +6,7 @@ use std::ops::Deref;
 use std::time::Duration;
 
 use js_sys::Array;
-use nostr_sdk::async_utility::thread;
+use nostr_sdk::async_utility::task;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -659,7 +659,7 @@ impl JsClient {
 
     /// Handle notifications
     ///
-    /// **This method spawn a thread**, so ensure to keep up the app after calling this (if needed).
+    /// **This method spawn a task**, so ensure to keep up the app after calling this (if needed).
     ///
     /// To exit from the handle notifications loop, return `true` or call `abortable.abort();`.
     ///
@@ -694,12 +694,12 @@ impl JsClient {
     ///  };
     ///
     /// let abortable = client.handleNotifications(handle);
-    /// // Optionally, call `abortable.abort();` when you need to stop handle notifications thread
+    /// // Optionally, call `abortable.abort();` when you need to stop handle notifications task
     /// ```
     #[wasm_bindgen(js_name = handleNotifications)]
     pub fn handle_notifications(&self, callback: HandleNotification) -> Result<JsAbortHandle> {
         let inner = self.inner.clone();
-        let handle = thread::abortable(async move {
+        let handle = task::abortable(async move {
             inner
             .handle_notifications(|notification| async {
                 match notification {
@@ -723,7 +723,7 @@ impl JsClient {
             })
             .await
             .map_err(into_err).unwrap();
-        }).map_err(into_err)?;
+        });
         Ok(handle.into())
     }
 }

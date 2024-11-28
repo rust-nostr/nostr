@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_utility::{thread, time};
+use async_utility::{task, time};
 use async_wsocket::futures_util::{self, Future, SinkExt, StreamExt};
 use async_wsocket::{connect as wsocket_connect, ConnectionMode, Sink, Stream, WsMessage};
 use atomic_destructor::AtomicDestroyer;
@@ -208,7 +208,7 @@ impl InnerRelay {
         &self.opts.connection_mode
     }
 
-    /// Is connection thread running?
+    /// Is connection task running?
     #[inline]
     pub(super) fn is_running(&self) -> bool {
         self.running.load(Ordering::SeqCst)
@@ -306,7 +306,7 @@ impl InnerRelay {
                 // Fetch
                 let url = self.url.clone();
                 let d = self.document.clone();
-                let _ = thread::spawn(async move {
+                task::spawn(async move {
                     match RelayInformationDocument::get(url.clone().into(), proxy).await {
                         Ok(document) => {
                             let mut d = d.write().await;
@@ -481,13 +481,13 @@ impl InnerRelay {
 
     fn spawn_and_try_connect(&self, connection_timeout: Duration) {
         if self.is_running() {
-            tracing::warn!(url = %self.url, "Connection thread is already running.");
+            tracing::warn!(url = %self.url, "Connection task is already running.");
             return;
         }
 
         let relay = self.clone();
-        let _ = thread::spawn(async move {
-            // Set that connection thread is running
+        task::spawn(async move {
+            // Set that connection task is running
             relay.running.store(true, Ordering::SeqCst);
 
             // Auto-connect loop
@@ -538,7 +538,7 @@ impl InnerRelay {
 
                     tokio::select! {
                         // Sleep
-                        _ = thread::sleep(interval) => {},
+                        _ = time::sleep(interval) => {},
                         // Handle terminate
                         _ = relay.handle_terminate(&mut rx_service) => {
                             // Update status
@@ -556,7 +556,7 @@ impl InnerRelay {
                 }
             }
 
-            // Set that connection thread is no longer running
+            // Set that connection task is no longer running
             relay.running.store(false, Ordering::SeqCst);
 
             tracing::debug!(url = %relay.url, "Auto connect loop terminated.");
@@ -815,17 +815,17 @@ impl InnerRelay {
                 self.channels.ping(nonce)?;
 
                 // Sleep
-                thread::sleep(PING_INTERVAL).await;
+                time::sleep(PING_INTERVAL).await;
             }
         } else {
             loop {
-                thread::sleep(PING_INTERVAL).await;
+                time::sleep(PING_INTERVAL).await;
             }
         }
 
         #[cfg(target_arch = "wasm32")]
         loop {
-            thread::sleep(PING_INTERVAL).await;
+            time::sleep(PING_INTERVAL).await;
         }
     }
 
@@ -1277,7 +1277,7 @@ impl InnerRelay {
         match opts.auto_close {
             Some(opts) => {
                 let this = self.clone();
-                thread::spawn(async move {
+                task::spawn(async move {
                     let sub_id: SubscriptionId = id.clone();
                     let relay = this.clone();
                     let res: Option<bool> = time::timeout(opts.timeout, async move {
@@ -1372,7 +1372,7 @@ impl InnerRelay {
                     }
 
                     Ok::<(), Error>(())
-                })?;
+                });
             }
             None => {
                 // No auto-close subscription: update subscription filters

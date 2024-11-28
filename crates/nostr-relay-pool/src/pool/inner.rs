@@ -11,7 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::futures_util::{future, StreamExt};
-use async_utility::thread;
+use async_utility::task;
 use atomic_destructor::AtomicDestroyer;
 use nostr_database::prelude::*;
 use tokio::sync::{broadcast, mpsc, Mutex, RwLock, RwLockReadGuard};
@@ -44,7 +44,7 @@ impl AtomicDestroyer for InnerRelayPool {
 
     fn on_destroy(&self) {
         let pool = self.clone();
-        let _ = thread::spawn(async move {
+        task::spawn(async move {
             if let Err(e) = pool.shutdown().await {
                 tracing::error!("Impossible to shutdown pool: {e}");
             }
@@ -899,7 +899,7 @@ impl InnerRelayPool {
 
         // Spawn
         let this = self.clone();
-        thread::spawn(async move {
+        task::spawn(async move {
             // Lock with read shared access
             let relays = this.relays.read().await;
 
@@ -939,7 +939,7 @@ impl InnerRelayPool {
                     tracing::error!("Failed to stream events from '{url}': {e}");
                 }
             }
-        })?;
+        });
 
         // Return stream
         Ok(ReceiverStream::new(rx))

@@ -4,7 +4,6 @@
 
 use core::convert::Infallible;
 
-use async_utility::thread;
 use nostr::types::url;
 use nostr_database::DatabaseError;
 use thiserror::Error;
@@ -23,9 +22,6 @@ pub enum Error {
     /// Database error
     #[error(transparent)]
     Database(#[from] DatabaseError),
-    /// Thread error
-    #[error(transparent)]
-    Thread(#[from] thread::Error),
     /// No relays
     #[error("too many relays (limit: {limit})")]
     TooManyRelays {

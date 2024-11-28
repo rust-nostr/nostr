@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use async_utility::thread;
+use async_utility::task;
 use atomic_destructor::StealthClone;
 use nostr_relay_pool::prelude::*;
 
@@ -14,7 +14,7 @@ impl Client {
         let client: Client = self.stealth_clone();
 
         // Spawn handler
-        let _ = thread::spawn(async move {
+        task::spawn(async move {
             tracing::info!("Spawned client notification handler");
 
             let mut notifications = client.pool.notifications();

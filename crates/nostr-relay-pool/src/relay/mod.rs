@@ -426,7 +426,7 @@ impl Relay {
 
 #[cfg(test)]
 mod tests {
-    use async_utility::thread;
+    use async_utility::time;
     use nostr_relay_builder::prelude::*;
 
     use super::*;
@@ -464,7 +464,7 @@ mod tests {
 
         mock.shutdown();
 
-        thread::sleep(Duration::from_millis(100)).await;
+        time::sleep(Duration::from_millis(100)).await;
 
         assert_eq!(relay.status(), RelayStatus::Disconnected);
 
@@ -487,7 +487,7 @@ mod tests {
 
         mock.shutdown();
 
-        thread::sleep(Duration::from_millis(100)).await;
+        time::sleep(Duration::from_millis(100)).await;
 
         assert_eq!(relay.status(), RelayStatus::Terminated);
 
@@ -510,7 +510,7 @@ mod tests {
 
         relay.disconnect().unwrap();
 
-        thread::sleep(Duration::from_millis(100)).await;
+        time::sleep(Duration::from_millis(100)).await;
 
         assert_eq!(relay.status(), RelayStatus::Terminated);
 
@@ -534,11 +534,11 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Disconnected);
 
-        thread::sleep(Duration::from_secs(3)).await;
+        time::sleep(Duration::from_secs(3)).await;
 
         relay.disconnect().unwrap();
 
-        thread::sleep(Duration::from_millis(100)).await;
+        time::sleep(Duration::from_millis(100)).await;
 
         assert_eq!(relay.status(), RelayStatus::Terminated);
 
@@ -560,17 +560,17 @@ mod tests {
 
         relay.connect(None).await;
 
-        thread::sleep(Duration::from_secs(1)).await;
+        time::sleep(Duration::from_secs(1)).await;
 
         assert_eq!(relay.status(), RelayStatus::Connecting);
 
-        thread::sleep(Duration::from_secs(2)).await;
+        time::sleep(Duration::from_secs(2)).await;
 
         assert_eq!(relay.status(), RelayStatus::Connected);
 
         relay.disconnect().unwrap();
 
-        thread::sleep(Duration::from_millis(100)).await;
+        time::sleep(Duration::from_millis(100)).await;
 
         assert_eq!(relay.status(), RelayStatus::Terminated);
 
@@ -592,13 +592,13 @@ mod tests {
 
         relay.connect(None).await;
 
-        thread::sleep(Duration::from_secs(1)).await;
+        time::sleep(Duration::from_secs(1)).await;
 
         assert_eq!(relay.status(), RelayStatus::Connecting);
 
         relay.disconnect().unwrap();
 
-        thread::sleep(Duration::from_millis(100)).await;
+        time::sleep(Duration::from_millis(100)).await;
 
         assert_eq!(relay.status(), RelayStatus::Terminated);
 

@@ -20,8 +20,8 @@ rust-version = "1.70.0"
 
 [workspace.dependencies]
 async-trait = "0.1"
-async-utility = "0.2"
-async-wsocket = "0.10"
+async-utility = "0.3"
+async-wsocket = "0.11"
 atomic-destructor = { version = "0.2", default-features = false }
 js-sys = "0.3"
 negentropy = { version = "0.4", default-features = false }

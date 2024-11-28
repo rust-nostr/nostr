@@ -5,7 +5,6 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use async_utility::thread;
 use nostr::message::relay::NegentropyErrorCode;
 use nostr::message::MessageHandleError;
 use nostr::{event, EventId, Kind};
@@ -36,9 +35,6 @@ pub enum Error {
     /// Database error
     #[error(transparent)]
     Database(#[from] DatabaseError),
-    /// Thread error
-    #[error(transparent)]
-    Thread(#[from] thread::Error),
     /// OnceCell error
     #[error(transparent)]
     OnceCell(#[from] SetError<broadcast::Sender<RelayPoolNotification>>),

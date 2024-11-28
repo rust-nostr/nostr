@@ -4,7 +4,6 @@
 
 use std::time::Duration;
 
-use async_utility::thread;
 use nostr_sdk::prelude::*;
 
 #[tokio::main]
@@ -18,18 +17,18 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     let c = client.clone(); // Clone, counter set to 2
-    let _ = thread::spawn(async move {
-        thread::sleep(Duration::from_secs(3)).await;
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(3)).await;
         c.relays().await;
         // First drop, decrease counter to 1...
     });
 
-    thread::sleep(Duration::from_secs(5)).await;
+    tokio::time::sleep(Duration::from_secs(5)).await;
 
     let builder = EventBuilder::text_note("Hello world");
     client.send_event_builder(builder).await?;
 
-    thread::sleep(Duration::from_secs(5)).await;
+    tokio::time::sleep(Duration::from_secs(5)).await;
 
     Ok(())
 }
