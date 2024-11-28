@@ -35,6 +35,7 @@
 
 * Bump `async-utility` to 0.3 and `async-wsocket` to 0.11 ([Yuki Kishimoto])
 * lmdb: use `async-utility` to spawn blocking tasks ([Yuki Kishimoto])
+* pool: add `PingTracker` and improve relay ping management
 
 ### Added
 

@@ -32,6 +32,7 @@ use super::flags::AtomicRelayServiceFlags;
 use super::options::{
     FilterOptions, RelayOptions, SubscribeAutoCloseOptions, SubscribeOptions, SyncOptions,
 };
+use super::ping::PingTracker;
 use super::stats::RelayConnectionStats;
 use super::{Error, Reconciliation, RelayNotification, RelayStatus};
 use crate::pool::RelayPoolNotification;
@@ -588,6 +589,20 @@ impl InnerRelay {
         self.opts.retry_interval
     }
 
+    async fn handle_terminate(&self, rx_service: &mut watch::Receiver<RelayServiceEvent>) {
+        loop {
+            if rx_service.changed().await.is_ok() {
+                // Get service and mark as seen
+                match *rx_service.borrow_and_update() {
+                    // Do nothing
+                    RelayServiceEvent::None => {}
+                    // Terminate
+                    RelayServiceEvent::Terminate => break,
+                }
+            }
+        }
+    }
+
     /// Connect and run message handler
     async fn connect_and_run(&self, connection_timeout: Duration) {
         // Update status
@@ -647,23 +662,32 @@ impl InnerRelay {
             }
         }
 
+        let ping: PingTracker = PingTracker::default();
+
         // Wait that one of the futures terminate/complete
         tokio::select! {
-            _ = self.receiver_message_handler(ws_rx) => {
+            _ = self.receiver_message_handler(ws_rx, &ping) => {
                 tracing::trace!(url = %self.url, "Relay received exited.");
             },
-            res = self.sender_message_handler(ws_tx) => match res {
+            res = self.sender_message_handler(ws_tx, &ping) => match res {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay sender exited."),
                 Err(e) => tracing::error!(url = %self.url, error = %e, "Relay sender exited with error.")
             },
-            res = self.ping_handler() => match res {
+            res = self.ping_handler(&ping) => match res {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay pinger exited."),
                 Err(e) => tracing::error!(url = %self.url, error = %e, "Relay pinger exited with error.")
             }
         }
     }
 
-    async fn sender_message_handler(&self, mut ws_tx: Sink) -> Result<(), Error> {
+    async fn sender_message_handler(
+        &self,
+        mut ws_tx: Sink,
+        ping: &PingTracker,
+    ) -> Result<(), Error> {
+        #[cfg(target_arch = "wasm32")]
+        let _ping = ping;
+
         // Lock receivers
         let mut rx_nostr = self.channels.rx_nostr().await;
         let mut rx_ping = self.channels.rx_ping().await;
@@ -714,7 +738,7 @@ impl InnerRelay {
                         send_ws_msgs(&mut ws_tx, [msg]).await?;
 
                         // Set ping as just sent
-                        self.stats.ping().just_sent().await;
+                        ping.just_sent().await;
 
                         tracing::debug!("Ping '{}' (nonce: {nonce})", self.url);
                     }
@@ -727,21 +751,10 @@ impl InnerRelay {
         close_ws(&mut ws_tx).await
     }
 
-    async fn handle_terminate(&self, rx_service: &mut watch::Receiver<RelayServiceEvent>) {
-        loop {
-            if rx_service.changed().await.is_ok() {
-                // Get service and mark as seen
-                match *rx_service.borrow_and_update() {
-                    // Do nothing
-                    RelayServiceEvent::None => {}
-                    // Terminate
-                    RelayServiceEvent::Terminate => break,
-                }
-            }
-        }
-    }
+    async fn receiver_message_handler(&self, mut ws_rx: Stream, ping: &PingTracker) {
+        #[cfg(target_arch = "wasm32")]
+        let _ping = ping;
 
-    async fn receiver_message_handler(&self, mut ws_rx: Stream) {
         while let Some(msg) = ws_rx.next().await {
             if let Ok(msg) = msg {
                 match msg {
@@ -754,7 +767,7 @@ impl InnerRelay {
                                     let nonce: u64 = u64::from_be_bytes(nonce);
 
                                     // Get last nonce
-                                    let last_nonce: u64 = self.stats.ping().last_nonce();
+                                    let last_nonce: u64 = ping.last_nonce();
 
                                     // Check if last nonce not match the current one
                                     if last_nonce != nonce {
@@ -768,10 +781,10 @@ impl InnerRelay {
                                     );
 
                                     // Set ping as replied
-                                    self.stats.ping().set_replied(true);
+                                    ping.set_replied(true);
 
                                     // Save latency
-                                    let sent_at = self.stats.ping().sent_at().await;
+                                    let sent_at = ping.sent_at().await;
                                     self.stats.save_latency(sent_at.elapsed());
                                 }
                                 Err(e) => {
@@ -790,12 +803,10 @@ impl InnerRelay {
         }
     }
 
-    async fn ping_handler(&self) -> Result<(), Error> {
+    async fn ping_handler(&self, ping: &PingTracker) -> Result<(), Error> {
         #[cfg(not(target_arch = "wasm32"))]
         if self.flags.has_ping() {
             loop {
-                let ping = self.stats.ping();
-
                 // If last nonce is NOT 0, check if relay replied
                 // Return error if relay not replied
                 if ping.last_nonce() != 0 && !ping.replied() {
@@ -824,8 +835,11 @@ impl InnerRelay {
         }
 
         #[cfg(target_arch = "wasm32")]
-        loop {
-            time::sleep(PING_INTERVAL).await;
+        {
+            let _ping = ping;
+            loop {
+                time::sleep(PING_INTERVAL).await;
+            }
         }
     }
 

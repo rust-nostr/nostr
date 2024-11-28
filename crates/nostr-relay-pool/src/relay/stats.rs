@@ -4,82 +4,15 @@
 
 //! Relay Stats
 
-#[cfg(not(target_arch = "wasm32"))]
-use std::sync::atomic::AtomicBool;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use nostr::Timestamp;
-#[cfg(not(target_arch = "wasm32"))]
-use tokio::sync::RwLock;
 
 #[cfg(not(target_arch = "wasm32"))]
 use super::constants::LATENCY_MIN_READS;
-
-/// Ping Stats
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(Debug)]
-pub(super) struct PingStats {
-    sent_at: RwLock<Instant>,
-    last_nonce: AtomicU64,
-    replied: AtomicBool,
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl Default for PingStats {
-    fn default() -> Self {
-        Self {
-            sent_at: RwLock::new(Instant::now()),
-            last_nonce: AtomicU64::new(0),
-            replied: AtomicBool::new(false),
-        }
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl PingStats {
-    /// Get sent at
-    #[inline]
-    pub async fn sent_at(&self) -> Instant {
-        *self.sent_at.read().await
-    }
-
-    /// Last nonce
-    #[inline]
-    pub fn last_nonce(&self) -> u64 {
-        self.last_nonce.load(Ordering::SeqCst)
-    }
-
-    /// Replied
-    #[inline]
-    pub fn replied(&self) -> bool {
-        self.replied.load(Ordering::SeqCst)
-    }
-
-    #[inline]
-    pub(super) fn reset(&self) {
-        self.set_last_nonce(0);
-        self.set_replied(false);
-    }
-
-    #[inline]
-    pub(super) async fn just_sent(&self) {
-        let mut sent_at = self.sent_at.write().await;
-        *sent_at = Instant::now();
-    }
-
-    #[inline]
-    pub(super) fn set_last_nonce(&self, nonce: u64) {
-        self.last_nonce.store(nonce, Ordering::SeqCst)
-    }
-
-    #[inline]
-    pub(super) fn set_replied(&self, replied: bool) {
-        self.replied.store(replied, Ordering::SeqCst);
-    }
-}
 
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Default)]
@@ -100,8 +33,6 @@ struct InnerRelayConnectionStats {
     first_connection_at: AtomicU64,
     #[cfg(not(target_arch = "wasm32"))]
     latency: AverageLatency,
-    #[cfg(not(target_arch = "wasm32"))]
-    ping: PingStats,
 }
 
 /// Relay connection stats
@@ -213,11 +144,5 @@ impl RelayConnectionStats {
                 .fetch_add(ms as u64, Ordering::SeqCst);
             self.inner.latency.count.fetch_add(1, Ordering::SeqCst);
         }
-    }
-
-    #[inline]
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(super) fn ping(&self) -> &PingStats {
-        &self.inner.ping
     }
 }

@@ -22,6 +22,7 @@ pub mod flags;
 mod inner;
 pub mod limits;
 pub mod options;
+mod ping;
 pub mod stats;
 mod status;
 
