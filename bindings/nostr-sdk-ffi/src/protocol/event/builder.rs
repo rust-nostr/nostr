@@ -142,7 +142,7 @@ impl EventBuilder {
 
     /// Text note reply
     ///
-    /// If no `root` is passed, the `rely_to` will be used for root `e` tag.
+    /// If no `root` is passed, the `reply_to` will be used for root `e` tag.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/10.md>
     #[uniffi::constructor(default(root = None, relay_url = None))]
@@ -164,7 +164,7 @@ impl EventBuilder {
 
     /// Comment
     ///
-    /// If no `root` is passed, the `rely_to` will be used for root `e` tag.
+    /// If no `root` is passed, the `comment_to` will be used for root `e` tag.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/22.md>
     #[uniffi::constructor(default(root = None, relay_url = None))]

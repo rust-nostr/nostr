@@ -212,15 +212,33 @@ impl EventBuilder {
     }
 
     /// Build unsigned event
-    pub fn build_with_ctx<T>(self, supplier: &T, pubkey: PublicKey) -> UnsignedEvent
+    pub fn build_with_ctx<T>(self, supplier: &T, public_key: PublicKey) -> UnsignedEvent
     where
         T: TimeSupplier,
     {
+        // Tagging yourself is senseless.
+        // Remove all `p` tags that match the event author (`public_key`).
+        let public_key_hex: String = public_key.to_hex();
+        let mut tags: Vec<Tag> = self
+            .tags
+            .into_iter()
+            .filter(|t| {
+                if t.kind() == TagKind::p() {
+                    if let Some(content) = t.content() {
+                        if content == public_key_hex {
+                            return false; // Remove `p` tag that match author
+                        }
+                    }
+                }
+
+                true // No `p` tag or author public key not match
+            })
+            .collect();
+
         // Check if should be POW
         match self.pow {
             Some(difficulty) if difficulty > 0 => {
                 let mut nonce: u128 = 0;
-                let mut tags: Vec<Tag> = self.tags;
 
                 tags.reserve_exact(1);
 
@@ -233,12 +251,12 @@ impl EventBuilder {
                         .custom_created_at
                         .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
                     let id: EventId =
-                        EventId::new(&pubkey, &created_at, &self.kind, &tags, &self.content);
+                        EventId::new(&public_key, &created_at, &self.kind, &tags, &self.content);
 
                     if id.check_pow(difficulty) {
                         return UnsignedEvent {
                             id: Some(id),
-                            pubkey,
+                            pubkey: public_key,
                             created_at,
                             kind: self.kind,
                             tags: Tags::new(tags),
@@ -253,12 +271,12 @@ impl EventBuilder {
             _ => {
                 let mut unsigned: UnsignedEvent = UnsignedEvent {
                     id: None,
-                    pubkey,
+                    pubkey: public_key,
                     created_at: self
                         .custom_created_at
                         .unwrap_or_else(|| Timestamp::now_with_supplier(supplier)),
                     kind: self.kind,
-                    tags: Tags::new(self.tags),
+                    tags: Tags::new(tags),
                     content: self.content,
                 };
                 unsigned.ensure_id();
@@ -1733,6 +1751,28 @@ mod tests {
         let deserialized = Event::from_json(serialized).unwrap();
 
         assert_eq!(event, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn test_self_tagging() {
+        let keys = Keys::parse("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+            .unwrap();
+
+        // Self-tagging
+        let event = EventBuilder::text_note("hello")
+            .tag(Tag::public_key(keys.public_key()))
+            .sign_with_keys(&keys)
+            .unwrap();
+        assert!(event.tags.is_empty());
+
+        // Tag someone else
+        let other = Keys::generate();
+        let event = EventBuilder::text_note("hello 2")
+            .tag(Tag::public_key(other.public_key()))
+            .sign_with_keys(&keys)
+            .unwrap();
+        assert_eq!(event.tags.len(), 1);
     }
 
     #[test]

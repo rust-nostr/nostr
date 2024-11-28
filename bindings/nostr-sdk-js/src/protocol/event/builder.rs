@@ -140,7 +140,7 @@ impl JsEventBuilder {
 
     /// Text note reply
     ///
-    /// If no `root` is passed, the `rely_to` will be used for root `e` tag.
+    /// If no `root` is passed, the `reply_to` will be used for root `e` tag.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/10.md>
     #[wasm_bindgen(js_name = textNoteReply)]
@@ -162,7 +162,7 @@ impl JsEventBuilder {
 
     /// Comment
     ///
-    /// If no `root` is passed, the `rely_to` will be used for root `e` tag.
+    /// If no `root` is passed, the `comment_to` will be used for root `e` tag.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/22.md>
     #[wasm_bindgen(js_name = comment)]
