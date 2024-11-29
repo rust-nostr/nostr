@@ -11,10 +11,6 @@ async def main():
     # Create/open LMDB database
     database = NostrDatabase.lmdb("nostr-lmdb")
 
-    # NOT AVAILABLE ON WINDOWS AT THE MOMENT!
-    # Create/open nostrdb database
-    # database = NostrDatabase.ndb("ndb")
-
     client = ClientBuilder().database(database).build()
 
     await client.add_relay("wss://relay.damus.io")

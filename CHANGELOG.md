@@ -33,9 +33,10 @@
 
 ### Changed
 
-* Bump `async-utility` to 0.3 and `async-wsocket` to 0.11 ([Yuki Kishimoto])
+* Bump `async-utility` to 0.3, `async-wsocket` to 0.11 and `atomic-destructor` to 0.3 ([Yuki Kishimoto])
 * nostr: remove self-tagging when building events ([Yuki Kishimoto])
 * lmdb: use `async-utility` to spawn blocking tasks ([Yuki Kishimoto])
+* ndb: bump `nostr-ndb` to 0.4 ([Yuki Kishimoto])
 * pool: add `PingTracker` and improve relay ping management ([Yuki Kishimoto])
 
 ### Added

@@ -49,9 +49,10 @@ impl NdbDatabase {
         txn: &'a Transaction,
         filters: Vec<Filter>,
     ) -> Result<Vec<QueryResult<'a>>, DatabaseError> {
-        let filters = filters.into_iter().map(ndb_filter_conversion).collect();
+        let filters: Vec<nostrdb::Filter> =
+            filters.into_iter().map(ndb_filter_conversion).collect();
         self.db
-            .query(txn, filters, MAX_RESULTS)
+            .query(txn, &filters, MAX_RESULTS)
             .map_err(DatabaseError::backend)
     }
 }
@@ -184,41 +185,39 @@ fn ndb_filter_conversion(f: Filter) -> nostrdb::Filter {
 
     if let Some(ids) = f.ids {
         if !ids.is_empty() {
-            let ids: Vec<[u8; 32]> = ids.into_iter().map(|p| p.to_bytes()).collect();
-            filter.ids(ids);
+            filter = filter.ids(ids.iter().map(|p| p.as_bytes()));
         }
     }
 
     if let Some(authors) = f.authors {
         if !authors.is_empty() {
             let authors: Vec<[u8; 32]> = authors.into_iter().map(|p| p.serialize()).collect();
-            filter.authors(authors);
+            filter = filter.authors(authors.iter());
         }
     }
 
     if let Some(kinds) = f.kinds {
         if !kinds.is_empty() {
-            let kinds: Vec<u64> = kinds.into_iter().map(|p| p.as_u16() as u64).collect();
-            filter.kinds(kinds);
+            filter = filter.kinds(kinds.into_iter().map(|p| p.as_u16() as u64));
         }
     }
 
     if !f.generic_tags.is_empty() {
         for (single_letter, set) in f.generic_tags.into_iter() {
-            filter.tags(set.into_iter().collect(), single_letter.as_char());
+            filter = filter.tags(set, single_letter.as_char());
         }
     }
 
     if let Some(since) = f.since {
-        filter.since(since.as_u64());
+        filter = filter.since(since.as_u64());
     }
 
     if let Some(until) = f.until {
-        filter.until(until.as_u64());
+        filter = filter.until(until.as_u64());
     }
 
     if let Some(limit) = f.limit {
-        filter.limit(limit as u64);
+        filter = filter.limit(limit as u64);
     }
 
     filter.build()
