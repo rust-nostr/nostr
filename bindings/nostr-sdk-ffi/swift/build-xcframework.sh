@@ -39,7 +39,7 @@ lipo "${TARGET_DIR}/aarch64-apple-darwin/release/${STATIC_LIB}" "${TARGET_DIR}/x
 mkdir -p "${SOURCES_DIR}/NostrSDK"
 
 # Generate Swift bindings
-cargo run -p nostr-sdk-ffi --bin uniffi-bindgen generate --library "${TARGET_DIR}/aarch64-apple-ios/release/${STATIC_LIB}" --no-format --language swift --out-dir "${SOURCES_DIR}/NostrSDK"
+cargo run -p nostr-sdk-ffi --features uniffi-cli --bin uniffi-bindgen generate --library "${TARGET_DIR}/aarch64-apple-ios/release/${STATIC_LIB}" --no-format --language swift --out-dir "${SOURCES_DIR}/NostrSDK"
 
 # Display the contents of the Sources dir
 echo "Contents of ${SOURCES_DIR}/NostrSDK:"

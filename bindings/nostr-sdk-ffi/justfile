@@ -33,7 +33,7 @@ jni-libs: ndk
 	cargo ndk -t aarch64-linux-android -t x86_64-linux-android -t armv7-linux-androideabi -o ffi/kotlin/jniLibs build --lib --release
 
 kotlin: clean-android jni-libs
-	cargo run --bin uniffi-bindgen generate --library ../../target/x86_64-linux-android/release/libnostr_sdk_ffi.so --language kotlin --no-format -o ffi/kotlin
+	cargo run --features uniffi-cli --bin uniffi-bindgen generate --library ../../target/x86_64-linux-android/release/libnostr_sdk_ffi.so --language kotlin --no-format -o ffi/kotlin
 
 [private]
 compress-android:
@@ -68,7 +68,7 @@ python:
 	rm -rf python/dist
 	pip install -r python/requirements.txt
 	cargo build --lib --release
-	cargo run --bin uniffi-bindgen generate --library ../../target/release/libnostr_sdk_ffi.so --language python --no-format -o python/src/nostr-sdk/
+	cargo run --features uniffi-cli --bin uniffi-bindgen generate --library ../../target/release/libnostr_sdk_ffi.so --language python --no-format -o python/src/nostr-sdk/
 	cp ../../target/release/libnostr_sdk_ffi.so python/src/nostr-sdk/
 	cd python && python setup.py bdist_wheel
 	pip install ./python/dist/nostr_sdk*.whl --force-reinstall
@@ -78,7 +78,7 @@ python:
 	rm -rf python/dist
 	pip install -r python/requirements.txt
 	cargo build --lib --release
-	cargo run --bin uniffi-bindgen generate --library ../../target/release/libnostr_sdk_ffi.dylib --language python --no-format -o python/src/nostr-sdk/
+	cargo run --features uniffi-cli --bin uniffi-bindgen generate --library ../../target/release/libnostr_sdk_ffi.dylib --language python --no-format -o python/src/nostr-sdk/
 	cp ../../target/release/libnostr_sdk_ffi.dylib python/src/nostr-sdk/
 	cd python && python setup.py bdist_wheel
 	pip install ./python/dist/nostr_sdk*.whl --force-reinstall
@@ -87,7 +87,7 @@ python:
 python:
 	pip install -r python\requirements.txt
 	cargo build --lib --release
-	cargo run --bin uniffi-bindgen generate --library ..\..\target\release\nostr_sdk_ffi.dll --language python --no-format -o python\src\nostr-sdk\
+	cargo run --features uniffi-cli --bin uniffi-bindgen generate --library ..\..\target\release\nostr_sdk_ffi.dll --language python --no-format -o python\src\nostr-sdk\
 	copy ..\..\target\release\nostr_sdk_ffi.dll python\src\nostr-sdk
 	del /F /Q python\dist\* 2>nul || exit /b 0
 	cd python && python setup.py bdist_wheel
