@@ -10,7 +10,6 @@ use uniffi::Object;
 pub mod builder;
 pub mod id;
 pub mod kind;
-pub mod raw;
 pub mod tag;
 pub mod unsigned;
 
