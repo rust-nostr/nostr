@@ -3307,7 +3307,6 @@ dependencies = [
  "async-trait",
  "nostr",
  "nostr-connect",
- "nostr-relay-builder",
  "nostr-sdk",
  "paranoid-android",
  "tracing",

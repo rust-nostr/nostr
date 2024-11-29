@@ -52,6 +52,7 @@
 ### Removed
 
 * ffi: drop support for `i686-linux-android` target ([Yuki Kishimoto])
+* ffi: remove `MockRelay` ([Yuki Kishimoto])
 
 ### Deprecated
 
