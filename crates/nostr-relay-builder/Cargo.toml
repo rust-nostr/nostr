@@ -13,7 +13,7 @@ keywords = ["nostr", "relay", "builder"]
 
 [features]
 default = []
-tor = ["async-wsocket/tor"]
+tor = ["async-wsocket/tor-launch-service"]
 
 [dependencies]
 async-utility.workspace = true
@@ -26,13 +26,11 @@ tokio = { workspace = true, features = ["macros", "net", "sync"] }
 tracing.workspace = true
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["full"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [[example]]
 name = "local-with-hs"
 required-features = ["tor"]
-
 
 [[example]]
 name = "mock"

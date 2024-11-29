@@ -375,8 +375,7 @@ dependencies = [
 [[package]]
 name = "async-wsocket"
 version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68f54724519f69c6103fb239343fdbb35b307694e73baf46979c66fab47ff35e"
+source = "git+https://github.com/yukibtc/async-wsocket?rev=27f606af6b2028634022a97b5e56c332dfe3f611#27f606af6b2028634022a97b5e56c332dfe3f611"
 dependencies = [
  "arti-client",
  "async-utility",
@@ -2228,9 +2227,9 @@ dependencies = [
 
 [[package]]
 name = "growable-bloom-filter"
-version = "2.1.0"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c669fa03050eb3445343f215d62fc1ab831e8098bc9a55f26e9724faff11075c"
+checksum = "d174ccb4ba660d431329e7f0797870d0a4281e36353ec4b4a3c5eab6c2cfb6f1"
 dependencies = [
  "serde",
  "serde_bytes",
