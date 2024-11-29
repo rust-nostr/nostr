@@ -38,10 +38,6 @@ pub struct InnerRelayPool {
 }
 
 impl AtomicDestroyer for InnerRelayPool {
-    fn name(&self) -> Option<String> {
-        Some(String::from("Relay Pool"))
-    }
-
     fn on_destroy(&self) {
         let pool = self.clone();
         task::spawn(async move {

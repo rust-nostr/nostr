@@ -164,10 +164,6 @@ pub(crate) struct InnerRelay {
 }
 
 impl AtomicDestroyer for InnerRelay {
-    fn name(&self) -> Option<String> {
-        Some(format!("Relay {}", self.url))
-    }
-
     fn on_destroy(&self) {
         if let Err(e) = self.disconnect() {
             tracing::error!("Impossible to shutdown '{}': {e}", self.url);

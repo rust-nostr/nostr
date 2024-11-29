@@ -440,12 +440,9 @@ dependencies = [
 
 [[package]]
 name = "atomic-destructor"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d919cb60ba95c87ba42777e9e246c4e8d658057299b437b7512531ce0a09a23"
-dependencies = [
- "tracing",
-]
+checksum = "ef49f5882e4b6afaac09ad239a4f8c70a24b8f2b0897edb1f706008efd109cf4"
 
 [[package]]
 name = "autocfg"

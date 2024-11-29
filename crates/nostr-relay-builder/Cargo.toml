@@ -18,7 +18,7 @@ tor = ["async-wsocket/tor"]
 [dependencies]
 async-utility.workspace = true
 async-wsocket.workspace = true
-atomic-destructor = { workspace = true, features = ["tracing"] }
+atomic-destructor.workspace = true
 nostr = { workspace = true, default-features = false, features = ["std"] }
 nostr-database.workspace = true
 thiserror.workspace = true

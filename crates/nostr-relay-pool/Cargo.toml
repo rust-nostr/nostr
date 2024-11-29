@@ -19,7 +19,7 @@ nip11 = ["nostr/nip11"]
 [dependencies]
 async-utility.workspace = true
 async-wsocket = { workspace = true, features = ["socks"] }
-atomic-destructor = { workspace = true, features = ["tracing"] }
+atomic-destructor.workspace = true
 negentropy = { workspace = true, features = ["std"] }
 negentropy-deprecated = { workspace = true, features = ["std"] }
 nostr = { workspace = true, features = ["std"] }
