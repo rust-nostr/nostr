@@ -80,7 +80,6 @@ impl Default for RelayPool {
 }
 
 impl StealthClone for RelayPool {
-    #[inline(always)]
     fn stealth_clone(&self) -> Self {
         Self {
             inner: self.inner.stealth_clone(),

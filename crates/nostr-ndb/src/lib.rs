@@ -179,7 +179,6 @@ impl NostrEventsDatabase for NdbDatabase {
     }
 }
 
-#[inline(always)]
 fn ndb_filter_conversion(f: Filter) -> nostrdb::Filter {
     let mut filter = NdbFilter::new();
 
@@ -223,7 +222,6 @@ fn ndb_filter_conversion(f: Filter) -> nostrdb::Filter {
     filter.build()
 }
 
-#[inline(always)]
 fn ndb_note_to_event(note: Note) -> Result<Event, DatabaseError> {
     let id = EventId::from_byte_array(*note.id());
     let public_key = PublicKey::from_slice(note.pubkey()).map_err(DatabaseError::backend)?;
@@ -240,7 +238,6 @@ fn ndb_note_to_event(note: Note) -> Result<Event, DatabaseError> {
     ))
 }
 
-#[inline(always)]
 fn ndb_note_to_tags(note: &Note) -> Result<Vec<Tag>, DatabaseError> {
     let ndb_tags = note.tags();
     let mut tags: Vec<Tag> = Vec::with_capacity(ndb_tags.count() as usize);
@@ -258,7 +255,6 @@ fn ndb_note_to_tags(note: &Note) -> Result<Vec<Tag>, DatabaseError> {
     Ok(tags)
 }
 
-#[inline(always)]
 fn ndb_note_to_neg_item(note: Note) -> (EventId, Timestamp) {
     let id = EventId::from_byte_array(*note.id());
     let created_at = Timestamp::from(note.created_at());

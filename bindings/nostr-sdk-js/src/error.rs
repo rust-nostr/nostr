@@ -6,7 +6,6 @@ use wasm_bindgen::JsValue;
 
 pub type Result<T, E = JsValue> = core::result::Result<T, E>;
 
-#[inline(always)]
 pub fn into_err<E>(error: E) -> JsValue
 where
     E: std::error::Error,

@@ -394,7 +394,6 @@ impl<'de> Deserialize<'de> for Tag {
 }
 
 impl From<TagStandard> for Tag {
-    #[inline(always)]
     fn from(standard: TagStandard) -> Self {
         Self::from_standardized_without_cell(standard)
     }

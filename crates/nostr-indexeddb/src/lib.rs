@@ -517,7 +517,6 @@ impl_nostr_events_database!({
     }
 });
 
-#[inline(always)]
 fn js_value_to_string(value: JsValue) -> Option<String> {
     let s: JsString = value.dyn_into().ok()?;
     Some(s.into())

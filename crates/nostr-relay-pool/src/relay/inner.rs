@@ -839,7 +839,6 @@ impl InnerRelay {
         }
     }
 
-    #[inline(always)]
     async fn handle_relay_message_infallible(&self, msg: &[u8]) {
         match self.handle_relay_message(msg).await {
             Ok(Some(message)) => {
@@ -883,7 +882,6 @@ impl InnerRelay {
         }
     }
 
-    #[inline(always)]
     #[tracing::instrument(skip_all, level = "trace")]
     async fn handle_relay_message(&self, msg: &[u8]) -> Result<Option<RelayMessage>, Error> {
         let size: usize = msg.len();
