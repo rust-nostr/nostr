@@ -37,7 +37,7 @@ kotlin: clean-android jni-libs
 
 [private]
 compress-android:
-	upx --best --android-shlib ffi/kotlin/jniLibs/*/*.so
+	upx --best --lzma --android-shlib ffi/kotlin/jniLibs/*/*.so
 
 # Copy required modules and libs and assemble AAR
 [private]
