@@ -8,6 +8,7 @@ use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::collections::btree_set::{IntoIter, Iter};
 use std::collections::BTreeSet;
+use std::hash::{Hash, Hasher};
 
 /// Represents the possible options for removing a value.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -65,7 +66,7 @@ pub struct InsertResult<T> {
     pub pop: Option<T>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone)]
 pub struct BTreeCappedSet<T> {
     set: BTreeSet<T>,
     capacity: Capacity,
@@ -78,6 +79,44 @@ impl<T> Default for BTreeCappedSet<T> {
             set: BTreeSet::new(),
             capacity: Capacity::default(),
         }
+    }
+}
+
+impl<T> PartialEq for BTreeCappedSet<T>
+where
+    T: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.set == other.set
+    }
+}
+
+impl<T> Eq for BTreeCappedSet<T> where T: Eq {}
+
+impl<T> PartialOrd for BTreeCappedSet<T>
+where
+    T: PartialOrd,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.set.partial_cmp(&other.set)
+    }
+}
+
+impl<T> Ord for BTreeCappedSet<T>
+where
+    T: Ord,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.set.cmp(&other.set)
+    }
+}
+
+impl<T> Hash for BTreeCappedSet<T>
+where
+    T: Hash,
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.set.hash(state);
     }
 }
 
