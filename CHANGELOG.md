@@ -31,6 +31,8 @@
 
 ### Breaking changes
 
+* nostr: update `FromBech32::from_bech32` method signature ([Yuki Kishimoto])
+
 ### Changed
 
 * Bump `async-utility` to 0.3, `async-wsocket` to 0.11 and `atomic-destructor` to 0.3 ([Yuki Kishimoto])

@@ -372,7 +372,7 @@ impl<'de> Deserialize<'de> for EncryptedSecretKey {
         D: Deserializer<'de>,
     {
         let cryptsec: String = String::deserialize(deserializer)?;
-        Self::from_bech32(cryptsec).map_err(serde::de::Error::custom)
+        Self::from_bech32(&cryptsec).map_err(serde::de::Error::custom)
     }
 }
 

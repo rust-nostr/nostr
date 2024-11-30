@@ -227,9 +227,7 @@ pub enum Nip19 {
 
 pub trait FromBech32: Sized {
     type Err;
-    fn from_bech32<S>(bech32: S) -> Result<Self, Self::Err>
-    where
-        S: AsRef<str>;
+    fn from_bech32(bech32: &str) -> Result<Self, Self::Err>;
 }
 
 pub trait ToBech32 {
@@ -240,12 +238,9 @@ pub trait ToBech32 {
 impl FromBech32 for Nip19 {
     type Err = Error;
 
-    fn from_bech32<S>(hash: S) -> Result<Self, Self::Err>
-    where
-        S: AsRef<str>,
-    {
-        let (hrp, data) = bech32::decode(hash.as_ref())?;
-        let prefix: Nip19Prefix = Nip19Prefix::from_str(&hrp.to_string())?;
+    fn from_bech32(hash: &str) -> Result<Self, Self::Err> {
+        let (hrp, data) = bech32::decode(hash)?;
+        let prefix: Nip19Prefix = Nip19Prefix::from_str(hrp.as_str())?;
 
         match prefix {
             Nip19Prefix::NSec => Ok(Self::Secret(SecretKey::from_slice(data.as_slice())?)),
@@ -282,11 +277,8 @@ impl ToBech32 for Nip19 {
 impl FromBech32 for SecretKey {
     type Err = Error;
 
-    fn from_bech32<S>(secret_key: S) -> Result<Self, Self::Err>
-    where
-        S: AsRef<str>,
-    {
-        let (hrp, data) = bech32::decode(secret_key.as_ref())?;
+    fn from_bech32(secret_key: &str) -> Result<Self, Self::Err> {
+        let (hrp, data) = bech32::decode(secret_key)?;
 
         if hrp != HRP_SECRET_KEY {
             return Err(Error::WrongPrefixOrVariant);
@@ -312,11 +304,8 @@ impl ToBech32 for SecretKey {
 impl FromBech32 for EncryptedSecretKey {
     type Err = Error;
 
-    fn from_bech32<S>(secret_key: S) -> Result<Self, Self::Err>
-    where
-        S: AsRef<str>,
-    {
-        let (hrp, data) = bech32::decode(secret_key.as_ref())?;
+    fn from_bech32(secret_key: &str) -> Result<Self, Self::Err> {
+        let (hrp, data) = bech32::decode(secret_key)?;
 
         if hrp != HRP_SECRET_KEY_ENCRYPTED {
             return Err(Error::WrongPrefixOrVariant);
@@ -342,11 +331,8 @@ impl ToBech32 for EncryptedSecretKey {
 impl FromBech32 for PublicKey {
     type Err = Error;
 
-    fn from_bech32<S>(public_key: S) -> Result<Self, Self::Err>
-    where
-        S: AsRef<str>,
-    {
-        let (hrp, data) = bech32::decode(public_key.as_ref())?;
+    fn from_bech32(public_key: &str) -> Result<Self, Self::Err> {
+        let (hrp, data) = bech32::decode(public_key)?;
 
         if hrp != HRP_PUBLIC_KEY {
             return Err(Error::WrongPrefixOrVariant);
@@ -368,11 +354,8 @@ impl ToBech32 for PublicKey {
 impl FromBech32 for EventId {
     type Err = Error;
 
-    fn from_bech32<S>(hash: S) -> Result<Self, Self::Err>
-    where
-        S: AsRef<str>,
-    {
-        let (hrp, data) = bech32::decode(hash.as_ref())?;
+    fn from_bech32(id: &str) -> Result<Self, Self::Err> {
+        let (hrp, data) = bech32::decode(id)?;
 
         if hrp != HRP_NOTE_ID {
             return Err(Error::WrongPrefixOrVariant);
@@ -485,11 +468,8 @@ impl Nip19Event {
 impl FromBech32 for Nip19Event {
     type Err = Error;
 
-    fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
-    where
-        S: AsRef<str>,
-    {
-        let (hrp, data) = bech32::decode(s.as_ref())?;
+    fn from_bech32(event: &str) -> Result<Self, Self::Err> {
+        let (hrp, data) = bech32::decode(event)?;
 
         if hrp != HRP_EVENT {
             return Err(Error::WrongPrefixOrVariant);
@@ -639,11 +619,8 @@ impl ToBech32 for Nip19Profile {
 impl FromBech32 for Nip19Profile {
     type Err = Error;
 
-    fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
-    where
-        S: AsRef<str>,
-    {
-        let (hrp, data) = bech32::decode(s.as_ref())?;
+    fn from_bech32(profile: &str) -> Result<Self, Self::Err> {
+        let (hrp, data) = bech32::decode(profile)?;
 
         if hrp != HRP_PROFILE {
             return Err(Error::WrongPrefixOrVariant);
@@ -712,11 +689,8 @@ impl Coordinate {
 impl FromBech32 for Coordinate {
     type Err = Error;
 
-    fn from_bech32<S>(s: S) -> Result<Self, Self::Err>
-    where
-        S: AsRef<str>,
-    {
-        let (hrp, data) = bech32::decode(s.as_ref())?;
+    fn from_bech32(addr: &str) -> Result<Self, Self::Err> {
+        let (hrp, data) = bech32::decode(addr)?;
 
         if hrp != HRP_COORDINATE {
             return Err(Error::WrongPrefixOrVariant);
@@ -861,7 +835,7 @@ mod tests {
             relays: Vec::new(),
         };
         let serialized = event.to_bech32().unwrap();
-        assert_eq!(event, Nip19Event::from_bech32(serialized).unwrap());
+        assert_eq!(event, Nip19Event::from_bech32(&serialized).unwrap());
     }
 
     #[test]
