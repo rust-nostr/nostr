@@ -86,11 +86,8 @@ where
 
     /// From `nostr` URI
     #[inline]
-    fn from_nostr_uri<S>(uri: S) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
-        let data: &str = split_uri(uri.as_ref())?;
+    fn from_nostr_uri(uri: &str) -> Result<Self, Error> {
+        let data: &str = split_uri(uri)?;
         Ok(Self::from_bech32(data)?)
     }
 }
