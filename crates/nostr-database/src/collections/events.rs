@@ -181,7 +181,7 @@ mod tests {
             assert_ne!(events1, events2);
         }
     }
-    
+
     #[test]
     fn test_merge() {
         // Same filter
