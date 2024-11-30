@@ -42,6 +42,8 @@
 
 ### Added
 
+* database: impl PartialEq and Eq for `Events` ([Yuki Kishimoto])
+
 ### Fixed
 
 * nostr: remove redundant NIP10 tags from `EventBuilder::text_note_reply` ([Yuki Kishimoto])
