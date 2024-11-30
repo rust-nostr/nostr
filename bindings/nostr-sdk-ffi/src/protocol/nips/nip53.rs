@@ -9,8 +9,8 @@ use nostr::secp256k1::schnorr::Signature;
 use nostr::types::url::{RelayUrl, Url};
 use uniffi::{Enum, Record};
 
+use crate::error::NostrSdkError;
 use crate::protocol::{ImageDimensions, PublicKey, Timestamp};
-use crate::NostrSdkError;
 
 #[derive(Enum)]
 /// Live Event Marker

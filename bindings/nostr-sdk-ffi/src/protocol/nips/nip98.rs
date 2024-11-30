@@ -8,7 +8,7 @@ use nostr::nips::nip98;
 use nostr::Url;
 use uniffi::{Enum, Record};
 
-use crate::NostrSdkError;
+use crate::error::NostrSdkError;
 
 #[derive(Enum)]
 pub enum HttpMethod {

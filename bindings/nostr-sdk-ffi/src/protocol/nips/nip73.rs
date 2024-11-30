@@ -6,7 +6,7 @@ use nostr::nips::nip73;
 use nostr::Url;
 use uniffi::Enum;
 
-use crate::NostrSdkError;
+use crate::error::NostrSdkError;
 
 /// External Content ID
 #[derive(Enum)]

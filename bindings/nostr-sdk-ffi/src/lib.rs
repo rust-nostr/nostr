@@ -20,13 +20,6 @@ pub mod protocol;
 pub mod relay;
 mod util;
 
-pub use self::client::{Client, ClientBuilder, Options};
-pub use self::database::NostrDatabase;
-pub use self::error::NostrSdkError;
-pub use self::logger::{init_logger, LogLevel};
-pub use self::notifications::HandleNotification;
-pub use self::relay::{Relay, RelayConnectionStats, RelayStatus};
-
 #[derive(Object)]
 pub struct NostrLibrary;
 

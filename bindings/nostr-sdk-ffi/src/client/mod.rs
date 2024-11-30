@@ -20,15 +20,15 @@ pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 use self::zapper::{ZapDetails, ZapEntity};
 use crate::database::events::Events;
+use crate::database::NostrDatabase;
 use crate::error::Result;
+use crate::notifications::HandleNotification;
 use crate::pool::output::{Output, ReconciliationOutput, SendEventOutput, SubscribeOutput};
-use crate::pool::RelayPool;
 use crate::protocol::nips::nip59::UnwrappedGift;
 use crate::protocol::signer::NostrSigner;
 use crate::protocol::{ClientMessage, Event, EventBuilder, Filter, Metadata, PublicKey, Tag};
 use crate::relay::options::{SubscribeAutoCloseOptions, SyncOptions};
-use crate::relay::RelayFiltering;
-use crate::{HandleNotification, NostrDatabase, Relay};
+use crate::relay::{Relay, RelayFiltering, RelayOptions};
 
 #[derive(Object)]
 pub struct Client {
@@ -77,11 +77,6 @@ impl Client {
         Ok(signer.into())
     }
 
-    /// Get relay pool
-    pub fn pool(&self) -> Arc<RelayPool> {
-        Arc::new(self.inner.pool().clone().into())
-    }
-
     pub fn database(&self) -> NostrDatabase {
         self.inner.database().clone().into()
     }
@@ -105,7 +100,7 @@ impl Client {
             .collect()
     }
 
-    pub async fn relay(&self, url: String) -> Result<Arc<Relay>> {
+    pub async fn relay(&self, url: &str) -> Result<Arc<Relay>> {
         Ok(Arc::new(self.inner.relay(url).await?.into()))
     }
 
@@ -119,11 +114,19 @@ impl Client {
     /// to avoid to set pool subscriptions.
     ///
     /// This method use previously set or default `Options` to configure the `Relay` (ex. set proxy, set min POW, set relay limits, ...).
-    /// To use custom `RelayOptions` use `add_relay` method on `RelayPool`.
     ///
     /// Connection is **NOT** automatically started with relay, remember to call `connect` method!
-    pub async fn add_relay(&self, url: String) -> Result<bool> {
+    pub async fn add_relay(&self, url: &str) -> Result<bool> {
         Ok(self.inner.add_relay(url).await?)
+    }
+
+    /// Add new relay with custom options
+    pub async fn add_relay_with_opts(&self, url: &str, opts: &RelayOptions) -> Result<bool> {
+        Ok(self
+            .inner
+            .pool()
+            .add_relay(url, opts.deref().clone())
+            .await?)
     }
 
     /// Add discovery relay
@@ -131,24 +134,21 @@ impl Client {
     /// If relay already exists, this method automatically add the `DISCOVERY` flag to it and return `false`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
-    pub async fn add_discovery_relay(&self, url: String) -> Result<bool> {
+    pub async fn add_discovery_relay(&self, url: &str) -> Result<bool> {
         Ok(self.inner.add_discovery_relay(url).await?)
     }
 
     /// Add read relay
     ///
     /// If relay already exists, this method add the `READ` flag to it and return `false`.
-    ///
-    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
-    /// to avoid to set pool subscriptions.
-    pub async fn add_read_relay(&self, url: String) -> Result<bool> {
+    pub async fn add_read_relay(&self, url: &str) -> Result<bool> {
         Ok(self.inner.add_read_relay(url).await?)
     }
 
     /// Add write relay
     ///
     /// If relay already exists, this method add the `WRITE` flag to it and return `false`.
-    pub async fn add_write_relay(&self, url: String) -> Result<bool> {
+    pub async fn add_write_relay(&self, url: &str) -> Result<bool> {
         Ok(self.inner.add_write_relay(url).await?)
     }
 

@@ -65,6 +65,9 @@ impl NostrDatabase {
 
 #[uniffi::export(async_runtime = "tokio")]
 impl NostrDatabase {
+    // TODO: revert 4da38c9406f8552eef48ffe7ed4486ddc52392a6
+    // TODO: re-allow to use custom database (only for events)?
+
     /// Save [`Event`] into store
     ///
     /// Return `true` if event was successfully saved into database.
