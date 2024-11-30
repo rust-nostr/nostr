@@ -4,7 +4,7 @@
 
 use std::ops::Deref;
 
-use nostr::nips::nip19::{FromBech32, ToBech32};
+use nostr::nips::nip19::ToBech32;
 use uniffi::Object;
 
 use crate::error::Result;
@@ -37,20 +37,6 @@ impl SecretKey {
     pub fn parse(secret_key: &str) -> Result<Self> {
         Ok(Self {
             inner: nostr::SecretKey::parse(secret_key)?,
-        })
-    }
-
-    #[uniffi::constructor]
-    pub fn from_hex(hex: &str) -> Result<Self> {
-        Ok(Self {
-            inner: nostr::SecretKey::from_hex(hex)?,
-        })
-    }
-
-    #[uniffi::constructor]
-    pub fn from_bech32(bech32: &str) -> Result<Self> {
-        Ok(Self {
-            inner: nostr::SecretKey::from_bech32(bech32)?,
         })
     }
 

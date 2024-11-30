@@ -4,7 +4,7 @@
 
 use std::ops::Deref;
 
-use nostr::nips::nip19::{FromBech32, ToBech32};
+use nostr::nips::nip19::ToBech32;
 use nostr::nips::nip21::NostrURI;
 use uniffi::Object;
 
@@ -41,30 +41,9 @@ impl PublicKey {
     }
 
     #[uniffi::constructor]
-    pub fn from_hex(hex: &str) -> Result<Self> {
-        Ok(Self {
-            inner: nostr::PublicKey::from_hex(hex)?,
-        })
-    }
-
-    #[uniffi::constructor]
-    pub fn from_bech32(bech32: &str) -> Result<Self> {
-        Ok(Self {
-            inner: nostr::PublicKey::from_bech32(bech32)?,
-        })
-    }
-
-    #[uniffi::constructor]
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Ok(Self {
             inner: nostr::PublicKey::from_slice(bytes)?,
-        })
-    }
-
-    #[uniffi::constructor]
-    pub fn from_nostr_uri(uri: &str) -> Result<Self> {
-        Ok(Self {
-            inner: nostr::PublicKey::from_nostr_uri(uri)?,
         })
     }
 

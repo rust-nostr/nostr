@@ -7,7 +7,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use nostr::nips::nip01;
-use nostr::nips::nip19::{FromBech32, ToBech32};
+use nostr::nips::nip19::ToBech32;
 use nostr::nips::nip21::NostrURI;
 use nostr::RelayUrl;
 use uniffi::Object;
@@ -79,16 +79,6 @@ impl Coordinate {
     #[uniffi::constructor]
     pub fn parse(coordinate: &str) -> Result<Self> {
         Ok(nip01::Coordinate::from_str(coordinate)?.into())
-    }
-
-    #[uniffi::constructor]
-    pub fn from_bech32(bech32: &str) -> Result<Self> {
-        Ok(nip01::Coordinate::from_bech32(bech32)?.into())
-    }
-
-    #[uniffi::constructor]
-    pub fn from_nostr_uri(uri: &str) -> Result<Self> {
-        Ok(nip01::Coordinate::from_nostr_uri(uri)?.into())
     }
 
     pub fn to_bech32(&self) -> Result<String> {

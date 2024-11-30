@@ -44,27 +44,6 @@ impl JsPublicKey {
         })
     }
 
-    #[wasm_bindgen(js_name = fromHex)]
-    pub fn from_hex(hex: &str) -> Result<JsPublicKey> {
-        Ok(Self {
-            inner: PublicKey::from_hex(hex).map_err(into_err)?,
-        })
-    }
-
-    #[wasm_bindgen(js_name = fromBech32)]
-    pub fn from_bech32(bech32: &str) -> Result<JsPublicKey> {
-        Ok(Self {
-            inner: PublicKey::from_bech32(bech32).map_err(into_err)?,
-        })
-    }
-
-    #[wasm_bindgen(js_name = fromNostrUri)]
-    pub fn from_nostr_uri(uri: &str) -> Result<JsPublicKey> {
-        Ok(Self {
-            inner: PublicKey::from_nostr_uri(uri).map_err(into_err)?,
-        })
-    }
-
     /// Get in hex format
     #[wasm_bindgen(js_name = toHex)]
     pub fn to_hex(&self) -> String {

@@ -41,12 +41,6 @@ impl _SecretKey {
         })
     }
 
-    pub fn from_hex(secret_key: &str) -> Result<Self> {
-        Ok(Self {
-            inner: SecretKey::from_hex(secret_key)?,
-        })
-    }
-
     pub fn from_slice(secret_key: &[u8]) -> Result<Self> {
         Ok(Self {
             inner: SecretKey::from_slice(secret_key)?,

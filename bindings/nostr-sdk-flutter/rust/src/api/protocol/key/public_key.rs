@@ -26,12 +26,6 @@ impl _PublicKey {
         })
     }
 
-    pub fn from_hex(public_key: &str) -> Result<Self> {
-        Ok(Self {
-            inner: PublicKey::from_hex(public_key)?,
-        })
-    }
-
     pub fn from_slice(public_key: &[u8]) -> Result<Self> {
         Ok(Self {
             inner: PublicKey::from_slice(public_key)?,

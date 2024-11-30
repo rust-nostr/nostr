@@ -38,20 +38,6 @@ impl JsSecretKey {
         })
     }
 
-    #[wasm_bindgen(js_name = fromHex)]
-    pub fn from_hex(hex: &str) -> Result<JsSecretKey> {
-        Ok(Self {
-            inner: SecretKey::from_hex(hex).map_err(into_err)?,
-        })
-    }
-
-    #[wasm_bindgen(js_name = fromBech32)]
-    pub fn from_bech32(bech32: &str) -> Result<JsSecretKey> {
-        Ok(Self {
-            inner: SecretKey::from_bech32(bech32).map_err(into_err)?,
-        })
-    }
-
     /// Generate random secret key
     pub fn generate() -> Self {
         Self {

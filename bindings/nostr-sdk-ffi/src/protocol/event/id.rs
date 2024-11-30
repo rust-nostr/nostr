@@ -6,7 +6,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::nips::nip21::NostrURI;
-use nostr::prelude::{FromBech32, ToBech32};
+use nostr::prelude::ToBech32;
 use uniffi::Object;
 
 use super::Kind;
@@ -67,27 +67,6 @@ impl EventId {
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         Ok(Self {
             inner: nostr::EventId::from_slice(bytes)?,
-        })
-    }
-
-    #[uniffi::constructor]
-    pub fn from_hex(hex: &str) -> Result<Self> {
-        Ok(Self {
-            inner: nostr::EventId::from_hex(hex)?,
-        })
-    }
-
-    #[uniffi::constructor]
-    pub fn from_bech32(bech32: &str) -> Result<Self> {
-        Ok(Self {
-            inner: nostr::EventId::from_bech32(bech32)?,
-        })
-    }
-
-    #[uniffi::constructor]
-    pub fn from_nostr_uri(uri: &str) -> Result<Self> {
-        Ok(Self {
-            inner: nostr::EventId::from_nostr_uri(uri)?,
         })
     }
 

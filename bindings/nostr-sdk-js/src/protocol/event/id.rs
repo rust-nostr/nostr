@@ -74,27 +74,6 @@ impl JsEventId {
         })
     }
 
-    #[wasm_bindgen(js_name = fromHex)]
-    pub fn from_hex(hex: &str) -> Result<JsEventId> {
-        Ok(Self {
-            inner: EventId::from_hex(hex).map_err(into_err)?,
-        })
-    }
-
-    #[wasm_bindgen(js_name = fromBech32)]
-    pub fn from_bech32(bech32: &str) -> Result<JsEventId> {
-        Ok(Self {
-            inner: EventId::from_bech32(bech32).map_err(into_err)?,
-        })
-    }
-
-    #[wasm_bindgen(js_name = fromNostrUri)]
-    pub fn from_nostr_uri(uri: &str) -> Result<JsEventId> {
-        Ok(Self {
-            inner: EventId::from_nostr_uri(uri).map_err(into_err)?,
-        })
-    }
-
     #[wasm_bindgen(js_name = asBytes)]
     pub fn as_bytes(&self) -> Vec<u8> {
         self.inner.as_bytes().to_vec()
