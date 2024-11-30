@@ -27,7 +27,7 @@ where
     S: Into<String>,
 {
     let secret_key = Password::new().with_prompt(prompt).interact()?;
-    Ok(Keys::parse(secret_key)?)
+    Ok(Keys::parse(&secret_key)?)
 }
 
 /* pub fn get_password_with_confirmation() -> Result<String> {

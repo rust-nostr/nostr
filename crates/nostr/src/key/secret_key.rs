@@ -53,12 +53,7 @@ impl SecretKey {
     pub const LEN: usize = 32;
 
     /// Parse from `hex` or `bech32`
-    pub fn parse<S>(secret_key: S) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
-        let secret_key: &str = secret_key.as_ref();
-
+    pub fn parse(secret_key: &str) -> Result<Self, Error> {
         // Try from hex
         if let Ok(secret_key) = Self::from_hex(secret_key) {
             return Ok(secret_key);
@@ -82,12 +77,9 @@ impl SecretKey {
 
     /// Parse [SecretKey] from `hex` string
     #[inline]
-    pub fn from_hex<S>(hex: S) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
+    pub fn from_hex(hex: &str) -> Result<Self, Error> {
         Ok(Self {
-            inner: secp256k1::SecretKey::from_str(hex.as_ref())?,
+            inner: secp256k1::SecretKey::from_str(hex)?,
         })
     }
 
@@ -167,7 +159,7 @@ impl<'de> Deserialize<'de> for SecretKey {
         D: Deserializer<'de>,
     {
         let secret_key: String = String::deserialize(deserializer)?;
-        Self::parse(secret_key).map_err(serde::de::Error::custom)
+        Self::parse(&secret_key).map_err(serde::de::Error::custom)
     }
 }
 

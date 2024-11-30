@@ -53,12 +53,7 @@ impl PublicKey {
     pub const LEN: usize = 32;
 
     /// Parse from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
-    pub fn parse<S>(public_key: S) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
-        let public_key: &str = public_key.as_ref();
-
+    pub fn parse(public_key: &str) -> Result<Self, Error> {
         // Try from hex
         if let Ok(public_key) = Self::from_hex(public_key) {
             return Ok(public_key);
@@ -77,7 +72,7 @@ impl PublicKey {
         Err(Error::InvalidPublicKey)
     }
 
-    /// Parse [PublicKey] from `bytes`
+    /// Parse from `bytes`
     #[inline]
     pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
         Ok(Self {
@@ -85,14 +80,11 @@ impl PublicKey {
         })
     }
 
-    /// Parse [PublicKey] from `hex` string
+    /// Parse from `hex` string
     #[inline]
-    pub fn from_hex<S>(hex: S) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
+    pub fn from_hex(hex: &str) -> Result<Self, Error> {
         Ok(Self {
-            inner: XOnlyPublicKey::from_str(hex.as_ref())?,
+            inner: XOnlyPublicKey::from_str(hex)?,
         })
     }
 
@@ -141,7 +133,7 @@ impl<'de> Deserialize<'de> for PublicKey {
         D: Deserializer<'de>,
     {
         let public_key: String = String::deserialize(deserializer)?;
-        Self::parse(public_key).map_err(serde::de::Error::custom)
+        Self::parse(&public_key).map_err(serde::de::Error::custom)
     }
 }
 

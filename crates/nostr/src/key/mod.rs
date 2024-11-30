@@ -141,19 +141,15 @@ impl Keys {
     /// Parse secret key from `hex` or `bech32` and compose keys
     #[inline]
     #[cfg(feature = "std")]
-    pub fn parse<S>(secret_key: S) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
+    pub fn parse(secret_key: &str) -> Result<Self, Error> {
         Self::parse_with_ctx(&SECP256K1, secret_key)
     }
 
     /// Parse secret key from `hex` or `bech32` and compose keys
     #[inline]
-    pub fn parse_with_ctx<C, S>(secp: &Secp256k1<C>, secret_key: S) -> Result<Self, Error>
+    pub fn parse_with_ctx<C>(secp: &Secp256k1<C>, secret_key: &str) -> Result<Self, Error>
     where
         C: Signing,
-        S: AsRef<str>,
     {
         let secret_key: SecretKey = SecretKey::parse(secret_key)?;
         Ok(Self::new_with_ctx(secp, secret_key))

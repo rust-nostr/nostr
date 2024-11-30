@@ -33,6 +33,7 @@
 
 * nostr: update `FromBech32::from_bech32` method signature ([Yuki Kishimoto])
 * nostr: update `NostrURI::from_nostr_uri` method signature ([Yuki Kishimoto])
+* nostr: remove generics from parsing methods in `key` module ([Yuki Kishimoto])
 
 ### Changed
 

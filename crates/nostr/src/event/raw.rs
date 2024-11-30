@@ -95,7 +95,7 @@ impl TryFrom<RawEvent> for Event {
 
     fn try_from(raw: RawEvent) -> Result<Self, Self::Error> {
         let id: EventId = EventId::from_hex(raw.id)?;
-        let public_key: PublicKey = PublicKey::from_hex(raw.pubkey)?;
+        let public_key: PublicKey = PublicKey::from_hex(&raw.pubkey)?;
         let created_at: Timestamp = Timestamp::from(raw.created_at);
         let kind: Kind = Kind::from(raw.kind);
         let tags: Vec<Tag> = raw
