@@ -168,13 +168,10 @@ impl ConversationKey {
 /// **The result is NOT encoded in base64!**
 #[inline]
 #[cfg(feature = "std")]
-pub fn encrypt_to_bytes<T>(
+pub fn encrypt_to_bytes(
     conversation_key: &ConversationKey,
-    plaintext: T,
-) -> Result<Vec<u8>, Error>
-where
-    T: AsRef<[u8]>,
-{
+    plaintext: &[u8],
+) -> Result<Vec<u8>, Error> {
     encrypt_to_bytes_with_rng(&mut OsRng, conversation_key, plaintext)
 }
 
@@ -182,27 +179,25 @@ where
 ///
 /// **The result is NOT encoded in base64!**
 #[inline]
-pub fn encrypt_to_bytes_with_rng<R, T>(
+pub fn encrypt_to_bytes_with_rng<R>(
     rng: &mut R,
     conversation_key: &ConversationKey,
-    plaintext: T,
+    plaintext: &[u8],
 ) -> Result<Vec<u8>, Error>
 where
     R: RngCore,
-    T: AsRef<[u8]>,
 {
     internal_encrypt_to_bytes_with_rng(rng, conversation_key, plaintext, None)
 }
 
-fn internal_encrypt_to_bytes_with_rng<R, T>(
+fn internal_encrypt_to_bytes_with_rng<R>(
     rng: &mut R,
     conversation_key: &ConversationKey,
-    plaintext: T,
+    plaintext: &[u8],
     override_random_nonce: Option<&[u8; 32]>,
 ) -> Result<Vec<u8>, Error>
 where
     R: RngCore,
-    T: AsRef<[u8]>,
 {
     // Generate nonce
     let nonce: [u8; 32] = match override_random_nonce {
@@ -242,12 +237,11 @@ where
 /// Decrypt with NIP44 (v2)
 ///
 /// **The payload MUST be already decoded from base64**
-pub fn decrypt_to_bytes<T>(conversation_key: &ConversationKey, payload: T) -> Result<Vec<u8>, Error>
-where
-    T: AsRef<[u8]>,
-{
+pub fn decrypt_to_bytes(
+    conversation_key: &ConversationKey,
+    payload: &[u8],
+) -> Result<Vec<u8>, Error> {
     // Get data from payload
-    let payload: &[u8] = payload.as_ref();
     let len: usize = payload.len();
     let nonce: &[u8] = payload
         .get(1..33)
@@ -310,11 +304,7 @@ fn get_message_keys(
     MessageKeys::from_slice(&expanded_key).map_err(|_| ErrorV2::HkdfLength(expanded_key.len()))
 }
 
-fn pad<T>(unpadded: T) -> Result<Vec<u8>, ErrorV2>
-where
-    T: AsRef<[u8]>,
-{
-    let unpadded: &[u8] = unpadded.as_ref();
+fn pad(unpadded: &[u8]) -> Result<Vec<u8>, ErrorV2> {
     let len: usize = unpadded.len();
 
     if len < 1 {
@@ -529,7 +519,7 @@ mod tests {
             let computed_ciphertext = internal_encrypt_to_bytes_with_rng(
                 &mut OsRng,
                 &conversation_key,
-                plaintext,
+                plaintext.as_bytes(),
                 Some(&nonce),
             )
             .unwrap();

@@ -126,7 +126,8 @@ where
     match version {
         Version::V2 => {
             let conversation_key: ConversationKey = ConversationKey::derive(secret_key, public_key);
-            let payload: Vec<u8> = v2::encrypt_to_bytes_with_rng(rng, &conversation_key, content)?;
+            let payload: Vec<u8> =
+                v2::encrypt_to_bytes_with_rng(rng, &conversation_key, content.as_ref())?;
             Ok(general_purpose::STANDARD.encode(payload))
         }
     }
@@ -143,7 +144,7 @@ where
     T: AsRef<[u8]>,
 {
     let bytes: Vec<u8> = decrypt_to_bytes(secret_key, public_key, payload)?;
-    String::from_utf8(bytes.to_vec()).map_err(|_| Error::Utf8Encode)
+    String::from_utf8(bytes).map_err(|_| Error::Utf8Encode)
 }
 
 /// Decrypt **without** converting bytes to UTF-8 string
