@@ -727,7 +727,7 @@ impl Lmdb {
         txn: &'a RoTxn,
         since: &Timestamp,
         until: &Timestamp,
-    ) -> Result<RoRange<'_, Bytes, Bytes>, Error> {
+    ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
         let start_prefix = index::make_ci_index_key(until, &EVENT_ID_ALL_ZEROS);
         let end_prefix = index::make_ci_index_key(since, &EVENT_ID_ALL_255);
         let range = (
@@ -744,7 +744,7 @@ impl Lmdb {
         tag_value: &str,
         since: &Timestamp,
         until: &Timestamp,
-    ) -> Result<RoRange<'_, Bytes, Bytes>, Error> {
+    ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
         let start_prefix = index::make_tc_index_key(
             tag_name,
             tag_value,
@@ -765,7 +765,7 @@ impl Lmdb {
         author: &[u8; 32],
         since: Timestamp,
         until: Timestamp,
-    ) -> Result<RoRange<'_, Bytes, Bytes>, Error> {
+    ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
         let start_prefix = index::make_ac_index_key(author, &until, &EVENT_ID_ALL_ZEROS);
         let end_prefix = index::make_ac_index_key(author, &since, &EVENT_ID_ALL_255);
         let range = (
@@ -782,7 +782,7 @@ impl Lmdb {
         kind: u16,
         since: Timestamp,
         until: Timestamp,
-    ) -> Result<RoRange<'_, Bytes, Bytes>, Error> {
+    ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
         let start_prefix = index::make_akc_index_key(author, kind, &until, &EVENT_ID_ALL_ZEROS);
         let end_prefix = index::make_akc_index_key(author, kind, &since, &EVENT_ID_ALL_255);
         let range = (
@@ -800,7 +800,7 @@ impl Lmdb {
         tag_value: &str,
         since: &Timestamp,
         until: &Timestamp,
-    ) -> Result<RoRange<'_, Bytes, Bytes>, Error> {
+    ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
         let start_prefix: Vec<u8> = index::make_atc_index_key(
             author,
             tag_name,
@@ -825,7 +825,7 @@ impl Lmdb {
         tag_value: &str,
         since: &Timestamp,
         until: &Timestamp,
-    ) -> Result<RoRange<'_, Bytes, Bytes>, Error> {
+    ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
         let start_prefix = index::make_ktc_index_key(
             kind,
             tag_name,
