@@ -92,12 +92,7 @@ impl EventId {
     }
 
     /// Try to parse [EventId] from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
-    pub fn parse<S>(id: S) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
-        let id: &str = id.as_ref();
-
+    pub fn parse(id: &str) -> Result<Self, Error> {
         // Try from hex
         if let Ok(id) = Self::from_hex(id) {
             return Ok(id);
@@ -118,10 +113,7 @@ impl EventId {
 
     /// Parse from hex string
     #[inline]
-    pub fn from_hex<S>(hex: S) -> Result<Self, Error>
-    where
-        S: AsRef<[u8]>,
-    {
+    pub fn from_hex(hex: &str) -> Result<Self, Error> {
         let mut bytes: [u8; Self::LEN] = [0u8; Self::LEN];
         hex::decode_to_slice(hex, &mut bytes)?;
         Ok(Self::from_byte_array(bytes))
@@ -232,7 +224,7 @@ impl<'de> Deserialize<'de> for EventId {
         D: Deserializer<'de>,
     {
         let id: String = String::deserialize(deserializer)?;
-        Self::parse(id).map_err(serde::de::Error::custom)
+        Self::parse(&id).map_err(serde::de::Error::custom)
     }
 }
 

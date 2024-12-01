@@ -402,7 +402,7 @@ impl TryFrom<RawRelayMessage> for RelayMessage {
                 status,
                 message,
             } => Ok(Self::Ok {
-                event_id: EventId::from_hex(event_id)?,
+                event_id: EventId::from_hex(&event_id)?,
                 status,
                 message,
             }),
