@@ -3,14 +3,12 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::sync::Arc;
 
 use uniffi::Object;
 
 use super::zapper::NostrZapper;
 use super::{Client, Options};
 use crate::database::NostrDatabase;
-use crate::protocol::helper::unwrap_or_clone_arc;
 use crate::protocol::signer::NostrSigner;
 
 #[derive(Clone, Default, Object)]
@@ -32,34 +30,34 @@ impl ClientBuilder {
         Self::default()
     }
 
-    pub fn signer(self: Arc<Self>, signer: &NostrSigner) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn signer(&self, signer: &NostrSigner) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.signer(signer.deref().clone());
         builder
     }
 
-    pub fn zapper(self: Arc<Self>, zapper: &NostrZapper) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn zapper(&self, zapper: &NostrZapper) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.zapper(zapper.deref().clone());
         builder
     }
 
-    pub fn database(self: Arc<Self>, database: &NostrDatabase) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn database(&self, database: &NostrDatabase) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.database(database.deref().clone());
         builder
     }
 
     /// Set opts
-    pub fn opts(self: Arc<Self>, opts: Arc<Options>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.opts(opts.as_ref().deref().clone());
+    pub fn opts(&self, opts: &Options) -> Self {
+        let mut builder = self.clone();
+        builder.inner = builder.inner.opts(opts.deref().clone());
         builder
     }
 
     /// Build [`Client`]
-    pub fn build(&self) -> Arc<Client> {
+    pub fn build(&self) -> Client {
         let inner = self.inner.clone();
-        Arc::new(inner.build().into())
+        inner.build().into()
     }
 }

@@ -4,7 +4,6 @@
 
 use std::ops::Deref;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::nips::nip94;
@@ -12,7 +11,6 @@ use nostr::Url;
 use uniffi::Object;
 
 use crate::error::Result;
-use crate::protocol::helper::unwrap_or_clone_arc;
 use crate::protocol::ImageDimensions;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Object)]
@@ -38,44 +36,44 @@ impl From<nip94::FileMetadata> for FileMetadata {
 #[uniffi::export]
 impl FileMetadata {
     #[uniffi::constructor]
-    pub fn new(url: String, mime_type: String, hash: String) -> Result<Self> {
-        let url = Url::parse(&url)?;
-        let hash = Sha256Hash::from_str(&hash)?;
+    pub fn new(url: &str, mime_type: String, hash: &str) -> Result<Self> {
+        let url = Url::parse(url)?;
+        let hash = Sha256Hash::from_str(hash)?;
         Ok(Self {
             inner: nip94::FileMetadata::new(url, mime_type, hash),
         })
     }
 
-    pub fn aes_256_gcm(self: Arc<Self>, key: String, iv: String) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn aes_256_gcm(&self, key: String, iv: String) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.aes_256_gcm(key, iv);
         builder
     }
 
     /// Add file size (bytes)
-    pub fn size(self: Arc<Self>, size: u64) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn size(&self, size: u64) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.size(size as usize);
         builder
     }
 
     /// Add file size (pixels)
-    pub fn dimensions(self: Arc<Self>, dim: &ImageDimensions) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn dimensions(&self, dim: &ImageDimensions) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.dimensions(**dim);
         builder
     }
 
     /// Add magnet
-    pub fn magnet(self: Arc<Self>, magnet: String) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn magnet(&self, magnet: String) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.magnet(magnet);
         builder
     }
 
     /// Add blurhash
-    pub fn blurhash(self: Arc<Self>, blurhash: String) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn blurhash(&self, blurhash: String) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.blurhash(blurhash);
         builder
     }

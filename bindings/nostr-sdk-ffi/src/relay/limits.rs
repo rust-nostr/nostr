@@ -3,12 +3,10 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::sync::Arc;
 
 use nostr_sdk::pool::relay;
 use uniffi::Object;
 
-use crate::protocol::helper::unwrap_or_clone_arc;
 use crate::protocol::Kind;
 
 /// Relay Limits
@@ -45,41 +43,37 @@ impl RelayLimits {
     }
 
     // TODO: change default value in doc automatically
-    /// Maximum size of normalised JSON, in bytes (default: 5MB)
-    pub fn message_max_size(self: Arc<Self>, max_size: Option<u32>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    /// Maximum size of normalized JSON, in bytes (default: 5MB)
+    pub fn message_max_size(&self, max_size: Option<u32>) -> Self {
+        let mut builder = self.clone();
         builder.inner.messages.max_size = max_size;
         builder
     }
 
     /// Maximum size of normalised JSON, in bytes (default: 70_000)
-    pub fn event_max_size(self: Arc<Self>, max_size: Option<u32>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn event_max_size(&self, max_size: Option<u32>) -> Self {
+        let mut builder = self.clone();
         builder.inner.events.max_size = max_size;
         builder
     }
 
     /// Maximum size per kind of normalised JSON, in bytes.
-    pub fn event_max_size_per_kind(self: Arc<Self>, kind: &Kind, max_size: Option<u32>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn event_max_size_per_kind(&self, kind: &Kind, max_size: Option<u32>) -> Self {
+        let mut builder = self.clone();
         builder.inner.events = builder.inner.events.set_max_size_per_kind(**kind, max_size);
         builder
     }
 
     /// Maximum number of tags allowed (default: 2_000)
-    pub fn event_max_num_tags(self: Arc<Self>, max_num_tags: Option<u16>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn event_max_num_tags(&self, max_num_tags: Option<u16>) -> Self {
+        let mut builder = self.clone();
         builder.inner.events.max_num_tags = max_num_tags;
         builder
     }
 
     /// Maximum number of tags allowed per kind
-    pub fn event_max_num_tags_per_kind(
-        self: Arc<Self>,
-        kind: &Kind,
-        max_num_tags: Option<u16>,
-    ) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn event_max_num_tags_per_kind(&self, kind: &Kind, max_num_tags: Option<u16>) -> Self {
+        let mut builder = self.clone();
         builder.inner.events = builder
             .inner
             .events

@@ -12,7 +12,6 @@ use nostr::{JsonUtil, Url};
 use uniffi::{Enum, Object};
 
 use crate::error::{NostrSdkError, Result};
-use crate::protocol::helper::unwrap_or_clone_arc;
 use crate::protocol::{PublicKey, UnsignedEvent};
 
 /// Request (NIP46)
@@ -127,27 +126,27 @@ impl NostrConnectMetadata {
     }
 
     /// URL of the website requesting the connection
-    pub fn url(self: Arc<Self>, url: String) -> Result<Self> {
-        let url: Url = Url::parse(&url)?;
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn url(&self, url: &str) -> Result<Self> {
+        let url: Url = Url::parse(url)?;
+        let mut builder = self.clone();
         builder.inner = builder.inner.url(url);
         Ok(builder)
     }
 
     /// Description of the `App`
-    pub fn description(self: Arc<Self>, description: String) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn description(&self, description: String) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.description(description);
         builder
     }
 
     /// List of URLs for icons of the `App`
-    pub fn icons(self: Arc<Self>, icons: Vec<String>) -> Self {
+    pub fn icons(&self, icons: Vec<String>) -> Self {
         let icons: Vec<Url> = icons
             .into_iter()
             .filter_map(|u| Url::parse(&u).ok())
             .collect();
-        let mut builder = unwrap_or_clone_arc(self);
+        let mut builder = self.clone();
         builder.inner = builder.inner.icons(icons);
         builder
     }

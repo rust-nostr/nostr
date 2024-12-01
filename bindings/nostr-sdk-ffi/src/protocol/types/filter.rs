@@ -10,7 +10,6 @@ use nostr::JsonUtil;
 use uniffi::{Enum, Object, Record};
 
 use crate::error::Result;
-use crate::protocol::helper::unwrap_or_clone_arc;
 use crate::protocol::nips::nip01::Coordinate;
 use crate::protocol::{Event, EventId, Kind, PublicKey, Timestamp};
 
@@ -151,151 +150,151 @@ impl Filter {
         }
     }
 
-    pub fn id(self: Arc<Self>, id: &EventId) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn id(&self, id: &EventId) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.id(**id);
         builder
     }
 
-    pub fn ids(self: Arc<Self>, ids: &[Arc<EventId>]) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn ids(&self, ids: &[Arc<EventId>]) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.ids(ids.iter().map(|id| ***id));
         builder
     }
 
-    pub fn remove_ids(self: Arc<Self>, ids: &[Arc<EventId>]) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn remove_ids(&self, ids: &[Arc<EventId>]) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.remove_ids(ids.iter().map(|id| ***id));
         builder
     }
 
     /// Add event author Public Key
-    pub fn author(self: Arc<Self>, author: &PublicKey) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn author(&self, author: &PublicKey) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.author(**author);
         builder
     }
 
-    pub fn authors(self: Arc<Self>, authors: &[Arc<PublicKey>]) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn authors(&self, authors: &[Arc<PublicKey>]) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.authors(authors.iter().map(|pk| ***pk));
         builder
     }
 
-    pub fn remove_authors(self: Arc<Self>, authors: &[Arc<PublicKey>]) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn remove_authors(&self, authors: &[Arc<PublicKey>]) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.remove_authors(authors.iter().map(|pk| ***pk));
         builder
     }
 
-    pub fn kind(self: Arc<Self>, kind: &Kind) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn kind(&self, kind: &Kind) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.kind(**kind);
         builder
     }
 
-    pub fn kinds(self: Arc<Self>, kinds: Vec<Arc<Kind>>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn kinds(&self, kinds: Vec<Arc<Kind>>) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.kinds(kinds.into_iter().map(|k| **k));
         builder
     }
 
-    pub fn remove_kinds(self: Arc<Self>, kinds: Vec<Arc<Kind>>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn remove_kinds(&self, kinds: Vec<Arc<Kind>>) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.remove_kinds(kinds.into_iter().map(|k| **k));
         builder
     }
 
     /// Add event ID (`e` tag)
-    pub fn event(self: Arc<Self>, event_id: &EventId) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn event(&self, event_id: &EventId) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.event(**event_id);
         builder
     }
 
     /// Add event IDs (`e` tag)
-    pub fn events(self: Arc<Self>, ids: &[Arc<EventId>]) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn events(&self, ids: &[Arc<EventId>]) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.events(ids.iter().map(|id| ***id));
         builder
     }
 
-    pub fn remove_events(self: Arc<Self>, ids: &[Arc<EventId>]) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn remove_events(&self, ids: &[Arc<EventId>]) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.remove_events(ids.iter().map(|id| ***id));
         builder
     }
 
     /// Add Public Key (`p` tag)
-    pub fn pubkey(self: Arc<Self>, pubkey: &PublicKey) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn pubkey(&self, pubkey: &PublicKey) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.pubkey(**pubkey);
         builder
     }
 
     /// Add Public Keys (`p` tag)
-    pub fn pubkeys(self: Arc<Self>, pubkeys: &[Arc<PublicKey>]) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn pubkeys(&self, pubkeys: &[Arc<PublicKey>]) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.pubkeys(pubkeys.iter().map(|pk| ***pk));
         builder
     }
 
-    pub fn remove_pubkeys(self: Arc<Self>, pubkeys: &[Arc<PublicKey>]) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn remove_pubkeys(&self, pubkeys: &[Arc<PublicKey>]) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.remove_pubkeys(pubkeys.iter().map(|pk| ***pk));
         builder
     }
 
-    pub fn hashtag(self: Arc<Self>, hashtag: &str) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn hashtag(&self, hashtag: &str) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.hashtag(hashtag);
         builder
     }
 
-    pub fn hashtags(self: Arc<Self>, hashtags: Vec<String>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn hashtags(&self, hashtags: Vec<String>) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.hashtags(hashtags);
         builder
     }
 
-    pub fn remove_hashtags(self: Arc<Self>, hashtags: Vec<String>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn remove_hashtags(&self, hashtags: Vec<String>) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.remove_hashtags(hashtags);
         builder
     }
 
-    pub fn reference(self: Arc<Self>, reference: &str) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn reference(&self, reference: &str) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.reference(reference);
         builder
     }
 
-    pub fn references(self: Arc<Self>, references: Vec<String>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn references(&self, references: Vec<String>) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.references(references);
         builder
     }
 
-    pub fn remove_references(self: Arc<Self>, references: Vec<String>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn remove_references(&self, references: Vec<String>) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.remove_references(references);
         builder
     }
 
-    pub fn identifier(self: Arc<Self>, identifier: &str) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn identifier(&self, identifier: &str) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.identifier(identifier);
         builder
     }
 
-    pub fn identifiers(self: Arc<Self>, identifiers: Vec<String>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn identifiers(&self, identifiers: Vec<String>) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.identifiers(identifiers);
         builder
     }
 
-    pub fn remove_identifiers(self: Arc<Self>, identifiers: Vec<String>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn remove_identifiers(&self, identifiers: Vec<String>) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.remove_identifiers(identifiers);
         builder
     }
@@ -305,8 +304,8 @@ impl Filter {
     /// Query for `a` tag.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    pub fn coordinate(self: Arc<Self>, coordinate: &Coordinate) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn coordinate(&self, coordinate: &Coordinate) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.coordinate(coordinate.deref());
         builder
     }
@@ -316,8 +315,8 @@ impl Filter {
     /// Query for `a` tags.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    pub fn coordinates(self: Arc<Self>, coordinates: Vec<Arc<Coordinate>>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn coordinates(&self, coordinates: Vec<Arc<Coordinate>>) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder
             .inner
             .coordinates(coordinates.iter().map(|c| c.as_ref().deref()));
@@ -329,74 +328,70 @@ impl Filter {
     /// Remove `a` tags.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    pub fn remove_coordinates(self: Arc<Self>, coordinates: Vec<Arc<Coordinate>>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn remove_coordinates(&self, coordinates: Vec<Arc<Coordinate>>) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder
             .inner
             .remove_coordinates(coordinates.iter().map(|c| c.as_ref().deref()));
         builder
     }
 
-    pub fn search(self: Arc<Self>, text: &str) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn search(&self, text: &str) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.search(text);
         builder
     }
 
-    pub fn remove_search(self: Arc<Self>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn remove_search(&self) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.remove_search();
         builder
     }
 
-    pub fn since(self: Arc<Self>, timestamp: &Timestamp) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn since(&self, timestamp: &Timestamp) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.since(**timestamp);
         builder
     }
 
-    pub fn remove_since(self: Arc<Self>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn remove_since(&self) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.remove_since();
         builder
     }
 
-    pub fn until(self: Arc<Self>, timestamp: &Timestamp) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn until(&self, timestamp: &Timestamp) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.until(**timestamp);
         builder
     }
 
-    pub fn remove_until(self: Arc<Self>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn remove_until(&self) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.remove_until();
         builder
     }
 
-    pub fn limit(self: Arc<Self>, limit: u64) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn limit(&self, limit: u64) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.limit(limit as usize);
         builder
     }
 
-    pub fn remove_limit(self: Arc<Self>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn remove_limit(&self) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.remove_limit();
         builder
     }
 
-    pub fn custom_tag(self: Arc<Self>, tag: &SingleLetterTag, content: Vec<String>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn custom_tag(&self, tag: &SingleLetterTag, content: Vec<String>) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.custom_tag(**tag, content);
         builder
     }
 
-    pub fn remove_custom_tag(
-        self: Arc<Self>,
-        tag: Arc<SingleLetterTag>,
-        content: Vec<String>,
-    ) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn remove_custom_tag(&self, tag: Arc<SingleLetterTag>, content: Vec<String>) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.remove_custom_tag(**tag, content);
         builder
     }

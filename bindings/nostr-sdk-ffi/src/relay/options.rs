@@ -4,7 +4,6 @@
 
 use std::ops::Deref;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_sdk::pool;
@@ -12,7 +11,6 @@ use uniffi::{Enum, Object};
 
 use super::{RelayFilteringMode, RelayLimits};
 use crate::error::{NostrSdkError, Result};
-use crate::protocol::helper::unwrap_or_clone_arc;
 
 #[derive(Enum)]
 pub enum ConnectionMode {
@@ -80,9 +78,9 @@ impl RelayOptions {
     }
 
     /// Set connection mode
-    pub fn connection_mode(self: Arc<Self>, mode: ConnectionMode) -> Result<Self> {
+    pub fn connection_mode(&self, mode: ConnectionMode) -> Result<Self> {
         let mode: pool::ConnectionMode = mode.try_into()?;
-        let mut builder = unwrap_or_clone_arc(self);
+        let mut builder = self.clone();
         builder.inner = builder.inner.connection_mode(mode);
         Ok(builder)
     }
@@ -94,29 +92,29 @@ impl RelayOptions {
     }*/
 
     /// Set read flag
-    pub fn read(self: Arc<Self>, read: bool) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn read(&self, read: bool) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.read(read);
         builder
     }
 
     /// Set write flag
-    pub fn write(self: Arc<Self>, write: bool) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn write(&self, write: bool) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.write(write);
         builder
     }
 
     /// Set ping flag
-    pub fn ping(self: Arc<Self>, ping: bool) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn ping(&self, ping: bool) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.ping(ping);
         builder
     }
 
     /// Minimum POW for received events (default: 0)
-    pub fn pow(self: Arc<Self>, difficulty: u8) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn pow(&self, difficulty: u8) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.pow(difficulty);
         builder
     }
@@ -127,8 +125,8 @@ impl RelayOptions {
     }
 
     /// Enable/disable auto reconnection (default: true)
-    pub fn reconnect(self: Arc<Self>, reconnect: bool) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn reconnect(&self, reconnect: bool) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.reconnect(reconnect);
         builder
     }
@@ -136,22 +134,22 @@ impl RelayOptions {
     /// Retry interval (default: 10 sec)
     ///
     /// Minimum allowed value is `5 secs`
-    pub fn retry_interval(self: Arc<Self>, interval: Duration) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn retry_interval(&self, interval: Duration) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.retry_interval(interval);
         builder
     }
 
     /// Automatically adjust retry interval based on success/attempts (default: true)
-    pub fn adjust_retry_interval(self: Arc<Self>, adjust_retry_interval: bool) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn adjust_retry_interval(&self, adjust_retry_interval: bool) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.adjust_retry_interval(adjust_retry_interval);
         builder
     }
 
     /// Set custom limits
-    pub fn limits(self: Arc<Self>, limits: &RelayLimits) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn limits(&self, limits: &RelayLimits) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.limits(limits.deref().clone());
         builder
     }
@@ -159,15 +157,15 @@ impl RelayOptions {
     /// Set max latency (default: None)
     ///
     /// Relay with an avg. latency greater that this value will be skipped.
-    pub fn max_avg_latency(self: Arc<Self>, max: Option<Duration>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn max_avg_latency(&self, max: Option<Duration>) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.max_avg_latency(max);
         builder
     }
 
     /// Set filtering mode (default: blacklist)
-    pub fn filtering_mode(self: Arc<Self>, mode: RelayFilteringMode) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn filtering_mode(&self, mode: RelayFilteringMode) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.filtering_mode(mode.into());
         builder
     }
@@ -220,15 +218,15 @@ impl SubscribeAutoCloseOptions {
     }
 
     /// Close subscription when `FilterOptions` is satisfied
-    pub fn filter(self: Arc<Self>, filter: FilterOptions) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn filter(&self, filter: FilterOptions) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.filter(filter.into());
         builder
     }
 
     /// Automatically close subscription after `Duration`
-    pub fn timeout(self: Arc<Self>, timeout: Option<Duration>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn timeout(&self, timeout: Option<Duration>) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.timeout(timeout);
         builder
     }
@@ -258,9 +256,9 @@ impl SubscribeOptions {
     }
 
     /// Set auto-close conditions
-    pub fn close_on(self: Arc<Self>, opts: Option<Arc<SubscribeAutoCloseOptions>>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
-        builder.inner = builder.inner.close_on(opts.map(|o| **o));
+    pub fn close_on(&self, opts: &SubscribeAutoCloseOptions) -> Self {
+        let mut builder = self.clone();
+        builder.inner = builder.inner.close_on(Some(**opts));
         builder
     }
 }
@@ -306,15 +304,15 @@ impl SyncOptions {
     }
 
     /// Timeout to check if negentropy it's supported (default: 10 secs)
-    pub fn initial_timeout(self: Arc<Self>, timeout: Duration) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn initial_timeout(&self, timeout: Duration) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.initial_timeout(timeout);
         builder
     }
 
     /// Sync Sync direction (default: down)
-    pub fn direction(self: Arc<Self>, direction: SyncDirection) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn direction(&self, direction: SyncDirection) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.direction(direction.into());
         builder
     }
@@ -323,8 +321,8 @@ impl SyncOptions {
     ///
     /// Just check what event are missing: execute reconciliation but WITHOUT
     /// getting/sending full events.
-    pub fn dry_run(self: Arc<Self>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn dry_run(&self) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.dry_run();
         builder
     }

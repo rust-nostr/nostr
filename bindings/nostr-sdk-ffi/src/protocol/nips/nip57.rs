@@ -3,14 +3,12 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::sync::Arc;
 
 use nostr::nips::nip57;
 use nostr::Url;
 use uniffi::{Enum, Object};
 
 use crate::error::Result;
-use crate::protocol::helper::unwrap_or_clone_arc;
 use crate::protocol::{Event, EventId, Keys, PublicKey, SecretKey};
 
 #[derive(Enum)]
@@ -65,26 +63,26 @@ impl ZapRequestData {
         }
     }
 
-    pub fn message(self: Arc<Self>, message: &str) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn message(&self, message: &str) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.message(message);
         builder
     }
 
-    pub fn amount(self: Arc<Self>, amount: u64) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn amount(&self, amount: u64) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.amount(amount);
         builder
     }
 
-    pub fn lnurl(self: Arc<Self>, lnurl: &str) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn lnurl(&self, lnurl: &str) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.lnurl(lnurl);
         builder
     }
 
-    pub fn event_id(self: Arc<Self>, event_id: &EventId) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn event_id(&self, event_id: &EventId) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.event_id(**event_id);
         builder
     }
@@ -104,7 +102,7 @@ pub fn nip57_private_zap_request(data: &ZapRequestData, keys: &Keys) -> Result<E
 pub fn decrypt_sent_private_zap_message(
     secret_key: &SecretKey,
     public_key: &PublicKey,
-    private_zap: Arc<Event>,
+    private_zap: &Event,
 ) -> Result<Event> {
     Ok(nip57::decrypt_sent_private_zap_message(
         secret_key.deref(),
@@ -117,7 +115,7 @@ pub fn decrypt_sent_private_zap_message(
 #[uniffi::export]
 pub fn decrypt_received_private_zap_message(
     secret_key: &SecretKey,
-    private_zap: Arc<Event>,
+    private_zap: &Event,
 ) -> Result<Event> {
     Ok(
         nip57::decrypt_received_private_zap_message(secret_key.deref(), private_zap.deref())?

@@ -3,14 +3,12 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::sync::Arc;
 
 use nostr::serde_json::Value;
 use nostr::{JsonUtil, Url};
 use uniffi::{Object, Record};
 
 use crate::error::Result;
-use crate::protocol::helper::unwrap_or_clone_arc;
 use crate::protocol::JsonValue;
 
 #[derive(Record)]
@@ -130,8 +128,8 @@ impl Metadata {
         Ok(self.inner.try_as_pretty_json()?)
     }
 
-    pub fn set_name(self: Arc<Self>, name: String) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn set_name(&self, name: String) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.name(name);
         builder
     }
@@ -140,8 +138,8 @@ impl Metadata {
         self.inner.name.clone()
     }
 
-    pub fn set_display_name(self: Arc<Self>, display_name: String) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn set_display_name(&self, display_name: String) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.display_name(display_name);
         builder
     }
@@ -150,8 +148,8 @@ impl Metadata {
         self.inner.display_name.clone()
     }
 
-    pub fn set_about(self: Arc<Self>, about: String) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn set_about(&self, about: String) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.about(about);
         builder
     }
@@ -160,9 +158,9 @@ impl Metadata {
         self.inner.about.clone()
     }
 
-    pub fn set_website(self: Arc<Self>, website: String) -> Result<Self> {
+    pub fn set_website(&self, website: String) -> Result<Self> {
         let website = Url::parse(&website)?;
-        let mut builder = unwrap_or_clone_arc(self);
+        let mut builder = self.clone();
         builder.inner = builder.inner.website(website);
         Ok(builder)
     }
@@ -171,9 +169,9 @@ impl Metadata {
         self.inner.website.clone()
     }
 
-    pub fn set_picture(self: Arc<Self>, picture: String) -> Result<Self> {
+    pub fn set_picture(&self, picture: String) -> Result<Self> {
         let picture = Url::parse(&picture)?;
-        let mut builder = unwrap_or_clone_arc(self);
+        let mut builder = self.clone();
         builder.inner = builder.inner.picture(picture);
         Ok(builder)
     }
@@ -182,9 +180,9 @@ impl Metadata {
         self.inner.picture.clone()
     }
 
-    pub fn set_banner(self: Arc<Self>, banner: String) -> Result<Self> {
+    pub fn set_banner(&self, banner: String) -> Result<Self> {
         let banner = Url::parse(&banner)?;
-        let mut builder = unwrap_or_clone_arc(self);
+        let mut builder = self.clone();
         builder.inner = builder.inner.banner(banner);
         Ok(builder)
     }
@@ -193,8 +191,8 @@ impl Metadata {
         self.inner.banner.clone()
     }
 
-    pub fn set_nip05(self: Arc<Self>, nip05: String) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn set_nip05(&self, nip05: String) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.nip05(nip05);
         builder
     }
@@ -203,8 +201,8 @@ impl Metadata {
         self.inner.nip05.clone()
     }
 
-    pub fn set_lud06(self: Arc<Self>, lud06: String) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn set_lud06(&self, lud06: String) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.lud06(lud06);
         builder
     }
@@ -213,8 +211,8 @@ impl Metadata {
         self.inner.lud06.clone()
     }
 
-    pub fn set_lud16(self: Arc<Self>, lud16: String) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn set_lud16(&self, lud16: String) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.lud16(lud16);
         builder
     }
@@ -223,9 +221,9 @@ impl Metadata {
         self.inner.lud16.clone()
     }
 
-    pub fn set_custom_field(self: Arc<Self>, key: String, value: JsonValue) -> Result<Self> {
+    pub fn set_custom_field(&self, key: String, value: JsonValue) -> Result<Self> {
         let value: Value = value.try_into()?;
-        let mut builder = unwrap_or_clone_arc(self);
+        let mut builder = self.clone();
         builder.inner = builder.inner.custom_field(key, value);
         Ok(builder)
     }

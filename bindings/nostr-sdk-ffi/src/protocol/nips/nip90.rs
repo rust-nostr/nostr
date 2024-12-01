@@ -2,12 +2,10 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::sync::Arc;
 
 use nostr::nips::nip90;
 use uniffi::{Enum, Object};
 
-use crate::protocol::helper::unwrap_or_clone_arc;
 use crate::protocol::Event;
 
 #[derive(Enum)]
@@ -70,22 +68,22 @@ impl JobFeedbackData {
     }
 
     /// Add extra info
-    pub fn extra_info(self: Arc<Self>, info: String) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn extra_info(&self, info: String) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.extra_info(info);
         builder
     }
 
     /// Add payment amount
-    pub fn amount(self: Arc<Self>, millisats: u64, bolt11: Option<String>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn amount(&self, millisats: u64, bolt11: Option<String>) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.amount(millisats, bolt11);
         builder
     }
 
     /// Add payload
-    pub fn payload(self: Arc<Self>, payload: String) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn payload(&self, payload: String) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.payload(payload);
         builder
     }

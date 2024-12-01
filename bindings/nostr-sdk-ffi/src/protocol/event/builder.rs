@@ -12,7 +12,6 @@ use uniffi::Object;
 
 use super::{Event, EventId, Kind};
 use crate::error::Result;
-use crate::protocol::helper::unwrap_or_clone_arc;
 use crate::protocol::key::Keys;
 use crate::protocol::nips::nip01::Coordinate;
 use crate::protocol::nips::nip15::{ProductData, StallData};
@@ -67,16 +66,16 @@ impl EventBuilder {
     /// Add tags
     ///
     /// This method extend the current tags (if any).
-    pub fn tags(self: Arc<Self>, tags: &[Arc<Tag>]) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn tags(&self, tags: &[Arc<Tag>]) -> Self {
+        let mut builder = self.clone();
         let tags = tags.iter().map(|t| t.as_ref().deref().clone());
         builder.inner = builder.inner.tags(tags);
         builder
     }
 
     /// Set a custom `created_at` UNIX timestamp
-    pub fn custom_created_at(self: Arc<Self>, created_at: &Timestamp) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn custom_created_at(&self, created_at: &Timestamp) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.custom_created_at(**created_at);
         builder
     }
@@ -84,8 +83,8 @@ impl EventBuilder {
     /// Set POW difficulty
     ///
     /// Only values `> 0` are accepted!
-    pub fn pow(self: Arc<Self>, difficulty: u8) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn pow(&self, difficulty: u8) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.pow(difficulty);
         builder
     }

@@ -3,14 +3,12 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_sdk::{nwc, pool};
 use uniffi::Object;
 
 use crate::error::Result;
-use crate::protocol::helper::unwrap_or_clone_arc;
 use crate::relay::options::ConnectionMode;
 
 /// NWC options
@@ -38,16 +36,16 @@ impl NostrWalletConnectOptions {
     }
 
     /// Set connection mode
-    pub fn connection_mode(self: Arc<Self>, mode: ConnectionMode) -> Result<Self> {
+    pub fn connection_mode(&self, mode: ConnectionMode) -> Result<Self> {
         let mode: pool::ConnectionMode = mode.try_into()?;
-        let mut builder = unwrap_or_clone_arc(self);
+        let mut builder = self.clone();
         builder.inner = builder.inner.connection_mode(mode);
         Ok(builder)
     }
 
     /// Set NWC requests timeout (default: 10 secs)
-    pub fn timeout(self: Arc<Self>, timeout: Duration) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn timeout(&self, timeout: Duration) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.timeout(timeout);
         builder
     }

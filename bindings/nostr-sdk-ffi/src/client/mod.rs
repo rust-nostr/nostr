@@ -342,14 +342,10 @@ impl Client {
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// <https://github.com/hoytech/negentropy>
-    pub async fn sync(
-        &self,
-        filter: Arc<Filter>,
-        opts: &SyncOptions,
-    ) -> Result<ReconciliationOutput> {
+    pub async fn sync(&self, filter: &Filter, opts: &SyncOptions) -> Result<ReconciliationOutput> {
         Ok(self
             .inner
-            .sync(filter.as_ref().deref().clone(), opts.deref())
+            .sync(filter.deref().clone(), opts.deref())
             .await?
             .into())
     }
@@ -416,10 +412,10 @@ impl Client {
             .into())
     }
 
-    pub async fn send_msg_to(&self, urls: Vec<String>, msg: Arc<ClientMessage>) -> Result<Output> {
+    pub async fn send_msg_to(&self, urls: Vec<String>, msg: &ClientMessage) -> Result<Output> {
         Ok(self
             .inner
-            .send_msg_to(urls, msg.as_ref().deref().clone())
+            .send_msg_to(urls, msg.deref().clone())
             .await?
             .into())
     }
@@ -428,32 +424,24 @@ impl Client {
     ///
     /// Send event to all relays with `WRITE` flag.
     /// If `gossip` is enabled (see `Options`) the event will be sent also to NIP65 relays (automatically discovered).
-    pub async fn send_event(&self, event: Arc<Event>) -> Result<SendEventOutput> {
-        Ok(self
-            .inner
-            .send_event(event.as_ref().deref().clone())
-            .await?
-            .into())
+    pub async fn send_event(&self, event: &Event) -> Result<SendEventOutput> {
+        Ok(self.inner.send_event(event.deref().clone()).await?.into())
     }
 
     /// Send event to specific relays.
-    pub async fn send_event_to(
-        &self,
-        urls: Vec<String>,
-        event: Arc<Event>,
-    ) -> Result<SendEventOutput> {
+    pub async fn send_event_to(&self, urls: Vec<String>, event: &Event) -> Result<SendEventOutput> {
         Ok(self
             .inner
-            .send_event_to(urls, event.as_ref().deref().clone())
+            .send_event_to(urls, event.deref().clone())
             .await?
             .into())
     }
 
     /// Signs the `EventBuilder` into an `Event` using the `NostrSigner`
-    pub async fn sign_event_builder(&self, builder: Arc<EventBuilder>) -> Result<Arc<Event>> {
+    pub async fn sign_event_builder(&self, builder: &EventBuilder) -> Result<Arc<Event>> {
         Ok(Arc::new(
             self.inner
-                .sign_event_builder(builder.as_ref().deref().clone())
+                .sign_event_builder(builder.deref().clone())
                 .await?
                 .into(),
         ))
@@ -476,11 +464,11 @@ impl Client {
     pub async fn send_event_builder_to(
         &self,
         urls: Vec<String>,
-        builder: Arc<EventBuilder>,
+        builder: &EventBuilder,
     ) -> Result<SendEventOutput> {
         Ok(self
             .inner
-            .send_event_builder_to(urls, builder.as_ref().deref().clone())
+            .send_event_builder_to(urls, builder.deref().clone())
             .await?
             .into())
     }
@@ -505,12 +493,8 @@ impl Client {
         ))
     }
 
-    pub async fn set_metadata(&self, metadata: Arc<Metadata>) -> Result<SendEventOutput> {
-        Ok(self
-            .inner
-            .set_metadata(metadata.as_ref().deref())
-            .await?
-            .into())
+    pub async fn set_metadata(&self, metadata: &Metadata) -> Result<SendEventOutput> {
+        Ok(self.inner.set_metadata(metadata.deref()).await?.into())
     }
 
     /// Send a private direct message
@@ -585,14 +569,14 @@ impl Client {
     pub async fn gift_wrap(
         &self,
         receiver: &PublicKey,
-        rumor: Arc<EventBuilder>,
+        rumor: &EventBuilder,
         extra_tags: Vec<Arc<Tag>>,
     ) -> Result<SendEventOutput> {
         Ok(self
             .inner
             .gift_wrap(
                 receiver.deref(),
-                rumor.as_ref().deref().clone(),
+                rumor.deref().clone(),
                 extra_tags.into_iter().map(|t| t.as_ref().deref().clone()),
             )
             .await?

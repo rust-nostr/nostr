@@ -9,7 +9,6 @@ use nostr::JsonUtil;
 use uniffi::{Object, Record};
 
 use crate::error::Result;
-use crate::protocol::helper::unwrap_or_clone_arc;
 
 /// Payload for creating or updating stall
 #[derive(Record)]
@@ -246,15 +245,15 @@ impl ShippingMethod {
     }
 
     /// Set the name of the shipping method
-    pub fn name(self: Arc<Self>, name: String) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn name(&self, name: String) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.name(name);
         builder
     }
 
     /// Add a region to the shipping method
-    pub fn regions(self: Arc<Self>, regions: Vec<String>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn regions(&self, regions: Vec<String>) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.regions(regions);
         builder
     }

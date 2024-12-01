@@ -4,7 +4,6 @@
 
 use std::net::SocketAddr;
 use std::ops::Deref;
-use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_sdk::client::options;
@@ -12,7 +11,6 @@ use nostr_sdk::pool;
 use uniffi::{Enum, Object};
 
 use crate::error::Result;
-use crate::protocol::helper::unwrap_or_clone_arc;
 use crate::relay::{ConnectionMode, RelayFilteringMode, RelayLimits};
 
 #[derive(Clone, Object)]
@@ -46,33 +44,33 @@ impl Options {
     /// Automatically start connection with relays (default: false)
     ///
     /// When set to `true`, there isn't the need of calling the connect methods.
-    pub fn autoconnect(self: Arc<Self>, val: bool) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn autoconnect(&self, val: bool) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.autoconnect(val);
         builder
     }
 
-    pub fn difficulty(self: Arc<Self>, difficulty: u8) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn difficulty(&self, difficulty: u8) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.difficulty(difficulty);
         builder
     }
 
     /// Minimum POW difficulty for received events
-    pub fn min_pow(self: Arc<Self>, difficulty: u8) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn min_pow(&self, difficulty: u8) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.min_pow(difficulty);
         builder
     }
 
-    pub fn req_filters_chunk_size(self: Arc<Self>, req_filters_chunk_size: u8) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn req_filters_chunk_size(&self, req_filters_chunk_size: u8) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.req_filters_chunk_size(req_filters_chunk_size);
         builder
     }
 
-    pub fn timeout(self: Arc<Self>, timeout: Duration) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn timeout(&self, timeout: Duration) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.timeout(timeout);
         builder
     }
@@ -80,29 +78,29 @@ impl Options {
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
-    pub fn automatic_authentication(self: Arc<Self>, enabled: bool) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn automatic_authentication(&self, enabled: bool) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.automatic_authentication(enabled);
         builder
     }
 
     /// Enable gossip model (default: false)
-    pub fn gossip(self: Arc<Self>, enabled: bool) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn gossip(&self, enabled: bool) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.gossip(enabled);
         builder
     }
 
     /// Connection
-    pub fn connection(self: Arc<Self>, connection: &Connection) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn connection(&self, connection: &Connection) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.connection(connection.deref().clone());
         builder
     }
 
     /// Set custom relay limits
-    pub fn relay_limits(self: Arc<Self>, limits: &RelayLimits) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn relay_limits(&self, limits: &RelayLimits) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.relay_limits(limits.deref().clone());
         builder
     }
@@ -110,15 +108,15 @@ impl Options {
     /// Set max latency (default: None)
     ///
     /// Relays with an avg. latency greater that this value will be skipped.
-    pub fn max_avg_latency(self: Arc<Self>, max: Duration) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn max_avg_latency(&self, max: Duration) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.max_avg_latency(max);
         builder
     }
 
     /// Set filtering mode (default: blacklist)
-    pub fn filtering_mode(self: Arc<Self>, mode: RelayFilteringMode) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn filtering_mode(&self, mode: RelayFilteringMode) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.filtering_mode(mode.into());
         builder
     }
@@ -167,23 +165,23 @@ impl Connection {
     }
 
     /// Set connection mode (default: direct)
-    pub fn mode(self: Arc<Self>, mode: ConnectionMode) -> Result<Self> {
+    pub fn mode(&self, mode: ConnectionMode) -> Result<Self> {
         let mode: pool::ConnectionMode = mode.try_into()?;
-        let mut builder = unwrap_or_clone_arc(self);
+        let mut builder = self.clone();
         builder.inner = builder.inner.mode(mode);
         Ok(builder)
     }
 
     /// Set connection target (default: all)
-    pub fn target(self: Arc<Self>, target: ConnectionTarget) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn target(&self, target: ConnectionTarget) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.target(target.into());
         builder
     }
 
     /// Set proxy (ex. `127.0.0.1:9050`)
-    pub fn addr(self: Arc<Self>, addr: &str) -> Result<Self> {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn addr(&self, addr: &str) -> Result<Self> {
+        let mut builder = self.clone();
         let addr: SocketAddr = addr.parse()?;
         builder.inner = builder.inner.proxy(addr);
         Ok(builder)
@@ -194,8 +192,8 @@ impl Connection {
 #[uniffi::export]
 impl Connection {
     /// Use embedded tor client
-    pub fn embedded_tor(self: Arc<Self>) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn embedded_tor(&self) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.embedded_tor();
         builder
     }
@@ -205,8 +203,8 @@ impl Connection {
 #[uniffi::export]
 impl Connection {
     /// Use embedded tor client
-    pub fn embedded_tor(self: Arc<Self>, data_path: String) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn embedded_tor(&self, data_path: String) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.embedded_tor(data_path);
         builder
     }

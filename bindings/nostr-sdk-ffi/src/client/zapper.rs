@@ -10,7 +10,6 @@ use nostr_sdk::{client, nwc};
 use uniffi::Object;
 
 use crate::nwc::NWC;
-use crate::protocol::helper::unwrap_or_clone_arc;
 use crate::protocol::nips::nip57::ZapType;
 use crate::protocol::{EventId, PublicKey};
 
@@ -32,7 +31,7 @@ impl Deref for ZapEntity {
 #[uniffi::export]
 impl ZapEntity {
     #[uniffi::constructor]
-    pub fn event(event_id: Arc<EventId>) -> Self {
+    pub fn event(event_id: &EventId) -> Self {
         Self {
             inner: client::ZapEntity::Event(**event_id),
         }
@@ -105,8 +104,8 @@ impl ZapDetails {
     }
 
     /// Add message
-    pub fn message(self: Arc<Self>, message: String) -> Self {
-        let mut builder = unwrap_or_clone_arc(self);
+    pub fn message(&self, message: String) -> Self {
+        let mut builder = self.clone();
         builder.inner = builder.inner.message(message);
         builder
     }
