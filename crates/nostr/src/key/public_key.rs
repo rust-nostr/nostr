@@ -4,7 +4,7 @@
 
 //! Public key
 
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use core::fmt;
 use core::ops::Deref;
 use core::str::FromStr;
@@ -15,6 +15,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use super::Error;
 use crate::nips::nip19::FromBech32;
 use crate::nips::nip21::NostrURI;
+use crate::util::hex;
 
 /// Public Key
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -91,7 +92,7 @@ impl PublicKey {
     /// Get public key as `hex` string
     #[inline]
     pub fn to_hex(&self) -> String {
-        self.inner.to_string()
+        hex::encode(&self.to_bytes())
     }
 
     /// Get public key as `bytes`

@@ -50,13 +50,9 @@ const fn from_digit(num: u8) -> u8 {
 
 /// Hex encode
 #[inline]
-pub fn encode<T>(data: T) -> String
-where
-    T: AsRef<[u8]>,
-{
-    let bytes: &[u8] = data.as_ref();
-    let mut hex: String = String::with_capacity(2 * bytes.len());
-    for byte in bytes.iter() {
+pub fn encode(data: &[u8]) -> String {
+    let mut hex: String = String::with_capacity(2 * data.len());
+    for byte in data.iter() {
         hex.push(from_digit(byte >> 4) as char);
         hex.push(from_digit(byte & 0xF) as char);
     }
@@ -126,7 +122,7 @@ mod tests {
 
     #[test]
     fn test_encode() {
-        assert_eq!(encode("foobar"), "666f6f626172");
+        assert_eq!(encode(b"foobar"), "666f6f626172");
     }
 
     #[test]

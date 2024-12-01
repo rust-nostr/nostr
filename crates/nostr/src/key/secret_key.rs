@@ -4,7 +4,7 @@
 
 //! Secret key
 
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use core::ops::{Deref, DerefMut};
 use core::str::FromStr;
 
@@ -19,6 +19,7 @@ use crate::nips::nip49::{self, EncryptedSecretKey, KeySecurity};
 use crate::prelude::rand::rngs::OsRng;
 use crate::prelude::rand::Rng;
 use crate::secp256k1::{Secp256k1, Signing};
+use crate::util::hex;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 
@@ -114,7 +115,7 @@ impl SecretKey {
     /// Get secret key as `hex` string
     #[inline]
     pub fn to_secret_hex(&self) -> String {
-        self.inner.display_secret().to_string()
+        hex::encode(self.as_secret_bytes())
     }
 
     /// Get secret key as `bytes`
