@@ -21,14 +21,13 @@ use crate::database::{JsEvents, JsNostrDatabase};
 use crate::duration::JsDuration;
 use crate::error::{into_err, Result};
 use crate::pool::output::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
-use crate::pool::JsRelayPool;
 use crate::protocol::event::{JsEvent, JsEventBuilder, JsTag};
 use crate::protocol::key::JsPublicKey;
 use crate::protocol::message::{JsClientMessage, JsRelayMessage};
 use crate::protocol::nips::nip59::JsUnwrappedGift;
 use crate::protocol::types::{JsFilter, JsMetadata};
 use crate::relay::filtering::JsRelayFiltering;
-use crate::relay::options::{JsSubscribeAutoCloseOptions, JsSyncOptions};
+use crate::relay::options::{JsRelayOptions, JsSubscribeAutoCloseOptions, JsSyncOptions};
 use crate::relay::{JsRelay, JsRelayArray};
 use crate::signer::JsNostrSigner;
 
@@ -93,11 +92,6 @@ impl JsClient {
     }
 
     #[wasm_bindgen(getter)]
-    pub fn pool(&self) -> JsRelayPool {
-        self.inner.pool().clone().into()
-    }
-
-    #[wasm_bindgen(getter)]
     pub fn database(&self) -> JsNostrDatabase {
         self.inner.database().clone().into()
     }
@@ -146,6 +140,15 @@ impl JsClient {
     #[wasm_bindgen(js_name = addRelay)]
     pub async fn add_relay(&self, url: String) -> Result<bool> {
         self.inner.add_relay(url).await.map_err(into_err)
+    }
+
+    #[wasm_bindgen(js_name = addRelayWithOpts)]
+    pub async fn add_relay_with_opts(&self, url: &str, opts: &JsRelayOptions) -> Result<bool> {
+        self.inner
+            .pool()
+            .add_relay(url, opts.deref().clone())
+            .await
+            .map_err(into_err)
     }
 
     /// Add discovery relay
