@@ -112,7 +112,6 @@ impl EventId {
     }
 
     /// Parse from hex string
-    #[inline]
     pub fn from_hex(hex: &str) -> Result<Self, Error> {
         let mut bytes: [u8; Self::LEN] = [0u8; Self::LEN];
         hex::decode_to_slice(hex, &mut bytes)?;
@@ -120,7 +119,6 @@ impl EventId {
     }
 
     /// Parse from bytes
-    #[inline]
     pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
         // Check len
         if slice.len() != Self::LEN {
@@ -166,7 +164,6 @@ impl FromStr for EventId {
     type Err = Error;
 
     /// Try to parse [EventId] from `hex` or `bech32`
-    #[inline]
     fn from_str(id: &str) -> Result<Self, Self::Err> {
         Self::parse(id)
     }

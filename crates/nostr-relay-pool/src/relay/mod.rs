@@ -127,20 +127,17 @@ impl Ord for Relay {
 
 impl Relay {
     /// Create new relay with **default** options and in-memory database
-    #[inline]
     pub fn new(url: RelayUrl) -> Self {
         Self::with_opts(url, RelayOptions::default())
     }
 
     /// Create new relay with default in-memory database and custom options
-    #[inline]
     pub fn with_opts(url: RelayUrl, opts: RelayOptions) -> Self {
         let database = Arc::new(MemoryDatabase::default());
         Self::custom(url, database, opts)
     }
 
     /// Create new relay with **custom** database and/or options
-    #[inline]
     pub fn custom<T>(url: RelayUrl, database: T, opts: RelayOptions) -> Self
     where
         T: IntoNostrDatabase,
@@ -150,7 +147,6 @@ impl Relay {
         Self::internal_custom(url, database, filtering, opts)
     }
 
-    #[inline]
     pub(crate) fn internal_custom(
         url: RelayUrl,
         database: Arc<dyn NostrDatabase>,

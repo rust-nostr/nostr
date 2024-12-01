@@ -79,7 +79,6 @@ pub struct UnsignedEvent {
 
 impl UnsignedEvent {
     /// Construct new unsigned event
-    #[inline]
     pub fn new<I, S>(
         public_key: PublicKey,
         created_at: Timestamp,

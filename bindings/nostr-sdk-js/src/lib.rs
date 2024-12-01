@@ -49,13 +49,11 @@ pub struct JsNostrLibrary;
 
 #[wasm_bindgen(js_class = NostrLibrary)]
 impl JsNostrLibrary {
-    #[inline]
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self
     }
 
-    #[inline]
     #[wasm_bindgen(js_name = gitHashVersion)]
     pub fn git_hash_version(&self) -> Option<String> {
         option_env!("GIT_HASH").map(|v| v.to_string())

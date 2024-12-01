@@ -90,7 +90,6 @@ impl WebDatabase {
     }
 
     /// Open database with **unlimited** capacity
-    #[inline]
     pub async fn open<S>(name: S) -> Result<Self, DatabaseError>
     where
         S: AsRef<str>,
@@ -99,7 +98,6 @@ impl WebDatabase {
     }
 
     /// Open database with **limited** capacity
-    #[inline]
     pub async fn open_bounded<S>(name: S, max_capacity: usize) -> Result<Self, DatabaseError>
     where
         S: AsRef<str>,
@@ -369,14 +367,12 @@ impl_nostr_database!({
         Backend::IndexedDB
     }
 
-    #[inline]
     async fn wipe(&self) -> Result<(), DatabaseError> {
         self._wipe().await.map_err(DatabaseError::backend)
     }
 });
 
 impl_nostr_events_database!({
-    #[inline]
     #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
         self._save_event(event)
@@ -488,7 +484,6 @@ impl_nostr_events_database!({
         Ok(None)
     }
 
-    #[inline]
     #[tracing::instrument(skip_all, level = "trace")]
     async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Event>, DatabaseError> {
         Ok(self.helper.event_by_id(event_id).await)
@@ -498,7 +493,6 @@ impl_nostr_events_database!({
         Ok(self.helper.count(filters).await)
     }
 
-    #[inline]
     #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
         Ok(self.helper.query(filters).await)
@@ -511,7 +505,6 @@ impl_nostr_events_database!({
         Ok(self.helper.negentropy_items(filter).await)
     }
 
-    #[inline]
     async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {
         self._delete(filter).await.map_err(DatabaseError::backend)
     }

@@ -73,7 +73,6 @@ impl RelayChannels {
         }
     }
 
-    #[inline]
     pub fn send_nostr_msg(&self, msg: NostrMessage) -> Result<(), Error> {
         self.nostr
             .0
@@ -83,17 +82,14 @@ impl RelayChannels {
             })
     }
 
-    #[inline]
     pub async fn rx_nostr(&self) -> MutexGuard<'_, Receiver<NostrMessage>> {
         self.nostr.1.lock().await
     }
 
-    #[inline]
     pub fn nostr_queue(&self) -> usize {
         self.nostr.0.max_capacity() - self.nostr.0.capacity()
     }
 
-    #[inline]
     #[cfg(not(target_arch = "wasm32"))]
     pub fn ping(&self, nonce: u64) -> Result<(), Error> {
         self.ping
@@ -104,17 +100,14 @@ impl RelayChannels {
             })
     }
 
-    #[inline]
     pub async fn rx_ping(&self) -> MutexGuard<'_, watch::Receiver<u64>> {
         self.ping.1.lock().await
     }
 
-    #[inline]
     pub async fn rx_service(&self) -> MutexGuard<'_, watch::Receiver<RelayServiceEvent>> {
         self.service.1.lock().await
     }
 
-    #[inline]
     pub fn send_service_msg(&self, event: RelayServiceEvent) -> Result<(), Error> {
         self.service
             .0

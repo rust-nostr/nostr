@@ -300,7 +300,6 @@ impl GossipGraph {
     }
 
     /// Get outbox (write) relays for public keys
-    #[inline]
     pub async fn get_nip65_outbox_relays<'a, I>(&self, public_keys: I) -> HashSet<RelayUrl>
     where
         I: IntoIterator<Item = &'a PublicKey>,
@@ -310,7 +309,6 @@ impl GossipGraph {
     }
 
     /// Get inbox (read) relays for public keys
-    #[inline]
     pub async fn get_nip65_inbox_relays<'a, I>(&self, public_keys: I) -> HashSet<RelayUrl>
     where
         I: IntoIterator<Item = &'a PublicKey>,
@@ -320,7 +318,6 @@ impl GossipGraph {
     }
 
     /// Get NIP17 inbox (read) relays for public keys
-    #[inline]
     pub async fn get_nip17_inbox_relays<'a, I>(&self, public_keys: I) -> HashSet<RelayUrl>
     where
         I: IntoIterator<Item = &'a PublicKey>,
@@ -330,7 +327,6 @@ impl GossipGraph {
     }
 
     /// Map outbox (write) relays for public keys
-    #[inline]
     fn map_nip65_outbox_relays<'a, I>(
         &self,
         txn: &RwLockReadGuard<PublicKeyMap>,
@@ -343,7 +339,6 @@ impl GossipGraph {
     }
 
     /// Map NIP65 inbox (read) relays for public keys
-    #[inline]
     fn map_nip65_inbox_relays<'a, I>(
         &self,
         txn: &RwLockReadGuard<PublicKeyMap>,

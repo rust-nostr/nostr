@@ -106,7 +106,6 @@ pub struct Client {
 }
 
 impl Default for Client {
-    #[inline]
     fn default() -> Self {
         Self::builder().build()
     }
@@ -137,7 +136,6 @@ impl Client {
     /// let keys = Keys::generate();
     /// let client = Client::new(keys);
     /// ```
-    #[inline]
     pub fn new<T>(signer: T) -> Self
     where
         T: IntoNostrSigner,
@@ -187,7 +185,6 @@ impl Client {
     }
 
     /// Update default difficulty for new [`Event`]
-    #[inline]
     pub fn update_difficulty(&self, difficulty: u8) {
         self.opts.update_difficulty(difficulty);
     }
@@ -195,7 +192,6 @@ impl Client {
     /// Update minimum POW difficulty for received events
     ///
     /// Events with a POW lower than the current value will be ignored to prevent resources exhaustion.
-    #[inline]
     pub fn update_min_pow_difficulty(&self, difficulty: u8) {
         self.opts.update_min_pow_difficulty(difficulty);
     }
@@ -203,7 +199,6 @@ impl Client {
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
-    #[inline]
     pub fn automatic_authentication(&self, enable: bool) {
         self.opts.update_automatic_authentication(enable);
     }

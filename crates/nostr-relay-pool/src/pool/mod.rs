@@ -89,13 +89,11 @@ impl StealthClone for RelayPool {
 
 impl RelayPool {
     /// Create new `RelayPool`
-    #[inline]
     pub fn new(opts: RelayPoolOptions) -> Self {
         Self::with_database(opts, Arc::new(MemoryDatabase::default()))
     }
 
     /// New with database
-    #[inline]
     pub fn with_database<D>(opts: RelayPoolOptions, database: D) -> Self
     where
         D: IntoNostrDatabase,
@@ -574,6 +572,7 @@ impl RelayPool {
     /// Targeted streaming events
     ///
     /// Stream events from specific relays with specific filters
+    #[inline]
     pub async fn stream_events_targeted<I, U>(
         &self,
         source: I,

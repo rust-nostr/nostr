@@ -199,7 +199,6 @@ impl Event {
     }
 
     /// Verify both [`EventId`] and [`Signature`]
-    #[inline]
     pub fn verify_with_ctx<C>(&self, secp: &Secp256k1<C>) -> Result<(), Error>
     where
         C: Verification,

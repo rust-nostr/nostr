@@ -75,7 +75,6 @@ impl Hash for Tag {
 }
 
 impl Tag {
-    #[inline]
     fn new(buf: Vec<String>, standardized: Option<TagStandard>) -> Self {
         Self {
             buf,
@@ -83,7 +82,6 @@ impl Tag {
         }
     }
 
-    #[inline]
     fn new_with_empty_cell(buf: Vec<String>) -> Self {
         Self {
             buf,
@@ -112,13 +110,11 @@ impl Tag {
     }
 
     /// Construct from standardized tag
-    #[inline]
     pub fn from_standardized(standardized: TagStandard) -> Self {
         Self::new(standardized.clone().to_vec(), Some(standardized))
     }
 
     /// Construct from standardized tag without initialize cell (avoid a clone)
-    #[inline]
     pub fn from_standardized_without_cell(standardized: TagStandard) -> Self {
         Self::new_with_empty_cell(standardized.to_vec())
     }
@@ -147,7 +143,6 @@ impl Tag {
     }
 
     /// Get reference of standardized tag
-    #[inline]
     pub fn as_standardized(&self) -> Option<&TagStandard> {
         self.standardized
             .get_or_init(|| TagStandard::parse(self.as_slice()).ok())
@@ -177,7 +172,6 @@ impl Tag {
     /// Compose `["e", "<event-id">]`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[inline]
     pub fn event(event_id: EventId) -> Self {
         Self::from_standardized_without_cell(TagStandard::event(event_id))
     }
@@ -185,7 +179,6 @@ impl Tag {
     /// Compose `["p", "<public-key>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[inline]
     pub fn public_key(public_key: PublicKey) -> Self {
         Self::from_standardized_without_cell(TagStandard::public_key(public_key))
     }
@@ -193,7 +186,6 @@ impl Tag {
     /// Compose `["d", "<identifier>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[inline]
     pub fn identifier<T>(identifier: T) -> Self
     where
         T: Into<String>,
@@ -204,7 +196,6 @@ impl Tag {
     /// Compose `["a", "<coordinate>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[inline]
     pub fn coordinate(coordinate: Coordinate) -> Self {
         Self::from_standardized_without_cell(TagStandard::Coordinate {
             coordinate,
@@ -216,7 +207,6 @@ impl Tag {
     /// Compose `["nonce", "<nonce>", "<difficulty>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
-    #[inline]
     pub fn pow(nonce: u128, difficulty: u8) -> Self {
         Self::from_standardized_without_cell(TagStandard::POW { nonce, difficulty })
     }
@@ -224,7 +214,6 @@ impl Tag {
     /// Compose `["expiration", "<timestamp>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
-    #[inline]
     pub fn expiration(timestamp: Timestamp) -> Self {
         Self::from_standardized_without_cell(TagStandard::Expiration(timestamp))
     }
@@ -232,7 +221,6 @@ impl Tag {
     /// Compose `["e", "<event-id>", "<report>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
-    #[inline]
     pub fn event_report(event_id: EventId, report: Report) -> Self {
         Self::from_standardized_without_cell(TagStandard::EventReport(event_id, report))
     }
@@ -240,7 +228,6 @@ impl Tag {
     /// Compose `["p", "<public-key>", "<report>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
-    #[inline]
     pub fn public_key_report(public_key: PublicKey, report: Report) -> Self {
         Self::from_standardized_without_cell(TagStandard::PublicKeyReport(public_key, report))
     }
@@ -248,7 +235,6 @@ impl Tag {
     /// Compose `["r", "<relay-url>", "<metadata>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
-    #[inline]
     pub fn relay_metadata(relay_url: RelayUrl, metadata: Option<RelayMetadata>) -> Self {
         Self::from_standardized_without_cell(TagStandard::RelayMetadata {
             relay_url,
@@ -257,7 +243,6 @@ impl Tag {
     }
 
     /// Compose `["t", "<hashtag>"]` tag
-    #[inline]
     pub fn hashtag<T>(hashtag: T) -> Self
     where
         T: Into<String>,
@@ -266,7 +251,6 @@ impl Tag {
     }
 
     /// Compose `["r", "<value>"]` tag
-    #[inline]
     pub fn reference<T>(reference: T) -> Self
     where
         T: Into<String>,
@@ -275,7 +259,6 @@ impl Tag {
     }
 
     /// Compose `["title", "<title>"]` tag
-    #[inline]
     pub fn title<T>(title: T) -> Self
     where
         T: Into<String>,
@@ -284,13 +267,11 @@ impl Tag {
     }
 
     /// Compose image tag
-    #[inline]
     pub fn image(url: Url, dimensions: Option<ImageDimensions>) -> Self {
         Self::from_standardized_without_cell(TagStandard::Image(url, dimensions))
     }
 
     /// Compose `["description", "<description>"]` tag
-    #[inline]
     pub fn description<T>(description: T) -> Self
     where
         T: Into<String>,
@@ -301,7 +282,6 @@ impl Tag {
     /// Protected event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
-    #[inline]
     pub fn protected() -> Self {
         Self::from_standardized_without_cell(TagStandard::Protected)
     }
@@ -311,7 +291,6 @@ impl Tag {
     /// JSON: `["alt", "<summary>"]`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
-    #[inline]
     pub fn alt<T>(summary: T) -> Self
     where
         T: Into<String>,
@@ -337,7 +316,6 @@ impl Tag {
     }
 
     /// Check if is a standard event tag with `root` marker
-    #[inline]
     pub fn is_root(&self) -> bool {
         matches!(
             self.as_standardized(),
@@ -349,7 +327,6 @@ impl Tag {
     }
 
     /// Check if is a standard event tag with `reply` marker
-    #[inline]
     pub fn is_reply(&self) -> bool {
         matches!(
             self.as_standardized(),

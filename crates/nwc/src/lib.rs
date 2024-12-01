@@ -45,7 +45,6 @@ pub struct NWC {
 
 impl NWC {
     /// New `NWC` client
-    #[inline]
     pub fn new(uri: NostrWalletConnectURI) -> Self {
         Self::with_opts(uri, NostrWalletConnectOptions::default())
     }
@@ -200,12 +199,10 @@ impl NWC {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrZapper for NWC {
-    #[inline]
     fn backend(&self) -> ZapperBackend {
         ZapperBackend::NWC
     }
 
-    #[inline]
     async fn pay(&self, invoice: String) -> Result<(), ZapperError> {
         let request: PayInvoiceRequest = PayInvoiceRequest::new(invoice);
         self.pay_invoice(request)
