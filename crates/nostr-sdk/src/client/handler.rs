@@ -20,28 +20,31 @@ impl Client {
             let mut notifications = client.pool.notifications();
             while let Ok(notification) = notifications.recv().await {
                 match notification {
-                    RelayPoolNotification::Message { relay_url, message } => {
+                    // Check if relay message is AUTH
+                    RelayPoolNotification::Message {
+                        relay_url,
+                        message: RelayMessage::Auth { challenge },
+                    } => {
                         // Check if auto authentication (NIP42) is enabled
                         if client.opts.is_nip42_auto_authentication_enabled() {
-                            if let RelayMessage::Auth { challenge } = message {
-                                match client.auth(challenge, relay_url.clone()).await {
-                                    Ok(..) => {
-                                        tracing::info!("Authenticated to '{relay_url}' relay.");
+                            // Auth
+                            match client.auth(challenge, relay_url.clone()).await {
+                                Ok(..) => {
+                                    tracing::info!("Authenticated to '{relay_url}' relay.");
 
-                                        if let Ok(relay) = client.relay(relay_url).await {
-                                            if let Err(e) = relay.resubscribe().await {
-                                                tracing::error!(
-                                                    "Impossible to resubscribe to '{}': {e}",
-                                                    relay.url()
-                                                );
-                                            }
+                                    if let Ok(relay) = client.relay(relay_url).await {
+                                        if let Err(e) = relay.resubscribe().await {
+                                            tracing::error!(
+                                                "Impossible to resubscribe to '{}': {e}",
+                                                relay.url()
+                                            );
                                         }
                                     }
-                                    Err(e) => {
-                                        tracing::error!(
-                                            "Can't authenticate to '{relay_url}' relay: {e}"
-                                        );
-                                    }
+                                }
+                                Err(e) => {
+                                    tracing::error!(
+                                        "Can't authenticate to '{relay_url}' relay: {e}"
+                                    );
                                 }
                             }
                         }
