@@ -19,7 +19,7 @@ pub struct Output {
     /// Set of relays that success
     pub success: Vec<String>,
     /// Map of relays that failed, with related errors.
-    pub failed: HashMap<String, Option<String>>,
+    pub failed: HashMap<String, String>,
 }
 
 impl From<pool::Output<()>> for Output {
@@ -87,7 +87,7 @@ impl From<pool::Output<pool::Reconciliation>> for ReconciliationOutput {
     }
 }
 
-fn convert_output(success: HashSet<RelayUrl>, failed: HashMap<RelayUrl, Option<String>>) -> Output {
+fn convert_output(success: HashSet<RelayUrl>, failed: HashMap<RelayUrl, String>) -> Output {
     Output {
         success: success.into_iter().map(|u| u.to_string()).collect(),
         failed: failed

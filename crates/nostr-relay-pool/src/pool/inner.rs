@@ -394,7 +394,7 @@ impl InnerRelayPool {
                     output.success.insert(url);
                 }
                 Err(e) => {
-                    output.failed.insert(url, Some(e.to_string()));
+                    output.failed.insert(url, e.to_string());
                 }
             }
         }
@@ -492,7 +492,7 @@ impl InnerRelayPool {
                     output.success.insert(url);
                 }
                 Err(e) => {
-                    output.failed.insert(url, Some(e.to_string()));
+                    output.failed.insert(url, e.to_string());
                 }
             }
         }
@@ -634,7 +634,7 @@ impl InnerRelayPool {
                     output.success.insert(url);
                 }
                 Err(e) => {
-                    output.failed.insert(url, Some(e.to_string()));
+                    output.failed.insert(url, e.to_string());
                 }
             }
         }
@@ -775,7 +775,7 @@ impl InnerRelayPool {
                     output.merge(reconciliation);
                 }
                 Err(e) => {
-                    output.failed.insert(url, Some(e.to_string()));
+                    output.failed.insert(url, e.to_string());
                 }
             }
         }

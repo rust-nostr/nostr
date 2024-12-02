@@ -16,7 +16,7 @@ pub struct JsFailedOutputItem {
     #[wasm_bindgen(getter_with_clone)]
     pub url: String,
     #[wasm_bindgen(getter_with_clone)]
-    pub error: Option<String>,
+    pub error: String,
 }
 
 /// Output
@@ -106,10 +106,7 @@ impl From<Output<Reconciliation>> for JsReconciliationOutput {
     }
 }
 
-fn convert_output(
-    success: HashSet<RelayUrl>,
-    failed: HashMap<RelayUrl, Option<String>>,
-) -> JsOutput {
+fn convert_output(success: HashSet<RelayUrl>, failed: HashMap<RelayUrl, String>) -> JsOutput {
     JsOutput {
         success: success.into_iter().map(|u| u.to_string()).collect(),
         failed: failed

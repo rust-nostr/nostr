@@ -21,7 +21,7 @@ where
     /// Set of relays that success
     pub success: HashSet<RelayUrl>,
     /// Map of relays that failed, with related errors.
-    pub failed: HashMap<RelayUrl, Option<String>>,
+    pub failed: HashMap<RelayUrl, String>,
 }
 
 impl<T> Deref for Output<T>

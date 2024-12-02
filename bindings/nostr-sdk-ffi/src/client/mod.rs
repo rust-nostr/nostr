@@ -14,16 +14,17 @@ use uniffi::Object;
 
 mod builder;
 mod options;
+mod output;
 pub mod zapper;
 
 pub use self::builder::ClientBuilder;
 pub use self::options::Options;
+use self::output::{Output, ReconciliationOutput, SendEventOutput, SubscribeOutput};
 use self::zapper::{ZapDetails, ZapEntity};
 use crate::database::events::Events;
 use crate::database::NostrDatabase;
 use crate::error::Result;
 use crate::notifications::HandleNotification;
-use crate::pool::output::{Output, ReconciliationOutput, SendEventOutput, SubscribeOutput};
 use crate::protocol::nips::nip59::UnwrappedGift;
 use crate::protocol::signer::NostrSigner;
 use crate::protocol::{ClientMessage, Event, EventBuilder, Filter, Metadata, PublicKey, Tag};

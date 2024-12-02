@@ -12,15 +12,16 @@ use wasm_bindgen::prelude::*;
 
 pub mod builder;
 pub mod options;
+pub mod output;
 pub mod zapper;
 
 pub use self::builder::JsClientBuilder;
+use self::output::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
 use self::zapper::{JsZapDetails, JsZapEntity};
 use crate::abortable::JsAbortHandle;
 use crate::database::{JsEvents, JsNostrDatabase};
 use crate::duration::JsDuration;
 use crate::error::{into_err, Result};
-use crate::pool::output::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
 use crate::protocol::event::{JsEvent, JsEventBuilder, JsTag};
 use crate::protocol::key::JsPublicKey;
 use crate::protocol::message::{JsClientMessage, JsRelayMessage};
