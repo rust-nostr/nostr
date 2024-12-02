@@ -42,8 +42,9 @@ impl AtomicDestroyer for InnerRelayPool {
     fn on_destroy(&self) {
         let pool = self.clone();
         task::spawn(async move {
-            if let Err(e) = pool.shutdown().await {
-                tracing::error!("Impossible to shutdown pool: {e}");
+            match pool.shutdown().await {
+                Ok(()) => tracing::debug!("Relay pool destroyed."),
+                Err(e) => tracing::error!(error = %e, "Impossible to destroy pool."),
             }
         });
     }
@@ -75,9 +76,6 @@ impl InnerRelayPool {
 
         // Mark as shutdown
         self.shutdown.store(true, Ordering::SeqCst);
-
-        // Log
-        tracing::info!("Relay pool shutdown");
 
         Ok(())
     }
@@ -900,6 +898,7 @@ impl InnerRelayPool {
                             },
                         ));
                     }
+                    // TODO: remove this
                     Err(e) => tracing::error!("{e}"),
                 }
             }
@@ -910,7 +909,7 @@ impl InnerRelayPool {
             // Iter results
             for (url, result) in urls.into_iter().zip(list.into_iter()) {
                 if let Err(e) = result {
-                    tracing::error!("Failed to stream events from '{url}': {e}");
+                    tracing::error!(url = %url, error = %e, "Failed to stream events.");
                 }
             }
         });

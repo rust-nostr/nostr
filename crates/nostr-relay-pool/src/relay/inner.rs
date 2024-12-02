@@ -160,7 +160,7 @@ pub(crate) struct InnerRelay {
 impl AtomicDestroyer for InnerRelay {
     fn on_destroy(&self) {
         if let Err(e) = self.disconnect() {
-            tracing::error!("Impossible to shutdown '{}': {e}", self.url);
+            tracing::error!(url = %self.url, error = %e, "Impossible to destroy relay.");
         }
     }
 }
@@ -217,8 +217,8 @@ impl InnerRelay {
         // Log
         if log {
             match status {
-                RelayStatus::Initialized => tracing::trace!("'{}' initialized.", self.url),
-                RelayStatus::Pending => tracing::trace!("'{}' is pending.", self.url),
+                RelayStatus::Initialized => tracing::trace!(url = %self.url, "Relay initialized."),
+                RelayStatus::Pending => tracing::trace!(url = %self.url, "Relay is pending."),
                 RelayStatus::Connecting => tracing::debug!("Connecting to '{}'", self.url),
                 RelayStatus::Connected => tracing::info!("Connected to '{}'", self.url),
                 RelayStatus::Disconnected => tracing::info!("Disconnected from '{}'", self.url),
@@ -304,7 +304,7 @@ impl InnerRelay {
                             *d = document
                         }
                         Err(e) => {
-                            tracing::warn!("Can't get information document from '{url}': {e}")
+                            tracing::warn!(url = %url, error = %e, "Can't get information document.")
                         }
                     };
                 });
@@ -449,10 +449,7 @@ impl InnerRelay {
                 self.spawn_and_try_connect(timeout);
 
                 // Wait for status change (connected or disconnected)
-                tracing::debug!(
-                    "Waiting for status change for '{}' relay before continue",
-                    self.url
-                );
+                tracing::debug!(url = %self.url, "Waiting for status change before continue");
                 while let Ok(notification) = notifications.recv().await {
                     if let RelayNotification::RelayStatus {
                         status: RelayStatus::Connected | RelayStatus::Disconnected,
@@ -637,7 +634,7 @@ impl InnerRelay {
                 self.set_status(RelayStatus::Disconnected, false);
 
                 // Log error
-                tracing::error!("Impossible to connect to '{}': {e}", self.url);
+                tracing::error!(url = %self.url, error= %e, "Connection failed.");
             }
         }
     }
@@ -646,7 +643,7 @@ impl InnerRelay {
         // (Re)subscribe to relay
         if self.flags.can_read() {
             if let Err(e) = self.resubscribe().await {
-                tracing::error!("Impossible to subscribe to '{}': {e}", self.url)
+                tracing::error!(url = %self.url, error = %e, "Impossible to subscribe.")
             }
         }
 
@@ -728,7 +725,7 @@ impl InnerRelay {
                         // Set ping as just sent
                         ping.just_sent().await;
 
-                        tracing::debug!("Ping '{}' (nonce: {nonce})", self.url);
+                        tracing::trace!(url = %self.url, nonce = %nonce, "Ping sent.");
                     }
                 }
                 else => break
@@ -759,13 +756,13 @@ impl InnerRelay {
 
                                     // Check if last nonce not match the current one
                                     if last_nonce != nonce {
-                                        tracing::error!("Pong nonce not match: received={nonce}, expected={last_nonce}");
+                                        tracing::error!(url = %self.url, received = %nonce, expected = %last_nonce, "Pong not match.");
                                         break;
                                     }
 
-                                    tracing::debug!(
-                                        "Pong from '{}' match nonce: {nonce}",
-                                        self.url
+                                    tracing::trace!(
+                                        url = %self.url, nonce = %nonce,
+                                        "Pong match"
                                     );
 
                                     // Set ping as replied
@@ -776,16 +773,20 @@ impl InnerRelay {
                                     self.stats.save_latency(sent_at.elapsed());
                                 }
                                 Err(e) => {
-                                    tracing::error!("Can't parse pong nonce: {e:?}");
+                                    tracing::error!(url = %self.url, bytes = format!("{e:?}"), "Can't parse pong");
                                     break;
                                 }
                             }
                         }
                     }
-                    _ => {
-                        let data: Vec<u8> = msg.into_data();
-                        self.handle_relay_message_infallible(&data).await;
+                    WsMessage::Text(json) => {
+                        self.handle_relay_message_infallible(&json).await;
                     }
+                    WsMessage::Binary(_) => {
+                        tracing::warn!(url = %self.url, "Binary messages aren't supported.");
+                    }
+                    #[cfg(not(target_arch = "wasm32"))]
+                    _ => {}
                 }
             }
         }
@@ -831,33 +832,50 @@ impl InnerRelay {
         }
     }
 
-    async fn handle_relay_message_infallible(&self, msg: &[u8]) {
+    async fn handle_relay_message_infallible(&self, msg: &str) {
         match self.handle_relay_message(msg).await {
             Ok(Some(message)) => {
                 match &message {
                     RelayMessage::Notice { message } => {
-                        tracing::warn!("Notice from '{}': {message}", self.url)
+                        tracing::warn!(url = %self.url, msg = %message, "Received NOTICE.")
                     }
                     RelayMessage::Ok {
                         event_id,
                         status,
                         message,
                     } => {
-                        tracing::debug!("Received OK from '{}' for event {event_id}: status={status}, message={message}", self.url);
+                        tracing::debug!(
+                            url = %self.url,
+                            id = %event_id,
+                            status = %status,
+                            msg = %message,
+                            "Received OK."
+                        );
+                    }
+                    RelayMessage::EndOfStoredEvents(id) => {
+                        tracing::debug!(
+                            url = %self.url,
+                            id = %id,
+                            "Received EOSE."
+                        );
                     }
                     RelayMessage::Closed {
-                        subscription_id, ..
+                        subscription_id,
+                        message,
                     } => {
                         tracing::debug!(
-                            "Subscription '{subscription_id}' closed by '{}'",
-                            self.url
+                            url = %self.url,
+                            id = %subscription_id,
+                            msg = %message,
+                            "Subscription closed."
                         );
                         self.subscription_closed(subscription_id).await;
                     }
                     RelayMessage::Auth { challenge } => {
                         tracing::debug!(
-                            "Received '{challenge}' authentication challenge from '{}'",
-                            self.url
+                            url = %self.url,
+                            challenge = %challenge,
+                            "Received auth challenge."
                         );
 
                         // Check if NIP42 auto authentication is enabled
@@ -873,13 +891,14 @@ impl InnerRelay {
                                             false,
                                         );
 
-                                        tracing::info!("Authenticated to '{}' relay.", relay.url);
+                                        tracing::info!(url = %relay.url, "Authenticated to relay.");
 
                                         // TODO: ?
                                         if let Err(e) = relay.resubscribe().await {
                                             tracing::error!(
-                                                "Impossible to resubscribe to '{}': {e}",
-                                                relay.url
+                                                url = %relay.url,
+                                                error = %e,
+                                                "Impossible to resubscribe."
                                             );
                                         }
                                     }
@@ -890,8 +909,9 @@ impl InnerRelay {
                                         );
 
                                         tracing::error!(
-                                            "Can't authenticate to '{}' relay: {e}",
-                                            relay.url
+                                            url = %relay.url,
+                                            error = %e,
+                                            "Can't authenticate to relay."
                                         );
                                     }
                                 }
@@ -905,16 +925,20 @@ impl InnerRelay {
                 self.send_notification(RelayNotification::Message { message }, true);
             }
             Ok(None) | Err(Error::MessageHandle(MessageHandleError::EmptyMsg)) => (),
-            Err(e) => tracing::warn!(
-                "Impossible to handle relay message from '{}': {e}",
-                self.url
+            Err(e) => tracing::error!(
+                url = %self.url,
+                msg = %msg,
+                error = %e,
+                "Impossible to handle relay message."
             ),
         }
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
-    async fn handle_relay_message(&self, msg: &[u8]) -> Result<Option<RelayMessage>, Error> {
+    async fn handle_relay_message(&self, msg: &str) -> Result<Option<RelayMessage>, Error> {
         let size: usize = msg.len();
+
+        tracing::trace!(url = %self.url, size = %size, msg = %msg, "Received new relay message.");
 
         // Update bytes received
         self.stats.add_bytes_received(size);
@@ -929,7 +953,6 @@ impl InnerRelay {
 
         // Deserialize message
         let msg = RawRelayMessage::from_json(msg)?;
-        tracing::trace!("Received message from '{}': {:?}", self.url, msg);
 
         // Handle msg
         match msg {
@@ -1086,7 +1109,6 @@ impl InnerRelay {
         self.batch_msg(vec![msg])
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
     pub fn batch_msg(&self, msgs: Vec<ClientMessage>) -> Result<(), Error> {
         // Perform health checks
         self.health_check()?;
@@ -1461,7 +1483,7 @@ impl InnerRelay {
                         // Unsubscribe
                         this.send_msg(ClientMessage::close(sub_id.clone()))?;
 
-                        tracing::debug!("Subscription {sub_id} auto-closed");
+                        tracing::debug!(id = %sub_id, "Subscription auto-closed.");
                     }
 
                     Ok::<(), Error>(())
@@ -1818,8 +1840,8 @@ impl InnerRelay {
                                 match msg {
                                     Some(query) => {
                                         tracing::debug!(
-                                            "Continue negentropy reconciliation with '{}'",
-                                            self.url
+                                            url = %self.url,
+                                            "Continue negentropy reconciliation."
                                         );
                                         self.send_neg_msg(subscription_id, query.to_hex())?;
                                     }
@@ -1851,8 +1873,10 @@ impl InnerRelay {
                                     output.sent.insert(event_id);
                                 } else {
                                     tracing::error!(
-                                        "Unable to upload event {event_id} to '{}': {message}",
-                                        self.url
+                                        url = %self.url,
+                                        id = %event_id,
+                                        msg = %message,
+                                        "Unable to upload event."
                                     );
 
                                     output
@@ -1902,8 +1926,9 @@ impl InnerRelay {
                                         // Event not found
                                     }
                                     Err(e) => tracing::error!(
-                                        "Couldn't upload event to '{}': {e}",
-                                        self.url
+                                        url = %self.url,
+                                        error = %e,
+                                        "Couldn't upload event."
                                     ),
                                 }
                             }
@@ -1978,7 +2003,7 @@ impl InnerRelay {
             }
         }
 
-        tracing::info!("Negentropy reconciliation terminated for {}", self.url);
+        tracing::info!(url = %self.url, "Negentropy reconciliation terminated.");
 
         Ok(())
     }
@@ -2117,8 +2142,8 @@ impl InnerRelay {
                                 match msg {
                                     Some(query) => {
                                         tracing::debug!(
-                                            "Continue negentropy reconciliation with '{}'",
-                                            self.url
+                                            url = %self.url,
+                                            "Continue deprecated negentropy reconciliation."
                                         );
                                         self.send_neg_msg(subscription_id, query.to_hex())?;
                                     }
@@ -2150,8 +2175,10 @@ impl InnerRelay {
                                     output.sent.insert(event_id);
                                 } else {
                                     tracing::error!(
-                                        "Unable to upload event {event_id} to '{}': {message}",
-                                        self.url
+                                        url = %self.url,
+                                        id = %event_id,
+                                        msg = %message,
+                                        "Unable to upload event."
                                     );
 
                                     output
@@ -2201,8 +2228,9 @@ impl InnerRelay {
                                         // Event not found
                                     }
                                     Err(e) => tracing::error!(
-                                        "Couldn't upload event to {}: {e}",
-                                        self.url
+                                        url = %self.url,
+                                        error = %e,
+                                        "Couldn't upload event."
                                     ),
                                 }
                             }
@@ -2274,7 +2302,7 @@ impl InnerRelay {
             }
         }
 
-        tracing::info!("Negentropy reconciliation terminated for {}", self.url);
+        tracing::info!(url = %self.url, "Deprecated negentropy reconciliation terminated.");
 
         Ok(())
     }
