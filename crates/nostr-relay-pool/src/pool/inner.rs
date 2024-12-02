@@ -411,31 +411,7 @@ impl InnerRelayPool {
         self.send_event_to(urls, event).await
     }
 
-    pub async fn batch_event(&self, events: Vec<Event>) -> Result<Output<()>, Error> {
-        let urls: Vec<RelayUrl> = self.write_relay_urls().await;
-        self.batch_event_to(urls, events).await
-    }
-
     pub async fn send_event_to<I, U>(&self, urls: I, event: Event) -> Result<Output<EventId>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
-        let event_id: EventId = event.id;
-        let output: Output<()> = self.batch_event_to(urls, vec![event]).await?;
-        Ok(Output {
-            val: event_id,
-            success: output.success,
-            failed: output.failed,
-        })
-    }
-
-    pub async fn batch_event_to<I, U>(
-        &self,
-        urls: I,
-        events: Vec<Event>,
-    ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -464,21 +440,23 @@ impl InnerRelayPool {
             return Err(Error::RelayNotFound);
         }
 
-        // Save events into database
-        for event in events.iter() {
-            self.database.save_event(event).await?;
-        }
+        // Save event into database
+        self.database.save_event(&event).await?;
 
         let mut urls: Vec<RelayUrl> = Vec::with_capacity(set.len());
         let mut futures = Vec::with_capacity(set.len());
-        let mut output: Output<()> = Output::default();
+        let mut output: Output<EventId> = Output {
+            val: event.id,
+            success: HashSet::new(),
+            failed: HashMap::new(),
+        };
 
         // Compose futures
         for url in set.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
-            let events: Vec<Event> = events.clone();
+            let event: Event = event.clone();
             urls.push(url);
-            futures.push(relay.batch_event(events));
+            futures.push(relay.send_event(event));
         }
 
         // Join futures

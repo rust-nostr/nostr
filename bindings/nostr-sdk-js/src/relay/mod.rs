@@ -192,13 +192,6 @@ impl JsRelay {
             .into())
     }
 
-    /// Send multiple `Event` at once
-    #[wasm_bindgen(js_name = batchEvent)]
-    pub async fn batch_event(&self, events: Vec<JsEvent>) -> Result<()> {
-        let events = events.into_iter().map(|e| e.deref().clone()).collect();
-        self.inner.batch_event(events).await.map_err(into_err)
-    }
-
     /// Subscribe to filters
     ///
     /// ### Auto-closing subscription

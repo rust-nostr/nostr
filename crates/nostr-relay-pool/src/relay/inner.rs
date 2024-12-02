@@ -1087,70 +1087,23 @@ impl InnerRelay {
 
     #[inline]
     pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
-        let id: EventId = event.id;
-        self.batch_event(vec![event]).await?;
-        Ok(id)
-    }
-
-    #[tracing::instrument(skip_all, level = "trace")]
-    pub async fn batch_event(&self, events: Vec<Event>) -> Result<(), Error> {
         // Health, write permission and number of messages checks are executed in `batch_msg` method.
-
-        let events_len: usize = events.len();
-        let mut msgs: Vec<ClientMessage> = Vec::with_capacity(events_len);
-        let mut missing: HashSet<EventId> = HashSet::with_capacity(events_len);
-
-        // Construct client messages
-        for event in events.into_iter() {
-            // Insert ID into the hashset.
-            // If the value it's new, push it also to vector.
-            if missing.insert(event.id) {
-                msgs.push(ClientMessage::event(event));
-            }
-        }
 
         // Subscribe to notifications
         let mut notifications = self.internal_notification_sender.subscribe();
 
-        // Batch send messages
-        self.batch_msg(msgs)?;
+        // Send message
+        self.send_msg(ClientMessage::event(event))?;
 
-        // Keep track of published and not published event IDs
-        let mut published: HashSet<EventId> = HashSet::new();
-        let mut not_published: HashMap<EventId, String> = HashMap::new();
+        // Wait for OK
+        let (event_id, status, message) = self
+            .wait_for_ok(&mut notifications, None, BATCH_EVENT_ITERATION_TIMEOUT)
+            .await?;
 
-        // Iterate until missing set is empty
-        while !missing.is_empty() {
-            let (event_id, status, message) = self
-                .wait_for_ok(&mut notifications, None, BATCH_EVENT_ITERATION_TIMEOUT)
-                .await?;
-
-            if missing.remove(&event_id) {
-                if events_len == 1 {
-                    return if status {
-                        Ok(())
-                    } else {
-                        Err(Error::EventNotPublished(message))
-                    };
-                }
-
-                if status {
-                    published.insert(event_id);
-                } else {
-                    not_published.insert(event_id, message);
-                }
-            }
-        }
-
-        if !published.is_empty() && not_published.is_empty() {
-            Ok(())
-        } else if !published.is_empty() && !not_published.is_empty() {
-            Err(Error::PartialPublish {
-                published: published.into_iter().collect(),
-                not_published,
-            })
+        if status {
+            Ok(event_id)
         } else {
-            Err(Error::EventsNotPublished(not_published))
+            Err(Error::RelayMessage { message })
         }
     }
 
@@ -1181,7 +1134,7 @@ impl InnerRelay {
             self.send_notification(RelayNotification::Authenticated, true);
             Ok(())
         } else {
-            Err(Error::EventNotPublished(message))
+            Err(Error::RelayMessage { message })
         }
     }
 

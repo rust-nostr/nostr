@@ -270,9 +270,9 @@ impl Relay {
     }
 
     /// Send multiple [`Event`] at once
-    #[inline]
-    pub async fn batch_event(&self, events: Vec<Event>) -> Result<(), Error> {
-        self.inner.batch_event(events).await
+    #[deprecated(since = "0.38.0")]
+    pub async fn batch_event(&self, _events: Vec<Event>) -> Result<(), Error> {
+        unimplemented!()
     }
 
     /// Send client authentication event

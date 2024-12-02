@@ -65,9 +65,15 @@ pub enum Error {
     /// Event not published
     #[error("event not published: {0}")]
     EventNotPublished(String),
-    /// No event is published
-    #[error("events not published: {0:?}")]
-    EventsNotPublished(HashMap<EventId, String>),
+    /// Relay message (when status is `false`)
+    // NOTE: pass the message as is, without use any prefix.
+    // In other parts of code this message is checked to perform other operations.
+    // In some cases it's checked the prefix so adding a new one will break things.
+    #[error("{message}")]
+    RelayMessage {
+        /// The relay message
+        message: String,
+    },
     /// Only some events
     #[error("partial publish: published={}, missing={}", published.len(), not_published.len())]
     PartialPublish {

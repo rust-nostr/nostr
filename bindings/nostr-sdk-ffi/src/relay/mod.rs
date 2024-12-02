@@ -231,15 +231,6 @@ impl Relay {
         ))
     }
 
-    /// Send multiple `Event` at once
-    pub async fn batch_event(&self, events: Vec<Arc<Event>>) -> Result<()> {
-        let events = events
-            .into_iter()
-            .map(|e| e.as_ref().deref().clone())
-            .collect();
-        Ok(self.inner.batch_event(events).await?)
-    }
-
     /// Subscribe to filters
     ///
     /// Internally generate a new random subscription ID. Check `subscribe_with_id` method to use a custom subscription ID.

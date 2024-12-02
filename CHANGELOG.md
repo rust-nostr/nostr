@@ -66,6 +66,8 @@
 
 ### Deprecated
 
+* pool: deprecated batch event methods ([Yuki Kishimoto])
+
 ## [v0.37.0]
 
 ### Summary

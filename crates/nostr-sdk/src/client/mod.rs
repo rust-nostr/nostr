@@ -1013,9 +1013,9 @@ impl Client {
     }
 
     /// Send multiple events at once to all relays with [`RelayServiceFlags::WRITE`] flag.
-    #[inline]
-    pub async fn batch_event(&self, events: Vec<Event>) -> Result<Output<()>, Error> {
-        Ok(self.pool.batch_event(events).await?)
+    #[deprecated(since = "0.38.0")]
+    pub async fn batch_event(&self, _events: Vec<Event>) -> Result<Output<()>, Error> {
+        unimplemented!()
     }
 
     /// Send event to specific relays.
@@ -1030,18 +1030,18 @@ impl Client {
     }
 
     /// Send multiple events at once to specific relays
-    #[inline]
+    #[deprecated(since = "0.38.0")]
     pub async fn batch_event_to<I, U>(
         &self,
-        urls: I,
-        events: Vec<Event>,
+        _urls: I,
+        _events: Vec<Event>,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        Ok(self.pool.batch_event_to(urls, events).await?)
+        unimplemented!()
     }
 
     /// Signs the [`EventBuilder`] into an [`Event`] using the [`NostrSigner`]
