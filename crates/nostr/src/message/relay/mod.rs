@@ -72,11 +72,8 @@ impl fmt::Display for MachineReadablePrefix {
 
 impl MachineReadablePrefix {
     /// Parse machine-readable prefix
-    pub fn parse<S>(message: S) -> Option<Self>
-    where
-        S: AsRef<str>,
-    {
-        match message.as_ref() {
+    pub fn parse(message: &str) -> Option<Self> {
+        match message {
             m if m.starts_with("duplicate:") => Some(Self::Duplicate),
             m if m.starts_with("pow:") => Some(Self::Pow),
             m if m.starts_with("blocked:") => Some(Self::Blocked),

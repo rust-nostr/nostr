@@ -35,6 +35,7 @@
 * nostr: update `NostrURI::from_nostr_uri` method signature ([Yuki Kishimoto])
 * nostr: remove generics from parsing methods in `key` module ([Yuki Kishimoto])
 * nostr: remove generics from `EventId` parsing methods ([Yuki Kishimoto])
+* nostr: refactor `MachineReadablePrefix::parse` method to use `&str` directly ([Yuki Kishimoto])
 * bindings: remove redundant parsing methods from `EventId`, `Coordinate`, `PublicKey` and `SecretKey` ([Yuki Kishimoto])
 
 ### Changed
