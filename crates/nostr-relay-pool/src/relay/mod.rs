@@ -40,6 +40,17 @@ pub use self::options::{
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
 
+/// Subscription auto-closed reason
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SubscriptionAutoClosedReason {
+    /// NIP42 authentication failed
+    AuthenticationFailed,
+    /// Closed
+    Closed,
+    /// Completed
+    Completed,
+}
+
 /// Relay Notification
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RelayNotification {
@@ -66,6 +77,11 @@ pub enum RelayNotification {
     Authenticated,
     /// Authentication failed
     AuthenticationFailed,
+    /// Subscription auto-closed
+    SubscriptionAutoClosed {
+        /// Reason
+        reason: SubscriptionAutoClosedReason,
+    },
     /// Shutdown
     Shutdown,
 }
@@ -598,4 +614,6 @@ mod tests {
 
         assert!(!relay.inner.is_running());
     }
+
+    // TODO: add NIP42 tests
 }

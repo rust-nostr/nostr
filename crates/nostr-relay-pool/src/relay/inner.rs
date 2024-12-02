@@ -34,7 +34,7 @@ use super::options::{
 };
 use super::ping::PingTracker;
 use super::stats::RelayConnectionStats;
-use super::{Error, Reconciliation, RelayNotification, RelayStatus};
+use super::{Error, Reconciliation, RelayNotification, RelayStatus, SubscriptionAutoClosedReason};
 use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
@@ -414,6 +414,7 @@ impl InnerRelay {
                     RelayNotification::RelayStatus { .. } => None,
                     RelayNotification::Authenticated => None,
                     RelayNotification::AuthenticationFailed => None,
+                    RelayNotification::SubscriptionAutoClosed { .. } => None,
                     RelayNotification::Shutdown => Some(RelayPoolNotification::Shutdown),
                 };
 
@@ -1334,7 +1335,7 @@ impl InnerRelay {
                 task::spawn(async move {
                     let sub_id: SubscriptionId = id.clone();
                     let relay = this.clone();
-                    let res: Option<bool> = time::timeout(opts.timeout, async move {
+                    let res: Option<(bool, Option<SubscriptionAutoClosedReason>)> = time::timeout(opts.timeout, async move {
                         let mut counter = 0;
                         let mut received_eose: bool = false;
                         let mut require_resubscription: bool = false;
@@ -1361,10 +1362,6 @@ impl InnerRelay {
                                     }
                                     RelayMessage::EndOfStoredEvents(subscription_id) => {
                                         if subscription_id == id {
-                                            tracing::debug!(
-                                                "Received EOSE for subscription {id} from {}",
-                                                relay.url
-                                            );
                                             received_eose = true;
                                             if let FilterOptions::ExitOnEOSE
                                             | FilterOptions::WaitDurationAfterEOSE(_) =
@@ -1385,8 +1382,7 @@ impl InnerRelay {
                                                     require_resubscription = true;
                                                 }
                                                 _ => {
-                                                    // Subscription closed but no auth required
-                                                    return false; // false means that not need to send CLOSE msg
+                                                    return (false, Some(SubscriptionAutoClosedReason::Closed)); // No need to send CLOSE msg
                                                 }
                                             }
                                         }
@@ -1402,13 +1398,16 @@ impl InnerRelay {
                                         let _ = relay.send_msg(msg);
                                     }
                                 }
+                                RelayNotification::AuthenticationFailed => {
+                                    return (false, Some(SubscriptionAutoClosedReason::AuthenticationFailed)); // No need to send CLOSE msg
+                                }
                                 RelayNotification::RelayStatus { status } => {
                                     if status.is_disconnected() {
-                                        return false; // No need to send CLOSE msg
+                                        return (false, None); // No need to send CLOSE msg
                                     }
                                 }
                                 RelayNotification::Shutdown => {
-                                    return false; // No need to send CLOSE msg
+                                    return (false, None); // No need to send CLOSE msg
                                 }
                                 _ => (),
                             }
@@ -1420,11 +1419,11 @@ impl InnerRelay {
                                     match notification {
                                         RelayNotification::RelayStatus { status } => {
                                             if status.is_disconnected() {
-                                                return Ok(()); // No need to send CLOSE msg
+                                                return Ok(());
                                             }
                                         }
                                         RelayNotification::Shutdown => {
-                                            return Ok(()); // No need to send CLOSE msg
+                                            return Ok(());
                                         }
                                         _ => (),
                                     }
@@ -1435,15 +1434,28 @@ impl InnerRelay {
                             .await;
                         }
 
-                        true // Need to send CLOSE msg
+                        (true, Some(SubscriptionAutoClosedReason::Completed)) // Need to send CLOSE msg
                     })
                     .await;
 
                     // Check if CLOSE needed
-                    let to_close: bool = res.unwrap_or_else(|| {
-                        tracing::warn!("Timeout reached for REQ {sub_id}, auto-closing.");
-                        true
-                    });
+                    let to_close: bool = match res {
+                        Some((to_close, reason)) => {
+                            // Send subscription auto closed notification
+                            if let Some(reason) = reason {
+                                this.send_notification(
+                                    RelayNotification::SubscriptionAutoClosed { reason },
+                                    false,
+                                );
+                            }
+
+                            to_close
+                        }
+                        None => {
+                            tracing::warn!(id = %sub_id, "Timeout reached for subscription, auto-closing.");
+                            true
+                        }
+                    };
 
                     if to_close {
                         // Unsubscribe
@@ -1508,45 +1520,34 @@ impl InnerRelay {
         // Subscribe with auto-close
         let id: SubscriptionId = self.subscribe(filters, subscribe_opts).await?;
 
-        let mut counter: u16 = 0;
-        let mut received_eose: bool = false;
-
         time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
                 match notification {
-                    RelayNotification::Message { message, .. } => match message {
-                        RelayMessage::Event {
-                            subscription_id,
-                            event,
-                        } => {
-                            if subscription_id.eq(&id) {
-                                callback(*event).await;
-                                if let FilterOptions::WaitForEventsAfterEOSE(num) = opts {
-                                    if received_eose {
-                                        counter += 1;
-                                        if counter >= num {
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
+                    RelayNotification::Message {
+                        message:
+                            RelayMessage::Event {
+                                subscription_id,
+                                event,
+                            },
+                        ..
+                    } => {
+                        if subscription_id == id {
+                            callback(*event).await;
                         }
-                        RelayMessage::EndOfStoredEvents(subscription_id) => {
-                            if subscription_id.eq(&id) {
-                                tracing::debug!(
-                                    "Received EOSE for subscription {id} from {}",
-                                    self.url
-                                );
-                                received_eose = true;
-                                if let FilterOptions::ExitOnEOSE
-                                | FilterOptions::WaitDurationAfterEOSE(_) = opts
-                                {
-                                    break;
-                                }
+                    }
+                    RelayNotification::SubscriptionAutoClosed { reason } => {
+                        match reason {
+                            SubscriptionAutoClosedReason::AuthenticationFailed => {
+                                return Err(Error::AuthenticationFailed);
                             }
+                            SubscriptionAutoClosedReason::Closed => {
+                                // TODO: return error?
+                                break;
+                            }
+                            // Completed
+                            SubscriptionAutoClosedReason::Completed => break,
                         }
-                        _ => (),
-                    },
+                    }
                     RelayNotification::RelayStatus { status } => {
                         if status.is_disconnected() {
                             return Err(Error::NotConnected);
@@ -1561,37 +1562,6 @@ impl InnerRelay {
         })
         .await
         .ok_or(Error::Timeout)??;
-
-        if let FilterOptions::WaitDurationAfterEOSE(duration) = opts {
-            time::timeout(Some(duration), async {
-                while let Ok(notification) = notifications.recv().await {
-                    match notification {
-                        RelayNotification::Message {
-                            message:
-                                RelayMessage::Event {
-                                    subscription_id,
-                                    event,
-                                },
-                            ..
-                        } => {
-                            if subscription_id.eq(&id) {
-                                callback(*event).await;
-                            }
-                        }
-                        RelayNotification::RelayStatus { status } => {
-                            if status.is_disconnected() {
-                                return Err(Error::NotConnected);
-                            }
-                        }
-                        RelayNotification::Shutdown => return Err(Error::Shutdown),
-                        _ => (),
-                    }
-                }
-
-                Ok(())
-            })
-            .await;
-        }
 
         Ok(())
     }
