@@ -1,58 +1,8 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
-# Check if ANDROID_NDK_HOME env is set
-[private]
-ndk-home:
-	@if [ ! -d "${ANDROID_NDK_HOME}" ] ; then \
-		echo "Error: Please, set the ANDROID_NDK_HOME env variable to point to your NDK folder" ; \
-		exit 1 ; \
-	fi
-
-# Check if ANDROID_SDK_ROOT env is set
-[private]
-sdk-root:
-	@if [ ! -d "${ANDROID_SDK_ROOT}" ] ; then \
-		echo "Error: Please, set the ANDROID_SDK_ROOT env variable to point to your SDK folder" ; \
-		exit 1 ; \
-	fi
-
-[private]
-ndk: ndk-home
-    @cargo ndk --version || cargo install cargo-ndk
-
-[private]
-clean-android:
-	rm -rf ffi/android
-	rm -rf ffi/kotlin
-
-[private]
-jni-libs: ndk
-	rustup target add aarch64-linux-android
-	rustup target add x86_64-linux-android
-	rustup target add armv7-linux-androideabi
-	cargo ndk -t aarch64-linux-android -t x86_64-linux-android -t armv7-linux-androideabi -o ffi/kotlin/jniLibs build --lib --release
-
-kotlin: clean-android jni-libs
-	cargo run --features uniffi-cli --bin uniffi-bindgen generate --library ../../target/x86_64-linux-android/release/libnostr_sdk_ffi.so --language kotlin --no-format -o ffi/kotlin
-
-[private]
-compress-android:
-	upx --best --lzma --android-shlib ffi/kotlin/jniLibs/*/*.so
-
-# Copy required modules and libs and assemble AAR
-[private]
-assemble-aar:
-    rm -rf android/lib/src/main/jniLibs
-    rm -rf android/lib/src/main/kotlin
-    cp -r ffi/kotlin/jniLibs android/lib/src/main
-    mkdir -p android/lib/src/main/kotlin/
-    cp -r ffi/kotlin/rust android/lib/src/main/kotlin/
-    cd android && ./gradlew assembleRelease
-    mkdir -p ffi/android
-    cp android/lib/build/outputs/aar/lib-release.aar ffi/android
-
 # Compile and build Android Archive (AAR)
-aar: sdk-root kotlin compress-android assemble-aar
+aar:
+    @cd android && bash build-aar.sh
 
 # Publish android bindings
 [confirm]

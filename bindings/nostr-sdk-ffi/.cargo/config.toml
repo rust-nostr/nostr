@@ -1,6 +1,6 @@
 [profile.release]
-opt-level = 's'     # Optimize for size.
+opt-level = 's'     # Optimize for size. The `z` level produce a smaller binary but when compressed with upx is smaller the `s` one.
 lto = true          # Enable Link Time Optimization
-codegen-units = 1   # Reduce number of codegen units to increase optimizations.
+codegen-units = 1   # Reduce the number of codegen units to increase optimizations.
 panic = "abort"     # Abort on panic
-strip = "debuginfo" # Partially strip symbols from binary
+strip = "debuginfo" # Partially strip symbols from binary. If fully stripped, UniFFI can't generate foreign-language bindings
