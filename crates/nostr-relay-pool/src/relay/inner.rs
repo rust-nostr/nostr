@@ -25,7 +25,7 @@ use tokio::sync::{broadcast, watch, Mutex, MutexGuard, OnceCell, RwLock};
 use super::constants::{
     BATCH_EVENT_ITERATION_TIMEOUT, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE,
     NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP,
-    NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, WEBSOCKET_TX_TIMEOUT,
+    NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, WAIT_FOR_AUTHENTICATION_TIMEOUT, WEBSOCKET_TX_TIMEOUT,
 };
 use super::filtering::{CheckFiltering, RelayFiltering};
 use super::flags::AtomicRelayServiceFlags;
@@ -37,6 +37,7 @@ use super::stats::RelayConnectionStats;
 use super::{Error, Reconciliation, RelayNotification, RelayStatus};
 use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
+use crate::shared::SharedState;
 
 struct NostrMessage {
     msgs: Vec<ClientMessage>,
@@ -148,7 +149,7 @@ pub(crate) struct InnerRelay {
     pub(super) flags: AtomicRelayServiceFlags,
     pub(super) stats: RelayConnectionStats,
     pub(super) filtering: RelayFiltering,
-    database: Arc<dyn NostrDatabase>,
+    state: SharedState,
     channels: Arc<RelayChannels>,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
     external_notification_sender: OnceCell<broadcast::Sender<RelayPoolNotification>>,
@@ -167,7 +168,7 @@ impl AtomicDestroyer for InnerRelay {
 impl InnerRelay {
     pub fn new(
         url: RelayUrl,
-        database: Arc<dyn NostrDatabase>,
+        state: SharedState,
         filtering: RelayFiltering,
         opts: RelayOptions,
     ) -> Self {
@@ -184,7 +185,7 @@ impl InnerRelay {
             opts,
             stats: RelayConnectionStats::default(),
             filtering,
-            database,
+            state,
             channels: Arc::new(RelayChannels::new()),
             internal_notification_sender: relay_notification_sender,
             external_notification_sender: OnceCell::new(),
@@ -411,11 +412,8 @@ impl InnerRelay {
                         })
                     }
                     RelayNotification::RelayStatus { .. } => None,
-                    RelayNotification::Authenticated => {
-                        Some(RelayPoolNotification::Authenticated {
-                            relay_url: self.url.clone(),
-                        })
-                    }
+                    RelayNotification::Authenticated => None,
+                    RelayNotification::AuthenticationFailed => None,
                     RelayNotification::Shutdown => Some(RelayPoolNotification::Shutdown),
                 };
 
@@ -860,6 +858,44 @@ impl InnerRelay {
                             "Received '{challenge}' authentication challenge from '{}'",
                             self.url
                         );
+
+                        // Check if NIP42 auto authentication is enabled
+                        if self.state.is_auto_authentication_enabled() {
+                            let relay = self.clone();
+                            let challenge: String = challenge.clone();
+                            task::spawn(async move {
+                                // Authenticate to relay
+                                match relay.auth(challenge).await {
+                                    Ok(..) => {
+                                        relay.send_notification(
+                                            RelayNotification::Authenticated,
+                                            false,
+                                        );
+
+                                        tracing::info!("Authenticated to '{}' relay.", relay.url);
+
+                                        // TODO: ?
+                                        if let Err(e) = relay.resubscribe().await {
+                                            tracing::error!(
+                                                "Impossible to resubscribe to '{}': {e}",
+                                                relay.url
+                                            );
+                                        }
+                                    }
+                                    Err(e) => {
+                                        relay.send_notification(
+                                            RelayNotification::AuthenticationFailed,
+                                            false,
+                                        );
+
+                                        tracing::error!(
+                                            "Can't authenticate to '{}' relay: {e}",
+                                            relay.url
+                                        );
+                                    }
+                                }
+                            });
+                        }
                     }
                     _ => (),
                 }
@@ -958,7 +994,8 @@ impl InnerRelay {
                 // TODO: check if word/hashtag is blacklisted
 
                 // Check if event status
-                let status: DatabaseEventStatus = self.database.check_id(&partial_event.id).await?;
+                let status: DatabaseEventStatus =
+                    self.state.database().check_id(&partial_event.id).await?;
 
                 // Event deleted
                 if let DatabaseEventStatus::Deleted = status {
@@ -976,7 +1013,8 @@ impl InnerRelay {
 
                     // Check if coordinate has been deleted
                     if self
-                        .database
+                        .state
+                        .database()
                         .has_coordinate_been_deleted(&coordinate, &missing.created_at)
                         .await?
                     {
@@ -986,7 +1024,8 @@ impl InnerRelay {
 
                 // Set event as seen by relay
                 if let Err(e) = self
-                    .database
+                    .state
+                    .database()
                     .event_id_seen(partial_event.id, self.url.clone())
                     .await
                 {
@@ -1009,7 +1048,7 @@ impl InnerRelay {
                     event.verify()?;
 
                     // Save into database
-                    self.database.save_event(&event).await?;
+                    self.state.database().save_event(&event).await?;
 
                     // Send notification
                     self.send_notification(
@@ -1085,63 +1124,96 @@ impl InnerRelay {
         })
     }
 
-    #[inline]
+    async fn _send_event(
+        &self,
+        notifications: &mut broadcast::Receiver<RelayNotification>,
+        event: Event,
+    ) -> Result<(EventId, bool, String), Error> {
+        let id: EventId = event.id;
+
+        // Send message
+        // TODO: avoid clone
+        self.send_msg(ClientMessage::event(event))?;
+
+        // Wait for OK
+        self.wait_for_ok(notifications, id, BATCH_EVENT_ITERATION_TIMEOUT)
+            .await
+    }
+
     pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
         // Health, write permission and number of messages checks are executed in `batch_msg` method.
 
         // Subscribe to notifications
         let mut notifications = self.internal_notification_sender.subscribe();
 
-        // Send message
-        self.send_msg(ClientMessage::event(event))?;
+        // Send event
+        let (event_id, status, message) =
+            self._send_event(&mut notifications, event.clone()).await?;
 
-        // Wait for OK
-        let (event_id, status, message) = self
-            .wait_for_ok(&mut notifications, None, BATCH_EVENT_ITERATION_TIMEOUT)
-            .await?;
-
+        // Check status
         if status {
-            Ok(event_id)
-        } else {
-            Err(Error::RelayMessage { message })
+            return Ok(event_id);
         }
+
+        // If auth required, wait for authentication adn resend it
+        if let Some(MachineReadablePrefix::AuthRequired) = MachineReadablePrefix::parse(&message) {
+            // Check if NIP42 auth is enabled and signer is set
+            let has_signer: bool = self.state.has_signer().await;
+            if self.state.is_auto_authentication_enabled() && has_signer {
+                // Wait that relay authenticate
+                self.wait_for_authentication(&mut notifications, WAIT_FOR_AUTHENTICATION_TIMEOUT)
+                    .await?;
+
+                // Try to resend event
+                let (event_id, status, message) =
+                    self._send_event(&mut notifications, event).await?;
+
+                // Check status
+                return if status {
+                    Ok(event_id)
+                } else {
+                    Err(Error::EventNotPublished(message))
+                };
+            }
+        }
+
+        Err(Error::EventNotPublished(message))
     }
 
-    pub async fn auth(&self, event: Event) -> Result<(), Error> {
-        // Check if NIP42 event
-        if event.kind != Kind::Authentication {
-            return Err(Error::UnexpectedKind {
-                expected: Kind::Authentication,
-                found: event.kind,
-            });
-        }
+    async fn auth(&self, challenge: String) -> Result<(), Error> {
+        // Get signer
+        let signer = self.state.signer().await?;
 
+        // Construct event
+        let event: Event = EventBuilder::auth(challenge, self.url.clone())
+            .sign(&signer)
+            .await?;
+
+        // Subscribe to notifications
         let mut notifications = self.internal_notification_sender.subscribe();
 
-        // Send message
+        // Send AUTH message
         let id: EventId = event.id;
         self.send_msg(ClientMessage::auth(event))?;
 
         // Wait for OK
         // The event ID is already checked in `wait_for_ok` method
         let (_, status, message) = self
-            .wait_for_ok(&mut notifications, Some(id), BATCH_EVENT_ITERATION_TIMEOUT)
+            .wait_for_ok(&mut notifications, id, BATCH_EVENT_ITERATION_TIMEOUT)
             .await?;
 
         // Check status
         if status {
-            // Send notification
-            self.send_notification(RelayNotification::Authenticated, true);
             Ok(())
         } else {
-            Err(Error::RelayMessage { message })
+            Err(Error::EventNotPublished(message))
         }
     }
 
     async fn wait_for_ok(
         &self,
         notifications: &mut broadcast::Receiver<RelayNotification>,
-        id: Option<EventId>,
+        id: EventId,
         timeout: Duration,
     ) -> Result<(EventId, bool, String), Error> {
         time::timeout(Some(timeout), async {
@@ -1156,16 +1228,44 @@ impl InnerRelay {
                             },
                     } => {
                         // Check if it can return
-                        let can_return: bool = match id {
-                            // It's specified an ID, check if match the received one.
-                            Some(id) => id == event_id,
-                            // Nothing to check, return.
-                            None => true,
-                        };
-
-                        if can_return {
+                        if id == event_id {
                             return Ok((event_id, status, message));
                         }
+                    }
+                    RelayNotification::RelayStatus { status } => {
+                        if status.is_disconnected() {
+                            // TODO: use another error?
+                            return Err(Error::EventNotPublished(String::from(
+                                "relay not connected (status changed)",
+                            )));
+                        }
+                    }
+                    RelayNotification::Shutdown => break,
+                    _ => (),
+                }
+            }
+
+            Err(Error::EventNotPublished(String::from(
+                "loop prematurely terminated",
+            )))
+        })
+        .await
+        .ok_or(Error::Timeout)?
+    }
+
+    async fn wait_for_authentication(
+        &self,
+        notifications: &mut broadcast::Receiver<RelayNotification>,
+        timeout: Duration,
+    ) -> Result<(), Error> {
+        time::timeout(Some(timeout), async {
+            while let Ok(notification) = notifications.recv().await {
+                match notification {
+                    RelayNotification::Authenticated => {
+                        return Ok(());
+                    }
+                    RelayNotification::AuthenticationFailed => {
+                        return Err(Error::AuthenticationFailed);
                     }
                     RelayNotification::RelayStatus { status } => {
                         if status.is_disconnected() {
@@ -1527,7 +1627,11 @@ impl InnerRelay {
     }
 
     pub async fn sync(&self, filter: Filter, opts: &SyncOptions) -> Result<Reconciliation, Error> {
-        let items = self.database.negentropy_items(filter.clone()).await?;
+        let items = self
+            .state
+            .database()
+            .negentropy_items(filter.clone())
+            .await?;
         self.sync_with_items(filter, items, opts).await
     }
 
@@ -1796,7 +1900,7 @@ impl InnerRelay {
                         while !have_ids.is_empty() && in_flight_up.len() < NEGENTROPY_HIGH_WATER_UP
                         {
                             if let Some(id) = have_ids.pop() {
-                                match self.database.event_by_id(&id).await {
+                                match self.state.database().event_by_id(&id).await {
                                     Ok(Some(event)) => {
                                         in_flight_up.insert(id);
                                         self.send_msg(ClientMessage::event(event))?;
@@ -2095,7 +2199,7 @@ impl InnerRelay {
                         while !have_ids.is_empty() && in_flight_up.len() < NEGENTROPY_HIGH_WATER_UP
                         {
                             if let Some(id) = have_ids.pop() {
-                                match self.database.event_by_id(&id).await {
+                                match self.state.database().event_by_id(&id).await {
                                     Ok(Some(event)) => {
                                         in_flight_up.insert(id);
                                         self.send_msg(ClientMessage::event(event))?;

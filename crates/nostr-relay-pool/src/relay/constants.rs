@@ -7,6 +7,7 @@
 use core::time::Duration;
 
 pub(super) const BATCH_EVENT_ITERATION_TIMEOUT: Duration = Duration::from_secs(15);
+pub(super) const WAIT_FOR_AUTHENTICATION_TIMEOUT: Duration = Duration::from_secs(7);
 
 /// Max relay size
 pub const MAX_MESSAGE_SIZE: u32 = 5 * 1024 * 1024; // 5 MB

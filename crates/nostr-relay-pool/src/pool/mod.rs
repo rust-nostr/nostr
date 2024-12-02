@@ -27,6 +27,7 @@ pub use self::output::Output;
 use crate::relay::flags::FlagCheck;
 use crate::relay::options::{FilterOptions, RelayOptions, SyncOptions};
 use crate::relay::{Relay, RelayFiltering, RelayStatus};
+use crate::shared::SharedState;
 use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};
 
 /// Relay Pool Notification
@@ -59,6 +60,7 @@ pub enum RelayPoolNotification {
     /// Authenticated to relay
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    #[deprecated(since = "0.38.0")]
     Authenticated {
         /// Relay url
         relay_url: RelayUrl,
@@ -90,16 +92,13 @@ impl StealthClone for RelayPool {
 impl RelayPool {
     /// Create new `RelayPool`
     pub fn new(opts: RelayPoolOptions) -> Self {
-        Self::with_database(opts, Arc::new(MemoryDatabase::default()))
+        Self::with_shared_state(opts, SharedState::default())
     }
 
-    /// New with database
-    pub fn with_database<D>(opts: RelayPoolOptions, database: D) -> Self
-    where
-        D: IntoNostrDatabase,
-    {
+    /// New with shared state
+    pub fn with_shared_state(opts: RelayPoolOptions, state: SharedState) -> Self {
         Self {
-            inner: AtomicDestructor::new(InnerRelayPool::with_database(opts, database)),
+            inner: AtomicDestructor::new(InnerRelayPool::new(opts, state)),
         }
     }
 
@@ -117,10 +116,16 @@ impl RelayPool {
         self.inner.notifications()
     }
 
+    /// Get shared state
+    #[inline]
+    pub fn state(&self) -> &SharedState {
+        &self.inner.state
+    }
+
     /// Get database
     #[inline]
     pub fn database(&self) -> &Arc<dyn NostrDatabase> {
-        &self.inner.database
+        self.inner.state.database()
     }
 
     /// Get relay filtering

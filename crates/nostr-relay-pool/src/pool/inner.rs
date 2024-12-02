@@ -22,13 +22,14 @@ use super::options::RelayPoolOptions;
 use super::{Error, Output, RelayPoolNotification};
 use crate::relay::options::{FilterOptions, RelayOptions, SyncOptions};
 use crate::relay::{FlagCheck, Reconciliation, Relay, RelayFiltering};
+use crate::shared::SharedState;
 use crate::{RelayServiceFlags, SubscribeOptions};
 
 type Relays = HashMap<RelayUrl, Relay>;
 
 #[derive(Debug, Clone)]
 pub struct InnerRelayPool {
-    pub(super) database: Arc<dyn NostrDatabase>,
+    pub(super) state: SharedState,
     relays: Arc<RwLock<Relays>>,
     notification_sender: broadcast::Sender<RelayPoolNotification>,
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,
@@ -49,14 +50,11 @@ impl AtomicDestroyer for InnerRelayPool {
 }
 
 impl InnerRelayPool {
-    pub fn with_database<D>(opts: RelayPoolOptions, database: D) -> Self
-    where
-        D: IntoNostrDatabase,
-    {
+    pub fn new(opts: RelayPoolOptions, state: SharedState) -> Self {
         let (notification_sender, _) = broadcast::channel(opts.notification_channel_size);
 
         Self {
-            database: database.into_nostr_database(),
+            state,
             relays: Arc::new(RwLock::new(HashMap::new())),
             notification_sender,
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
@@ -230,8 +228,7 @@ impl InnerRelayPool {
         }
 
         // Compose new relay
-        let relay =
-            Relay::internal_custom(url, self.database.clone(), self.filtering.clone(), opts);
+        let relay = Relay::internal_custom(url, self.state.clone(), self.filtering.clone(), opts);
 
         // Set notification sender
         relay
@@ -379,7 +376,7 @@ impl InnerRelayPool {
         // Save events
         for msg in msgs.iter() {
             if let ClientMessage::Event(event) = msg {
-                self.database.save_event(event).await?;
+                self.state.database().save_event(event).await?;
             }
         }
 
@@ -441,7 +438,7 @@ impl InnerRelayPool {
         }
 
         // Save event into database
-        self.database.save_event(&event).await?;
+        self.state.database().save_event(&event).await?;
 
         let mut urls: Vec<RelayUrl> = Vec::with_capacity(set.len());
         let mut futures = Vec::with_capacity(set.len());
@@ -681,8 +678,11 @@ impl InnerRelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Get items
-        let items: Vec<(EventId, Timestamp)> =
-            self.database.negentropy_items(filter.clone()).await?;
+        let items: Vec<(EventId, Timestamp)> = self
+            .state
+            .database()
+            .negentropy_items(filter.clone())
+            .await?;
 
         // Compose filters
         let mut filters: HashMap<Filter, Vec<(EventId, Timestamp)>> = HashMap::with_capacity(1);

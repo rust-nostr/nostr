@@ -15,6 +15,8 @@ use atomic_destructor::AtomicDestructor;
 use nostr_database::prelude::*;
 use tokio::sync::broadcast;
 
+use crate::shared::SharedState;
+
 pub mod constants;
 mod error;
 mod filtering;
@@ -62,6 +64,8 @@ pub enum RelayNotification {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     Authenticated,
+    /// Authentication failed
+    AuthenticationFailed,
     /// Shutdown
     Shutdown,
 }
@@ -142,19 +146,20 @@ impl Relay {
     where
         T: IntoNostrDatabase,
     {
-        let database: Arc<dyn NostrDatabase> = database.into_nostr_database();
+        let mut state = SharedState::default();
+        state.database = database.into_nostr_database();
         let filtering: RelayFiltering = RelayFiltering::new(opts.filtering_mode);
-        Self::internal_custom(url, database, filtering, opts)
+        Self::internal_custom(url, state, filtering, opts)
     }
 
     pub(crate) fn internal_custom(
         url: RelayUrl,
-        database: Arc<dyn NostrDatabase>,
+        state: SharedState,
         filtering: RelayFiltering,
         opts: RelayOptions,
     ) -> Self {
         Self {
-            inner: AtomicDestructor::new(InnerRelay::new(url, database, filtering, opts)),
+            inner: AtomicDestructor::new(InnerRelay::new(url, state, filtering, opts)),
         }
     }
 
@@ -273,14 +278,6 @@ impl Relay {
     #[deprecated(since = "0.38.0")]
     pub async fn batch_event(&self, _events: Vec<Event>) -> Result<(), Error> {
         unimplemented!()
-    }
-
-    /// Send client authentication event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
-    #[inline]
-    pub async fn auth(&self, event: Event) -> Result<(), Error> {
-        self.inner.auth(event).await
     }
 
     /// Resubscribe to all **closed** or not yet initiated subscriptions

@@ -10,17 +10,16 @@ use std::iter;
 use std::sync::Arc;
 use std::time::Duration;
 
-use atomic_destructor::StealthClone;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
 use nostr_relay_pool::prelude::*;
+use nostr_relay_pool::shared::SharedState;
 #[cfg(feature = "nip57")]
 use nostr_zapper::{DynNostrZapper, IntoNostrZapper, ZapperError};
 use thiserror::Error;
 use tokio::sync::{broadcast, RwLock};
 
 pub mod builder;
-mod handler;
 pub mod options;
 #[cfg(feature = "nip57")]
 mod zapper;
@@ -58,9 +57,9 @@ pub enum Error {
     /// Metadata error
     #[error(transparent)]
     Metadata(#[from] metadata::Error),
-    /// Signer not configured
-    #[error("signer not configured")]
-    SignerNotConfigured,
+    /// Shared state error
+    #[error(transparent)]
+    SharedState(#[from] shared::Error),
     /// Zapper not configured
     #[cfg(feature = "nip57")]
     #[error("zapper not configured")]
@@ -98,7 +97,6 @@ pub enum Error {
 #[derive(Debug, Clone)]
 pub struct Client {
     pool: RelayPool,
-    signer: Arc<RwLock<Option<Arc<dyn NostrSigner>>>>,
     #[cfg(feature = "nip57")]
     zapper: Arc<RwLock<Option<Arc<DynNostrZapper>>>>,
     gossip_graph: GossipGraph,
@@ -108,19 +106,6 @@ pub struct Client {
 impl Default for Client {
     fn default() -> Self {
         Self::builder().build()
-    }
-}
-
-impl StealthClone for Client {
-    fn stealth_clone(&self) -> Self {
-        Self {
-            pool: self.pool.stealth_clone(),
-            signer: self.signer.clone(),
-            #[cfg(feature = "nip57")]
-            zapper: self.zapper.clone(),
-            gossip_graph: self.gossip_graph.clone(),
-            opts: self.opts.clone(),
-        }
     }
 }
 
@@ -161,7 +146,7 @@ impl Client {
     /// use nostr_sdk::prelude::*;
     ///
     /// let signer = Keys::generate();
-    /// let opts = Options::default().connection_timeout(Some(Duration::from_secs(30)));
+    /// let opts = Options::default().gossip(true);
     /// let client: Client = Client::builder().signer(signer).opts(opts).build();
     /// ```
     #[inline]
@@ -170,18 +155,21 @@ impl Client {
     }
 
     fn from_builder(builder: ClientBuilder) -> Self {
-        let client = Self {
-            pool: RelayPool::with_database(builder.opts.pool, builder.database),
-            signer: Arc::new(RwLock::new(builder.signer)),
+        // Construct shared state
+        let state = SharedState::new(
+            builder.database,
+            builder.signer,
+            builder.opts.nip42_auto_authentication,
+        );
+
+        // Construct client
+        Self {
+            pool: RelayPool::with_shared_state(builder.opts.pool, state),
             #[cfg(feature = "nip57")]
             zapper: Arc::new(RwLock::new(builder.zapper)),
             gossip_graph: GossipGraph::new(),
             opts: builder.opts,
-        };
-
-        client.spawn_notification_handler();
-
-        client
+        }
     }
 
     /// Update default difficulty for new [`Event`]
@@ -196,34 +184,45 @@ impl Client {
         self.opts.update_min_pow_difficulty(difficulty);
     }
 
+    #[inline]
+    fn state(&self) -> &SharedState {
+        self.pool.state()
+    }
+
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     pub fn automatic_authentication(&self, enable: bool) {
-        self.opts.update_automatic_authentication(enable);
+        self.state().automatic_authentication(enable);
+    }
+
+    /// Check if signer is configured
+    #[inline]
+    pub async fn has_signer(&self) -> bool {
+        self.state().has_signer().await
     }
 
     /// Get current nostr signer
     ///
     /// Rise error if it not set.
+    #[inline]
     pub async fn signer(&self) -> Result<Arc<dyn NostrSigner>, Error> {
-        let signer = self.signer.read().await;
-        signer.clone().ok_or(Error::SignerNotConfigured)
+        Ok(self.state().signer().await?)
     }
 
     /// Set nostr signer
+    #[inline]
     pub async fn set_signer<T>(&self, signer: T)
     where
         T: IntoNostrSigner,
     {
-        let mut s = self.signer.write().await;
-        *s = Some(signer.into_nostr_signer());
+        self.state().set_signer(signer).await;
     }
 
     /// Unset nostr signer
+    #[inline]
     pub async fn unset_signer(&self) {
-        let mut s = self.signer.write().await;
-        *s = None;
+        self.state().unset_signer().await;
     }
 
     /// Check if `zapper` is configured
@@ -1480,29 +1479,6 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
-    /// Create an auth event
-    ///
-    /// Send the event ONLY to the target relay.
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
-    #[inline]
-    pub async fn auth<S>(&self, challenge: S, relay: RelayUrl) -> Result<(), Error>
-    where
-        S: Into<String>,
-    {
-        // Construct event
-        let builder: EventBuilder = EventBuilder::auth(challenge, relay.clone());
-        let event: Event = self.sign_event_builder(builder).await?;
-
-        // Get relay
-        let relay: Relay = self.relay(relay).await?;
-
-        // Send AUTH message
-        relay.auth(event).await?;
-
-        Ok(())
-    }
-
     /// Create zap receipt event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
@@ -1639,6 +1615,7 @@ impl Client {
     }
 }
 
+// Gossip
 impl Client {
     async fn update_outdated_gossip_graph(
         &self,

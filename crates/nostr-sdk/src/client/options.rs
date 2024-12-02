@@ -8,7 +8,7 @@
 use std::net::SocketAddr;
 #[cfg(all(feature = "tor", any(target_os = "android", target_os = "ios")))]
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -22,7 +22,7 @@ pub struct Options {
     min_pow_difficulty: Arc<AtomicU8>,
     pub(super) req_filters_chunk_size: u8,
     pub(super) timeout: Duration,
-    nip42_auto_authentication: Arc<AtomicBool>,
+    pub(super) nip42_auto_authentication: bool,
     pub(super) gossip: bool,
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) connection: Connection,
@@ -39,7 +39,7 @@ impl Default for Options {
             min_pow_difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: 10,
             timeout: Duration::from_secs(60),
-            nip42_auto_authentication: Arc::new(AtomicBool::new(true)),
+            nip42_auto_authentication: true,
             gossip: false,
             #[cfg(not(target_arch = "wasm32"))]
             connection: Connection::default(),
@@ -131,7 +131,7 @@ impl Options {
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[inline]
     pub fn automatic_authentication(mut self, enabled: bool) -> Self {
-        self.nip42_auto_authentication = Arc::new(AtomicBool::new(enabled));
+        self.nip42_auto_authentication = enabled;
         self
     }
 
@@ -140,17 +140,6 @@ impl Options {
     pub fn gossip(mut self, enable: bool) -> Self {
         self.gossip = enable;
         self
-    }
-
-    #[inline]
-    pub(super) fn is_nip42_auto_authentication_enabled(&self) -> bool {
-        self.nip42_auto_authentication.load(Ordering::SeqCst)
-    }
-
-    #[inline]
-    pub(super) fn update_automatic_authentication(&self, enabled: bool) {
-        self.nip42_auto_authentication
-            .store(enabled, Ordering::SeqCst);
     }
 
     /// Connection mode and target

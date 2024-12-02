@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use nostr::event::builder;
 use nostr::message::relay::NegentropyErrorCode;
 use nostr::message::MessageHandleError;
 use nostr::{event, EventId, Kind};
@@ -12,17 +13,23 @@ use nostr_database::DatabaseError;
 use thiserror::Error;
 use tokio::sync::{broadcast, SetError};
 
-use crate::RelayPoolNotification;
+use crate::{shared, RelayPoolNotification};
 
 /// [`Relay`](super::Relay) error
 #[derive(Debug, Error)]
 pub enum Error {
+    /// Shared state error
+    #[error(transparent)]
+    SharedState(#[from] shared::Error),
     /// MessageHandle error
     #[error(transparent)]
     MessageHandle(#[from] MessageHandleError),
     /// Event error
     #[error(transparent)]
     Event(#[from] event::Error),
+    /// Event Builder error
+    #[error(transparent)]
+    EventBuilder(#[from] builder::Error),
     /// Partial Event error
     #[error(transparent)]
     PartialEvent(#[from] event::partial::Error),
@@ -65,15 +72,6 @@ pub enum Error {
     /// Event not published
     #[error("event not published: {0}")]
     EventNotPublished(String),
-    /// Relay message (when status is `false`)
-    // NOTE: pass the message as is, without use any prefix.
-    // In other parts of code this message is checked to perform other operations.
-    // In some cases it's checked the prefix so adding a new one will break things.
-    #[error("{message}")]
-    RelayMessage {
-        /// The relay message
-        message: String,
-    },
     /// Only some events
     #[error("partial publish: published={}, missing={}", published.len(), not_published.len())]
     PartialPublish {
@@ -158,6 +156,9 @@ pub enum Error {
         /// Current
         current: Duration,
     },
+    /// Auth failed
+    #[error("authentication failed")]
+    AuthenticationFailed,
 }
 
 impl Error {
