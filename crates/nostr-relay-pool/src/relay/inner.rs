@@ -1337,6 +1337,7 @@ impl InnerRelay {
                     let res: Option<bool> = time::timeout(opts.timeout, async move {
                         let mut counter = 0;
                         let mut received_eose: bool = false;
+                        let mut require_resubscription: bool = false;
 
                         let mut notifications = relay.internal_notification_sender.subscribe();
                         while let Ok(notification) = notifications.recv().await {
@@ -1345,7 +1346,7 @@ impl InnerRelay {
                                     RelayMessage::Event {
                                         subscription_id, ..
                                     } => {
-                                        if subscription_id.eq(&id) {
+                                        if subscription_id == id {
                                             if let FilterOptions::WaitForEventsAfterEOSE(num) =
                                                 opts.filter
                                             {
@@ -1359,7 +1360,7 @@ impl InnerRelay {
                                         }
                                     }
                                     RelayMessage::EndOfStoredEvents(subscription_id) => {
-                                        if subscription_id.eq(&id) {
+                                        if subscription_id == id {
                                             tracing::debug!(
                                                 "Received EOSE for subscription {id} from {}",
                                                 relay.url
@@ -1373,8 +1374,34 @@ impl InnerRelay {
                                             }
                                         }
                                     }
+                                    RelayMessage::Closed {
+                                        subscription_id,
+                                        message,
+                                    } => {
+                                        if subscription_id == id {
+                                            // Check if auth required
+                                            match MachineReadablePrefix::parse(&message) {
+                                                Some(MachineReadablePrefix::AuthRequired) => {
+                                                    require_resubscription = true;
+                                                }
+                                                _ => {
+                                                    // Subscription closed but no auth required
+                                                    return false; // false means that not need to send CLOSE msg
+                                                }
+                                            }
+                                        }
+                                    }
                                     _ => (),
                                 },
+                                RelayNotification::Authenticated => {
+                                    // Resend REQ
+                                    if require_resubscription {
+                                        require_resubscription = false;
+                                        let msg: ClientMessage =
+                                            ClientMessage::req(id.clone(), filters.clone());
+                                        let _ = relay.send_msg(msg);
+                                    }
+                                }
                                 RelayNotification::RelayStatus { status } => {
                                     if status.is_disconnected() {
                                         return false; // No need to send CLOSE msg
@@ -1449,11 +1476,7 @@ impl InnerRelay {
         let subscriptions = self.subscriptions().await;
 
         for id in subscriptions.into_keys() {
-            // Remove subscription
-            self.remove_subscription(&id).await;
-
-            // Send CLOSE message
-            self.send_msg(ClientMessage::close(id))?;
+            self.unsubscribe(id).await?;
         }
 
         Ok(())
@@ -1522,7 +1545,6 @@ impl InnerRelay {
                                 }
                             }
                         }
-                        RelayMessage::Ok { .. } => (),
                         _ => (),
                     },
                     RelayNotification::RelayStatus { status } => {

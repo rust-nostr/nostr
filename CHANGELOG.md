@@ -29,6 +29,8 @@
 
 ### Summary
 
+* Full NIP42 support (SDK)
+
 ### Breaking changes
 
 * nostr: update `FromBech32::from_bech32` method signature ([Yuki Kishimoto])
@@ -56,6 +58,7 @@
 ### Fixed
 
 * nostr: remove redundant NIP10 tags from `EventBuilder::text_note_reply` ([Yuki Kishimoto])
+* sdk: fix NIP42 authentication for auto-closing REQ ([Yuki Kishimoto])
 * bindings: allow passing empty string as relay url without return an error ([Yuki Kishimoto])
 
 ### Removed
