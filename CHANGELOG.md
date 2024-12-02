@@ -62,6 +62,7 @@
 * nostr: remove redundant NIP10 tags from `EventBuilder::text_note_reply` ([Yuki Kishimoto])
 * sdk: fix NIP42 authentication for auto-closing REQ ([Yuki Kishimoto])
 * bindings: allow passing empty string as relay url without return an error ([Yuki Kishimoto])
+* flutter: fix `default` is reserved in dart ([J. Azad EMERY])
 
 ### Removed
 
@@ -868,6 +869,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [nanikamado]: https://github.com/nanikamado
 [rodant]: https://github.com/rodant
 [erskingardner]: https://github.com/erskingardner
+[J. Azad EMERY]: https://github.com/ethicnology
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.37.0...HEAD

@@ -43,7 +43,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.6.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1878779762;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -553284083;
 
 // Section: executor
 
@@ -166,14 +166,14 @@ fn wire__crate__api__client__Client_connect_impl(
         },
     )
 }
-fn wire__crate__api__client__Client_default_impl(
+fn wire__crate__api__client__Client_new_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "Client_default",
+            debug_name: "Client_new",
             port: None,
             mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
         },
@@ -189,7 +189,7 @@ fn wire__crate__api__client__Client_default_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
-                let output_ok = Result::<_, ()>::Ok(crate::api::client::_Client::default())?;
+                let output_ok = Result::<_, ()>::Ok(crate::api::client::_Client::new())?;
                 Ok(output_ok)
             })())
         },
@@ -2215,7 +2215,7 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        3 => wire__crate__api__client__Client_default_impl(ptr, rust_vec_len, data_len),
+        3 => wire__crate__api__client__Client_new_impl(ptr, rust_vec_len, data_len),
         5 => wire__crate__api__protocol__event__Event_as_json_impl(ptr, rust_vec_len, data_len),
         6 => wire__crate__api__protocol__event__Event_as_pretty_json_impl(
             ptr,

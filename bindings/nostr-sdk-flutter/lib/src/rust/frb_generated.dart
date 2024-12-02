@@ -73,7 +73,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.6.0';
 
   @override
-  int get rustContentHash => 1878779762;
+  int get rustContentHash => -553284083;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -89,7 +89,7 @@ abstract class RustLibApi extends BaseApi {
 
   Future<void> crateApiClientClientConnect({required Client that});
 
-  Client crateApiClientClientDefault();
+  Client crateApiClientClientNew();
 
   Future<String> crateApiClientClientSendEvent(
       {required Client that, required Event event});
@@ -284,7 +284,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Client crateApiClientClientDefault() {
+  Client crateApiClientClientNew() {
     return handler.executeSync(SyncTask(
       callFfi: () {
         final serializer = SseSerializer(generalizedFrbRustBinding);
@@ -295,15 +295,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInner_Client,
         decodeErrorData: null,
       ),
-      constMeta: kCrateApiClientClientDefaultConstMeta,
+      constMeta: kCrateApiClientClientNewConstMeta,
       argValues: [],
       apiImpl: this,
     ));
   }
 
-  TaskConstMeta get kCrateApiClientClientDefaultConstMeta =>
-      const TaskConstMeta(
-        debugName: "Client_default",
+  TaskConstMeta get kCrateApiClientClientNewConstMeta => const TaskConstMeta(
+        debugName: "Client_new",
         argNames: [],
       );
 

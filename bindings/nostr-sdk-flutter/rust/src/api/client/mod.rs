@@ -15,7 +15,7 @@ pub struct _Client {
 
 impl _Client {
     #[frb(sync)]
-    pub fn default() -> Self {
+    pub fn new() -> Self {
         Self {
             inner: Client::default(),
         }
