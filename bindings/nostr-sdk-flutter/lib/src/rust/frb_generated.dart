@@ -17,15 +17,16 @@ import 'frb_generated.io.dart'
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 /// Main entrypoint of the Rust API
-class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
+class NostrSdk
+    extends BaseEntrypoint<NostrSdkApi, NostrSdkApiImpl, NostrSdkWire> {
   @internal
-  static final instance = RustLib._();
+  static final instance = NostrSdk._();
 
-  RustLib._();
+  NostrSdk._();
 
   /// Initialize flutter_rust_bridge
   static Future<void> init({
-    RustLibApi? api,
+    NostrSdkApi? api,
     BaseHandler? handler,
     ExternalLibrary? externalLibrary,
   }) async {
@@ -39,7 +40,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   /// Initialize flutter_rust_bridge in mock mode.
   /// No libraries for FFI are loaded.
   static void initMock({
-    required RustLibApi api,
+    required NostrSdkApi api,
   }) {
     instance.initMockImpl(
       api: api,
@@ -53,12 +54,12 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   static void dispose() => instance.disposeImpl();
 
   @override
-  ApiImplConstructor<RustLibApiImpl, RustLibWire> get apiImplConstructor =>
-      RustLibApiImpl.new;
+  ApiImplConstructor<NostrSdkApiImpl, NostrSdkWire> get apiImplConstructor =>
+      NostrSdkApiImpl.new;
 
   @override
-  WireConstructor<RustLibWire> get wireConstructor =>
-      RustLibWire.fromExternalLibrary;
+  WireConstructor<NostrSdkWire> get wireConstructor =>
+      NostrSdkWire.fromExternalLibrary;
 
   @override
   Future<void> executeRustInitializers() async {
@@ -83,7 +84,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   );
 }
 
-abstract class RustLibApi extends BaseApi {
+abstract class NostrSdkApi extends BaseApi {
   Future<bool> crateApiClientClientAddRelay(
       {required Client that, required String url});
 
@@ -221,8 +222,8 @@ abstract class RustLibApi extends BaseApi {
   CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_TagPtr;
 }
 
-class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
-  RustLibApiImpl({
+class NostrSdkApiImpl extends NostrSdkApiImplPlatform implements NostrSdkApi {
+  NostrSdkApiImpl({
     required super.handler,
     required super.wire,
     required super.generalizedFrbRustBinding,
@@ -2129,21 +2130,21 @@ class ClientImpl extends RustOpaque implements Client {
 
   static final _kStaticData = RustArcStaticData(
     rustArcIncrementStrongCount:
-        RustLib.instance.api.rust_arc_increment_strong_count_Client,
+        NostrSdk.instance.api.rust_arc_increment_strong_count_Client,
     rustArcDecrementStrongCount:
-        RustLib.instance.api.rust_arc_decrement_strong_count_Client,
+        NostrSdk.instance.api.rust_arc_decrement_strong_count_Client,
     rustArcDecrementStrongCountPtr:
-        RustLib.instance.api.rust_arc_decrement_strong_count_ClientPtr,
+        NostrSdk.instance.api.rust_arc_decrement_strong_count_ClientPtr,
   );
 
   Future<bool> addRelay({required String url}) =>
-      RustLib.instance.api.crateApiClientClientAddRelay(that: this, url: url);
+      NostrSdk.instance.api.crateApiClientClientAddRelay(that: this, url: url);
 
-  Future<void> connect() => RustLib.instance.api.crateApiClientClientConnect(
+  Future<void> connect() => NostrSdk.instance.api.crateApiClientClientConnect(
         that: this,
       );
 
-  Future<String> sendEvent({required Event event}) => RustLib.instance.api
+  Future<String> sendEvent({required Event event}) => NostrSdk.instance.api
       .crateApiClientClientSendEvent(that: this, event: event);
 }
 
@@ -2159,37 +2160,37 @@ class EventImpl extends RustOpaque implements Event {
 
   static final _kStaticData = RustArcStaticData(
     rustArcIncrementStrongCount:
-        RustLib.instance.api.rust_arc_increment_strong_count_Event,
+        NostrSdk.instance.api.rust_arc_increment_strong_count_Event,
     rustArcDecrementStrongCount:
-        RustLib.instance.api.rust_arc_decrement_strong_count_Event,
+        NostrSdk.instance.api.rust_arc_decrement_strong_count_Event,
     rustArcDecrementStrongCountPtr:
-        RustLib.instance.api.rust_arc_decrement_strong_count_EventPtr,
+        NostrSdk.instance.api.rust_arc_decrement_strong_count_EventPtr,
   );
 
-  String asJson() => RustLib.instance.api.crateApiProtocolEventEventAsJson(
+  String asJson() => NostrSdk.instance.api.crateApiProtocolEventEventAsJson(
         that: this,
       );
 
   String asPrettyJson() =>
-      RustLib.instance.api.crateApiProtocolEventEventAsPrettyJson(
+      NostrSdk.instance.api.crateApiProtocolEventEventAsPrettyJson(
         that: this,
       );
 
   /// Get event author (`pubkey` field)
-  PublicKey author() => RustLib.instance.api.crateApiProtocolEventEventAuthor(
+  PublicKey author() => NostrSdk.instance.api.crateApiProtocolEventEventAuthor(
         that: this,
       );
 
-  String content() => RustLib.instance.api.crateApiProtocolEventEventContent(
+  String content() => NostrSdk.instance.api.crateApiProtocolEventEventContent(
         that: this,
       );
 
   BigInt createdAt() =>
-      RustLib.instance.api.crateApiProtocolEventEventCreatedAt(
+      NostrSdk.instance.api.crateApiProtocolEventEventCreatedAt(
         that: this,
       );
 
-  String id() => RustLib.instance.api.crateApiProtocolEventEventId(
+  String id() => NostrSdk.instance.api.crateApiProtocolEventEventId(
         that: this,
       );
 
@@ -2197,7 +2198,7 @@ class EventImpl extends RustOpaque implements Event {
   /// If an event has no expiration tag, then it will return `false`.
   ///
   /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
-  bool isExpired() => RustLib.instance.api.crateApiProtocolEventEventIsExpired(
+  bool isExpired() => NostrSdk.instance.api.crateApiProtocolEventEventIsExpired(
         that: this,
       );
 
@@ -2205,36 +2206,36 @@ class EventImpl extends RustOpaque implements Event {
   ///
   /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
   bool isProtected() =>
-      RustLib.instance.api.crateApiProtocolEventEventIsProtected(
+      NostrSdk.instance.api.crateApiProtocolEventEventIsProtected(
         that: this,
       );
 
-  int kind() => RustLib.instance.api.crateApiProtocolEventEventKind(
+  int kind() => NostrSdk.instance.api.crateApiProtocolEventEventKind(
         that: this,
       );
 
   String signature() =>
-      RustLib.instance.api.crateApiProtocolEventEventSignature(
+      NostrSdk.instance.api.crateApiProtocolEventEventSignature(
         that: this,
       );
 
-  List<Tag> tags() => RustLib.instance.api.crateApiProtocolEventEventTags(
+  List<Tag> tags() => NostrSdk.instance.api.crateApiProtocolEventEventTags(
         that: this,
       );
 
   /// Verify both `EventId` and `Signature`
-  void verify() => RustLib.instance.api.crateApiProtocolEventEventVerify(
+  void verify() => NostrSdk.instance.api.crateApiProtocolEventEventVerify(
         that: this,
       );
 
   /// Verify if the `EventId` it's composed correctly
-  bool verifyId() => RustLib.instance.api.crateApiProtocolEventEventVerifyId(
+  bool verifyId() => NostrSdk.instance.api.crateApiProtocolEventEventVerifyId(
         that: this,
       );
 
   /// Verify only event `Signature`
   bool verifySignature() =>
-      RustLib.instance.api.crateApiProtocolEventEventVerifySignature(
+      NostrSdk.instance.api.crateApiProtocolEventEventVerifySignature(
         that: this,
       );
 }
@@ -2251,20 +2252,20 @@ class KeysImpl extends RustOpaque implements Keys {
 
   static final _kStaticData = RustArcStaticData(
     rustArcIncrementStrongCount:
-        RustLib.instance.api.rust_arc_increment_strong_count_Keys,
+        NostrSdk.instance.api.rust_arc_increment_strong_count_Keys,
     rustArcDecrementStrongCount:
-        RustLib.instance.api.rust_arc_decrement_strong_count_Keys,
+        NostrSdk.instance.api.rust_arc_decrement_strong_count_Keys,
     rustArcDecrementStrongCountPtr:
-        RustLib.instance.api.rust_arc_decrement_strong_count_KeysPtr,
+        NostrSdk.instance.api.rust_arc_decrement_strong_count_KeysPtr,
   );
 
   PublicKey publicKey() =>
-      RustLib.instance.api.crateApiProtocolKeyKeysPublicKey(
+      NostrSdk.instance.api.crateApiProtocolKeyKeysPublicKey(
         that: this,
       );
 
   SecretKey secretKey() =>
-      RustLib.instance.api.crateApiProtocolKeyKeysSecretKey(
+      NostrSdk.instance.api.crateApiProtocolKeyKeysSecretKey(
         that: this,
       );
 }
@@ -2281,25 +2282,25 @@ class PublicKeyImpl extends RustOpaque implements PublicKey {
 
   static final _kStaticData = RustArcStaticData(
     rustArcIncrementStrongCount:
-        RustLib.instance.api.rust_arc_increment_strong_count_PublicKey,
+        NostrSdk.instance.api.rust_arc_increment_strong_count_PublicKey,
     rustArcDecrementStrongCount:
-        RustLib.instance.api.rust_arc_decrement_strong_count_PublicKey,
+        NostrSdk.instance.api.rust_arc_decrement_strong_count_PublicKey,
     rustArcDecrementStrongCountPtr:
-        RustLib.instance.api.rust_arc_decrement_strong_count_PublicKeyPtr,
+        NostrSdk.instance.api.rust_arc_decrement_strong_count_PublicKeyPtr,
   );
 
   String toBech32() =>
-      RustLib.instance.api.crateApiProtocolKeyPublicKeyPublicKeyToBech32(
+      NostrSdk.instance.api.crateApiProtocolKeyPublicKeyPublicKeyToBech32(
         that: this,
       );
 
   String toHex() =>
-      RustLib.instance.api.crateApiProtocolKeyPublicKeyPublicKeyToHex(
+      NostrSdk.instance.api.crateApiProtocolKeyPublicKeyPublicKeyToHex(
         that: this,
       );
 
   String toNostrUri() =>
-      RustLib.instance.api.crateApiProtocolKeyPublicKeyPublicKeyToNostrUri(
+      NostrSdk.instance.api.crateApiProtocolKeyPublicKeyPublicKeyToNostrUri(
         that: this,
       );
 }
@@ -2316,20 +2317,20 @@ class SecretKeyImpl extends RustOpaque implements SecretKey {
 
   static final _kStaticData = RustArcStaticData(
     rustArcIncrementStrongCount:
-        RustLib.instance.api.rust_arc_increment_strong_count_SecretKey,
+        NostrSdk.instance.api.rust_arc_increment_strong_count_SecretKey,
     rustArcDecrementStrongCount:
-        RustLib.instance.api.rust_arc_decrement_strong_count_SecretKey,
+        NostrSdk.instance.api.rust_arc_decrement_strong_count_SecretKey,
     rustArcDecrementStrongCountPtr:
-        RustLib.instance.api.rust_arc_decrement_strong_count_SecretKeyPtr,
+        NostrSdk.instance.api.rust_arc_decrement_strong_count_SecretKeyPtr,
   );
 
   String toBech32() =>
-      RustLib.instance.api.crateApiProtocolKeySecretKeySecretKeyToBech32(
+      NostrSdk.instance.api.crateApiProtocolKeySecretKeySecretKeyToBech32(
         that: this,
       );
 
   String toSecretHex() =>
-      RustLib.instance.api.crateApiProtocolKeySecretKeySecretKeyToSecretHex(
+      NostrSdk.instance.api.crateApiProtocolKeySecretKeySecretKeyToSecretHex(
         that: this,
       );
 }
@@ -2346,20 +2347,21 @@ class TagImpl extends RustOpaque implements Tag {
 
   static final _kStaticData = RustArcStaticData(
     rustArcIncrementStrongCount:
-        RustLib.instance.api.rust_arc_increment_strong_count_Tag,
+        NostrSdk.instance.api.rust_arc_increment_strong_count_Tag,
     rustArcDecrementStrongCount:
-        RustLib.instance.api.rust_arc_decrement_strong_count_Tag,
+        NostrSdk.instance.api.rust_arc_decrement_strong_count_Tag,
     rustArcDecrementStrongCountPtr:
-        RustLib.instance.api.rust_arc_decrement_strong_count_TagPtr,
+        NostrSdk.instance.api.rust_arc_decrement_strong_count_TagPtr,
   );
 
   /// Get array of strings
-  List<String> asVec() => RustLib.instance.api.crateApiProtocolEventTagTagAsVec(
+  List<String> asVec() =>
+      NostrSdk.instance.api.crateApiProtocolEventTagTagAsVec(
         that: this,
       );
 
   /// Return the **first** tag value (index `1`), if exists.
-  String? content() => RustLib.instance.api.crateApiProtocolEventTagTagContent(
+  String? content() => NostrSdk.instance.api.crateApiProtocolEventTagTagContent(
         that: this,
       );
 
@@ -2367,27 +2369,28 @@ class TagImpl extends RustOpaque implements Tag {
   ///
   /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
   bool isProtected() =>
-      RustLib.instance.api.crateApiProtocolEventTagTagIsProtected(
+      NostrSdk.instance.api.crateApiProtocolEventTagTagIsProtected(
         that: this,
       );
 
   /// Check if is a standard event tag with `reply` marker
-  bool isReply() => RustLib.instance.api.crateApiProtocolEventTagTagIsReply(
+  bool isReply() => NostrSdk.instance.api.crateApiProtocolEventTagTagIsReply(
         that: this,
       );
 
   /// Check if is a standard event tag with `root` marker
-  bool isRoot() => RustLib.instance.api.crateApiProtocolEventTagTagIsRoot(
+  bool isRoot() => NostrSdk.instance.api.crateApiProtocolEventTagTagIsRoot(
         that: this,
       );
 
   /// Get tag kind
-  String kind() => RustLib.instance.api.crateApiProtocolEventTagTagKind(
+  String kind() => NostrSdk.instance.api.crateApiProtocolEventTagTagKind(
         that: this,
       );
 
   /// Get array of strings
-  List<String> toVec() => RustLib.instance.api.crateApiProtocolEventTagTagToVec(
+  List<String> toVec() =>
+      NostrSdk.instance.api.crateApiProtocolEventTagTagToVec(
         that: this,
       );
 }

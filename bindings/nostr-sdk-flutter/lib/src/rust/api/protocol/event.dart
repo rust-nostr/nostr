@@ -22,7 +22,7 @@ abstract class Event implements RustOpaqueInterface {
   BigInt createdAt();
 
   static Event fromJson({required String json}) =>
-      RustLib.instance.api.crateApiProtocolEventEventFromJson(json: json);
+      NostrSdk.instance.api.crateApiProtocolEventEventFromJson(json: json);
 
   String id();
 

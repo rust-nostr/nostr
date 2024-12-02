@@ -12,17 +12,17 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<_SecretKey>>
 abstract class SecretKey implements RustOpaqueInterface {
   static SecretKey fromSlice({required List<int> secretKey}) =>
-      RustLib.instance.api
+      NostrSdk.instance.api
           .crateApiProtocolKeySecretKeySecretKeyFromSlice(secretKey: secretKey);
 
   /// Generate random secret key
   ///
   /// This constructor uses a random number generator that retrieves randomness from the operating system.
   static SecretKey generate() =>
-      RustLib.instance.api.crateApiProtocolKeySecretKeySecretKeyGenerate();
+      NostrSdk.instance.api.crateApiProtocolKeySecretKeySecretKeyGenerate();
 
   /// Parse from `hex` or `bech32`
-  static SecretKey parse({required String secretKey}) => RustLib.instance.api
+  static SecretKey parse({required String secretKey}) => NostrSdk.instance.api
       .crateApiProtocolKeySecretKeySecretKeyParse(secretKey: secretKey);
 
   String toBech32();

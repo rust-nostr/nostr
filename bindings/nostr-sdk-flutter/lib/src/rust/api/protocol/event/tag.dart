@@ -34,7 +34,7 @@ abstract class Tag implements RustOpaqueInterface {
   ///
   /// Return error if the tag is empty!
   static Tag parse({required List<String> tag}) =>
-      RustLib.instance.api.crateApiProtocolEventTagTagParse(tag: tag);
+      NostrSdk.instance.api.crateApiProtocolEventTagTagParse(tag: tag);
 
   /// Get array of strings
   List<String> toVec();

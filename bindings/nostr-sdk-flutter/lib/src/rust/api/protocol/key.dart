@@ -14,14 +14,14 @@ abstract class Keys implements RustOpaqueInterface {
   ///
   /// This constructor use a random number generator that retrieves randomness from the operating system.
   static Keys generate() =>
-      RustLib.instance.api.crateApiProtocolKeyKeysGenerate();
+      NostrSdk.instance.api.crateApiProtocolKeyKeysGenerate();
 
   factory Keys({required SecretKey secretKey}) =>
-      RustLib.instance.api.crateApiProtocolKeyKeysNew(secretKey: secretKey);
+      NostrSdk.instance.api.crateApiProtocolKeyKeysNew(secretKey: secretKey);
 
   /// Parse secret key from `hex` or `bech32`
   static Keys parse({required String secretKey}) =>
-      RustLib.instance.api.crateApiProtocolKeyKeysParse(secretKey: secretKey);
+      NostrSdk.instance.api.crateApiProtocolKeyKeysParse(secretKey: secretKey);
 
   PublicKey publicKey();
 

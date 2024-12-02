@@ -13,7 +13,7 @@ abstract class Client implements RustOpaqueInterface {
 
   Future<void> connect();
 
-  factory Client() => RustLib.instance.api.crateApiClientClientNew();
+  factory Client() => NostrSdk.instance.api.crateApiClientClientNew();
 
   Future<String> sendEvent({required Event event});
 }

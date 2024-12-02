@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:nostr_sdk/nostr_sdk.dart';
 
 Future<void> main() async {
-  await RustLib.init();
+  await NostrSdk.init();
   runApp(const MyApp());
 }
 

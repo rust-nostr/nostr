@@ -12,11 +12,11 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<_PublicKey>>
 abstract class PublicKey implements RustOpaqueInterface {
   static PublicKey fromSlice({required List<int> publicKey}) =>
-      RustLib.instance.api
+      NostrSdk.instance.api
           .crateApiProtocolKeyPublicKeyPublicKeyFromSlice(publicKey: publicKey);
 
   /// Parse from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) URI
-  static PublicKey parse({required String publicKey}) => RustLib.instance.api
+  static PublicKey parse({required String publicKey}) => NostrSdk.instance.api
       .crateApiProtocolKeyPublicKeyPublicKeyParse(publicKey: publicKey);
 
   String toBech32();
