@@ -103,10 +103,10 @@ packages:
     dependency: transitive
     description:
       name: flutter_rust_bridge
-      sha256: "5fe868d3cb8cbc4d83091748552e03f00ccfa41b8e44691bc382611f831d5f8b"
+      sha256: f703c4b50e253e53efc604d50281bbaefe82d615856f8ae1e7625518ae252e98
       url: "https://pub.dev"
     source: hosted
-    version: "2.5.1"
+    version: "2.0.0"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -184,7 +184,7 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "0.0.1"
+    version: "0.37.0"
   path:
     dependency: transitive
     description:
@@ -298,10 +298,10 @@ packages:
     dependency: transitive
     description:
       name: web
-      sha256: cd3543bd5798f6ad290ea73d210f423502e71900302dde696f8bff84bf89a1cb
+      sha256: "97da13628db363c635202ad97068d47c5b8aa555808e7a9411963c533b449b27"
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.0"
+    version: "0.5.1"
   webdriver:
     dependency: transitive
     description:
