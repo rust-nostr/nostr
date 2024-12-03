@@ -52,6 +52,7 @@
 
 ### Added
 
+* nostr: add `Tags::challenge` method ([Yuki Kishimoto])
 * database: impl PartialEq and Eq for `Events` ([Yuki Kishimoto])
 * sdk: automatically resend event after NIP-42 authentication ([Yuki Kishimoto])
 

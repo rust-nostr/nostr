@@ -153,8 +153,7 @@ impl Tags {
     /// Extract identifier (`d` tag), if exists.
     #[inline]
     pub fn identifier(&self) -> Option<&str> {
-        let standardized: &TagStandard = self.find_standardized(TagKind::d())?;
-        match standardized {
+        match self.find_standardized(TagKind::d())? {
             TagStandard::Identifier(identifier) => Some(identifier),
             _ => None,
         }
@@ -164,9 +163,17 @@ impl Tags {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
     pub fn expiration(&self) -> Option<&Timestamp> {
-        let standardized: &TagStandard = self.find_standardized(TagKind::Expiration)?;
-        match standardized {
+        match self.find_standardized(TagKind::Expiration)? {
             TagStandard::Expiration(timestamp) => Some(timestamp),
+            _ => None,
+        }
+    }
+
+    /// Extract NIP42 challenge, if exists.
+    #[inline]
+    pub fn challenge(&self) -> Option<&str> {
+        match self.find_standardized(TagKind::Challenge)? {
+            TagStandard::Challenge(challenge) => Some(challenge),
             _ => None,
         }
     }
