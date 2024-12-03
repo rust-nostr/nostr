@@ -22,7 +22,7 @@ use crate::error::Error;
 type WsTx = SplitSink<WebSocketStream<TcpStream>, Message>;
 
 #[derive(Debug, Clone)]
-pub(super) struct InternalLocalRelay {
+pub(super) struct InnerLocalRelay {
     addr: SocketAddr,
     database: Arc<dyn NostrEventsDatabase>,
     shutdown: broadcast::Sender<()>,
@@ -39,13 +39,13 @@ pub(super) struct InternalLocalRelay {
     test: RelayTestOptions,
 }
 
-impl AtomicDestroyer for InternalLocalRelay {
+impl AtomicDestroyer for InnerLocalRelay {
     fn on_destroy(&self) {
         self.shutdown();
     }
 }
 
-impl InternalLocalRelay {
+impl InnerLocalRelay {
     pub async fn run(builder: RelayBuilder) -> Result<Self, Error> {
         // TODO: check if configured memory database with events option disabled
 

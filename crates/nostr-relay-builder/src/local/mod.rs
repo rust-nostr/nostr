@@ -7,18 +7,18 @@
 use atomic_destructor::AtomicDestructor;
 use nostr_database::prelude::*;
 
-mod internal;
+mod inner;
 mod session;
 mod util;
 
-use self::internal::InternalLocalRelay;
+use self::inner::InnerLocalRelay;
 use crate::builder::RelayBuilder;
 use crate::error::Error;
 
 /// A local nostr relay
 #[derive(Debug, Clone)]
 pub struct LocalRelay {
-    inner: AtomicDestructor<InternalLocalRelay>,
+    inner: AtomicDestructor<InnerLocalRelay>,
 }
 
 impl LocalRelay {
@@ -26,7 +26,7 @@ impl LocalRelay {
     #[inline]
     pub async fn run(builder: RelayBuilder) -> Result<Self, Error> {
         Ok(Self {
-            inner: AtomicDestructor::new(InternalLocalRelay::run(builder).await?),
+            inner: AtomicDestructor::new(InnerLocalRelay::run(builder).await?),
         })
     }
 
