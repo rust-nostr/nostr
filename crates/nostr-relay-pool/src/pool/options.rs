@@ -5,14 +5,12 @@
 //! Pool options
 
 use super::constants::DEFAULT_NOTIFICATION_CHANNEL_SIZE;
-use crate::relay::RelayFilteringMode;
 
 /// Relay Pool Options
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RelayPoolOptions {
     pub(super) max_relays: Option<usize>,
     pub(super) notification_channel_size: usize,
-    pub(super) filtering_mode: RelayFilteringMode,
 }
 
 impl Default for RelayPoolOptions {
@@ -20,7 +18,6 @@ impl Default for RelayPoolOptions {
         Self {
             max_relays: None,
             notification_channel_size: DEFAULT_NOTIFICATION_CHANNEL_SIZE,
-            filtering_mode: RelayFilteringMode::default(),
         }
     }
 }
@@ -43,13 +40,6 @@ impl RelayPoolOptions {
     #[inline]
     pub fn notification_channel_size(mut self, size: usize) -> Self {
         self.notification_channel_size = size;
-        self
-    }
-
-    /// Relay filtering mode (default: blacklist)
-    #[inline]
-    pub fn filtering_mode(mut self, mode: RelayFilteringMode) -> Self {
-        self.filtering_mode = mode;
         self
     }
 }

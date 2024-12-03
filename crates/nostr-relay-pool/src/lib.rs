@@ -17,6 +17,7 @@ pub use async_wsocket::ConnectionMode;
 pub mod pool;
 pub mod prelude;
 pub mod relay;
+#[doc(hidden)]
 pub mod shared;
 
 pub use self::pool::options::RelayPoolOptions;

@@ -17,7 +17,9 @@ use nostr_relay_pool::shared::SharedState;
 #[cfg(feature = "nip57")]
 use nostr_zapper::{DynNostrZapper, IntoNostrZapper, ZapperError};
 use thiserror::Error;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::broadcast;
+#[cfg(feature = "nip57")]
+use tokio::sync::RwLock;
 
 pub mod builder;
 pub mod options;
@@ -159,6 +161,7 @@ impl Client {
         let state = SharedState::new(
             builder.database,
             builder.signer,
+            builder.opts.filtering_mode,
             builder.opts.nip42_auto_authentication,
         );
 

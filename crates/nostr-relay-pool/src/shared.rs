@@ -2,8 +2,6 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Shared state
-
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -13,23 +11,22 @@ use nostr_database::{IntoNostrDatabase, MemoryDatabase, NostrDatabase};
 use thiserror::Error;
 use tokio::sync::RwLock;
 
-/// Shared state error
+use crate::{RelayFiltering, RelayFilteringMode};
+
 #[derive(Debug, Error)]
 pub enum Error {
-    /// Signer not configured
     #[error("signer not configured")]
     SignerNotConfigured,
 }
 
 // TODO: add SharedStateBuilder?
 
-/// Shared state
 #[derive(Debug, Clone)]
 pub struct SharedState {
     pub(crate) database: Arc<dyn NostrDatabase>,
     signer: Arc<RwLock<Option<Arc<dyn NostrSigner>>>>,
     nip42_auto_authentication: Arc<AtomicBool>,
-    // TODO: add RelayFiltering
+    pub(crate) filtering: RelayFiltering,
 }
 
 impl Default for SharedState {
@@ -38,21 +35,23 @@ impl Default for SharedState {
             database: MemoryDatabase::new().into_nostr_database(),
             signer: Arc::new(RwLock::new(None)),
             nip42_auto_authentication: Arc::new(AtomicBool::new(true)),
+            filtering: RelayFiltering::default(),
         }
     }
 }
 
 impl SharedState {
-    /// TODO
     pub fn new(
         database: Arc<dyn NostrDatabase>,
         signer: Option<Arc<dyn NostrSigner>>,
+        filtering_mode: RelayFilteringMode,
         nip42_auto_authentication: bool,
     ) -> Self {
         Self {
             database,
             signer: Arc::new(RwLock::new(signer)),
             nip42_auto_authentication: Arc::new(AtomicBool::new(nip42_auto_authentication)),
+            filtering: RelayFiltering::new(filtering_mode),
         }
     }
 
@@ -103,5 +102,11 @@ impl SharedState {
     pub async fn unset_signer(&self) {
         let mut s = self.signer.write().await;
         *s = None;
+    }
+
+    /// Get relay filtering
+    #[inline]
+    pub fn filtering(&self) -> &RelayFiltering {
+        &self.filtering
     }
 }

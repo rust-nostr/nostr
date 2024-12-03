@@ -27,7 +27,7 @@ use super::constants::{
     NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP,
     NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, WAIT_FOR_AUTHENTICATION_TIMEOUT, WEBSOCKET_TX_TIMEOUT,
 };
-use super::filtering::{CheckFiltering, RelayFiltering};
+use super::filtering::CheckFiltering;
 use super::flags::AtomicRelayServiceFlags;
 use super::options::{
     FilterOptions, RelayOptions, SubscribeAutoCloseOptions, SubscribeOptions, SyncOptions,
@@ -148,8 +148,7 @@ pub(crate) struct InnerRelay {
     pub(super) opts: RelayOptions,
     pub(super) flags: AtomicRelayServiceFlags,
     pub(super) stats: RelayConnectionStats,
-    pub(super) filtering: RelayFiltering,
-    state: SharedState,
+    pub(super) state: SharedState,
     channels: Arc<RelayChannels>,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
     external_notification_sender: OnceCell<broadcast::Sender<RelayPoolNotification>>,
@@ -166,12 +165,7 @@ impl AtomicDestroyer for InnerRelay {
 }
 
 impl InnerRelay {
-    pub fn new(
-        url: RelayUrl,
-        state: SharedState,
-        filtering: RelayFiltering,
-        opts: RelayOptions,
-    ) -> Self {
+    pub fn new(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
         let (relay_notification_sender, ..) = broadcast::channel::<RelayNotification>(2048);
 
         Self {
@@ -184,7 +178,6 @@ impl InnerRelay {
             flags: AtomicRelayServiceFlags::new(opts.flags),
             opts,
             stats: RelayConnectionStats::default(),
-            filtering,
             state,
             channels: Arc::new(RelayChannels::new()),
             internal_notification_sender: relay_notification_sender,
@@ -987,7 +980,12 @@ impl InnerRelay {
                 let partial_event: PartialEvent = PartialEvent::from_raw(&event)?;
 
                 // Check filtering
-                match self.filtering.check_partial_event(&partial_event).await {
+                match self
+                    .state
+                    .filtering()
+                    .check_partial_event(&partial_event)
+                    .await
+                {
                     CheckFiltering::Allow => {
                         // Nothing to do
                     }

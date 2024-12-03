@@ -95,7 +95,7 @@ impl RelayPool {
         Self::with_shared_state(opts, SharedState::default())
     }
 
-    /// New with shared state
+    #[doc(hidden)]
     pub fn with_shared_state(opts: RelayPoolOptions, state: SharedState) -> Self {
         Self {
             inner: AtomicDestructor::new(InnerRelayPool::new(opts, state)),
@@ -131,7 +131,7 @@ impl RelayPool {
     /// Get relay filtering
     #[inline]
     pub fn filtering(&self) -> &RelayFiltering {
-        &self.inner.filtering
+        self.inner.state.filtering()
     }
 
     /// Get all relays

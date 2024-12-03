@@ -164,18 +164,13 @@ impl Relay {
     {
         let mut state = SharedState::default();
         state.database = database.into_nostr_database();
-        let filtering: RelayFiltering = RelayFiltering::new(opts.filtering_mode);
-        Self::internal_custom(url, state, filtering, opts)
+        state.filtering = RelayFiltering::new(opts.filtering_mode);
+        Self::internal_custom(url, state, opts)
     }
 
-    pub(crate) fn internal_custom(
-        url: RelayUrl,
-        state: SharedState,
-        filtering: RelayFiltering,
-        opts: RelayOptions,
-    ) -> Self {
+    pub(crate) fn internal_custom(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
         Self {
-            inner: AtomicDestructor::new(InnerRelay::new(url, state, filtering, opts)),
+            inner: AtomicDestructor::new(InnerRelay::new(url, state, opts)),
         }
     }
 
@@ -206,7 +201,7 @@ impl Relay {
     /// Get relay filtering
     #[inline]
     pub fn filtering(&self) -> &RelayFiltering {
-        &self.inner.filtering
+        self.inner.state.filtering()
     }
 
     /// Check if relay is connected

@@ -21,7 +21,7 @@ use super::constants::MAX_CONNECTING_CHUNK;
 use super::options::RelayPoolOptions;
 use super::{Error, Output, RelayPoolNotification};
 use crate::relay::options::{FilterOptions, RelayOptions, SyncOptions};
-use crate::relay::{FlagCheck, Reconciliation, Relay, RelayFiltering};
+use crate::relay::{FlagCheck, Reconciliation, Relay};
 use crate::shared::SharedState;
 use crate::{RelayServiceFlags, SubscribeOptions};
 
@@ -31,9 +31,8 @@ type Relays = HashMap<RelayUrl, Relay>;
 pub struct InnerRelayPool {
     pub(super) state: SharedState,
     relays: Arc<RwLock<Relays>>,
-    notification_sender: broadcast::Sender<RelayPoolNotification>,
+    notification_sender: broadcast::Sender<RelayPoolNotification>, // TODO: move to shared state?
     subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,
-    pub(super) filtering: RelayFiltering,
     opts: RelayPoolOptions,
     shutdown: Arc<AtomicBool>,
 }
@@ -59,7 +58,6 @@ impl InnerRelayPool {
             relays: Arc::new(RwLock::new(HashMap::new())),
             notification_sender,
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
-            filtering: RelayFiltering::new(opts.filtering_mode),
             opts,
             shutdown: Arc::new(AtomicBool::new(false)),
         }
@@ -226,7 +224,7 @@ impl InnerRelayPool {
         }
 
         // Compose new relay
-        let relay = Relay::internal_custom(url, self.state.clone(), self.filtering.clone(), opts);
+        let relay = Relay::internal_custom(url, self.state.clone(), opts);
 
         // Set notification sender
         relay
