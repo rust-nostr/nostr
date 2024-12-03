@@ -2,18 +2,78 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
-use nostr::{Filter, SubscriptionId};
+use nostr::{Event, Filter, PublicKey, Result, SubscriptionId, Timestamp};
 
 pub(super) enum RateLimiterResponse {
     Allowed,
     Limited,
 }
 
+#[derive(Default)]
+pub(super) struct Nip42Session {
+    /// Is authenticated
+    pub public_key: Option<PublicKey>,
+    /// Challenges
+    pub challenges: HashSet<String>,
+}
+
+impl Nip42Session {
+    /// Get or generate challenge
+    pub fn generate_challenge(&mut self) -> String {
+        // TODO: alternatives?
+
+        // Too many challenges without reply
+        if self.challenges.len() > 20 {
+            // Clean to avoid possible attack where client never complete auth
+            self.challenges.clear();
+        }
+
+        let challenge: String = SubscriptionId::generate().to_string();
+        self.challenges.insert(challenge.clone());
+        challenge
+    }
+
+    #[inline]
+    pub fn is_authenticated(&self) -> bool {
+        self.public_key.is_some()
+    }
+
+    pub fn check_challenge(&mut self, event: &Event) -> Result<(), String> {
+        match event.tags.challenge() {
+            Some(challenge) => {
+                // Tried to remove challenge but wasn't in the set: return false.
+                if !self.challenges.remove(challenge) {
+                    return Err(String::from("received invalid challenge"));
+                }
+
+                // Check created_at
+                let now = Timestamp::now();
+                let diff: u64 = now.as_u64().abs_diff(event.created_at.as_u64());
+                if diff > 120 {
+                    return Err(String::from("challenge is too old (max allowed 2 min)"));
+                }
+
+                // Verify event
+                event.verify().map_err(|e| e.to_string())?;
+
+                // TODO: check `relay` tag
+
+                // Mark as authenticated
+                self.public_key = Some(event.pubkey);
+
+                Ok(())
+            }
+            None => Err(String::from("challenge not found")),
+        }
+    }
+}
+
 pub(super) struct Session {
     pub subscriptions: HashMap<SubscriptionId, Vec<Filter>>,
+    pub nip42: Nip42Session,
     pub tokens: Tokens,
 }
 

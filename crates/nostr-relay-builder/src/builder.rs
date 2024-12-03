@@ -100,6 +100,41 @@ pub struct RelayTestOptions {
     pub unresponsive_connection: Option<Duration>,
 }
 
+/// NIP42 mode
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum RelayBuilderNip42Mode {
+    /// Require authentication for writing
+    Write,
+    /// Require authentication for reading
+    Read,
+    /// Always require authentication
+    #[default]
+    Both,
+}
+
+impl RelayBuilderNip42Mode {
+    /// Check if is [`RelayBuilderNip42Mode::Read`] or [`RelayBuilderNip42Mode::Both`]
+    #[inline]
+    pub fn is_read(&self) -> bool {
+        matches!(self, Self::Read | Self::Both)
+    }
+
+    /// Check if is [`RelayBuilderNip42Mode::Write`] or [`RelayBuilderNip42Mode::Both`]
+    #[inline]
+    pub fn is_write(&self) -> bool {
+        matches!(self, Self::Write | Self::Both)
+    }
+}
+
+/// NIP42 options
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RelayBuilderNip42 {
+    /// Mode
+    pub mode: RelayBuilderNip42Mode,
+    // /// Allowed public keys
+    // pub allowed: HashSet<PublicKey>,
+}
+
 /// Relay builder
 #[derive(Debug)]
 pub struct RelayBuilder {
@@ -113,6 +148,8 @@ pub struct RelayBuilder {
     pub(crate) mode: RelayBuilderMode,
     /// Rate limit
     pub(crate) rate_limit: RateLimit,
+    /// NIP42 options
+    pub(crate) nip42: Option<RelayBuilderNip42>,
     /// Tor hidden service
     #[cfg(feature = "tor")]
     pub(crate) tor: Option<RelayBuilderHiddenService>,
@@ -135,6 +172,7 @@ impl Default for RelayBuilder {
             })),
             mode: RelayBuilderMode::default(),
             rate_limit: RateLimit::default(),
+            nip42: None,
             #[cfg(feature = "tor")]
             tor: None,
             max_connections: None,
@@ -180,6 +218,13 @@ impl RelayBuilder {
     #[inline]
     pub fn rate_limit(mut self, limit: RateLimit) -> Self {
         self.rate_limit = limit;
+        self
+    }
+
+    /// Require NIP42 authentication
+    #[inline]
+    pub fn nip42(mut self, opts: RelayBuilderNip42) -> Self {
+        self.nip42 = Some(opts);
         self
     }
 

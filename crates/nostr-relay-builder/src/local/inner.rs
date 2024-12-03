@@ -14,9 +14,11 @@ use nostr_database::prelude::*;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{broadcast, Semaphore};
 
-use super::session::{RateLimiterResponse, Session, Tokens};
+use super::session::{Nip42Session, RateLimiterResponse, Session, Tokens};
 use super::util;
-use crate::builder::{RateLimit, RelayBuilder, RelayBuilderMode, RelayTestOptions};
+use crate::builder::{
+    RateLimit, RelayBuilder, RelayBuilderMode, RelayBuilderNip42, RelayTestOptions,
+};
 use crate::error::Error;
 
 type WsTx = SplitSink<WebSocketStream<TcpStream>, Message>;
@@ -36,6 +38,7 @@ pub(super) struct InnerLocalRelay {
     min_pow: Option<u8>, // TODO: use AtomicU8 to allow to change it?
     #[cfg(feature = "tor")]
     hidden_service: Option<String>,
+    nip42: Option<RelayBuilderNip42>,
     test: RelayTestOptions,
 }
 
@@ -98,6 +101,7 @@ impl InnerLocalRelay {
             min_pow: builder.min_pow,
             #[cfg(feature = "tor")]
             hidden_service,
+            nip42: builder.nip42,
             test: builder.test,
         };
 
@@ -169,6 +173,7 @@ impl InnerLocalRelay {
 
         let mut session: Session = Session {
             subscriptions: HashMap::new(),
+            nip42: Nip42Session::default(),
             tokens: Tokens::new(self.rate_limit.notes_per_minute),
         };
 
@@ -265,6 +270,38 @@ impl InnerLocalRelay {
                                     message: format!(
                                         "{}: required a difficulty >= {difficulty}",
                                         MachineReadablePrefix::Pow
+                                    ),
+                                },
+                            )
+                            .await;
+                    }
+                }
+
+                // Check NIP42
+                if let Some(nip42) = &self.nip42 {
+                    // TODO: check if public key allowed
+
+                    // Check mode and if it's authenticated
+                    if nip42.mode.is_write() && !session.nip42.is_authenticated() {
+                        // Generate and send AUTH challenge
+                        self.send_msg(
+                            ws_tx,
+                            RelayMessage::Auth {
+                                challenge: session.nip42.generate_challenge(),
+                            },
+                        )
+                        .await?;
+
+                        // Return error
+                        return self
+                            .send_msg(
+                                ws_tx,
+                                RelayMessage::Ok {
+                                    event_id: event.id,
+                                    status: false,
+                                    message: format!(
+                                        "{}: you must auth",
+                                        MachineReadablePrefix::AuthRequired
                                     ),
                                 },
                             )
@@ -437,6 +474,37 @@ impl InnerLocalRelay {
                         .await;
                 }
 
+                // Check NIP42
+                if let Some(nip42) = &self.nip42 {
+                    // TODO: check if public key allowed
+
+                    // Check mode and if it's authenticated
+                    if nip42.mode.is_read() && !session.nip42.is_authenticated() {
+                        // Generate and send AUTH challenge
+                        self.send_msg(
+                            ws_tx,
+                            RelayMessage::Auth {
+                                challenge: session.nip42.generate_challenge(),
+                            },
+                        )
+                        .await?;
+
+                        // Return error
+                        return self
+                            .send_msg(
+                                ws_tx,
+                                RelayMessage::Closed {
+                                    subscription_id,
+                                    message: format!(
+                                        "{}: you must auth",
+                                        MachineReadablePrefix::AuthRequired
+                                    ),
+                                },
+                            )
+                            .await;
+                    }
+                }
+
                 // Update session subscriptions
                 session
                     .subscriptions
@@ -474,10 +542,30 @@ impl InnerLocalRelay {
                 session.subscriptions.remove(&subscription_id);
                 Ok(())
             }
-            ClientMessage::Auth(_event) => {
-                // TODO
-                Ok(())
-            }
+            ClientMessage::Auth(event) => match session.nip42.check_challenge(&event) {
+                Ok(()) => {
+                    self.send_msg(
+                        ws_tx,
+                        RelayMessage::Ok {
+                            event_id: event.id,
+                            status: true,
+                            message: String::new(),
+                        },
+                    )
+                    .await
+                }
+                Err(e) => {
+                    self.send_msg(
+                        ws_tx,
+                        RelayMessage::Ok {
+                            event_id: event.id,
+                            status: false,
+                            message: format!("{}: {e}", MachineReadablePrefix::AuthRequired),
+                        },
+                    )
+                    .await
+                }
+            },
             ClientMessage::NegOpen { .. }
             | ClientMessage::NegMsg { .. }
             | ClientMessage::NegClose { .. } => Ok(()),
