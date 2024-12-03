@@ -434,7 +434,7 @@ mod tests {
     use async_utility::time;
     use nostr_relay_builder::prelude::*;
 
-    use super::*;
+    use super::{Error, *};
 
     #[tokio::test]
     async fn test_ok_msg() {
@@ -610,5 +610,121 @@ mod tests {
         assert!(!relay.inner.is_running());
     }
 
-    // TODO: add NIP42 tests
+    #[tokio::test]
+    async fn test_nip42_send_event() {
+        // Mock relay
+        let opts = RelayBuilderNip42 {
+            mode: RelayBuilderNip42Mode::Write,
+        };
+        let builder = RelayBuilder::default().nip42(opts);
+        let mock = LocalRelay::run(builder).await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let relay = Relay::new(url);
+
+        relay.inner.state.automatic_authentication(true);
+
+        relay.connect(Some(Duration::from_millis(100))).await;
+
+        // Signer
+        let keys = Keys::generate();
+
+        // Send as unauthenticated (MUST return error)
+        let event = EventBuilder::text_note("Test")
+            .sign_with_keys(&keys)
+            .unwrap();
+        let err = relay.send_event(event).await.unwrap_err();
+        if let Error::RelayMessage(msg) = err {
+            assert_eq!(
+                MachineReadablePrefix::parse(&msg).unwrap(),
+                MachineReadablePrefix::AuthRequired
+            );
+        } else {
+            panic!("Unexpected error");
+        }
+
+        // Set a signer
+        relay.inner.state.set_signer(keys.clone()).await;
+
+        // Send as authenticated
+        let event = EventBuilder::text_note("Test")
+            .sign_with_keys(&keys)
+            .unwrap();
+        assert!(relay.send_event(event).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_nip42_fetch_events() {
+        // Mock relay
+        let opts = RelayBuilderNip42 {
+            mode: RelayBuilderNip42Mode::Read,
+        };
+        let builder = RelayBuilder::default().nip42(opts);
+        let mock = LocalRelay::run(builder).await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let relay = Relay::new(url);
+
+        relay.connect(Some(Duration::from_millis(100))).await;
+
+        // Signer
+        let keys = Keys::generate();
+
+        // Send an event
+        let event = EventBuilder::text_note("Test")
+            .sign_with_keys(&keys)
+            .unwrap();
+        relay.send_event(event).await.unwrap();
+
+        let filter = Filter::new().kind(Kind::TextNote).limit(3);
+
+        // Disable NIP42 auto auth
+        relay.inner.state.automatic_authentication(false);
+
+        // Unauthenticated fetch (MUST return error)
+        let err = relay
+            .fetch_events(
+                vec![filter.clone()],
+                Duration::from_secs(5),
+                FilterOptions::ExitOnEOSE,
+            )
+            .await
+            .unwrap_err();
+        match err {
+            Error::RelayMessage(msg) => {
+                assert_eq!(
+                    MachineReadablePrefix::parse(&msg).unwrap(),
+                    MachineReadablePrefix::AuthRequired
+                );
+            }
+            e => panic!("Unexpected error: {e}"),
+        }
+
+        // Enable NIP42 auto auth
+        relay.inner.state.automatic_authentication(true);
+
+        // Unauthenticated fetch (MUST return error)
+        let err = relay
+            .fetch_events(
+                vec![filter.clone()],
+                Duration::from_secs(5),
+                FilterOptions::ExitOnEOSE,
+            )
+            .await
+            .unwrap_err();
+        assert!(matches!(err, Error::AuthenticationFailed));
+
+        // Set a signer
+        relay.inner.state.set_signer(keys).await;
+
+        // Authenticated fetch
+        let res = relay
+            .fetch_events(
+                vec![filter],
+                Duration::from_secs(5),
+                FilterOptions::ExitOnEOSE,
+            )
+            .await;
+        assert!(res.is_ok());
+    }
 }
