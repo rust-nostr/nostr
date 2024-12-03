@@ -1,13 +1,15 @@
 name: Bindings CI
 
 on:
-  workflow_dispatch:
   push:
+    branches: [ master ]
     paths:
       - "bindings/nostr-sdk-ffi/**"
   pull_request:
+    branches: [ master ]
     paths:
       - "bindings/nostr-sdk-ffi/**"
+  workflow_dispatch:
 
 jobs:
   swift:
