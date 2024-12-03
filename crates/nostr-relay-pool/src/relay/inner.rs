@@ -1193,12 +1193,12 @@ impl InnerRelay {
                 return if status {
                     Ok(event_id)
                 } else {
-                    Err(Error::EventNotPublished(message))
+                    Err(Error::RelayMessage(message))
                 };
             }
         }
 
-        Err(Error::EventNotPublished(message))
+        Err(Error::RelayMessage(message))
     }
 
     async fn auth(&self, challenge: String) -> Result<(), Error> {
@@ -1227,7 +1227,7 @@ impl InnerRelay {
         if status {
             Ok(())
         } else {
-            Err(Error::EventNotPublished(message))
+            Err(Error::RelayMessage(message))
         }
     }
 
@@ -1255,10 +1255,7 @@ impl InnerRelay {
                     }
                     RelayNotification::RelayStatus { status } => {
                         if status.is_disconnected() {
-                            // TODO: use another error?
-                            return Err(Error::EventNotPublished(String::from(
-                                "relay not connected (status changed)",
-                            )));
+                            return Err(Error::NotConnected);
                         }
                     }
                     RelayNotification::Shutdown => break,
@@ -1266,9 +1263,7 @@ impl InnerRelay {
                 }
             }
 
-            Err(Error::EventNotPublished(String::from(
-                "loop prematurely terminated",
-            )))
+            Err(Error::PrematureExit)
         })
         .await
         .ok_or(Error::Timeout)?
@@ -1290,10 +1285,7 @@ impl InnerRelay {
                     }
                     RelayNotification::RelayStatus { status } => {
                         if status.is_disconnected() {
-                            // TODO: use another error?
-                            return Err(Error::EventNotPublished(String::from(
-                                "relay not connected (status changed)",
-                            )));
+                            return Err(Error::NotConnected);
                         }
                     }
                     RelayNotification::Shutdown => break,
@@ -1301,9 +1293,7 @@ impl InnerRelay {
                 }
             }
 
-            Err(Error::EventNotPublished(String::from(
-                "loop prematurely terminated",
-            )))
+            Err(Error::PrematureExit)
         })
         .await
         .ok_or(Error::Timeout)?
@@ -1399,10 +1389,14 @@ impl InnerRelay {
                                             // Check if auth required
                                             match MachineReadablePrefix::parse(&message) {
                                                 Some(MachineReadablePrefix::AuthRequired) => {
-                                                    require_resubscription = true;
+                                                    if relay.state.is_auto_authentication_enabled() {
+                                                        require_resubscription = true;
+                                                    } else {
+                                                        return (false, Some(SubscriptionAutoClosedReason::Closed(message))); // No need to send CLOSE msg
+                                                    }
                                                 }
                                                 _ => {
-                                                    return (false, Some(SubscriptionAutoClosedReason::Closed)); // No need to send CLOSE msg
+                                                    return (false, Some(SubscriptionAutoClosedReason::Closed(message))); // No need to send CLOSE msg
                                                 }
                                             }
                                         }
@@ -1560,9 +1554,8 @@ impl InnerRelay {
                             SubscriptionAutoClosedReason::AuthenticationFailed => {
                                 return Err(Error::AuthenticationFailed);
                             }
-                            SubscriptionAutoClosedReason::Closed => {
-                                // TODO: return error?
-                                break;
+                            SubscriptionAutoClosedReason::Closed(message) => {
+                                return Err(Error::RelayMessage(message));
                             }
                             // Completed
                             SubscriptionAutoClosedReason::Completed => break,

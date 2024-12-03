@@ -46,7 +46,7 @@ pub enum SubscriptionAutoClosedReason {
     /// NIP42 authentication failed
     AuthenticationFailed,
     /// Closed
-    Closed,
+    Closed(String),
     /// Completed
     Completed,
 }

@@ -69,9 +69,9 @@ pub enum Error {
     /// Received shutdown
     #[error("received shutdown")]
     Shutdown,
-    /// Event not published
-    #[error("event not published: {0}")]
-    EventNotPublished(String),
+    /// Relay message
+    #[error("{0}")]
+    RelayMessage(String),
     /// Only some events
     #[error("partial publish: published={}, missing={}", published.len(), not_published.len())]
     PartialPublish {
@@ -159,6 +159,9 @@ pub enum Error {
     /// Auth failed
     #[error("authentication failed")]
     AuthenticationFailed,
+    /// Premature exit
+    #[error("premature exit")]
+    PrematureExit,
 }
 
 impl Error {
