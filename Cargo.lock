@@ -3283,7 +3283,6 @@ name = "nostr-sdk"
 version = "0.37.0"
 dependencies = [
  "async-utility",
- "atomic-destructor",
  "lnurl-pay",
  "nostr",
  "nostr-connect",
@@ -3308,6 +3307,7 @@ dependencies = [
  "nostr",
  "nostr-connect",
  "nostr-sdk",
+ "nwc",
  "paranoid-android",
  "tracing",
  "tracing-subscriber",
@@ -3332,6 +3332,7 @@ dependencies = [
  "js-sys",
  "nostr-connect",
  "nostr-sdk",
+ "nwc",
  "tracing",
  "tracing-subscriber",
  "wasm-bindgen",

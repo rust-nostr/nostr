@@ -36,9 +36,6 @@ pub use nostr_relay_pool::{
 #[doc(hidden)]
 #[cfg(feature = "nip57")]
 pub use nostr_zapper::{self as zapper, *};
-#[doc(hidden)]
-#[cfg(feature = "nip47")]
-pub use nwc::{self, NostrWalletConnectOptions, NWC};
 
 pub mod client;
 mod gossip;

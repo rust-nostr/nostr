@@ -6,6 +6,7 @@ use core::ops::Deref;
 use std::sync::Arc;
 
 use nostr_sdk::prelude::*;
+use nwc::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};

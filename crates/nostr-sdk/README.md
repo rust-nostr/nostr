@@ -19,7 +19,6 @@ If you're attempting something more custom, you might be interested in [these](h
 
 ```rust,no_run
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
-use std::str::FromStr;
 
 use nostr_sdk::prelude::*;
 
@@ -78,28 +77,6 @@ async fn main() -> Result<()> {
     let builder = EventBuilder::text_note("POW text note from nostr-sdk").pow(20);
     client.send_event_builder(builder).await?; // Send to all relays
     // client.send_event_builder_to(["wss://relay.damus.io"], builder).await?; // Send to specific relay
-
-    // --------- Zap! -------------
-
-    // Configure zapper
-    let uri = NostrWalletConnectURI::from_str("nostr+walletconnect://...")?;
-    let zapper = NWC::new(uri); // Use `WebLNZapper::new().await` for WebLN
-    client.set_zapper(zapper).await;
-
-    // Send SAT without zap event
-    let public_key = PublicKey::from_bech32(
-        "npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
-    )?;
-    client.zap(public_key, 1000, None).await?;
-
-    // Zap profile
-    let details = ZapDetails::new(ZapType::Public).message("Test");
-    client.zap(public_key, 1000, Some(details)).await?;
-
-    // Zap event
-    let event = Nip19Event::from_bech32("nevent1qqsr0q447ylm3y3tvw07vt69w3kzk026vl6yn3dwm9fweay0dw0jttgpz3mhxue69uhhyetvv9ujumn0wd68ytnzvupzq6xcz9jerqgqkldy8lpg7lglcyj4g3nwzy2cs6u70wejdaj7csnjqvzqqqqqqygequ53")?;
-    let details = ZapDetails::new(ZapType::Anonymous).message("Anonymous Zap!");
-    client.zap(event, 1000, Some(details)).await?;
 
     Ok(())
 }

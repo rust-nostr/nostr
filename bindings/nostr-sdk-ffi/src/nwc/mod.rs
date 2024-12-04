@@ -4,7 +4,6 @@
 
 use std::ops::Deref;
 
-use nostr_sdk::nwc;
 use uniffi::Object;
 
 pub mod options;

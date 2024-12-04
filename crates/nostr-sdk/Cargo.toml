@@ -30,20 +30,18 @@ nip06 = ["nostr/nip06"]
 nip07 = ["nostr/nip07"]
 nip11 = ["nostr/nip11", "nostr-relay-pool/nip11"]
 nip44 = ["nostr/nip44"]
-nip47 = ["nostr/nip47", "dep:nwc"]
+nip47 = ["nostr/nip47"]
 nip49 = ["nostr/nip49"]
 nip57 = ["nostr/nip57", "dep:nostr-zapper", "dep:lnurl-pay"]
 nip59 = ["nostr/nip59"]
 
 [dependencies]
 async-utility.workspace = true
-atomic-destructor.workspace = true
 lnurl-pay = { version = "0.6", features = ["api"], optional = true }
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
 nostr-relay-pool.workspace = true
 nostr-zapper = { workspace = true, optional = true }
-nwc = { workspace = true, optional = true }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true, features = ["std", "attributes"] }
@@ -57,6 +55,7 @@ nostr-indexeddb = { workspace = true, optional = true }
 
 [dev-dependencies]
 nostr-connect.workspace = true
+nwc.workspace = true
 tokio = { workspace = true, features = ["macros"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 

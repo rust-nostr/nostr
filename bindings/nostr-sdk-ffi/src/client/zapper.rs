@@ -5,8 +5,8 @@
 use core::ops::Deref;
 use std::sync::Arc;
 
+use nostr_sdk::client;
 use nostr_sdk::zapper::{DynNostrZapper, IntoNostrZapper};
-use nostr_sdk::{client, nwc};
 use uniffi::Object;
 
 use crate::nwc::NWC;

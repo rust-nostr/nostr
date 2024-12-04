@@ -5,7 +5,7 @@
 use std::ops::Deref;
 use std::time::Duration;
 
-use nostr_sdk::{nwc, pool};
+use nostr_sdk::pool;
 use uniffi::Object;
 
 use crate::error::Result;

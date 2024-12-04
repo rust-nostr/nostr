@@ -5,7 +5,7 @@
 use std::ops::Deref;
 
 use js_sys::Array;
-use nostr_sdk::prelude::*;
+use nwc::prelude::*;
 use wasm_bindgen::prelude::*;
 
 pub mod options;

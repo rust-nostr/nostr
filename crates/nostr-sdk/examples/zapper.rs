@@ -5,6 +5,7 @@
 use std::str::FromStr;
 
 use nostr_sdk::prelude::*;
+use nwc::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {

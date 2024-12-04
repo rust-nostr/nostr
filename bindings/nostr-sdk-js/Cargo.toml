@@ -12,6 +12,7 @@ console_error_panic_hook = "0.1"
 js-sys.workspace = true
 nostr-connect.workspace = true
 nostr-sdk = { workspace = true, default-features = false, features = ["all-nips", "indexeddb", "webln"] }
+nwc.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 wasm-bindgen = { workspace = true, features = ["std"] }
