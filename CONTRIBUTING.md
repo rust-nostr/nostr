@@ -1,4 +1,4 @@
-# Contributing to the Rust Nostr SDK
+# Contributing to rust-nostr
 
 ## Contribution Workflow
 
@@ -30,8 +30,8 @@ If applicable, link the `issue`/`PR` to be closed with:
 The `context` should be:
 
 * `nostr` if changes are related to the main Rust `nostr` crate (or `protocol`?)
-* `sdk`, `cli`, `pool`, `signer`, `nwc` and so on for the others Rust crates (so basically remove the `nostr-` prefix)
-* `ffi(<name>)` for `UniFFI` and `js(<name>)` for `JavaScript` bindings (follow same above rules for the `<name>`)
+* `sdk`, `cli`, `pool`, `signer`, `nwc` and so on for the others Rust crates (so remove the `nostr-` prefix)
+* `ffi` for `UniFFI`, `js` for `JavaScript` bindings and so on
 * `book` if changes are related to the `book`
 * `doc` for the `.md` files (except for `CHANGELOG.md`?)
 
@@ -63,18 +63,18 @@ Closes https://<domain>.com/rust-nostr/nostr/issue/2222
 ```
 
 ```
-ffi(nostr): add `EventBuilder::mute_list`
+ffi: expose `EventBuilder::mute_list`
 ```
 
 ```
-ffi(sdk): add `AbortHandle`
+ffi: add `AbortHandle`
 
 * Return `AbortHandle` in `Client::handle_notifications`
 * Another change...
 ```
 
 ```
-js(sdk): replace log `file path` with `module path`
+js: replace log `file path` with `module path`
 ```
 
 ## Deprecation policy
