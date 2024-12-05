@@ -11,12 +11,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final keys = Keys.generate();
+    final publicKeyHex = keys.publicKey().toHex();
+    print(publicKeyHex);
+
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(title: const Text('flutter_rust_bridge quickstart')),
+        appBar: AppBar(title: const Text('Nostr SDK example')),
         body: Center(
-          child: Text(
-              'Action: Call Rust `greet("Tom")`\nResult: `${greet(name: "Tom")}`'),
+          child: Text('pubkey hex: $publicKeyHex'),
         ),
       ),
     );
