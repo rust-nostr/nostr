@@ -1,3 +1,3 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="org.rustnostr.nostr_sdk">
+        package="com.flutter_rust_bridge.nostr_sdk">
 </manifest>

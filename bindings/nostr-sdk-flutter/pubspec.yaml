@@ -10,10 +10,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_rust_bridge: 2.5.1
+  flutter_rust_bridge: 2.6.0
   plugin_platform_interface: ^2.0.2
 
 dev_dependencies:
+  ffi: ^2.1.0
+  ffigen: ^11.0.0
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
@@ -35,19 +37,20 @@ flutter:
   # This is required for using `dart:ffi`.
   # All these are used by the tooling to maintain consistency when
   # adding or updating assets for this project.
+  #
+  # Please refer to README.md for a detailed explanation.
   plugin:
     platforms:
       android:
-        package: org.rustnostr.nostr_sdk
-        pluginClass: NostrSdkPlugin
+        ffiPlugin: true
       ios:
-        pluginClass: NostrSdkPlugin
+        ffiPlugin: true
       linux:
-        pluginClass: NostrSdkPlugin
+        ffiPlugin: true
       macos:
-        pluginClass: NostrSdkPlugin
+        ffiPlugin: true
       windows:
-        pluginClass: NostrSdkPluginCApi
+        ffiPlugin: true
 
   # To add assets to your plugin package, add an assets section, like this:
   # assets:

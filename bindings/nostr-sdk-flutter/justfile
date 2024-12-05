@@ -1,4 +1,8 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
+[private]
+default:
+    @just --list
+
 build:
     cd rust && cargo build
