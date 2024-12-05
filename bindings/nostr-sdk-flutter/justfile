@@ -6,3 +6,10 @@ default:
 
 build:
     cd rust && cargo build
+
+clean:
+    flutter clean
+    cd example && flutter clean
+
+example:
+    cd example && flutter run
