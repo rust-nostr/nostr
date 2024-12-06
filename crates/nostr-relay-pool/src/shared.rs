@@ -2,21 +2,30 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use nostr::prelude::IntoNostrSigner;
 use nostr::NostrSigner;
 use nostr_database::{IntoNostrDatabase, MemoryDatabase, NostrDatabase};
-use thiserror::Error;
 use tokio::sync::RwLock;
 
 use crate::{RelayFiltering, RelayFilteringMode};
 
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum SharedStateError {
-    #[error("signer not configured")]
     SignerNotConfigured,
+}
+
+impl std::error::Error for SharedStateError {}
+
+impl fmt::Display for SharedStateError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::SignerNotConfigured => write!(f, "signer not configured"),
+        }
+    }
 }
 
 // TODO: add SharedStateBuilder?

@@ -2,63 +2,87 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use core::convert::Infallible;
+use std::convert::Infallible;
+use std::fmt;
 
 use nostr::types::url;
 use nostr_database::DatabaseError;
-use thiserror::Error;
 
 use crate::relay;
 
 /// Relay Pool error
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum Error {
     /// Url parse error
-    #[error("impossible to parse relay URL: {0}")]
-    RelayUrl(#[from] url::Error),
+    RelayUrl(url::Error),
     /// Relay error
-    #[error(transparent)]
-    Relay(#[from] relay::Error),
+    Relay(relay::Error),
     /// Database error
-    #[error(transparent)]
-    Database(#[from] DatabaseError),
-    /// No relays
-    #[error("too many relays (limit: {limit})")]
+    Database(DatabaseError),
+    /// Infallible
+    Infallible(Infallible),
+    /// Notification Handler error
+    Handler(String),
+    /// Too many relays
     TooManyRelays {
         /// Max numer allowed
         limit: usize,
     },
     /// No relays
-    #[error("no relays")]
     NoRelays,
     /// No relays specified
-    #[error("no relays specified")]
     NoRelaysSpecified,
-    /// Msg not sent
-    #[error("message not sent")]
-    MsgNotSent,
-    /// Msgs not sent
-    #[error("messages not sent")]
-    MsgsNotSent,
-    /// Event/s not published
-    #[error("event/s not published")]
-    EventNotPublished,
-    /// Not subscribed
-    #[error("not subscribed")]
-    NotSubscribed,
+    /// Failed
+    Failed,
     /// Negentropy reconciliation failed
-    #[error("negentropy reconciliation failed")]
     NegentropyReconciliationFailed,
     /// Relay not found
-    #[error("relay not found")]
     RelayNotFound,
     /// Relay Pool is shutdown
-    #[error("Relay Pool is shutdown")]
     Shutdown,
-    /// Notification Handler error
-    #[error("notification handler error: {0}")]
-    Handler(String),
-    /// Infallible
-    #[error(transparent)]
-    Infallible(#[from] Infallible),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::RelayUrl(e) => write!(f, "{e}"),
+            Self::Relay(e) => write!(f, "{e}"),
+            Self::Database(e) => write!(f, "{e}"),
+            Self::Infallible(e) => write!(f, "{e}"),
+            Self::Handler(e) => write!(f, "{e}"),
+            Self::TooManyRelays { limit } => write!(f, "too many relays (limit: {limit})"),
+            Self::NoRelays => write!(f, "no relays"),
+            Self::NoRelaysSpecified => write!(f, "no relays specified"),
+            Self::Failed => write!(f, "completed without success"), // TODO: better error?
+            Self::NegentropyReconciliationFailed => write!(f, "negentropy reconciliation failed"),
+            Self::RelayNotFound => write!(f, "relay not found"),
+            Self::Shutdown => write!(f, "relay pool is shutdown"),
+        }
+    }
+}
+
+impl From<url::Error> for Error {
+    fn from(e: url::Error) -> Self {
+        Self::RelayUrl(e)
+    }
+}
+
+impl From<relay::Error> for Error {
+    fn from(e: relay::Error) -> Self {
+        Self::Relay(e)
+    }
+}
+
+impl From<DatabaseError> for Error {
+    fn from(e: DatabaseError) -> Self {
+        Self::Database(e)
+    }
+}
+
+impl From<Infallible> for Error {
+    fn from(e: Infallible) -> Self {
+        Self::Infallible(e)
+    }
 }

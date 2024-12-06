@@ -2,108 +2,74 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::collections::HashMap;
+use std::fmt;
 use std::time::Duration;
 
 use nostr::event::builder;
 use nostr::message::relay::NegentropyErrorCode;
 use nostr::message::MessageHandleError;
-use nostr::{event, EventId, Kind};
+use nostr::{event, Kind};
 use nostr_database::DatabaseError;
-use thiserror::Error;
 use tokio::sync::{broadcast, SetError};
 
 use crate::shared::SharedStateError;
 use crate::RelayPoolNotification;
 
 /// Relay error
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum Error {
     /// Shared state error
-    #[error(transparent)]
-    SharedState(#[from] SharedStateError),
+    SharedState(SharedStateError),
     /// MessageHandle error
-    #[error(transparent)]
-    MessageHandle(#[from] MessageHandleError),
+    MessageHandle(MessageHandleError),
     /// Event error
-    #[error(transparent)]
-    Event(#[from] event::Error),
+    Event(event::Error),
     /// Event Builder error
-    #[error(transparent)]
-    EventBuilder(#[from] builder::Error),
+    EventBuilder(builder::Error),
     /// Partial Event error
-    #[error(transparent)]
-    PartialEvent(#[from] event::partial::Error),
+    PartialEvent(event::partial::Error),
     /// Negentropy error
-    #[error(transparent)]
-    Negentropy(#[from] negentropy::Error),
+    Negentropy(negentropy::Error),
     /// Negentropy error
-    #[error(transparent)]
-    NegentropyDeprecated(#[from] negentropy_deprecated::Error),
+    NegentropyDeprecated(negentropy_deprecated::Error),
     /// Database error
-    #[error(transparent)]
-    Database(#[from] DatabaseError),
+    Database(DatabaseError),
     /// OnceCell error
-    #[error(transparent)]
-    OnceCell(#[from] SetError<broadcast::Sender<RelayPoolNotification>>),
+    SetPoolNotificationSender(SetError<broadcast::Sender<RelayPoolNotification>>),
     /// WebSocket timeout
-    #[error("WebSocket timeout")]
     WebSocketTimeout,
     /// Generic timeout
-    #[error("timeout")]
     Timeout,
     /// Not replied to ping
-    #[error("not replied to ping")]
     NotRepliedToPing,
     /// Message response timeout
-    #[error("Can't send message to the '{channel}' channel")]
     CantSendChannelMessage {
         /// Name of channel
         channel: String,
     },
+    /// Relay not ready
+    NotReady,
     /// Relay not connected
-    #[error("relay is initialized but not ready")]
-    Initialized,
-    /// Relay not connected
-    #[error("relay not connected")]
     NotConnected,
     /// Received shutdown
-    #[error("received shutdown")]
     Shutdown,
     /// Relay message
-    #[error("{0}")]
     RelayMessage(String),
-    /// Only some events
-    #[error("partial publish: published={}, missing={}", published.len(), not_published.len())]
-    PartialPublish {
-        /// Published events
-        published: Vec<EventId>,
-        /// Not published events
-        not_published: HashMap<EventId, String>,
-    },
     /// Batch messages empty
-    #[error("can't batch empty list of messages")]
     BatchMessagesEmpty,
     /// Read actions disabled
-    #[error("read actions are disabled for this relay")]
     ReadDisabled,
     /// Write actions disabled
-    #[error("write actions are disabled for this relay")]
     WriteDisabled,
     /// Filters empty
-    #[error("filters empty")]
     FiltersEmpty,
     /// Reconciliation error
-    #[error("negentropy reconciliation error: {0}")]
     NegentropyReconciliation(NegentropyErrorCode),
     /// Negentropy not supported
-    #[error("negentropy (maybe) not supported")]
     NegentropyMaybeNotSupported,
     /// Unknown negentropy error
-    #[error("unknown negentropy error")]
     UnknownNegentropyError,
     /// Relay message too large
-    #[error("Received message too large: size={size}, max_size={max_size}")]
     RelayMessageTooLarge {
         /// Message size
         size: usize,
@@ -111,7 +77,6 @@ pub enum Error {
         max_size: usize,
     },
     /// Event too large
-    #[error("Received event too large: size={size}, max_size={max_size}")]
     EventTooLarge {
         /// Event size
         size: usize,
@@ -119,7 +84,6 @@ pub enum Error {
         max_size: usize,
     },
     /// Too many tags
-    #[error("Received event with too many tags: tags={size}, max_tags={max_size}")]
     TooManyTags {
         /// Tags num
         size: usize,
@@ -127,16 +91,13 @@ pub enum Error {
         max_size: usize,
     },
     /// Event expired
-    #[error("event expired")]
     EventExpired,
     /// POW difficulty too low
-    #[error("POW difficulty too low (min. {min})")]
     PowDifficultyTooLow {
         /// Min. difficulty
         min: u8,
     },
     /// Unexpected kind
-    #[error("Unexpected kind: expected={expected}, found={found}")]
     UnexpectedKind {
         /// Expected kind
         expected: Kind,
@@ -144,13 +105,10 @@ pub enum Error {
         found: Kind,
     },
     /// Notification Handler error
-    #[error("notification handler error: {0}")]
     Handler(String),
     /// WebSocket error
-    #[error("{0}")]
     WebSocket(Box<dyn std::error::Error + Send + Sync>),
     /// Max latency exceeded
-    #[error("Maximum latency exceeded: max={}ms, current={}ms", max.as_millis(), current.as_millis())]
     MaximumLatencyExceeded {
         /// Max
         max: Duration,
@@ -158,11 +116,71 @@ pub enum Error {
         current: Duration,
     },
     /// Auth failed
-    #[error("authentication failed")]
     AuthenticationFailed,
     /// Premature exit
-    #[error("premature exit")]
     PrematureExit,
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::SharedState(e) => write!(f, "{e}"),
+            Self::MessageHandle(e) => write!(f, "{e}"),
+            Self::Event(e) => write!(f, "{e}"),
+            Self::EventBuilder(e) => write!(f, "{e}"),
+            Self::PartialEvent(e) => write!(f, "{e}"),
+            Self::Negentropy(e) => write!(f, "{e}"),
+            Self::NegentropyDeprecated(e) => write!(f, "{e}"),
+            Self::Database(e) => write!(f, "{e}"),
+            Self::SetPoolNotificationSender(e) => write!(f, "{e}"),
+            Self::WebSocketTimeout => write!(f, "WebSocket timeout"),
+            Self::Timeout => write!(f, "timeout"),
+            Self::NotRepliedToPing => write!(f, "not replied to ping"),
+            Self::CantSendChannelMessage { channel } => {
+                write!(f, "can't send message to the '{channel}' channel")
+            }
+            Self::NotReady => write!(f, "relay is initialized but not ready"),
+            Self::NotConnected => write!(f, "relay not connected"),
+            Self::Shutdown => write!(f, "received shutdown"),
+            Self::RelayMessage(message) => write!(f, "{message}"),
+            Self::BatchMessagesEmpty => write!(f, "can't batch empty list of messages"),
+            Self::ReadDisabled => write!(f, "read actions are disabled"),
+            Self::WriteDisabled => write!(f, "write actions are disabled"),
+            Self::FiltersEmpty => write!(f, "filters empty"),
+            Self::NegentropyReconciliation(e) => write!(f, "{e}"),
+            Self::NegentropyMaybeNotSupported => write!(f, "negentropy (maybe) not supported"),
+            Self::UnknownNegentropyError => write!(f, "unknown negentropy error"),
+            Self::RelayMessageTooLarge { size, max_size } => write!(
+                f,
+                "Received message too large: size={size}, max_size={max_size}"
+            ),
+            Self::EventTooLarge { size, max_size } => write!(
+                f,
+                "Received event too large: size={size}, max_size={max_size}"
+            ),
+            Self::TooManyTags { size, max_size } => write!(
+                f,
+                "Received event with too many tags: tags={size}, max_tags={max_size}"
+            ),
+            Self::EventExpired => write!(f, "event expired"),
+            Self::PowDifficultyTooLow { min } => write!(f, "POW difficulty too low (min. {min})"),
+            Self::UnexpectedKind { expected, found } => {
+                write!(f, "Unexpected kind: expected={expected}, found={found}")
+            }
+            Self::Handler(e) => write!(f, "{e}"),
+            Self::WebSocket(e) => write!(f, "{e}"),
+            Self::MaximumLatencyExceeded { max, current } => write!(
+                f,
+                "Maximum latency exceeded: max={}ms, current={}ms",
+                max.as_millis(),
+                current.as_millis()
+            ),
+            Self::AuthenticationFailed => write!(f, "authentication failed"),
+            Self::PrematureExit => write!(f, "premature exit"),
+        }
+    }
 }
 
 impl Error {
@@ -172,5 +190,59 @@ impl Error {
         E: std::error::Error + Send + Sync + 'static,
     {
         Self::WebSocket(Box::new(error))
+    }
+}
+
+impl From<SharedStateError> for Error {
+    fn from(e: SharedStateError) -> Self {
+        Self::SharedState(e)
+    }
+}
+
+impl From<MessageHandleError> for Error {
+    fn from(e: MessageHandleError) -> Self {
+        Self::MessageHandle(e)
+    }
+}
+
+impl From<event::Error> for Error {
+    fn from(e: event::Error) -> Self {
+        Self::Event(e)
+    }
+}
+
+impl From<builder::Error> for Error {
+    fn from(e: builder::Error) -> Self {
+        Self::EventBuilder(e)
+    }
+}
+
+impl From<event::partial::Error> for Error {
+    fn from(e: event::partial::Error) -> Self {
+        Self::PartialEvent(e)
+    }
+}
+
+impl From<negentropy::Error> for Error {
+    fn from(e: negentropy::Error) -> Self {
+        Self::Negentropy(e)
+    }
+}
+
+impl From<negentropy_deprecated::Error> for Error {
+    fn from(e: negentropy_deprecated::Error) -> Self {
+        Self::NegentropyDeprecated(e)
+    }
+}
+
+impl From<DatabaseError> for Error {
+    fn from(e: DatabaseError) -> Self {
+        Self::Database(e)
+    }
+}
+
+impl From<SetError<broadcast::Sender<RelayPoolNotification>>> for Error {
+    fn from(e: SetError<broadcast::Sender<RelayPoolNotification>>) -> Self {
+        Self::SetPoolNotificationSender(e)
     }
 }

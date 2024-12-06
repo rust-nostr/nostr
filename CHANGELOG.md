@@ -75,7 +75,7 @@
 * lmdb: remove `thiserror` and `tracing` deps ([Yuki Kishimoto])
 * indexeddb: remove `thiserror` and `tracing` deps ([Yuki Kishimoto])
 * zapper: remove `thiserror` dep ([Yuki Kishimoto])
-* pool: remove `tokio-stream` dep ([Yuki Kishimoto])
+* pool: remove `thiserror` and `tokio-stream` deps ([Yuki Kishimoto])
 * nwc: remove `thiserror` dep and unnecessary `Error::Zapper` variant ([Yuki Kishimoto])
 * ffi: drop support for `i686-linux-android` target ([Yuki Kishimoto])
 * ffi: remove `MockRelay` ([Yuki Kishimoto])

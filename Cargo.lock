@@ -3272,7 +3272,6 @@ dependencies = [
  "nostr",
  "nostr-database",
  "nostr-relay-builder",
- "thiserror",
  "tokio",
  "tracing",
  "tracing-subscriber",

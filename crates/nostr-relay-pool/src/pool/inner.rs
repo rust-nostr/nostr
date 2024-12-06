@@ -393,7 +393,7 @@ impl InnerRelayPool {
         }
 
         if output.success.is_empty() {
-            return Err(Error::MsgNotSent);
+            return Err(Error::Failed);
         }
 
         Ok(output)
@@ -469,7 +469,7 @@ impl InnerRelayPool {
         }
 
         if output.success.is_empty() {
-            return Err(Error::EventNotPublished);
+            return Err(Error::Failed);
         }
 
         Ok(output)
@@ -611,7 +611,7 @@ impl InnerRelayPool {
         }
 
         if output.success.is_empty() {
-            return Err(Error::NotSubscribed);
+            return Err(Error::Failed);
         }
 
         Ok(output)

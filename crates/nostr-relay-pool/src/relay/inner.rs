@@ -234,9 +234,9 @@ impl InnerRelay {
     fn health_check(&self) -> Result<(), Error> {
         let status: RelayStatus = self.status();
 
-        // Relay initialized (never called connect method)
+        // Relay not ready (never called connect method)
         if status.is_initialized() {
-            return Err(Error::Initialized);
+            return Err(Error::NotReady);
         }
 
         if !status.is_connected()

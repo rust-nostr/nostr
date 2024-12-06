@@ -24,7 +24,6 @@ negentropy = { workspace = true, features = ["std"] }
 negentropy-deprecated = { workspace = true, features = ["std"] }
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
-thiserror.workspace = true
 tokio = { workspace = true, features = ["macros", "sync"] }
 tracing.workspace = true
 
