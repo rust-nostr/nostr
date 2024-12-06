@@ -2,7 +2,7 @@
 name = "nwc"
 version = "0.37.0"
 edition = "2021"
-description = "NWC client and zapper backend for Nostr apps"
+description = "Nostr Wallet Connect"
 authors.workspace = true
 homepage.workspace = true
 repository.workspace = true
@@ -21,7 +21,6 @@ async-utility.workspace = true
 nostr = { workspace = true, features = ["std", "nip47"] }
 nostr-relay-pool.workspace = true
 nostr-zapper.workspace = true
-thiserror.workspace = true
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

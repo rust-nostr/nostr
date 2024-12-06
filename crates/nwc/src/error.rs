@@ -4,32 +4,45 @@
 
 //! NWC error
 
+use std::fmt;
+
 use nostr::nips::nip47;
-use nostr_zapper::ZapperError;
-use thiserror::Error;
+use nostr_relay_pool::relay;
 
 /// NWC error
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum Error {
-    /// Zapper error
-    #[error(transparent)]
-    Zapper(#[from] ZapperError),
     /// NIP47 error
-    #[error(transparent)]
-    NIP47(#[from] nip47::Error),
+    NIP47(nip47::Error),
     /// Relay
-    #[error("relay: {0}")]
-    Relay(#[from] nostr_relay_pool::relay::Error),
-    /// Premature exit from listener
-    #[error("premature exit from listener")]
+    Relay(relay::Error),
+    /// Premature exit
     PrematureExit,
     /// Request timeout
-    #[error("timeout")]
     Timeout,
 }
 
-impl From<Error> for ZapperError {
-    fn from(e: Error) -> Self {
-        Self::backend(e)
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Error::NIP47(e) => write!(f, "{e}"),
+            Error::Relay(e) => write!(f, "{e}"),
+            Error::PrematureExit => write!(f, "premature exit"),
+            Error::Timeout => write!(f, "timeout"),
+        }
+    }
+}
+
+impl From<nip47::Error> for Error {
+    fn from(e: nip47::Error) -> Self {
+        Self::NIP47(e)
+    }
+}
+
+impl From<relay::Error> for Error {
+    fn from(e: relay::Error) -> Self {
+        Self::Relay(e)
     }
 }

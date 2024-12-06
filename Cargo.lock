@@ -3538,7 +3538,6 @@ dependencies = [
  "nostr",
  "nostr-relay-pool",
  "nostr-zapper",
- "thiserror",
  "tokio",
  "tracing-subscriber",
 ]
