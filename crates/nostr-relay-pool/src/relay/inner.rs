@@ -1565,7 +1565,7 @@ impl InnerRelay {
                             return Err(Error::NotConnected);
                         }
                     }
-                    RelayNotification::Shutdown => return Err(Error::Shutdown),
+                    RelayNotification::Shutdown => return Err(Error::ReceivedShutdown),
                     _ => (),
                 }
             }
@@ -1675,7 +1675,7 @@ impl InnerRelay {
             {
                 Ok(..) => {}
                 Err(e) => match e {
-                    Error::NegentropyMaybeNotSupported
+                    Error::NegentropyNotSupported
                     | Error::Negentropy(negentropy::Error::UnsupportedProtocolVersion) => {
                         tracing::warn!("Negentropy protocol '{}' (maybe) not supported, trying the deprecated one.", negentropy::PROTOCOL_VERSION);
                         self.sync_deprecated(filter, items, opts, &mut output)
@@ -1750,7 +1750,7 @@ impl InnerRelay {
                                     || message.contains("negentropy")
                                     || message.contains("NEG-"))
                             {
-                                return Err(Error::NegentropyMaybeNotSupported);
+                                return Err(Error::NegentropyNotSupported);
                             } else if message.contains("bad msg: invalid message")
                                 && message.contains("NEG-OPEN")
                             {
@@ -1978,7 +1978,7 @@ impl InnerRelay {
                     }
                 }
                 RelayNotification::Shutdown => {
-                    return Err(Error::Shutdown);
+                    return Err(Error::ReceivedShutdown);
                 }
                 _ => (),
             };
@@ -2048,7 +2048,7 @@ impl InnerRelay {
                                     || message.contains("negentropy")
                                     || message.contains("NEG-"))
                             {
-                                return Err(Error::NegentropyMaybeNotSupported);
+                                return Err(Error::NegentropyNotSupported);
                             } else if message.contains("bad msg: invalid message")
                                 && message.contains("NEG-OPEN")
                             {
@@ -2278,7 +2278,7 @@ impl InnerRelay {
                         return Err(Error::NotConnected);
                     }
                 }
-                RelayNotification::Shutdown => return Err(Error::Shutdown),
+                RelayNotification::Shutdown => return Err(Error::ReceivedShutdown),
                 _ => (),
             };
 
@@ -2306,7 +2306,7 @@ where
     let mut stream = futures_util::stream::iter(msgs.into_iter().map(Ok));
     match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.send_all(&mut stream)).await {
         Some(res) => res.map_err(Error::websocket),
-        None => Err(Error::WebSocketTimeout),
+        None => Err(Error::Timeout),
     }
 }
 
@@ -2314,6 +2314,6 @@ where
 async fn close_ws(tx: &mut Sink) -> Result<(), Error> {
     match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.close()).await {
         Some(res) => res.map_err(Error::websocket),
-        None => Err(Error::WebSocketTimeout),
+        None => Err(Error::Timeout),
     }
 }

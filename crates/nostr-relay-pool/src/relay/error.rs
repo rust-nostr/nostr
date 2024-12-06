@@ -5,10 +5,10 @@
 use std::fmt;
 use std::time::Duration;
 
+use nostr::event;
 use nostr::event::builder;
 use nostr::message::relay::NegentropyErrorCode;
 use nostr::message::MessageHandleError;
-use nostr::{event, Kind};
 use nostr_database::DatabaseError;
 use tokio::sync::{broadcast, SetError};
 
@@ -18,6 +18,8 @@ use crate::RelayPoolNotification;
 /// Relay error
 #[derive(Debug)]
 pub enum Error {
+    /// WebSocket error
+    WebSocket(Box<dyn std::error::Error + Send + Sync>),
     /// Shared state error
     SharedState(SharedStateError),
     /// MessageHandle error
@@ -36,8 +38,6 @@ pub enum Error {
     Database(DatabaseError),
     /// OnceCell error
     SetPoolNotificationSender(SetError<broadcast::Sender<RelayPoolNotification>>),
-    /// WebSocket timeout
-    WebSocketTimeout,
     /// Generic timeout
     Timeout,
     /// Not replied to ping
@@ -52,7 +52,7 @@ pub enum Error {
     /// Relay not connected
     NotConnected,
     /// Received shutdown
-    Shutdown,
+    ReceivedShutdown,
     /// Relay message
     RelayMessage(String),
     /// Batch messages empty
@@ -66,7 +66,7 @@ pub enum Error {
     /// Reconciliation error
     NegentropyReconciliation(NegentropyErrorCode),
     /// Negentropy not supported
-    NegentropyMaybeNotSupported,
+    NegentropyNotSupported,
     /// Unknown negentropy error
     UnknownNegentropyError,
     /// Relay message too large
@@ -97,17 +97,8 @@ pub enum Error {
         /// Min. difficulty
         min: u8,
     },
-    /// Unexpected kind
-    UnexpectedKind {
-        /// Expected kind
-        expected: Kind,
-        /// Found kind
-        found: Kind,
-    },
     /// Notification Handler error
     Handler(String),
-    /// WebSocket error
-    WebSocket(Box<dyn std::error::Error + Send + Sync>),
     /// Max latency exceeded
     MaximumLatencyExceeded {
         /// Max
@@ -126,6 +117,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::WebSocket(e) => write!(f, "{e}"),
             Self::SharedState(e) => write!(f, "{e}"),
             Self::MessageHandle(e) => write!(f, "{e}"),
             Self::Event(e) => write!(f, "{e}"),
@@ -135,7 +127,6 @@ impl fmt::Display for Error {
             Self::NegentropyDeprecated(e) => write!(f, "{e}"),
             Self::Database(e) => write!(f, "{e}"),
             Self::SetPoolNotificationSender(e) => write!(f, "{e}"),
-            Self::WebSocketTimeout => write!(f, "WebSocket timeout"),
             Self::Timeout => write!(f, "timeout"),
             Self::NotRepliedToPing => write!(f, "not replied to ping"),
             Self::CantSendChannelMessage { channel } => {
@@ -143,14 +134,14 @@ impl fmt::Display for Error {
             }
             Self::NotReady => write!(f, "relay is initialized but not ready"),
             Self::NotConnected => write!(f, "relay not connected"),
-            Self::Shutdown => write!(f, "received shutdown"),
+            Self::ReceivedShutdown => write!(f, "received shutdown"),
             Self::RelayMessage(message) => write!(f, "{message}"),
             Self::BatchMessagesEmpty => write!(f, "can't batch empty list of messages"),
             Self::ReadDisabled => write!(f, "read actions are disabled"),
             Self::WriteDisabled => write!(f, "write actions are disabled"),
             Self::FiltersEmpty => write!(f, "filters empty"),
             Self::NegentropyReconciliation(e) => write!(f, "{e}"),
-            Self::NegentropyMaybeNotSupported => write!(f, "negentropy (maybe) not supported"),
+            Self::NegentropyNotSupported => write!(f, "negentropy not supported"),
             Self::UnknownNegentropyError => write!(f, "unknown negentropy error"),
             Self::RelayMessageTooLarge { size, max_size } => write!(
                 f,
@@ -166,11 +157,7 @@ impl fmt::Display for Error {
             ),
             Self::EventExpired => write!(f, "event expired"),
             Self::PowDifficultyTooLow { min } => write!(f, "POW difficulty too low (min. {min})"),
-            Self::UnexpectedKind { expected, found } => {
-                write!(f, "Unexpected kind: expected={expected}, found={found}")
-            }
             Self::Handler(e) => write!(f, "{e}"),
-            Self::WebSocket(e) => write!(f, "{e}"),
             Self::MaximumLatencyExceeded { max, current } => write!(
                 f,
                 "Maximum latency exceeded: max={}ms, current={}ms",

@@ -52,6 +52,7 @@
 * lmdb: use `async-utility` to spawn blocking tasks ([Yuki Kishimoto])
 * ndb: bump `nostr-ndb` to 0.4 ([Yuki Kishimoto])
 * pool: add `PingTracker` and improve relay ping management ([Yuki Kishimoto])
+* pool: cleanup relay `Error` variants ([Yuki Kishimoto])
 
 ### Added
 
