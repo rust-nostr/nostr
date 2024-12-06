@@ -44,6 +44,8 @@ impl Store {
         })
     }
 
+    // TODO: spawn an ingester and remove the `fbb` field (use it in the ingester without mutex)?
+
     #[inline]
     async fn interact<F, R>(&self, f: F) -> Result<R, Error>
     where

@@ -16,10 +16,8 @@ async-utility.workspace = true
 heed = { version = "0.20", default-features = false, features = ["read-txn-no-tls"] }
 nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
-thiserror.workspace = true
-tokio = { workspace = true, features = ["rt-multi-thread", "sync"] }
-tracing = { workspace = true, features = ["std", "attributes"] }
+tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
 tempfile = "3"
-tokio = { workspace = true, features = ["macros"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

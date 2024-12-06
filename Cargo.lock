@@ -3221,9 +3221,7 @@ dependencies = [
  "nostr",
  "nostr-database",
  "tempfile",
- "thiserror",
  "tokio",
- "tracing",
 ]
 
 [[package]]

@@ -3,28 +3,23 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::{fmt, io};
+
 use nostr::{key, secp256k1};
 use nostr_database::flatbuffers;
-use thiserror::Error;
 use tokio::task::JoinError;
 
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum Error {
     /// An upstream I/O error
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-    /// An error from LMDB, our upstream storage crate
-    #[error(transparent)]
-    Lmdb(#[from] heed::Error),
+    Io(io::Error),
+    /// An error from LMDB
+    Heed(heed::Error),
     /// Flatbuffers error
-    #[error(transparent)]
-    FlatBuffers(#[from] flatbuffers::Error),
-    #[error(transparent)]
-    Thread(#[from] JoinError),
-    #[error(transparent)]
-    Key(#[from] key::Error),
-    #[error(transparent)]
-    Secp256k1(#[from] secp256k1::Error),
+    FlatBuffers(flatbuffers::Error),
+    Thread(JoinError),
+    Key(key::Error),
+    Secp256k1(secp256k1::Error),
     // /// The event has already been deleted
     // #[error("Event was previously deleted")]
     // Deleted,
@@ -38,8 +33,60 @@ pub enum Error {
     // #[error("Event was previously replaced")]
     // Replaced,
     /// The event kind is wrong
-    #[error("Wrong event kind")]
     WrongEventKind,
-    #[error("Not found")]
+    /// Not found
     NotFound,
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io(e) => write!(f, "{e}"),
+            Self::Heed(e) => write!(f, "{e}"),
+            Self::FlatBuffers(e) => write!(f, "{e}"),
+            Self::Thread(e) => write!(f, "{e}"),
+            Self::Key(e) => write!(f, "{e}"),
+            Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::NotFound => write!(f, "Not found"),
+            Self::WrongEventKind => write!(f, "Wrong event kind"),
+        }
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(e: io::Error) -> Self {
+        Self::Io(e)
+    }
+}
+
+impl From<heed::Error> for Error {
+    fn from(e: heed::Error) -> Self {
+        Self::Heed(e)
+    }
+}
+
+impl From<flatbuffers::Error> for Error {
+    fn from(e: flatbuffers::Error) -> Self {
+        Self::FlatBuffers(e)
+    }
+}
+
+impl From<JoinError> for Error {
+    fn from(e: JoinError) -> Self {
+        Self::Thread(e)
+    }
+}
+
+impl From<key::Error> for Error {
+    fn from(e: key::Error) -> Self {
+        Self::Key(e)
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(e: secp256k1::Error) -> Self {
+        Self::Secp256k1(e)
+    }
 }

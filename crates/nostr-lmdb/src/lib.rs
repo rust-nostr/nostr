@@ -62,7 +62,6 @@ impl NostrDatabase for NostrLMDB {
 #[async_trait]
 impl NostrEventsDatabase for NostrLMDB {
     #[inline]
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
         self.db
             .save_event(event)
@@ -138,7 +137,6 @@ impl NostrEventsDatabase for NostrLMDB {
     }
 
     #[inline]
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
         self.db.query(filters).await.map_err(DatabaseError::backend)
     }
