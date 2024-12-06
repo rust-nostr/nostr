@@ -474,8 +474,6 @@ impl EventBuilder {
 
     /// Comment
     ///
-    /// If no `root` is passed, the `comment_to` will be used for root `e` tag.
-    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/22.md>
     pub fn comment<S>(
         content: S,
@@ -486,8 +484,12 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        // The added tags will be at least 4
-        let mut tags: Vec<Tag> = Vec::with_capacity(4);
+        // Not use `comment_to` as root if no root is set.
+        // It's better to have no tags than wrong tags.
+        // Issue: https://github.com/rust-nostr/nostr/issues/655
+
+        // The added tags will be at least 3
+        let mut tags: Vec<Tag> = Vec::with_capacity(3);
 
         // Add `A`, `E` and `K` tag of **root** event
         if let Some(root) = root {
@@ -533,34 +535,6 @@ impl EventBuilder {
                     })
                     .cloned(),
             );
-        } else {
-            match comment_to.coordinate() {
-                Some(coordinate) => {
-                    tags.push(Tag::from_standardized_without_cell(
-                        TagStandard::Coordinate {
-                            coordinate,
-                            relay_url: relay_url.clone(),
-                            uppercase: true,
-                        },
-                    ));
-                }
-                None => {
-                    // ID and author
-                    tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
-                        event_id: comment_to.id,
-                        relay_url: relay_url.clone(),
-                        marker: None,
-                        public_key: Some(comment_to.pubkey),
-                        uppercase: true,
-                    }));
-                }
-            }
-
-            // Kind
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
-                kind: comment_to.kind,
-                uppercase: true,
-            }));
         }
 
         // Add `a` tag (if event has it)
