@@ -927,7 +927,6 @@ impl InnerRelay {
         }
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn handle_relay_message(&self, msg: &str) -> Result<Option<RelayMessage>, Error> {
         let size: usize = msg.len();
 
