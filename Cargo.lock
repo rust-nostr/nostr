@@ -3229,7 +3229,6 @@ dependencies = [
  "lru",
  "nostr",
  "tokio",
- "tracing",
 ]
 
 [[package]]

@@ -189,12 +189,10 @@ impl NostrEventsDatabase for MemoryDatabase {
         Ok(self.helper.event_by_id(id).await)
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {
         Ok(self.helper.count(filters).await)
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
         Ok(self.helper.query(filters).await)
     }

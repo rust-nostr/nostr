@@ -172,7 +172,6 @@ impl InternalDatabaseHelper {
     // Bulk load
     //
     // NOT CHANGE `events` ARG! Processing events in ASC it's much more performant
-    #[tracing::instrument(skip_all)]
     pub fn bulk_load(&mut self, events: BTreeSet<Event>) -> HashSet<EventId> {
         let now: Timestamp = Timestamp::now();
         events
@@ -185,11 +184,7 @@ impl InternalDatabaseHelper {
     }
 
     /// Bulk import
-    #[tracing::instrument(skip_all)]
-    pub fn bulk_import<'a>(
-        &'a mut self,
-        events: BTreeSet<Event>,
-    ) -> impl Iterator<Item = Event> + 'a {
+    pub fn bulk_import(&mut self, events: BTreeSet<Event>) -> impl Iterator<Item = Event> + '_ {
         let now: Timestamp = Timestamp::now();
         events
             .into_iter()
@@ -409,7 +404,6 @@ impl InternalDatabaseHelper {
     /// Import [Event]
     ///
     /// **This method assume that [`Event`] was already verified**
-    #[tracing::instrument(skip_all, level = "trace")]
     pub fn index_event(&mut self, event: &Event) -> DatabaseEventResult {
         // Check if it's expired or ephemeral (in `internal_index_event` is checked only the raw event expiration)
         if event.is_expired() || event.kind.is_ephemeral() {
@@ -588,7 +582,6 @@ impl InternalDatabaseHelper {
     }
 
     /// Query
-    #[tracing::instrument(skip_all, level = "trace")]
     pub fn query<'a, I>(&'a self, filters: I) -> Box<dyn Iterator<Item = &'a Event> + 'a>
     where
         I: IntoIterator<Item = Filter>,
@@ -600,7 +593,6 @@ impl InternalDatabaseHelper {
     }
 
     /// Count events
-    #[tracing::instrument(skip_all, level = "trace")]
     pub fn count<I>(&self, filters: I) -> usize
     where
         I: IntoIterator<Item = Filter>,
@@ -611,7 +603,6 @@ impl InternalDatabaseHelper {
         }
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
     pub fn negentropy_items(&self, filter: Filter) -> Vec<(EventId, Timestamp)> {
         match self.internal_query([filter]) {
             InternalQueryResult::All => self
@@ -704,7 +695,6 @@ impl DatabaseHelper {
     }
 
     /// Bulk index
-    #[tracing::instrument(skip_all)]
     pub async fn bulk_load(&self, events: BTreeSet<Event>) -> HashSet<EventId> {
         let mut inner = self.inner.write().await;
         inner.bulk_load(events)
@@ -713,7 +703,6 @@ impl DatabaseHelper {
     /// Bulk import
     ///
     /// Take a set of [Event], index them and return **only** the ones that must be stored into the database
-    #[tracing::instrument(skip_all)]
     pub async fn bulk_import(&self, events: BTreeSet<Event>) -> BTreeSet<Event> {
         let mut inner = self.inner.write().await;
         inner.bulk_import(events).collect()
@@ -722,7 +711,6 @@ impl DatabaseHelper {
     /// Index [`Event`]
     ///
     /// **This method assume that [`Event`] was already verified**
-    #[tracing::instrument(skip_all, level = "trace")]
     pub async fn index_event(&self, event: &Event) -> DatabaseEventResult {
         // Check if it's expired or ephemeral
         if event.is_expired() || event.kind.is_ephemeral() {
@@ -735,21 +723,18 @@ impl DatabaseHelper {
     }
 
     /// Get [Event] by ID
-    #[tracing::instrument(skip_all, level = "trace")]
     pub async fn event_by_id(&self, id: &EventId) -> Option<Event> {
         let inner = self.inner.read().await;
         inner.event_by_id(id).cloned()
     }
 
     /// Check if event exists
-    #[tracing::instrument(skip_all, level = "trace")]
     pub async fn has_event(&self, id: &EventId) -> bool {
         let inner = self.inner.read().await;
         inner.has_event(id)
     }
 
     /// Query
-    #[tracing::instrument(skip_all, level = "trace")]
     pub async fn query(&self, filters: Vec<Filter>) -> Events {
         let inner = self.inner.read().await;
         let mut events = Events::new(&filters);
@@ -758,7 +743,6 @@ impl DatabaseHelper {
     }
 
     /// Query
-    #[tracing::instrument(skip_all, level = "trace")]
     pub fn fast_query<'a, I>(
         &self,
         txn: &'a QueryTransaction,
@@ -771,7 +755,6 @@ impl DatabaseHelper {
     }
 
     /// Count events
-    #[tracing::instrument(skip_all, level = "trace")]
     pub async fn count<I>(&self, filters: I) -> usize
     where
         I: IntoIterator<Item = Filter>,
@@ -781,7 +764,6 @@ impl DatabaseHelper {
     }
 
     /// Get negentropy items
-    #[tracing::instrument(skip_all, level = "trace")]
     pub async fn negentropy_items(&self, filter: Filter) -> Vec<(EventId, Timestamp)> {
         let inner = self.inner.read().await;
         inner.negentropy_items(filter)

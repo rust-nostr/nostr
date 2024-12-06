@@ -122,7 +122,6 @@ pub trait NostrEventsDatabase: fmt::Debug + Send + Sync {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
     /// Get public key metadata
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn metadata(&self, public_key: PublicKey) -> Result<Option<Metadata>, DatabaseError> {
         let filter = Filter::new()
             .author(public_key)
@@ -138,7 +137,6 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
     }
 
     /// Get contact list public keys
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn contacts_public_keys(
         &self,
         public_key: PublicKey,
@@ -155,7 +153,6 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
     }
 
     /// Get contact list with metadata of [`PublicKey`]
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn contacts(&self, public_key: PublicKey) -> Result<BTreeSet<Profile>, DatabaseError> {
         let filter = Filter::new()
             .author(public_key)
@@ -191,7 +188,6 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
     /// Get relays list for [PublicKey]
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn relay_list(
         &self,
         public_key: PublicKey,
@@ -215,7 +211,6 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
     /// Get relays list for public keys
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn relay_lists<I>(
         &self,
         public_keys: I,

@@ -93,7 +93,6 @@ pub trait FlatBufferDecodeBorrowed<'a>: Sized {
 }
 
 impl FlatBufferEncode for Event {
-    #[tracing::instrument(skip_all, level = "trace")]
     fn encode<'a>(&self, fbb: &'a mut FlatBufferBuilder) -> &'a [u8] {
         fbb.reset();
 
@@ -134,7 +133,6 @@ impl FlatBufferEncode for Event {
 }
 
 impl FlatBufferDecode for Event {
-    #[tracing::instrument(skip_all, level = "trace")]
     fn decode(buf: &[u8]) -> Result<Self, Error> {
         let ev = event_fbs::root_as_event(buf)?;
         let tags = ev
@@ -157,7 +155,6 @@ impl FlatBufferDecode for Event {
 }
 
 impl FlatBufferEncode for HashSet<RelayUrl> {
-    #[tracing::instrument(skip_all, level = "trace")]
     fn encode<'a>(&self, fbb: &'a mut FlatBufferBuilder) -> &'a [u8] {
         fbb.reset();
 
@@ -178,7 +175,6 @@ impl FlatBufferEncode for HashSet<RelayUrl> {
 }
 
 impl FlatBufferDecode for HashSet<RelayUrl> {
-    #[tracing::instrument(skip_all, level = "trace")]
     fn decode(buf: &[u8]) -> Result<Self, Error> {
         let ev = event_seen_by_fbs::root_as_event_seen_by(buf)?;
         Ok(ev

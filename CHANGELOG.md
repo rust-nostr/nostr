@@ -68,7 +68,7 @@
 ### Removed
 
 * sdk: remove `nwc` dep ([Yuki Kishimoto])
-* database: remove `thiserror` dep ([Yuki Kishimoto])
+* database: remove `thiserror` and `tracing` deps ([Yuki Kishimoto])
 * zapper: remove `thiserror` dep ([Yuki Kishimoto])
 * nwc: remove `thiserror` dep and unnecessary `Error::Zapper` variant ([Yuki Kishimoto])
 * ffi: drop support for `i686-linux-android` target ([Yuki Kishimoto])

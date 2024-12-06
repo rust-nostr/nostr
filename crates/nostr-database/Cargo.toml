@@ -21,7 +21,6 @@ flatbuffers = { version = "23.5", optional = true }
 lru = "0.12"
 nostr = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = ["sync"] }
-tracing = { workspace = true, features = ["std", "attributes"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
