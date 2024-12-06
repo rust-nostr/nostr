@@ -15,7 +15,6 @@ use async_utility::task;
 use atomic_destructor::AtomicDestroyer;
 use nostr_database::prelude::*;
 use tokio::sync::{broadcast, mpsc, Mutex, RwLock, RwLockReadGuard};
-use tokio_stream::wrappers::ReceiverStream;
 
 use super::constants::MAX_CONNECTING_CHUNK;
 use super::options::RelayPoolOptions;
@@ -23,6 +22,7 @@ use super::{Error, Output, RelayPoolNotification};
 use crate::relay::options::{FilterOptions, RelayOptions, SyncOptions};
 use crate::relay::{FlagCheck, Reconciliation, Relay};
 use crate::shared::SharedState;
+use crate::stream::ReceiverStream;
 use crate::{RelayServiceFlags, SubscribeOptions};
 
 type Relays = HashMap<RelayUrl, Relay>;

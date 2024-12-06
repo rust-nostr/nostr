@@ -18,11 +18,11 @@ async fn main() -> Result<()> {
 
     // Stream events from all connected relays
     let filter = Filter::new().kind(Kind::TextNote).limit(100);
-    let mut rx = client
+    let mut stream = client
         .stream_events(vec![filter], Some(Duration::from_secs(15)))
         .await?;
 
-    while let Some(event) = rx.next().await {
+    while let Some(event) = stream.next().await {
         println!("{}", event.as_json());
     }
 

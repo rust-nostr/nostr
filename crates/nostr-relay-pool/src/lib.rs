@@ -19,6 +19,7 @@ pub mod prelude;
 pub mod relay;
 #[doc(hidden)]
 mod shared;
+mod stream;
 
 pub use self::pool::options::RelayPoolOptions;
 pub use self::pool::{Output, RelayPool, RelayPoolNotification};

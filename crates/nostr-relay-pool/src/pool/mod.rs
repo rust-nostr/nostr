@@ -12,7 +12,6 @@ use std::time::Duration;
 use atomic_destructor::{AtomicDestructor, StealthClone};
 use nostr_database::prelude::*;
 use tokio::sync::broadcast;
-pub use tokio_stream::wrappers::ReceiverStream;
 
 pub mod constants;
 mod error;
@@ -28,6 +27,7 @@ use crate::relay::flags::FlagCheck;
 use crate::relay::options::{FilterOptions, RelayOptions, SyncOptions};
 use crate::relay::{Relay, RelayFiltering, RelayStatus};
 use crate::shared::SharedState;
+use crate::stream::ReceiverStream;
 use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};
 
 /// Relay Pool Notification
