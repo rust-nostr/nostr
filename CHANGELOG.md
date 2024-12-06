@@ -38,6 +38,7 @@
 * nostr: remove generics from parsing methods in `key` module ([Yuki Kishimoto])
 * nostr: remove generics from `EventId` parsing methods ([Yuki Kishimoto])
 * nostr: refactor `MachineReadablePrefix::parse` method to use `&str` directly ([Yuki Kishimoto])
+* database: reduce default in-memory database limit to `35_000` ([Yuki Kishimoto])
 * pool: replace `Option<String>` with `String` in `Output::failed` ([Yuki Kishimoto])
 * bindings: remove redundant parsing methods from `EventId`, `Coordinate`, `PublicKey` and `SecretKey` ([Yuki Kishimoto])
 

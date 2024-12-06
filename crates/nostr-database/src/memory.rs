@@ -5,7 +5,6 @@
 //! Memory (RAM) Storage backend for Nostr apps
 
 use std::collections::HashSet;
-use std::hash::Hash;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -24,7 +23,7 @@ use crate::{
 pub struct MemoryDatabaseOptions {
     /// Store events (default: false)
     pub events: bool,
-    /// Max events and IDs to store in memory (default: 100_000)
+    /// Max events and IDs to store in memory (default: 35_000)
     ///
     /// `None` means no limits.
     pub max_events: Option<usize>,
@@ -34,7 +33,7 @@ impl Default for MemoryDatabaseOptions {
     fn default() -> Self {
         Self {
             events: false,
-            max_events: Some(100_000),
+            max_events: Some(35_000),
         }
     }
 }
