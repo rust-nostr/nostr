@@ -2,14 +2,14 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::fmt;
+
 use nostr_database::DatabaseError;
-use thiserror::Error;
 
 /// IndexedDB error
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum IndexedDBError {
     /// DOM error
-    #[error("DomException {name} ({code}): {message}")]
     DomException {
         /// DomException code
         code: u16,
@@ -20,10 +20,18 @@ pub enum IndexedDBError {
     },
 }
 
-#[inline]
-pub(crate) fn into_err(e: indexed_db_futures::web_sys::DomException) -> DatabaseError {
-    let indexed_err: IndexedDBError = e.into();
-    DatabaseError::backend(indexed_err)
+impl std::error::Error for IndexedDBError {}
+
+impl fmt::Display for IndexedDBError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::DomException {
+                name,
+                code,
+                message,
+            } => write!(f, "DomException {name} ({code}): {message}"),
+        }
+    }
 }
 
 impl From<indexed_db_futures::web_sys::DomException> for IndexedDBError {
@@ -40,4 +48,9 @@ impl From<IndexedDBError> for DatabaseError {
     fn from(e: IndexedDBError) -> Self {
         Self::backend(e)
     }
+}
+
+pub(crate) fn into_err(e: indexed_db_futures::web_sys::DomException) -> DatabaseError {
+    let indexed_err: IndexedDBError = e.into();
+    DatabaseError::backend(indexed_err)
 }

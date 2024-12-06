@@ -3206,9 +3206,7 @@ dependencies = [
  "indexed_db_futures",
  "nostr",
  "nostr-database",
- "thiserror",
  "tokio",
- "tracing",
  "wasm-bindgen",
 ]
 

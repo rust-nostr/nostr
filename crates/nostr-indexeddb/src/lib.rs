@@ -118,13 +118,11 @@ impl WebDatabase {
             }
 
             if old_version == 0 {
-                tracing::info!("Initializing database schemas...");
                 let migration = OngoingMigration {
                     create_stores: ALL_STORES.into_iter().collect(),
                     ..Default::default()
                 };
                 self.apply_migration(CURRENT_DB_VERSION, migration).await?;
-                tracing::info!("Database schemas initialized.");
             } else {
                 /* if old_version < 3 {
                     self.migrate_to_v3().await?;
@@ -172,7 +170,6 @@ impl WebDatabase {
                 }
                 for store in &migration.create_stores {
                     evt.db().create_object_store(store)?;
-                    tracing::debug!("Created '{store}' object store");
                 }
 
                 Ok(())
@@ -202,7 +199,6 @@ impl WebDatabase {
     }
 
     async fn bulk_load(&self) -> Result<(), IndexedDBError> {
-        tracing::debug!("Building database indexes...");
         let tx = self
             .db
             .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readwrite)?;
@@ -227,7 +223,6 @@ impl WebDatabase {
             store.delete(&key)?.await?;
         }
 
-        tracing::info!("Database indexes loaded");
         Ok(())
     }
 
@@ -373,7 +368,6 @@ impl_nostr_database!({
 });
 
 impl_nostr_events_database!({
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
         self._save_event(event)
             .await
@@ -484,7 +478,6 @@ impl_nostr_events_database!({
         Ok(None)
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Event>, DatabaseError> {
         Ok(self.helper.event_by_id(event_id).await)
     }
@@ -493,7 +486,6 @@ impl_nostr_events_database!({
         Ok(self.helper.count(filters).await)
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
         Ok(self.helper.query(filters).await)
     }
