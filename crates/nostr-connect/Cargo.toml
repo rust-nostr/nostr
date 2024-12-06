@@ -22,7 +22,7 @@ nostr = { workspace = true, features = ["std", "nip04", "nip44", "nip46"] }
 nostr-relay-pool.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
-tracing = { workspace = true, features = ["std", "attributes"] }
+tracing.workspace = true
 
 [dev-dependencies]
 dialoguer = "0.11"
