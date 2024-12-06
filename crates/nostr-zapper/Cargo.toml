@@ -14,5 +14,4 @@ keywords = ["nostr", "zapper"]
 [dependencies]
 async-trait.workspace = true
 nostr = { workspace = true, features = ["std"] }
-thiserror.workspace = true
 webln = { version = "0.3", optional = true }

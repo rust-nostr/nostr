@@ -27,10 +27,10 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::NIP47(e) => write!(f, "{e}"),
-            Error::Relay(e) => write!(f, "{e}"),
-            Error::PrematureExit => write!(f, "premature exit"),
-            Error::Timeout => write!(f, "timeout"),
+            Self::NIP47(e) => write!(f, "{e}"),
+            Self::Relay(e) => write!(f, "{e}"),
+            Self::PrematureExit => write!(f, "premature exit"),
+            Self::Timeout => write!(f, "timeout"),
         }
     }
 }

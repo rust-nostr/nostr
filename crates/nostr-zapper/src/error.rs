@@ -4,21 +4,30 @@
 
 //! Nostr Zapper Error
 
-use thiserror::Error;
+use std::fmt;
 
 /// Zapper Error
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum ZapperError {
     /// An error happened in the underlying zapper backend.
-    #[error(transparent)]
     Backend(Box<dyn std::error::Error + Send + Sync>),
     /// Not supported
-    #[error("not supported by current backend")]
     NotSupported,
 }
 
+impl std::error::Error for ZapperError {}
+
+impl fmt::Display for ZapperError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Backend(e) => write!(f, "{e}"),
+            Self::NotSupported => write!(f, "not supported"),
+        }
+    }
+}
+
 impl ZapperError {
-    /// Create a new `Backend` error.
+    /// Create a new backend error
     ///
     /// Shorthand for `Error::Backend(Box::new(error))`.
     #[inline]

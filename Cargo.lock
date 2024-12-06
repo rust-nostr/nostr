@@ -3386,7 +3386,6 @@ version = "0.37.0"
 dependencies = [
  "async-trait",
  "nostr",
- "thiserror",
  "webln",
 ]
 
