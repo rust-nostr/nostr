@@ -5,13 +5,13 @@
 //! Nostr Database Flatbuffers
 
 use std::collections::HashSet;
+use std::fmt;
 
 use flatbuffers::InvalidFlatbuffer;
 pub use flatbuffers::{FlatBufferBuilder, ForwardsUOffset, Vector};
 use nostr::prelude::*;
 use nostr::secp256k1;
 use nostr::secp256k1::schnorr::Signature;
-use thiserror::Error;
 
 #[allow(unused_imports, dead_code, clippy::all, unsafe_code, missing_docs)]
 mod event_generated;
@@ -22,23 +22,56 @@ pub use self::event_generated::event_fbs;
 use self::event_seen_by_generated::event_seen_by_fbs;
 
 /// FlatBuffers Error
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum Error {
-    /// Invalid FlatBuffer
-    #[error(transparent)]
-    InvalidFlatbuffer(#[from] InvalidFlatbuffer),
+    /// FlatBuffer
+    FlatBuffer(InvalidFlatbuffer),
     /// Tag error
-    #[error(transparent)]
-    Tag(#[from] nostr::event::tag::Error),
+    Tag(tag::Error),
+    /// Key error
+    Key(key::Error),
     /// Secp256k1 error
-    #[error(transparent)]
-    Secp256k1(#[from] secp256k1::Error),
-    /// Keys error
-    #[error(transparent)]
-    Keys(#[from] key::Error),
+    Secp256k1(secp256k1::Error),
     /// Not found
-    #[error("not found")]
     NotFound,
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::FlatBuffer(e) => write!(f, "{e}"),
+            Self::Tag(e) => write!(f, "{e}"),
+            Self::Key(e) => write!(f, "{e}"),
+            Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::NotFound => write!(f, "not found"),
+        }
+    }
+}
+
+impl From<InvalidFlatbuffer> for Error {
+    fn from(e: InvalidFlatbuffer) -> Self {
+        Self::FlatBuffer(e)
+    }
+}
+
+impl From<tag::Error> for Error {
+    fn from(e: tag::Error) -> Self {
+        Self::Tag(e)
+    }
+}
+
+impl From<key::Error> for Error {
+    fn from(e: key::Error) -> Self {
+        Self::Key(e)
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(e: secp256k1::Error) -> Self {
+        Self::Secp256k1(e)
+    }
 }
 
 /// FlatBuffer Encode trait

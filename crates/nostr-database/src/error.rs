@@ -4,21 +4,30 @@
 
 //! Nostr Database Error
 
-use thiserror::Error;
+use std::fmt;
 
 /// Database Error
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum DatabaseError {
     /// An error happened in the underlying database backend.
-    #[error(transparent)]
     Backend(Box<dyn std::error::Error + Send + Sync>),
     /// Not supported
-    #[error("not supported by current backend")]
     NotSupported,
 }
 
+impl std::error::Error for DatabaseError {}
+
+impl fmt::Display for DatabaseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Backend(e) => write!(f, "{e}"),
+            Self::NotSupported => write!(f, "not supported"),
+        }
+    }
+}
+
 impl DatabaseError {
-    /// Create a new [`Backend`][Self::Backend] error.
+    /// Create a new backend error
     ///
     /// Shorthand for `Error::Backend(Box::new(error))`.
     #[inline]

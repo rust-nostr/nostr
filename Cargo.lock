@@ -3228,7 +3228,6 @@ dependencies = [
  "flatbuffers",
  "lru",
  "nostr",
- "thiserror",
  "tokio",
  "tracing",
 ]
