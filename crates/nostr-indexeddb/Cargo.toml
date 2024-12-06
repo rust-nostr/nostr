@@ -13,7 +13,7 @@ keywords = ["nostr", "database", "indexeddb"]
 
 [dependencies]
 async-trait.workspace = true
-indexed_db_futures = "0.5"
+indexed_db_futures = "0.6"
 nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
 thiserror.workspace = true
