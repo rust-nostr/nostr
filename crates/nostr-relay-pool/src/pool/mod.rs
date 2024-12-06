@@ -92,11 +92,11 @@ impl StealthClone for RelayPool {
 impl RelayPool {
     /// Create new `RelayPool`
     pub fn new(opts: RelayPoolOptions) -> Self {
-        Self::with_shared_state(opts, SharedState::default())
+        Self::__with_shared_state(opts, SharedState::default())
     }
 
     #[doc(hidden)]
-    pub fn with_shared_state(opts: RelayPoolOptions, state: SharedState) -> Self {
+    pub fn __with_shared_state(opts: RelayPoolOptions, state: SharedState) -> Self {
         Self {
             inner: AtomicDestructor::new(InnerRelayPool::new(opts, state)),
         }

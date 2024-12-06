@@ -14,7 +14,7 @@ use tokio::sync::RwLock;
 use crate::{RelayFiltering, RelayFilteringMode};
 
 #[derive(Debug, Error)]
-pub enum Error {
+pub enum SharedStateError {
     #[error("signer not configured")]
     SignerNotConfigured,
 }
@@ -84,9 +84,9 @@ impl SharedState {
     /// Get current nostr signer
     ///
     /// Rise error if it not set.
-    pub async fn signer(&self) -> Result<Arc<dyn NostrSigner>, Error> {
+    pub async fn signer(&self) -> Result<Arc<dyn NostrSigner>, SharedStateError> {
         let signer = self.signer.read().await;
-        signer.clone().ok_or(Error::SignerNotConfigured)
+        signer.clone().ok_or(SharedStateError::SignerNotConfigured)
     }
 
     /// Set nostr signer

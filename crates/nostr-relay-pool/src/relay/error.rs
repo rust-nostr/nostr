@@ -13,14 +13,15 @@ use nostr_database::DatabaseError;
 use thiserror::Error;
 use tokio::sync::{broadcast, SetError};
 
-use crate::{shared, RelayPoolNotification};
+use crate::shared::SharedStateError;
+use crate::RelayPoolNotification;
 
-/// [`Relay`](super::Relay) error
+/// Relay error
 #[derive(Debug, Error)]
 pub enum Error {
     /// Shared state error
     #[error(transparent)]
-    SharedState(#[from] shared::Error),
+    SharedState(#[from] SharedStateError),
     /// MessageHandle error
     #[error(transparent)]
     MessageHandle(#[from] MessageHandleError),

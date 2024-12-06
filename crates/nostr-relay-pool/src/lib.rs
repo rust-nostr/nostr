@@ -18,7 +18,7 @@ pub mod pool;
 pub mod prelude;
 pub mod relay;
 #[doc(hidden)]
-pub mod shared;
+mod shared;
 
 pub use self::pool::options::RelayPoolOptions;
 pub use self::pool::{Output, RelayPool, RelayPoolNotification};
@@ -32,3 +32,10 @@ pub use self::relay::stats::RelayConnectionStats;
 pub use self::relay::{
     Reconciliation, Relay, RelayFiltering, RelayFilteringMode, RelayNotification, RelayStatus,
 };
+
+// Not public API.
+#[doc(hidden)]
+pub mod __private {
+    #[doc(hidden)]
+    pub use super::shared::{SharedState, SharedStateError};
+}

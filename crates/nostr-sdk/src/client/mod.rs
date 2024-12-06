@@ -12,8 +12,8 @@ use std::time::Duration;
 
 use nostr::prelude::*;
 use nostr_database::prelude::*;
+use nostr_relay_pool::__private::{SharedState, SharedStateError};
 use nostr_relay_pool::prelude::*;
-use nostr_relay_pool::shared::SharedState;
 #[cfg(feature = "nip57")]
 use nostr_zapper::{DynNostrZapper, IntoNostrZapper, ZapperError};
 use thiserror::Error;
@@ -61,7 +61,7 @@ pub enum Error {
     Metadata(#[from] metadata::Error),
     /// Shared state error
     #[error(transparent)]
-    SharedState(#[from] shared::Error),
+    SharedState(#[from] SharedStateError),
     /// Zapper not configured
     #[cfg(feature = "nip57")]
     #[error("zapper not configured")]
@@ -167,7 +167,7 @@ impl Client {
 
         // Construct client
         Self {
-            pool: RelayPool::with_shared_state(builder.opts.pool, state),
+            pool: RelayPool::__with_shared_state(builder.opts.pool, state),
             #[cfg(feature = "nip57")]
             zapper: Arc::new(RwLock::new(builder.zapper)),
             gossip_graph: GossipGraph::new(),
