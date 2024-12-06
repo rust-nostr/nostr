@@ -48,6 +48,7 @@
 * nostr: remove self-tagging when building events ([Yuki Kishimoto])
 * nostr: don't set root tags when the root is null ([Yuki Kishimoto])
 * database: add manual trait implementations for `BTreeCappedSet` ([Yuki Kishimoto]) 
+* database: replace LRU with custom memory cache for IDs tracking ([Yuki Kishimoto])
 * lmdb: use `async-utility` to spawn blocking tasks ([Yuki Kishimoto])
 * ndb: bump `nostr-ndb` to 0.4 ([Yuki Kishimoto])
 * pool: add `PingTracker` and improve relay ping management ([Yuki Kishimoto])
@@ -69,7 +70,7 @@
 ### Removed
 
 * sdk: remove `nwc` dep ([Yuki Kishimoto])
-* database: remove `thiserror` and `tracing` deps ([Yuki Kishimoto])
+* database: remove `lru`, `thiserror` and `tracing` deps ([Yuki Kishimoto])
 * zapper: remove `thiserror` dep ([Yuki Kishimoto])
 * nwc: remove `thiserror` dep and unnecessary `Error::Zapper` variant ([Yuki Kishimoto])
 * ffi: drop support for `i686-linux-android` target ([Yuki Kishimoto])

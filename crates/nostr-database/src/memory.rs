@@ -4,15 +4,13 @@
 
 //! Memory (RAM) Storage backend for Nostr apps
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use lru::LruCache;
 use nostr::prelude::*;
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 
-use crate::collections::new_lru_cache;
 use crate::{
     Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper, Events,
     NostrDatabase, NostrEventsDatabase,
@@ -49,7 +47,7 @@ impl MemoryDatabaseOptions {
 #[derive(Debug, Clone)]
 pub struct MemoryDatabase {
     opts: MemoryDatabaseOptions,
-    seen_event_ids: Arc<Mutex<LruCache<EventId, HashSet<RelayUrl>>>>,
+    seen_event_ids: Arc<RwLock<SeenTracker>>,
     helper: DatabaseHelper,
 }
 
@@ -69,35 +67,11 @@ impl MemoryDatabase {
     pub fn with_opts(opts: MemoryDatabaseOptions) -> Self {
         Self {
             opts,
-            seen_event_ids: Arc::new(Mutex::new(new_lru_cache(opts.max_events))),
+            seen_event_ids: Arc::new(RwLock::new(SeenTracker::new(opts.max_events))),
             helper: match opts.max_events {
                 Some(max) => DatabaseHelper::bounded(max),
                 None => DatabaseHelper::unbounded(),
             },
-        }
-    }
-
-    fn _event_id_seen(
-        &self,
-        seen_event_ids: &mut LruCache<EventId, HashSet<RelayUrl>>,
-        event_id: EventId,
-        relay_url: Option<RelayUrl>,
-    ) {
-        match seen_event_ids.get_mut(&event_id) {
-            Some(set) => {
-                if let Some(url) = relay_url {
-                    set.insert(url);
-                }
-            }
-            None => {
-                let mut set: HashSet<RelayUrl> = HashSet::new();
-
-                if let Some(url) = relay_url {
-                    set.insert(url);
-                }
-
-                seen_event_ids.put(event_id, set);
-            }
         }
     }
 }
@@ -114,7 +88,7 @@ impl NostrDatabase for MemoryDatabase {
         self.helper.clear().await;
 
         // Clear
-        let mut seen_event_ids = self.seen_event_ids.lock().await;
+        let mut seen_event_ids = self.seen_event_ids.write().await;
         seen_event_ids.clear();
         Ok(())
     }
@@ -129,8 +103,8 @@ impl NostrEventsDatabase for MemoryDatabase {
             Ok(to_store)
         } else {
             // Mark it as seen
-            let mut seen_event_ids = self.seen_event_ids.lock().await;
-            self._event_id_seen(&mut seen_event_ids, event.id, None);
+            let mut seen_event_ids = self.seen_event_ids.write().await;
+            seen_event_ids.seen(event.id, None);
 
             Ok(false)
         }
@@ -146,7 +120,7 @@ impl NostrEventsDatabase for MemoryDatabase {
                 Ok(DatabaseEventStatus::NotExistent)
             }
         } else {
-            let seen_event_ids = self.seen_event_ids.lock().await;
+            let seen_event_ids = self.seen_event_ids.read().await;
             Ok(if seen_event_ids.contains(event_id) {
                 DatabaseEventStatus::Saved
             } else {
@@ -171,8 +145,8 @@ impl NostrEventsDatabase for MemoryDatabase {
         event_id: EventId,
         relay_url: RelayUrl,
     ) -> Result<(), DatabaseError> {
-        let mut seen_event_ids = self.seen_event_ids.lock().await;
-        self._event_id_seen(&mut seen_event_ids, event_id, Some(relay_url));
+        let mut seen_event_ids = self.seen_event_ids.write().await;
+        seen_event_ids.seen(event_id, Some(relay_url));
         Ok(())
     }
 
@@ -180,7 +154,7 @@ impl NostrEventsDatabase for MemoryDatabase {
         &self,
         event_id: &EventId,
     ) -> Result<Option<HashSet<RelayUrl>>, DatabaseError> {
-        let mut seen_event_ids = self.seen_event_ids.lock().await;
+        let seen_event_ids = self.seen_event_ids.read().await;
         Ok(seen_event_ids.get(event_id).cloned())
     }
 
@@ -206,5 +180,131 @@ impl NostrEventsDatabase for MemoryDatabase {
     async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {
         self.helper.delete(filter).await;
         Ok(())
+    }
+}
+
+#[derive(Debug)]
+struct SeenTracker {
+    ids: HashMap<EventId, HashSet<RelayUrl>>,
+    capacity: Option<usize>,
+    queue: VecDeque<EventId>,
+}
+
+impl SeenTracker {
+    fn new(capacity: Option<usize>) -> Self {
+        Self {
+            ids: HashMap::new(),
+            capacity,
+            queue: VecDeque::new(),
+        }
+    }
+
+    fn check_capacity(&mut self) {
+        // Remove last item if queue > capacity
+        if let Some(capacity) = self.capacity {
+            if self.queue.len() >= capacity {
+                if let Some(last) = self.queue.pop_back() {
+                    self.ids.remove(&last);
+                }
+            }
+        }
+    }
+
+    fn seen(&mut self, event_id: EventId, relay_url: Option<RelayUrl>) {
+        match self.ids.get_mut(&event_id) {
+            Some(set) => {
+                if let Some(url) = relay_url {
+                    set.insert(url);
+                }
+            }
+            None => {
+                self.check_capacity();
+
+                let set: HashSet<RelayUrl> = match relay_url {
+                    Some(url) => {
+                        let mut set: HashSet<RelayUrl> = HashSet::with_capacity(1);
+                        set.insert(url);
+                        set
+                    }
+                    None => HashSet::new(),
+                };
+                self.ids.insert(event_id, set);
+                self.queue.push_front(event_id);
+            }
+        }
+    }
+
+    #[inline]
+    fn get(&self, id: &EventId) -> Option<&HashSet<RelayUrl>> {
+        self.ids.get(id)
+    }
+
+    #[inline]
+    fn contains(&self, id: &EventId) -> bool {
+        self.ids.contains_key(id)
+    }
+
+    fn clear(&mut self) {
+        self.ids.clear();
+        self.queue.clear();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_seen_tracker_without_capacity() {
+        let mut tracker = SeenTracker::new(None);
+
+        let id0 = EventId::all_zeros();
+        tracker.seen(id0, None);
+
+        let id1 = EventId::from_byte_array([1u8; 32]);
+        tracker.seen(id1, None);
+
+        let id2 = EventId::from_byte_array([2u8; 32]);
+        tracker.seen(id2, None);
+
+        assert_eq!(tracker.ids.len(), 3);
+        assert_eq!(tracker.queue.len(), 3);
+        assert!(tracker.capacity.is_none());
+
+        assert!(tracker.contains(&id0));
+        assert!(tracker.queue.contains(&id0));
+
+        assert!(tracker.contains(&id1));
+        assert!(tracker.queue.contains(&id1));
+
+        assert!(tracker.contains(&id2));
+        assert!(tracker.queue.contains(&id2));
+    }
+
+    #[test]
+    fn test_seen_tracker_with_capacity() {
+        let mut tracker = SeenTracker::new(Some(2));
+
+        let id0 = EventId::all_zeros();
+        tracker.seen(id0, None);
+
+        let id1 = EventId::from_byte_array([1u8; 32]);
+        tracker.seen(id1, None);
+
+        let id2 = EventId::from_byte_array([2u8; 32]);
+        tracker.seen(id2, None);
+
+        assert_eq!(tracker.ids.len(), 2);
+        assert_eq!(tracker.queue.len(), 2);
+        assert!(tracker.capacity.is_some());
+
+        assert!(!tracker.contains(&id0));
+        assert!(!tracker.queue.contains(&id0));
+
+        assert!(tracker.contains(&id1));
+        assert!(tracker.queue.contains(&id1));
+
+        assert!(tracker.contains(&id2));
+        assert!(tracker.queue.contains(&id2));
     }
 }
