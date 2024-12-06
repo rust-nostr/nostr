@@ -90,7 +90,6 @@ impl NostrDatabase for NdbDatabase {
 
 #[async_trait]
 impl NostrEventsDatabase for NdbDatabase {
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
         let msg = RelayMessage::event(SubscriptionId::new("ndb"), event.clone());
         let json: String = msg.as_json();
@@ -134,7 +133,6 @@ impl NostrEventsDatabase for NdbDatabase {
         Err(DatabaseError::NotSupported)
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Event>, DatabaseError> {
         let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let note = self
@@ -144,14 +142,12 @@ impl NostrEventsDatabase for NdbDatabase {
         Ok(Some(ndb_note_to_event(note)?))
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {
         let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let res: Vec<QueryResult> = self.ndb_query(&txn, filters)?;
         Ok(res.len())
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
     async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
         let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         let mut events: Events = Events::new(&filters);

@@ -16,4 +16,3 @@ async-trait.workspace = true
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
 nostrdb = "0.4"
-tracing = { workspace = true, features = ["std", "attributes"] }

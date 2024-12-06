@@ -3230,7 +3230,6 @@ dependencies = [
  "nostr",
  "nostr-database",
  "nostrdb",
- "tracing",
 ]
 
 [[package]]
