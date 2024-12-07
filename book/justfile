@@ -22,3 +22,10 @@ serve: init
 
 test:
 	cd snippets && just test
+
+# clean mdbook depends
+clean:
+	cargo uninstall mdbook
+	cargo uninstall mdbook-linkcheck
+	cargo uninstall mdbook-admonish
+	cargo uninstall mdbook-snippets
