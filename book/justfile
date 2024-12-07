@@ -2,10 +2,17 @@ default:
 	@just --list
 # install book depends
 init:
-	@mdbook --version || cargo install mdbook --version 0.4.40
-	@mdbook-linkcheck --version || cargo install mdbook-linkcheck --version 0.7.7
-	@mdbook-admonish --version || cargo install mdbook-admonish --version 1.15.0
-	@mdbook-snippets --version || cargo install --path ./snippets-processor
+	@mdbook --version || \
+	cargo binstall -y --force mdbook --version 0.4.40 || \
+	cargo install --force mdbook --version 0.4.40
+	@mdbook-linkcheck --version || \
+	cargo binstall -y --force mdbook-linkcheck --version 0.7.7 || \
+	cargo install --force mdbook-linkcheck --version 0.7.7
+	@mdbook-admonish --version || \
+	cargo binstall -y --force mdbook-admonish --version 1.15.0 || \
+	cargo install --force mdbook-admonish --version 1.15.0
+	@mdbook-snippets --version || \
+	cargo install --force --path ./snippets-processor
 
 build: init
 	mdbook build
