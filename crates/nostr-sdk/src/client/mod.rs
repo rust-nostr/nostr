@@ -394,9 +394,10 @@ impl Client {
         let opts: RelayOptions = opts.flags(flag);
 
         // Add relay with opts or edit current one
+        // TODO: remove clone here
         match self
             .pool
-            .get_or_add_relay::<&RelayUrl>(&url, inherit_pool_subscriptions, opts)
+            .__get_or_add_relay(url.clone(), inherit_pool_subscriptions, opts)
             .await?
         {
             Some(relay) => {
@@ -404,6 +405,7 @@ impl Client {
                 Ok(false)
             }
             None => {
+                // TODO: move autoconnect to `Relay`?
                 // Connect if `autoconnect` is enabled
                 if self.opts.autoconnect {
                     self.connect_relay::<RelayUrl>(url).await?;

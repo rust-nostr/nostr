@@ -181,20 +181,18 @@ impl RelayPool {
         self.inner.add_relay(url, true, opts).await
     }
 
-    /// Try to get relay by `url` or add it to pool.
-    ///
-    /// Return `Some(..)` only if the relay already exists.
+    // Private API
+    //
+    // Try to get relay by `url` or add it to pool.
+    // Return `Some(..)` only if the relay already exists.
     #[inline]
-    pub async fn get_or_add_relay<U>(
+    #[doc(hidden)]
+    pub async fn __get_or_add_relay(
         &self,
-        url: U,
+        url: RelayUrl,
         inherit_pool_subscriptions: bool,
         opts: RelayOptions,
-    ) -> Result<Option<Relay>, Error>
-    where
-        U: TryIntoUrl + Clone,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
+    ) -> Result<Option<Relay>, Error> {
         self.inner
             .get_or_add_relay(url, inherit_pool_subscriptions, opts)
             .await

@@ -224,7 +224,7 @@ impl InnerRelayPool {
         }
 
         // Compose new relay
-        let relay = Relay::internal_custom(url, self.state.clone(), opts);
+        let relay: Relay = Relay::internal_custom(url, self.state.clone(), opts);
 
         // Set notification sender
         relay
@@ -245,17 +245,13 @@ impl InnerRelayPool {
         Ok(true)
     }
 
-    pub async fn get_or_add_relay<U>(
+    pub async fn get_or_add_relay(
         &self,
-        url: U,
+        url: RelayUrl,
         inherit_pool_subscriptions: bool,
         opts: RelayOptions,
-    ) -> Result<Option<Relay>, Error>
-    where
-        U: TryIntoUrl + Clone,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
-        match self.relay(url.clone()).await {
+    ) -> Result<Option<Relay>, Error> {
+        match self.relay(&url).await {
             Ok(relay) => Ok(Some(relay)),
             Err(..) => {
                 self.add_relay(url, inherit_pool_subscriptions, opts)
