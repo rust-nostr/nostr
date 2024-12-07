@@ -5,4 +5,5 @@ requirements: venv
 	. ENV/bin/activate && pip install -r requirements.txt
 
 test: requirements
+	export PYRIGHT_PYTHON_FORCE_VERSION=latest && \
 	. ENV/bin/activate && pyright src
