@@ -14,12 +14,15 @@ init:
 	@mdbook-snippets --version || \
 	cargo install --force --path ./snippets-processor
 
+# build mdbook
 build: init
 	mdbook build
 
+# serve mdbook (localhost:3000)
 serve: init
 	mdbook serve
 
+# cd snippets && just test
 test:
 	cd snippets && just test
 
