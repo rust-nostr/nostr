@@ -1,5 +1,5 @@
 venv:
-	python -m venv ENV
+	python -m venv ENV || virtualenv ENV
 
 requirements: venv
 	. ENV/bin/activate && pip install -r requirements.txt
