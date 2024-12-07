@@ -1,4 +1,6 @@
-[private]
+default:
+	@just --list
+# install book depends
 init:
 	@mdbook --version || cargo install mdbook --version 0.4.40
 	@mdbook-linkcheck --version || cargo install mdbook-linkcheck --version 0.7.7
