@@ -4,10 +4,12 @@
 
 //! Urls
 
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use core::convert::Infallible;
 use core::fmt;
 use core::str::FromStr;
+#[cfg(feature = "std")]
+use std::net::IpAddr; // TODO: use `core::net` when MSRV will be at 1.77.0
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[cfg(feature = "std")]
@@ -21,7 +23,7 @@ pub enum Error {
     /// Url parse error
     Url(ParseError),
     /// Unsupported URL scheme
-    UnsupportedScheme(String),
+    UnsupportedScheme,
     /// Multiple scheme separators
     MultipleSchemeSeparators,
 }
@@ -33,7 +35,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Url(e) => write!(f, "{e}"),
-            Self::UnsupportedScheme(scheme) => write!(f, "Unsupported scheme: {scheme}"),
+            Self::UnsupportedScheme => write!(f, "Unsupported scheme"),
             Self::MultipleSchemeSeparators => write!(f, "Multiple scheme separators"),
         }
     }
@@ -85,8 +87,32 @@ impl RelayUrl {
                 url,
                 has_trailing_slash,
             }),
-            scheme => Err(Error::UnsupportedScheme(scheme.to_string())),
+            _ => Err(Error::UnsupportedScheme),
         }
+    }
+
+    /// Check if the host is a local network address.
+    ///
+    /// IPv4 address ranges:
+    /// * `127.0.0.0/8`
+    /// * `10.0.0.0/8`
+    /// * `172.16.0.0/12`
+    /// * `192.168.0.0/16`
+    ///
+    /// IPv6 address ranges:
+    /// * `::1`
+    #[cfg(feature = "std")]
+    pub fn is_local_addr(&self) -> bool {
+        if let Some(host) = self.url.host_str() {
+            if let Ok(addr) = IpAddr::from_str(host) {
+                return match addr {
+                    IpAddr::V4(ipv4) => ipv4.is_loopback() || ipv4.is_private(),
+                    IpAddr::V6(ipv6) => ipv6.is_loopback(),
+                };
+            }
+        }
+
+        false
     }
 
     /// Check if the URL is a hidden onion service address
@@ -251,11 +277,11 @@ mod tests {
     fn test_relay_url_invalid() {
         assert_eq!(
             RelayUrl::parse("https://relay.damus.io").unwrap_err(),
-            Error::UnsupportedScheme(String::from("https"))
+            Error::UnsupportedScheme
         );
         assert_eq!(
             RelayUrl::parse("ftp://relay.damus.io").unwrap_err(),
-            Error::UnsupportedScheme(String::from("ftp"))
+            Error::UnsupportedScheme
         );
         assert_eq!(
             RelayUrl::parse("wss://relay.damus.io,ws://127.0.0.1:7777").unwrap_err(),
@@ -298,6 +324,28 @@ mod tests {
         let serialized = serde_json::to_string(&relay_url).unwrap();
         let deserialized: RelayUrl = serde_json::from_str(&serialized).unwrap();
         assert_eq!(relay_url, deserialized);
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn test_is_local() {
+        // Local
+        let url = RelayUrl::parse("ws://127.0.0.1:7777").unwrap();
+        assert!(url.is_local_addr());
+        let url = RelayUrl::parse("ws://10.10.10.10:7777").unwrap();
+        assert!(url.is_local_addr());
+        let url = RelayUrl::parse("ws://172.16.10.11:7777").unwrap();
+        assert!(url.is_local_addr());
+        let url = RelayUrl::parse("ws://192.168.1.10:7777").unwrap();
+        assert!(url.is_local_addr());
+
+        // Non local
+        let onion_url =
+            RelayUrl::parse("ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion")
+                .unwrap();
+        assert!(!onion_url.is_local_addr());
+        let url = RelayUrl::parse("wss://relay.damus.io").unwrap();
+        assert!(!url.is_local_addr());
     }
 
     #[test]

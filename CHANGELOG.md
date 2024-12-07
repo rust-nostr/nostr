@@ -57,6 +57,7 @@
 ### Added
 
 * nostr: add `Tags::challenge` method ([Yuki Kishimoto])
+* nostr: add `RelayUrl::is_local_addr` ([Yuki Kishimoto])
 * database: impl PartialEq and Eq for `Events` ([Yuki Kishimoto])
 * pool: add `ReceiverStream` ([Yuki Kishimoto])
 * sdk: automatically resend event after NIP-42 authentication ([Yuki Kishimoto])
