@@ -5,6 +5,7 @@
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
+use negentropy::{Negentropy, NegentropyStorageVector};
 use nostr::{Event, Filter, PublicKey, Result, SubscriptionId, Timestamp};
 
 pub(super) enum RateLimiterResponse {
@@ -73,6 +74,7 @@ impl Nip42Session {
 
 pub(super) struct Session {
     pub subscriptions: HashMap<SubscriptionId, Vec<Filter>>,
+    pub negentropy_subscription: HashMap<SubscriptionId, Negentropy<NegentropyStorageVector>>,
     pub nip42: Nip42Session,
     pub tokens: Tokens,
 }

@@ -10,6 +10,8 @@ use async_utility::futures_util::stream::{self, SplitSink};
 use async_utility::futures_util::{SinkExt, StreamExt};
 use async_wsocket::native::{self, Message, WebSocketStream};
 use atomic_destructor::AtomicDestroyer;
+use negentropy::{Bytes, Id, NegentropyStorageVector};
+use nostr::message::relay::NegentropyErrorCode;
 use nostr_database::prelude::*;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{broadcast, Semaphore};
@@ -173,6 +175,7 @@ impl InnerLocalRelay {
 
         let mut session: Session = Session {
             subscriptions: HashMap::new(),
+            negentropy_subscription: HashMap::new(),
             nip42: Nip42Session::default(),
             tokens: Tokens::new(self.rate_limit.notes_per_minute),
         };
@@ -566,9 +569,91 @@ impl InnerLocalRelay {
                     .await
                 }
             },
-            ClientMessage::NegOpen { .. }
-            | ClientMessage::NegMsg { .. }
-            | ClientMessage::NegClose { .. } => Ok(()),
+            ClientMessage::NegOpen {
+                subscription_id,
+                filter,
+                initial_message,
+                ..
+            } => {
+                // TODO: check number of neg subscriptions
+
+                // TODO: check nip42?
+
+                // Query database
+                let items = self.database.negentropy_items(*filter).await?;
+
+                tracing::debug!(
+                    id = %subscription_id,
+                    "Found {} items for negentropy reconciliation.",
+                    items.len()
+                );
+
+                // Construct negentropy storage, add items and seal
+                let mut storage = NegentropyStorageVector::with_capacity(items.len());
+                for (id, timestamp) in items.into_iter() {
+                    let id: Id = Id::new(id.to_bytes());
+                    storage.insert(timestamp.as_u64(), id)?;
+                }
+                storage.seal()?;
+
+                // Construct negentropy client
+                let mut negentropy = Negentropy::new(storage, 60_000)?;
+
+                // Reconcile
+                let bytes: Bytes = Bytes::from_hex(initial_message)?;
+                let message: Bytes = negentropy.reconcile(&bytes)?;
+
+                // Update subscriptions
+                session
+                    .negentropy_subscription
+                    .insert(subscription_id.clone(), negentropy);
+
+                // Reply
+                self.send_msg(
+                    ws_tx,
+                    RelayMessage::NegMsg {
+                        subscription_id,
+                        message: message.to_hex(),
+                    },
+                )
+                .await
+            }
+            ClientMessage::NegMsg {
+                subscription_id,
+                message,
+            } => {
+                match session.negentropy_subscription.get_mut(&subscription_id) {
+                    Some(negentropy) => {
+                        // Reconcile
+                        let bytes: Bytes = Bytes::from_hex(message)?;
+                        let message = negentropy.reconcile(&bytes)?;
+
+                        // Reply
+                        self.send_msg(
+                            ws_tx,
+                            RelayMessage::NegMsg {
+                                subscription_id,
+                                message: message.to_hex(),
+                            },
+                        )
+                        .await
+                    }
+                    None => {
+                        self.send_msg(
+                            ws_tx,
+                            RelayMessage::NegErr {
+                                subscription_id,
+                                code: NegentropyErrorCode::Closed,
+                            },
+                        )
+                        .await
+                    }
+                }
+            }
+            ClientMessage::NegClose { subscription_id } => {
+                session.negentropy_subscription.remove(&subscription_id);
+                Ok(())
+            }
         }
     }
 

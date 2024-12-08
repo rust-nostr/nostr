@@ -19,6 +19,7 @@ tor = ["async-wsocket/tor-launch-service"]
 async-utility.workspace = true
 async-wsocket.workspace = true
 atomic-destructor.workspace = true
+negentropy.workspace = true
 nostr = { workspace = true, default-features = false, features = ["std"] }
 nostr-database.workspace = true
 thiserror.workspace = true

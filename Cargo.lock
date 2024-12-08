@@ -3252,6 +3252,7 @@ dependencies = [
  "async-utility",
  "async-wsocket",
  "atomic-destructor",
+ "negentropy 0.4.3",
  "nostr",
  "nostr-database",
  "thiserror",
