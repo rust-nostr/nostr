@@ -5,6 +5,7 @@
 //! Util
 
 use alloc::string::String;
+use core::fmt::Debug;
 
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand::rngs::OsRng;
@@ -50,7 +51,7 @@ where
     <Self as JsonUtil>::Err: From<serde_json::Error>,
 {
     /// Error
-    type Err;
+    type Err: Debug;
 
     /// Deserialize JSON
     #[inline]
@@ -66,7 +67,7 @@ where
     /// This method could panic! Use `try_as_json` for error propagation.
     #[inline]
     fn as_json(&self) -> String {
-        serde_json::to_string(self).unwrap()
+        self.try_as_json().unwrap()
     }
 
     /// Serialize as JSON string
@@ -80,7 +81,7 @@ where
     /// This method could panic! Use `try_as_pretty_json` for error propagation.
     #[inline]
     fn as_pretty_json(&self) -> String {
-        serde_json::to_string_pretty(self).unwrap()
+        self.try_as_pretty_json().unwrap()
     }
 
     /// Serialize as pretty JSON string
