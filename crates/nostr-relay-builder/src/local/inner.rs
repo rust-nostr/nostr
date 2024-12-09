@@ -11,7 +11,6 @@ use async_utility::futures_util::{SinkExt, StreamExt};
 use async_wsocket::native::{self, Message, WebSocketStream};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Bytes, Id, NegentropyStorageVector};
-use nostr::message::relay::NegentropyErrorCode;
 use nostr_database::prelude::*;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{broadcast, Semaphore};
@@ -643,7 +642,10 @@ impl InnerLocalRelay {
                             ws_tx,
                             RelayMessage::NegErr {
                                 subscription_id,
-                                code: NegentropyErrorCode::Closed,
+                                message: format!(
+                                    "{}: subscription not found",
+                                    MachineReadablePrefix::Error
+                                ),
                             },
                         )
                         .await

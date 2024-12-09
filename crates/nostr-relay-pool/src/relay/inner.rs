@@ -1724,10 +1724,10 @@ impl InnerRelay {
                         }
                         RelayMessage::NegErr {
                             subscription_id,
-                            code,
+                            message,
                         } => {
                             if subscription_id == sub_id {
-                                return Err(Error::NegentropyReconciliation(code));
+                                return Err(Error::RelayMessage(message));
                             }
                         }
                         RelayMessage::Notice { message } => {
@@ -1842,10 +1842,10 @@ impl InnerRelay {
                         }
                         RelayMessage::NegErr {
                             subscription_id,
-                            code,
+                            message,
                         } => {
                             if subscription_id == sub_id {
-                                return Err(Error::NegentropyReconciliation(code));
+                                return Err(Error::RelayMessage(message));
                             }
                         }
                         RelayMessage::Ok {
@@ -2031,10 +2031,10 @@ impl InnerRelay {
                         }
                         RelayMessage::NegErr {
                             subscription_id,
-                            code,
+                            message,
                         } => {
                             if subscription_id == sub_id {
-                                return Err(Error::NegentropyReconciliation(code));
+                                return Err(Error::RelayMessage(message));
                             }
                         }
                         RelayMessage::Notice { message } => {
@@ -2144,10 +2144,10 @@ impl InnerRelay {
                         }
                         RelayMessage::NegErr {
                             subscription_id,
-                            code,
+                            message,
                         } => {
                             if subscription_id == sub_id {
-                                return Err(Error::NegentropyReconciliation(code));
+                                return Err(Error::RelayMessage(message));
                             }
                         }
                         RelayMessage::Ok {

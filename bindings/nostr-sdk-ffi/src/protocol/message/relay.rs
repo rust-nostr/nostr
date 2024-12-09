@@ -5,7 +5,6 @@
 use core::ops::Deref;
 use std::sync::Arc;
 
-use nostr::message::relay::NegentropyErrorCode;
 use nostr::{JsonUtil, SubscriptionId};
 use uniffi::{Enum, Object};
 
@@ -46,7 +45,7 @@ pub enum RelayMessageEnum {
     },
     NegErr {
         subscription_id: String,
-        code: String,
+        message: String,
     },
 }
 
@@ -97,10 +96,10 @@ impl From<nostr::RelayMessage> for RelayMessageEnum {
             },
             nostr::RelayMessage::NegErr {
                 subscription_id,
-                code,
+                message,
             } => Self::NegErr {
                 subscription_id: subscription_id.to_string(),
-                code: code.to_string(),
+                message,
             },
         }
     }
@@ -153,10 +152,10 @@ impl From<RelayMessageEnum> for nostr::RelayMessage {
             },
             RelayMessageEnum::NegErr {
                 subscription_id,
-                code,
+                message,
             } => Self::NegErr {
                 subscription_id: SubscriptionId::new(subscription_id),
-                code: NegentropyErrorCode::from(code),
+                message,
             },
         }
     }

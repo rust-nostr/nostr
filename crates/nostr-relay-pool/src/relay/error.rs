@@ -7,7 +7,6 @@ use std::time::Duration;
 
 use nostr::event;
 use nostr::event::builder;
-use nostr::message::relay::NegentropyErrorCode;
 use nostr::message::MessageHandleError;
 use nostr_database::DatabaseError;
 use tokio::sync::{broadcast, SetError};
@@ -63,8 +62,6 @@ pub enum Error {
     WriteDisabled,
     /// Filters empty
     FiltersEmpty,
-    /// Reconciliation error
-    NegentropyReconciliation(NegentropyErrorCode),
     /// Negentropy not supported
     NegentropyNotSupported,
     /// Unknown negentropy error
@@ -140,7 +137,6 @@ impl fmt::Display for Error {
             Self::ReadDisabled => write!(f, "read actions are disabled"),
             Self::WriteDisabled => write!(f, "write actions are disabled"),
             Self::FiltersEmpty => write!(f, "filters empty"),
-            Self::NegentropyReconciliation(e) => write!(f, "{e}"),
             Self::NegentropyNotSupported => write!(f, "negentropy not supported"),
             Self::UnknownNegentropyError => write!(f, "unknown negentropy error"),
             Self::RelayMessageTooLarge { size, max_size } => write!(

@@ -69,8 +69,8 @@ pub enum RawRelayMessage {
     NegErr {
         /// Subscription ID
         subscription_id: String,
-        /// Error code
-        code: String,
+        /// Error message
+        message: String,
     },
 }
 
@@ -151,7 +151,7 @@ impl RawRelayMessage {
                 // ["NEG-ERR", <subscription ID string>, <reason-code>]
                 Ok(Self::NegErr {
                     subscription_id: next_and_deser(&mut v_iter)?, // Index 1
-                    code: next_and_deser(&mut v_iter)?,            // Index 2
+                    message: next_and_deser(&mut v_iter)?,         // Index 2
                 })
             }
             _ => Err(MessageHandleError::InvalidMessageFormat),

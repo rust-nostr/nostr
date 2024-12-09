@@ -47,6 +47,7 @@
 * Bump `async-utility` to 0.3, `async-wsocket` to 0.11 and `atomic-destructor` to 0.3 ([Yuki Kishimoto])
 * nostr: remove self-tagging when building events ([Yuki Kishimoto])
 * nostr: don't set root tags when the root is null ([Yuki Kishimoto])
+* nostr: update `RelayMessage::NegErr` variant ([Yuki Kishimoto])
 * database: add manual trait implementations for `BTreeCappedSet` ([Yuki Kishimoto]) 
 * database: replace LRU with custom memory cache for IDs tracking ([Yuki Kishimoto])
 * lmdb: use `async-utility` to spawn blocking tasks ([Yuki Kishimoto])
@@ -73,6 +74,7 @@
 
 ### Removed
 
+* nostr: remove `NegentropyErrorCode` ([Yuki Kishimoto])
 * sdk: remove `nwc` dep ([Yuki Kishimoto])
 * database: remove `lru`, `thiserror` and `tracing` deps ([Yuki Kishimoto])
 * lmdb: remove `thiserror` and `tracing` deps ([Yuki Kishimoto])

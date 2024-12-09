@@ -6,7 +6,7 @@
 //! Relay messages
 
 use alloc::boxed::Box;
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use core::fmt;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -87,70 +87,6 @@ impl MachineReadablePrefix {
     }
 }
 
-/// Negentropy error code
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum NegentropyErrorCode {
-    /// Results too big
-    ResultsTooBig,
-    /// Because the NEG-OPEN queries are stateful, relays may choose to time-out inactive queries to recover memory resources
-    Closed,
-    /// If an event ID is used as the filter, this error will be returned if the relay does not have this event.
-    /// The client should retry with the full filter, or upload the event to the relay.
-    FilterNotFound,
-    /// The event's content was not valid JSON, or the filter was invalid for some other reason.
-    FilterInvalid,
-    /// Other
-    Other(String),
-}
-
-impl fmt::Display for NegentropyErrorCode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ResultsTooBig => write!(f, "RESULTS_TOO_BIG"),
-            Self::Closed => write!(f, "CLOSED"),
-            Self::FilterNotFound => write!(f, "FILTER_NOT_FOUND"),
-            Self::FilterInvalid => write!(f, "FILTER_INVALID"),
-            Self::Other(e) => write!(f, "{e}"),
-        }
-    }
-}
-
-impl<S> From<S> for NegentropyErrorCode
-where
-    S: Into<String>,
-{
-    fn from(code: S) -> Self {
-        let code: String = code.into();
-        match code.as_str() {
-            "RESULTS_TOO_BIG" => Self::ResultsTooBig,
-            "CLOSED" => Self::Closed,
-            "FILTER_NOT_FOUND" => Self::FilterNotFound,
-            "FILTER_INVALID" => Self::FilterInvalid,
-            _ => Self::Other(code),
-        }
-    }
-}
-
-impl Serialize for NegentropyErrorCode {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-impl<'de> Deserialize<'de> for NegentropyErrorCode {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let value = Value::deserialize(deserializer)?;
-        let alphaber: String = serde_json::from_value(value).map_err(serde::de::Error::custom)?;
-        Ok(Self::from(alphaber))
-    }
-}
-
 /// Messages sent by relays, received by clients
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RelayMessage {
@@ -221,8 +157,8 @@ pub enum RelayMessage {
     NegErr {
         /// Subscription ID
         subscription_id: SubscriptionId,
-        /// Error code
-        code: NegentropyErrorCode,
+        /// Error message
+        message: String,
     },
 }
 
@@ -348,8 +284,8 @@ impl RelayMessage {
             } => json!(["NEG-MSG", subscription_id, message]),
             Self::NegErr {
                 subscription_id,
-                code,
-            } => json!(["NEG-ERR", subscription_id, code]),
+                message,
+            } => json!(["NEG-ERR", subscription_id, message]),
         }
     }
 
@@ -431,10 +367,10 @@ impl TryFrom<RawRelayMessage> for RelayMessage {
             }),
             RawRelayMessage::NegErr {
                 subscription_id,
-                code,
+                message,
             } => Ok(Self::NegErr {
                 subscription_id: SubscriptionId::new(subscription_id),
-                code: NegentropyErrorCode::from(code),
+                message,
             }),
         }
     }
