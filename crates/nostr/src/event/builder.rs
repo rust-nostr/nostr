@@ -1973,7 +1973,7 @@ mod benches {
     pub fn builder_to_event(bh: &mut Bencher) {
         let keys = Keys::generate();
         bh.iter(|| {
-            black_box(EventBuilder::text_note("hello", []).sign_with_keys(&keys)).unwrap();
+            black_box(EventBuilder::text_note("hello").sign_with_keys(&keys)).unwrap();
         });
     }
 }

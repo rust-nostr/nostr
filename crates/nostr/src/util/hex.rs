@@ -158,7 +158,7 @@ mod benches {
     #[bench]
     pub fn hex_encode(bh: &mut Bencher) {
         bh.iter(|| {
-            black_box(encode(EVENT_JSON));
+            black_box(encode(EVENT_JSON.as_bytes()));
         });
     }
 

@@ -468,9 +468,9 @@ mod tests {
         // Event JSON with incomplete content
         let invalid_event_msg_content = r#"["EVENT", "random_string", {"id":"70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5","pubkey":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"}]"#;
 
-        assert!(RelayMessage::from_json(invalid_event_msg).is_err(),);
+        assert!(RelayMessage::from_json(invalid_event_msg).is_err());
 
-        assert!(RelayMessage::from_json(invalid_event_msg_content).is_err(),);
+        assert!(RelayMessage::from_json(invalid_event_msg_content).is_err());
     }
 
     #[test]
@@ -514,13 +514,13 @@ mod tests {
         assert!(RelayMessage::from_json(
             r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30"]"#
         )
-        .is_err(),);
+        .is_err());
 
         // Invalid event_id
         assert!(RelayMessage::from_json(
             r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7dde", true, ""]"#
         )
-        .is_err(),);
+        .is_err());
 
         // Invalid status
         assert!(

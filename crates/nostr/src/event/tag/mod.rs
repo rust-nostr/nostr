@@ -554,7 +554,7 @@ mod benches {
 
     #[bench]
     pub fn parse_p_tag(bh: &mut Bencher) {
-        let tag = &[
+        let tag = [
             "p",
             "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
         ];
@@ -576,7 +576,7 @@ mod benches {
 
     #[bench]
     pub fn parse_e_tag(bh: &mut Bencher) {
-        let tag = &[
+        let tag = [
             "e",
             "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
             "wss://relay.damus.io",
@@ -600,7 +600,7 @@ mod benches {
 
     #[bench]
     pub fn parse_a_tag(bh: &mut Bencher) {
-        let tag = &[
+        let tag = [
             "a",
             "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum",
             "wss://relay.nostr.org",
