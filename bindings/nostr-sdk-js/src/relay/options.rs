@@ -62,16 +62,6 @@ impl JsRelayOptions {
         self.inner.ping(ping).into()
     }
 
-    /// Minimum POW for received events (default: 0)
-    pub fn pow(self, difficulty: u8) -> Self {
-        self.inner.pow(difficulty).into()
-    }
-
-    /// Update `pow` option
-    pub fn update_pow_difficulty(&self, difficulty: u8) {
-        self.inner.update_pow_difficulty(difficulty);
-    }
-
     /// Enable/disable auto reconnection (default: true)
     pub fn reconnect(self, reconnect: bool) -> Self {
         self.inner.reconnect(reconnect).into()

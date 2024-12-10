@@ -4,8 +4,6 @@
 
 //! Relay options
 
-use std::sync::atomic::{AtomicU8, Ordering};
-use std::sync::Arc;
 use std::time::Duration;
 
 use async_wsocket::ConnectionMode;
@@ -21,8 +19,6 @@ use crate::RelayLimits;
 pub struct RelayOptions {
     pub(super) connection_mode: ConnectionMode,
     pub(super) flags: RelayServiceFlags,
-    // TODO: what to do with this atomic?
-    pow: Arc<AtomicU8>,
     pub(super) reconnect: bool,
     pub(super) retry_interval: Duration,
     pub(super) adjust_retry_interval: bool,
@@ -36,7 +32,6 @@ impl Default for RelayOptions {
         Self {
             connection_mode: ConnectionMode::default(),
             flags: RelayServiceFlags::default(),
-            pow: Arc::new(AtomicU8::new(0)),
             reconnect: true,
             retry_interval: DEFAULT_RETRY_INTERVAL,
             adjust_retry_interval: true,
@@ -98,18 +93,9 @@ impl RelayOptions {
     }
 
     /// Minimum POW for received events (default: 0)
-    pub fn pow(mut self, difficulty: u8) -> Self {
-        self.pow = Arc::new(AtomicU8::new(difficulty));
+    #[deprecated(since = "0.38.0")]
+    pub fn pow(self, _difficulty: u8) -> Self {
         self
-    }
-
-    pub(crate) fn get_pow_difficulty(&self) -> u8 {
-        self.pow.load(Ordering::SeqCst)
-    }
-
-    /// Set `pow` option
-    pub fn update_pow_difficulty(&self, difficulty: u8) {
-        self.pow.store(difficulty, Ordering::SeqCst);
     }
 
     /// Enable/disable auto reconnection (default: true)

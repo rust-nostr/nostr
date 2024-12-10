@@ -8,8 +8,6 @@
 use std::net::SocketAddr;
 #[cfg(all(feature = "tor", any(target_os = "android", target_os = "ios")))]
 use std::path::Path;
-use std::sync::atomic::{AtomicU8, Ordering};
-use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_relay_pool::prelude::*;
@@ -18,7 +16,7 @@ use nostr_relay_pool::prelude::*;
 #[derive(Debug, Clone)]
 pub struct Options {
     pub(super) autoconnect: bool,
-    min_pow_difficulty: Arc<AtomicU8>,
+    pub(super) min_pow_difficulty: u8,
     pub(super) req_filters_chunk_size: u8,
     pub(super) nip42_auto_authentication: bool,
     pub(super) gossip: bool,
@@ -34,7 +32,7 @@ impl Default for Options {
     fn default() -> Self {
         Self {
             autoconnect: false,
-            min_pow_difficulty: Arc::new(AtomicU8::new(0)),
+            min_pow_difficulty: 0,
             req_filters_chunk_size: 10,
             nip42_auto_authentication: true,
             gossip: false,
@@ -70,22 +68,11 @@ impl Options {
         self
     }
 
-    /// Minimum POW difficulty for received events
+    /// Minimum POW difficulty for received events (default: 0)
     #[inline]
     pub fn min_pow(mut self, difficulty: u8) -> Self {
-        self.min_pow_difficulty = Arc::new(AtomicU8::new(difficulty));
+        self.min_pow_difficulty = difficulty;
         self
-    }
-
-    #[inline]
-    pub(crate) fn get_min_pow_difficulty(&self) -> u8 {
-        self.min_pow_difficulty.load(Ordering::SeqCst)
-    }
-
-    /// Update minimum POW difficulty for received events
-    #[inline]
-    pub fn update_min_pow_difficulty(&self, difficulty: u8) {
-        self.min_pow_difficulty.store(difficulty, Ordering::SeqCst);
     }
 
     /// REQ filters chunk size (default: 10)

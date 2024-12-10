@@ -112,18 +112,6 @@ impl RelayOptions {
         builder
     }
 
-    /// Minimum POW for received events (default: 0)
-    pub fn pow(&self, difficulty: u8) -> Self {
-        let mut builder = self.clone();
-        builder.inner = builder.inner.pow(difficulty);
-        builder
-    }
-
-    /// Update `pow` option
-    pub fn update_pow_difficulty(&self, difficulty: u8) {
-        self.inner.update_pow_difficulty(difficulty);
-    }
-
     /// Enable/disable auto reconnection (default: true)
     pub fn reconnect(&self, reconnect: bool) -> Self {
         let mut builder = self.clone();

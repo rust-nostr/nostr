@@ -56,6 +56,7 @@
 * ndb: bump `nostr-ndb` to 0.4 ([Yuki Kishimoto])
 * pool: add `PingTracker` and improve relay ping management ([Yuki Kishimoto])
 * pool: cleanup relay `Error` variants ([Yuki Kishimoto])
+* sdk: refactor POW difficulty management ([Yuki Kishimoto])
 
 ### Added
 
@@ -71,6 +72,7 @@
 
 * nostr: remove redundant NIP10 tags from `EventBuilder::text_note_reply` ([Yuki Kishimoto])
 * sdk: fix NIP42 authentication for auto-closing REQ ([Yuki Kishimoto])
+* sdk: fix min POW is not updated to already existing relays ([Yuki Kishimoto])
 * bindings: allow passing empty string as relay url without return an error ([Yuki Kishimoto])
 * flutter: fix `default` is reserved in dart ([J. Azad EMERY])
 

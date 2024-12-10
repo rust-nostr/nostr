@@ -3,7 +3,7 @@
 // Distributed under the MIT software license
 
 use std::fmt;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::Arc;
 
 use nostr::prelude::IntoNostrSigner;
@@ -35,6 +35,7 @@ pub struct SharedState {
     pub(crate) database: Arc<dyn NostrDatabase>,
     signer: Arc<RwLock<Option<Arc<dyn NostrSigner>>>>,
     nip42_auto_authentication: Arc<AtomicBool>,
+    min_pow_difficulty: Arc<AtomicU8>,
     pub(crate) filtering: RelayFiltering,
 }
 
@@ -44,6 +45,7 @@ impl Default for SharedState {
             database: MemoryDatabase::new().into_nostr_database(),
             signer: Arc::new(RwLock::new(None)),
             nip42_auto_authentication: Arc::new(AtomicBool::new(true)),
+            min_pow_difficulty: Arc::new(AtomicU8::new(0)),
             filtering: RelayFiltering::default(),
         }
     }
@@ -55,12 +57,14 @@ impl SharedState {
         signer: Option<Arc<dyn NostrSigner>>,
         filtering_mode: RelayFilteringMode,
         nip42_auto_authentication: bool,
+        min_pow_difficulty: u8,
     ) -> Self {
         Self {
             database,
             signer: Arc::new(RwLock::new(signer)),
             nip42_auto_authentication: Arc::new(AtomicBool::new(nip42_auto_authentication)),
             filtering: RelayFiltering::new(filtering_mode),
+            min_pow_difficulty: Arc::new(AtomicU8::new(min_pow_difficulty)),
         }
     }
 
@@ -76,6 +80,21 @@ impl SharedState {
     pub fn automatic_authentication(&self, enable: bool) {
         self.nip42_auto_authentication
             .store(enable, Ordering::SeqCst);
+    }
+
+    /// Minimum POW difficulty for received events
+    ///
+    /// All received events must have a difficulty equal or greater than the set one.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    #[inline]
+    pub fn set_pow(&self, difficulty: u8) {
+        self.min_pow_difficulty.store(difficulty, Ordering::SeqCst);
+    }
+
+    #[inline]
+    pub(crate) fn minimum_pow_difficulty(&self) -> u8 {
+        self.min_pow_difficulty.load(Ordering::SeqCst)
     }
 
     /// Get database

@@ -163,6 +163,7 @@ impl Client {
             builder.signer,
             builder.opts.filtering_mode,
             builder.opts.nip42_auto_authentication,
+            builder.opts.min_pow_difficulty,
         );
 
         // Construct client
@@ -179,16 +180,16 @@ impl Client {
     #[deprecated(since = "0.38.0")]
     pub fn update_difficulty(&self, _difficulty: u8) {}
 
+    #[inline]
+    fn state(&self) -> &SharedState {
+        self.pool.state()
+    }
+
     /// Update minimum POW difficulty for received events
     ///
     /// Events with a POW lower than the current value will be ignored to prevent resources exhaustion.
     pub fn update_min_pow_difficulty(&self, difficulty: u8) {
-        self.opts.update_min_pow_difficulty(difficulty);
-    }
-
-    #[inline]
-    fn state(&self) -> &SharedState {
-        self.pool.state()
+        self.state().set_pow(difficulty);
     }
 
     /// Auto authenticate to relays (default: true)
@@ -366,10 +367,8 @@ impl Client {
             },
         };
 
-        // Set min POW difficulty and limits
-        // TODO: when min POW is updated in the client, the relays POW is not updated!
-        opts.pow(self.opts.get_min_pow_difficulty())
-            .limits(self.opts.relay_limits.clone())
+        // Set limits
+        opts.limits(self.opts.relay_limits.clone())
             .max_avg_latency(self.opts.max_avg_latency)
     }
 

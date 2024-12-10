@@ -995,7 +995,7 @@ impl InnerRelay {
                 }
 
                 // Check min POW
-                let difficulty: u8 = self.opts.get_pow_difficulty();
+                let difficulty: u8 = self.state.minimum_pow_difficulty();
                 if difficulty > 0 && !partial_event.id.check_pow(difficulty) {
                     return Err(Error::PowDifficultyTooLow { min: difficulty });
                 }
