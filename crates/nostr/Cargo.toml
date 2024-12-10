@@ -59,6 +59,7 @@ nip47 = ["nip04"]
 nip49 = ["dep:chacha20poly1305", "dep:scrypt", "dep:unicode-normalization"]
 nip57 = ["dep:aes", "dep:cbc"]
 nip59 = ["nip44"]
+metadata_options = ["dep:clap"]
 
 [dependencies]
 aes = { version = "0.8", optional = true }
@@ -70,6 +71,7 @@ bitcoin = { version = "0.32", default-features = false, features = ["rand", "ser
 cbc = { version = "0.1", optional = true }
 chacha20 = { version = "0.9", optional = true }
 chacha20poly1305 = { version = "0.10", default-features = false, features = ["getrandom"], optional = true }
+clap = { version = "4.4.18", features = ["derive"], optional = true }
 negentropy.workspace = true
 negentropy-deprecated.workspace = true
 nostr-ots = { version = "0.2", optional = true }
@@ -101,6 +103,10 @@ required-features = ["std"]
 [[example]]
 name = "metadata"
 required-features = ["std"]
+
+[[example]]
+name = "metadata-options"
+required-features = ["std", "metadata_options"]
 
 [[example]]
 name = "nip05"
