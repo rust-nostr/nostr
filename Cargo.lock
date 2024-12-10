@@ -3133,6 +3133,7 @@ dependencies = [
  "cbc",
  "chacha20",
  "chacha20poly1305",
+ "clap",
  "getrandom",
  "instant",
  "js-sys",
