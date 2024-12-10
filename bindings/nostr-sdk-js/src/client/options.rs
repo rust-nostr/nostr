@@ -7,7 +7,6 @@ use std::ops::Deref;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use crate::duration::JsDuration;
 use crate::relay::filtering::JsRelayFilteringMode;
 use crate::relay::limits::JsRelayLimits;
 
@@ -61,10 +60,6 @@ impl JsOptions {
         self.inner
             .req_filters_chunk_size(req_filters_chunk_size)
             .into()
-    }
-
-    pub fn timeout(self, timeout: &JsDuration) -> Self {
-        self.inner.timeout(**timeout).into()
     }
 
     /// Auto authenticate to relays (default: true)

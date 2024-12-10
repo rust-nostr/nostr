@@ -3,12 +3,15 @@
 // Distributed under the MIT software license
 
 use std::str::FromStr;
+use std::time::Duration;
 
 use lnurl_pay::api::Lud06OrLud16;
 use lnurl_pay::{LightningAddress, LnUrl};
 use nostr_database::prelude::*;
 
 use super::{Client, Error};
+
+const TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Zap entity
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -100,14 +103,14 @@ impl Client {
             ZapEntity::Event(event_id) => {
                 // Get event
                 let filter: Filter = Filter::new().id(event_id);
-                let events: Events = self.fetch_events(vec![filter], None).await?;
+                let events: Events = self.fetch_events(vec![filter], TIMEOUT).await?;
                 let event: &Event = events.first().ok_or(Error::EventNotFound(event_id))?;
                 let public_key: PublicKey = event.pubkey;
-                let metadata: Metadata = self.fetch_metadata(public_key, None).await?;
+                let metadata: Metadata = self.fetch_metadata(public_key, TIMEOUT).await?;
                 (public_key, metadata)
             }
             ZapEntity::PublicKey(public_key) => {
-                let metadata: Metadata = self.fetch_metadata(public_key, None).await?;
+                let metadata: Metadata = self.fetch_metadata(public_key, TIMEOUT).await?;
                 (public_key, metadata)
             }
         };
@@ -150,6 +153,8 @@ impl Client {
         // Compose zap request
         let zap_request: Option<String> = match details {
             Some(details) => {
+                // TODO: get NIP65 relays to know where to publish zap event
+
                 let mut data = ZapRequestData::new(
                     public_key,
                     // TODO: replace these 2 relays

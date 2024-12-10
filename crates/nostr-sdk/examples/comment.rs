@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::time::Duration;
+
 use nostr_sdk::prelude::*;
 
 #[tokio::main]
@@ -19,7 +21,7 @@ async fn main() -> Result<()> {
     let event_id =
         EventId::from_bech32("note1hrrgx2309my3wgeecx2tt6fl2nl8hcwl0myr3xvkcqpnq24pxg2q06armr")?;
     let events = client
-        .fetch_events(vec![Filter::new().id(event_id)], None)
+        .fetch_events(vec![Filter::new().id(event_id)], Duration::from_secs(10))
         .await?;
 
     let comment_to = events.first().unwrap();

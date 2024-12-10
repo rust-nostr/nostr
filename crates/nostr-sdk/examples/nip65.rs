@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
 
     let filter = Filter::new().author(public_key).kind(Kind::RelayList);
     let events: Events = client
-        .fetch_events(vec![filter], Some(Duration::from_secs(10)))
+        .fetch_events(vec![filter], Duration::from_secs(10))
         .await?;
     let event = events.first().unwrap();
     println!("Found relay list metadata:");

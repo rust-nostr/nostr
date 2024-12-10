@@ -41,6 +41,7 @@
 * nostr: update `RelayMessage::Notice` variant ([Yuki Kishimoto])
 * database: reduce default in-memory database limit to `35_000` ([Yuki Kishimoto])
 * pool: replace `Option<String>` with `String` in `Output::failed` ([Yuki Kishimoto])
+* sdk: update `fetch_*` and `stream_*` methods signature ([Yuki Kishimoto])
 * bindings: remove redundant parsing methods from `EventId`, `Coordinate`, `PublicKey` and `SecretKey` ([Yuki Kishimoto])
 
 ### Changed
@@ -91,6 +92,7 @@
 ### Deprecated
 
 * pool: deprecated batch event methods ([Yuki Kishimoto])
+* sdk: deprecate `timeout` option ([Yuki Kishimoto])
 
 ## [v0.37.0]
 

@@ -69,12 +69,6 @@ impl Options {
         builder
     }
 
-    pub fn timeout(&self, timeout: Duration) -> Self {
-        let mut builder = self.clone();
-        builder.inner = builder.inner.timeout(timeout);
-        builder
-    }
-
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>

@@ -26,7 +26,7 @@ async fn main() -> Result<()> {
         .limit(50);
     let stored_events = client.database().query(vec![filter.clone()]).await?;
     let fetched_events = client
-        .fetch_events(vec![filter], Some(Duration::from_secs(10)))
+        .fetch_events(vec![filter], Duration::from_secs(10))
         .await?;
     let events = stored_events.merge(fetched_events);
 
@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
     // Query events from relays
     let filter = Filter::new().author(public_key).kind(Kind::Metadata);
     let fetched_events = client
-        .fetch_events(vec![filter], Some(Duration::from_secs(10)))
+        .fetch_events(vec![filter], Duration::from_secs(10))
         .await?;
 
     // Add temp relay and fetch other events

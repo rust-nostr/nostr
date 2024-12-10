@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::time::Duration;
 
 use js_sys::Array;
 use nostr_sdk::async_utility::task;
@@ -370,13 +369,12 @@ impl JsClient {
     pub async fn fetch_events(
         &self,
         filters: Vec<JsFilter>,
-        timeout: Option<JsDuration>,
+        timeout: &JsDuration,
     ) -> Result<JsEvents> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
-        let timeout: Option<Duration> = timeout.map(|d| *d);
         let events: Events = self
             .inner
-            .fetch_events(filters, timeout)
+            .fetch_events(filters, **timeout)
             .await
             .map_err(into_err)?;
         Ok(events.into())
@@ -388,13 +386,12 @@ impl JsClient {
         &self,
         urls: Vec<String>,
         filters: Vec<JsFilter>,
-        timeout: Option<JsDuration>,
+        timeout: &JsDuration,
     ) -> Result<JsEvents> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
-        let timeout: Option<Duration> = timeout.map(|d| *d);
         let events: Events = self
             .inner
-            .fetch_events_from(urls, filters, timeout)
+            .fetch_events_from(urls, filters, **timeout)
             .await
             .map_err(into_err)?;
         Ok(events.into())
@@ -416,13 +413,12 @@ impl JsClient {
     pub async fn fetch_combined_events(
         &self,
         filters: Vec<JsFilter>,
-        timeout: Option<JsDuration>,
+        timeout: &JsDuration,
     ) -> Result<JsEvents> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
-        let timeout: Option<Duration> = timeout.map(|d| *d);
         let events: Events = self
             .inner
-            .fetch_combined_events(filters, timeout)
+            .fetch_combined_events(filters, **timeout)
             .await
             .map_err(into_err)?;
         Ok(events.into())
@@ -513,10 +509,10 @@ impl JsClient {
     pub async fn fetch_metadata(
         &self,
         public_key: &JsPublicKey,
-        timeout: Option<JsDuration>,
+        timeout: &JsDuration,
     ) -> Result<JsMetadata> {
         self.inner
-            .fetch_metadata(**public_key, timeout.map(|t| *t))
+            .fetch_metadata(**public_key, **timeout)
             .await
             .map_err(into_err)
             .map(|m| m.into())

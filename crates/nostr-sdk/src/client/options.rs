@@ -21,7 +21,6 @@ pub struct Options {
     new_events_difficulty: Arc<AtomicU8>,
     min_pow_difficulty: Arc<AtomicU8>,
     pub(super) req_filters_chunk_size: u8,
-    pub(super) timeout: Duration,
     pub(super) nip42_auto_authentication: bool,
     pub(super) gossip: bool,
     #[cfg(not(target_arch = "wasm32"))]
@@ -39,7 +38,6 @@ impl Default for Options {
             new_events_difficulty: Arc::new(AtomicU8::new(0)),
             min_pow_difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: 10,
-            timeout: Duration::from_secs(60),
             nip42_auto_authentication: true,
             gossip: false,
             #[cfg(not(target_arch = "wasm32"))]
@@ -114,9 +112,8 @@ impl Options {
     /// Timeout (default: 60)
     ///
     /// Used in `fetch_events` and similar methods as default timeout.
-    #[inline]
-    pub fn timeout(mut self, timeout: Duration) -> Self {
-        self.timeout = timeout;
+    #[deprecated(since = "0.38.0")]
+    pub fn timeout(self, _timeout: Duration) -> Self {
         self
     }
 

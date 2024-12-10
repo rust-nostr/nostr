@@ -818,7 +818,7 @@ impl Client {
     ///     .since(Timestamp::now());
     ///
     /// let _events = client
-    ///     .fetch_events(vec![subscription], Some(Duration::from_secs(10)))
+    ///     .fetch_events(vec![subscription], Duration::from_secs(10))
     ///     .await
     ///     .unwrap();
     /// # }
@@ -826,10 +826,8 @@ impl Client {
     pub async fn fetch_events(
         &self,
         filters: Vec<Filter>,
-        timeout: Option<Duration>,
+        timeout: Duration,
     ) -> Result<Events, Error> {
-        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
-
         if self.opts.gossip {
             return self.gossip_fetch_events(filters, timeout).await;
         }
@@ -846,14 +844,13 @@ impl Client {
         &self,
         urls: I,
         filters: Vec<Filter>,
-        timeout: Option<Duration>,
+        timeout: Duration,
     ) -> Result<Events, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
         Ok(self
             .pool
             .fetch_events_from(urls, filters, timeout, FilterOptions::ExitOnEOSE)
@@ -885,7 +882,7 @@ impl Client {
     ///
     /// // Query relays
     /// let fetched_events: Events = client
-    ///     .fetch_events(filters, Some(Duration::from_secs(10)))
+    ///     .fetch_events(filters, Duration::from_secs(10))
     ///     .await?;
     ///
     /// // Merge result
@@ -901,7 +898,7 @@ impl Client {
     pub async fn fetch_combined_events(
         &self,
         filters: Vec<Filter>,
-        timeout: Option<Duration>,
+        timeout: Duration,
     ) -> Result<Events, Error> {
         // Query database
         let stored_events: Events = self.database().query(filters.clone()).await?;
@@ -920,11 +917,8 @@ impl Client {
     pub async fn stream_events(
         &self,
         filters: Vec<Filter>,
-        timeout: Option<Duration>,
+        timeout: Duration,
     ) -> Result<ReceiverStream<Event>, Error> {
-        // Get timeout
-        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
-
         // Check if gossip is enabled
         if self.opts.gossip {
             self.gossip_stream_events(filters, timeout).await
@@ -942,14 +936,13 @@ impl Client {
         &self,
         urls: I,
         filters: Vec<Filter>,
-        timeout: Option<Duration>,
+        timeout: Duration,
     ) -> Result<ReceiverStream<Event>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
         Ok(self
             .pool
             .stream_events_from(urls, filters, timeout, FilterOptions::ExitOnEOSE)
@@ -962,14 +955,13 @@ impl Client {
     pub async fn stream_events_targeted<I, U>(
         &self,
         source: I,
-        timeout: Option<Duration>,
+        timeout: Duration,
     ) -> Result<ReceiverStream<Event>, Error>
     where
         I: IntoIterator<Item = (U, Vec<Filter>)>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        let timeout: Duration = timeout.unwrap_or(self.opts.timeout);
         Ok(self
             .pool
             .stream_events_targeted(source, timeout, FilterOptions::ExitOnEOSE)
@@ -1098,7 +1090,7 @@ impl Client {
     pub async fn fetch_metadata(
         &self,
         public_key: PublicKey,
-        timeout: Option<Duration>,
+        timeout: Duration,
     ) -> Result<Metadata, Error> {
         let filter: Filter = Filter::new()
             .author(public_key)
@@ -1201,7 +1193,7 @@ impl Client {
     /// Get contact list from relays.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
-    pub async fn get_contact_list(&self, timeout: Option<Duration>) -> Result<Vec<Contact>, Error> {
+    pub async fn get_contact_list(&self, timeout: Duration) -> Result<Vec<Contact>, Error> {
         let mut contact_list: Vec<Contact> = Vec::new();
         let filters: Vec<Filter> = self.get_contact_list_filters().await?;
         let events: Events = self.fetch_events(filters, timeout).await?;
@@ -1229,7 +1221,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     pub async fn get_contact_list_public_keys(
         &self,
-        timeout: Option<Duration>,
+        timeout: Duration,
     ) -> Result<Vec<PublicKey>, Error> {
         let mut pubkeys: Vec<PublicKey> = Vec::new();
         let filters: Vec<Filter> = self.get_contact_list_filters().await?;
@@ -1245,7 +1237,7 @@ impl Client {
     /// Get contact list [`Metadata`] from relays.
     pub async fn get_contact_list_metadata(
         &self,
-        timeout: Option<Duration>,
+        timeout: Duration,
     ) -> Result<HashMap<PublicKey, Metadata>, Error> {
         let public_keys = self.get_contact_list_public_keys(timeout).await?;
         let mut contacts: HashMap<PublicKey, Metadata> =
@@ -1649,7 +1641,7 @@ impl Client {
 
             // Get events from discovery and read relays
             let events: Events = self
-                .fetch_events_from(relays, vec![filter], Some(Duration::from_secs(10)))
+                .fetch_events_from(relays, vec![filter], Duration::from_secs(10))
                 .await?;
 
             // Update last check for these public keys

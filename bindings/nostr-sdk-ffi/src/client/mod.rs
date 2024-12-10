@@ -358,7 +358,7 @@ impl Client {
     pub async fn fetch_events(
         &self,
         filters: Vec<Arc<Filter>>,
-        timeout: Option<Duration>,
+        timeout: Duration,
     ) -> Result<Events> {
         let filters = filters
             .into_iter()
@@ -372,7 +372,7 @@ impl Client {
         &self,
         urls: Vec<String>,
         filters: Vec<Arc<Filter>>,
-        timeout: Option<Duration>,
+        timeout: Duration,
     ) -> Result<Events> {
         let filters = filters
             .into_iter()
@@ -400,7 +400,7 @@ impl Client {
     pub async fn fetch_combined_events(
         &self,
         filters: Vec<Arc<Filter>>,
-        timeout: Option<Duration>,
+        timeout: Duration,
     ) -> Result<Events> {
         let filters = filters
             .into_iter()
@@ -480,11 +480,10 @@ impl Client {
     /// consider `client.database().profile(PUBKEY)`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[uniffi::method(default(timeout = None))]
     pub async fn fetch_metadata(
         &self,
         public_key: &PublicKey,
-        timeout: Option<Duration>,
+        timeout: Duration,
     ) -> Result<Arc<Metadata>> {
         Ok(Arc::new(
             self.inner
