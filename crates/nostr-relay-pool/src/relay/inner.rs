@@ -23,9 +23,10 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, watch, Mutex, MutexGuard, OnceCell, RwLock};
 
 use super::constants::{
-    BATCH_EVENT_ITERATION_TIMEOUT, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE,
-    NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP,
-    NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, WAIT_FOR_AUTHENTICATION_TIMEOUT, WEBSOCKET_TX_TIMEOUT,
+    BATCH_EVENT_ITERATION_TIMEOUT, DEFAULT_CONNECTION_TIMEOUT, MAX_RETRY_INTERVAL, MIN_ATTEMPTS,
+    MIN_SUCCESS_RATE, NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT,
+    NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP, PING_INTERVAL,
+    WAIT_FOR_AUTHENTICATION_TIMEOUT, WEBSOCKET_TX_TIMEOUT,
 };
 use super::filtering::CheckFiltering;
 use super::flags::AtomicRelayServiceFlags;
@@ -452,7 +453,7 @@ impl InnerRelay {
                 }
             }
             None => {
-                self.spawn_and_try_connect(Duration::from_secs(60));
+                self.spawn_and_try_connect(DEFAULT_CONNECTION_TIMEOUT);
             }
         }
     }
@@ -591,15 +592,7 @@ impl InnerRelay {
         // Compose timeout
         let timeout: Duration = if self.stats.attempts() > 1 {
             // Many attempts, use the default timeout
-            #[cfg(feature = "tor")]
-            if let ConnectionMode::Tor { .. } = &self.opts.connection_mode {
-                Duration::from_secs(120)
-            } else {
-                Duration::from_secs(60)
-            }
-
-            #[cfg(not(feature = "tor"))]
-            Duration::from_secs(60)
+            DEFAULT_CONNECTION_TIMEOUT
         } else {
             // First attempt, use external timeout
             connection_timeout
