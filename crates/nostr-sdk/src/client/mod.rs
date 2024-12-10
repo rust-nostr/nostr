@@ -176,9 +176,8 @@ impl Client {
     }
 
     /// Update default difficulty for new [`Event`]
-    pub fn update_difficulty(&self, difficulty: u8) {
-        self.opts.update_difficulty(difficulty);
-    }
+    #[deprecated(since = "0.38.0")]
+    pub fn update_difficulty(&self, _difficulty: u8) {}
 
     /// Update minimum POW difficulty for received events
     ///
@@ -368,6 +367,7 @@ impl Client {
         };
 
         // Set min POW difficulty and limits
+        // TODO: when min POW is updated in the client, the relays POW is not updated!
         opts.pow(self.opts.get_min_pow_difficulty())
             .limits(self.opts.relay_limits.clone())
             .max_avg_latency(self.opts.max_avg_latency)
@@ -1040,15 +1040,10 @@ impl Client {
         unimplemented!()
     }
 
-    /// Signs the [`EventBuilder`] into an [`Event`] using the [`NostrSigner`]
+    /// Build, sign and return [`Event`]
     pub async fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
         let signer = self.signer().await?;
-
-        let public_key: PublicKey = signer.get_public_key().await?;
-        let difficulty: u8 = self.opts.get_difficulty();
-        let unsigned: UnsignedEvent = builder.pow(difficulty).build(public_key);
-
-        Ok(signer.sign_event(unsigned).await?)
+        Ok(builder.sign(&signer).await?)
     }
 
     /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to relays (check [`Client::send_event`] from more details).

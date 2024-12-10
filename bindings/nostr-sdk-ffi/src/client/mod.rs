@@ -54,11 +54,6 @@ impl Client {
         }
     }
 
-    /// Update default difficulty for new `Event`
-    pub fn update_difficulty(&self, difficulty: u8) {
-        self.inner.update_difficulty(difficulty);
-    }
-
     /// Update minimum POW difficulty for received events
     ///
     /// Events with a POW lower than the current value will be ignored to prevent resources exhaustion.

@@ -45,10 +45,6 @@ impl JsOptions {
         self.inner.autoconnect(val).into()
     }
 
-    pub fn difficulty(self, difficulty: u8) -> Self {
-        self.inner.difficulty(difficulty).into()
-    }
-
     /// Minimum POW difficulty for received events
     #[wasm_bindgen(js_name = minPow)]
     pub fn min_pow(self, difficulty: u8) -> Self {

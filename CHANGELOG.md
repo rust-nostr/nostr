@@ -93,6 +93,7 @@
 
 * pool: deprecated batch event methods ([Yuki Kishimoto])
 * sdk: deprecate `timeout` option ([Yuki Kishimoto])
+* sdk: deprecate `Options::difficulty` and `Client::update_difficulty` ([Yuki Kishimoto])
 
 ## [v0.37.0]
 

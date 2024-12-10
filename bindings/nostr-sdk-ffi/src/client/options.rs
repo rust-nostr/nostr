@@ -50,12 +50,6 @@ impl Options {
         builder
     }
 
-    pub fn difficulty(&self, difficulty: u8) -> Self {
-        let mut builder = self.clone();
-        builder.inner = builder.inner.difficulty(difficulty);
-        builder
-    }
-
     /// Minimum POW difficulty for received events
     pub fn min_pow(&self, difficulty: u8) -> Self {
         let mut builder = self.clone();

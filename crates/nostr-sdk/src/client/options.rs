@@ -18,7 +18,6 @@ use nostr_relay_pool::prelude::*;
 #[derive(Debug, Clone)]
 pub struct Options {
     pub(super) autoconnect: bool,
-    new_events_difficulty: Arc<AtomicU8>,
     min_pow_difficulty: Arc<AtomicU8>,
     pub(super) req_filters_chunk_size: u8,
     pub(super) nip42_auto_authentication: bool,
@@ -35,7 +34,6 @@ impl Default for Options {
     fn default() -> Self {
         Self {
             autoconnect: false,
-            new_events_difficulty: Arc::new(AtomicU8::new(0)),
             min_pow_difficulty: Arc::new(AtomicU8::new(0)),
             req_filters_chunk_size: 10,
             nip42_auto_authentication: true,
@@ -67,21 +65,9 @@ impl Options {
     }
 
     /// Set default POW difficulty for `Event`
-    #[inline]
-    pub fn difficulty(mut self, difficulty: u8) -> Self {
-        self.new_events_difficulty = Arc::new(AtomicU8::new(difficulty));
+    #[deprecated(since = "0.38.0")]
+    pub fn difficulty(self, _difficulty: u8) -> Self {
         self
-    }
-
-    #[inline]
-    pub(crate) fn get_difficulty(&self) -> u8 {
-        self.new_events_difficulty.load(Ordering::SeqCst)
-    }
-
-    #[inline]
-    pub(crate) fn update_difficulty(&self, difficulty: u8) {
-        self.new_events_difficulty
-            .store(difficulty, Ordering::SeqCst);
     }
 
     /// Minimum POW difficulty for received events
