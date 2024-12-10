@@ -824,7 +824,7 @@ impl InnerRelay {
         match self.handle_relay_message(msg).await {
             Ok(Some(message)) => {
                 match &message {
-                    RelayMessage::Notice { message } => {
+                    RelayMessage::Notice(message) => {
                         tracing::warn!(url = %self.url, msg = %message, "Received NOTICE.")
                     }
                     RelayMessage::Ok {
@@ -1730,7 +1730,7 @@ impl InnerRelay {
                                 return Err(Error::RelayMessage(message));
                             }
                         }
-                        RelayMessage::Notice { message } => {
+                        RelayMessage::Notice(message) => {
                             if message
                                 == "ERROR: negentropy error: negentropy query missing elements"
                             {
@@ -2037,7 +2037,7 @@ impl InnerRelay {
                                 return Err(Error::RelayMessage(message));
                             }
                         }
-                        RelayMessage::Notice { message } => {
+                        RelayMessage::Notice(message) => {
                             if message.contains("bad msg")
                                 && (message.contains("unknown cmd")
                                     || message.contains("negentropy")

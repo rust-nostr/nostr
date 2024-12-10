@@ -34,11 +34,14 @@ pub enum RawRelayMessage {
     },
     /// `["EOSE", <subscription_id>]` (NIP01)
     EndOfStoredEvents(String),
-    /// `["NOTICE", <message>]` (NIP01)
-    Notice {
-        /// Message
-        message: String,
-    },
+    /// Notice
+    ///
+    /// Used to send human-readable error messages or other things to clients.
+    ///
+    /// JSON: `["NOTICE", <message>]`.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    Notice(String),
     /// `["CLOSED", <subscription_id>, <message>]` (NIP01)
     Closed {
         /// Subscription ID
@@ -93,9 +96,8 @@ impl RawRelayMessage {
         match v_type.as_str() {
             "NOTICE" => {
                 // ["NOTICE", <message>]
-                Ok(Self::Notice {
-                    message: next_and_deser(&mut v_iter)?, // Index 1
-                })
+                let message: String = next_and_deser(&mut v_iter)?; // Index 1
+                Ok(Self::Notice(message))
             }
             "CLOSED" => {
                 // ["CLOSED", <subscription_id>, <message>]

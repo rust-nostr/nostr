@@ -114,13 +114,14 @@ pub enum RelayMessage {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     EndOfStoredEvents(SubscriptionId),
-    /// `["NOTICE", <message>]`
+    /// Notice
+    ///
+    /// Used to send human-readable error messages or other things to clients.
+    ///
+    /// JSON: `["NOTICE", <message>]`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    Notice {
-        /// Message
-        message: String,
-    },
+    Notice(String),
     /// `["CLOSED", <subscription_id>, <message>]`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
@@ -198,9 +199,7 @@ impl RelayMessage {
     where
         S: Into<String>,
     {
-        Self::Notice {
-            message: message.into(),
-        }
+        Self::Notice(message.into())
     }
 
     /// Create `CLOSED` message
@@ -260,7 +259,7 @@ impl RelayMessage {
                 event,
                 subscription_id,
             } => json!(["EVENT", subscription_id, event]),
-            Self::Notice { message } => json!(["NOTICE", message]),
+            Self::Notice(message) => json!(["NOTICE", message]),
             Self::Closed {
                 subscription_id,
                 message,
@@ -342,7 +341,7 @@ impl TryFrom<RawRelayMessage> for RelayMessage {
             RawRelayMessage::EndOfStoredEvents(subscription_id) => Ok(Self::EndOfStoredEvents(
                 SubscriptionId::new(subscription_id),
             )),
-            RawRelayMessage::Notice { message } => Ok(Self::Notice { message }),
+            RawRelayMessage::Notice(message) => Ok(Self::Notice(message)),
             RawRelayMessage::Closed {
                 subscription_id,
                 message,

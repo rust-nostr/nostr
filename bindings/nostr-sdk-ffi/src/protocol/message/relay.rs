@@ -66,7 +66,7 @@ impl From<nostr::RelayMessage> for RelayMessageEnum {
                 subscription_id: subscription_id.to_string(),
                 message,
             },
-            nostr::RelayMessage::Notice { message } => Self::Notice { message },
+            nostr::RelayMessage::Notice(message) => Self::Notice { message },
             nostr::RelayMessage::EndOfStoredEvents(sub_id) => Self::EndOfStoredEvents {
                 subscription_id: sub_id.to_string(),
             },
@@ -122,7 +122,7 @@ impl From<RelayMessageEnum> for nostr::RelayMessage {
                 subscription_id: SubscriptionId::new(subscription_id),
                 message,
             },
-            RelayMessageEnum::Notice { message } => Self::Notice { message },
+            RelayMessageEnum::Notice { message } => Self::Notice(message),
             RelayMessageEnum::EndOfStoredEvents { subscription_id } => {
                 Self::eose(SubscriptionId::new(subscription_id))
             }
