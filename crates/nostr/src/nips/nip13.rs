@@ -58,6 +58,7 @@ pub fn get_prefixes_for_difficulty(leading_zero_bits: u8) -> Vec<String> {
 }
 
 #[cfg(test)]
+/// pub mod tests
 pub mod tests {
     use core::str::FromStr;
 
