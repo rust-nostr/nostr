@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
@@ -13,10 +13,16 @@ version=""
 if [[ "$#" -gt 0 && "$1" == "msrv" ]]; then
     is_msrv=true
     version="+$msrv"
+else
+if [[ "$#" -gt 0 ]]; then
+
+    version=$1
+
+fi
 fi
 
 # Check if "ci" is passed as an argument
-if [[ "$#" -gt 0 && "$2" == "ci" ]]; then
+if [[ "$#" -gt 1 && "$2" == "ci" ]]; then
     is_ci=true
 fi
 
@@ -24,8 +30,10 @@ fi
 if [ "$is_msrv" == true ]; then
     # Install MSRV
     rustup install $msrv
+    rustup target add wasm32-unknown-unknown
     rustup component add clippy --toolchain $msrv
-    rustup target add wasm32-unknown-unknown --toolchain $msrv
+    rustup target add wasm32-unknown-unknown --toolchain $msrv || \
+    rustup target add wasm32-unknown-unknown --toolchain $version
 fi
 
 echo "CI: $is_ci"
@@ -78,14 +86,14 @@ do
         echo  "Checking '$arg' [$version]"
     fi
 
-    cargo $version check $arg
+    type -P cargo && cargo $version check $arg || rustup run $version cargo check $arg || true
 
     if [[ $arg != *"--target wasm32-unknown-unknown"* ]];
     then
-        cargo $version test $arg
+        type -P cargo && cargo $version test $arg || rustup run $version cargo test $arg
     fi
 
-    cargo $version clippy $arg -- -D warnings
+    type -P cargo && cargo $version clippy $arg -- -D warnings
 
     # If CI, clean every time to avoid to go out of space (GitHub Actions issue)
     if [ "$is_ci" == true ]; then
