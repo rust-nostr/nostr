@@ -56,6 +56,7 @@
 * ndb: bump `nostr-ndb` to 0.4 ([Yuki Kishimoto])
 * pool: add `PingTracker` and improve relay ping management ([Yuki Kishimoto])
 * pool: cleanup relay `Error` variants ([Yuki Kishimoto])
+* pool: acquire service watcher receiver outside the auto-connect loop ([Yuki Kishimoto])
 * sdk: refactor POW difficulty management ([Yuki Kishimoto])
 
 ### Added

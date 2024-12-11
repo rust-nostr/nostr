@@ -470,14 +470,14 @@ impl InnerRelay {
             // Set that connection task is running
             relay.running.store(true, Ordering::SeqCst);
 
+            // Acquire service watcher
+            let mut rx_service = relay.channels.rx_service().await;
+
             // Auto-connect loop
             loop {
                 // TODO: check in the relays state database if relay can connect (different from the previous check)
                 // TODO: if the relay score is too low, immediately exit.
                 // TODO: at every loop iteration check the score and if it's too low, exit
-
-                // Acquire service watcher
-                let mut rx_service = relay.channels.rx_service().await;
 
                 tokio::select! {
                     // Connect and run message handler
