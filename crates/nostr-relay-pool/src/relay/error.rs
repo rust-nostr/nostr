@@ -41,6 +41,15 @@ pub enum Error {
     Timeout,
     /// Not replied to ping
     NotRepliedToPing,
+    /// Can't parse pong
+    CantParsePong,
+    /// Pong not match
+    PongNotMatch {
+        /// Expected nonce
+        expected: u64,
+        /// Received nonce
+        received: u64,
+    },
     /// Message response timeout
     CantSendChannelMessage {
         /// Name of channel
@@ -126,6 +135,11 @@ impl fmt::Display for Error {
             Self::SetPoolNotificationSender(e) => write!(f, "{e}"),
             Self::Timeout => write!(f, "timeout"),
             Self::NotRepliedToPing => write!(f, "not replied to ping"),
+            Self::CantParsePong => write!(f, "can't parse pong"),
+            Self::PongNotMatch { expected, received } => write!(
+                f,
+                "pong not match: expected={expected}, received={received}"
+            ),
             Self::CantSendChannelMessage { channel } => {
                 write!(f, "can't send message to the '{channel}' channel")
             }
