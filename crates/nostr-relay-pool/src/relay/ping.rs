@@ -54,12 +54,6 @@ impl PingTracker {
     }
 
     #[inline]
-    pub(super) fn reset(&self) {
-        self.set_last_nonce(0);
-        self.set_replied(false);
-    }
-
-    #[inline]
     pub(super) async fn just_sent(&self) {
         let mut sent_at = self.sent_at.write().await;
         *sent_at = Instant::now();

@@ -781,10 +781,6 @@ impl InnerRelay {
                 // If last nonce is NOT 0, check if relay replied
                 // Return error if relay not replied
                 if ping.last_nonce() != 0 && !ping.replied() {
-                    // Reset ping status
-                    ping.reset();
-
-                    // Return error
                     return Err(Error::NotRepliedToPing);
                 }
 
