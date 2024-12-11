@@ -3133,6 +3133,7 @@ dependencies = [
  "cbc",
  "chacha20",
  "chacha20poly1305",
+ "clap",
  "getrandom",
  "instant",
  "js-sys",
@@ -3283,6 +3284,7 @@ name = "nostr-sdk"
 version = "0.37.0"
 dependencies = [
  "async-utility",
+ "clap",
  "lnurl-pay",
  "nostr",
  "nostr-connect",

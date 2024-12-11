@@ -34,9 +34,11 @@ nip47 = ["nostr/nip47"]
 nip49 = ["nostr/nip49"]
 nip57 = ["nostr/nip57", "dep:nostr-zapper", "dep:lnurl-pay"]
 nip59 = ["nostr/nip59"]
+metadata_options = ["dep:clap"]
 
 [dependencies]
 async-utility.workspace = true
+clap = { version = "4.4.18", features = ["derive"], optional = true }
 lnurl-pay = { version = "0.6", features = ["api"], optional = true }
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
@@ -61,7 +63,7 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [[example]]
 name = "aggregated-query"
-required-features = ["all-nips", "lmdb"]
+required-features = ["all-nips", "lmdb", "metadata_options"]
 
 [[example]]
 name = "blacklist"

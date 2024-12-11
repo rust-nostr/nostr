@@ -2,12 +2,48 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use clap::Parser;
+use nostr_sdk::prelude::*;
 use std::time::Duration;
 
-use nostr_sdk::prelude::*;
+#[derive(Parser)]
+struct Args {
+    #[structopt(
+        name = "secret",
+        long,
+        default_value = "6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e"
+    )]
+    /// Nostr secret key
+    secret: String,
+    #[structopt(name = "username", long, default_value = "nostr-rs user")]
+    /// Nostr username
+    username: String,
+    #[structopt(name = "displayname", long, default_value = "nostr-rs user")]
+    /// Nostr display name
+    displayname: String,
+    #[structopt(name = "about", long, default_value = "nostr-rs user")]
+    /// Nostr about string
+    about: Option<String>,
+    #[structopt(
+        name = "picture",
+        long,
+        default_value = "https://robohash.org/nostr-rs"
+    )]
+    /// picture url
+    picture: Option<String>,
+    #[structopt(name = "banner", long, default_value = "https://robohash.org/nostr-rs")]
+    /// banner url
+    banner: Option<String>,
+    #[structopt(name = "nip05", long, default_value = "username@example.com")]
+    /// nip05
+    nip05: Option<String>,
+    #[structopt(name = "lud16", long, default_value = "pay@yukikishimoto.com")]
+    /// lud16
+    lud16: Option<String>,
+}
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn run() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let database = NostrLMDB::open("./db/nostr-lmdb")?;
@@ -69,4 +105,7 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+fn main() {
+    let _ = run();
 }
