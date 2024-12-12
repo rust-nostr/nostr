@@ -71,6 +71,7 @@
 * sdk: automatically resend event after NIP-42 authentication ([Yuki Kishimoto])
 * relay-builder: add NIP42 support ([Yuki Kishimoto])
 * relay-builder: add negentropy support ([Yuki Kishimoto])
+* relay-builder: add read/write policy plugins ([v0l])
 
 ### Fixed
 

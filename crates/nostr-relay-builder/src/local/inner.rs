@@ -6,11 +6,6 @@ use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 
-use super::session::{RateLimiterResponse, Session, Tokens};
-use super::util;
-use crate::builder::{PolicyResult, RateLimit, RelayBuilder, RelayBuilderMode, WritePolicy};
-use crate::error::Error;
-use crate::prelude::QueryPolicy;
 use async_utility::futures_util::stream::{self, SplitSink};
 use async_utility::futures_util::{SinkExt, StreamExt};
 use async_wsocket::native::{self, Message, WebSocketStream};
@@ -23,10 +18,11 @@ use tokio::sync::{broadcast, Semaphore};
 use super::session::{Nip42Session, RateLimiterResponse, Session, Tokens};
 use super::util;
 use crate::builder::{
-    RateLimit, RelayBuilder, RelayBuilderMode, RelayBuilderNip42, RelayTestOptions,
+    PolicyResult, RateLimit, RelayBuilder, RelayBuilderMode, RelayBuilderNip42, RelayTestOptions,
+    WritePolicy,
 };
 use crate::error::Error;
-use tracing::warn;
+use crate::prelude::QueryPolicy;
 
 type WsTx = SplitSink<WebSocketStream<TcpStream>, Message>;
 
@@ -432,7 +428,7 @@ impl InnerLocalRelay {
                 }
 
                 // check write policy
-                for ref policy in &self.write_policy {
+                for policy in &self.write_policy {
                     let event_id = event.id;
                     if let PolicyResult::Reject(m) = policy.admit_event(&event, addr).await {
                         return self
@@ -537,7 +533,7 @@ impl InnerLocalRelay {
                 }
 
                 // check query policy plugins
-                for ref plugin in &self.query_policy {
+                for plugin in &self.query_policy {
                     if let PolicyResult::Reject(msg) = plugin.admit_query(&filters, addr).await {
                         return self
                             .send_msg(

@@ -32,7 +32,7 @@ struct RejectAuthorLimit {
 
 #[async_trait]
 impl QueryPolicy for RejectAuthorLimit {
-    async fn admit_query(&self, query: &Vec<Filter>, addr: &SocketAddr) -> PolicyResult {
+    async fn admit_query(&self, query: &[Filter], _addr: &SocketAddr) -> PolicyResult {
         if query
             .iter()
             .any(|f| f.authors.as_ref().map(|a| a.len()).unwrap_or(0) > self.limit)

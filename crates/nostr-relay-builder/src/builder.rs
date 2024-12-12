@@ -93,22 +93,26 @@ pub enum RelayBuilderMode {
     PublicKey(PublicKey),
 }
 
+/// Generic plugin policy response
 pub enum PolicyResult {
-    /// Policy enforces that the event should be accepted
+    /// Policy enforces that the event/query should be accepted
     Accept,
-    /// Policy enforces that the event should be rejected
+    /// Policy enforces that the event/query should be rejected
     Reject(String),
 }
 
-/// Event admission handler
+/// Custom policy for accepting events into the relay database
 #[async_trait]
 pub trait WritePolicy: std::fmt::Debug + Send + Sync {
+    /// Check if the policy should accept an event
     async fn admit_event(&self, event: &Event, addr: &SocketAddr) -> PolicyResult;
 }
 
+/// Filters REQ's to the internal relay database
 #[async_trait]
 pub trait QueryPolicy: std::fmt::Debug + Send + Sync {
-    async fn admit_query(&self, query: &Vec<Filter>, addr: &SocketAddr) -> PolicyResult;
+    /// Check if the policy should accept a query
+    async fn admit_query(&self, query: &[Filter], addr: &SocketAddr) -> PolicyResult;
 }
 
 /// Testing options
@@ -179,7 +183,6 @@ pub struct RelayBuilder {
     pub write_plugins: Vec<Arc<Box<dyn WritePolicy>>>,
     /// Query policy plugins
     pub query_plugins: Vec<Arc<Box<dyn QueryPolicy>>>,
-    pub(crate) min_pow: Option<u8>,
     /// Test options
     pub(crate) test: RelayTestOptions,
 }
