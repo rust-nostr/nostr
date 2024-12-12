@@ -2770,6 +2770,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-redb"
+version = "0.38.0"
+dependencies = [
+ "async-utility",
+ "nostr",
+ "nostr-database",
+ "redb",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "nostr-relay-builder"
 version = "0.38.0"
 dependencies = [
@@ -3571,6 +3583,15 @@ name = "rangemap"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f60fcc7d6849342eff22c4350c8b9a989ee8ceabc4b481253e8946b9fe83d684"
+
+[[package]]
+name = "redb"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84b1de48a7cf7ba193e81e078d17ee2b786236eed1d3f7c60f8a09545efc4925"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "redox_syscall"

@@ -210,6 +210,7 @@ NIP35 support, better logs and docs, performance improvements, bugs fix and more
 * nostr: add `Kind::is_addressable` and `ADDRESSABLE_RANGE` ([Yuki Kishimoto])
 * database: impl PartialEq and Eq for `Events` ([Yuki Kishimoto])
 * database: add `SaveEventStatus` enum ([Yuki Kishimoto])
+* redb: add `nostr-redb` ([Yuki Kishimoto])
 * pool: add `ReceiverStream` ([Yuki Kishimoto])
 * Add `SubscribeAutoCloseOptions::idle_timeout` ([Yuki Kishimoto])
 * sdk: automatically resend event after NIP-42 authentication ([Yuki Kishimoto])
