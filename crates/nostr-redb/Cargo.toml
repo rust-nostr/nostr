@@ -1,0 +1,23 @@
+[package]
+name = "nostr-redb"
+version = "0.37.0"
+edition = "2021"
+description = "redb storage backend for nostr apps"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "database", "redb"]
+
+[dependencies]
+async-utility.workspace = true
+redb = { version = "2.3", default-features = false }
+nostr = { workspace = true, features = ["std"] }
+nostr-database = { workspace = true, features = ["flatbuf"] }
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
