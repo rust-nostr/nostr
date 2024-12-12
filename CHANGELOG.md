@@ -64,6 +64,7 @@
 
 * nostr: add `Tags::challenge` method ([Yuki Kishimoto])
 * nostr: add `RelayUrl::is_local_addr` ([Yuki Kishimoto])
+* nostr: add `TagKind::k` constructor ([Yuki Kishimoto]) 
 * database: impl PartialEq and Eq for `Events` ([Yuki Kishimoto])
 * database: add `SaveEventStatus` enum ([Yuki Kishimoto])
 * pool: add `ReceiverStream` ([Yuki Kishimoto])
