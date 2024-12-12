@@ -38,9 +38,10 @@ rm -rf "${ANDROID_MAIN_JNI_LIBS_DIR}"
 rustup target add aarch64-linux-android
 rustup target add x86_64-linux-android
 rustup target add armv7-linux-androideabi
+rustup target add i686-linux-android
 
 # Build targets
-cargo ndk -t aarch64-linux-android -t x86_64-linux-android -t armv7-linux-androideabi -o "${FFI_JNI_LIBS_DIR}" build -p nostr-sdk-ffi --lib --release
+cargo ndk -t aarch64-linux-android -t x86_64-linux-android -t armv7-linux-androideabi -t i686-linux-android -o "${FFI_JNI_LIBS_DIR}" build -p nostr-sdk-ffi --lib --release
 
 # Generate Kotlin bindings
 cargo run -p nostr-sdk-ffi --features uniffi-cli --bin uniffi-bindgen generate --library "${TARGET_DIR}/x86_64-linux-android/release/${CDYLIB}" --language kotlin --no-format -o "${FFI_KOTLIN_DIR}"

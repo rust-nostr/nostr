@@ -87,7 +87,6 @@
 * zapper: remove `thiserror` dep ([Yuki Kishimoto])
 * pool: remove `thiserror` and `tokio-stream` deps ([Yuki Kishimoto])
 * nwc: remove `thiserror` dep and unnecessary `Error::Zapper` variant ([Yuki Kishimoto])
-* ffi: drop support for `i686-linux-android` target ([Yuki Kishimoto])
 * ffi: remove `MockRelay` ([Yuki Kishimoto])
 * ffi: remove `RawEvent` and `RawEventRecord` ([Yuki Kishimoto])
 * bindings: remove `RelayPool` ([Yuki Kishimoto])
