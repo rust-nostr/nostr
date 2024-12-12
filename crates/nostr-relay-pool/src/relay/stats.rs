@@ -29,6 +29,7 @@ struct InnerRelayConnectionStats {
     success: AtomicUsize,
     bytes_sent: AtomicUsize,
     bytes_received: AtomicUsize,
+    // TODO: keep track of msg/event sending attempts and success?
     connected_at: AtomicU64,
     first_connection_at: AtomicU64,
     #[cfg(not(target_arch = "wasm32"))]

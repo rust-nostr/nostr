@@ -10,8 +10,6 @@ use tokio::sync::{RwLock, RwLockReadGuard};
 
 use super::constant::{CHECK_OUTDATED_INTERVAL, MAX_RELAYS_LIST, PUBKEY_METADATA_OUTDATED_AFTER};
 
-// TODO: add support to DM relay list
-
 const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
 
 #[derive(Debug)]
