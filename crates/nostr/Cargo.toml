@@ -99,10 +99,6 @@ name = "keys"
 required-features = ["std"]
 
 [[example]]
-name = "metadata"
-required-features = ["std"]
-
-[[example]]
 name = "nip05"
 required-features = ["std", "nip05"]
 

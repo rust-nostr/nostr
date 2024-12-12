@@ -16,9 +16,7 @@ fn main() -> Result<()> {
     println!("Secret key bech32: {}", secret_key.to_bech32()?);
 
     // Bech32 keys
-    let secret_key =
-        SecretKey::from_bech32("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")?;
-    let keys = Keys::new(secret_key);
+    let keys = Keys::parse("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")?;
     println!("Public key: {}", keys.public_key());
 
     Ok(())

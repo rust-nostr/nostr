@@ -26,9 +26,20 @@ async fn main() -> Result<()> {
     let builder = EventBuilder::text_note("Hello world");
     client.send_event_builder(builder).await?;
 
-    // Negentropy reconcile
+    // Negentropy sync
     let filter = Filter::new().author(keys.public_key());
-    let output = client.sync(filter, &SyncOptions::default()).await?;
+    let (tx, mut rx) = SyncProgress::channel();
+    let opts = SyncOptions::default().progress(tx);
+
+    tokio::spawn(async move {
+        while rx.changed().await.is_ok() {
+            let progress = *rx.borrow_and_update();
+            if progress.total > 0 {
+                println!("{:.2}%", progress.percentage() * 100.0);
+            }
+        }
+    });
+    let output = client.sync(filter, &opts).await?;
 
     println!("Local: {}", output.local.len());
     println!("Remote: {}", output.remote.len());

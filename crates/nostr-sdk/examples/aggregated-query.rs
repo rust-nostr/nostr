@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
         .fetch_events_from(
             ["wss://nostr.oxtr.dev"],
             vec![filter],
-            Some(Duration::from_secs(10)),
+            Duration::from_secs(10),
         )
         .await?;
     client.force_remove_relay("wss://nostr.oxtr.dev").await?;

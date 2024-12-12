@@ -61,26 +61,19 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [[example]]
 name = "aggregated-query"
-required-features = ["all-nips", "lmdb"]
+required-features = ["lmdb"]
 
 [[example]]
 name = "blacklist"
-required-features = ["all-nips"]
 
 [[example]]
 name = "client"
-required-features = ["all-nips"]
-
-[[example]]
-name = "client-with-opts"
-required-features = ["all-nips"]
 
 [[example]]
 name = "comment"
 
 [[example]]
 name = "fetch-events"
-required-features = ["all-nips"]
 
 [[example]]
 name = "gossip"
@@ -96,36 +89,24 @@ required-features = ["all-nips"]
 
 [[example]]
 name = "nostrdb"
-required-features = ["all-nips", "ndb"]
-
-[[example]]
-name = "shutdown-on-drop"
+required-features = ["ndb"]
 
 [[example]]
 name = "stream-events"
-required-features = ["all-nips"]
 
 [[example]]
 name = "subscriptions"
-required-features = ["all-nips"]
 
 [[example]]
 name = "switch-account"
 
 [[example]]
 name = "tor"
-required-features = ["all-nips", "tor"]
+required-features = ["nip59", "tor"]
 
 [[example]]
 name = "lmdb"
-required-features = ["all-nips", "lmdb"]
-
-[[example]]
-name = "negentropy"
-required-features = ["all-nips", "lmdb"]
-
-[[example]]
-name = "nip65"
+required-features = ["lmdb"]
 
 [[example]]
 name = "whitelist"
