@@ -29,15 +29,6 @@ For most users, we recommend using our official Kotlin package: [org.rust-nostr:
 
 If you want to compile from source or need more options, read on.
 
-#### Libraries and Bindings
-
-This command will build libraries for different platforms in `target/` folder and copy them to `ffi/kotlin/jniLibs`.
-In addition it will generate Kotlin bindings in `ffi/kotlin/nostr_sdk`.
-
-```bash
-just kotlin
-```
-
 #### Android Archive (AAR)
 
 This command will build an AAR file in `ffi/android/lib-release.aar`:
