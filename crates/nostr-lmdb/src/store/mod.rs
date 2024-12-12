@@ -69,9 +69,9 @@ impl Store {
     }
 
     /// Store an event.
-    pub async fn save_event(&self, event: &Event) -> Result<bool, Error> {
+    pub async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, Error> {
         if event.kind.is_ephemeral() {
-            return Ok(false);
+            return Ok(SaveEventStatus::Rejected(RejectedReason::Ephemeral));
         }
 
         // TODO: avoid this clone
@@ -83,14 +83,12 @@ impl Store {
 
             // Already exists
             if db.has_event(&read_txn, event.id.as_bytes())? {
-                //return Err(Error::Duplicate);
-                return Ok(false);
+                return Ok(SaveEventStatus::Rejected(RejectedReason::Duplicate));
             }
 
             // Reject event if ID was deleted
             if db.is_deleted(&read_txn, &event.id)? {
-                //return Err(Error::Deleted);
-                return Ok(false);
+                return Ok(SaveEventStatus::Rejected(RejectedReason::Deleted));
             }
 
             // Reject event if ADDR was deleted after it's created_at date
@@ -99,8 +97,7 @@ impl Store {
                 let coordinate: Coordinate = Coordinate::new(event.kind, event.pubkey);
                 if let Some(time) = db.when_is_coordinate_deleted(&read_txn, &coordinate)? {
                     if event.created_at <= time {
-                        //return Err(Error::Deleted);
-                        return Ok(false);
+                        return Ok(SaveEventStatus::Rejected(RejectedReason::Deleted));
                     }
                 }
             }
@@ -113,8 +110,7 @@ impl Store {
                         Coordinate::new(event.kind, event.pubkey).identifier(identifier);
                     if let Some(time) = db.when_is_coordinate_deleted(&read_txn, &coordinate)? {
                         if event.created_at <= time {
-                            //return Err(Error::Deleted);
-                            return Ok(false);
+                            return Ok(SaveEventStatus::Rejected(RejectedReason::Deleted));
                         }
                     }
                 }
@@ -130,9 +126,8 @@ impl Store {
                     db.find_replaceable_event(&read_txn, &event.pubkey, event.kind)?
                 {
                     if stored.created_at > event.created_at {
-                        // return Err(Error::Replaced);
                         txn.abort();
-                        return Ok(false);
+                        return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
                     }
 
                     let coordinate: Coordinate = Coordinate::new(event.kind, event.pubkey);
@@ -151,9 +146,8 @@ impl Store {
                         db.find_parameterized_replaceable_event(&read_txn, &coordinate)?
                     {
                         if stored.created_at > event.created_at {
-                            // return Err(Error::Replaced);
                             txn.abort();
-                            return Ok(false);
+                            return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
                         }
 
                         db.remove_parameterized_replaceable(
@@ -172,7 +166,7 @@ impl Store {
 
                 if invalid {
                     txn.abort();
-                    return Ok(false);
+                    return Ok(SaveEventStatus::Rejected(RejectedReason::InvalidDelete));
                 }
             }
 
@@ -182,7 +176,7 @@ impl Store {
             read_txn.commit()?;
             txn.commit()?;
 
-            Ok(true)
+            Ok(SaveEventStatus::Success)
         })
         .await?
     }

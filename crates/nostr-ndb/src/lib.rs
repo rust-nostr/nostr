@@ -90,13 +90,14 @@ impl NostrDatabase for NdbDatabase {
 
 #[async_trait]
 impl NostrEventsDatabase for NdbDatabase {
-    async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
+    async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, DatabaseError> {
         let msg = RelayMessage::event(SubscriptionId::new("ndb"), event.clone());
         let json: String = msg.as_json();
         self.db
             .process_event(&json)
             .map_err(DatabaseError::backend)?;
-        Ok(true)
+        // TODO: shouldn't return a success since we don't know if the ingestion was successful or not.
+        Ok(SaveEventStatus::Success)
     }
 
     async fn check_id(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {

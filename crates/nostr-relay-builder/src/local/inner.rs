@@ -422,7 +422,8 @@ impl InnerLocalRelay {
 
                 let msg: RelayMessage = match self.database.save_event(&event).await {
                     Ok(status) => {
-                        if status {
+                        // TODO: match status
+                        if status.is_success() {
                             let event_id = event.id;
 
                             // Broadcast to channel

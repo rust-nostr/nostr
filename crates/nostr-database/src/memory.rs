@@ -13,7 +13,7 @@ use tokio::sync::RwLock;
 
 use crate::{
     Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper, Events,
-    NostrDatabase, NostrEventsDatabase,
+    NostrDatabase, NostrEventsDatabase, RejectedReason, SaveEventStatus,
 };
 
 /// Database options
@@ -97,16 +97,16 @@ impl NostrDatabase for MemoryDatabase {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrEventsDatabase for MemoryDatabase {
-    async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
+    async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, DatabaseError> {
         if self.opts.events {
-            let DatabaseEventResult { to_store, .. } = self.helper.index_event(event).await;
-            Ok(to_store)
+            let DatabaseEventResult { status, .. } = self.helper.index_event(event).await;
+            Ok(status)
         } else {
             // Mark it as seen
             let mut seen_event_ids = self.seen_event_ids.write().await;
             seen_event_ids.seen(event.id, None);
 
-            Ok(false)
+            Ok(SaveEventStatus::Rejected(RejectedReason::Other))
         }
     }
 

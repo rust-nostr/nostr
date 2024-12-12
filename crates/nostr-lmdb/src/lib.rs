@@ -62,7 +62,7 @@ impl NostrDatabase for NostrLMDB {
 #[async_trait]
 impl NostrEventsDatabase for NostrLMDB {
     #[inline]
-    async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
+    async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, DatabaseError> {
         self.db
             .save_event(event)
             .await
@@ -254,10 +254,14 @@ mod tests {
             (keys, event)
         }
 
-        async fn add_event_with_keys(&self, builder: EventBuilder, keys: &Keys) -> (Event, bool) {
+        async fn add_event_with_keys(
+            &self,
+            builder: EventBuilder,
+            keys: &Keys,
+        ) -> (Event, SaveEventStatus) {
             let event = builder.sign_with_keys(keys).unwrap();
-            let stored = self.db.save_event(&event).await.unwrap();
-            (event, stored)
+            let status = self.db.save_event(&event).await.unwrap();
+            (event, status)
         }
 
         async fn count_all(&self) -> usize {
@@ -314,13 +318,13 @@ mod tests {
         assert_eq!(db.count_all().await, added_events + 1);
 
         // Replace previous event
-        let (new_expected_event, stored) = db
+        let (new_expected_event, status) = db
             .add_event_with_keys(
                 EventBuilder::metadata(&metadata).custom_created_at(now),
                 &keys,
             )
             .await;
-        assert!(stored);
+        assert!(status.is_success());
 
         // Test event by ID (MUST be None because replaced)
         assert!(db.event_by_id(&expected_event.id).await.unwrap().is_none());
@@ -375,7 +379,7 @@ mod tests {
         assert_eq!(db.count_all().await, added_events + 1);
 
         // Replace previous event
-        let (new_expected_event, stored) = db
+        let (new_expected_event, status) = db
             .add_event_with_keys(
                 EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "Test replace")
                     .tag(Tag::identifier("my-id-a"))
@@ -383,7 +387,7 @@ mod tests {
                 &keys,
             )
             .await;
-        assert!(stored);
+        assert!(status.is_success());
 
         // Test event by ID (MUST be None` because replaced)
         assert!(db.event_by_id(&expected_event.id).await.unwrap().is_none());
@@ -404,7 +408,7 @@ mod tests {
         assert_eq!(db.count_all().await, added_events + 1);
 
         // Trey to add param replaceable event with older timestamp (MUSTN'T be stored)
-        let (_, stored) = db
+        let (_, status) = db
             .add_event_with_keys(
                 EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "Test replace 2")
                     .tag(Tag::identifier("my-id-a"))
@@ -412,7 +416,7 @@ mod tests {
                 &keys,
             )
             .await;
-        assert!(!stored);
+        assert!(!status.is_success());
     }
 
     #[tokio::test]

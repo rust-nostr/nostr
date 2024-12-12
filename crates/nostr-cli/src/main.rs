@@ -326,8 +326,8 @@ async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
                     let now = Instant::now();
 
                     for event in iter {
-                        if let Ok(stored) = db.save_event(&event).await {
-                            if stored {
+                        if let Ok(status) = db.save_event(&event).await {
+                            if status.is_success() {
                                 counter += 1;
                             }
                         }

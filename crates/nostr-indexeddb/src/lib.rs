@@ -226,14 +226,11 @@ impl WebDatabase {
         Ok(())
     }
 
-    async fn _save_event(&self, event: &Event) -> Result<bool, IndexedDBError> {
+    async fn _save_event(&self, event: &Event) -> Result<SaveEventStatus, IndexedDBError> {
         // Index event
-        let DatabaseEventResult {
-            to_store,
-            to_discard,
-        } = self.helper.index_event(event).await;
+        let DatabaseEventResult { status, to_discard } = self.helper.index_event(event).await;
 
-        if to_store {
+        if status.is_success() {
             let tx = self
                 .db
                 .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readwrite)?;
@@ -260,11 +257,9 @@ impl WebDatabase {
             }
 
             tx.await.into_result()?;
-
-            Ok(true)
-        } else {
-            Ok(false)
         }
+
+        Ok(status)
     }
 
     async fn _delete(&self, filter: Filter) -> Result<(), IndexedDBError> {
@@ -368,7 +363,7 @@ impl_nostr_database!({
 });
 
 impl_nostr_events_database!({
-    async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError> {
+    async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, DatabaseError> {
         self._save_event(event)
             .await
             .map_err(DatabaseError::backend)

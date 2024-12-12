@@ -28,6 +28,7 @@ pub use self::error::DatabaseError;
 pub use self::events::helper::{DatabaseEventResult, DatabaseHelper};
 pub use self::events::{
     DatabaseEventStatus, IntoNostrEventsDatabase, NostrEventsDatabase, NostrEventsDatabaseExt,
+    RejectedReason, SaveEventStatus,
 };
 #[cfg(feature = "flatbuf")]
 pub use self::flatbuffers::{FlatBufferBuilder, FlatBufferDecode, FlatBufferEncode};

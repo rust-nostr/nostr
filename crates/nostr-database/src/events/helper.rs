@@ -16,7 +16,7 @@ use nostr::{Alphabet, Event, EventId, Filter, Kind, PublicKey, SingleLetterTag, 
 use tokio::sync::{OwnedRwLockReadGuard, RwLock};
 
 use crate::collections::tree::{BTreeCappedSet, Capacity, InsertResult, OverCapacityPolicy};
-use crate::Events;
+use crate::{Events, RejectedReason, SaveEventStatus};
 
 type DatabaseEvent = Arc<Event>;
 
@@ -132,10 +132,10 @@ impl From<Filter> for QueryPattern {
 }
 
 /// Database Event Result
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DatabaseEventResult {
-    /// Handled event should be stored into database?
-    pub to_store: bool,
+    /// Status
+    pub status: SaveEventStatus,
     /// List of events that should be removed from database
     pub to_discard: HashSet<EventId>,
 }
@@ -190,21 +190,33 @@ impl InternalDatabaseHelper {
             .into_iter()
             .rev() // Lookup ID: EVENT_ORD_IMPL
             .filter(|e| !e.is_expired() && !e.kind.is_ephemeral())
-            .filter(move |event| self.internal_index_event(event, &now).to_store)
+            .filter(move |event| self.internal_index_event(event, &now).status.is_success())
     }
 
     fn internal_index_event(&mut self, event: &Event, now: &Timestamp) -> DatabaseEventResult {
         // Check if was already added
         if self.ids.contains_key(&event.id) {
-            return DatabaseEventResult::default();
+            return DatabaseEventResult {
+                status: SaveEventStatus::Rejected(RejectedReason::Duplicate),
+                to_discard: HashSet::new(),
+            };
         }
 
         // Check if was deleted or is expired
-        if self.deleted_ids.contains(&event.id) || event.is_expired_at(now) {
+        if self.deleted_ids.contains(&event.id) {
             let mut to_discard: HashSet<EventId> = HashSet::with_capacity(1);
             to_discard.insert(event.id);
             return DatabaseEventResult {
-                to_store: false,
+                status: SaveEventStatus::Rejected(RejectedReason::Deleted),
+                to_discard,
+            };
+        }
+
+        if event.is_expired_at(now) {
+            let mut to_discard: HashSet<EventId> = HashSet::with_capacity(1);
+            to_discard.insert(event.id);
+            return DatabaseEventResult {
+                status: SaveEventStatus::Rejected(RejectedReason::Expired),
                 to_discard,
             };
         }
@@ -216,13 +228,13 @@ impl InternalDatabaseHelper {
         let created_at: Timestamp = event.created_at;
         let kind: Kind = event.kind;
 
-        let mut should_insert: bool = true;
+        let mut status: SaveEventStatus = SaveEventStatus::Success;
 
         if kind.is_replaceable() {
             let params: QueryByKindAndAuthorParams = QueryByKindAndAuthorParams::new(kind, author);
             for ev in self.internal_query_by_kind_and_author(params) {
                 if ev.created_at > created_at || ev.id == event.id {
-                    should_insert = false;
+                    status = SaveEventStatus::Rejected(RejectedReason::Replaced);
                 } else {
                     to_discard.insert(ev.id);
                 }
@@ -235,20 +247,20 @@ impl InternalDatabaseHelper {
 
                     // Check if coordinate was deleted
                     if self.has_coordinate_been_deleted(&coordinate, now) {
-                        should_insert = false;
+                        status = SaveEventStatus::Rejected(RejectedReason::Deleted);
                     } else {
                         let params: QueryByParamReplaceable =
                             QueryByParamReplaceable::new(kind, author, identifier.to_string());
                         if let Some(ev) = self.internal_query_param_replaceable(params) {
                             if ev.created_at > created_at || ev.id == event.id {
-                                should_insert = false;
+                                status = SaveEventStatus::Rejected(RejectedReason::Replaced);
                             } else {
                                 to_discard.insert(ev.id);
                             }
                         }
                     }
                 }
-                None => should_insert = false,
+                None => status = SaveEventStatus::Rejected(RejectedReason::Other),
             }
         } else if kind == Kind::EventDeletion {
             // Check `e` tags
@@ -256,7 +268,7 @@ impl InternalDatabaseHelper {
                 if let Some(ev) = self.ids.get(id) {
                     if ev.pubkey != author {
                         to_discard.insert(event.id);
-                        should_insert = false;
+                        status = SaveEventStatus::Rejected(RejectedReason::InvalidDelete);
                         break;
                     }
 
@@ -270,7 +282,7 @@ impl InternalDatabaseHelper {
             for coordinate in event.tags.coordinates() {
                 if coordinate.public_key != author {
                     to_discard.insert(event.id);
-                    should_insert = false;
+                    status = SaveEventStatus::Rejected(RejectedReason::InvalidDelete);
                     break;
                 }
 
@@ -310,7 +322,7 @@ impl InternalDatabaseHelper {
         self.discard_events(&to_discard);
 
         // Insert event
-        if should_insert {
+        if status.is_success() {
             let e: DatabaseEvent = Arc::new(event.clone()); // TODO: avoid clone?
 
             let InsertResult { inserted, pop } = self.events.insert(e.clone());
@@ -349,10 +361,7 @@ impl InternalDatabaseHelper {
             }
         }
 
-        DatabaseEventResult {
-            to_store: should_insert,
-            to_discard,
-        }
+        DatabaseEventResult { status, to_discard }
     }
 
     fn discard_events(&mut self, ids: &HashSet<EventId>) {
@@ -405,9 +414,12 @@ impl InternalDatabaseHelper {
     ///
     /// **This method assume that [`Event`] was already verified**
     pub fn index_event(&mut self, event: &Event) -> DatabaseEventResult {
-        // Check if it's expired or ephemeral (in `internal_index_event` is checked only the raw event expiration)
-        if event.is_expired() || event.kind.is_ephemeral() {
-            return DatabaseEventResult::default();
+        // Check if it's ephemeral
+        if event.kind.is_ephemeral() {
+            return DatabaseEventResult {
+                status: SaveEventStatus::Rejected(RejectedReason::Ephemeral),
+                to_discard: HashSet::new(),
+            };
         }
         let now = Timestamp::now();
         self.internal_index_event(event, &now)
@@ -710,14 +722,8 @@ impl DatabaseHelper {
 
     /// Index [`Event`]
     ///
-    /// **This method assume that [`Event`] was already verified**
+    /// **This method assumes that [`Event`] was already verified**
     pub async fn index_event(&self, event: &Event) -> DatabaseEventResult {
-        // Check if it's expired or ephemeral
-        if event.is_expired() || event.kind.is_ephemeral() {
-            return DatabaseEventResult::default();
-        }
-
-        // Acquire write lock
         let mut inner = self.inner.write().await;
         inner.index_event(event)
     }
@@ -987,7 +993,7 @@ mod tests {
         // Test add new replaceable event (metadata)
         let first_ev_metadata = Event::from_json(REPLACEABLE_EVENT_1).unwrap();
         let res = indexes.index_event(&first_ev_metadata).await;
-        assert!(res.to_store);
+        assert!(res.status.is_success());
         assert!(res.to_discard.is_empty());
         assert_eq!(
             indexes
@@ -1002,7 +1008,7 @@ mod tests {
         // Test add replace metadata
         let ev = Event::from_json(REPLACEABLE_EVENT_2).unwrap();
         let res = indexes.index_event(&ev).await;
-        assert!(res.to_store);
+        assert!(res.status.is_success());
         assert!(res.to_discard.contains(&first_ev_metadata.id));
         assert_eq!(
             indexes

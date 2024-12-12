@@ -18,6 +18,41 @@ use crate::protocol::key::JsPublicKey;
 use crate::protocol::types::{JsFilter, JsMetadata};
 use crate::JsStringArray;
 
+#[wasm_bindgen(js_name = SaveEventStatus)]
+pub enum JsSaveEventStatus {
+    /// The event has been successfully saved into the database
+    Success,
+    /// Ephemeral events aren't expected to be stored
+    Ephemeral,
+    /// The event already exists
+    Duplicate,
+    /// The event was deleted
+    Deleted,
+    /// The event is expired
+    Expired,
+    /// The event was replaced
+    Replaced,
+    /// Attempt to delete a non-owned event
+    InvalidDelete,
+    /// Other reason
+    Other,
+}
+
+impl From<SaveEventStatus> for JsSaveEventStatus {
+    fn from(status: SaveEventStatus) -> Self {
+        match status {
+            SaveEventStatus::Success => Self::Success,
+            SaveEventStatus::Rejected(RejectedReason::Ephemeral) => Self::Ephemeral,
+            SaveEventStatus::Rejected(RejectedReason::Duplicate) => Self::Duplicate,
+            SaveEventStatus::Rejected(RejectedReason::Deleted) => Self::Deleted,
+            SaveEventStatus::Rejected(RejectedReason::Expired) => Self::Expired,
+            SaveEventStatus::Rejected(RejectedReason::Replaced) => Self::Replaced,
+            SaveEventStatus::Rejected(RejectedReason::InvalidDelete) => Self::InvalidDelete,
+            SaveEventStatus::Rejected(RejectedReason::Other) => Self::Other,
+        }
+    }
+}
+
 /// Nostr Database
 #[wasm_bindgen(js_name = NostrDatabase)]
 pub struct JsNostrDatabase {
@@ -63,11 +98,9 @@ impl JsNostrDatabase {
 
     /// Save `Event` into store
     ///
-    /// Return `true` if event was successfully saved into database.
-    ///
-    /// **This method assume that `Event` was already verified**
-    pub async fn save_event(&self, event: &JsEvent) -> Result<bool> {
-        self.inner.save_event(event).await.map_err(into_err)
+    /// **This method assumes that `Event` was already verified**
+    pub async fn save_event(&self, event: &JsEvent) -> Result<JsSaveEventStatus> {
+        Ok(self.inner.save_event(event).await.map_err(into_err)?.into())
     }
     /// Get list of relays that have seen the [`EventId`]
     #[wasm_bindgen(js_name = eventSeenOnRelays)]

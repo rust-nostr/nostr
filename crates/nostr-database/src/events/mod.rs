@@ -24,6 +24,42 @@ pub enum DatabaseEventStatus {
     NotExistent,
 }
 
+/// Reason why event wasn't stored into the database
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum RejectedReason {
+    /// Ephemeral events aren't expected to be stored
+    Ephemeral,
+    /// The event already exists
+    Duplicate,
+    /// The event was deleted
+    Deleted,
+    /// The event is expired
+    Expired,
+    /// The event was replaced
+    Replaced,
+    /// Attempt to delete a non-owned event
+    InvalidDelete,
+    /// Other reason
+    Other,
+}
+
+/// Save event status
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum SaveEventStatus {
+    /// The event has been successfully saved
+    Success,
+    /// The event has been rejected
+    Rejected(RejectedReason),
+}
+
+impl SaveEventStatus {
+    /// Check if event is successfully saved
+    #[inline]
+    pub fn is_success(&self) -> bool {
+        matches!(self, Self::Success)
+    }
+}
+
 #[doc(hidden)]
 pub trait IntoNostrEventsDatabase {
     fn into_database(self) -> Arc<dyn NostrEventsDatabase>;
@@ -61,10 +97,8 @@ where
 pub trait NostrEventsDatabase: fmt::Debug + Send + Sync {
     /// Save [`Event`] into store
     ///
-    /// Return `true` if event was successfully saved into database.
-    ///
-    /// **This method assume that [`Event`] was already verified**
-    async fn save_event(&self, event: &Event) -> Result<bool, DatabaseError>;
+    /// **This method assumes that [`Event`] was already verified**
+    async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, DatabaseError>;
 
     /// Check event status by ID
     ///
