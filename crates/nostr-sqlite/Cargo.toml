@@ -1,0 +1,21 @@
+[package]
+name = "nostr-sqlite"
+version = "0.37.0"
+edition = "2021"
+description = "SQLite Storage backend for nostr apps"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "database", "sqlite"]
+
+[dependencies]
+async-trait.workspace = true
+async-utility.workspace = true
+nostr = { workspace = true, features = ["std"] }
+nostr-database = { workspace = true, features = ["flatbuf"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
+tokio = { workspace = true, features = ["sync"] }
+tracing = { workspace = true, features = ["std"] }

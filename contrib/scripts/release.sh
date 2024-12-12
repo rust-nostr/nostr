@@ -7,6 +7,7 @@ args=(
     "-p nostr-database"
     "-p nostr-lmdb"
     "-p nostr-ndb"
+    "-p nostr-sqlite"
     "-p nostr-indexeddb"
     "-p nostr-relay-builder"
     "-p nostr-relay-pool"

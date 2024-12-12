@@ -38,6 +38,7 @@ buildargs=(
     "-p nostr --no-default-features --features alloc,all-nips" # alloc + all-nips
     "-p nostr-database"
     "-p nostr-lmdb"
+    "-p nostr-sqlite"
     "-p nostr-indexeddb --target wasm32-unknown-unknown"
     "-p nostr-ndb"
     "-p nostr-relay-pool"

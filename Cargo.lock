@@ -3340,6 +3340,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-sqlite"
+version = "0.37.0"
+dependencies = [
+ "async-trait",
+ "async-utility",
+ "nostr",
+ "nostr-database",
+ "rusqlite",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "nostr-zapper"
 version = "0.37.0"
 dependencies = [
