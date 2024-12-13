@@ -18,5 +18,4 @@ nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
 
 [dev-dependencies]
-tempfile = "3"
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

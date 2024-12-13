@@ -27,17 +27,33 @@ type Fbb = Arc<Mutex<FlatBufferBuilder<'static>>>;
 pub struct Store {
     db: Db,
     fbb: Fbb,
+    persistent: bool,
 }
 
 impl Store {
-    pub fn open<P>(path: P) -> Result<Store, Error>
+    pub fn persistent<P>(path: P) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
-        Ok(Store {
-            db: Db::new(path)?,
+        Ok(Self {
+            db: Db::persistent(path)?,
             fbb: Arc::new(Mutex::new(FlatBufferBuilder::with_capacity(70_000))),
+            persistent: true,
         })
+    }
+
+    pub fn in_memory() -> Self {
+        Self {
+            // SAFETY: newly created database, should never panic.
+            db: Db::in_memory().unwrap(),
+            fbb: Arc::new(Mutex::new(FlatBufferBuilder::with_capacity(70_000))),
+            persistent: false,
+        }
+    }
+
+    #[inline]
+    pub fn is_persistent(&self) -> bool {
+        self.persistent
     }
 
     #[inline]

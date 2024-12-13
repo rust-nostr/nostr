@@ -12,6 +12,7 @@ use std::{fs, iter};
 use nostr::prelude::*;
 use nostr_database::flatbuffers::FlatBufferDecodeBorrowed;
 use nostr_database::{FlatBufferBuilder, FlatBufferEncode};
+use redb::backends::InMemoryBackend;
 use redb::{Database, Range, ReadTransaction, TableDefinition, WriteTransaction};
 
 pub(super) mod index;
@@ -43,11 +44,21 @@ type IndexRange<'a> = Range<'a, &'static [u8], &'static [u8; 32]>;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Db {
+    // TODO: remove `Arc<T>` when PR #TDB will be merged
     env: Arc<Database>,
 }
 
 impl Db {
-    pub(crate) fn new<P>(path: P) -> Result<Self, Error>
+    fn new(env: Arc<Database>) -> Result<Self, Error> {
+        // Create tables
+        let txn = env.begin_write()?;
+        Self::create_tables(&txn)?;
+        txn.commit()?;
+
+        Ok(Self { env })
+    }
+
+    pub(crate) fn persistent<P>(path: P) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
@@ -58,12 +69,13 @@ impl Db {
         let path = dir.join("data.redb");
         let env = Arc::new(Database::create(path)?);
 
-        // Create tables
-        let txn = env.begin_write()?;
-        Self::create_tables(&txn)?;
-        txn.commit()?;
+        Self::new(env)
+    }
 
-        Ok(Self { env })
+    pub(crate) fn in_memory() -> Result<Self, Error> {
+        let backend = InMemoryBackend::new();
+        let env = Arc::new(Database::builder().create_with_backend(backend)?);
+        Self::new(env)
     }
 
     /// Get a read transaction
