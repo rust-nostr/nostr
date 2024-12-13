@@ -39,7 +39,6 @@ impl NostrLMDB {
         Ok(Self {
             db: Store::open(path).map_err(DatabaseError::backend)?,
             temp: MemoryDatabase::with_opts(MemoryDatabaseOptions {
-                events: false,
                 max_events: Some(100_000),
             }),
         })

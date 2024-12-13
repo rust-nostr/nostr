@@ -53,6 +53,7 @@
 * nostr: update `RelayMessage::NegErr` variant ([Yuki Kishimoto])
 * database: add manual trait implementations for `BTreeCappedSet` ([Yuki Kishimoto]) 
 * database: replace LRU with custom memory cache for IDs tracking ([Yuki Kishimoto])
+* database: remove `DatabaseHelper` from `MemoryDatabase` ([Yuki Kishimoto])
 * lmdb: use `async-utility` to spawn blocking tasks ([Yuki Kishimoto])
 * ndb: bump `nostr-ndb` to 0.4 ([Yuki Kishimoto])
 * pool: add `PingTracker` and improve relay ping management ([Yuki Kishimoto])

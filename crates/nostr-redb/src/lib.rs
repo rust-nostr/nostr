@@ -38,7 +38,6 @@ impl NostrRedb {
         Ok(Self {
             db: Store::persistent(path).map_err(DatabaseError::backend)?,
             temp: MemoryDatabase::with_opts(MemoryDatabaseOptions {
-                events: false,
                 max_events: Some(100_000),
             }),
         })
@@ -50,7 +49,6 @@ impl NostrRedb {
         Ok(Self {
             db: Store::in_memory().map_err(DatabaseError::backend)?,
             temp: MemoryDatabase::with_opts(MemoryDatabaseOptions {
-                events: false,
                 max_events: Some(100_000),
             }),
         })
