@@ -180,6 +180,7 @@ NIP35 support, better logs and docs, performance improvements, bugs fix and more
 * nostr: don't use reply event as root `e` tag i no root is set in `EventBuilder::text_note_reply` ([Yuki Kishimoto])
 * database: add manual trait implementations for `BTreeCappedSet` ([Yuki Kishimoto]) 
 * database: replace LRU with custom memory cache for IDs tracking ([Yuki Kishimoto])
+* database: remove `DatabaseHelper` from `MemoryDatabase` ([Yuki Kishimoto])
 * lmdb: use `async-utility` to spawn blocking tasks ([Yuki Kishimoto])
 * ndb: bump `nostr-ndb` to 0.5 ([Yuki Kishimoto])
 * pool: add `PingTracker` and improve relay ping management ([Yuki Kishimoto])

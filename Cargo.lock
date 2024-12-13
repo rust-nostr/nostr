@@ -2793,6 +2793,7 @@ dependencies = [
  "negentropy 0.4.3",
  "nostr",
  "nostr-database",
+ "nostr-redb",
  "tokio",
  "tracing",
  "tracing-subscriber",

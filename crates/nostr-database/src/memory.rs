@@ -11,16 +11,14 @@ use nostr::prelude::*;
 use tokio::sync::RwLock;
 
 use crate::{
-    Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper, Events,
-    NostrDatabase, NostrDatabaseWipe, NostrEventsDatabase, RejectedReason, SaveEventStatus,
+    Backend, DatabaseError, DatabaseEventStatus, Events, NostrDatabase, NostrDatabaseWipe,
+    NostrEventsDatabase, RejectedReason, SaveEventStatus,
 };
 
 /// Database options
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MemoryDatabaseOptions {
-    /// Store events (default: false)
-    pub events: bool,
-    /// Max events and IDs to store in memory (default: 35_000)
+    /// Max IDs to store in memory (default: 35_000)
     ///
     /// `None` means no limits.
     pub max_events: Option<usize>,
@@ -29,7 +27,6 @@ pub struct MemoryDatabaseOptions {
 impl Default for MemoryDatabaseOptions {
     fn default() -> Self {
         Self {
-            events: false,
             max_events: Some(35_000),
         }
     }
@@ -43,11 +40,11 @@ impl MemoryDatabaseOptions {
 }
 
 /// Memory Database (RAM)
+///
+/// This database keep track only of seen event IDs!
 #[derive(Debug, Clone)]
 pub struct MemoryDatabase {
-    opts: MemoryDatabaseOptions,
     seen_event_ids: Arc<RwLock<SeenTracker>>,
-    helper: DatabaseHelper,
 }
 
 impl Default for MemoryDatabase {
@@ -65,12 +62,7 @@ impl MemoryDatabase {
     /// New Memory database
     pub fn with_opts(opts: MemoryDatabaseOptions) -> Self {
         Self {
-            opts,
             seen_event_ids: Arc::new(RwLock::new(SeenTracker::new(opts.max_events))),
-            helper: match opts.max_events {
-                Some(max) => DatabaseHelper::bounded(max),
-                None => DatabaseHelper::unbounded(),
-            },
         }
     }
 }
@@ -87,16 +79,11 @@ impl NostrEventsDatabase for MemoryDatabase {
         event: &'a Event,
     ) -> BoxedFuture<'a, Result<SaveEventStatus, DatabaseError>> {
         Box::pin(async move {
-            if self.opts.events {
-                let DatabaseEventResult { status, .. } = self.helper.index_event(event).await;
-                Ok(status)
-            } else {
-                // Mark it as seen
-                let mut seen_event_ids = self.seen_event_ids.write().await;
-                seen_event_ids.seen(event.id, None);
+            // Mark it as seen
+            let mut seen_event_ids = self.seen_event_ids.write().await;
+            seen_event_ids.seen(event.id, None);
 
-                Ok(SaveEventStatus::Rejected(RejectedReason::Other))
-            }
+            Ok(SaveEventStatus::Rejected(RejectedReason::Other))
         })
     }
 
@@ -105,36 +92,21 @@ impl NostrEventsDatabase for MemoryDatabase {
         event_id: &'a EventId,
     ) -> BoxedFuture<'a, Result<DatabaseEventStatus, DatabaseError>> {
         Box::pin(async move {
-            if self.opts.events {
-                if self.helper.has_event_id_been_deleted(event_id).await {
-                    Ok(DatabaseEventStatus::Deleted)
-                } else if self.helper.has_event(event_id).await {
-                    Ok(DatabaseEventStatus::Saved)
-                } else {
-                    Ok(DatabaseEventStatus::NotExistent)
-                }
+            let seen_event_ids = self.seen_event_ids.read().await;
+            Ok(if seen_event_ids.contains(event_id) {
+                DatabaseEventStatus::Saved
             } else {
-                let seen_event_ids = self.seen_event_ids.read().await;
-                Ok(if seen_event_ids.contains(event_id) {
-                    DatabaseEventStatus::Saved
-                } else {
-                    DatabaseEventStatus::NotExistent
-                })
-            }
+                DatabaseEventStatus::NotExistent
+            })
         })
     }
 
     fn has_coordinate_been_deleted<'a>(
         &'a self,
-        coordinate: &'a CoordinateBorrow<'a>,
-        timestamp: &'a Timestamp,
+        _coordinate: &'a CoordinateBorrow<'a>,
+        _timestamp: &'a Timestamp,
     ) -> BoxedFuture<'a, Result<bool, DatabaseError>> {
-        Box::pin(async move {
-            Ok(self
-                .helper
-                .has_coordinate_been_deleted(coordinate, timestamp)
-                .await)
-        })
+        Box::pin(async move { Ok(false) })
     }
 
     fn event_id_seen(
@@ -154,41 +126,34 @@ impl NostrEventsDatabase for MemoryDatabase {
 
     fn event_by_id<'a>(
         &'a self,
-        event_id: &'a EventId,
+        _event_id: &'a EventId,
     ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>> {
-        Box::pin(async move { Ok(self.helper.event_by_id(event_id).await) })
+        Box::pin(async move { Ok(None) })
     }
 
-    fn count(&self, filters: Vec<Filter>) -> BoxedFuture<Result<usize, DatabaseError>> {
-        Box::pin(async move { Ok(self.helper.count(filters).await) })
+    fn count(&self, _filters: Vec<Filter>) -> BoxedFuture<Result<usize, DatabaseError>> {
+        Box::pin(async move { Ok(0) })
     }
 
     fn query(&self, filters: Vec<Filter>) -> BoxedFuture<Result<Events, DatabaseError>> {
-        Box::pin(async move { Ok(self.helper.query(filters).await) })
+        Box::pin(async move { Ok(Events::new(&filters)) })
     }
 
     fn negentropy_items(
         &self,
-        filter: Filter,
+        _filter: Filter,
     ) -> BoxedFuture<Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
-        Box::pin(async move { Ok(self.helper.negentropy_items(filter).await) })
+        Box::pin(async move { Ok(Vec::new()) })
     }
 
-    fn delete(&self, filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
-        Box::pin(async move {
-            self.helper.delete(filter).await;
-            Ok(())
-        })
+    fn delete(&self, _filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
+        Box::pin(async move { Ok(()) })
     }
 }
 
 impl NostrDatabaseWipe for MemoryDatabase {
     fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
         Box::pin(async move {
-            // Clear helper
-            self.helper.clear().await;
-
-            // Clear
             let mut seen_event_ids = self.seen_event_ids.write().await;
             seen_event_ids.clear();
             Ok(())

@@ -14,6 +14,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_database::prelude::*;
+use nostr_redb::NostrRedb;
 
 /// Rate limit
 #[derive(Debug, Clone)]
@@ -199,10 +200,7 @@ impl Default for RelayBuilder {
         Self {
             addr: None,
             port: None,
-            database: Arc::new(MemoryDatabase::with_opts(MemoryDatabaseOptions {
-                events: true,
-                max_events: Some(75_000),
-            })),
+            database: Arc::new(NostrRedb::in_memory()),
             mode: RelayBuilderMode::default(),
             rate_limit: RateLimit::default(),
             nip42: None,
