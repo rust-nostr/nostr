@@ -4,10 +4,13 @@
 // Distributed under the MIT software license
 
 use std::collections::BTreeSet;
+#[cfg(not(target_arch = "wasm32"))]
+use std::fs;
+use std::iter;
 use std::ops::Bound;
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 use std::sync::Arc;
-use std::{fs, iter};
 
 use nostr::prelude::*;
 use nostr_database::flatbuffers::FlatBufferDecodeBorrowed;
@@ -58,6 +61,7 @@ impl Db {
         Ok(Self { env })
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn persistent<P>(path: P) -> Result<Self, Error>
     where
         P: AsRef<Path>,
@@ -72,6 +76,7 @@ impl Db {
         Self::new(env)
     }
 
+    // TODO: add support to in-memory with limited capacity?
     pub(crate) fn in_memory() -> Result<Self, Error> {
         let backend = InMemoryBackend::new();
         let env = Arc::new(Database::builder().create_with_backend(backend)?);

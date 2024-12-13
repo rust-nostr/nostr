@@ -10,6 +10,7 @@
 #![allow(clippy::mutable_key_type)]
 
 use std::collections::HashSet;
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 
 use nostr_database::prelude::*;
@@ -27,6 +28,7 @@ pub struct NostrRedb {
 impl NostrRedb {
     /// Persistent database
     #[inline]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn persistent<P>(path: P) -> Result<Self, DatabaseError>
     where
         P: AsRef<Path>,

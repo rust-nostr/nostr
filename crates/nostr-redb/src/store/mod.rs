@@ -4,6 +4,7 @@
 // Distributed under the MIT software license
 
 use std::collections::BTreeSet;
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
@@ -31,6 +32,7 @@ pub struct Store {
 }
 
 impl Store {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn persistent<P>(path: P) -> Result<Self, Error>
     where
         P: AsRef<Path>,
