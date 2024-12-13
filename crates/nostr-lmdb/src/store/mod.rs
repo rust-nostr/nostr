@@ -53,7 +53,7 @@ impl Store {
         R: Send + 'static,
     {
         let db = self.db.clone();
-        Ok(task::spawn_blocking(move || f(db)).await?)
+        Ok(task::spawn_blocking(move || f(db)).join().await?)
     }
 
     #[inline]
@@ -65,7 +65,7 @@ impl Store {
         let db = self.db.clone();
         let arc_fbb = self.fbb.clone();
         let mut fbb = arc_fbb.lock_owned().await;
-        Ok(task::spawn_blocking(move || f(db, &mut fbb)).await?)
+        Ok(task::spawn_blocking(move || f(db, &mut fbb)).join().await?)
     }
 
     /// Store an event.
