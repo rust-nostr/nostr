@@ -17,5 +17,11 @@ redb = { version = "2.2", default-features = false } # v2.3 has MSRV at 1.81
 nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+futures = "0.3"
+indexed_db_futures = "0.5"
+tracing.workspace = true
+wasm-bindgen.workspace = true
+
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

@@ -9,6 +9,9 @@ use async_utility::task::Error as JoinError;
 use nostr::{key, secp256k1};
 use nostr_database::flatbuffers;
 
+#[cfg(target_arch = "wasm32")]
+use super::core::wasm::Error as WasmError;
+
 #[derive(Debug)]
 pub enum Error {
     /// An upstream I/O error
@@ -28,6 +31,8 @@ pub enum Error {
     Thread(JoinError),
     Key(key::Error),
     Secp256k1(secp256k1::Error),
+    #[cfg(target_arch = "wasm32")]
+    Wasm(WasmError),
     /// Mutex poisoned
     MutexPoisoned,
     /// The event kind is wrong
@@ -51,6 +56,8 @@ impl fmt::Display for Error {
             Self::Thread(e) => write!(f, "{e}"),
             Self::Key(e) => write!(f, "{e}"),
             Self::Secp256k1(e) => write!(f, "{e}"),
+            #[cfg(target_arch = "wasm32")]
+            Self::Wasm(e) => write!(f, "{e}"),
             Self::MutexPoisoned => write!(f, "mutex poisoned"),
             Self::NotFound => write!(f, "Not found"),
             Self::WrongEventKind => write!(f, "Wrong event kind"),
@@ -115,5 +122,12 @@ impl From<key::Error> for Error {
 impl From<secp256k1::Error> for Error {
     fn from(e: secp256k1::Error) -> Self {
         Self::Secp256k1(e)
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl From<WasmError> for Error {
+    fn from(e: WasmError) -> Self {
+        Self::Wasm(e)
     }
 }

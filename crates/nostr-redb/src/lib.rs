@@ -4,7 +4,6 @@
 
 //! redb storage backend for nostr apps
 
-#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 #![allow(clippy::mutable_key_type)]
@@ -35,6 +34,18 @@ impl NostrRedb {
     {
         Ok(Self {
             db: Store::persistent(path).map_err(DatabaseError::backend)?,
+        })
+    }
+
+    /// Web database
+    #[inline]
+    #[cfg(target_arch = "wasm32")]
+    pub async fn web(name: &str) -> Result<Self, DatabaseError> {
+        Ok(Self {
+            db: Store::web(name).await.map_err(DatabaseError::backend)?,
+            temp: MemoryDatabase::with_opts(MemoryDatabaseOptions {
+                max_events: Some(100_000),
+            }),
         })
     }
 

@@ -19,7 +19,11 @@ use redb::backends::InMemoryBackend;
 use redb::{Database, Range, ReadTransaction, TableDefinition, WriteTransaction};
 
 pub(super) mod index;
+#[cfg(target_arch = "wasm32")]
+pub(crate) mod wasm;
 
+#[cfg(target_arch = "wasm32")]
+use self::wasm::IndexeddbBackend;
 use super::error::Error;
 use super::types::{AccessGuardEvent, DatabaseFilter};
 
@@ -73,6 +77,13 @@ impl Db {
         let path = dir.join("data.redb");
         let env = Arc::new(Database::create(path)?);
 
+        Self::new(env)
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) async fn web(name: &str) -> Result<Self, Error> {
+        let backend = IndexeddbBackend::open(name).await?;
+        let env = Arc::new(Database::builder().create_with_backend(backend)?);
         Self::new(env)
     }
 

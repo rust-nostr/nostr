@@ -44,6 +44,15 @@ impl Store {
         })
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) async fn web(name: &str) -> Result<Self, Error> {
+        Ok(Self {
+            db: Db::web(name).await?,
+            fbb: Arc::new(Mutex::new(FlatBufferBuilder::with_capacity(70_000))),
+            persistent: true,
+        })
+    }
+
     pub fn in_memory() -> Self {
         Self {
             // SAFETY: newly created database, should never panic.
