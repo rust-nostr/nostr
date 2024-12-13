@@ -29,14 +29,26 @@ pub struct NostrRedb {
 }
 
 impl NostrRedb {
-    /// Open database
+    /// Persistent database
     #[inline]
-    pub fn open<P>(path: P) -> Result<Self, DatabaseError>
+    pub fn persistent<P>(path: P) -> Result<Self, DatabaseError>
     where
         P: AsRef<Path>,
     {
         Ok(Self {
-            db: Store::open(path).map_err(DatabaseError::backend)?,
+            db: Store::persistent(path).map_err(DatabaseError::backend)?,
+            temp: MemoryDatabase::with_opts(MemoryDatabaseOptions {
+                events: false,
+                max_events: Some(100_000),
+            }),
+        })
+    }
+
+    /// Memory database
+    #[inline]
+    pub fn in_memory() -> Result<Self, DatabaseError> {
+        Ok(Self {
+            db: Store::in_memory().map_err(DatabaseError::backend)?,
             temp: MemoryDatabase::with_opts(MemoryDatabaseOptions {
                 events: false,
                 max_events: Some(100_000),
@@ -49,7 +61,12 @@ impl NostrRedb {
 impl NostrDatabase for NostrRedb {
     #[inline]
     fn backend(&self) -> Backend {
-        Backend::LMDB
+        if self.db.is_persistent() {
+            // TODO: not really LMDB
+            Backend::LMDB
+        } else {
+            Backend::Memory
+        }
     }
 
     #[inline]
@@ -162,8 +179,6 @@ mod tests {
     use std::ops::Deref;
     use std::time::Duration;
 
-    use tempfile::TempDir;
-
     use super::*;
 
     const EVENTS: [&str; 14] = [
@@ -185,8 +200,6 @@ mod tests {
 
     struct TempDatabase {
         db: NostrRedb,
-        // Needed to avoid the drop and deletion of temp folder
-        _temp: TempDir,
     }
 
     impl Deref for TempDatabase {
@@ -199,10 +212,8 @@ mod tests {
 
     impl TempDatabase {
         fn new() -> Self {
-            let dir = tempfile::tempdir().unwrap();
             Self {
-                db: NostrRedb::open(&dir).unwrap(),
-                _temp: dir,
+                db: NostrRedb::in_memory().unwrap(),
             }
         }
 

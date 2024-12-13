@@ -2881,7 +2881,6 @@ dependencies = [
  "nostr",
  "nostr-database",
  "redb",
- "tempfile",
  "tokio",
 ]
 
