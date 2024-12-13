@@ -10,6 +10,7 @@
 #![allow(clippy::mutable_key_type)]
 
 use std::collections::HashSet;
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 
 use nostr_database::prelude::*;
@@ -31,6 +32,7 @@ pub struct NostrRedb {
 impl NostrRedb {
     /// Persistent database
     #[inline]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn persistent<P>(path: P) -> Result<Self, DatabaseError>
     where
         P: AsRef<Path>,
@@ -55,7 +57,8 @@ impl NostrRedb {
     }
 }
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrDatabase for NostrRedb {
     #[inline]
     fn backend(&self) -> Backend {
@@ -73,7 +76,8 @@ impl NostrDatabase for NostrRedb {
     }
 }
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrEventsDatabase for NostrRedb {
     #[inline]
     async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, DatabaseError> {
