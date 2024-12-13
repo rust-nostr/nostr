@@ -52,6 +52,7 @@ web-sys = { version = "0.3", default-features = false }
 [patch.crates-io]
 # Patch needed to reduce bindings size
 bip39 = { git = "https://github.com/rust-bitcoin/rust-bip39", rev = "256a00e7c23c5b2ecc04df90894f60248c8d56d5" }
+async-utility = { git = "https://github.com/yukibtc/async-utility", rev = "a232e277162ff60011d54a65a706422c8a9afd06" }
 
 [profile.release]
 lto = true

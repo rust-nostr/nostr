@@ -5,9 +5,9 @@
 
 use std::{fmt, io};
 
+use async_utility::task::Error as JoinError;
 use nostr::{key, secp256k1};
 use nostr_database::flatbuffers;
-use tokio::task::JoinError;
 
 #[derive(Debug)]
 pub enum Error {
