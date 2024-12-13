@@ -18,5 +18,11 @@ nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
 tokio = { workspace = true, features = ["sync"] }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+futures = "0.3"
+indexed_db_futures = "0.5"
+tracing.workspace = true
+wasm-bindgen.workspace = true
+
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
