@@ -3249,10 +3249,14 @@ name = "nostr-redb"
 version = "0.37.0"
 dependencies = [
  "async-utility",
+ "futures",
+ "indexed_db_futures",
  "nostr",
  "nostr-database",
  "redb",
  "tokio",
+ "tracing",
+ "wasm-bindgen",
 ]
 
 [[package]]
