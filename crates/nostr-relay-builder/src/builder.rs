@@ -14,6 +14,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_database::prelude::*;
+use nostr_redb::NostrRedb;
 
 /// Rate limit
 #[derive(Debug, Clone)]
@@ -190,13 +191,22 @@ pub struct RelayBuilder {
 
 impl Default for RelayBuilder {
     fn default() -> Self {
+        // TODO: remove?
+        let database = NostrRedb::in_memory().unwrap();
+        Self::new(database)
+    }
+}
+
+impl RelayBuilder {
+    /// New relay builder
+    pub fn new<T>(database: T) -> Self
+    where
+        T: IntoNostrEventsDatabase,
+    {
         Self {
             addr: None,
             port: None,
-            database: Arc::new(MemoryDatabase::with_opts(MemoryDatabaseOptions {
-                events: true,
-                max_events: Some(75_000),
-            })),
+            database: database.into_database(),
             mode: RelayBuilderMode::default(),
             rate_limit: RateLimit::default(),
             nip42: None,
@@ -209,9 +219,7 @@ impl Default for RelayBuilder {
             test: RelayTestOptions::default(),
         }
     }
-}
 
-impl RelayBuilder {
     /// Set IP address
     #[inline]
     pub fn addr(mut self, ip: IpAddr) -> Self {
@@ -223,16 +231,6 @@ impl RelayBuilder {
     #[inline]
     pub fn port(mut self, port: u16) -> Self {
         self.port = Some(port);
-        self
-    }
-
-    /// Set database
-    #[inline]
-    pub fn database<D>(mut self, database: D) -> Self
-    where
-        D: IntoNostrEventsDatabase,
-    {
-        self.database = database.into_database();
         self
     }
 

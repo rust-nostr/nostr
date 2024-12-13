@@ -2894,6 +2894,7 @@ dependencies = [
  "negentropy 0.4.3",
  "nostr",
  "nostr-database",
+ "nostr-redb",
  "thiserror 1.0.64",
  "tokio",
  "tracing",
