@@ -50,7 +50,7 @@ impl Store {
         R: Send + 'static,
     {
         let db = self.db.clone();
-        Ok(task::spawn_blocking(move || f(db)).await?)
+        Ok(task::spawn_blocking(move || f(db)).join().await?)
     }
 
     #[inline]
@@ -61,7 +61,7 @@ impl Store {
     {
         let db = self.db.clone();
         let fbb = self.fbb.clone();
-        Ok(task::spawn_blocking(move || f(db, fbb)).await?)
+        Ok(task::spawn_blocking(move || f(db, fbb)).join().await?)
     }
 
     /// Store an event.
