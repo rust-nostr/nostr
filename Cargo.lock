@@ -2963,6 +2963,7 @@ dependencies = [
  "console_error_panic_hook",
  "js-sys",
  "nostr-connect",
+ "nostr-redb",
  "nostr-sdk",
  "nwc",
  "tracing",
