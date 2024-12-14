@@ -50,7 +50,11 @@ const fn from_digit(num: u8) -> u8 {
 
 /// Hex encode
 #[inline]
-pub fn encode(data: &[u8]) -> String {
+pub fn encode<T>(data: T) -> String
+where
+    T: AsRef<[u8]>,
+{
+    let data: &[u8] = data.as_ref();
     let mut hex: String = String::with_capacity(2 * data.len());
     for byte in data.iter() {
         hex.push(from_digit(byte >> 4) as char);
