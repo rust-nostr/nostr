@@ -5,7 +5,7 @@
 //! Tag
 
 use alloc::string::{String, ToString};
-use alloc::vec::Vec;
+use alloc::vec::{IntoIter, Vec};
 #[cfg(not(feature = "std"))]
 use core::cell::OnceCell;
 use core::cmp::Ordering;
@@ -343,6 +343,16 @@ impl Tag {
     #[inline]
     pub fn is_protected(&self) -> bool {
         matches!(self.as_standardized(), Some(TagStandard::Protected))
+    }
+}
+
+impl IntoIterator for Tag {
+    type Item = String;
+    type IntoIter = IntoIter<Self::Item>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.buf.into_iter()
     }
 }
 
