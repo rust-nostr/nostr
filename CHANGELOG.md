@@ -37,6 +37,7 @@
 * nostr: update `NostrURI::from_nostr_uri` method signature ([Yuki Kishimoto])
 * nostr: remove generics from parsing methods in `key` module ([Yuki Kishimoto])
 * nostr: remove generics from `EventId` parsing methods ([Yuki Kishimoto])
+* nostr: remove generic from `RelayUrl::parse` ([Yuki Kishimoto])
 * nostr: refactor `MachineReadablePrefix::parse` method to use `&str` directly ([Yuki Kishimoto])
 * nostr: update `RelayMessage::Notice` variant ([Yuki Kishimoto])
 * database: reduce default in-memory database limit to `35_000` ([Yuki Kishimoto])

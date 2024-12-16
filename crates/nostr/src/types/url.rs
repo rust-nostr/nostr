@@ -64,12 +64,7 @@ impl fmt::Debug for RelayUrl {
 impl RelayUrl {
     /// Parse relay URL
     #[inline]
-    pub fn parse<S>(url: S) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
-        let url: &str = url.as_ref();
-
+    pub fn parse(url: &str) -> Result<Self, Error> {
         // Check that "://" appears only once in the URL
         if url.matches("://").count() > 1 {
             return Err(Error::MultipleSchemeSeparators);
@@ -173,7 +168,7 @@ impl<'de> Deserialize<'de> for RelayUrl {
         D: Deserializer<'de>,
     {
         let url: String = String::deserialize(deserializer)?;
-        Self::parse(url).map_err(serde::de::Error::custom)
+        Self::parse(&url).map_err(serde::de::Error::custom)
     }
 }
 
@@ -239,7 +234,7 @@ impl TryIntoUrl for String {
 
     #[inline]
     fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
-        RelayUrl::parse(self)
+        RelayUrl::parse(self.as_str())
     }
 }
 
