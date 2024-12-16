@@ -214,9 +214,8 @@ Add the following code to your package:
 ```yaml
 nostr_sdk:
     git:
-        url: https://github.com/rust-nostr/nostr.git
-        ref: v0.37.0
-        path: bindings/nostr-sdk-flutter
+        url: https://github.com/rust-nostr/nostr-sdk-flutter.git
+        #ref: v0.37.0
 ```
 
 </section>

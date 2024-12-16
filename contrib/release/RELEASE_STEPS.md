@@ -8,7 +8,7 @@
   * Rust in various `Cargo.toml`
   * Android in `lib/build.gradle.kts`
   * Python in `setup.py`
-  * Flutter in `pubspec.yaml`
+  * Flutter in `pubspec.yaml` (other repository)
   * JavaScript in `package.json`
   * Swift Package NOT require version update
 
@@ -20,6 +20,7 @@
     * Publish `Python` bindings
     * Publish `JavaScript` bindings
     * Publish `Swift` bindings
+    * Publish `Flutter` bindings (other repository)
 
 * Bump versions in `book` (**without commit**, commit in next step)
     * Update examples

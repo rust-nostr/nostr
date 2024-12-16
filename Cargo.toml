@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "bindings/nostr-sdk-ffi",
-    "bindings/nostr-sdk-flutter/rust",
     "bindings/nostr-sdk-js",
     "crates/*",
 ]

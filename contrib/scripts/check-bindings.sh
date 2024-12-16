@@ -5,7 +5,6 @@ set -euo pipefail
 # Check bindings
 buildargs=(
     "-p nostr-sdk-ffi"
-    "-p nostr-sdk-flutter"
     "-p nostr-sdk-js --target wasm32-unknown-unknown"
 )
 
