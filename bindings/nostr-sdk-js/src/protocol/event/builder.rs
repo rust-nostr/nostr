@@ -119,7 +119,7 @@ impl JsEventBuilder {
     pub fn relay_list(relays: Vec<JsRelayListItem>) -> Result<JsEventBuilder> {
         let mut list = Vec::with_capacity(relays.len());
         for JsRelayListItem { url, metadata } in relays.into_iter() {
-            let relay_url: RelayUrl = RelayUrl::parse(url).map_err(into_err)?;
+            let relay_url: RelayUrl = RelayUrl::parse(&url).map_err(into_err)?;
             let metadata = metadata.map(|m| m.into());
             list.push((relay_url, metadata))
         }
@@ -722,7 +722,7 @@ impl JsEventBuilder {
         // TODO: return error if invalid url
         Self {
             inner: EventBuilder::search_relays(
-                relays.into_iter().filter_map(|u| RelayUrl::parse(u).ok()),
+                relays.into_iter().filter_map(|u| RelayUrl::parse(&u).ok()),
             ),
         }
     }
@@ -766,7 +766,7 @@ impl JsEventBuilder {
         Self {
             inner: EventBuilder::relay_set(
                 identifier,
-                relays.into_iter().filter_map(|u| RelayUrl::parse(u).ok()),
+                relays.into_iter().filter_map(|u| RelayUrl::parse(&u).ok()),
             ),
         }
     }

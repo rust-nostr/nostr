@@ -48,7 +48,7 @@ impl JsCoordinate {
                 relays: relays
                     .unwrap_or_default()
                     .into_iter()
-                    .filter_map(|u| RelayUrl::parse(u).ok())
+                    .filter_map(|u| RelayUrl::parse(&u).ok())
                     .collect(),
             },
         }

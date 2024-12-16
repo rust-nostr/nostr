@@ -44,7 +44,7 @@ impl JsContact {
         alias: Option<String>,
     ) -> Result<JsContact> {
         let relay_url = match relay_url {
-            Some(url) => Some(RelayUrl::parse(url).map_err(into_err)?),
+            Some(url) => Some(RelayUrl::parse(&url).map_err(into_err)?),
             None => None,
         };
         Ok(Self {

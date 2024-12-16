@@ -30,7 +30,7 @@ impl Contact {
     #[uniffi::constructor(default(relay_url = None, alias = None))]
     pub fn new(pk: &PublicKey, relay_url: Option<String>, alias: Option<String>) -> Result<Self> {
         let relay_url = match relay_url {
-            Some(url) => Some(RelayUrl::parse(url)?),
+            Some(url) => Some(RelayUrl::parse(&url)?),
             None => None,
         };
         Ok(Self {

@@ -87,7 +87,7 @@ impl TryFrom<LiveEventHost> for nip53::LiveEventHost {
         Ok(Self {
             public_key: **value.public_key,
             relay_url: match value.relay_url {
-                Some(url) => Some(RelayUrl::parse(url)?),
+                Some(url) => Some(RelayUrl::parse(&url)?),
                 None => None,
             },
             proof: match value.proof {
@@ -169,12 +169,12 @@ impl TryFrom<LiveEvent> for nip53::LiveEvent {
             speakers: value
                 .speakers
                 .into_iter()
-                .map(|s| (**s.public_key, s.url.and_then(|u| RelayUrl::parse(u).ok())))
+                .map(|s| (**s.public_key, s.url.and_then(|u| RelayUrl::parse(&u).ok())))
                 .collect(),
             participants: value
                 .participants
                 .into_iter()
-                .map(|s| (**s.public_key, s.url.and_then(|u| RelayUrl::parse(u).ok())))
+                .map(|s| (**s.public_key, s.url.and_then(|u| RelayUrl::parse(&u).ok())))
                 .collect(),
         })
     }

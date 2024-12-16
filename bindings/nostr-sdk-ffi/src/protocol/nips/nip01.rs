@@ -70,7 +70,7 @@ impl Coordinate {
                 // TODO: propagate error
                 relays: relays
                     .into_iter()
-                    .filter_map(|u| RelayUrl::parse(u).ok())
+                    .filter_map(|u| RelayUrl::parse(&u).ok())
                     .collect(),
             },
         }

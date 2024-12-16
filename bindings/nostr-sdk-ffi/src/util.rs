@@ -13,7 +13,7 @@ pub fn parse_optional_relay_url(relay_url: Option<String>) -> Result<Option<Rela
                 return Ok(None);
             }
 
-            Ok(Some(RelayUrl::parse(url)?))
+            Ok(Some(RelayUrl::parse(&url)?))
         }
         None => Ok(None),
     }

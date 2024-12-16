@@ -595,7 +595,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             }),
             TagStandard::Reference { reference } => Ok(Self::Reference(reference)),
             TagStandard::RelayMetadataTag { relay_url, rw } => Ok(Self::RelayMetadata {
-                relay_url: RelayUrl::parse(relay_url)?,
+                relay_url: RelayUrl::parse(&relay_url)?,
                 metadata: rw.map(|rw| rw.into()),
             }),
             TagStandard::Hashtag { hashtag } => Ok(Self::Hashtag(hashtag)),
@@ -632,7 +632,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 kind: kind.into(),
                 uppercase,
             }),
-            TagStandard::RelayUrl { relay_url } => Ok(Self::Relay(RelayUrl::parse(relay_url)?)),
+            TagStandard::RelayUrl { relay_url } => Ok(Self::Relay(RelayUrl::parse(&relay_url)?)),
             TagStandard::POW { nonce, difficulty } => Ok(Self::POW {
                 nonce: nonce.parse()?,
                 difficulty,
