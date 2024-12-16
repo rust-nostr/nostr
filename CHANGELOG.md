@@ -71,6 +71,7 @@
 * database: add `SaveEventStatus` enum ([Yuki Kishimoto])
 * pool: add `ReceiverStream` ([Yuki Kishimoto])
 * sdk: automatically resend event after NIP-42 authentication ([Yuki Kishimoto])
+* sdk: add `Connection::embedded_tor_with_path` ([Yuki Kishimoto])
 * relay-builder: add NIP42 support ([Yuki Kishimoto])
 * relay-builder: add negentropy support ([Yuki Kishimoto])
 * relay-builder: add read/write policy plugins ([v0l])
@@ -81,6 +82,7 @@
 * sdk: fix NIP42 authentication for auto-closing REQ ([Yuki Kishimoto])
 * sdk: fix min POW is not updated to already existing relays ([Yuki Kishimoto])
 * bindings: allow passing empty string as relay url without return an error ([Yuki Kishimoto])
+* ffi: fix UniFFI checksum mismatch issue ([Yuki Kishimoto])
 * flutter: fix `default` is reserved in dart ([J. Azad EMERY])
 
 ### Removed

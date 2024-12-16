@@ -6,7 +6,7 @@
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
-#[cfg(all(feature = "tor", any(target_os = "android", target_os = "ios")))]
+#[cfg(feature = "tor")]
 use std::path::Path;
 use std::time::Duration;
 
@@ -238,20 +238,22 @@ impl Connection {
 
     /// Use embedded tor client
     #[inline]
-    #[cfg(all(feature = "tor", not(target_os = "android"), not(target_os = "ios")))]
+    #[cfg(feature = "tor")]
     pub fn embedded_tor(mut self) -> Self {
         self.mode = ConnectionMode::tor();
         self
     }
 
     /// Use embedded tor client
+    ///
+    /// Specify a path where to store data
     #[inline]
-    #[cfg(all(feature = "tor", any(target_os = "android", target_os = "ios")))]
-    pub fn embedded_tor<P>(mut self, path: P) -> Self
+    #[cfg(feature = "tor")]
+    pub fn embedded_tor_with_path<P>(mut self, path: P) -> Self
     where
         P: AsRef<Path>,
     {
-        self.mode = ConnectionMode::tor(path.as_ref().to_path_buf());
+        self.mode = ConnectionMode::tor_with_path(path);
         self
     }
 }
