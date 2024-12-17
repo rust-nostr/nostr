@@ -123,7 +123,7 @@ impl Tags {
         self.find(kind).and_then(|t| t.as_standardized())
     }
 
-    /// Get first tag that match [`TagKind`].
+    /// Filter tags that match [`TagKind`].
     #[inline]
     pub fn filter<'a>(&'a self, kind: TagKind<'a>) -> impl Iterator<Item = &'a Tag> {
         self.list.iter().filter(move |t| t.kind() == kind)
