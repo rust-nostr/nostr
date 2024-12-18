@@ -70,6 +70,7 @@
 * nostr: add `RelayUrl::is_local_addr` ([Yuki Kishimoto])
 * nostr: add `TagKind::k` constructor ([Yuki Kishimoto]) 
 * nostr: impl `IntoIterator` for `Tag` ([Yuki Kishimoto])
+* nostr: add NIP35 support ([1wErt3r])
 * database: impl PartialEq and Eq for `Events` ([Yuki Kishimoto])
 * database: add `SaveEventStatus` enum ([Yuki Kishimoto])
 * pool: add `ReceiverStream` ([Yuki Kishimoto])
@@ -906,6 +907,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [J. Azad EMERY]: https://github.com/ethicnology
 [v0l]: https://github.com/v0l
 [arkanoider]: https://github.com/arkanoider
+[1wErt3r]: https://github.com/1wErt3r
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.37.0...HEAD

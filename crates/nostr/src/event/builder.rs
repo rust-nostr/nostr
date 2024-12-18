@@ -1700,6 +1700,16 @@ impl EventBuilder {
     pub fn git_patch(patch: GitPatch) -> Self {
         patch.to_event_builder()
     }
+
+    /// Torrent metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/35.md>
+    #[inline]
+    pub fn torrent(metadata: Torrent) -> Self {
+        metadata.to_event_builder()
+    }
+
+    // TODO: add `torrent_comment`
 }
 
 #[cfg(test)]

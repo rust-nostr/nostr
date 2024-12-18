@@ -12,9 +12,6 @@ use crate::protocol::SingleLetterTag;
 
 #[derive(Enum)]
 pub enum TagKind {
-    SingleLetter {
-        single_letter: Arc<SingleLetterTag>,
-    },
     /// Human-readable plaintext summary of what that event is about
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
@@ -86,6 +83,7 @@ pub enum TagKind {
     Size,
     /// Size of file in pixels
     Dim,
+    File,
     /// Magnet
     Magnet,
     /// Blurhash
@@ -104,6 +102,7 @@ pub enum TagKind {
     CurrentParticipants,
     /// Total participants
     TotalParticipants,
+    Tracker,
     /// HTTP Method Request
     Method,
     /// Payload HASH
@@ -116,6 +115,9 @@ pub enum TagKind {
     Request,
     Web,
     Word,
+    SingleLetter {
+        single_letter: Arc<SingleLetterTag>,
+    },
     Unknown {
         unknown: String,
     },
@@ -124,9 +126,6 @@ pub enum TagKind {
 impl<'a> From<tag::TagKind<'a>> for TagKind {
     fn from(value: tag::TagKind) -> Self {
         match value {
-            tag::TagKind::SingleLetter(single_letter) => Self::SingleLetter {
-                single_letter: Arc::new(single_letter.into()),
-            },
             tag::TagKind::Alt => Self::Alt,
             tag::TagKind::Client => Self::Client,
             tag::TagKind::Clone => Self::Clone,
@@ -156,6 +155,7 @@ impl<'a> From<tag::TagKind<'a>> for TagKind {
             tag::TagKind::Aes256Gcm => Self::Aes256Gcm,
             tag::TagKind::Size => Self::Size,
             tag::TagKind::Dim => Self::Dim,
+            tag::TagKind::File => Self::File,
             tag::TagKind::Magnet => Self::Magnet,
             tag::TagKind::Blurhash => Self::Blurhash,
             tag::TagKind::Streaming => Self::Streaming,
@@ -165,6 +165,7 @@ impl<'a> From<tag::TagKind<'a>> for TagKind {
             tag::TagKind::Status => Self::Status,
             tag::TagKind::CurrentParticipants => Self::CurrentParticipants,
             tag::TagKind::TotalParticipants => Self::TotalParticipants,
+            tag::TagKind::Tracker => Self::Tracker,
             tag::TagKind::Method => Self::Method,
             tag::TagKind::Payload => Self::Payload,
             tag::TagKind::Anon => Self::Anon,
@@ -177,6 +178,9 @@ impl<'a> From<tag::TagKind<'a>> for TagKind {
             tag::TagKind::MlsProtocolVersion => Self::MlsProtocolVersion,
             tag::TagKind::MlsCiphersuite => Self::MlsCiphersuite,
             tag::TagKind::MlsExtensions => Self::MlsExtensions,
+            tag::TagKind::SingleLetter(single_letter) => Self::SingleLetter {
+                single_letter: Arc::new(single_letter.into()),
+            },
             tag::TagKind::Custom(unknown) => Self::Unknown {
                 unknown: unknown.to_string(),
             },
@@ -187,7 +191,6 @@ impl<'a> From<tag::TagKind<'a>> for TagKind {
 impl<'a> From<TagKind> for tag::TagKind<'a> {
     fn from(value: TagKind) -> Self {
         match value {
-            TagKind::SingleLetter { single_letter } => Self::SingleLetter(**single_letter),
             TagKind::Alt => Self::Alt,
             TagKind::Client => Self::Client,
             TagKind::Clone => Self::Clone,
@@ -217,6 +220,7 @@ impl<'a> From<TagKind> for tag::TagKind<'a> {
             TagKind::Aes256Gcm => Self::Aes256Gcm,
             TagKind::Size => Self::Size,
             TagKind::Dim => Self::Dim,
+            TagKind::File => Self::File,
             TagKind::Magnet => Self::Magnet,
             TagKind::Blurhash => Self::Blurhash,
             TagKind::Streaming => Self::Streaming,
@@ -226,6 +230,7 @@ impl<'a> From<TagKind> for tag::TagKind<'a> {
             TagKind::Status => Self::Status,
             TagKind::CurrentParticipants => Self::CurrentParticipants,
             TagKind::TotalParticipants => Self::TotalParticipants,
+            TagKind::Tracker => Self::Tracker,
             TagKind::Method => Self::Method,
             TagKind::Payload => Self::Payload,
             TagKind::Anon => Self::Anon,
@@ -238,6 +243,7 @@ impl<'a> From<TagKind> for tag::TagKind<'a> {
             TagKind::MlsProtocolVersion => Self::MlsProtocolVersion,
             TagKind::MlsCiphersuite => Self::MlsCiphersuite,
             TagKind::MlsExtensions => Self::MlsExtensions,
+            TagKind::SingleLetter { single_letter } => Self::SingleLetter(**single_letter),
             TagKind::Unknown { unknown } => Self::Custom(Cow::Owned(unknown)),
         }
     }

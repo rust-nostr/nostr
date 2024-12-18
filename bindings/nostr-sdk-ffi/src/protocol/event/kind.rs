@@ -183,6 +183,14 @@ pub enum KindEnum {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     GitStatusDraft,
+    /// Torrent
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/35.md>
+    Torrent,
+    /// Torrent comment
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/35.md>
+    TorrentComment,
     /// Label
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
@@ -429,6 +437,8 @@ impl From<nostr::Kind> for KindEnum {
             nostr::Kind::MlsKeyPackage => Self::MlsKeyPackage,
             nostr::Kind::MlsWelcome => Self::MlsWelcome,
             nostr::Kind::MlsGroupMessage => Self::MlsGroupMessage,
+            nostr::Kind::Torrent => Self::Torrent,
+            nostr::Kind::TorrentComment => Self::TorrentComment,
             nostr::Kind::Regular(u) => Self::Regular { kind: u },
             nostr::Kind::Replaceable(u) => Self::Replaceable { kind: u },
             nostr::Kind::Ephemeral(u) => Self::Ephemeral { kind: u },
@@ -521,6 +531,8 @@ impl From<KindEnum> for nostr::Kind {
             KindEnum::MlsKeyPackage => Self::MlsKeyPackage,
             KindEnum::MlsWelcome => Self::MlsWelcome,
             KindEnum::MlsGroupMessage => Self::MlsGroupMessage,
+            KindEnum::Torrent => Self::Torrent,
+            KindEnum::TorrentComment => Self::TorrentComment,
             KindEnum::Regular { kind } => Self::Regular(kind),
             KindEnum::Replaceable { kind } => Self::Replaceable(kind),
             KindEnum::Ephemeral { kind } => Self::Ephemeral(kind),

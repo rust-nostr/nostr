@@ -59,6 +59,8 @@ pub enum TagKind<'a> {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
     Expiration,
+    /// File
+    File,
     /// Image
     Image,
     /// Lnurl
@@ -119,6 +121,8 @@ pub enum TagKind<'a> {
     Thumb,
     /// Total participants
     TotalParticipants,
+    /// Tracker
+    Tracker,
     /// Url
     Url,
     /// Web
@@ -164,6 +168,14 @@ impl<'a> TagKind<'a> {
         Self::SingleLetter(SingleLetterTag::lowercase(Alphabet::H))
     }
 
+    /// Construct `i` kind
+    ///
+    /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::I))`.
+    #[inline]
+    pub fn i() -> Self {
+        Self::SingleLetter(SingleLetterTag::lowercase(Alphabet::I))
+    }
+
     /// Construct `k` kind
     ///
     /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::K))`.
@@ -194,6 +206,14 @@ impl<'a> TagKind<'a> {
     #[inline]
     pub fn q() -> Self {
         Self::SingleLetter(SingleLetterTag::lowercase(Alphabet::Q))
+    }
+
+    /// Construct `x` kind
+    ///
+    /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::X))`.
+    #[inline]
+    pub fn x() -> Self {
+        Self::SingleLetter(SingleLetterTag::lowercase(Alphabet::X))
     }
 
     /// Construct [`TagKind::Custom`]
@@ -229,6 +249,7 @@ impl<'a> TagKind<'a> {
             Self::Encrypted => "encrypted",
             Self::Ends => "ends",
             Self::Expiration => "expiration",
+            Self::File => "file",
             Self::Image => "image",
             Self::Lnurl => "lnurl",
             Self::Magnet => "magnet",
@@ -257,6 +278,7 @@ impl<'a> TagKind<'a> {
             Self::Title => "title",
             Self::Thumb => "thumb",
             Self::TotalParticipants => "total_participants",
+            Self::Tracker => "tracker",
             Self::Url => "url",
             Self::Web => "web",
             Self::Word => "word",
@@ -295,6 +317,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "encrypted" => Self::Encrypted,
             "ends" => Self::Ends,
             "expiration" => Self::Expiration,
+            "file" => Self::File,
             "image" => Self::Image,
             "lnurl" => Self::Lnurl,
             "magnet" => Self::Magnet,
@@ -322,6 +345,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "title" => Self::Title,
             "thumb" => Self::Thumb,
             "total_participants" => Self::TotalParticipants,
+            "tracker" => Self::Tracker,
             "url" => Self::Url,
             "web" => Self::Web,
             "word" => Self::Word,
@@ -359,8 +383,14 @@ mod tests {
         assert_eq!(TagKind::from("clone"), TagKind::Clone);
         assert_eq!(TagKind::Clone.to_string(), "clone");
 
+        assert_eq!(TagKind::from("file"), TagKind::File);
+        assert_eq!(TagKind::File.to_string(), "file");
+
         assert_eq!(TagKind::from("maintainers"), TagKind::Maintainers);
         assert_eq!(TagKind::Maintainers.to_string(), "maintainers");
+
+        assert_eq!(TagKind::from("tracker"), TagKind::Tracker);
+        assert_eq!(TagKind::Tracker.to_string(), "tracker");
 
         assert_eq!(TagKind::from("web"), TagKind::Web);
         assert_eq!(TagKind::Web.to_string(), "web");
