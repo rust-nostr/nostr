@@ -17,15 +17,14 @@ use atomic_destructor::AtomicDestroyer;
 use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
 use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
 use nostr::event::raw::RawEvent;
-#[cfg(not(target_arch = "wasm32"))]
-use nostr::secp256k1::rand;
+use nostr::secp256k1::rand::{self, Rng};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, watch, Mutex, MutexGuard, OnceCell, RwLock};
 
 use super::constants::{
-    BATCH_EVENT_ITERATION_TIMEOUT, DEFAULT_CONNECTION_TIMEOUT, MAX_RETRY_INTERVAL, MIN_ATTEMPTS,
-    MIN_SUCCESS_RATE, NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT,
+    BATCH_EVENT_ITERATION_TIMEOUT, DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL,
+    MIN_ATTEMPTS, MIN_SUCCESS_RATE, NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT,
     NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP, PING_INTERVAL,
     WAIT_FOR_AUTHENTICATION_TIMEOUT, WEBSOCKET_TX_TIMEOUT,
 };
@@ -547,21 +546,35 @@ impl InnerRelay {
     fn calculate_retry_interval(&self) -> Duration {
         // Check if incremental interval is enabled
         if self.opts.adjust_retry_interval {
-            // Calculate difference between attempts and success
-            // diff = attempts - success
+            // Calculate the difference between attempts and success
             let diff: u32 = self.stats.attempts().saturating_sub(self.stats.success()) as u32;
 
-            // Diff must be at least 2
-            if diff >= 2 {
-                // Calculate multiplier
-                let multiplier: u32 = diff / 2;
+            // Calculate multiplier
+            let multiplier: u32 = 1 + (diff / 2);
 
-                // Calculate interval
-                let interval: Duration = self.opts.retry_interval * multiplier;
+            // Compute adaptive retry interval
+            let adaptive_interval: Duration = self.opts.retry_interval * multiplier;
 
-                // If interval is too big, use the max one.
-                return cmp::min(interval, MAX_RETRY_INTERVAL);
+            // If the interval is too big, use the min one.
+            // If the interval is checked after the jitter, the interval may be the same for all relays!
+            let mut interval: Duration = cmp::min(adaptive_interval, MAX_RETRY_INTERVAL);
+
+            // The jitter is added to avoid situations where multiple relays reconnect simultaneously after a failure.
+            // This helps prevent synchronized retry storms.
+            let jitter: i8 = rand::thread_rng().gen_range(JITTER_RANGE);
+
+            // Apply jitter
+            if jitter >= 0 {
+                // Positive jitter, add it to the interval.
+                interval = interval.saturating_add(Duration::from_secs(jitter as u64));
+            } else {
+                // Negative jitter, compute `|jitter|` and saturating subtract it from the interval.
+                let jitter: u64 = jitter.unsigned_abs() as u64;
+                interval = interval.saturating_sub(Duration::from_secs(jitter));
             }
+
+            // Return interval
+            return interval;
         }
 
         // Use default internal

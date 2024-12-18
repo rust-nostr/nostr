@@ -4,6 +4,7 @@
 
 //! Relay constants
 
+use core::ops::RangeInclusive;
 use core::time::Duration;
 
 pub(super) const BATCH_EVENT_ITERATION_TIMEOUT: Duration = Duration::from_secs(15);
@@ -21,6 +22,7 @@ pub(super) const DEFAULT_RETRY_INTERVAL: Duration = Duration::from_secs(10);
 // Not increase the max retry interval too much.
 // Keep it small avoid huge waits before reconnection if internet was gone for much time and then come back.
 pub(super) const MAX_RETRY_INTERVAL: Duration = Duration::from_secs(60);
+pub(super) const JITTER_RANGE: RangeInclusive<i8> = -3..=3;
 
 pub(super) const NEGENTROPY_FRAME_SIZE_LIMIT: u64 = 60_000; // Default frame limit is 128k. Halve that (hex encoding) and subtract a bit (JSON msg overhead)
 pub(super) const NEGENTROPY_HIGH_WATER_UP: usize = 100;
