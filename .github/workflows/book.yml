@@ -44,6 +44,9 @@ jobs:
         distribution: "temurin"
         java-version: 17
 
+    # Required for dart/flutter snippets
+    - uses: subosito/flutter-action@v2
+
     - name: Check
       run: just check-book
 

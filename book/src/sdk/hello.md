@@ -55,7 +55,9 @@ The first step is to generate random keys needed for the client and construct th
 <div slot="title">Flutter</div>
 <section>
 
-TODO
+```dart,ignore
+{{#include ../../snippets/flutter/lib/hello.dart:client}}
+```
 
 </section>
 </custom-tabs>
@@ -113,7 +115,9 @@ Next, add some relays to your client and connect to them.
 <div slot="title">Flutter</div>
 <section>
 
-TODO
+```dart,ignore
+{{#include ../../snippets/flutter/lib/hello.dart:connect}}
+```
 
 </section>
 </custom-tabs>
@@ -173,7 +177,9 @@ build a text note with the [EventBuilder](event/builder.md) and publish it to re
 <div slot="title">Flutter</div>
 <section>
 
-TODO
+```dart,ignore
+{{#include ../../snippets/flutter/lib/hello.dart:publish}}
+```
 
 </section>
 </custom-tabs>
@@ -231,7 +237,9 @@ Published the event, you can inspect the output to ensure everything worked corr
 <div slot="title">Flutter</div>
 <section>
 
-TODO
+```dart,ignore
+{{#include ../../snippets/flutter/lib/hello.dart:output}}
+```
 
 </section>
 </custom-tabs>
@@ -289,7 +297,9 @@ Here’s the full example that includes all the steps from generating keys to in
 <div slot="title">Flutter</div>
 <section>
 
-TODO
+```dart,ignore
+{{#include ../../snippets/flutter/lib/hello.dart:full}}
+```
 
 </section>
 </custom-tabs>

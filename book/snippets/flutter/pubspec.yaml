@@ -1,0 +1,17 @@
+name: nostr_sdk_snippets_flutter
+description: "A sample command-line application."
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  nostr_sdk:
+    git:
+      url: https://github.com/rust-nostr/nostr-sdk-flutter.git
+      ref: deb74a974fa0a767b91adc7b88eae5495d94931e
+
+dev_dependencies:
+  lints: ^3.0.0
+  test: ^1.24.9
