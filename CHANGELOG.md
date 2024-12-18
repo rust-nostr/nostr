@@ -59,6 +59,7 @@
 * pool: add `PingTracker` and improve relay ping management ([Yuki Kishimoto])
 * pool: cleanup relay `Error` variants ([Yuki Kishimoto])
 * pool: acquire service watcher receiver outside the auto-connect loop ([Yuki Kishimoto])
+* pool: decrease `MAX_RETRY_INTERVAL` to 60 secs ([Yuki Kishimoto])
 * sdk: refactor POW difficulty management ([Yuki Kishimoto])
 
 ### Added
