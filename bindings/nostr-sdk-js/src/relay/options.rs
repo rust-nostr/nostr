@@ -68,8 +68,6 @@ impl JsRelayOptions {
     }
 
     /// Retry connection time (default: 10 sec)
-    ///
-    /// Minimum allowed value is `5 secs`
     pub fn retry_interval(self, interval: &JsDuration) -> Self {
         self.inner.retry_interval(**interval).into()
     }

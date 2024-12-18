@@ -9,7 +9,7 @@ use std::time::Duration;
 use async_wsocket::ConnectionMode;
 use tokio::sync::watch::{self, Receiver, Sender};
 
-use super::constants::{DEFAULT_RETRY_INTERVAL, MIN_RETRY_INTERVAL};
+use super::constants::DEFAULT_RETRY_INTERVAL;
 use super::filtering::RelayFilteringMode;
 use super::flags::RelayServiceFlags;
 use crate::RelayLimits;
@@ -105,20 +105,14 @@ impl RelayOptions {
     }
 
     /// Retry interval (default: 10 sec)
-    ///
-    /// Minimum allowed value is `5 secs`
     #[deprecated(since = "0.37.0", note = "use `retry_interval` instead")]
     pub fn retry_sec(self, retry_sec: u64) -> Self {
         self.retry_interval(Duration::from_secs(retry_sec))
     }
 
     /// Retry connection time (default: 10 sec)
-    ///
-    /// Minimum allowed value is `5 secs`
     pub fn retry_interval(mut self, interval: Duration) -> Self {
-        if interval >= MIN_RETRY_INTERVAL {
-            self.retry_interval = interval;
-        };
+        self.retry_interval = interval;
         self
     }
 
