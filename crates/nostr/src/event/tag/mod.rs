@@ -344,6 +344,14 @@ impl Tag {
     pub fn is_protected(&self) -> bool {
         matches!(self.as_standardized(), Some(TagStandard::Protected))
     }
+
+    /// Create a new name tag
+    pub fn name<S>(value: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::from_standardized(TagStandard::Name(value.into()))
+    }
 }
 
 impl IntoIterator for Tag {
