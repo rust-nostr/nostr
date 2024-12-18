@@ -5,6 +5,7 @@ use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::time::Duration;
 
+use nostr_redb::NostrRedb;
 use nostr_relay_builder::prelude::*;
 
 /// Accept only certain event kinds
@@ -54,7 +55,8 @@ async fn main() -> Result<()> {
 
     let low_author_limit = RejectAuthorLimit { limit: 2 };
 
-    let builder = RelayBuilder::default()
+    let database = NostrRedb::in_memory()?;
+    let builder = RelayBuilder::new(database)
         .write_policy(accept_profile_data)
         .query_policy(low_author_limit);
 

@@ -4,14 +4,16 @@
 
 use std::time::Duration;
 
+use nostr_redb::NostrRedb;
 use nostr_relay_builder::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
+    let database = NostrRedb::in_memory()?;
     let tor = RelayBuilderHiddenService::new("rust-nostr-local-hs-test");
-    let builder = RelayBuilder::default().tor(tor);
+    let builder = RelayBuilder::new(database).tor(tor);
 
     let relay = LocalRelay::run(builder).await?;
 

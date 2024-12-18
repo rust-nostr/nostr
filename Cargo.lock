@@ -325,8 +325,7 @@ dependencies = [
 [[package]]
 name = "async-utility"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a34a3b57207a7a1007832416c3e4862378c8451b4e8e093e436f48c2d3d2c151"
+source = "git+https://github.com/yukibtc/async-utility?rev=a232e277162ff60011d54a65a706422c8a9afd06#a232e277162ff60011d54a65a706422c8a9afd06"
 dependencies = [
  "futures-util",
  "gloo-timers",
@@ -2484,7 +2483,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -2873,6 +2872,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-redb"
+version = "0.37.0"
+dependencies = [
+ "async-utility",
+ "futures",
+ "indexed_db_futures",
+ "nostr",
+ "nostr-database",
+ "redb",
+ "tokio",
+ "tracing",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "nostr-relay-builder"
 version = "0.37.0"
 dependencies = [
@@ -2882,6 +2896,7 @@ dependencies = [
  "negentropy 0.4.3",
  "nostr",
  "nostr-database",
+ "nostr-redb",
  "thiserror",
  "tokio",
  "tracing",
@@ -3685,6 +3700,15 @@ name = "rangemap"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f60fcc7d6849342eff22c4350c8b9a989ee8ceabc4b481253e8946b9fe83d684"
+
+[[package]]
+name = "redb"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7c2a94325f9c5826b17c42af11067230f503747f870117a28180e85696e21ba"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "redox_syscall"
