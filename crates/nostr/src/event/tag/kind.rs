@@ -129,6 +129,26 @@ pub enum TagKind<'a> {
     SingleLetter(SingleLetterTag),
     /// Custom
     Custom(Cow<'a, str>),
+    /// Info hash tag ("i")
+    InfoHash,
+    /// File tag ("f")
+    File,
+    /// Tracker tag ("t")
+    Tracker,
+    /// Torrent category tag ("c")
+    TorrentCategory,
+    /// NewzNAB tag ("n")
+    NewzNAB,
+    /// IMDB tag ("imdb")
+    IMDB,
+    /// TMDB tag ("tmdb")
+    TMDB,
+    /// TVDB tag ("tvdb")
+    TVDB,
+    /// MAL tag ("mal")
+    MAL,
+    /// AniList tag ("anilist")
+    AniList,
 }
 
 impl<'a> TagKind<'a> {
@@ -262,6 +282,16 @@ impl<'a> TagKind<'a> {
             Self::Word => "word",
             Self::SingleLetter(s) => s.as_str(),
             Self::Custom(tag) => tag.as_ref(),
+            Self::InfoHash => "i",
+            Self::File => "f",
+            Self::Tracker => "t",
+            Self::TorrentCategory => "c",
+            Self::NewzNAB => "n",
+            Self::IMDB => "imdb",
+            Self::TMDB => "tmdb",
+            Self::TVDB => "tvdb",
+            Self::MAL => "mal",
+            Self::AniList => "anilist",
         }
     }
 }
