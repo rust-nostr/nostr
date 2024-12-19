@@ -55,7 +55,7 @@
 * database: add manual trait implementations for `BTreeCappedSet` ([Yuki Kishimoto]) 
 * database: replace LRU with custom memory cache for IDs tracking ([Yuki Kishimoto])
 * lmdb: use `async-utility` to spawn blocking tasks ([Yuki Kishimoto])
-* ndb: bump `nostr-ndb` to 0.4 ([Yuki Kishimoto])
+* ndb: bump `nostr-ndb` to 0.5 ([Yuki Kishimoto])
 * pool: add `PingTracker` and improve relay ping management ([Yuki Kishimoto])
 * pool: cleanup relay `Error` variants ([Yuki Kishimoto])
 * pool: acquire service watcher receiver outside the auto-connect loop ([Yuki Kishimoto])
