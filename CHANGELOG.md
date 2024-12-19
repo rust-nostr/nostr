@@ -97,7 +97,7 @@
 * zapper: remove `thiserror` dep ([Yuki Kishimoto])
 * pool: remove `thiserror` and `tokio-stream` deps ([Yuki Kishimoto])
 * pool: remove minimum interval constraint in `RelayOptions::retry_interval`
-* sdk: remove `nwc` dep ([Yuki Kishimoto])
+* sdk: remove `thiserror` and `nwc` deps ([Yuki Kishimoto])
 * nwc: remove `thiserror` dep and unnecessary `Error::Zapper` variant ([Yuki Kishimoto])
 * ffi: remove `MockRelay` ([Yuki Kishimoto])
 * ffi: remove `RawEvent` and `RawEventRecord` ([Yuki Kishimoto])

@@ -2920,7 +2920,6 @@ dependencies = [
  "nostr-relay-pool",
  "nostr-zapper",
  "nwc",
- "thiserror 1.0.64",
  "tokio",
  "tracing",
  "tracing-subscriber",
