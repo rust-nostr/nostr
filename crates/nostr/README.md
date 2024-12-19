@@ -134,7 +134,7 @@ The following crate feature flags are available:
 |     ✅     | [31 - Dealing with Unknown Events](https://github.com/nostr-protocol/nips/blob/master/31.md)                    |
 |     ✅     | [32 - Labeling](https://github.com/nostr-protocol/nips/blob/master/32.md)                                       |
 |     ✅     | [34 - `git` stuff](https://github.com/nostr-protocol/nips/blob/master/34.md)                                    |
-|     ❌     | [35 - Torrents](https://github.com/nostr-protocol/nips/blob/master/35.md)                                       |
+|     ✅     | [35 - Torrents](https://github.com/nostr-protocol/nips/blob/master/35.md)                                       |
 |     ✅     | [36 - Sensitive Content](https://github.com/nostr-protocol/nips/blob/master/36.md)                              |
 |     ❌     | [38 - User Statuses](https://github.com/nostr-protocol/nips/blob/master/38.md)                                  |
 |     ✅     | [39 - External Identities in Profiles](https://github.com/nostr-protocol/nips/blob/master/39.md)                |
