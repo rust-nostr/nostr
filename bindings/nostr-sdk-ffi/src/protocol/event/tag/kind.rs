@@ -119,6 +119,11 @@ pub enum TagKind {
     Unknown {
         unknown: String,
     },
+    InfoHash,
+    File,
+    Tracker,
+    TorrentCategory,
+    NewzNAB,
 }
 
 impl<'a> From<tag::TagKind<'a>> for TagKind {
@@ -180,6 +185,12 @@ impl<'a> From<tag::TagKind<'a>> for TagKind {
             tag::TagKind::Custom(unknown) => Self::Unknown {
                 unknown: unknown.to_string(),
             },
+            nostr_sdk::TagKind::InfoHash => Self::InfoHash,
+            nostr_sdk::TagKind::File => Self::File,
+            nostr_sdk::TagKind::Tracker => Self::Tracker,
+            nostr_sdk::TagKind::TorrentCategory => Self::TorrentCategory,
+            nostr_sdk::TagKind::NewzNAB => Self::NewzNAB,
+            _ => todo!(),
         }
     }
 }
@@ -239,6 +250,11 @@ impl<'a> From<TagKind> for tag::TagKind<'a> {
             TagKind::MlsCiphersuite => Self::MlsCiphersuite,
             TagKind::MlsExtensions => Self::MlsExtensions,
             TagKind::Unknown { unknown } => Self::Custom(Cow::Owned(unknown)),
+            TagKind::InfoHash => Self::InfoHash,
+            TagKind::File => Self::File,
+            TagKind::Tracker => Self::Tracker,
+            TagKind::TorrentCategory => Self::TorrentCategory,
+            TagKind::NewzNAB => Self::NewzNAB,
         }
     }
 }

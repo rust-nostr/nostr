@@ -344,6 +344,11 @@ pub enum KindEnum {
     Custom {
         kind: u16,
     },
+    /// Torrent (NIP35)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/35.md>
+    Torrent,
+    TorrentComment,
 }
 
 impl From<nostr::Kind> for KindEnum {
@@ -434,6 +439,8 @@ impl From<nostr::Kind> for KindEnum {
             nostr::Kind::Ephemeral(u) => Self::Ephemeral { kind: u },
             nostr::Kind::ParameterizedReplaceable(u) => Self::ParameterizedReplaceable { kind: u },
             nostr::Kind::Custom(u) => Self::Custom { kind: u },
+            nostr_sdk::Kind::Torrent => Self::Torrent,
+            nostr_sdk::Kind::TorrentComment => Self::TorrentComment,
         }
     }
 }
@@ -526,6 +533,8 @@ impl From<KindEnum> for nostr::Kind {
             KindEnum::Ephemeral { kind } => Self::Ephemeral(kind),
             KindEnum::ParameterizedReplaceable { kind } => Self::ParameterizedReplaceable(kind),
             KindEnum::Custom { kind } => Self::Custom(kind),
+            KindEnum::Torrent => Self::Torrent,
+            KindEnum::TorrentComment => Self::TorrentComment,
         }
     }
 }
