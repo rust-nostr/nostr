@@ -52,6 +52,8 @@ macro_rules! kind_variants {
             ParameterizedReplaceable(u16),
             /// Represents a custom event.
             Custom(u16),
+            /// User Status (NIP38)
+            UserStatus(u16),
         }
 
         impl From<u16> for Kind {
@@ -84,6 +86,7 @@ macro_rules! kind_variants {
                     Kind::Ephemeral(u) => u,
                     Kind::ParameterizedReplaceable(u) => u,
                     Kind::Custom(u) => u,
+                    Kind::UserStatus(u) => u,
                 }
             }
         }
