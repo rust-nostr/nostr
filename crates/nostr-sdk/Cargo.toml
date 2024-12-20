@@ -42,7 +42,6 @@ nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
 nostr-relay-pool.workspace = true
 nostr-zapper = { workspace = true, optional = true }
-thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true, features = ["std", "attributes"] }
 

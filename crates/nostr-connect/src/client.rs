@@ -105,6 +105,12 @@ impl NostrConnect {
         self.auth_url_handler = Some(handler.into_auth_url_handler());
     }
 
+    /// Get relays status
+    pub async fn status(&self) -> HashMap<RelayUrl, RelayStatus> {
+        let relays = self.pool.relays().await;
+        relays.into_iter().map(|(u, r)| (u, r.status())).collect()
+    }
+
     async fn bootstrap(&self) -> Result<PublicKey, Error> {
         // Add relays
         for url in self.uri.relays().iter() {

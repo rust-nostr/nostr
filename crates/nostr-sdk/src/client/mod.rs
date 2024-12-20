@@ -12,88 +12,28 @@ use std::time::Duration;
 
 use nostr::prelude::*;
 use nostr_database::prelude::*;
-use nostr_relay_pool::__private::{SharedState, SharedStateError};
+use nostr_relay_pool::__private::SharedState;
 use nostr_relay_pool::prelude::*;
 #[cfg(feature = "nip57")]
-use nostr_zapper::{DynNostrZapper, IntoNostrZapper, ZapperError};
-use thiserror::Error;
+use nostr_zapper::{DynNostrZapper, IntoNostrZapper};
 use tokio::sync::broadcast;
 #[cfg(feature = "nip57")]
 use tokio::sync::RwLock;
 
 pub mod builder;
+mod error;
 pub mod options;
 #[cfg(feature = "nip57")]
 mod zapper;
 
 pub use self::builder::ClientBuilder;
+pub use self::error::Error;
 pub use self::options::Options;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Connection, ConnectionTarget};
 #[cfg(feature = "nip57")]
 pub use self::zapper::{ZapDetails, ZapEntity};
 use crate::gossip::graph::GossipGraph;
-
-/// [`Client`] error
-#[derive(Debug, Error)]
-pub enum Error {
-    /// [`Relay`] error
-    #[error(transparent)]
-    Relay(#[from] nostr_relay_pool::relay::Error),
-    /// [`RelayPool`] error
-    #[error(transparent)]
-    RelayPool(#[from] pool::Error),
-    /// Database error
-    #[error(transparent)]
-    Database(#[from] DatabaseError),
-    /// Signer error
-    #[error(transparent)]
-    Signer(#[from] SignerError),
-    /// Zapper error
-    #[cfg(feature = "nip57")]
-    #[error(transparent)]
-    Zapper(#[from] ZapperError),
-    /// [`EventBuilder`] error
-    #[error(transparent)]
-    EventBuilder(#[from] event::builder::Error),
-    /// Metadata error
-    #[error(transparent)]
-    Metadata(#[from] metadata::Error),
-    /// Shared state error
-    #[error(transparent)]
-    SharedState(#[from] SharedStateError),
-    /// Zapper not configured
-    #[cfg(feature = "nip57")]
-    #[error("zapper not configured")]
-    ZapperNotConfigured,
-    /// NIP57 error
-    #[cfg(feature = "nip57")]
-    #[error(transparent)]
-    NIP57(#[from] nip57::Error),
-    /// LNURL Pay
-    #[cfg(feature = "nip57")]
-    #[error(transparent)]
-    LnUrlPay(#[from] lnurl_pay::Error),
-    /// NIP59
-    #[cfg(feature = "nip59")]
-    #[error(transparent)]
-    NIP59(#[from] nip59::Error),
-    /// Event not found
-    #[error("event not found: {0}")]
-    EventNotFound(EventId),
-    /// Impossible to zap
-    #[error("impossible to send zap: {0}")]
-    ImpossibleToZap(String),
-    /// Broken down filters for gossip are empty
-    #[error("gossip broken down filters are empty")]
-    GossipFiltersEmpty,
-    /// DMs relays not found
-    #[error("DMs relays not found")]
-    DMsRelaysNotFound,
-    /// Metadata not found
-    #[error("metadata not found")]
-    MetadataNotFound,
-}
 
 /// Nostr client
 #[derive(Debug, Clone)]
@@ -1513,13 +1453,14 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub async fn gift_wrap<I>(
+    pub async fn gift_wrap<I, R>(
         &self,
         receiver: &PublicKey,
-        rumor: EventBuilder,
+        rumor: R,
         extra_tags: I,
     ) -> Result<Output<EventId>, Error>
     where
+        R: Into<EventBuilderOrUnsignedEvent>,
         I: IntoIterator<Item = Tag>,
     {
         // Acquire signer
@@ -1538,16 +1479,17 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub async fn gift_wrap_to<I, U, IT>(
+    pub async fn gift_wrap_to<I, U, R, IT>(
         &self,
         urls: I,
         receiver: &PublicKey,
-        rumor: EventBuilder,
+        rumor: R,
         extra_tags: IT,
     ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
+        R: Into<EventBuilderOrUnsignedEvent>,
         IT: IntoIterator<Item = Tag>,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {

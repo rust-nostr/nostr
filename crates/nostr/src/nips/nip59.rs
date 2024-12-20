@@ -15,6 +15,8 @@ use crate::event::unsigned::{self, UnsignedEvent};
 use crate::event::{self, Event};
 use crate::signer::SignerError;
 #[cfg(feature = "std")]
+use crate::util::EventBuilderOrUnsignedEvent;
+#[cfg(feature = "std")]
 use crate::{EventBuilder, Timestamp, SECP256K1};
 use crate::{JsonUtil, Kind, NostrSigner, PublicKey};
 
@@ -132,21 +134,33 @@ where
     UnwrappedGift::from_gift_wrap(signer, gift_wrap).await
 }
 
-/// Create seal
+/// Make a seal
+///
+/// The `rumor` can be an [`EventBuilder`] or an [`UnsignedEvent`].
 #[cfg(feature = "std")]
-pub async fn make_seal<T>(
+pub async fn make_seal<T, R>(
     signer: &T,
     receiver_pubkey: &PublicKey,
-    rumor: EventBuilder,
+    rumor: R,
 ) -> Result<EventBuilder, Error>
 where
     T: NostrSigner,
+    R: Into<EventBuilderOrUnsignedEvent>,
 {
-    // Get public key
-    let public_key = signer.get_public_key().await?;
+    // Get or build rumor
+    //
+    // Accept either an event builder or an unsigned event because in some cases a user
+    // may want to use a different `pubkey` for the rumor.
+    let mut rumor: UnsignedEvent = match rumor.into() {
+        EventBuilderOrUnsignedEvent::EventBuilder(rumor) => {
+            // Get public key
+            let public_key = signer.get_public_key().await?;
 
-    // Build unsigned event
-    let mut rumor: UnsignedEvent = rumor.build(public_key);
+            // Build unsigned event
+            rumor.build(public_key)
+        }
+        EventBuilderOrUnsignedEvent::UnsignedEvent(rumor) => rumor,
+    };
 
     // Make sure that rumor has event ID
     rumor.ensure_id();

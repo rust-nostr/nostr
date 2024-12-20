@@ -52,10 +52,11 @@
 * nostr: remove self-tagging when building events ([Yuki Kishimoto])
 * nostr: don't set root tags when the root is null ([Yuki Kishimoto])
 * nostr: update `RelayMessage::NegErr` variant ([Yuki Kishimoto])
+* nostr: accept either `EventBuilder` or `UnsignedEvent` as rumor in NIP59 functions ([Yuki Kishimoto] and [arkanoider])
 * database: add manual trait implementations for `BTreeCappedSet` ([Yuki Kishimoto]) 
 * database: replace LRU with custom memory cache for IDs tracking ([Yuki Kishimoto])
 * lmdb: use `async-utility` to spawn blocking tasks ([Yuki Kishimoto])
-* ndb: bump `nostr-ndb` to 0.4 ([Yuki Kishimoto])
+* ndb: bump `nostr-ndb` to 0.5 ([Yuki Kishimoto])
 * pool: add `PingTracker` and improve relay ping management ([Yuki Kishimoto])
 * pool: cleanup relay `Error` variants ([Yuki Kishimoto])
 * pool: acquire service watcher receiver outside the auto-connect loop ([Yuki Kishimoto])
@@ -75,6 +76,7 @@
 * pool: add `ReceiverStream` ([Yuki Kishimoto])
 * sdk: automatically resend event after NIP-42 authentication ([Yuki Kishimoto])
 * sdk: add `Connection::embedded_tor_with_path` ([Yuki Kishimoto])
+* connect: add `NostrConnect::status` ([Yuki Kishimoto])
 * relay-builder: add NIP42 support ([Yuki Kishimoto])
 * relay-builder: add negentropy support ([Yuki Kishimoto])
 * relay-builder: add read/write policy plugins ([v0l])
@@ -97,7 +99,7 @@
 * zapper: remove `thiserror` dep ([Yuki Kishimoto])
 * pool: remove `thiserror` and `tokio-stream` deps ([Yuki Kishimoto])
 * pool: remove minimum interval constraint in `RelayOptions::retry_interval`
-* sdk: remove `nwc` dep ([Yuki Kishimoto])
+* sdk: remove `thiserror` and `nwc` deps ([Yuki Kishimoto])
 * nwc: remove `thiserror` dep and unnecessary `Error::Zapper` variant ([Yuki Kishimoto])
 * ffi: remove `MockRelay` ([Yuki Kishimoto])
 * ffi: remove `RawEvent` and `RawEventRecord` ([Yuki Kishimoto])
@@ -904,6 +906,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [erskingardner]: https://github.com/erskingardner
 [J. Azad EMERY]: https://github.com/ethicnology
 [v0l]: https://github.com/v0l
+[arkanoider]: https://github.com/arkanoider
 [1wErt3r]: https://github.com/1wErt3r
 
 <!-- Tags -->
