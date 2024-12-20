@@ -8,8 +8,8 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 use bitcoin::hashes::sha1::Hash as Sha1Hash;
-use url::Url;
 
+use crate::types::url;
 use crate::{EventBuilder, Kind, Tag, TagKind};
 
 /// Represents a file within a torrent.
@@ -33,7 +33,7 @@ pub struct Torrent {
     /// Files included in torrent
     pub files: Vec<TorrentFile>,
     /// Tracker URLs
-    pub trackers: Vec<Url>,
+    pub trackers: Vec<url::Url>,
     /// Categories (e.g. "video,movie,4k")
     pub categories: Vec<String>,
     /// Additional hashtags
