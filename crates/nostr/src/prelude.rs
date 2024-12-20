@@ -46,6 +46,7 @@ pub use crate::nips::nip19::{self, *};
 pub use crate::nips::nip21::{self, *};
 pub use crate::nips::nip26::{self, *};
 pub use crate::nips::nip34::{self, *};
+pub use crate::nips::nip35::{self, *};
 pub use crate::nips::nip39::{self, *};
 #[cfg(feature = "nip44")]
 pub use crate::nips::nip44::{self, *};
@@ -73,3 +74,4 @@ pub use crate::types::*;
 pub use crate::util::{self, *};
 #[cfg(feature = "std")]
 pub use crate::{Result, SECP256K1};
+
