@@ -15,6 +15,7 @@ use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::{Secp256k1, Signing, Verification};
 use serde_json::{json, Value};
 
+use crate::nips::nip35::Torrent;
 #[cfg(all(feature = "std", feature = "nip04", feature = "nip46"))]
 use crate::nips::nip46::Message as NostrConnectMessage;
 use crate::prelude::*;
@@ -1697,6 +1698,14 @@ impl EventBuilder {
     #[inline]
     pub fn git_patch(patch: GitPatch) -> Self {
         patch.to_event_builder()
+    }
+
+    /// Torrent metadata
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/35.md>
+    #[inline]
+    pub fn torrent(data: Torrent) -> Self {
+        data.to_event_builder()
     }
 }
 

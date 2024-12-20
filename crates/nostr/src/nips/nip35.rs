@@ -4,12 +4,13 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/35.md>
 
-use alloc::string::String;
-use alloc::vec::Vec;
-use bitcoin::hashes::sha1::Hash as Sha1Hash;
-
 use alloc::string::{String, ToString};
-use crate::{EventBuilder, EventId, Kind, RelayUrl, Tag, TagKind};
+use alloc::vec::Vec;
+
+use bitcoin::hashes::sha1::Hash as Sha1Hash;
+use url::Url;
+
+use crate::{EventBuilder, Kind, Tag, TagKind};
 
 /// Represents a file within a torrent.
 #[derive(Debug, Clone)]
@@ -40,6 +41,19 @@ pub struct Torrent {
 }
 
 impl Torrent {
+    /// Creates a new `EventBuilder` from the given `Torrent` data.
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - A `Torrent` struct containing metadata about the torrent.
+    ///
+    /// # Returns
+    ///
+    /// An `EventBuilder` initialized with the torrent metadata.
+    pub fn torrent(data: Torrent) -> EventBuilder {
+        data.to_event_builder()
+    }
+
     /// Converts the torrent metadata into a Nostr event builder.
     pub fn to_event_builder(self) -> EventBuilder {
         let mut tags = Vec::new();
@@ -59,10 +73,7 @@ impl Torrent {
         }
 
         for tracker in self.trackers.into_iter() {
-            tags.push(Tag::custom(
-                TagKind::Tracker,
-                vec![tracker],
-            ));
+            tags.push(Tag::custom(TagKind::Tracker, vec![tracker]));
         }
 
         for cat in self.categories.into_iter() {

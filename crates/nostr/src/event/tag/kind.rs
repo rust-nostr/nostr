@@ -137,18 +137,6 @@ pub enum TagKind<'a> {
     Tracker,
     /// Torrent category tag ("c")
     TorrentCategory,
-    /// NewzNAB tag ("n")
-    NewzNAB,
-    /// IMDB tag ("imdb")
-    IMDB,
-    /// TMDB tag ("tmdb")
-    TMDB,
-    /// TVDB tag ("tvdb")
-    TVDB,
-    /// MAL tag ("mal")
-    MAL,
-    /// AniList tag ("anilist")
-    AniList,
 }
 
 impl<'a> TagKind<'a> {
@@ -285,11 +273,7 @@ impl<'a> TagKind<'a> {
             Self::InfoHash => "i",
             Self::File => "file",
             Self::Tracker => "tracker",
-            Self::IMDB => "imdb",
-            Self::TMDB => "tmdb",
-            Self::TVDB => "tvdb",
-            Self::MAL => "mal",
-            Self::AniList => "anilist",
+            Self::TorrentCategory => "torrent_category",
         }
     }
 }
