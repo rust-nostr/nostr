@@ -122,6 +122,7 @@ pub enum TagKind {
     InfoHash,
     File,
     Tracker,
+    TorrentCategory,
 }
 
 impl<'a> From<tag::TagKind<'a>> for TagKind {
@@ -186,6 +187,7 @@ impl<'a> From<tag::TagKind<'a>> for TagKind {
             nostr_sdk::TagKind::InfoHash => Self::InfoHash,
             nostr_sdk::TagKind::File => Self::File,
             nostr_sdk::TagKind::Tracker => Self::Tracker,
+            nostr_sdk::TagKind::TorrentCategory => Self::TorrentCategory,
         }
     }
 }
@@ -248,6 +250,7 @@ impl<'a> From<TagKind> for tag::TagKind<'a> {
             TagKind::InfoHash => Self::InfoHash,
             TagKind::File => Self::File,
             TagKind::Tracker => Self::Tracker,
+            TagKind::TorrentCategory => Self::TorrentCategory,
         }
     }
 }
