@@ -1,8 +1,8 @@
-//! NIP-35: Torrent Events
+//! NIP35: Torrents
 //!
 //! This module implements support for sharing BitTorrent metadata and comments through Nostr events.
 //!
-//! See [NIP-35](https://github.com/nostr-protocol/nips/blob/master/35.md) for the full specification.
+//! <https://github.com/nostr-protocol/nips/blob/master/35.md>
 
 use alloc::string::String;
 use alloc::vec::Vec;
