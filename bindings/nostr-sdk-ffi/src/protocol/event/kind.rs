@@ -183,6 +183,11 @@ pub enum KindEnum {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     GitStatusDraft,
+    /// Torrent (NIP35)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/35.md>
+    Torrent,
+    TorrentComment,
     /// Label
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
@@ -344,11 +349,6 @@ pub enum KindEnum {
     Custom {
         kind: u16,
     },
-    /// Torrent (NIP35)
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/35.md>
-    Torrent,
-    TorrentComment,
 }
 
 impl From<nostr::Kind> for KindEnum {
