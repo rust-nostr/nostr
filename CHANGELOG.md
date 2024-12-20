@@ -52,6 +52,7 @@
 * nostr: remove self-tagging when building events ([Yuki Kishimoto])
 * nostr: don't set root tags when the root is null ([Yuki Kishimoto])
 * nostr: update `RelayMessage::NegErr` variant ([Yuki Kishimoto])
+* nostr: accept either `EventBuilder` or `UnsignedEvent` as rumor in NIP59 functions ([Yuki Kishimoto] and [arkanoider])
 * database: add manual trait implementations for `BTreeCappedSet` ([Yuki Kishimoto]) 
 * database: replace LRU with custom memory cache for IDs tracking ([Yuki Kishimoto])
 * lmdb: use `async-utility` to spawn blocking tasks ([Yuki Kishimoto])
@@ -904,6 +905,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [erskingardner]: https://github.com/erskingardner
 [J. Azad EMERY]: https://github.com/ethicnology
 [v0l]: https://github.com/v0l
+[arkanoider]: https://github.com/arkanoider
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.37.0...HEAD

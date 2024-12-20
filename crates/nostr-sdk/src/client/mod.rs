@@ -1453,13 +1453,14 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub async fn gift_wrap<I>(
+    pub async fn gift_wrap<I, R>(
         &self,
         receiver: &PublicKey,
-        rumor: EventBuilder,
+        rumor: R,
         extra_tags: I,
     ) -> Result<Output<EventId>, Error>
     where
+        R: Into<EventBuilderOrUnsignedEvent>,
         I: IntoIterator<Item = Tag>,
     {
         // Acquire signer
@@ -1478,16 +1479,17 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub async fn gift_wrap_to<I, U, IT>(
+    pub async fn gift_wrap_to<I, U, R, IT>(
         &self,
         urls: I,
         receiver: &PublicKey,
-        rumor: EventBuilder,
+        rumor: R,
         extra_tags: IT,
     ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
+        R: Into<EventBuilderOrUnsignedEvent>,
         IT: IntoIterator<Item = Tag>,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
