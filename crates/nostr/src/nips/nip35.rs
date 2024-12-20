@@ -6,12 +6,13 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use bitcoin::hashes::sha1::Hash as Sha1Hash;
 
-use crate::alloc::string::ToString;
+use alloc::string::{String, ToString};
 use crate::{EventBuilder, EventId, Kind, RelayUrl, Tag, TagKind};
 
-#[derive(Debug, Clone)]
 /// Represents a file within a torrent.
+#[derive(Debug, Clone)]
 pub struct TorrentFile {
     /// File name/path
     pub name: String,
@@ -27,11 +28,11 @@ pub struct Torrent {
     /// Long description
     pub description: String,
     /// BitTorrent info hash
-    pub info_hash: String,
+    pub info_hash: Sha1Hash,
     /// Files included in torrent
     pub files: Vec<TorrentFile>,
     /// Tracker URLs
-    pub trackers: Vec<String>,
+    pub trackers: Vec<Url>,
     /// Categories (e.g. "video,movie,4k")
     pub categories: Vec<String>,
     /// Additional hashtags
@@ -40,73 +41,41 @@ pub struct Torrent {
 
 impl Torrent {
     /// Converts the torrent metadata into a Nostr event builder.
-
     pub fn to_event_builder(self) -> EventBuilder {
         let mut tags = Vec::new();
 
         tags.push(Tag::name(self.title));
 
-        if self.info_hash.chars().all(|c| c.is_ascii_hexdigit()) {
-            tags.push(Tag::custom(
-                TagKind::Custom("x".into()),
-                vec![self.info_hash],
-            ));
-        } else {
-            panic!("Invalid info hash: not a valid hex string");
-        }
+        tags.push(Tag::custom(
+            TagKind::InfoHash,
+            vec![self.info_hash.to_string()],
+        ));
 
-        for file in self.files {
+        for file in self.files.into_iter() {
             tags.push(Tag::custom(
-                TagKind::Custom("file".into()),
+                TagKind::File,
                 vec![file.name, file.size.to_string()],
             ));
         }
 
-        for tracker in self.trackers {
+        for tracker in self.trackers.into_iter() {
             tags.push(Tag::custom(
-                TagKind::Custom("tracker".into()),
+                TagKind::Tracker,
                 vec![tracker],
             ));
         }
 
-        for cat in self.categories {
+        for cat in self.categories.into_iter() {
             tags.push(Tag::custom(
                 TagKind::Custom("tcat".into()),
                 vec![format!("tcat:{}", cat)],
             ));
         }
 
-        for tag in self.hashtags {
+        for tag in self.hashtags.into_iter() {
             tags.push(Tag::hashtag(tag));
         }
 
         EventBuilder::new(Kind::Torrent, self.description).tags(tags)
-    }
-}
-
-/// Torrent comment
-#[derive(Debug, Clone)]
-pub struct TorrentComment {
-    /// The torrent event being commented on
-    pub torrent_event: EventId,
-    /// Comment content
-    pub content: String,
-    /// Optional relay URL where the original torrent can be found
-    pub relay_url: Option<RelayUrl>,
-}
-
-impl TorrentComment {
-    /// Converts the torrent comment into a Nostr event builder.
-    pub fn to_event_builder(self) -> EventBuilder {
-        let mut tags = vec![Tag::event(self.torrent_event)];
-
-        if let Some(relay_url) = self.relay_url {
-            tags.push(Tag::custom(
-                TagKind::Custom("r".into()),
-                vec![relay_url.to_string()],
-            ));
-        }
-
-        EventBuilder::new(Kind::TorrentComment, self.content).tags(tags)
     }
 }
