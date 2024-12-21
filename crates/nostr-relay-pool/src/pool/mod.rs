@@ -170,8 +170,11 @@ impl RelayPool {
 
     /// Add new relay
     ///
-    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
+    /// If are set pool subscriptions, the new added relay will inherit them.
+    /// Use [`RelayPool::subscribe_to`] method instead of [`RelayPool::subscribe`],
     /// to avoid to set pool subscriptions.
+    ///
+    /// Connection is **NOT** automatically started with relay, remember to call [`RelayPool::connect`] or [`RelayPool::connect_relay`]!
     #[inline]
     pub async fn add_relay<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
     where
@@ -367,11 +370,7 @@ impl RelayPool {
 
     /// Subscribe to filters to all relays with `READ` flag.
     ///
-    /// ### Auto-closing subscription
-    ///
-    /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
-    ///
-    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
+    /// Check [`RelayPool::subscribe_with_id_to`] docs to learn more.
     #[inline]
     pub async fn subscribe(
         &self,
@@ -383,11 +382,7 @@ impl RelayPool {
 
     /// Subscribe to filters with custom [SubscriptionId] to all relays with `READ` flag.
     ///
-    /// ### Auto-closing subscription
-    ///
-    /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
-    ///
-    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
+    /// Check [`RelayPool::subscribe_with_id_to`] docs to learn more.
     #[inline]
     pub async fn subscribe_with_id(
         &self,
@@ -400,9 +395,7 @@ impl RelayPool {
 
     /// Subscribe to filters to specific relays
     ///
-    /// ### Auto-closing subscription
-    ///
-    /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
+    /// Check [`RelayPool::subscribe_with_id_to`] docs to learn more.
     #[inline]
     pub async fn subscribe_to<I, U>(
         &self,
@@ -420,9 +413,15 @@ impl RelayPool {
 
     /// Subscribe to filters with custom [SubscriptionId] to specific relays
     ///
+    /// This method doesn't add relays!
+    /// All the relays must be added to the pool with [`RelayPool::add_relay`].
+    /// If the specified relays don't exist, [`Error::RelayNotFound`] is returned.
+    ///
     /// ### Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
+    ///
+    /// Auto-closing subscriptions aren't saved in the subscription map!
     #[inline]
     pub async fn subscribe_with_id_to<I, U>(
         &self,
@@ -443,7 +442,7 @@ impl RelayPool {
 
     /// Targeted subscription
     ///
-    /// Subscribe to specific relays with specific filters
+    /// Subscribe to specific relays with specific filters.
     #[inline]
     pub async fn subscribe_targeted<I, U>(
         &self,
