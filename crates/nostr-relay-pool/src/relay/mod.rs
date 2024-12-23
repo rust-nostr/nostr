@@ -255,10 +255,20 @@ impl Relay {
         self.inner.internal_notification_sender.subscribe()
     }
 
-    /// Connect to relay and keep alive connection
+    /// Connect to relay
+    /// 
+    /// This method returns immediately and doesn't provide any information on if the connection was successful or not.
     #[inline]
-    pub async fn connect(&self, connection_timeout: Option<Duration>) {
-        self.inner.connect(connection_timeout).await
+    pub fn connect(&self) {
+        self.inner.connect()
+    }
+
+    /// Try to connect to relay
+    /// 
+    /// This method returns an error if the connection fails.
+    #[inline]
+    pub async fn try_connect(&self, timeout: Duration) -> Result<(), Error> {
+        self.inner.try_connect(timeout).await
     }
 
     /// Disconnect from relay and set status to 'Terminated'
@@ -444,7 +454,7 @@ mod tests {
 
         let relay = Relay::new(url);
 
-        relay.connect(Some(Duration::from_millis(100))).await;
+        relay.try_connect(Duration::from_millis(100)).await.unwrap();
 
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Test")
@@ -463,7 +473,7 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
-        relay.connect(Some(Duration::from_millis(100))).await;
+        relay.try_connect(Duration::from_millis(100)).await.unwrap();
 
         assert_eq!(relay.status(), RelayStatus::Connected);
 
@@ -486,7 +496,7 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
-        relay.connect(Some(Duration::from_millis(100))).await;
+        relay.try_connect(Duration::from_millis(100)).await.unwrap();
 
         assert_eq!(relay.status(), RelayStatus::Connected);
 
@@ -509,7 +519,7 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
-        relay.connect(Some(Duration::from_millis(100))).await;
+        relay.try_connect(Duration::from_millis(100)).await.unwrap();
 
         assert_eq!(relay.status(), RelayStatus::Connected);
 
@@ -533,7 +543,8 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
-        relay.connect(Some(Duration::from_millis(100))).await;
+        let res = relay.try_connect(Duration::from_millis(100)).await;
+        assert!(matches!(res.unwrap_err(), Error::ConnectionFailed));
 
         assert!(relay.inner.is_running());
 
@@ -563,7 +574,7 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
-        relay.connect(None).await;
+        relay.connect();
 
         time::sleep(Duration::from_secs(1)).await;
 
@@ -595,7 +606,7 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
-        relay.connect(None).await;
+        relay.connect();
 
         time::sleep(Duration::from_secs(1)).await;
 
@@ -624,7 +635,7 @@ mod tests {
 
         relay.inner.state.automatic_authentication(true);
 
-        relay.connect(Some(Duration::from_millis(100))).await;
+        relay.connect();
 
         // Signer
         let keys = Keys::generate();
@@ -665,7 +676,7 @@ mod tests {
 
         let relay = Relay::new(url);
 
-        relay.connect(Some(Duration::from_millis(100))).await;
+        relay.connect();
 
         // Signer
         let keys = Keys::generate();
