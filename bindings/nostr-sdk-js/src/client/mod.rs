@@ -224,14 +224,15 @@ impl JsClient {
         self.inner.connect().await
     }
 
-    /// Connect to all added relays
+    /// Try to establish a connection with the relays.
     ///
-    /// Try to connect to the relays and wait for them to be connected at most for the specified `timeout`.
-    /// The code continues if the `timeout` is reached or if all relays connect.
-    #[inline]
-    #[wasm_bindgen(js_name = connectWithTimeout)]
-    pub async fn connect_with_timeout(&self, timeout: &JsDuration) {
-        self.inner.connect_with_timeout(**timeout).await
+    /// Attempts to establish a connection without spawning the connection task if it fails.
+    /// This means that if the connection fails, no automatic retries are scheduled.
+    /// Use [`Client::connect`] if you want to immediately spawn a connection task,
+    /// regardless of whether the initial connection succeeds.
+    #[wasm_bindgen(js_name = tryConnect)]
+    pub async fn try_connect(&self, timeout: &JsDuration) -> JsOutput {
+        self.inner.try_connect(**timeout).await.into()
     }
 
     /// Disconnect from all relays

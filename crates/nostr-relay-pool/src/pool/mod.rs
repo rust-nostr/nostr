@@ -251,10 +251,23 @@ impl RelayPool {
         self.inner.remove_all_relays(true).await
     }
 
-    /// Connect to all added relays and keep connection alive
+    /// Connect to all added relays
     #[inline]
-    pub async fn connect(&self, connection_timeout: Option<Duration>) {
-        self.inner.connect(connection_timeout).await
+    pub async fn connect(&self) {
+        self.inner.connect().await
+    }
+
+    /// Try to establish a connection with the relays.
+    ///
+    /// Attempts to establish a connection without spawning the connection task if it fails.
+    /// This means that if the connection fails, no automatic retries are scheduled.
+    /// Use [`RelayPool::connect`] if you want to immediately spawn a connection task,
+    /// regardless of whether the initial connection succeeds.
+    ///
+    /// For further details, see the documentation of [`Relay::try_connect`].
+    #[inline]
+    pub async fn try_connect(&self, timeout: Duration) -> Output<()> {
+        self.inner.try_connect(timeout).await
     }
 
     /// Disconnect from all relays
@@ -263,18 +276,30 @@ impl RelayPool {
         self.inner.disconnect().await
     }
 
-    /// Connect to relay
+    /// Connect to a previously added relay
+    ///
+    /// This method doesn't provide any information on if the connection was successful or not.
+    ///
+    /// Return [`Error::RelayNotFound`] if the relay doesn't exist in the pool.
     #[inline]
-    pub async fn connect_relay<U>(
-        &self,
-        url: U,
-        connection_timeout: Option<Duration>,
-    ) -> Result<(), Error>
+    pub async fn connect_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.inner.connect_relay(url, connection_timeout).await
+        self.inner.connect_relay(url).await
+    }
+
+    /// Try to connect to a previously added relay
+    ///
+    /// For further details, see the documentation of [`Relay::try_connect`].
+    #[inline]
+    pub async fn try_connect_relay<U>(&self, url: U, timeout: Duration) -> Result<(), Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.inner.try_connect_relay(url, timeout).await
     }
 
     /// Disconnect relay
@@ -633,7 +658,7 @@ mod tests {
 
         pool.add_relay(&url, RelayOptions::default()).await.unwrap();
 
-        pool.connect(None).await;
+        pool.connect().await;
 
         assert!(!pool.inner.is_shutdown());
 

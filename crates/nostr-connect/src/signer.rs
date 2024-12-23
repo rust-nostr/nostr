@@ -6,7 +6,6 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 
 use nostr::nips::nip46::{Message, Request, ResponseResult};
 use nostr_relay_pool::prelude::*;
@@ -130,7 +129,7 @@ impl NostrConnectRemoteSigner {
         }
 
         // Connect
-        self.pool.connect(Some(Duration::from_secs(10))).await;
+        self.pool.connect().await;
 
         let filter = Filter::new()
             .pubkey(self.keys.signer.public_key())

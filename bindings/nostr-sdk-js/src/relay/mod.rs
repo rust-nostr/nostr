@@ -158,9 +158,21 @@ impl JsRelay {
         self.inner.queue() as u64
     }
 
-    /// Connect to relay and keep alive connection
-    pub async fn connect(&self, connection_timeout: Option<JsDuration>) {
-        self.inner.connect(connection_timeout.map(|d| *d)).await
+    /// Connect to relay
+    ///
+    /// This method returns immediately and doesn't provide any information on if the connection was successful or not.
+    pub fn connect(&self) {
+        self.inner.connect()
+    }
+
+    /// Try to connect to relay
+    ///
+    /// This method returns an error if the connection fails.
+    /// If the connection fails,
+    /// a task will continue to retry in the background (unless configured differently in `RelayOptions`.
+    #[wasm_bindgen(js_name = tryConnect)]
+    pub async fn try_connect(&self, timeout: &JsDuration) -> Result<()> {
+        self.inner.try_connect(**timeout).await.map_err(into_err)
     }
 
     /// Disconnect from relay and set status to 'Terminated'

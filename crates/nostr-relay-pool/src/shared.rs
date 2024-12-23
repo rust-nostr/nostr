@@ -36,6 +36,7 @@ pub struct SharedState {
     nip42_auto_authentication: Arc<AtomicBool>,
     min_pow_difficulty: Arc<AtomicU8>,
     pub(crate) filtering: RelayFiltering,
+    // TODO: add a semaphore to limit number of concurrent websocket connections attempts?
 }
 
 impl Default for SharedState {

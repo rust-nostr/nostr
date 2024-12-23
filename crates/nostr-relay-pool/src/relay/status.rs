@@ -97,7 +97,7 @@ impl RelayStatus {
         matches!(self, Self::Terminated)
     }
 
-    /// Check if relay can start connection (status is `initialized` or `terminated`)
+    /// Check if relay can start a connection (status is `initialized` or `terminated`)
     #[inline]
     pub(crate) fn can_connect(&self) -> bool {
         matches!(self, Self::Initialized | Self::Terminated)

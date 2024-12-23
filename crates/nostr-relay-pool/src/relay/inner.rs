@@ -12,7 +12,9 @@ use std::time::Duration;
 
 use async_utility::{task, time};
 use async_wsocket::futures_util::{self, Future, SinkExt, StreamExt};
-use async_wsocket::{connect as wsocket_connect, ConnectionMode, Sink, Stream, WsMessage};
+use async_wsocket::{
+    connect as wsocket_connect, ConnectionMode, Error as WsError, Sink, Stream, WsMessage,
+};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
 use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
@@ -432,8 +434,7 @@ impl InnerRelay {
         }
     }
 
-    pub async fn connect(&self, connection_timeout: Option<Duration>) {
-        // Return if relay can't connect
+    pub fn connect(&self) {
         if !self.status().can_connect() {
             return;
         }
@@ -442,32 +443,30 @@ impl InnerRelay {
         // Change it to pending to avoid issues with the health check (initialized check)
         self.set_status(RelayStatus::Pending, false);
 
-        // If connection timeout is `Some`, try to connect waiting for connection
-        match connection_timeout {
-            Some(timeout) => {
-                let mut notifications = self.internal_notification_sender.subscribe();
-
-                // Spawn and try connect
-                self.spawn_and_try_connect(timeout);
-
-                // Wait for status change (connected or disconnected)
-                tracing::debug!(url = %self.url, "Waiting for status change before continue");
-                while let Ok(notification) = notifications.recv().await {
-                    if let RelayNotification::RelayStatus {
-                        status: RelayStatus::Connected | RelayStatus::Disconnected,
-                    } = notification
-                    {
-                        break;
-                    }
-                }
-            }
-            None => {
-                self.spawn_and_try_connect(DEFAULT_CONNECTION_TIMEOUT);
-            }
-        }
+        // Spawn connection task
+        self.spawn_connection_task(None);
     }
 
-    fn spawn_and_try_connect(&self, connection_timeout: Duration) {
+    pub async fn try_connect(&self, timeout: Duration) -> Result<(), Error> {
+        // Check if relay can't connect
+        if !self.status().can_connect() {
+            return Ok(());
+        }
+
+        // Try to connect
+        // This will set the status to "terminated" if the connection fails
+        let stream: (Sink, Stream) = self
+            ._try_connect(timeout, RelayStatus::Terminated)
+            .await
+            .map_err(Error::websocket)?;
+
+        // Spawn connection task
+        self.spawn_connection_task(Some(stream));
+
+        Ok(())
+    }
+
+    fn spawn_connection_task(&self, mut stream: Option<(Sink, Stream)>) {
         if self.is_running() {
             tracing::warn!(url = %self.url, "Connection task is already running.");
             return;
@@ -482,7 +481,7 @@ impl InnerRelay {
             let mut rx_service = relay.atomic.channels.rx_service().await;
 
             // Last websocket error
-            // Store it to avoid to print every time the same connection error
+            // Store it to avoid printing every time the same connection error
             let mut last_ws_error = None;
 
             // Auto-connect loop
@@ -493,7 +492,7 @@ impl InnerRelay {
 
                 tokio::select! {
                     // Connect and run message handler
-                    _ = relay.connect_and_run(connection_timeout, &mut last_ws_error) => {},
+                    _ = relay.connect_and_run(stream, &mut last_ws_error) => {},
                     // Handle "terminate" message
                     _ = relay.handle_terminate(&mut rx_service) => {
                         // Update status
@@ -503,6 +502,9 @@ impl InnerRelay {
                         break;
                     }
                 }
+
+                // Update stream to `None`, meaning that it was already used (if was some).
+                stream = None;
 
                 // Get status
                 let status: RelayStatus = relay.status();
@@ -557,7 +559,7 @@ impl InnerRelay {
 
     /// Depending on attempts and success, use default or incremental retry interval
     fn calculate_retry_interval(&self) -> Duration {
-        // Check if incremental interval is enabled
+        // Check if the incremental interval is enabled
         if self.opts.adjust_retry_interval {
             // Calculate the difference between attempts and success
             let diff: u32 = self.stats.attempts().saturating_sub(self.stats.success()) as u32;
@@ -565,7 +567,7 @@ impl InnerRelay {
             // Calculate multiplier
             let multiplier: u32 = 1 + (diff / 2);
 
-            // Compute adaptive retry interval
+            // Compute the adaptive retry interval
             let adaptive_interval: Duration = self.opts.retry_interval * multiplier;
 
             // If the interval is too big, use the min one.
@@ -608,26 +610,16 @@ impl InnerRelay {
         }
     }
 
-    /// Connect and run message handler
-    async fn connect_and_run(
+    async fn _try_connect(
         &self,
-        connection_timeout: Duration,
-        last_ws_error: &mut Option<String>,
-    ) {
+        timeout: Duration,
+        status_on_failure: RelayStatus,
+    ) -> Result<(Sink, Stream), WsError> {
         // Update status
         self.set_status(RelayStatus::Connecting, true);
 
         // Add attempt
         self.stats.new_attempt();
-
-        // Compose timeout
-        let timeout: Duration = if self.stats.attempts() > 1 {
-            // Many attempts, use the default timeout
-            DEFAULT_CONNECTION_TIMEOUT
-        } else {
-            // First attempt, use external timeout
-            connection_timeout
-        };
 
         // Connect
         match wsocket_connect((&self.url).into(), &self.opts.connection_mode, timeout).await {
@@ -638,35 +630,68 @@ impl InnerRelay {
                 // Increment success stats
                 self.stats.new_success();
 
-                // Request information document
-                #[cfg(feature = "nip11")]
-                self.request_nip11_document();
-
-                // Run message handler
-                self.run_message_handler(ws_tx, ws_rx).await;
+                Ok((ws_tx, ws_rx))
             }
             Err(e) => {
                 // Update status
-                self.set_status(RelayStatus::Disconnected, false);
+                self.set_status(status_on_failure, false);
 
-                // TODO: avoid string allocation. The error is converted to string only to perform the `!=` binary operation.
-                // Check if error should be logged
-                let e: String = e.to_string();
-                let to_log: bool = match &last_ws_error {
-                    Some(prev_err) => {
-                        // Log only if different from the last one
-                        prev_err != &e
-                    }
-                    None => true,
-                };
-
-                // Log error and update the last error
-                if to_log {
-                    tracing::error!(url = %self.url, error= %e, "Connection failed.");
-                    *last_ws_error = Some(e);
-                }
+                // Return error
+                Err(e)
             }
         }
+    }
+
+    /// Connect and run message handler
+    ///
+    /// If `stream` arg is passed, no connection attempt will be done.
+    async fn connect_and_run(
+        &self,
+        stream: Option<(Sink, Stream)>,
+        last_ws_error: &mut Option<String>,
+    ) {
+        match stream {
+            // Already have a stream, go to post-connection stage
+            Some((ws_tx, ws_rx)) => self.post_connection(ws_tx, ws_rx).await,
+            // No stream is passed, try to connect
+            // Set the status to "disconnected" to allow to automatic retries
+            None => match self
+                ._try_connect(DEFAULT_CONNECTION_TIMEOUT, RelayStatus::Disconnected)
+                .await
+            {
+                // Connection success, go to post-connection stage
+                Ok((ws_tx, ws_rx)) => self.post_connection(ws_tx, ws_rx).await,
+                // Error during connection
+                Err(e) => {
+                    // TODO: avoid string allocation. The error is converted to string only to perform the `!=` binary operation.
+                    // Check if error should be logged
+                    let e: String = e.to_string();
+                    let to_log: bool = match &last_ws_error {
+                        Some(prev_err) => {
+                            // Log only if different from the last one
+                            prev_err != &e
+                        }
+                        None => true,
+                    };
+
+                    // Log error and update the last error
+                    if to_log {
+                        tracing::error!(url = %self.url, error= %e, "Connection failed.");
+                        *last_ws_error = Some(e);
+                    }
+                }
+            },
+        }
+    }
+
+    // To run after websocket connection
+    async fn post_connection(&self, ws_tx: Sink, ws_rx: Stream) {
+        // Request information document
+        #[cfg(feature = "nip11")]
+        self.request_nip11_document();
+
+        // Run message handler
+        self.run_message_handler(ws_tx, ws_rx).await;
     }
 
     async fn run_message_handler(&self, ws_tx: Sink, ws_rx: Stream) {

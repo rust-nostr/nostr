@@ -73,7 +73,7 @@ impl NWC {
         }
 
         // Connect
-        self.relay.connect(None).await;
+        self.relay.connect();
 
         let filter = Filter::new()
             .author(self.uri.public_key)

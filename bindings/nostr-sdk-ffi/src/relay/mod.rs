@@ -200,9 +200,20 @@ impl Relay {
 
     // TODO: add notifications
 
-    /// Connect to relay and keep alive connection
-    pub async fn connect(&self, connection_timeout: Option<Duration>) {
-        self.inner.connect(connection_timeout).await
+    /// Connect to relay
+    ///
+    /// This method returns immediately and doesn't provide any information on if the connection was successful or not.
+    pub fn connect(&self) {
+        self.inner.connect()
+    }
+
+    /// Try to connect to relay
+    ///
+    /// This method returns an error if the connection fails.
+    /// If the connection fails,
+    /// a task will continue to retry in the background (unless configured differently in `RelayOptions`.
+    pub async fn try_connect(&self, timeout: Duration) -> Result<()> {
+        Ok(self.inner.try_connect(timeout).await?)
     }
 
     /// Disconnect from relay and set status to 'Terminated'

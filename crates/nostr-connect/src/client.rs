@@ -120,7 +120,7 @@ impl NostrConnect {
         }
 
         // Connect to relays
-        self.pool.connect(None).await;
+        self.pool.connect().await;
 
         // Subscribe
         let notifications = self.subscribe().await?;

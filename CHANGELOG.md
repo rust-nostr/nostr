@@ -25,6 +25,30 @@
 
 -->
 
+## [Unreleased]
+
+### Summary
+
+### Breaking changes
+
+* pool: change `Relay::connect` method signature ([Yuki Kishimoto])
+
+### Changed
+
+### Added
+
+* pool: add `Relay::try_connect` ([Yuki Kishimoto])
+* pool: add `RelayPool::try_connect` ([Yuki Kishimoto])
+* pool: add `RelayPool::try_connect_relay` ([Yuki Kishimoto])
+* sdk: add `Client::try_connect` ([Yuki Kishimoto])
+* sdk: add `Client::try_connect_relay` ([Yuki Kishimoto])
+
+### Fixed
+
+### Removed
+
+### Deprecated
+
 ## [v0.38.0] - 2024/12/31
 
 ### Summary

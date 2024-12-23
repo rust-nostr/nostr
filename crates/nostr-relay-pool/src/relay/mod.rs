@@ -254,10 +254,25 @@ impl Relay {
         self.inner.internal_notification_sender.subscribe()
     }
 
-    /// Connect to relay and keep alive connection
+    /// Connect to relay
+    ///
+    /// This method returns immediately and doesn't provide any information on if the connection was successful or not.
     #[inline]
-    pub async fn connect(&self, connection_timeout: Option<Duration>) {
-        self.inner.connect(connection_timeout).await
+    pub fn connect(&self) {
+        self.inner.connect()
+    }
+
+    /// Try to establish a connection with the relay.
+    ///
+    /// Attempts to establish a connection without spawning the connection task if it fails.
+    /// This means that if the connection fails, no automatic retries are scheduled.
+    /// Use [`Relay::connect`] if you want to immediately spawn a connection task,
+    /// regardless of whether the initial connection succeeds.
+    ///
+    /// Returns an error if the connection fails.
+    #[inline]
+    pub async fn try_connect(&self, timeout: Duration) -> Result<(), Error> {
+        self.inner.try_connect(timeout).await
     }
 
     /// Disconnect from relay and set status to 'Terminated'
@@ -443,7 +458,7 @@ mod tests {
 
         let relay = Relay::new(url);
 
-        relay.connect(Some(Duration::from_millis(100))).await;
+        relay.try_connect(Duration::from_millis(100)).await.unwrap();
 
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Test")
@@ -462,7 +477,7 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
-        relay.connect(Some(Duration::from_millis(100))).await;
+        relay.try_connect(Duration::from_millis(100)).await.unwrap();
 
         assert_eq!(relay.status(), RelayStatus::Connected);
 
@@ -485,7 +500,7 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
-        relay.connect(Some(Duration::from_millis(100))).await;
+        relay.try_connect(Duration::from_millis(100)).await.unwrap();
 
         assert_eq!(relay.status(), RelayStatus::Connected);
 
@@ -508,7 +523,7 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
-        relay.connect(Some(Duration::from_millis(100))).await;
+        relay.try_connect(Duration::from_millis(100)).await.unwrap();
 
         assert_eq!(relay.status(), RelayStatus::Connected);
 
@@ -532,7 +547,9 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
-        relay.connect(Some(Duration::from_millis(100))).await;
+        relay.connect();
+
+        time::sleep(Duration::from_secs(1)).await;
 
         assert!(relay.inner.is_running());
 
@@ -550,6 +567,80 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_connect() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let opts = RelayOptions::default();
+        let relay = Relay::with_opts(url, opts);
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.connect();
+
+        relay.wait_for_connection(Duration::from_secs(1)).await;
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
+        assert!(relay.inner.is_running());
+    }
+
+    #[tokio::test]
+    async fn test_connect_to_unreachable_relay() {
+        let url = RelayUrl::parse("wss://127.0.0.1:666").unwrap();
+
+        let opts = RelayOptions::default();
+        let relay = Relay::with_opts(url, opts);
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.connect();
+
+        time::sleep(Duration::from_secs(1)).await;
+
+        assert_eq!(relay.status(), RelayStatus::Disconnected);
+        assert!(relay.inner.is_running());
+    }
+
+    #[tokio::test]
+    async fn test_try_connect() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let opts = RelayOptions::default();
+        let relay = Relay::with_opts(url, opts);
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.try_connect(Duration::from_millis(500)).await.unwrap();
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        time::sleep(Duration::from_millis(500)).await;
+
+        assert!(relay.inner.is_running());
+    }
+
+    #[tokio::test]
+    async fn test_try_connect_to_unreachable_relay() {
+        let url = RelayUrl::parse("wss://127.0.0.1:666").unwrap();
+
+        let opts = RelayOptions::default();
+        let relay = Relay::with_opts(url, opts);
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        let res = relay.try_connect(Duration::from_secs(2)).await;
+        assert!(matches!(res.unwrap_err(), Error::WebSocket(..)));
+
+        assert_eq!(relay.status(), RelayStatus::Terminated);
+
+        // Connection failed, the connection task is not running
+        assert!(!relay.inner.is_running());
+    }
+
+    #[tokio::test]
     async fn test_disconnect_unresponsive_relay_that_connect() {
         // Mock relay
         let opts = RelayTestOptions {
@@ -562,7 +653,7 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
-        relay.connect(None).await;
+        relay.connect();
 
         time::sleep(Duration::from_secs(1)).await;
 
@@ -594,7 +685,7 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
-        relay.connect(None).await;
+        relay.connect();
 
         time::sleep(Duration::from_secs(1)).await;
 
@@ -623,7 +714,7 @@ mod tests {
 
         relay.inner.state.automatic_authentication(true);
 
-        relay.connect(Some(Duration::from_millis(100))).await;
+        relay.connect();
 
         // Signer
         let keys = Keys::generate();
@@ -664,7 +755,7 @@ mod tests {
 
         let relay = Relay::new(url);
 
-        relay.connect(Some(Duration::from_millis(100))).await;
+        relay.connect();
 
         // Signer
         let keys = Keys::generate();

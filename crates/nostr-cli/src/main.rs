@@ -177,7 +177,7 @@ async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
                 println!("Connecting to relays...");
 
                 // Connect and wait for connection
-                client.connect_with_timeout(Duration::from_secs(60)).await;
+                client.try_connect(Duration::from_secs(60)).await;
 
                 relays.clone()
             } else {

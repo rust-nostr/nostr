@@ -4,7 +4,6 @@
 
 //! Relay Pool
 
-use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -16,7 +15,6 @@ use atomic_destructor::AtomicDestroyer;
 use nostr_database::prelude::*;
 use tokio::sync::{broadcast, mpsc, Mutex, RwLock, RwLockReadGuard};
 
-use super::constants::MAX_CONNECTING_CHUNK;
 use super::options::RelayPoolOptions;
 use super::{Error, Output, RelayPoolNotification};
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
@@ -922,34 +920,48 @@ impl InnerRelayPool {
         Ok(ReceiverStream::new(rx))
     }
 
-    pub async fn connect(&self, connection_timeout: Option<Duration>) {
+    pub async fn connect(&self) {
         // Lock with read shared access
         let relays = self.atomic.relays.read().await;
 
+        // Connect
+        for relay in relays.values() {
+            relay.connect()
+        }
+    }
+
+    pub async fn try_connect(&self, timeout: Duration) -> Output<()> {
+        // Lock with read shared access
+        let relays = self.atomic.relays.read().await;
+
+        let mut urls: Vec<RelayUrl> = Vec::with_capacity(relays.len());
         let mut futures = Vec::with_capacity(relays.len());
+        let mut output: Output<()> = Output::default();
 
         // Filter only relays that can connect and compose futures
         for relay in relays.values().filter(|r| r.status().can_connect()) {
-            futures.push(relay.connect(connection_timeout));
+            urls.push(relay.url().clone());
+            futures.push(relay.try_connect(timeout));
         }
 
-        // Check number of futures
-        if futures.len() <= MAX_CONNECTING_CHUNK {
-            future::join_all(futures).await;
-            return;
+        // TODO: use semaphore to limit number concurrent connections?
+
+        // Join futures
+        let list = future::join_all(futures).await;
+
+        // Iterate results and compose output
+        for (url, result) in urls.into_iter().zip(list.into_iter()) {
+            match result {
+                Ok(..) => {
+                    output.success.insert(url);
+                }
+                Err(e) => {
+                    output.failed.insert(url, e.to_string());
+                }
+            }
         }
 
-        tracing::warn!(
-            "Too many relays ({}). Connecting in chunks of {MAX_CONNECTING_CHUNK} relays...",
-            futures.len()
-        );
-
-        // Join in chunks
-        while !futures.is_empty() {
-            let upper: usize = cmp::min(MAX_CONNECTING_CHUNK, futures.len());
-            let chunk = futures.drain(..upper);
-            future::join_all(chunk).await;
-        }
+        output
     }
 
     pub async fn disconnect(&self) -> Result<(), Error> {
@@ -964,11 +976,7 @@ impl InnerRelayPool {
         Ok(())
     }
 
-    pub async fn connect_relay<U>(
-        &self,
-        url: U,
-        connection_timeout: Option<Duration>,
-    ) -> Result<(), Error>
+    pub async fn connect_relay<U>(&self, url: U) -> Result<(), Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
@@ -983,7 +991,27 @@ impl InnerRelayPool {
         let relay: &Relay = self.internal_relay(&relays, &url)?;
 
         // Connect
-        relay.connect(connection_timeout).await;
+        relay.connect();
+
+        Ok(())
+    }
+
+    pub async fn try_connect_relay<U>(&self, url: U, timeout: Duration) -> Result<(), Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Convert url
+        let url: RelayUrl = url.try_into_url()?;
+
+        // Lock with read shared access
+        let relays = self.atomic.relays.read().await;
+
+        // Get relay
+        let relay: &Relay = self.internal_relay(&relays, &url)?;
+
+        // Try to connect
+        relay.try_connect(timeout).await?;
 
         Ok(())
     }
