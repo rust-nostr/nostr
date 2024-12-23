@@ -15,11 +15,14 @@ Future<void> hello() async {
   // ANCHOR_END: connect
 
   // ANCHOR: publish
-  // TODO
+  EventBuilder builder = EventBuilder.textNote(content: "Hello, rust-nostr!");
+  SendEventOutput output = await client.sendEventBuilder(builder: builder);
   // ANCHOR_END: publish
 
   // ANCHOR: output
-  // TODO
+  print("Event ID: ${output.id}");
+  print("Sent to: ${output.success}");
+  print("Not sent to: ${output.failed}");
   // ANCHOR_END: output
 }
 // ANCHOR_END: full
