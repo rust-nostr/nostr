@@ -40,15 +40,19 @@ impl From<pool::Output<()>> for Output {
 pub struct SendEventOutput {
     /// Event ID
     pub id: Arc<EventId>,
-    /// Output
-    pub output: Output,
+    /// Set of relays that success
+    pub success: Vec<String>,
+    /// Map of relays that failed, with related errors.
+    pub failed: HashMap<String, String>,
 }
 
 impl From<pool::Output<nostr_sdk::EventId>> for SendEventOutput {
     fn from(output: pool::Output<nostr_sdk::EventId>) -> Self {
+        let out = convert_output(output.success, output.failed);
         Self {
             id: Arc::new(output.val.into()),
-            output: convert_output(output.success, output.failed),
+            success: out.success,
+            failed: out.failed,
         }
     }
 }
@@ -58,15 +62,19 @@ impl From<pool::Output<nostr_sdk::EventId>> for SendEventOutput {
 pub struct SubscribeOutput {
     /// Subscription ID
     pub id: String,
-    /// Output
-    pub output: Output,
+    /// Set of relays that success
+    pub success: Vec<String>,
+    /// Map of relays that failed, with related errors.
+    pub failed: HashMap<String, String>,
 }
 
 impl From<pool::Output<SubscriptionId>> for SubscribeOutput {
     fn from(output: pool::Output<SubscriptionId>) -> Self {
+        let out = convert_output(output.success, output.failed);
         Self {
             id: output.val.to_string(),
-            output: convert_output(output.success, output.failed),
+            success: out.success,
+            failed: out.failed,
         }
     }
 }
@@ -74,15 +82,21 @@ impl From<pool::Output<SubscriptionId>> for SubscribeOutput {
 /// Reconciliation output
 #[derive(Record)]
 pub struct ReconciliationOutput {
+    /// Reconciliation report
     pub report: Reconciliation,
-    pub output: Output,
+    /// Set of relays that success
+    pub success: Vec<String>,
+    /// Map of relays that failed, with related errors.
+    pub failed: HashMap<String, String>,
 }
 
 impl From<pool::Output<pool::Reconciliation>> for ReconciliationOutput {
     fn from(output: pool::Output<pool::Reconciliation>) -> Self {
+        let out = convert_output(output.success, output.failed);
         Self {
             report: output.val.into(),
-            output: convert_output(output.success, output.failed),
+            success: out.success,
+            failed: out.failed,
         }
     }
 }

@@ -54,16 +54,21 @@ impl From<Output<()>> for JsOutput {
 pub struct JsSendEventOutput {
     /// Event ID
     pub id: JsEventId,
-    /// Output
+    /// Set of relays that success
     #[wasm_bindgen(getter_with_clone)]
-    pub output: JsOutput,
+    pub success: Vec<String>,
+    /// Map of relays that failed, with related errors.
+    #[wasm_bindgen(getter_with_clone)]
+    pub failed: Vec<JsFailedOutputItem>,
 }
 
 impl From<Output<EventId>> for JsSendEventOutput {
     fn from(output: Output<EventId>) -> Self {
+        let out = convert_output(output.success, output.failed);
         Self {
             id: output.val.into(),
-            output: convert_output(output.success, output.failed),
+            success: out.success,
+            failed: out.failed,
         }
     }
 }
@@ -74,16 +79,21 @@ pub struct JsSubscribeOutput {
     /// Subscription ID
     #[wasm_bindgen(getter_with_clone)]
     pub id: String,
-    /// Output
+    /// Set of relays that success
     #[wasm_bindgen(getter_with_clone)]
-    pub output: JsOutput,
+    pub success: Vec<String>,
+    /// Map of relays that failed, with related errors.
+    #[wasm_bindgen(getter_with_clone)]
+    pub failed: Vec<JsFailedOutputItem>,
 }
 
 impl From<Output<SubscriptionId>> for JsSubscribeOutput {
     fn from(output: Output<SubscriptionId>) -> Self {
+        let out = convert_output(output.success, output.failed);
         Self {
             id: output.val.to_string(),
-            output: convert_output(output.success, output.failed),
+            success: out.success,
+            failed: out.failed,
         }
     }
 }
@@ -93,15 +103,21 @@ impl From<Output<SubscriptionId>> for JsSubscribeOutput {
 pub struct JsReconciliationOutput {
     #[wasm_bindgen(getter_with_clone)]
     pub report: JsReconciliation,
+    /// Set of relays that success
     #[wasm_bindgen(getter_with_clone)]
-    pub output: JsOutput,
+    pub success: Vec<String>,
+    /// Map of relays that failed, with related errors.
+    #[wasm_bindgen(getter_with_clone)]
+    pub failed: Vec<JsFailedOutputItem>,
 }
 
 impl From<Output<Reconciliation>> for JsReconciliationOutput {
     fn from(output: Output<Reconciliation>) -> Self {
+        let out = convert_output(output.success, output.failed);
         Self {
             report: output.val.into(),
-            output: convert_output(output.success, output.failed),
+            success: out.success,
+            failed: out.failed,
         }
     }
 }

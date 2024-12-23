@@ -40,8 +40,8 @@ async def main():
     print("Event sent:")
     print(f" hex:    {output.id.to_hex()}")
     print(f" bech32: {output.id.to_bech32()}")
-    print(f" Successfully sent to:    {output.output.success}")
-    print(f" Failed to send to: {output.output.failed}")
+    print(f" Successfully sent to:    {output.success}")
+    print(f" Failed to send to: {output.failed}")
 
     await asyncio.sleep(2.0)
 
