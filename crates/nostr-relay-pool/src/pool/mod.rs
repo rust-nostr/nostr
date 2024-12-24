@@ -67,7 +67,7 @@ pub enum RelayPoolNotification {
     },
     /// Shutdown
     ///
-    /// This notification variant is sent when [`RelayPool::shutdown`] method is called.
+    /// This notification variant is sent after [`RelayPool::shutdown`] method is called and all connections have been closed.
     Shutdown,
 }
 
@@ -106,8 +106,8 @@ impl RelayPool {
 
     /// Completely shutdown pool
     ///
-    /// This method disconnect and remove all relays from the [`RelayPool`] and then
-    /// send [`RelayPoolNotification::Shutdown`] notification.
+    /// This method disconnects and removes all relays from the [`RelayPool`] and then
+    /// sends [`RelayPoolNotification::Shutdown`] notification.
     ///
     /// After this method has been called, the [`RelayPool`] can no longer be used (i.e. can't add relays).
     #[inline]
