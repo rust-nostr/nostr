@@ -66,6 +66,8 @@ pub enum RelayPoolNotification {
         relay_url: RelayUrl,
     },
     /// Shutdown
+    ///
+    /// This notification variant is sent when [`RelayPool::shutdown`] method is called.
     Shutdown,
 }
 
@@ -103,6 +105,11 @@ impl RelayPool {
     }
 
     /// Completely shutdown pool
+    ///
+    /// This method disconnect and remove all relays from the [`RelayPool`] and then
+    /// send [`RelayPoolNotification::Shutdown`] notification.
+    ///
+    /// After this method has been called, the [`RelayPool`] can no longer be used (i.e. can't add relays).
     #[inline]
     pub async fn shutdown(&self) -> Result<(), Error> {
         self.inner.shutdown().await
