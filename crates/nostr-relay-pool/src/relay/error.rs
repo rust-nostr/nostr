@@ -59,6 +59,8 @@ pub enum Error {
     NotReady,
     /// Relay not connected
     NotConnected,
+    /// Connection failed
+    ConnectionFailed,
     /// Received shutdown
     ReceivedShutdown,
     /// Relay message
@@ -145,6 +147,7 @@ impl fmt::Display for Error {
             }
             Self::NotReady => write!(f, "relay is initialized but not ready"),
             Self::NotConnected => write!(f, "relay not connected"),
+            Self::ConnectionFailed => write!(f, "connection failed"),
             Self::ReceivedShutdown => write!(f, "received shutdown"),
             Self::RelayMessage(message) => write!(f, "{message}"),
             Self::BatchMessagesEmpty => write!(f, "can't batch empty list of messages"),

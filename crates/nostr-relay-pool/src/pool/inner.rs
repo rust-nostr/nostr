@@ -912,7 +912,17 @@ impl InnerRelayPool {
         Ok(ReceiverStream::new(rx))
     }
 
-    pub async fn connect(&self, connection_timeout: Option<Duration>) {
+    pub async fn connect(&self) {
+        // Lock with read shared access
+        let relays = self.relays.read().await;
+        
+        // Connect
+        for relay in relays.values() {
+            relay.connect()
+        }
+    }
+    
+    pub async fn try_connect(&self, timeout: Duration) {
         // Lock with read shared access
         let relays = self.relays.read().await;
 
@@ -920,7 +930,7 @@ impl InnerRelayPool {
 
         // Filter only relays that can connect and compose futures
         for relay in relays.values().filter(|r| r.status().can_connect()) {
-            futures.push(relay.connect(connection_timeout));
+            futures.push(relay.try_connect(timeout));
         }
 
         // Check number of futures
@@ -957,7 +967,6 @@ impl InnerRelayPool {
     pub async fn connect_relay<U>(
         &self,
         url: U,
-        connection_timeout: Option<Duration>,
     ) -> Result<(), Error>
     where
         U: TryIntoUrl,
@@ -973,7 +982,31 @@ impl InnerRelayPool {
         let relay: &Relay = self.internal_relay(&relays, &url)?;
 
         // Connect
-        relay.connect(connection_timeout).await;
+        relay.connect();
+
+        Ok(())
+    }
+
+    pub async fn try_connect_relay<U>(
+        &self,
+        url: U,
+        timeout: Duration,
+    ) -> Result<(), Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Convert url
+        let url: RelayUrl = url.try_into_url()?;
+
+        // Lock with read shared access
+        let relays = self.relays.read().await;
+
+        // Get relay
+        let relay: &Relay = self.internal_relay(&relays, &url)?;
+
+        // Try onnect
+        relay.try_connect(timeout).await?;
 
         Ok(())
     }

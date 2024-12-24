@@ -423,42 +423,54 @@ impl InnerRelay {
         }
     }
 
-    pub async fn connect(&self, connection_timeout: Option<Duration>) {
-        // Return if relay can't connect
-        if !self.status().can_connect() {
-            return;
-        }
-
+    fn _connect(&self, timeout: Duration) {
         // Update status
         // Change it to pending to avoid issues with the health check (initialized check)
         self.set_status(RelayStatus::Pending, false);
 
-        // If connection timeout is `Some`, try to connect waiting for connection
-        match connection_timeout {
-            Some(timeout) => {
-                let mut notifications = self.internal_notification_sender.subscribe();
+        // Spawn connection task
+        self.spawn_and_try_connect(timeout);
+    }
 
-                // Spawn and try connect
-                self.spawn_and_try_connect(timeout);
-
-                // Wait for status change (connected or disconnected)
-                tracing::debug!(url = %self.url, "Waiting for status change before continue");
-                while let Ok(notification) = notifications.recv().await {
-                    if let RelayNotification::RelayStatus {
-                        status: RelayStatus::Connected | RelayStatus::Disconnected,
-                    } = notification
-                    {
-                        break;
-                    }
-                }
-            }
-            None => {
-                self.spawn_and_try_connect(DEFAULT_CONNECTION_TIMEOUT);
-            }
+    pub fn connect(&self) {
+        if self.status().can_connect() {
+            self._connect(DEFAULT_CONNECTION_TIMEOUT);
         }
     }
 
-    fn spawn_and_try_connect(&self, connection_timeout: Duration) {
+    pub async fn try_connect(&self, timeout: Duration) -> Result<(), Error> {
+        // Check if relay can't connect
+        if self.status().can_connect() {
+            // TODO: should return `Error::AlreadyConnected`?
+            return Ok(());
+        }
+
+        // Subscribe to notifications
+        let mut notifications = self.internal_notification_sender.subscribe();
+
+        // Connect
+        self._connect(timeout);
+        
+        // Wait for status change (connected or disconnected)
+        while let Ok(notification) = notifications.recv().await {
+            if let RelayNotification::RelayStatus { status } = notification {
+                match status {
+                    // These statuses shouldn't happen, break the loop
+                    RelayStatus::Initialized | RelayStatus::Pending => break,
+                    // Waiting for connection, stay in the loop
+                    RelayStatus::Connecting => continue,
+                    // Success
+                    RelayStatus::Connected => return Ok(()),
+                    // Failed
+                    RelayStatus::Disconnected | RelayStatus::Terminated => return Err(Error::ConnectionFailed),
+                }
+            }
+        }
+
+        Err(Error::PrematureExit)
+    }
+
+    fn spawn_and_try_connect(&self, timeout: Duration) {
         if self.is_running() {
             tracing::warn!(url = %self.url, "Connection task is already running.");
             return;
@@ -480,7 +492,7 @@ impl InnerRelay {
 
                 tokio::select! {
                     // Connect and run message handler
-                    _ = relay.connect_and_run(connection_timeout) => {},
+                    _ = relay.connect_and_run(timeout) => {},
                     // Handle terminate
                     _ = relay.handle_terminate(&mut rx_service) => {
                         // Update status
@@ -596,7 +608,7 @@ impl InnerRelay {
     }
 
     /// Connect and run message handler
-    async fn connect_and_run(&self, connection_timeout: Duration) {
+    async fn connect_and_run(&self, timeout: Duration) {
         // Update status
         self.set_status(RelayStatus::Connecting, true);
 
@@ -609,7 +621,7 @@ impl InnerRelay {
             DEFAULT_CONNECTION_TIMEOUT
         } else {
             // First attempt, use external timeout
-            connection_timeout
+            timeout
         };
 
         // Connect
