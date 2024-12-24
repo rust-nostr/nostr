@@ -63,6 +63,7 @@
 * pool: acquire service watcher receiver outside the auto-connect loop ([Yuki Kishimoto])
 * pool: decrease `MAX_RETRY_INTERVAL` to 60 secs ([Yuki Kishimoto])
 * pool: rework retry interval calculation ([Yuki Kishimoto])
+* pool: improve shutdown docs ([dluvian])
 * sdk: refactor POW difficulty management ([Yuki Kishimoto])
 * connect: require `fmt::Debug`, `Send` and `Sync` for `AuthUrlHandler` ([Yuki Kishimoto])
 * zapper: bump `webln` to 0.4 ([Yuki Kishimoto])
@@ -913,6 +914,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [v0l]: https://github.com/v0l
 [arkanoider]: https://github.com/arkanoider
 [1wErt3r]: https://github.com/1wErt3r
+[dluvian]: https://github.com/dluvian
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.37.0...HEAD
