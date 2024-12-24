@@ -63,6 +63,7 @@
 * pool: decrease `MAX_RETRY_INTERVAL` to 60 secs ([Yuki Kishimoto])
 * pool: rework retry interval calculation ([Yuki Kishimoto])
 * sdk: refactor POW difficulty management ([Yuki Kishimoto])
+* zapper: bump `webln` to 0.4 ([Yuki Kishimoto])
 * bindings: refactor `SendEventOutput` and `SubscribeOutput` ([Yuki Kishimoto])
 
 ### Added

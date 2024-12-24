@@ -6249,9 +6249,9 @@ dependencies = [
 
 [[package]]
 name = "webln"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a75257015c2a40fc43c672fb03b70311f75e48b1020c8acff808ca628c46d87c"
+checksum = "68b01c3179bc4d47af44bd9fa34670c26cb79bcfc329ac286e5c9c9d7cb1080b"
 dependencies = [
  "js-sys",
  "secp256k1",
