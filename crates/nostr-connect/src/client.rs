@@ -5,6 +5,7 @@
 //! Nostr Connect client
 
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -451,7 +452,7 @@ async fn get_remote_signer_public_key(
 /// Nostr Connect auth_url handler
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-pub trait AuthUrlHandler: AsyncTraitDeps {
+pub trait AuthUrlHandler: fmt::Debug + Send + Sync {
     /// Handle `auth_url` message
     async fn on_auth_url(&self, auth_url: Url) -> Result<()>;
 }
