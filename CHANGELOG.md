@@ -64,6 +64,7 @@
 * pool: decrease `MAX_RETRY_INTERVAL` to 60 secs ([Yuki Kishimoto])
 * pool: rework retry interval calculation ([Yuki Kishimoto])
 * pool: improve shutdown docs ([dluvian])
+* pool: rename `FilterOptions` to `ReqExitPolicy` ([Yuki Kishimoto])
 * sdk: refactor POW difficulty management ([Yuki Kishimoto])
 * connect: require `fmt::Debug`, `Send` and `Sync` for `AuthUrlHandler` ([Yuki Kishimoto])
 * zapper: bump `webln` to 0.4 ([Yuki Kishimoto])
@@ -114,6 +115,7 @@
 ### Deprecated
 
 * pool: deprecated batch event methods ([Yuki Kishimoto])
+* pool: deprecate `FilterOptions` ([Yuki Kishimoto])
 * sdk: deprecate `timeout` option ([Yuki Kishimoto])
 * sdk: deprecate `Options::difficulty` and `Client::update_difficulty` ([Yuki Kishimoto])
 

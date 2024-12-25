@@ -31,7 +31,7 @@ use super::constants::{
 use super::filtering::CheckFiltering;
 use super::flags::AtomicRelayServiceFlags;
 use super::options::{
-    FilterOptions, RelayOptions, SubscribeAutoCloseOptions, SubscribeOptions, SyncOptions,
+    RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, SubscribeOptions, SyncOptions,
 };
 use super::ping::PingTracker;
 use super::stats::RelayConnectionStats;
@@ -1401,7 +1401,8 @@ impl InnerRelay {
                             subscription_id, ..
                         } => {
                             if &subscription_id == id {
-                                if let FilterOptions::WaitForEventsAfterEOSE(num) = opts.filter {
+                                if let ReqExitPolicy::WaitForEventsAfterEOSE(num) = opts.exit_policy
+                                {
                                     if received_eose {
                                         counter += 1;
                                         if counter >= num {
@@ -1414,8 +1415,8 @@ impl InnerRelay {
                         RelayMessage::EndOfStoredEvents(subscription_id) => {
                             if &subscription_id == id {
                                 received_eose = true;
-                                if let FilterOptions::ExitOnEOSE
-                                | FilterOptions::WaitDurationAfterEOSE(_) = opts.filter
+                                if let ReqExitPolicy::ExitOnEOSE
+                                | ReqExitPolicy::WaitDurationAfterEOSE(_) = opts.exit_policy
                                 {
                                     break;
                                 }
@@ -1476,7 +1477,7 @@ impl InnerRelay {
                 }
             }
 
-            if let FilterOptions::WaitDurationAfterEOSE(duration) = opts.filter {
+            if let ReqExitPolicy::WaitDurationAfterEOSE(duration) = opts.exit_policy {
                 time::timeout(Some(duration), async {
                     while let Ok(notification) = notifications.recv().await {
                         match notification {
@@ -1524,7 +1525,7 @@ impl InnerRelay {
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
-        opts: FilterOptions,
+        policy: ReqExitPolicy,
         callback: impl Fn(Event) -> F,
     ) -> Result<(), Error>
     where
@@ -1535,7 +1536,7 @@ impl InnerRelay {
 
         // Compose options
         let auto_close_opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
-            .filter(opts)
+            .exit_policy(policy)
             .timeout(Some(timeout));
         let subscribe_opts: SubscribeOptions =
             SubscribeOptions::default().close_on(Some(auto_close_opts));
@@ -1595,10 +1596,10 @@ impl InnerRelay {
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
-        opts: FilterOptions,
+        policy: ReqExitPolicy,
     ) -> Result<Events, Error> {
         let events: Mutex<Events> = Mutex::new(Events::new(&filters));
-        self.fetch_events_with_callback(filters, timeout, opts, |event| async {
+        self.fetch_events_with_callback(filters, timeout, policy, |event| async {
             let mut events = events.lock().await;
             events.insert(event);
         })

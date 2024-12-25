@@ -15,8 +15,6 @@ use atomic_destructor::AtomicDestructor;
 use nostr_database::prelude::*;
 use tokio::sync::broadcast;
 
-use crate::shared::SharedState;
-
 pub mod constants;
 mod error;
 mod filtering;
@@ -34,11 +32,12 @@ pub use self::flags::{AtomicRelayServiceFlags, FlagCheck, RelayServiceFlags};
 use self::inner::InnerRelay;
 pub use self::limits::RelayLimits;
 pub use self::options::{
-    FilterOptions, RelayOptions, SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection,
+    RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection,
     SyncOptions, SyncProgress,
 };
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
+use crate::shared::SharedState;
 
 /// Subscription auto-closed reason
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -350,14 +349,14 @@ impl Relay {
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
-        opts: FilterOptions,
+        policy: ReqExitPolicy,
         callback: impl Fn(Event) -> F,
     ) -> Result<(), Error>
     where
         F: Future<Output = ()>,
     {
         self.inner
-            .fetch_events_with_callback(filters, timeout, opts, callback)
+            .fetch_events_with_callback(filters, timeout, policy, callback)
             .await
     }
 
@@ -367,9 +366,9 @@ impl Relay {
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
-        opts: FilterOptions,
+        policy: ReqExitPolicy,
     ) -> Result<Events, Error> {
-        self.inner.fetch_events(filters, timeout, opts).await
+        self.inner.fetch_events(filters, timeout, policy).await
     }
 
     /// Count events
@@ -686,7 +685,7 @@ mod tests {
             .fetch_events(
                 vec![filter.clone()],
                 Duration::from_secs(5),
-                FilterOptions::ExitOnEOSE,
+                ReqExitPolicy::ExitOnEOSE,
             )
             .await
             .unwrap_err();
@@ -708,7 +707,7 @@ mod tests {
             .fetch_events(
                 vec![filter.clone()],
                 Duration::from_secs(5),
-                FilterOptions::ExitOnEOSE,
+                ReqExitPolicy::ExitOnEOSE,
             )
             .await
             .unwrap_err();
@@ -722,7 +721,7 @@ mod tests {
             .fetch_events(
                 vec![filter],
                 Duration::from_secs(5),
-                FilterOptions::ExitOnEOSE,
+                ReqExitPolicy::ExitOnEOSE,
             )
             .await;
         assert!(res.is_ok());

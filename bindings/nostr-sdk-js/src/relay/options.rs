@@ -91,43 +91,43 @@ impl JsRelayOptions {
     }
 }
 
-/// Filter options
-#[wasm_bindgen(js_name = FilterOptions)]
-pub struct JsFilterOptions {
-    inner: FilterOptions,
+/// Request (REQ) exit policy
+#[wasm_bindgen(js_name = ReqExitPolicy)]
+pub struct JsReqExitPolicy {
+    inner: ReqExitPolicy,
 }
 
-impl Deref for JsFilterOptions {
-    type Target = FilterOptions;
+impl Deref for JsReqExitPolicy {
+    type Target = ReqExitPolicy;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-#[wasm_bindgen(js_class = FilterOptions)]
-impl JsFilterOptions {
+#[wasm_bindgen(js_class = ReqExitPolicy)]
+impl JsReqExitPolicy {
     /// Exit on EOSE
     #[wasm_bindgen(js_name = exitOnEose)]
     pub fn exit_on_eose() -> Self {
         Self {
-            inner: FilterOptions::ExitOnEOSE,
+            inner: ReqExitPolicy::ExitOnEOSE,
         }
     }
 
-    /// After EOSE is received, keep listening for N more events that match the filter, then return
+    /// After EOSE is received, keep listening for N more events that match the filter
     #[wasm_bindgen(js_name = waitForEventsAfterEOSE)]
     pub fn wait_for_events_after_eose(num: u16) -> Self {
         Self {
-            inner: FilterOptions::WaitForEventsAfterEOSE(num),
+            inner: ReqExitPolicy::WaitForEventsAfterEOSE(num),
         }
     }
 
-    /// After EOSE is received, keep listening for matching events for `Duration` more time, then return
+    /// After EOSE is received, keep listening for matching events for `Duration` more time
     #[wasm_bindgen(js_name = waitDurationAfterEOSE)]
     pub fn wait_duration_after_eose(duration: &JsDuration) -> Self {
         Self {
-            inner: FilterOptions::WaitDurationAfterEOSE(**duration),
+            inner: ReqExitPolicy::WaitDurationAfterEOSE(**duration),
         }
     }
 }
@@ -161,9 +161,10 @@ impl JsSubscribeAutoCloseOptions {
         }
     }
 
-    /// Close subscription when `FilterOptions` is satisfied
-    pub fn filter(self, filter: JsFilterOptions) -> Self {
-        self.inner.filter(filter.inner).into()
+    /// Close subscription when the policy is satisfied
+    #[wasm_bindgen(js_name = exitPolicy)]
+    pub fn exit_policy(self, policy: JsReqExitPolicy) -> Self {
+        self.inner.exit_policy(policy.inner).into()
     }
 
     /// Automatically close subscription after `Duration`

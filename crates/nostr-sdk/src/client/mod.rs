@@ -579,7 +579,7 @@ impl Client {
     /// // Auto-closing subscription
     /// let id = SubscriptionId::generate();
     /// let subscription = Filter::new().kind(Kind::TextNote).limit(10);
-    /// let opts = SubscribeAutoCloseOptions::default().filter(FilterOptions::ExitOnEOSE);
+    /// let opts = SubscribeAutoCloseOptions::default().exit_policy(ReqExitPolicy::ExitOnEOSE);
     /// let output = client.subscribe(vec![subscription], Some(opts)).await?;
     /// println!("Subscription ID: {} [auto-closing]", output.val);
     /// # Ok(())
@@ -773,7 +773,7 @@ impl Client {
 
         Ok(self
             .pool
-            .fetch_events(filters, timeout, FilterOptions::ExitOnEOSE)
+            .fetch_events(filters, timeout, ReqExitPolicy::default())
             .await?)
     }
 
@@ -792,7 +792,7 @@ impl Client {
     {
         Ok(self
             .pool
-            .fetch_events_from(urls, filters, timeout, FilterOptions::ExitOnEOSE)
+            .fetch_events_from(urls, filters, timeout, ReqExitPolicy::default())
             .await?)
     }
 
@@ -864,7 +864,7 @@ impl Client {
         } else {
             Ok(self
                 .pool
-                .stream_events(filters, timeout, FilterOptions::ExitOnEOSE)
+                .stream_events(filters, timeout, ReqExitPolicy::default())
                 .await?)
         }
     }
@@ -884,7 +884,7 @@ impl Client {
     {
         Ok(self
             .pool
-            .stream_events_from(urls, filters, timeout, FilterOptions::ExitOnEOSE)
+            .stream_events_from(urls, filters, timeout, ReqExitPolicy::default())
             .await?)
     }
 
@@ -903,7 +903,7 @@ impl Client {
     {
         Ok(self
             .pool
-            .stream_events_targeted(source, timeout, FilterOptions::ExitOnEOSE)
+            .stream_events_targeted(source, timeout, ReqExitPolicy::default())
             .await?)
     }
 
@@ -1771,7 +1771,7 @@ impl Client {
         // Stream events
         let stream: ReceiverStream<Event> = self
             .pool
-            .stream_events_targeted(filters, timeout, FilterOptions::ExitOnEOSE)
+            .stream_events_targeted(filters, timeout, ReqExitPolicy::default())
             .await?;
 
         Ok(stream)

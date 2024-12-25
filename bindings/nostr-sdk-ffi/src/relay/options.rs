@@ -6,7 +6,7 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use nostr_sdk::pool;
+use nostr_sdk::{pool, prelude};
 use uniffi::{Enum, Object};
 
 use super::{RelayFilteringMode, RelayLimits};
@@ -159,23 +159,23 @@ impl RelayOptions {
     }
 }
 
-/// Filter options
+/// Request (REQ) exit policy
 #[derive(Enum)]
-pub enum FilterOptions {
+pub enum ReqExitPolicy {
     /// Exit on EOSE
     ExitOnEOSE,
-    /// After EOSE is received, keep listening for N more events that match the filter, then return
+    /// After EOSE is received, keep listening for N more events that match the filter.
     WaitForEventsAfterEOSE { num: u16 },
-    /// After EOSE is received, keep listening for matching events for `Duration` more time, then return
+    /// After EOSE is received, keep listening for matching events for `Duration` more time.
     WaitDurationAfterEOSE { duration: Duration },
 }
 
-impl From<FilterOptions> for nostr_sdk::FilterOptions {
-    fn from(value: FilterOptions) -> Self {
+impl From<ReqExitPolicy> for prelude::ReqExitPolicy {
+    fn from(value: ReqExitPolicy) -> Self {
         match value {
-            FilterOptions::ExitOnEOSE => Self::ExitOnEOSE,
-            FilterOptions::WaitForEventsAfterEOSE { num } => Self::WaitForEventsAfterEOSE(num),
-            FilterOptions::WaitDurationAfterEOSE { duration } => {
+            ReqExitPolicy::ExitOnEOSE => Self::ExitOnEOSE,
+            ReqExitPolicy::WaitForEventsAfterEOSE { num } => Self::WaitForEventsAfterEOSE(num),
+            ReqExitPolicy::WaitDurationAfterEOSE { duration } => {
                 Self::WaitDurationAfterEOSE(duration)
             }
         }
@@ -205,10 +205,10 @@ impl SubscribeAutoCloseOptions {
         }
     }
 
-    /// Close subscription when `FilterOptions` is satisfied
-    pub fn filter(&self, filter: FilterOptions) -> Self {
+    /// Close subscription when the policy is satisfied
+    pub fn exit_policy(&self, policy: ReqExitPolicy) -> Self {
         let mut builder = self.clone();
-        builder.inner = builder.inner.filter(filter.into());
+        builder.inner = builder.inner.exit_policy(policy.into());
         builder
     }
 

@@ -24,7 +24,7 @@ use self::inner::InnerRelayPool;
 pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
 use crate::relay::flags::FlagCheck;
-use crate::relay::options::{FilterOptions, RelayOptions, SyncOptions};
+use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
 use crate::relay::{Relay, RelayFiltering, RelayStatus};
 use crate::shared::SharedState;
 use crate::stream::ReceiverStream;
@@ -524,9 +524,9 @@ impl RelayPool {
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
-        opts: FilterOptions,
+        policy: ReqExitPolicy,
     ) -> Result<Events, Error> {
-        self.inner.fetch_events(filters, timeout, opts).await
+        self.inner.fetch_events(filters, timeout, policy).await
     }
 
     /// Fetch events from specific relays
@@ -536,7 +536,7 @@ impl RelayPool {
         urls: I,
         filters: Vec<Filter>,
         timeout: Duration,
-        opts: FilterOptions,
+        policy: ReqExitPolicy,
     ) -> Result<Events, Error>
     where
         I: IntoIterator<Item = U>,
@@ -544,7 +544,7 @@ impl RelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         self.inner
-            .fetch_events_from(urls, filters, timeout, opts)
+            .fetch_events_from(urls, filters, timeout, policy)
             .await
     }
 
@@ -554,9 +554,9 @@ impl RelayPool {
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
-        opts: FilterOptions,
+        policy: ReqExitPolicy,
     ) -> Result<ReceiverStream<Event>, Error> {
-        self.inner.stream_events(filters, timeout, opts).await
+        self.inner.stream_events(filters, timeout, policy).await
     }
 
     /// Stream events from specific relays
@@ -566,7 +566,7 @@ impl RelayPool {
         urls: I,
         filters: Vec<Filter>,
         timeout: Duration,
-        opts: FilterOptions,
+        policy: ReqExitPolicy,
     ) -> Result<ReceiverStream<Event>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -574,7 +574,7 @@ impl RelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         self.inner
-            .stream_events_from(urls, filters, timeout, opts)
+            .stream_events_from(urls, filters, timeout, policy)
             .await
     }
 
@@ -586,7 +586,7 @@ impl RelayPool {
         &self,
         source: I,
         timeout: Duration,
-        opts: FilterOptions,
+        policy: ReqExitPolicy,
     ) -> Result<ReceiverStream<Event>, Error>
     where
         I: IntoIterator<Item = (U, Vec<Filter>)>,
@@ -594,7 +594,7 @@ impl RelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         self.inner
-            .stream_events_targeted(source, timeout, opts)
+            .stream_events_targeted(source, timeout, policy)
             .await
     }
 

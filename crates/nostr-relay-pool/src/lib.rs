@@ -26,8 +26,7 @@ pub use self::pool::{Output, RelayPool, RelayPoolNotification};
 pub use self::relay::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
 pub use self::relay::limits::RelayLimits;
 pub use self::relay::options::{
-    FilterOptions, RelayOptions, SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection,
-    SyncOptions,
+    RelayOptions, SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection, SyncOptions,
 };
 pub use self::relay::stats::RelayConnectionStats;
 pub use self::relay::{

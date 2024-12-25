@@ -19,7 +19,7 @@ use tokio::sync::{broadcast, mpsc, Mutex, RwLock, RwLockReadGuard};
 use super::constants::MAX_CONNECTING_CHUNK;
 use super::options::RelayPoolOptions;
 use super::{Error, Output, RelayPoolNotification};
-use crate::relay::options::{FilterOptions, RelayOptions, SyncOptions};
+use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
 use crate::relay::{FlagCheck, Reconciliation, Relay};
 use crate::shared::SharedState;
 use crate::stream::ReceiverStream;
@@ -762,10 +762,10 @@ impl InnerRelayPool {
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
-        opts: FilterOptions,
+        policy: ReqExitPolicy,
     ) -> Result<Events, Error> {
         let urls: Vec<RelayUrl> = self.read_relay_urls().await;
-        self.fetch_events_from(urls, filters, timeout, opts).await
+        self.fetch_events_from(urls, filters, timeout, policy).await
     }
 
     pub async fn fetch_events_from<I, U>(
@@ -773,7 +773,7 @@ impl InnerRelayPool {
         urls: I,
         filters: Vec<Filter>,
         timeout: Duration,
-        opts: FilterOptions,
+        policy: ReqExitPolicy,
     ) -> Result<Events, Error>
     where
         I: IntoIterator<Item = U>,
@@ -784,7 +784,7 @@ impl InnerRelayPool {
 
         // Stream events
         let mut stream = self
-            .stream_events_from(urls, filters, timeout, opts)
+            .stream_events_from(urls, filters, timeout, policy)
             .await?;
         while let Some(event) = stream.next().await {
             events.insert(event);
@@ -798,10 +798,11 @@ impl InnerRelayPool {
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
-        opts: FilterOptions,
+        policy: ReqExitPolicy,
     ) -> Result<ReceiverStream<Event>, Error> {
         let urls: Vec<RelayUrl> = self.read_relay_urls().await;
-        self.stream_events_from(urls, filters, timeout, opts).await
+        self.stream_events_from(urls, filters, timeout, policy)
+            .await
     }
 
     #[inline]
@@ -810,7 +811,7 @@ impl InnerRelayPool {
         urls: I,
         filters: Vec<Filter>,
         timeout: Duration,
-        opts: FilterOptions,
+        policy: ReqExitPolicy,
     ) -> Result<ReceiverStream<Event>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -818,7 +819,7 @@ impl InnerRelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let targets = urls.into_iter().map(|u| (u, filters.clone()));
-        self.stream_events_targeted(targets, timeout, opts).await
+        self.stream_events_targeted(targets, timeout, policy).await
     }
 
     // TODO: change target type to `HashMap<Url, Vec<Filter>>`?
@@ -826,7 +827,7 @@ impl InnerRelayPool {
         &self,
         targets: I,
         timeout: Duration,
-        opts: FilterOptions,
+        policy: ReqExitPolicy,
     ) -> Result<ReceiverStream<Event>, Error>
     where
         I: IntoIterator<Item = (U, Vec<Filter>)>,
@@ -882,7 +883,7 @@ impl InnerRelayPool {
                         futures.push(relay.fetch_events_with_callback(
                             filters,
                             timeout,
-                            opts,
+                            policy,
                             |event| async {
                                 let mut ids = ids.lock().await;
                                 if ids.insert(event.id) {

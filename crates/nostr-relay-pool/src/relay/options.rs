@@ -154,14 +154,21 @@ impl RelayOptions {
 /// Auto-closing subscribe options
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SubscribeAutoCloseOptions {
-    pub(super) filter: FilterOptions,
+    pub(super) exit_policy: ReqExitPolicy,
     pub(super) timeout: Option<Duration>,
 }
 
 impl SubscribeAutoCloseOptions {
-    /// Close subscription when [FilterOptions] is satisfied
-    pub fn filter(mut self, filter: FilterOptions) -> Self {
-        self.filter = filter;
+    #[allow(deprecated)]
+    #[allow(missing_docs)]
+    #[deprecated(since = "0.38.0", note = "use `exit_policy` instead")]
+    pub fn filter(self, filter: FilterOptions) -> Self {
+        self.exit_policy(filter)
+    }
+
+    /// Close subscription when [`ReqExitPolicy`] is satisfied
+    pub fn exit_policy(mut self, policy: ReqExitPolicy) -> Self {
+        self.exit_policy = policy;
         self
     }
 
@@ -190,15 +197,19 @@ impl SubscribeOptions {
     }
 }
 
-/// Filter options
+#[allow(missing_docs)]
+#[deprecated(since = "0.38.0", note = "use `ReqExitPolicy` instead")]
+pub type FilterOptions = ReqExitPolicy;
+
+/// Request (REQ) exit policy
 #[derive(Debug, Clone, Copy, Default)]
-pub enum FilterOptions {
-    /// Exit on EOSE
+pub enum ReqExitPolicy {
+    /// Exit on EOSE.
     #[default]
     ExitOnEOSE,
-    /// After EOSE is received, keep listening for N more events that match the filter, then return
+    /// After EOSE is received, keep listening for N more events that match the filter.
     WaitForEventsAfterEOSE(u16),
-    /// After EOSE is received, keep listening for matching events for [`Duration`] more time, then return
+    /// After EOSE is received, keep listening for matching events for [`Duration`] more time.
     WaitDurationAfterEOSE(Duration),
 }
 

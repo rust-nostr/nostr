@@ -14,7 +14,7 @@ pub mod options;
 
 use self::filtering::JsRelayFiltering;
 use self::flags::JsAtomicRelayServiceFlags;
-use self::options::{JsFilterOptions, JsRelayOptions, JsSubscribeOptions, JsSyncOptions};
+use self::options::{JsRelayOptions, JsReqExitPolicy, JsSubscribeOptions, JsSyncOptions};
 use crate::database::JsEvents;
 use crate::duration::JsDuration;
 use crate::error::{into_err, Result};
@@ -250,12 +250,12 @@ impl JsRelay {
         &self,
         filters: Vec<JsFilter>,
         timeout: &JsDuration,
-        opts: &JsFilterOptions,
+        policy: &JsReqExitPolicy,
     ) -> Result<JsEvents> {
         let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         Ok(self
             .inner
-            .fetch_events(filters, **timeout, **opts)
+            .fetch_events(filters, **timeout, **policy)
             .await
             .map_err(into_err)?
             .into())

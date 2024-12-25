@@ -7,7 +7,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
-use nostr_sdk::{pool, FilterOptions, RelayUrl, SubscriptionId};
+use nostr_sdk::{pool, RelayUrl, SubscriptionId};
 use uniffi::{Object, Record};
 
 pub mod filtering;
@@ -19,7 +19,7 @@ pub mod status;
 pub use self::filtering::{RelayFiltering, RelayFilteringMode};
 pub use self::limits::RelayLimits;
 use self::options::SyncOptions;
-pub use self::options::{ConnectionMode, RelayOptions, SubscribeOptions};
+pub use self::options::{ConnectionMode, RelayOptions, ReqExitPolicy, SubscribeOptions};
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
 use crate::database::events::Events;
@@ -299,6 +299,7 @@ impl Relay {
         &self,
         filters: Vec<Arc<Filter>>,
         timeout: Duration,
+        policy: ReqExitPolicy,
     ) -> Result<Events> {
         let filters = filters
             .into_iter()
@@ -306,7 +307,7 @@ impl Relay {
             .collect();
         Ok(self
             .inner
-            .fetch_events(filters, timeout, FilterOptions::ExitOnEOSE)
+            .fetch_events(filters, timeout, policy.into())
             .await?
             .into())
     }
