@@ -107,6 +107,12 @@ pub struct Nip07Signer {
     nostr_obj: Object,
 }
 
+#[allow(unsafe_code)]
+unsafe impl Send for Nip07Signer {}
+
+#[allow(unsafe_code)]
+unsafe impl Sync for Nip07Signer {}
+
 impl Nip07Signer {
     /// Compose new NIP07 Signer
     pub fn new() -> Result<Self, Error> {

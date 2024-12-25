@@ -89,7 +89,7 @@ pub enum SignerBackend<'a> {
 /// Nostr signer abstraction
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-pub trait NostrSigner: AsyncTraitDeps {
+pub trait NostrSigner: fmt::Debug + Send + Sync {
     /// Signer backend
     fn backend(&self) -> SignerBackend;
 
@@ -192,37 +192,3 @@ impl NostrSigner for Arc<dyn NostrSigner> {
         self.as_ref().nip44_decrypt(public_key, payload).await
     }
 }
-
-/// Alias for `Send` on non-wasm, empty trait (implemented by everything) on
-/// wasm.
-#[cfg(not(target_arch = "wasm32"))]
-pub trait SendOutsideWasm: Send {}
-#[cfg(not(target_arch = "wasm32"))]
-impl<T: Send> SendOutsideWasm for T {}
-
-/// Alias for `Send` on non-wasm, empty trait (implemented by everything) on
-/// wasm.
-#[cfg(target_arch = "wasm32")]
-pub trait SendOutsideWasm {}
-#[cfg(target_arch = "wasm32")]
-impl<T> SendOutsideWasm for T {}
-
-/// Alias for `Sync` on non-wasm, empty trait (implemented by everything) on
-/// wasm.
-#[cfg(not(target_arch = "wasm32"))]
-pub trait SyncOutsideWasm: Sync {}
-#[cfg(not(target_arch = "wasm32"))]
-impl<T: Sync> SyncOutsideWasm for T {}
-
-/// Alias for `Sync` on non-wasm, empty trait (implemented by everything) on
-/// wasm.
-#[cfg(target_arch = "wasm32")]
-pub trait SyncOutsideWasm {}
-#[cfg(target_arch = "wasm32")]
-impl<T> SyncOutsideWasm for T {}
-
-/// Super trait that is used for our store traits, this trait will differ if
-/// it's used on WASM. WASM targets will not require `Send` and `Sync` to have
-/// implemented, while other targets will.
-pub trait AsyncTraitDeps: fmt::Debug + SendOutsideWasm + SyncOutsideWasm {}
-impl<T: fmt::Debug + SendOutsideWasm + SyncOutsideWasm> AsyncTraitDeps for T {}
