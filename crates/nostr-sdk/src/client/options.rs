@@ -6,7 +6,7 @@
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
-#[cfg(feature = "tor")]
+#[cfg(all(feature = "tor", not(target_arch = "wasm32")))]
 use std::path::Path;
 use std::time::Duration;
 
