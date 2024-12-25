@@ -1340,123 +1340,17 @@ impl InnerRelay {
         // Check if auto-close condition is set
         match opts.auto_close {
             Some(opts) => {
-                let this = self.clone();
+                let relay = self.clone();
                 task::spawn(async move {
-                    let sub_id: SubscriptionId = id.clone();
-                    let relay = this.clone();
-                    let res: Option<(bool, Option<SubscriptionAutoClosedReason>)> = time::timeout(opts.timeout, async move {
-                        let mut counter = 0;
-                        let mut received_eose: bool = false;
-                        let mut require_resubscription: bool = false;
-
-                        let mut notifications = relay.internal_notification_sender.subscribe();
-                        while let Ok(notification) = notifications.recv().await {
-                            match notification {
-                                RelayNotification::Message { message, .. } => match message {
-                                    RelayMessage::Event {
-                                        subscription_id, ..
-                                    } => {
-                                        if subscription_id == id {
-                                            if let FilterOptions::WaitForEventsAfterEOSE(num) =
-                                                opts.filter
-                                            {
-                                                if received_eose {
-                                                    counter += 1;
-                                                    if counter >= num {
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    RelayMessage::EndOfStoredEvents(subscription_id) => {
-                                        if subscription_id == id {
-                                            received_eose = true;
-                                            if let FilterOptions::ExitOnEOSE
-                                            | FilterOptions::WaitDurationAfterEOSE(_) =
-                                                opts.filter
-                                            {
-                                                break;
-                                            }
-                                        }
-                                    }
-                                    RelayMessage::Closed {
-                                        subscription_id,
-                                        message,
-                                    } => {
-                                        if subscription_id == id {
-                                            // Check if auth required
-                                            match MachineReadablePrefix::parse(&message) {
-                                                Some(MachineReadablePrefix::AuthRequired) => {
-                                                    if relay.state.is_auto_authentication_enabled() {
-                                                        require_resubscription = true;
-                                                    } else {
-                                                        return (false, Some(SubscriptionAutoClosedReason::Closed(message))); // No need to send CLOSE msg
-                                                    }
-                                                }
-                                                _ => {
-                                                    return (false, Some(SubscriptionAutoClosedReason::Closed(message))); // No need to send CLOSE msg
-                                                }
-                                            }
-                                        }
-                                    }
-                                    _ => (),
-                                },
-                                RelayNotification::Authenticated => {
-                                    // Resend REQ
-                                    if require_resubscription {
-                                        require_resubscription = false;
-                                        let msg: ClientMessage =
-                                            ClientMessage::req(id.clone(), filters.clone());
-                                        let _ = relay.send_msg(msg);
-                                    }
-                                }
-                                RelayNotification::AuthenticationFailed => {
-                                    return (false, Some(SubscriptionAutoClosedReason::AuthenticationFailed)); // No need to send CLOSE msg
-                                }
-                                RelayNotification::RelayStatus { status } => {
-                                    if status.is_disconnected() {
-                                        return (false, None); // No need to send CLOSE msg
-                                    }
-                                }
-                                RelayNotification::Shutdown => {
-                                    return (false, None); // No need to send CLOSE msg
-                                }
-                                _ => (),
-                            }
-                        }
-
-                        if let FilterOptions::WaitDurationAfterEOSE(duration) = opts.filter {
-                            time::timeout(Some(duration), async {
-                                while let Ok(notification) = notifications.recv().await {
-                                    match notification {
-                                        RelayNotification::RelayStatus { status } => {
-                                            if status.is_disconnected() {
-                                                return Ok(());
-                                            }
-                                        }
-                                        RelayNotification::Shutdown => {
-                                            return Ok(());
-                                        }
-                                        _ => (),
-                                    }
-                                }
-
-                                Ok::<(), Error>(())
-                            })
-                            .await;
-                        }
-
-                        (true, Some(SubscriptionAutoClosedReason::Completed)) // Need to send CLOSE msg
-                    })
-                    .await;
+                    let res: Option<(bool, Option<SubscriptionAutoClosedReason>)> =
+                        relay.handle_auto_closing(&id, filters, opts).await;
 
                     // Check if CLOSE needed
                     let to_close: bool = match res {
                         Some((to_close, reason)) => {
                             // Send subscription auto closed notification
                             if let Some(reason) = reason {
-                                this.send_notification(
+                                relay.send_notification(
                                     RelayNotification::SubscriptionAutoClosed { reason },
                                     false,
                                 );
@@ -1465,16 +1359,15 @@ impl InnerRelay {
                             to_close
                         }
                         None => {
-                            tracing::warn!(id = %sub_id, "Timeout reached for subscription, auto-closing.");
+                            tracing::warn!(id = %id, "Timeout reached for subscription, auto-closing.");
                             true
                         }
                     };
 
+                    // Close subscription
                     if to_close {
-                        // Unsubscribe
-                        this.send_msg(ClientMessage::close(sub_id.clone()))?;
-
-                        tracing::debug!(id = %sub_id, "Subscription auto-closed.");
+                        tracing::debug!(id = %id, "Auto-closing subscription.");
+                        relay.send_msg(ClientMessage::close(id))?;
                     }
 
                     Ok::<(), Error>(())
@@ -1482,11 +1375,131 @@ impl InnerRelay {
             }
             None => {
                 // No auto-close subscription: update subscription filters
-                self.update_subscription(id.clone(), filters, true).await;
+                self.update_subscription(id, filters, true).await;
             }
         };
 
         Ok(())
+    }
+
+    async fn handle_auto_closing(
+        &self,
+        id: &SubscriptionId,
+        filters: Vec<Filter>,
+        opts: SubscribeAutoCloseOptions,
+    ) -> Option<(bool, Option<SubscriptionAutoClosedReason>)> {
+        time::timeout(opts.timeout, async move {
+            let mut counter = 0;
+            let mut received_eose: bool = false;
+            let mut require_resubscription: bool = false;
+
+            let mut notifications = self.internal_notification_sender.subscribe();
+            while let Ok(notification) = notifications.recv().await {
+                match notification {
+                    RelayNotification::Message { message, .. } => match message {
+                        RelayMessage::Event {
+                            subscription_id, ..
+                        } => {
+                            if &subscription_id == id {
+                                if let FilterOptions::WaitForEventsAfterEOSE(num) = opts.filter {
+                                    if received_eose {
+                                        counter += 1;
+                                        if counter >= num {
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        RelayMessage::EndOfStoredEvents(subscription_id) => {
+                            if &subscription_id == id {
+                                received_eose = true;
+                                if let FilterOptions::ExitOnEOSE
+                                | FilterOptions::WaitDurationAfterEOSE(_) = opts.filter
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                        RelayMessage::Closed {
+                            subscription_id,
+                            message,
+                        } => {
+                            if &subscription_id == id {
+                                // Check if auth required
+                                match MachineReadablePrefix::parse(&message) {
+                                    Some(MachineReadablePrefix::AuthRequired) => {
+                                        if self.state.is_auto_authentication_enabled() {
+                                            require_resubscription = true;
+                                        } else {
+                                            return (
+                                                false,
+                                                Some(SubscriptionAutoClosedReason::Closed(message)),
+                                            ); // No need to send CLOSE msg
+                                        }
+                                    }
+                                    _ => {
+                                        return (
+                                            false,
+                                            Some(SubscriptionAutoClosedReason::Closed(message)),
+                                        ); // No need to send CLOSE msg
+                                    }
+                                }
+                            }
+                        }
+                        _ => (),
+                    },
+                    RelayNotification::Authenticated => {
+                        // Resend REQ
+                        if require_resubscription {
+                            require_resubscription = false;
+                            let msg: ClientMessage =
+                                ClientMessage::req(id.clone(), filters.clone());
+                            let _ = self.send_msg(msg);
+                        }
+                    }
+                    RelayNotification::AuthenticationFailed => {
+                        return (
+                            false,
+                            Some(SubscriptionAutoClosedReason::AuthenticationFailed),
+                        ); // No need to send CLOSE msg
+                    }
+                    RelayNotification::RelayStatus { status } => {
+                        if status.is_disconnected() {
+                            return (false, None); // No need to send CLOSE msg
+                        }
+                    }
+                    RelayNotification::Shutdown => {
+                        return (false, None); // No need to send CLOSE msg
+                    }
+                    _ => (),
+                }
+            }
+
+            if let FilterOptions::WaitDurationAfterEOSE(duration) = opts.filter {
+                time::timeout(Some(duration), async {
+                    while let Ok(notification) = notifications.recv().await {
+                        match notification {
+                            RelayNotification::RelayStatus { status } => {
+                                if status.is_disconnected() {
+                                    return Ok(());
+                                }
+                            }
+                            RelayNotification::Shutdown => {
+                                return Ok(());
+                            }
+                            _ => (),
+                        }
+                    }
+
+                    Ok::<(), Error>(())
+                })
+                .await;
+            }
+
+            (true, Some(SubscriptionAutoClosedReason::Completed)) // Need to send CLOSE msg
+        })
+        .await
     }
 
     pub async fn unsubscribe(&self, id: SubscriptionId) -> Result<(), Error> {
