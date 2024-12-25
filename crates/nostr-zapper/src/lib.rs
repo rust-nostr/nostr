@@ -10,6 +10,7 @@
 #![allow(unknown_lints)]
 #![allow(clippy::arc_with_non_send_sync)]
 
+use std::fmt;
 use std::sync::Arc;
 
 pub extern crate nostr;
@@ -73,7 +74,7 @@ where
 /// Nostr Database
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-pub trait NostrZapper: AsyncTraitDeps {
+pub trait NostrZapper: fmt::Debug + Send + Sync {
     /// Name of the backend zapper used (ex. WebLN, NWC, ...)
     fn backend(&self) -> ZapperBackend;
 

@@ -65,6 +65,7 @@
 * pool: rework retry interval calculation ([Yuki Kishimoto])
 * sdk: refactor POW difficulty management ([Yuki Kishimoto])
 * zapper: bump `webln` to 0.4 ([Yuki Kishimoto])
+* zapper: require `fmt::Debug`, `Send` and `Sync` for `NostrZapper` ([Yuki Kishimoto])
 * bindings: refactor `SendEventOutput` and `SubscribeOutput` ([Yuki Kishimoto])
 
 ### Added
