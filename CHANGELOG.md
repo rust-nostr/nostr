@@ -82,6 +82,7 @@
 * database: impl PartialEq and Eq for `Events` ([Yuki Kishimoto])
 * database: add `SaveEventStatus` enum ([Yuki Kishimoto])
 * pool: add `ReceiverStream` ([Yuki Kishimoto])
+* Add `SubscribeAutoCloseOptions::idle_timeout` ([Yuki Kishimoto])
 * sdk: automatically resend event after NIP-42 authentication ([Yuki Kishimoto])
 * sdk: add `Connection::embedded_tor_with_path` ([Yuki Kishimoto])
 * connect: add `NostrConnect::status` ([Yuki Kishimoto])

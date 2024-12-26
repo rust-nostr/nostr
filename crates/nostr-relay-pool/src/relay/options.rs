@@ -156,6 +156,7 @@ impl RelayOptions {
 pub struct SubscribeAutoCloseOptions {
     pub(super) exit_policy: ReqExitPolicy,
     pub(super) timeout: Option<Duration>,
+    pub(super) idle_timeout: Option<Duration>,
 }
 
 impl SubscribeAutoCloseOptions {
@@ -172,9 +173,15 @@ impl SubscribeAutoCloseOptions {
         self
     }
 
-    /// Automatically close subscription after [Duration]
+    /// Automatically close subscription after [`Duration`].
     pub fn timeout(mut self, timeout: Option<Duration>) -> Self {
         self.timeout = timeout;
+        self
+    }
+
+    /// Automatically close subscription if no notifications/events are received within the [`Duration`].
+    pub fn idle_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.idle_timeout = timeout;
         self
     }
 }

@@ -1361,40 +1361,7 @@ impl InnerRelay {
 
         // Check if auto-close condition is set
         match opts.auto_close {
-            Some(opts) => {
-                let relay = self.clone();
-                task::spawn(async move {
-                    let res: Option<(bool, Option<SubscriptionAutoClosedReason>)> =
-                        relay.handle_auto_closing(&id, filters, opts).await;
-
-                    // Check if CLOSE needed
-                    let to_close: bool = match res {
-                        Some((to_close, reason)) => {
-                            // Send subscription auto closed notification
-                            if let Some(reason) = reason {
-                                relay.send_notification(
-                                    RelayNotification::SubscriptionAutoClosed { reason },
-                                    false,
-                                );
-                            }
-
-                            to_close
-                        }
-                        None => {
-                            tracing::warn!(id = %id, "Timeout reached for subscription, auto-closing.");
-                            true
-                        }
-                    };
-
-                    // Close subscription
-                    if to_close {
-                        tracing::debug!(id = %id, "Auto-closing subscription.");
-                        relay.send_msg(ClientMessage::close(id))?;
-                    }
-
-                    Ok::<(), Error>(())
-                });
-            }
+            Some(opts) => self.spawn_auto_closing_handler(id, filters, opts),
             None => {
                 // No auto-close subscription: update subscription filters
                 self.update_subscription(id, filters, true).await;
@@ -1404,6 +1371,44 @@ impl InnerRelay {
         Ok(())
     }
 
+    fn spawn_auto_closing_handler(
+        &self,
+        id: SubscriptionId,
+        filters: Vec<Filter>,
+        opts: SubscribeAutoCloseOptions,
+    ) {
+        let relay = self.clone();
+        task::spawn(async move {
+            // Check if CLOSE needed
+            let to_close: bool = match relay.handle_auto_closing(&id, filters, opts).await {
+                Some((to_close, reason)) => {
+                    // Send subscription auto-closed notification
+                    if let Some(reason) = reason {
+                        relay.send_notification(
+                            RelayNotification::SubscriptionAutoClosed { reason },
+                            false,
+                        );
+                    }
+
+                    to_close
+                }
+                // Timeout
+                None => {
+                    tracing::warn!(id = %id, "Timeout reached for subscription, auto-closing.");
+                    true
+                }
+            };
+
+            // Close subscription
+            if to_close {
+                tracing::debug!(id = %id, "Auto-closing subscription.");
+                relay.send_msg(ClientMessage::close(id))?;
+            }
+
+            Ok::<(), Error>(())
+        });
+    }
+
     async fn handle_auto_closing(
         &self,
         id: &SubscriptionId,
@@ -1411,18 +1416,38 @@ impl InnerRelay {
         opts: SubscribeAutoCloseOptions,
     ) -> Option<(bool, Option<SubscriptionAutoClosedReason>)> {
         time::timeout(opts.timeout, async move {
-            let mut counter = 0;
+            let mut counter: u16 = 0;
             let mut received_eose: bool = false;
             let mut require_resubscription: bool = false;
+            let mut last_event: Option<Instant> = None;
 
+            // Subscribe to notifications
             let mut notifications = self.internal_notification_sender.subscribe();
-            while let Ok(notification) = notifications.recv().await {
+
+            // Listen to notifications with timeout
+            // If no notification is received within no-events timeout, `None` is returned.
+            while let Ok(notification) =
+                time::timeout(opts.idle_timeout, notifications.recv()).await?
+            {
+                // Check if no-events timeout is reached
+                if let (Some(idle_timeout), Some(last_event)) = (opts.idle_timeout, last_event) {
+                    if last_event.elapsed() > idle_timeout {
+                        // Close the subscription
+                        return Some((true, None)); // TODO: use SubscriptionAutoClosedReason::Timeout?
+                    }
+                }
+
                 match notification {
                     RelayNotification::Message { message, .. } => match message {
                         RelayMessage::Event {
                             subscription_id, ..
                         } => {
                             if &subscription_id == id {
+                                // If no-events timeout is enabled, update instant of last event received
+                                if opts.idle_timeout.is_some() {
+                                    last_event = Some(Instant::now());
+                                }
+
                                 if let ReqExitPolicy::WaitForEventsAfterEOSE(num) = opts.exit_policy
                                 {
                                     if received_eose {
@@ -1455,17 +1480,17 @@ impl InnerRelay {
                                         if self.state.is_auto_authentication_enabled() {
                                             require_resubscription = true;
                                         } else {
-                                            return (
+                                            return Some((
                                                 false,
                                                 Some(SubscriptionAutoClosedReason::Closed(message)),
-                                            ); // No need to send CLOSE msg
+                                            )); // No need to send CLOSE msg
                                         }
                                     }
                                     _ => {
-                                        return (
+                                        return Some((
                                             false,
                                             Some(SubscriptionAutoClosedReason::Closed(message)),
-                                        ); // No need to send CLOSE msg
+                                        )); // No need to send CLOSE msg
                                     }
                                 }
                             }
@@ -1482,18 +1507,18 @@ impl InnerRelay {
                         }
                     }
                     RelayNotification::AuthenticationFailed => {
-                        return (
+                        return Some((
                             false,
                             Some(SubscriptionAutoClosedReason::AuthenticationFailed),
-                        ); // No need to send CLOSE msg
+                        )); // No need to send CLOSE msg
                     }
                     RelayNotification::RelayStatus { status } => {
                         if status.is_disconnected() {
-                            return (false, None); // No need to send CLOSE msg
+                            return Some((false, None)); // No need to send CLOSE msg
                         }
                     }
                     RelayNotification::Shutdown => {
-                        return (false, None); // No need to send CLOSE msg
+                        return Some((false, None)); // No need to send CLOSE msg
                     }
                     _ => (),
                 }
@@ -1520,9 +1545,9 @@ impl InnerRelay {
                 .await;
             }
 
-            (true, Some(SubscriptionAutoClosedReason::Completed)) // Need to send CLOSE msg
+            Some((true, Some(SubscriptionAutoClosedReason::Completed))) // Need to send CLOSE msg
         })
-        .await
+        .await?
     }
 
     pub async fn unsubscribe(&self, id: SubscriptionId) -> Result<(), Error> {

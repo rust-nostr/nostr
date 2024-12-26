@@ -212,10 +212,17 @@ impl SubscribeAutoCloseOptions {
         builder
     }
 
-    /// Automatically close subscription after `Duration`
+    /// Automatically close subscription after duration.
     pub fn timeout(&self, timeout: Option<Duration>) -> Self {
         let mut builder = self.clone();
         builder.inner = builder.inner.timeout(timeout);
+        builder
+    }
+
+    /// Automatically close subscription if no notifications/events are received within the duration.
+    pub fn idle_timeout(&self, timeout: Option<Duration>) -> Self {
+        let mut builder = self.clone();
+        builder.inner = builder.inner.idle_timeout(timeout);
         builder
     }
 }

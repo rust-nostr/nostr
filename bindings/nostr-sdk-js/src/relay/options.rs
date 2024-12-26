@@ -171,6 +171,12 @@ impl JsSubscribeAutoCloseOptions {
     pub fn timeout(self, timeout: Option<JsDuration>) -> Self {
         self.inner.timeout(timeout.map(|t| *t)).into()
     }
+
+    /// Automatically close subscription if no notifications/events are received within the duration.
+    #[wasm_bindgen(js_name = idleTimeout)]
+    pub fn idle_timeout(self, timeout: Option<JsDuration>) -> Self {
+        self.inner.idle_timeout(timeout.map(|t| *t)).into()
+    }
 }
 
 /// Subscribe options
