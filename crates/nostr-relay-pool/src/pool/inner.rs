@@ -27,14 +27,21 @@ use crate::{RelayServiceFlags, SubscribeOptions};
 
 type Relays = HashMap<RelayUrl, Relay>;
 
+// Instead of wrap every field in an `Arc<T>`, which increases the number of atomic operations,
+// put all fields that require an `Arc` here.
+#[derive(Debug)]
+struct AtomicPrivateData {
+    relays: RwLock<Relays>,
+    subscriptions: RwLock<HashMap<SubscriptionId, Vec<Filter>>>,
+    shutdown: AtomicBool,
+}
+
 #[derive(Debug, Clone)]
 pub struct InnerRelayPool {
     pub(super) state: SharedState,
-    relays: Arc<RwLock<Relays>>,
+    atomic: Arc<AtomicPrivateData>,
     notification_sender: broadcast::Sender<RelayPoolNotification>, // TODO: move to shared state?
-    subscriptions: Arc<RwLock<HashMap<SubscriptionId, Vec<Filter>>>>,
     opts: RelayPoolOptions,
-    shutdown: Arc<AtomicBool>,
 }
 
 impl AtomicDestroyer for InnerRelayPool {
@@ -55,11 +62,13 @@ impl InnerRelayPool {
 
         Self {
             state,
-            relays: Arc::new(RwLock::new(HashMap::new())),
+            atomic: Arc::new(AtomicPrivateData {
+                relays: RwLock::new(HashMap::new()),
+                subscriptions: RwLock::new(HashMap::new()),
+                shutdown: AtomicBool::new(false),
+            }),
             notification_sender,
-            subscriptions: Arc::new(RwLock::new(HashMap::new())),
             opts,
-            shutdown: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -73,14 +82,14 @@ impl InnerRelayPool {
             .send(RelayPoolNotification::Shutdown);
 
         // Mark as shutdown
-        self.shutdown.store(true, Ordering::SeqCst);
+        self.atomic.shutdown.store(true, Ordering::SeqCst);
 
         Ok(())
     }
 
     #[inline]
     pub(super) fn is_shutdown(&self) -> bool {
-        self.shutdown.load(Ordering::SeqCst)
+        self.atomic.shutdown.load(Ordering::SeqCst)
     }
 
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
@@ -88,7 +97,7 @@ impl InnerRelayPool {
     }
 
     pub async fn all_relays(&self) -> Relays {
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
         relays.clone()
     }
 
@@ -114,7 +123,7 @@ impl InnerRelayPool {
 
     /// Get relays that have a certain [RelayServiceFlag] enabled
     pub async fn relays_with_flag(&self, flag: RelayServiceFlags, check: FlagCheck) -> Relays {
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
         self.internal_relays_with_flag(&relays, flag, check)
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect()
@@ -122,7 +131,7 @@ impl InnerRelayPool {
 
     /// Get relays with `READ` or `WRITE` relays
     async fn relay_urls(&self) -> Vec<RelayUrl> {
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
         self.internal_relays_with_flag(
             &relays,
             RelayServiceFlags::READ | RelayServiceFlags::WRITE,
@@ -133,14 +142,14 @@ impl InnerRelayPool {
     }
 
     async fn read_relay_urls(&self) -> Vec<RelayUrl> {
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
         self.internal_relays_with_flag(&relays, RelayServiceFlags::READ, FlagCheck::All)
             .map(|(k, ..)| k.clone())
             .collect()
     }
 
     async fn write_relay_urls(&self) -> Vec<RelayUrl> {
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
         self.internal_relays_with_flag(&relays, RelayServiceFlags::WRITE, FlagCheck::All)
             .map(|(k, ..)| k.clone())
             .collect()
@@ -161,32 +170,32 @@ impl InnerRelayPool {
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let url: RelayUrl = url.try_into_url()?;
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
         self.internal_relay(&relays, &url).cloned()
     }
 
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
-        self.subscriptions.read().await.clone()
+        self.atomic.subscriptions.read().await.clone()
     }
 
     pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
-        let subscriptions = self.subscriptions.read().await;
+        let subscriptions = self.atomic.subscriptions.read().await;
         subscriptions.get(id).cloned()
     }
 
     pub async fn save_subscription(&self, id: SubscriptionId, filters: Vec<Filter>) {
-        let mut subscriptions = self.subscriptions.write().await;
+        let mut subscriptions = self.atomic.subscriptions.write().await;
         let current: &mut Vec<Filter> = subscriptions.entry(id).or_default();
         *current = filters;
     }
 
     pub(crate) async fn remove_subscription(&self, id: &SubscriptionId) {
-        let mut subscriptions = self.subscriptions.write().await;
+        let mut subscriptions = self.atomic.subscriptions.write().await;
         subscriptions.remove(id);
     }
 
     pub(crate) async fn remove_all_subscriptions(&self) {
-        let mut subscriptions = self.subscriptions.write().await;
+        let mut subscriptions = self.atomic.subscriptions.write().await;
         subscriptions.clear();
     }
 
@@ -209,7 +218,7 @@ impl InnerRelayPool {
         }
 
         // Get relays
-        let mut relays = self.relays.write().await;
+        let mut relays = self.atomic.relays.write().await;
 
         // Check if map already contains url
         if relays.contains_key(&url) {
@@ -302,7 +311,7 @@ impl InnerRelayPool {
         let url: RelayUrl = url.try_into_url()?;
 
         // Acquire write lock
-        let mut relays = self.relays.write().await;
+        let mut relays = self.atomic.relays.write().await;
 
         // Remove
         self.internal_remove_relay(&mut relays, url, force).await
@@ -310,7 +319,7 @@ impl InnerRelayPool {
 
     pub async fn remove_all_relays(&self, force: bool) -> Result<(), Error> {
         // Acquire write lock
-        let mut relays = self.relays.write().await;
+        let mut relays = self.atomic.relays.write().await;
 
         // Collect all relay urls
         let urls: Vec<RelayUrl> = relays.keys().cloned().collect();
@@ -354,7 +363,7 @@ impl InnerRelayPool {
         }
 
         // Lock with read shared access
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
 
         if relays.is_empty() {
             return Err(Error::NoRelays);
@@ -418,7 +427,7 @@ impl InnerRelayPool {
         }
 
         // Lock with read shared access
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
 
         if relays.is_empty() {
             return Err(Error::NoRelays);
@@ -566,7 +575,7 @@ impl InnerRelayPool {
         }
 
         // Lock with read shared access
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
 
         // Check if relays map is empty
         if relays.is_empty() {
@@ -618,7 +627,7 @@ impl InnerRelayPool {
         self.remove_subscription(&id).await;
 
         // Lock with read shared access
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
 
         // TODO: use join_all and return `Output`?
 
@@ -635,7 +644,7 @@ impl InnerRelayPool {
         self.remove_all_subscriptions().await;
 
         // Lock with read shared access
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
 
         // TODO: use join_all and return `Output`?
 
@@ -708,7 +717,7 @@ impl InnerRelayPool {
         }
 
         // Lock with read shared access
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
 
         // Check if empty
         if relays.is_empty() {
@@ -846,7 +855,7 @@ impl InnerRelayPool {
         }
 
         // Lock with read shared access
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
 
         // Check if empty
         if relays.is_empty() {
@@ -868,7 +877,7 @@ impl InnerRelayPool {
         let this = self.clone();
         task::spawn(async move {
             // Lock with read shared access
-            let relays = this.relays.read().await;
+            let relays = this.atomic.relays.read().await;
 
             let ids: Mutex<HashSet<EventId>> = Mutex::new(HashSet::new());
 
@@ -915,7 +924,7 @@ impl InnerRelayPool {
 
     pub async fn connect(&self, connection_timeout: Option<Duration>) {
         // Lock with read shared access
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
 
         let mut futures = Vec::with_capacity(relays.len());
 
@@ -945,7 +954,7 @@ impl InnerRelayPool {
 
     pub async fn disconnect(&self) -> Result<(), Error> {
         // Lock with read shared access
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
 
         // Iter values and disconnect
         for relay in relays.values() {
@@ -968,7 +977,7 @@ impl InnerRelayPool {
         let url: RelayUrl = url.try_into_url()?;
 
         // Lock with read shared access
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
 
         // Get relay
         let relay: &Relay = self.internal_relay(&relays, &url)?;
@@ -988,7 +997,7 @@ impl InnerRelayPool {
         let url: RelayUrl = url.try_into_url()?;
 
         // Lock with read shared access
-        let relays = self.relays.read().await;
+        let relays = self.atomic.relays.read().await;
 
         // Get relay
         let relay: &Relay = self.internal_relay(&relays, &url)?;

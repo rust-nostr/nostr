@@ -66,6 +66,7 @@
 * pool: improve shutdown docs ([dluvian])
 * pool: rename `FilterOptions` to `ReqExitPolicy` ([Yuki Kishimoto])
 * pool: log WebSocket connection error only if different from the last one ([Yuki Kishimoto])
+* pool: reduce atomic operations when cloning ([Yuki Kishimoto])
 * sdk: refactor POW difficulty management ([Yuki Kishimoto])
 * connect: require `fmt::Debug`, `Send` and `Sync` for `AuthUrlHandler` ([Yuki Kishimoto])
 * zapper: bump `webln` to 0.4 ([Yuki Kishimoto])

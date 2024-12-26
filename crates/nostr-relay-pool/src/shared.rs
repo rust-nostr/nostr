@@ -28,8 +28,7 @@ impl fmt::Display for SharedStateError {
     }
 }
 
-// TODO: add SharedStateBuilder?
-
+// TODO: reduce atomic operations
 #[derive(Debug, Clone)]
 pub struct SharedState {
     pub(crate) database: Arc<dyn NostrDatabase>,

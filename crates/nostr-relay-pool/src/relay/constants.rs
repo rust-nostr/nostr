@@ -20,7 +20,7 @@ pub const MAX_CONTACT_LIST_EVENT_SIZE: u32 = 840 * 1024; // 840 kB
 
 pub(super) const DEFAULT_RETRY_INTERVAL: Duration = Duration::from_secs(10);
 // Not increase the max retry interval too much.
-// Keep it small avoid huge waits before reconnection if internet was gone for much time and then come back.
+// Keep it small, avoid huge waits before reconnection if internet was gone for much time and then come back.
 pub(super) const MAX_RETRY_INTERVAL: Duration = Duration::from_secs(60);
 pub(super) const JITTER_RANGE: RangeInclusive<i8> = -3..=3;
 

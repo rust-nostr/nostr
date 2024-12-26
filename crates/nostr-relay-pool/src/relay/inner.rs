@@ -137,23 +137,30 @@ impl Default for SubscriptionData {
     }
 }
 
+// Instead of wrap every field in an `Arc<T>`, which increases the number of atomic operations,
+// put all fields that require an `Arc` here.
+#[derive(Debug)]
+pub(super) struct AtomicPrivateData {
+    status: AtomicRelayStatus,
+    #[cfg(feature = "nip11")]
+    document: RwLock<RelayInformationDocument>,
+    #[cfg(feature = "nip11")]
+    last_document_fetch: AtomicU64,
+    channels: RelayChannels,
+    subscriptions: RwLock<HashMap<SubscriptionId, SubscriptionData>>,
+    running: AtomicBool,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct InnerRelay {
     pub(super) url: RelayUrl,
-    status: Arc<AtomicRelayStatus>,
-    #[cfg(feature = "nip11")]
-    document: Arc<RwLock<RelayInformationDocument>>,
-    #[cfg(feature = "nip11")]
-    last_document_fetch: Arc<AtomicU64>,
+    pub(super) atomic: Arc<AtomicPrivateData>,
     pub(super) opts: RelayOptions,
     pub(super) flags: AtomicRelayServiceFlags,
     pub(super) stats: RelayConnectionStats,
     pub(super) state: SharedState,
-    channels: Arc<RelayChannels>,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
     external_notification_sender: OnceCell<broadcast::Sender<RelayPoolNotification>>,
-    subscriptions: Arc<RwLock<HashMap<SubscriptionId, SubscriptionData>>>,
-    running: Arc<AtomicBool>,
 }
 
 impl AtomicDestroyer for InnerRelay {
@@ -170,20 +177,22 @@ impl InnerRelay {
 
         Self {
             url,
-            status: Arc::new(AtomicRelayStatus::default()),
-            #[cfg(feature = "nip11")]
-            document: Arc::new(RwLock::new(RelayInformationDocument::new())),
-            #[cfg(feature = "nip11")]
-            last_document_fetch: Arc::new(AtomicU64::new(0)),
+            atomic: Arc::new(AtomicPrivateData {
+                status: AtomicRelayStatus::default(),
+                #[cfg(feature = "nip11")]
+                document: RwLock::new(RelayInformationDocument::new()),
+                #[cfg(feature = "nip11")]
+                last_document_fetch: AtomicU64::new(0),
+                channels: RelayChannels::new(),
+                subscriptions: RwLock::new(HashMap::new()),
+                running: AtomicBool::new(false),
+            }),
             flags: AtomicRelayServiceFlags::new(opts.flags),
             opts,
             stats: RelayConnectionStats::default(),
             state,
-            channels: Arc::new(RelayChannels::new()),
             internal_notification_sender: relay_notification_sender,
             external_notification_sender: OnceCell::new(),
-            subscriptions: Arc::new(RwLock::new(HashMap::new())),
-            running: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -195,17 +204,17 @@ impl InnerRelay {
     /// Is connection task running?
     #[inline]
     pub(super) fn is_running(&self) -> bool {
-        self.running.load(Ordering::SeqCst)
+        self.atomic.running.load(Ordering::SeqCst)
     }
 
     #[inline]
     pub fn status(&self) -> RelayStatus {
-        self.status.load()
+        self.atomic.status.load()
     }
 
     fn set_status(&self, status: RelayStatus, log: bool) {
         // Change status
-        self.status.set(status);
+        self.atomic.status.set(status);
 
         // Log
         if log {
@@ -265,7 +274,7 @@ impl InnerRelay {
 
     #[cfg(feature = "nip11")]
     pub async fn document(&self) -> RelayInformationDocument {
-        let document = self.document.read().await;
+        let document = self.atomic.document.read().await;
         document.clone()
     }
 
@@ -283,17 +292,17 @@ impl InnerRelay {
             let now: u64 = Timestamp::now().as_u64();
 
             // Check last fetch
-            if self.last_document_fetch.load(Ordering::SeqCst) + 3600 < now {
+            if self.atomic.last_document_fetch.load(Ordering::SeqCst) + 3600 < now {
                 // Update last fetch
-                self.last_document_fetch.store(now, Ordering::SeqCst);
+                self.atomic.last_document_fetch.store(now, Ordering::SeqCst);
 
                 // Fetch
                 let url = self.url.clone();
-                let d = self.document.clone();
+                let atomic = self.atomic.clone();
                 task::spawn(async move {
                     match RelayInformationDocument::get(url.clone().into(), proxy).await {
                         Ok(document) => {
-                            let mut d = d.write().await;
+                            let mut d = atomic.document.write().await;
                             *d = document
                         }
                         Err(e) => {
@@ -306,7 +315,7 @@ impl InnerRelay {
     }
 
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
-        let subscription = self.subscriptions.read().await;
+        let subscription = self.atomic.subscriptions.read().await;
         subscription
             .iter()
             .map(|(k, v)| (k.clone(), v.filters.clone()))
@@ -314,7 +323,7 @@ impl InnerRelay {
     }
 
     pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
-        let subscription = self.subscriptions.read().await;
+        let subscription = self.atomic.subscriptions.read().await;
         subscription.get(id).map(|d| d.filters.clone())
     }
 
@@ -324,7 +333,7 @@ impl InnerRelay {
         filters: Vec<Filter>,
         update_subscribed_at: bool,
     ) {
-        let mut subscriptions = self.subscriptions.write().await;
+        let mut subscriptions = self.atomic.subscriptions.write().await;
         let data: &mut SubscriptionData = subscriptions.entry(id).or_default();
         data.filters = filters;
 
@@ -335,7 +344,7 @@ impl InnerRelay {
 
     /// Mark subscription as closed
     async fn subscription_closed(&self, id: &SubscriptionId) {
-        let mut subscriptions = self.subscriptions.write().await;
+        let mut subscriptions = self.atomic.subscriptions.write().await;
         if let Some(data) = subscriptions.get_mut(id) {
             data.closed = true;
         }
@@ -343,7 +352,7 @@ impl InnerRelay {
 
     /// Check if it should subscribe for current websocket session
     pub(crate) async fn should_resubscribe(&self, id: &SubscriptionId) -> bool {
-        let subscriptions = self.subscriptions.read().await;
+        let subscriptions = self.atomic.subscriptions.read().await;
         match subscriptions.get(id) {
             Some(SubscriptionData {
                 subscribed_at,
@@ -365,13 +374,13 @@ impl InnerRelay {
     }
 
     pub(crate) async fn remove_subscription(&self, id: &SubscriptionId) {
-        let mut subscriptions = self.subscriptions.write().await;
+        let mut subscriptions = self.atomic.subscriptions.write().await;
         subscriptions.remove(id);
     }
 
     #[inline]
     pub fn queue(&self) -> usize {
-        self.channels.nostr_queue()
+        self.atomic.channels.nostr_queue()
     }
 
     pub(crate) fn set_notification_sender(
@@ -467,10 +476,10 @@ impl InnerRelay {
         let relay = self.clone();
         task::spawn(async move {
             // Set that connection task is running
-            relay.running.store(true, Ordering::SeqCst);
+            relay.atomic.running.store(true, Ordering::SeqCst);
 
             // Acquire service watcher
-            let mut rx_service = relay.channels.rx_service().await;
+            let mut rx_service = relay.atomic.channels.rx_service().await;
 
             // Last websocket error
             // Store it to avoid to print every time the same connection error
@@ -485,7 +494,7 @@ impl InnerRelay {
                 tokio::select! {
                     // Connect and run message handler
                     _ = relay.connect_and_run(connection_timeout, &mut last_ws_error) => {},
-                    // Handle terminate
+                    // Handle "terminate" message
                     _ = relay.handle_terminate(&mut rx_service) => {
                         // Update status
                         relay.set_status(RelayStatus::Terminated, true);
@@ -498,7 +507,7 @@ impl InnerRelay {
                 // Get status
                 let status: RelayStatus = relay.status();
 
-                // If status is set to terminated, break loop.
+                // If the status is set to "terminated", break loop.
                 if status.is_terminated() {
                     break;
                 }
@@ -522,7 +531,7 @@ impl InnerRelay {
                     tokio::select! {
                         // Sleep
                         _ = time::sleep(interval) => {},
-                        // Handle terminate
+                        // Handle "terminate" message
                         _ = relay.handle_terminate(&mut rx_service) => {
                             // Update status
                             relay.set_status(RelayStatus::Terminated, true);
@@ -530,7 +539,7 @@ impl InnerRelay {
                         }
                     }
                 } else {
-                    // Reconnection disabled, set status to terminated
+                    // Reconnection disabled, set status to "terminated"
                     relay.set_status(RelayStatus::Terminated, true);
 
                     // Break loop and exit
@@ -540,7 +549,7 @@ impl InnerRelay {
             }
 
             // Set that connection task is no longer running
-            relay.running.store(false, Ordering::SeqCst);
+            relay.atomic.running.store(false, Ordering::SeqCst);
 
             tracing::debug!(url = %relay.url, "Auto connect loop terminated.");
         });
@@ -670,7 +679,7 @@ impl InnerRelay {
 
         let ping: PingTracker = PingTracker::default();
 
-        // Wait that one of the futures terminate/complete
+        // Wait that one of the futures terminates/completes
         tokio::select! {
             res = self.receiver_message_handler(ws_rx, &ping) => match res {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay received exited."),
@@ -696,8 +705,8 @@ impl InnerRelay {
         let _ping = ping;
 
         // Lock receivers
-        let mut rx_nostr = self.channels.rx_nostr().await;
-        let mut rx_ping = self.channels.rx_ping().await;
+        let mut rx_nostr = self.atomic.channels.rx_nostr().await;
+        let mut rx_ping = self.atomic.channels.rx_ping().await;
 
         loop {
             tokio::select! {
@@ -812,7 +821,7 @@ impl InnerRelay {
         #[cfg(not(target_arch = "wasm32"))]
         if self.flags.has_ping() {
             loop {
-                // If last nonce is NOT 0, check if relay replied
+                // If the last nonce is NOT 0, check if relay replied.
                 // Return error if relay not replied
                 if ping.last_nonce() != 0 && !ping.replied() {
                     return Err(Error::NotRepliedToPing);
@@ -824,7 +833,7 @@ impl InnerRelay {
                 ping.set_replied(false);
 
                 // Try to ping
-                self.channels.ping(nonce)?;
+                self.atomic.channels.ping(nonce)?;
 
                 // Sleep
                 time::sleep(PING_INTERVAL).await;
@@ -1115,7 +1124,8 @@ impl InnerRelay {
     pub fn disconnect(&self) -> Result<(), Error> {
         // Check if it's NOT terminated
         if !self.status().is_terminated() {
-            self.channels
+            self.atomic
+                .channels
                 .send_service_msg(RelayServiceEvent::Terminate)?;
             self.send_notification(RelayNotification::Shutdown, false);
         }
@@ -1148,7 +1158,7 @@ impl InnerRelay {
         }
 
         // Send message
-        self.channels.send_client_msgs(msgs)
+        self.atomic.channels.send_client_msgs(msgs)
     }
 
     #[inline]
