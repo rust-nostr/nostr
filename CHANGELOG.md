@@ -95,6 +95,7 @@
 * nostr: remove redundant NIP10 tags from `EventBuilder::text_note_reply` ([Yuki Kishimoto])
 * sdk: fix NIP42 authentication for auto-closing REQ ([Yuki Kishimoto])
 * sdk: fix min POW is not updated to already existing relays ([Yuki Kishimoto])
+* relay-builder: fix new events are not passed in real-time to subscriptions ([Yuki Kishimoto])
 * bindings: allow passing empty string as relay url without return an error ([Yuki Kishimoto])
 * ffi: fix UniFFI checksum mismatch issue ([Yuki Kishimoto])
 * flutter: fix `default` is reserved in dart ([J. Azad EMERY])
