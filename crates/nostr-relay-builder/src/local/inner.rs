@@ -154,6 +154,10 @@ impl InnerLocalRelay {
         self.hidden_service.as_deref()
     }
 
+    pub fn notify_event(&self, event: Event) -> bool {
+        self.new_event.send(event).is_ok()
+    }
+
     #[inline]
     pub fn shutdown(&self) {
         let _ = self.shutdown.send(());

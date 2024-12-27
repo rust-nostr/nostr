@@ -43,6 +43,16 @@ impl LocalRelay {
         self.inner.hidden_service()
     }
 
+    /// Send event to subscribers
+    ///
+    /// Return `true` if the event is successfully sent.
+    ///
+    /// This method doesn't save the event into the database!
+    /// It's intended to be used ONLY when the database is shared with other apps (i.e. with the nostr-sdk `Client`).
+    pub fn notify_event(&self, event: Event) -> bool {
+        self.inner.notify_event(event)
+    }
+
     /// Shutdown relay
     #[inline]
     pub fn shutdown(&self) {
