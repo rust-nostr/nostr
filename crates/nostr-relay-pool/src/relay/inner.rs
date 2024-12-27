@@ -472,6 +472,10 @@ impl InnerRelay {
             // Acquire service watcher
             let mut rx_service = relay.channels.rx_service().await;
 
+            // Last websocket error
+            // Store it to avoid to print every time the same connection error
+            let mut last_ws_error = None;
+
             // Auto-connect loop
             loop {
                 // TODO: check in the relays state database if relay can connect (different from the previous check)
@@ -480,7 +484,7 @@ impl InnerRelay {
 
                 tokio::select! {
                     // Connect and run message handler
-                    _ = relay.connect_and_run(connection_timeout) => {},
+                    _ = relay.connect_and_run(connection_timeout, &mut last_ws_error) => {},
                     // Handle terminate
                     _ = relay.handle_terminate(&mut rx_service) => {
                         // Update status
@@ -596,7 +600,11 @@ impl InnerRelay {
     }
 
     /// Connect and run message handler
-    async fn connect_and_run(&self, connection_timeout: Duration) {
+    async fn connect_and_run(
+        &self,
+        connection_timeout: Duration,
+        last_ws_error: &mut Option<String>,
+    ) {
         // Update status
         self.set_status(RelayStatus::Connecting, true);
 
@@ -632,8 +640,22 @@ impl InnerRelay {
                 // Update status
                 self.set_status(RelayStatus::Disconnected, false);
 
-                // Log error
-                tracing::error!(url = %self.url, error= %e, "Connection failed.");
+                // TODO: avoid string allocation. The error is converted to string only to perform the `!=` binary operation.
+                // Check if error should be logged
+                let e: String = e.to_string();
+                let to_log: bool = match &last_ws_error {
+                    Some(prev_err) => {
+                        // Log only if different from the last one
+                        prev_err != &e
+                    }
+                    None => true,
+                };
+
+                // Log error and update the last error
+                if to_log {
+                    tracing::error!(url = %self.url, error= %e, "Connection failed.");
+                    *last_ws_error = Some(e);
+                }
             }
         }
     }
