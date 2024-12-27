@@ -6,9 +6,15 @@ Your donation directly supports the continued development of `rust-nostr`!
 
 #### Bitcoin
 
+##### Addresses
+
 * 🔗 On-chain: `bc1quk478kpm45744q5pt3p9j42fnv72ykytmt3z0j`
 * ⚡ Lightning: `pay@yukikishimoto.com`
 * 💧 Liquid: `lq1qqdwn93gehkq4mtz2amsagawgfd6y9ksrkekal5u8tmle07f9fa0kgcnfez4lguhekeeyhy78nfqy8tyqvxayywgpwvm73t6av`
+
+##### Payment processors
+
+* Coinos (🔗, ⚡, 🥜, 💧 and BOLT12): <https://coinos.io/yuki>
 
 #### Altcoins
 
