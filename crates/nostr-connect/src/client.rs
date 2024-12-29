@@ -17,6 +17,7 @@ use tokio::sync::broadcast::Receiver;
 use tokio::sync::OnceCell;
 
 use crate::error::Error;
+use crate::util;
 
 /// Nostr Connect Client
 ///
@@ -258,8 +259,8 @@ impl NostrConnect {
             while let Ok(notification) = notifications.recv().await {
                 if let RelayPoolNotification::Event { event, .. } = notification {
                     if event.kind == Kind::NostrConnect {
-                        let msg = nip04::decrypt(secret_key, &event.pubkey, &event.content)?;
-                        let msg = Message::from_json(msg)?;
+                        let msg: String = util::decrypt(secret_key, &event)?;
+                        let msg: Message = Message::from_json(msg)?;
 
                         tracing::debug!("Received NIP46 message: '{msg}'");
 
@@ -413,8 +414,7 @@ async fn get_remote_signer_public_key(
             if let RelayPoolNotification::Event { event, .. } = notification {
                 if event.kind == Kind::NostrConnect {
                     // Decrypt content
-                    let msg: String =
-                        nip04::decrypt(app_keys.secret_key(), &event.pubkey, event.content)?;
+                    let msg: String = util::decrypt(app_keys.secret_key(), &event)?;
 
                     tracing::debug!("Received Nostr Connect message: '{msg}'");
 

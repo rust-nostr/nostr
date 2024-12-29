@@ -70,6 +70,7 @@
 * sdk: refactor POW difficulty management ([Yuki Kishimoto])
 * connect: require `fmt::Debug`, `Send` and `Sync` for `AuthUrlHandler` ([Yuki Kishimoto])
 * connect: improve secret matching for `NostrConnectRemoteSigner` ([Yuki Kishimoto])
+* connect: support both NIP04 and NIP44 for message decryption ([erskingardner])
 * zapper: bump `webln` to 0.4 ([Yuki Kishimoto])
 * zapper: require `fmt::Debug`, `Send` and `Sync` for `NostrZapper` ([Yuki Kishimoto])
 * bindings: refactor `SendEventOutput` and `SubscribeOutput` ([Yuki Kishimoto])
