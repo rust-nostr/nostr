@@ -48,6 +48,7 @@
 
 ### Changed
 
+* nostr-connect: add NIP44 decryption support ([erskingardner])
 * Bump `async-utility` to 0.3, `async-wsocket` to 0.11 and `atomic-destructor` to 0.3 ([Yuki Kishimoto])
 * nostr: remove self-tagging when building events ([Yuki Kishimoto])
 * nostr: don't set root tags when the root is null ([Yuki Kishimoto])
