@@ -177,129 +177,132 @@ impl NostrConnectRemoteSigner {
             .handle_notifications(|notification| async {
                 if let RelayPoolNotification::Event { event, .. } = notification {
                     if event.kind == Kind::NostrConnect {
-                        if let Ok(msg) = util::decrypt(self.keys.signer.secret_key(), &event) {
-                            tracing::debug!("New Nostr Connect message received: {msg}");
+                        match util::decrypt(self.keys.signer.secret_key(), &event) {
+                            Ok(msg) => {
+                                tracing::debug!("New Nostr Connect message received: {msg}");
 
-                            let msg: Message = Message::from_json(msg)?;
+                                let msg: Message = Message::from_json(msg)?;
 
-                            if let Message::Request { id, req } = msg {
-                                // Generate response
-                                let (result, error) = if actions.approve(&event.pubkey, &req) {
-                                    match req {
-                                        Request::Connect { secret, .. } => {
-                                            if self.match_secret(secret) {
-                                                (Some(ResponseResult::Connect), None)
-                                            } else {
-                                                (None, Some(String::from("Secret not match")))
+                                if let Message::Request { id, req } = msg {
+                                    // Generate response
+                                    let (result, error) = if actions.approve(&event.pubkey, &req) {
+                                        match req {
+                                            Request::Connect { secret, .. } => {
+                                                if self.match_secret(secret) {
+                                                    (Some(ResponseResult::Connect), None)
+                                                } else {
+                                                    (None, Some(String::from("Secret not match")))
+                                                }
                                             }
-                                        }
-                                        Request::GetPublicKey => (
-                                            Some(ResponseResult::GetPublicKey(
-                                                self.keys.user.public_key(),
-                                            )),
-                                            None,
-                                        ),
-                                        Request::GetRelays => {
-                                            (None, Some(String::from("Not supported yet")))
-                                        }
-                                        Request::Nip04Encrypt { public_key, text } => {
-                                            match nip04::encrypt(
-                                                self.keys.user.secret_key(),
-                                                &public_key,
-                                                text,
-                                            ) {
-                                                Ok(ciphertext) => (
-                                                    Some(ResponseResult::EncryptionDecryption(
-                                                        ciphertext,
-                                                    )),
-                                                    None,
-                                                ),
-                                                Err(e) => (None, Some(e.to_string())),
+                                            Request::GetPublicKey => (
+                                                Some(ResponseResult::GetPublicKey(
+                                                    self.keys.user.public_key(),
+                                                )),
+                                                None,
+                                            ),
+                                            Request::GetRelays => {
+                                                (None, Some(String::from("Not supported yet")))
                                             }
-                                        }
-                                        Request::Nip04Decrypt {
-                                            public_key,
-                                            ciphertext,
-                                        } => {
-                                            match nip04::decrypt(
-                                                self.keys.user.secret_key(),
-                                                &public_key,
+                                            Request::Nip04Encrypt { public_key, text } => {
+                                                match nip04::encrypt(
+                                                    self.keys.user.secret_key(),
+                                                    &public_key,
+                                                    text,
+                                                ) {
+                                                    Ok(ciphertext) => (
+                                                        Some(ResponseResult::EncryptionDecryption(
+                                                            ciphertext,
+                                                        )),
+                                                        None,
+                                                    ),
+                                                    Err(e) => (None, Some(e.to_string())),
+                                                }
+                                            }
+                                            Request::Nip04Decrypt {
+                                                public_key,
                                                 ciphertext,
-                                            ) {
-                                                Ok(ciphertext) => (
-                                                    Some(ResponseResult::EncryptionDecryption(
-                                                        ciphertext,
-                                                    )),
-                                                    None,
-                                                ),
-                                                Err(e) => (None, Some(e.to_string())),
+                                            } => {
+                                                match nip04::decrypt(
+                                                    self.keys.user.secret_key(),
+                                                    &public_key,
+                                                    ciphertext,
+                                                ) {
+                                                    Ok(ciphertext) => (
+                                                        Some(ResponseResult::EncryptionDecryption(
+                                                            ciphertext,
+                                                        )),
+                                                        None,
+                                                    ),
+                                                    Err(e) => (None, Some(e.to_string())),
+                                                }
                                             }
-                                        }
-                                        Request::Nip44Encrypt { public_key, text } => {
-                                            match nip44::encrypt(
-                                                self.keys.user.secret_key(),
-                                                &public_key,
-                                                text,
-                                                nip44::Version::default(),
-                                            ) {
-                                                Ok(ciphertext) => (
-                                                    Some(ResponseResult::EncryptionDecryption(
-                                                        ciphertext,
-                                                    )),
-                                                    None,
-                                                ),
-                                                Err(e) => (None, Some(e.to_string())),
+                                            Request::Nip44Encrypt { public_key, text } => {
+                                                match nip44::encrypt(
+                                                    self.keys.user.secret_key(),
+                                                    &public_key,
+                                                    text,
+                                                    nip44::Version::default(),
+                                                ) {
+                                                    Ok(ciphertext) => (
+                                                        Some(ResponseResult::EncryptionDecryption(
+                                                            ciphertext,
+                                                        )),
+                                                        None,
+                                                    ),
+                                                    Err(e) => (None, Some(e.to_string())),
+                                                }
                                             }
-                                        }
-                                        Request::Nip44Decrypt {
-                                            public_key,
-                                            ciphertext,
-                                        } => {
-                                            match nip44::decrypt(
-                                                self.keys.user.secret_key(),
-                                                &public_key,
+                                            Request::Nip44Decrypt {
+                                                public_key,
                                                 ciphertext,
-                                            ) {
-                                                Ok(ciphertext) => (
-                                                    Some(ResponseResult::EncryptionDecryption(
-                                                        ciphertext,
-                                                    )),
-                                                    None,
-                                                ),
-                                                Err(e) => (None, Some(e.to_string())),
+                                            } => {
+                                                match nip44::decrypt(
+                                                    self.keys.user.secret_key(),
+                                                    &public_key,
+                                                    ciphertext,
+                                                ) {
+                                                    Ok(ciphertext) => (
+                                                        Some(ResponseResult::EncryptionDecryption(
+                                                            ciphertext,
+                                                        )),
+                                                        None,
+                                                    ),
+                                                    Err(e) => (None, Some(e.to_string())),
+                                                }
                                             }
-                                        }
-                                        Request::SignEvent(unsigned) => {
-                                            match unsigned.sign_with_keys(&self.keys.user) {
-                                                Ok(event) => (
-                                                    Some(ResponseResult::SignEvent(Box::new(
-                                                        event,
-                                                    ))),
-                                                    None,
-                                                ),
-                                                Err(e) => (None, Some(e.to_string())),
+                                            Request::SignEvent(unsigned) => {
+                                                match unsigned.sign_with_keys(&self.keys.user) {
+                                                    Ok(event) => (
+                                                        Some(ResponseResult::SignEvent(Box::new(
+                                                            event,
+                                                        ))),
+                                                        None,
+                                                    ),
+                                                    Err(e) => (None, Some(e.to_string())),
+                                                }
                                             }
+                                            Request::Ping => (Some(ResponseResult::Pong), None),
                                         }
-                                        Request::Ping => (Some(ResponseResult::Pong), None),
-                                    }
-                                } else {
-                                    (None, Some(String::from("Rejected")))
-                                };
+                                    } else {
+                                        (None, Some(String::from("Rejected")))
+                                    };
 
-                                // Compose message
-                                let msg: Message = Message::response(id, result, error);
+                                    // Compose message
+                                    let msg: Message = Message::response(id, result, error);
 
-                                // Compose and publish event
-                                let event = EventBuilder::nostr_connect(
-                                    &self.keys.signer,
-                                    event.pubkey,
-                                    msg,
-                                )?
-                                .sign_with_keys(&self.keys.signer)?;
-                                self.pool.send_event(event).await?;
+                                    // Compose and publish event
+                                    let event = EventBuilder::nostr_connect(
+                                        &self.keys.signer,
+                                        event.pubkey,
+                                        msg,
+                                    )?
+                                    .sign_with_keys(&self.keys.signer)?;
+                                    self.pool.send_event(event).await?;
+                                }
                             }
-                        } else {
-                            eprintln!("Impossible to decrypt NIP46 message");
+                            Err(e) => {
+                                tracing::error!(error = %e, "Impossible to decrypt message.")
+                            }
                         }
                     }
                 }
