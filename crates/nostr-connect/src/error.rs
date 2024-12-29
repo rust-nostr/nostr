@@ -7,7 +7,7 @@
 use std::convert::Infallible;
 
 use nostr::event::builder;
-use nostr::nips::{nip04, nip46};
+use nostr::nips::{nip04, nip44, nip46};
 use nostr::PublicKey;
 use thiserror::Error;
 use tokio::sync::SetError;
@@ -21,6 +21,9 @@ pub enum Error {
     /// NIP04 error
     #[error(transparent)]
     NIP04(#[from] nip04::Error),
+    /// NIP44 error
+    #[error(transparent)]
+    NIP44(#[from] nip44::Error),
     /// NIP46 error
     #[error(transparent)]
     NIP46(#[from] nip46::Error),
