@@ -38,7 +38,8 @@ async fn main() -> Result<()> {
 struct CustomActions;
 
 impl NostrConnectSignerActions for CustomActions {
-    fn approve(&self, req: &Request) -> bool {
+    fn approve(&self, public_key: &PublicKey, req: &Request) -> bool {
+        println!("Public key: {public_key}");
         println!("{req:#?}\n");
         Confirm::new()
             .with_prompt("Approve request?")

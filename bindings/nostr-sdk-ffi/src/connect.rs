@@ -192,13 +192,14 @@ impl NostrConnectRemoteSigner {
 struct FFINostrConnectSignerActions(Arc<dyn NostrConnectSignerActions>);
 
 impl signer::NostrConnectSignerActions for FFINostrConnectSignerActions {
-    fn approve(&self, req: &Request) -> bool {
-        self.0.approve(req.to_owned().into())
+    fn approve(&self, public_key: &nostr::PublicKey, req: &Request) -> bool {
+        self.0
+            .approve(Arc::new((*public_key).into()), req.to_owned().into())
     }
 }
 
 #[uniffi::export(with_foreign)]
 pub trait NostrConnectSignerActions: Send + Sync {
     /// Approve
-    fn approve(&self, req: Nip46Request) -> bool;
+    fn approve(&self, public_key: Arc<PublicKey>, req: Nip46Request) -> bool;
 }

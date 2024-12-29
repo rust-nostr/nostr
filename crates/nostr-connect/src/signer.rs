@@ -174,7 +174,7 @@ impl NostrConnectRemoteSigner {
 
                             if let Message::Request { id, req } = msg {
                                 // Generate response
-                                let (result, error) = if actions.approve(&req) {
+                                let (result, error) = if actions.approve(&event.pubkey, &req) {
                                     match req {
                                         Request::Connect { secret, .. } => {
                                             if secret.unwrap_or_default()
@@ -306,5 +306,5 @@ impl NostrConnectRemoteSigner {
 /// Nostr Connect signer actions
 pub trait NostrConnectSignerActions {
     /// Approve
-    fn approve(&self, req: &Request) -> bool;
+    fn approve(&self, public_key: &PublicKey, req: &Request) -> bool;
 }
