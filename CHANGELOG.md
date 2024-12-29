@@ -114,6 +114,7 @@
 * nwc: remove `thiserror` dep and unnecessary `Error::Zapper` variant ([Yuki Kishimoto])
 * ffi: remove `MockRelay` ([Yuki Kishimoto])
 * ffi: remove `RawEvent` and `RawEventRecord` ([Yuki Kishimoto])
+* ffi: remove `NostrConnectRemoteSigner` ([Yuki Kishimoto])
 * bindings: remove `RelayPool` ([Yuki Kishimoto])
 
 ### Deprecated
