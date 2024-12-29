@@ -147,6 +147,19 @@ impl NostrConnectRemoteSigner {
         Ok(())
     }
 
+    fn match_secret(&self, secret: Option<String>) -> bool {
+        match (&self.secret, secret) {
+            // Both secrets are set, check if values are equal.
+            (Some(s1), Some(s2)) => s1 == &s2,
+            // Only the secret on our side is set, must return `false`.
+            (Some(..), None) => false,
+            // Only the secret on their side is set, can continue, return `true`.
+            (None, Some(..)) => true,
+            // No secret is set
+            (None, None) => true,
+        }
+    }
+
     /// Serve signer
     pub async fn serve<T>(&self, actions: T) -> Result<(), Error>
     where
@@ -177,9 +190,7 @@ impl NostrConnectRemoteSigner {
                                 let (result, error) = if actions.approve(&event.pubkey, &req) {
                                     match req {
                                         Request::Connect { secret, .. } => {
-                                            if secret.unwrap_or_default()
-                                                == self.secret.clone().unwrap_or_default()
-                                            {
+                                            if self.match_secret(secret) {
                                                 (Some(ResponseResult::Connect), None)
                                             } else {
                                                 (None, Some(String::from("Secret not match")))
