@@ -24,8 +24,11 @@ pub const REGULAR_RANGE: Range<u16> = 1_000..10_000;
 pub const REPLACEABLE_RANGE: Range<u16> = 10_000..20_000;
 /// Ephemeral range
 pub const EPHEMERAL_RANGE: Range<u16> = 20_000..30_000;
-/// Parameterized replaceable range
-pub const PARAMETERIZED_REPLACEABLE_RANGE: Range<u16> = 30_000..40_000;
+/// Addressable range
+pub const ADDRESSABLE_RANGE: Range<u16> = 30_000..40_000;
+/// Addressable range
+#[deprecated(since = "0.38.0", note = "Use `ADDRESSABLE_RANGE` instead")]
+pub const PARAMETERIZED_REPLACEABLE_RANGE: Range<u16> = ADDRESSABLE_RANGE;
 
 macro_rules! kind_variants {
     ($($name:ident => $value:expr, $doc:expr),* $(,)?) => {
@@ -49,6 +52,7 @@ macro_rules! kind_variants {
             /// Represents an ephemeral event.
             Ephemeral(u16),
             /// Represents a parameterized replaceable event.
+            #[deprecated(since = "0.38.0", note = "Use `Custom` variant or `is_addressable` method instead.")]
             ParameterizedReplaceable(u16),
             /// Represents a custom event.
             Custom(u16),
@@ -65,7 +69,6 @@ macro_rules! kind_variants {
                     x if (REGULAR_RANGE).contains(&x) => Self::Regular(x),
                     x if (REPLACEABLE_RANGE).contains(&x) => Self::Replaceable(x),
                     x if (EPHEMERAL_RANGE).contains(&x) => Self::Ephemeral(x),
-                    x if (PARAMETERIZED_REPLACEABLE_RANGE).contains(&x) => Self::ParameterizedReplaceable(x),
                     x => Self::Custom(x),
                 }
             }
@@ -82,6 +85,7 @@ macro_rules! kind_variants {
                     Kind::Regular(u) => u,
                     Kind::Replaceable(u) => u,
                     Kind::Ephemeral(u) => u,
+                    #[allow(deprecated)]
                     Kind::ParameterizedReplaceable(u) => u,
                     Kind::Custom(u) => u,
                 }
@@ -256,16 +260,22 @@ impl Kind {
         EPHEMERAL_RANGE.contains(&self.as_u16())
     }
 
-    /// Check if it's parameterized replaceable
+    /// Check if it's addressable
     ///
-    /// Parameterized replaceable means that,
+    /// Addressable means that,
     /// for each combination of `pubkey`, `kind` and the `d` tag's first value,
     /// only the latest event MUST be stored by relays, older versions MAY be discarded.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
+    pub fn is_addressable(&self) -> bool {
+        ADDRESSABLE_RANGE.contains(&self.as_u16())
+    }
+
+    #[allow(missing_docs)]
+    #[deprecated(since = "0.38.0", note = "Use `is_addressable` instead")]
     pub fn is_parameterized_replaceable(&self) -> bool {
-        PARAMETERIZED_REPLACEABLE_RANGE.contains(&self.as_u16())
+        self.is_addressable()
     }
 
     /// Check if it's a NIP90 job request
@@ -360,8 +370,8 @@ mod tests {
         assert_eq!(Kind::Custom(20100), Kind::Custom(20100));
         assert_eq!(Kind::Custom(20100), Kind::Ephemeral(20100));
         assert_eq!(Kind::TextNote, Kind::Custom(1));
-        assert_eq!(Kind::ParameterizedReplaceable(30017), Kind::SetStall);
-        assert_eq!(Kind::ParameterizedReplaceable(30018), Kind::SetProduct);
+        assert_eq!(Kind::Custom(30017), Kind::SetStall);
+        assert_eq!(Kind::Custom(30018), Kind::SetProduct);
     }
 
     #[test]
@@ -372,9 +382,9 @@ mod tests {
     }
 
     #[test]
-    fn test_kind_is_parameterized_replaceable() {
-        assert!(Kind::ParameterizedReplaceable(32122).is_parameterized_replaceable());
-        assert!(!Kind::ParameterizedReplaceable(1).is_parameterized_replaceable());
+    fn test_kind_is_addressable() {
+        assert!(Kind::Custom(32122).is_addressable());
+        assert!(!Kind::TextNote.is_addressable());
     }
 }
 

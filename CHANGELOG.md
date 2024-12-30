@@ -84,6 +84,7 @@
 * nostr: add `TagKind::k` constructor ([Yuki Kishimoto]) 
 * nostr: impl `IntoIterator` for `Tag` ([Yuki Kishimoto])
 * nostr: add NIP35 support ([1wErt3r])
+* nostr: add `Kind::is_addressable` and `ADDRESSABLE_RANGE` ([Yuki Kishimoto])
 * database: impl PartialEq and Eq for `Events` ([Yuki Kishimoto])
 * database: add `SaveEventStatus` enum ([Yuki Kishimoto])
 * pool: add `ReceiverStream` ([Yuki Kishimoto])
@@ -123,6 +124,7 @@
 
 ### Deprecated
 
+* nostr: deprecate `PARAMETERIZED_REPLACEABLE_RANGE`, `Kind::ParameterizedReplaceable` and `Kind::is_parameterized_replaceable` ([Yuki Kishimoto])
 * pool: deprecated batch event methods ([Yuki Kishimoto])
 * pool: deprecate `FilterOptions` ([Yuki Kishimoto])
 * sdk: deprecate `timeout` option ([Yuki Kishimoto])

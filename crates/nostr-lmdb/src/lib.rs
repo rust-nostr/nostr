@@ -229,11 +229,11 @@ mod tests {
                 )
                 .sign_with_keys(&keys_b)
                 .unwrap(),
-                EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "")
+                EventBuilder::new(Kind::Custom(33_333), "")
                     .tag(Tag::identifier("my-id-a"))
                     .sign_with_keys(&keys_a)
                     .unwrap(),
-                EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "")
+                EventBuilder::new(Kind::Custom(33_333), "")
                     .tag(Tag::identifier("my-id-b"))
                     .sign_with_keys(&keys_b)
                     .unwrap(),
@@ -360,7 +360,7 @@ mod tests {
 
         let (keys, expected_event) = db
             .add_event(
-                EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "")
+                EventBuilder::new(Kind::Custom(33_333), "")
                     .tag(Tag::identifier("my-id-a"))
                     .custom_created_at(now - Duration::from_secs(120)),
             )
@@ -381,7 +381,7 @@ mod tests {
         // Replace previous event
         let (new_expected_event, status) = db
             .add_event_with_keys(
-                EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "Test replace")
+                EventBuilder::new(Kind::Custom(33_333), "Test replace")
                     .tag(Tag::identifier("my-id-a"))
                     .custom_created_at(now),
                 &keys,
@@ -410,7 +410,7 @@ mod tests {
         // Trey to add param replaceable event with older timestamp (MUSTN'T be stored)
         let (_, status) = db
             .add_event_with_keys(
-                EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "Test replace 2")
+                EventBuilder::new(Kind::Custom(33_333), "Test replace 2")
                     .tag(Tag::identifier("my-id-a"))
                     .custom_created_at(now - Duration::from_secs(2000)),
                 &keys,
@@ -492,7 +492,7 @@ mod tests {
         assert_eq!(db.count_all().await, added_events);
 
         // Delete all kinds except text note
-        let filter = Filter::new().kinds([Kind::Metadata, Kind::ParameterizedReplaceable(33_333)]);
+        let filter = Filter::new().kinds([Kind::Metadata, Kind::Custom(33_333)]);
         db.delete(filter).await.unwrap();
 
         assert_eq!(db.count_all().await, 2);

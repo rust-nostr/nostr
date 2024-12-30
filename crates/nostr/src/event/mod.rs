@@ -292,9 +292,9 @@ impl Event {
 
     /// Get the coordinate of this event
     ///
-    /// Return a coordinate only if the event kind is [`Kind::Replaceable`] or [`Kind::ParameterizedReplaceable`]
+    /// Return a coordinate only if the event kind is `replaceable` or `addressable`.
     pub fn coordinate(&self) -> Option<Coordinate> {
-        if self.kind.is_replaceable() || self.kind.is_parameterized_replaceable() {
+        if self.kind.is_replaceable() || self.kind.is_addressable() {
             let mut coordinate: Coordinate = Coordinate::new(self.kind, self.pubkey);
 
             if let Some(identifier) = self.tags.identifier() {

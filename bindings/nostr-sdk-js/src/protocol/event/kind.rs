@@ -78,15 +78,15 @@ impl JsKind {
         self.inner.is_ephemeral()
     }
 
-    /// Check if it's parameterized replaceable
+    /// Check if it's addressable
     ///
-    /// Parametrized replaceable means that, for each combination of `pubkey`, `kind` and the `d` tag's first value,
+    /// Addressable means that, for each combination of `pubkey`, `kind` and the `d` tag's first value,
     /// only the latest event MUST be stored by relays, older versions MAY be discarded.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[wasm_bindgen(js_name = isParametrizedReplaceable)]
-    pub fn is_parameterized_replaceable(&self) -> bool {
-        self.inner.is_parameterized_replaceable()
+    #[wasm_bindgen(js_name = isAddressable)]
+    pub fn is_addressable(&self) -> bool {
+        self.inner.is_addressable()
     }
 
     /// Check if it's a NIP90 job request

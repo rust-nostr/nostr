@@ -84,14 +84,14 @@ impl Kind {
         self.inner.is_ephemeral()
     }
 
-    /// Check if it's parameterized replaceable
+    /// Check if it's addressable
     ///
-    /// Parametrized replaceable means that, for each combination of `pubkey`, `kind` and the `d` tag's first value,
+    /// Addressable means that, for each combination of `pubkey`, `kind` and the `d` tag's first value,
     /// only the latest event MUST be stored by relays, older versions MAY be discarded.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    pub fn is_parameterized_replaceable(&self) -> bool {
-        self.inner.is_parameterized_replaceable()
+    pub fn is_addressable(&self) -> bool {
+        self.inner.is_addressable()
     }
 
     /// Check if it's a NIP90 job request
@@ -346,9 +346,6 @@ pub enum KindEnum {
     Ephemeral {
         kind: u16,
     },
-    ParameterizedReplaceable {
-        kind: u16,
-    },
     Custom {
         kind: u16,
     },
@@ -442,7 +439,6 @@ impl From<nostr::Kind> for KindEnum {
             nostr::Kind::Regular(u) => Self::Regular { kind: u },
             nostr::Kind::Replaceable(u) => Self::Replaceable { kind: u },
             nostr::Kind::Ephemeral(u) => Self::Ephemeral { kind: u },
-            nostr::Kind::ParameterizedReplaceable(u) => Self::ParameterizedReplaceable { kind: u },
             nostr::Kind::Custom(u) => Self::Custom { kind: u },
         }
     }
@@ -536,7 +532,6 @@ impl From<KindEnum> for nostr::Kind {
             KindEnum::Regular { kind } => Self::Regular(kind),
             KindEnum::Replaceable { kind } => Self::Replaceable(kind),
             KindEnum::Ephemeral { kind } => Self::Ephemeral(kind),
-            KindEnum::ParameterizedReplaceable { kind } => Self::ParameterizedReplaceable(kind),
             KindEnum::Custom { kind } => Self::Custom(kind),
         }
     }

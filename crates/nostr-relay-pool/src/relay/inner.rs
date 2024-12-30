@@ -1064,7 +1064,7 @@ impl InnerRelay {
         }
 
         // Check if event is replaceable and has coordinate
-        if event.kind.is_replaceable() || event.kind.is_parameterized_replaceable() {
+        if event.kind.is_replaceable() || event.kind.is_addressable() {
             let coordinate: Coordinate = Coordinate::new(event.kind, event.pubkey)
                 .identifier(event.tags.identifier().unwrap_or_default());
 

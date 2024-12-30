@@ -104,7 +104,7 @@ impl Store {
 
             // Reject event if ADDR was deleted after it's created_at date
             // (parameterized)
-            if event.kind.is_parameterized_replaceable() {
+            if event.kind.is_addressable() {
                 if let Some(identifier) = event.tags.identifier() {
                     let coordinate: Coordinate =
                         Coordinate::new(event.kind, event.pubkey).identifier(identifier);
@@ -136,26 +136,19 @@ impl Store {
             }
 
             // Remove parameterized replaceable events being replaced
-            if event.kind.is_parameterized_replaceable() {
+            if event.kind.is_addressable() {
                 if let Some(identifier) = event.tags.identifier() {
                     let coordinate: Coordinate =
                         Coordinate::new(event.kind, event.pubkey).identifier(identifier);
 
                     // Find param replaceable event
-                    if let Some(stored) =
-                        db.find_parameterized_replaceable_event(&read_txn, &coordinate)?
-                    {
+                    if let Some(stored) = db.find_addressable_event(&read_txn, &coordinate)? {
                         if stored.created_at > event.created_at {
                             txn.abort();
                             return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
                         }
 
-                        db.remove_parameterized_replaceable(
-                            &read_txn,
-                            &mut txn,
-                            &coordinate,
-                            Timestamp::max(),
-                        )?;
+                        db.remove_addressable(&read_txn, &mut txn, &coordinate, Timestamp::max())?;
                     }
                 }
             }
@@ -212,8 +205,8 @@ impl Store {
             // Remove events (up to the created_at of the deletion event)
             if coordinate.kind.is_replaceable() {
                 db.remove_replaceable(read_txn, txn, coordinate, event.created_at)?;
-            } else if coordinate.kind.is_parameterized_replaceable() {
-                db.remove_parameterized_replaceable(read_txn, txn, coordinate, event.created_at)?;
+            } else if coordinate.kind.is_addressable() {
+                db.remove_addressable(read_txn, txn, coordinate, event.created_at)?;
             }
         }
 

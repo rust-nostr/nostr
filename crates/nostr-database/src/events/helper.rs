@@ -116,7 +116,7 @@ impl From<Filter> for QueryPattern {
                 })
             }
             (1, Some(kind), 1, Some(author), 0, _, Some(identifier), None)
-                if kind.is_parameterized_replaceable() =>
+                if kind.is_addressable() =>
             {
                 Self::ParamReplaceable(QueryByParamReplaceable {
                     kind,
@@ -239,7 +239,7 @@ impl InternalDatabaseHelper {
                     to_discard.insert(ev.id);
                 }
             }
-        } else if kind.is_parameterized_replaceable() {
+        } else if kind.is_addressable() {
             match event.tags.identifier() {
                 Some(identifier) => {
                     let coordinate: Coordinate =
@@ -334,7 +334,7 @@ impl InternalDatabaseHelper {
                     .or_default()
                     .insert(e.clone());
 
-                if kind.is_parameterized_replaceable() {
+                if kind.is_addressable() {
                     if let Some(identifier) = e.tags.identifier() {
                         self.param_replaceable_index
                             .insert((kind, author, identifier.to_string()), e.clone());
@@ -373,7 +373,7 @@ impl InternalDatabaseHelper {
                     set.remove(&ev);
                 }
 
-                if ev.kind.is_parameterized_replaceable() {
+                if ev.kind.is_addressable() {
                     if let Some(identifier) = ev.tags.identifier() {
                         self.param_replaceable_index.remove(&(
                             ev.kind,
@@ -398,7 +398,7 @@ impl InternalDatabaseHelper {
             set.remove(&ev);
         }
 
-        if ev.kind.is_parameterized_replaceable() {
+        if ev.kind.is_addressable() {
             if let Some(identifier) = ev.tags.identifier() {
                 self.param_replaceable_index
                     .remove(&(ev.kind, ev.pubkey, identifier.to_string()));
@@ -507,7 +507,7 @@ impl InternalDatabaseHelper {
             until,
         } = params;
 
-        if !kind.is_parameterized_replaceable() {
+        if !kind.is_addressable() {
             return None;
         }
 
@@ -885,7 +885,7 @@ mod tests {
         // Test get previously deleted param. replaceable event (check if was deleted by indexes)
         assert!(indexes
             .query(vec![Filter::new()
-                .kind(Kind::ParameterizedReplaceable(32122))
+                .kind(Kind::Custom(32122))
                 .author(keys_a.public_key())
                 .identifier("id-2")])
             .await
@@ -895,7 +895,7 @@ mod tests {
         assert_eq!(
             indexes
                 .query(vec![Filter::new()
-                    .kind(Kind::ParameterizedReplaceable(32122))
+                    .kind(Kind::Custom(32122))
                     .author(keys_b.public_key())])
                 .await
                 .to_vec(),
@@ -909,7 +909,7 @@ mod tests {
         assert_eq!(
             indexes
                 .query(vec![Filter::new()
-                    .kind(Kind::ParameterizedReplaceable(32122))
+                    .kind(Kind::Custom(32122))
                     .author(keys_b.public_key())
                     .identifier("id-3")])
                 .await

@@ -588,12 +588,12 @@ impl Lmdb {
         Ok(None)
     }
 
-    pub fn find_parameterized_replaceable_event<'a>(
+    pub fn find_addressable_event<'a>(
         &'a self,
         txn: &'a RoTxn,
         addr: &Coordinate,
     ) -> Result<Option<DatabaseEvent<'a>>, Error> {
-        if !addr.kind.is_parameterized_replaceable() {
+        if !addr.kind.is_addressable() {
             return Err(Error::WrongEventKind);
         }
 
@@ -655,14 +655,14 @@ impl Lmdb {
 
     // Remove all parameterized-replaceable events with the matching author-kind-d
     // Kind must be a parameterized-replaceable event kind
-    pub fn remove_parameterized_replaceable(
+    pub fn remove_addressable(
         &self,
         read_txn: &RoTxn,
         txn: &mut RwTxn,
         coordinate: &Coordinate,
         until: Timestamp,
     ) -> Result<(), Error> {
-        if !coordinate.kind.is_parameterized_replaceable() {
+        if !coordinate.kind.is_addressable() {
             return Err(Error::WrongEventKind);
         }
 
