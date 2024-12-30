@@ -359,7 +359,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
 
 #[cfg(test)]
 mod tests {
-    use alloc::string::{String, ToString};
+    use alloc::string::String;
 
     use super::*;
 
@@ -379,20 +379,47 @@ mod tests {
     }
 
     #[test]
-    fn test_from_to_tag_kind() {
+    fn test_de_serialization() {
+        assert_eq!(TagKind::from("-"), TagKind::Protected);
+        assert_eq!(TagKind::Protected.as_str(), "-");
+
+        assert_eq!(TagKind::from("aes-256-gcm"), TagKind::Aes256Gcm);
+        assert_eq!(TagKind::Aes256Gcm.as_str(), "aes-256-gcm");
+
+        assert_eq!(TagKind::from("alt"), TagKind::Alt);
+        assert_eq!(TagKind::Alt.as_str(), "alt");
+
+        assert_eq!(TagKind::from("amount"), TagKind::Amount);
+        assert_eq!(TagKind::Amount.as_str(), "amount");
+
+        assert_eq!(TagKind::from("anon"), TagKind::Anon);
+        assert_eq!(TagKind::Anon.as_str(), "anon");
+
         assert_eq!(TagKind::from("clone"), TagKind::Clone);
-        assert_eq!(TagKind::Clone.to_string(), "clone");
+        assert_eq!(TagKind::Clone.as_str(), "clone");
+
+        assert_eq!(TagKind::from("expiration"), TagKind::Expiration);
+        assert_eq!(TagKind::Expiration.as_str(), "expiration");
 
         assert_eq!(TagKind::from("file"), TagKind::File);
-        assert_eq!(TagKind::File.to_string(), "file");
+        assert_eq!(TagKind::File.as_str(), "file");
 
         assert_eq!(TagKind::from("maintainers"), TagKind::Maintainers);
-        assert_eq!(TagKind::Maintainers.to_string(), "maintainers");
+        assert_eq!(TagKind::Maintainers.as_str(), "maintainers");
 
         assert_eq!(TagKind::from("tracker"), TagKind::Tracker);
-        assert_eq!(TagKind::Tracker.to_string(), "tracker");
+        assert_eq!(TagKind::Tracker.as_str(), "tracker");
 
         assert_eq!(TagKind::from("web"), TagKind::Web);
-        assert_eq!(TagKind::Web.to_string(), "web");
+        assert_eq!(TagKind::Web.as_str(), "web");
+
+        assert_eq!(TagKind::from("a"), TagKind::a());
+        assert_eq!(TagKind::a().as_str(), "a");
+
+        assert_eq!(TagKind::from("e"), TagKind::e());
+        assert_eq!(TagKind::e().as_str(), "e");
+
+        assert_eq!(TagKind::from("p"), TagKind::p());
+        assert_eq!(TagKind::p().as_str(), "p");
     }
 }
