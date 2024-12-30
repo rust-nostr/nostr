@@ -87,21 +87,16 @@ impl PartialEvent {
     }
 
     /// Merge [`MissingPartialEvent`] and compose [`Event`]
-    pub fn merge(self, missing: MissingPartialEvent) -> Result<Event, Error> {
-        let mut tags: Vec<Tag> = Vec::with_capacity(missing.tags.len());
-        for tag in missing.tags.into_iter() {
-            tags.push(Tag::parse(&tag)?);
-        }
-
-        Ok(Event::new(
+    pub fn merge(self, missing: MissingPartialEvent) -> Event {
+        Event::new(
             self.id,
             self.pubkey,
             missing.created_at,
             missing.kind,
-            tags,
+            missing.tags,
             missing.content,
             missing.sig,
-        ))
+        )
     }
 }
 
@@ -117,7 +112,7 @@ pub struct MissingPartialEvent {
     /// Kind
     pub kind: Kind,
     /// Vector of [`Tag`]
-    pub tags: Vec<Vec<String>>,
+    pub tags: Vec<Tag>,
     /// Content
     pub content: String,
     /// Signature
@@ -128,23 +123,18 @@ impl MissingPartialEvent {
     /// Compose from [RawEvent]
     #[inline]
     pub fn from_raw(raw: RawEvent) -> Result<Self, Error> {
+        let mut tags: Vec<Tag> = Vec::with_capacity(raw.tags.len());
+        for tag in raw.tags.into_iter() {
+            tags.push(Tag::parse(tag)?);
+        }
+
         Ok(Self {
             created_at: Timestamp::from(raw.created_at),
             kind: Kind::from(raw.kind),
-            tags: raw.tags,
+            tags,
             content: raw.content,
             sig: Signature::from_str(&raw.sig)?,
         })
-    }
-
-    /// Extract identifier (`d` tag), if exists.
-    pub fn identifier(&self) -> Option<&str> {
-        for tag in self.tags.iter() {
-            if let Some("d") = tag.first().map(|x| x.as_str()) {
-                return tag.get(1).map(|x| x.as_str());
-            }
-        }
-        None
     }
 }
 

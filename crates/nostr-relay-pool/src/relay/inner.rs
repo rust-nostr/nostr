@@ -1055,16 +1055,24 @@ impl InnerRelay {
         // Deserialize missing fields
         let missing: MissingPartialEvent = MissingPartialEvent::from_raw(event)?;
 
+        // Compose full event
+        let event: Event = partial_event.merge(missing);
+
+        // Check if it's expired
+        if event.is_expired() {
+            return Err(Error::EventExpired);
+        }
+
         // Check if event is replaceable and has coordinate
-        if missing.kind.is_replaceable() || missing.kind.is_parameterized_replaceable() {
-            let coordinate: Coordinate = Coordinate::new(missing.kind, partial_event.pubkey)
-                .identifier(missing.identifier().unwrap_or_default());
+        if event.kind.is_replaceable() || event.kind.is_parameterized_replaceable() {
+            let coordinate: Coordinate = Coordinate::new(event.kind, event.pubkey)
+                .identifier(event.tags.identifier().unwrap_or_default());
 
             // Check if coordinate has been deleted
             if self
                 .state
                 .database()
-                .has_coordinate_been_deleted(&coordinate, &missing.created_at)
+                .has_coordinate_been_deleted(&coordinate, &event.created_at)
                 .await?
             {
                 return Ok(None);
@@ -1075,21 +1083,10 @@ impl InnerRelay {
         if let Err(e) = self
             .state
             .database()
-            .event_id_seen(partial_event.id, self.url.clone())
+            .event_id_seen(event.id, self.url.clone())
             .await
         {
-            tracing::error!(
-                "Impossible to set event {} as seen by relay: {e}",
-                partial_event.id
-            );
-        }
-
-        // Compose full event
-        let event: Event = partial_event.merge(missing)?;
-
-        // Check if it's expired
-        if event.is_expired() {
-            return Err(Error::EventExpired);
+            tracing::error!("Impossible to set event {} as seen by relay: {e}", event.id);
         }
 
         let subscription_id: SubscriptionId = SubscriptionId::new(subscription_id);
