@@ -90,7 +90,11 @@ impl MachineReadablePrefix {
 /// Messages sent by relays, received by clients
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RelayMessage {
-    /// `["EVENT", <subscription_id>, <event JSON>]`
+    /// Event
+    ///
+    /// Used to send events requested by clients.
+    ///
+    /// JSON: `["EVENT", <subscription_id>, <event JSON>]`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     Event {
@@ -99,7 +103,11 @@ pub enum RelayMessage {
         /// Event
         event: Box<Event>,
     },
-    /// `["OK", <event_id>, <true|false>, <message>]`
+    /// Ok
+    ///
+    /// Used to indicate acceptance or denial of an `EVENT` message.
+    ///
+    /// JSON: `["OK", <event_id>, <true|false>, <message>]`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     Ok {
@@ -110,7 +118,11 @@ pub enum RelayMessage {
         /// Message
         message: String,
     },
-    /// `["EOSE", <subscription_id>]`
+    /// End of stored events
+    ///
+    /// Used to indicate the end of stored events and the beginning of events newly received in real-time.
+    ///
+    /// JSON: `["EOSE", <subscription_id>]`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     EndOfStoredEvents(SubscriptionId),
@@ -122,7 +134,11 @@ pub enum RelayMessage {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     Notice(String),
-    /// `["CLOSED", <subscription_id>, <message>]`
+    /// Closed
+    ///
+    /// Used to indicate that a subscription was ended on the server side.
+    ///
+    /// JSON: `["CLOSED", <subscription_id>, <message>]`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     Closed {
@@ -131,6 +147,8 @@ pub enum RelayMessage {
         /// Message
         message: String,
     },
+    /// Auth
+    ///
     /// `["AUTH", <challenge-string>]`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
@@ -138,6 +156,8 @@ pub enum RelayMessage {
         /// Challenge
         challenge: String,
     },
+    /// Count
+    ///
     /// `["COUNT", <subscription_id>, {"count": <integer>}]`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/45.md>
@@ -288,7 +308,7 @@ impl RelayMessage {
         }
     }
 
-    /// Deserialize [`RelayMessage`] from [`Value`]
+    /// Deserialize from [`Value`]
     #[inline]
     pub fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
         let raw = RawRelayMessage::from_value(msg)?;
@@ -301,7 +321,7 @@ impl JsonUtil for RelayMessage {
 
     /// Deserialize [`RelayMessage`] from JSON string
     ///
-    /// **This method NOT verify the event signature!**
+    /// **This method doesn't verify the event signature!**
     fn from_json<T>(json: T) -> Result<Self, Self::Err>
     where
         T: AsRef<[u8]>,

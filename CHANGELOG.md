@@ -55,6 +55,7 @@
 * nostr: accept either `EventBuilder` or `UnsignedEvent` as rumor in NIP59 functions ([Yuki Kishimoto] and [arkanoider])
 * nostr: require `fmt::Debug`, `Send` and `Sync` for `NostrSigner` ([Yuki Kishimoto])
 * nostr: enable support for `Tags::indexes` in `no_std` ([Yuki Kishimoto])
+* nostr: improve `RelayMessage` docs ([Yuki Kishimoto])
 * database: add manual trait implementations for `BTreeCappedSet` ([Yuki Kishimoto]) 
 * database: replace LRU with custom memory cache for IDs tracking ([Yuki Kishimoto])
 * lmdb: use `async-utility` to spawn blocking tasks ([Yuki Kishimoto])
