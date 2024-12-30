@@ -140,8 +140,6 @@ impl JsEventBuilder {
 
     /// Text note reply
     ///
-    /// If no `root` is passed, the `reply_to` will be used for root `e` tag.
-    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/10.md>
     #[wasm_bindgen(js_name = textNoteReply)]
     pub fn text_note_reply(

@@ -389,8 +389,6 @@ impl EventBuilder {
 
     /// Text note reply
     ///
-    /// If no `root` is passed, the `reply_to` will be used for root `e` tag.
-    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/10.md>
     pub fn text_note_reply<S>(
         content: S,
@@ -443,11 +441,10 @@ impl EventBuilder {
                 );
             }
             None => {
-                // No root event is passed, use `reply_to` event ID for `root` marker
                 tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
                     event_id: reply_to.id,
                     relay_url,
-                    marker: Some(Marker::Root),
+                    marker: Some(Marker::Reply),
                     public_key: Some(reply_to.pubkey),
                     uppercase: false,
                 }));

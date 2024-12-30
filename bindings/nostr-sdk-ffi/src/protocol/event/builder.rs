@@ -141,8 +141,6 @@ impl EventBuilder {
 
     /// Text note reply
     ///
-    /// If no `root` is passed, the `reply_to` will be used for root `e` tag.
-    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/10.md>
     #[uniffi::constructor(default(root = None, relay_url = None))]
     pub fn text_note_reply(
