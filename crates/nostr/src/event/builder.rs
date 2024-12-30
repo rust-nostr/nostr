@@ -516,6 +516,9 @@ impl EventBuilder {
                 }
             }
 
+            // Add `p` tag of `root` event
+            tags.push(Tag::public_key(root.pubkey));
+
             // Kind
             tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
                 kind: root.kind,
@@ -536,6 +539,9 @@ impl EventBuilder {
                     .cloned(),
             );
         }
+
+        // Add `p` tag of `comment_to` event
+        tags.push(Tag::public_key(comment_to.pubkey));
 
         // Add `a` tag (if event has it)
         if let Some(coordinate) = comment_to.coordinate() {
