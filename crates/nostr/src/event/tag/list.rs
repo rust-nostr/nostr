@@ -7,12 +7,14 @@
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
 use alloc::vec::{IntoIter, Vec};
+#[cfg(not(feature = "std"))]
+use core::cell::OnceCell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::slice::Iter;
 #[cfg(feature = "std")]
-use std::sync::OnceLock;
+use std::sync::OnceLock as OnceCell;
 
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -28,8 +30,7 @@ pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<String>>;
 #[derive(Clone)]
 pub struct Tags {
     list: Vec<Tag>,
-    #[cfg(feature = "std")]
-    indexes: OnceLock<TagsIndexes>,
+    indexes: OnceCell<TagsIndexes>,
 }
 
 impl fmt::Debug for Tags {
@@ -70,8 +71,7 @@ impl Tags {
     pub fn new(list: Vec<Tag>) -> Self {
         Self {
             list,
-            #[cfg(feature = "std")]
-            indexes: OnceLock::new(),
+            indexes: OnceCell::new(),
         }
     }
 
@@ -229,7 +229,7 @@ impl Tags {
             })
     }
 
-    pub(crate) fn build_indexes(&self) -> TagsIndexes {
+    fn build_indexes(&self) -> TagsIndexes {
         let mut idx: TagsIndexes = TagsIndexes::new();
         for (single_letter_tag, content) in self
             .iter()
@@ -244,7 +244,6 @@ impl Tags {
 
     /// Get indexes
     #[inline]
-    #[cfg(feature = "std")]
     pub fn indexes(&self) -> &TagsIndexes {
         self.indexes.get_or_init(|| self.build_indexes())
     }

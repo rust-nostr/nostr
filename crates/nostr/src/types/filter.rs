@@ -800,10 +800,8 @@ impl Filter {
             return false;
         }
 
-        #[cfg(feature = "std")]
+        // Get tag indexes
         let indexes: &TagsIndexes = event.tags.indexes();
-        #[cfg(not(feature = "std"))]
-        let indexes: TagsIndexes = event.tags.build_indexes();
 
         // Match
         self.generic_tags.iter().all(|(tag_name, set)| {
