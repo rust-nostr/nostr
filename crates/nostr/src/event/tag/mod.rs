@@ -22,6 +22,7 @@ mod error;
 pub mod kind;
 pub mod list;
 pub mod standard;
+pub(super) mod weak;
 
 pub use self::error::Error;
 pub use self::kind::TagKind;
