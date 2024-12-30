@@ -42,14 +42,19 @@ macro_rules! kind_variants {
                 $name,
             )*
             /// Represents a job request event (NIP90).
+            #[deprecated(since = "0.38.0", note = "Use `Custom` variant or `is_job_request` method instead.")]
             JobRequest(u16),
             /// Represents a job result event (NIP90).
+            #[deprecated(since = "0.38.0", note = "Use `Custom` variant or `is_job_result` method instead.")]
             JobResult(u16),
             /// Represents a regular event.
+            #[deprecated(since = "0.38.0", note = "Use `Custom` variant or `is_regular` method instead.")]
             Regular(u16),
             /// Represents a replaceable event.
+            #[deprecated(since = "0.38.0", note = "Use `Custom` variant or `is_replaceable` method instead.")]
             Replaceable(u16),
             /// Represents an ephemeral event.
+            #[deprecated(since = "0.38.0", note = "Use `Custom` variant or `is_ephemeral` method instead.")]
             Ephemeral(u16),
             /// Represents a parameterized replaceable event.
             #[deprecated(since = "0.38.0", note = "Use `Custom` variant or `is_addressable` method instead.")]
@@ -64,11 +69,6 @@ macro_rules! kind_variants {
                     $(
                         $value => Self::$name,
                     )*
-                    x if (NIP90_JOB_REQUEST_RANGE).contains(&x) => Self::JobRequest(x),
-                    x if (NIP90_JOB_RESULT_RANGE).contains(&x) => Self::JobResult(x),
-                    x if (REGULAR_RANGE).contains(&x) => Self::Regular(x),
-                    x if (REPLACEABLE_RANGE).contains(&x) => Self::Replaceable(x),
-                    x if (EPHEMERAL_RANGE).contains(&x) => Self::Ephemeral(x),
                     x => Self::Custom(x),
                 }
             }
@@ -80,10 +80,15 @@ macro_rules! kind_variants {
                     $(
                         Kind::$name => $value,
                     )*
+                    #[allow(deprecated)]
                     Kind::JobRequest(u) => u,
+                    #[allow(deprecated)]
                     Kind::JobResult(u) => u,
+                    #[allow(deprecated)]
                     Kind::Regular(u) => u,
+                    #[allow(deprecated)]
                     Kind::Replaceable(u) => u,
+                    #[allow(deprecated)]
                     Kind::Ephemeral(u) => u,
                     #[allow(deprecated)]
                     Kind::ParameterizedReplaceable(u) => u,
@@ -177,7 +182,7 @@ kind_variants! {
     TorrentComment => 2004, "Torrent Comment (NIP35)",
 }
 
-impl PartialEq<Kind> for Kind {
+impl PartialEq for Kind {
     fn eq(&self, other: &Kind) -> bool {
         self.as_u16() == other.as_u16()
     }
@@ -367,8 +372,7 @@ mod tests {
 
     #[test]
     fn test_equal_kind() {
-        assert_eq!(Kind::Custom(20100), Kind::Custom(20100));
-        assert_eq!(Kind::Custom(20100), Kind::Ephemeral(20100));
+        assert_eq!(Kind::Custom(20100), Kind::from_u16(20100));
         assert_eq!(Kind::TextNote, Kind::Custom(1));
         assert_eq!(Kind::Custom(30017), Kind::SetStall);
         assert_eq!(Kind::Custom(30018), Kind::SetProduct);

@@ -125,6 +125,7 @@
 ### Deprecated
 
 * nostr: deprecate `PARAMETERIZED_REPLACEABLE_RANGE`, `Kind::ParameterizedReplaceable` and `Kind::is_parameterized_replaceable` ([Yuki Kishimoto])
+* nostr: deprecate `JobRequest`, `JobResult`, `Regular`, `Replaceable` and `Ephemeral` kind variants ([Yuki Kishimoto])
 * pool: deprecated batch event methods ([Yuki Kishimoto])
 * pool: deprecate `FilterOptions` ([Yuki Kishimoto])
 * sdk: deprecate `timeout` option ([Yuki Kishimoto])

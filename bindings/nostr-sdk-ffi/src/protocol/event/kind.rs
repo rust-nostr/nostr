@@ -331,21 +331,7 @@ pub enum KindEnum {
     SetProduct,
     /// Job Feedback (NIP90)
     JobFeedback,
-    JobRequest {
-        kind: u16,
-    },
-    JobResult {
-        kind: u16,
-    },
-    Regular {
-        kind: u16,
-    },
-    Replaceable {
-        kind: u16,
-    },
-    Ephemeral {
-        kind: u16,
-    },
+    // TODO: remove this variant
     Custom {
         kind: u16,
     },
@@ -427,8 +413,6 @@ impl From<nostr::Kind> for KindEnum {
             nostr::Kind::SetStall => Self::SetStall,
             nostr::Kind::SetProduct => Self::SetProduct,
             nostr::Kind::JobFeedback => Self::JobFeedback,
-            nostr::Kind::JobRequest(kind) => Self::JobRequest { kind },
-            nostr::Kind::JobResult(kind) => Self::JobResult { kind },
             nostr::Kind::InboxRelays => Self::InboxRelays,
             nostr::Kind::MlsKeyPackageRelays => Self::MlsKeyPackageRelays,
             nostr::Kind::MlsKeyPackage => Self::MlsKeyPackage,
@@ -436,10 +420,14 @@ impl From<nostr::Kind> for KindEnum {
             nostr::Kind::MlsGroupMessage => Self::MlsGroupMessage,
             nostr::Kind::Torrent => Self::Torrent,
             nostr::Kind::TorrentComment => Self::TorrentComment,
-            nostr::Kind::Regular(u) => Self::Regular { kind: u },
-            nostr::Kind::Replaceable(u) => Self::Replaceable { kind: u },
-            nostr::Kind::Ephemeral(u) => Self::Ephemeral { kind: u },
-            nostr::Kind::Custom(u) => Self::Custom { kind: u },
+            #[allow(deprecated)]
+            nostr::Kind::JobRequest(u)
+            | nostr::Kind::JobResult(u)
+            | nostr::Kind::Regular(u)
+            | nostr::Kind::Replaceable(u)
+            | nostr::Kind::Ephemeral(u)
+            | nostr::Kind::ParameterizedReplaceable(u)
+            | nostr::Kind::Custom(u) => Self::Custom { kind: u },
         }
     }
 }
@@ -520,8 +508,6 @@ impl From<KindEnum> for nostr::Kind {
             KindEnum::SetStall => Self::SetStall,
             KindEnum::SetProduct => Self::SetProduct,
             KindEnum::JobFeedback => Self::JobFeedback,
-            KindEnum::JobRequest { kind } => Self::JobRequest(kind),
-            KindEnum::JobResult { kind } => Self::JobResult(kind),
             KindEnum::InboxRelays => Self::InboxRelays,
             KindEnum::MlsKeyPackageRelays => Self::MlsKeyPackageRelays,
             KindEnum::MlsKeyPackage => Self::MlsKeyPackage,
@@ -529,9 +515,6 @@ impl From<KindEnum> for nostr::Kind {
             KindEnum::MlsGroupMessage => Self::MlsGroupMessage,
             KindEnum::Torrent => Self::Torrent,
             KindEnum::TorrentComment => Self::TorrentComment,
-            KindEnum::Regular { kind } => Self::Regular(kind),
-            KindEnum::Replaceable { kind } => Self::Replaceable(kind),
-            KindEnum::Ephemeral { kind } => Self::Ephemeral(kind),
             KindEnum::Custom { kind } => Self::Custom(kind),
         }
     }
