@@ -68,7 +68,7 @@ impl SecretKey {
         Err(Error::InvalidSecretKey)
     }
 
-    /// Parse [SecretKey] from `bytes`
+    /// Parse from `bytes`
     #[inline]
     pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
         Ok(Self {
@@ -76,7 +76,7 @@ impl SecretKey {
         })
     }
 
-    /// Parse [SecretKey] from `hex` string
+    /// Parse from `hex`
     #[inline]
     pub fn from_hex(hex: &str) -> Result<Self, Error> {
         Ok(Self {
@@ -91,7 +91,7 @@ impl SecretKey {
         Self::generate_with_rng(&mut OsRng)
     }
 
-    /// Generate random secret key with custom [`Rng`]
+    /// Generate random a secret key with a custom [`Rng`]
     #[inline]
     #[cfg(feature = "std")]
     pub fn generate_with_rng<R>(rng: &mut R) -> Self
@@ -130,10 +130,10 @@ impl SecretKey {
         self.inner.secret_bytes()
     }
 
-    /// Encrypt [SecretKey]
+    /// Encrypt secret key
     ///
-    /// By default `LOG_N` is set to `16` and [KeySecurity] to `Unknown`.
-    /// To use custom values check [EncryptedSecretKey] constructors.
+    /// By default, `LOG_N` is set to `16` and [`KeySecurity::Unknown`].
+    /// To use custom values check [`EncryptedSecretKey`] constructors.
     #[inline]
     #[cfg(all(feature = "std", feature = "nip49"))]
     pub fn encrypt<S>(&self, password: S) -> Result<EncryptedSecretKey, nip49::Error>
@@ -147,7 +147,7 @@ impl SecretKey {
 impl FromStr for SecretKey {
     type Err = Error;
 
-    /// Try to parse [SecretKey] from `hex` or `bech32`
+    /// Try to parse from `hex` or `bech32`
     #[inline]
     fn from_str(secret_key: &str) -> Result<Self, Self::Err> {
         Self::parse(secret_key)

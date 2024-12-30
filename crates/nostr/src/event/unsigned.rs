@@ -35,8 +35,8 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Signer(e) => write!(f, "{e}"),
-            Self::Json(e) => write!(f, "Json: {e}"),
-            Self::Event(e) => write!(f, "Event: {e}"),
+            Self::Json(e) => write!(f, "{e}"),
+            Self::Event(e) => write!(f, "{e}"),
         }
     }
 }

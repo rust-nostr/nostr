@@ -53,14 +53,14 @@ const SIG: &str = "sig";
 /// [`Event`] error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
-    /// Invalid signature
-    InvalidSignature,
-    /// Invalid event id
-    InvalidId,
-    /// Unknown JSON event key
-    UnknownKey(String),
     /// Error serializing or deserializing JSON data
     Json(String),
+    /// Unknown JSON event key
+    UnknownKey(String),
+    /// Invalid event ID
+    InvalidId,
+    /// Invalid signature
+    InvalidSignature,
 }
 
 #[cfg(feature = "std")]
@@ -69,10 +69,10 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidSignature => write!(f, "Invalid signature"),
-            Self::InvalidId => write!(f, "Invalid event id"),
+            Self::Json(e) => write!(f, "{e}"),
             Self::UnknownKey(key) => write!(f, "Unknown JSON event key: {key}"),
-            Self::Json(e) => write!(f, "Json: {e}"),
+            Self::InvalidId => write!(f, "Invalid event id"),
+            Self::InvalidSignature => write!(f, "Invalid signature"),
         }
     }
 }
@@ -321,7 +321,7 @@ impl JsonUtil for Event {
 
     /// Deserialize [`Event`] from JSON
     ///
-    /// **This method NOT verify the signature!**
+    /// **This method doesn't verify the signature!**
     #[inline]
     fn from_json<T>(json: T) -> Result<Self, Self::Err>
     where
@@ -460,7 +460,6 @@ mod tests {
 
     #[test]
     fn test_tags_deser_without_recommended_relay() {
-        // The TAG array has dynamic length because the third element(Recommended relay url) is optional
         let sample_event = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
         let ev_ser = Event::from_json(sample_event).unwrap();
         assert_eq!(ev_ser.as_json(), sample_event);

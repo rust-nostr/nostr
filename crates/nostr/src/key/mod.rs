@@ -38,14 +38,14 @@ use crate::{Event, UnsignedEvent, SECP256K1};
 /// [`Keys`] error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
+    /// Secp256k1 error
+    Secp256k1(secp256k1::Error),
     /// Invalid secret key
     InvalidSecretKey,
     /// Invalid public key
     InvalidPublicKey,
     /// Unsupported char
     InvalidChar(char),
-    /// Secp256k1 error
-    Secp256k1(secp256k1::Error),
 }
 
 #[cfg(feature = "std")]
@@ -54,10 +54,10 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Secp256k1(e) => write!(f, "{e}"),
             Self::InvalidSecretKey => write!(f, "Invalid secret key"),
             Self::InvalidPublicKey => write!(f, "Invalid public key"),
             Self::InvalidChar(c) => write!(f, "Unsupported char: {c}"),
-            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
         }
     }
 }
@@ -112,18 +112,18 @@ impl Hash for Keys {
 }
 
 impl Keys {
-    /// Initialize nostr keys from secret key.
+    /// Construct from a secret key.
     ///
-    /// This method internally construct the [Keypair] and derive the [PublicKey].
+    /// This method internally constructs the [`Keypair`] and derives the [`PublicKey`].
     #[inline]
     #[cfg(feature = "std")]
     pub fn new(secret_key: SecretKey) -> Self {
         Self::new_with_ctx(&SECP256K1, secret_key)
     }
 
-    /// Initialize nostr keys from secret key.
+    /// Construct from a secret key.
     ///
-    /// This method internally construct the [Keypair] and derive the [PublicKey].
+    /// This method internally constructs the [`Keypair`] and derives the [`PublicKey`].
     pub fn new_with_ctx<C>(secp: &Secp256k1<C>, secret_key: SecretKey) -> Self
     where
         C: Signing,
@@ -138,14 +138,18 @@ impl Keys {
         }
     }
 
-    /// Parse secret key from `hex` or `bech32` and compose keys
+    /// Parse secret key and construct keys.
+    ///
+    /// Check [`SecretKey::parse`] to learn more about secret key parsing.
     #[inline]
     #[cfg(feature = "std")]
     pub fn parse(secret_key: &str) -> Result<Self, Error> {
         Self::parse_with_ctx(&SECP256K1, secret_key)
     }
 
-    /// Parse secret key from `hex` or `bech32` and compose keys
+    /// Parse secret key and construct keys.
+    ///
+    /// Check [`SecretKey::parse`] to learn more about secret key parsing.
     #[inline]
     pub fn parse_with_ctx<C>(secp: &Secp256k1<C>, secret_key: &str) -> Result<Self, Error>
     where
@@ -157,7 +161,7 @@ impl Keys {
 
     /// Generate random keys
     ///
-    /// This constructor use a random number generator that retrieves randomness from the operating system (see [`OsRng`]).
+    /// This constructor uses a random number generator that retrieves randomness from the operating system (see [`OsRng`]).
     ///
     /// Use [`Keys::generate_with_rng`] to specify a custom random source.
     ///
@@ -183,7 +187,7 @@ impl Keys {
     /// Generate random keys
     ///
     /// Generate random keys **without** construct the [`Keypair`].
-    /// This allows faster keys generation (i.e. for vanity pubkey mining).
+    /// This allows faster keys generation (i.e., for vanity pubkey mining).
     /// The [`Keypair`] will be automatically created when needed and stored in a cell.
     #[inline]
     pub fn generate_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
@@ -224,7 +228,7 @@ impl Keys {
 
     /// Creates a schnorr signature of the [`Message`].
     ///
-    /// This method use a random number generator that retrieves randomness from the operating system (see [`OsRng`]).
+    /// This method uses a random number generator that retrieves randomness from the operating system (see [`OsRng`]).
     #[inline]
     #[cfg(feature = "std")]
     pub fn sign_schnorr(&self, message: &Message) -> Signature {

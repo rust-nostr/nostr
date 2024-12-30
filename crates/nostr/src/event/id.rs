@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Event Id
+//! Event ID
 
 use alloc::string::{String, ToString};
 use core::fmt;
@@ -35,7 +35,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Hex(e) => write!(f, "Hex: {e}"),
+            Self::Hex(e) => write!(f, "{e}"),
             Self::InvalidEventId => write!(f, "Invalid event ID"),
         }
     }

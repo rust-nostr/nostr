@@ -47,7 +47,7 @@ pub enum TagKind<'a> {
     Delegation,
     /// Description
     Description,
-    /// Size of file in pixels
+    /// Size of the file in pixels
     Dim,
     /// Emoji
     Emoji,
@@ -103,7 +103,7 @@ pub enum TagKind<'a> {
     Relays,
     /// Request
     Request,
-    /// Size of file in bytes
+    /// Size of the file in bytes
     Size,
     /// Starts
     Starts,

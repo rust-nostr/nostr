@@ -195,7 +195,7 @@ pub enum TagStandard {
         protocol: Protocol,
     },
     Emoji {
-        /// Name given for the emoji, which MUST be comprised of only alphanumeric characters and underscores
+        /// Name given for the emoji, which MUST consist of only alphanumeric characters and underscores
         shortcode: String,
         /// URL to the corresponding image file of the emoji
         url: Url,
@@ -407,7 +407,7 @@ impl TagStandard {
                 }) => Ok(Self::LabelNamespace(tag_1.to_string())),
                 TagKind::Alt => Ok(Self::Alt(tag_1.to_string())),
                 TagKind::Dim => Ok(Self::Dim(ImageDimensions::from_str(tag_1)?)),
-                _ => Err(Error::UnknownStardardizedTag),
+                _ => Err(Error::UnknownStandardizedTag),
             };
         }
 
@@ -445,13 +445,13 @@ impl TagStandard {
                         status,
                         extra_info: Some(tag_2.to_string()),
                     }),
-                    Err(_) => Err(Error::UnknownStardardizedTag),
+                    Err(_) => Err(Error::UnknownStandardizedTag),
                 },
-                _ => Err(Error::UnknownStardardizedTag),
+                _ => Err(Error::UnknownStandardizedTag),
             };
         }
 
-        Err(Error::UnknownStardardizedTag)
+        Err(Error::UnknownStandardizedTag)
     }
 
     /// Compose `TagStandard::Event` without `relay_url` and `marker`
@@ -938,7 +938,7 @@ where
             uppercase: false,
         })
     } else {
-        Err(Error::UnknownStardardizedTag)
+        Err(Error::UnknownStandardizedTag)
     }
 }
 
@@ -947,7 +947,7 @@ where
     S: AsRef<str>,
 {
     if tag.len() < 2 {
-        return Err(Error::UnknownStardardizedTag);
+        return Err(Error::UnknownStandardizedTag);
     }
 
     let event_id: EventId = EventId::from_hex(tag[1].as_ref())?;
@@ -1017,7 +1017,7 @@ where
     // External Content ID (NIP73) has min 2 values
     // External Identity (NI39) has min 3 values
     if tag.len() < 2 {
-        return Err(Error::UnknownStardardizedTag);
+        return Err(Error::UnknownStandardizedTag);
     }
 
     let tag_1: &str = tag[1].as_ref();
@@ -1044,7 +1044,7 @@ where
         });
     }
 
-    Err(Error::UnknownStardardizedTag)
+    Err(Error::UnknownStandardizedTag)
 }
 
 fn parse_p_tag<S>(tag: &[S], uppercase: bool) -> Result<TagStandard, Error>
@@ -1127,7 +1127,7 @@ where
             uppercase,
         })
     } else {
-        Err(Error::UnknownStardardizedTag)
+        Err(Error::UnknownStandardizedTag)
     }
 }
 
@@ -1147,7 +1147,7 @@ where
         } else if tag_2 == EUC {
             Ok(TagStandard::GitEarliestUniqueCommitId(tag_1.to_string()))
         } else {
-            Err(Error::UnknownStardardizedTag)
+            Err(Error::UnknownStandardizedTag)
         };
     }
 
@@ -1164,7 +1164,7 @@ where
         };
     }
 
-    Err(Error::UnknownStardardizedTag)
+    Err(Error::UnknownStandardizedTag)
 }
 
 fn parse_q_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
@@ -1172,7 +1172,7 @@ where
     S: AsRef<str>,
 {
     if tag.len() < 2 {
-        return Err(Error::UnknownStardardizedTag);
+        return Err(Error::UnknownStandardizedTag);
     }
 
     let event_id: EventId = EventId::from_hex(tag[1].as_ref())?;
@@ -1212,7 +1212,7 @@ where
             sig: Signature::from_str(tag_3)?,
         })
     } else {
-        Err(Error::UnknownStardardizedTag)
+        Err(Error::UnknownStandardizedTag)
     }
 }
 

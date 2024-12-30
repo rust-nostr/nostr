@@ -105,7 +105,7 @@ impl Tag {
             return Err(Error::EmptyTag);
         }
 
-        // Construct without cell
+        // Construct without an empty cell
         Ok(Self::new_with_empty_cell(tag))
     }
 

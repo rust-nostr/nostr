@@ -258,7 +258,8 @@ impl Kind {
 
     /// Check if it's parameterized replaceable
     ///
-    /// Parametrized replaceable means that, for each combination of `pubkey`, `kind` and the `d` tag's first value,
+    /// Parameterized replaceable means that,
+    /// for each combination of `pubkey`, `kind` and the `d` tag's first value,
     /// only the latest event MUST be stored by relays, older versions MAY be discarded.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>

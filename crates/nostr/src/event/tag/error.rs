@@ -17,12 +17,6 @@ use crate::{key, secp256k1};
 pub enum Error {
     /// Keys
     Keys(key::Error),
-    /// Impossible to find tag kind
-    KindNotFound,
-    /// Empty tag
-    EmptyTag,
-    /// Invalid Zap Request
-    InvalidZapRequest,
     /// Impossible to parse integer
     ParseIntError(ParseIntError),
     /// Secp256k1
@@ -54,7 +48,11 @@ pub enum Error {
     /// Image
     Image(image::Error),
     /// Unknown standardized tag
-    UnknownStardardizedTag,
+    UnknownStandardizedTag,
+    /// Impossible to find tag kind
+    KindNotFound,
+    /// Empty tag
+    EmptyTag,
 }
 
 #[cfg(feature = "std")]
@@ -79,10 +77,9 @@ impl fmt::Display for Error {
             Self::NIP98(e) => write!(f, "{e}"),
             Self::Event(e) => write!(f, "{e}"),
             Self::Image(e) => write!(f, "{e}"),
-            Self::UnknownStardardizedTag => write!(f, "Unknown standardized tag"),
+            Self::UnknownStandardizedTag => write!(f, "Unknown standardized tag"),
             Self::KindNotFound => write!(f, "Impossible to find tag kind"),
             Self::EmptyTag => write!(f, "Empty tag"),
-            Self::InvalidZapRequest => write!(f, "Invalid Zap request"),
         }
     }
 }

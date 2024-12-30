@@ -16,7 +16,7 @@ use super::raw::{self, RawEvent};
 use super::tag;
 use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Tag, Timestamp};
 
-/// [`PartialEvent`] error
+/// Partial Event error
 #[derive(Debug)]
 pub enum Error {
     /// Error serializing or deserializing JSON data
@@ -37,9 +37,9 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Json(e) => write!(f, "Json: {e}"),
-            Self::RawEvent(e) => write!(f, "Raw event: {e}"),
-            Self::Tag(e) => write!(f, "Tag: {e}"),
+            Self::Json(e) => write!(f, "{e}"),
+            Self::RawEvent(e) => write!(f, "{e}"),
+            Self::Tag(e) => write!(f, "{e}"),
             Self::Secp256k1(e) => write!(f, "{e}"),
             Self::InvalidSignature => write!(f, "Invalid signature"),
         }

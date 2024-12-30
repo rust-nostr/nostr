@@ -35,10 +35,10 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Secp256k1(e) => write!(f, "Secp256k1: {e}"),
-            Self::EventId(e) => write!(f, "Event ID: {e}"),
-            Self::Keys(e) => write!(f, "Keys: {e}"),
-            Self::Tag(e) => write!(f, "Tag: {e}"),
+            Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::EventId(e) => write!(f, "{e}"),
+            Self::Keys(e) => write!(f, "{e}"),
+            Self::Tag(e) => write!(f, "{e}"),
         }
     }
 }

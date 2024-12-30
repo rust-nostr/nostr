@@ -43,7 +43,7 @@ pub enum Error {
     /// Signer error
     Signer(SignerError),
     /// Unsigned event error
-    Unsigned(super::unsigned::Error),
+    Unsigned(unsigned::Error),
     /// OpenTimestamps error
     #[cfg(feature = "nip03")]
     OpenTimestamps(nostr_ots::Error),
@@ -97,8 +97,8 @@ impl From<SignerError> for Error {
     }
 }
 
-impl From<super::unsigned::Error> for Error {
-    fn from(e: super::unsigned::Error) -> Self {
+impl From<unsigned::Error> for Error {
+    fn from(e: unsigned::Error) -> Self {
         Self::Unsigned(e)
     }
 }
@@ -183,7 +183,7 @@ impl EventBuilder {
 
     /// Add tags
     ///
-    /// This method extend the current tags (if any).
+    /// This method extends the current tags.
     #[inline]
     pub fn tags<I>(mut self, tags: I) -> Self
     where
@@ -750,7 +750,7 @@ impl EventBuilder {
         Self::new(Kind::Reaction, reaction).tags(tags)
     }
 
-    /// Create new channel
+    /// Create a new channel
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
     #[inline]
@@ -827,7 +827,7 @@ impl EventBuilder {
         Self::new(Kind::ChannelMuteUser, content.to_string()).tag(Tag::public_key(public_key))
     }
 
-    /// Authentication of clients to relays
+    /// Authentication of clients to the relay
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[inline]

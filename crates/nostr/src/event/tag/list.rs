@@ -66,7 +66,7 @@ impl Hash for Tags {
 }
 
 impl Tags {
-    /// Construct new tag list.
+    /// Construct a new tag list.
     #[inline]
     pub fn new(list: Vec<Tag>) -> Self {
         Self {
@@ -117,7 +117,7 @@ impl Tags {
         self.list.iter().find(|t| t.kind() == kind)
     }
 
-    /// Get first tag that match [`TagKind`] and that is standardized.
+    /// Get the first tag that match [`TagKind`] and that is standardized.
     #[inline]
     pub fn find_standardized(&self, kind: TagKind) -> Option<&TagStandard> {
         self.find(kind).and_then(|t| t.as_standardized())
@@ -129,7 +129,7 @@ impl Tags {
         self.list.iter().filter(move |t| t.kind() == kind)
     }
 
-    /// Get first tag that match [`TagKind`] and that is standardized.
+    /// Get the first tag that match [`TagKind`] and that is standardized.
     #[inline]
     pub fn filter_standardized<'a>(
         &'a self,
@@ -159,7 +159,7 @@ impl Tags {
         }
     }
 
-    /// Get [`Timestamp`] expiration, if set.
+    /// Get [`Timestamp`] expiration, if exists.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
     pub fn expiration(&self) -> Option<&Timestamp> {
