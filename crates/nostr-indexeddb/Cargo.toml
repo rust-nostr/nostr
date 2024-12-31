@@ -1,6 +1,6 @@
 [package]
 name = "nostr-indexeddb"
-version = "0.37.0"
+version = "0.38.0"
 edition = "2021"
 description = "Web's IndexedDB Storage backend for Nostr apps"
 authors.workspace = true
