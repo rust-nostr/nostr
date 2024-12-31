@@ -20,7 +20,6 @@ def event_id():
     event_id_hex = event_id.to_hex()
     print(f"     - Hex: {event_id_hex}")
     print(f"     - Parse: {EventId.parse(event_id_hex)}")
-    print(f"     - From Hex: {EventId.from_hex(event_id_hex)}")
     # ANCHOR_END: format-parse-hex
 
     print()
@@ -30,7 +29,6 @@ def event_id():
     event_id_bech32 = event_id.to_bech32()
     print(f"     - Bech32: {event_id_bech32}")
     print(f"     - Parse: {EventId.parse(event_id_bech32)}")
-    print(f"     - From Bech32: {EventId.from_bech32(event_id_bech32)}")
     # ANCHOR_END: format-parse-bech32
 
     print()
@@ -40,7 +38,6 @@ def event_id():
     event_id_nostr_uri = event_id.to_nostr_uri()
     print(f"     - Nostr URI: {event_id_nostr_uri}")
     print(f"     - Parse: {EventId.parse(event_id_nostr_uri)}")
-    print(f"     - From Nostr URI: {EventId.from_nostr_uri(event_id_nostr_uri)}")
     # ANCHOR_END: format-parse-nostr-uri
 
     print()

@@ -41,19 +41,6 @@ def kind():
 
     print()
     # ANCHOR: kind-representations
-    print("  Kinds Representing types of Events:")
-    kind = Kind.from_enum(cast(KindEnum, KindEnum.CUSTOM(1337)))
-    print(f"     - Custom Event Kind: {kind.as_u16()} - {kind.as_enum()}")
-    kind = Kind.from_enum(cast(KindEnum, KindEnum.REPLACEABLE(10420)))
-    print(f"     - Replacable Event Kind: {kind.as_u16()} - {kind.as_enum()}")
-    kind = Kind.from_enum(cast(KindEnum, KindEnum.PARAMETERIZED_REPLACEABLE(30420)))
-    print(f"     - Parameterised Replaceable Event Kind: {kind.as_u16()} - {kind.as_enum()}")
-    kind = Kind.from_enum(cast(KindEnum, KindEnum.EPHEMERAL(21420)))
-    print(f"     - Ephemeral Event Kind: {kind.as_u16()} - {kind.as_enum()}")
-    kind = Kind.from_enum(cast(KindEnum, KindEnum.REGULAR(420)))
-    print(f"     - Regular Event Kind: {kind.as_u16()} - {kind.as_enum()}")
-    kind = Kind.from_enum(cast(KindEnum, KindEnum.JOB_REQUEST(123)))
-    print(f"     - Job Request Event Kind: {kind.as_u16()} - {kind.as_enum()}")
-    kind = Kind.from_enum(cast(KindEnum, KindEnum.JOB_RESULT(321)))
-    print(f"     - Job Result Event Kind: {kind.as_u16()} - {kind.as_enum()}")
+    kind = Kind(1337)
+    print(f"Custom Event Kind: {kind.as_u16()} - {kind.as_enum()}")
     # ANCHOR_END: kind-representations

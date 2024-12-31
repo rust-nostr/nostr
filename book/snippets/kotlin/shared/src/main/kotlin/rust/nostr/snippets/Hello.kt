@@ -17,13 +17,13 @@ suspend fun hello() {
 
     // ANCHOR: publish
     val builder = EventBuilder.textNote("Hello, rust-nostr!")
-    val res = client.sendEventBuilder(builder)
+    val output = client.sendEventBuilder(builder)
     // ANCHOR_END: publish
 
     // ANCHOR: output
-    println("Event ID: ${res.id.toBech32()}")
-    println("Sent to: ${res.output.success}")
-    println("Not sent to: ${res.output.failed}")
+    println("Event ID: ${output.id.toBech32()}")
+    println("Sent to: ${output.success}")
+    println("Not sent to: ${output.failed}")
     // ANCHOR_END: output
 }
 // ANCHOR_END: full

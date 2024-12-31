@@ -15,13 +15,13 @@ export async function hello() {
 
     // ANCHOR: publish
     let builder = EventBuilder.textNote("Hello, rust-nostr!");
-    let res = await client.sendEventBuilder(builder);
+    let output = await client.sendEventBuilder(builder);
     // ANCHOR_END: publish
 
     // ANCHOR: output
-    console.log("Event ID:", res.id.toBech32());
-    console.log("Sent to:", res.output.success);
-    console.log("Not sent to:", res.output.failed);
+    console.log("Event ID:", output.id.toBech32());
+    console.log("Sent to:", output.success);
+    console.log("Not sent to:", output.failed);
     // ANCHOR_END: output
 }
 // ANCHOR_END: full

@@ -1,5 +1,5 @@
 // ANCHOR: full
-use nostr_sdk::prelude::*;
+use nwc::prelude::*;
 
 pub async fn run() -> Result<()> {
     // Parse NWC uri

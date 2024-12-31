@@ -93,15 +93,7 @@ For example, the `text_note()` method can be used to quickly and efficiently cre
 ```
 
 Occasionally you may want more generic usage of kinds, like if you wanted to create your own custom (or experimental) event type, 
-or if you want to leverage one of the commonly defined event types (i.e. replaceable, ephemeral, regular etc.). 
-To do this we can use the `Kind` class along with the `from_enum()` method much as we did in previous examples, 
-but we can leverage enums representing these types of events e.g. `CUSTOM()` or `REPLACEABLE()` and pass them the specific Kind integer for the new type of event we're creating. 
-
-A good example of this may be events termed as "Parameterized Replaceable Lists". 
-In the [Nostr NIP-01 documentation](https://github.com/nostr-protocol/nips/blob/master/01.md) we see a recommended range for these lists as `30000 <= n < 40000`, 
-however at the time of writing, only kinds `30000`, `30002`, `30003`, `30004`, `30005`, `30015`, `30030` and `30063` are currently well defined. 
-Therefore, if we wanted to extend this to say create a new list event of our favourite memes, Kind `30420`, 
-then we could do this using the `PARAMETERIZED_REPLACEABLE(30420)` enum to define the type of event as in the example below.
+or if you want to leverage one of the commonly defined event types (i.e. replaceable, ephemeral, regular, etc.).
 
 ```python,ignore
 {{#include ../../../snippets/python/src/event/kind.py:kind-representations}}

@@ -16,13 +16,13 @@ func hello() async throws {
 
     // ANCHOR: publish
     let builder = EventBuilder.textNote(content: "Hello, rust-nostr!")
-    let res = try await client.sendEventBuilder(builder: builder)
+    let output = try await client.sendEventBuilder(builder: builder)
     // ANCHOR_END: publish
 
     // ANCHOR: output
-    print("Event ID: \(try res.id.toBech32())")
-    print("Sent to: \(res.output.success)")
-    print("Not sent to: \(res.output.failed)")
+    print("Event ID: \(try output.id.toBech32())")
+    print("Sent to: \(output.success)")
+    print("Not sent to: \(output.failed)")
     // ANCHOR_END: output
 }
 // ANCHOR_END: full

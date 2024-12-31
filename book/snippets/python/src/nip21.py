@@ -14,7 +14,7 @@ def nip21():
     # bech32 npub
     pk_parse = Nip21.parse(pk_uri)
     if pk_parse.as_enum().is_pubkey():
-        pk_bech32 = PublicKey.from_nostr_uri(pk_uri).to_bech32()
+        pk_bech32 = PublicKey.parse(pk_uri).to_bech32()
         print(f" Public key (bech32): {pk_bech32}")
     # ANCHOR_END: npub
 
@@ -30,7 +30,7 @@ def nip21():
     # bech32 note
     note_pasre = Nip21.parse(note_uri)
     if note_pasre.as_enum().is_note():
-        event_bech32 = EventId.from_nostr_uri(note_uri).to_bech32()
+        event_bech32 = EventId.parse(note_uri).to_bech32()
         print(f" Event (bech32): {event_bech32}")
     # ANCHOR_END: note
 
@@ -80,6 +80,6 @@ def nip21():
     # bech32 naddr
     coord_parse = Nip21.parse(coord_uri)
     if coord_parse.as_enum().is_coord():
-        coord_bech32 = Coordinate.from_nostr_uri(coord_uri).to_bech32()
+        coord_bech32 = Coordinate.parse(coord_uri).to_bech32()
         print(f" Coordinate (bech32): {coord_bech32}")
     # ANCHOR_END: naddr

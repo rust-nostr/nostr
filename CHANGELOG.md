@@ -29,7 +29,8 @@
 
 ### Summary
 
-* Full NIP42 support (SDK)
+Full NIP42 support for SDK and relay builder, negentropy support and read/write policy plugins for relay builder,
+NIP35 support, better logs and docs, performance improvements, bugs fix and more!
 
 ### Breaking changes
 
@@ -48,7 +49,7 @@
 
 ### Changed
 
-* Bump `async-utility` to 0.3, `async-wsocket` to 0.11 and `atomic-destructor` to 0.3 ([Yuki Kishimoto])
+* Bump `async-utility` to 0.3, `async-wsocket` to 0.12 and `atomic-destructor` to 0.3 ([Yuki Kishimoto])
 * nostr: remove self-tagging when building events ([Yuki Kishimoto])
 * nostr: don't set root tags when the root is null ([Yuki Kishimoto])
 * nostr: update `RelayMessage::NegErr` variant ([Yuki Kishimoto])
@@ -940,7 +941,8 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [Roland Bewick]: https://github.com/rolznz (nostr:npub1zk6u7mxlflguqteghn8q7xtu47hyerruv6379c36l8lxzzr4x90q0gl6ef)
 
 <!-- Tags -->
-[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.37.0...HEAD
+[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.38.0...HEAD
+[v0.38.0]: https://github.com/rust-nostr/nostr/compare/v0.37.0...v0.38.0
 [v0.37.0]: https://github.com/rust-nostr/nostr/compare/v0.36.0...v0.37.0
 [v0.36.0]: https://github.com/rust-nostr/nostr/compare/v0.35.0...v0.36.0
 [v0.35.0]: https://github.com/rust-nostr/nostr/compare/v0.34.0...v0.35.0
