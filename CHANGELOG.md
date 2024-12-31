@@ -134,7 +134,7 @@
 * sdk: deprecate `timeout` option ([Yuki Kishimoto])
 * sdk: deprecate `Options::difficulty` and `Client::update_difficulty` ([Yuki Kishimoto])
 
-## [v0.37.0]
+## [v0.37.0] - 2024/11/27
 
 ### Summary
 
@@ -248,7 +248,7 @@ From this release all the rust features are disabled by default (except `std` fe
 * sdk: deprecate `Client::with_opts` ([Yuki Kishimoto])
 * sdk: deprecate `Options::connection_timeout` ([Yuki Kishimoto])
 
-## [v0.36.0]
+## [v0.36.0] - 2024/11/05
 
 ### Summary
 
@@ -383,7 +383,7 @@ Note for devs who are using `nostr-protocol` (Python), `org.rust-nostr:nostr` (K
 * webln: remove `nostr-webln` crate ([Yuki Kishimoto])
 * sqlite: remove `nostr-sqlite` crate ([Yuki Kishimoto])
 
-## [v0.35.0]
+## [v0.35.0] - 2024/09/19
 
 ### Summary
 
@@ -517,7 +517,7 @@ allow usage of embedded tor client on mobile devices, many improvements, bugs fi
 * js(nostr): remove `Keys::vanity` ([Yuki Kishimoto])
 * cli: remove `reverse` flag from `query` command ([Yuki Kishimoto])
 
-## [v0.34.0]
+## [v0.34.0] - 2024/08/15
 
 ### Summary
 
@@ -602,7 +602,7 @@ better consistency (`RelayPool::get_events_of` and `Relay::get_events_of` get ev
 * sdk: remove `Client::send_direct_msg` ([Yuki Kishimoto])
 * cli: remove `tracing-subscriber` dep ([Yuki Kishimoto])
 
-## [v0.33.0]
+## [v0.33.0] - 2024/07/16
 
 ### Summary
 
@@ -675,7 +675,7 @@ bug fixes (NIP-42 auth not works correctly, NIP-46 "ACK" message not handled, ..
 * pool: remove `RelayStatus::Stop` ([Yuki Kishimoto])
 * Remove all `start` and `stop` methods ([Yuki Kishimoto])
 
-## [v0.32.0]
+## [v0.32.0] - 2024/06/07
 
 ### Summary
 
@@ -755,7 +755,7 @@ Note for kotlin devs: from this release the packages will be published at `org.r
 * sqlite: removed `deadpool-sqlite` dep ([Yuki Kishimoto])
 * ffi(nostr): remove `Keys::from_mnemonic_with_account` and `Keys::from_mnemonic_advanced` ([Yuki Kishimoto])
 
-## [v0.31.0]
+## [v0.31.0] - 2024/05/17
 
 ### Summary
 
@@ -831,7 +831,7 @@ removed zap split from `client.zap` method, many improvements and more!
 * nostr: remove `GenericTagValue` ([Yuki Kishimoto])
 * ffi(nostr): remove `Kind::match*` methods ([Yuki Kishimoto])
 
-## [v0.30.0]
+## [v0.30.0] - 2024/04/15
 
 ### Summary
 
@@ -891,21 +891,21 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 
 * Removed deprecated ([Yuki Kishimoto])
 
-## v0.29.4
+## v0.29.4 - 2024/04/08
 
 * pool: fix `InternalRelay::get_events_of_with_callback` timeout ([Yuki Kishimoto])
 
-## v0.29.3
+## v0.29.3 - 2024/04/04
 
 * pool: check filter limit in `InternalRelayPool::get_events_from` ([Yuki Kishimoto])
 
-## v0.29.2
+## v0.29.2 - 2024/03/27
 
 ### Fixed
 
 * pool: fix `get_events_of` issues ([Yuki Kishimoto])
 
-## v0.29.1
+## v0.29.1 - 2024/03/26
 
 ### Fixed
 
