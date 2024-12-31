@@ -913,25 +913,31 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 * pool: fix spurious send_event timeout error ([DanConwayDev] in https://github.com/rust-nostr/nostr/pull/375)
 
 <!-- Contributors -->
-[Yuki Kishimoto]: https://yukikishimoto.com
-[DanConwayDev]: https://github.com/DanConwayDev
-[Daniel Cadenas]: https://github.com/dcadenas
-[rustedmoon]: https://github.com/rustedmoon
-[benthecarman]: https://github.com/benthecarman
-[Janek]: https://github.com/xeruf
-[Xiao Yu]: https://github.com/kasugamirai
-[RydalWater]: https://github.com/RydalWater
-[lnbc1QWFyb24]: https://github.com/lnbc1QWFyb24
-[reyamir]: https://github.com/reyamir
-[w3irdrobot]: https://github.com/w3irdrobot
-[nanikamado]: https://github.com/nanikamado
-[rodant]: https://github.com/rodant
-[erskingardner]: https://github.com/erskingardner
-[J. Azad EMERY]: https://github.com/ethicnology
-[v0l]: https://github.com/v0l
-[arkanoider]: https://github.com/arkanoider
-[1wErt3r]: https://github.com/1wErt3r
-[dluvian]: https://github.com/dluvian
+<!-- TODO: create a table with all contributors data? -->
+[Yuki Kishimoto]: <https://yukikishimoto.com> (nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet)
+[DanConwayDev]: <https://github.com/DanConwayDev> (nostr:npub15qydau2hjma6ngxkl2cyar74wzyjshvl65za5k5rl69264ar2exs5cyejr)
+[Daniel Cadenas]: <https://github.com/dcadenas> (nostr:npub138he9w0tumwpun4rnrmywlez06259938kz3nmjymvs8px7e9d0js8lrdr2)
+[rustedmoon]: <https://github.com/rustedmoon> (nostr:npub1mheh5x5uhplms73kl73hwtg4gf57qxq89fvkwc2ykj8y966l05cqh9qtf9)
+[benthecarman]: <https://github.com/benthecarman> (nostr:npub1u8lnhlw5usp3t9vmpz60ejpyt649z33hu82wc2hpv6m5xdqmuxhs46turz)
+[Janek]: <https://github.com/xeruf> (nostr:npub1acxjpdrlk2vw320dxcy3prl87g5kh4c73wp0knullrmp7c4mc7nq88gj3j)
+[Xiao Yu]: <https://github.com/kasugamirai> (nostr:npub1q0uulk2ga9dwkp8hsquzx38hc88uqggdntelgqrtkm29r3ass6fq8y9py9)
+[RydalWater]: <https://github.com/RydalWater> (nostr:npub1zwnx29tj2lnem8wvjcx7avm8l4unswlz6zatk0vxzeu62uqagcash7fhrf)
+[lnbc1QWFyb24]: <https://github.com/lnbc1QWFyb24> (nostr:npub1k95p0e36xx62mwjltdlsrrjunnqx464wlf969f9u3stvrq5dah4qgds3z7)
+[reyamir]: <https://github.com/reyamir> (nostr:npub1zfss807aer0j26mwp2la0ume0jqde3823rmu97ra6sgyyg956e0s6xw445)
+[w3irdrobot]: <https://github.com/w3irdrobot> (nostr:npub17q5n2z8naw0xl6vu9lvt560lg33pdpe29k0k09umlfxm3vc4tqrq466f2y)
+[nanikamado]: <https://github.com/nanikamado> (?)
+[rodant]: <https://github.com/rodant> (nostr:npub1w80jzxf36fhwgyfp622m6s7tcl3cy5z7xva4cy75q9kwm92zm8tsclzqjv)
+[erskingardner]: <https://github.com/erskingardner> (nostr:npub1zuuajd7u3sx8xu92yav9jwxpr839cs0kc3q6t56vd5u9q033xmhsk6c2uc)
+[J. Azad EMERY]: <https://github.com/ethicnology> (?)
+[v0l]: <https://github.com/v0l> (nostr:npub1v0lxxxxutpvrelsksy8cdhgfux9l6a42hsj2qzquu2zk7vc9qnkszrqj49)
+[arkanoider]: <https://github.com/arkanoider> (nostr:npub1qqpn4ym6tc5ul6d2kjxnzx3sv9trekp53678ut9fe3wrxa6yvhjsnql2ng)
+[1wErt3r]: <https://github.com/1wErt3r> (nostr:npub1xj5hzn62q2jg8xp9m3j6lw7r8z6g47plqyz2jmjr3g52y8tx4rls095s8g)
+[dluvian]: <https://github.com/dluvian> (nostr:npub1useke4f9maul5nf67dj0m9sq6jcsmnjzzk4ycvldwl4qss35fvgqjdk5ks)
+[Akiomi Kamakura]: https://github.com/akiomik (nostr:npub1f5uuywemqwlejj2d7he6zjw8jz9wr0r5z6q8lhttxj333ph24cjsymjmug)
+[Darrell]: https://github.com/aki-mizu (nostr:npub1lu2qcwt23uq5pku99pxfe3uudpzdl4cfks24c2758cqqnfehujlqn6xlm6)
+[Jens K.]: https://github.com/sectore (nostr:npub163jct20kzgjjr6z28u4vskax7d0gwq3zemrk6flgnw430vu55vtsdeqdc2)
+[RandyMcMillan]: https://github.com/RandyMcMillan (nostr:npub1ahaz04ya9tehace3uy39hdhdryfvdkve9qdndkqp3tvehs6h8s5slq45hy)
+[Roland Bewick]: https://github.com/rolznz (nostr:npub1zk6u7mxlflguqteghn8q7xtu47hyerruv6379c36l8lxzzr4x90q0gl6ef)
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.37.0...HEAD
