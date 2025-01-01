@@ -5,6 +5,7 @@
 use std::fmt;
 use std::time::Duration;
 
+use async_wsocket::Error as WsError;
 use nostr::event;
 use nostr::event::builder;
 use nostr::message::MessageHandleError;
@@ -18,7 +19,7 @@ use crate::RelayPoolNotification;
 #[derive(Debug)]
 pub enum Error {
     /// WebSocket error
-    WebSocket(Box<dyn std::error::Error + Send + Sync>),
+    WebSocket(WsError),
     /// Shared state error
     SharedState(SharedStateError),
     /// MessageHandle error
@@ -180,13 +181,9 @@ impl fmt::Display for Error {
     }
 }
 
-impl Error {
-    #[inline]
-    pub(super) fn websocket<E>(error: E) -> Self
-    where
-        E: std::error::Error + Send + Sync + 'static,
-    {
-        Self::WebSocket(Box::new(error))
+impl From<WsError> for Error {
+    fn from(e: WsError) -> Self {
+        Self::WebSocket(e)
     }
 }
 

@@ -455,10 +455,7 @@ impl InnerRelay {
 
         // Try to connect
         // This will set the status to "terminated" if the connection fails
-        let stream: (Sink, Stream) = self
-            ._try_connect(timeout, RelayStatus::Terminated)
-            .await
-            .map_err(Error::websocket)?;
+        let stream: (Sink, Stream) = self._try_connect(timeout, RelayStatus::Terminated).await?;
 
         // Spawn connection task
         self.spawn_connection_task(Some(stream));
@@ -797,7 +794,7 @@ impl InnerRelay {
         let _ping = ping;
 
         while let Some(msg) = ws_rx.next().await {
-            match msg.map_err(Error::websocket)? {
+            match msg? {
                 #[cfg(not(target_arch = "wasm32"))]
                 WsMessage::Pong(bytes) => {
                     if self.flags.has_ping() {
@@ -2395,7 +2392,7 @@ impl InnerRelay {
 async fn send_ws_msgs(tx: &mut Sink, msgs: Vec<WsMessage>) -> Result<(), Error> {
     let mut stream = futures_util::stream::iter(msgs.into_iter().map(Ok));
     match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.send_all(&mut stream)).await {
-        Some(res) => res.map_err(Error::websocket),
+        Some(res) => Ok(res?),
         None => Err(Error::Timeout),
     }
 }
@@ -2403,7 +2400,7 @@ async fn send_ws_msgs(tx: &mut Sink, msgs: Vec<WsMessage>) -> Result<(), Error> 
 /// Send WebSocket messages with timeout set to [WEBSOCKET_TX_TIMEOUT].
 async fn close_ws(tx: &mut Sink) -> Result<(), Error> {
     match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.close()).await {
-        Some(res) => res.map_err(Error::websocket),
+        Some(res) => Ok(res?),
         None => Err(Error::Timeout),
     }
 }

@@ -35,6 +35,8 @@
 
 ### Changed
 
+* pool: update `Error::WebSocket` variant inner type ([Yuki Kishimoto])
+
 ### Added
 
 * pool: add `Relay::try_connect` ([Yuki Kishimoto])
