@@ -44,3 +44,20 @@ def kind():
     kind = Kind(1337)
     print(f"Custom Event Kind: {kind.as_u16()} - {kind.as_enum()}")
     # ANCHOR_END: kind-representations
+
+    print()
+    # ANCHOR: kind-tests
+    print("  Kind Logical Tests:")
+    kind = Kind(30001)
+    print(f"     - Is {kind.as_u16()} addressable?: {kind.is_addressable()}")
+    kind = Kind(20001)
+    print(f"     - Is {kind.as_u16()} ephemeral?: {kind.is_ephemeral()}")
+    kind = Kind(5001)
+    print(f"     - Is {kind.as_u16()} job request?: {kind.is_job_request()}")
+    kind = Kind(6001)
+    print(f"     - Is {kind.as_u16()} job result?: {kind.is_job_result()}")
+    kind = Kind(1)
+    print(f"     - Is {kind.as_u16()} regular?: {kind.is_regular()}")
+    kind = Kind(10001)
+    print(f"     - Is {kind.as_u16()} relay replaceable?: {kind.is_replaceable()}")
+    # ANCHOR_END: kind-tests
