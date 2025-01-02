@@ -13,4 +13,5 @@ pub use nostr::prelude::*;
 
 // Internal modules
 pub use crate::memory::{self, *};
+pub use crate::multi::{self, *};
 pub use crate::*;
