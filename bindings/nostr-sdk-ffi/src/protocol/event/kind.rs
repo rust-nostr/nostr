@@ -279,6 +279,10 @@ pub enum KindEnum {
     ReleaseArtifactSet,
     /// Relay List Metadata (NIP65)
     RelayList,
+    /// Peer-to-peer Order events
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/69.md>
+    PeerToPeerOrder,
     /// Client Authentication (NIP42)
     Authentication,
     /// Wallet Connect Request (NIP47)
@@ -420,6 +424,7 @@ impl From<nostr::Kind> for KindEnum {
             nostr::Kind::MlsGroupMessage => Self::MlsGroupMessage,
             nostr::Kind::Torrent => Self::Torrent,
             nostr::Kind::TorrentComment => Self::TorrentComment,
+            nostr::Kind::PeerToPeerOrder => Self::PeerToPeerOrder,
             #[allow(deprecated)]
             nostr::Kind::JobRequest(u)
             | nostr::Kind::JobResult(u)
@@ -515,6 +520,7 @@ impl From<KindEnum> for nostr::Kind {
             KindEnum::MlsGroupMessage => Self::MlsGroupMessage,
             KindEnum::Torrent => Self::Torrent,
             KindEnum::TorrentComment => Self::TorrentComment,
+            KindEnum::PeerToPeerOrder => Self::PeerToPeerOrder,
             KindEnum::Custom { kind } => Self::Custom(kind),
         }
     }

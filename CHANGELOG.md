@@ -39,6 +39,7 @@
 
 ### Added
 
+* nostr: add `Kind::PeerToPeerOrder` variant ([Francisco Calderón])
 * pool: add `Relay::try_connect` ([Yuki Kishimoto])
 * pool: add `Relay::wait_for_connection` ([Yuki Kishimoto])
 * pool: add `RelayPool::try_connect` ([Yuki Kishimoto])
@@ -968,6 +969,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [Jens K.]: https://github.com/sectore (nostr:npub163jct20kzgjjr6z28u4vskax7d0gwq3zemrk6flgnw430vu55vtsdeqdc2)
 [RandyMcMillan]: https://github.com/RandyMcMillan (nostr:npub1ahaz04ya9tehace3uy39hdhdryfvdkve9qdndkqp3tvehs6h8s5slq45hy)
 [Roland Bewick]: https://github.com/rolznz (nostr:npub1zk6u7mxlflguqteghn8q7xtu47hyerruv6379c36l8lxzzr4x90q0gl6ef)
+[Francisco Calderón]: https://github.com/grunch (nostr:npub1qqqqqqqx2tj99mng5qgc07cgezv5jm95dj636x4qsq7svwkwmwnse3rfkq)
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.38.0...HEAD
