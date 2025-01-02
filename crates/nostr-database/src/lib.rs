@@ -20,6 +20,7 @@ mod events;
 #[cfg(feature = "flatbuf")]
 pub mod flatbuffers;
 pub mod memory;
+pub mod multi;
 pub mod prelude;
 pub mod profile;
 
@@ -48,6 +49,8 @@ pub enum Backend {
     SQLite,
     /// IndexedDB
     IndexedDB,
+    /// Multiple backends
+    MultiBackend,
     /// Custom
     Custom(String),
 }
@@ -98,6 +101,7 @@ pub trait NostrDatabase: NostrEventsDatabase {
     fn backend(&self) -> Backend;
 
     /// Wipe all data
+    // TODO: move wipe to another trait
     async fn wipe(&self) -> Result<(), DatabaseError>;
 }
 
