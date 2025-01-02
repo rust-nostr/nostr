@@ -2,15 +2,14 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! LMDB storage backend for nostr apps
-//!
-//! Fork of [Pocket](https://github.com/mikedilger/pocket) database.
+//! redb storage backend for nostr apps
 
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 #![allow(clippy::mutable_key_type)]
 
 use std::collections::HashSet;
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 
 use nostr_database::prelude::*;
@@ -19,9 +18,9 @@ mod store;
 
 use self::store::Store;
 
-/// LMDB Nostr Database
+/// Redb Nostr Database
 #[derive(Debug)]
-pub struct NostrLMDB {
+pub struct NostrRedb {
     db: Store,
     // TODO: Temporary use memory database to store seen event IDs
     // until decide if continue to store them in `NostrDatabase`
@@ -29,15 +28,39 @@ pub struct NostrLMDB {
     temp: MemoryDatabase,
 }
 
-impl NostrLMDB {
-    /// Open LMDB database
+impl NostrRedb {
+    /// Persistent database
     #[inline]
-    pub fn open<P>(path: P) -> Result<Self, DatabaseError>
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn persistent<P>(path: P) -> Result<Self, DatabaseError>
     where
         P: AsRef<Path>,
     {
         Ok(Self {
-            db: Store::open(path).map_err(DatabaseError::backend)?,
+            db: Store::persistent(path).map_err(DatabaseError::backend)?,
+            temp: MemoryDatabase::with_opts(MemoryDatabaseOptions {
+                max_events: Some(100_000),
+            }),
+        })
+    }
+
+    /// Web database
+    #[inline]
+    #[cfg(target_arch = "wasm32")]
+    pub async fn web(name: &str) -> Result<Self, DatabaseError> {
+        Ok(Self {
+            db: Store::web(name).await.map_err(DatabaseError::backend)?,
+            temp: MemoryDatabase::with_opts(MemoryDatabaseOptions {
+                max_events: Some(100_000),
+            }),
+        })
+    }
+
+    /// Memory database
+    #[inline]
+    pub fn in_memory() -> Result<Self, DatabaseError> {
+        Ok(Self {
+            db: Store::in_memory().map_err(DatabaseError::backend)?,
             temp: MemoryDatabase::with_opts(MemoryDatabaseOptions {
                 max_events: Some(100_000),
             }),
@@ -45,11 +68,17 @@ impl NostrLMDB {
     }
 }
 
-#[async_trait]
-impl NostrDatabase for NostrLMDB {
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl NostrDatabase for NostrRedb {
     #[inline]
     fn backend(&self) -> Backend {
-        Backend::LMDB
+        if self.db.is_persistent() {
+            // TODO: not really LMDB
+            Backend::LMDB
+        } else {
+            Backend::Memory
+        }
     }
 
     #[inline]
@@ -58,8 +87,9 @@ impl NostrDatabase for NostrLMDB {
     }
 }
 
-#[async_trait]
-impl NostrEventsDatabase for NostrLMDB {
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl NostrEventsDatabase for NostrRedb {
     #[inline]
     async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, DatabaseError> {
         self.db
@@ -162,8 +192,6 @@ mod tests {
     use std::ops::Deref;
     use std::time::Duration;
 
-    use tempfile::TempDir;
-
     use super::*;
 
     const EVENTS: [&str; 14] = [
@@ -184,13 +212,11 @@ mod tests {
     ];
 
     struct TempDatabase {
-        db: NostrLMDB,
-        // Needed to avoid the drop and deletion of temp folder
-        _temp: TempDir,
+        db: NostrRedb,
     }
 
     impl Deref for TempDatabase {
-        type Target = NostrLMDB;
+        type Target = NostrRedb;
 
         fn deref(&self) -> &Self::Target {
             &self.db
@@ -199,10 +225,8 @@ mod tests {
 
     impl TempDatabase {
         fn new() -> Self {
-            let path = tempfile::tempdir().unwrap();
             Self {
-                db: NostrLMDB::open(&path).unwrap(),
-                _temp: path,
+                db: NostrRedb::in_memory().unwrap(),
             }
         }
 
@@ -228,11 +252,11 @@ mod tests {
                 )
                 .sign_with_keys(&keys_b)
                 .unwrap(),
-                EventBuilder::new(Kind::Custom(33_333), "")
+                EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "")
                     .tag(Tag::identifier("my-id-a"))
                     .sign_with_keys(&keys_a)
                     .unwrap(),
-                EventBuilder::new(Kind::Custom(33_333), "")
+                EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "")
                     .tag(Tag::identifier("my-id-b"))
                     .sign_with_keys(&keys_b)
                     .unwrap(),
@@ -359,7 +383,7 @@ mod tests {
 
         let (keys, expected_event) = db
             .add_event(
-                EventBuilder::new(Kind::Custom(33_333), "")
+                EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "")
                     .tag(Tag::identifier("my-id-a"))
                     .custom_created_at(now - Duration::from_secs(120)),
             )
@@ -380,7 +404,7 @@ mod tests {
         // Replace previous event
         let (new_expected_event, status) = db
             .add_event_with_keys(
-                EventBuilder::new(Kind::Custom(33_333), "Test replace")
+                EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "Test replace")
                     .tag(Tag::identifier("my-id-a"))
                     .custom_created_at(now),
                 &keys,
@@ -409,7 +433,7 @@ mod tests {
         // Trey to add param replaceable event with older timestamp (MUSTN'T be stored)
         let (_, status) = db
             .add_event_with_keys(
-                EventBuilder::new(Kind::Custom(33_333), "Test replace 2")
+                EventBuilder::new(Kind::ParameterizedReplaceable(33_333), "Test replace 2")
                     .tag(Tag::identifier("my-id-a"))
                     .custom_created_at(now - Duration::from_secs(2000)),
                 &keys,
@@ -491,7 +515,7 @@ mod tests {
         assert_eq!(db.count_all().await, added_events);
 
         // Delete all kinds except text note
-        let filter = Filter::new().kinds([Kind::Metadata, Kind::Custom(33_333)]);
+        let filter = Filter::new().kinds([Kind::Metadata, Kind::ParameterizedReplaceable(33_333)]);
         db.delete(filter).await.unwrap();
 
         assert_eq!(db.count_all().await, 2);

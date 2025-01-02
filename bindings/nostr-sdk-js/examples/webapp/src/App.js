@@ -1,12 +1,11 @@
 import React, { Component } from "react";
-import { ClientBuilder, NostrSigner, NostrZapper, Filter, LogLevel, NegentropyOptions, Nip07Signer, NostrDatabase, PublicKey, ZapDetails, ZapEntity, ZapType, initLogger, loadWasmAsync } from '@rust-nostr/nostr-sdk'
+import { ClientBuilder, EventBuilder, NostrSigner, NostrZapper, Filter, LogLevel, SyncOptions, Nip07Signer, NostrDatabase, PublicKey, ZapDetails, ZapEntity, ZapType, initLogger, loadWasmAsync } from '@rust-nostr/nostr-sdk'
 import './App.css';
-import {EventBuilder} from "../../../pkg/nostr_sdk_js";
 
 class App extends Component {
   constructor() {
     super();
-    this.state = { 
+    this.state = {
       public_key: null,
       nip07_signer: null,
       client: null
@@ -19,7 +18,8 @@ class App extends Component {
 
     // Try to initialize log
     try {
-      initLogger(LogLevel.info());
+      initLogger(LogLevel.debug());
+      console.log("Logger initialized");
     } catch (error) {}
   }
 
@@ -29,33 +29,37 @@ class App extends Component {
       let nip07_signer = new Nip07Signer();
       let signer = NostrSigner.nip07(nip07_signer);
       let zapper = await NostrZapper.webln();
-      let db = await NostrDatabase.indexeddb("nostr-sdk-webapp-example");
+
+      console.log("Opening database...");
+      let db = await NostrDatabase.web("nostr-sdk-webapp-example-2");
+      console.log("Database opened.");
+
       let client = new ClientBuilder().signer(signer).zapper(zapper).database(db).build();
 
       let public_key = await nip07_signer.getPublicKey();
-  
+
       // Add relays
       await client.addRelay("wss://relay.damus.io");
       await client.addRelay("wss://nos.lol");
       await client.addRelay("wss://nostr.oxtr.dev");
-  
+
       // Connect to relays
       await client.connect();
-  
+
       // Save client to state
       this.setState({ client, nip07_signer, public_key });
     } catch (error) {
-        console.log(error) 
+        console.log(error)
     }
   };
 
   handleReconcile = async () => {
     try {
       let filter = new Filter().author(this.state.public_key);
-      let opts = new NegentropyOptions();
+      let opts = new SyncOptions();
       await this.state.client.sync(filter, opts);
     } catch (error) {
-        console.log(error) 
+        console.log(error)
     }
   }
 
@@ -66,7 +70,7 @@ class App extends Component {
       console.time("query");
       let events = await database.query([filter]);
       console.timeEnd("query");
-      console.log("Got", events.length, "events");
+      console.log("Got", events.len(), "events");
     } catch (error) {
       console.log(error)
     }
@@ -74,21 +78,21 @@ class App extends Component {
 
   handlePublishTextNote = async () => {
     try {
-      let builder = EventBuilder.textNote("Test from rust-nostr JavaScript bindings with NIP07 signer!", []);
+      let builder = EventBuilder.textNote("Test from rust-nostr JavaScript bindings with NIP07 signer!");
       await this.state.client.sendEventBuilder(builder);
     } catch (error) {
-        console.log(error) 
+        console.log(error)
     }
   };
 
   handleZap = async () => {
     try {
-      let pk = PublicKey.fromBech32("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet");
+      let pk = PublicKey.parse("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet");
       let entity = ZapEntity.publicKey(pk);
       let details = new ZapDetails(ZapType.Public).message("Zap for Rust Nostr!");
       await this.state.client.zap(entity, 1000, details);
     } catch (error) {
-        console.log(error) 
+        console.log(error)
     }
   };
 
@@ -98,7 +102,7 @@ class App extends Component {
       this.setState({ client: null });
       console.log("Logout done");
       } catch (error) {
-          console.log(error) 
+          console.log(error)
       }
   };
 
