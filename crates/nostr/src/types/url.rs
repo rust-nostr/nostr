@@ -9,8 +9,11 @@ use core::convert::Infallible;
 use core::fmt;
 use core::str::FromStr;
 #[cfg(feature = "std")]
-use std::net::IpAddr; // TODO: use `core::net` when MSRV will be at 1.77.0
+#[cfg(not(target_arch = "wasm32"))]
+use std::net::IpAddr;
+use std::net::SocketAddr;
 
+// TODO: use `core::net` when MSRV will be at 1.77.0
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 #[cfg(feature = "std")]
 pub use url::*;
@@ -24,6 +27,9 @@ pub enum Error {
     Url(ParseError),
     /// Unsupported URL scheme
     UnsupportedScheme,
+    /// Invalid multicast address
+    #[cfg(feature = "std")]
+    InvalidMulticastAddr,
     /// Multiple scheme separators
     MultipleSchemeSeparators,
 }
@@ -36,6 +42,8 @@ impl fmt::Display for Error {
         match self {
             Self::Url(e) => write!(f, "{e}"),
             Self::UnsupportedScheme => write!(f, "Unsupported scheme"),
+            #[cfg(feature = "std")]
+            Self::InvalidMulticastAddr => write!(f, "Invalid multicast address"),
             Self::MultipleSchemeSeparators => write!(f, "Multiple scheme separators"),
         }
     }
@@ -47,12 +55,37 @@ impl From<ParseError> for Error {
     }
 }
 
+/// Relay URL type
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum RelayUrlType {
+    /// Websocket
+    #[default]
+    WebSocket,
+    /// Multicast
+    #[cfg(feature = "std")]
+    #[cfg(not(target_arch = "wasm32"))]
+    Multicast(SocketAddr),
+}
+
+impl RelayUrlType {
+    /// Check if it's multicast
+    #[inline]
+    #[cfg(feature = "std")]
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn is_multicast(&self) -> bool {
+        matches!(self, RelayUrlType::Multicast(..))
+    }
+}
+
 /// Relay URL
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RelayUrl {
     url: Url,
+    r#type: RelayUrlType,
     has_trailing_slash: bool,
 }
+
+// TODO: impl PartialEq manually, to exclude the `has_trailing_slash` field
 
 impl fmt::Debug for RelayUrl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -77,13 +110,23 @@ impl RelayUrl {
         let url: Url = Url::parse(url)?;
 
         // Check scheme
-        match url.scheme() {
-            "ws" | "wss" => Ok(Self {
-                url,
-                has_trailing_slash,
-            }),
-            _ => Err(Error::UnsupportedScheme),
-        }
+        let r#type: RelayUrlType = match url.scheme() {
+            "ws" | "wss" => RelayUrlType::WebSocket,
+            #[cfg(feature = "std")]
+            #[cfg(not(target_arch = "wasm32"))]
+            "udp" => {
+                let addr: SocketAddr =
+                    parse_multicast_addr(&url).ok_or(Error::InvalidMulticastAddr)?;
+                RelayUrlType::Multicast(addr)
+            }
+            _ => return Err(Error::UnsupportedScheme),
+        };
+
+        Ok(Self {
+            url,
+            r#type,
+            has_trailing_slash,
+        })
     }
 
     /// Check if the host is a local network address.
@@ -108,6 +151,28 @@ impl RelayUrl {
         }
 
         false
+    }
+
+    /// If the url contains a [`SocketAddr`], it will be returned.
+    #[cfg(feature = "std")]
+    pub fn addr(&self) -> Option<SocketAddr> {
+        match self.r#type {
+            RelayUrlType::WebSocket => Some(SocketAddr::new(
+                self.url.host_str()?.parse().ok()?,
+                self.url.port()?,
+            )),
+            #[cfg(feature = "std")]
+            #[cfg(not(target_arch = "wasm32"))]
+            RelayUrlType::Multicast(addr) => Some(addr),
+        }
+    }
+
+    /// Check if it's multicast
+    #[inline]
+    #[cfg(feature = "std")]
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn is_multicast(&self) -> bool {
+        self.r#type.is_multicast()
     }
 
     /// Check if the URL is a hidden onion service address
@@ -256,8 +321,25 @@ impl TryIntoUrl for &str {
     }
 }
 
+#[cfg(feature = "std")]
+#[cfg(not(target_arch = "wasm32"))]
+fn parse_multicast_addr(url: &Url) -> Option<SocketAddr> {
+    if let Some(host) = url.host_str() {
+        if let Ok(addr) = IpAddr::from_str(host) {
+            if addr.is_multicast() {
+                return Some(SocketAddr::new(addr, url.port()?));
+            }
+        }
+    }
+
+    None
+}
+
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "std")]
+    use std::net::Ipv4Addr;
+
     use super::*;
 
     #[test]
@@ -358,5 +440,24 @@ mod tests {
         assert!(!non_onion_url.is_onion());
         let non_onion_url = RelayUrl::parse("ws://127.0.0.1:7777").unwrap();
         assert!(!non_onion_url.is_onion());
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn test_custom_multicast_url() {
+        // Valid custom multicast URL
+        let relay = RelayUrl::parse("udp://224.0.1.1:5678").unwrap();
+        assert!(relay.is_multicast());
+        assert_eq!(
+            relay.addr(),
+            Some(SocketAddr::new(
+                IpAddr::V4(Ipv4Addr::new(224, 0, 1, 1)),
+                5678
+            ))
+        );
+
+        // Invalid custom multicast URL
+        let invalid = RelayUrl::parse("udp://192.168.0.1:5678");
+        assert_eq!(invalid.unwrap_err(), Error::InvalidMulticastAddr);
     }
 }

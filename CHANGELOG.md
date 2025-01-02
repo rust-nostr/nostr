@@ -44,6 +44,7 @@
 * nostr: add `Kind::PeerToPeerOrder` variant ([Francisco Calderón])
 * nostr: add `CowTag` ([Yuki Kishimoto])
 * nostr: add `EventBorrow` ([Yuki Kishimoto])
+* nostr: add multicast addr support to `RelayUrl` ([Yuki Kishimoto])
 * database: add `Events::first_owned` and `Events::last_owned` ([Yuki Kishimoto])
 * database: impl `FlatBufferDecodeBorrowed` for `EventBorrow` ([Yuki Kishimoto])
 * pool: add `Relay::try_connect` ([Yuki Kishimoto])
