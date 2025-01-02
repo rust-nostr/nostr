@@ -182,6 +182,7 @@ kind_variants! {
     ApplicationSpecificData => 30078, "Application-specific Data", "<https://github.com/nostr-protocol/nips/blob/master/78.md>",
     Torrent => 2003, "Torrent", "<https://github.com/nostr-protocol/nips/blob/master/35.md>",
     TorrentComment => 2004, "Torrent Comment", "<https://github.com/nostr-protocol/nips/blob/master/35.md>",
+    PeerToPeerOrder => 38383, "Peer-to-peer Order events", "<https://github.com/nostr-protocol/nips/blob/master/69.md>",
 }
 
 impl PartialEq for Kind {
