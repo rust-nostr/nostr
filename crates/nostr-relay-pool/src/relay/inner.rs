@@ -447,6 +447,32 @@ impl InnerRelay {
         self.spawn_connection_task(None);
     }
 
+    pub async fn wait_for_connection(&self, timeout: Duration) {
+        let status: RelayStatus = self.status();
+
+        // Already connected
+        if status.is_connected() {
+            return;
+        }
+
+        // Subscribe to notifications
+        let mut notifications = self.internal_notification_sender.subscribe();
+
+        // Set timeout
+        time::timeout(Some(timeout), async {
+            while let Ok(notification) = notifications.recv().await {
+                // Wait for status change. Break loop when connect.
+                if let RelayNotification::RelayStatus {
+                    status: RelayStatus::Connected,
+                } = notification
+                {
+                    break;
+                }
+            }
+        })
+        .await;
+    }
+
     pub async fn try_connect(&self, timeout: Duration) -> Result<(), Error> {
         // Check if relay can't connect
         if !self.status().can_connect() {

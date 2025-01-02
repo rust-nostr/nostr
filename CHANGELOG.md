@@ -40,10 +40,13 @@
 ### Added
 
 * pool: add `Relay::try_connect` ([Yuki Kishimoto])
+* pool: add `Relay::wait_for_connection` ([Yuki Kishimoto])
 * pool: add `RelayPool::try_connect` ([Yuki Kishimoto])
 * pool: add `RelayPool::try_connect_relay` ([Yuki Kishimoto])
+* pool: add `RelayPool::wait_for_connection` ([Yuki Kishimoto])
 * sdk: add `Client::try_connect` ([Yuki Kishimoto])
 * sdk: add `Client::try_connect_relay` ([Yuki Kishimoto])
+* sdk: add `Client::wait_for_connection` ([Yuki Kishimoto])
 
 ### Fixed
 

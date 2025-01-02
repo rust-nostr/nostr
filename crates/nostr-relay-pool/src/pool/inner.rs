@@ -930,6 +930,20 @@ impl InnerRelayPool {
         }
     }
 
+    pub async fn wait_for_connection(&self, timeout: Duration) {
+        // Lock with read shared access
+        let relays = self.atomic.relays.read().await;
+
+        // Compose futures
+        let mut futures = Vec::with_capacity(relays.len());
+        for relay in relays.values() {
+            futures.push(relay.wait_for_connection(timeout));
+        }
+
+        // Join futures
+        future::join_all(futures).await;
+    }
+
     pub async fn try_connect(&self, timeout: Duration) -> Output<()> {
         // Lock with read shared access
         let relays = self.atomic.relays.read().await;

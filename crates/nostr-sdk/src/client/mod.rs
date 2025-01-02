@@ -532,6 +532,15 @@ impl Client {
         self.pool.connect().await;
     }
 
+    /// Waits for relays connections
+    ///
+    /// Wait for relays connections at most for the specified `timeout`.
+    /// The code continues when the relays are connected or the `timeout` is reached.
+    #[inline]
+    pub async fn wait_for_connection(&self, timeout: Duration) {
+        self.pool.wait_for_connection(timeout).await
+    }
+
     /// Try to establish a connection with the relays.
     ///
     /// Attempts to establish a connection without spawning the connection task if it fails.
@@ -549,7 +558,10 @@ impl Client {
     ///
     /// Try to connect to the relays and wait for them to be connected at most for the specified `timeout`.
     /// The code continues if the `timeout` is reached or if all relays connect.
-    #[deprecated(since = "0.39.0", note = "Use `try_connect` instead")]
+    #[deprecated(
+        since = "0.39.0",
+        note = "Use `connect` + `wait_for_connection` instead."
+    )]
     pub async fn connect_with_timeout(&self, timeout: Duration) {
         self.pool.try_connect(timeout).await;
     }

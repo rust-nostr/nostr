@@ -191,6 +191,14 @@ impl Client {
         self.inner.connect().await
     }
 
+    /// Waits for relays connections
+    ///
+    /// Wait for relays connections at most for the specified `timeout`.
+    /// The code continues when the relays are connected or the `timeout` is reached.
+    pub async fn wait_for_connection(&self, timeout: Duration) {
+        self.inner.wait_for_connection(timeout).await
+    }
+
     /// Try to establish a connection with the relays.
     ///
     /// Attempts to establish a connection without spawning the connection task if it fails.

@@ -262,6 +262,15 @@ impl Relay {
         self.inner.connect()
     }
 
+    /// Waits for relay connection
+    ///
+    /// Wait for relay connection at most for the specified `timeout`.
+    /// The code continues when the relay is connected or the `timeout` is reached.
+    #[inline]
+    pub async fn wait_for_connection(&self, timeout: Duration) {
+        self.inner.wait_for_connection(timeout).await
+    }
+
     /// Try to establish a connection with the relay.
     ///
     /// Attempts to establish a connection without spawning the connection task if it fails.
@@ -698,6 +707,30 @@ mod tests {
         assert_eq!(relay.status(), RelayStatus::Terminated);
 
         assert!(!relay.inner.is_running());
+    }
+
+    #[tokio::test]
+    async fn test_wait_for_connection() {
+        // Mock relay
+        let opts = RelayTestOptions {
+            unresponsive_connection: Some(Duration::from_secs(2)),
+        };
+        let mock = MockRelay::run_with_opts(opts).await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let relay = Relay::new(url);
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.connect();
+
+        relay.wait_for_connection(Duration::from_millis(500)).await; // This timeout
+
+        assert_eq!(relay.status(), RelayStatus::Connecting);
+
+        relay.wait_for_connection(Duration::from_secs(3)).await;
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
     }
 
     #[tokio::test]
