@@ -27,6 +27,9 @@ nostr-database.workspace = true
 tokio = { workspace = true, features = ["macros", "sync"] }
 tracing.workspace = true
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { workspace = true, features = ["net"] }
+
 [dev-dependencies]
 nostr-relay-builder.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }

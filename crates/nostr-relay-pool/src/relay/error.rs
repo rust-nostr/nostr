@@ -2,8 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::fmt;
 use std::time::Duration;
+use std::{fmt, io};
 
 use async_wsocket::Error as WsError;
 use nostr::event;
@@ -18,6 +18,8 @@ use crate::RelayPoolNotification;
 /// Relay error
 #[derive(Debug)]
 pub enum Error {
+    /// I/O error
+    IO(io::Error),
     /// WebSocket error
     WebSocket(WsError),
     /// Shared state error
@@ -124,6 +126,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::IO(e) => write!(f, "{e}"),
             Self::WebSocket(e) => write!(f, "{e}"),
             Self::SharedState(e) => write!(f, "{e}"),
             Self::MessageHandle(e) => write!(f, "{e}"),
@@ -178,6 +181,12 @@ impl fmt::Display for Error {
             Self::AuthenticationFailed => write!(f, "authentication failed"),
             Self::PrematureExit => write!(f, "premature exit"),
         }
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(e: io::Error) -> Self {
+        Self::IO(e)
     }
 }
 

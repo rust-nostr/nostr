@@ -2,25 +2,26 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::cmp;
 use std::collections::{HashMap, HashSet};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 #[cfg(feature = "nip11")]
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
+use std::{cmp, io};
 
 use async_utility::{task, time};
 use async_wsocket::futures_util::{self, Future, SinkExt, StreamExt};
-use async_wsocket::{
-    connect as wsocket_connect, ConnectionMode, Error as WsError, Sink, Stream, WsMessage,
-};
+use async_wsocket::{connect as wsocket_connect, ConnectionMode, Sink, Stream, WsMessage};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
 use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
 use nostr::event::raw::RawEvent;
 use nostr::secp256k1::rand::{self, Rng};
 use nostr_database::prelude::*;
+#[cfg(not(target_arch = "wasm32"))]
+use tokio::net::UdpSocket;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, watch, Mutex, MutexGuard, OnceCell, RwLock};
 
@@ -137,6 +138,12 @@ impl Default for SubscriptionData {
             closed: false,
         }
     }
+}
+
+enum Transport {
+    WebSocket(Sink, Stream),
+    #[cfg(not(target_arch = "wasm32"))]
+    Multicast(UdpSocket, SocketAddr),
 }
 
 // Instead of wrap every field in an `Arc<T>`, which increases the number of atomic operations,
@@ -481,7 +488,7 @@ impl InnerRelay {
 
         // Try to connect
         // This will set the status to "terminated" if the connection fails
-        let stream: (Sink, Stream) = self._try_connect(timeout, RelayStatus::Terminated).await?;
+        let stream: Transport = self._try_connect(timeout, RelayStatus::Terminated).await?;
 
         // Spawn connection task
         self.spawn_connection_task(Some(stream));
@@ -489,7 +496,7 @@ impl InnerRelay {
         Ok(())
     }
 
-    fn spawn_connection_task(&self, mut stream: Option<(Sink, Stream)>) {
+    fn spawn_connection_task(&self, mut stream: Option<Transport>) {
         if self.is_running() {
             tracing::warn!(url = %self.url, "Connection task is already running.");
             return;
@@ -637,14 +644,38 @@ impl InnerRelay {
         &self,
         timeout: Duration,
         status_on_failure: RelayStatus,
-    ) -> Result<(Sink, Stream), WsError> {
+    ) -> Result<Transport, Error> {
         // Update status
         self.set_status(RelayStatus::Connecting, true);
 
         // Add attempt
         self.stats.new_attempt();
 
-        // Connect
+        // Connect (multicast)
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.url.is_multicast() {
+            // SAFETY: must return a socketaddr since it's a multicast
+            let multicast_addr: SocketAddr = self.url.addr().unwrap();
+
+            let interface: Ipv4Addr = Ipv4Addr::UNSPECIFIED; // 0.0.0.0
+            let address: SocketAddr = SocketAddr::new(IpAddr::V4(interface), multicast_addr.port());
+            let socket: UdpSocket = UdpSocket::bind(address).await?;
+
+            // Join the multicast group (for IPv4 only)
+            if let SocketAddr::V4(multicast_addr) = multicast_addr {
+                socket.join_multicast_v4(*multicast_addr.ip(), interface)?;
+            }
+
+            // Update status
+            self.set_status(RelayStatus::Connected, true);
+
+            // Increment success stats
+            self.stats.new_success();
+
+            return Ok(Transport::Multicast(socket, multicast_addr));
+        }
+
+        // Connect (websocket)
         match wsocket_connect((&self.url).into(), &self.opts.connection_mode, timeout).await {
             Ok((ws_tx, ws_rx)) => {
                 // Update status
@@ -653,14 +684,14 @@ impl InnerRelay {
                 // Increment success stats
                 self.stats.new_success();
 
-                Ok((ws_tx, ws_rx))
+                Ok(Transport::WebSocket(ws_tx, ws_rx))
             }
             Err(e) => {
                 // Update status
                 self.set_status(status_on_failure, false);
 
                 // Return error
-                Err(e)
+                Err(Error::WebSocket(e))
             }
         }
     }
@@ -670,12 +701,12 @@ impl InnerRelay {
     /// If `stream` arg is passed, no connection attempt will be done.
     async fn connect_and_run(
         &self,
-        stream: Option<(Sink, Stream)>,
+        transport: Option<Transport>,
         last_ws_error: &mut Option<String>,
     ) {
-        match stream {
+        match transport {
             // Already have a stream, go to post-connection stage
-            Some((ws_tx, ws_rx)) => self.post_connection(ws_tx, ws_rx).await,
+            Some(transport) => self.post_connection(transport).await,
             // No stream is passed, try to connect
             // Set the status to "disconnected" to allow to automatic retries
             None => match self
@@ -683,7 +714,7 @@ impl InnerRelay {
                 .await
             {
                 // Connection success, go to post-connection stage
-                Ok((ws_tx, ws_rx)) => self.post_connection(ws_tx, ws_rx).await,
+                Ok(transport) => self.post_connection(transport).await,
                 // Error during connection
                 Err(e) => {
                     // TODO: avoid string allocation. The error is converted to string only to perform the `!=` binary operation.
@@ -708,38 +739,129 @@ impl InnerRelay {
     }
 
     // To run after websocket connection
-    async fn post_connection(&self, ws_tx: Sink, ws_rx: Stream) {
+    async fn post_connection(&self, transport: Transport) {
         // Request information document
         #[cfg(feature = "nip11")]
         self.request_nip11_document();
 
         // Run message handler
-        self.run_message_handler(ws_tx, ws_rx).await;
+        self.run_message_handler(transport).await;
     }
 
-    async fn run_message_handler(&self, ws_tx: Sink, ws_rx: Stream) {
-        // (Re)subscribe to relay
-        if self.flags.can_read() {
-            if let Err(e) = self.resubscribe().await {
-                tracing::error!(url = %self.url, error = %e, "Impossible to subscribe.")
+    async fn run_message_handler(&self, transport: Transport) {
+        match transport {
+            Transport::WebSocket(ws_tx, ws_rx) => {
+                // (Re)subscribe to relay
+                if self.flags.can_read() {
+                    if let Err(e) = self.resubscribe().await {
+                        tracing::error!(url = %self.url, error = %e, "Impossible to subscribe.")
+                    }
+                }
+
+                let ping: PingTracker = PingTracker::default();
+
+                // Wait that one of the futures terminates/completes
+                tokio::select! {
+                    res = self.receiver_message_handler(ws_rx, &ping) => match res {
+                        Ok(()) => tracing::trace!(url = %self.url, "Relay received exited."),
+                        Err(e) => tracing::error!(url = %self.url, error = %e, "Relay receiver exited with error.")
+                    },
+                    res = self.sender_message_handler(ws_tx, &ping) => match res {
+                        Ok(()) => tracing::trace!(url = %self.url, "Relay sender exited."),
+                        Err(e) => tracing::error!(url = %self.url, error = %e, "Relay sender exited with error.")
+                    },
+                    res = self.ping_handler(&ping) => match res {
+                        Ok(()) => tracing::trace!(url = %self.url, "Relay pinger exited."),
+                        Err(e) => tracing::error!(url = %self.url, error = %e, "Relay pinger exited with error.")
+                    }
+                }
             }
-        }
+            Transport::Multicast(socket, addr) => {
+                let mut rx_nostr = self.atomic.channels.rx_nostr().await;
 
-        let ping: PingTracker = PingTracker::default();
+                let mut buf = [0u8; 65535];
 
-        // Wait that one of the futures terminates/completes
-        tokio::select! {
-            res = self.receiver_message_handler(ws_rx, &ping) => match res {
-                Ok(()) => tracing::trace!(url = %self.url, "Relay received exited."),
-                Err(e) => tracing::error!(url = %self.url, error = %e, "Relay receiver exited with error.")
-            },
-            res = self.sender_message_handler(ws_tx, &ping) => match res {
-                Ok(()) => tracing::trace!(url = %self.url, "Relay sender exited."),
-                Err(e) => tracing::error!(url = %self.url, error = %e, "Relay sender exited with error.")
-            },
-            res = self.ping_handler(&ping) => match res {
-                Ok(()) => tracing::trace!(url = %self.url, "Relay pinger exited."),
-                Err(e) => tracing::error!(url = %self.url, error = %e, "Relay pinger exited with error.")
+                loop {
+                    tokio::select! {
+                        // Nostr channel receiver
+                        Some(msgs) = rx_nostr.recv() => {
+                            // Serialize messages to JSON and compose WebSocket text messages
+                            let msgs: Vec<Vec<u8>> = msgs
+                                .into_iter()
+                                .map(|msg| {
+                                    // Serialize to JSON
+                                    let json: String = msg.as_json();
+                                    let len: usize = json.len();
+
+                                    // Construct new buf
+                                    let mut buf: Vec<u8> = Vec::with_capacity(4 + len);
+
+                                    // Write the length of the message as 4 bytes (big-endian)
+                                    buf.extend_from_slice(&(len as u32).to_be_bytes());
+
+                                    // Append the JSON message bytes
+                                    buf.extend_from_slice(json.as_bytes());
+
+                                    buf
+                                }).collect();
+
+                            // Calculate messages size
+                            let size: usize = msgs.iter().map(|msg| msg.len()).sum();
+
+                            // Log
+                            tracing::debug!("Sending buf to '{}' (size: {size} bytes)", self.url);
+
+                            // Send UDP messages
+                            for msg in msgs.into_iter() {
+                                if let Err(e) = socket.send_to(&msg, addr).await {
+                                    tracing::error!(addr = %addr, error = %e, "Can't send UDP message.");
+                                    break;
+                                }
+                            }
+
+                            // Increase sent bytes
+                            self.stats.add_bytes_sent(size);
+                        }
+                        // UDP socket receiver
+                        res = socket.recv_from(&mut buf) => {
+                            match res {
+                                Ok((size, source)) => {
+                                    let parsed_size = u32::from_be_bytes(buf[0..4].try_into().unwrap()) as usize;
+                                    tracing::debug!("multicast: read size {} from start of header", size - 4);
+
+                                    if size != parsed_size + 4 {
+                                        tracing::error!(
+                                            "multicast: partial data received: expected {}, got {}",
+                                            parsed_size, size
+                                        );
+                                    } else {
+                                         let json = String::from_utf8_lossy(&buf[4..size]).to_string();
+                                        tracing::debug!("multicast: received {} bytes from {}: {}", size, source, json);
+
+                                        match ClientMessage::from_json(&json) {
+                                            Ok(msg) => match msg {
+                                                ClientMessage::Event(event) => {
+                                                    let id = SubscriptionId::new("multicast");
+                                                    let json = RelayMessage::Event { subscription_id: id, event }.as_json();
+                                                    self.handle_relay_message(&json).await;
+                                                }
+                                                _ => tracing::warn!("Only EVENT messages are currently supported for multicast"),
+                                            }
+                                            Err(e) => tracing::error!("Received invalid msg: {e}")
+                                        }
+                                    }
+                                }
+                                Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                                    // No data available, continue
+                                }
+                                Err(e) => {
+                                    tracing::error!("multicast: error receiving data: {}", e);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1229,8 +1351,12 @@ impl InnerRelay {
         let id: EventId = event.id;
 
         // Send message
-        // TODO: avoid clone
         self.send_msg(ClientMessage::event(event))?;
+
+        // If multicast, skip wait for OK
+        if self.url.is_multicast() {
+            return Ok((id, true, String::new()));
+        }
 
         // Wait for OK
         self.wait_for_ok(notifications, id, BATCH_EVENT_ITERATION_TIMEOUT)
