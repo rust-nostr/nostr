@@ -4,11 +4,11 @@
 
 //! [`nostrdb`](https://github.com/damus-io/nostrdb) storage backend for Nostr apps
 
-#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 #![allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive for async_trait
 
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 
@@ -16,7 +16,8 @@ pub extern crate nostr;
 pub extern crate nostr_database as database;
 pub extern crate nostrdb;
 
-use nostr::secp256k1::schnorr::Signature;
+use nostr::event::borrow::EventBorrow;
+use nostr::event::tag::cow::CowTag;
 use nostr_database::prelude::*;
 use nostrdb::{Config, Filter as NdbFilter, Ndb, NdbStrVariant, Note, QueryResult, Transaction};
 
@@ -29,6 +30,16 @@ const MAX_RESULTS: i32 = 10_000;
 pub struct NdbDatabase {
     db: Ndb,
 }
+
+/// [`nostrdb`](https://github.com/damus-io/nostrdb) transaction
+pub struct NdbTransaction {
+    db: Ndb,
+    txn: Transaction,
+}
+
+// Required for the DatabaseTransaction trait
+unsafe impl Send for NdbTransaction {}
+unsafe impl Sync for NdbTransaction {}
 
 impl NdbDatabase {
     /// Open nostrdb
@@ -44,7 +55,12 @@ impl NdbDatabase {
         })
     }
 
-    fn ndb_query<'a>(
+    #[inline]
+    pub fn txn(&self) -> Result<Transaction, DatabaseError> {
+        Transaction::new(&self.db).map_err(DatabaseError::backend)
+    }
+
+    pub fn ndb_query<'a>(
         &self,
         txn: &'a Transaction,
         filters: Vec<Filter>,
@@ -85,6 +101,24 @@ impl NostrDatabase for NdbDatabase {
 
     async fn wipe(&self) -> Result<(), DatabaseError> {
         Err(DatabaseError::NotSupported)
+    }
+}
+
+#[async_trait]
+impl DatabaseTransaction for NdbTransaction {
+    async fn query<'a>(&'a self, filters: Vec<Filter>) -> Result<Events<'a>, DatabaseError> {
+        let mut events: Events = Events::new(&filters);
+        let filters: Vec<nostrdb::Filter> =
+            filters.into_iter().map(ndb_filter_conversion).collect();
+        let res: Vec<QueryResult> = self
+            .db
+            .query(&self.txn, &filters, MAX_RESULTS)
+            .map_err(DatabaseError::backend)?;
+        events.extend(
+            res.into_iter()
+                .filter_map(|r| ndb_note_to_event(r.note).ok()),
+        );
+        Ok(events)
     }
 }
 
@@ -140,7 +174,7 @@ impl NostrEventsDatabase for NdbDatabase {
             .db
             .get_note_by_id(&txn, event_id.as_bytes())
             .map_err(DatabaseError::backend)?;
-        Ok(Some(ndb_note_to_event(note)?))
+        Ok(Some(ndb_note_to_event(note)?.into_event()))
     }
 
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {
@@ -149,14 +183,16 @@ impl NostrEventsDatabase for NdbDatabase {
         Ok(res.len())
     }
 
+    async fn begin_txn(&self) -> Result<Box<dyn DatabaseTransaction>, DatabaseError> {
+        let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
+        Ok(Box::new(NdbTransaction {
+            db: self.db.clone(),
+            txn,
+        }))
+    }
+
     async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
-        let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
-        let mut events: Events = Events::new(&filters);
-        let res: Vec<QueryResult> = self.ndb_query(&txn, filters)?;
-        for r in res.into_iter() {
-            events.insert(ndb_note_to_event(r.note)?);
-        }
-        Ok(events)
+        todo!()
     }
 
     async fn negentropy_items(
@@ -219,34 +255,31 @@ fn ndb_filter_conversion(f: Filter) -> nostrdb::Filter {
     filter.build()
 }
 
-fn ndb_note_to_event(note: Note) -> Result<Event, DatabaseError> {
-    let id = EventId::from_byte_array(*note.id());
-    let public_key = PublicKey::from_byte_array(*note.pubkey());
-    let sig = Signature::from_slice(note.sig()).map_err(DatabaseError::backend)?;
-
-    let tags: Vec<Tag> = ndb_note_to_tags(&note)?;
-
-    let created_at = Timestamp::from(note.created_at());
-    let kind = Kind::from(note.kind() as u16);
-    let content = note.content();
-
-    Ok(Event::new(
-        id, public_key, created_at, kind, tags, content, sig,
-    ))
+fn ndb_note_to_event<'a>(note: Note<'a>) -> Result<QueryEvent<'a>, DatabaseError> {
+    let event = EventBorrow {
+        id: note.id(),
+        pubkey: note.pubkey(),
+        created_at: Timestamp::from(note.created_at()),
+        kind: note.kind().try_into().map_err(DatabaseError::backend)?,
+        tags: ndb_note_to_tags(&note)?,
+        content: note.content(),
+        sig: note.sig(),
+    };
+    Ok(QueryEvent::Borrowed(event))
 }
 
-fn ndb_note_to_tags(note: &Note) -> Result<Vec<Tag>, DatabaseError> {
+fn ndb_note_to_tags<'a>(note: &Note<'a>) -> Result<Vec<CowTag<'a>>, DatabaseError> {
     let ndb_tags = note.tags();
-    let mut tags: Vec<Tag> = Vec::with_capacity(ndb_tags.count() as usize);
+    let mut tags: Vec<CowTag<'a>> = Vec::with_capacity(ndb_tags.count() as usize);
     for tag in ndb_tags.iter() {
-        let tag_str: Vec<String> = tag
+        let tag_str: Vec<Cow<'a, str>> = tag
             .into_iter()
             .map(|s| match s.variant() {
-                NdbStrVariant::Id(id) => hex::encode(id),
-                NdbStrVariant::Str(s) => s.to_owned(),
+                NdbStrVariant::Id(id) => Cow::Owned(hex::encode(id)),
+                NdbStrVariant::Str(s) => Cow::Borrowed(s),
             })
             .collect();
-        let tag: Tag = Tag::parse(&tag_str).map_err(DatabaseError::backend)?;
+        let tag = CowTag::parse(tag_str).map_err(DatabaseError::backend)?;
         tags.push(tag);
     }
     Ok(tags)
@@ -254,6 +287,6 @@ fn ndb_note_to_tags(note: &Note) -> Result<Vec<Tag>, DatabaseError> {
 
 fn ndb_note_to_neg_item(note: Note) -> (EventId, Timestamp) {
     let id = EventId::from_byte_array(*note.id());
-    let created_at = Timestamp::from(note.created_at());
+    let created_at = Timestamp::from_secs(note.created_at());
     (id, created_at)
 }

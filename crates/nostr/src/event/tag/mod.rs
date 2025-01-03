@@ -18,6 +18,7 @@ use serde::de::Error as DeserializerError;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+pub mod cow;
 mod error;
 pub mod kind;
 pub mod list;

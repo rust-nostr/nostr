@@ -2,34 +2,136 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::borrow::Cow;
+use std::cmp::Ordering;
 use std::collections::btree_set::IntoIter;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
-use nostr::{Event, Filter};
+use nostr::event::borrow::EventBorrow;
+use nostr::{Event, Filter, Timestamp};
 
 use super::tree::{BTreeCappedSet, Capacity, OverCapacityPolicy};
 
 // Lookup ID: EVENT_ORD_IMPL
 const POLICY: OverCapacityPolicy = OverCapacityPolicy::Last;
 
+#[derive(Debug, Clone)]
+pub enum QueryEvent<'a> {
+    MaybeOwned(Cow<'a, Event>),
+    Borrowed(EventBorrow<'a>),
+}
+
+impl<'a> From<Event> for QueryEvent<'a> {
+    fn from(event: Event) -> Self {
+        Self::MaybeOwned(Cow::Owned(event))
+    }
+}
+
+impl<'a> From<&'a Event> for QueryEvent<'a> {
+    fn from(event: &'a Event) -> Self {
+        Self::MaybeOwned(Cow::Borrowed(event))
+    }
+}
+
+impl<'a> From<EventBorrow<'a>> for QueryEvent<'a> {
+    fn from(event: EventBorrow<'a>) -> Self {
+        Self::Borrowed(event)
+    }
+}
+
+impl<'a> QueryEvent<'a> {
+    pub fn id(&'a self) -> &'a [u8; 32] {
+        match self {
+            Self::MaybeOwned(e) => e.id.as_bytes(),
+            Self::Borrowed(e) => e.id,
+        }
+    }
+
+    pub fn pubkey(&'a self) -> &'a [u8; 32] {
+        match self {
+            Self::MaybeOwned(e) => e.pubkey.as_bytes(),
+            Self::Borrowed(e) => e.pubkey,
+        }
+    }
+
+    pub fn created_at(&self) -> Timestamp {
+        match self {
+            Self::MaybeOwned(e) => e.created_at,
+            Self::Borrowed(e) => e.created_at,
+        }
+    }
+
+    pub fn content(&self) -> &str {
+        match self {
+            Self::MaybeOwned(e) => &e.content,
+            Self::Borrowed(e) => e.content,
+        }
+    }
+
+    pub fn into_owned(self) -> Self {
+        match self {
+            Self::MaybeOwned(e) => match e {
+                Cow::Owned(e) => Self::MaybeOwned(Cow::Owned(e)),
+                Cow::Borrowed(e) => Self::MaybeOwned(Cow::Owned(e.clone())),
+            },
+            Self::Borrowed(e) => Self::MaybeOwned(Cow::Owned(e.into_owned())),
+        }
+    }
+
+    pub fn into_event(self) -> Event {
+        match self {
+            Self::MaybeOwned(e) => e.into_owned(),
+            Self::Borrowed(e) => e.into_owned(),
+        }
+    }
+}
+
+impl PartialEq for QueryEvent<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.id() == other.id()
+    }
+}
+
+impl Eq for QueryEvent<'_> {}
+
+impl PartialOrd for QueryEvent<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for QueryEvent<'_> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.created_at() != other.created_at() {
+            // Descending order
+            // NOT EDIT, will break many things!!
+            // If the change is required, search for EVENT_ORD_IMPL comment
+            // in the code and adj things.
+            self.created_at().cmp(&other.created_at()).reverse()
+        } else {
+            self.id().cmp(other.id())
+        }
+    }
+}
+
 /// Descending sorted collection of events
 #[derive(Debug, Clone)]
-pub struct Events {
-    set: BTreeCappedSet<Event>,
+pub struct Events<'a> {
+    set: BTreeCappedSet<QueryEvent<'a>>,
     hash: u64,
     prev_not_match: bool,
 }
 
-impl PartialEq for Events {
+impl<'a> PartialEq for Events<'a> {
     fn eq(&self, other: &Self) -> bool {
         self.set == other.set
     }
 }
 
-impl Eq for Events {}
+impl<'a> Eq for Events<'a> {}
 
-impl Events {
+impl<'a> Events<'a> {
     /// New collection
     #[inline]
     pub fn new(filters: &[Filter]) -> Self {
@@ -43,7 +145,7 @@ impl Events {
         filters.hash(&mut hasher);
         let hash: u64 = hasher.finish();
 
-        let set: BTreeCappedSet<Event> = match limit {
+        let set: BTreeCappedSet<_> = match limit {
             Some(limit) => BTreeCappedSet::bounded_with_policy(limit, POLICY),
             None => BTreeCappedSet::unbounded(),
         };
@@ -70,24 +172,29 @@ impl Events {
     /// Check if contains [`Event`]
     #[inline]
     pub fn contains(&self, event: &Event) -> bool {
-        self.set.contains(event)
+        let v = QueryEvent::MaybeOwned(Cow::Borrowed(event));
+        self.set.contains(&v)
     }
 
     /// Insert [`Event`]
     ///
     /// If the set did not previously contain an equal value, `true` is returned.
     #[inline]
-    pub fn insert(&mut self, event: Event) -> bool {
-        self.set.insert(event).inserted
+    pub fn insert<T>(&mut self, event: T) -> bool
+    where
+        T: Into<QueryEvent<'a>>,
+    {
+        self.set.insert(event.into()).inserted
     }
 
     /// Insert events
     #[inline]
-    pub fn extend<I>(&mut self, events: I)
+    pub fn extend<I, T>(&mut self, events: I)
     where
-        I: IntoIterator<Item = Event>,
+        I: IntoIterator<Item = T>,
+        T: Into<QueryEvent<'a>>,
     {
-        self.set.extend(events);
+        self.set.extend(events.into_iter().map(|e| e.into()));
     }
 
     /// Merge events collections into a single one.
@@ -111,34 +218,42 @@ impl Events {
 
     /// Get first [`Event`] (descending order)
     #[inline]
-    pub fn first(&self) -> Option<&Event> {
+    pub fn first(&self) -> Option<&QueryEvent> {
         // Lookup ID: EVENT_ORD_IMPL
         self.set.first()
     }
 
+    /// Get first [`Event`] (descending order)
+    #[inline]
+    pub fn first_owned(self) -> Option<QueryEvent<'a>> {
+        // Lookup ID: EVENT_ORD_IMPL
+        self.into_iter().next()
+    }
+
     /// Get last [`Event`] (descending order)
     #[inline]
-    pub fn last(&self) -> Option<&Event> {
+    pub fn last(&self) -> Option<&QueryEvent> {
         // Lookup ID: EVENT_ORD_IMPL
         self.set.last()
     }
 
     /// Iterate events in descending order
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = &Event> {
+    pub fn iter(&self) -> impl Iterator<Item = &QueryEvent> {
         // Lookup ID: EVENT_ORD_IMPL
         self.set.iter()
     }
 
     /// Convert the collection to vector of events.
     #[inline]
-    pub fn to_vec(self) -> Vec<Event> {
+    pub fn to_vec(self) -> Vec<QueryEvent<'a>> {
+        //self.into_iter().map(|e| e.into_event()).collect()
         self.into_iter().collect()
     }
 }
 
-impl IntoIterator for Events {
-    type Item = Event;
+impl<'a> IntoIterator for Events<'a> {
+    type Item = QueryEvent<'a>;
     type IntoIter = IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {

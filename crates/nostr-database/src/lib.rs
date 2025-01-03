@@ -23,7 +23,7 @@ pub mod memory;
 pub mod prelude;
 pub mod profile;
 
-pub use self::collections::events::Events;
+pub use self::collections::events::{Events, QueryEvent};
 pub use self::error::DatabaseError;
 pub use self::events::helper::{DatabaseEventResult, DatabaseHelper};
 pub use self::events::{
