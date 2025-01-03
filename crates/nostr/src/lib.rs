@@ -30,6 +30,7 @@ extern crate alloc;
 
 #[macro_use]
 extern crate serde;
+extern crate core;
 
 #[doc(hidden)]
 #[cfg(any(feature = "nip04", feature = "nip44"))]

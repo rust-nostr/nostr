@@ -13,8 +13,6 @@ use heed::{RoTxn, RwTxn};
 use nostr_database::prelude::*;
 use tokio::sync::Mutex;
 
-use crate::store::types::DatabaseEvent;
-
 mod error;
 mod lmdb;
 mod types;
@@ -183,7 +181,7 @@ impl Store {
         for id in event.tags.event_ids() {
             if let Some(target) = db.get_event_by_id(read_txn, id.as_bytes())? {
                 // Author must match
-                if target.author() != event.pubkey.as_bytes() {
+                if target.pubkey != event.pubkey.as_bytes() {
                     return Ok(true);
                 }
 
@@ -218,10 +216,7 @@ impl Store {
         let bytes = id.to_bytes();
         self.interact(move |db| {
             let txn = db.read_txn()?;
-            let event: Option<Event> = match db.get_event_by_id(&txn, &bytes)? {
-                Some(e) => Some(e.to_event()?),
-                None => None,
-            };
+            let event: Option<Event> = db.get_event_by_id(&txn, &bytes)?.map(|e| e.into_owned());
             txn.commit()?;
             Ok(event)
         })
@@ -282,8 +277,8 @@ impl Store {
             let mut events: Events = Events::new(&filters);
 
             let txn: RoTxn = db.read_txn()?;
-            let output: BTreeSet<DatabaseEvent> = db.query(&txn, filters)?;
-            events.extend(output.into_iter().filter_map(|e| e.to_event().ok()));
+            let output: BTreeSet<EventBorrow> = db.query(&txn, filters)?;
+            events.extend(output.into_iter().map(|e| e.into_owned()));
             txn.commit()?;
 
             Ok(events)
@@ -300,7 +295,7 @@ impl Store {
             let events = db.query(&txn, vec![filter])?;
             let items = events
                 .into_iter()
-                .map(|e| (EventId::from_byte_array(*e.id()), e.created_at))
+                .map(|e| (EventId::from_byte_array(*e.id), e.created_at))
                 .collect();
             txn.commit()?;
             Ok(items)

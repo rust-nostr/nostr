@@ -3,16 +3,13 @@
 // Distributed under the MIT software license
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
-use std::str::FromStr;
 
+use nostr::event::borrow::EventBorrow;
 use nostr::{Filter, SingleLetterTag, Timestamp};
-use nostr_database::flatbuffers::event_fbs::Fixed32Bytes;
-
-use super::event::DatabaseEvent;
 
 pub struct DatabaseFilter {
-    pub ids: HashSet<Fixed32Bytes>,
-    pub authors: HashSet<Fixed32Bytes>,
+    pub ids: HashSet<[u8; 32]>,
+    pub authors: HashSet<[u8; 32]>,
     pub kinds: HashSet<u16>,
     /// Lowercase query
     pub search: Option<String>,
@@ -23,17 +20,17 @@ pub struct DatabaseFilter {
 
 impl DatabaseFilter {
     #[inline]
-    fn ids_match(&self, event: &DatabaseEvent) -> bool {
+    fn ids_match(&self, event: &EventBorrow) -> bool {
         self.ids.is_empty() || self.ids.contains(event.id)
     }
 
     #[inline]
-    fn authors_match(&self, event: &DatabaseEvent) -> bool {
+    fn authors_match(&self, event: &EventBorrow) -> bool {
         self.authors.is_empty() || self.authors.contains(event.pubkey)
     }
 
     #[inline]
-    fn tag_match(&self, event: &DatabaseEvent) -> bool {
+    fn tag_match(&self, event: &EventBorrow) -> bool {
         if self.generic_tags.is_empty() {
             return true;
         }
@@ -46,14 +43,10 @@ impl DatabaseFilter {
 
         // Match
         self.generic_tags.iter().all(|(tag_name, set)| {
-            event.tags.iter().filter_map(|t| t.data()).any(|tag| {
-                if tag.len() >= 2 {
-                    let first: &str = tag.get(0);
-                    if let Ok(first) = SingleLetterTag::from_str(first) {
-                        if tag_name == &first {
-                            let content = tag.get(1);
-                            return set.contains(content);
-                        }
+            event.tags.iter().any(|tag| {
+                if let Some((first, content)) = tag.extract() {
+                    if tag_name == &first {
+                        return set.contains(content);
                     }
                 }
 
@@ -63,12 +56,12 @@ impl DatabaseFilter {
     }
 
     #[inline]
-    fn kind_match(&self, event: &DatabaseEvent) -> bool {
+    fn kind_match(&self, event: &EventBorrow) -> bool {
         self.kinds.is_empty() || self.kinds.contains(&event.kind)
     }
 
     #[inline]
-    fn search_match(&self, event: &DatabaseEvent) -> bool {
+    fn search_match(&self, event: &EventBorrow) -> bool {
         match &self.search {
             Some(query) => {
                 // NOTE: `query` was already converted to lowercase
@@ -84,7 +77,7 @@ impl DatabaseFilter {
     }
 
     #[inline]
-    pub fn match_event(&self, event: &DatabaseEvent) -> bool {
+    pub fn match_event(&self, event: &EventBorrow) -> bool {
         self.ids_match(event)
             && self.authors_match(event)
             && self.kind_match(event)
@@ -100,18 +93,14 @@ impl From<Filter> for DatabaseFilter {
         Self {
             ids: filter
                 .ids
-                .map(|ids| {
-                    ids.into_iter()
-                        .map(|id| Fixed32Bytes::new(id.as_bytes()))
-                        .collect()
-                })
+                .map(|ids| ids.into_iter().map(|id| id.to_bytes()).collect())
                 .unwrap_or_default(),
             authors: filter
                 .authors
                 .map(|authors| {
                     authors
                         .into_iter()
-                        .map(|pubkey| Fixed32Bytes::new(pubkey.as_bytes()))
+                        .map(|pubkey| pubkey.to_bytes())
                         .collect()
                 })
                 .unwrap_or_default(),

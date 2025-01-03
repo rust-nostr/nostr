@@ -7,9 +7,11 @@
 use alloc::borrow::Cow;
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::str::FromStr;
 
 use super::error::Error;
 use super::Tag;
+use crate::SingleLetterTag;
 
 /// Cow Tag
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -28,6 +30,17 @@ impl<'a> CowTag<'a> {
         }
 
         Ok(Self { buf: tag })
+    }
+
+    /// Extract tag name and value
+    pub fn extract(&self) -> Option<(SingleLetterTag, &str)> {
+        if self.buf.len() >= 2 {
+            let tag_name: SingleLetterTag = SingleLetterTag::from_str(&self.buf[0]).ok()?;
+            let tag_value: &str = &self.buf[1];
+            Some((tag_name, tag_value))
+        } else {
+            None
+        }
     }
 
     /// Into owned tag

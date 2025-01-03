@@ -19,6 +19,11 @@ mod store;
 
 use self::store::Store;
 
+// pub struct LmdbTransaction<'a> {
+//     db: Store,
+//     txn: RoTxn<'a>,
+// }
+
 /// LMDB Nostr Database
 #[derive(Debug)]
 pub struct NostrLMDB {
@@ -58,6 +63,14 @@ impl NostrDatabase for NostrLMDB {
         self.db.wipe().await.map_err(DatabaseError::backend)
     }
 }
+
+// #[async_trait]
+// impl<'lmdb> NostrEventsDatabaseTransaction for LmdbTransaction<'lmdb> {
+//     async fn query<'a>(&'a self, filters: Vec<Filter>) -> Result<QueryEvents<'a>, DatabaseError> {
+//         self.db.query()
+//         Ok(QueryEvents::Set(events))
+//     }
+// }
 
 #[async_trait]
 impl NostrEventsDatabase for NostrLMDB {

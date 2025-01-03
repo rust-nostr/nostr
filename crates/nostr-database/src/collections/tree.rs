@@ -297,6 +297,21 @@ impl<T> From<BTreeSet<T>> for BTreeCappedSet<T> {
     }
 }
 
+impl<T> FromIterator<T> for BTreeCappedSet<T>
+where
+    T: Ord,
+{
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
+        Self {
+            set: iter.into_iter().collect(),
+            capacity: Capacity::Unbounded,
+        }
+    }
+}
+
 impl<T> IntoIterator for BTreeCappedSet<T> {
     type Item = T;
     type IntoIter = IntoIter<Self::Item>;

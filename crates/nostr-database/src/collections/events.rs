@@ -148,6 +148,12 @@ impl<'a> QueryEvents<'a> {
             Self::Set(events) => Box::new(events.into_iter()),
         }
     }
+
+    /// Convert into [`Events`]
+    #[inline]
+    pub fn into_owned(self) -> Events {
+        self.into_iter().collect()
+    }
 }
 
 /// Descending sorted collection of events
@@ -293,6 +299,19 @@ impl IntoIterator for Events {
     fn into_iter(self) -> Self::IntoIter {
         // Lookup ID: EVENT_ORD_IMPL
         self.set.into_iter()
+    }
+}
+
+impl<'a> FromIterator<QueryEvent<'a>> for Events {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = QueryEvent<'a>>,
+    {
+        Self {
+            set: iter.into_iter().map(|e| e.into_event()).collect(),
+            hash: 0,
+            prev_not_match: true,
+        }
     }
 }
 
