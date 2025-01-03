@@ -57,5 +57,6 @@ export function eventID() {
     let event = EventBuilder.textNote("This is a note").signWithKeys(keys);
     console.log(`     - Event ID: ${event.id.toBech32()}`);
     console.log(`     - Verify the ID & Signature: ${event.verify()}`);
+    console.log(`     - Verify the ID Only: ${event.verifyId()}`);
     // ANCHOR_END: access-verify
 }
