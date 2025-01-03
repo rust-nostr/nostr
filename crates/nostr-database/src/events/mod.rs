@@ -11,7 +11,8 @@ use nostr::prelude::*;
 
 pub mod helper;
 
-use crate::{DatabaseError, Events, Profile};
+use crate::collections::events::{Events, QueryEvents};
+use crate::{DatabaseError, Profile};
 
 /// Database event status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -89,12 +90,12 @@ where
     }
 }
 
-/// Nostr Events query transaction
+/// Nostr Events Database transaction
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-pub trait DatabaseTransaction {
+pub trait NostrEventsDatabaseTransaction: Send {
     /// Query events
-    async fn query<'a>(&'a self, filters: Vec<Filter>) -> Result<Events<'a>, DatabaseError>;
+    async fn query<'a>(&'a self, filters: Vec<Filter>) -> Result<QueryEvents<'a>, DatabaseError>;
 }
 
 /// Nostr Events Database
@@ -138,24 +139,32 @@ pub trait NostrEventsDatabase: fmt::Debug + Send + Sync {
     /// Get [`Event`] by [`EventId`]
     async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Event>, DatabaseError>;
 
-    /// Count number of [`Event`] found by filters
+    /// Count the number of events that match filters
     ///
     /// Use `Filter::new()` or `Filter::default()` to count all events.
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError>;
 
-    async fn begin_txn(&self) -> Result<Box<dyn DatabaseTransaction>, DatabaseError> {
+    /// Being query txn
+    async fn begin_txn(&self) -> Result<Box<dyn NostrEventsDatabaseTransaction>, DatabaseError> {
         Err(DatabaseError::NotSupported)
     }
 
     /// Query store with filters
-    async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError>;
+    async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
+        let txn = self.begin_txn().await?;
+        let mut events = Events::new(&filters);
+        let res = txn.query(filters).await?;
+        events.extend_query_events(res);
+        Ok(events)
+    }
 
     /// Get `negentropy` items
     async fn negentropy_items(
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
-        let events: Events = self.query(vec![filter]).await?;
+        let txn = self.begin_txn().await?;
+        let events = txn.query(vec![filter]).await?;
         Ok(events
             .into_iter()
             .map(|e| (EventId::from_byte_array(*e.id()), e.created_at()))
@@ -176,10 +185,10 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
             .author(public_key)
             .kind(Kind::Metadata)
             .limit(1);
-        let events: Events = self.query(vec![filter]).await?;
-        match events.first() {
+        let events = self.query(vec![filter]).await?;
+        match events.first_owned() {
             Some(event) => Ok(Some(
-                Metadata::from_json(event.content()).map_err(DatabaseError::backend)?,
+                Metadata::from_json(event.content).map_err(DatabaseError::backend)?,
             )),
             None => Ok(None),
         }
@@ -195,8 +204,8 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
             .kind(Kind::ContactList)
             .limit(1);
         let events: Events = self.query(vec![filter]).await?;
-        match events.into_iter().next() {
-            Some(event) => Ok(event.into_event().tags.public_keys().copied().collect()),
+        match events.first_owned() {
+            Some(event) => Ok(event.tags.public_keys().copied().collect()),
             None => Ok(HashSet::new()),
         }
     }
@@ -208,10 +217,8 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
             .kind(Kind::ContactList)
             .limit(1);
         let events: Events = self.query(vec![filter]).await?;
-        match events.into_iter().next() {
+        match events.first_owned() {
             Some(event) => {
-                let event: Event = event.into_event();
-
                 // Get contacts metadata
                 let filter = Filter::new()
                     .authors(event.tags.public_keys().copied())
@@ -222,8 +229,8 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
                     .into_iter()
                     .map(|e| {
                         let metadata: Metadata =
-                            Metadata::from_json(e.content()).unwrap_or_default();
-                        Profile::new(PublicKey::from_byte_array(*e.pubkey()), metadata)
+                            Metadata::from_json(&e.content).unwrap_or_default();
+                        Profile::new(e.pubkey, metadata)
                     })
                     .collect();
 
@@ -251,8 +258,8 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
         let events: Events = self.query(vec![filter]).await?;
 
         // Extract relay list (NIP65)
-        match events.into_iter().next() {
-            Some(event) => Ok(nip65::extract_owned_relay_list(event.into_event()).collect()),
+        match events.first_owned() {
+            Some(event) => Ok(nip65::extract_owned_relay_list(event).collect()),
             None => Ok(HashMap::new()),
         }
     }
@@ -273,7 +280,7 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
 
         let mut map = HashMap::with_capacity(events.len());
 
-        for event in events.into_iter().map(|e| e.into_event()) {
+        for event in events.into_iter() {
             map.insert(
                 event.pubkey,
                 nip65::extract_owned_relay_list(event).collect(),

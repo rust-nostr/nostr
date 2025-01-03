@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use nostr::prelude::*;
 use tokio::sync::RwLock;
 
+use crate::events::NostrEventsDatabaseTransaction;
 use crate::{
     Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper, Events,
     NostrDatabase, NostrEventsDatabase, RejectedReason, SaveEventStatus,
@@ -164,6 +165,10 @@ impl NostrEventsDatabase for MemoryDatabase {
 
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {
         Ok(self.helper.count(filters).await)
+    }
+
+    async fn begin_txn(&self) -> Result<Box<dyn NostrEventsDatabaseTransaction>, DatabaseError> {
+        todo!()
     }
 
     async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {

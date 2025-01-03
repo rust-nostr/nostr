@@ -1070,7 +1070,7 @@ impl Client {
             .kind(Kind::Metadata)
             .limit(1);
         let events: Events = self.fetch_events(vec![filter], timeout).await?;
-        match events.first_owned().map(|e| e.into_event()) {
+        match events.first_owned() {
             Some(event) => Ok(Metadata::try_from(&event)?),
             None => Err(Error::MetadataNotFound),
         }
@@ -1172,7 +1172,7 @@ impl Client {
         let events: Events = self.fetch_events(filters, timeout).await?;
 
         // Get first event (result of `fetch_events` is sorted DESC by timestamp)
-        if let Some(event) = events.first_owned().map(|e| e.into_event()) {
+        if let Some(event) = events.first_owned() {
             for tag in event.tags.into_iter() {
                 if let Some(TagStandard::PublicKey {
                     public_key,
@@ -1200,7 +1200,7 @@ impl Client {
         let filters: Vec<Filter> = self.get_contact_list_filters().await?;
         let events: Events = self.fetch_events(filters, timeout).await?;
 
-        for event in events.into_iter().map(|e| e.into_event()) {
+        for event in events.into_iter() {
             pubkeys.extend(event.tags.public_keys());
         }
 
@@ -1229,9 +1229,8 @@ impl Client {
             }
             let events: Events = self.fetch_events(filters, timeout).await?;
             for event in events.into_iter() {
-                let metadata = Metadata::from_json(event.content())?;
-                let pk = PublicKey::from_byte_array(*event.pubkey());
-                if let Some(m) = contacts.get_mut(&pk) {
+                let metadata = Metadata::from_json(event.content)?;
+                if let Some(m) = contacts.get_mut(&event.pubkey) {
                     *m = metadata
                 };
             }
@@ -1629,9 +1628,7 @@ impl Client {
             let merged: Events = events.merge(stored_events);
 
             // Update gossip graph
-            self.gossip_graph
-                .update(merged.into_iter().map(|e| e.into_event()))
-                .await;
+            self.gossip_graph.update(merged).await;
         }
 
         Ok(())

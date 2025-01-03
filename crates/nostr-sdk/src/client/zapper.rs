@@ -105,7 +105,7 @@ impl Client {
                 let filter: Filter = Filter::new().id(event_id);
                 let events: Events = self.fetch_events(vec![filter], TIMEOUT).await?;
                 let event = events.first().ok_or(Error::EventNotFound(event_id))?;
-                let public_key: PublicKey = PublicKey::from_byte_array(*event.pubkey());
+                let public_key: PublicKey = event.pubkey;
                 let metadata: Metadata = self.fetch_metadata(public_key, TIMEOUT).await?;
                 (public_key, metadata)
             }

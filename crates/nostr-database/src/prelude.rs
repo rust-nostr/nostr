@@ -11,7 +11,8 @@
 // External crates
 pub use nostr::prelude::*;
 
-pub use crate::events::*;
 // Internal modules
+pub use crate::collections::events::*;
+pub use crate::events::*;
 pub use crate::memory::{self, *};
 pub use crate::*;

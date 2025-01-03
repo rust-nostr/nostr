@@ -54,23 +54,6 @@ impl NdbDatabase {
             db: Ndb::new(path, &config).map_err(DatabaseError::backend)?,
         })
     }
-
-    #[inline]
-    pub fn txn(&self) -> Result<Transaction, DatabaseError> {
-        Transaction::new(&self.db).map_err(DatabaseError::backend)
-    }
-
-    pub fn ndb_query<'a>(
-        &self,
-        txn: &'a Transaction,
-        filters: Vec<Filter>,
-    ) -> Result<Vec<QueryResult<'a>>, DatabaseError> {
-        let filters: Vec<nostrdb::Filter> =
-            filters.into_iter().map(ndb_filter_conversion).collect();
-        self.db
-            .query(txn, &filters, MAX_RESULTS)
-            .map_err(DatabaseError::backend)
-    }
 }
 
 impl Deref for NdbDatabase {
@@ -105,20 +88,14 @@ impl NostrDatabase for NdbDatabase {
 }
 
 #[async_trait]
-impl DatabaseTransaction for NdbTransaction {
-    async fn query<'a>(&'a self, filters: Vec<Filter>) -> Result<Events<'a>, DatabaseError> {
-        let mut events: Events = Events::new(&filters);
-        let filters: Vec<nostrdb::Filter> =
-            filters.into_iter().map(ndb_filter_conversion).collect();
-        let res: Vec<QueryResult> = self
-            .db
-            .query(&self.txn, &filters, MAX_RESULTS)
-            .map_err(DatabaseError::backend)?;
-        events.extend(
-            res.into_iter()
-                .filter_map(|r| ndb_note_to_event(r.note).ok()),
-        );
-        Ok(events)
+impl NostrEventsDatabaseTransaction for NdbTransaction {
+    async fn query<'a>(&'a self, filters: Vec<Filter>) -> Result<QueryEvents<'a>, DatabaseError> {
+        let res: Vec<QueryResult> = ndb_query(&self.db, &self.txn, filters)?;
+        let events = res
+            .into_iter()
+            .filter_map(|r| ndb_note_to_event(r.note).ok())
+            .collect();
+        Ok(QueryEvents::List(events))
     }
 }
 
@@ -179,11 +156,11 @@ impl NostrEventsDatabase for NdbDatabase {
 
     async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {
         let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
-        let res: Vec<QueryResult> = self.ndb_query(&txn, filters)?;
+        let res: Vec<QueryResult> = ndb_query(&self.db, &txn, filters)?;
         Ok(res.len())
     }
 
-    async fn begin_txn(&self) -> Result<Box<dyn DatabaseTransaction>, DatabaseError> {
+    async fn begin_txn(&self) -> Result<Box<dyn NostrEventsDatabaseTransaction>, DatabaseError> {
         let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
         Ok(Box::new(NdbTransaction {
             db: self.db.clone(),
@@ -191,16 +168,12 @@ impl NostrEventsDatabase for NdbDatabase {
         }))
     }
 
-    async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
-        todo!()
-    }
-
     async fn negentropy_items(
         &self,
         filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
         let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
-        let res: Vec<QueryResult> = self.ndb_query(&txn, vec![filter])?;
+        let res: Vec<QueryResult> = ndb_query(&self.db, &txn, vec![filter])?;
         Ok(res
             .into_iter()
             .map(|r| ndb_note_to_neg_item(r.note))
@@ -210,6 +183,16 @@ impl NostrEventsDatabase for NdbDatabase {
     async fn delete(&self, _filter: Filter) -> Result<(), DatabaseError> {
         Err(DatabaseError::NotSupported)
     }
+}
+
+fn ndb_query<'a>(
+    db: &Ndb,
+    txn: &'a Transaction,
+    filters: Vec<Filter>,
+) -> Result<Vec<QueryResult<'a>>, DatabaseError> {
+    let filters: Vec<nostrdb::Filter> = filters.into_iter().map(ndb_filter_conversion).collect();
+    db.query(txn, &filters, MAX_RESULTS)
+        .map_err(DatabaseError::backend)
 }
 
 fn ndb_filter_conversion(f: Filter) -> nostrdb::Filter {
