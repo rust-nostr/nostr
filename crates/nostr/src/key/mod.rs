@@ -32,6 +32,7 @@ pub use self::public_key::PublicKey;
 pub use self::secret_key::SecretKey;
 #[cfg(feature = "std")]
 use crate::signer::{NostrSigner, SignerBackend, SignerError};
+use crate::util::hex;
 #[cfg(feature = "std")]
 use crate::{Event, UnsignedEvent, SECP256K1};
 
@@ -40,6 +41,8 @@ use crate::{Event, UnsignedEvent, SECP256K1};
 pub enum Error {
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
+    /// Hex decode error
+    Hex(hex::Error),
     /// Invalid secret key
     InvalidSecretKey,
     /// Invalid public key
@@ -55,6 +58,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::Hex(e) => write!(f, "{e}"),
             Self::InvalidSecretKey => write!(f, "Invalid secret key"),
             Self::InvalidPublicKey => write!(f, "Invalid public key"),
             Self::InvalidChar(c) => write!(f, "Unsupported char: {c}"),
@@ -65,6 +69,12 @@ impl fmt::Display for Error {
 impl From<secp256k1::Error> for Error {
     fn from(e: secp256k1::Error) -> Self {
         Self::Secp256k1(e)
+    }
+}
+
+impl From<hex::Error> for Error {
+    fn from(e: hex::Error) -> Self {
+        Self::Hex(e)
     }
 }
 

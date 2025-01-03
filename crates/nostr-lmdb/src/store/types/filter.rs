@@ -111,7 +111,7 @@ impl From<Filter> for DatabaseFilter {
                 .map(|authors| {
                     authors
                         .into_iter()
-                        .map(|pubkey| Fixed32Bytes::new(&pubkey.to_bytes()))
+                        .map(|pubkey| Fixed32Bytes::new(pubkey.as_bytes()))
                         .collect()
                 })
                 .unwrap_or_default(),

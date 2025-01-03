@@ -35,6 +35,7 @@
 
 ### Changed
 
+* nostr: refactor `PublicKey` to use byte array internally ([Yuki Kishimoto])
 * pool: update `Error::WebSocket` variant inner type ([Yuki Kishimoto])
 
 ### Added

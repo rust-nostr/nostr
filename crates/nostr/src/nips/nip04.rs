@@ -22,7 +22,7 @@ use bitcoin::secp256k1::rand;
 use bitcoin::secp256k1::rand::RngCore;
 use cbc::{Decryptor, Encryptor};
 
-use crate::{util, PublicKey, SecretKey};
+use crate::{key, util, PublicKey, SecretKey};
 
 type Aes256CbcEnc = Encryptor<Aes256>;
 type Aes256CbcDec = Decryptor<Aes256>;
@@ -30,6 +30,8 @@ type Aes256CbcDec = Decryptor<Aes256>;
 /// `NIP04` error
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
+    /// Key error
+    Key(key::Error),
     /// Invalid content format
     InvalidContentFormat,
     /// Error while decoding from base64
@@ -46,6 +48,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Key(e) => write!(f, "{e}"),
             Self::InvalidContentFormat => write!(f, "Invalid NIP04 content format"),
             Self::Base64Decode => write!(f, "Error while decoding NIP04 from base64"),
             Self::Utf8Encode => write!(f, "Error while encoding NIP04 to UTF-8"),
@@ -54,6 +57,12 @@ impl fmt::Display for Error {
                 "Wrong encryption block mode. The content must be encrypted using CBC mode!"
             ),
         }
+    }
+}
+
+impl From<key::Error> for Error {
+    fn from(e: key::Error) -> Self {
+        Self::Key(e)
     }
 }
 
@@ -87,7 +96,7 @@ where
     T: AsRef<[u8]>,
 {
     // Generate key
-    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
+    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key)?;
 
     // Generate iv
     let mut iv: [u8; 16] = [0u8; 16];
@@ -130,7 +139,7 @@ where
     let iv: Vec<u8> = general_purpose::STANDARD
         .decode(parsed_content[1])
         .map_err(|_| Error::Base64Decode)?;
-    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key);
+    let key: [u8; 32] = util::generate_shared_key(secret_key, public_key)?;
 
     let cipher = Aes256CbcDec::new(&key.into(), iv.as_slice().into());
     let result = cipher

@@ -18,11 +18,13 @@ use bitcoin::secp256k1::rand::RngCore;
 pub mod v2;
 
 use self::v2::ConversationKey;
-use crate::{PublicKey, SecretKey};
+use crate::{key, PublicKey, SecretKey};
 
 /// Error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
+    /// Key error
+    Key(key::Error),
     /// NIP44 V2 error
     V2(v2::ErrorV2),
     /// Error while decoding from base64
@@ -45,6 +47,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Key(e) => write!(f, "{e}"),
             Self::V2(e) => write!(f, "{e}"),
             Self::Base64Decode(e) => write!(f, "Error while decoding from base64: {e}"),
             Self::InvalidLength => write!(f, "Invalid length"),
@@ -53,6 +56,12 @@ impl fmt::Display for Error {
             Self::VersionNotFound => write!(f, "Version not found in payload"),
             Self::NotFound(value) => write!(f, "{value} not found in payload"),
         }
+    }
+}
+
+impl From<key::Error> for Error {
+    fn from(e: key::Error) -> Self {
+        Self::Key(e)
     }
 }
 
@@ -125,7 +134,8 @@ where
 {
     match version {
         Version::V2 => {
-            let conversation_key: ConversationKey = ConversationKey::derive(secret_key, public_key);
+            let conversation_key: ConversationKey =
+                ConversationKey::derive(secret_key, public_key)?;
             let payload: Vec<u8> =
                 v2::encrypt_to_bytes_with_rng(rng, &conversation_key, content.as_ref())?;
             Ok(general_purpose::STANDARD.encode(payload))
@@ -164,7 +174,8 @@ where
 
     match Version::try_from(version)? {
         Version::V2 => {
-            let conversation_key: ConversationKey = ConversationKey::derive(secret_key, public_key);
+            let conversation_key: ConversationKey =
+                ConversationKey::derive(secret_key, public_key)?;
             v2::decrypt_to_bytes(&conversation_key, &payload)
         }
     }

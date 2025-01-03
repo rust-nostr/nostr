@@ -18,7 +18,7 @@ use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::rand::rngs::OsRng;
 use bitcoin::secp256k1::rand::{CryptoRng, Rng};
 use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Message, Secp256k1, Signing, Verification};
+use bitcoin::secp256k1::{self, Message, Secp256k1, Signing, Verification, XOnlyPublicKey};
 use serde::de::Error as DeserializerError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
@@ -189,7 +189,8 @@ where
     let unhashed_token = DelegationToken::new(delegatee_public_key, conditions);
     let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
     let message = Message::from_digest(hashed_token.to_byte_array());
-    secp.verify_schnorr(&signature, &message, delegator_public_key)?;
+    let public_key: XOnlyPublicKey = delegator_public_key.xonly()?;
+    secp.verify_schnorr(&signature, &message, &public_key)?;
     Ok(())
 }
 
@@ -726,8 +727,11 @@ mod tests {
         let hashed_token = Sha256Hash::hash(unhashed_token.as_bytes());
         let message = Message::from_digest_slice(hashed_token.as_byte_array()).unwrap();
 
-        let verify_result =
-            SECP256K1.verify_schnorr(&signature, &message, &delegator_keys.public_key());
+        let verify_result = SECP256K1.verify_schnorr(
+            &signature,
+            &message,
+            &delegator_keys.public_key().xonly().unwrap(),
+        );
         assert!(verify_result.is_ok());
     }
 

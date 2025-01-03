@@ -9,7 +9,7 @@ use core::fmt::Debug;
 
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::{ecdh, Parity, PublicKey as NormalizedPublicKey};
+use bitcoin::secp256k1::{ecdh, Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey};
 #[cfg(feature = "std")]
 use bitcoin::secp256k1::{All, Secp256k1};
 #[cfg(feature = "std")]
@@ -22,19 +22,23 @@ pub mod hex;
 pub mod hkdf;
 
 use crate::nips::nip01::Coordinate;
-use crate::{EventBuilder, EventId, PublicKey, SecretKey, Tag, UnsignedEvent};
+use crate::{key, EventBuilder, EventId, PublicKey, SecretKey, Tag, UnsignedEvent};
 
 /// Generate shared key
 ///
 /// **Important: use of a strong cryptographic hash function may be critical to security! Do NOT use
 /// unless you understand cryptographical implications.**
-pub fn generate_shared_key(secret_key: &SecretKey, public_key: &PublicKey) -> [u8; 32] {
+pub fn generate_shared_key(
+    secret_key: &SecretKey,
+    public_key: &PublicKey,
+) -> Result<[u8; 32], key::Error> {
+    let pk: XOnlyPublicKey = public_key.xonly()?;
     let public_key_normalized: NormalizedPublicKey =
-        NormalizedPublicKey::from_x_only_public_key(**public_key, Parity::Even);
+        NormalizedPublicKey::from_x_only_public_key(pk, Parity::Even);
     let ssp: [u8; 64] = ecdh::shared_secret_point(&public_key_normalized, secret_key);
     let mut shared_key: [u8; 32] = [0u8; 32];
     shared_key.copy_from_slice(&ssp[..32]);
-    shared_key
+    Ok(shared_key)
 }
 
 /// Secp256k1 global context

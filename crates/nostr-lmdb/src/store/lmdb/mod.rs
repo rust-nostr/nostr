@@ -166,7 +166,7 @@ impl Lmdb {
 
         // Index by author and kind (with created_at and id)
         let akc_index_key: Vec<u8> = index::make_akc_index_key(
-            &event.pubkey.to_bytes(),
+            event.pubkey.as_bytes(),
             event.kind.as_u16(),
             &event.created_at,
             event.id.as_bytes(),
@@ -175,7 +175,7 @@ impl Lmdb {
 
         // Index by author (with created_at and id)
         let ac_index_key: Vec<u8> = index::make_ac_index_key(
-            &event.pubkey.to_bytes(),
+            event.pubkey.as_bytes(),
             &event.created_at,
             event.id.as_bytes(),
         );
@@ -185,7 +185,7 @@ impl Lmdb {
             if let (Some(tag_name), Some(tag_value)) = (tag.single_letter_tag(), tag.content()) {
                 // Index by author and tag (with created_at and id)
                 let atc_index_key: Vec<u8> = index::make_atc_index_key(
-                    &event.pubkey.to_bytes(),
+                    event.pubkey.as_bytes(),
                     &tag_name,
                     tag_value,
                     &event.created_at,
@@ -574,7 +574,7 @@ impl Lmdb {
 
         let mut iter = self.akc_iter(
             txn,
-            &author.to_bytes(),
+            author.as_bytes(),
             kind.as_u16(),
             Timestamp::min(),
             Timestamp::max(),
@@ -599,7 +599,7 @@ impl Lmdb {
 
         let iter = self.atc_iter(
             txn,
-            &addr.public_key.to_bytes(),
+            addr.public_key.as_bytes(),
             &SingleLetterTag::lowercase(Alphabet::D),
             &addr.identifier,
             &Timestamp::min(),
@@ -636,7 +636,7 @@ impl Lmdb {
 
         let iter = self.akc_iter(
             read_txn,
-            &coordinate.public_key.to_bytes(),
+            coordinate.public_key.as_bytes(),
             coordinate.kind.as_u16(),
             Timestamp::zero(),
             until,
@@ -668,7 +668,7 @@ impl Lmdb {
 
         let iter = self.atc_iter(
             read_txn,
-            &coordinate.public_key.to_bytes(),
+            coordinate.public_key.as_bytes(),
             &SingleLetterTag::lowercase(Alphabet::D),
             &coordinate.identifier,
             &Timestamp::min(),
