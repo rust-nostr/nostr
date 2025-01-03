@@ -28,8 +28,6 @@ pub enum Error {
     FlatBuffer(InvalidFlatbuffer),
     /// Tag error
     Tag(tag::Error),
-    /// Key error
-    Key(key::Error),
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
     /// Not found
@@ -43,7 +41,6 @@ impl fmt::Display for Error {
         match self {
             Self::FlatBuffer(e) => write!(f, "{e}"),
             Self::Tag(e) => write!(f, "{e}"),
-            Self::Key(e) => write!(f, "{e}"),
             Self::Secp256k1(e) => write!(f, "{e}"),
             Self::NotFound => write!(f, "not found"),
         }
@@ -59,12 +56,6 @@ impl From<InvalidFlatbuffer> for Error {
 impl From<tag::Error> for Error {
     fn from(e: tag::Error) -> Self {
         Self::Tag(e)
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Key(e)
     }
 }
 
@@ -96,8 +87,8 @@ impl FlatBufferEncode for Event {
     fn encode<'a>(&self, fbb: &'a mut FlatBufferBuilder) -> &'a [u8] {
         fbb.reset();
 
-        let id = event_fbs::Fixed32Bytes::new(&self.id.to_bytes());
-        let pubkey = event_fbs::Fixed32Bytes::new(&self.pubkey.to_bytes());
+        let id = event_fbs::Fixed32Bytes::new(self.id.as_bytes());
+        let pubkey = event_fbs::Fixed32Bytes::new(self.pubkey.as_bytes());
         let sig = event_fbs::Fixed64Bytes::new(self.sig.as_ref());
         let tags = self
             .tags
@@ -144,7 +135,7 @@ impl FlatBufferDecode for Event {
 
         Ok(Self::new(
             EventId::from_byte_array(ev.id().ok_or(Error::NotFound)?.0),
-            PublicKey::from_slice(&ev.pubkey().ok_or(Error::NotFound)?.0)?,
+            PublicKey::from_byte_array(ev.pubkey().ok_or(Error::NotFound)?.0),
             Timestamp::from(ev.created_at()),
             Kind::from(ev.kind() as u16),
             tags,

@@ -187,7 +187,7 @@ fn ndb_filter_conversion(f: Filter) -> nostrdb::Filter {
 
     if let Some(authors) = f.authors {
         if !authors.is_empty() {
-            let authors: Vec<[u8; 32]> = authors.into_iter().map(|p| p.serialize()).collect();
+            let authors: Vec<[u8; 32]> = authors.into_iter().map(|p| p.to_bytes()).collect();
             filter = filter.authors(authors.iter());
         }
     }
@@ -221,7 +221,7 @@ fn ndb_filter_conversion(f: Filter) -> nostrdb::Filter {
 
 fn ndb_note_to_event(note: Note) -> Result<Event, DatabaseError> {
     let id = EventId::from_byte_array(*note.id());
-    let public_key = PublicKey::from_slice(note.pubkey()).map_err(DatabaseError::backend)?;
+    let public_key = PublicKey::from_byte_array(*note.pubkey());
     let sig = Signature::from_slice(note.sig()).map_err(DatabaseError::backend)?;
 
     let tags: Vec<Tag> = ndb_note_to_tags(&note)?;

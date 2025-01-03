@@ -7,6 +7,7 @@ use std::ops::Deref;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
+use crate::error::{into_err, Result};
 use crate::protocol::key::{JsPublicKey, JsSecretKey};
 
 /// Generate shared key
@@ -14,6 +15,10 @@ use crate::protocol::key::{JsPublicKey, JsSecretKey};
 /// **Important: use of a strong cryptographic hash function may be critical to security! Do NOT use
 /// unless you understand cryptographical implications.**
 #[wasm_bindgen(js_name = generateSharedKey)]
-pub fn generate_shared_key(secret_key: &JsSecretKey, public_key: &JsPublicKey) -> Vec<u8> {
-    util::generate_shared_key(secret_key.deref(), public_key.deref()).to_vec()
+pub fn generate_shared_key(secret_key: &JsSecretKey, public_key: &JsPublicKey) -> Result<Vec<u8>> {
+    Ok(
+        util::generate_shared_key(secret_key.deref(), public_key.deref())
+            .map_err(into_err)?
+            .to_vec(),
+    )
 }

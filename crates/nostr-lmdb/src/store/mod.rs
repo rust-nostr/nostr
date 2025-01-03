@@ -183,7 +183,7 @@ impl Store {
         for id in event.tags.event_ids() {
             if let Some(target) = db.get_event_by_id(read_txn, id.as_bytes())? {
                 // Author must match
-                if target.author() != &event.pubkey.to_bytes() {
+                if target.author() != event.pubkey.as_bytes() {
                     return Ok(true);
                 }
 

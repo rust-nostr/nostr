@@ -242,8 +242,12 @@ impl Event {
         C: Verification,
     {
         let message: Message = Message::from_digest(self.id.to_bytes());
-        secp.verify_schnorr(&self.sig, &message, &self.pubkey)
-            .is_ok()
+        match self.pubkey.xonly() {
+            Ok(public_key) => secp
+                .verify_schnorr(&self.sig, &message, &public_key)
+                .is_ok(),
+            Err(..) => false, // TODO: return error?
+        }
     }
 
     /// Check POW

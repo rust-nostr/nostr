@@ -17,8 +17,8 @@ use crate::error::{NostrSdkError, Result};
 /// **Important: use of a strong cryptographic hash function may be critical to security! Do NOT use
 /// unless you understand cryptographical implications.**
 #[uniffi::export]
-pub fn generate_shared_key(secret_key: &SecretKey, public_key: &PublicKey) -> Vec<u8> {
-    util::generate_shared_key(secret_key.deref(), public_key.deref()).to_vec()
+pub fn generate_shared_key(secret_key: &SecretKey, public_key: &PublicKey) -> Result<Vec<u8>> {
+    Ok(util::generate_shared_key(secret_key.deref(), public_key.deref())?.to_vec())
 }
 
 #[derive(Enum)]

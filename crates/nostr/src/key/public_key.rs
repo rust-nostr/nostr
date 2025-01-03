@@ -5,8 +5,9 @@
 //! Public key
 
 use alloc::string::String;
+use core::cmp::Ordering;
 use core::fmt;
-use core::ops::Deref;
+use core::hash::{Hash, Hasher};
 use core::str::FromStr;
 
 use bitcoin::secp256k1::XOnlyPublicKey;
@@ -18,28 +19,40 @@ use crate::nips::nip21::NostrURI;
 use crate::util::hex;
 
 /// Public Key
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy)]
 pub struct PublicKey {
-    inner: XOnlyPublicKey,
-}
-
-impl Deref for PublicKey {
-    type Target = XOnlyPublicKey;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl From<XOnlyPublicKey> for PublicKey {
-    fn from(inner: XOnlyPublicKey) -> Self {
-        Self { inner }
-    }
+    buf: [u8; 32],
 }
 
 impl fmt::Debug for PublicKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "PublicKey({})", self.to_hex())
+    }
+}
+
+impl PartialEq for PublicKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.buf == other.buf
+    }
+}
+
+impl Eq for PublicKey {}
+
+impl PartialOrd for PublicKey {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for PublicKey {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.buf.cmp(&other.buf)
+    }
+}
+
+impl Hash for PublicKey {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.buf.hash(state);
     }
 }
 
@@ -49,9 +62,23 @@ impl fmt::Display for PublicKey {
     }
 }
 
+impl From<XOnlyPublicKey> for PublicKey {
+    fn from(inner: XOnlyPublicKey) -> Self {
+        Self {
+            buf: inner.serialize(),
+        }
+    }
+}
+
 impl PublicKey {
     /// Public Key len
     pub const LEN: usize = 32;
+
+    /// Construct from 32-byte array
+    #[inline]
+    pub const fn from_byte_array(bytes: [u8; Self::LEN]) -> Self {
+        Self { buf: bytes }
+    }
 
     /// Parse from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
     pub fn parse(public_key: &str) -> Result<Self, Error> {
@@ -73,32 +100,50 @@ impl PublicKey {
         Err(Error::InvalidPublicKey)
     }
 
-    /// Parse from `bytes`
-    #[inline]
-    pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
-        Ok(Self {
-            inner: XOnlyPublicKey::from_slice(slice)?,
-        })
+    /// Parse from hex string
+    pub fn from_hex(hex: &str) -> Result<Self, Error> {
+        let mut bytes: [u8; Self::LEN] = [0u8; Self::LEN];
+        hex::decode_to_slice(hex, &mut bytes)?;
+        Ok(Self::from_byte_array(bytes))
     }
 
-    /// Parse from `hex` string
-    #[inline]
-    pub fn from_hex(hex: &str) -> Result<Self, Error> {
-        Ok(Self {
-            inner: XOnlyPublicKey::from_str(hex)?,
-        })
+    /// Parse from bytes
+    pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
+        // Check len
+        if slice.len() != Self::LEN {
+            return Err(Error::InvalidPublicKey);
+        }
+
+        // Copy bytes
+        let mut bytes: [u8; Self::LEN] = [0u8; Self::LEN];
+        bytes.copy_from_slice(slice);
+
+        // Construct
+        Ok(Self::from_byte_array(bytes))
     }
 
     /// Get public key as `hex` string
     #[inline]
     pub fn to_hex(&self) -> String {
-        hex::encode(self.to_bytes())
+        hex::encode(self.as_bytes())
+    }
+
+    /// Get as bytes
+    #[inline]
+    pub fn as_bytes(&self) -> &[u8; Self::LEN] {
+        &self.buf
     }
 
     /// Get public key as `bytes`
     #[inline]
-    pub fn to_bytes(&self) -> [u8; Self::LEN] {
-        self.inner.serialize()
+    pub fn to_bytes(self) -> [u8; Self::LEN] {
+        self.buf
+    }
+
+    /// Get the x-only public key
+    pub fn xonly(&self) -> Result<XOnlyPublicKey, Error> {
+        // TODO: use a OnceCell
+        Ok(XOnlyPublicKey::from_slice(self.as_bytes())?)
     }
 }
 
@@ -143,7 +188,7 @@ mod tests {
     use super::*;
 
     #[test]
-    pub fn test_public_key_parse() {
+    fn test_public_key_parse() {
         let public_key = PublicKey::parse(
             "nostr:npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
         )
@@ -152,6 +197,23 @@ mod tests {
             public_key.to_hex(),
             "aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4"
         );
+    }
+
+    #[test]
+    fn test_as_xonly() {
+        let hex_pk: &str = "aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4";
+
+        let public_key = PublicKey::from_hex(hex_pk).unwrap();
+
+        //assert!(public_key.xonly.is_null());
+
+        let expected = XOnlyPublicKey::from_str(hex_pk).unwrap();
+        let xonly = public_key.xonly().unwrap();
+        assert_eq!(&xonly, &expected);
+
+        let public_key = PublicKey::from(expected);
+        let xonly = public_key.xonly().unwrap();
+        assert_eq!(&xonly, &expected);
     }
 }
 
