@@ -41,6 +41,7 @@
 ### Added
 
 * nostr: add `Kind::PeerToPeerOrder` variant ([Francisco Calderón])
+* nostr: add `CowTag` ([Yuki Kishimoto])
 * pool: add `Relay::try_connect` ([Yuki Kishimoto])
 * pool: add `Relay::wait_for_connection` ([Yuki Kishimoto])
 * pool: add `RelayPool::try_connect` ([Yuki Kishimoto])
