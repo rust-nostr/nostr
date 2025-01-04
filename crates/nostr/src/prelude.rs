@@ -18,6 +18,7 @@ pub use negentropy::Negentropy;
 pub use serde_json::Value;
 
 // Internal modules
+pub use crate::event::borrow::{self, *};
 pub use crate::event::builder::{self, *};
 pub use crate::event::id::{self, *};
 pub use crate::event::kind::{self, *};

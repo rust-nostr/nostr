@@ -19,6 +19,7 @@ use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
+pub mod borrow;
 pub mod builder;
 pub mod id;
 pub mod kind;
