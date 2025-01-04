@@ -162,9 +162,9 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
             .kind(Kind::Metadata)
             .limit(1);
         let events: Events = self.query(vec![filter]).await?;
-        match events.first() {
+        match events.first_owned() {
             Some(event) => Ok(Some(
-                Metadata::from_json(&event.content).map_err(DatabaseError::backend)?,
+                Metadata::from_json(event.content).map_err(DatabaseError::backend)?,
             )),
             None => Ok(None),
         }
@@ -180,7 +180,7 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
             .kind(Kind::ContactList)
             .limit(1);
         let events: Events = self.query(vec![filter]).await?;
-        match events.first() {
+        match events.first_owned() {
             Some(event) => Ok(event.tags.public_keys().copied().collect()),
             None => Ok(HashSet::new()),
         }
@@ -193,7 +193,7 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
             .kind(Kind::ContactList)
             .limit(1);
         let events: Events = self.query(vec![filter]).await?;
-        match events.first() {
+        match events.first_owned() {
             Some(event) => {
                 // Get contacts metadata
                 let filter = Filter::new()
@@ -234,10 +234,8 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
         let events: Events = self.query(vec![filter]).await?;
 
         // Extract relay list (NIP65)
-        match events.first() {
-            Some(event) => Ok(nip65::extract_relay_list(event)
-                .map(|(u, m)| (u.clone(), *m))
-                .collect()),
+        match events.first_owned() {
+            Some(event) => Ok(nip65::extract_owned_relay_list(event).collect()),
             None => Ok(HashMap::new()),
         }
     }

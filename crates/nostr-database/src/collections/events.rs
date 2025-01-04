@@ -116,11 +116,25 @@ impl Events {
         self.set.first()
     }
 
+    /// Get first [`Event`] (descending order)
+    #[inline]
+    pub fn first_owned(self) -> Option<Event> {
+        // Lookup ID: EVENT_ORD_IMPL
+        self.into_iter().next()
+    }
+
     /// Get last [`Event`] (descending order)
     #[inline]
     pub fn last(&self) -> Option<&Event> {
         // Lookup ID: EVENT_ORD_IMPL
         self.set.last()
+    }
+
+    /// Get last [`Event`] (descending order)
+    #[inline]
+    pub fn last_owned(self) -> Option<Event> {
+        // Lookup ID: EVENT_ORD_IMPL
+        self.into_iter().next_back()
     }
 
     /// Iterate events in descending order

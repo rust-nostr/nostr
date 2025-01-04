@@ -1172,7 +1172,7 @@ impl Client {
         let events: Events = self.fetch_events(filters, timeout).await?;
 
         // Get first event (result of `fetch_events` is sorted DESC by timestamp)
-        if let Some(event) = events.into_iter().next() {
+        if let Some(event) = events.first_owned() {
             for tag in event.tags.into_iter() {
                 if let Some(TagStandard::PublicKey {
                     public_key,
