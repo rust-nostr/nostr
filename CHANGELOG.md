@@ -37,6 +37,7 @@
 
 * nostr: refactor `PublicKey` to use byte array internally ([Yuki Kishimoto])
 * pool: update `Error::WebSocket` variant inner type ([Yuki Kishimoto])
+* lmdb: use `EventBorrow` instead of `DatabaseEvent` ([Yuki Kishimoto])
 
 ### Added
 
