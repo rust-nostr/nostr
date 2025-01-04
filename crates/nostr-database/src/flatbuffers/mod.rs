@@ -4,6 +4,7 @@
 
 //! Nostr Database Flatbuffers
 
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::fmt;
 
@@ -142,6 +143,29 @@ impl FlatBufferDecode for Event {
             ev.content().ok_or(Error::NotFound)?.to_owned(),
             Signature::from_slice(&ev.sig().ok_or(Error::NotFound)?.0)?,
         ))
+    }
+}
+
+impl<'a> FlatBufferDecodeBorrowed<'a> for EventBorrow<'a> {
+    fn decode(buf: &'a [u8]) -> Result<Self, Error> {
+        let ev = event_fbs::root_as_event(buf)?;
+
+        let fb_tags = ev.tags().ok_or(Error::NotFound)?;
+        let mut tags = Vec::with_capacity(fb_tags.len());
+
+        for tag in fb_tags.iter().filter_map(|t| t.data()) {
+            tags.push(CowTag::parse(tag.into_iter().map(Cow::Borrowed).collect())?);
+        }
+
+        Ok(Self {
+            id: &ev.id().ok_or(Error::NotFound)?.0,
+            pubkey: &ev.pubkey().ok_or(Error::NotFound)?.0,
+            created_at: Timestamp::from_secs(ev.created_at()),
+            kind: ev.kind() as u16, // TODO: should use try_into
+            tags,
+            content: ev.content().ok_or(Error::NotFound)?,
+            sig: &ev.sig().ok_or(Error::NotFound)?.0,
+        })
     }
 }
 
