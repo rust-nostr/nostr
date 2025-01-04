@@ -47,7 +47,8 @@ cargo ndk -t aarch64-linux-android -t x86_64-linux-android -t armv7-linux-androi
 cargo run -p nostr-sdk-ffi --features uniffi-cli --bin uniffi-bindgen generate --library "${TARGET_DIR}/x86_64-linux-android/release/${CDYLIB}" --language kotlin --no-format -o "${FFI_KOTLIN_DIR}"
 
 # Compress libraries
-upx --best --lzma --android-shlib "${FFI_JNI_LIBS_DIR}"/*/*.so
+# NOTE: `--lzma` caused issues on x86/x86_64 architectures.
+upx --best --android-shlib "${FFI_JNI_LIBS_DIR}"/*/*.so
 
 # Assemble AAR
 mkdir -p "${ANDROID_MAIN_KOTLIN_DIR}"
