@@ -51,6 +51,8 @@
 
 ### Fixed
 
+* lmdb: fix map size for 32-bit arch ([Yuki Kishimoto])
+
 ### Removed
 
 ### Deprecated

@@ -23,6 +23,14 @@ use super::types::{DatabaseEvent, DatabaseFilter};
 const EVENT_ID_ALL_ZEROS: [u8; 32] = [0; 32];
 const EVENT_ID_ALL_255: [u8; 32] = [255; 32];
 
+// 64-bit
+#[cfg(target_pointer_width = "64")]
+const MAP_SIZE: usize = 1024 * 1024 * 1024 * 32; // 32GB
+
+// 32-bit
+#[cfg(target_pointer_width = "32")]
+const MAP_SIZE: usize = 0xFFFFF000; // 4GB (2^32-4096)
+
 #[derive(Debug, Clone)]
 pub(crate) struct Lmdb {
     /// LMDB env
@@ -52,20 +60,12 @@ impl Lmdb {
     where
         P: AsRef<Path>,
     {
-        // 64-bit
-        #[cfg(target_pointer_width = "64")]
-        let map_size: usize = 1024 * 1024 * 1024 * 32; // 32 GB
-
-        // 32-bit
-        #[cfg(target_pointer_width = "32")]
-        let map_size: usize = u32::MAX as usize; // 4 GB
-
         // Construct LMDB env
         let env: Env = unsafe {
             EnvOpenOptions::new()
                 .flags(EnvFlags::NO_TLS)
                 .max_dbs(9)
-                .map_size(map_size)
+                .map_size(MAP_SIZE)
                 .open(path)?
         };
 
