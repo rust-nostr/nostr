@@ -35,20 +35,34 @@ rm -rf "${ANDROID_MAIN_KOTLIN_DIR}"
 rm -rf "${ANDROID_MAIN_JNI_LIBS_DIR}"
 
 # Install targets
-rustup target add aarch64-linux-android
-rustup target add x86_64-linux-android
-rustup target add armv7-linux-androideabi
-rustup target add i686-linux-android
+rustup target add aarch64-linux-android     # ARM64   (Most modern devices - ~60-75%)
+rustup target add armv7-linux-androideabi   # ARM32   (Older devices - ~20-30%)
+rustup target add x86_64-linux-android      # x86_64  (Rare, used mostly in emulators - ~1-2%)
+rustup target add i686-linux-android        # x86     (Legacy and rare devices - <1%)
 
 # Build targets
-cargo ndk -t aarch64-linux-android -t x86_64-linux-android -t armv7-linux-androideabi -t i686-linux-android -o "${FFI_JNI_LIBS_DIR}" build -p nostr-sdk-ffi --lib --release
+cargo ndk -t aarch64-linux-android -t armv7-linux-androideabi -t x86_64-linux-android -t i686-linux-android -o "${FFI_JNI_LIBS_DIR}" build -p nostr-sdk-ffi --lib --release
 
 # Generate Kotlin bindings
-cargo run -p nostr-sdk-ffi --features uniffi-cli --bin uniffi-bindgen generate --library "${TARGET_DIR}/x86_64-linux-android/release/${CDYLIB}" --language kotlin --no-format -o "${FFI_KOTLIN_DIR}"
+cargo run -p nostr-sdk-ffi --features uniffi-cli --bin uniffi-bindgen generate --library "${TARGET_DIR}/aarch64-linux-android/release/${CDYLIB}" --language kotlin --no-format -o "${FFI_KOTLIN_DIR}"
 
-# Compress libraries
-# NOTE: `--lzma` caused issues on x86/x86_64 architectures.
-upx --best --android-shlib "${FFI_JNI_LIBS_DIR}"/*/*.so
+# Compress libraries (only ARM and x86_64 libraries)
+#
+# NOTE: `--lzma` caused issues on x86/x86_64 architectures: https://github.com/rust-nostr/nostr/issues/703
+#
+# The UPX compression is known to cause issues on `x86` devices for certain Android API levels (e.g., API 30).
+# Since `x86` devices constitute a very small percentage of the Android market (<1%, see links below),
+# apps are unlikely to be shipped for this architecture and are typically used only for testing purposes.
+# Therefore, compress only the ARM (`arm64-v8a` and `armeabi-v7a`) and `x86_64` libraries.
+#
+# Issues:
+# * https://github.com/rust-nostr/nostr/issues/703
+#
+# Market stats:
+# * https://android.stackexchange.com/questions/186334/what-percentage-of-android-devices-runs-on-x86-architecture
+# * https://web.archive.org/web/20170808222202/http://hwstats.unity3d.com:80/mobile/cpu-android.html
+#
+upx --best --android-shlib "${FFI_JNI_LIBS_DIR}/arm64-v8a/${CDYLIB}" "${FFI_JNI_LIBS_DIR}/armeabi-v7a/${CDYLIB}" "${FFI_JNI_LIBS_DIR}/x86_64/${CDYLIB}"
 
 # Assemble AAR
 mkdir -p "${ANDROID_MAIN_KOTLIN_DIR}"
