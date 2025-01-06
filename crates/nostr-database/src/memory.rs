@@ -12,16 +12,14 @@ use nostr::prelude::*;
 use tokio::sync::RwLock;
 
 use crate::{
-    Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper, Events,
-    NostrDatabase, NostrEventsDatabase, RejectedReason, SaveEventStatus,
+    Backend, DatabaseError, DatabaseEventStatus, Events, NostrDatabase, NostrEventsDatabase,
+    RejectedReason, SaveEventStatus,
 };
 
 /// Database options
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MemoryDatabaseOptions {
-    /// Store events (default: false)
-    pub events: bool,
-    /// Max events and IDs to store in memory (default: 35_000)
+    /// Max IDs to store in memory (default: 35_000)
     ///
     /// `None` means no limits.
     pub max_events: Option<usize>,
@@ -30,7 +28,6 @@ pub struct MemoryDatabaseOptions {
 impl Default for MemoryDatabaseOptions {
     fn default() -> Self {
         Self {
-            events: false,
             max_events: Some(35_000),
         }
     }
@@ -44,11 +41,11 @@ impl MemoryDatabaseOptions {
 }
 
 /// Memory Database (RAM)
+///
+/// This database keep track only of seen event IDs!
 #[derive(Debug, Clone)]
 pub struct MemoryDatabase {
-    opts: MemoryDatabaseOptions,
     seen_event_ids: Arc<RwLock<SeenTracker>>,
-    helper: DatabaseHelper,
 }
 
 impl Default for MemoryDatabase {
@@ -66,12 +63,7 @@ impl MemoryDatabase {
     /// New Memory database
     pub fn with_opts(opts: MemoryDatabaseOptions) -> Self {
         Self {
-            opts,
             seen_event_ids: Arc::new(RwLock::new(SeenTracker::new(opts.max_events))),
-            helper: match opts.max_events {
-                Some(max) => DatabaseHelper::bounded(max),
-                None => DatabaseHelper::unbounded(),
-            },
         }
     }
 }
@@ -84,9 +76,6 @@ impl NostrDatabase for MemoryDatabase {
     }
 
     async fn wipe(&self) -> Result<(), DatabaseError> {
-        // Clear helper
-        self.helper.clear().await;
-
         // Clear
         let mut seen_event_ids = self.seen_event_ids.write().await;
         seen_event_ids.clear();
@@ -98,46 +87,28 @@ impl NostrDatabase for MemoryDatabase {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrEventsDatabase for MemoryDatabase {
     async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, DatabaseError> {
-        if self.opts.events {
-            let DatabaseEventResult { status, .. } = self.helper.index_event(event).await;
-            Ok(status)
-        } else {
-            // Mark it as seen
-            let mut seen_event_ids = self.seen_event_ids.write().await;
-            seen_event_ids.seen(event.id, None);
+        // Mark it as seen
+        let mut seen_event_ids = self.seen_event_ids.write().await;
+        seen_event_ids.seen(event.id, None);
 
-            Ok(SaveEventStatus::Rejected(RejectedReason::Other))
-        }
+        Ok(SaveEventStatus::Rejected(RejectedReason::Other))
     }
 
     async fn check_id(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
-        if self.opts.events {
-            if self.helper.has_event_id_been_deleted(event_id).await {
-                Ok(DatabaseEventStatus::Deleted)
-            } else if self.helper.has_event(event_id).await {
-                Ok(DatabaseEventStatus::Saved)
-            } else {
-                Ok(DatabaseEventStatus::NotExistent)
-            }
+        let seen_event_ids = self.seen_event_ids.read().await;
+        Ok(if seen_event_ids.contains(event_id) {
+            DatabaseEventStatus::Saved
         } else {
-            let seen_event_ids = self.seen_event_ids.read().await;
-            Ok(if seen_event_ids.contains(event_id) {
-                DatabaseEventStatus::Saved
-            } else {
-                DatabaseEventStatus::NotExistent
-            })
-        }
+            DatabaseEventStatus::NotExistent
+        })
     }
 
     async fn has_coordinate_been_deleted(
         &self,
-        coordinate: &Coordinate,
-        timestamp: &Timestamp,
+        _coordinate: &Coordinate,
+        _timestamp: &Timestamp,
     ) -> Result<bool, DatabaseError> {
-        Ok(self
-            .helper
-            .has_coordinate_been_deleted(coordinate, timestamp)
-            .await)
+        Ok(false)
     }
 
     async fn event_id_seen(
@@ -158,27 +129,26 @@ impl NostrEventsDatabase for MemoryDatabase {
         Ok(seen_event_ids.get(event_id).cloned())
     }
 
-    async fn event_by_id(&self, id: &EventId) -> Result<Option<Event>, DatabaseError> {
-        Ok(self.helper.event_by_id(id).await)
+    async fn event_by_id(&self, _id: &EventId) -> Result<Option<Event>, DatabaseError> {
+        Ok(None)
     }
 
-    async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {
-        Ok(self.helper.count(filters).await)
+    async fn count(&self, _filters: Vec<Filter>) -> Result<usize, DatabaseError> {
+        Ok(0)
     }
 
     async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
-        Ok(self.helper.query(filters).await)
+        Ok(Events::new(&filters))
     }
 
     async fn negentropy_items(
         &self,
-        filter: Filter,
+        _filter: Filter,
     ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
-        Ok(self.helper.negentropy_items(filter).await)
+        Ok(Vec::new())
     }
 
-    async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {
-        self.helper.delete(filter).await;
+    async fn delete(&self, _filter: Filter) -> Result<(), DatabaseError> {
         Ok(())
     }
 }

@@ -4,42 +4,65 @@
 // Distributed under the MIT software license
 
 use std::collections::BTreeSet;
-use std::fs;
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 use std::sync::Arc;
 
 use async_utility::task;
-use heed::{RoTxn, RwTxn};
+use nostr_database::flatbuffers::FlatBufferDecodeBorrowed;
 use nostr_database::prelude::*;
+use redb::{ReadTransaction, WriteTransaction};
 use tokio::sync::Mutex;
 
+use crate::store::types::{AccessGuardEvent, DatabaseEvent};
+
+mod core;
 mod error;
-mod lmdb;
 mod types;
 
+use self::core::Db;
 use self::error::Error;
-use self::lmdb::Lmdb;
 
 #[derive(Debug)]
 pub struct Store {
-    db: Lmdb,
+    db: Db,
     fbb: Arc<Mutex<FlatBufferBuilder<'static>>>,
+    persistent: bool,
 }
 
 impl Store {
-    pub fn open<P>(path: P) -> Result<Store, Error>
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn persistent<P>(path: P) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
-        let path: &Path = path.as_ref();
-
-        // Create the directory if it doesn't exist
-        fs::create_dir_all(path)?;
-
-        Ok(Store {
-            db: Lmdb::new(path)?,
+        Ok(Self {
+            db: Db::persistent(path)?,
             fbb: Arc::new(Mutex::new(FlatBufferBuilder::with_capacity(70_000))),
+            persistent: true,
         })
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) async fn web(name: &str) -> Result<Self, Error> {
+        Ok(Self {
+            db: Db::web(name).await?,
+            fbb: Arc::new(Mutex::new(FlatBufferBuilder::with_capacity(70_000))),
+            persistent: true,
+        })
+    }
+
+    pub fn in_memory() -> Result<Self, Error> {
+        Ok(Self {
+            db: Db::in_memory()?,
+            fbb: Arc::new(Mutex::new(FlatBufferBuilder::with_capacity(70_000))),
+            persistent: false,
+        })
+    }
+
+    #[inline]
+    pub fn is_persistent(&self) -> bool {
+        self.persistent
     }
 
     // TODO: spawn an ingester and remove the `fbb` field (use it in the ingester without mutex)?
@@ -47,7 +70,7 @@ impl Store {
     #[inline]
     async fn interact<F, R>(&self, f: F) -> Result<R, Error>
     where
-        F: FnOnce(Lmdb) -> R + Send + 'static,
+        F: FnOnce(Db) -> R + Send + 'static,
         R: Send + 'static,
     {
         let db = self.db.clone();
@@ -57,7 +80,7 @@ impl Store {
     #[inline]
     async fn interact_with_fbb<F, R>(&self, f: F) -> Result<R, Error>
     where
-        F: FnOnce(Lmdb, &mut FlatBufferBuilder<'static>) -> R + Send + 'static,
+        F: FnOnce(Db, &mut FlatBufferBuilder<'static>) -> R + Send + 'static,
         R: Send + 'static,
     {
         let db = self.db.clone();
@@ -102,7 +125,7 @@ impl Store {
 
             // Reject event if ADDR was deleted after it's created_at date
             // (parameterized)
-            if event.kind.is_addressable() {
+            if event.kind.is_parameterized_replaceable() {
                 if let Some(identifier) = event.tags.identifier() {
                     let coordinate: Coordinate =
                         Coordinate::new(event.kind, event.pubkey).identifier(identifier);
@@ -115,7 +138,7 @@ impl Store {
             }
 
             // Acquire write transaction
-            let mut txn = db.write_txn()?;
+            let txn = db.write_txn()?;
 
             // Remove replaceable events being replaced
             if event.kind.is_replaceable() {
@@ -124,47 +147,54 @@ impl Store {
                     db.find_replaceable_event(&read_txn, &event.pubkey, event.kind)?
                 {
                     if stored.created_at > event.created_at {
-                        txn.abort();
+                        txn.abort()?;
                         return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
                     }
 
                     let coordinate: Coordinate = Coordinate::new(event.kind, event.pubkey);
-                    db.remove_replaceable(&read_txn, &mut txn, &coordinate, event.created_at)?;
+                    db.remove_replaceable(&read_txn, &txn, &coordinate, event.created_at)?;
                 }
             }
 
             // Remove parameterized replaceable events being replaced
-            if event.kind.is_addressable() {
+            if event.kind.is_parameterized_replaceable() {
                 if let Some(identifier) = event.tags.identifier() {
                     let coordinate: Coordinate =
                         Coordinate::new(event.kind, event.pubkey).identifier(identifier);
 
                     // Find param replaceable event
-                    if let Some(stored) = db.find_addressable_event(&read_txn, &coordinate)? {
+                    if let Some(stored) =
+                        db.find_parameterized_replaceable_event(&read_txn, &coordinate)?
+                    {
                         if stored.created_at > event.created_at {
-                            txn.abort();
+                            txn.abort()?;
                             return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
                         }
 
-                        db.remove_addressable(&read_txn, &mut txn, &coordinate, Timestamp::max())?;
+                        db.remove_parameterized_replaceable(
+                            &read_txn,
+                            &txn,
+                            &coordinate,
+                            Timestamp::max(),
+                        )?;
                     }
                 }
             }
 
             // Handle deletion events
             if let Kind::EventDeletion = event.kind {
-                let invalid: bool = Self::handle_deletion_event(&db, &read_txn, &mut txn, &event)?;
+                let invalid: bool = Self::handle_deletion_event(&db, &read_txn, &txn, &event)?;
 
                 if invalid {
-                    txn.abort();
+                    txn.abort()?;
                     return Ok(SaveEventStatus::Rejected(RejectedReason::InvalidDelete));
                 }
             }
 
             // Store and index the event
-            db.store(&mut txn, fbb, &event)?;
+            db.store(&txn, fbb, &event)?;
 
-            read_txn.commit()?;
+            read_txn.close()?;
             txn.commit()?;
 
             Ok(SaveEventStatus::Success)
@@ -173,15 +203,18 @@ impl Store {
     }
 
     fn handle_deletion_event(
-        db: &Lmdb,
-        read_txn: &RoTxn,
-        txn: &mut RwTxn,
+        db: &Db,
+        read_txn: &ReadTransaction,
+        txn: &WriteTransaction,
         event: &Event,
     ) -> Result<bool, Error> {
         for id in event.tags.event_ids() {
             if let Some(target) = db.get_event_by_id(read_txn, id.as_bytes())? {
+                let value = target.guard.value();
+                let temp = DatabaseEvent::decode(value)?;
+
                 // Author must match
-                if target.pubkey != event.pubkey.as_bytes() {
+                if temp.author() != &event.pubkey.to_bytes() {
                     return Ok(true);
                 }
 
@@ -203,8 +236,8 @@ impl Store {
             // Remove events (up to the created_at of the deletion event)
             if coordinate.kind.is_replaceable() {
                 db.remove_replaceable(read_txn, txn, coordinate, event.created_at)?;
-            } else if coordinate.kind.is_addressable() {
-                db.remove_addressable(read_txn, txn, coordinate, event.created_at)?;
+            } else if coordinate.kind.is_parameterized_replaceable() {
+                db.remove_parameterized_replaceable(read_txn, txn, coordinate, event.created_at)?;
             }
         }
 
@@ -216,8 +249,11 @@ impl Store {
         let bytes = id.to_bytes();
         self.interact(move |db| {
             let txn = db.read_txn()?;
-            let event: Option<Event> = db.get_event_by_id(&txn, &bytes)?.map(|e| e.into_owned());
-            txn.commit()?;
+            let event: Option<Event> = match db.get_event_by_id(&txn, &bytes)? {
+                Some(e) => Some(e.to_event()?),
+                None => None,
+            };
+            txn.close()?;
             Ok(event)
         })
         .await?
@@ -229,7 +265,7 @@ impl Store {
         self.interact(move |db| {
             let txn = db.read_txn()?;
             let has: bool = db.has_event(&txn, &bytes)?;
-            txn.commit()?;
+            txn.close()?;
             Ok(has)
         })
         .await?
@@ -240,7 +276,7 @@ impl Store {
         self.interact(move |db| {
             let txn = db.read_txn()?;
             let deleted: bool = db.is_deleted(&txn, &id)?;
-            txn.commit()?;
+            txn.close()?;
             Ok(deleted)
         })
         .await?
@@ -254,7 +290,7 @@ impl Store {
         self.interact(move |db| {
             let txn = db.read_txn()?;
             let when = db.when_is_coordinate_deleted(&txn, &coordinate)?;
-            txn.commit()?;
+            txn.close()?;
             Ok(when)
         })
         .await?
@@ -265,7 +301,7 @@ impl Store {
             let txn = db.read_txn()?;
             let output = db.query(&txn, filters)?;
             let len: usize = output.len();
-            txn.commit()?;
+            //txn.close()?;
             Ok(len)
         })
         .await?
@@ -276,10 +312,10 @@ impl Store {
         self.interact(move |db| {
             let mut events: Events = Events::new(&filters);
 
-            let txn: RoTxn = db.read_txn()?;
-            let output: BTreeSet<EventBorrow> = db.query(&txn, filters)?;
-            events.extend(output.into_iter().map(|e| e.into_owned()));
-            txn.commit()?;
+            let txn: ReadTransaction = db.read_txn()?;
+            let output: BTreeSet<AccessGuardEvent> = db.query(&txn, filters)?;
+            events.extend(output.into_iter().filter_map(|e| e.to_event().ok()));
+            txn.close()?;
 
             Ok(events)
         })
@@ -295,9 +331,9 @@ impl Store {
             let events = db.query(&txn, vec![filter])?;
             let items = events
                 .into_iter()
-                .map(|e| (EventId::from_byte_array(*e.id), e.created_at))
+                .map(|e| (EventId::from_byte_array(e.id), e.created_at))
                 .collect();
-            txn.commit()?;
+            txn.close()?;
             Ok(items)
         })
         .await?
@@ -306,11 +342,11 @@ impl Store {
     pub async fn delete(&self, filter: Filter) -> Result<(), Error> {
         self.interact(move |db| {
             let read_txn = db.read_txn()?;
-            let mut txn = db.write_txn()?;
+            let txn = db.write_txn()?;
 
-            db.delete(&read_txn, &mut txn, filter)?;
+            db.delete(&read_txn, &txn, filter)?;
 
-            read_txn.commit()?;
+            read_txn.close()?;
             txn.commit()?;
 
             Ok(())
@@ -320,8 +356,8 @@ impl Store {
 
     pub async fn wipe(&self) -> Result<(), Error> {
         self.interact(move |db| {
-            let mut txn = db.write_txn()?;
-            db.wipe(&mut txn)?;
+            let txn = db.write_txn()?;
+            db.wipe(&txn)?;
             txn.commit()?;
             Ok(())
         })
