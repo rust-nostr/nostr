@@ -12,23 +12,23 @@ use uniffi::Object;
 
 use super::{Event, EventId, Kind};
 use crate::error::Result;
+use crate::protocol::event::{PublicKey, Tag, Timestamp, UnsignedEvent};
 use crate::protocol::key::Keys;
 use crate::protocol::nips::nip01::Coordinate;
 use crate::protocol::nips::nip15::{ProductData, StallData};
 use crate::protocol::nips::nip34::{GitIssue, GitPatch, GitRepositoryAnnouncement};
+use crate::protocol::nips::nip46::NostrConnectMessage;
 use crate::protocol::nips::nip51::{
     ArticlesCuration, Bookmarks, EmojiInfo, Emojis, Interests, MuteList,
 };
-use crate::protocol::nips::nip53::LiveEvent;
+use crate::protocol::nips::nip53::{Image, LiveEvent};
 use crate::protocol::nips::nip57::ZapRequestData;
+use crate::protocol::nips::nip65::RelayMetadata;
 use crate::protocol::nips::nip90::JobFeedbackData;
+use crate::protocol::nips::nip94::FileMetadata;
 use crate::protocol::nips::nip98::HttpData;
 use crate::protocol::signer::NostrSigner;
-use crate::protocol::types::{Contact, Metadata};
-use crate::protocol::{
-    FileMetadata, Image, ImageDimensions, NostrConnectMessage, PublicKey, RelayMetadata, Tag,
-    Timestamp, UnsignedEvent,
-};
+use crate::protocol::types::{Contact, ImageDimensions, Metadata};
 use crate::util::parse_optional_relay_url;
 
 #[derive(Debug, Clone, PartialEq, Eq, Object)]

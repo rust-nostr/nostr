@@ -8,7 +8,7 @@ use std::sync::Arc;
 use nostr_sdk::prelude;
 use uniffi::Object;
 
-use crate::protocol::Event;
+use crate::protocol::event::Event;
 
 #[derive(Clone, Object)]
 pub struct Events {

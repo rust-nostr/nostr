@@ -8,7 +8,7 @@ use nostr::nips::nip44::{self, Version};
 use uniffi::Enum;
 
 use crate::error::Result;
-use crate::protocol::{PublicKey, SecretKey};
+use crate::protocol::key::{PublicKey, SecretKey};
 
 /// NIP44 Version
 #[derive(Enum)]

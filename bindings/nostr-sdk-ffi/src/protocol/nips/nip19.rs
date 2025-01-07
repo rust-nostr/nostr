@@ -11,7 +11,8 @@ use uniffi::{Enum, Object};
 use super::nip01::Coordinate;
 use super::nip49::EncryptedSecretKey;
 use crate::error::Result;
-use crate::protocol::{EventId, Kind, PublicKey, SecretKey};
+use crate::protocol::event::{EventId, Kind};
+use crate::protocol::key::{PublicKey, SecretKey};
 
 /// A representation any `NIP19` bech32 nostr object. Useful for decoding
 /// `NIP19` bech32 strings without necessarily knowing what you're decoding

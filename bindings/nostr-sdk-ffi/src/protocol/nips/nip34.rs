@@ -12,8 +12,10 @@ use nostr::Url;
 use uniffi::{Enum, Record};
 
 use crate::error::NostrSdkError;
+use crate::protocol::event::EventId;
+use crate::protocol::key::PublicKey;
 use crate::protocol::nips::nip01::Coordinate;
-use crate::protocol::{EventId, PublicKey, Timestamp};
+use crate::protocol::types::Timestamp;
 
 /// Git Repository Announcement
 ///

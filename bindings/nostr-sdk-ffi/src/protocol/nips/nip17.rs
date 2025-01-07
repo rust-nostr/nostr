@@ -5,8 +5,9 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use crate::error::Result;
+use crate::protocol::event::{Event, Tag};
+use crate::protocol::key::PublicKey;
 use crate::protocol::signer::NostrSigner;
-use crate::protocol::{Event, PublicKey, Tag};
 
 /// Private Direct message
 ///

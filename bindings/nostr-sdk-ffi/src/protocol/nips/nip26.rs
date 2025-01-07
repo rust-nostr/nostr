@@ -8,7 +8,8 @@ use nostr::nips::nip26::{self, Conditions, DelegationTag, EventProperties};
 use nostr::secp256k1::schnorr::Signature;
 
 use crate::error::Result;
-use crate::protocol::{Keys, Kind, PublicKey};
+use crate::protocol::event::Kind;
+use crate::protocol::key::{Keys, PublicKey};
 
 /// Create a NIP26 delegation tag (including the signature).
 /// See also validate_delegation_tag().

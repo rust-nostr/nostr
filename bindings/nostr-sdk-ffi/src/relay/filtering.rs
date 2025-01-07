@@ -8,7 +8,8 @@ use std::sync::Arc;
 use nostr_sdk::pool::relay;
 use uniffi::{Enum, Object};
 
-use crate::protocol::{EventId, PublicKey};
+use crate::protocol::event::EventId;
+use crate::protocol::key::PublicKey;
 
 #[derive(Enum)]
 pub enum RelayFilteringMode {

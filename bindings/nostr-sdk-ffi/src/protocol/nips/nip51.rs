@@ -11,7 +11,8 @@ use uniffi::Record;
 
 use super::nip01::Coordinate;
 use crate::error::{NostrSdkError, Result};
-use crate::protocol::{EventId, PublicKey};
+use crate::protocol::event::EventId;
+use crate::protocol::key::PublicKey;
 
 /// Things the user doesn't want to see in their feeds
 ///

@@ -10,7 +10,7 @@ use nostr::nips::nip05;
 use uniffi::Object;
 
 use crate::error::Result;
-use crate::protocol::PublicKey;
+use crate::protocol::key::PublicKey;
 
 #[derive(Object)]
 pub struct Nip05Profile {

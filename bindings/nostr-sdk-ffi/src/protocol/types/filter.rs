@@ -10,8 +10,10 @@ use nostr::JsonUtil;
 use uniffi::{Enum, Object, Record};
 
 use crate::error::Result;
+use crate::protocol::event::{Event, EventId, Kind};
+use crate::protocol::key::PublicKey;
 use crate::protocol::nips::nip01::Coordinate;
-use crate::protocol::{Event, EventId, Kind, PublicKey, Timestamp};
+use crate::protocol::types::Timestamp;
 
 #[derive(Enum)]
 pub enum Alphabet {

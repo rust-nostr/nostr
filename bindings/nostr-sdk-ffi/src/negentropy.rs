@@ -6,7 +6,8 @@ use std::sync::Arc;
 
 use uniffi::Record;
 
-use crate::protocol::{EventId, Timestamp};
+use crate::protocol::event::EventId;
+use crate::protocol::types::Timestamp;
 
 #[derive(Record)]
 pub struct NegentropyItem {

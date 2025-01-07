@@ -9,8 +9,8 @@ use nostr::event::tag::list;
 use uniffi::Object;
 
 use super::{Tag, TagKind, TagStandard};
+use crate::protocol::event::{EventId, PublicKey, Timestamp};
 use crate::protocol::nips::nip01::Coordinate;
-use crate::protocol::{EventId, PublicKey, Timestamp};
 
 #[derive(Object)]
 pub struct Tags {

@@ -12,7 +12,8 @@ use nostr::{JsonUtil, Url};
 use uniffi::{Enum, Object};
 
 use crate::error::{NostrSdkError, Result};
-use crate::protocol::{PublicKey, UnsignedEvent};
+use crate::protocol::event::UnsignedEvent;
+use crate::protocol::key::PublicKey;
 
 /// Request (NIP46)
 #[derive(Enum)]

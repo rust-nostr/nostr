@@ -13,7 +13,8 @@ use nostr::RelayUrl;
 use uniffi::Object;
 
 use crate::error::Result;
-use crate::protocol::{Kind, PublicKey};
+use crate::protocol::event::Kind;
+use crate::protocol::key::PublicKey;
 
 /// Coordinate for event (`a` tag)
 #[derive(Debug, PartialEq, Eq, Hash, Object)]

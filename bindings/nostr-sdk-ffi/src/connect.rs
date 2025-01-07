@@ -11,8 +11,9 @@ use nostr_connect::client;
 use uniffi::Object;
 
 use crate::error::Result;
+use crate::protocol::event::{Event, UnsignedEvent};
+use crate::protocol::key::{Keys, PublicKey};
 use crate::protocol::nips::nip46::NostrConnectURI;
-use crate::protocol::{Event, Keys, PublicKey, UnsignedEvent};
 use crate::relay::RelayOptions;
 
 #[derive(Object)]

@@ -9,7 +9,7 @@ use nostr::RelayUrl;
 use uniffi::Object;
 
 use crate::error::Result;
-use crate::protocol::PublicKey;
+use crate::protocol::key::PublicKey;
 
 #[derive(Debug, PartialEq, Eq, Hash, Object)]
 #[uniffi::export(Debug, Eq, Hash)]

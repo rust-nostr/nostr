@@ -11,7 +11,7 @@ use nostr::Url;
 use uniffi::Object;
 
 use crate::error::Result;
-use crate::protocol::ImageDimensions;
+use crate::protocol::types::ImageDimensions;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Object)]
 #[uniffi::export(Debug, Eq, Hash)]

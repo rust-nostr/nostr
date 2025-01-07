@@ -11,7 +11,7 @@ use uniffi::Object;
 
 use super::Kind;
 use crate::error::Result;
-use crate::protocol::{PublicKey, Tag, Timestamp};
+use crate::protocol::event::{PublicKey, Tag, Timestamp};
 
 #[derive(Debug, PartialEq, Eq, Hash, Object)]
 #[uniffi::export(Debug, Eq, Hash)]

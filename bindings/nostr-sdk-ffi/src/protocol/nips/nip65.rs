@@ -7,7 +7,7 @@ use std::ops::Deref;
 use nostr::nips::nip65;
 use uniffi::Enum;
 
-use crate::protocol::Event;
+use crate::protocol::event::Event;
 
 #[derive(Enum)]
 pub enum RelayMetadata {

@@ -18,7 +18,7 @@ use self::custom::{CustomNostrSigner, IntermediateCustomNostrSigner};
 use super::event::{Event, UnsignedEvent};
 use super::key::PublicKey;
 use crate::error::Result;
-use crate::protocol::Keys;
+use crate::protocol::key::Keys;
 
 #[derive(Enum)]
 pub enum SignerBackend {

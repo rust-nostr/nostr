@@ -9,7 +9,7 @@ use nostr::{JsonUtil, SubscriptionId};
 use uniffi::{Enum, Object};
 
 use crate::error::Result;
-use crate::protocol::{Event, EventId};
+use crate::protocol::event::{Event, EventId};
 
 #[derive(Enum)]
 pub enum RelayMessageEnum {

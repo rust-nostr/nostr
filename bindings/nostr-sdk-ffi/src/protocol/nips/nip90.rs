@@ -6,7 +6,7 @@ use std::ops::Deref;
 use nostr::nips::nip90;
 use uniffi::{Enum, Object};
 
-use crate::protocol::Event;
+use crate::protocol::event::Event;
 
 #[derive(Enum)]
 pub enum DataVendingMachineStatus {

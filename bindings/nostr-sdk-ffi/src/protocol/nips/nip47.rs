@@ -10,7 +10,9 @@ use nostr::{JsonUtil, RelayUrl};
 use uniffi::{Enum, Object, Record};
 
 use crate::error::Result;
-use crate::protocol::{JsonValue, PublicKey, SecretKey, Timestamp};
+use crate::protocol::key::{PublicKey, SecretKey};
+use crate::protocol::types::Timestamp;
+use crate::protocol::util::JsonValue;
 
 /// NIP47 Response Error codes
 #[derive(Enum)]

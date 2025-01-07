@@ -7,7 +7,7 @@ use std::ops::Deref;
 use nostr_sdk::pool::relay;
 use uniffi::Object;
 
-use crate::protocol::Kind;
+use crate::protocol::event::Kind;
 
 /// Relay Limits
 #[derive(Debug, Clone, PartialEq, Eq, Object)]

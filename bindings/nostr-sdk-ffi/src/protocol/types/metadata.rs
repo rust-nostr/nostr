@@ -9,7 +9,7 @@ use nostr::{JsonUtil, Url};
 use uniffi::{Object, Record};
 
 use crate::error::Result;
-use crate::protocol::JsonValue;
+use crate::protocol::util::JsonValue;
 
 #[derive(Record)]
 pub struct MetadataRecord {

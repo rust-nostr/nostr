@@ -16,7 +16,8 @@ pub mod events;
 
 use self::events::Events;
 use crate::error::Result;
-use crate::protocol::{Event, Filter};
+use crate::protocol::event::Event;
+use crate::protocol::types::Filter;
 
 /// Reason why event wasn't stored into the database
 #[derive(Enum)]

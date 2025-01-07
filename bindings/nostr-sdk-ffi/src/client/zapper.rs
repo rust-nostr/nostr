@@ -10,8 +10,9 @@ use nostr_sdk::zapper::{DynNostrZapper, IntoNostrZapper};
 use uniffi::Object;
 
 use crate::nwc::NWC;
+use crate::protocol::event::EventId;
+use crate::protocol::key::PublicKey;
 use crate::protocol::nips::nip57::ZapType;
-use crate::protocol::{EventId, PublicKey};
 
 /// Zap entity
 #[derive(Debug, PartialEq, Eq, Hash, Object)]

@@ -17,17 +17,19 @@ use uniffi::Enum;
 
 use crate::error::NostrSdkError;
 use crate::protocol::event::kind::KindEnum;
+use crate::protocol::event::{Event, EventId};
+use crate::protocol::key::PublicKey;
 use crate::protocol::nips::nip01::Coordinate;
 use crate::protocol::nips::nip10::Marker;
 use crate::protocol::nips::nip39::Identity;
 use crate::protocol::nips::nip48::Protocol;
-use crate::protocol::nips::nip53::LiveEventMarker;
+use crate::protocol::nips::nip53::{LiveEventMarker, LiveEventStatus};
 use crate::protocol::nips::nip56::Report;
 use crate::protocol::nips::nip65::RelayMetadata;
 use crate::protocol::nips::nip73::ExternalContentId;
 use crate::protocol::nips::nip90::DataVendingMachineStatus;
 use crate::protocol::nips::nip98::HttpMethod;
-use crate::protocol::{Event, EventId, ImageDimensions, LiveEventStatus, PublicKey, Timestamp};
+use crate::protocol::types::{ImageDimensions, Timestamp};
 
 /// Standardized tag
 #[derive(Enum)]

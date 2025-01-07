@@ -8,8 +8,9 @@ use nostr::nips::nip59;
 use uniffi::Object;
 
 use crate::error::Result;
+use crate::protocol::event::{Event, EventBuilder, Tag, UnsignedEvent};
+use crate::protocol::key::PublicKey;
 use crate::protocol::signer::NostrSigner;
-use crate::protocol::{Event, EventBuilder, PublicKey, Tag, UnsignedEvent};
 
 /// Build Gift Wrap
 ///

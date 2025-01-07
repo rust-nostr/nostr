@@ -6,8 +6,9 @@ use std::fmt;
 use std::sync::Arc;
 
 use crate::error::Result;
+use crate::protocol::event::{Event, UnsignedEvent};
+use crate::protocol::key::PublicKey;
 use crate::protocol::signer::SignerBackend;
-use crate::protocol::{Event, PublicKey, UnsignedEvent};
 
 // NOTE: for some weird reason the `Arc<T>` as output must be wrapped inside a `Vec<T>` or an `Option<T>`
 // otherwise compilation will fail.

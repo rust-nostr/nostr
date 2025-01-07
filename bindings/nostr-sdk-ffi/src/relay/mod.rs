@@ -19,7 +19,8 @@ pub use self::limits::RelayLimits;
 pub use self::options::{ConnectionMode, RelayOptions, ReqExitPolicy, SubscribeOptions};
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
-use crate::protocol::{EventId, RelayInformationDocument};
+use crate::protocol::event::EventId;
+use crate::protocol::nips::nip11::RelayInformationDocument;
 
 #[derive(Record)]
 pub struct ReconciliationSendFailureItem {

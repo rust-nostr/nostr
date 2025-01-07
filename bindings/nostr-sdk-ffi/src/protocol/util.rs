@@ -9,7 +9,7 @@ use nostr::serde_json::{Number, Value};
 use nostr::util;
 use uniffi::Enum;
 
-use super::{PublicKey, SecretKey};
+use super::key::{PublicKey, SecretKey};
 use crate::error::{NostrSdkError, Result};
 
 /// Generate shared key

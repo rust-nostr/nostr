@@ -10,7 +10,7 @@ use nostr::{FromBech32, ToBech32};
 use uniffi::{Enum, Object};
 
 use crate::error::Result;
-use crate::protocol::SecretKey;
+use crate::protocol::key::SecretKey;
 
 /// Encrypted Secret Key version (NIP49)
 #[derive(Enum)]

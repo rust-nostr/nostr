@@ -10,7 +10,7 @@ use nostr::Url;
 use uniffi::{Enum, Object, Record};
 
 use crate::error::Result;
-use crate::protocol::Timestamp;
+use crate::protocol::types::Timestamp;
 
 #[derive(Debug, PartialEq, Eq, Hash, Object)]
 #[uniffi::export(Debug, Eq, Hash)]

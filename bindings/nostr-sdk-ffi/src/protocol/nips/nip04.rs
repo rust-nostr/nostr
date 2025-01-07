@@ -7,7 +7,7 @@ use std::ops::Deref;
 use nostr::nips::nip04;
 
 use crate::error::Result;
-use crate::protocol::{PublicKey, SecretKey};
+use crate::protocol::key::{PublicKey, SecretKey};
 
 #[uniffi::export]
 pub fn nip04_encrypt(

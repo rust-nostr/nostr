@@ -9,7 +9,8 @@ use nostr::Url;
 use uniffi::{Enum, Object};
 
 use crate::error::Result;
-use crate::protocol::{Event, EventId, Keys, PublicKey, SecretKey};
+use crate::protocol::event::{Event, EventId};
+use crate::protocol::key::{Keys, PublicKey, SecretKey};
 
 #[derive(Enum)]
 pub enum ZapType {

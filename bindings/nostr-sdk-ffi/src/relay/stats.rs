@@ -7,7 +7,7 @@ use std::time::Duration;
 use nostr_sdk::pool;
 use uniffi::Object;
 
-use crate::protocol::Timestamp;
+use crate::protocol::types::Timestamp;
 
 #[derive(Object)]
 pub struct RelayConnectionStats {

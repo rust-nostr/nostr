@@ -7,9 +7,10 @@ use nostr::nips::nip21;
 use uniffi::{Enum, Object};
 
 use crate::error::Result;
+use crate::protocol::event::EventId;
+use crate::protocol::key::PublicKey;
 use crate::protocol::nips::nip01::Coordinate;
 use crate::protocol::nips::nip19::{Nip19Event, Nip19Profile};
-use crate::protocol::{EventId, PublicKey};
 
 /// A representation any `NIP21` object. Useful for decoding
 /// `NIP21` strings without necessarily knowing what you're decoding

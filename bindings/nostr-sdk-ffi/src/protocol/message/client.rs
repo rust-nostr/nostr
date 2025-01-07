@@ -9,8 +9,8 @@ use nostr::{JsonUtil, SubscriptionId};
 use uniffi::{Enum, Object};
 
 use crate::error::Result;
+use crate::protocol::event::Event;
 use crate::protocol::types::filter::Filter;
-use crate::protocol::Event;
 
 /// Messages sent by clients, received by relays
 #[derive(Enum)]

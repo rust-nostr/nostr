@@ -19,7 +19,8 @@ pub use self::kind::{Kind, KindEnum};
 pub use self::tag::{Tag, TagKind, TagStandard, Tags};
 pub use self::unsigned::UnsignedEvent;
 use crate::error::Result;
-use crate::protocol::{PublicKey, Timestamp};
+use crate::protocol::key::PublicKey;
+use crate::protocol::types::Timestamp;
 
 #[derive(Debug, PartialEq, Eq, Hash, Object)]
 #[uniffi::export(Debug, Eq, Hash)]

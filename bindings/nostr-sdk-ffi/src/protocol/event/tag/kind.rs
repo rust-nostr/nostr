@@ -8,7 +8,7 @@ use std::sync::Arc;
 use nostr::event::tag;
 use uniffi::Enum;
 
-use crate::protocol::SingleLetterTag;
+use crate::protocol::types::filter::SingleLetterTag;
 
 #[derive(Enum)]
 pub enum TagKind {

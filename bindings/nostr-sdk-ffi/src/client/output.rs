@@ -8,7 +8,7 @@ use std::sync::Arc;
 use nostr_sdk::{pool, RelayUrl, SubscriptionId};
 use uniffi::Record;
 
-use crate::protocol::EventId;
+use crate::protocol::event::EventId;
 use crate::relay::Reconciliation;
 
 /// Output

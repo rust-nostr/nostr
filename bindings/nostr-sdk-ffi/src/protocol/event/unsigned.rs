@@ -12,8 +12,9 @@ use uniffi::Object;
 
 use super::EventId;
 use crate::error::Result;
+use crate::protocol::event::{Event, Kind, Tag, Timestamp};
+use crate::protocol::key::{Keys, PublicKey};
 use crate::protocol::signer::NostrSigner;
-use crate::protocol::{Event, Keys, Kind, PublicKey, Tag, Timestamp};
 
 #[derive(Debug, PartialEq, Eq, Hash, Object)]
 #[uniffi::export(Debug, Eq, Hash)]
