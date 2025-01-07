@@ -4,7 +4,6 @@
 use std::fmt;
 use std::ops::Deref;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use nostr::nips::nip01;
 use nostr::nips::nip19::ToBech32;
@@ -94,8 +93,8 @@ impl Coordinate {
         self.inner.kind.into()
     }
 
-    pub fn public_key(&self) -> Arc<PublicKey> {
-        Arc::new(self.inner.public_key.into())
+    pub fn public_key(&self) -> PublicKey {
+        self.inner.public_key.into()
     }
 
     pub fn identifier(&self) -> String {

@@ -99,8 +99,8 @@ impl Client {
             .collect()
     }
 
-    pub async fn relay(&self, url: &str) -> Result<Arc<Relay>> {
-        Ok(Arc::new(self.inner.relay(url).await?.into()))
+    pub async fn relay(&self, url: &str) -> Result<Relay> {
+        Ok(self.inner.relay(url).await?.into())
     }
 
     /// Add new relay
@@ -447,22 +447,21 @@ impl Client {
     }
 
     /// Signs the `EventBuilder` into an `Event` using the `NostrSigner`
-    pub async fn sign_event_builder(&self, builder: &EventBuilder) -> Result<Arc<Event>> {
-        Ok(Arc::new(
-            self.inner
-                .sign_event_builder(builder.deref().clone())
-                .await?
-                .into(),
-        ))
+    pub async fn sign_event_builder(&self, builder: &EventBuilder) -> Result<Event> {
+        Ok(self
+            .inner
+            .sign_event_builder(builder.deref().clone())
+            .await?
+            .into())
     }
 
     /// Take an `EventBuilder`, sign it by using the `NostrSigner` and broadcast to relays (check `send_event` method for more details)
     ///
     /// Rise an error if the `NostrSigner` is not set.
-    pub async fn send_event_builder(&self, builder: Arc<EventBuilder>) -> Result<SendEventOutput> {
+    pub async fn send_event_builder(&self, builder: &EventBuilder) -> Result<SendEventOutput> {
         Ok(self
             .inner
-            .send_event_builder(builder.as_ref().deref().clone())
+            .send_event_builder(builder.deref().clone())
             .await?
             .into())
     }
@@ -489,13 +488,12 @@ impl Client {
         &self,
         public_key: &PublicKey,
         timeout: Duration,
-    ) -> Result<Arc<Metadata>> {
-        Ok(Arc::new(
-            self.inner
-                .fetch_metadata(**public_key, timeout)
-                .await?
-                .into(),
-        ))
+    ) -> Result<Metadata> {
+        Ok(self
+            .inner
+            .fetch_metadata(**public_key, timeout)
+            .await?
+            .into())
     }
 
     pub async fn set_metadata(&self, metadata: &Metadata) -> Result<SendEventOutput> {

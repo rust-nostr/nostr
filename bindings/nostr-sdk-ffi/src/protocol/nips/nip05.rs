@@ -4,7 +4,6 @@
 
 use std::net::SocketAddr;
 use std::ops::Deref;
-use std::sync::Arc;
 
 use nostr::nips::nip05;
 use uniffi::Object;
@@ -25,8 +24,8 @@ impl From<nip05::Nip05Profile> for Nip05Profile {
 
 #[uniffi::export]
 impl Nip05Profile {
-    pub fn public_key(&self) -> Arc<PublicKey> {
-        Arc::new(self.inner.public_key.into())
+    pub fn public_key(&self) -> PublicKey {
+        self.inner.public_key.into()
     }
 
     /// Get relays
@@ -57,10 +56,10 @@ pub async fn verify_nip05(
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/05.md>
 #[uniffi::export(async_runtime = "tokio", default(proxy = None))]
-pub async fn get_nip05_profile(nip05: &str, proxy: Option<String>) -> Result<Arc<Nip05Profile>> {
+pub async fn get_nip05_profile(nip05: &str, proxy: Option<String>) -> Result<Nip05Profile> {
     let proxy: Option<SocketAddr> = match proxy {
         Some(proxy) => Some(proxy.parse()?),
         None => None,
     };
-    Ok(Arc::new(nip05::profile(nip05, proxy).await?.into()))
+    Ok(nip05::profile(nip05, proxy).await?.into())
 }
