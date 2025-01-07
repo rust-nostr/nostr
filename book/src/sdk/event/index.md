@@ -52,7 +52,9 @@
 <div slot="title">Flutter</div>
 <section>
 
-TODO
+```dart,ignore
+{{#include ../../../snippets/flutter/lib/event/json.dart}}
+```
 
 </section>
 </custom-tabs>
@@ -111,7 +113,9 @@ A convenient way to compose events is by using the `EventBuilder`. It allow to c
 <div slot="title">Flutter</div>
 <section>
 
-TODO
+```dart,ignore
+{{#include ../../../snippets/flutter/lib/event/builder.dart}}
+```
 
 </section>
 </custom-tabs>

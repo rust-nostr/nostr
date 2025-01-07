@@ -215,7 +215,7 @@ Add the following code to your package:
 nostr_sdk:
     git:
         url: https://github.com/rust-nostr/nostr-sdk-flutter.git
-        ref: v0.38.0
+        ref: 2e63f8f6cfac533061b8f8f776898aca3291d95a
 ```
 
 </section>

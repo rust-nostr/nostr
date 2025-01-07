@@ -54,7 +54,9 @@ To generate a new key pair use the `generate()` method:
 <div slot="title">Flutter</div>
 <section>
 
-TODO
+```dart,ignore
+{{#include ../../../snippets/flutter/lib/keys.dart:generate}}
+```
 
 </section>
 </custom-tabs>
@@ -111,7 +113,9 @@ TODO
 <div slot="title">Flutter</div>
 <section>
 
-TODO
+```dart,ignore
+{{#include ../../../snippets/flutter/lib/keys.dart:restore}}
+```
 
 </section>
 </custom-tabs>
@@ -168,7 +172,7 @@ TODO
 <div slot="title">Flutter</div>
 <section>
 
-TODO
+Not available.
 
 </section>
 </custom-tabs>
