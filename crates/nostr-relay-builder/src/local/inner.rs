@@ -10,7 +10,7 @@ use async_utility::futures_util::stream::{self, SplitSink};
 use async_utility::futures_util::{SinkExt, StreamExt};
 use async_wsocket::native::{self, Message, WebSocketStream};
 use atomic_destructor::AtomicDestroyer;
-use negentropy::{Bytes, Id, NegentropyStorageVector};
+use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
 use nostr_database::prelude::*;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{broadcast, Semaphore};

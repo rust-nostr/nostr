@@ -31,6 +31,8 @@
 
 ### Breaking changes
 
+* nostr: update `ClientMessage::neg_open` signature ([Yuki Kishimoto])
+* nostr: remove `ClientMessage::neg_open_deprecated` ([Yuki Kishimoto])
 * pool: change `Relay::connect` method signature ([Yuki Kishimoto])
 
 ### Changed
@@ -64,6 +66,7 @@
 
 ### Removed
 
+* nostr: remove `negentropy` deps ([Yuki Kishimoto])
 * connect: remove `thiserror` dep ([Yuki Kishimoto])
 * relay-builder: remove `thiserror` dep ([Yuki Kishimoto])
 * ffi: remove `profile` module ([Yuki Kishimoto])

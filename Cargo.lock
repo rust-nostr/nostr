@@ -2799,8 +2799,6 @@ dependencies = [
  "getrandom",
  "instant",
  "js-sys",
- "negentropy 0.3.1",
- "negentropy 0.4.3",
  "nostr-ots",
  "num_cpus",
  "once_cell",

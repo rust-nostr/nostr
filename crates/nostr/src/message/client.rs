@@ -9,8 +9,6 @@ use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use negentropy::{Bytes, Negentropy, NegentropyStorageBase};
-use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
 
@@ -50,7 +48,7 @@ pub enum ClientMessage {
         filter: Box<Filter>,
         /// ID size (deprecated)
         id_size: Option<u8>,
-        /// Initial message
+        /// Initial message (hex)
         initial_message: String,
     },
     /// Negentropy Message
@@ -125,36 +123,17 @@ impl ClientMessage {
     }
 
     /// Create new `NEG-OPEN` message
-    pub fn neg_open<T>(
-        negentropy: &mut Negentropy<T>,
+    pub fn neg_open(
         subscription_id: SubscriptionId,
         filter: Filter,
-    ) -> Result<Self, negentropy::Error>
-    where
-        T: NegentropyStorageBase,
-    {
-        let initial_message: Bytes = negentropy.initiate()?;
-        Ok(Self::NegOpen {
+        initial_message: String,
+    ) -> Self {
+        Self::NegOpen {
             subscription_id,
             filter: Box::new(filter),
             id_size: None,
-            initial_message: initial_message.to_hex(),
-        })
-    }
-
-    /// Create new `NEG-OPEN` message (deprecated protocol version)
-    pub fn neg_open_deprecated(
-        negentropy: &mut NegentropyDeprecated,
-        subscription_id: SubscriptionId,
-        filter: Filter,
-    ) -> Result<Self, negentropy_deprecated::Error> {
-        let initial_message: BytesDeprecated = negentropy.initiate()?;
-        Ok(Self::NegOpen {
-            subscription_id,
-            filter: Box::new(filter),
-            id_size: Some(negentropy.id_size() as u8),
-            initial_message: initial_message.to_hex(),
-        })
+            initial_message,
+        }
     }
 
     /// Check if is an `EVENT` message

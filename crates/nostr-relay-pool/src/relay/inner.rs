@@ -1821,11 +1821,16 @@ impl InnerRelay {
         }
         storage.seal()?;
 
+        // Build negentropy client
         let mut negentropy = Negentropy::new(storage, NEGENTROPY_FRAME_SIZE_LIMIT)?;
 
+        // Initiate message
+        let initial_message: Bytes = negentropy.initiate()?;
+
         // Send initial negentropy message
-        let sub_id = SubscriptionId::generate();
-        let open_msg = ClientMessage::neg_open(&mut negentropy, sub_id.clone(), filter)?;
+        let sub_id: SubscriptionId = SubscriptionId::generate();
+        let open_msg: ClientMessage =
+            ClientMessage::neg_open(sub_id.clone(), filter, initial_message.to_hex());
         self.send_msg(open_msg)?;
 
         let mut notifications = self.internal_notification_sender.subscribe();
@@ -2130,9 +2135,17 @@ impl InnerRelay {
         }
         negentropy.seal()?;
 
+        // Initiate message
+        let initial_message = negentropy.initiate()?;
+
         // Send initial negentropy message
         let sub_id = SubscriptionId::generate();
-        let open_msg = ClientMessage::neg_open_deprecated(&mut negentropy, sub_id.clone(), filter)?;
+        let open_msg = ClientMessage::NegOpen {
+            subscription_id: sub_id.clone(),
+            filter: Box::new(filter),
+            id_size: Some(32),
+            initial_message: initial_message.to_hex(),
+        };
         self.send_msg(open_msg)?;
 
         let mut notifications = self.internal_notification_sender.subscribe();

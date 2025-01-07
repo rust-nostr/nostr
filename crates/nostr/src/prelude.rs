@@ -14,7 +14,6 @@
 pub use bip39::Mnemonic;
 pub use bitcoin::secp256k1::rand;
 pub use bitcoin::secp256k1::schnorr::Signature;
-pub use negentropy::Negentropy;
 pub use serde_json::Value;
 
 // Internal modules
