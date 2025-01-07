@@ -12,10 +12,11 @@ use core::fmt;
 use core::str::FromStr;
 
 use bip39::Mnemonic;
-use bitcoin::bip32::{ChildNumber, DerivationPath, Xpriv};
 use bitcoin::secp256k1::{Secp256k1, Signing};
-use bitcoin::Network;
 
+mod bip32;
+
+use self::bip32::{ChildNumber, Xpriv};
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 use crate::{Keys, SecretKey};
@@ -27,7 +28,7 @@ const COIN: u32 = 1237;
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
     /// BIP32 error
-    BIP32(bitcoin::bip32::Error),
+    BIP32(bip32::Error),
     /// BIP39 error
     BIP39(bip39::Error),
 }
@@ -44,8 +45,8 @@ impl fmt::Display for Error {
     }
 }
 
-impl From<bitcoin::bip32::Error> for Error {
-    fn from(e: bitcoin::bip32::Error) -> Self {
+impl From<bip32::Error> for Error {
+    fn from(e: bip32::Error) -> Self {
         Self::BIP32(e)
     }
 }
@@ -150,7 +151,7 @@ impl FromMnemonic for Keys {
             .to_seed_normalized(passphrase.as_ref().map(|s| s.as_ref()).unwrap_or_default());
 
         // Derive BIP32 root key
-        let root_key = Xpriv::new_master(Network::Bitcoin, &seed)?;
+        let root_key: Xpriv = Xpriv::new_master(&seed)?;
 
         // Unwrap idx
         let account: u32 = account.unwrap_or_default();
@@ -165,10 +166,9 @@ impl FromMnemonic for Keys {
             ChildNumber::from_normal_idx(_type)?,
             ChildNumber::from_normal_idx(index)?,
         ];
-        let path = DerivationPath::from(path);
 
         // Derive secret key
-        let child_xprv = root_key.derive_priv(secp, &path)?;
+        let child_xprv = root_key.derive_xpriv(secp, path);
         let secret_key = SecretKey::from(child_xprv.private_key);
 
         // Compose keys
