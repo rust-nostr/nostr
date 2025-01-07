@@ -4,8 +4,7 @@
 
 //! Unsigned Event
 
-use alloc::string::{String, ToString};
-use core::fmt;
+use alloc::string::String;
 
 #[cfg(feature = "std")]
 use secp256k1::rand::rngs::OsRng;
@@ -13,51 +12,10 @@ use secp256k1::rand::{CryptoRng, Rng};
 use secp256k1::schnorr::Signature;
 use secp256k1::{Message, Secp256k1, Signing, Verification};
 
-use crate::{Event, EventId, JsonUtil, Keys, Kind, PublicKey, SignerError, Tag, Tags, Timestamp};
+use super::error::Error;
+use crate::{Event, EventId, JsonUtil, Keys, Kind, PublicKey, Tag, Tags, Timestamp};
 #[cfg(feature = "std")]
 use crate::{NostrSigner, SECP256K1};
-
-/// Unsigned event error
-#[derive(Debug)]
-pub enum Error {
-    /// Signer error
-    Signer(SignerError),
-    /// Error serializing or deserializing JSON data
-    Json(String),
-    /// Event error
-    Event(super::Error),
-}
-
-#[cfg(feature = "std")]
-impl std::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Signer(e) => write!(f, "{e}"),
-            Self::Json(e) => write!(f, "{e}"),
-            Self::Event(e) => write!(f, "{e}"),
-        }
-    }
-}
-
-impl From<SignerError> for Error {
-    fn from(e: SignerError) -> Self {
-        Self::Signer(e)
-    }
-}
-
-impl From<serde_json::Error> for Error {
-    fn from(e: serde_json::Error) -> Self {
-        Self::Json(e.to_string())
-    }
-}
-
-impl From<super::Error> for Error {
-    fn from(e: super::Error) -> Self {
-        Self::Event(e)
-    }
-}
 
 /// Unsigned event
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -126,7 +84,7 @@ impl UnsignedEvent {
         if let Some(id) = self.id {
             let computed_id: EventId = self.compute_id();
             if id != computed_id {
-                return Err(Error::Event(super::Error::InvalidId));
+                return Err(Error::InvalidId);
             }
         }
 
@@ -221,12 +179,12 @@ impl UnsignedEvent {
 
         // Verify event ID
         if verify_id && !event.verify_id() {
-            return Err(Error::Event(super::Error::InvalidId));
+            return Err(Error::InvalidId);
         }
 
         // Verify event signature
         if verify_sig && !event.verify_signature_with_ctx(secp) {
-            return Err(Error::Event(super::Error::InvalidSignature));
+            return Err(Error::InvalidSignature);
         }
 
         Ok(event)

@@ -25,16 +25,14 @@ use crate::util::hex;
 /// Messages error
 #[derive(Debug)]
 pub enum MessageHandleError {
-    /// Invalid message format
-    InvalidMessageFormat,
     /// Impossible to deserialize message
     Json(serde_json::Error),
-    /// Event ID error
-    EventId(event::id::Error),
     /// Event error
     Event(event::Error),
     /// Raw event error
     RawEvent(event::raw::Error),
+    /// Invalid message format
+    InvalidMessageFormat,
     /// Empty message
     EmptyMsg,
 }
@@ -45,12 +43,11 @@ impl std::error::Error for MessageHandleError {}
 impl fmt::Display for MessageHandleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidMessageFormat => write!(f, "Message has an invalid format"),
-            Self::Json(e) => write!(f, "Json deserialization failed: {e}"),
-            Self::EventId(e) => write!(f, "EventId: {e}"),
-            Self::Event(e) => write!(f, "Event: {e}"),
-            Self::RawEvent(e) => write!(f, "Raw event: {e}"),
-            Self::EmptyMsg => write!(f, "Received empty message"),
+            Self::Json(e) => write!(f, "{e}"),
+            Self::Event(e) => write!(f, "{e}"),
+            Self::RawEvent(e) => write!(f, "{e}"),
+            Self::InvalidMessageFormat => write!(f, "Invalid format"),
+            Self::EmptyMsg => write!(f, "Empty message"),
         }
     }
 }
@@ -58,12 +55,6 @@ impl fmt::Display for MessageHandleError {
 impl From<serde_json::Error> for MessageHandleError {
     fn from(e: serde_json::Error) -> Self {
         Self::Json(e)
-    }
-}
-
-impl From<event::id::Error> for MessageHandleError {
-    fn from(e: event::id::Error) -> Self {
-        Self::EventId(e)
     }
 }
 

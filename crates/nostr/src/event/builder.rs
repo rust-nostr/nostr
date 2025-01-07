@@ -39,13 +39,11 @@ impl fmt::Display for WrongKindError {
     }
 }
 
-/// [`EventBuilder`] error
+/// Event builder error
 #[derive(Debug)]
 pub enum Error {
-    /// Signer error
-    Signer(SignerError),
     /// Unsigned event error
-    Unsigned(unsigned::Error),
+    Event(super::Error),
     /// OpenTimestamps error
     #[cfg(feature = "nip03")]
     OpenTimestamps(nostr_ots::Error),
@@ -75,8 +73,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Signer(e) => write!(f, "{e}"),
-            Self::Unsigned(e) => write!(f, "{e}"),
+            Self::Event(e) => write!(f, "{e}"),
             #[cfg(feature = "nip03")]
             Self::OpenTimestamps(e) => write!(f, "{e}"),
             #[cfg(feature = "nip04")]
@@ -95,13 +92,13 @@ impl fmt::Display for Error {
 
 impl From<SignerError> for Error {
     fn from(e: SignerError) -> Self {
-        Self::Signer(e)
+        Self::Event(super::Error::Signer(e.to_string()))
     }
 }
 
-impl From<unsigned::Error> for Error {
-    fn from(e: unsigned::Error) -> Self {
-        Self::Unsigned(e)
+impl From<super::Error> for Error {
+    fn from(e: super::Error) -> Self {
+        Self::Event(e)
     }
 }
 

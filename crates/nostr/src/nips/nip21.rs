@@ -18,12 +18,12 @@ pub const SCHEME: &str = "nostr";
 
 /// Unsupported Bech32 Type
 #[derive(Debug, PartialEq, Eq)]
-pub enum UnsupportedBech32Type {
+pub enum UnsupportedVariant {
     /// Secret Key
     SecretKey,
 }
 
-impl fmt::Display for UnsupportedBech32Type {
+impl fmt::Display for UnsupportedVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::SecretKey => write!(f, "secret key"),
@@ -36,10 +36,10 @@ impl fmt::Display for UnsupportedBech32Type {
 pub enum Error {
     /// NIP19 error
     NIP19(nip19::Error),
+    /// Unsupported bech32 type
+    UnsupportedVariant(UnsupportedVariant),
     /// Invalid nostr URI
     InvalidURI,
-    /// Unsupported bech32 type
-    UnsupportedBech32Type(UnsupportedBech32Type),
 }
 
 #[cfg(feature = "std")]
@@ -49,8 +49,8 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::NIP19(e) => write!(f, "NIP19: {e}"),
+            Self::UnsupportedVariant(t) => write!(f, "Unsupported variant: {t}"),
             Self::InvalidURI => write!(f, "Invalid nostr URI"),
-            Self::UnsupportedBech32Type(t) => write!(f, "Unsupported bech32 type: {t}"),
         }
     }
 }
@@ -132,13 +132,11 @@ impl TryFrom<Nip19> for Nip21 {
 
     fn try_from(value: Nip19) -> Result<Self, Self::Error> {
         match value {
-            Nip19::Secret(..) => Err(Error::UnsupportedBech32Type(
-                UnsupportedBech32Type::SecretKey,
-            )),
+            Nip19::Secret(..) => Err(Error::UnsupportedVariant(UnsupportedVariant::SecretKey)),
             #[cfg(feature = "nip49")]
-            Nip19::EncryptedSecret(..) => Err(Error::UnsupportedBech32Type(
-                UnsupportedBech32Type::SecretKey,
-            )),
+            Nip19::EncryptedSecret(..) => {
+                Err(Error::UnsupportedVariant(UnsupportedVariant::SecretKey))
+            }
             Nip19::Pubkey(val) => Ok(Self::Pubkey(val)),
             Nip19::Profile(val) => Ok(Self::Profile(val)),
             Nip19::EventId(val) => Ok(Self::EventId(val)),
@@ -240,7 +238,7 @@ mod tests {
         assert_eq!(
             Nip21::parse("nostr:nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")
                 .unwrap_err(),
-            Error::UnsupportedBech32Type(UnsupportedBech32Type::SecretKey)
+            Error::UnsupportedVariant(UnsupportedVariant::SecretKey)
         );
     }
 }

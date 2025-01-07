@@ -25,8 +25,6 @@ pub enum Error {
     MismatchedBadgeDefinitionOrAward,
     /// Badge awards lack the awarded public key
     BadgeAwardsLackAwardedPublicKey,
-    /// Badge awards lack the awarded public key
-    BadgeAwardMissingATag,
 }
 
 #[cfg(feature = "std")]
@@ -40,7 +38,6 @@ impl fmt::Display for Error {
             Self::IdentifierTagNotFound => write!(f, "identifier tag not found"),
             Self::MismatchedBadgeDefinitionOrAward => write!(f, "mismatched badge definition/award"),
             Self::BadgeAwardsLackAwardedPublicKey => write!(f, "badge award events lack the awarded public keybadge award events lack the awarded public key"),
-            Self::BadgeAwardMissingATag => write!(f, "badge award event lacks `a` tag"),
         }
     }
 }

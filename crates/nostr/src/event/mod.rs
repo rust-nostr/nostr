@@ -21,6 +21,7 @@ use serde_json::Value;
 
 pub mod borrow;
 pub mod builder;
+mod error;
 pub mod id;
 pub mod kind;
 pub mod partial;
@@ -29,6 +30,7 @@ pub mod tag;
 pub mod unsigned;
 
 pub use self::builder::EventBuilder;
+pub use self::error::Error;
 pub use self::id::EventId;
 pub use self::kind::Kind;
 pub use self::partial::{MissingPartialEvent, PartialEvent};
@@ -49,39 +51,6 @@ const KIND: &str = "kind";
 const TAGS: &str = "tags";
 const CONTENT: &str = "content";
 const SIG: &str = "sig";
-
-/// [`Event`] error
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    /// Error serializing or deserializing JSON data
-    Json(String),
-    /// Unknown JSON event key
-    UnknownKey(String),
-    /// Invalid event ID
-    InvalidId,
-    /// Invalid signature
-    InvalidSignature,
-}
-
-#[cfg(feature = "std")]
-impl std::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Json(e) => write!(f, "{e}"),
-            Self::UnknownKey(key) => write!(f, "Unknown JSON event key: {key}"),
-            Self::InvalidId => write!(f, "Invalid event id"),
-            Self::InvalidSignature => write!(f, "Invalid signature"),
-        }
-    }
-}
-
-impl From<serde_json::Error> for Error {
-    fn from(e: serde_json::Error) -> Self {
-        Self::Json(e.to_string())
-    }
-}
 
 /// Nostr event
 #[derive(Clone)]

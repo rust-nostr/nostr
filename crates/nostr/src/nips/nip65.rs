@@ -6,7 +6,6 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/65.md>
 
-use alloc::string::{String, ToString};
 use core::fmt;
 use core::str::FromStr;
 
@@ -16,7 +15,7 @@ use crate::{Event, RelayUrl, TagStandard};
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Invalid Relay Metadata
-    InvalidRelayMetadata(String),
+    InvalidRelayMetadata,
 }
 
 #[cfg(feature = "std")]
@@ -25,7 +24,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidRelayMetadata(s) => write!(f, "Invalid relay metadata: {s}"),
+            Self::InvalidRelayMetadata => write!(f, "Invalid relay metadata"),
         }
     }
 }
@@ -55,7 +54,7 @@ impl FromStr for RelayMetadata {
         match s {
             "read" => Ok(Self::Read),
             "write" => Ok(Self::Write),
-            s => Err(Error::InvalidRelayMetadata(s.to_string())),
+            _ => Err(Error::InvalidRelayMetadata),
         }
     }
 }

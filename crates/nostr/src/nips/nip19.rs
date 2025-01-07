@@ -8,10 +8,11 @@
 
 #![allow(missing_docs)]
 
-use alloc::string::{FromUtf8Error, String, ToString};
+use alloc::borrow::Cow;
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
-use core::str::{self, FromStr, Utf8Error};
+use core::str::FromStr;
 
 use bech32::{self, Bech32, Hrp};
 
@@ -20,9 +21,9 @@ use super::nip01::Coordinate;
 use super::nip05::Nip05Profile;
 #[cfg(feature = "nip49")]
 use super::nip49::{self, EncryptedSecretKey};
-use crate::event::id::{self, EventId};
+use crate::event::id::EventId;
 use crate::types::url::{self, RelayUrl, TryIntoUrl};
-use crate::{key, Kind, PublicKey, SecretKey};
+use crate::{event, key, Kind, PublicKey, SecretKey};
 
 pub const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 pub const PREFIX_BECH32_SECRET_KEY_ENCRYPTED: &str = "ncryptsec";
@@ -55,29 +56,21 @@ const FIXED_KIND_BYTES_TVL: usize = 1 + 1 + 4;
 /// `NIP19` error
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
-    /// Fmt error.
-    Fmt(fmt::Error),
     /// Relay Url parse error
     RelayUrl(url::Error),
     /// Bech32 decode error.
     Bech32Decode(bech32::DecodeError),
     /// Bech32 encode error
     Bech32Encode(bech32::EncodeError),
-    /// UFT-8 error
-    FromUTF8(FromUtf8Error),
-    /// UFT-8 error
-    UTF8(Utf8Error),
-    /// Hash error
-    Hash(hashes::FromSliceError),
     /// Keys error
     Keys(key::Error),
-    /// EventId error
-    EventId(id::Error),
+    /// Event error
+    Event(event::Error),
     /// NIP49 error
     #[cfg(feature = "nip49")]
     NIP49(nip49::Error),
     /// Wrong prefix or variant
-    WrongPrefixOrVariant,
+    WrongPrefix,
     /// Field missing
     FieldMissing(String),
     /// TLV error
@@ -92,28 +85,18 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Fmt(e) => write!(f, "{e}"),
             Self::RelayUrl(e) => write!(f, "{e}"),
             Self::Bech32Decode(e) => write!(f, "{e}"),
             Self::Bech32Encode(e) => write!(f, "{e}"),
-            Self::FromUTF8(e) => write!(f, "UTF8: {e}"),
-            Self::UTF8(e) => write!(f, "UTF8: {e}"),
-            Self::Hash(e) => write!(f, "Hash: {e}"),
-            Self::Keys(e) => write!(f, "Keys: {e}"),
-            Self::EventId(e) => write!(f, "Event ID: {e}"),
+            Self::Keys(e) => write!(f, "{e}"),
+            Self::Event(e) => write!(f, "{e}"),
             #[cfg(feature = "nip49")]
             Self::NIP49(e) => write!(f, "{e}"),
-            Self::WrongPrefixOrVariant => write!(f, "Wrong prefix or variant"),
+            Self::WrongPrefix => write!(f, "Wrong prefix"),
             Self::FieldMissing(name) => write!(f, "Field missing: {name}"),
-            Self::TLV => write!(f, "TLV (type-length-value) error"),
-            Self::TryFromSlice => write!(f, "Impossible to perform conversion from slice"),
+            Self::TLV => write!(f, "TLV error"),
+            Self::TryFromSlice => write!(f, "From slice error"),
         }
-    }
-}
-
-impl From<fmt::Error> for Error {
-    fn from(e: fmt::Error) -> Self {
-        Self::Fmt(e)
     }
 }
 
@@ -135,27 +118,15 @@ impl From<bech32::EncodeError> for Error {
     }
 }
 
-impl From<FromUtf8Error> for Error {
-    fn from(e: FromUtf8Error) -> Self {
-        Self::FromUTF8(e)
-    }
-}
-
-impl From<Utf8Error> for Error {
-    fn from(e: Utf8Error) -> Self {
-        Self::UTF8(e)
-    }
-}
-
 impl From<key::Error> for Error {
     fn from(e: key::Error) -> Self {
         Self::Keys(e)
     }
 }
 
-impl From<id::Error> for Error {
-    fn from(e: id::Error) -> Self {
-        Self::EventId(e)
+impl From<event::Error> for Error {
+    fn from(e: event::Error) -> Self {
+        Self::Event(e)
     }
 }
 
@@ -198,7 +169,7 @@ impl FromStr for Nip19Prefix {
             PREFIX_BECH32_PROFILE => Ok(Nip19Prefix::NProfile),
             PREFIX_BECH32_EVENT => Ok(Nip19Prefix::NEvent),
             PREFIX_BECH32_COORDINATE => Ok(Nip19Prefix::NAddr),
-            _ => Err(Error::WrongPrefixOrVariant),
+            _ => Err(Error::WrongPrefix),
         }
     }
 }
@@ -281,7 +252,7 @@ impl FromBech32 for SecretKey {
         let (hrp, data) = bech32::decode(secret_key)?;
 
         if hrp != HRP_SECRET_KEY {
-            return Err(Error::WrongPrefixOrVariant);
+            return Err(Error::WrongPrefix);
         }
 
         Ok(Self::from_slice(data.as_slice())?)
@@ -307,7 +278,7 @@ impl FromBech32 for EncryptedSecretKey {
         let (hrp, data) = bech32::decode(secret_key)?;
 
         if hrp != HRP_SECRET_KEY_ENCRYPTED {
-            return Err(Error::WrongPrefixOrVariant);
+            return Err(Error::WrongPrefix);
         }
 
         Ok(Self::from_slice(data.as_slice())?)
@@ -333,7 +304,7 @@ impl FromBech32 for PublicKey {
         let (hrp, data) = bech32::decode(public_key)?;
 
         if hrp != HRP_PUBLIC_KEY {
-            return Err(Error::WrongPrefixOrVariant);
+            return Err(Error::WrongPrefix);
         }
 
         Ok(Self::from_slice(data.as_slice())?)
@@ -355,7 +326,7 @@ impl FromBech32 for EventId {
         let (hrp, data) = bech32::decode(id)?;
 
         if hrp != HRP_NOTE_ID {
-            return Err(Error::WrongPrefixOrVariant);
+            return Err(Error::WrongPrefix);
         }
 
         Ok(Self::from_slice(data.as_slice())?)
@@ -433,7 +404,7 @@ impl Nip19Event {
                     }
                 }
                 RELAY => {
-                    relays.push(String::from_utf8(bytes.to_vec())?);
+                    relays.push(String::from_utf8_lossy(bytes).to_string());
                 }
                 KIND => {
                     if kind.is_none() {
@@ -467,7 +438,7 @@ impl FromBech32 for Nip19Event {
         let (hrp, data) = bech32::decode(event)?;
 
         if hrp != HRP_EVENT {
-            return Err(Error::WrongPrefixOrVariant);
+            return Err(Error::WrongPrefix);
         }
 
         Self::from_bech32_data(data)
@@ -569,8 +540,8 @@ impl Nip19Profile {
                     }
                 }
                 RELAY => {
-                    let url: &str = str::from_utf8(bytes)?;
-                    if let Ok(url) = RelayUrl::parse(url) {
+                    let url: Cow<str> = String::from_utf8_lossy(bytes);
+                    if let Ok(url) = RelayUrl::parse(&url) {
                         relays.push(url);
                     }
                 }
@@ -617,7 +588,7 @@ impl FromBech32 for Nip19Profile {
         let (hrp, data) = bech32::decode(profile)?;
 
         if hrp != HRP_PROFILE {
-            return Err(Error::WrongPrefixOrVariant);
+            return Err(Error::WrongPrefix);
         }
 
         Self::from_bech32_data(data)
@@ -641,12 +612,12 @@ impl Coordinate {
             match *t {
                 SPECIAL => {
                     if identifier.is_none() {
-                        identifier = Some(String::from_utf8(bytes.to_vec())?);
+                        identifier = Some(String::from_utf8_lossy(bytes).to_string());
                     }
                 }
                 RELAY => {
-                    let url: &str = str::from_utf8(bytes)?;
-                    if let Ok(url) = RelayUrl::parse(url) {
+                    let url: Cow<str> = String::from_utf8_lossy(bytes);
+                    if let Ok(url) = RelayUrl::parse(&url) {
                         relays.push(url);
                     }
                 }
@@ -687,7 +658,7 @@ impl FromBech32 for Coordinate {
         let (hrp, data) = bech32::decode(addr)?;
 
         if hrp != HRP_COORDINATE {
-            return Err(Error::WrongPrefixOrVariant);
+            return Err(Error::WrongPrefix);
         }
 
         Self::from_bech32_data(data)

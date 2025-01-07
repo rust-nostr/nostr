@@ -7,7 +7,6 @@ use core::num::ParseIntError;
 
 use hashes::hex::HexToArrayError;
 
-use crate::event::id;
 use crate::nips::{nip01, nip10, nip26, nip39, nip53, nip65, nip98};
 use crate::types::image;
 use crate::types::url::{Error as RelayUrlError, ParseError};
@@ -28,8 +27,6 @@ pub enum Error {
     RelayUrl(RelayUrlError),
     /// Url parse error
     Url(ParseError),
-    /// EventId error
-    EventId(id::Error),
     /// NIP01 error
     NIP01(nip01::Error),
     /// NIP10 error
@@ -68,7 +65,6 @@ impl fmt::Display for Error {
             Self::Hex(e) => write!(f, "{e}"),
             Self::RelayUrl(e) => write!(f, "{e}"),
             Self::Url(e) => write!(f, "{e}"),
-            Self::EventId(e) => write!(f, "{e}"),
             Self::NIP01(e) => write!(f, "{e}"),
             Self::NIP10(e) => write!(f, "{e}"),
             Self::NIP26(e) => write!(f, "{e}"),
@@ -118,12 +114,6 @@ impl From<RelayUrlError> for Error {
 impl From<ParseError> for Error {
     fn from(e: ParseError) -> Self {
         Self::Url(e)
-    }
-}
-
-impl From<id::Error> for Error {
-    fn from(e: id::Error) -> Self {
-        Self::EventId(e)
     }
 }
 

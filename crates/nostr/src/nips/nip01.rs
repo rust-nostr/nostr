@@ -24,9 +24,8 @@ use serde_json::Value;
 
 use super::nip19::FromBech32;
 use super::nip21::NostrURI;
-use crate::event::id;
 use crate::types::{RelayUrl, Url};
-use crate::{key, Filter, JsonUtil, Kind, PublicKey, Tag, TagStandard};
+use crate::{event, key, Filter, JsonUtil, Kind, PublicKey, Tag, TagStandard};
 
 /// Raw Event error
 #[derive(Debug, PartialEq, Eq)]
@@ -34,7 +33,7 @@ pub enum Error {
     /// Keys error
     Keys(key::Error),
     /// Event ID error
-    EventId(id::Error),
+    Event(event::Error),
     /// Parse Int error
     ParseInt(ParseIntError),
     /// Invalid coordinate
@@ -47,9 +46,9 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Keys(e) => write!(f, "Keys: {e}"),
-            Self::EventId(e) => write!(f, "Event ID: {e}"),
-            Self::ParseInt(e) => write!(f, "Parse Int: {e}"),
+            Self::Keys(e) => write!(f, "{e}"),
+            Self::Event(e) => write!(f, "{e}"),
+            Self::ParseInt(e) => write!(f, "{e}"),
             Self::InvalidCoordinate => write!(f, "Invalid coordinate"),
         }
     }
@@ -61,9 +60,9 @@ impl From<key::Error> for Error {
     }
 }
 
-impl From<id::Error> for Error {
-    fn from(e: id::Error) -> Self {
-        Self::EventId(e)
+impl From<event::Error> for Error {
+    fn from(e: event::Error) -> Self {
+        Self::Event(e)
     }
 }
 

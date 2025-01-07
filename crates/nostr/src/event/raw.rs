@@ -12,16 +12,16 @@ use core::str::FromStr;
 
 use secp256k1::schnorr::Signature;
 
-use super::{id, tag};
-use crate::{key, Event, EventId, JsonUtil, Kind, PartialEvent, PublicKey, Tag, Timestamp};
+use super::tag;
+use crate::{event, key, Event, EventId, JsonUtil, Kind, PartialEvent, PublicKey, Tag, Timestamp};
 
-/// [`RawEvent`] error
-#[derive(Debug)]
+/// Raw event error
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
-    /// EventId error
-    EventId(id::Error),
+    /// Event error
+    Event(event::Error),
     /// Keys error
     Keys(key::Error),
     /// Tag error
@@ -35,7 +35,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Secp256k1(e) => write!(f, "{e}"),
-            Self::EventId(e) => write!(f, "{e}"),
+            Self::Event(e) => write!(f, "{e}"),
             Self::Keys(e) => write!(f, "{e}"),
             Self::Tag(e) => write!(f, "{e}"),
         }
@@ -48,9 +48,9 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
-impl From<id::Error> for Error {
-    fn from(e: id::Error) -> Self {
-        Self::EventId(e)
+impl From<event::Error> for Error {
+    fn from(e: event::Error) -> Self {
+        Self::Event(e)
     }
 }
 

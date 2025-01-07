@@ -28,8 +28,6 @@ const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
 pub enum SingleLetterTagError {
     /// Invalid char
     InvalidChar,
-    /// Expected char
-    ExpectedChar,
 }
 
 #[cfg(feature = "std")]
@@ -38,8 +36,7 @@ impl std::error::Error for SingleLetterTagError {}
 impl fmt::Display for SingleLetterTagError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidChar => write!(f, "invalid alphabet char"),
-            Self::ExpectedChar => write!(f, "Expected char "),
+            Self::InvalidChar => write!(f, "invalid char"),
         }
     }
 }
@@ -292,10 +289,10 @@ impl FromStr for SingleLetterTag {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.len() == 1 {
-            let c: char = s.chars().next().ok_or(SingleLetterTagError::ExpectedChar)?;
+            let c: char = s.chars().next().ok_or(SingleLetterTagError::InvalidChar)?;
             Self::from_char(c)
         } else {
-            Err(SingleLetterTagError::ExpectedChar)
+            Err(SingleLetterTagError::InvalidChar)
         }
     }
 }

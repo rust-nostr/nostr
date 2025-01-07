@@ -9,7 +9,6 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/98.md>
 
-use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
@@ -42,7 +41,7 @@ pub enum Error {
     /// Tag missing when parsing
     MissingTag(RequiredTags),
     /// Invalid HTTP Method
-    InvalidHttpMethod(String),
+    UnknownMethod,
 }
 
 #[cfg(feature = "std")]
@@ -52,7 +51,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::MissingTag(tag) => write!(f, "missing tag '{tag}'"),
-            Self::InvalidHttpMethod(m) => write!(f, "Invalid HTTP method: {m}"),
+            Self::UnknownMethod => write!(f, "Unknown HTTP method"),
         }
     }
 }
@@ -92,7 +91,7 @@ impl FromStr for HttpMethod {
             "POST" => Ok(Self::POST),
             "PUT" => Ok(Self::PUT),
             "PATCH" => Ok(Self::PATCH),
-            m => Err(Error::InvalidHttpMethod(m.to_string())),
+            _ => Err(Error::UnknownMethod),
         }
     }
 }

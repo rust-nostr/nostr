@@ -11,7 +11,7 @@ use core::ops::Range;
 
 use secp256k1::{Secp256k1, Verification};
 
-use crate::event::unsigned::{self, UnsignedEvent};
+use crate::event::unsigned::UnsignedEvent;
 use crate::event::{self, Event};
 use crate::signer::SignerError;
 #[cfg(feature = "std")]
@@ -30,8 +30,6 @@ pub enum Error {
     Signer(SignerError),
     /// Event error
     Event(event::Error),
-    /// Unsigned event error
-    Unsigned(unsigned::Error),
     /// Not Gift Wrap event
     NotGiftWrap,
 }
@@ -43,9 +41,8 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Signer(e) => write!(f, "{e}"),
-            Self::Event(e) => write!(f, "Event: {e}"),
-            Self::Unsigned(e) => write!(f, "Unsigned event: {e}"),
-            Self::NotGiftWrap => write!(f, "Not Gift Wrap event"),
+            Self::Event(e) => write!(f, "{e}"),
+            Self::NotGiftWrap => write!(f, "Not a Gift Wrap"),
         }
     }
 }
@@ -59,12 +56,6 @@ impl From<SignerError> for Error {
 impl From<event::Error> for Error {
     fn from(e: event::Error) -> Self {
         Self::Event(e)
-    }
-}
-
-impl From<unsigned::Error> for Error {
-    fn from(e: unsigned::Error) -> Self {
-        Self::Unsigned(e)
     }
 }
 

@@ -17,43 +17,27 @@ use serde_json::Value;
 
 use super::nip04;
 use crate::types::url::form_urlencoded::byte_serialize;
-use crate::types::url::{self, ParseError, RelayUrl, Url};
-use crate::{key, Event, JsonUtil, PublicKey, SecretKey, Timestamp};
+use crate::types::url::{RelayUrl, Url};
 #[cfg(feature = "std")]
-use crate::{EventBuilder, Keys, Kind, Tag};
+use crate::{event, EventBuilder, Keys, Kind, Tag};
+use crate::{Event, JsonUtil, PublicKey, SecretKey, Timestamp};
 
 /// NIP47 error
 #[derive(Debug)]
 pub enum Error {
     /// JSON error
-    JSON(serde_json::Error),
-    /// Relay Url parse error
-    RelayUrl(url::Error),
-    /// Url parse error
-    Url(ParseError),
-    /// Keys error
-    Keys(key::Error),
+    Json(serde_json::Error),
     /// NIP04 error
     NIP04(nip04::Error),
     /// Event Builder error
     #[cfg(feature = "std")]
-    EventBuilder(crate::event::builder::Error),
-    /// Unsigned event error
-    UnsignedEvent(crate::event::unsigned::Error),
+    EventBuilder(event::builder::Error),
     /// Error code
     ErrorCode(NIP47Error),
-    /// NIP47 Error Code
-    UnexpectedResult(String),
-    /// Invalid request
-    InvalidRequest,
-    /// Too many/few params
-    InvalidParamsLength,
-    /// Unsupported method
-    UnsupportedMethod(String),
+    /// Unexpected result
+    UnexpectedResult,
     /// Invalid URI
     InvalidURI,
-    /// Invalid URI scheme
-    InvalidURIScheme,
 }
 
 #[cfg(feature = "std")]
@@ -62,46 +46,20 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::JSON(e) => write!(f, "Json: {e}"),
-            Self::RelayUrl(e) => write!(f, "{e}"),
-            Self::Url(e) => write!(f, "{e}"),
-            Self::Keys(e) => write!(f, "Keys: {e}"),
-            Self::NIP04(e) => write!(f, "NIP04: {e}"),
+            Self::Json(e) => write!(f, "J{e}"),
+            Self::NIP04(e) => write!(f, "{e}"),
             #[cfg(feature = "std")]
-            Self::EventBuilder(e) => write!(f, "Event Builder: {e}"),
-            Self::UnsignedEvent(e) => write!(f, "Unsigned event: {e}"),
+            Self::EventBuilder(e) => write!(f, "{e}"),
             Self::ErrorCode(e) => write!(f, "{e}"),
-            Self::UnexpectedResult(json) => write!(f, "Unexpected NIP47 result: {json}"),
-            Self::InvalidRequest => write!(f, "Invalid NIP47 Request"),
-            Self::InvalidParamsLength => write!(f, "Invalid NIP47 Params length"),
-            Self::UnsupportedMethod(e) => write!(f, "Unsupported method: {e}"),
-            Self::InvalidURI => write!(f, "Invalid NIP47 URI"),
-            Self::InvalidURIScheme => write!(f, "Invalid NIP47 URI Scheme"),
+            Self::UnexpectedResult => write!(f, "Unexpected result"),
+            Self::InvalidURI => write!(f, "Invalid URI"),
         }
     }
 }
 
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
-        Self::JSON(e)
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::RelayUrl(e)
-    }
-}
-
-impl From<ParseError> for Error {
-    fn from(e: ParseError) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Keys(e)
+        Self::Json(e)
     }
 }
 
@@ -112,14 +70,14 @@ impl From<nip04::Error> for Error {
 }
 
 #[cfg(feature = "std")]
-impl From<crate::event::builder::Error> for Error {
-    fn from(e: crate::event::builder::Error) -> Self {
+impl From<event::builder::Error> for Error {
+    fn from(e: event::builder::Error) -> Self {
         Self::EventBuilder(e)
     }
 }
 
 /// NIP47 Response Error codes
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum ErrorCode {
     ///  The client is sending commands too fast.
     #[serde(rename = "RATE_LIMITED")]
@@ -754,10 +712,10 @@ impl Response {
                     ResponseResult::LookupInvoice(result)
                 }
                 Method::ListTransactions => {
-                    let transactions: Value =
-                        result.get("transactions").cloned().ok_or_else(|| {
-                            Error::UnexpectedResult(String::from("Missing 'transactions' field"))
-                        })?;
+                    let transactions: Value = result
+                        .get("transactions")
+                        .cloned()
+                        .ok_or(Error::UnexpectedResult)?;
                     let result: Vec<LookupInvoiceResponse> = serde_json::from_value(transactions)?;
                     ResponseResult::ListTransactions(result)
                 }
@@ -795,7 +753,7 @@ impl Response {
             return Ok(result);
         }
 
-        Err(Error::UnexpectedResult(self.as_json()))
+        Err(Error::UnexpectedResult)
     }
 
     /// Covert [Response] to [PayKeysendResponse]
@@ -808,7 +766,7 @@ impl Response {
             return Ok(result);
         }
 
-        Err(Error::UnexpectedResult(self.as_json()))
+        Err(Error::UnexpectedResult)
     }
 
     /// Covert [Response] to [MakeInvoiceResponse]
@@ -821,7 +779,7 @@ impl Response {
             return Ok(result);
         }
 
-        Err(Error::UnexpectedResult(self.as_json()))
+        Err(Error::UnexpectedResult)
     }
 
     /// Covert [Response] to [LookupInvoiceResponse]
@@ -834,7 +792,7 @@ impl Response {
             return Ok(result);
         }
 
-        Err(Error::UnexpectedResult(self.as_json()))
+        Err(Error::UnexpectedResult)
     }
 
     /// Covert [Response] to list of [LookupInvoiceResponse]
@@ -847,7 +805,7 @@ impl Response {
             return Ok(result);
         }
 
-        Err(Error::UnexpectedResult(self.as_json()))
+        Err(Error::UnexpectedResult)
     }
 
     /// Covert [Response] to [GetBalanceResponse]
@@ -860,7 +818,7 @@ impl Response {
             return Ok(result);
         }
 
-        Err(Error::UnexpectedResult(self.as_json()))
+        Err(Error::UnexpectedResult)
     }
 
     /// Covert [Response] to [GetInfoResponse]
@@ -873,7 +831,7 @@ impl Response {
             return Ok(result);
         }
 
-        Err(Error::UnexpectedResult(self.as_json()))
+        Err(Error::UnexpectedResult)
     }
 }
 
@@ -937,14 +895,14 @@ impl NostrWalletConnectURI {
     where
         S: AsRef<str>,
     {
-        let url: Url = Url::parse(uri.as_ref())?;
+        let url: Url = Url::parse(uri.as_ref()).map_err(|_| Error::InvalidURI)?;
 
         if url.scheme() != NOSTR_WALLET_CONNECT_URI_SCHEME {
-            return Err(Error::InvalidURIScheme);
+            return Err(Error::InvalidURI);
         }
 
         if let Some(pubkey) = url.domain() {
-            let public_key = PublicKey::from_hex(pubkey)?;
+            let public_key = PublicKey::from_hex(pubkey).map_err(|_| Error::InvalidURI)?;
 
             let mut relay_url: Option<RelayUrl> = None;
             let mut secret: Option<SecretKey> = None;
@@ -953,10 +911,10 @@ impl NostrWalletConnectURI {
             for (key, value) in url.query_pairs() {
                 match key {
                     Cow::Borrowed("relay") => {
-                        relay_url = Some(RelayUrl::parse(value.as_ref())?);
+                        relay_url = RelayUrl::parse(value.as_ref()).ok();
                     }
                     Cow::Borrowed("secret") => {
-                        secret = Some(SecretKey::from_hex(value.as_ref())?);
+                        secret = SecretKey::from_hex(value.as_ref()).ok();
                     }
                     Cow::Borrowed("lud16") => {
                         lud16 = Some(value.to_string());

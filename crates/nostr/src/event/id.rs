@@ -13,39 +13,13 @@ use hashes::Hash;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 
+use super::error::Error;
 use super::{Kind, Tag};
 use crate::nips::nip13;
 use crate::nips::nip19::FromBech32;
 use crate::nips::nip21::NostrURI;
 use crate::util::hex;
 use crate::{PublicKey, Timestamp};
-
-/// [`EventId`] error
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    /// Hex decode error
-    Hex(hex::Error),
-    /// Invalid event ID
-    InvalidEventId,
-}
-
-#[cfg(feature = "std")]
-impl std::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Hex(e) => write!(f, "{e}"),
-            Self::InvalidEventId => write!(f, "Invalid event ID"),
-        }
-    }
-}
-
-impl From<hex::Error> for Error {
-    fn from(e: hex::Error) -> Self {
-        Self::Hex(e)
-    }
-}
 
 /// Event ID
 ///
@@ -108,7 +82,7 @@ impl EventId {
             return Ok(id);
         }
 
-        Err(Error::InvalidEventId)
+        Err(Error::InvalidId)
     }
 
     /// Parse from hex string
@@ -122,7 +96,7 @@ impl EventId {
     pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
         // Check len
         if slice.len() != Self::LEN {
-            return Err(Error::InvalidEventId);
+            return Err(Error::InvalidId);
         }
 
         // Copy bytes

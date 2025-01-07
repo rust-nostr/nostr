@@ -6,7 +6,7 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/49.md>
 
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::array::TryFromSliceError;
 use core::fmt;
@@ -32,8 +32,6 @@ const KEY_SIZE: usize = 32;
 /// NIP49 error
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
-    /// Try from slice
-    TryFromSlice(String),
     /// ChaCha20Poly1305 error
     ChaCha20Poly1305(chacha20poly1305::Error),
     /// Invalid scrypt params
@@ -42,6 +40,8 @@ pub enum Error {
     InvalidScryptOutputLen(InvalidOutputLen),
     /// Keys error
     Keys(key::Error),
+    /// Try from slice
+    TryFromSlice,
     /// Invalid len
     InvalidLength {
         /// Expected bytes len
@@ -49,8 +49,6 @@ pub enum Error {
         /// Found bytes len
         found: usize,
     },
-    /// Unsupported version
-    UnsupportedVersion(u8),
     /// Unknown version
     UnknownVersion(u8),
     /// Unknown Key Security
@@ -75,34 +73,23 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::TryFromSlice(e) => write!(f, "{e}"),
-            Self::ChaCha20Poly1305(e) => write!(f, "ChaCha20Poly1305: {e}"),
-            Self::InvalidScryptParams(e) => write!(f, "Invalid scrypt params: {e}"),
-            Self::InvalidScryptOutputLen(e) => write!(f, "Invalid scrypt output len: {e}"),
-            Self::Keys(e) => write!(f, "Keys: {e}"),
-            Self::InvalidLength { expected, found } => write!(
-                f,
-                "Invalid encrypted secret key bytes len: expected={expected}, found={found}"
-            ),
-            Self::UnsupportedVersion(v) => write!(
-                f,
-                "Unsupported encrypted secret key version: {v} (deprecated)"
-            ),
-            Self::UnknownVersion(v) => write!(f, "Unknown encrypted secret key version: {v}"),
-            Self::UnknownKeySecurity(v) => write!(f, "Unknown encrypted secret key security: {v}"),
-            Self::VersionNotFound => write!(f, "Encrypted secret key version not found"),
-            Self::Log2RoundNotFound => write!(f, "Encrypted secret key `log N` not found"),
-            Self::SaltNotFound => write!(f, "Encrypted secret key salt not found"),
-            Self::NonceNotFound => write!(f, "Encrypted secret key nonce not found"),
-            Self::KeySecurityNotFound => write!(f, "Encrypted secret key security not found"),
-            Self::CipherTextNotFound => write!(f, "Encrypted secret key ciphertext not found"),
+            Self::ChaCha20Poly1305(e) => write!(f, "{e}"),
+            Self::InvalidScryptParams(e) => write!(f, "{e}"),
+            Self::InvalidScryptOutputLen(e) => write!(f, "{e}"),
+            Self::Keys(e) => write!(f, "{e}"),
+            Self::TryFromSlice => write!(f, "From slice error"),
+            Self::InvalidLength { expected, found } => {
+                write!(f, "Invalid bytes len: expected={expected}, found={found}")
+            }
+            Self::UnknownVersion(v) => write!(f, "unknown version: {v}"),
+            Self::UnknownKeySecurity(v) => write!(f, "unknown security: {v}"),
+            Self::VersionNotFound => write!(f, "version not found"),
+            Self::Log2RoundNotFound => write!(f, "`log N` not found"),
+            Self::SaltNotFound => write!(f, "salt not found"),
+            Self::NonceNotFound => write!(f, "nonce not found"),
+            Self::KeySecurityNotFound => write!(f, "security not found"),
+            Self::CipherTextNotFound => write!(f, "ciphertext not found"),
         }
-    }
-}
-
-impl From<TryFromSliceError> for Error {
-    fn from(e: TryFromSliceError) -> Self {
-        Self::TryFromSlice(e.to_string())
     }
 }
 
@@ -130,6 +117,12 @@ impl From<key::Error> for Error {
     }
 }
 
+impl From<TryFromSliceError> for Error {
+    fn from(_e: TryFromSliceError) -> Self {
+        Self::TryFromSlice
+    }
+}
+
 /// Encrypted Secret Key version (NIP49)
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Version {
@@ -143,7 +136,7 @@ impl TryFrom<u8> for Version {
 
     fn try_from(version: u8) -> Result<Self, Self::Error> {
         match version {
-            0x01 => Err(Error::UnsupportedVersion(version)),
+            // 0x01 => deprecated,
             0x02 => Ok(Self::V2),
             v => Err(Error::UnknownVersion(v)),
         }

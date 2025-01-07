@@ -17,9 +17,8 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::Window;
 
-use crate::event::unsigned;
 use crate::signer::{NostrSigner, SignerBackend, SignerError};
-use crate::{key, Event, PublicKey, UnsignedEvent};
+use crate::{event, key, Event, PublicKey, UnsignedEvent};
 
 const GET_PUBLIC_KEY: &str = "getPublicKey";
 const SIGN_EVENT: &str = "signEvent";
@@ -42,7 +41,7 @@ pub enum Error {
     /// Keys error
     Keys(key::Error),
     /// Unsigned error
-    Unsigned(unsigned::Error),
+    Event(event::Error),
     /// Generic WASM error
     Wasm(String),
     /// Impossible to get window
@@ -63,7 +62,7 @@ impl fmt::Display for Error {
         match self {
             Self::Secp256k1(e) => write!(f, "{e}"),
             Self::Keys(e) => write!(f, "{e}"),
-            Self::Unsigned(e) => write!(f, "{e}"),
+            Self::Event(e) => write!(f, "{e}"),
             Self::Wasm(e) => write!(f, "{e}"),
             Self::NoGlobalWindowObject => write!(f, "No global `window` object"),
             Self::NamespaceNotFound(n) => write!(f, "`{n}` namespace not found"),
@@ -85,9 +84,9 @@ impl From<key::Error> for Error {
     }
 }
 
-impl From<unsigned::Error> for Error {
-    fn from(e: unsigned::Error) -> Self {
-        Self::Unsigned(e)
+impl From<event::Error> for Error {
+    fn from(e: event::Error) -> Self {
+        Self::Event(e)
     }
 }
 

@@ -44,17 +44,15 @@ const PRIVATE_ZAP_IV_BECH32_PREFIX: Hrp = Hrp::parse_unchecked("iv");
 #[allow(missing_docs)]
 #[derive(Debug)]
 pub enum Error {
-    Fmt(fmt::Error),
     Key(KeyError),
     Builder(BuilderError),
     Event(event::Error),
     Bech32Decode(bech32::DecodeError),
     Bech32Encode(bech32::EncodeError),
-    Secp256k1(secp256k1::Error),
     InvalidPrivateZapMessage,
     PrivateZapMessageNotFound,
     /// Wrong prefix or variant
-    WrongBech32PrefixOrVariant,
+    WrongBech32Prefix,
     /// Wrong encryption block mode
     WrongBlockMode,
 }
@@ -65,27 +63,19 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Fmt(e) => write!(f, "{e}"),
             Self::Key(e) => write!(f, "{e}"),
             Self::Builder(e) => write!(f, "{e}"),
             Self::Event(e) => write!(f, "{e}"),
             Self::Bech32Decode(e) => write!(f, "{e}"),
             Self::Bech32Encode(e) => write!(f, "{e}"),
-            Self::Secp256k1(e) => write!(f, "{e}"),
             Self::InvalidPrivateZapMessage => write!(f, "Invalid private zap message"),
             Self::PrivateZapMessageNotFound => write!(f, "Private zap message not found"),
-            Self::WrongBech32PrefixOrVariant => write!(f, "Wrong bech32 prefix or variant"),
+            Self::WrongBech32Prefix => write!(f, "Wrong bech32 prefix"),
             Self::WrongBlockMode => write!(
                 f,
                 "Wrong encryption block mode. The content must be encrypted using CBC mode!"
             ),
         }
-    }
-}
-
-impl From<fmt::Error> for Error {
-    fn from(e: fmt::Error) -> Self {
-        Self::Fmt(e)
     }
 }
 
@@ -116,12 +106,6 @@ impl From<bech32::DecodeError> for Error {
 impl From<bech32::EncodeError> for Error {
     fn from(e: bech32::EncodeError) -> Self {
         Self::Bech32Encode(e)
-    }
-}
-
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Self::Secp256k1(e)
     }
 }
 
@@ -412,13 +396,13 @@ fn decrypt_private_zap_message(key: [u8; 32], private_zap_event: &Event) -> Resu
     // IV
     let (hrp, iv) = bech32::decode(iv)?;
     if hrp != PRIVATE_ZAP_IV_BECH32_PREFIX {
-        return Err(Error::WrongBech32PrefixOrVariant);
+        return Err(Error::WrongBech32Prefix);
     }
 
     // Msg
     let (hrp, msg) = bech32::decode(msg)?;
     if hrp != PRIVATE_ZAP_MSG_BECH32_PREFIX {
-        return Err(Error::WrongBech32PrefixOrVariant);
+        return Err(Error::WrongBech32Prefix);
     }
 
     // Decrypt

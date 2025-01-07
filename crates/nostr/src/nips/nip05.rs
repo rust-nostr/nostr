@@ -21,16 +21,16 @@ use crate::{key, PublicKey, RelayUrl};
 /// `NIP05` error
 #[derive(Debug)]
 pub enum Error {
-    /// Invalid format
-    InvalidFormat,
-    /// Impossible to verify
-    ImpossibleToVerify,
     /// Reqwest error
     Reqwest(reqwest::Error),
     /// Error deserializing JSON data
     Json(serde_json::Error),
     /// Keys error
     Keys(key::Error),
+    /// Invalid format
+    InvalidFormat,
+    /// Impossible to verify
+    ImpossibleToVerify,
 }
 
 #[cfg(feature = "std")]
@@ -39,11 +39,11 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidFormat => write!(f, "invalid format"),
-            Self::ImpossibleToVerify => write!(f, "impossible to verify"),
             Self::Reqwest(e) => write!(f, "{e}"),
             Self::Json(e) => write!(f, "impossible to deserialize NIP05 data: {e}"),
             Self::Keys(e) => write!(f, "{e}"),
+            Self::InvalidFormat => write!(f, "invalid format"),
+            Self::ImpossibleToVerify => write!(f, "impossible to verify"),
         }
     }
 }

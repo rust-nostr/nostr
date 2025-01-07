@@ -30,7 +30,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::UnknownLiveEventMarker(u) => write!(f, "Unknown live event marker: {u}"),
+            Self::UnknownLiveEventMarker(u) => write!(f, "Unknown marker: {u}"),
             Self::DescriptionMissing => write!(f, "Event missing a description"),
         }
     }

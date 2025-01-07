@@ -18,7 +18,7 @@ use crate::{Event, PublicKey, UnsignedEvent};
 #[cfg(feature = "std")]
 type InnerError = Box<dyn std::error::Error + Send + Sync>;
 #[cfg(not(feature = "std"))]
-type InnerError = String; // TODO: remove core::error::Error will be stable for MSRV
+type InnerError = String; // TODO: remove when `core::error::Error` will be stable at MSRV
 
 /// Nostr Signer error
 #[derive(Debug)]

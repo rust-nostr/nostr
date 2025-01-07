@@ -20,9 +20,9 @@ use secp256k1::rand::RngCore;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::json;
 
-use crate::event::unsigned::{self, UnsignedEvent};
+use crate::event::unsigned::UnsignedEvent;
 use crate::types::url::{self, ParseError, RelayUrl, Url};
-use crate::{key, Event, JsonUtil, PublicKey};
+use crate::{event, key, Event, JsonUtil, PublicKey};
 
 /// NIP46 URI Scheme
 pub const NOSTR_CONNECT_URI_SCHEME: &str = "nostrconnect";
@@ -40,8 +40,8 @@ pub enum Error {
     RelayUrl(url::Error),
     /// Url parse error
     Url(ParseError),
-    /// Unsigned event error
-    Unsigned(unsigned::Error),
+    /// Event error
+    Event(event::Error),
     /// Invalid request
     InvalidRequest,
     /// Too many/few params
@@ -64,17 +64,17 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Key(e) => write!(f, "Key: {e}"),
-            Self::Json(e) => write!(f, "Json: {e}"),
+            Self::Key(e) => write!(f, "{e}"),
+            Self::Json(e) => write!(f, "{e}"),
             Self::RelayUrl(e) => write!(f, "{e}"),
             Self::Url(e) => write!(f, "{e}"),
-            Self::Unsigned(e) => write!(f, "Unsigned event: {e}"),
+            Self::Event(e) => write!(f, "{e}"),
             Self::InvalidRequest => write!(f, "Invalid request"),
-            Self::InvalidParamsLength => write!(f, "Too many/few params"),
+            Self::InvalidParamsLength => write!(f, "Invalid params len"),
             Self::UnsupportedMethod(name) => write!(f, "Unsupported method: {name}"),
             Self::InvalidURI => write!(f, "Invalid uri"),
             Self::InvalidURIScheme => write!(f, "Invalid uri scheme"),
-            Self::NotRequest => write!(f, "This message is not a request"),
+            Self::NotRequest => write!(f, "Not a request"),
             Self::UnexpectedResult => write!(f, "Unexpected result"),
         }
     }
@@ -104,9 +104,9 @@ impl From<ParseError> for Error {
     }
 }
 
-impl From<unsigned::Error> for Error {
-    fn from(e: unsigned::Error) -> Self {
-        Self::Unsigned(e)
+impl From<event::Error> for Error {
+    fn from(e: event::Error) -> Self {
+        Self::Event(e)
     }
 }
 
@@ -554,13 +554,6 @@ impl Message {
             Message::Response { .. } => false,
         }
     }
-
-    /* pub fn as_request(&self) -> Result<&Request, Error> {
-        match self {
-            Self::Request { req, .. } => Ok(req),
-            _ => Err(Error::NotRequest)
-        }
-    } */
 
     /// Consume [Message] and return [Request]
     #[inline]

@@ -23,7 +23,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::ParseIntError(e) => write!(f, "Parse integer: {e}"),
+            Self::ParseIntError(e) => write!(f, "{e}"),
             Self::InvalidImageDimensions => write!(f, "Invalid image dimensions"),
         }
     }

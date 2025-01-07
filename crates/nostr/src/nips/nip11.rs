@@ -21,14 +21,14 @@ use crate::{Timestamp, Url};
 /// `NIP11` error
 #[derive(Debug)]
 pub enum Error {
+    /// Reqwest error
+    Reqwest(reqwest::Error),
     /// The relay information document is invalid
     InvalidInformationDocument,
     /// The relay information document is not accessible
     InaccessibleInformationDocument,
     /// Provided URL scheme is not valid
     InvalidScheme,
-    /// Reqwest error
-    Reqwest(reqwest::Error),
 }
 
 impl std::error::Error for Error {}
@@ -36,6 +36,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Reqwest(e) => write!(f, "{e}"),
             Self::InvalidInformationDocument => {
                 write!(f, "The relay information document is invalid")
             }
@@ -43,7 +44,6 @@ impl fmt::Display for Error {
                 write!(f, "The relay information document is not accessible")
             }
             Self::InvalidScheme => write!(f, "Provided URL scheme is not valid"),
-            Self::Reqwest(e) => write!(f, "{e}"),
         }
     }
 }
