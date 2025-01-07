@@ -34,6 +34,7 @@
 * nostr: update `ClientMessage::neg_open` signature ([Yuki Kishimoto])
 * nostr: remove `ClientMessage::neg_open_deprecated` ([Yuki Kishimoto])
 * pool: change `Relay::connect` method signature ([Yuki Kishimoto])
+* ffi: remove embedded tor client ([Yuki Kishimoto])
 
 ### Changed
 
@@ -71,6 +72,7 @@
 * relay-builder: remove `thiserror` dep ([Yuki Kishimoto])
 * ffi: remove `profile` module ([Yuki Kishimoto])
 * ffi: remove `NostrLibrary` struct and keep only `git_hash_version` func ([Yuki Kishimoto])
+* ffi: remove embedded tor client ([Yuki Kishimoto])
 
 ### Deprecated
 

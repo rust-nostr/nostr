@@ -8,8 +8,8 @@ async def main():
     keys = Keys.generate()
     print(keys.public_key().to_bech32())
 
-    # Configure client to use embedded tor for `.onion` relays
-    connection = Connection().embedded_tor().target(ConnectionTarget.ONION)
+    # Configure client to a proxy for `.onion` relays
+    connection = Connection().proxy("127.0.0.1:9050").target(ConnectionTarget.ONION)
     opts = Options().connection(connection)
     signer = NostrSigner.keys(keys)
     client = ClientBuilder().signer(signer).opts(opts).build()
