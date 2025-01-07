@@ -479,10 +479,7 @@ impl Client {
             .into())
     }
 
-    /// Fetch the newest public key metadata from database and connected relays.
-    ///
-    /// If you only want to consult cached data,
-    /// consider `client.database().profile(PUBKEY)`.
+    /// Fetch the newest public key metadata from relays
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     pub async fn fetch_metadata(

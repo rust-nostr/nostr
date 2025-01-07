@@ -5,7 +5,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr_sdk::prelude::{self, IntoNostrDatabase, NostrEventsDatabaseExt};
+use nostr_sdk::prelude::{self, IntoNostrDatabase};
 #[cfg(feature = "ndb")]
 use nostr_sdk::NdbDatabase;
 #[cfg(feature = "lmdb")]
@@ -16,7 +16,7 @@ pub mod events;
 
 use self::events::Events;
 use crate::error::Result;
-use crate::protocol::{Event, EventId, Filter, Metadata, PublicKey};
+use crate::protocol::{Event, Filter};
 
 /// Reason why event wasn't stored into the database
 #[derive(Enum)]
@@ -116,27 +116,9 @@ impl NostrDatabase {
 
 #[uniffi::export(async_runtime = "tokio")]
 impl NostrDatabase {
-    // TODO: revert 4da38c9406f8552eef48ffe7ed4486ddc52392a6
-    // TODO: re-allow to use custom database (only for events)?
-
     /// Save [`Event`] into store
     pub async fn save_event(&self, event: &Event) -> Result<SaveEventStatus> {
         Ok(self.inner.save_event(event.deref()).await?.into())
-    }
-
-    /// Get list of relays that have seen the [`EventId`]
-    pub async fn event_seen_on_relays(&self, event_id: &EventId) -> Result<Option<Vec<String>>> {
-        let res = self.inner.event_seen_on_relays(event_id.deref()).await?;
-        Ok(res.map(|set| set.into_iter().map(|u| u.to_string()).collect()))
-    }
-
-    /// Get [`Event`] by [`EventId`]
-    pub async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Arc<Event>>> {
-        Ok(self
-            .inner
-            .event_by_id(event_id.deref())
-            .await?
-            .map(|e| Arc::new(e.into())))
     }
 
     pub async fn count(&self, filters: Vec<Arc<Filter>>) -> Result<u64> {
@@ -147,12 +129,12 @@ impl NostrDatabase {
         Ok(self.inner.count(filters).await? as u64)
     }
 
-    pub async fn query(&self, filters: Vec<Arc<Filter>>) -> Result<Arc<Events>> {
+    pub async fn query(&self, filters: Vec<Arc<Filter>>) -> Result<Events> {
         let filters = filters
             .into_iter()
             .map(|f| f.as_ref().deref().clone())
             .collect();
-        Ok(Arc::new(self.inner.query(filters).await?.into()))
+        Ok(self.inner.query(filters).await?.into())
     }
 
     /// Delete all events that match the `Filter`
@@ -163,13 +145,5 @@ impl NostrDatabase {
     /// Wipe all data
     pub async fn wipe(&self) -> Result<()> {
         Ok(self.inner.wipe().await?)
-    }
-
-    pub async fn metadata(&self, public_key: &PublicKey) -> Result<Option<Arc<Metadata>>> {
-        Ok(self
-            .inner
-            .metadata(**public_key)
-            .await?
-            .map(|m| Arc::new(m.into())))
     }
 }

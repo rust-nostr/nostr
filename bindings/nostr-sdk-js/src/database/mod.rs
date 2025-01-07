@@ -5,7 +5,6 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use js_sys::Array;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -13,10 +12,8 @@ pub mod events;
 
 pub use self::events::JsEvents;
 use crate::error::{into_err, Result};
-use crate::protocol::event::{JsEvent, JsEventId};
-use crate::protocol::key::JsPublicKey;
-use crate::protocol::types::{JsFilter, JsMetadata};
-use crate::JsStringArray;
+use crate::protocol::event::JsEvent;
+use crate::protocol::types::JsFilter;
 
 #[wasm_bindgen(js_name = SaveEventStatus)]
 pub enum JsSaveEventStatus {
@@ -102,35 +99,6 @@ impl JsNostrDatabase {
     pub async fn save_event(&self, event: &JsEvent) -> Result<JsSaveEventStatus> {
         Ok(self.inner.save_event(event).await.map_err(into_err)?.into())
     }
-    /// Get list of relays that have seen the [`EventId`]
-    #[wasm_bindgen(js_name = eventSeenOnRelays)]
-    pub async fn event_seen_on_relays(
-        &self,
-        event_id: &JsEventId,
-    ) -> Result<Option<JsStringArray>> {
-        let res = self
-            .inner
-            .event_seen_on_relays(event_id.deref())
-            .await
-            .map_err(into_err)?;
-        Ok(res.map(|set| {
-            set.into_iter()
-                .map(|u| JsValue::from(u.to_string()))
-                .collect::<Array>()
-                .unchecked_into()
-        }))
-    }
-
-    /// Get [`Event`] by [`EventId`]
-    #[wasm_bindgen(js_name = eventById)]
-    pub async fn event_by_id(&self, event_id: &JsEventId) -> Result<Option<JsEvent>> {
-        Ok(self
-            .inner
-            .event_by_id(event_id.deref())
-            .await
-            .map_err(into_err)?
-            .map(|e| e.into()))
-    }
 
     pub async fn count(&self, filters: Vec<JsFilter>) -> Result<u64> {
         let filters = filters.into_iter().map(|f| f.into()).collect();
@@ -145,14 +113,5 @@ impl JsNostrDatabase {
     /// Wipe all data
     pub async fn wipe(&self) -> Result<()> {
         self.inner.wipe().await.map_err(into_err)
-    }
-
-    pub async fn metadata(&self, public_key: &JsPublicKey) -> Result<Option<JsMetadata>> {
-        Ok(self
-            .inner
-            .metadata(**public_key)
-            .await
-            .map_err(into_err)?
-            .map(|m| m.into()))
     }
 }
