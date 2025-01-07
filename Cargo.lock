@@ -2844,7 +2844,6 @@ dependencies = [
  "dialoguer",
  "nostr",
  "nostr-relay-pool",
- "thiserror 1.0.64",
  "tokio",
  "tracing",
  "tracing-subscriber",

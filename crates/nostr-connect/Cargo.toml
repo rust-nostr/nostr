@@ -20,7 +20,6 @@ async-trait.workspace = true
 async-utility.workspace = true
 nostr = { workspace = true, features = ["std", "nip04", "nip44", "nip46"] }
 nostr-relay-pool.workspace = true
-thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 tracing.workspace = true
 
