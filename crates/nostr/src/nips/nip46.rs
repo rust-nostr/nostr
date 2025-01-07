@@ -15,8 +15,8 @@ use core::str::FromStr;
 use std::collections::HashMap;
 
 #[cfg(feature = "std")]
-use bitcoin::secp256k1::rand;
-use bitcoin::secp256k1::rand::RngCore;
+use secp256k1::rand;
+use secp256k1::rand::RngCore;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::json;
 

@@ -14,7 +14,7 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
-use bitcoin::hashes::sha256::Hash as Sha256Hash;
+use hashes::sha256::Hash as Sha256Hash;
 
 use crate::{Tag, TagStandard, Url};
 

@@ -81,6 +81,7 @@
 ### Removed
 
 * nostr: remove `negentropy` deps ([Yuki Kishimoto])
+* nostr: remove `bitcoin` dep ([Yuki Kishimoto])
 * connect: remove `thiserror` dep ([Yuki Kishimoto])
 * relay-builder: remove `thiserror` dep ([Yuki Kishimoto])
 * ffi: remove unnecessary `Arc` ([Yuki Kishimoto])

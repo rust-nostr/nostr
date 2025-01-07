@@ -13,7 +13,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
 
-use bitcoin::hashes::sha1::Hash as Sha1Hash;
+use hashes::sha1::Hash as Sha1Hash;
 
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip10::Marker;

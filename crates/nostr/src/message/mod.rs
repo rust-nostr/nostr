@@ -7,11 +7,11 @@
 use alloc::string::{String, ToString};
 use core::fmt;
 
-use bitcoin::hashes::sha256::Hash as Sha256Hash;
-use bitcoin::hashes::Hash;
+use hashes::sha256::Hash as Sha256Hash;
+use hashes::Hash;
 #[cfg(feature = "std")]
-use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::rand::RngCore;
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::rand::RngCore;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 pub mod client;

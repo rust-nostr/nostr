@@ -9,7 +9,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use bitcoin::hashes::sha256::Hash as Sha256Hash;
+use hashes::sha256::Hash as Sha256Hash;
 
 use crate::{ImageDimensions, Tag, TagKind, TagStandard, Url};
 

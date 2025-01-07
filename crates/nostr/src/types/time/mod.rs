@@ -11,8 +11,8 @@ use core::str::{self, FromStr};
 use core::time::Duration;
 
 #[cfg(feature = "std")]
-use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::rand::Rng;
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::rand::Rng;
 
 mod supplier;
 

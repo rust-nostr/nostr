@@ -12,13 +12,13 @@ use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
 
-use bitcoin::hashes::sha256::Hash as Sha256Hash;
-use bitcoin::hashes::Hash;
+use hashes::sha256::Hash as Sha256Hash;
+use hashes::Hash;
 #[cfg(feature = "std")]
-use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::rand::{CryptoRng, Rng};
-use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Message, Secp256k1, Signing, Verification, XOnlyPublicKey};
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::rand::{CryptoRng, Rng};
+use secp256k1::schnorr::Signature;
+use secp256k1::{self, Message, Secp256k1, Signing, Verification, XOnlyPublicKey};
 use serde::de::Error as DeserializerError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
@@ -552,7 +552,7 @@ impl EventProperties {
 mod tests {
     use core::str::FromStr;
 
-    use bitcoin::secp256k1::Secp256k1;
+    use secp256k1::Secp256k1;
 
     use super::*;
     use crate::SecretKey;

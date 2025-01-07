@@ -5,8 +5,9 @@
 use core::fmt;
 use core::num::ParseIntError;
 
+use hashes::hex::HexToArrayError;
+
 use crate::event::id;
-use crate::hashes::hex::HexToArrayError;
 use crate::nips::{nip01, nip10, nip26, nip39, nip53, nip65, nip98};
 use crate::types::image;
 use crate::types::url::{Error as RelayUrlError, ParseError};

@@ -12,7 +12,7 @@ use core::fmt;
 use core::str::FromStr;
 
 use bip39::Mnemonic;
-use bitcoin::secp256k1::{Secp256k1, Signing};
+use secp256k1::{Secp256k1, Signing};
 
 mod bip32;
 

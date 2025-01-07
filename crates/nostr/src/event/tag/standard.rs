@@ -8,9 +8,9 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::str::FromStr;
 
-use bitcoin::hashes::sha1::Hash as Sha1Hash;
-use bitcoin::hashes::sha256::Hash as Sha256Hash;
-use bitcoin::secp256k1::schnorr::Signature;
+use hashes::sha1::Hash as Sha1Hash;
+use hashes::sha256::Hash as Sha256Hash;
+use secp256k1::schnorr::Signature;
 
 use super::{Error, TagKind};
 use crate::event::id::EventId;

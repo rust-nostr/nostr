@@ -13,14 +13,14 @@ use core::array::TryFromSliceError;
 use core::ops::{Deref, Range};
 use core::{fmt, iter};
 
-use bitcoin::hashes::hmac::{Hmac, HmacEngine};
-use bitcoin::hashes::sha256::Hash as Sha256Hash;
-use bitcoin::hashes::{FromSliceError, Hash, HashEngine};
-#[cfg(feature = "std")]
-use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::rand::RngCore;
 use chacha20::cipher::{KeyIvInit, StreamCipher};
 use chacha20::ChaCha20;
+use hashes::hmac::{Hmac, HmacEngine};
+use hashes::sha256::Hash as Sha256Hash;
+use hashes::{FromSliceError, Hash, HashEngine};
+#[cfg(feature = "std")]
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::rand::RngCore;
 
 use super::Error;
 use crate::util::{self, hkdf};

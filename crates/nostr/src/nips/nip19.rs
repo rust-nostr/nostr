@@ -68,7 +68,7 @@ pub enum Error {
     /// UFT-8 error
     UTF8(Utf8Error),
     /// Hash error
-    Hash(bitcoin::hashes::FromSliceError),
+    Hash(hashes::FromSliceError),
     /// Keys error
     Keys(key::Error),
     /// EventId error

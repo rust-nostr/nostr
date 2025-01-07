@@ -10,8 +10,7 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
-use bitcoin::secp256k1;
-use bitcoin::secp256k1::schnorr::Signature;
+use secp256k1::schnorr::Signature;
 
 use super::{id, tag};
 use crate::{key, Event, EventId, JsonUtil, Kind, PartialEvent, PublicKey, Tag, Timestamp};

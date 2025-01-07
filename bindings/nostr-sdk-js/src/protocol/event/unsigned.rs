@@ -5,7 +5,6 @@
 use core::ops::Deref;
 use core::str::FromStr;
 
-use nostr_sdk::bitcoin::secp256k1::schnorr::Signature;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 

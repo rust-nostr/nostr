@@ -13,8 +13,8 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::str::FromStr;
 
-use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{Message, Secp256k1, Verification};
+use secp256k1::schnorr::Signature;
+use secp256k1::{Message, Secp256k1, Verification};
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;

@@ -11,7 +11,7 @@
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use bitcoin::hashes::sha1::Hash as Sha1Hash;
+use hashes::sha1::Hash as Sha1Hash;
 
 use crate::types::url::Url;
 use crate::{EventBuilder, Kind, Tag, TagKind};

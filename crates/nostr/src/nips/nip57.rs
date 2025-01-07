@@ -14,13 +14,13 @@ use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use bech32::{Bech32, Hrp};
-use bitcoin::hashes::sha256::Hash as Sha256Hash;
-use bitcoin::hashes::Hash;
-#[cfg(feature = "std")]
-use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::rand::{CryptoRng, RngCore};
-use bitcoin::secp256k1::{self, Secp256k1, Signing, Verification};
 use cbc::{Decryptor, Encryptor};
+use hashes::sha256::Hash as Sha256Hash;
+use hashes::Hash;
+#[cfg(feature = "std")]
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::rand::{CryptoRng, RngCore};
+use secp256k1::{self, Secp256k1, Signing, Verification};
 
 use super::nip01::Coordinate;
 use crate::event::builder::Error as BuilderError;

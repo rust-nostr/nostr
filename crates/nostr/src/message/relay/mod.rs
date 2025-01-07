@@ -400,7 +400,7 @@ impl TryFrom<RawRelayMessage> for RelayMessage {
 mod tests {
     use core::str::FromStr;
 
-    use bitcoin::secp256k1::schnorr::Signature;
+    use secp256k1::schnorr::Signature;
 
     use super::*;
     use crate::{Kind, PublicKey, Timestamp};

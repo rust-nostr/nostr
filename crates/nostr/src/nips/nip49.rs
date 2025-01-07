@@ -11,13 +11,13 @@ use alloc::vec::Vec;
 use core::array::TryFromSliceError;
 use core::fmt;
 
-#[cfg(feature = "std")]
-use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::rand::{CryptoRng, RngCore};
 use chacha20poly1305::aead::{Aead, AeadCore, KeyInit, Payload};
 use chacha20poly1305::XChaCha20Poly1305;
 use scrypt::errors::{InvalidOutputLen, InvalidParams};
 use scrypt::Params as ScryptParams;
+#[cfg(feature = "std")]
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::rand::{CryptoRng, RngCore};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use unicode_normalization::UnicodeNormalization;
 

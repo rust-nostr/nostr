@@ -12,8 +12,8 @@ use core::fmt;
 
 use base64::engine::{general_purpose, Engine};
 #[cfg(feature = "std")]
-use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::rand::RngCore;
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::rand::RngCore;
 
 pub mod v2;
 

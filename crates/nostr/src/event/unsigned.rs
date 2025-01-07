@@ -8,10 +8,10 @@ use alloc::string::{String, ToString};
 use core::fmt;
 
 #[cfg(feature = "std")]
-use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::rand::{CryptoRng, Rng};
-use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{Message, Secp256k1, Signing, Verification};
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::rand::{CryptoRng, Rng};
+use secp256k1::schnorr::Signature;
+use secp256k1::{Message, Secp256k1, Signing, Verification};
 
 use crate::{Event, EventId, JsonUtil, Keys, Kind, PublicKey, SignerError, Tag, Tags, Timestamp};
 #[cfg(feature = "std")]

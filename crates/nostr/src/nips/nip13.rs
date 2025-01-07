@@ -61,7 +61,7 @@ pub fn get_prefixes_for_difficulty(leading_zero_bits: u8) -> Vec<String> {
 pub mod tests {
     use core::str::FromStr;
 
-    use bitcoin::hashes::sha256::Hash as Sha256Hash;
+    use hashes::sha256::Hash as Sha256Hash;
 
     use super::*;
 

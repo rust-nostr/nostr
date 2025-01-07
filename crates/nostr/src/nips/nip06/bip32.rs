@@ -8,8 +8,8 @@
 use alloc::vec::Vec;
 use core::fmt;
 
-use bitcoin::hashes::{hash160, sha512, Hash, HashEngine, Hmac, HmacEngine};
-use bitcoin::secp256k1::{self, PublicKey, Secp256k1, SecretKey, Signing};
+use hashes::{hash160, sha512, Hash, HashEngine, Hmac, HmacEngine};
+use secp256k1::{self, PublicKey, Secp256k1, SecretKey, Signing};
 
 /// A BIP32 error
 #[derive(Debug, Clone, PartialEq, Eq)]

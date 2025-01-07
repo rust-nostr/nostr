@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
-use bitcoin::secp256k1::schnorr::Signature;
+use secp256k1::schnorr::Signature;
 
 use crate::types::{RelayUrl, Url};
 use crate::{

@@ -8,12 +8,12 @@ use alloc::string::String;
 use core::fmt::Debug;
 
 #[cfg(feature = "std")]
-use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::{ecdh, Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey};
-#[cfg(feature = "std")]
-use bitcoin::secp256k1::{All, Secp256k1};
-#[cfg(feature = "std")]
 use once_cell::sync::Lazy; // TODO: use `std::sync::LazyLock` when MSRV >= 1.80.0
+#[cfg(feature = "std")]
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::{ecdh, Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey};
+#[cfg(feature = "std")]
+use secp256k1::{All, Secp256k1};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 

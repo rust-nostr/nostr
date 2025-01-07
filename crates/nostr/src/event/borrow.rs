@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 
-use bitcoin::secp256k1::schnorr::Signature;
+use secp256k1::schnorr::Signature;
 
 use super::tag::cow::CowTag;
 use crate::{Event, EventId, Kind, PublicKey, Tags, Timestamp};

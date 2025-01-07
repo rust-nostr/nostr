@@ -9,7 +9,7 @@ use alloc::string::String;
 use core::fmt;
 use core::ops::Range;
 
-use bitcoin::secp256k1::{Secp256k1, Verification};
+use secp256k1::{Secp256k1, Verification};
 
 use crate::event::unsigned::{self, UnsignedEvent};
 use crate::event::{self, Event};

@@ -393,7 +393,7 @@ impl From<TagStandard> for Tag {
 mod tests {
     use core::str::FromStr;
 
-    use bitcoin::secp256k1::schnorr::Signature;
+    use secp256k1::schnorr::Signature;
 
     use super::*;
     use crate::{Alphabet, Event, JsonUtil, Kind, Timestamp};

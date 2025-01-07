@@ -11,9 +11,9 @@ use core::fmt;
 use core::ops::Range;
 
 #[cfg(feature = "std")]
-use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::rand::{CryptoRng, Rng};
-use bitcoin::secp256k1::{Secp256k1, Signing, Verification};
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::rand::{CryptoRng, Rng};
+use secp256k1::{Secp256k1, Signing, Verification};
 use serde_json::{json, Value};
 
 use super::tag::weak::WeakTag;

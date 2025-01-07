@@ -21,14 +21,15 @@ std = [
     "dep:url",
     "base64?/std",
     "bech32/std",
-    "bitcoin/std",
-    "bitcoin/rand-std",
     "bip39?/std",
+    "bitcoin_hashes/std",
     "cbc?/std",
     "chacha20?/std",
     "chacha20poly1305?/std",
     "once_cell/std",
     "scrypt?/std",
+    "secp256k1/std",
+    "secp256k1/rand-std",
     "serde/std",
     "serde_json/std",
     "serde_json/preserve_order",
@@ -38,9 +39,11 @@ alloc = [
     "dep:url-fork",
     "base64?/alloc",
     "bech32/alloc",
+    "bitcoin_hashes/alloc",
     "cbc?/alloc",
     "chacha20poly1305?/alloc",
     "once_cell/alloc",
+    "secp256k1/alloc",
     "serde/alloc",
     "serde_json/alloc",
 ]
@@ -62,9 +65,9 @@ nip59 = ["nip44"]
 aes = { version = "0.8", optional = true }
 async-trait.workspace = true
 base64 = { version = "0.22", default-features = false, optional = true }
-bech32 = { version = "0.11", default-features = false } # bitcoin uses v0.11
+bech32 = { version = "0.11", default-features = false }
+bitcoin_hashes = { version = "0.14", default-features = false, features = ["serde"] } # TODO: remove serde feature
 bip39 = { version = "2.1", default-features = false, optional = true }
-bitcoin = { version = "0.32", default-features = false, features = ["rand", "serde"] }
 cbc = { version = "0.1", optional = true }
 chacha20 = { version = "0.9", optional = true }
 chacha20poly1305 = { version = "0.10", default-features = false, features = ["getrandom"], optional = true }
@@ -72,6 +75,7 @@ nostr-ots = { version = "0.2", optional = true }
 once_cell.workspace = true
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "socks"], optional = true }
 scrypt = { version = "0.11", default-features = false, optional = true }
+secp256k1 = { version = "0.29", default-features = false, features = ["rand", "serde"] }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json.workspace = true
 unicode-normalization = { version = "0.1", default-features = false, optional = true }

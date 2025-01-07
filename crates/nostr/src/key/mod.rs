@@ -18,10 +18,10 @@ use std::sync::OnceLock as OnceCell;
 #[cfg(feature = "std")]
 use async_trait::async_trait;
 #[cfg(feature = "std")]
-use bitcoin::secp256k1::rand::rngs::OsRng;
-use bitcoin::secp256k1::rand::{CryptoRng, Rng};
-use bitcoin::secp256k1::schnorr::Signature;
-use bitcoin::secp256k1::{self, Keypair, Message, Secp256k1, Signing, XOnlyPublicKey};
+use secp256k1::rand::rngs::OsRng;
+use secp256k1::rand::{CryptoRng, Rng};
+use secp256k1::schnorr::Signature;
+use secp256k1::{self, Keypair, Message, Secp256k1, Signing, XOnlyPublicKey};
 
 pub mod public_key;
 pub mod secret_key;

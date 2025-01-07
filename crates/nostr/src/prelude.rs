@@ -12,8 +12,8 @@
 // External crates
 #[cfg(feature = "nip06")]
 pub use bip39::Mnemonic;
-pub use bitcoin::secp256k1::rand;
-pub use bitcoin::secp256k1::schnorr::Signature;
+pub use secp256k1::rand;
+pub use secp256k1::schnorr::Signature;
 pub use serde_json::Value;
 
 // Internal modules

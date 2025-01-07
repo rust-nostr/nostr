@@ -928,7 +928,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use bitcoin::secp256k1::schnorr::Signature;
+    use secp256k1::schnorr::Signature;
 
     use super::*;
     use crate::Tag;
@@ -1231,7 +1231,7 @@ mod tests {
 mod benches {
     use core::str::FromStr;
 
-    use bitcoin::secp256k1::schnorr::Signature;
+    use secp256k1::schnorr::Signature;
     use test::{black_box, Bencher};
 
     use super::*;

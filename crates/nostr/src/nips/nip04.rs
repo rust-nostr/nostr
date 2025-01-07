@@ -17,10 +17,10 @@ use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use base64::engine::{general_purpose, Engine};
-#[cfg(feature = "std")]
-use bitcoin::secp256k1::rand;
-use bitcoin::secp256k1::rand::RngCore;
 use cbc::{Decryptor, Encryptor};
+#[cfg(feature = "std")]
+use secp256k1::rand;
+use secp256k1::rand::RngCore;
 
 use crate::{key, util, PublicKey, SecretKey};
 

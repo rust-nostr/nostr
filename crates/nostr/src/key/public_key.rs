@@ -10,7 +10,7 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::str::FromStr;
 
-use bitcoin::secp256k1::XOnlyPublicKey;
+use secp256k1::XOnlyPublicKey;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use super::Error;

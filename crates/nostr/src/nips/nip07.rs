@@ -11,9 +11,8 @@ use core::fmt;
 use core::str::FromStr;
 
 use async_trait::async_trait;
-use bitcoin::secp256k1;
-use bitcoin::secp256k1::schnorr::Signature;
 use js_sys::{Array, Function, JsString, Object, Promise, Reflect};
+use secp256k1::schnorr::Signature;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::Window;

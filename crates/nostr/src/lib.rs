@@ -24,12 +24,13 @@ extern crate test;
 #[cfg(feature = "std")]
 #[macro_use]
 extern crate std;
-
 #[macro_use]
 extern crate alloc;
 
 #[macro_use]
 extern crate serde;
+pub extern crate bitcoin_hashes as hashes;
+pub extern crate secp256k1;
 
 #[doc(hidden)]
 #[cfg(any(feature = "nip04", feature = "nip44"))]
@@ -37,8 +38,6 @@ pub use base64;
 #[doc(hidden)]
 #[cfg(feature = "nip06")]
 pub use bip39;
-#[doc(hidden)]
-pub use bitcoin::{self, hashes, secp256k1};
 #[doc(hidden)]
 pub use serde_json;
 

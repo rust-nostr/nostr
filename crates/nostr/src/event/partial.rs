@@ -9,8 +9,7 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
-use bitcoin::secp256k1;
-use bitcoin::secp256k1::schnorr::Signature;
+use secp256k1::schnorr::Signature;
 
 use super::raw::{self, RawEvent};
 use super::tag;
