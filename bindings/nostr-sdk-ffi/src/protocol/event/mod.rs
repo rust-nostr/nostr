@@ -73,20 +73,10 @@ impl Event {
         self.inner.sig.to_string()
     }
 
-    /// Verify both `EventId` and `Signature`
+    /// Verify both the event ID and the signature
     pub fn verify(&self) -> bool {
         // TODO: return `Result` instead?
         self.inner.verify().is_ok()
-    }
-
-    /// Verify if the `EventId` it's composed correctly
-    pub fn verify_id(&self) -> bool {
-        self.inner.verify_id()
-    }
-
-    /// Verify only event `Signature`
-    pub fn verify_signature(&self) -> bool {
-        self.inner.verify_signature()
     }
 
     /// Returns `true` if the event has an expiration tag that is expired.
