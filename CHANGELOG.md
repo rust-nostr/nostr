@@ -62,6 +62,8 @@
 
 ### Removed
 
+* ffi: remove `profile` module ([Yuki Kishimoto])
+
 ### Deprecated
 
 ## [v0.38.0] - 2024/12/31

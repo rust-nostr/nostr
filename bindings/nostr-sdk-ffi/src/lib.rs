@@ -14,7 +14,6 @@ pub mod logger;
 pub mod negentropy;
 pub mod notifications;
 pub mod nwc;
-pub mod profile;
 pub mod protocol;
 pub mod relay;
 mod util;
