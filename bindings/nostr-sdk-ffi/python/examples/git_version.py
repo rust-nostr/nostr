@@ -1,4 +1,3 @@
-from nostr_sdk import NostrLibrary
+from nostr_sdk import git_hash_version
 
-git_hash = NostrLibrary().git_hash_version()
-print(git_hash)
+print(git_hash_version())

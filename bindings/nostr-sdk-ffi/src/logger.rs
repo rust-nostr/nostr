@@ -15,8 +15,6 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::Layer;
 use uniffi::Enum;
 
-use crate::NostrLibrary;
-
 #[derive(Enum)]
 pub enum LogLevel {
     Error,
@@ -50,7 +48,7 @@ pub fn init_logger(level: LogLevel) {
             tracing::info!("Desktop logger initialized");
 
             // Log git hash (defined at compile time)
-            match NostrLibrary::new().git_hash_version() {
+            match crate::git_hash_version() {
                 Some(hash) => tracing::info!("Git hash: {hash}"),
                 None => tracing::warn!("Git hash not defined!"),
             };
@@ -83,7 +81,7 @@ pub fn init_logger(level: LogLevel) {
             tracing::info!("Mobile logger initialized");
 
             // Log git hash (defined at compile time)
-            match NostrLibrary::new().git_hash_version() {
+            match crate::git_hash_version() {
                 Some(hash) => tracing::info!("Git hash: {hash}"),
                 None => tracing::warn!("Git hash not defined!"),
             };

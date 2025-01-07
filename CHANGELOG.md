@@ -64,6 +64,7 @@
 ### Removed
 
 * ffi: remove `profile` module ([Yuki Kishimoto])
+* ffi: remove `NostrLibrary` struct and keep only `git_hash_version` func ([Yuki Kishimoto])
 
 ### Deprecated
 

@@ -4,8 +4,6 @@
 
 #![allow(clippy::new_without_default)]
 
-use uniffi::Object;
-
 pub mod client;
 pub mod connect;
 pub mod database;
@@ -18,19 +16,10 @@ pub mod protocol;
 pub mod relay;
 mod util;
 
-#[derive(Object)]
-pub struct NostrLibrary;
-
+/// Get git hash version of `rust-nostr` libraries
 #[uniffi::export]
-impl NostrLibrary {
-    #[uniffi::constructor]
-    pub fn new() -> Self {
-        Self
-    }
-
-    pub fn git_hash_version(&self) -> Option<String> {
-        option_env!("GIT_HASH").map(|v| v.to_string())
-    }
+pub fn git_hash_version() -> Option<String> {
+    option_env!("GIT_HASH").map(|v| v.to_string())
 }
 
 // Changes to this arg will break binding packages (in particular Swift).
