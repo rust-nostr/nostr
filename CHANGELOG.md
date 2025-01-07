@@ -54,6 +54,7 @@
 * nostr: move `types::filter` to `crate::filter` ([Yuki Kishimoto])
 * nostr: move `Metadata` struct to `nip01` module ([Yuki Kishimoto])
 * nostr: cleanup error enums ([Yuki Kishimoto])
+* nostr: use `SECP256K1` global context from `secp256k1` crate ([Yuki Kishimoto])
 * pool: update `Error::WebSocket` variant inner type ([Yuki Kishimoto])
 * lmdb: use `EventBorrow` instead of `DatabaseEvent` ([Yuki Kishimoto])
 * ndb: refactor note-to-event conversion ([Yuki Kishimoto])
@@ -82,6 +83,7 @@
 
 * nostr: remove `negentropy` deps ([Yuki Kishimoto])
 * nostr: remove `bitcoin` dep ([Yuki Kishimoto])
+* nostr: remove `once_cell` dep ([Yuki Kishimoto])
 * connect: remove `thiserror` dep ([Yuki Kishimoto])
 * relay-builder: remove `thiserror` dep ([Yuki Kishimoto])
 * ffi: remove unnecessary `Arc` ([Yuki Kishimoto])

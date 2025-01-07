@@ -130,7 +130,7 @@ pub fn sign_delegation(
     conditions: &Conditions,
 ) -> Signature {
     sign_delegation_with_ctx(
-        &SECP256K1,
+        SECP256K1,
         &mut OsRng,
         delegator_keys,
         delegatee_pk,
@@ -167,7 +167,7 @@ pub fn verify_delegation_signature(
     conditions: &Conditions,
 ) -> Result<(), Error> {
     verify_delegation_signature_with_ctx(
-        &SECP256K1,
+        SECP256K1,
         delegator_public_key,
         signature,
         delegatee_public_key,
@@ -239,7 +239,7 @@ impl DelegationTag {
         conditions: Conditions,
     ) -> Self {
         Self::new_with_ctx(
-            &SECP256K1,
+            SECP256K1,
             &mut OsRng,
             delegator_keys,
             delegatee_pubkey,
@@ -294,7 +294,7 @@ impl DelegationTag {
         delegatee_pubkey: &PublicKey,
         event_properties: &EventProperties,
     ) -> Result<(), Error> {
-        self.validate_with_ctx(&SECP256K1, delegatee_pubkey, event_properties)
+        self.validate_with_ctx(SECP256K1, delegatee_pubkey, event_properties)
     }
 
     /// Validate a delegation tag, check signature and conditions.

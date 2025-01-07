@@ -78,7 +78,7 @@ impl UnwrappedGift {
     where
         T: NostrSigner,
     {
-        Self::from_gift_wrap_with_ctx(&SECP256K1, signer, gift_wrap).await
+        Self::from_gift_wrap_with_ctx(SECP256K1, signer, gift_wrap).await
     }
 
     /// Unwrap Gift Wrap event

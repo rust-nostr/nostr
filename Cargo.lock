@@ -2706,7 +2706,6 @@ dependencies = [
  "instant",
  "js-sys",
  "nostr-ots",
- "once_cell",
  "reqwest",
  "scrypt",
  "secp256k1",

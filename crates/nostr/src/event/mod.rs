@@ -164,7 +164,7 @@ impl Event {
     #[inline]
     #[cfg(feature = "std")]
     pub fn verify(&self) -> Result<(), Error> {
-        self.verify_with_ctx(&SECP256K1)
+        self.verify_with_ctx(SECP256K1)
     }
 
     /// Verify both [`EventId`] and [`Signature`]
@@ -201,7 +201,7 @@ impl Event {
     #[inline]
     #[cfg(feature = "std")]
     pub fn verify_signature(&self) -> bool {
-        self.verify_signature_with_ctx(&SECP256K1)
+        self.verify_signature_with_ctx(SECP256K1)
     }
 
     /// Verify event signature

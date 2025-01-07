@@ -97,7 +97,7 @@ impl SecretKey {
     where
         R: Rng + ?Sized,
     {
-        Self::generate_with_ctx(&SECP256K1, rng)
+        Self::generate_with_ctx(SECP256K1, rng)
     }
 
     /// Generate random secret key with custom `secp256k1` context and [`Rng`]

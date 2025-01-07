@@ -308,7 +308,7 @@ impl EventBuilder {
     #[inline]
     #[cfg(feature = "std")]
     pub fn sign_with_keys(self, keys: &Keys) -> Result<Event, Error> {
-        self.sign_with_ctx(&SECP256K1, &mut OsRng, &Instant::now(), keys)
+        self.sign_with_ctx(SECP256K1, &mut OsRng, &Instant::now(), keys)
     }
 
     /// Build, sign and return [`Event`] using [`Keys`] signer

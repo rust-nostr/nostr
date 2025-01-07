@@ -107,7 +107,7 @@ pub trait FromMnemonic: Sized {
     where
         S: AsRef<str>,
     {
-        Self::from_mnemonic_with_ctx(&SECP256K1, mnemonic, passphrase, account, r#type, index)
+        Self::from_mnemonic_with_ctx(SECP256K1, mnemonic, passphrase, account, r#type, index)
     }
 
     /// Derive from BIP-39 mnemonics with **custom account** (ENGLISH wordlist).
