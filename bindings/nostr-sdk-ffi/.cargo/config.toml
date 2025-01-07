@@ -4,3 +4,11 @@ lto = true          # Enable Link Time Optimization
 codegen-units = 1   # Reduce the number of codegen units to increase optimizations.
 panic = "abort"     # Abort on panic
 strip = "debuginfo" # Partially strip symbols from binary. If fully stripped, UniFFI can't generate foreign-language bindings
+
+[build]
+rustflags = ["-C", "panic=abort"]
+
+[unstable]
+unstable-options = true
+build-std = ["core", "alloc", "std", "panic_abort"]
+build-std-features = ["optimize_for_size", "panic_immediate_abort"]
