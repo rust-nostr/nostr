@@ -73,6 +73,7 @@
 * ffi: remove `profile` module ([Yuki Kishimoto])
 * ffi: remove `NostrLibrary` struct and keep only `git_hash_version` func ([Yuki Kishimoto])
 * ffi: remove embedded tor client ([Yuki Kishimoto])
+* bindings: cleanup `Relay` methods ([Yuki Kishimoto])
 
 ### Deprecated
 
