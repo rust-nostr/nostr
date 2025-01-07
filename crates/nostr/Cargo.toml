@@ -65,7 +65,7 @@ aes = { version = "0.8", optional = true }
 async-trait.workspace = true
 base64 = { version = "0.22", default-features = false, optional = true }
 bech32 = { version = "0.11", default-features = false } # bitcoin uses v0.11
-bip39 = { version = "2.0", default-features = false, optional = true }
+bip39 = { version = "2.1", default-features = false, optional = true }
 bitcoin = { version = "0.32", default-features = false, features = ["rand", "serde"] }
 cbc = { version = "0.1", optional = true }
 chacha20 = { version = "0.9", optional = true }
@@ -92,7 +92,7 @@ web-sys = { workspace = true, features = ["Window"], optional = true }
 
 [dev-dependencies]
 num_cpus = "1.15"
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [[example]]
 name = "keys"

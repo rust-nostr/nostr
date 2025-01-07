@@ -47,10 +47,6 @@ wasm-bindgen = { version = "0.2", default-features = false }
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", default-features = false }
 
-[patch.crates-io]
-# Patch needed to reduce bindings size
-bip39 = { git = "https://github.com/rust-bitcoin/rust-bip39", rev = "256a00e7c23c5b2ecc04df90894f60248c8d56d5" }
-
 [profile.release]
 lto = true
 codegen-units = 1
