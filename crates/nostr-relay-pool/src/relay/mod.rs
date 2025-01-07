@@ -240,12 +240,6 @@ impl Relay {
         &self.inner.stats
     }
 
-    /// Get queue len
-    #[inline]
-    pub fn queue(&self) -> usize {
-        self.inner.queue()
-    }
-
     /// Get new **relay** notification listener
     ///
     /// <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>

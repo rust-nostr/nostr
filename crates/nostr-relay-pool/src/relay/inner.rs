@@ -89,10 +89,6 @@ impl RelayChannels {
         self.nostr.1.lock().await
     }
 
-    pub fn nostr_queue(&self) -> usize {
-        self.nostr.0.max_capacity() - self.nostr.0.capacity()
-    }
-
     #[cfg(not(target_arch = "wasm32"))]
     pub fn ping(&self, nonce: u64) -> Result<(), Error> {
         self.ping
@@ -378,11 +374,6 @@ impl InnerRelay {
     pub(crate) async fn remove_subscription(&self, id: &SubscriptionId) {
         let mut subscriptions = self.atomic.subscriptions.write().await;
         subscriptions.remove(id);
-    }
-
-    #[inline]
-    pub fn queue(&self) -> usize {
-        self.atomic.channels.nostr_queue()
     }
 
     pub(crate) fn set_notification_sender(
