@@ -22,6 +22,14 @@ pub fn git_hash_version() -> Option<String> {
     option_env!("GIT_HASH").map(|v| v.to_string())
 }
 
+// Workaround to fix UPX compression error
+//
+// Error: CantPackException: need DT_INIT; try "void _init(void){}"
+// Workaround comes from https://github.com/upx/upx/issues/740
+#[no_mangle]
+#[cfg(target_os = "android")]
+pub fn _init() {}
+
 // Changes to this arg will break binding packages (in particular Swift).
 // If this is removed, make sure to update `uniffi.toml`
 uniffi::setup_scaffolding!("nostr_sdk");
