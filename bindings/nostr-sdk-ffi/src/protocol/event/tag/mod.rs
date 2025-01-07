@@ -213,9 +213,9 @@ impl Tag {
 
     /// Compose image tag
     #[uniffi::constructor(default(dimensions = None))]
-    pub fn image(url: &str, dimensions: Option<Arc<ImageDimensions>>) -> Result<Self> {
+    pub fn image(url: &str, dimensions: Option<ImageDimensions>) -> Result<Self> {
         Ok(Self {
-            inner: tag::Tag::image(Url::parse(url)?, dimensions.map(|d| **d)),
+            inner: tag::Tag::image(Url::parse(url)?, dimensions.map(|d| d.into())),
         })
     }
 

@@ -159,11 +159,11 @@ pub enum TagStandard {
     },
     Image {
         url: String,
-        dimensions: Option<Arc<ImageDimensions>>,
+        dimensions: Option<ImageDimensions>,
     },
     Thumb {
         url: String,
-        dimensions: Option<Arc<ImageDimensions>>,
+        dimensions: Option<ImageDimensions>,
     },
     Summary {
         summary: String,
@@ -211,7 +211,7 @@ pub enum TagStandard {
     },
     /// Size of file in pixels
     Dim {
-        dimensions: Arc<ImageDimensions>,
+        dimensions: ImageDimensions,
     },
     Magnet {
         uri: String,
@@ -423,11 +423,11 @@ impl From<tag::TagStandard> for TagStandard {
             tag::TagStandard::Title(title) => Self::Title { title },
             tag::TagStandard::Image(image, dimensions) => Self::Image {
                 url: image.to_string(),
-                dimensions: dimensions.map(|d| Arc::new(d.into())),
+                dimensions: dimensions.map(|d| d.into()),
             },
             tag::TagStandard::Thumb(thumb, dimensions) => Self::Thumb {
                 url: thumb.to_string(),
-                dimensions: dimensions.map(|d| Arc::new(d.into())),
+                dimensions: dimensions.map(|d| d.into()),
             },
             tag::TagStandard::Summary(summary) => Self::Summary { summary },
             tag::TagStandard::PublishedAt(timestamp) => Self::PublishedAt {
@@ -452,7 +452,7 @@ impl From<tag::TagStandard> for TagStandard {
             },
             tag::TagStandard::Size(bytes) => Self::Size { size: bytes as u64 },
             tag::TagStandard::Dim(dim) => Self::Dim {
-                dimensions: Arc::new(dim.into()),
+                dimensions: dim.into(),
             },
             tag::TagStandard::Magnet(uri) => Self::Magnet { uri },
             tag::TagStandard::Blurhash(data) => Self::Blurhash { blurhash: data },
@@ -654,10 +654,10 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::Challenge { challenge } => Ok(Self::Challenge(challenge)),
             TagStandard::Title { title } => Ok(Self::Title(title)),
             TagStandard::Image { url, dimensions } => {
-                Ok(Self::Image(Url::parse(&url)?, dimensions.map(|d| **d)))
+                Ok(Self::Image(Url::parse(&url)?, dimensions.map(|d| d.into())))
             }
             TagStandard::Thumb { url, dimensions } => {
-                Ok(Self::Thumb(Url::parse(&url)?, dimensions.map(|d| **d)))
+                Ok(Self::Thumb(Url::parse(&url)?, dimensions.map(|d| d.into())))
             }
             TagStandard::Summary { summary } => Ok(Self::Summary(summary)),
             TagStandard::Description { desc } => Ok(Self::Description(desc)),
@@ -679,7 +679,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::Aes256Gcm { key, iv } => Ok(Self::Aes256Gcm { key, iv }),
             TagStandard::Sha256 { hash } => Ok(Self::Sha256(Sha256Hash::from_str(&hash)?)),
             TagStandard::Size { size } => Ok(Self::Size(size as usize)),
-            TagStandard::Dim { dimensions } => Ok(Self::Dim(**dimensions)),
+            TagStandard::Dim { dimensions } => Ok(Self::Dim(dimensions.into())),
             TagStandard::Magnet { uri } => Ok(Self::Magnet(uri)),
             TagStandard::Blurhash { blurhash } => Ok(Self::Blurhash(blurhash)),
             TagStandard::Streaming { url } => Ok(Self::Streaming(Url::parse(&url)?)),

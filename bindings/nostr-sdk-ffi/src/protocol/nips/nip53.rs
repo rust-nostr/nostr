@@ -102,7 +102,7 @@ impl TryFrom<LiveEventHost> for nip53::LiveEventHost {
 #[derive(Record)]
 pub struct Image {
     pub url: String,
-    pub dimensions: Option<Arc<ImageDimensions>>,
+    pub dimensions: Option<ImageDimensions>,
 }
 
 #[derive(Record)]
@@ -140,7 +140,7 @@ impl TryFrom<LiveEvent> for nip53::LiveEvent {
             title: value.title,
             summary: value.summary,
             image: match value.image {
-                Some(i) => Some((Url::parse(&i.url)?, i.dimensions.map(|d| **d))),
+                Some(i) => Some((Url::parse(&i.url)?, i.dimensions.map(|d| d.into()))),
                 None => None,
             },
             hashtags: value.hashtags,

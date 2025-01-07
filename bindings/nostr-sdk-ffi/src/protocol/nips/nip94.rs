@@ -58,9 +58,9 @@ impl FileMetadata {
     }
 
     /// Add file size (pixels)
-    pub fn dimensions(&self, dim: &ImageDimensions) -> Self {
+    pub fn dimensions(&self, dim: ImageDimensions) -> Self {
         let mut builder = self.clone();
-        builder.inner = builder.inner.dimensions(**dim);
+        builder.inner = builder.inner.dimensions(dim.into());
         builder
     }
 

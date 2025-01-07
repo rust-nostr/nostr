@@ -38,6 +38,7 @@
 * ffi: remove `NostrLibrary` struct and keep only `git_hash_version` func ([Yuki Kishimoto])
 * ffi: remove embedded tor client ([Yuki Kishimoto])
 * ffi: change `UnsignedEvent::tags` output ([Yuki Kishimoto])
+* ffi: convert `ImageDimensions` in a `Record` ([Yuki Kishimoto])
 * bindings: cleanup `Relay` methods ([Yuki Kishimoto])
 * bindings: cleanup `NostrDatabase` methods ([Yuki Kishimoto])
 * bindings: remove `Timestamp::to_human_datetime` ([Yuki Kishimoto])

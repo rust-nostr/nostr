@@ -433,7 +433,7 @@ impl EventBuilder {
         name: Option<String>,
         description: Option<String>,
         image: Option<String>,
-        image_dimensions: Option<Arc<ImageDimensions>>,
+        image_dimensions: Option<ImageDimensions>,
         thumbnails: Vec<Image>,
     ) -> Result<Self> {
         let image = match image {
@@ -446,12 +446,12 @@ impl EventBuilder {
                 name,
                 description,
                 image,
-                image_dimensions.map(|i| **i),
+                image_dimensions.map(|i| i.into()),
                 thumbnails
                     .into_iter()
                     // TODO: propagate error
                     .filter_map(|i: Image| {
-                        Some((Url::parse(&i.url).ok()?, i.dimensions.map(|d| **d)))
+                        Some((Url::parse(&i.url).ok()?, i.dimensions.map(|d| d.into())))
                     })
                     .collect(),
             ),
