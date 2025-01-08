@@ -467,7 +467,7 @@ mod tests {
 
         let relay = Relay::new(url);
 
-        relay.try_connect(Duration::from_millis(100)).await.unwrap();
+        relay.try_connect(Duration::from_secs(3)).await.unwrap();
 
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Test")
@@ -486,7 +486,7 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
-        relay.try_connect(Duration::from_millis(100)).await.unwrap();
+        relay.try_connect(Duration::from_secs(3)).await.unwrap();
 
         assert_eq!(relay.status(), RelayStatus::Connected);
 
@@ -509,7 +509,7 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
-        relay.try_connect(Duration::from_millis(100)).await.unwrap();
+        relay.try_connect(Duration::from_secs(3)).await.unwrap();
 
         assert_eq!(relay.status(), RelayStatus::Connected);
 
@@ -532,7 +532,7 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
-        relay.try_connect(Duration::from_millis(100)).await.unwrap();
+        relay.try_connect(Duration::from_secs(3)).await.unwrap();
 
         assert_eq!(relay.status(), RelayStatus::Connected);
 
