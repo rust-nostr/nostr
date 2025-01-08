@@ -7,6 +7,7 @@ multilingual = false
 src = "src"
 
 [output.html]
+theme="theme"
 default-theme = "ayu"
 preferred-dark-theme = "ayu"
 additional-js = ["./tabs.js"]
