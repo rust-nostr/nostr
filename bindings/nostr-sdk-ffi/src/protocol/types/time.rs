@@ -47,9 +47,4 @@ impl Timestamp {
     pub fn as_secs(&self) -> u64 {
         self.inner.as_u64()
     }
-
-    /// Convert [`Timestamp`] to human datetime
-    pub fn to_human_datetime(&self) -> String {
-        self.inner.to_human_datetime()
-    }
 }

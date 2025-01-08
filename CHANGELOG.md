@@ -35,6 +35,7 @@
 * nostr: remove `ClientMessage::neg_open_deprecated` ([Yuki Kishimoto])
 * pool: change `Relay::connect` method signature ([Yuki Kishimoto])
 * ffi: remove embedded tor client ([Yuki Kishimoto])
+* bindings: remove `Timestamp::to_human_datetime` ([Yuki Kishimoto])
 
 ### Changed
 
