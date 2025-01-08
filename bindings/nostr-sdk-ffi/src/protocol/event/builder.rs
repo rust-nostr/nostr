@@ -195,12 +195,15 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     #[uniffi::constructor]
-    pub fn contact_list(list: &[Arc<Contact>]) -> Self {
-        let list: Vec<ContactSdk> = list.iter().map(|c| c.as_ref().deref().clone()).collect();
-
-        Self {
-            inner: nostr::EventBuilder::contact_list(list),
+    pub fn contact_list(contacts: Vec<Contact>) -> Result<Self> {
+        let mut list: Vec<ContactSdk> = Vec::with_capacity(contacts.len());
+        for contact in contacts.into_iter() {
+            list.push(contact.try_into()?);
         }
+
+        Ok(Self {
+            inner: nostr::EventBuilder::contact_list(list),
+        })
     }
 
     /// Repost

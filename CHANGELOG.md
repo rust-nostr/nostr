@@ -39,6 +39,7 @@
 * ffi: remove embedded tor client ([Yuki Kishimoto])
 * ffi: change `UnsignedEvent::tags` output ([Yuki Kishimoto])
 * ffi: convert `ImageDimensions` in a `Record` ([Yuki Kishimoto])
+* ffi: convert `Contact` to a `Record` ([Yuki Kishimoto])
 * bindings: cleanup `Relay` methods ([Yuki Kishimoto])
 * bindings: cleanup `NostrDatabase` methods ([Yuki Kishimoto])
 * bindings: remove `Timestamp::to_human_datetime` ([Yuki Kishimoto])
