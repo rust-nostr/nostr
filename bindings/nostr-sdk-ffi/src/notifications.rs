@@ -10,6 +10,6 @@ use crate::protocol::message::RelayMessage;
 #[uniffi::export(with_foreign)]
 #[async_trait::async_trait]
 pub trait HandleNotification: Send + Sync {
-    async fn handle_msg(&self, relay_url: String, msg: Arc<RelayMessage>);
+    async fn handle_msg(&self, relay_url: String, msg: RelayMessage);
     async fn handle(&self, relay_url: String, subscription_id: String, event: Arc<Event>);
 }

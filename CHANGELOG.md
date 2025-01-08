@@ -42,6 +42,7 @@
 * ffi: remove `KindStandard::Custom` variant ([Yuki Kishimoto])
 * ffi: rename `Kind::from_enum` and `Kind::as_enum` to `Kind::from_std` and `Kind::as_std` ([Yuki Kishimoto])
 * ffi: cleanup `Event` and `UnsignedEvent` methods ([Yuki Kishimoto])
+* ffi: cleanup `protocol::message` module ([Yuki Kishimoto])
 * bindings: remove `profile` module ([Yuki Kishimoto])
 * bindings: remove `NostrLibrary` struct and keep only `git_hash_version` func ([Yuki Kishimoto])
 * bindings: cleanup `Relay` methods ([Yuki Kishimoto])

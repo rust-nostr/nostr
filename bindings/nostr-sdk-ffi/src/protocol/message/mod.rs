@@ -5,5 +5,5 @@
 pub mod client;
 pub mod relay;
 
-pub use self::client::{ClientMessage, ClientMessageEnum};
-pub use self::relay::{RelayMessage, RelayMessageEnum};
+pub use self::client::ClientMessage;
+pub use self::relay::RelayMessage;

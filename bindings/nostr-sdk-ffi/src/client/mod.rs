@@ -422,12 +422,8 @@ impl Client {
             .into())
     }
 
-    pub async fn send_msg_to(&self, urls: Vec<String>, msg: &ClientMessage) -> Result<Output> {
-        Ok(self
-            .inner
-            .send_msg_to(urls, msg.deref().clone())
-            .await?
-            .into())
+    pub async fn send_msg_to(&self, urls: Vec<String>, msg: ClientMessage) -> Result<Output> {
+        Ok(self.inner.send_msg_to(urls, msg.into()).await?.into())
     }
 
     /// Send event
@@ -626,7 +622,7 @@ impl Client {
                 match notification {
                     RelayPoolNotificationSdk::Message { relay_url, message } => {
                         handler
-                            .handle_msg(relay_url.to_string(), Arc::new(message.into()))
+                            .handle_msg(relay_url.to_string(), message.into())
                             .await;
                     }
                     RelayPoolNotificationSdk::Event {

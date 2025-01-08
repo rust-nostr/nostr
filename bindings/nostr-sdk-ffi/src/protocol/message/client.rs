@@ -6,7 +6,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::{JsonUtil, SubscriptionId};
-use uniffi::{Enum, Object};
+use uniffi::Enum;
 
 use crate::error::Result;
 use crate::protocol::event::Event;
@@ -14,8 +14,8 @@ use crate::protocol::filter::Filter;
 
 /// Messages sent by clients, received by relays
 #[derive(Enum)]
-pub enum ClientMessageEnum {
-    EventMsg {
+pub enum ClientMessage {
+    Evnt {
         event: Arc<Event>,
     },
     Req {
@@ -51,13 +51,11 @@ pub enum ClientMessageEnum {
     },
 }
 
-impl From<ClientMessageEnum> for nostr::ClientMessage {
-    fn from(value: ClientMessageEnum) -> Self {
+impl From<ClientMessage> for nostr::ClientMessage {
+    fn from(value: ClientMessage) -> Self {
         match value {
-            ClientMessageEnum::EventMsg { event } => {
-                Self::Event(Box::new(event.as_ref().deref().clone()))
-            }
-            ClientMessageEnum::Req {
+            ClientMessage::Evnt { event } => Self::Event(Box::new(event.as_ref().deref().clone())),
+            ClientMessage::Req {
                 subscription_id,
                 filters,
             } => Self::Req {
@@ -67,7 +65,7 @@ impl From<ClientMessageEnum> for nostr::ClientMessage {
                     .map(|f| f.as_ref().deref().clone())
                     .collect(),
             },
-            ClientMessageEnum::Count {
+            ClientMessage::Count {
                 subscription_id,
                 filters,
             } => Self::Count {
@@ -77,13 +75,11 @@ impl From<ClientMessageEnum> for nostr::ClientMessage {
                     .map(|f| f.as_ref().deref().clone())
                     .collect(),
             },
-            ClientMessageEnum::Close { subscription_id } => {
+            ClientMessage::Close { subscription_id } => {
                 Self::Close(SubscriptionId::new(subscription_id))
             }
-            ClientMessageEnum::Auth { event } => {
-                Self::Auth(Box::new(event.as_ref().deref().clone()))
-            }
-            ClientMessageEnum::NegOpen {
+            ClientMessage::Auth { event } => Self::Auth(Box::new(event.as_ref().deref().clone())),
+            ClientMessage::NegOpen {
                 subscription_id,
                 filter,
                 id_size,
@@ -94,24 +90,24 @@ impl From<ClientMessageEnum> for nostr::ClientMessage {
                 id_size,
                 initial_message,
             },
-            ClientMessageEnum::NegMsg {
+            ClientMessage::NegMsg {
                 subscription_id,
                 message,
             } => Self::NegMsg {
                 subscription_id: SubscriptionId::new(subscription_id),
                 message,
             },
-            ClientMessageEnum::NegClose { subscription_id } => Self::NegClose {
+            ClientMessage::NegClose { subscription_id } => Self::NegClose {
                 subscription_id: SubscriptionId::new(subscription_id),
             },
         }
     }
 }
 
-impl From<nostr::ClientMessage> for ClientMessageEnum {
+impl From<nostr::ClientMessage> for ClientMessage {
     fn from(value: nostr::ClientMessage) -> Self {
         match value {
-            nostr::ClientMessage::Event(event) => Self::EventMsg {
+            nostr::ClientMessage::Event(event) => Self::Evnt {
                 event: Arc::new(event.as_ref().to_owned().into()),
             },
             nostr::ClientMessage::Req {
@@ -159,102 +155,17 @@ impl From<nostr::ClientMessage> for ClientMessageEnum {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Object)]
-#[uniffi::export(Debug, Eq)]
-pub struct ClientMessage {
-    inner: nostr::ClientMessage,
-}
-
-impl Deref for ClientMessage {
-    type Target = nostr::ClientMessage;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl From<nostr::ClientMessage> for ClientMessage {
-    fn from(inner: nostr::ClientMessage) -> Self {
-        Self { inner }
-    }
+/// Deserialize `ClientMessage` from JSON string
+///
+/// **This method doesn't verify the event signature!**
+#[uniffi::export]
+pub fn client_message_from_json(json: &str) -> Result<ClientMessage> {
+    let msg: nostr::ClientMessage = nostr::ClientMessage::from_json(json)?;
+    Ok(msg.into())
 }
 
 #[uniffi::export]
-impl ClientMessage {
-    /// Create new `EVENT` message
-    #[uniffi::constructor]
-    pub fn event(event: &Event) -> Self {
-        Self {
-            inner: nostr::ClientMessage::event(event.deref().clone()),
-        }
-    }
-
-    /// Create new `REQ` message
-    #[uniffi::constructor]
-    pub fn req(subscription_id: &str, filters: Vec<Arc<Filter>>) -> Self {
-        Self {
-            inner: nostr::ClientMessage::req(
-                SubscriptionId::new(subscription_id),
-                filters
-                    .into_iter()
-                    .map(|f| f.as_ref().deref().clone())
-                    .collect(),
-            ),
-        }
-    }
-
-    /// Create new `COUNT` message
-    #[uniffi::constructor]
-    pub fn count(subscription_id: &str, filters: Vec<Arc<Filter>>) -> Self {
-        Self {
-            inner: nostr::ClientMessage::count(
-                SubscriptionId::new(subscription_id),
-                filters
-                    .into_iter()
-                    .map(|f| f.as_ref().deref().clone())
-                    .collect(),
-            ),
-        }
-    }
-
-    /// Create new `CLOSE` message
-    #[uniffi::constructor]
-    pub fn close(subscription_id: &str) -> Self {
-        Self {
-            inner: nostr::ClientMessage::close(SubscriptionId::new(subscription_id)),
-        }
-    }
-
-    /// Create new `AUTH` message
-    #[uniffi::constructor]
-    pub fn auth(event: &Event) -> Self {
-        Self {
-            inner: nostr::ClientMessage::auth(event.deref().clone()),
-        }
-    }
-
-    /// Deserialize `ClientMessage` from JSON string
-    ///
-    /// **This method NOT verify the event signature!**
-    #[uniffi::constructor]
-    pub fn from_json(json: &str) -> Result<Self> {
-        Ok(Self {
-            inner: nostr::ClientMessage::from_json(json)?,
-        })
-    }
-
-    /// Convert `ClientMessageEnum` to `ClientMessage`
-    #[uniffi::constructor]
-    pub fn from_enum(e: ClientMessageEnum) -> Self {
-        Self { inner: e.into() }
-    }
-
-    pub fn as_json(&self) -> Result<String> {
-        Ok(self.inner.try_as_json()?)
-    }
-
-    /// Clone `ClientMessage` and convert it to `ClientMessageEnum`
-    pub fn as_enum(&self) -> ClientMessageEnum {
-        self.inner.clone().into()
-    }
+pub fn client_message_as_json(msg: ClientMessage) -> Result<String> {
+    let msg: nostr::ClientMessage = msg.into();
+    Ok(msg.try_as_json()?)
 }

@@ -6,14 +6,14 @@ use core::ops::Deref;
 use std::sync::Arc;
 
 use nostr::{JsonUtil, SubscriptionId};
-use uniffi::{Enum, Object};
+use uniffi::Enum;
 
 use crate::error::Result;
 use crate::protocol::event::{Event, EventId};
 
 #[derive(Enum)]
-pub enum RelayMessageEnum {
-    EventMsg {
+pub enum RelayMessage {
+    Evnt {
         subscription_id: String,
         event: Arc<Event>,
     },
@@ -49,13 +49,13 @@ pub enum RelayMessageEnum {
     },
 }
 
-impl From<nostr::RelayMessage> for RelayMessageEnum {
+impl From<nostr::RelayMessage> for RelayMessage {
     fn from(value: nostr::RelayMessage) -> Self {
         match value {
             nostr::RelayMessage::Event {
                 subscription_id,
                 event,
-            } => Self::EventMsg {
+            } => Self::Evnt {
                 subscription_id: subscription_id.to_string(),
                 event: Arc::new(event.as_ref().clone().into()),
             },
@@ -105,28 +105,28 @@ impl From<nostr::RelayMessage> for RelayMessageEnum {
     }
 }
 
-impl From<RelayMessageEnum> for nostr::RelayMessage {
-    fn from(value: RelayMessageEnum) -> Self {
+impl From<RelayMessage> for nostr::RelayMessage {
+    fn from(value: RelayMessage) -> Self {
         match value {
-            RelayMessageEnum::EventMsg {
+            RelayMessage::Evnt {
                 subscription_id,
                 event,
             } => Self::Event {
                 subscription_id: SubscriptionId::new(subscription_id),
                 event: Box::new(event.as_ref().deref().clone()),
             },
-            RelayMessageEnum::Closed {
+            RelayMessage::Closed {
                 subscription_id,
                 message,
             } => Self::Closed {
                 subscription_id: SubscriptionId::new(subscription_id),
                 message,
             },
-            RelayMessageEnum::Notice { message } => Self::Notice(message),
-            RelayMessageEnum::EndOfStoredEvents { subscription_id } => {
+            RelayMessage::Notice { message } => Self::Notice(message),
+            RelayMessage::EndOfStoredEvents { subscription_id } => {
                 Self::eose(SubscriptionId::new(subscription_id))
             }
-            RelayMessageEnum::Ok {
+            RelayMessage::Ok {
                 event_id,
                 status,
                 message,
@@ -135,22 +135,22 @@ impl From<RelayMessageEnum> for nostr::RelayMessage {
                 status,
                 message,
             },
-            RelayMessageEnum::Auth { challenge } => Self::Auth { challenge },
-            RelayMessageEnum::Count {
+            RelayMessage::Auth { challenge } => Self::Auth { challenge },
+            RelayMessage::Count {
                 subscription_id,
                 count,
             } => Self::Count {
                 subscription_id: SubscriptionId::new(subscription_id),
                 count: count as usize,
             },
-            RelayMessageEnum::NegMsg {
+            RelayMessage::NegMsg {
                 subscription_id,
                 message,
             } => Self::NegMsg {
                 subscription_id: SubscriptionId::new(subscription_id),
                 message,
             },
-            RelayMessageEnum::NegErr {
+            RelayMessage::NegErr {
                 subscription_id,
                 message,
             } => Self::NegErr {
@@ -161,101 +161,17 @@ impl From<RelayMessageEnum> for nostr::RelayMessage {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Object)]
-#[uniffi::export(Debug, Eq, Hash)]
-pub struct RelayMessage {
-    inner: nostr::RelayMessage,
-}
-
-impl From<nostr::RelayMessage> for RelayMessage {
-    fn from(inner: nostr::RelayMessage) -> Self {
-        Self { inner }
-    }
+/// Deserialize `RelayMessage` from JSON string
+///
+/// **This method doesn't verify the event signature!**
+#[uniffi::export]
+pub fn relay_message_from_json(json: &str) -> Result<RelayMessage> {
+    let msg: nostr::RelayMessage = nostr::RelayMessage::from_json(json)?;
+    Ok(msg.into())
 }
 
 #[uniffi::export]
-impl RelayMessage {
-    /// Create new `EVENT` message
-    #[uniffi::constructor]
-    pub fn event(subscription_id: &str, event: &Event) -> Self {
-        Self {
-            inner: nostr::RelayMessage::event(
-                SubscriptionId::new(subscription_id),
-                event.deref().clone(),
-            ),
-        }
-    }
-
-    /// Create new `NOTICE` message
-    #[uniffi::constructor]
-    pub fn notice(message: &str) -> Self {
-        Self {
-            inner: nostr::RelayMessage::notice(message),
-        }
-    }
-
-    /// Create new `CLOSED` message
-    #[uniffi::constructor]
-    pub fn closed(subscription_id: &str, message: &str) -> Self {
-        Self {
-            inner: nostr::RelayMessage::closed(SubscriptionId::new(subscription_id), message),
-        }
-    }
-
-    /// Create new `EOSE` message
-    #[uniffi::constructor]
-    pub fn eose(subscription_id: &str) -> Self {
-        Self {
-            inner: nostr::RelayMessage::eose(SubscriptionId::new(subscription_id)),
-        }
-    }
-
-    /// Create new `OK` message
-    #[uniffi::constructor]
-    pub fn ok(event_id: &EventId, status: bool, message: &str) -> Self {
-        Self {
-            inner: nostr::RelayMessage::ok(**event_id, status, message),
-        }
-    }
-
-    /// Create new `AUTH` message
-    #[uniffi::constructor]
-    pub fn auth(challenge: &str) -> Self {
-        Self {
-            inner: nostr::RelayMessage::auth(challenge),
-        }
-    }
-
-    /// Create new `EVENT` message
-    #[uniffi::constructor]
-    pub fn count(subscription_id: &str, count: f64) -> Self {
-        Self {
-            inner: nostr::RelayMessage::count(SubscriptionId::new(subscription_id), count as usize),
-        }
-    }
-
-    /// Deserialize `RelayMessage` from JSON string
-    ///
-    /// **This method NOT verify the event signature!**
-    #[uniffi::constructor]
-    pub fn from_json(json: &str) -> Result<Self> {
-        Ok(Self {
-            inner: nostr::RelayMessage::from_json(json)?,
-        })
-    }
-
-    /// Convert `RelayMessageEnum` to `RelayMessage`
-    #[uniffi::constructor]
-    pub fn from_enum(e: RelayMessageEnum) -> Self {
-        Self { inner: e.into() }
-    }
-
-    pub fn as_json(&self) -> Result<String> {
-        Ok(self.inner.try_as_json()?)
-    }
-
-    /// Clone `RelayMessage` and convert it to `RelayMessageEnum`
-    pub fn as_enum(&self) -> RelayMessageEnum {
-        self.inner.clone().into()
-    }
+pub fn relay_message_as_json(msg: RelayMessage) -> Result<String> {
+    let msg: nostr::RelayMessage = msg.into();
+    Ok(msg.try_as_json()?)
 }
