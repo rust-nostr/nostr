@@ -1,7 +1,10 @@
 // ANCHOR: full
-import { NWC, NostrWalletConnectURI, PayInvoiceRequest, MakeInvoiceRequest } from "@rust-nostr/nostr-sdk";
+import {NWC, NostrWalletConnectURI, PayInvoiceRequest, MakeInvoiceRequest, loadWasmAsync} from "@rust-nostr/nostr-sdk";
 
-export async function main() {
+async function main() {
+    // Load WASM
+    await loadWasmAsync();
+
     // Parse NWC uri
     let uri = NostrWalletConnectURI.parse("nostr+walletconnect://..");
 
@@ -30,4 +33,6 @@ export async function main() {
     // Drop client
     nwc.free();
 }
+
+main();
 // ANCHOR_END: full

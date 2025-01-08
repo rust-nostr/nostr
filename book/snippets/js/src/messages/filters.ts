@@ -1,6 +1,9 @@
-import { Filter, Keys, Kind, EventBuilder, Timestamp, Tag } from "@rust-nostr/nostr-sdk";
+import {Filter, Keys, Kind, EventBuilder, Timestamp, Tag, loadWasmSync} from "@rust-nostr/nostr-sdk";
 
-export async function run() {
+function run() {
+    // Load WASM
+    loadWasmSync();
+
     // Generate keys and Events
     const keys = Keys.generate();
     const keys2 = Keys.generate();
@@ -153,3 +156,5 @@ export async function run() {
     console.log(`     Event2 match for filter: ${f.matchEvent(event2)}`);
     // ANCHOR_END: other-match
 }
+
+run();

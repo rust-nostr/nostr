@@ -1,6 +1,9 @@
-import { ClientMessage, EventBuilder, Filter, Keys } from "@rust-nostr/nostr-sdk";
+import { ClientMessage, EventBuilder, Filter, Keys, loadWasmSync } from "@rust-nostr/nostr-sdk";
 
-export async function run() {
+function run() {
+    // Load WASM
+    loadWasmSync();
+
     const keys = Keys.generate();
     const event = EventBuilder.textNote("TestTextNoTe").signWithKeys(keys);
 
@@ -57,3 +60,5 @@ export async function run() {
     // ANCHOR_END: count-message
 
 }
+
+run();

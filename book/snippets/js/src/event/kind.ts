@@ -1,6 +1,7 @@
 import { Kind, Keys, EventBuilder, Metadata, loadWasmSync } from "@rust-nostr/nostr-sdk"
 
-export function kind() {
+function kind() {
+    // Load WASM
     loadWasmSync();
 
     // Generate random keys

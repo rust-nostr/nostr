@@ -1,6 +1,9 @@
-import {Keys, EventBuilder, UnwrappedGift, NostrSigner} from "@rust-nostr/nostr-sdk";
+import {Keys, EventBuilder, UnwrappedGift, NostrSigner, loadWasmAsync} from "@rust-nostr/nostr-sdk";
 
-export async function run() {
+async function run() {
+    // Load WASM
+    await loadWasmAsync();
+
     // Sender Keys
     const alice_keys = Keys.parse("5c0c523f52a5b6fad39ed2403092df8cebc36318b39383bca6c00808626fab3a");
     const alice_signer = NostrSigner.keys(alice_keys);
@@ -21,3 +24,5 @@ export async function run() {
     console.log("Sender: ", unwrapped_gift.sender.toBech32())
     console.log("Rumor: ", unwrapped_gift.rumor.asJson())
 }
+
+run();

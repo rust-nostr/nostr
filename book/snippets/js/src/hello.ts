@@ -1,7 +1,10 @@
 // ANCHOR: full
-import {Keys, Client, EventBuilder, NostrSigner} from "@rust-nostr/nostr-sdk";
+import {Keys, Client, EventBuilder, NostrSigner, loadWasmAsync} from "@rust-nostr/nostr-sdk";
 
-export async function hello() {
+async function hello() {
+    // Load WASM
+    await loadWasmAsync();
+
     // ANCHOR: client
     let keys: Keys = Keys.generate();
     let signer = NostrSigner.keys(keys);
@@ -24,4 +27,6 @@ export async function hello() {
     console.log("Not sent to:", output.failed);
     // ANCHOR_END: output
 }
+
+hello();
 // ANCHOR_END: full

@@ -1,6 +1,9 @@
-import { Keys, Metadata, EventBuilder } from "@rust-nostr/nostr-sdk";
+import {Keys, Metadata, EventBuilder, loadWasmSync} from "@rust-nostr/nostr-sdk";
 
-export function run() {
+function run() {
+    // Load WASM
+    loadWasmSync();
+
     // Generate random keys
     let keys = Keys.generate();
 
@@ -49,3 +52,5 @@ export function run() {
     console.log(`     NIP05     : ${metadata.getNip05()}`);
     // ANCHOR_END: create-metadata
 }
+
+run();

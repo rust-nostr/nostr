@@ -1,6 +1,9 @@
-import {Keys, EventBuilder, Tag, RelayMetadata, RelayListItem, Kind} from "@rust-nostr/nostr-sdk";
+import {Keys, EventBuilder, Tag, RelayMetadata, RelayListItem, Kind, loadWasmSync} from "@rust-nostr/nostr-sdk";
 
-export function run(){
+function run(){
+    // Load WASM
+    loadWasmSync();
+
     // Generate Keys
     let keys = Keys.generate();
 
@@ -38,3 +41,5 @@ export function run(){
     console.log(` Event: ${event.asJson()}`);
     // ANCHOR_END: relay-metadata-custom
 }
+
+run();

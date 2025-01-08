@@ -1,7 +1,7 @@
-import { Keys } from "@rust-nostr/nostr-sdk"
+import {Keys, loadWasmSync} from "@rust-nostr/nostr-sdk"
 
 // ANCHOR: generate
-export function generate() {
+function generate() {
     let keys = Keys.generate();
 
     console.log("Public key (hex): ", keys.publicKey.toHex());
@@ -13,14 +13,14 @@ export function generate() {
 // ANCHOR_END: generate
 
 // ANCHOR: restore
-export function restore() {
+function restore() {
     let keys = Keys.parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85");
     console.log("Secret key (hex): ", keys.secretKey.toHex());
 }
 // ANCHOR_END: restore
 
 // ANCHOR: vanity
-export function vanity() {
+function vanity() {
     // NOTE: NOT SUPPORTED YET!
 
     // Generate vanity keys
@@ -29,3 +29,11 @@ export function vanity() {
     // console.log("Secret key (bech32): ", keys.secretKey.toBech32());
 }
 // ANCHOR_END: vanity
+
+
+// Load WASM
+loadWasmSync();
+
+// Run
+generate();
+restore();

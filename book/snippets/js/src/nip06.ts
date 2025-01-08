@@ -1,8 +1,10 @@
-import { Keys} from "@rust-nostr/nostr-sdk";
+import {Keys, loadWasmSync} from "@rust-nostr/nostr-sdk";
 import { generateMnemonic } from "bip39";
 
-export function run() {
-    console.log();
+function run() {
+    // Load WASM
+    loadWasmSync();
+
     // ANCHOR: keys-from-seed24
     // Generate random Seed Phrase (24 words e.g. 256 bits entropy)
     let words256 = generateMnemonic(256);
@@ -20,8 +22,6 @@ export function run() {
     console.log(`\t - Public (npub)  : ${keys256.publicKey.toBech32()}`);
     // ANCHOR_END: keys-from-seed24
 
-
-    console.log();
     // ANCHOR: keys-from-seed12
     // Generate random Seed Phrase (12 words e.g. 128 bits entropy)
     let words128 = generateMnemonic(128);
@@ -39,7 +39,6 @@ export function run() {
     console.log(`\t - Public (npub)  : ${keys128.publicKey.toBech32()}`);
     // ANCHOR_END: keys-from-seed12
 
-    console.log();
     // ANCHOR: keys-from-seed-accounts
     // Advanced (with accounts) from the same wordlist
     let words = "leader monkey parrot ring guide accident before fence cannon height naive bean";
@@ -54,8 +53,6 @@ export function run() {
     }
     // ANCHOR_END: keys-from-seed-accounts
 
-
-    console.log();
     // ANCHOR: keys-from-seed-accounts-pass
     // Advanced (with accounts) from the same wordlist with in inclusion of PassPhrase
     words = "leader monkey parrot ring guide accident before fence cannon height naive bean";
@@ -70,3 +67,5 @@ export function run() {
     }
     // ANCHOR_END: keys-from-seed-accounts-pass
 }
+
+run();

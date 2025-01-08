@@ -1,6 +1,9 @@
-import { Keys, EventBuilder, Tag, Timestamp, Kind } from "@rust-nostr/nostr-sdk"
+import {Keys, EventBuilder, Tag, Timestamp, Kind, loadWasmSync} from "@rust-nostr/nostr-sdk"
 
-export function eventBuilder() {
+function eventBuilder() {
+    // Load WASM
+    loadWasmSync();
+
     let keys = Keys.generate();
 
     // Compose custom event
@@ -29,3 +32,5 @@ export function eventBuilder() {
             .customCreatedAt(Timestamp.fromSecs(12345678))
             .signWithKeys(keys);
 }
+
+eventBuilder();

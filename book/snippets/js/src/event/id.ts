@@ -1,6 +1,8 @@
-import { EventId, Keys, Timestamp, Kind, EventBuilder } from "@rust-nostr/nostr-sdk"
+import {EventId, Keys, Timestamp, Kind, EventBuilder, loadWasmSync} from "@rust-nostr/nostr-sdk"
 
-export function eventId() {
+function eventId() {
+    // Load WASM
+    loadWasmSync();
 
     // Generate Keys
     const keys = Keys.generate();
@@ -60,3 +62,5 @@ export function eventId() {
     console.log(`     - Verify the ID Only: ${event.verifyId()}`);
     // ANCHOR_END: access-verify
 }
+
+eventId();

@@ -1,10 +1,12 @@
-import { Keys, EventBuilder, Nip19Profile, Nip19Event, Coordinate, Kind } from "@rust-nostr/nostr-sdk";
+import {Keys, EventBuilder, Nip19Profile, Nip19Event, Coordinate, Kind, loadWasmSync} from "@rust-nostr/nostr-sdk";
 
-export function run() {
+function run() {
+    // Load WASM
+    loadWasmSync();
+
     // Generate random keys
     let keys = Keys.generate();
 
-    console.log();
     console.log("Bare keys and ids (bech32):");
     // ANCHOR: nip19-npub
     console.log(` Public key: ${keys.publicKey.toBech32()}`);
@@ -19,7 +21,6 @@ export function run() {
     console.log(` Event     : ${event.id.toBech32()}`);
     // ANCHOR_END: nip19-note
 
-    console.log();
     console.log("Shareable identifiers with extra metadata (bech32):");
     // ANCHOR: nip19-nprofile-encode
     // Create NIP-19 profile including relays data
@@ -34,7 +35,6 @@ export function run() {
     console.log(` Profile (decoded): ${decode_nprofile.publicKey().toBech32()}`);
     // ANCHOR_END: nip19-nprofile-decode
 
-    console.log();
     // ANCHOR: nip19-nevent-encode
     // Create NIP-19 event including author and relays data
     let nevent = new Nip19Event(event.id, keys.publicKey, undefined, relays);
@@ -47,7 +47,6 @@ export function run() {
     console.log(` Event (decoded): ${decode_nevent.eventId().toBech32()}`);
     // ANCHOR_END: nip19-nevent-decode
 
-    console.log();
     // ANCHOR: nip19-naddr-encode
     // Create NIP-19 coordinate
     let kind = new Kind(0);
@@ -60,5 +59,6 @@ export function run() {
     let decode_coord = Coordinate.parse(coord.toBech32());
     console.log(` Coordinate (decoded): ${decode_coord}`);
     // ANCHOR_END: nip19-naddr-decode
-
 }
+
+run();
