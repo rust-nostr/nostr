@@ -16,7 +16,7 @@ use nostr::{RelayUrl, Url};
 use uniffi::Enum;
 
 use crate::error::NostrSdkError;
-use crate::protocol::event::kind::KindEnum;
+use crate::protocol::event::kind::Kind;
 use crate::protocol::event::{Event, EventId};
 use crate::protocol::key::PublicKey;
 use crate::protocol::nips::nip01::Coordinate;
@@ -125,8 +125,8 @@ pub enum TagStandard {
         /// Whether the a tag is an uppercase A or not
         uppercase: bool,
     },
-    Kind {
-        kind: KindEnum,
+    KindTag {
+        kind: Arc<Kind>,
         /// Whether the k tag is an uppercase K or not
         uppercase: bool,
     },
@@ -394,8 +394,8 @@ impl From<tag::TagStandard> for TagStandard {
             tag::TagStandard::ExternalIdentity(identity) => Self::ExternalIdentity {
                 identity: identity.into(),
             },
-            tag::TagStandard::Kind { kind, uppercase } => Self::Kind {
-                kind: kind.into(),
+            tag::TagStandard::Kind { kind, uppercase } => Self::KindTag {
+                kind: Arc::new(kind.into()),
                 uppercase,
             },
             tag::TagStandard::Relay(url) => Self::RelayUrl {
@@ -630,8 +630,8 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 },
                 uppercase,
             }),
-            TagStandard::Kind { kind, uppercase } => Ok(Self::Kind {
-                kind: kind.into(),
+            TagStandard::KindTag { kind, uppercase } => Ok(Self::Kind {
+                kind: **kind,
                 uppercase,
             }),
             TagStandard::RelayUrl { relay_url } => Ok(Self::Relay(RelayUrl::parse(&relay_url)?)),
