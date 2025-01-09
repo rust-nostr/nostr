@@ -3,13 +3,11 @@
 // Distributed under the MIT software license
 
 pub mod contact;
-pub mod filter;
 pub mod image;
 pub mod metadata;
 pub mod time;
 
 pub use self::contact::Contact;
-pub use self::filter::{Alphabet, Filter, SingleLetterTag};
 pub use self::image::ImageDimensions;
 pub use self::metadata::Metadata;
 pub use self::time::Timestamp;

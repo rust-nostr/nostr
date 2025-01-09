@@ -26,11 +26,12 @@ use crate::database::NostrDatabase;
 use crate::error::Result;
 use crate::notifications::HandleNotification;
 use crate::protocol::event::{Event, EventBuilder, Tag};
+use crate::protocol::filter::Filter;
 use crate::protocol::key::PublicKey;
 use crate::protocol::message::ClientMessage;
 use crate::protocol::nips::nip59::UnwrappedGift;
 use crate::protocol::signer::NostrSigner;
-use crate::protocol::types::{Filter, Metadata};
+use crate::protocol::types::Metadata;
 use crate::relay::options::{SubscribeAutoCloseOptions, SyncOptions};
 use crate::relay::{Relay, RelayFiltering, RelayOptions};
 

@@ -48,6 +48,7 @@
 
 * nostr: refactor `PublicKey` to use byte array internally ([Yuki Kishimoto])
 * nostr: bump `bip39` to 2.1 ([Yuki Kishimoto])
+* nostr: move `types::filter` to `crate::filter` ([Yuki Kishimoto])
 * pool: update `Error::WebSocket` variant inner type ([Yuki Kishimoto])
 * lmdb: use `EventBorrow` instead of `DatabaseEvent` ([Yuki Kishimoto])
 * ndb: refactor note-to-event conversion ([Yuki Kishimoto])

@@ -3,12 +3,10 @@
 // Distributed under the MIT software license
 
 pub mod contact;
-pub mod filter;
 pub mod image;
 pub mod metadata;
 pub mod time;
 
 pub use self::contact::JsContact;
-pub use self::filter::{JsFilter, JsSubscriptionId};
 pub use self::metadata::JsMetadata;
 pub use self::time::JsTimestamp;

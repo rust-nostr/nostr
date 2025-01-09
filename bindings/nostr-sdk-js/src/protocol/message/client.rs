@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
 use crate::protocol::event::JsEvent;
-use crate::protocol::types::JsFilter;
+use crate::protocol::filter::JsFilter;
 
 #[wasm_bindgen(js_name = ClientMessage)]
 pub struct JsClientMessage {

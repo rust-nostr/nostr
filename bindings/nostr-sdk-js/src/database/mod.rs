@@ -13,7 +13,7 @@ pub mod events;
 pub use self::events::JsEvents;
 use crate::error::{into_err, Result};
 use crate::protocol::event::JsEvent;
-use crate::protocol::types::JsFilter;
+use crate::protocol::filter::JsFilter;
 
 #[wasm_bindgen(js_name = SaveEventStatus)]
 pub enum JsSaveEventStatus {

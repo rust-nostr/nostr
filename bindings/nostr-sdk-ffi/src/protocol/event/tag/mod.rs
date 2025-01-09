@@ -18,10 +18,10 @@ pub use self::list::Tags;
 pub use self::standard::TagStandard;
 use crate::error::Result;
 use crate::protocol::event::{EventId, PublicKey};
+use crate::protocol::filter::SingleLetterTag;
 use crate::protocol::nips::nip01::Coordinate;
 use crate::protocol::nips::nip56::Report;
 use crate::protocol::nips::nip65::RelayMetadata;
-use crate::protocol::types::filter::SingleLetterTag;
 use crate::protocol::types::{ImageDimensions, Timestamp};
 
 /// Tag

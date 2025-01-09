@@ -11,7 +11,7 @@ use core::str::FromStr;
 
 use super::error::Error;
 use super::Tag;
-use crate::types::filter::SingleLetterTag;
+use crate::filter::SingleLetterTag;
 
 /// Cow Tag
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

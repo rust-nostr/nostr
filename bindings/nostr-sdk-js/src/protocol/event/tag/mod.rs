@@ -12,11 +12,11 @@ pub mod list;
 pub use self::list::JsTags;
 use super::JsEventId;
 use crate::error::{into_err, Result};
+use crate::protocol::filter::JsSingleLetterTag;
 use crate::protocol::key::JsPublicKey;
 use crate::protocol::nips::nip01::JsCoordinate;
 use crate::protocol::nips::nip56::JsReport;
 use crate::protocol::nips::nip65::JsRelayMetadata;
-use crate::protocol::types::filter::JsSingleLetterTag;
 use crate::protocol::types::image::JsImageDimensions;
 use crate::protocol::types::JsTimestamp;
 

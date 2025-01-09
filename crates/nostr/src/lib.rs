@@ -43,6 +43,7 @@ pub use bitcoin::{self, hashes, secp256k1};
 pub use serde_json;
 
 pub mod event;
+pub mod filter;
 pub mod key;
 pub mod message;
 pub mod nips;
@@ -58,6 +59,8 @@ pub use self::event::{
     Event, EventBuilder, EventId, Kind, MissingPartialEvent, PartialEvent, UnsignedEvent,
 };
 #[doc(hidden)]
+pub use self::filter::{Alphabet, Filter, SingleLetterTag};
+#[doc(hidden)]
 pub use self::key::{Keys, PublicKey, SecretKey};
 #[doc(hidden)]
 pub use self::message::{ClientMessage, RawRelayMessage, RelayMessage, SubscriptionId};
@@ -66,10 +69,7 @@ pub use self::nips::nip19::{FromBech32, ToBech32};
 #[doc(hidden)]
 pub use self::signer::{NostrSigner, SignerError};
 #[doc(hidden)]
-pub use self::types::{
-    Alphabet, Contact, Filter, ImageDimensions, Metadata, RelayUrl, SingleLetterTag, Timestamp,
-    TryIntoUrl, Url,
-};
+pub use self::types::{Contact, ImageDimensions, Metadata, RelayUrl, Timestamp, TryIntoUrl, Url};
 #[doc(hidden)]
 pub use self::util::JsonUtil;
 #[doc(hidden)]
