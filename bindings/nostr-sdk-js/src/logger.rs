@@ -13,7 +13,7 @@ use tracing_subscriber::registry::*;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
-use crate::JsNostrLibrary;
+use crate::git_hash_version;
 
 #[wasm_bindgen(js_name = LogLevel)]
 pub struct JsLogLevel {
@@ -60,7 +60,7 @@ pub fn init_logger(level: JsLogLevel) -> Result<()> {
     tracing::info!("Wasm logger initialized");
 
     // Log git hash (defined at compile time)
-    match JsNostrLibrary::new().git_hash_version() {
+    match git_hash_version() {
         Some(hash) => tracing::info!("Git hash: {hash}"),
         None => tracing::warn!("Git hash not defined!"),
     };
