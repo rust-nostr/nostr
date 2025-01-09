@@ -20,7 +20,6 @@ pub mod duration;
 pub mod error;
 pub mod logger;
 pub mod nwc;
-pub mod profile;
 pub mod protocol;
 pub mod relay;
 pub mod signer;
