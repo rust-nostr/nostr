@@ -10,7 +10,7 @@ use wasm_bindgen::prelude::*;
 use super::{JsEvent, JsEventId, JsKind, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::protocol::key::{JsKeys, JsPublicKey};
-use crate::protocol::nips::nip01::JsCoordinate;
+use crate::protocol::nips::nip01::{JsCoordinate, JsMetadata};
 use crate::protocol::nips::nip15::{JsProductData, JsStallData};
 use crate::protocol::nips::nip34::{JsGitIssue, JsGitRepositoryAnnouncement};
 use crate::protocol::nips::nip51::{
@@ -23,7 +23,7 @@ use crate::protocol::nips::nip90::JsJobFeedbackData;
 use crate::protocol::nips::nip94::JsFileMetadata;
 use crate::protocol::nips::nip98::JsHttpData;
 use crate::protocol::types::image::{JsImageDimensions, JsThumbnails};
-use crate::protocol::types::{JsContact, JsMetadata, JsTimestamp};
+use crate::protocol::types::{JsContact, JsTimestamp};
 use crate::signer::JsNostrSigner;
 use crate::util::parse_optional_relay_url;
 

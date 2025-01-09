@@ -4,9 +4,7 @@
 
 pub mod contact;
 pub mod image;
-pub mod metadata;
 pub mod time;
 
 pub use self::contact::JsContact;
-pub use self::metadata::JsMetadata;
 pub use self::time::JsTimestamp;

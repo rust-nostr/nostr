@@ -35,7 +35,6 @@ pub use self::partial::{MissingPartialEvent, PartialEvent};
 pub use self::tag::{Tag, TagKind, TagStandard, Tags};
 pub use self::unsigned::UnsignedEvent;
 use crate::nips::nip01::Coordinate;
-use crate::types::metadata;
 #[cfg(feature = "std")]
 use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
@@ -337,7 +336,7 @@ impl JsonUtil for Event {
 }
 
 impl TryFrom<&Event> for Metadata {
-    type Error = metadata::Error;
+    type Error = serde_json::Error;
 
     fn try_from(event: &Event) -> Result<Self, Self::Error> {
         Metadata::from_json(&event.content)

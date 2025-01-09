@@ -8,7 +8,7 @@ use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::protocol::key::JsPublicKey;
-use crate::protocol::types::JsMetadata;
+use crate::protocol::nips::nip01::JsMetadata;
 
 #[wasm_bindgen(js_name = Profile)]
 pub struct JsProfile {

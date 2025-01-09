@@ -5,6 +5,7 @@
 use std::fmt;
 
 use nostr::prelude::*;
+use nostr::serde_json;
 use nostr_database::prelude::*;
 use nostr_relay_pool::__private::SharedStateError;
 use nostr_relay_pool::prelude::*;
@@ -27,8 +28,8 @@ pub enum Error {
     Zapper(ZapperError),
     /// [`EventBuilder`] error
     EventBuilder(builder::Error),
-    /// Metadata error
-    Metadata(metadata::Error),
+    /// Json error
+    Json(serde_json::Error),
     /// Shared state error
     SharedState(SharedStateError),
     /// NIP57 error
@@ -67,7 +68,7 @@ impl fmt::Display for Error {
             #[cfg(feature = "nip57")]
             Self::Zapper(e) => write!(f, "{e}"),
             Self::EventBuilder(e) => write!(f, "{e}"),
-            Self::Metadata(e) => write!(f, "{e}"),
+            Self::Json(e) => write!(f, "{e}"),
             Self::SharedState(e) => write!(f, "{e}"),
             #[cfg(feature = "nip57")]
             Self::NIP57(e) => write!(f, "{e}"),
@@ -131,9 +132,9 @@ impl From<builder::Error> for Error {
     }
 }
 
-impl From<metadata::Error> for Error {
-    fn from(e: metadata::Error) -> Self {
-        Self::Metadata(e)
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Self::Json(e)
     }
 }
 
