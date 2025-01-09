@@ -35,6 +35,7 @@
 * nostr: remove `ClientMessage::neg_open_deprecated` ([Yuki Kishimoto])
 * pool: change `Relay::connect` method signature ([Yuki Kishimoto])
 * ffi: remove embedded tor client ([Yuki Kishimoto])
+* ffi: change `UnsignedEvent::tags` output ([Yuki Kishimoto])
 * bindings: remove `Timestamp::to_human_datetime` ([Yuki Kishimoto])
 
 ### Changed
@@ -77,6 +78,7 @@
 * ffi: remove unnecessary `Arc` ([Yuki Kishimoto])
 * bindings: cleanup `Relay` methods ([Yuki Kishimoto])
 * bindings: cleanup `NostrDatabase` methods ([Yuki Kishimoto])
+* bindings: remove `Timestamp::to_human_datetime` ([Yuki Kishimoto])
 
 ### Deprecated
 

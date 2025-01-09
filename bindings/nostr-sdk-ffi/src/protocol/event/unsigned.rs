@@ -12,7 +12,7 @@ use uniffi::Object;
 
 use super::EventId;
 use crate::error::Result;
-use crate::protocol::event::{Event, Kind, Tag, Timestamp};
+use crate::protocol::event::{Event, Kind, Tags, Timestamp};
 use crate::protocol::key::{Keys, PublicKey};
 use crate::protocol::signer::NostrSigner;
 
@@ -53,13 +53,8 @@ impl UnsignedEvent {
         self.inner.kind.into()
     }
 
-    pub fn tags(&self) -> Vec<Arc<Tag>> {
-        self.inner
-            .tags
-            .clone()
-            .into_iter()
-            .map(|t| Arc::new(t.into()))
-            .collect()
+    pub fn tags(&self) -> Tags {
+        self.inner.tags.clone().into()
     }
 
     pub fn content(&self) -> String {
