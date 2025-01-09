@@ -27,12 +27,3 @@ fun restore() {
     keys = Keys(secretKey = secretKey)
 }
 // ANCHOR_END: restore
-
-// ANCHOR: vanity
-fun vanity() {
-    val keys = Keys.vanity(listOf("yuk0"), true, 4u)
-
-    println("Public key: ${keys.publicKey().toBech32()}")
-    println("Secret key: ${keys.secretKey().toBech32()}")
-}
-// ANCHOR_END: vanity

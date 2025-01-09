@@ -87,7 +87,6 @@ wasm-bindgen-futures = { workspace = true, optional = true }
 web-sys = { workspace = true, features = ["Window"], optional = true }
 
 [dev-dependencies]
-num_cpus = "1.15"
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [[example]]
@@ -121,10 +120,6 @@ required-features = ["std"]
 [[example]]
 name = "nip57"
 required-features = ["std", "nip57"]
-
-[[example]]
-name = "vanity"
-required-features = ["std"]
 
 [[example]]
 name = "nip15"

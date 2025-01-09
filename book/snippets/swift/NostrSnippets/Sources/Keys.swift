@@ -26,16 +26,4 @@ func restore() throws {
     print("Public key: \(try publicKey.toBech32())")
 }
 // ANCHOR_END: restore
-
-// ANCHOR: vanity
-func vanity() throws {
-    let keys = try Keys.vanity(prefixes: ["0000", "yuk", "yuk0"], bech32: true, numCores: 8)
-
-    let publicKey = keys.publicKey()
-    let secretKey = keys.secretKey()
-
-    print("Public key: \(try publicKey.toBech32())")
-    print("Secret key: \(try secretKey.toBech32())")
-}
-// ANCHOR_END: vanity
 // ANCHOR_END: full

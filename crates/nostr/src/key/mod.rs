@@ -47,8 +47,6 @@ pub enum Error {
     InvalidSecretKey,
     /// Invalid public key
     InvalidPublicKey,
-    /// Unsupported char
-    InvalidChar(char),
 }
 
 #[cfg(feature = "std")]
@@ -61,7 +59,6 @@ impl fmt::Display for Error {
             Self::Hex(e) => write!(f, "{e}"),
             Self::InvalidSecretKey => write!(f, "Invalid secret key"),
             Self::InvalidPublicKey => write!(f, "Invalid public key"),
-            Self::InvalidChar(c) => write!(f, "Unsupported char: {c}"),
         }
     }
 }

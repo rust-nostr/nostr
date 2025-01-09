@@ -19,18 +19,6 @@ function restore() {
 }
 // ANCHOR_END: restore
 
-// ANCHOR: vanity
-function vanity() {
-    // NOTE: NOT SUPPORTED YET!
-
-    // Generate vanity keys
-    // let keys = Keys.vanity(["yuk0"], true, 1);
-    // console.log("Public key (bech32): ", keys.publicKey.toBech32());
-    // console.log("Secret key (bech32): ", keys.secretKey.toBech32());
-}
-// ANCHOR_END: vanity
-
-
 // Load WASM
 loadWasmSync();
 

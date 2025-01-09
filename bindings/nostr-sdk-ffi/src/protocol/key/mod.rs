@@ -69,13 +69,6 @@ impl Keys {
         }
     }
 
-    #[uniffi::constructor]
-    pub fn vanity(prefixes: Vec<String>, bech32: bool, num_cores: u8) -> Result<Self> {
-        Ok(Self {
-            inner: key::Keys::vanity(prefixes, bech32, num_cores as usize)?,
-        })
-    }
-
     /// Derive keys from BIP-39 mnemonics (ENGLISH wordlist).
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/06.md>

@@ -64,6 +64,7 @@ impl Keys {
     }
 
     /// Generate new vanity public key
+    #[deprecated(since = "0.39.0")]
     pub fn vanity<S>(prefixes: Vec<S>, bech32: bool, num_cores: usize) -> Result<Self, Error>
     where
         S: Into<String>,

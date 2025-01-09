@@ -82,6 +82,8 @@
 
 ### Deprecated
 
+* nostr: deprecate `Keys::vanity` ([Yuki Kishimoto])
+
 ## [v0.38.0] - 2024/12/31
 
 ### Summary
