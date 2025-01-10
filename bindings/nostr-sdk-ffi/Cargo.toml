@@ -27,10 +27,10 @@ nostr-sdk  = { workspace = true, default-features = false, features = ["all-nips
 nwc.workspace = true
 tracing = { workspace = true, features = ["std"] }
 tracing-subscriber.workspace = true
-uniffi = { git = "https://github.com/mozilla/uniffi-rs", rev = "cd38ccea8236df7d93aff336c325a3a8e524af5d", features = ["tokio"] }
+uniffi = { git = "https://github.com/yukibtc/uniffi-rs", rev = "45b4358c762b1ce49ebd62df4c45bae7e92f2502", features = ["tokio"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 paranoid-android = "0.2"
 
 [dev-dependencies]
-uniffi = { git = "https://github.com/mozilla/uniffi-rs", rev = "cd38ccea8236df7d93aff336c325a3a8e524af5d", features = ["bindgen-tests"] }
+uniffi = { git = "https://github.com/yukibtc/uniffi-rs", rev = "45b4358c762b1ce49ebd62df4c45bae7e92f2502", features = ["bindgen-tests"] }

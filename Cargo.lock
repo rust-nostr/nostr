@@ -249,47 +249,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d92bec98840b8f03a5ff5413de5293bfcd8bf96467cf5452609f939ec6f5de16"
 
 [[package]]
-name = "askama"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b79091df18a97caea757e28cd2d5fda49c6cd4bd01ddffd7ff01ace0c0ad2c28"
-dependencies = [
- "askama_derive",
- "askama_escape",
-]
-
-[[package]]
-name = "askama_derive"
-version = "0.12.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19fe8d6cb13c4714962c072ea496f3392015f0989b1a2847bb4b2d9effd71d83"
-dependencies = [
- "askama_parser",
- "basic-toml",
- "mime",
- "mime_guess",
- "proc-macro2",
- "quote",
- "serde",
- "syn 2.0.90",
-]
-
-[[package]]
-name = "askama_escape"
-version = "0.10.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "619743e34b5ba4e9703bba34deac3427c72507c7159f5fd030aea8cac0cfe341"
-
-[[package]]
-name = "askama_parser"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acb1161c6b64d1c3d83108213c2a2533a342ac225aabd0bda218278c2ddb00c0"
-dependencies = [
- "nom",
-]
-
-[[package]]
 name = "asn1-rs"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3819,6 +3778,45 @@ dependencies = [
 ]
 
 [[package]]
+name = "rinja"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3dc4940d00595430b3d7d5a01f6222b5e5b51395d1120bdb28d854bb8abb17a5"
+dependencies = [
+ "itoa",
+ "rinja_derive",
+]
+
+[[package]]
+name = "rinja_derive"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08d9ed0146aef6e2825f1b1515f074510549efba38d71f4554eec32eb36ba18b"
+dependencies = [
+ "basic-toml",
+ "memchr",
+ "mime",
+ "mime_guess",
+ "proc-macro2",
+ "quote",
+ "rinja_parser",
+ "rustc-hash 2.0.0",
+ "serde",
+ "syn 2.0.90",
+]
+
+[[package]]
+name = "rinja_parser"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93f9a866e2e00a7a1fb27e46e9e324a6f7c0e7edc4543cae1d38f4e4a100c610"
+dependencies = [
+ "memchr",
+ "nom",
+ "serde",
+]
+
+[[package]]
 name = "rsa"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5967,11 +5965,12 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 
 [[package]]
 name = "uniffi"
-version = "0.28.0"
-source = "git+https://github.com/mozilla/uniffi-rs?rev=cd38ccea8236df7d93aff336c325a3a8e524af5d#cd38ccea8236df7d93aff336c325a3a8e524af5d"
+version = "0.28.3"
+source = "git+https://github.com/yukibtc/uniffi-rs?rev=45b4358c762b1ce49ebd62df4c45bae7e92f2502#45b4358c762b1ce49ebd62df4c45bae7e92f2502"
 dependencies = [
  "anyhow",
  "camino",
+ "cargo_metadata",
  "clap",
  "uniffi_bindgen",
  "uniffi_core",
@@ -5980,11 +5979,10 @@ dependencies = [
 
 [[package]]
 name = "uniffi_bindgen"
-version = "0.28.0"
-source = "git+https://github.com/mozilla/uniffi-rs?rev=cd38ccea8236df7d93aff336c325a3a8e524af5d#cd38ccea8236df7d93aff336c325a3a8e524af5d"
+version = "0.28.3"
+source = "git+https://github.com/yukibtc/uniffi-rs?rev=45b4358c762b1ce49ebd62df4c45bae7e92f2502#45b4358c762b1ce49ebd62df4c45bae7e92f2502"
 dependencies = [
  "anyhow",
- "askama",
  "camino",
  "cargo_metadata",
  "fs-err",
@@ -5993,6 +5991,7 @@ dependencies = [
  "heck",
  "once_cell",
  "paste",
+ "rinja",
  "serde",
  "textwrap",
  "toml 0.5.11",
@@ -6002,33 +6001,31 @@ dependencies = [
 ]
 
 [[package]]
-name = "uniffi_checksum_derive"
-version = "0.28.0"
-source = "git+https://github.com/mozilla/uniffi-rs?rev=cd38ccea8236df7d93aff336c325a3a8e524af5d#cd38ccea8236df7d93aff336c325a3a8e524af5d"
-dependencies = [
- "quote",
- "syn 2.0.90",
-]
-
-[[package]]
 name = "uniffi_core"
-version = "0.28.0"
-source = "git+https://github.com/mozilla/uniffi-rs?rev=cd38ccea8236df7d93aff336c325a3a8e524af5d#cd38ccea8236df7d93aff336c325a3a8e524af5d"
+version = "0.28.3"
+source = "git+https://github.com/yukibtc/uniffi-rs?rev=45b4358c762b1ce49ebd62df4c45bae7e92f2502#45b4358c762b1ce49ebd62df4c45bae7e92f2502"
 dependencies = [
  "anyhow",
  "async-compat",
  "bytes",
- "camino",
- "log",
  "once_cell",
  "paste",
  "static_assertions",
 ]
 
 [[package]]
+name = "uniffi_internal_macros"
+version = "0.28.3"
+source = "git+https://github.com/yukibtc/uniffi-rs?rev=45b4358c762b1ce49ebd62df4c45bae7e92f2502#45b4358c762b1ce49ebd62df4c45bae7e92f2502"
+dependencies = [
+ "quote",
+ "syn 2.0.90",
+]
+
+[[package]]
 name = "uniffi_macros"
-version = "0.28.0"
-source = "git+https://github.com/mozilla/uniffi-rs?rev=cd38ccea8236df7d93aff336c325a3a8e524af5d#cd38ccea8236df7d93aff336c325a3a8e524af5d"
+version = "0.28.3"
+source = "git+https://github.com/yukibtc/uniffi-rs?rev=45b4358c762b1ce49ebd62df4c45bae7e92f2502#45b4358c762b1ce49ebd62df4c45bae7e92f2502"
 dependencies = [
  "bincode",
  "camino",
@@ -6044,19 +6041,19 @@ dependencies = [
 
 [[package]]
 name = "uniffi_meta"
-version = "0.28.0"
-source = "git+https://github.com/mozilla/uniffi-rs?rev=cd38ccea8236df7d93aff336c325a3a8e524af5d#cd38ccea8236df7d93aff336c325a3a8e524af5d"
+version = "0.28.3"
+source = "git+https://github.com/yukibtc/uniffi-rs?rev=45b4358c762b1ce49ebd62df4c45bae7e92f2502#45b4358c762b1ce49ebd62df4c45bae7e92f2502"
 dependencies = [
  "anyhow",
  "bytes",
  "siphasher",
- "uniffi_checksum_derive",
+ "uniffi_internal_macros",
 ]
 
 [[package]]
 name = "uniffi_testing"
-version = "0.28.0"
-source = "git+https://github.com/mozilla/uniffi-rs?rev=cd38ccea8236df7d93aff336c325a3a8e524af5d#cd38ccea8236df7d93aff336c325a3a8e524af5d"
+version = "0.28.3"
+source = "git+https://github.com/yukibtc/uniffi-rs?rev=45b4358c762b1ce49ebd62df4c45bae7e92f2502#45b4358c762b1ce49ebd62df4c45bae7e92f2502"
 dependencies = [
  "anyhow",
  "camino",
@@ -6067,13 +6064,12 @@ dependencies = [
 
 [[package]]
 name = "uniffi_udl"
-version = "0.28.0"
-source = "git+https://github.com/mozilla/uniffi-rs?rev=cd38ccea8236df7d93aff336c325a3a8e524af5d#cd38ccea8236df7d93aff336c325a3a8e524af5d"
+version = "0.28.3"
+source = "git+https://github.com/yukibtc/uniffi-rs?rev=45b4358c762b1ce49ebd62df4c45bae7e92f2502#45b4358c762b1ce49ebd62df4c45bae7e92f2502"
 dependencies = [
  "anyhow",
  "textwrap",
  "uniffi_meta",
- "uniffi_testing",
  "weedle2",
 ]
 
@@ -6366,7 +6362,7 @@ dependencies = [
 [[package]]
 name = "weedle2"
 version = "5.0.0"
-source = "git+https://github.com/mozilla/uniffi-rs?rev=cd38ccea8236df7d93aff336c325a3a8e524af5d#cd38ccea8236df7d93aff336c325a3a8e524af5d"
+source = "git+https://github.com/yukibtc/uniffi-rs?rev=45b4358c762b1ce49ebd62df4c45bae7e92f2502#45b4358c762b1ce49ebd62df4c45bae7e92f2502"
 dependencies = [
  "nom",
 ]
