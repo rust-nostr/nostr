@@ -6,7 +6,7 @@ panic = "abort"     # Abort on panic
 strip = "debuginfo" # Partially strip symbols from binary. If fully stripped, UniFFI can't generate foreign-language bindings
 
 [build]
-rustflags = ["-C", "panic=abort"]
+rustflags = ["-C", "panic=abort", "-Clink-arg=-Wl,-z,pack-relative-relocs"]
 
 [unstable]
 unstable-options = true
