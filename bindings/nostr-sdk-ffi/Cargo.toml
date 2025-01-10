@@ -32,5 +32,5 @@ uniffi = { git = "https://github.com/yukibtc/uniffi-rs", rev = "45b4358c762b1ce4
 [target.'cfg(target_os = "android")'.dependencies]
 paranoid-android = "0.2"
 
-[dev-dependencies]
-uniffi = { git = "https://github.com/yukibtc/uniffi-rs", rev = "45b4358c762b1ce49ebd62df4c45bae7e92f2502", features = ["bindgen-tests"] }
+#[dev-dependencies]
+#uniffi = { git = "https://github.com/yukibtc/uniffi-rs", rev = "45b4358c762b1ce49ebd62df4c45bae7e92f2502", features = ["bindgen-tests"] }

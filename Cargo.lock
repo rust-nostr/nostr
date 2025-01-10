@@ -5996,7 +5996,6 @@ dependencies = [
  "textwrap",
  "toml 0.5.11",
  "uniffi_meta",
- "uniffi_testing",
  "uniffi_udl",
 ]
 
@@ -6048,18 +6047,6 @@ dependencies = [
  "bytes",
  "siphasher",
  "uniffi_internal_macros",
-]
-
-[[package]]
-name = "uniffi_testing"
-version = "0.28.3"
-source = "git+https://github.com/yukibtc/uniffi-rs?rev=45b4358c762b1ce49ebd62df4c45bae7e92f2502#45b4358c762b1ce49ebd62df4c45bae7e92f2502"
-dependencies = [
- "anyhow",
- "camino",
- "cargo_metadata",
- "fs-err",
- "once_cell",
 ]
 
 [[package]]
