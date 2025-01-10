@@ -57,7 +57,6 @@
 * pool: update `Error::WebSocket` variant inner type ([Yuki Kishimoto])
 * lmdb: use `EventBorrow` instead of `DatabaseEvent` ([Yuki Kishimoto])
 * ndb: refactor note-to-event conversion ([Yuki Kishimoto])
-* bindings: build `std` library optimized for size ([Yuki Kishimoto])
 
 ### Added
 
