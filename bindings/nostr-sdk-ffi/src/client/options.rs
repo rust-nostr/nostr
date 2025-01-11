@@ -174,4 +174,23 @@ impl Connection {
         builder.inner = builder.inner.proxy(addr);
         Ok(builder)
     }
+
+    /// Use embedded tor client
+    ///
+    /// This not work on `android` and/or `ios` targets.
+    /// Use [`Connection::embedded_tor_with_path`] instead.
+    pub fn embedded_tor(&self) -> Self {
+        let mut builder = self.clone();
+        builder.inner = builder.inner.embedded_tor();
+        builder
+    }
+
+    /// Use embedded tor client
+    ///
+    /// Specify a path where to store data
+    pub fn embedded_tor_with_path(&self, data_path: String) -> Self {
+        let mut builder = self.clone();
+        builder.inner = builder.inner.embedded_tor_with_path(data_path);
+        builder
+    }
 }

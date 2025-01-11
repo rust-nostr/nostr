@@ -35,7 +35,6 @@
 * nostr: remove `ClientMessage::neg_open_deprecated` ([Yuki Kishimoto])
 * nostr: add `nip98` feature ([Yuki Kishimoto])
 * pool: change `Relay::connect` method signature ([Yuki Kishimoto])
-* ffi: remove embedded tor client ([Yuki Kishimoto])
 * ffi: change `UnsignedEvent::tags` output ([Yuki Kishimoto])
 * ffi: convert `ImageDimensions` in a `Record` ([Yuki Kishimoto])
 * ffi: convert `Contact` to a `Record` ([Yuki Kishimoto])

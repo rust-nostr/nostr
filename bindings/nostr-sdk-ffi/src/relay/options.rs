@@ -3,6 +3,7 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
+use std::path::PathBuf;
 use std::time::Duration;
 
 use nostr_sdk::{pool, prelude};
@@ -15,6 +16,7 @@ use crate::error::{NostrSdkError, Result};
 pub enum ConnectionMode {
     Direct,
     Proxy { addr: String },
+    Tor { custom_path: Option<String> },
 }
 
 impl From<pool::ConnectionMode> for ConnectionMode {
@@ -23,6 +25,9 @@ impl From<pool::ConnectionMode> for ConnectionMode {
             pool::ConnectionMode::Direct => Self::Direct,
             pool::ConnectionMode::Proxy(addr) => Self::Proxy {
                 addr: addr.to_string(),
+            },
+            pool::ConnectionMode::Tor { custom_path } => Self::Tor {
+                custom_path: custom_path.map(|p| p.to_string_lossy().into_owned()),
             },
         }
     }
@@ -35,6 +40,9 @@ impl TryFrom<ConnectionMode> for pool::ConnectionMode {
         match mode {
             ConnectionMode::Direct => Ok(Self::Direct),
             ConnectionMode::Proxy { addr } => Ok(Self::Proxy(addr.parse()?)),
+            ConnectionMode::Tor { custom_path } => Ok(Self::Tor {
+                custom_path: custom_path.map(PathBuf::from),
+            }),
         }
     }
 }
