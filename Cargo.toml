@@ -21,7 +21,7 @@ rust-version = "1.70.0"
 async-trait = "0.1"
 async-utility = "0.3"
 #async-wsocket = "0.12"
-async-wsocket = { git = "https://github.com/yukibtc/async-wsocket", rev = "0dfeee769b5ae9e807621cb3270fc35d35f02e7d" }
+async-wsocket = { git = "https://github.com/yukibtc/async-wsocket", rev = "da5da94574f73da1b4d638fd9736298a67139c59" }
 atomic-destructor = { version = "0.3", default-features = false }
 js-sys = "0.3"
 negentropy = { version = "0.4", default-features = false }
