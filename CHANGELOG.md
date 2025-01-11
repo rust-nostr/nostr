@@ -44,7 +44,6 @@
 * bindings: remove `profile` module ([Yuki Kishimoto])
 * bindings: remove `NostrLibrary` struct and keep only `git_hash_version` func ([Yuki Kishimoto])
 * bindings: cleanup `Relay` methods ([Yuki Kishimoto])
-* bindings: cleanup `NostrDatabase` methods ([Yuki Kishimoto])
 * bindings: remove `Timestamp::to_human_datetime` ([Yuki Kishimoto])
 
 ### Changed
