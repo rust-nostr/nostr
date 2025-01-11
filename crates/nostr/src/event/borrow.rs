@@ -32,21 +32,21 @@ pub struct EventBorrow<'a> {
     pub sig: &'a [u8; 64],
 }
 
-impl<'a> PartialEq for EventBorrow<'a> {
+impl PartialEq for EventBorrow<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
-impl<'a> Eq for EventBorrow<'a> {}
+impl Eq for EventBorrow<'_> {}
 
-impl<'a> PartialOrd for EventBorrow<'a> {
+impl PartialOrd for EventBorrow<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<'a> Ord for EventBorrow<'a> {
+impl Ord for EventBorrow<'_> {
     fn cmp(&self, other: &Self) -> Ordering {
         if self.created_at != other.created_at {
             // Descending order
@@ -58,13 +58,13 @@ impl<'a> Ord for EventBorrow<'a> {
     }
 }
 
-impl<'a> Hash for EventBorrow<'a> {
+impl Hash for EventBorrow<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }
 }
 
-impl<'a> EventBorrow<'a> {
+impl EventBorrow<'_> {
     /// Into owned event
     pub fn into_owned(self) -> Event {
         Event::new(

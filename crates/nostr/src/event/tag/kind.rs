@@ -135,6 +135,8 @@ pub enum TagKind<'a> {
     Custom(Cow<'a, str>),
 }
 
+// TODO: manually impl eq, ord and hash
+
 impl<'a> TagKind<'a> {
     /// Construct `a` kind
     ///
@@ -288,7 +290,7 @@ impl<'a> TagKind<'a> {
     }
 }
 
-impl<'a> fmt::Display for TagKind<'a> {
+impl fmt::Display for TagKind<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.as_str())
     }

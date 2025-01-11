@@ -115,7 +115,7 @@ impl RelayUrl {
     pub fn is_onion(&self) -> bool {
         self.url
             .domain()
-            .map_or(false, |host| host.ends_with(".onion"))
+            .is_some_and(|host| host.ends_with(".onion"))
     }
 
     /// Return the serialization of this relay URL without the trailing slash.

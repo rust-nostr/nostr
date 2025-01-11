@@ -123,8 +123,8 @@ pub enum TagKind {
     },
 }
 
-impl<'a> From<tag::TagKind<'a>> for TagKind {
-    fn from(value: tag::TagKind) -> Self {
+impl From<tag::TagKind<'_>> for TagKind {
+    fn from(value: tag::TagKind<'_>) -> Self {
         match value {
             tag::TagKind::Alt => Self::Alt,
             tag::TagKind::Client => Self::Client,
@@ -188,7 +188,7 @@ impl<'a> From<tag::TagKind<'a>> for TagKind {
     }
 }
 
-impl<'a> From<TagKind> for tag::TagKind<'a> {
+impl From<TagKind> for tag::TagKind<'_> {
     fn from(value: TagKind) -> Self {
         match value {
             TagKind::Alt => Self::Alt,

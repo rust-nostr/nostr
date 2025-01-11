@@ -36,8 +36,8 @@ pub enum SignerBackend {
     Custom { backend: String },
 }
 
-impl<'a> From<signer::SignerBackend<'a>> for SignerBackend {
-    fn from(backend: signer::SignerBackend<'a>) -> Self {
+impl From<signer::SignerBackend<'_>> for SignerBackend {
+    fn from(backend: signer::SignerBackend<'_>) -> Self {
         match backend {
             signer::SignerBackend::Keys => Self::Keys,
             signer::SignerBackend::BrowserExtension => Self::BrowserExtension,
@@ -49,7 +49,7 @@ impl<'a> From<signer::SignerBackend<'a>> for SignerBackend {
     }
 }
 
-impl<'a> From<SignerBackend> for signer::SignerBackend<'a> {
+impl From<SignerBackend> for signer::SignerBackend<'_> {
     fn from(backend: SignerBackend) -> Self {
         match backend {
             SignerBackend::Keys => Self::Keys,

@@ -1038,7 +1038,7 @@ impl InnerRelay {
 
         // Check event size
         if let Some(max_size) = self.opts.limits.events.get_max_size(&kind) {
-            let size: usize = event.as_json().as_bytes().len();
+            let size: usize = event.as_json().len();
             let max_size: usize = max_size as usize;
             if size > max_size {
                 return Err(Error::EventTooLarge { size, max_size });

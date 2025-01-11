@@ -6,7 +6,8 @@
 
 #![cfg_attr(not(target_arch = "wasm32"), forbid(unsafe_code))]
 #![cfg_attr(target_arch = "wasm32", deny(unsafe_code))]
-#![warn(missing_docs)]
+#![cfg_attr(test, allow(missing_docs))]
+#![cfg_attr(not(test), warn(missing_docs))]
 #![warn(rustdoc::bare_urls)]
 #![allow(unknown_lints)] // TODO: remove when MSRV >= 1.72.0, required for `clippy::arc_with_non_send_sync`
 #![allow(clippy::arc_with_non_send_sync)]

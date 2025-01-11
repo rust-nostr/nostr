@@ -145,12 +145,7 @@ impl Nip07Signer {
             .map_err(|_| Error::ObjectKeyNotFound(key.to_string()))
     }
 
-    async fn call_func<'a, T>(
-        &self,
-        obj: &Object,
-        name: &str,
-        args: CallFunc<'a>,
-    ) -> Result<T, Error>
+    async fn call_func<T>(&self, obj: &Object, name: &str, args: CallFunc<'_>) -> Result<T, Error>
     where
         T: JsCast,
     {
