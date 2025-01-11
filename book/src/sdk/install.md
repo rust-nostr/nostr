@@ -177,7 +177,7 @@ The solution is to add JNA as a dependency like so:
 ```kotlin
 dependencies {
     // ...
-    implementation("net.java.dev.jna:jna:5.12.0@aar")
+    implementation("net.java.dev.jna:jna:5.15.0@aar")
 }
 ```
 
