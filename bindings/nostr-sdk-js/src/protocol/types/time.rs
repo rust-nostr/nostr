@@ -49,4 +49,10 @@ impl JsTimestamp {
     pub fn as_secs(&self) -> f64 {
         self.inner.as_u64() as f64
     }
+
+    /// Convert `Timestamp` to human datetime
+    #[wasm_bindgen(js_name = toHumanDatetime)]
+    pub fn to_human_datetime(&self) -> String {
+        self.inner.to_human_datetime()
+    }
 }
