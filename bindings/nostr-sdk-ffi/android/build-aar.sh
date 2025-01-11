@@ -57,6 +57,8 @@ cargo run -p nostr-sdk-ffi --features uniffi-cli --bin uniffi-bindgen generate -
 #
 # Issues:
 # * https://github.com/rust-nostr/nostr/issues/703
+# * https://github.com/upx/upx/issues/700
+# * https://github.com/upx/upx/issues/710
 #
 # Market stats:
 # * https://android.stackexchange.com/questions/186334/what-percentage-of-android-devices-runs-on-x86-architecture
