@@ -43,7 +43,6 @@
 * ffi: rename `Kind::from_enum` and `Kind::as_enum` to `Kind::from_std` and `Kind::as_std` ([Yuki Kishimoto])
 * bindings: remove `profile` module ([Yuki Kishimoto])
 * bindings: remove `NostrLibrary` struct and keep only `git_hash_version` func ([Yuki Kishimoto])
-* bindings: cleanup `Relay` methods ([Yuki Kishimoto])
 * bindings: remove `Timestamp::to_human_datetime` ([Yuki Kishimoto])
 
 ### Changed
