@@ -59,6 +59,7 @@
 
 ### Added
 
+* nostr: add NIP96 support ([cipres])
 * nostr: add `Kind::PeerToPeerOrder` variant ([Francisco Calderón])
 * nostr: add `CowTag` ([Yuki Kishimoto])
 * nostr: add `EventBorrow` ([Yuki Kishimoto])
