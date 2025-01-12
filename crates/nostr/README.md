@@ -49,7 +49,7 @@ fn main() -> Result<()> {
     // New POW text note
     let event: Event = EventBuilder::text_note("POW text note from rust-nostr").pow(20).sign_with_keys(&keys)?;
 
-    // Convert client nessage to JSON
+    // Convert client message to JSON
     let json = ClientMessage::event(event).as_json();
     println!("{json}");
 
