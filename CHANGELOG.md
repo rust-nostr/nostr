@@ -89,7 +89,9 @@
 * nostr: remove `negentropy` deps ([Yuki Kishimoto])
 * nostr: remove `bitcoin` dep ([Yuki Kishimoto])
 * nostr: remove `once_cell` dep ([Yuki Kishimoto])
+* nostr: remove `async-trait` dep ([Yuki Kishimoto])
 * connect: remove `thiserror` dep ([Yuki Kishimoto])
+* connect: remove `async-trait` dep ([Yuki Kishimoto])
 * relay-builder: remove `thiserror` dep ([Yuki Kishimoto])
 * ffi: remove unnecessary `Arc` ([Yuki Kishimoto])
 

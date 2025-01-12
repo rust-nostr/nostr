@@ -2702,7 +2702,6 @@ name = "nostr"
 version = "0.38.0"
 dependencies = [
  "aes",
- "async-trait",
  "base64 0.22.1",
  "bech32",
  "bip39",
@@ -2750,7 +2749,6 @@ dependencies = [
 name = "nostr-connect"
 version = "0.38.0"
 dependencies = [
- "async-trait",
  "async-utility",
  "dialoguer",
  "nostr",

@@ -9,12 +9,13 @@ use nostr_connect::prelude::*;
 #[derive(Debug, Clone)]
 struct MyAuthUrlHandler;
 
-#[async_trait::async_trait]
 impl AuthUrlHandler for MyAuthUrlHandler {
-    async fn on_auth_url(&self, auth_url: Url) -> Result<()> {
-        println!("Opening auth url: {auth_url}");
-        webbrowser::open(auth_url.as_str())?;
-        Ok(())
+    fn on_auth_url(&self, auth_url: Url) -> BoxedFuture<Result<()>> {
+        Box::pin(async move {
+            println!("Opening auth url: {auth_url}");
+            webbrowser::open(auth_url.as_str())?;
+            Ok(())
+        })
     }
 }
 

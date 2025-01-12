@@ -5,28 +5,25 @@
 //! Nostr Signer
 
 use alloc::borrow::Cow;
-#[cfg(not(feature = "std"))]
-use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::sync::Arc;
 use core::fmt;
 
-use async_trait::async_trait;
-
+use crate::util::BoxedFuture;
 use crate::{Event, PublicKey, UnsignedEvent};
 
 /// Nostr Signer error
 #[derive(Debug, PartialEq, Eq)]
 pub struct SignerError(String);
 
+#[cfg(feature = "std")]
+impl std::error::Error for SignerError {}
+
 impl fmt::Display for SignerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
-
-#[cfg(feature = "std")]
-impl std::error::Error for SignerError {}
 
 impl SignerError {
     /// New signer error
@@ -82,53 +79,49 @@ pub enum SignerBackend<'a> {
 }
 
 /// Nostr signer abstraction
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait NostrSigner: fmt::Debug + Send + Sync {
     /// Signer backend
     fn backend(&self) -> SignerBackend;
 
     /// Get signer public key
-    async fn get_public_key(&self) -> Result<PublicKey, SignerError>;
+    fn get_public_key(&self) -> BoxedFuture<Result<PublicKey, SignerError>>;
 
     /// Sign an unsigned event
-    async fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, SignerError>;
+    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<Result<Event, SignerError>>;
 
     /// NIP04 encrypt (deprecate and unsecure)
     #[cfg(feature = "nip04")]
-    async fn nip04_encrypt(
-        &self,
-        public_key: &PublicKey,
-        content: &str,
-    ) -> Result<String, SignerError>;
+    fn nip04_encrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        content: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>>;
 
     /// NIP04 decrypt
     #[cfg(feature = "nip04")]
-    async fn nip04_decrypt(
-        &self,
-        public_key: &PublicKey,
-        encrypted_content: &str,
-    ) -> Result<String, SignerError>;
+    fn nip04_decrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        encrypted_content: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>>;
 
     /// NIP44 encrypt
     #[cfg(feature = "nip44")]
-    async fn nip44_encrypt(
-        &self,
-        public_key: &PublicKey,
-        content: &str,
-    ) -> Result<String, SignerError>;
+    fn nip44_encrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        content: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>>;
 
     /// NIP44 decrypt
     #[cfg(feature = "nip44")]
-    async fn nip44_decrypt(
-        &self,
-        public_key: &PublicKey,
-        payload: &str,
-    ) -> Result<String, SignerError>;
+    fn nip44_decrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        payload: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>>;
 }
 
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrSigner for Arc<dyn NostrSigner> {
     #[inline]
     fn backend(&self) -> SignerBackend {
@@ -136,54 +129,52 @@ impl NostrSigner for Arc<dyn NostrSigner> {
     }
 
     #[inline]
-    async fn get_public_key(&self) -> Result<PublicKey, SignerError> {
-        self.as_ref().get_public_key().await
+    fn get_public_key(&self) -> BoxedFuture<Result<PublicKey, SignerError>> {
+        self.as_ref().get_public_key()
     }
 
     #[inline]
-    async fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, SignerError> {
-        self.as_ref().sign_event(unsigned).await
-    }
-
-    #[inline]
-    #[cfg(feature = "nip04")]
-    async fn nip04_encrypt(
-        &self,
-        public_key: &PublicKey,
-        content: &str,
-    ) -> Result<String, SignerError> {
-        self.as_ref().nip04_encrypt(public_key, content).await
+    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<Result<Event, SignerError>> {
+        self.as_ref().sign_event(unsigned)
     }
 
     #[inline]
     #[cfg(feature = "nip04")]
-    async fn nip04_decrypt(
-        &self,
-        public_key: &PublicKey,
-        encrypted_content: &str,
-    ) -> Result<String, SignerError> {
-        self.as_ref()
-            .nip04_decrypt(public_key, encrypted_content)
-            .await
+    fn nip04_encrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        content: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+        self.as_ref().nip04_encrypt(public_key, content)
+    }
+
+    #[inline]
+    #[cfg(feature = "nip04")]
+    fn nip04_decrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        encrypted_content: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+        self.as_ref().nip04_decrypt(public_key, encrypted_content)
     }
 
     #[inline]
     #[cfg(feature = "nip44")]
-    async fn nip44_encrypt(
-        &self,
-        public_key: &PublicKey,
-        content: &str,
-    ) -> Result<String, SignerError> {
-        self.as_ref().nip44_encrypt(public_key, content).await
+    fn nip44_encrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        content: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+        self.as_ref().nip44_encrypt(public_key, content)
     }
 
     #[inline]
     #[cfg(feature = "nip44")]
-    async fn nip44_decrypt(
-        &self,
-        public_key: &PublicKey,
-        payload: &str,
-    ) -> Result<String, SignerError> {
-        self.as_ref().nip44_decrypt(public_key, payload).await
+    fn nip44_decrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        payload: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+        self.as_ref().nip44_decrypt(public_key, payload)
     }
 }

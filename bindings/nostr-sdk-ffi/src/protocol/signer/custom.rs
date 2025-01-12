@@ -77,77 +77,91 @@ mod inner {
             self.inner.backend().into()
         }
 
-        async fn get_public_key(&self) -> Result<PublicKey, SignerError> {
-            let public_key = self
-                .inner
-                .get_public_key()
-                .await
-                .map_err(|e| SignerError::backend(Error(e.to_string())))?
-                .ok_or_else(|| {
-                    SignerError::backend(Error(String::from("Received None instead of public key")))
-                })?;
-            Ok(**public_key)
+        fn get_public_key(&self) -> BoxedFuture<Result<PublicKey, SignerError>> {
+            Box::pin(async move {
+                let public_key = self
+                    .inner
+                    .get_public_key()
+                    .await
+                    .map_err(|e| SignerError::backend(Error(e.to_string())))?
+                    .ok_or_else(|| {
+                        SignerError::backend(Error(String::from(
+                            "Received None instead of public key",
+                        )))
+                    })?;
+                Ok(**public_key)
+            })
         }
 
-        async fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, SignerError> {
-            let unsigned = Arc::new(unsigned.into());
-            let event = self
-                .inner
-                .sign_event(unsigned)
-                .await
-                .map_err(|e| SignerError::backend(Error(e.to_string())))?
-                .ok_or_else(|| {
-                    SignerError::backend(Error(String::from("Received None instead of event")))
-                })?;
-            Ok(event.as_ref().deref().clone())
+        fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<Result<Event, SignerError>> {
+            Box::pin(async move {
+                let unsigned = Arc::new(unsigned.into());
+                let event = self
+                    .inner
+                    .sign_event(unsigned)
+                    .await
+                    .map_err(|e| SignerError::backend(Error(e.to_string())))?
+                    .ok_or_else(|| {
+                        SignerError::backend(Error(String::from("Received None instead of event")))
+                    })?;
+                Ok(event.as_ref().deref().clone())
+            })
         }
 
-        async fn nip04_encrypt(
-            &self,
-            public_key: &PublicKey,
-            content: &str,
-        ) -> Result<String, SignerError> {
-            let public_key = Arc::new((*public_key).into());
-            self.inner
-                .nip04_encrypt(public_key, content.to_string())
-                .await
-                .map_err(|e| SignerError::backend(Error(e.to_string())))
+        fn nip04_encrypt<'a>(
+            &'a self,
+            public_key: &'a PublicKey,
+            content: &'a str,
+        ) -> BoxedFuture<'a, Result<String, SignerError>> {
+            Box::pin(async move {
+                let public_key = Arc::new((*public_key).into());
+                self.inner
+                    .nip04_encrypt(public_key, content.to_string())
+                    .await
+                    .map_err(|e| SignerError::backend(Error(e.to_string())))
+            })
         }
 
-        async fn nip04_decrypt(
-            &self,
-            public_key: &PublicKey,
-            encrypted_content: &str,
-        ) -> Result<String, SignerError> {
-            let public_key = Arc::new((*public_key).into());
-            self.inner
-                .nip04_decrypt(public_key, encrypted_content.to_string())
-                .await
-                .map_err(|e| SignerError::backend(Error(e.to_string())))
+        fn nip04_decrypt<'a>(
+            &'a self,
+            public_key: &'a PublicKey,
+            content: &'a str,
+        ) -> BoxedFuture<'a, Result<String, SignerError>> {
+            Box::pin(async move {
+                let public_key = Arc::new((*public_key).into());
+                self.inner
+                    .nip04_decrypt(public_key, content.to_string())
+                    .await
+                    .map_err(|e| SignerError::backend(Error(e.to_string())))
+            })
         }
 
-        async fn nip44_encrypt(
-            &self,
-            public_key: &PublicKey,
-            content: &str,
-        ) -> Result<String, SignerError> {
-            let public_key = Arc::new((*public_key).into());
-            self.inner
-                .nip44_encrypt(public_key, content.to_string())
-                .await
-                .map_err(|e| SignerError::backend(Error(e.to_string())))
+        fn nip44_encrypt<'a>(
+            &'a self,
+            public_key: &'a PublicKey,
+            content: &'a str,
+        ) -> BoxedFuture<'a, Result<String, SignerError>> {
+            Box::pin(async move {
+                let public_key = Arc::new((*public_key).into());
+                self.inner
+                    .nip44_encrypt(public_key, content.to_string())
+                    .await
+                    .map_err(|e| SignerError::backend(Error(e.to_string())))
+            })
         }
 
-        async fn nip44_decrypt(
-            &self,
-            public_key: &PublicKey,
-            payload: &str,
-        ) -> Result<String, SignerError> {
-            let public_key = Arc::new((*public_key).into());
-            self.inner
-                .nip44_decrypt(public_key, payload.to_string())
-                .await
-                .map_err(|e| SignerError::backend(Error(e.to_string())))
+        fn nip44_decrypt<'a>(
+            &'a self,
+            public_key: &'a PublicKey,
+            content: &'a str,
+        ) -> BoxedFuture<'a, Result<String, SignerError>> {
+            Box::pin(async move {
+                let public_key = Arc::new((*public_key).into());
+                self.inner
+                    .nip44_decrypt(public_key, content.to_string())
+                    .await
+                    .map_err(|e| SignerError::backend(Error(e.to_string())))
+            })
         }
     }
 }

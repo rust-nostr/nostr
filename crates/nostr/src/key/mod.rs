@@ -16,8 +16,6 @@ use core::str::FromStr;
 use std::sync::OnceLock as OnceCell;
 
 #[cfg(feature = "std")]
-use async_trait::async_trait;
-#[cfg(feature = "std")]
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::rand::{CryptoRng, Rng};
 use secp256k1::schnorr::Signature;
@@ -33,6 +31,8 @@ pub use self::secret_key::SecretKey;
 #[cfg(feature = "std")]
 use crate::signer::{NostrSigner, SignerBackend, SignerError};
 use crate::util::hex;
+#[cfg(feature = "std")]
+use crate::util::BoxedFuture;
 #[cfg(feature = "std")]
 use crate::{Event, UnsignedEvent, SECP256K1};
 
@@ -270,62 +270,70 @@ impl FromStr for Keys {
 }
 
 #[cfg(feature = "std")]
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrSigner for Keys {
     fn backend(&self) -> SignerBackend {
         SignerBackend::Keys
     }
 
-    async fn get_public_key(&self) -> Result<PublicKey, SignerError> {
-        Ok(self.public_key)
+    fn get_public_key(&self) -> BoxedFuture<Result<PublicKey, SignerError>> {
+        Box::pin(async { Ok(self.public_key) })
     }
 
-    async fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, SignerError> {
-        unsigned.sign_with_keys(self).map_err(SignerError::backend)
-    }
-
-    #[cfg(feature = "nip04")]
-    async fn nip04_encrypt(
-        &self,
-        public_key: &PublicKey,
-        content: &str,
-    ) -> Result<String, SignerError> {
-        let secret_key: &SecretKey = self.secret_key();
-        crate::nips::nip04::encrypt(secret_key, public_key, content).map_err(SignerError::backend)
+    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<Result<Event, SignerError>> {
+        Box::pin(async { unsigned.sign_with_keys(self).map_err(SignerError::backend) })
     }
 
     #[cfg(feature = "nip04")]
-    async fn nip04_decrypt(
-        &self,
-        public_key: &PublicKey,
-        encrypted_content: &str,
-    ) -> Result<String, SignerError> {
-        let secret_key: &SecretKey = self.secret_key();
-        crate::nips::nip04::decrypt(secret_key, public_key, encrypted_content)
-            .map_err(SignerError::backend)
+    fn nip04_encrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        content: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+        Box::pin(async move {
+            let secret_key: &SecretKey = self.secret_key();
+            crate::nips::nip04::encrypt(secret_key, public_key, content)
+                .map_err(SignerError::backend)
+        })
+    }
+
+    #[cfg(feature = "nip04")]
+    fn nip04_decrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        encrypted_content: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+        Box::pin(async move {
+            let secret_key: &SecretKey = self.secret_key();
+            crate::nips::nip04::decrypt(secret_key, public_key, encrypted_content)
+                .map_err(SignerError::backend)
+        })
     }
 
     #[cfg(feature = "nip44")]
-    async fn nip44_encrypt(
-        &self,
-        public_key: &PublicKey,
-        content: &str,
-    ) -> Result<String, SignerError> {
-        use crate::nips::nip44::{self, Version};
-        let secret_key: &SecretKey = self.secret_key();
-        nip44::encrypt(secret_key, public_key, content, Version::default())
-            .map_err(SignerError::backend)
+    fn nip44_encrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        content: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+        Box::pin(async move {
+            use crate::nips::nip44::{self, Version};
+            let secret_key: &SecretKey = self.secret_key();
+            nip44::encrypt(secret_key, public_key, content, Version::default())
+                .map_err(SignerError::backend)
+        })
     }
 
     #[cfg(feature = "nip44")]
-    async fn nip44_decrypt(
-        &self,
-        public_key: &PublicKey,
-        payload: &str,
-    ) -> Result<String, SignerError> {
-        let secret_key: &SecretKey = self.secret_key();
-        crate::nips::nip44::decrypt(secret_key, public_key, payload).map_err(SignerError::backend)
+    fn nip44_decrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        payload: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+        Box::pin(async move {
+            let secret_key: &SecretKey = self.secret_key();
+            crate::nips::nip44::decrypt(secret_key, public_key, payload)
+                .map_err(SignerError::backend)
+        })
     }
 }
 

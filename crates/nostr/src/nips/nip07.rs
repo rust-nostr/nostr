@@ -10,7 +10,6 @@ use alloc::string::{String, ToString};
 use core::fmt;
 use core::str::FromStr;
 
-use async_trait::async_trait;
 use js_sys::{Array, Function, JsString, Object, Promise, Reflect};
 use secp256k1::schnorr::Signature;
 use wasm_bindgen::prelude::*;
@@ -18,6 +17,7 @@ use wasm_bindgen_futures::JsFuture;
 use web_sys::Window;
 
 use crate::signer::{NostrSigner, SignerBackend, SignerError};
+use crate::util::BoxedFuture;
 use crate::{event, key, Event, PublicKey, UnsignedEvent};
 
 const GET_PUBLIC_KEY: &str = "getPublicKey";
@@ -254,59 +254,68 @@ impl BrowserSigner {
     }
 }
 
-#[async_trait(?Send)]
 impl NostrSigner for BrowserSigner {
     fn backend(&self) -> SignerBackend {
         SignerBackend::BrowserExtension
     }
 
-    async fn get_public_key(&self) -> Result<PublicKey, SignerError> {
-        self._get_public_key().await.map_err(SignerError::backend)
+    fn get_public_key(&self) -> BoxedFuture<Result<PublicKey, SignerError>> {
+        Box::pin(async move { self._get_public_key().await.map_err(SignerError::backend) })
     }
 
-    async fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, SignerError> {
-        self._sign_event(unsigned)
-            .await
-            .map_err(SignerError::backend)
+    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<Result<Event, SignerError>> {
+        Box::pin(async move {
+            self._sign_event(unsigned)
+                .await
+                .map_err(SignerError::backend)
+        })
     }
 
-    async fn nip04_encrypt(
-        &self,
-        public_key: &PublicKey,
-        content: &str,
-    ) -> Result<String, SignerError> {
-        self.encryption_decryption(NIP04, ENCRYPT, public_key, content)
-            .await
-            .map_err(SignerError::backend)
+    fn nip04_encrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        content: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+        Box::pin(async move {
+            self.encryption_decryption(NIP04, ENCRYPT, public_key, content)
+                .await
+                .map_err(SignerError::backend)
+        })
     }
 
-    async fn nip04_decrypt(
-        &self,
-        public_key: &PublicKey,
-        content: &str,
-    ) -> Result<String, SignerError> {
-        self.encryption_decryption(NIP04, DECRYPT, public_key, content)
-            .await
-            .map_err(SignerError::backend)
+    fn nip04_decrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        content: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+        Box::pin(async move {
+            self.encryption_decryption(NIP04, DECRYPT, public_key, content)
+                .await
+                .map_err(SignerError::backend)
+        })
     }
 
-    async fn nip44_encrypt(
-        &self,
-        public_key: &PublicKey,
-        content: &str,
-    ) -> Result<String, SignerError> {
-        self.encryption_decryption(NIP44, ENCRYPT, public_key, content)
-            .await
-            .map_err(SignerError::backend)
+    fn nip44_encrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        content: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+        Box::pin(async move {
+            self.encryption_decryption(NIP44, ENCRYPT, public_key, content)
+                .await
+                .map_err(SignerError::backend)
+        })
     }
 
-    async fn nip44_decrypt(
-        &self,
-        public_key: &PublicKey,
-        content: &str,
-    ) -> Result<String, SignerError> {
-        self.encryption_decryption(NIP44, DECRYPT, public_key, content)
-            .await
-            .map_err(SignerError::backend)
+    fn nip44_decrypt<'a>(
+        &'a self,
+        public_key: &'a PublicKey,
+        content: &'a str,
+    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+        Box::pin(async move {
+            self.encryption_decryption(NIP44, DECRYPT, public_key, content)
+                .await
+                .map_err(SignerError::backend)
+        })
     }
 }

@@ -16,7 +16,6 @@ default = []
 tor = ["nostr-relay-pool/tor"]
 
 [dependencies]
-async-trait.workspace = true
 async-utility.workspace = true
 nostr = { workspace = true, features = ["std", "nip04", "nip44", "nip46"] }
 nostr-relay-pool.workspace = true

@@ -4,8 +4,11 @@
 
 //! Util
 
+use alloc::boxed::Box;
 use alloc::string::String;
 use core::fmt::Debug;
+use core::future::Future;
+use core::pin::Pin;
 
 #[cfg(feature = "std")]
 use secp256k1::global::GlobalContext;
@@ -19,6 +22,14 @@ pub mod hkdf;
 
 use crate::nips::nip01::Coordinate;
 use crate::{key, EventBuilder, EventId, PublicKey, SecretKey, Tag, UnsignedEvent};
+
+/// A boxed future
+#[cfg(not(target_arch = "wasm32"))]
+pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
+/// A boxed future
+#[cfg(target_arch = "wasm32")]
+pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 /// Generate shared key
 ///
