@@ -59,6 +59,7 @@
 
 ### Added
 
+* nostr: add NIP96 support ([cipres])
 * nostr: add `Kind::PeerToPeerOrder` variant ([Francisco Calderón])
 * nostr: add `CowTag` ([Yuki Kishimoto])
 * nostr: add `EventBorrow` ([Yuki Kishimoto])
@@ -1005,6 +1006,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [RandyMcMillan]: https://github.com/RandyMcMillan (nostr:npub1ahaz04ya9tehace3uy39hdhdryfvdkve9qdndkqp3tvehs6h8s5slq45hy)
 [Roland Bewick]: https://github.com/rolznz (nostr:npub1zk6u7mxlflguqteghn8q7xtu47hyerruv6379c36l8lxzzr4x90q0gl6ef)
 [Francisco Calderón]: https://github.com/grunch (nostr:npub1qqqqqqqx2tj99mng5qgc07cgezv5jm95dj636x4qsq7svwkwmwnse3rfkq)
+[cipres]: https://github.com/PancakesArchitect (nostr:npub1r3cnzta52fee26c83cnes8wvzkch3kud2kll67k402x04mttt26q0wfx0c)
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.38.0...HEAD

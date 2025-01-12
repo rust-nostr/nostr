@@ -167,7 +167,7 @@ The following crate feature flags are available:
 |     ✅     | [90 - Data Vending Machine](https://github.com/nostr-protocol/nips/blob/master/90.md)                           |
 |     ❌     | [92 - Media Attachments](https://github.com/nostr-protocol/nips/blob/master/92.md)                              |
 |     ✅     | [94 - File Metadata](https://github.com/nostr-protocol/nips/blob/master/94.md)                                  |
-|     ❌     | [96 - HTTP File Storage Integration](https://github.com/nostr-protocol/nips/blob/master/96.md)                  |
+|     ✅     | [96 - HTTP File Storage Integration](https://github.com/nostr-protocol/nips/blob/master/96.md)                  |
 |     ✅     | [98 - HTTP Auth](https://github.com/nostr-protocol/nips/blob/master/98.md)                                      |
 |     ❌     | [99 - Classified Listings](https://github.com/nostr-protocol/nips/blob/master/99.md)                            |
 
