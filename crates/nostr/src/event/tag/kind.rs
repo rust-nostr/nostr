@@ -5,13 +5,15 @@
 //! Tag kind
 
 use alloc::borrow::Cow;
+use core::cmp::Ordering;
 use core::fmt;
+use core::hash::{Hash, Hasher};
 use core::str::FromStr;
 
 use crate::{Alphabet, SingleLetterTag};
 
 /// Tag kind
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone)]
 pub enum TagKind<'a> {
     /// AES 256 GCM
     Aes256Gcm,
@@ -135,7 +137,34 @@ pub enum TagKind<'a> {
     Custom(Cow<'a, str>),
 }
 
-// TODO: manually impl eq, ord and hash
+impl PartialEq for TagKind<'_> {
+    fn eq(&self, other: &TagKind<'_>) -> bool {
+        self.as_str() == other.as_str()
+    }
+}
+
+impl Eq for TagKind<'_> {}
+
+impl PartialOrd for TagKind<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for TagKind<'_> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.as_str().cmp(other.as_str())
+    }
+}
+
+impl Hash for TagKind<'_> {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.as_str().hash(state);
+    }
+}
 
 impl<'a> TagKind<'a> {
     /// Construct `a` kind
@@ -423,5 +452,20 @@ mod tests {
 
         assert_eq!(TagKind::from("p"), TagKind::p());
         assert_eq!(TagKind::p().as_str(), "p");
+    }
+
+    #[test]
+    fn test_eq() {
+        assert_eq!(TagKind::Custom(Cow::from("-")), TagKind::Protected);
+        assert_eq!(TagKind::Custom(Cow::from("p")), TagKind::p());
+        assert_eq!(
+            TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::P)),
+            TagKind::p()
+        );
+        assert_eq!(TagKind::Custom(Cow::from("e")), TagKind::e());
+        assert_eq!(
+            TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E)),
+            TagKind::e()
+        );
     }
 }

@@ -52,6 +52,7 @@
 * nostr: move `Metadata` struct to `nip01` module ([Yuki Kishimoto])
 * nostr: cleanup error enums ([Yuki Kishimoto])
 * nostr: use `SECP256K1` global context from `secp256k1` crate ([Yuki Kishimoto])
+* nostr: manually implement `PartialEq`, `Eq`, `PartialOrd`, `Ord` and `Hash` for `TagKind` ([Yuki Kishimoto])
 * pool: update `Error::WebSocket` variant inner type ([Yuki Kishimoto])
 * lmdb: use `EventBorrow` instead of `DatabaseEvent` ([Yuki Kishimoto])
 * ndb: refactor note-to-event conversion ([Yuki Kishimoto])
