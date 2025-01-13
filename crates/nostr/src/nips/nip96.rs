@@ -8,10 +8,13 @@
 
 use alloc::string::{String, ToString};
 use core::fmt;
+use std::net::SocketAddr;
 
 use hashes::sha256::Hash as Sha256Hash;
 use hashes::Hash;
-use reqwest::{multipart, Client};
+#[cfg(not(target_arch = "wasm32"))]
+use reqwest::Proxy;
+use reqwest::{multipart, Client, Response};
 use serde::{Deserialize, Serialize};
 
 use crate::nips::nip98;
@@ -22,6 +25,8 @@ use crate::{NostrSigner, TagKind, TagStandard, Tags};
 /// NIP96 error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
+    /// Reqwest error
+    Reqwest(String),
     /// NIP98 error
     NIP98(nip98::Error),
     /// Invalid URL
@@ -30,12 +35,8 @@ pub enum Error {
     ResponseDecodeError,
     /// Multipart MIME error
     MultipartMimeError,
-    /// Fetch error
-    ClientFetchError,
     /// Upload error,
     UploadError(String),
-    /// Server descriptor fetch error
-    CannotFetchDescriptor,
 }
 
 #[cfg(feature = "std")]
@@ -44,16 +45,19 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Reqwest(e) => write!(f, "{e}"),
             Self::NIP98(e) => write!(f, "{e}"),
             Self::InvalidURL => write!(f, "Invalid URL"),
-            Self::ClientFetchError => write!(f, "Client fetch error"),
             Self::ResponseDecodeError => write!(f, "Response decoding error"),
             Self::MultipartMimeError => write!(f, "Invalid MIME type for the multipart form"),
             Self::UploadError(e) => write!(f, "File upload error: {e}"),
-            Self::CannotFetchDescriptor => {
-                write!(f, "Cannot fetch nip96.json file from server")
-            }
         }
+    }
+}
+
+impl From<reqwest::Error> for Error {
+    fn from(e: reqwest::Error) -> Self {
+        Self::Reqwest(e.to_string())
     }
 }
 
@@ -61,6 +65,23 @@ impl From<nip98::Error> for Error {
     fn from(e: nip98::Error) -> Self {
         Self::NIP98(e)
     }
+}
+
+fn make_client(_proxy: Option<SocketAddr>) -> Result<Client, Error> {
+    #[cfg(not(target_arch = "wasm32"))]
+    let client: Client = {
+        let mut builder = Client::builder();
+        if let Some(proxy) = _proxy {
+            let proxy = format!("socks5h://{proxy}");
+            builder = builder.proxy(Proxy::all(proxy)?);
+        }
+        builder.build()?
+    };
+
+    #[cfg(target_arch = "wasm32")]
+    let client: Client = Client::new();
+
+    Ok(client)
 }
 
 /// The structure contained in the nip96.json file on nip96 servers
@@ -107,41 +128,27 @@ pub struct UploadResponse {
 }
 
 /// Get the nip96.json file on the server and return the JSON as a [`ServerConfig`]
-pub async fn get_server_config(server_url: Url) -> Result<ServerConfig, Error> {
+///
+/// **Proxy is ignored for WASM targets!**
+pub async fn get_server_config(
+    server_url: Url,
+    proxy: Option<SocketAddr>,
+) -> Result<ServerConfig, Error> {
     let json_url = server_url
         .join("/.well-known/nostr/nip96.json")
         .map_err(|_| Error::InvalidURL)?;
 
-    let response = Client::new()
-        .get(json_url)
-        .send()
-        .await
-        .map_err(|_| Error::ClientFetchError)?;
+    let client: Client = make_client(proxy)?;
 
-    response
-        .json()
-        .await
-        .map_err(|_| Error::CannotFetchDescriptor)
+    let response = client.get(json_url).send().await?;
+
+    Ok(response.json().await?)
 }
 
-/// Uploads some data to a NIP-96 server and returns the file's download URL
-pub async fn upload_data<T>(
-    signer: &T,
-    server_url: Url,
+fn make_multipart_form(
     file_data: Vec<u8>,
     mime_type: Option<&str>,
-) -> Result<Url, Error>
-where
-    T: NostrSigner,
-{
-    // Get server config
-    let desc: ServerConfig = get_server_config(server_url).await?;
-
-    // Build NIP98 Authorization header
-    let payload: Sha256Hash = Sha256Hash::hash(&file_data);
-    let data: HttpData = HttpData::new(desc.api_url.clone(), HttpMethod::POST).payload(payload);
-    let nip98_auth: String = data.to_authorization(signer).await?;
-
+) -> Result<multipart::Form, Error> {
     let form_file_part = multipart::Part::bytes(file_data).file_name("filename");
 
     // Set the part's MIME type, or leave it as is if mime_type is None
@@ -152,25 +159,53 @@ where
         None => form_file_part,
     };
 
-    let response = Client::new()
+    Ok(multipart::Form::new().part("file", part))
+}
+
+/// Uploads some data to a NIP-96 server and returns the file's download URL
+///
+/// **Proxy is ignored for WASM targets!**
+pub async fn upload_data<T>(
+    signer: &T,
+    server_url: Url,
+    file_data: Vec<u8>,
+    mime_type: Option<&str>,
+    proxy: Option<SocketAddr>,
+) -> Result<Url, Error>
+where
+    T: NostrSigner,
+{
+    // Get server config
+    let desc: ServerConfig = get_server_config(server_url, _proxy).await?;
+
+    // Build NIP98 Authorization header
+    let payload: Sha256Hash = Sha256Hash::hash(&file_data);
+    let data: HttpData = HttpData::new(desc.api_url.clone(), HttpMethod::POST).payload(payload);
+    let nip98_auth: String = data.to_authorization(signer).await?;
+
+    // Make form
+    let form: multipart::Form = make_multipart_form(file_data, mime_type)?;
+
+    // Make client
+    let client: Client = make_client(proxy)?;
+
+    // Send
+    let response: Response = client
         .post(desc.api_url)
         .header("Authorization", nip98_auth)
-        .multipart(multipart::Form::new().part("file", part))
+        .multipart(form)
         .send()
-        .await
-        .map_err(|e| Error::UploadError(e.to_string()))?;
+        .await?;
 
     // Decode response
-    let res: UploadResponse = response
-        .json()
-        .await
-        .map_err(|_| Error::ResponseDecodeError)?;
+    let res: UploadResponse = response.json().await?;
 
+    // Check status
     if res.status == UploadResponseStatus::Error {
         return Err(Error::UploadError(res.message));
     }
 
-    // Extract file url
+    // Extract url
     let nip94_event: Nip94Event = res.nip94_event.ok_or(Error::ResponseDecodeError)?;
     match nip94_event.tags.find_standardized(TagKind::Url) {
         Some(TagStandard::Url(url)) => Ok(url.clone()),
