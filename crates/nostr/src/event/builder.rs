@@ -22,7 +22,7 @@ use crate::nips::nip46::Message as NostrConnectMessage;
 use crate::prelude::*;
 
 /// Wrong kind error
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum WrongKindError {
     /// Single kind
     Single(Kind),
@@ -40,13 +40,13 @@ impl fmt::Display for WrongKindError {
 }
 
 /// Event builder error
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Unsigned event error
     Event(super::Error),
     /// OpenTimestamps error
     #[cfg(feature = "nip03")]
-    OpenTimestamps(nostr_ots::Error),
+    NIP03(String),
     /// NIP04 error
     #[cfg(feature = "nip04")]
     NIP04(nip04::Error),
@@ -75,7 +75,7 @@ impl fmt::Display for Error {
         match self {
             Self::Event(e) => write!(f, "{e}"),
             #[cfg(feature = "nip03")]
-            Self::OpenTimestamps(e) => write!(f, "{e}"),
+            Self::NIP03(e) => write!(f, "{e}"),
             #[cfg(feature = "nip04")]
             Self::NIP04(e) => write!(f, "{e}"),
             #[cfg(all(feature = "std", feature = "nip44"))]
@@ -105,7 +105,7 @@ impl From<super::Error> for Error {
 #[cfg(feature = "nip03")]
 impl From<nostr_ots::Error> for Error {
     fn from(e: nostr_ots::Error) -> Self {
-        Self::OpenTimestamps(e)
+        Self::NIP03(e.to_string())
     }
 }
 

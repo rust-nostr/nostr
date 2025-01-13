@@ -24,7 +24,7 @@ use crate::{JsonUtil, Kind, NostrSigner, PublicKey};
 pub const RANGE_RANDOM_TIMESTAMP_TWEAK: Range<u64> = 0..172800; // From 0 secs to 2 days
 
 /// NIP59 error
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Signer error
     Signer(SignerError),

@@ -12,7 +12,7 @@ use core::fmt;
 use crate::types::RelayUrl;
 use crate::{Event, Kind, PublicKey, Tag, TagStandard};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 /// Badge Award error
 pub enum Error {
     /// Invalid length

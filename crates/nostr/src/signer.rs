@@ -5,8 +5,8 @@
 //! Nostr Signer
 
 use alloc::borrow::Cow;
+#[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
-#[cfg(any(not(feature = "std"), feature = "nip04", feature = "nip44"))]
 use alloc::string::String;
 use alloc::sync::Arc;
 use core::fmt;
@@ -15,14 +15,9 @@ use async_trait::async_trait;
 
 use crate::{Event, PublicKey, UnsignedEvent};
 
-#[cfg(feature = "std")]
-type InnerError = Box<dyn std::error::Error + Send + Sync>;
-#[cfg(not(feature = "std"))]
-type InnerError = String; // TODO: remove when `core::error::Error` will be stable at MSRV
-
 /// Nostr Signer error
-#[derive(Debug)]
-pub struct SignerError(InnerError);
+#[derive(Debug, PartialEq, Eq)]
+pub struct SignerError(String);
 
 impl fmt::Display for SignerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -39,9 +34,9 @@ impl SignerError {
     #[cfg(feature = "std")]
     pub fn backend<E>(error: E) -> Self
     where
-        E: std::error::Error + Send + Sync + 'static,
+        E: std::error::Error,
     {
-        Self(Box::new(error))
+        Self(error.to_string())
     }
 
     /// New signer error
