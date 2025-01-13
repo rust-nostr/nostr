@@ -6,12 +6,13 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/96.md>
 
+use alloc::string::{String, ToString};
 use core::fmt;
 
 use hashes::sha256::Hash as Sha256Hash;
 use hashes::Hash;
 use reqwest::{multipart, Client};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::nips::nip98;
 use crate::nips::nip98::{HttpData, HttpMethod};
@@ -32,7 +33,7 @@ pub enum Error {
     /// Fetch error
     ClientFetchError,
     /// Upload error,
-    UploadError,
+    UploadError(String),
     /// Server descriptor fetch error
     CannotFetchDescriptor,
 }
@@ -48,7 +49,7 @@ impl fmt::Display for Error {
             Self::ClientFetchError => write!(f, "Client fetch error"),
             Self::ResponseDecodeError => write!(f, "Response decoding error"),
             Self::MultipartMimeError => write!(f, "Invalid MIME type for the multipart form"),
-            Self::UploadError => write!(f, "File upload error"),
+            Self::UploadError(e) => write!(f, "File upload error: {e}"),
             Self::CannotFetchDescriptor => {
                 write!(f, "Cannot fetch nip96.json file from server")
             }
@@ -75,15 +76,34 @@ pub struct ServerConfig {
     pub content_types: Option<Vec<String>>,
 }
 
-#[derive(Debug, Deserialize)]
-struct Nip94Event {
-    tags: Tags,
+/// NIP-94 event
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Nip94Event {
+    /// Tags
+    pub tags: Tags,
+}
+
+/// Response status to NIP-96 request
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum UploadResponseStatus {
+    /// Success
+    Success,
+    /// Error
+    Error,
 }
 
 /// Response to a NIP-96 upload request
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UploadResponse {
-    nip94_event: Nip94Event,
+    /// Status
+    pub status: UploadResponseStatus,
+    /// Free text success, failure or info message
+    pub message: String,
+    /// NIP-94 event
+    ///
+    /// `nip94_event` field is absent if unsuccessful upload
+    pub nip94_event: Option<Nip94Event>,
 }
 
 /// Get the nip96.json file on the server and return the JSON as a [`ServerConfig`]
@@ -138,7 +158,7 @@ where
         .multipart(multipart::Form::new().part("file", part))
         .send()
         .await
-        .map_err(|_| Error::UploadError)?;
+        .map_err(|e| Error::UploadError(e.to_string()))?;
 
     // Decode response
     let res: UploadResponse = response
@@ -146,8 +166,13 @@ where
         .await
         .map_err(|_| Error::ResponseDecodeError)?;
 
+    if res.status == UploadResponseStatus::Error {
+        return Err(Error::UploadError(res.message));
+    }
+
     // Extract file url
-    match res.nip94_event.tags.find_standardized(TagKind::Url) {
+    let nip94_event: Nip94Event = res.nip94_event.ok_or(Error::ResponseDecodeError)?;
+    match nip94_event.tags.find_standardized(TagKind::Url) {
         Some(TagStandard::Url(url)) => Ok(url.clone()),
         _ => Err(Error::ResponseDecodeError),
     }
