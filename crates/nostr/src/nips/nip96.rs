@@ -167,7 +167,7 @@ fn make_multipart_form(
 /// **Proxy is ignored for WASM targets!**
 pub async fn upload_data<T>(
     signer: &T,
-    server_url: Url,
+    desc: &ServerConfig,
     file_data: Vec<u8>,
     mime_type: Option<&str>,
     proxy: Option<SocketAddr>,
@@ -175,9 +175,6 @@ pub async fn upload_data<T>(
 where
     T: NostrSigner,
 {
-    // Get server config
-    let desc: ServerConfig = get_server_config(server_url, _proxy).await?;
-
     // Build NIP98 Authorization header
     let payload: Sha256Hash = Sha256Hash::hash(&file_data);
     let data: HttpData = HttpData::new(desc.api_url.clone(), HttpMethod::POST).payload(payload);
@@ -191,7 +188,7 @@ where
 
     // Send
     let response: Response = client
-        .post(desc.api_url)
+        .post(desc.api_url.clone())
         .header("Authorization", nip98_auth)
         .multipart(form)
         .send()
