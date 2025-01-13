@@ -1326,6 +1326,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/98.md>
     #[inline]
+    #[cfg(feature = "nip98")]
     pub fn http_auth(data: HttpData) -> Self {
         let tags: Vec<Tag> = data.into();
         Self::new(Kind::HttpAuth, "").tags(tags)

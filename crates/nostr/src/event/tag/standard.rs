@@ -25,6 +25,7 @@ use crate::nips::nip56::Report;
 use crate::nips::nip65::RelayMetadata;
 use crate::nips::nip73::ExternalContentId;
 use crate::nips::nip90::DataVendingMachineStatus;
+#[cfg(feature = "nip98")]
 use crate::nips::nip98::HttpMethod;
 use crate::types::{RelayUrl, Url};
 use crate::{
@@ -185,6 +186,7 @@ pub enum TagStandard {
     CurrentParticipants(u64),
     TotalParticipants(u64),
     AbsoluteURL(Url),
+    #[cfg(feature = "nip98")]
     Method(HttpMethod),
     Payload(Sha256Hash),
     Anon {
@@ -397,6 +399,7 @@ impl TagStandard {
                 },
                 TagKind::CurrentParticipants => Ok(Self::CurrentParticipants(tag_1.parse()?)),
                 TagKind::TotalParticipants => Ok(Self::TotalParticipants(tag_1.parse()?)),
+                #[cfg(feature = "nip98")]
                 TagKind::Method => Ok(Self::Method(HttpMethod::from_str(tag_1)?)),
                 TagKind::Payload => Ok(Self::Payload(Sha256Hash::from_str(tag_1)?)),
                 TagKind::Request => Ok(Self::Request(Event::from_json(tag_1)?)),
@@ -599,6 +602,7 @@ impl TagStandard {
                 character: Alphabet::U,
                 uppercase: false,
             }),
+            #[cfg(feature = "nip98")]
             Self::Method(..) => TagKind::Method,
             Self::Payload(..) => TagKind::Payload,
             Self::Anon { .. } => TagKind::Anon,
@@ -873,6 +877,7 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::AbsoluteURL(url) => {
                 vec![tag_kind, url.to_string()]
             }
+            #[cfg(feature = "nip98")]
             TagStandard::Method(method) => {
                 vec![tag_kind, method.to_string()]
             }

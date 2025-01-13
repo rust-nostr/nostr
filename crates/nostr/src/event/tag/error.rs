@@ -7,7 +7,9 @@ use core::num::ParseIntError;
 
 use hashes::hex::HexToArrayError;
 
-use crate::nips::{nip01, nip10, nip26, nip39, nip53, nip65, nip98};
+#[cfg(feature = "nip98")]
+use crate::nips::nip98;
+use crate::nips::{nip01, nip10, nip26, nip39, nip53, nip65};
 use crate::types::image;
 use crate::types::url::{Error as RelayUrlError, ParseError};
 use crate::{key, secp256k1};
@@ -40,6 +42,7 @@ pub enum Error {
     /// NIP65 error
     NIP65(nip65::Error),
     /// NIP98 error
+    #[cfg(feature = "nip98")]
     NIP98(nip98::Error),
     /// Event Error
     Event(crate::event::Error),
@@ -71,6 +74,7 @@ impl fmt::Display for Error {
             Self::NIP39(e) => write!(f, "{e}"),
             Self::NIP53(e) => write!(f, "{e}"),
             Self::NIP65(e) => write!(f, "{e}"),
+            #[cfg(feature = "nip98")]
             Self::NIP98(e) => write!(f, "{e}"),
             Self::Event(e) => write!(f, "{e}"),
             Self::Image(e) => write!(f, "{e}"),
@@ -153,6 +157,7 @@ impl From<nip65::Error> for Error {
     }
 }
 
+#[cfg(feature = "nip98")]
 impl From<nip98::Error> for Error {
     fn from(e: nip98::Error) -> Self {
         Self::NIP98(e)

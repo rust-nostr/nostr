@@ -13,8 +13,16 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
+#[cfg(feature = "std")]
+use base64::engine::{general_purpose, Engine};
 use hashes::sha256::Hash as Sha256Hash;
 
+#[cfg(feature = "std")]
+use crate::event::{builder, Event, EventBuilder};
+#[cfg(feature = "std")]
+use crate::signer::NostrSigner;
+#[cfg(feature = "std")]
+use crate::util::JsonUtil;
 use crate::{Tag, TagStandard, Url};
 
 /// [`HttpData`] required tags
@@ -38,6 +46,9 @@ impl fmt::Display for RequiredTags {
 /// NIP98 error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
+    /// Event builder error
+    #[cfg(feature = "std")]
+    EventBuilder(builder::Error),
     /// Tag missing when parsing
     MissingTag(RequiredTags),
     /// Invalid HTTP Method
@@ -50,9 +61,18 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            #[cfg(feature = "std")]
+            Self::EventBuilder(e) => write!(f, "{e}"),
             Self::MissingTag(tag) => write!(f, "missing tag '{tag}'"),
             Self::UnknownMethod => write!(f, "Unknown HTTP method"),
         }
+    }
+}
+
+#[cfg(feature = "std")]
+impl From<builder::Error> for Error {
+    fn from(e: builder::Error) -> Self {
+        Self::EventBuilder(e)
     }
 }
 
@@ -125,6 +145,19 @@ impl HttpData {
     pub fn payload(mut self, payload: Sha256Hash) -> Self {
         self.payload = Some(payload);
         self
+    }
+
+    /// Build the base64-encoded HTTP `Authorization` header **value**.
+    ///
+    /// Return a string with the following format: `Nostr <base64>`.
+    #[cfg(feature = "std")]
+    pub async fn to_authorization<T>(self, signer: &T) -> Result<String, Error>
+    where
+        T: NostrSigner,
+    {
+        let event: Event = EventBuilder::http_auth(self).sign(signer).await?;
+        let encoded: String = general_purpose::STANDARD.encode(event.as_json());
+        Ok(format!("Nostr {encoded}"))
     }
 }
 

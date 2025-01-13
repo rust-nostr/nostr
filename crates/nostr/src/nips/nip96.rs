@@ -8,22 +8,21 @@
 
 use core::fmt;
 
-use base64::engine::{general_purpose, Engine};
 use hashes::sha256::Hash as Sha256Hash;
 use hashes::Hash;
 use reqwest::{multipart, Client};
 use serde::Deserialize;
 
+use crate::nips::nip98;
 use crate::nips::nip98::{HttpData, HttpMethod};
 use crate::types::Url;
-use crate::util::JsonUtil;
-use crate::{EventBuilder, NostrSigner, TagKind, TagStandard, Tags};
+use crate::{NostrSigner, TagKind, TagStandard, Tags};
 
 /// NIP96 error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
-    /// NIP-98 auth event sign error
-    AuthEventSignError,
+    /// NIP98 error
+    NIP98(nip98::Error),
     /// Invalid URL
     InvalidURL,
     /// Response decode error
@@ -44,6 +43,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::NIP98(e) => write!(f, "{e}"),
             Self::InvalidURL => write!(f, "Invalid URL"),
             Self::ClientFetchError => write!(f, "Client fetch error"),
             Self::ResponseDecodeError => write!(f, "Response decoding error"),
@@ -52,8 +52,13 @@ impl fmt::Display for Error {
             Self::CannotFetchDescriptor => {
                 write!(f, "Cannot fetch nip96.json file from server")
             }
-            Self::AuthEventSignError => write!(f, "Failed to sign NIP98 auth event"),
         }
+    }
+}
+
+impl From<nip98::Error> for Error {
+    fn from(e: nip98::Error) -> Self {
+        Self::NIP98(e)
     }
 }
 
@@ -79,18 +84,6 @@ struct Nip94Event {
 #[derive(Debug, Deserialize)]
 pub struct UploadResponse {
     nip94_event: Nip94Event,
-}
-
-/// Build the NIP98 base64-encoded HTTP Authorization header
-async fn build_nip98_auth_event<T>(signer: &T, data: HttpData) -> Result<String, Error>
-where
-    T: NostrSigner,
-{
-    let event = EventBuilder::http_auth(data)
-        .sign(signer)
-        .await
-        .map_err(|_| Error::AuthEventSignError)?;
-    Ok(general_purpose::STANDARD.encode(event.as_json()))
 }
 
 /// Get the nip96.json file on the server and return the JSON as a [`ServerConfig`]
@@ -127,7 +120,7 @@ where
     // Build NIP98 Authorization header
     let payload: Sha256Hash = Sha256Hash::hash(&file_data);
     let data: HttpData = HttpData::new(desc.api_url.clone(), HttpMethod::POST).payload(payload);
-    let nip98_auth: String = build_nip98_auth_event(signer, data).await?;
+    let nip98_auth: String = data.to_authorization(signer).await?;
 
     let form_file_part = multipart::Part::bytes(file_data).file_name("filename");
 
@@ -141,7 +134,7 @@ where
 
     let response = Client::new()
         .post(desc.api_url)
-        .header("Authorization", format!("Nostr {}", nip98_auth).as_str())
+        .header("Authorization", nip98_auth)
         .multipart(multipart::Form::new().part("file", part))
         .send()
         .await
