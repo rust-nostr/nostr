@@ -11,6 +11,7 @@ use nostr::prelude::*;
 
 pub mod helper;
 
+use crate::wipe::NostrDatabaseWipe;
 use crate::{DatabaseError, Events, Profile};
 
 /// Database event status
@@ -94,7 +95,7 @@ where
 /// Store for the nostr events.
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-pub trait NostrEventsDatabase: fmt::Debug + Send + Sync {
+pub trait NostrEventsDatabase: NostrDatabaseWipe + fmt::Debug + Send + Sync {
     /// Save [`Event`] into store
     ///
     /// **This method assumes that [`Event`] was already verified**
