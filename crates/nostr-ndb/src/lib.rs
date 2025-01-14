@@ -70,10 +70,6 @@ impl NostrDatabase for NdbDatabase {
     fn backend(&self) -> Backend {
         Backend::LMDB
     }
-
-    async fn wipe(&self) -> Result<(), DatabaseError> {
-        Err(DatabaseError::NotSupported)
-    }
 }
 
 #[async_trait]
@@ -162,6 +158,14 @@ impl NostrEventsDatabase for NdbDatabase {
     }
 
     async fn delete(&self, _filter: Filter) -> Result<(), DatabaseError> {
+        Err(DatabaseError::NotSupported)
+    }
+}
+
+#[async_trait]
+impl NostrDatabaseWipe for NdbDatabase {
+    #[inline]
+    async fn wipe(&self) -> Result<(), DatabaseError> {
         Err(DatabaseError::NotSupported)
     }
 }

@@ -52,11 +52,6 @@ impl NostrDatabase for NostrLMDB {
     fn backend(&self) -> Backend {
         Backend::LMDB
     }
-
-    #[inline]
-    async fn wipe(&self) -> Result<(), DatabaseError> {
-        self.db.wipe().await.map_err(DatabaseError::backend)
-    }
 }
 
 #[async_trait]
@@ -155,6 +150,14 @@ impl NostrEventsDatabase for NostrLMDB {
     #[inline]
     async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {
         self.db.delete(filter).await.map_err(DatabaseError::backend)
+    }
+}
+
+#[async_trait]
+impl NostrDatabaseWipe for NostrLMDB {
+    #[inline]
+    async fn wipe(&self) -> Result<(), DatabaseError> {
+        self.db.wipe().await.map_err(DatabaseError::backend)
     }
 }
 

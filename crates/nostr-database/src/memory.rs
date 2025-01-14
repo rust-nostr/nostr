@@ -13,7 +13,7 @@ use tokio::sync::RwLock;
 
 use crate::{
     Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper, Events,
-    NostrDatabase, NostrEventsDatabase, RejectedReason, SaveEventStatus,
+    NostrDatabase, NostrDatabaseWipe, NostrEventsDatabase, RejectedReason, SaveEventStatus,
 };
 
 /// Database options
@@ -81,16 +81,6 @@ impl MemoryDatabase {
 impl NostrDatabase for MemoryDatabase {
     fn backend(&self) -> Backend {
         Backend::Memory
-    }
-
-    async fn wipe(&self) -> Result<(), DatabaseError> {
-        // Clear helper
-        self.helper.clear().await;
-
-        // Clear
-        let mut seen_event_ids = self.seen_event_ids.write().await;
-        seen_event_ids.clear();
-        Ok(())
     }
 }
 
@@ -179,6 +169,20 @@ impl NostrEventsDatabase for MemoryDatabase {
 
     async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {
         self.helper.delete(filter).await;
+        Ok(())
+    }
+}
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl NostrDatabaseWipe for MemoryDatabase {
+    async fn wipe(&self) -> Result<(), DatabaseError> {
+        // Clear helper
+        self.helper.clear().await;
+
+        // Clear
+        let mut seen_event_ids = self.seen_event_ids.write().await;
+        seen_event_ids.clear();
         Ok(())
     }
 }

@@ -22,6 +22,7 @@ pub mod flatbuffers;
 pub mod memory;
 pub mod prelude;
 pub mod profile;
+mod wipe;
 
 pub use self::collections::events::Events;
 pub use self::error::DatabaseError;
@@ -34,6 +35,7 @@ pub use self::events::{
 pub use self::flatbuffers::{FlatBufferBuilder, FlatBufferDecode, FlatBufferEncode};
 pub use self::memory::{MemoryDatabase, MemoryDatabaseOptions};
 pub use self::profile::Profile;
+pub use self::wipe::NostrDatabaseWipe;
 
 /// Backend
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -93,12 +95,9 @@ where
 /// Nostr Database
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-pub trait NostrDatabase: NostrEventsDatabase {
+pub trait NostrDatabase: NostrEventsDatabase + NostrDatabaseWipe {
     /// Name of the backend database used
     fn backend(&self) -> Backend;
-
-    /// Wipe all data
-    async fn wipe(&self) -> Result<(), DatabaseError>;
 }
 
 #[cfg(test)]

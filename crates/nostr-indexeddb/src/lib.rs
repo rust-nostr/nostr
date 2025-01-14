@@ -352,13 +352,28 @@ macro_rules! impl_nostr_events_database {
     };
 }
 
+#[cfg(target_arch = "wasm32")]
+macro_rules! impl_nostr_database_wipe {
+    ({ $($body:tt)* }) => {
+        #[async_trait(?Send)]
+        impl NostrDatabaseWipe for WebDatabase {
+            $($body)*
+        }
+    };
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+macro_rules! impl_nostr_database_wipe {
+    ({ $($body:tt)* }) => {
+        impl WebDatabase {
+            $($body)*
+        }
+    };
+}
+
 impl_nostr_database!({
     fn backend(&self) -> Backend {
         Backend::IndexedDB
-    }
-
-    async fn wipe(&self) -> Result<(), DatabaseError> {
-        self._wipe().await.map_err(DatabaseError::backend)
     }
 });
 
@@ -494,6 +509,12 @@ impl_nostr_events_database!({
 
     async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {
         self._delete(filter).await.map_err(DatabaseError::backend)
+    }
+});
+
+impl_nostr_database_wipe!({
+    async fn wipe(&self) -> Result<(), DatabaseError> {
+        self._wipe().await.map_err(DatabaseError::backend)
     }
 });
 

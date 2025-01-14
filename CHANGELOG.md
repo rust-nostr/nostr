@@ -68,6 +68,7 @@
 * nostr: add `HttpData::to_authorization` ([Yuki Kishimoto])
 * database: add `Events::first_owned` and `Events::last_owned` ([Yuki Kishimoto])
 * database: impl `FlatBufferDecodeBorrowed` for `EventBorrow` ([Yuki Kishimoto])
+* database: add `NostrDatabaseWipe` trait ([Yuki Kishimoto])
 * pool: add `Relay::try_connect` ([Yuki Kishimoto])
 * pool: add `Relay::wait_for_connection` ([Yuki Kishimoto])
 * pool: add `RelayPool::try_connect` ([Yuki Kishimoto])
