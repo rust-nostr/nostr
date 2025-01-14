@@ -1,0 +1,11 @@
+headers = nostr_sdk.h
+package = nostr_sdk.cinterop
+
+staticLibraries = libnostr_sdk_ffi.a
+
+libraryPaths.ios_arm64 = src/libs/ios-arm64
+libraryPaths.ios_simulator_arm64 = src/libs/ios-simulator-arm64
+libraryPaths.ios_simulator_x64 = src/libs/ios-simulator-x64
+libraryPaths.ios_x64 = src/libs/ios-simulator-x64
+
+linkerOpts = -ios_simulator_version_min 14.0.0 -framework Security
