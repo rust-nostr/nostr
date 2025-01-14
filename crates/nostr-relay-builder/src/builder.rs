@@ -103,17 +103,23 @@ pub enum PolicyResult {
 }
 
 /// Custom policy for accepting events into the relay database
-#[async_trait]
 pub trait WritePolicy: fmt::Debug + Send + Sync {
     /// Check if the policy should accept an event
-    async fn admit_event(&self, event: &Event, addr: &SocketAddr) -> PolicyResult;
+    fn admit_event<'a>(
+        &'a self,
+        event: &'a Event,
+        addr: &'a SocketAddr,
+    ) -> BoxedFuture<'a, PolicyResult>;
 }
 
 /// Filters REQ's to the internal relay database
-#[async_trait]
 pub trait QueryPolicy: fmt::Debug + Send + Sync {
     /// Check if the policy should accept a query
-    async fn admit_query(&self, query: &[Filter], addr: &SocketAddr) -> PolicyResult;
+    fn admit_query<'a>(
+        &'a self,
+        query: &'a [Filter],
+        addr: &'a SocketAddr,
+    ) -> BoxedFuture<'a, PolicyResult>;
 }
 
 /// Testing options

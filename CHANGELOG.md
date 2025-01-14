@@ -94,6 +94,7 @@
 * connect: remove `thiserror` dep ([Yuki Kishimoto])
 * connect: remove `async-trait` dep ([Yuki Kishimoto])
 * relay-builder: remove `thiserror` dep ([Yuki Kishimoto])
+* relay-builder: remove `async-trait` dep ([Yuki Kishimoto])
 * ffi: remove unnecessary `Arc` ([Yuki Kishimoto])
 
 ### Deprecated

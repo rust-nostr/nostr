@@ -13,14 +13,19 @@ struct AcceptKinds {
     pub kinds: HashSet<Kind>,
 }
 
-#[async_trait]
 impl WritePolicy for AcceptKinds {
-    async fn admit_event(&self, event: &Event, _addr: &SocketAddr) -> PolicyResult {
-        if self.kinds.contains(&event.kind) {
-            PolicyResult::Accept
-        } else {
-            PolicyResult::Reject("kind not accepted".to_string())
-        }
+    fn admit_event<'a>(
+        &'a self,
+        event: &'a Event,
+        _addr: &'a SocketAddr,
+    ) -> BoxedFuture<'a, PolicyResult> {
+        Box::pin(async move {
+            if self.kinds.contains(&event.kind) {
+                PolicyResult::Accept
+            } else {
+                PolicyResult::Reject("kind not accepted".to_string())
+            }
+        })
     }
 }
 
@@ -30,17 +35,22 @@ struct RejectAuthorLimit {
     pub limit: usize,
 }
 
-#[async_trait]
 impl QueryPolicy for RejectAuthorLimit {
-    async fn admit_query(&self, query: &[Filter], _addr: &SocketAddr) -> PolicyResult {
-        if query
-            .iter()
-            .any(|f| f.authors.as_ref().map(|a| a.len()).unwrap_or(0) > self.limit)
-        {
-            PolicyResult::Reject("query too expensive".to_string())
-        } else {
-            PolicyResult::Accept
-        }
+    fn admit_query<'a>(
+        &'a self,
+        query: &'a [Filter],
+        _addr: &'a SocketAddr,
+    ) -> BoxedFuture<'a, PolicyResult> {
+        Box::pin(async move {
+            if query
+                .iter()
+                .any(|f| f.authors.as_ref().map(|a| a.len()).unwrap_or(0) > self.limit)
+            {
+                PolicyResult::Reject("query too expensive".to_string())
+            } else {
+                PolicyResult::Accept
+            }
+        })
     }
 }
 
