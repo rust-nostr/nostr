@@ -46,7 +46,6 @@ impl NostrLMDB {
     }
 }
 
-#[async_trait]
 impl NostrDatabase for NostrLMDB {
     #[inline]
     fn backend(&self) -> Backend {
@@ -54,110 +53,119 @@ impl NostrDatabase for NostrLMDB {
     }
 }
 
-#[async_trait]
 impl NostrEventsDatabase for NostrLMDB {
-    #[inline]
-    async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, DatabaseError> {
-        self.db
-            .save_event(event)
-            .await
-            .map_err(DatabaseError::backend)
+    fn save_event<'a>(
+        &'a self,
+        event: &'a Event,
+    ) -> BoxedFuture<'a, Result<SaveEventStatus, DatabaseError>> {
+        Box::pin(async move {
+            self.db
+                .save_event(event)
+                .await
+                .map_err(DatabaseError::backend)
+        })
     }
 
-    async fn check_id(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
-        if self
-            .db
-            .event_is_deleted(*event_id)
-            .await
-            .map_err(DatabaseError::backend)?
-        {
-            Ok(DatabaseEventStatus::Deleted)
-        } else if self
-            .db
-            .has_event(event_id)
-            .await
-            .map_err(DatabaseError::backend)?
-        {
-            Ok(DatabaseEventStatus::Saved)
-        } else {
-            Ok(DatabaseEventStatus::NotExistent)
-        }
+    fn check_id<'a>(
+        &'a self,
+        event_id: &'a EventId,
+    ) -> BoxedFuture<'a, Result<DatabaseEventStatus, DatabaseError>> {
+        Box::pin(async move {
+            if self
+                .db
+                .event_is_deleted(*event_id)
+                .await
+                .map_err(DatabaseError::backend)?
+            {
+                Ok(DatabaseEventStatus::Deleted)
+            } else if self
+                .db
+                .has_event(event_id)
+                .await
+                .map_err(DatabaseError::backend)?
+            {
+                Ok(DatabaseEventStatus::Saved)
+            } else {
+                Ok(DatabaseEventStatus::NotExistent)
+            }
+        })
     }
 
-    async fn has_coordinate_been_deleted(
-        &self,
-        coordinate: &Coordinate,
-        timestamp: &Timestamp,
-    ) -> Result<bool, DatabaseError> {
-        if let Some(t) = self
-            .db
-            .when_is_coordinate_deleted(coordinate.clone())
-            .await
-            .map_err(DatabaseError::backend)?
-        {
-            Ok(&t >= timestamp)
-        } else {
-            Ok(false)
-        }
+    fn has_coordinate_been_deleted<'a>(
+        &'a self,
+        coordinate: &'a Coordinate,
+        timestamp: &'a Timestamp,
+    ) -> BoxedFuture<'a, Result<bool, DatabaseError>> {
+        Box::pin(async move {
+            if let Some(t) = self
+                .db
+                .when_is_coordinate_deleted(coordinate.clone())
+                .await
+                .map_err(DatabaseError::backend)?
+            {
+                Ok(&t >= timestamp)
+            } else {
+                Ok(false)
+            }
+        })
     }
 
-    #[inline]
-    async fn event_id_seen(
+    fn event_id_seen(
         &self,
         event_id: EventId,
         relay_url: RelayUrl,
-    ) -> Result<(), DatabaseError> {
-        self.temp.event_id_seen(event_id, relay_url).await
+    ) -> BoxedFuture<Result<(), DatabaseError>> {
+        Box::pin(async move { self.temp.event_id_seen(event_id, relay_url).await })
     }
 
-    #[inline]
-    async fn event_seen_on_relays(
-        &self,
-        event_id: &EventId,
-    ) -> Result<Option<HashSet<RelayUrl>>, DatabaseError> {
-        self.temp.event_seen_on_relays(event_id).await
+    fn event_seen_on_relays<'a>(
+        &'a self,
+        event_id: &'a EventId,
+    ) -> BoxedFuture<'a, Result<Option<HashSet<RelayUrl>>, DatabaseError>> {
+        Box::pin(async move { self.temp.event_seen_on_relays(event_id).await })
     }
 
-    #[inline]
-    async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Event>, DatabaseError> {
-        self.db
-            .get_event_by_id(event_id)
-            .await
-            .map_err(DatabaseError::backend)
+    fn event_by_id<'a>(
+        &'a self,
+        event_id: &'a EventId,
+    ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>> {
+        Box::pin(async move {
+            self.db
+                .get_event_by_id(event_id)
+                .await
+                .map_err(DatabaseError::backend)
+        })
     }
 
-    #[inline]
-    async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {
-        self.db.count(filters).await.map_err(DatabaseError::backend)
+    fn count(&self, filters: Vec<Filter>) -> BoxedFuture<Result<usize, DatabaseError>> {
+        Box::pin(async move { self.db.count(filters).await.map_err(DatabaseError::backend) })
     }
 
-    #[inline]
-    async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
-        self.db.query(filters).await.map_err(DatabaseError::backend)
+    fn query(&self, filters: Vec<Filter>) -> BoxedFuture<Result<Events, DatabaseError>> {
+        Box::pin(async move { self.db.query(filters).await.map_err(DatabaseError::backend) })
     }
 
-    #[inline]
-    async fn negentropy_items(
+    fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
-        self.db
-            .negentropy_items(filter)
-            .await
-            .map_err(DatabaseError::backend)
+    ) -> BoxedFuture<Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
+        Box::pin(async move {
+            self.db
+                .negentropy_items(filter)
+                .await
+                .map_err(DatabaseError::backend)
+        })
     }
 
-    #[inline]
-    async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {
-        self.db.delete(filter).await.map_err(DatabaseError::backend)
+    fn delete(&self, filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
+        Box::pin(async move { self.db.delete(filter).await.map_err(DatabaseError::backend) })
     }
 }
 
-#[async_trait]
 impl NostrDatabaseWipe for NostrLMDB {
     #[inline]
-    async fn wipe(&self) -> Result<(), DatabaseError> {
-        self.db.wipe().await.map_err(DatabaseError::backend)
+    fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
+        Box::pin(async move { self.db.wipe().await.map_err(DatabaseError::backend) })
     }
 }
 

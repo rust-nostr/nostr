@@ -298,225 +298,174 @@ impl WebDatabase {
     }
 }
 
-// Small hack to have the following macro invocation act as the appropriate
-// trait impl block on wasm, but still be compiled on non-wasm as a regular
-// impl block otherwise.
-//
-// The trait impl doesn't compile on non-wasm due to unfulfilled trait bounds,
-// this hack allows us to still have most of rust-analyzer's IDE functionality
-// within the impl block without having to set it up to check things against
-// the wasm target (which would disable many other parts of the codebase).
-#[cfg(target_arch = "wasm32")]
-macro_rules! impl_nostr_database {
-    ({ $($body:tt)* }) => {
-        #[async_trait(?Send)]
-        impl NostrDatabase for WebDatabase {
-            $($body)*
-        }
-    };
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-macro_rules! impl_nostr_database {
-    ({ $($body:tt)* }) => {
-        impl WebDatabase {
-            $($body)*
-        }
-    };
-}
-
-// Small hack to have the following macro invocation act as the appropriate
-// trait impl block on wasm, but still be compiled on non-wasm as a regular
-// impl block otherwise.
-//
-// The trait impl doesn't compile on non-wasm due to unfulfilled trait bounds,
-// this hack allows us to still have most of rust-analyzer's IDE functionality
-// within the impl block without having to set it up to check things against
-// the wasm target (which would disable many other parts of the codebase).
-#[cfg(target_arch = "wasm32")]
-macro_rules! impl_nostr_events_database {
-    ({ $($body:tt)* }) => {
-        #[async_trait(?Send)]
-        impl NostrEventsDatabase for WebDatabase {
-            $($body)*
-        }
-    };
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-macro_rules! impl_nostr_events_database {
-    ({ $($body:tt)* }) => {
-        impl WebDatabase {
-            $($body)*
-        }
-    };
-}
-
-#[cfg(target_arch = "wasm32")]
-macro_rules! impl_nostr_database_wipe {
-    ({ $($body:tt)* }) => {
-        #[async_trait(?Send)]
-        impl NostrDatabaseWipe for WebDatabase {
-            $($body)*
-        }
-    };
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-macro_rules! impl_nostr_database_wipe {
-    ({ $($body:tt)* }) => {
-        impl WebDatabase {
-            $($body)*
-        }
-    };
-}
-
-impl_nostr_database!({
+impl NostrDatabase for WebDatabase {
     fn backend(&self) -> Backend {
         Backend::IndexedDB
     }
-});
+}
 
-impl_nostr_events_database!({
-    async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, DatabaseError> {
-        self._save_event(event)
-            .await
-            .map_err(DatabaseError::backend)
+impl NostrEventsDatabase for WebDatabase {
+    fn save_event<'a>(
+        &'a self,
+        event: &'a Event,
+    ) -> BoxedFuture<'a, Result<SaveEventStatus, DatabaseError>> {
+        Box::pin(async move {
+            self._save_event(event)
+                .await
+                .map_err(DatabaseError::backend)
+        })
     }
 
-    async fn check_id(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
-        if self.helper.has_event_id_been_deleted(event_id).await {
-            Ok(DatabaseEventStatus::Deleted)
-        } else {
-            let tx = self
-                .db
-                .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)
-                .map_err(into_err)?;
-            let store = tx.object_store(EVENTS_CF).map_err(into_err)?;
-            let key = JsValue::from(event_id.to_hex());
-            Ok(
-                if store
-                    .get(&key)
-                    .map_err(into_err)?
-                    .await
-                    .map_err(into_err)?
-                    .is_some()
-                {
-                    DatabaseEventStatus::Saved
-                } else {
-                    DatabaseEventStatus::NotExistent
-                },
-            )
-        }
+    fn check_id<'a>(
+        &'a self,
+        event_id: &'a EventId,
+    ) -> BoxedFuture<'a, Result<DatabaseEventStatus, DatabaseError>> {
+        Box::pin(async move {
+            if self.helper.has_event_id_been_deleted(event_id).await {
+                Ok(DatabaseEventStatus::Deleted)
+            } else {
+                let tx = self
+                    .db
+                    .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readonly)
+                    .map_err(into_err)?;
+                let store = tx.object_store(EVENTS_CF).map_err(into_err)?;
+                let key = JsValue::from(event_id.to_hex());
+                Ok(
+                    if store
+                        .get(&key)
+                        .map_err(into_err)?
+                        .await
+                        .map_err(into_err)?
+                        .is_some()
+                    {
+                        DatabaseEventStatus::Saved
+                    } else {
+                        DatabaseEventStatus::NotExistent
+                    },
+                )
+            }
+        })
     }
 
-    async fn has_coordinate_been_deleted(
-        &self,
-        coordinate: &Coordinate,
-        timestamp: &Timestamp,
-    ) -> Result<bool, DatabaseError> {
-        Ok(self
-            .helper
-            .has_coordinate_been_deleted(coordinate, timestamp)
-            .await)
+    fn has_coordinate_been_deleted<'a>(
+        &'a self,
+        coordinate: &'a Coordinate,
+        timestamp: &'a Timestamp,
+    ) -> BoxedFuture<'a, Result<bool, DatabaseError>> {
+        Box::pin(async move {
+            Ok(self
+                .helper
+                .has_coordinate_been_deleted(coordinate, timestamp)
+                .await)
+        })
     }
 
-    async fn event_id_seen(
+    fn event_id_seen(
         &self,
         event_id: EventId,
         relay_url: RelayUrl,
-    ) -> Result<(), DatabaseError> {
-        let mut set: HashSet<RelayUrl> = self
-            .event_seen_on_relays(&event_id)
-            .await?
-            .unwrap_or_else(|| HashSet::with_capacity(1));
+    ) -> BoxedFuture<Result<(), DatabaseError>> {
+        Box::pin(async move {
+            let mut set: HashSet<RelayUrl> = self
+                .event_seen_on_relays(&event_id)
+                .await?
+                .unwrap_or_else(|| HashSet::with_capacity(1));
 
-        if set.insert(relay_url) {
+            if set.insert(relay_url) {
+                let tx = self
+                    .db
+                    .transaction_on_one_with_mode(
+                        EVENTS_SEEN_BY_RELAYS_CF,
+                        IdbTransactionMode::Readwrite,
+                    )
+                    .map_err(into_err)?;
+                let store = tx
+                    .object_store(EVENTS_SEEN_BY_RELAYS_CF)
+                    .map_err(into_err)?;
+                let key = JsValue::from(event_id.to_hex());
+
+                // Acquire FlatBuffers Builder
+                let mut fbb = self.fbb.lock().await;
+
+                // Encode
+                let value = JsValue::from(hex::encode(set.encode(&mut fbb)));
+
+                // Drop FlatBuffers Builder
+                drop(fbb);
+
+                // Save
+                store
+                    .put_key_val(&key, &value)
+                    .map_err(into_err)?
+                    .await
+                    .map_err(into_err)?;
+            }
+
+            Ok(())
+        })
+    }
+
+    fn event_seen_on_relays<'a>(
+        &'a self,
+        event_id: &'a EventId,
+    ) -> BoxedFuture<'a, Result<Option<HashSet<RelayUrl>>, DatabaseError>> {
+        Box::pin(async move {
             let tx = self
                 .db
                 .transaction_on_one_with_mode(
                     EVENTS_SEEN_BY_RELAYS_CF,
-                    IdbTransactionMode::Readwrite,
+                    IdbTransactionMode::Readonly,
                 )
                 .map_err(into_err)?;
             let store = tx
                 .object_store(EVENTS_SEEN_BY_RELAYS_CF)
                 .map_err(into_err)?;
             let key = JsValue::from(event_id.to_hex());
-
-            // Acquire FlatBuffers Builder
-            let mut fbb = self.fbb.lock().await;
-
-            // Encode
-            let value = JsValue::from(hex::encode(set.encode(&mut fbb)));
-
-            // Drop FlatBuffers Builder
-            drop(fbb);
-
-            // Save
-            store
-                .put_key_val(&key, &value)
-                .map_err(into_err)?
-                .await
-                .map_err(into_err)?;
-        }
-
-        Ok(())
-    }
-
-    async fn event_seen_on_relays(
-        &self,
-        event_id: &EventId,
-    ) -> Result<Option<HashSet<RelayUrl>>, DatabaseError> {
-        let tx = self
-            .db
-            .transaction_on_one_with_mode(EVENTS_SEEN_BY_RELAYS_CF, IdbTransactionMode::Readonly)
-            .map_err(into_err)?;
-        let store = tx
-            .object_store(EVENTS_SEEN_BY_RELAYS_CF)
-            .map_err(into_err)?;
-        let key = JsValue::from(event_id.to_hex());
-        if let Some(jsvalue) = store.get(&key).map_err(into_err)?.await.map_err(into_err)? {
-            if let Some(set_hex) = js_value_to_string(jsvalue) {
-                let bytes = hex::decode(set_hex).map_err(DatabaseError::backend)?;
-                return Ok(Some(
-                    HashSet::decode(&bytes).map_err(DatabaseError::backend)?,
-                ));
+            if let Some(jsvalue) = store.get(&key).map_err(into_err)?.await.map_err(into_err)? {
+                if let Some(set_hex) = js_value_to_string(jsvalue) {
+                    let bytes = hex::decode(set_hex).map_err(DatabaseError::backend)?;
+                    return Ok(Some(
+                        HashSet::decode(&bytes).map_err(DatabaseError::backend)?,
+                    ));
+                }
             }
-        }
 
-        Ok(None)
+            Ok(None)
+        })
     }
 
-    async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Event>, DatabaseError> {
-        Ok(self.helper.event_by_id(event_id).await)
+    fn event_by_id<'a>(
+        &'a self,
+        event_id: &'a EventId,
+    ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>> {
+        Box::pin(async move { Ok(self.helper.event_by_id(event_id).await) })
     }
 
-    async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {
-        Ok(self.helper.count(filters).await)
+    fn count(&self, filters: Vec<Filter>) -> BoxedFuture<Result<usize, DatabaseError>> {
+        Box::pin(async move { Ok(self.helper.count(filters).await) })
     }
 
-    async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
-        Ok(self.helper.query(filters).await)
+    fn query(&self, filters: Vec<Filter>) -> BoxedFuture<Result<Events, DatabaseError>> {
+        Box::pin(async move { Ok(self.helper.query(filters).await) })
     }
 
-    async fn negentropy_items(
+    fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
-        Ok(self.helper.negentropy_items(filter).await)
+    ) -> BoxedFuture<Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
+        Box::pin(async move { Ok(self.helper.negentropy_items(filter).await) })
     }
 
-    async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {
-        self._delete(filter).await.map_err(DatabaseError::backend)
+    fn delete(&self, filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
+        Box::pin(async move { self._delete(filter).await.map_err(DatabaseError::backend) })
     }
-});
+}
 
-impl_nostr_database_wipe!({
-    async fn wipe(&self) -> Result<(), DatabaseError> {
-        self._wipe().await.map_err(DatabaseError::backend)
+impl NostrDatabaseWipe for WebDatabase {
+    fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
+        Box::pin(async move { self._wipe().await.map_err(DatabaseError::backend) })
     }
-});
+}
 
 fn js_value_to_string(value: JsValue) -> Option<String> {
     let s: JsString = value.dyn_into().ok()?;

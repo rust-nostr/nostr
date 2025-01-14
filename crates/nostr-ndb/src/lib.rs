@@ -65,108 +65,128 @@ impl From<Ndb> for NdbDatabase {
     }
 }
 
-#[async_trait]
 impl NostrDatabase for NdbDatabase {
     fn backend(&self) -> Backend {
         Backend::LMDB
     }
 }
 
-#[async_trait]
 impl NostrEventsDatabase for NdbDatabase {
-    async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, DatabaseError> {
-        let msg = RelayMessage::event(SubscriptionId::new("ndb"), event.clone());
-        let json: String = msg.as_json();
-        self.db
-            .process_event(&json)
-            .map_err(DatabaseError::backend)?;
-        // TODO: shouldn't return a success since we don't know if the ingestion was successful or not.
-        Ok(SaveEventStatus::Success)
-    }
-
-    async fn check_id(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
-        let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
-        let res = self.db.get_note_by_id(&txn, event_id.as_bytes());
-        Ok(if res.is_ok() {
-            DatabaseEventStatus::Saved
-        } else {
-            DatabaseEventStatus::NotExistent
+    fn save_event<'a>(
+        &'a self,
+        event: &'a Event,
+    ) -> BoxedFuture<'a, Result<SaveEventStatus, DatabaseError>> {
+        Box::pin(async move {
+            let msg = RelayMessage::event(SubscriptionId::new("ndb"), event.clone());
+            let json: String = msg.as_json();
+            self.db
+                .process_event(&json)
+                .map_err(DatabaseError::backend)?;
+            // TODO: shouldn't return a success since we don't know if the ingestion was successful or not.
+            Ok(SaveEventStatus::Success)
         })
     }
 
-    async fn has_coordinate_been_deleted(
-        &self,
-        _coordinate: &Coordinate,
-        _timestamp: &Timestamp,
-    ) -> Result<bool, DatabaseError> {
-        Ok(false)
+    fn check_id<'a>(
+        &'a self,
+        event_id: &'a EventId,
+    ) -> BoxedFuture<'a, Result<DatabaseEventStatus, DatabaseError>> {
+        Box::pin(async move {
+            let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
+            let res = self.db.get_note_by_id(&txn, event_id.as_bytes());
+            Ok(if res.is_ok() {
+                DatabaseEventStatus::Saved
+            } else {
+                DatabaseEventStatus::NotExistent
+            })
+        })
     }
 
-    async fn event_id_seen(
+    fn has_coordinate_been_deleted<'a>(
+        &'a self,
+        _coordinate: &'a Coordinate,
+        _timestamp: &'a Timestamp,
+    ) -> BoxedFuture<'a, Result<bool, DatabaseError>> {
+        Box::pin(async move { Ok(false) })
+    }
+
+    fn event_id_seen(
         &self,
         _event_id: EventId,
         _relay_url: RelayUrl,
-    ) -> Result<(), DatabaseError> {
-        Ok(())
+    ) -> BoxedFuture<Result<(), DatabaseError>> {
+        Box::pin(async move { Ok(()) })
     }
 
-    async fn event_seen_on_relays(
-        &self,
-        _event_id: &EventId,
-    ) -> Result<Option<HashSet<RelayUrl>>, DatabaseError> {
-        // TODO: use in-memory map to keep track of seen relays
-        Err(DatabaseError::NotSupported)
+    fn event_seen_on_relays<'a>(
+        &'a self,
+        _event_id: &'a EventId,
+    ) -> BoxedFuture<'a, Result<Option<HashSet<RelayUrl>>, DatabaseError>> {
+        Box::pin(async move {
+            // TODO: use in-memory map to keep track of seen relays
+            Err(DatabaseError::NotSupported)
+        })
     }
 
-    async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Event>, DatabaseError> {
-        let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
-        let note = self
-            .db
-            .get_note_by_id(&txn, event_id.as_bytes())
-            .map_err(DatabaseError::backend)?;
-        Ok(Some(ndb_note_to_event(note)?.into_owned()))
+    fn event_by_id<'a>(
+        &'a self,
+        event_id: &'a EventId,
+    ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>> {
+        Box::pin(async move {
+            let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
+            let note = self
+                .db
+                .get_note_by_id(&txn, event_id.as_bytes())
+                .map_err(DatabaseError::backend)?;
+            Ok(Some(ndb_note_to_event(note)?.into_owned()))
+        })
     }
 
-    async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {
-        let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
-        let res: Vec<QueryResult> = ndb_query(&self.db, &txn, filters)?;
-        Ok(res.len())
+    fn count(&self, filters: Vec<Filter>) -> BoxedFuture<Result<usize, DatabaseError>> {
+        Box::pin(async move {
+            let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
+            let res: Vec<QueryResult> = ndb_query(&self.db, &txn, filters)?;
+            Ok(res.len())
+        })
     }
 
-    async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
-        let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
-        let mut events: Events = Events::new(&filters);
-        let res: Vec<QueryResult> = ndb_query(&self.db, &txn, filters)?;
-        events.extend(
-            res.into_iter()
-                .filter_map(|r| ndb_note_to_event(r.note).ok())
-                .map(|e| e.into_owned()),
-        );
-        Ok(events)
+    fn query(&self, filters: Vec<Filter>) -> BoxedFuture<Result<Events, DatabaseError>> {
+        Box::pin(async move {
+            let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
+            let mut events: Events = Events::new(&filters);
+            let res: Vec<QueryResult> = ndb_query(&self.db, &txn, filters)?;
+            events.extend(
+                res.into_iter()
+                    .filter_map(|r| ndb_note_to_event(r.note).ok())
+                    .map(|e| e.into_owned()),
+            );
+            Ok(events)
+        })
     }
 
-    async fn negentropy_items(
+    fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
-        let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
-        let res: Vec<QueryResult> = ndb_query(&self.db, &txn, vec![filter])?;
-        Ok(res
-            .into_iter()
-            .map(|r| ndb_note_to_neg_item(r.note))
-            .collect())
+    ) -> BoxedFuture<Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
+        Box::pin(async move {
+            let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
+            let res: Vec<QueryResult> = ndb_query(&self.db, &txn, vec![filter])?;
+            Ok(res
+                .into_iter()
+                .map(|r| ndb_note_to_neg_item(r.note))
+                .collect())
+        })
     }
 
-    async fn delete(&self, _filter: Filter) -> Result<(), DatabaseError> {
-        Err(DatabaseError::NotSupported)
+    fn delete(&self, _filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
+        Box::pin(async move { Err(DatabaseError::NotSupported) })
     }
 }
 
-#[async_trait]
 impl NostrDatabaseWipe for NdbDatabase {
     #[inline]
-    async fn wipe(&self) -> Result<(), DatabaseError> {
-        Err(DatabaseError::NotSupported)
+    fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
+        Box::pin(async move { Err(DatabaseError::NotSupported) })
     }
 }
 

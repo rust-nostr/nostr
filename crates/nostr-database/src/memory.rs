@@ -7,7 +7,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use nostr::prelude::*;
 use tokio::sync::RwLock;
 
@@ -76,114 +75,131 @@ impl MemoryDatabase {
     }
 }
 
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrDatabase for MemoryDatabase {
     fn backend(&self) -> Backend {
         Backend::Memory
     }
 }
 
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrEventsDatabase for MemoryDatabase {
-    async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, DatabaseError> {
-        if self.opts.events {
-            let DatabaseEventResult { status, .. } = self.helper.index_event(event).await;
-            Ok(status)
-        } else {
-            // Mark it as seen
-            let mut seen_event_ids = self.seen_event_ids.write().await;
-            seen_event_ids.seen(event.id, None);
-
-            Ok(SaveEventStatus::Rejected(RejectedReason::Other))
-        }
-    }
-
-    async fn check_id(&self, event_id: &EventId) -> Result<DatabaseEventStatus, DatabaseError> {
-        if self.opts.events {
-            if self.helper.has_event_id_been_deleted(event_id).await {
-                Ok(DatabaseEventStatus::Deleted)
-            } else if self.helper.has_event(event_id).await {
-                Ok(DatabaseEventStatus::Saved)
+    fn save_event<'a>(
+        &'a self,
+        event: &'a Event,
+    ) -> BoxedFuture<'a, Result<SaveEventStatus, DatabaseError>> {
+        Box::pin(async move {
+            if self.opts.events {
+                let DatabaseEventResult { status, .. } = self.helper.index_event(event).await;
+                Ok(status)
             } else {
-                Ok(DatabaseEventStatus::NotExistent)
+                // Mark it as seen
+                let mut seen_event_ids = self.seen_event_ids.write().await;
+                seen_event_ids.seen(event.id, None);
+
+                Ok(SaveEventStatus::Rejected(RejectedReason::Other))
             }
-        } else {
-            let seen_event_ids = self.seen_event_ids.read().await;
-            Ok(if seen_event_ids.contains(event_id) {
-                DatabaseEventStatus::Saved
+        })
+    }
+
+    fn check_id<'a>(
+        &'a self,
+        event_id: &'a EventId,
+    ) -> BoxedFuture<'a, Result<DatabaseEventStatus, DatabaseError>> {
+        Box::pin(async move {
+            if self.opts.events {
+                if self.helper.has_event_id_been_deleted(event_id).await {
+                    Ok(DatabaseEventStatus::Deleted)
+                } else if self.helper.has_event(event_id).await {
+                    Ok(DatabaseEventStatus::Saved)
+                } else {
+                    Ok(DatabaseEventStatus::NotExistent)
+                }
             } else {
-                DatabaseEventStatus::NotExistent
-            })
-        }
+                let seen_event_ids = self.seen_event_ids.read().await;
+                Ok(if seen_event_ids.contains(event_id) {
+                    DatabaseEventStatus::Saved
+                } else {
+                    DatabaseEventStatus::NotExistent
+                })
+            }
+        })
     }
 
-    async fn has_coordinate_been_deleted(
-        &self,
-        coordinate: &Coordinate,
-        timestamp: &Timestamp,
-    ) -> Result<bool, DatabaseError> {
-        Ok(self
-            .helper
-            .has_coordinate_been_deleted(coordinate, timestamp)
-            .await)
+    fn has_coordinate_been_deleted<'a>(
+        &'a self,
+        coordinate: &'a Coordinate,
+        timestamp: &'a Timestamp,
+    ) -> BoxedFuture<'a, Result<bool, DatabaseError>> {
+        Box::pin(async move {
+            Ok(self
+                .helper
+                .has_coordinate_been_deleted(coordinate, timestamp)
+                .await)
+        })
     }
 
-    async fn event_id_seen(
+    fn event_id_seen(
         &self,
         event_id: EventId,
         relay_url: RelayUrl,
-    ) -> Result<(), DatabaseError> {
-        let mut seen_event_ids = self.seen_event_ids.write().await;
-        seen_event_ids.seen(event_id, Some(relay_url));
-        Ok(())
+    ) -> BoxedFuture<Result<(), DatabaseError>> {
+        Box::pin(async move {
+            let mut seen_event_ids = self.seen_event_ids.write().await;
+            seen_event_ids.seen(event_id, Some(relay_url));
+            Ok(())
+        })
     }
 
-    async fn event_seen_on_relays(
-        &self,
-        event_id: &EventId,
-    ) -> Result<Option<HashSet<RelayUrl>>, DatabaseError> {
-        let seen_event_ids = self.seen_event_ids.read().await;
-        Ok(seen_event_ids.get(event_id).cloned())
+    fn event_seen_on_relays<'a>(
+        &'a self,
+        event_id: &'a EventId,
+    ) -> BoxedFuture<'a, Result<Option<HashSet<RelayUrl>>, DatabaseError>> {
+        Box::pin(async move {
+            let seen_event_ids = self.seen_event_ids.read().await;
+            Ok(seen_event_ids.get(event_id).cloned())
+        })
     }
 
-    async fn event_by_id(&self, id: &EventId) -> Result<Option<Event>, DatabaseError> {
-        Ok(self.helper.event_by_id(id).await)
+    fn event_by_id<'a>(
+        &'a self,
+        event_id: &'a EventId,
+    ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>> {
+        Box::pin(async move { Ok(self.helper.event_by_id(event_id).await) })
     }
 
-    async fn count(&self, filters: Vec<Filter>) -> Result<usize, DatabaseError> {
-        Ok(self.helper.count(filters).await)
+    fn count(&self, filters: Vec<Filter>) -> BoxedFuture<Result<usize, DatabaseError>> {
+        Box::pin(async move { Ok(self.helper.count(filters).await) })
     }
 
-    async fn query(&self, filters: Vec<Filter>) -> Result<Events, DatabaseError> {
-        Ok(self.helper.query(filters).await)
+    fn query(&self, filters: Vec<Filter>) -> BoxedFuture<Result<Events, DatabaseError>> {
+        Box::pin(async move { Ok(self.helper.query(filters).await) })
     }
 
-    async fn negentropy_items(
+    fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> Result<Vec<(EventId, Timestamp)>, DatabaseError> {
-        Ok(self.helper.negentropy_items(filter).await)
+    ) -> BoxedFuture<Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
+        Box::pin(async move { Ok(self.helper.negentropy_items(filter).await) })
     }
 
-    async fn delete(&self, filter: Filter) -> Result<(), DatabaseError> {
-        self.helper.delete(filter).await;
-        Ok(())
+    fn delete(&self, filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
+        Box::pin(async move {
+            self.helper.delete(filter).await;
+            Ok(())
+        })
     }
 }
 
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl NostrDatabaseWipe for MemoryDatabase {
-    async fn wipe(&self) -> Result<(), DatabaseError> {
-        // Clear helper
-        self.helper.clear().await;
+    fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
+        Box::pin(async move {
+            // Clear helper
+            self.helper.clear().await;
 
-        // Clear
-        let mut seen_event_ids = self.seen_event_ids.write().await;
-        seen_event_ids.clear();
-        Ok(())
+            // Clear
+            let mut seen_event_ids = self.seen_event_ids.write().await;
+            seen_event_ids.clear();
+            Ok(())
+        })
     }
 }
 

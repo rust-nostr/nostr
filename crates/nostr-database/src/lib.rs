@@ -11,7 +11,6 @@
 
 use std::sync::Arc;
 
-pub use async_trait::async_trait;
 pub use nostr;
 
 mod collections;
@@ -93,8 +92,6 @@ where
 }
 
 /// Nostr Database
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait NostrDatabase: NostrEventsDatabase + NostrDatabaseWipe {
     /// Name of the backend database used
     fn backend(&self) -> Backend;

@@ -2763,7 +2763,6 @@ dependencies = [
 name = "nostr-database"
 version = "0.38.0"
 dependencies = [
- "async-trait",
  "flatbuffers",
  "nostr",
  "tokio",
@@ -2773,7 +2772,6 @@ dependencies = [
 name = "nostr-indexeddb"
 version = "0.38.0"
 dependencies = [
- "async-trait",
  "indexed_db_futures",
  "nostr",
  "nostr-database",
@@ -2797,7 +2795,6 @@ dependencies = [
 name = "nostr-ndb"
 version = "0.38.0"
 dependencies = [
- "async-trait",
  "nostr",
  "nostr-database",
  "nostrdb",

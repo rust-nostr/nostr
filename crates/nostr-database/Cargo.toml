@@ -16,7 +16,6 @@ default = []
 flatbuf = ["dep:flatbuffers"]
 
 [dependencies]
-async-trait.workspace = true
 flatbuffers = { version = "23.5", optional = true }
 nostr = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = ["sync"] }
