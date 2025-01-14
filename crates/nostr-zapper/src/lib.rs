@@ -15,7 +15,6 @@ use std::sync::Arc;
 
 pub extern crate nostr;
 
-use async_trait::async_trait;
 use nostr::prelude::*;
 
 pub mod error;
@@ -72,12 +71,10 @@ where
 }
 
 /// Nostr Database
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait NostrZapper: fmt::Debug + Send + Sync {
     /// Name of the backend zapper used (ex. WebLN, NWC, ...)
     fn backend(&self) -> ZapperBackend;
 
     /// Pay invoice
-    async fn pay(&self, invoice: String) -> Result<(), ZapperError>;
+    fn pay(&self, invoice: String) -> BoxedFuture<Result<(), ZapperError>>;
 }

@@ -12,6 +12,5 @@ rust-version.workspace = true
 keywords = ["nostr", "zapper"]
 
 [dependencies]
-async-trait.workspace = true
 nostr = { workspace = true, features = ["std"] }
 webln = { version = "0.4", optional = true }

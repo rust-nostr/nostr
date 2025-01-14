@@ -8,11 +8,10 @@
 
 use std::ops::Deref;
 
+use nostr::util::BoxedFuture;
 use webln::WebLN;
 
-#[cfg(target_arch = "wasm32")]
-use crate::{async_trait, NostrZapper};
-use crate::{ZapperBackend, ZapperError};
+use crate::{NostrZapper, ZapperBackend, ZapperError};
 
 /// [WebLN] zapper
 #[derive(Debug, Clone)]
@@ -39,35 +38,24 @@ impl WebLNZapper {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
-macro_rules! impl_nostr_zapper {
-    ({ $($body:tt)* }) => {
-        #[async_trait(?Send)]
-        impl NostrZapper for WebLNZapper {
-            $($body)*
-        }
-    };
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-macro_rules! impl_nostr_zapper {
-    ({ $($body:tt)* }) => {
-        impl WebLNZapper {
-            $($body)*
-        }
-    };
-}
-
-impl_nostr_zapper!({
+impl NostrZapper for WebLNZapper {
     fn backend(&self) -> ZapperBackend {
         ZapperBackend::WebLN
     }
 
-    async fn pay(&self, invoice: String) -> Result<(), ZapperError> {
-        self.inner
-            .send_payment(&invoice)
-            .await
-            .map_err(ZapperError::backend)?;
-        Ok(())
+    #[cfg(not(target_arch = "wasm32"))]
+    fn pay(&self, _invoice: String) -> BoxedFuture<Result<(), ZapperError>> {
+        unreachable!("this method is supported only in WASM")
     }
-});
+
+    #[cfg(target_arch = "wasm32")]
+    fn pay(&self, invoice: String) -> BoxedFuture<Result<(), ZapperError>> {
+        Box::pin(async move {
+            self.inner
+                .send_payment(&invoice)
+                .await
+                .map_err(ZapperError::backend)?;
+            Ok(())
+        })
+    }
+}
