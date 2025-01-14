@@ -1,12 +1,11 @@
 import React, { Component } from "react";
-import { ClientBuilder, NostrSigner, NostrZapper, Filter, LogLevel, NegentropyOptions, Nip07Signer, NostrDatabase, PublicKey, ZapDetails, ZapEntity, ZapType, initLogger, loadWasmAsync } from '@rust-nostr/nostr-sdk'
+import { ClientBuilder, EventBuilder, NostrSigner, NostrZapper, Filter, LogLevel, NegentropyOptions, BrowserSigner, NostrDatabase, PublicKey, ZapDetails, ZapEntity, ZapType, initLogger, loadWasmAsync } from '@rust-nostr/nostr-sdk'
 import './App.css';
-import {EventBuilder} from "../../../pkg/nostr_sdk_js";
 
 class App extends Component {
   constructor() {
     super();
-    this.state = { 
+    this.state = {
       public_key: null,
       nip07_signer: null,
       client: null
@@ -26,26 +25,26 @@ class App extends Component {
   handleLogin = async () => {
     try {
       // Get NIP07 signer and compose Client with NostrSigner
-      let nip07_signer = new Nip07Signer();
+      let nip07_signer = new BrowserSigner();
       let signer = NostrSigner.nip07(nip07_signer);
       let zapper = await NostrZapper.webln();
       let db = await NostrDatabase.indexeddb("nostr-sdk-webapp-example");
       let client = new ClientBuilder().signer(signer).zapper(zapper).database(db).build();
 
       let public_key = await nip07_signer.getPublicKey();
-  
+
       // Add relays
       await client.addRelay("wss://relay.damus.io");
       await client.addRelay("wss://nos.lol");
       await client.addRelay("wss://nostr.oxtr.dev");
-  
+
       // Connect to relays
       await client.connect();
-  
+
       // Save client to state
       this.setState({ client, nip07_signer, public_key });
     } catch (error) {
-        console.log(error) 
+        console.log(error)
     }
   };
 
@@ -55,7 +54,7 @@ class App extends Component {
       let opts = new NegentropyOptions();
       await this.state.client.sync(filter, opts);
     } catch (error) {
-        console.log(error) 
+        console.log(error)
     }
   }
 
@@ -77,7 +76,7 @@ class App extends Component {
       let builder = EventBuilder.textNote("Test from rust-nostr JavaScript bindings with NIP07 signer!", []);
       await this.state.client.sendEventBuilder(builder);
     } catch (error) {
-        console.log(error) 
+        console.log(error)
     }
   };
 
@@ -88,7 +87,7 @@ class App extends Component {
       let details = new ZapDetails(ZapType.Public).message("Zap for Rust Nostr!");
       await this.state.client.zap(entity, 1000, details);
     } catch (error) {
-        console.log(error) 
+        console.log(error)
     }
   };
 
@@ -98,7 +97,7 @@ class App extends Component {
       this.setState({ client: null });
       console.log("Logout done");
       } catch (error) {
-          console.log(error) 
+          console.log(error)
       }
   };
 

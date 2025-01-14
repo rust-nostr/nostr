@@ -96,22 +96,28 @@ impl From<JsValue> for Error {
     }
 }
 
-/// NIP07 Signer for interaction with browser extensions (ex. Alby)
+#[allow(missing_docs)]
+#[deprecated(since = "0.39.0", note = "BrowserSigner")]
+pub type Nip07Signer = BrowserSigner;
+
+/// Signer for interaction with browser extensions (ex. Alby)
 ///
-/// <https://github.com/aljazceru/awesome-nostr#nip-07-browser-extensions>
+/// Browser extensions: <https://github.com/aljazceru/awesome-nostr#nip-07-browser-extensions>
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/07.md>
 #[derive(Debug, Clone)]
-pub struct Nip07Signer {
+pub struct BrowserSigner {
     /// `window.nostr` object
     nostr_obj: Object,
 }
 
 #[allow(unsafe_code)]
-unsafe impl Send for Nip07Signer {}
+unsafe impl Send for BrowserSigner {}
 
 #[allow(unsafe_code)]
-unsafe impl Sync for Nip07Signer {}
+unsafe impl Sync for BrowserSigner {}
 
-impl Nip07Signer {
+impl BrowserSigner {
     /// Compose new NIP07 Signer
     pub fn new() -> Result<Self, Error> {
         let window: Window = web_sys::window().ok_or(Error::NoGlobalWindowObject)?;
@@ -249,7 +255,7 @@ impl Nip07Signer {
 }
 
 #[async_trait(?Send)]
-impl NostrSigner for Nip07Signer {
+impl NostrSigner for BrowserSigner {
     fn backend(&self) -> SignerBackend {
         SignerBackend::BrowserExtension
     }

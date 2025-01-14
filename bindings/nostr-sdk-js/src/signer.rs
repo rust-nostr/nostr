@@ -12,7 +12,7 @@ use crate::connect::JsNostrConnect;
 use crate::error::{into_err, Result};
 use crate::protocol::event::{JsEvent, JsUnsignedEvent};
 use crate::protocol::key::{JsKeys, JsPublicKey};
-use crate::protocol::nips::nip07::JsNip07Signer;
+use crate::protocol::nips::nip07::JsBrowserSigner;
 
 #[wasm_bindgen(js_name = NostrSigner)]
 pub struct JsNostrSigner {
@@ -43,7 +43,7 @@ impl JsNostrSigner {
     }
 
     /// NIP07
-    pub fn nip07(signer: &JsNip07Signer) -> Self {
+    pub fn nip07(signer: &JsBrowserSigner) -> Self {
         Self {
             inner: signer.deref().clone().into_nostr_signer(),
         }

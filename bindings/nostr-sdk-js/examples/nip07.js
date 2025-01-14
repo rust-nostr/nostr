@@ -1,5 +1,4 @@
-const { loadWasmAsync, Client, NostrSigner, Nip07Signer } = require("../");
-const {EventBuilder} = require("../pkg/nostr_sdk_js");
+const { loadWasmAsync, Client, EventBuilder, NostrSigner, BrowserSigner } = require("../");
 
 // NOTE: this code work only on browser!
 
@@ -7,7 +6,7 @@ async function main() {
     await loadWasmAsync();
 
     try {
-        let nip07_signer = new Nip07Signer();
+        let nip07_signer = new BrowserSigner();
         let signer = NostrSigner.nip07(nip07_signer);
         let client = new Client(signer);
 
@@ -26,7 +25,7 @@ async function main() {
 
 async function main2() {
     try {
-        let signer = new Nip07Signer();
+        let signer = new BrowserSigner();
 
         let public_key = await signer.getPublicKey();
         console.log(public_key.toBech32())

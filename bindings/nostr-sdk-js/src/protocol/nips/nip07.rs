@@ -11,28 +11,30 @@ use crate::error::{into_err, Result};
 use crate::protocol::event::{JsEvent, JsUnsignedEvent};
 use crate::protocol::key::JsPublicKey;
 
-/// NIP07 Signer for interaction with browser extensions (ex. Alby)
+/// Signer for interaction with browser extensions (ex. Alby)
 ///
 /// <https://github.com/aljazceru/awesome-nostr#nip-07-browser-extensions>
-#[wasm_bindgen(js_name = Nip07Signer)]
-pub struct JsNip07Signer {
-    inner: Nip07Signer,
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/07.md>
+#[wasm_bindgen(js_name = BrowserSigner)]
+pub struct JsBrowserSigner {
+    inner: BrowserSigner,
 }
 
-impl Deref for JsNip07Signer {
-    type Target = Nip07Signer;
+impl Deref for JsBrowserSigner {
+    type Target = BrowserSigner;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-#[wasm_bindgen(js_class = Nip07Signer)]
-impl JsNip07Signer {
+#[wasm_bindgen(js_class = BrowserSigner)]
+impl JsBrowserSigner {
     #[wasm_bindgen(constructor)]
-    pub fn new() -> Result<JsNip07Signer> {
+    pub fn new() -> Result<JsBrowserSigner> {
         Ok(Self {
-            inner: Nip07Signer::new().map_err(into_err)?,
+            inner: BrowserSigner::new().map_err(into_err)?,
         })
     }
 

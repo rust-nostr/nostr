@@ -42,6 +42,7 @@
 * ffi: rename `KindEnum` to `KindStandard` ([Yuki Kishimoto])
 * ffi: remove `KindStandard::Custom` variant ([Yuki Kishimoto])
 * ffi: rename `Kind::from_enum` and `Kind::as_enum` to `Kind::from_std` and `Kind::as_std` ([Yuki Kishimoto])
+* js: rename `Nip07Signer` to `BrowserSigner` ([Yuki Kishimoto])
 * bindings: remove `profile` module ([Yuki Kishimoto])
 * bindings: remove `NostrLibrary` struct and keep only `git_hash_version` func ([Yuki Kishimoto])
 
@@ -55,6 +56,7 @@
 * nostr: use `SECP256K1` global context from `secp256k1` crate ([Yuki Kishimoto])
 * nostr: manually implement `PartialEq`, `Eq`, `PartialOrd`, `Ord` and `Hash` for `TagKind` ([Yuki Kishimoto])
 * nostr: derive `PartialEq` and `Eq` for event builder error ([Yuki Kishimoto])
+* nostr: rename `Nip07Signer` to `BrowserSigner` ([Yuki Kishimoto])
 * pool: update `Error::WebSocket` variant inner type ([Yuki Kishimoto])
 * lmdb: use `EventBorrow` instead of `DatabaseEvent` ([Yuki Kishimoto])
 * ndb: refactor note-to-event conversion ([Yuki Kishimoto])
