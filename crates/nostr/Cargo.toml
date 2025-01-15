@@ -32,7 +32,6 @@ std = [
     "secp256k1/global-context",
     "serde/std",
     "serde_json/std",
-    "serde_json/preserve_order",
     "unicode-normalization?/std",
 ]
 alloc = [

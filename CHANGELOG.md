@@ -34,6 +34,7 @@
 * nostr: update `ClientMessage::neg_open` signature ([Yuki Kishimoto])
 * nostr: remove `ClientMessage::neg_open_deprecated` ([Yuki Kishimoto])
 * nostr: add `nip98` feature ([Yuki Kishimoto])
+* nostr: remove support for event JSON order preservation ([Yuki Kishimoto])
 * pool: change `Relay::connect` method signature ([Yuki Kishimoto])
 * ffi: change `UnsignedEvent::tags` output ([Yuki Kishimoto])
 * ffi: convert `ImageDimensions` in a `Record` ([Yuki Kishimoto])

@@ -7,7 +7,6 @@
 
 use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
-use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
@@ -15,9 +14,7 @@ use core::str::FromStr;
 
 use secp256k1::schnorr::Signature;
 use secp256k1::{Message, Secp256k1, Verification};
-use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::Value;
 
 pub mod borrow;
 pub mod builder;
@@ -54,6 +51,7 @@ const SIG: &str = "sig";
 
 /// Nostr event
 #[derive(Clone)]
+#[non_exhaustive] // In the future private fields may be added, so force event construction with `Event::new`.
 pub struct Event {
     /// ID
     pub id: EventId,
@@ -69,8 +67,6 @@ pub struct Event {
     pub content: String,
     /// Signature
     pub sig: Signature,
-    /// JSON de/serialization order
-    deser_order: Vec<EventKey>,
 }
 
 impl fmt::Debug for Event {
@@ -156,7 +152,6 @@ impl Event {
             tags: Tags::new(tags.into_iter().collect()),
             content: content.into(),
             sig,
-            deser_order: Vec::new(),
         }
     }
 
@@ -372,24 +367,8 @@ impl Serialize for Event {
     where
         S: Serializer,
     {
-        if self.deser_order.is_empty() {
-            let e: EventIntermediate<'_> = self.into();
-            e.serialize(serializer)
-        } else {
-            let mut s = serializer.serialize_struct("Event", 7)?;
-            for key in self.deser_order.iter() {
-                match key {
-                    EventKey::Id => s.serialize_field(ID, &self.id)?,
-                    EventKey::PubKey => s.serialize_field(PUBKEY, &self.pubkey)?,
-                    EventKey::CreatedAt => s.serialize_field(CREATED_AT, &self.created_at)?,
-                    EventKey::Kind => s.serialize_field(KIND, &self.kind)?,
-                    EventKey::Tags => s.serialize_field(TAGS, &self.tags)?,
-                    EventKey::Content => s.serialize_field(CONTENT, &self.content)?,
-                    EventKey::Sig => s.serialize_field(SIG, &self.sig)?,
-                }
-            }
-            s.end()
-        }
+        let e: EventIntermediate<'_> = self.into();
+        e.serialize(serializer)
     }
 }
 
@@ -398,19 +377,7 @@ impl<'de> Deserialize<'de> for Event {
     where
         D: Deserializer<'de>,
     {
-        let value: Value = Value::deserialize(deserializer)?;
-
-        let deser_order: Vec<EventKey> = value
-            .as_object()
-            .map(|map| {
-                map.keys()
-                    .filter_map(|k| EventKey::from_str(k).ok())
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        let inter: EventIntermediate<'_> =
-            serde_json::from_value(value).map_err(serde::de::Error::custom)?;
+        let inter: EventIntermediate<'_> = EventIntermediate::deserialize(deserializer)?;
 
         Ok(Self {
             id: inter.id.into_owned(),
@@ -420,7 +387,6 @@ impl<'de> Deserialize<'de> for Event {
             tags: inter.tags.into_owned(),
             content: inter.content.into_owned(),
             sig: inter.sig.into_owned(),
-            deser_order,
         })
     }
 }
@@ -433,7 +399,7 @@ mod tests {
 
     #[test]
     fn test_tags_deser_without_recommended_relay() {
-        let sample_event = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
+        let sample_event = r#"{"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","created_at":1640839235,"kind":4,"tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]],"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd"}"#;
         let ev_ser = Event::from_json(sample_event).unwrap();
         assert_eq!(ev_ser.as_json(), sample_event);
     }
@@ -500,38 +466,6 @@ mod tests {
         assert!(event.verify_id());
     }
 
-    // Test only with `std` feature due to `serde_json` preserve_order feature.
-    #[test]
-    #[cfg(feature = "std")]
-    fn test_event_de_serialization_order_preservation() {
-        let json = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
-        let event = Event::from_json(json).unwrap();
-        let reserialized_json = event.as_json();
-        assert_eq!(json, reserialized_json);
-
-        let json = r#"{"kind":3,"pubkey":"f831caf722214748c72db4829986bd0cbb2bb8b3aeade1c959624a52a9629046","content":"","created_at":1698412975,"id":"f55c30722f056e330d8a7a6a9ba1522f7522c0f1ced1c93d78ea833c78a3d6ec","sig":"5092a9ffaecdae7d7794706f085ff5852befdf79df424cc3419bb797bf515ae05d4f19404cb8324b8b4380a4bd497763ac7b0f3b1b63ef4d3baa17e5f5901808","tags":[["p","4ddeb9109a8cd29ba279a637f5ec344f2479ee07df1f4043f3fe26d8948cfef9","",""],["p","bb6fd06e156929649a73e6b278af5e648214a69d88943702f1fb627c02179b95","",""],["p","b8b8210f33888fdbf5cedee9edf13c3e9638612698fe6408aff8609059053420","",""],["p","9dcee4fabcd690dc1da9abdba94afebf82e1e7614f4ea92d61d52ef9cd74e083","",""],["p","3eea9e831fefdaa8df35187a204d82edb589a36b170955ac5ca6b88340befaa0","",""],["p","885238ab4568f271b572bf48b9d6f99fa07644731f288259bd395998ee24754e","",""],["p","568a25c71fba591e39bebe309794d5c15d27dbfa7114cacb9f3586ea1314d126","",""]]}"#;
-        let event = Event::from_json(json).unwrap();
-        let reserialized_json = event.as_json();
-        assert_eq!(
-            event.deser_order,
-            vec![
-                EventKey::Kind,
-                EventKey::PubKey,
-                EventKey::Content,
-                EventKey::CreatedAt,
-                EventKey::Id,
-                EventKey::Sig,
-                EventKey::Tags
-            ]
-        );
-        assert_eq!(json, reserialized_json);
-
-        let json = r#"{"content":"[[\"e\",\"fd40fc62d6349408c5b63d364c1f695b435cc596b58cfaa449519fbc5f2a41a4\"],[\"e\",\"a515bc18a06f0a3561075870f488365e71c5e90aa429a82845e9f7f0d66b6119\"],[\"e\",\"0eb6c73ed0af393a6a2fd9d8200534be064af9d244ef4b211e38503853755b57\"],[\"e\",\"1e8115cb2ba0e14eeb79fcb5ce6cb88f2db59e156aae9ad9302e86e8529e5e7c\"],[\"e\",\"6138b278802611f0685a75d5156f7bd3702a2acab4ba3864665901b1ffd58055\"],[\"e\",\"42105a71922acd113d77d876220fc49aabfa38ba9f34d2267e4f1d45d98b8eaf\"],[\"e\",\"dcd64141fa7af67e61fb28d02085e5c50bb0ccb72270b95e983183179903ef54\"],[\"e\",\"802f72b45a14639477a6ad9d89df9926d59e15d20387ab276dbe92dc48ddc21e\"],[\"e\",\"67ccd79069e27330480e1111f939c0770548e4222f4b5bcdf87ea9ec09e37abf\"],[\"e\",\"c45f94f3c8648536333b657287f0820c4ff1857fb1849a8ce8a541762f233063\"],[\"e\",\"afd22572b31ab14d0c6f65880e626d8e7fe20407ef1486e3ef78820be37e27d8\"],[\"e\",\"bd6a1a577ecfc5ba2ac5a391cae8f21a6238a7ad61a4ebcdd2a44ca488dd03c9\"],[\"e\",\"044ac6073a9cf1b723028a7828fdca098bcd0b79e5e58c21e2372c6b48bd67ca\"],[\"e\",\"2585dcecf6033f82d689a6456af2c82e7d5d9d9e64f90e2c7e86a80eb7dc765b\"],[\"e\",\"08a579677eee0b1796060dbd1e71dcc7ad0937be64ca278b61ef4c3dde149252\"],[\"e\",\"3ed3eaa26cdd1a35808775a8f0c6bd432c0dd1b9c2bc326c9dd249ecf2fe0270\"],[\"e\",\"a2bc2e1149d952a9af202529f3bdd4e8f11a9fda1bd2ad5c6dbbc8b83a1ebc2f\"],[\"e\",\"82e5c6ee536832ababb8eba47e1255d8b1820ca360d2c467f2f32fc610fe3047\"],[\"e\",\"1990b084eb9d0d524ff52f7fb2f0e7f1a1fee977b893c191af7893f53acf7d05\"],[\"e\",\"8df981ac84ca018c7972874770dbf19996f28e9c785eac473bab246e2ad92661\"],[\"e\",\"b975c677ee7517d9124ec8d69d3fafee7ddf6b1d291cc19dffd2678c2241f095\"],[\"e\",\"972599d1139da7e33dc39f049656935ae3b576492f1c535a0eda8d10b1eeb27d\"],[\"e\",\"eaaa6e0cda6315fa30841e9124a526c23dc631fcbf0ffc5e166bbd41d3585efa\"],[\"e\",\"e5eb71fe3dc364d51b6bd6cef73009704df5ee90674a54cb16168e78bbf8fa95\"],[\"e\",\"a49dd0610479b1d81b26f84b949d88d19abc4c3a6b86a1b6501ff393e9618700\"]]","created_at":1701278715,"id":"d05e7ae9271fe2d8968cccb67c01e3458dbafa4a415e306d49b22729b088c8a1","kind":6300,"pubkey":"6b37d5dc88c1cbd32d75b713f6d4c2f7766276f51c9337af9d32c8d715cc1b93","sig":"ee590cf98548039ccbeccb246e55310ad14bb0a307452dacca3f9d1760ac5fdb22d1f1bd932c5fc41d97b8cc16d82719c8ad24440b8d99c38ff2eb0486576253","tags":[["status","success"],["request","{\"created_at\":1701278699,\"content\":\"\",\"tags\":[[\"relays\",\"wss://pablof7z.nostr1.com\",\"wss://purplepag.es\",\"wss://nos.lol\",\"wss://relay.f7z.io\",\"wss://relay.damus.io\",\"wss://relay.snort.social\",\"wss://offchain.pub/\",\"wss://nostr-pub.wellorder.net\"],[\"output\",\"text/plain\"],[\"param\",\"user\",\"99bb5591c9116600f845107d31f9b59e2f7c7e09a1ff802e84f1d43da557ca64\"],[\"relays\",\"wss://relay.damus.io\",\"wss://offchain.pub/\",\"wss://pablof7z.nostr1.com\",\"wss://nos.lol\"]],\"kind\":5300,\"pubkey\":\"99bb5591c9116600f845107d31f9b59e2f7c7e09a1ff802e84f1d43da557ca64\",\"id\":\"5635e5dd930b3c831f6ab1e348bb488f3c9aca2f13190e93ab5e5e1e1ba1835e\",\"sig\":\"babbf39cf1875271d99be7319667f6f83349ffa0ad9262a7ca4719b60601e19642763733840fd7cbef2e883a19fd7829102709fb6af25a6d978b82fba2673140\"}"],["e","5635e5dd930b3c831f6ab1e348bb488f3c9aca2f13190e93ab5e5e1e1ba1835e"],["p","99bb5591c9116600f845107d31f9b59e2f7c7e09a1ff802e84f1d43da557ca64"],["p","99bb5591c9116600f845107d31f9b59e2f7c7e09a1ff802e84f1d43da557ca64"]]}"#;
-        let event = Event::from_json(json).unwrap();
-        let reserialized_json = event.as_json();
-        assert_eq!(json, reserialized_json);
-    }
-
     #[test]
     fn test_iter_event_ids() {
         let json = r#"{
@@ -567,25 +501,12 @@ mod tests {
                  "aac07d95089ce6adf08b9156d43c1a4ab594c6130b7dcb12ec199008c5819a2f"
                ],
                "content": "#JoininBox is a minimalistic, security focused Linux environment for #JoinMarket with a terminal based graphical menu.\n\nnostr:npub14tq8m9ggnnn2muytj9tdg0q6f26ef3snpd7ukyhvrxgq33vpnghs8shy62 👍🧡\n\nhttps://www.nobsbitcoin.com/joininbox-v0-8-0/",
-                "created_at": 1687070234,
-                "id": "c8acc12a232ea6caedfaaf0c52148635de6ffd312c3f432c6eca11720c102e54",
-                "kind": 1,
-                "pubkey": "27154fb873badf69c3ea83a0da6e65d6a150d2bf8f7320fc3314248d74645c64",
-                "sig": "e27062b1b7187ffa0b521dab23fff6c6b62c00fd1b029e28368d7d070dfb225f7e598e3b1c6b1e2335b286ec3702492bce152035105b934f594cd7323d84f0ee",
-                "tags": [
-                    [
-                "t",
-                "joininbox"
-                ],
-                [
-                    "t",
-                    "joinmarket"
-                ],
-                [
-                    "p",
-                    "aac07d95089ce6adf08b9156d43c1a4ab594c6130b7dcb12ec199008c5819a2f"
-                ]
-                ]
+               "created_at": 1687070234,
+               "id": "c8acc12a232ea6caedfaaf0c52148635de6ffd312c3f432c6eca11720c102e54",
+               "kind": 1,
+               "pubkey": "27154fb873badf69c3ea83a0da6e65d6a150d2bf8f7320fc3314248d74645c64",
+               "sig": "e27062b1b7187ffa0b521dab23fff6c6b62c00fd1b029e28368d7d070dfb225f7e598e3b1c6b1e2335b286ec3702492bce152035105b934f594cd7323d84f0ee",
+               "tags": [["t","joininbox"],["t","joinmarket"],["p","aac07d95089ce6adf08b9156d43c1a4ab594c6130b7dcb12ec199008c5819a2f"]]
         }"##;
 
         // Deserialize
@@ -594,7 +515,7 @@ mod tests {
         // Re-serialize
         let re_serialized_json = event.as_json();
 
-        let expected_json: &str = r##"{"content":"#JoininBox is a minimalistic, security focused Linux environment for #JoinMarket with a terminal based graphical menu.\n\nnostr:npub14tq8m9ggnnn2muytj9tdg0q6f26ef3snpd7ukyhvrxgq33vpnghs8shy62 👍🧡\n\nhttps://www.nobsbitcoin.com/joininbox-v0-8-0/","created_at":1687070234,"id":"c8acc12a232ea6caedfaaf0c52148635de6ffd312c3f432c6eca11720c102e54","kind":1,"pubkey":"27154fb873badf69c3ea83a0da6e65d6a150d2bf8f7320fc3314248d74645c64","sig":"e27062b1b7187ffa0b521dab23fff6c6b62c00fd1b029e28368d7d070dfb225f7e598e3b1c6b1e2335b286ec3702492bce152035105b934f594cd7323d84f0ee","tags":[["t","joininbox"],["t","joinmarket"],["p","aac07d95089ce6adf08b9156d43c1a4ab594c6130b7dcb12ec199008c5819a2f"]]}"##;
+        let expected_json: &str = r##"{"id":"c8acc12a232ea6caedfaaf0c52148635de6ffd312c3f432c6eca11720c102e54","pubkey":"27154fb873badf69c3ea83a0da6e65d6a150d2bf8f7320fc3314248d74645c64","created_at":1687070234,"kind":1,"tags":[["t","joininbox"],["t","joinmarket"],["p","aac07d95089ce6adf08b9156d43c1a4ab594c6130b7dcb12ec199008c5819a2f"]],"content":"#JoininBox is a minimalistic, security focused Linux environment for #JoinMarket with a terminal based graphical menu.\n\nnostr:npub14tq8m9ggnnn2muytj9tdg0q6f26ef3snpd7ukyhvrxgq33vpnghs8shy62 👍🧡\n\nhttps://www.nobsbitcoin.com/joininbox-v0-8-0/","sig":"e27062b1b7187ffa0b521dab23fff6c6b62c00fd1b029e28368d7d070dfb225f7e598e3b1c6b1e2335b286ec3702492bce152035105b934f594cd7323d84f0ee"}"##;
         assert_eq!(re_serialized_json, expected_json.trim());
     }
 
