@@ -174,10 +174,14 @@ impl Connection {
         builder.inner = builder.inner.proxy(addr);
         Ok(builder)
     }
+}
 
-    /// Use embedded tor client
+#[cfg(feature = "tor")]
+#[uniffi::export]
+impl Connection {
+    /// Use the embedded tor client
     ///
-    /// This not work on `android` and/or `ios` targets.
+    /// This doesn't work on `android` and/or `ios` targets.
     /// Use [`Connection::embedded_tor_with_path`] instead.
     pub fn embedded_tor(&self) -> Self {
         let mut builder = self.clone();
@@ -185,9 +189,9 @@ impl Connection {
         builder
     }
 
-    /// Use embedded tor client
+    /// Use the embedded tor client
     ///
-    /// Specify a path where to store data
+    /// Specify a path where to store the tor data
     pub fn embedded_tor_with_path(&self, data_path: String) -> Self {
         let mut builder = self.clone();
         builder.inner = builder.inner.embedded_tor_with_path(data_path);
