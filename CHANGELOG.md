@@ -56,6 +56,7 @@
 * nostr: manually implement `PartialEq`, `Eq`, `PartialOrd`, `Ord` and `Hash` for `TagKind` ([Yuki Kishimoto])
 * nostr: derive `PartialEq` and `Eq` for event builder error ([Yuki Kishimoto])
 * nostr: rename `Nip07Signer` to `BrowserSigner` ([Yuki Kishimoto])
+* nostr: remove `#[cfg]` attributes from `NostrSigner` NIP04 and NIP44 methods ([Yuki Kishimoto])
 * pool: update `Error::WebSocket` variant inner type ([Yuki Kishimoto])
 * lmdb: use `EventBorrow` instead of `DatabaseEvent` ([Yuki Kishimoto])
 * ndb: refactor note-to-event conversion ([Yuki Kishimoto])

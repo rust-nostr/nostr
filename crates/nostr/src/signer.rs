@@ -47,6 +47,15 @@ impl SignerError {
     }
 }
 
+impl<S> From<S> for SignerError
+where
+    S: Into<String>,
+{
+    fn from(error: S) -> Self {
+        Self(error.into())
+    }
+}
+
 #[doc(hidden)]
 pub trait IntoNostrSigner {
     fn into_nostr_signer(self) -> Arc<dyn NostrSigner>;
@@ -90,7 +99,6 @@ pub trait NostrSigner: fmt::Debug + Send + Sync {
     fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<Result<Event, SignerError>>;
 
     /// NIP04 encrypt (deprecate and unsecure)
-    #[cfg(feature = "nip04")]
     fn nip04_encrypt<'a>(
         &'a self,
         public_key: &'a PublicKey,
@@ -98,7 +106,6 @@ pub trait NostrSigner: fmt::Debug + Send + Sync {
     ) -> BoxedFuture<'a, Result<String, SignerError>>;
 
     /// NIP04 decrypt
-    #[cfg(feature = "nip04")]
     fn nip04_decrypt<'a>(
         &'a self,
         public_key: &'a PublicKey,
@@ -106,7 +113,6 @@ pub trait NostrSigner: fmt::Debug + Send + Sync {
     ) -> BoxedFuture<'a, Result<String, SignerError>>;
 
     /// NIP44 encrypt
-    #[cfg(feature = "nip44")]
     fn nip44_encrypt<'a>(
         &'a self,
         public_key: &'a PublicKey,
@@ -114,7 +120,6 @@ pub trait NostrSigner: fmt::Debug + Send + Sync {
     ) -> BoxedFuture<'a, Result<String, SignerError>>;
 
     /// NIP44 decrypt
-    #[cfg(feature = "nip44")]
     fn nip44_decrypt<'a>(
         &'a self,
         public_key: &'a PublicKey,
@@ -139,7 +144,6 @@ impl NostrSigner for Arc<dyn NostrSigner> {
     }
 
     #[inline]
-    #[cfg(feature = "nip04")]
     fn nip04_encrypt<'a>(
         &'a self,
         public_key: &'a PublicKey,
@@ -149,7 +153,6 @@ impl NostrSigner for Arc<dyn NostrSigner> {
     }
 
     #[inline]
-    #[cfg(feature = "nip04")]
     fn nip04_decrypt<'a>(
         &'a self,
         public_key: &'a PublicKey,
@@ -159,7 +162,6 @@ impl NostrSigner for Arc<dyn NostrSigner> {
     }
 
     #[inline]
-    #[cfg(feature = "nip44")]
     fn nip44_encrypt<'a>(
         &'a self,
         public_key: &'a PublicKey,
@@ -169,7 +171,6 @@ impl NostrSigner for Arc<dyn NostrSigner> {
     }
 
     #[inline]
-    #[cfg(feature = "nip44")]
     fn nip44_decrypt<'a>(
         &'a self,
         public_key: &'a PublicKey,

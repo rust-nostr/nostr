@@ -283,56 +283,76 @@ impl NostrSigner for Keys {
         Box::pin(async { unsigned.sign_with_keys(self).map_err(SignerError::backend) })
     }
 
-    #[cfg(feature = "nip04")]
     fn nip04_encrypt<'a>(
         &'a self,
-        public_key: &'a PublicKey,
-        content: &'a str,
+        _public_key: &'a PublicKey,
+        _content: &'a str,
     ) -> BoxedFuture<'a, Result<String, SignerError>> {
         Box::pin(async move {
-            let secret_key: &SecretKey = self.secret_key();
-            crate::nips::nip04::encrypt(secret_key, public_key, content)
-                .map_err(SignerError::backend)
+            #[cfg(feature = "nip04")]
+            {
+                let secret_key: &SecretKey = self.secret_key();
+                crate::nips::nip04::encrypt(secret_key, _public_key, _content)
+                    .map_err(SignerError::backend)
+            }
+
+            #[cfg(not(feature = "nip04"))]
+            Err(SignerError::from("NIP04 feature is not enabled"))
         })
     }
 
-    #[cfg(feature = "nip04")]
     fn nip04_decrypt<'a>(
         &'a self,
-        public_key: &'a PublicKey,
-        encrypted_content: &'a str,
+        _public_key: &'a PublicKey,
+        _content: &'a str,
     ) -> BoxedFuture<'a, Result<String, SignerError>> {
         Box::pin(async move {
-            let secret_key: &SecretKey = self.secret_key();
-            crate::nips::nip04::decrypt(secret_key, public_key, encrypted_content)
-                .map_err(SignerError::backend)
+            #[cfg(feature = "nip04")]
+            {
+                let secret_key: &SecretKey = self.secret_key();
+                crate::nips::nip04::decrypt(secret_key, _public_key, _content)
+                    .map_err(SignerError::backend)
+            }
+
+            #[cfg(not(feature = "nip04"))]
+            Err(SignerError::from("NIP04 feature is not enabled"))
         })
     }
 
-    #[cfg(feature = "nip44")]
     fn nip44_encrypt<'a>(
         &'a self,
-        public_key: &'a PublicKey,
-        content: &'a str,
+        _public_key: &'a PublicKey,
+        _content: &'a str,
     ) -> BoxedFuture<'a, Result<String, SignerError>> {
         Box::pin(async move {
-            use crate::nips::nip44::{self, Version};
-            let secret_key: &SecretKey = self.secret_key();
-            nip44::encrypt(secret_key, public_key, content, Version::default())
-                .map_err(SignerError::backend)
+            #[cfg(feature = "nip44")]
+            {
+                use crate::nips::nip44::{self, Version};
+                let secret_key: &SecretKey = self.secret_key();
+                nip44::encrypt(secret_key, _public_key, _content, Version::default())
+                    .map_err(SignerError::backend)
+            }
+
+            #[cfg(not(feature = "nip44"))]
+            Err(SignerError::from("NIP44 feature is not enabled"))
         })
     }
 
-    #[cfg(feature = "nip44")]
     fn nip44_decrypt<'a>(
         &'a self,
-        public_key: &'a PublicKey,
-        payload: &'a str,
+        _public_key: &'a PublicKey,
+        _content: &'a str,
     ) -> BoxedFuture<'a, Result<String, SignerError>> {
         Box::pin(async move {
-            let secret_key: &SecretKey = self.secret_key();
-            crate::nips::nip44::decrypt(secret_key, public_key, payload)
-                .map_err(SignerError::backend)
+            #[cfg(feature = "nip44")]
+            {
+                let secret_key: &SecretKey = self.secret_key();
+                crate::nips::nip44::decrypt(secret_key, _public_key, _content)
+                    .map_err(SignerError::backend)
+            }
+
+            #[cfg(not(feature = "nip44"))]
+            Err(SignerError::from("NIP44 feature is not enabled"))
         })
     }
 }
