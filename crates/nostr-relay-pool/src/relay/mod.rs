@@ -146,11 +146,13 @@ impl Ord for Relay {
 
 impl Relay {
     /// Create new relay with **default** options and in-memory database
+    #[inline]
     pub fn new(url: RelayUrl) -> Self {
         Self::with_opts(url, RelayOptions::default())
     }
 
     /// Create new relay with default in-memory database and custom options
+    #[inline]
     pub fn with_opts(url: RelayUrl, opts: RelayOptions) -> Self {
         let database = Arc::new(MemoryDatabase::default());
         Self::custom(url, database, opts)
@@ -167,6 +169,7 @@ impl Relay {
         Self::internal_custom(url, state, opts)
     }
 
+    #[inline]
     pub(crate) fn internal_custom(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
         Self {
             inner: AtomicDestructor::new(InnerRelay::new(url, state, opts)),

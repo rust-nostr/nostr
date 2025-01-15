@@ -93,10 +93,12 @@ impl StealthClone for RelayPool {
 
 impl RelayPool {
     /// Create new `RelayPool`
+    #[inline]
     pub fn new(opts: RelayPoolOptions) -> Self {
         Self::__with_shared_state(opts, SharedState::default())
     }
 
+    #[inline]
     #[doc(hidden)]
     pub fn __with_shared_state(opts: RelayPoolOptions, state: SharedState) -> Self {
         Self {

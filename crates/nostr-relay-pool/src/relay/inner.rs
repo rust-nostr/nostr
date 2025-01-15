@@ -85,10 +85,12 @@ impl RelayChannels {
             })
     }
 
+    #[inline]
     pub async fn rx_nostr(&self) -> MutexGuard<'_, Receiver<Vec<ClientMessage>>> {
         self.nostr.1.lock().await
     }
 
+    #[inline]
     pub fn nostr_queue(&self) -> usize {
         self.nostr.0.max_capacity() - self.nostr.0.capacity()
     }
@@ -103,10 +105,12 @@ impl RelayChannels {
             })
     }
 
+    #[inline]
     pub async fn rx_ping(&self) -> MutexGuard<'_, watch::Receiver<u64>> {
         self.ping.1.lock().await
     }
 
+    #[inline]
     pub async fn rx_service(&self) -> MutexGuard<'_, watch::Receiver<RelayServiceEvent>> {
         self.service.1.lock().await
     }

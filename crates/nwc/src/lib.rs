@@ -44,6 +44,7 @@ pub struct NWC {
 
 impl NWC {
     /// New `NWC` client
+    #[inline]
     pub fn new(uri: NostrWalletConnectURI) -> Self {
         Self::with_opts(uri, NostrWalletConnectOptions::default())
     }
@@ -196,6 +197,7 @@ impl NWC {
 }
 
 impl NostrZapper for NWC {
+    #[inline]
     fn backend(&self) -> ZapperBackend {
         ZapperBackend::NWC
     }
