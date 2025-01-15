@@ -57,6 +57,7 @@
 * nostr: derive `PartialEq` and `Eq` for event builder error ([Yuki Kishimoto])
 * nostr: rename `Nip07Signer` to `BrowserSigner` ([Yuki Kishimoto])
 * nostr: remove `#[cfg]` attributes from `NostrSigner` NIP04 and NIP44 methods ([Yuki Kishimoto])
+* nostr: omit everything after the relay-hint in NIP22 `p` tags ([Yuki Kishimoto])
 * pool: update `Error::WebSocket` variant inner type ([Yuki Kishimoto])
 * lmdb: use `EventBorrow` instead of `DatabaseEvent` ([Yuki Kishimoto])
 * ndb: refactor note-to-event conversion ([Yuki Kishimoto])

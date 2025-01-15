@@ -527,18 +527,7 @@ impl EventBuilder {
             }));
 
             // Add others `p` tags
-            tags.extend(
-                root.tags
-                    .iter()
-                    .filter(|t| {
-                        t.kind()
-                            == TagKind::SingleLetter(SingleLetterTag {
-                                character: Alphabet::P,
-                                uppercase: false,
-                            })
-                    })
-                    .cloned(),
-            );
+            extend_nip22_p_tags(root, &mut tags);
         }
 
         // Add `p` tag of `comment_to` event
@@ -571,19 +560,7 @@ impl EventBuilder {
         }));
 
         // Add others `p` tags of comment_to event
-        tags.extend(
-            comment_to
-                .tags
-                .iter()
-                .filter(|t| {
-                    t.kind()
-                        == TagKind::SingleLetter(SingleLetterTag {
-                            character: Alphabet::P,
-                            uppercase: false,
-                        })
-                })
-                .cloned(),
-        );
+        extend_nip22_p_tags(comment_to, &mut tags);
 
         // Dedup tags using `WeakTag`
         // TODO: compose directly tags with `BTreeSet<WeakTag>` instead of iterate and collect?
@@ -1722,6 +1699,36 @@ impl EventBuilder {
     }
 
     // TODO: add `torrent_comment`
+}
+
+// Extend NIP22 `p` tags
+//
+// This function filters all the `p` tags that are standardized and with lowercase tag kind.
+// Moreover, keep only the public key and the relay hint, all other fields are discarded
+//
+// <https://github.com/nostr-protocol/nips/blob/master/22.md>
+fn extend_nip22_p_tags(event: &Event, tags: &mut Vec<Tag>) {
+    tags.extend(event.tags.iter().filter_map(|t| {
+        match t.as_standardized()? {
+            TagStandard::PublicKey {
+                public_key,
+                relay_url,
+                uppercase: false,
+                ..
+            } => {
+                // Rebuild tag keeping only the public key and the relay hint
+                Some(Tag::from_standardized_without_cell(
+                    TagStandard::PublicKey {
+                        public_key: *public_key,
+                        relay_url: relay_url.clone(),
+                        alias: None,
+                        uppercase: false,
+                    },
+                ))
+            }
+            _ => None,
+        }
+    }))
 }
 
 #[cfg(test)]
