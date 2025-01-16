@@ -12,7 +12,8 @@ use async_wsocket::native::{self, Message, WebSocketStream};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
 use nostr_database::prelude::*;
-use tokio::net::{TcpListener, TcpStream};
+use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::net::TcpListener;
 use tokio::sync::{broadcast, Semaphore};
 
 use super::session::{Nip42Session, RateLimiterResponse, Session, Tokens};
@@ -23,7 +24,7 @@ use crate::builder::{
 };
 use crate::error::Error;
 
-type WsTx = SplitSink<WebSocketStream<TcpStream>, Message>;
+type WsTx<S> = SplitSink<WebSocketStream<S>, Message>;
 
 #[derive(Debug, Clone)]
 pub(super) struct InnerLocalRelay {
@@ -53,8 +54,19 @@ impl AtomicDestroyer for InnerLocalRelay {
 }
 
 impl InnerLocalRelay {
+    /// Create a new relay and start listening
     pub async fn run(builder: RelayBuilder) -> Result<Self, Error> {
         // TODO: check if configured memory database with events option disabled
+
+        let (relay, shutdown_rx) = Self::new(builder).await?;
+        relay.listen(shutdown_rx).await?;
+        Ok(relay)
+    }
+
+    /// Create a new [LocalRelay]
+    pub async fn new(builder: RelayBuilder) -> Result<(Self, broadcast::Receiver<()>), Error> {
+        let (new_event, ..) = broadcast::channel(1024);
+        let max_connections: usize = builder.max_connections.unwrap_or(Semaphore::MAX_PERMITS);
 
         // Get IP
         let ip: IpAddr = builder.addr.unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST));
@@ -68,12 +80,9 @@ impl InnerLocalRelay {
         // Compose local address
         let addr: SocketAddr = SocketAddr::new(ip, port);
 
-        // Bind
-        let listener: TcpListener = TcpListener::bind(addr).await?;
-
         // If enabled, launch tor hidden service
         #[cfg(feature = "tor")]
-        let hidden_service: Option<String> = match builder.tor {
+        let hidden_service = match builder.tor {
             Some(opts) => {
                 let service = native::tor::launch_onion_service(
                     opts.nickname,
@@ -88,13 +97,10 @@ impl InnerLocalRelay {
         };
 
         // Channels
-        let (shutdown_tx, mut shutdown_rx) = broadcast::channel::<()>(1);
-        let (new_event, ..) = broadcast::channel(1024);
-
-        let max_connections: usize = builder.max_connections.unwrap_or(Semaphore::MAX_PERMITS);
+        let (shutdown_tx, shutdown_rx) = broadcast::channel::<()>(1);
 
         // Compose relay
-        let relay: Self = Self {
+        let relay = Self {
             addr,
             database: builder.database,
             shutdown: shutdown_tx,
@@ -111,7 +117,14 @@ impl InnerLocalRelay {
             test: builder.test,
         };
 
-        let r: Self = relay.clone();
+        Ok((relay, shutdown_rx))
+    }
+
+    /// Start socket to listen for new websocket connections
+    async fn listen(&self, mut shutdown: broadcast::Receiver<()>) -> Result<(), Error> {
+        let listener: TcpListener = TcpListener::bind(&self.addr).await?;
+
+        let r: Self = self.clone();
         tokio::spawn(async move {
             loop {
                 tokio::select! {
@@ -130,7 +143,7 @@ impl InnerLocalRelay {
                             }
                         }
                     }
-                    _ = shutdown_rx.recv() => {
+                    _ = shutdown.recv() => {
                         break;
                     },
 
@@ -140,7 +153,7 @@ impl InnerLocalRelay {
             tracing::info!("Local relay listener loop terminated.");
         });
 
-        Ok(relay)
+        Ok(())
     }
 
     #[inline]
@@ -163,7 +176,34 @@ impl InnerLocalRelay {
         let _ = self.shutdown.send(());
     }
 
-    async fn handle_connection(&self, raw_stream: TcpStream, addr: SocketAddr) -> Result<()> {
+    /// Handle already upgraded HTTP request
+    pub(crate) async fn handle_upgraded_connection<S>(
+        &self,
+        stream: S,
+        addr: SocketAddr,
+    ) -> Result<()>
+    where
+        S: AsyncRead + AsyncWrite + Unpin,
+    {
+        if let Some(unresponsive_connection) = self.test.unresponsive_connection {
+            tokio::time::sleep(unresponsive_connection).await;
+        }
+
+        // Accept websocket
+        let ws_stream = native::take_upgraded(stream).await;
+
+        tracing::debug!("WebSocket connection established: {addr}");
+        self.handle_websocket(ws_stream, addr).await?;
+        tracing::debug!("WebSocket connection terminated for {addr}");
+
+        Ok(())
+    }
+
+    /// Pass bare [TcpStream] for handling
+    pub(crate) async fn handle_connection<S>(&self, raw_stream: S, addr: SocketAddr) -> Result<()>
+    where
+        S: AsyncRead + AsyncWrite + Unpin,
+    {
         if let Some(unresponsive_connection) = self.test.unresponsive_connection {
             tokio::time::sleep(unresponsive_connection).await;
         }
@@ -171,10 +211,24 @@ impl InnerLocalRelay {
         // Accept websocket
         let ws_stream = native::accept(raw_stream).await?;
 
+        tracing::debug!("WebSocket connection established: {addr}");
+        self.handle_websocket(ws_stream, addr).await?;
+        tracing::debug!("WebSocket connection terminated for {addr}");
+
+        Ok(())
+    }
+
+    /// Handle client connection
+    async fn handle_websocket<S>(
+        &self,
+        ws_stream: WebSocketStream<S>,
+        addr: SocketAddr,
+    ) -> Result<()>
+    where
+        S: AsyncRead + AsyncWrite + Unpin,
+    {
         // Try to acquire connection limit
         let permit = self.connections_limit.try_acquire()?;
-
-        tracing::debug!("WebSocket connection established: {addr}");
 
         let mut shutdown_rx = self.shutdown.subscribe();
         let mut new_event = self.new_event.subscribe();
@@ -237,18 +291,19 @@ impl InnerLocalRelay {
         // Drop connection permit
         drop(permit);
 
-        tracing::debug!("WebSocket connection terminated for {addr}");
-
         Ok(())
     }
 
-    async fn handle_client_msg(
+    async fn handle_client_msg<S>(
         &self,
         session: &mut Session,
-        ws_tx: &mut WsTx,
+        ws_tx: &mut WsTx<S>,
         msg: ClientMessage,
         addr: &SocketAddr,
-    ) -> Result<()> {
+    ) -> Result<()>
+    where
+        S: AsyncRead + AsyncWrite + Unpin,
+    {
         match msg {
             ClientMessage::Event(event) => {
                 // Check rate limit
@@ -703,15 +758,19 @@ impl InnerLocalRelay {
     }
 
     #[inline]
-    async fn send_msg(&self, tx: &mut WsTx, msg: RelayMessage) -> Result<()> {
+    async fn send_msg<S>(&self, tx: &mut WsTx<S>, msg: RelayMessage) -> Result<()>
+    where
+        S: AsyncRead + AsyncWrite + Unpin,
+    {
         tx.send(Message::Text(msg.as_json())).await?;
         Ok(())
     }
 
     #[inline]
-    async fn send_msgs<I>(&self, tx: &mut WsTx, msgs: I) -> Result<()>
+    async fn send_msgs<I, S>(&self, tx: &mut WsTx<S>, msgs: I) -> Result<()>
     where
         I: IntoIterator<Item = RelayMessage>,
+        S: AsyncRead + AsyncWrite + Unpin,
     {
         let mut stream = stream::iter(msgs.into_iter()).map(|msg| Ok(Message::Text(msg.as_json())));
         tx.send_all(&mut stream).await?;
