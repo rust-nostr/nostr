@@ -9,11 +9,12 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_utility::time;
 use async_wsocket::futures_util::Future;
-use async_wsocket::ConnectionMode;
+use async_wsocket::{ConnectionMode, Sink, Stream};
 use atomic_destructor::AtomicDestructor;
 use nostr_database::prelude::*;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, Mutex};
 
 pub mod constants;
 mod error;
@@ -26,6 +27,7 @@ mod ping;
 pub mod stats;
 mod status;
 
+use self::constants::{BATCH_EVENT_ITERATION_TIMEOUT, WAIT_FOR_AUTHENTICATION_TIMEOUT};
 pub use self::error::Error;
 pub use self::filtering::{RelayFiltering, RelayFilteringMode};
 pub use self::flags::{AtomicRelayServiceFlags, FlagCheck, RelayServiceFlags};
@@ -194,6 +196,11 @@ impl Relay {
         self.inner.status()
     }
 
+    /// Check if relay is connected
+    pub fn is_connected(&self) -> bool {
+        self.status().is_connected()
+    }
+
     /// Get Relay Service Flags
     #[inline]
     pub fn flags(&self) -> &AtomicRelayServiceFlags {
@@ -206,17 +213,12 @@ impl Relay {
         self.inner.state.filtering()
     }
 
-    /// Check if relay is connected
-    #[inline]
-    pub fn is_connected(&self) -> bool {
-        self.inner.is_connected()
-    }
-
     /// Get [`RelayInformationDocument`]
     #[inline]
     #[cfg(feature = "nip11")]
     pub async fn document(&self) -> RelayInformationDocument {
-        self.inner.document().await
+        let document = self.inner.atomic.document.read().await;
+        document.clone()
     }
 
     /// Get subscriptions
@@ -260,18 +262,47 @@ impl Relay {
     /// Connect to relay
     ///
     /// This method returns immediately and doesn't provide any information on if the connection was successful or not.
-    #[inline]
     pub fn connect(&self) {
-        self.inner.connect()
+        if !self.status().can_connect() {
+            return;
+        }
+
+        // Update status
+        // Change it to pending to avoid issues with the health check (initialized check)
+        self.inner.set_status(RelayStatus::Pending, false);
+
+        // Spawn connection task
+        self.inner.spawn_connection_task(None);
     }
 
     /// Waits for relay connection
     ///
     /// Wait for relay connection at most for the specified `timeout`.
     /// The code continues when the relay is connected or the `timeout` is reached.
-    #[inline]
     pub async fn wait_for_connection(&self, timeout: Duration) {
-        self.inner.wait_for_connection(timeout).await
+        let status: RelayStatus = self.status();
+
+        // Already connected
+        if status.is_connected() {
+            return;
+        }
+
+        // Subscribe to notifications
+        let mut notifications = self.inner.internal_notification_sender.subscribe();
+
+        // Set timeout
+        time::timeout(Some(timeout), async {
+            while let Ok(notification) = notifications.recv().await {
+                // Wait for status change. Break loop when connect.
+                if let RelayNotification::RelayStatus {
+                    status: RelayStatus::Connected,
+                } = notification
+                {
+                    break;
+                }
+            }
+        })
+        .await;
     }
 
     /// Try to establish a connection with the relay.
@@ -282,9 +313,23 @@ impl Relay {
     /// regardless of whether the initial connection succeeds.
     ///
     /// Returns an error if the connection fails.
-    #[inline]
     pub async fn try_connect(&self, timeout: Duration) -> Result<(), Error> {
-        self.inner.try_connect(timeout).await
+        // Check if relay can't connect
+        if !self.status().can_connect() {
+            return Ok(());
+        }
+
+        // Try to connect
+        // This will set the status to "terminated" if the connection fails
+        let stream: (Sink, Stream) = self
+            .inner
+            ._try_connect(timeout, RelayStatus::Terminated)
+            .await?;
+
+        // Spawn connection task
+        self.inner.spawn_connection_task(Some(stream));
+
+        Ok(())
     }
 
     /// Disconnect from relay and set status to 'Terminated'
@@ -305,10 +350,92 @@ impl Relay {
         self.inner.batch_msg(msgs)
     }
 
+    async fn _send_event(
+        &self,
+        notifications: &mut broadcast::Receiver<RelayNotification>,
+        event: Event,
+    ) -> Result<(EventId, bool, String), Error> {
+        let id: EventId = event.id;
+
+        // Send message
+        // TODO: avoid clone
+        self.send_msg(ClientMessage::event(event))?;
+
+        // Wait for OK
+        self.inner
+            .wait_for_ok(notifications, id, BATCH_EVENT_ITERATION_TIMEOUT)
+            .await
+    }
+
     /// Send event and wait for `OK` relay msg
-    #[inline]
     pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
-        self.inner.send_event(event).await
+        // Health, write permission and number of messages checks are executed in `batch_msg` method.
+
+        // Subscribe to notifications
+        let mut notifications = self.inner.internal_notification_sender.subscribe();
+
+        // Send event
+        let (event_id, status, message) =
+            self._send_event(&mut notifications, event.clone()).await?;
+
+        // Check status
+        if status {
+            return Ok(event_id);
+        }
+
+        // If auth required, wait for authentication adn resend it
+        if let Some(MachineReadablePrefix::AuthRequired) = MachineReadablePrefix::parse(&message) {
+            // Check if NIP42 auth is enabled and signer is set
+            let has_signer: bool = self.inner.state.has_signer().await;
+            if self.inner.state.is_auto_authentication_enabled() && has_signer {
+                // Wait that relay authenticate
+                self.wait_for_authentication(&mut notifications, WAIT_FOR_AUTHENTICATION_TIMEOUT)
+                    .await?;
+
+                // Try to resend event
+                let (event_id, status, message) =
+                    self._send_event(&mut notifications, event).await?;
+
+                // Check status
+                return if status {
+                    Ok(event_id)
+                } else {
+                    Err(Error::RelayMessage(message))
+                };
+            }
+        }
+
+        Err(Error::RelayMessage(message))
+    }
+
+    async fn wait_for_authentication(
+        &self,
+        notifications: &mut broadcast::Receiver<RelayNotification>,
+        timeout: Duration,
+    ) -> Result<(), Error> {
+        time::timeout(Some(timeout), async {
+            while let Ok(notification) = notifications.recv().await {
+                match notification {
+                    RelayNotification::Authenticated => {
+                        return Ok(());
+                    }
+                    RelayNotification::AuthenticationFailed => {
+                        return Err(Error::AuthenticationFailed);
+                    }
+                    RelayNotification::RelayStatus { status } => {
+                        if status.is_disconnected() {
+                            return Err(Error::NotConnected);
+                        }
+                    }
+                    RelayNotification::Shutdown => break,
+                    _ => (),
+                }
+            }
+
+            Err(Error::PrematureExit)
+        })
+        .await
+        .ok_or(Error::Timeout)?
     }
 
     /// Send multiple [`Event`] at once
@@ -332,13 +459,14 @@ impl Relay {
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
     ///
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
-    #[inline]
     pub async fn subscribe(
         &self,
         filters: Vec<Filter>,
         opts: SubscribeOptions,
     ) -> Result<SubscriptionId, Error> {
-        self.inner.subscribe(filters, opts).await
+        let id: SubscriptionId = SubscriptionId::generate();
+        self.subscribe_with_id(id.clone(), filters, opts).await?;
+        Ok(id)
     }
 
     /// Subscribe with custom [SubscriptionId]
@@ -348,14 +476,31 @@ impl Relay {
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
     ///
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
-    #[inline]
     pub async fn subscribe_with_id(
         &self,
         id: SubscriptionId,
         filters: Vec<Filter>,
         opts: SubscribeOptions,
     ) -> Result<(), Error> {
-        self.inner.subscribe_with_id(id, filters, opts).await
+        // Check if filters are empty
+        if filters.is_empty() {
+            return Err(Error::FiltersEmpty);
+        }
+
+        // Compose and send REQ message
+        let msg: ClientMessage = ClientMessage::req(id.clone(), filters.clone());
+        self.send_msg(msg)?;
+
+        // Check if auto-close condition is set
+        match opts.auto_close {
+            Some(opts) => self.inner.spawn_auto_closing_handler(id, filters, opts),
+            None => {
+                // No auto-close subscription: update subscription filters
+                self.inner.update_subscription(id, filters, true).await;
+            }
+        };
+
+        Ok(())
     }
 
     /// Unsubscribe
@@ -371,7 +516,6 @@ impl Relay {
     }
 
     /// Get events of filters with custom callback
-    #[inline]
     pub(crate) async fn fetch_events_with_callback<F>(
         &self,
         filters: Vec<Filter>,
@@ -382,57 +526,184 @@ impl Relay {
     where
         F: Future<Output = ()>,
     {
-        self.inner
-            .fetch_events_with_callback(filters, timeout, policy, callback)
-            .await
+        // Perform health checks
+        self.inner.health_check()?;
+
+        // Compose options
+        let auto_close_opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
+            .exit_policy(policy)
+            .timeout(Some(timeout));
+        let subscribe_opts: SubscribeOptions =
+            SubscribeOptions::default().close_on(Some(auto_close_opts));
+
+        // Subscribe to channel
+        let mut notifications = self.inner.internal_notification_sender.subscribe();
+
+        // Subscribe with auto-close
+        let id: SubscriptionId = self.subscribe(filters, subscribe_opts).await?;
+
+        time::timeout(Some(timeout), async {
+            while let Ok(notification) = notifications.recv().await {
+                match notification {
+                    RelayNotification::Message {
+                        message:
+                            RelayMessage::Event {
+                                subscription_id,
+                                event,
+                            },
+                        ..
+                    } => {
+                        if subscription_id == id {
+                            callback(*event).await;
+                        }
+                    }
+                    RelayNotification::SubscriptionAutoClosed { reason } => {
+                        match reason {
+                            SubscriptionAutoClosedReason::AuthenticationFailed => {
+                                return Err(Error::AuthenticationFailed);
+                            }
+                            SubscriptionAutoClosedReason::Closed(message) => {
+                                return Err(Error::RelayMessage(message));
+                            }
+                            // Completed
+                            SubscriptionAutoClosedReason::Completed => break,
+                        }
+                    }
+                    RelayNotification::RelayStatus { status } => {
+                        if status.is_disconnected() {
+                            return Err(Error::NotConnected);
+                        }
+                    }
+                    RelayNotification::Shutdown => return Err(Error::ReceivedShutdown),
+                    _ => (),
+                }
+            }
+
+            Ok(())
+        })
+        .await
+        .ok_or(Error::Timeout)??;
+
+        Ok(())
     }
 
     /// Fetch events
-    #[inline]
     pub async fn fetch_events(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<Events, Error> {
-        self.inner.fetch_events(filters, timeout, policy).await
+        let events: Mutex<Events> = Mutex::new(Events::new(&filters));
+        self.fetch_events_with_callback(filters, timeout, policy, |event| async {
+            let mut events = events.lock().await;
+            events.insert(event);
+        })
+        .await?;
+        Ok(events.into_inner())
     }
 
     /// Count events
-    #[inline]
     pub async fn count_events(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
     ) -> Result<usize, Error> {
-        self.inner.count_events(filters, timeout).await
+        let id = SubscriptionId::generate();
+        self.send_msg(ClientMessage::count(id.clone(), filters))?;
+
+        let mut count = 0;
+
+        let mut notifications = self.inner.internal_notification_sender.subscribe();
+        time::timeout(Some(timeout), async {
+            while let Ok(notification) = notifications.recv().await {
+                if let RelayNotification::Message {
+                    message:
+                        RelayMessage::Count {
+                            subscription_id,
+                            count: c,
+                        },
+                } = notification
+                {
+                    if subscription_id == id {
+                        count = c;
+                        break;
+                    }
+                }
+            }
+        })
+        .await
+        .ok_or(Error::Timeout)?;
+
+        // Unsubscribe
+        self.send_msg(ClientMessage::close(id))?;
+
+        Ok(count)
     }
 
     /// Sync events with relays (negentropy reconciliation)
-    #[inline]
     pub async fn sync(&self, filter: Filter, opts: &SyncOptions) -> Result<Reconciliation, Error> {
-        self.inner.sync(filter, opts).await
+        let items = self
+            .inner
+            .state
+            .database()
+            .negentropy_items(filter.clone())
+            .await?;
+        self.sync_with_items(filter, items, opts).await
     }
 
     /// Sync events with relays (negentropy reconciliation)
-    #[inline]
     pub async fn sync_with_items(
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: &SyncOptions,
     ) -> Result<Reconciliation, Error> {
-        self.inner.sync_with_items(filter, items, opts).await
+        // Compose map
+        let mut map = HashMap::with_capacity(1);
+        map.insert(filter, items);
+
+        // Reconcile
+        self.sync_multi(map, opts).await
     }
 
     /// Sync events with relays (negentropy reconciliation)
-    #[inline]
     pub async fn sync_multi(
         &self,
         map: HashMap<Filter, Vec<(EventId, Timestamp)>>,
         opts: &SyncOptions,
     ) -> Result<Reconciliation, Error> {
-        self.inner.sync_multi(map, opts).await
+        // Perform health checks
+        self.inner.health_check()?;
+
+        // Check if relay can read
+        if !self.inner.flags.can_read() {
+            return Err(Error::ReadDisabled);
+        }
+
+        let mut output: Reconciliation = Reconciliation::default();
+
+        for (filter, items) in map.into_iter() {
+            match self
+                .inner
+                .sync_new(filter.clone(), items.clone(), opts, &mut output)
+                .await
+            {
+                Ok(..) => {}
+                Err(e) => match e {
+                    Error::NegentropyNotSupported
+                    | Error::Negentropy(negentropy::Error::UnsupportedProtocolVersion) => {
+                        tracing::warn!("Negentropy protocol '{}' (maybe) not supported, trying the deprecated one.", negentropy::PROTOCOL_VERSION);
+                        self.inner
+                            .sync_deprecated(filter, items, opts, &mut output)
+                            .await?;
+                    }
+                    e => return Err(e),
+                },
+            }
+        }
+
+        Ok(output)
     }
 
     /// Handle notifications

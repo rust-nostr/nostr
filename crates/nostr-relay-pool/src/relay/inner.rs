@@ -11,7 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::{task, time};
-use async_wsocket::futures_util::{self, Future, SinkExt, StreamExt};
+use async_wsocket::futures_util::{self, SinkExt, StreamExt};
 use async_wsocket::{
     connect as wsocket_connect, ConnectionMode, Error as WsError, Sink, Stream, WsMessage,
 };
@@ -27,14 +27,11 @@ use tokio::sync::{broadcast, watch, Mutex, MutexGuard, OnceCell, RwLock};
 use super::constants::{
     BATCH_EVENT_ITERATION_TIMEOUT, DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL,
     MIN_ATTEMPTS, MIN_SUCCESS_RATE, NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT,
-    NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP, PING_INTERVAL,
-    WAIT_FOR_AUTHENTICATION_TIMEOUT, WEBSOCKET_TX_TIMEOUT,
+    NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, WEBSOCKET_TX_TIMEOUT,
 };
 use super::filtering::CheckFiltering;
 use super::flags::AtomicRelayServiceFlags;
-use super::options::{
-    RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, SubscribeOptions, SyncOptions,
-};
+use super::options::{RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, SyncOptions};
 use super::ping::PingTracker;
 use super::stats::RelayConnectionStats;
 use super::{Error, Reconciliation, RelayNotification, RelayStatus, SubscriptionAutoClosedReason};
@@ -149,7 +146,7 @@ impl Default for SubscriptionData {
 pub(super) struct AtomicPrivateData {
     status: AtomicRelayStatus,
     #[cfg(feature = "nip11")]
-    document: RwLock<RelayInformationDocument>,
+    pub(super) document: RwLock<RelayInformationDocument>,
     #[cfg(feature = "nip11")]
     last_document_fetch: AtomicU64,
     channels: RelayChannels,
@@ -218,7 +215,7 @@ impl InnerRelay {
         self.atomic.status.load()
     }
 
-    fn set_status(&self, status: RelayStatus, log: bool) {
+    pub(super) fn set_status(&self, status: RelayStatus, log: bool) {
         // Change status
         self.atomic.status.set(status);
 
@@ -240,13 +237,8 @@ impl InnerRelay {
         self.send_notification(RelayNotification::RelayStatus { status }, true);
     }
 
-    #[inline]
-    pub fn is_connected(&self) -> bool {
-        self.status().is_connected()
-    }
-
     /// Perform health checks
-    fn health_check(&self) -> Result<(), Error> {
+    pub(super) fn health_check(&self) -> Result<(), Error> {
         let status: RelayStatus = self.status();
 
         // Relay not ready (never called connect method)
@@ -276,12 +268,6 @@ impl InnerRelay {
         }
 
         Ok(())
-    }
-
-    #[cfg(feature = "nip11")]
-    pub async fn document(&self) -> RelayInformationDocument {
-        let document = self.atomic.document.read().await;
-        document.clone()
     }
 
     #[cfg(feature = "nip11")]
@@ -438,62 +424,7 @@ impl InnerRelay {
         }
     }
 
-    pub fn connect(&self) {
-        if !self.status().can_connect() {
-            return;
-        }
-
-        // Update status
-        // Change it to pending to avoid issues with the health check (initialized check)
-        self.set_status(RelayStatus::Pending, false);
-
-        // Spawn connection task
-        self.spawn_connection_task(None);
-    }
-
-    pub async fn wait_for_connection(&self, timeout: Duration) {
-        let status: RelayStatus = self.status();
-
-        // Already connected
-        if status.is_connected() {
-            return;
-        }
-
-        // Subscribe to notifications
-        let mut notifications = self.internal_notification_sender.subscribe();
-
-        // Set timeout
-        time::timeout(Some(timeout), async {
-            while let Ok(notification) = notifications.recv().await {
-                // Wait for status change. Break loop when connect.
-                if let RelayNotification::RelayStatus {
-                    status: RelayStatus::Connected,
-                } = notification
-                {
-                    break;
-                }
-            }
-        })
-        .await;
-    }
-
-    pub async fn try_connect(&self, timeout: Duration) -> Result<(), Error> {
-        // Check if relay can't connect
-        if !self.status().can_connect() {
-            return Ok(());
-        }
-
-        // Try to connect
-        // This will set the status to "terminated" if the connection fails
-        let stream: (Sink, Stream) = self._try_connect(timeout, RelayStatus::Terminated).await?;
-
-        // Spawn connection task
-        self.spawn_connection_task(Some(stream));
-
-        Ok(())
-    }
-
-    fn spawn_connection_task(&self, mut stream: Option<(Sink, Stream)>) {
+    pub(super) fn spawn_connection_task(&self, mut stream: Option<(Sink, Stream)>) {
         if self.is_running() {
             tracing::warn!(url = %self.url, "Connection task is already running.");
             return;
@@ -637,7 +568,7 @@ impl InnerRelay {
         }
     }
 
-    async fn _try_connect(
+    pub(super) async fn _try_connect(
         &self,
         timeout: Duration,
         status_on_failure: RelayStatus,
@@ -1210,7 +1141,6 @@ impl InnerRelay {
         self.atomic.channels.send_client_msgs(msgs)
     }
 
-    #[inline]
     fn send_neg_msg(&self, id: SubscriptionId, message: String) -> Result<(), Error> {
         self.send_msg(ClientMessage::NegMsg {
             subscription_id: id,
@@ -1218,67 +1148,10 @@ impl InnerRelay {
         })
     }
 
-    #[inline]
     fn send_neg_close(&self, id: SubscriptionId) -> Result<(), Error> {
         self.send_msg(ClientMessage::NegClose {
             subscription_id: id,
         })
-    }
-
-    async fn _send_event(
-        &self,
-        notifications: &mut broadcast::Receiver<RelayNotification>,
-        event: Event,
-    ) -> Result<(EventId, bool, String), Error> {
-        let id: EventId = event.id;
-
-        // Send message
-        // TODO: avoid clone
-        self.send_msg(ClientMessage::event(event))?;
-
-        // Wait for OK
-        self.wait_for_ok(notifications, id, BATCH_EVENT_ITERATION_TIMEOUT)
-            .await
-    }
-
-    pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
-        // Health, write permission and number of messages checks are executed in `batch_msg` method.
-
-        // Subscribe to notifications
-        let mut notifications = self.internal_notification_sender.subscribe();
-
-        // Send event
-        let (event_id, status, message) =
-            self._send_event(&mut notifications, event.clone()).await?;
-
-        // Check status
-        if status {
-            return Ok(event_id);
-        }
-
-        // If auth required, wait for authentication adn resend it
-        if let Some(MachineReadablePrefix::AuthRequired) = MachineReadablePrefix::parse(&message) {
-            // Check if NIP42 auth is enabled and signer is set
-            let has_signer: bool = self.state.has_signer().await;
-            if self.state.is_auto_authentication_enabled() && has_signer {
-                // Wait that relay authenticate
-                self.wait_for_authentication(&mut notifications, WAIT_FOR_AUTHENTICATION_TIMEOUT)
-                    .await?;
-
-                // Try to resend event
-                let (event_id, status, message) =
-                    self._send_event(&mut notifications, event).await?;
-
-                // Check status
-                return if status {
-                    Ok(event_id)
-                } else {
-                    Err(Error::RelayMessage(message))
-                };
-            }
-        }
-
-        Err(Error::RelayMessage(message))
     }
 
     async fn auth(&self, challenge: String) -> Result<(), Error> {
@@ -1311,7 +1184,7 @@ impl InnerRelay {
         }
     }
 
-    async fn wait_for_ok(
+    pub(super) async fn wait_for_ok(
         &self,
         notifications: &mut broadcast::Receiver<RelayNotification>,
         id: EventId,
@@ -1349,36 +1222,6 @@ impl InnerRelay {
         .ok_or(Error::Timeout)?
     }
 
-    async fn wait_for_authentication(
-        &self,
-        notifications: &mut broadcast::Receiver<RelayNotification>,
-        timeout: Duration,
-    ) -> Result<(), Error> {
-        time::timeout(Some(timeout), async {
-            while let Ok(notification) = notifications.recv().await {
-                match notification {
-                    RelayNotification::Authenticated => {
-                        return Ok(());
-                    }
-                    RelayNotification::AuthenticationFailed => {
-                        return Err(Error::AuthenticationFailed);
-                    }
-                    RelayNotification::RelayStatus { status } => {
-                        if status.is_disconnected() {
-                            return Err(Error::NotConnected);
-                        }
-                    }
-                    RelayNotification::Shutdown => break,
-                    _ => (),
-                }
-            }
-
-            Err(Error::PrematureExit)
-        })
-        .await
-        .ok_or(Error::Timeout)?
-    }
-
     pub async fn resubscribe(&self) -> Result<(), Error> {
         let subscriptions = self.subscriptions().await;
         for (id, filters) in subscriptions.into_iter() {
@@ -1392,50 +1235,13 @@ impl InnerRelay {
         Ok(())
     }
 
-    pub async fn subscribe(
-        &self,
-        filters: Vec<Filter>,
-        opts: SubscribeOptions,
-    ) -> Result<SubscriptionId, Error> {
-        let id: SubscriptionId = SubscriptionId::generate();
-        self.subscribe_with_id(id.clone(), filters, opts).await?;
-        Ok(id)
-    }
-
-    pub async fn subscribe_with_id(
-        &self,
-        id: SubscriptionId,
-        filters: Vec<Filter>,
-        opts: SubscribeOptions,
-    ) -> Result<(), Error> {
-        // Check if filters are empty
-        if filters.is_empty() {
-            return Err(Error::FiltersEmpty);
-        }
-
-        // Compose and send REQ message
-        let msg: ClientMessage = ClientMessage::req(id.clone(), filters.clone());
-        self.send_msg(msg)?;
-
-        // Check if auto-close condition is set
-        match opts.auto_close {
-            Some(opts) => self.spawn_auto_closing_handler(id, filters, opts),
-            None => {
-                // No auto-close subscription: update subscription filters
-                self.update_subscription(id, filters, true).await;
-            }
-        };
-
-        Ok(())
-    }
-
-    fn spawn_auto_closing_handler(
+    pub(super) fn spawn_auto_closing_handler(
         &self,
         id: SubscriptionId,
         filters: Vec<Filter>,
         opts: SubscribeAutoCloseOptions,
     ) {
-        let relay = self.clone();
+        let relay = self.clone(); // <-- FULL RELAY CLONE HERE
         task::spawn(async move {
             // Check if CLOSE needed
             let to_close: bool = match relay.handle_auto_closing(&id, filters, opts).await {
@@ -1626,190 +1432,8 @@ impl InnerRelay {
         Ok(())
     }
 
-    pub(crate) async fn fetch_events_with_callback<F>(
-        &self,
-        filters: Vec<Filter>,
-        timeout: Duration,
-        policy: ReqExitPolicy,
-        callback: impl Fn(Event) -> F,
-    ) -> Result<(), Error>
-    where
-        F: Future<Output = ()>,
-    {
-        // Perform health checks
-        self.health_check()?;
-
-        // Compose options
-        let auto_close_opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
-            .exit_policy(policy)
-            .timeout(Some(timeout));
-        let subscribe_opts: SubscribeOptions =
-            SubscribeOptions::default().close_on(Some(auto_close_opts));
-
-        // Subscribe to channel
-        let mut notifications = self.internal_notification_sender.subscribe();
-
-        // Subscribe with auto-close
-        let id: SubscriptionId = self.subscribe(filters, subscribe_opts).await?;
-
-        time::timeout(Some(timeout), async {
-            while let Ok(notification) = notifications.recv().await {
-                match notification {
-                    RelayNotification::Message {
-                        message:
-                            RelayMessage::Event {
-                                subscription_id,
-                                event,
-                            },
-                        ..
-                    } => {
-                        if subscription_id == id {
-                            callback(*event).await;
-                        }
-                    }
-                    RelayNotification::SubscriptionAutoClosed { reason } => {
-                        match reason {
-                            SubscriptionAutoClosedReason::AuthenticationFailed => {
-                                return Err(Error::AuthenticationFailed);
-                            }
-                            SubscriptionAutoClosedReason::Closed(message) => {
-                                return Err(Error::RelayMessage(message));
-                            }
-                            // Completed
-                            SubscriptionAutoClosedReason::Completed => break,
-                        }
-                    }
-                    RelayNotification::RelayStatus { status } => {
-                        if status.is_disconnected() {
-                            return Err(Error::NotConnected);
-                        }
-                    }
-                    RelayNotification::Shutdown => return Err(Error::ReceivedShutdown),
-                    _ => (),
-                }
-            }
-
-            Ok(())
-        })
-        .await
-        .ok_or(Error::Timeout)??;
-
-        Ok(())
-    }
-
-    pub async fn fetch_events(
-        &self,
-        filters: Vec<Filter>,
-        timeout: Duration,
-        policy: ReqExitPolicy,
-    ) -> Result<Events, Error> {
-        let events: Mutex<Events> = Mutex::new(Events::new(&filters));
-        self.fetch_events_with_callback(filters, timeout, policy, |event| async {
-            let mut events = events.lock().await;
-            events.insert(event);
-        })
-        .await?;
-        Ok(events.into_inner())
-    }
-
-    pub async fn count_events(
-        &self,
-        filters: Vec<Filter>,
-        timeout: Duration,
-    ) -> Result<usize, Error> {
-        let id = SubscriptionId::generate();
-        self.send_msg(ClientMessage::count(id.clone(), filters))?;
-
-        let mut count = 0;
-
-        let mut notifications = self.internal_notification_sender.subscribe();
-        time::timeout(Some(timeout), async {
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayNotification::Message {
-                    message:
-                        RelayMessage::Count {
-                            subscription_id,
-                            count: c,
-                        },
-                } = notification
-                {
-                    if subscription_id == id {
-                        count = c;
-                        break;
-                    }
-                }
-            }
-        })
-        .await
-        .ok_or(Error::Timeout)?;
-
-        // Unsubscribe
-        self.send_msg(ClientMessage::close(id))?;
-
-        Ok(count)
-    }
-
-    pub async fn sync(&self, filter: Filter, opts: &SyncOptions) -> Result<Reconciliation, Error> {
-        let items = self
-            .state
-            .database()
-            .negentropy_items(filter.clone())
-            .await?;
-        self.sync_with_items(filter, items, opts).await
-    }
-
-    pub async fn sync_with_items(
-        &self,
-        filter: Filter,
-        items: Vec<(EventId, Timestamp)>,
-        opts: &SyncOptions,
-    ) -> Result<Reconciliation, Error> {
-        // Compose map
-        let mut map = HashMap::with_capacity(1);
-        map.insert(filter, items);
-
-        // Reconcile
-        self.sync_multi(map, opts).await
-    }
-
-    pub async fn sync_multi(
-        &self,
-        map: HashMap<Filter, Vec<(EventId, Timestamp)>>,
-        opts: &SyncOptions,
-    ) -> Result<Reconciliation, Error> {
-        // Perform health checks
-        self.health_check()?;
-
-        // Check if relay can read
-        if !self.flags.can_read() {
-            return Err(Error::ReadDisabled);
-        }
-
-        let mut output: Reconciliation = Reconciliation::default();
-
-        for (filter, items) in map.into_iter() {
-            match self
-                .sync_new(filter.clone(), items.clone(), opts, &mut output)
-                .await
-            {
-                Ok(..) => {}
-                Err(e) => match e {
-                    Error::NegentropyNotSupported
-                    | Error::Negentropy(negentropy::Error::UnsupportedProtocolVersion) => {
-                        tracing::warn!("Negentropy protocol '{}' (maybe) not supported, trying the deprecated one.", negentropy::PROTOCOL_VERSION);
-                        self.sync_deprecated(filter, items, opts, &mut output)
-                            .await?;
-                    }
-                    e => return Err(e),
-                },
-            }
-        }
-
-        Ok(output)
-    }
-
     /// New negentropy protocol
-    async fn sync_new(
+    pub(super) async fn sync_new(
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
@@ -2123,7 +1747,7 @@ impl InnerRelay {
     }
 
     /// Deprecated negentropy protocol
-    async fn sync_deprecated(
+    pub(super) async fn sync_deprecated(
         &self,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
