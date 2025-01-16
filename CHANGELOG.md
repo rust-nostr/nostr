@@ -85,6 +85,7 @@
 * sdk: add `Client::try_connect` ([Yuki Kishimoto])
 * sdk: add `Client::try_connect_relay` ([Yuki Kishimoto])
 * sdk: add `Client::wait_for_connection` ([Yuki Kishimoto])
+* relay-builder: custom http server ([v0l])
 
 ### Fixed
 

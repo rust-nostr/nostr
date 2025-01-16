@@ -26,7 +26,13 @@ tokio = { workspace = true, features = ["macros", "net", "sync"] }
 tracing.workspace = true
 
 [dev-dependencies]
+base64 = "0.22"
+hyper = { version = "1.5", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+[[example]]
+name = "hyper"
 
 [[example]]
 name = "local-with-hs"

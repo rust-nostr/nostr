@@ -4,8 +4,11 @@
 
 //! A local nostr relay
 
+use std::net::SocketAddr;
+
 use atomic_destructor::AtomicDestructor;
 use nostr_database::prelude::*;
+use tokio::io::{AsyncRead, AsyncWrite};
 
 mod inner;
 mod session;
@@ -22,6 +25,14 @@ pub struct LocalRelay {
 }
 
 impl LocalRelay {
+    /// Create a new local relay without listening
+    #[inline]
+    pub async fn new(builder: RelayBuilder) -> Result<Self, Error> {
+        Ok(Self {
+            inner: AtomicDestructor::new(InnerLocalRelay::new(builder).await?),
+        })
+    }
+
     /// Run local relay from [`RelayBuilder`]
     #[inline]
     pub async fn run(builder: RelayBuilder) -> Result<Self, Error> {
@@ -57,5 +68,13 @@ impl LocalRelay {
     #[inline]
     pub fn shutdown(&self) {
         self.inner.shutdown();
+    }
+
+    /// Pass an already upgraded stream
+    pub async fn take_connection<S>(&self, stream: S, addr: SocketAddr) -> Result<()>
+    where
+        S: AsyncRead + AsyncWrite + Unpin,
+    {
+        self.inner.handle_upgraded_connection(stream, addr).await
     }
 }
