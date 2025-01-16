@@ -1392,7 +1392,6 @@ impl InnerRelay {
         Ok(())
     }
 
-    #[inline]
     pub async fn subscribe(
         &self,
         filters: Vec<Filter>,

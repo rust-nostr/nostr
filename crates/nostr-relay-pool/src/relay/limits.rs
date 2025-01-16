@@ -21,7 +21,6 @@ pub struct RelayLimits {
 
 impl RelayLimits {
     /// Disable all limits
-    #[inline]
     pub fn disable() -> Self {
         Self {
             messages: RelayMessageLimits::disable(),
@@ -85,7 +84,6 @@ impl Default for RelayEventLimits {
 
 impl RelayEventLimits {
     /// Disable all limits
-    #[inline]
     pub fn disable() -> Self {
         Self {
             max_size: None,

@@ -61,7 +61,6 @@ impl RelayServiceFlags {
         self.0 ^= other.0;
     }
 
-    #[inline]
     fn has(self, flags: Self, check: FlagCheck) -> bool {
         match check {
             FlagCheck::Any => (self.0 & flags.0) != 0,
@@ -119,7 +118,6 @@ impl Default for AtomicRelayServiceFlags {
 
 impl AtomicRelayServiceFlags {
     /// Compose new from [RelayServiceFlags]
-    #[inline]
     pub fn new(flags: RelayServiceFlags) -> Self {
         Self {
             flags: Arc::new(AtomicU64::new(flags.to_u64())),
@@ -156,49 +154,41 @@ impl AtomicRelayServiceFlags {
     }
 
     /// Check if [RelayServiceFlags] has **any** of the passed flags.
-    #[inline]
     pub fn has_any(&self, flags: RelayServiceFlags) -> bool {
         self.has(flags, FlagCheck::Any)
     }
 
     /// Check if [RelayServiceFlags] has **all** the passed flags.
-    #[inline]
     pub fn has_all(&self, flags: RelayServiceFlags) -> bool {
         self.has(flags, FlagCheck::All)
     }
 
     /// Check if `READ` service is enabled
-    #[inline]
     pub fn has_read(&self) -> bool {
         self.has_all(RelayServiceFlags::READ)
     }
 
     /// Check if `WRITE` service is enabled
-    #[inline]
     pub fn has_write(&self) -> bool {
         self.has_all(RelayServiceFlags::WRITE)
     }
 
     /// Check if `PING` service is enabled
-    #[inline]
     pub fn has_ping(&self) -> bool {
         self.has_all(RelayServiceFlags::PING)
     }
 
     /// Check if `GOSSIP` service is enabled
-    #[inline]
     pub fn has_gossip(&self) -> bool {
         self.has_all(RelayServiceFlags::GOSSIP)
     }
 
     /// Check if `DISCOVERY` service is enabled
-    #[inline]
     pub fn has_discovery(&self) -> bool {
         self.has_all(RelayServiceFlags::DISCOVERY)
     }
 
     /// Check if `READ`, `GOSSIP` or `DISCOVERY` services are enabled
-    #[inline]
     pub fn can_read(&self) -> bool {
         self.has_any(
             RelayServiceFlags::READ | RelayServiceFlags::GOSSIP | RelayServiceFlags::DISCOVERY,
@@ -206,7 +196,6 @@ impl AtomicRelayServiceFlags {
     }
 
     /// Check if `WRITE` or `GOSSIP` services are enabled
-    #[inline]
     pub fn can_write(&self) -> bool {
         self.has_any(RelayServiceFlags::WRITE | RelayServiceFlags::GOSSIP)
     }

@@ -53,7 +53,6 @@ impl PingTracker {
         self.replied.load(Ordering::SeqCst)
     }
 
-    #[inline]
     pub(super) async fn just_sent(&self) {
         let mut sent_at = self.sent_at.write().await;
         *sent_at = Instant::now();

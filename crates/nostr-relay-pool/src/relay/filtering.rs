@@ -99,7 +99,6 @@ pub struct RelayFiltering {
 
 impl RelayFiltering {
     /// Construct new filtering
-    #[inline]
     pub fn new(mode: RelayFilteringMode) -> Self {
         Self {
             inner: Arc::new(InnerRelayFiltering::new(mode)),

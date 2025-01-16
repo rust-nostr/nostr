@@ -99,7 +99,6 @@ impl InnerRelayPool {
         relays.clone()
     }
 
-    #[inline]
     fn internal_relays_with_flag<'a>(
         &self,
         txn: &'a RwLockReadGuard<'a, Relays>,
@@ -110,7 +109,6 @@ impl InnerRelayPool {
     }
 
     /// Get relays that has `READ` or `WRITE` flags
-    #[inline]
     pub async fn relays(&self) -> Relays {
         self.relays_with_flag(
             RelayServiceFlags::READ | RelayServiceFlags::WRITE,
@@ -153,7 +151,6 @@ impl InnerRelayPool {
             .collect()
     }
 
-    #[inline]
     fn internal_relay<'a>(
         &self,
         txn: &'a RwLockReadGuard<'a, Relays>,
@@ -533,7 +530,6 @@ impl InnerRelayPool {
         })
     }
 
-    #[inline]
     pub async fn subscribe_with_id_to<I, U>(
         &self,
         urls: I,
@@ -654,7 +650,6 @@ impl InnerRelayPool {
         }
     }
 
-    #[inline]
     pub async fn sync(
         &self,
         filter: Filter,
@@ -664,7 +659,6 @@ impl InnerRelayPool {
         self.sync_with(urls, filter, opts).await
     }
 
-    #[inline]
     pub async fn sync_with<I, U>(
         &self,
         urls: I,
@@ -800,7 +794,6 @@ impl InnerRelayPool {
         Ok(events)
     }
 
-    #[inline]
     pub async fn stream_events(
         &self,
         filters: Vec<Filter>,
@@ -812,7 +805,6 @@ impl InnerRelayPool {
             .await
     }
 
-    #[inline]
     pub async fn stream_events_from<I, U>(
         &self,
         urls: I,
