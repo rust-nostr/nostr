@@ -21,7 +21,7 @@ ndb = ["nostr-sdk/ndb"]
 uniffi-cli = ["uniffi/cli"] # required for the `uniffi-bindgen` binary
 
 [dependencies]
-async-trait.workspace = true
+async-trait = "0.1"
 nostr = { workspace = true, features = ["std", "all-nips"] }
 nostr-connect.workspace = true
 nostr-sdk  = { workspace = true, default-features = false, features = ["all-nips"] }
