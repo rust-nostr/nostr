@@ -9,8 +9,6 @@ use std::sync::Arc;
 use nostr::signer::{IntoNostrSigner, NostrSigner};
 use nostr_database::memory::MemoryDatabase;
 use nostr_database::{IntoNostrDatabase, NostrDatabase};
-#[cfg(feature = "nip57")]
-use nostr_zapper::{DynNostrZapper, IntoNostrZapper};
 
 use crate::{Client, Options};
 
@@ -19,9 +17,6 @@ use crate::{Client, Options};
 pub struct ClientBuilder {
     /// Nostr Signer
     pub signer: Option<Arc<dyn NostrSigner>>,
-    /// Nostr Zapper
-    #[cfg(feature = "nip57")]
-    pub zapper: Option<Arc<DynNostrZapper>>,
     /// Database
     pub database: Arc<dyn NostrDatabase>,
     /// Client options
@@ -32,8 +27,6 @@ impl Default for ClientBuilder {
     fn default() -> Self {
         Self {
             signer: None,
-            #[cfg(feature = "nip57")]
-            zapper: None,
             database: Arc::new(MemoryDatabase::default()),
             opts: Options::default(),
         }
@@ -63,17 +56,6 @@ impl ClientBuilder {
         T: IntoNostrSigner,
     {
         self.signer = Some(signer.into_nostr_signer());
-        self
-    }
-
-    /// Set zapper
-    #[inline]
-    #[cfg(feature = "nip57")]
-    pub fn zapper<Z>(mut self, zapper: Z) -> Self
-    where
-        Z: IntoNostrZapper,
-    {
-        self.zapper = Some(zapper.into_nostr_zapper());
         self
     }
 

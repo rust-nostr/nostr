@@ -31,6 +31,7 @@
 
 ### Breaking changes
 
+* Drop zapper support ([Yuki Kishimoto])
 * nostr: update `ClientMessage::neg_open` signature ([Yuki Kishimoto])
 * nostr: remove `ClientMessage::neg_open_deprecated` ([Yuki Kishimoto])
 * nostr: add `nip98` feature ([Yuki Kishimoto])

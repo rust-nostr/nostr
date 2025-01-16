@@ -6,7 +6,6 @@ use std::ops::Deref;
 
 use uniffi::Object;
 
-use super::zapper::NostrZapper;
 use super::{Client, Options};
 use crate::database::NostrDatabase;
 use crate::protocol::signer::NostrSigner;
@@ -33,12 +32,6 @@ impl ClientBuilder {
     pub fn signer(&self, signer: &NostrSigner) -> Self {
         let mut builder = self.clone();
         builder.inner = builder.inner.signer(signer.deref().clone());
-        builder
-    }
-
-    pub fn zapper(&self, zapper: &NostrZapper) -> Self {
-        let mut builder = self.clone();
-        builder.inner = builder.inner.zapper(zapper.deref().clone());
         builder
     }
 

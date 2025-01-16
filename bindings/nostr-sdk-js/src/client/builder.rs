@@ -8,7 +8,6 @@ use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use super::options::JsOptions;
-use super::zapper::JsNostrZapper;
 use super::{JsClient, JsNostrSigner};
 use crate::database::JsNostrDatabase;
 
@@ -37,10 +36,6 @@ impl JsClientBuilder {
         self.inner.signer(signer.deref().clone()).into()
     }
 
-    pub fn zapper(self, zapper: &JsNostrZapper) -> Self {
-        self.inner.zapper(zapper.deref().clone()).into()
-    }
-
     pub fn database(self, database: &JsNostrDatabase) -> Self {
         self.inner.database(database.deref().clone()).into()
     }
@@ -51,7 +46,7 @@ impl JsClientBuilder {
 
     /// Build `Client`
     ///
-    /// This method **consume** the `ClientBuilder`!
+    /// This method **consumes** the `ClientBuilder`!
     pub fn build(self) -> JsClient {
         self.inner.build().into()
     }

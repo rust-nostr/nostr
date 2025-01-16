@@ -14,33 +14,23 @@ use nostr::prelude::*;
 use nostr_database::prelude::*;
 use nostr_relay_pool::__private::SharedState;
 use nostr_relay_pool::prelude::*;
-#[cfg(feature = "nip57")]
-use nostr_zapper::{DynNostrZapper, IntoNostrZapper};
 use tokio::sync::broadcast;
-#[cfg(feature = "nip57")]
-use tokio::sync::RwLock;
 
 pub mod builder;
 mod error;
 pub mod options;
-#[cfg(feature = "nip57")]
-mod zapper;
 
 pub use self::builder::ClientBuilder;
 pub use self::error::Error;
 pub use self::options::Options;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Connection, ConnectionTarget};
-#[cfg(feature = "nip57")]
-pub use self::zapper::{ZapDetails, ZapEntity};
 use crate::gossip::graph::GossipGraph;
 
 /// Nostr client
 #[derive(Debug, Clone)]
 pub struct Client {
     pool: RelayPool,
-    #[cfg(feature = "nip57")]
-    zapper: Arc<RwLock<Option<Arc<DynNostrZapper>>>>,
     gossip_graph: GossipGraph,
     opts: Options,
 }
@@ -111,8 +101,6 @@ impl Client {
         // Construct client
         Self {
             pool: RelayPool::__with_shared_state(builder.opts.pool, state),
-            #[cfg(feature = "nip57")]
-            zapper: Arc::new(RwLock::new(builder.zapper)),
             gossip_graph: GossipGraph::new(),
             opts: builder.opts,
         }
@@ -172,39 +160,6 @@ impl Client {
         self.state().unset_signer().await;
     }
 
-    /// Check if `zapper` is configured
-    #[cfg(feature = "nip57")]
-    pub async fn has_zapper(&self) -> bool {
-        let zapper = self.zapper.read().await;
-        zapper.is_some()
-    }
-
-    /// Get current nostr zapper
-    ///
-    /// Rise error if it not set.
-    #[cfg(feature = "nip57")]
-    pub async fn zapper(&self) -> Result<Arc<DynNostrZapper>, Error> {
-        let zapper = self.zapper.read().await;
-        zapper.clone().ok_or(Error::ZapperNotConfigured)
-    }
-
-    /// Set nostr zapper
-    #[cfg(feature = "nip57")]
-    pub async fn set_zapper<Z>(&self, zapper: Z)
-    where
-        Z: IntoNostrZapper,
-    {
-        let mut s = self.zapper.write().await;
-        *s = Some(zapper.into_nostr_zapper());
-    }
-
-    /// Unset nostr zapper
-    #[cfg(feature = "nip57")]
-    pub async fn unset_zapper(&self) {
-        let mut s = self.zapper.write().await;
-        *s = None;
-    }
-
     /// Get [`RelayPool`]
     #[inline]
     pub fn pool(&self) -> &RelayPool {
@@ -242,8 +197,6 @@ impl Client {
         self.unsubscribe_all().await;
         self.force_remove_all_relays().await?;
         self.unset_signer().await;
-        #[cfg(feature = "nip57")]
-        self.unset_zapper().await;
         self.filtering().clear().await;
         Ok(())
     }
@@ -1472,21 +1425,6 @@ impl Client {
     {
         let builder = EventBuilder::zap_receipt(bolt11, preimage, zap_request);
         self.send_event_builder(builder).await
-    }
-
-    /// Send a Zap!
-    #[inline]
-    #[cfg(feature = "nip57")]
-    pub async fn zap<T>(
-        &self,
-        to: T,
-        satoshi: u64,
-        details: Option<ZapDetails>,
-    ) -> Result<(), Error>
-    where
-        T: Into<ZapEntity>,
-    {
-        self.internal_zap(to, satoshi, details).await
     }
 
     /// Construct Gift Wrap and send to relays

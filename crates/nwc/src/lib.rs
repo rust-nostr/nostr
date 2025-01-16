@@ -15,12 +15,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 pub extern crate nostr;
-pub extern crate nostr_zapper as zapper;
 
 use async_utility::time;
 use nostr::nips::nip47::{Request, Response};
 use nostr_relay_pool::prelude::*;
-use nostr_zapper::prelude::*;
 
 pub mod error;
 pub mod options;
@@ -193,22 +191,5 @@ impl NWC {
     #[inline]
     pub fn shutdown(self) -> Result<(), Error> {
         Ok(self.relay.disconnect()?)
-    }
-}
-
-impl NostrZapper for NWC {
-    #[inline]
-    fn backend(&self) -> ZapperBackend {
-        ZapperBackend::NWC
-    }
-
-    fn pay(&self, invoice: String) -> BoxedFuture<Result<(), ZapperError>> {
-        Box::pin(async move {
-            let request: PayInvoiceRequest = PayInvoiceRequest::new(invoice);
-            self.pay_invoice(request)
-                .await
-                .map_err(ZapperError::backend)?;
-            Ok(())
-        })
     }
 }

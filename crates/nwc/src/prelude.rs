@@ -10,6 +10,5 @@
 
 pub use nostr::prelude::*;
 pub use nostr_relay_pool::prelude::*;
-pub use nostr_zapper::prelude::*;
 
 pub use crate::*;

@@ -11,7 +11,7 @@ crate-type = ["cdylib"]
 console_error_panic_hook = "0.1"
 js-sys.workspace = true
 nostr-connect.workspace = true
-nostr-sdk = { workspace = true, default-features = false, features = ["all-nips", "indexeddb", "webln"] }
+nostr-sdk = { workspace = true, default-features = false, features = ["all-nips", "indexeddb"] }
 nwc.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true

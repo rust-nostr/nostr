@@ -12,11 +12,9 @@ use wasm_bindgen::prelude::*;
 pub mod builder;
 pub mod options;
 pub mod output;
-pub mod zapper;
 
 pub use self::builder::JsClientBuilder;
 use self::output::{JsOutput, JsReconciliationOutput, JsSendEventOutput, JsSubscribeOutput};
-use self::zapper::{JsZapDetails, JsZapEntity};
 use crate::abortable::JsAbortHandle;
 use crate::database::{JsEvents, JsNostrDatabase};
 use crate::duration::JsDuration;
@@ -586,19 +584,6 @@ impl JsClient {
             .await
             .map_err(into_err)
             .map(Into::into)
-    }
-
-    /// Send a Zap!
-    pub async fn zap(
-        &self,
-        to: &JsZapEntity,
-        satoshi: f64,
-        details: Option<JsZapDetails>,
-    ) -> Result<()> {
-        self.inner
-            .zap(**to, satoshi as u64, details.map(|d| d.into()))
-            .await
-            .map_err(into_err)
     }
 
     /// Construct Gift Wrap and send to relays

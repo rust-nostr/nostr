@@ -2471,18 +2471,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lnurl-pay"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "536e7c782167a2d48346ca0b2677fad19eaef20f19a4ab868e4d5b96ca879def"
-dependencies = [
- "bech32",
- "reqwest",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "lock_api"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2827,7 +2815,6 @@ name = "nostr-sdk"
 version = "0.38.0"
 dependencies = [
  "async-utility",
- "lnurl-pay",
  "nostr",
  "nostr-connect",
  "nostr-database",
@@ -2835,8 +2822,6 @@ dependencies = [
  "nostr-lmdb",
  "nostr-ndb",
  "nostr-relay-pool",
- "nostr-zapper",
- "nwc",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -2870,14 +2855,6 @@ dependencies = [
  "tracing-subscriber",
  "wasm-bindgen",
  "wasm-bindgen-futures",
-]
-
-[[package]]
-name = "nostr-zapper"
-version = "0.38.0"
-dependencies = [
- "nostr",
- "webln",
 ]
 
 [[package]]
@@ -3031,7 +3008,6 @@ dependencies = [
  "async-utility",
  "nostr",
  "nostr-relay-pool",
- "nostr-zapper",
  "tokio",
  "tracing-subscriber",
 ]
@@ -6301,19 +6277,6 @@ dependencies = [
  "objc2",
  "objc2-foundation",
  "url",
- "web-sys",
-]
-
-[[package]]
-name = "webln"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68b01c3179bc4d47af44bd9fa34670c26cb79bcfc329ac286e5c9c9d7cb1080b"
-dependencies = [
- "js-sys",
- "secp256k1",
- "wasm-bindgen",
- "wasm-bindgen-futures",
  "web-sys",
 ]
 

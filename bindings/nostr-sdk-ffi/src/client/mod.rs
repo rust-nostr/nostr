@@ -15,12 +15,10 @@ use uniffi::Object;
 mod builder;
 mod options;
 mod output;
-pub mod zapper;
 
 pub use self::builder::ClientBuilder;
 pub use self::options::Options;
 use self::output::{Output, ReconciliationOutput, SendEventOutput, SubscribeOutput};
-use self::zapper::{ZapDetails, ZapEntity};
 use crate::database::events::Events;
 use crate::database::NostrDatabase;
 use crate::error::Result;
@@ -553,19 +551,6 @@ impl Client {
             )
             .await?
             .into())
-    }
-
-    /// Send a Zap!
-    pub async fn zap(
-        &self,
-        to: &ZapEntity,
-        satoshi: u64,
-        details: Option<Arc<ZapDetails>>,
-    ) -> Result<()> {
-        Ok(self
-            .inner
-            .zap(**to, satoshi, details.map(|d| d.as_ref().deref().clone()))
-            .await?)
     }
 
     /// Construct Gift Wrap and send to relays

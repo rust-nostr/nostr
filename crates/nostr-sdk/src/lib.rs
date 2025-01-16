@@ -33,9 +33,6 @@ pub use nostr_relay_pool::{
     RelayPoolNotification, RelayPoolOptions, RelayServiceFlags, RelayStatus,
     SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection, SyncOptions,
 };
-#[doc(hidden)]
-#[cfg(feature = "nip57")]
-pub use nostr_zapper::{self as zapper, *};
 
 pub mod client;
 mod gossip;
