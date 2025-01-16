@@ -1,5 +1,8 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
+bloat:
+    cargo bloat --release -n 1000
+
 # Compile and build Android Archive (AAR)
 aar:
     @cd android && bash build-aar.sh
