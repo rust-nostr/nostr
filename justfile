@@ -45,6 +45,10 @@ check-crates-msrv:
 check-docs:
 	@bash contrib/scripts/check-docs.sh
 
+# Check cargo-deny
+check-deny:
+	@bash contrib/scripts/check-deny.sh
+
 # Release rust crates
 [confirm]
 release:
