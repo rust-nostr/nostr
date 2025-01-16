@@ -66,7 +66,7 @@ aes = { version = "0.8", optional = true }
 base64 = { version = "0.22", default-features = false, optional = true }
 bech32 = { version = "0.11", default-features = false }
 bitcoin_hashes = { version = "0.14", default-features = false, features = ["serde"] } # TODO: remove serde feature
-bip39 = { version = "2.1", default-features = false, optional = true }
+bip39 = { version = "2.1", default-features = false, optional = true } # The patch uses bitcoin_hashes v0.14
 cbc = { version = "0.1", optional = true }
 chacha20 = { version = "0.9", optional = true }
 chacha20poly1305 = { version = "0.10", default-features = false, features = ["getrandom"], optional = true }
