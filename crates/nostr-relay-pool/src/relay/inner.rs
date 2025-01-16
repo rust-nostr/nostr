@@ -1432,7 +1432,191 @@ impl InnerRelay {
         Ok(())
     }
 
+    #[inline(never)]
+    fn handle_neg_msg<I>(
+        &self,
+        subscription_id: SubscriptionId,
+        msg: Option<Vec<u8>>,
+        curr_have_ids: I,
+        curr_need_ids: I,
+        opts: &SyncOptions,
+        output: &mut Reconciliation,
+        have_ids: &mut Vec<EventId>,
+        need_ids: &mut Vec<EventId>,
+        sync_done: &mut bool,
+    ) -> Result<(), Error>
+    where
+        I: Iterator<Item = EventId>,
+    {
+        let mut counter: u64 = 0;
+
+        // If event ID wasn't already seen, add to the HAVE IDs
+        // Add to HAVE IDs only if `do_up` is true
+        for id in curr_have_ids.into_iter() {
+            if output.local.insert(id) && opts.do_up() {
+                have_ids.push(id);
+                counter += 1;
+            }
+        }
+
+        // If event ID wasn't already seen, add to the NEED IDs
+        // Add to NEED IDs only if `do_down` is true
+        for id in curr_need_ids.into_iter() {
+            if output.remote.insert(id) && opts.do_down() {
+                need_ids.push(id);
+                counter += 1;
+            }
+        }
+
+        if let Some(progress) = &opts.progress {
+            progress.send_modify(|state| {
+                state.total += counter;
+            });
+        }
+
+        match msg {
+            Some(query) => self.send_neg_msg(subscription_id, hex::encode(query)),
+            None => {
+                // Mark sync as done
+                *sync_done = true;
+
+                // Send NEG-CLOSE message
+                self.send_neg_close(subscription_id)
+            }
+        }
+    }
+
+    #[inline(never)]
+    async fn upload_neg_events(
+        &self,
+        have_ids: &mut Vec<EventId>,
+        in_flight_up: &mut HashSet<EventId>,
+        opts: &SyncOptions,
+    ) -> Result<(), Error> {
+        // Check if should skip the upload
+        if !opts.do_up() || have_ids.is_empty() || in_flight_up.len() > NEGENTROPY_LOW_WATER_UP {
+            return Ok(());
+        }
+
+        let mut num_sent = 0;
+
+        while !have_ids.is_empty() && in_flight_up.len() < NEGENTROPY_HIGH_WATER_UP {
+            if let Some(id) = have_ids.pop() {
+                match self.state.database().event_by_id(&id).await {
+                    Ok(Some(event)) => {
+                        in_flight_up.insert(id);
+                        self.send_msg(ClientMessage::event(event))?;
+                        num_sent += 1;
+                    }
+                    Ok(None) => {
+                        // Event not found
+                    }
+                    Err(e) => tracing::error!(
+                        url = %self.url,
+                        error = %e,
+                        "Can't upload event."
+                    ),
+                }
+            }
+        }
+
+        // Update progress
+        if let Some(progress) = &opts.progress {
+            progress.send_modify(|state| {
+                state.current += num_sent;
+            });
+        }
+
+        if num_sent > 0 {
+            tracing::info!(
+                "Negentropy UP for '{}': {} events ({} remaining)",
+                self.url,
+                num_sent,
+                have_ids.len()
+            );
+        }
+
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn req_neg_events(
+        &self,
+        need_ids: &mut Vec<EventId>,
+        in_flight_down: &mut bool,
+        down_sub_id: &SubscriptionId,
+        opts: &SyncOptions,
+    ) -> Result<(), Error> {
+        // Check if should skip the download
+        if !opts.do_down() || need_ids.is_empty() || *in_flight_down {
+            return Ok(());
+        }
+
+        let capacity: usize = cmp::min(need_ids.len(), NEGENTROPY_BATCH_SIZE_DOWN);
+        let mut ids: Vec<EventId> = Vec::with_capacity(capacity);
+
+        while !need_ids.is_empty() && ids.len() < NEGENTROPY_BATCH_SIZE_DOWN {
+            if let Some(id) = need_ids.pop() {
+                ids.push(id);
+            }
+        }
+
+        tracing::info!(
+            "Negentropy DOWN for '{}': {} events ({} remaining)",
+            self.url,
+            ids.len(),
+            need_ids.len()
+        );
+
+        // Update progress
+        if let Some(progress) = &opts.progress {
+            progress.send_modify(|state| {
+                state.current += ids.len() as u64;
+            });
+        }
+
+        let filter = Filter::new().ids(ids);
+        self.send_msg(ClientMessage::req(down_sub_id.clone(), vec![filter]))?;
+
+        *in_flight_down = true;
+
+        Ok(())
+    }
+
+    #[inline(never)]
+    fn handle_neg_ok(
+        &self,
+        in_flight_up: &mut HashSet<EventId>,
+        event_id: EventId,
+        status: bool,
+        message: String,
+        output: &mut Reconciliation,
+    ) {
+        if in_flight_up.remove(&event_id) {
+            if status {
+                output.sent.insert(event_id);
+            } else {
+                tracing::error!(
+                    url = %self.url,
+                    id = %event_id,
+                    msg = %message,
+                    "Can't upload event."
+                );
+
+                output
+                    .send_failures
+                    .entry(self.url.clone())
+                    .and_modify(|map| {
+                        map.insert(event_id, message.clone());
+                    })
+                    .or_default()
+                    .insert(event_id, message);
+            }
+        }
+    }
+
     /// New negentropy protocol
+    #[inline(never)]
     pub(super) async fn sync_new(
         &self,
         filter: Filter,
@@ -1440,83 +1624,25 @@ impl InnerRelay {
         opts: &SyncOptions,
         output: &mut Reconciliation,
     ) -> Result<(), Error> {
-        // Compose negentropy storage, add items and seal
-        let mut storage = NegentropyStorageVector::with_capacity(items.len());
-        for (id, timestamp) in items.into_iter() {
-            let id: Id = Id::new(id.to_bytes());
-            storage.insert(timestamp.as_u64(), id)?;
-        }
-        storage.seal()?;
+        // Prepare the negentropy client
+        let mut negentropy: Negentropy<NegentropyStorageVector> = prepare_negentropy_client(items)?;
 
-        // Build negentropy client
-        let mut negentropy = Negentropy::new(storage, NEGENTROPY_FRAME_SIZE_LIMIT)?;
-
-        // Initiate message
+        // Initiate reconciliation
         let initial_message: Bytes = negentropy.initiate()?;
+
+        // Subscribe
+        let mut notifications = self.internal_notification_sender.subscribe();
+        let mut temp_notifications = self.internal_notification_sender.subscribe();
 
         // Send initial negentropy message
         let sub_id: SubscriptionId = SubscriptionId::generate();
         let open_msg: ClientMessage =
-            ClientMessage::neg_open(sub_id.clone(), filter, initial_message.to_hex());
+            ClientMessage::neg_open(sub_id.clone(), filter, hex::encode(initial_message));
         self.send_msg(open_msg)?;
 
-        let mut notifications = self.internal_notification_sender.subscribe();
-        let mut temp_notifications = self.internal_notification_sender.subscribe();
+        // Check if negentropy is supported
+        check_negentropy_support(&sub_id, opts, &mut temp_notifications).await?;
 
-        // Check if negentropy it's supported
-        time::timeout(Some(opts.initial_timeout), async {
-            while let Ok(notification) = temp_notifications.recv().await {
-                if let RelayNotification::Message { message } = notification {
-                    match message {
-                        RelayMessage::NegMsg {
-                            subscription_id, ..
-                        } => {
-                            if subscription_id == sub_id {
-                                break;
-                            }
-                        }
-                        RelayMessage::NegErr {
-                            subscription_id,
-                            message,
-                        } => {
-                            if subscription_id == sub_id {
-                                return Err(Error::RelayMessage(message));
-                            }
-                        }
-                        RelayMessage::Notice(message) => {
-                            if message
-                                == "ERROR: negentropy error: negentropy query missing elements"
-                            {
-                                // The NEG-OPEN message is send with 4 elements instead of 5
-                                // If the relay return this error means that is not support new
-                                // negentropy protocol
-                                return Err(Error::Negentropy(
-                                    negentropy::Error::UnsupportedProtocolVersion,
-                                ));
-                            } else if message.contains("bad msg")
-                                && (message.contains("unknown cmd")
-                                    || message.contains("negentropy")
-                                    || message.contains("NEG-"))
-                            {
-                                return Err(Error::NegentropyNotSupported);
-                            } else if message.contains("bad msg: invalid message")
-                                && message.contains("NEG-OPEN")
-                            {
-                                return Err(Error::UnknownNegentropyError);
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-            }
-
-            Ok::<(), Error>(())
-        })
-        .await
-        .ok_or(Error::Timeout)??;
-
-        let do_up: bool = opts.do_up();
-        let do_down: bool = opts.do_down();
         let mut in_flight_up: HashSet<EventId> = HashSet::new();
         let mut in_flight_down: bool = false;
         let mut sync_done: bool = false;
@@ -1547,50 +1673,18 @@ impl InnerRelay {
                                     &mut curr_need_ids,
                                 )?;
 
-                                let mut counter: u64 = 0;
-
-                                // If event ID wasn't already seen, add to the HAVE IDs
-                                // Add to HAVE IDs only if `do_up` is true
-                                for id in curr_have_ids.into_iter() {
-                                    let event_id: EventId = EventId::from_byte_array(id.to_bytes());
-                                    if output.local.insert(event_id) && do_up {
-                                        have_ids.push(event_id);
-                                        counter += 1;
-                                    }
-                                }
-
-                                // If event ID wasn't already seen, add to the NEED IDs
-                                // Add to NEED IDs only if `do_down` is true
-                                for id in curr_need_ids.into_iter() {
-                                    let event_id: EventId = EventId::from_byte_array(id.to_bytes());
-                                    if output.remote.insert(event_id) && do_down {
-                                        need_ids.push(event_id);
-                                        counter += 1;
-                                    }
-                                }
-
-                                if let Some(progress) = &opts.progress {
-                                    progress.send_modify(|state| {
-                                        state.total += counter;
-                                    });
-                                }
-
-                                match msg {
-                                    Some(query) => {
-                                        tracing::debug!(
-                                            url = %self.url,
-                                            "Continue negentropy reconciliation."
-                                        );
-                                        self.send_neg_msg(subscription_id, query.to_hex())?;
-                                    }
-                                    None => {
-                                        // Mark sync as done
-                                        sync_done = true;
-
-                                        // Send NEG-CLOSE message
-                                        self.send_neg_close(subscription_id)?;
-                                    }
-                                }
+                                // Handle message
+                                self.handle_neg_msg(
+                                    subscription_id,
+                                    msg.map(|m| m.to_bytes()),
+                                    curr_have_ids.into_iter().map(neg_id_to_event_id),
+                                    curr_need_ids.into_iter().map(neg_id_to_event_id),
+                                    opts,
+                                    output,
+                                    &mut have_ids,
+                                    &mut need_ids,
+                                    &mut sync_done,
+                                )?;
                             }
                         }
                         RelayMessage::NegErr {
@@ -1606,27 +1700,13 @@ impl InnerRelay {
                             status,
                             message,
                         } => {
-                            if in_flight_up.remove(&event_id) {
-                                if status {
-                                    output.sent.insert(event_id);
-                                } else {
-                                    tracing::error!(
-                                        url = %self.url,
-                                        id = %event_id,
-                                        msg = %message,
-                                        "Unable to upload event."
-                                    );
-
-                                    output
-                                        .send_failures
-                                        .entry(self.url.clone())
-                                        .and_modify(|map| {
-                                            map.insert(event_id, message.clone());
-                                        })
-                                        .or_default()
-                                        .insert(event_id, message);
-                                }
-                            }
+                            self.handle_neg_ok(
+                                &mut in_flight_up,
+                                event_id,
+                                status,
+                                message,
+                                output,
+                            );
                         }
                         RelayMessage::Event {
                             subscription_id,
@@ -1645,80 +1725,11 @@ impl InnerRelay {
                     }
 
                     // Send events
-                    if do_up
-                        && !have_ids.is_empty()
-                        && in_flight_up.len() <= NEGENTROPY_LOW_WATER_UP
-                    {
-                        let mut num_sent = 0;
-
-                        while !have_ids.is_empty() && in_flight_up.len() < NEGENTROPY_HIGH_WATER_UP
-                        {
-                            if let Some(id) = have_ids.pop() {
-                                match self.state.database().event_by_id(&id).await {
-                                    Ok(Some(event)) => {
-                                        in_flight_up.insert(id);
-                                        self.send_msg(ClientMessage::event(event))?;
-                                        num_sent += 1;
-                                    }
-                                    Ok(None) => {
-                                        // Event not found
-                                    }
-                                    Err(e) => tracing::error!(
-                                        url = %self.url,
-                                        error = %e,
-                                        "Couldn't upload event."
-                                    ),
-                                }
-                            }
-                        }
-
-                        // Update progress
-                        if let Some(progress) = &opts.progress {
-                            progress.send_modify(|state| {
-                                state.current += num_sent;
-                            });
-                        }
-
-                        if num_sent > 0 {
-                            tracing::info!(
-                                "Negentropy UP for '{}': {} events ({} remaining)",
-                                self.url,
-                                num_sent,
-                                have_ids.len()
-                            );
-                        }
-                    }
+                    self.upload_neg_events(&mut have_ids, &mut in_flight_up, opts)
+                        .await?;
 
                     // Get events
-                    if do_down && !need_ids.is_empty() && !in_flight_down {
-                        let capacity: usize = cmp::min(need_ids.len(), NEGENTROPY_BATCH_SIZE_DOWN);
-                        let mut ids: Vec<EventId> = Vec::with_capacity(capacity);
-
-                        while !need_ids.is_empty() && ids.len() < NEGENTROPY_BATCH_SIZE_DOWN {
-                            if let Some(id) = need_ids.pop() {
-                                ids.push(id);
-                            }
-                        }
-
-                        tracing::info!(
-                            "Negentropy DOWN for '{}': {} events ({} remaining)",
-                            self.url,
-                            ids.len(),
-                            need_ids.len()
-                        );
-
-                        // Update progress
-                        if let Some(progress) = &opts.progress {
-                            progress.send_modify(|state| {
-                                state.current += ids.len() as u64;
-                            });
-                        }
-
-                        let filter = Filter::new().ids(ids);
-                        self.send_msg(ClientMessage::req(down_sub_id.clone(), vec![filter]))?;
-
-                        in_flight_down = true
-                    }
+                    self.req_neg_events(&mut need_ids, &mut in_flight_down, &down_sub_id, opts)?;
                 }
                 RelayNotification::RelayStatus { status } => {
                     if status.is_disconnected() {
@@ -1747,6 +1758,7 @@ impl InnerRelay {
     }
 
     /// Deprecated negentropy protocol
+    #[inline(never)]
     pub(super) async fn sync_deprecated(
         &self,
         filter: Filter,
@@ -1765,64 +1777,23 @@ impl InnerRelay {
         // Initiate message
         let initial_message = negentropy.initiate()?;
 
+        // Subscribe to notifications
+        let mut notifications = self.internal_notification_sender.subscribe();
+        let mut temp_notifications = self.internal_notification_sender.subscribe();
+
         // Send initial negentropy message
         let sub_id = SubscriptionId::generate();
         let open_msg = ClientMessage::NegOpen {
             subscription_id: sub_id.clone(),
             filter: Box::new(filter),
             id_size: Some(32),
-            initial_message: initial_message.to_hex(),
+            initial_message: hex::encode(initial_message),
         };
         self.send_msg(open_msg)?;
 
-        let mut notifications = self.internal_notification_sender.subscribe();
-        let mut temp_notifications = self.internal_notification_sender.subscribe();
+        // Check if negentropy is supported
+        check_negentropy_support(&sub_id, opts, &mut temp_notifications).await?;
 
-        // Check if negentropy it's supported
-        time::timeout(Some(opts.initial_timeout), async {
-            while let Ok(notification) = temp_notifications.recv().await {
-                if let RelayNotification::Message { message } = notification {
-                    match message {
-                        RelayMessage::NegMsg {
-                            subscription_id, ..
-                        } => {
-                            if subscription_id == sub_id {
-                                break;
-                            }
-                        }
-                        RelayMessage::NegErr {
-                            subscription_id,
-                            message,
-                        } => {
-                            if subscription_id == sub_id {
-                                return Err(Error::RelayMessage(message));
-                            }
-                        }
-                        RelayMessage::Notice(message) => {
-                            if message.contains("bad msg")
-                                && (message.contains("unknown cmd")
-                                    || message.contains("negentropy")
-                                    || message.contains("NEG-"))
-                            {
-                                return Err(Error::NegentropyNotSupported);
-                            } else if message.contains("bad msg: invalid message")
-                                && message.contains("NEG-OPEN")
-                            {
-                                return Err(Error::UnknownNegentropyError);
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-            }
-
-            Ok::<(), Error>(())
-        })
-        .await
-        .ok_or(Error::Timeout)??;
-
-        let do_up: bool = opts.do_up();
-        let do_down: bool = opts.do_down();
         let mut in_flight_up: HashSet<EventId> = HashSet::new();
         let mut in_flight_down: bool = false;
         let mut sync_done: bool = false;
@@ -1853,54 +1824,18 @@ impl InnerRelay {
                                     &mut curr_need_ids,
                                 )?;
 
-                                let mut counter: u64 = 0;
-
-                                // If event ID wasn't already seen, add to the HAVE IDs
-                                // Add to HAVE IDs only if `do_up` is true
-                                for id in curr_have_ids
-                                    .into_iter()
-                                    .filter_map(|id| EventId::from_slice(id.as_bytes()).ok())
-                                {
-                                    if output.local.insert(id) && do_up {
-                                        have_ids.push(id);
-                                        counter += 1;
-                                    }
-                                }
-
-                                // If event ID wasn't already seen, add to the NEED IDs
-                                // Add to NEED IDs only if `do_down` is true
-                                for id in curr_need_ids
-                                    .into_iter()
-                                    .filter_map(|id| EventId::from_slice(id.as_bytes()).ok())
-                                {
-                                    if output.remote.insert(id) && do_down {
-                                        need_ids.push(id);
-                                        counter += 1;
-                                    }
-                                }
-
-                                if let Some(progress) = &opts.progress {
-                                    progress.send_modify(|state| {
-                                        state.total += counter;
-                                    });
-                                }
-
-                                match msg {
-                                    Some(query) => {
-                                        tracing::debug!(
-                                            url = %self.url,
-                                            "Continue deprecated negentropy reconciliation."
-                                        );
-                                        self.send_neg_msg(subscription_id, query.to_hex())?;
-                                    }
-                                    None => {
-                                        // Mark sync as done
-                                        sync_done = true;
-
-                                        // Send NEG-CLOSE message
-                                        self.send_neg_close(subscription_id)?;
-                                    }
-                                }
+                                // Handle message
+                                self.handle_neg_msg(
+                                    subscription_id,
+                                    msg.map(|m| m.to_bytes()),
+                                    curr_have_ids.into_iter().filter_map(neg_depr_to_event_id),
+                                    curr_need_ids.into_iter().filter_map(neg_depr_to_event_id),
+                                    opts,
+                                    output,
+                                    &mut have_ids,
+                                    &mut need_ids,
+                                    &mut sync_done,
+                                )?;
                             }
                         }
                         RelayMessage::NegErr {
@@ -1916,27 +1851,13 @@ impl InnerRelay {
                             status,
                             message,
                         } => {
-                            if in_flight_up.remove(&event_id) {
-                                if status {
-                                    output.sent.insert(event_id);
-                                } else {
-                                    tracing::error!(
-                                        url = %self.url,
-                                        id = %event_id,
-                                        msg = %message,
-                                        "Unable to upload event."
-                                    );
-
-                                    output
-                                        .send_failures
-                                        .entry(self.url.clone())
-                                        .and_modify(|map| {
-                                            map.insert(event_id, message.clone());
-                                        })
-                                        .or_default()
-                                        .insert(event_id, message);
-                                }
-                            }
+                            self.handle_neg_ok(
+                                &mut in_flight_up,
+                                event_id,
+                                status,
+                                message,
+                                output,
+                            );
                         }
                         RelayMessage::Event {
                             subscription_id,
@@ -1954,80 +1875,12 @@ impl InnerRelay {
                         _ => (),
                     }
 
-                    // Get/Send events
-                    if do_up
-                        && !have_ids.is_empty()
-                        && in_flight_up.len() <= NEGENTROPY_LOW_WATER_UP
-                    {
-                        let mut num_sent = 0;
+                    // Send events
+                    self.upload_neg_events(&mut have_ids, &mut in_flight_up, opts)
+                        .await?;
 
-                        while !have_ids.is_empty() && in_flight_up.len() < NEGENTROPY_HIGH_WATER_UP
-                        {
-                            if let Some(id) = have_ids.pop() {
-                                match self.state.database().event_by_id(&id).await {
-                                    Ok(Some(event)) => {
-                                        in_flight_up.insert(id);
-                                        self.send_msg(ClientMessage::event(event))?;
-                                        num_sent += 1;
-                                    }
-                                    Ok(None) => {
-                                        // Event not found
-                                    }
-                                    Err(e) => tracing::error!(
-                                        url = %self.url,
-                                        error = %e,
-                                        "Couldn't upload event."
-                                    ),
-                                }
-                            }
-                        }
-
-                        // Update progress
-                        if let Some(progress) = &opts.progress {
-                            progress.send_modify(|state| {
-                                state.current += num_sent;
-                            });
-                        }
-
-                        if num_sent > 0 {
-                            tracing::info!(
-                                "Negentropy UP for '{}': {} events ({} remaining)",
-                                self.url,
-                                num_sent,
-                                have_ids.len()
-                            );
-                        }
-                    }
-
-                    if do_down && !need_ids.is_empty() && !in_flight_down {
-                        let capacity: usize = cmp::min(need_ids.len(), NEGENTROPY_BATCH_SIZE_DOWN);
-                        let mut ids: Vec<EventId> = Vec::with_capacity(capacity);
-
-                        while !need_ids.is_empty() && ids.len() < NEGENTROPY_BATCH_SIZE_DOWN {
-                            if let Some(id) = need_ids.pop() {
-                                ids.push(id);
-                            }
-                        }
-
-                        tracing::info!(
-                            "Negentropy DOWN for '{}': {} events ({} remaining)",
-                            self.url,
-                            ids.len(),
-                            need_ids.len()
-                        );
-
-                        // Update progress
-                        if let Some(progress) = &opts.progress {
-                            progress.send_modify(|state| {
-                                state.current += ids.len() as u64;
-                            });
-                        }
-
-                        let filter = Filter::new().ids(ids);
-                        self.send_msg(ClientMessage::req(down_sub_id.clone(), vec![filter]))?;
-
-                        in_flight_down = true
-                    }
+                    // Get events
+                    self.req_neg_events(&mut need_ids, &mut in_flight_down, &down_sub_id, opts)?;
                 }
                 RelayNotification::RelayStatus { status } => {
                     if status.is_disconnected() {
@@ -2069,4 +1922,90 @@ async fn close_ws(tx: &mut Sink) -> Result<(), Error> {
         Some(res) => Ok(res?),
         None => Err(Error::Timeout),
     }
+}
+
+#[inline]
+fn neg_id_to_event_id(id: Id) -> EventId {
+    EventId::from_byte_array(id.to_bytes())
+}
+
+#[inline]
+fn neg_depr_to_event_id(id: BytesDeprecated) -> Option<EventId> {
+    EventId::from_slice(id.as_bytes()).ok()
+}
+
+fn prepare_negentropy_client(
+    items: Vec<(EventId, Timestamp)>,
+) -> Result<Negentropy<NegentropyStorageVector>, Error> {
+    // Compose negentropy storage
+    let mut storage = NegentropyStorageVector::with_capacity(items.len());
+
+    // Add items
+    for (id, timestamp) in items.into_iter() {
+        let id: Id = Id::new(id.to_bytes());
+        storage.insert(timestamp.as_u64(), id)?;
+    }
+
+    // Seal
+    storage.seal()?;
+
+    // Build negentropy client
+    Ok(Negentropy::new(storage, NEGENTROPY_FRAME_SIZE_LIMIT)?)
+}
+
+/// Check if negentropy is supported
+#[inline(never)]
+async fn check_negentropy_support(
+    sub_id: &SubscriptionId,
+    opts: &SyncOptions,
+    temp_notifications: &mut broadcast::Receiver<RelayNotification>,
+) -> Result<(), Error> {
+    time::timeout(Some(opts.initial_timeout), async {
+        while let Ok(notification) = temp_notifications.recv().await {
+            if let RelayNotification::Message { message } = notification {
+                match message {
+                    RelayMessage::NegMsg {
+                        subscription_id, ..
+                    } => {
+                        if &subscription_id == sub_id {
+                            break;
+                        }
+                    }
+                    RelayMessage::NegErr {
+                        subscription_id,
+                        message,
+                    } => {
+                        if &subscription_id == sub_id {
+                            return Err(Error::RelayMessage(message));
+                        }
+                    }
+                    RelayMessage::Notice(message) => {
+                        if message == "ERROR: negentropy error: negentropy query missing elements" {
+                            // The NEG-OPEN message is send with 4 elements instead of 5
+                            // If the relay return this error means that is not support new
+                            // negentropy protocol
+                            return Err(Error::Negentropy(
+                                negentropy::Error::UnsupportedProtocolVersion,
+                            ));
+                        } else if message.contains("bad msg")
+                            && (message.contains("unknown cmd")
+                                || message.contains("negentropy")
+                                || message.contains("NEG-"))
+                        {
+                            return Err(Error::NegentropyNotSupported);
+                        } else if message.contains("bad msg: invalid message")
+                            && message.contains("NEG-OPEN")
+                        {
+                            return Err(Error::UnknownNegentropyError);
+                        }
+                    }
+                    _ => (),
+                }
+            }
+        }
+
+        Ok(())
+    })
+    .await
+    .ok_or(Error::Timeout)?
 }

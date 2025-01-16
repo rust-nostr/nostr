@@ -693,7 +693,6 @@ impl Relay {
                 Err(e) => match e {
                     Error::NegentropyNotSupported
                     | Error::Negentropy(negentropy::Error::UnsupportedProtocolVersion) => {
-                        tracing::warn!("Negentropy protocol '{}' (maybe) not supported, trying the deprecated one.", negentropy::PROTOCOL_VERSION);
                         self.inner
                             .sync_deprecated(filter, items, opts, &mut output)
                             .await?;
@@ -1124,4 +1123,6 @@ mod tests {
             .await;
         assert!(res.is_ok());
     }
+
+    // TODO: add negentropy reconciliation test
 }
