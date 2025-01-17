@@ -75,7 +75,9 @@ impl InnerRelayPool {
     }
 
     pub async fn shutdown(&self) -> Result<(), Error> {
-        // TODO: check if already shutdown
+        if self.is_shutdown() {
+            return Ok(());
+        }
 
         // Disconnect and force remove all relays
         self.remove_all_relays(true).await?;

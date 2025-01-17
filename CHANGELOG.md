@@ -70,6 +70,7 @@
 * pool: refactor negentropy sync methods ([Yuki Kishimoto])
 * pool: refactor relay pinger ([Yuki Kishimoto])
 * pool: refactor relay disconnect logic ([Yuki Kishimoto])
+* pool: check if pool was already shutdown when calling `RelayPool::shutdown` ([Yuki Kishimoto])
 * lmdb: use `EventBorrow` instead of `DatabaseEvent` ([Yuki Kishimoto])
 * ndb: refactor note-to-event conversion ([Yuki Kishimoto])
 
