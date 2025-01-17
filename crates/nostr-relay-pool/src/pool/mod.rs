@@ -981,24 +981,22 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let targets = urls.into_iter().map(|u| (u, filters.clone()));
+        let targets = urls
+            .into_iter()
+            .map(|u| Ok((u.try_into_url()?, filters.clone())))
+            .collect::<Result<_, Error>>()?;
         self.stream_events_targeted(targets, timeout, policy).await
     }
 
     /// Targeted streaming events
     ///
     /// Stream events from specific relays with specific filters
-    pub async fn stream_events_targeted<I, U>(
+    pub async fn stream_events_targeted(
         &self,
-        targets: I,
+        targets: HashMap<RelayUrl, Vec<Filter>>,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<ReceiverStream<Event>, Error>
-    where
-        I: IntoIterator<Item = (U, Vec<Filter>)>,
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
+    ) -> Result<ReceiverStream<Event>, Error> {
         self.inner
             .stream_events_targeted(targets, timeout, policy)
             .await

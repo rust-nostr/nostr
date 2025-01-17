@@ -887,19 +887,14 @@ impl Client {
     /// Targeted streaming events
     ///
     /// Stream events from specific relays with specific filters
-    pub async fn stream_events_targeted<I, U>(
+    pub async fn stream_events_targeted(
         &self,
-        source: I,
+        targets: HashMap<RelayUrl, Vec<Filter>>,
         timeout: Duration,
-    ) -> Result<ReceiverStream<Event>, Error>
-    where
-        I: IntoIterator<Item = (U, Vec<Filter>)>,
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
-    {
+    ) -> Result<ReceiverStream<Event>, Error> {
         Ok(self
             .pool
-            .stream_events_targeted(source, timeout, ReqExitPolicy::default())
+            .stream_events_targeted(targets, timeout, ReqExitPolicy::default())
             .await?)
     }
 

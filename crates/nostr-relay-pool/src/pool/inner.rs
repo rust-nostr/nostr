@@ -305,24 +305,13 @@ impl InnerRelayPool {
         Ok(())
     }
 
-    // Keep this methof here to avoif to have to `stealth_clone` before spawning the task (see `FULL RELAY CLONE` below)
-    pub async fn stream_events_targeted<I, U>(
+    // Keep this method here to avoid to have to `stealth_clone` before spawning the task (see `FULL RELAY CLONE` below)
+    pub async fn stream_events_targeted(
         &self,
-        targets: I,
+        targets: HashMap<RelayUrl, Vec<Filter>>,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<ReceiverStream<Event>, Error>
-    where
-        I: IntoIterator<Item = (U, Vec<Filter>)>,
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
-        // Collect targets
-        let targets: HashMap<RelayUrl, Vec<Filter>> = targets
-            .into_iter()
-            .map(|(u, f)| Ok((u.try_into_url()?, f)))
-            .collect::<Result<_, Error>>()?;
-
+    ) -> Result<ReceiverStream<Event>, Error> {
         // Check if urls set is empty
         if targets.is_empty() {
             return Err(Error::NoRelaysSpecified);

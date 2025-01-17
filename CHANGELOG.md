@@ -39,6 +39,7 @@
 * pool: change `Relay::connect` method signature ([Yuki Kishimoto])
 * pool: change `Relay::disconnect` method signature ([Yuki Kishimoto])
 * pool: change `RelayPool::disconnect` method signature ([Yuki Kishimoto])
+* pool: update `targets` arg type in `RelayPool::stream_events_targeted` method ([Yuki Kishimoto])
 * sdk: change `Client::disconnect` method signature ([Yuki Kishimoto])
 * nwc: change `NWC::shutdown` method signature ([Yuki Kishimoto])
 * ffi: change `UnsignedEvent::tags` output ([Yuki Kishimoto])
