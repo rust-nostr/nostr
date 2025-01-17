@@ -22,7 +22,7 @@ use nostr::event::raw::RawEvent;
 use nostr::secp256k1::rand::{self, Rng};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::{broadcast, watch, Mutex, MutexGuard, OnceCell, RwLock};
+use tokio::sync::{broadcast, watch, Mutex, MutexGuard, Notify, OnceCell, RwLock};
 
 use super::constants::{
     BATCH_EVENT_ITERATION_TIMEOUT, DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL,
@@ -53,7 +53,7 @@ struct RelayChannels {
         Sender<Vec<ClientMessage>>,
         Mutex<Receiver<Vec<ClientMessage>>>,
     ),
-    ping: (watch::Sender<u64>, Mutex<watch::Receiver<u64>>),
+    ping: Notify,
     service: (
         watch::Sender<RelayServiceEvent>,
         Mutex<watch::Receiver<RelayServiceEvent>>,
@@ -62,13 +62,12 @@ struct RelayChannels {
 
 impl RelayChannels {
     pub fn new() -> Self {
-        let (tx_nostr, rx_nostr) = mpsc::channel::<Vec<ClientMessage>>(1024);
-        let (tx_ping, rx_ping) = watch::channel::<u64>(0);
-        let (tx_service, rx_service) = watch::channel::<RelayServiceEvent>(RelayServiceEvent::None);
+        let (tx_nostr, rx_nostr) = mpsc::channel(1024);
+        let (tx_service, rx_service) = watch::channel(RelayServiceEvent::None);
 
         Self {
             nostr: (tx_nostr, Mutex::new(rx_nostr)),
-            ping: (tx_ping, Mutex::new(rx_ping)),
+            ping: Notify::new(),
             service: (tx_service, Mutex::new(rx_service)),
         }
     }
@@ -93,18 +92,8 @@ impl RelayChannels {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn ping(&self, nonce: u64) -> Result<(), Error> {
-        self.ping
-            .0
-            .send(nonce)
-            .map_err(|_| Error::CantSendChannelMessage {
-                channel: String::from("ping"),
-            })
-    }
-
-    #[inline]
-    pub async fn rx_ping(&self) -> MutexGuard<'_, watch::Receiver<u64>> {
-        self.ping.1.lock().await
+    pub fn ping(&self) {
+        self.ping.notify_one()
     }
 
     #[inline]
@@ -672,10 +661,7 @@ impl InnerRelay {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay sender exited."),
                 Err(e) => tracing::error!(url = %self.url, error = %e, "Relay sender exited with error.")
             },
-            res = self.ping_handler(&ping) => match res {
-                Ok(()) => tracing::trace!(url = %self.url, "Relay pinger exited."),
-                Err(e) => tracing::error!(url = %self.url, error = %e, "Relay pinger exited with error.")
-            }
+            _ = self.pinger() => {}
         }
     }
 
@@ -689,7 +675,6 @@ impl InnerRelay {
 
         // Lock receivers
         let mut rx_nostr = self.atomic.channels.rx_nostr().await;
-        let mut rx_ping = self.atomic.channels.rx_ping().await;
 
         loop {
             tokio::select! {
@@ -720,11 +705,19 @@ impl InnerRelay {
                     self.stats.add_bytes_sent(size);
                 }
                 // Ping channel receiver
-                Ok(()) = rx_ping.changed() => {
+                _ = self.atomic.channels.ping.notified() => {
                     #[cfg(not(target_arch = "wasm32"))]
                     {
-                         // Get nonce and mark as seen
-                        let nonce: u64 = *rx_ping.borrow_and_update();
+                        // If the last nonce is NOT 0, check if relay replied.
+                        // Return error if relay not replied
+                        if ping.last_nonce() != 0 && !ping.replied() {
+                            return Err(Error::NotRepliedToPing);
+                        }
+
+                        // Generate and save nonce
+                        let nonce: u64 = rand::random();
+                        ping.set_last_nonce(nonce);
+                        ping.set_replied(false);
 
                         // Compose ping message
                         let msg = WsMessage::Ping(nonce.to_be_bytes().to_vec());
@@ -735,7 +728,8 @@ impl InnerRelay {
                         // Set ping as just sent
                         ping.just_sent().await;
 
-                        tracing::trace!(url = %self.url, nonce = %nonce, "Ping sent.");
+                        #[cfg(debug_assertions)]
+                        tracing::debug!(url = %self.url, nonce = %nonce, "Ping sent.");
                     }
                 }
                 else => break
@@ -800,39 +794,17 @@ impl InnerRelay {
         Ok(())
     }
 
-    async fn ping_handler(&self, ping: &PingTracker) -> Result<(), Error> {
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.flags.has_ping() {
-            loop {
-                // If the last nonce is NOT 0, check if relay replied.
-                // Return error if relay not replied
-                if ping.last_nonce() != 0 && !ping.replied() {
-                    return Err(Error::NotRepliedToPing);
-                }
-
-                // Generate and save nonce
-                let nonce: u64 = rand::random();
-                ping.set_last_nonce(nonce);
-                ping.set_replied(false);
-
-                // Try to ping
-                self.atomic.channels.ping(nonce)?;
-
-                // Sleep
-                time::sleep(PING_INTERVAL).await;
+    /// Send a signal every [`PING_INTERVAL`] to the other tasks, asking to ping the relay.
+    async fn pinger(&self) {
+        loop {
+            // Check if support ping
+            #[cfg(not(target_arch = "wasm32"))]
+            if self.flags.has_ping() {
+                self.atomic.channels.ping();
             }
-        } else {
-            loop {
-                time::sleep(PING_INTERVAL).await;
-            }
-        }
 
-        #[cfg(target_arch = "wasm32")]
-        {
-            let _ping = ping;
-            loop {
-                time::sleep(PING_INTERVAL).await;
-            }
+            // Sleep
+            time::sleep(PING_INTERVAL).await;
         }
     }
 

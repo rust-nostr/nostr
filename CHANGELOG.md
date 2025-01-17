@@ -64,6 +64,7 @@
 * nostr: make EventBuilder `custom_created_at` and `pow` fields public ([Yuki Kishimoto])
 * pool: update `Error::WebSocket` variant inner type ([Yuki Kishimoto])
 * pool: refactor negentropy sync methods ([Yuki Kishimoto])
+* pool: refactor relay pinger ([Yuki Kishimoto])
 * lmdb: use `EventBorrow` instead of `DatabaseEvent` ([Yuki Kishimoto])
 * ndb: refactor note-to-event conversion ([Yuki Kishimoto])
 
