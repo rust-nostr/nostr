@@ -400,6 +400,9 @@ impl InnerRelay {
             // Set that connection task is running
             relay.atomic.running.store(true, Ordering::SeqCst);
 
+            // Lock receiver
+            let mut rx_nostr = relay.atomic.channels.rx_nostr().await;
+
             // Last websocket error
             // Store it to avoid printing every time the same connection error
             let mut last_ws_error = None;
@@ -412,7 +415,7 @@ impl InnerRelay {
 
                 tokio::select! {
                     // Connect and run message handler
-                    _ = relay.connect_and_run(stream, &mut last_ws_error) => {},
+                    _ = relay.connect_and_run(stream, &mut rx_nostr, &mut last_ws_error) => {},
                     // Handle "termination notification
                     _ = relay.handle_terminate() => break,
                 }
@@ -552,11 +555,12 @@ impl InnerRelay {
     async fn connect_and_run(
         &self,
         stream: Option<(Sink, Stream)>,
+        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessage>>>,
         last_ws_error: &mut Option<String>,
     ) {
         match stream {
             // Already have a stream, go to post-connection stage
-            Some((ws_tx, ws_rx)) => self.post_connection(ws_tx, ws_rx).await,
+            Some((ws_tx, ws_rx)) => self.post_connection(ws_tx, ws_rx, rx_nostr).await,
             // No stream is passed, try to connect
             // Set the status to "disconnected" to allow to automatic retries
             None => match self
@@ -564,7 +568,7 @@ impl InnerRelay {
                 .await
             {
                 // Connection success, go to post-connection stage
-                Ok((ws_tx, ws_rx)) => self.post_connection(ws_tx, ws_rx).await,
+                Ok((ws_tx, ws_rx)) => self.post_connection(ws_tx, ws_rx, rx_nostr).await,
                 // Error during connection
                 Err(e) => {
                     // TODO: avoid string allocation. The error is converted to string only to perform the `!=` binary operation.
@@ -589,16 +593,26 @@ impl InnerRelay {
     }
 
     // To run after websocket connection
-    async fn post_connection(&self, ws_tx: Sink, ws_rx: Stream) {
+    async fn post_connection(
+        &self,
+        ws_tx: Sink,
+        ws_rx: Stream,
+        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessage>>>,
+    ) {
         // Request information document
         #[cfg(feature = "nip11")]
         self.request_nip11_document();
 
         // Run message handler
-        self.run_message_handler(ws_tx, ws_rx).await;
+        self.run_message_handler(ws_tx, ws_rx, rx_nostr).await;
     }
 
-    async fn run_message_handler(&self, ws_tx: Sink, ws_rx: Stream) {
+    async fn run_message_handler(
+        &self,
+        ws_tx: Sink,
+        ws_rx: Stream,
+        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessage>>>,
+    ) {
         // (Re)subscribe to relay
         if self.flags.can_read() {
             if let Err(e) = self.resubscribe().await {
@@ -614,7 +628,7 @@ impl InnerRelay {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay received exited."),
                 Err(e) => tracing::error!(url = %self.url, error = %e, "Relay receiver exited with error.")
             },
-            res = self.sender_message_handler(ws_tx, &ping) => match res {
+            res = self.sender_message_handler(ws_tx, rx_nostr, &ping) => match res {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay sender exited."),
                 Err(e) => tracing::error!(url = %self.url, error = %e, "Relay sender exited with error.")
             },
@@ -625,13 +639,11 @@ impl InnerRelay {
     async fn sender_message_handler(
         &self,
         mut ws_tx: Sink,
+        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessage>>>,
         ping: &PingTracker,
     ) -> Result<(), Error> {
         #[cfg(target_arch = "wasm32")]
         let _ping = ping;
-
-        // Lock receivers
-        let mut rx_nostr = self.atomic.channels.rx_nostr().await;
 
         loop {
             tokio::select! {
