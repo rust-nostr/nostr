@@ -211,8 +211,9 @@ impl Client {
         self.inner.try_connect(timeout).await.into()
     }
 
-    pub async fn disconnect(&self) -> Result<()> {
-        Ok(self.inner.disconnect().await?)
+    /// Disconnect from all relays
+    pub async fn disconnect(&self) {
+        self.inner.disconnect().await
     }
 
     pub async fn subscriptions(&self) -> HashMap<String, Vec<Arc<Filter>>> {

@@ -244,8 +244,8 @@ impl JsClient {
     }
 
     /// Disconnect from all relays
-    pub async fn disconnect(&self) -> Result<()> {
-        self.inner.disconnect().await.map_err(into_err)
+    pub async fn disconnect(&self) {
+        self.inner.disconnect().await
     }
 
     /// Subscribe to filters

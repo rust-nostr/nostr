@@ -22,7 +22,7 @@ use nostr::event::raw::RawEvent;
 use nostr::secp256k1::rand::{self, Rng};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::{broadcast, watch, Mutex, MutexGuard, Notify, OnceCell, RwLock};
+use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, OnceCell, RwLock};
 
 use super::constants::{
     BATCH_EVENT_ITERATION_TIMEOUT, DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL,
@@ -39,14 +39,6 @@ use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
 
-#[derive(Debug, Clone, Copy)]
-enum RelayServiceEvent {
-    /// None
-    None,
-    /// Completely disconnect
-    Terminate,
-}
-
 #[derive(Debug)]
 struct RelayChannels {
     nostr: (
@@ -54,21 +46,17 @@ struct RelayChannels {
         Mutex<Receiver<Vec<ClientMessage>>>,
     ),
     ping: Notify,
-    service: (
-        watch::Sender<RelayServiceEvent>,
-        Mutex<watch::Receiver<RelayServiceEvent>>,
-    ),
+    terminate: Notify,
 }
 
 impl RelayChannels {
     pub fn new() -> Self {
         let (tx_nostr, rx_nostr) = mpsc::channel(1024);
-        let (tx_service, rx_service) = watch::channel(RelayServiceEvent::None);
 
         Self {
             nostr: (tx_nostr, Mutex::new(rx_nostr)),
             ping: Notify::new(),
-            service: (tx_service, Mutex::new(rx_service)),
+            terminate: Notify::new(),
         }
     }
 
@@ -96,18 +84,8 @@ impl RelayChannels {
         self.ping.notify_one()
     }
 
-    #[inline]
-    pub async fn rx_service(&self) -> MutexGuard<'_, watch::Receiver<RelayServiceEvent>> {
-        self.service.1.lock().await
-    }
-
-    pub fn send_service_msg(&self, event: RelayServiceEvent) -> Result<(), Error> {
-        self.service
-            .0
-            .send(event)
-            .map_err(|_| Error::CantSendChannelMessage {
-                channel: String::from("service"),
-            })
+    pub fn terminate(&self) {
+        self.terminate.notify_one()
     }
 }
 
@@ -157,9 +135,7 @@ pub(crate) struct InnerRelay {
 
 impl AtomicDestroyer for InnerRelay {
     fn on_destroy(&self) {
-        if let Err(e) = self.disconnect() {
-            tracing::error!(url = %self.url, error = %e, "Impossible to destroy relay.");
-        }
+        self.disconnect();
     }
 }
 
@@ -424,9 +400,6 @@ impl InnerRelay {
             // Set that connection task is running
             relay.atomic.running.store(true, Ordering::SeqCst);
 
-            // Acquire service watcher
-            let mut rx_service = relay.atomic.channels.rx_service().await;
-
             // Last websocket error
             // Store it to avoid printing every time the same connection error
             let mut last_ws_error = None;
@@ -440,14 +413,8 @@ impl InnerRelay {
                 tokio::select! {
                     // Connect and run message handler
                     _ = relay.connect_and_run(stream, &mut last_ws_error) => {},
-                    // Handle "terminate" message
-                    _ = relay.handle_terminate(&mut rx_service) => {
-                        // Update status
-                        relay.set_status(RelayStatus::Terminated, true);
-
-                        // Break loop
-                        break;
-                    }
+                    // Handle "termination notification
+                    _ = relay.handle_terminate() => break,
                 }
 
                 // Update stream to `None`, meaning that it was already used (if was some).
@@ -480,12 +447,8 @@ impl InnerRelay {
                     tokio::select! {
                         // Sleep
                         _ = time::sleep(interval) => {},
-                        // Handle "terminate" message
-                        _ = relay.handle_terminate(&mut rx_service) => {
-                            // Update status
-                            relay.set_status(RelayStatus::Terminated, true);
-                            break;
-                        }
+                        // Handle "termination notification
+                        _ = relay.handle_terminate() => break,
                     }
                 } else {
                     // Reconnection disabled, set status to "terminated"
@@ -543,18 +506,12 @@ impl InnerRelay {
         self.opts.retry_interval
     }
 
-    async fn handle_terminate(&self, rx_service: &mut watch::Receiver<RelayServiceEvent>) {
-        loop {
-            if rx_service.changed().await.is_ok() {
-                // Get service and mark as seen
-                match *rx_service.borrow_and_update() {
-                    // Do nothing
-                    RelayServiceEvent::None => {}
-                    // Terminate
-                    RelayServiceEvent::Terminate => break,
-                }
-            }
-        }
+    async fn handle_terminate(&self) {
+        // Wait to be notified
+        self.atomic.channels.terminate.notified().await;
+
+        // Update status
+        self.set_status(RelayStatus::Terminated, true);
     }
 
     pub(super) async fn _try_connect(
@@ -1073,16 +1030,14 @@ impl InnerRelay {
         }))
     }
 
-    pub fn disconnect(&self) -> Result<(), Error> {
-        // Check if it's NOT terminated
-        if !self.status().is_terminated() {
-            self.atomic
-                .channels
-                .send_service_msg(RelayServiceEvent::Terminate)?;
-            self.send_notification(RelayNotification::Shutdown, false);
+    pub fn disconnect(&self) {
+        // Check if it's already terminated
+        if self.status().is_terminated() {
+            return;
         }
 
-        Ok(())
+        self.atomic.channels.terminate();
+        self.send_notification(RelayNotification::Shutdown, false);
     }
 
     #[inline]

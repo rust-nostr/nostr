@@ -176,8 +176,8 @@ impl JsRelay {
     }
 
     /// Disconnect from relay and set status to 'Terminated'
-    pub fn disconnect(&self) -> Result<()> {
-        self.inner.disconnect().map_err(into_err)
+    pub fn disconnect(&self) {
+        self.inner.disconnect()
     }
 
     /// Send msg to relay

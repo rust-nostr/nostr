@@ -334,7 +334,7 @@ impl Relay {
 
     /// Disconnect from relay and set status to 'Terminated'
     #[inline]
-    pub fn disconnect(&self) -> Result<(), Error> {
+    pub fn disconnect(&self) {
         self.inner.disconnect()
     }
 
@@ -809,7 +809,7 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Connected);
 
-        relay.disconnect().unwrap();
+        relay.disconnect();
 
         time::sleep(Duration::from_millis(100)).await;
 
@@ -839,7 +839,7 @@ mod tests {
 
         time::sleep(Duration::from_secs(3)).await;
 
-        relay.disconnect().unwrap();
+        relay.disconnect();
 
         time::sleep(Duration::from_millis(100)).await;
 
@@ -945,7 +945,7 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Connected);
 
-        relay.disconnect().unwrap();
+        relay.disconnect();
 
         time::sleep(Duration::from_millis(100)).await;
 
@@ -973,7 +973,7 @@ mod tests {
 
         assert_eq!(relay.status(), RelayStatus::Connecting);
 
-        relay.disconnect().unwrap();
+        relay.disconnect();
 
         time::sleep(Duration::from_millis(100)).await;
 

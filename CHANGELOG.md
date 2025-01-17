@@ -37,6 +37,10 @@
 * nostr: add `nip98` feature ([Yuki Kishimoto])
 * nostr: remove support for event JSON order preservation ([Yuki Kishimoto])
 * pool: change `Relay::connect` method signature ([Yuki Kishimoto])
+* pool: change `Relay::disconnect` method signature ([Yuki Kishimoto])
+* pool: change `RelayPool::disconnect` method signature ([Yuki Kishimoto])
+* sdk: change `Client::disconnect` method signature ([Yuki Kishimoto])
+* nwc: change `NWC::shutdown` method signature ([Yuki Kishimoto])
 * ffi: change `UnsignedEvent::tags` output ([Yuki Kishimoto])
 * ffi: convert `ImageDimensions` in a `Record` ([Yuki Kishimoto])
 * ffi: convert `Contact` to a `Record` ([Yuki Kishimoto])
@@ -65,6 +69,7 @@
 * pool: update `Error::WebSocket` variant inner type ([Yuki Kishimoto])
 * pool: refactor negentropy sync methods ([Yuki Kishimoto])
 * pool: refactor relay pinger ([Yuki Kishimoto])
+* pool: refactor relay disconnect logic ([Yuki Kishimoto])
 * lmdb: use `EventBorrow` instead of `DatabaseEvent` ([Yuki Kishimoto])
 * ndb: refactor note-to-event conversion ([Yuki Kishimoto])
 

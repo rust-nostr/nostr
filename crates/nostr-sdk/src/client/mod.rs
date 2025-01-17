@@ -525,8 +525,8 @@ impl Client {
 
     /// Disconnect from all relays
     #[inline]
-    pub async fn disconnect(&self) -> Result<(), Error> {
-        Ok(self.pool.disconnect().await?)
+    pub async fn disconnect(&self) {
+        self.pool.disconnect().await
     }
 
     /// Get pool subscriptions

@@ -267,7 +267,7 @@ impl InnerRelayPool {
         }
 
         // Disconnect
-        relay.disconnect()?;
+        relay.disconnect();
 
         Ok(())
     }

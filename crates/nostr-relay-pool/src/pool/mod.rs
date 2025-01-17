@@ -331,16 +331,14 @@ impl RelayPool {
     }
 
     /// Disconnect from all relays
-    pub async fn disconnect(&self) -> Result<(), Error> {
+    pub async fn disconnect(&self) {
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
 
         // Iter values and disconnect
         for relay in relays.values() {
-            relay.disconnect()?;
+            relay.disconnect();
         }
-
-        Ok(())
     }
 
     /// Connect to a previously added relay
@@ -407,7 +405,7 @@ impl RelayPool {
         let relay: &Relay = self.inner.internal_relay(&relays, &url)?;
 
         // Disconnect
-        relay.disconnect()?;
+        relay.disconnect();
 
         Ok(())
     }
