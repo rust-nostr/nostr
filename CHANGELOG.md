@@ -74,6 +74,7 @@
 * pool: avoid repeatedly locking the relay channel receiver ([Yuki Kishimoto])
 * lmdb: use `EventBorrow` instead of `DatabaseEvent` ([Yuki Kishimoto])
 * ndb: refactor note-to-event conversion ([Yuki Kishimoto])
+* relay-builder: refactor shutdown mechanism to use `Notify` over `broadcast` ([Yuki Kishimoto])
 
 ### Added
 

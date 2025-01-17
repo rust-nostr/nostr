@@ -14,7 +14,7 @@ use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
 use nostr_database::prelude::*;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
-use tokio::sync::{broadcast, Semaphore};
+use tokio::sync::{broadcast, Notify, Semaphore};
 
 use super::session::{Nip42Session, RateLimiterResponse, Session, Tokens};
 use super::util;
@@ -30,7 +30,7 @@ type WsTx<S> = SplitSink<WebSocketStream<S>, Message>;
 pub(super) struct InnerLocalRelay {
     addr: SocketAddr,
     database: Arc<dyn NostrEventsDatabase>,
-    shutdown: broadcast::Sender<()>,
+    shutdown: Arc<Notify>,
     /// Channel to notify new event received
     ///
     /// Every session will listen and check own subscriptions
@@ -86,7 +86,6 @@ impl InnerLocalRelay {
         };
 
         // Channels
-        let (shutdown_tx, ..) = broadcast::channel::<()>(1);
         let (new_event, ..) = broadcast::channel(1024);
 
         let max_connections: usize = builder.max_connections.unwrap_or(Semaphore::MAX_PERMITS);
@@ -95,7 +94,7 @@ impl InnerLocalRelay {
         Ok(Self {
             addr,
             database: builder.database,
-            shutdown: shutdown_tx,
+            shutdown: Arc::new(Notify::new()),
             new_event,
             mode: builder.mode,
             rate_limit: builder.rate_limit,
@@ -119,7 +118,6 @@ impl InnerLocalRelay {
     /// Start socket to listen for new websocket connections
     async fn listen(&self) -> Result<(), Error> {
         let listener: TcpListener = TcpListener::bind(&self.addr).await?;
-        let mut shutdown: broadcast::Receiver<()> = self.shutdown.subscribe();
 
         let r: Self = self.clone();
         tokio::spawn(async move {
@@ -140,10 +138,7 @@ impl InnerLocalRelay {
                             }
                         }
                     }
-                    _ = shutdown.recv() => {
-                        break;
-                    },
-
+                    _ = r.shutdown.notified() => break,
                 }
             }
 
@@ -170,7 +165,8 @@ impl InnerLocalRelay {
 
     #[inline]
     pub fn shutdown(&self) {
-        let _ = self.shutdown.send(());
+        // There are at least 2 waiters
+        self.shutdown.notify_waiters()
     }
 
     /// Handle already upgraded HTTP request
@@ -225,7 +221,6 @@ impl InnerLocalRelay {
 
         tracing::debug!("WebSocket connection established: {addr}");
 
-        let mut shutdown_rx = self.shutdown.subscribe();
         let mut new_event = self.new_event.subscribe();
 
         let (mut tx, mut rx) = ws_stream.split();
@@ -277,9 +272,7 @@ impl InnerLocalRelay {
                         }
                     }
                 }
-                _ = shutdown_rx.recv() => {
-                    break;
-                }
+                _ = self.shutdown.notified() => break,
             }
         }
 
