@@ -139,12 +139,16 @@ impl From<nip59::Error> for Error {
 /// Event builder
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct EventBuilder {
+    // Not expose the kind, tags and content.
+    // These if changed may break the previously constructed events
+    // (i.e., change the content of a NIP46 event or of a NIP59 seal).
     kind: Kind,
     tags: Vec<Tag>,
     content: String,
-    custom_created_at: Option<Timestamp>,
+    /// Custom timestamp
+    pub custom_created_at: Option<Timestamp>,
     /// POW difficulty
-    pow: Option<u8>,
+    pub pow: Option<u8>,
 }
 
 impl EventBuilder {
