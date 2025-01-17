@@ -240,7 +240,7 @@ impl InnerRelayPool {
         }
     }
 
-    async fn internal_remove_relay(
+    fn internal_remove_relay(
         &self,
         relays: &mut Relays,
         url: RelayUrl,
@@ -284,7 +284,7 @@ impl InnerRelayPool {
         let mut relays = self.atomic.relays.write().await;
 
         // Remove
-        self.internal_remove_relay(&mut relays, url, force).await
+        self.internal_remove_relay(&mut relays, url, force)
     }
 
     pub async fn remove_all_relays(&self, force: bool) -> Result<(), Error> {
@@ -296,7 +296,8 @@ impl InnerRelayPool {
 
         // Iter urls and remove relays
         for url in urls.into_iter() {
-            self.internal_remove_relay(&mut relays, url, force).await?;
+            // TODO: don't propagate error here, it will never return error
+            self.internal_remove_relay(&mut relays, url, force)?;
         }
 
         Ok(())
