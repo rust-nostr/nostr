@@ -349,7 +349,7 @@ impl NostrEventsDatabase for WebDatabase {
 
     fn has_coordinate_been_deleted<'a>(
         &'a self,
-        coordinate: &'a Coordinate,
+        coordinate: &'a CoordinateBorrow<'a>,
         timestamp: &'a Timestamp,
     ) -> BoxedFuture<'a, Result<bool, DatabaseError>> {
         Box::pin(async move {

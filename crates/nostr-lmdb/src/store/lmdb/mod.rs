@@ -15,7 +15,7 @@ use nostr::prelude::*;
 use nostr_database::flatbuffers::FlatBufferDecodeBorrowed;
 use nostr_database::{FlatBufferBuilder, FlatBufferEncode};
 
-mod index;
+pub(super) mod index;
 
 use super::error::Error;
 use super::types::DatabaseFilter;
@@ -702,7 +702,7 @@ impl Lmdb {
     pub(crate) fn mark_coordinate_deleted(
         &self,
         txn: &mut RwTxn,
-        coordinate: &Coordinate,
+        coordinate: &CoordinateBorrow,
         when: Timestamp,
     ) -> Result<(), Error> {
         let key: Vec<u8> = index::make_coordinate_index_key(coordinate);
@@ -710,15 +710,23 @@ impl Lmdb {
         Ok(())
     }
 
-    pub(crate) fn when_is_coordinate_deleted(
+    pub(crate) fn when_is_coordinate_deleted<'a>(
         &self,
         txn: &RoTxn,
-        coordinate: &Coordinate,
+        coordinate: &'a CoordinateBorrow<'a>,
     ) -> Result<Option<Timestamp>, Error> {
         let key: Vec<u8> = index::make_coordinate_index_key(coordinate);
+        self.when_is_coordinate_deleted_by_key(txn, key)
+    }
+
+    pub(crate) fn when_is_coordinate_deleted_by_key(
+        &self,
+        txn: &RoTxn,
+        coordinate_key: Vec<u8>,
+    ) -> Result<Option<Timestamp>, Error> {
         Ok(self
             .deleted_coordinates
-            .get(txn, &key)?
+            .get(txn, &coordinate_key)?
             .map(Timestamp::from_secs))
     }
 

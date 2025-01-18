@@ -9,7 +9,7 @@
 use alloc::borrow::ToOwned;
 #[cfg(not(feature = "std"))]
 use alloc::collections::BTreeMap as AllocMap;
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
 use core::num::ParseIntError;
@@ -88,6 +88,12 @@ pub struct Coordinate {
     pub relays: Vec<RelayUrl>,
 }
 
+impl fmt::Display for Coordinate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}:{}", self.kind, self.public_key, self.identifier)
+    }
+}
+
 impl Coordinate {
     /// Create new event coordinate
     #[inline]
@@ -162,6 +168,15 @@ impl Coordinate {
     pub fn has_identifier(&self) -> bool {
         !self.identifier.is_empty()
     }
+
+    /// Borrow coordinate
+    pub fn borrow(&self) -> CoordinateBorrow<'_> {
+        CoordinateBorrow {
+            kind: &self.kind,
+            public_key: &self.public_key,
+            identifier: Some(&self.identifier),
+        }
+    }
 }
 
 impl From<Coordinate> for Tag {
@@ -200,12 +215,6 @@ impl From<&Coordinate> for Filter {
     }
 }
 
-impl fmt::Display for Coordinate {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}:{}", self.kind, self.public_key, self.identifier)
-    }
-}
-
 impl FromStr for Coordinate {
     type Err = Error;
 
@@ -213,6 +222,31 @@ impl FromStr for Coordinate {
     #[inline]
     fn from_str(coordinate: &str) -> Result<Self, Self::Err> {
         Self::parse(coordinate)
+    }
+}
+
+/// Borrowed coordinate
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CoordinateBorrow<'a> {
+    /// Kind
+    pub kind: &'a Kind,
+    /// Public key
+    pub public_key: &'a PublicKey,
+    /// `d` tag identifier
+    ///
+    /// Needed for a parametrized replaceable event.
+    pub identifier: Option<&'a str>,
+}
+
+impl CoordinateBorrow<'_> {
+    /// Into owned coordinate
+    pub fn into_owned(self) -> Coordinate {
+        Coordinate {
+            kind: *self.kind,
+            public_key: *self.public_key,
+            identifier: self.identifier.map(|s| s.to_string()).unwrap_or_default(),
+            relays: Vec::new(),
+        }
     }
 }
 

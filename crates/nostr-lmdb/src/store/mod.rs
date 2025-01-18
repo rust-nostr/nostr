@@ -18,7 +18,7 @@ mod lmdb;
 mod types;
 
 use self::error::Error;
-use self::lmdb::Lmdb;
+use self::lmdb::{index, Lmdb};
 
 #[derive(Debug)]
 pub struct Store {
@@ -90,26 +90,11 @@ impl Store {
             }
 
             // Reject event if ADDR was deleted after it's created_at date
-            // (non-parameterized)
-            if event.kind.is_replaceable() {
-                let coordinate: Coordinate = Coordinate::new(event.kind, event.pubkey);
+            // (non-parameterized or parameterized)
+            if let Some(coordinate) = event.coordinate() {
                 if let Some(time) = db.when_is_coordinate_deleted(&read_txn, &coordinate)? {
                     if event.created_at <= time {
                         return Ok(SaveEventStatus::Rejected(RejectedReason::Deleted));
-                    }
-                }
-            }
-
-            // Reject event if ADDR was deleted after it's created_at date
-            // (parameterized)
-            if event.kind.is_addressable() {
-                if let Some(identifier) = event.tags.identifier() {
-                    let coordinate: Coordinate =
-                        Coordinate::new(event.kind, event.pubkey).identifier(identifier);
-                    if let Some(time) = db.when_is_coordinate_deleted(&read_txn, &coordinate)? {
-                        if event.created_at <= time {
-                            return Ok(SaveEventStatus::Rejected(RejectedReason::Deleted));
-                        }
                     }
                 }
             }
@@ -198,7 +183,7 @@ impl Store {
             }
 
             // Mark deleted
-            db.mark_coordinate_deleted(txn, coordinate, event.created_at)?;
+            db.mark_coordinate_deleted(txn, &coordinate.borrow(), event.created_at)?;
 
             // Remove events (up to the created_at of the deletion event)
             if coordinate.kind.is_replaceable() {
@@ -247,13 +232,14 @@ impl Store {
     }
 
     #[inline]
-    pub async fn when_is_coordinate_deleted(
+    pub async fn when_is_coordinate_deleted<'a>(
         &self,
-        coordinate: Coordinate,
+        coordinate: &'a CoordinateBorrow<'a>,
     ) -> Result<Option<Timestamp>, Error> {
+        let coordinate_key: Vec<u8> = index::make_coordinate_index_key(coordinate);
         self.interact(move |db| {
             let txn = db.read_txn()?;
-            let when = db.when_is_coordinate_deleted(&txn, &coordinate)?;
+            let when = db.when_is_coordinate_deleted_by_key(&txn, coordinate_key)?;
             txn.commit()?;
             Ok(when)
         })

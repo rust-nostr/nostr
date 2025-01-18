@@ -11,7 +11,7 @@ use std::iter;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::nips::nip01::Coordinate;
+use nostr::nips::nip01::{Coordinate, CoordinateBorrow};
 use nostr::{Alphabet, Event, EventId, Filter, Kind, PublicKey, SingleLetterTag, Timestamp};
 use tokio::sync::{OwnedRwLockReadGuard, RwLock};
 
@@ -782,13 +782,13 @@ impl DatabaseHelper {
     }
 
     /// Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
-    pub async fn has_coordinate_been_deleted(
+    pub async fn has_coordinate_been_deleted<'a>(
         &self,
-        coordinate: &Coordinate,
+        coordinate: &'a CoordinateBorrow<'a>,
         timestamp: &Timestamp,
     ) -> bool {
         let inner = self.inner.read().await;
-        inner.has_coordinate_been_deleted(coordinate, timestamp)
+        inner.has_coordinate_been_deleted(&coordinate.into_owned(), timestamp)
     }
 
     /// Delete all events that match [Filter]

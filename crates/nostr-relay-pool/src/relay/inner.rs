@@ -987,12 +987,8 @@ impl InnerRelay {
             return Err(Error::EventExpired);
         }
 
-        // Check if event is replaceable and has coordinate
-        if event.kind.is_replaceable() || event.kind.is_addressable() {
-            let coordinate: Coordinate = Coordinate::new(event.kind, event.pubkey)
-                .identifier(event.tags.identifier().unwrap_or_default());
-
-            // Check if coordinate has been deleted
+        // Check if coordinate has been deleted
+        if let Some(coordinate) = event.coordinate() {
             if self
                 .state
                 .database()

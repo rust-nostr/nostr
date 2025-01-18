@@ -503,7 +503,7 @@ impl EventBuilder {
                 Some(coordinate) => {
                     tags.push(Tag::from_standardized_without_cell(
                         TagStandard::Coordinate {
-                            coordinate,
+                            coordinate: coordinate.into_owned(),
                             relay_url: relay_url.clone(),
                             uppercase: true,
                         },
@@ -541,7 +541,7 @@ impl EventBuilder {
         if let Some(coordinate) = comment_to.coordinate() {
             tags.push(Tag::from_standardized_without_cell(
                 TagStandard::Coordinate {
-                    coordinate,
+                    coordinate: coordinate.into_owned(),
                     relay_url: relay_url.clone(),
                     uppercase: false, // <--- Same as root event but lowercase
                 },

@@ -93,13 +93,13 @@ impl NostrEventsDatabase for NostrLMDB {
 
     fn has_coordinate_been_deleted<'a>(
         &'a self,
-        coordinate: &'a Coordinate,
+        coordinate: &'a CoordinateBorrow<'a>,
         timestamp: &'a Timestamp,
     ) -> BoxedFuture<'a, Result<bool, DatabaseError>> {
         Box::pin(async move {
             if let Some(t) = self
                 .db
-                .when_is_coordinate_deleted(coordinate.clone())
+                .when_is_coordinate_deleted(coordinate)
                 .await
                 .map_err(DatabaseError::backend)?
             {

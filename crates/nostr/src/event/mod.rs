@@ -33,7 +33,7 @@ pub use self::kind::Kind;
 pub use self::partial::{MissingPartialEvent, PartialEvent};
 pub use self::tag::{Tag, TagKind, TagStandard, Tags};
 pub use self::unsigned::UnsignedEvent;
-use crate::nips::nip01::Coordinate;
+use crate::nips::nip01::CoordinateBorrow;
 #[cfg(feature = "std")]
 use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
@@ -261,15 +261,13 @@ impl Event {
     /// Get the coordinate of this event
     ///
     /// Return a coordinate only if the event kind is `replaceable` or `addressable`.
-    pub fn coordinate(&self) -> Option<Coordinate> {
+    pub fn coordinate(&self) -> Option<CoordinateBorrow> {
         if self.kind.is_replaceable() || self.kind.is_addressable() {
-            let mut coordinate: Coordinate = Coordinate::new(self.kind, self.pubkey);
-
-            if let Some(identifier) = self.tags.identifier() {
-                coordinate = coordinate.identifier(identifier);
-            }
-
-            return Some(coordinate);
+            return Some(CoordinateBorrow {
+                kind: &self.kind,
+                public_key: &self.pubkey,
+                identifier: self.tags.identifier(),
+            });
         }
 
         None
@@ -531,13 +529,14 @@ mod tests {
         let event = Event::from_json(json).unwrap();
         assert_eq!(
             event.coordinate(),
-            Some(Coordinate::new(
-                Kind::Metadata,
-                PublicKey::from_hex(
+            Some(CoordinateBorrow {
+                kind: &Kind::Metadata,
+                public_key: &PublicKey::from_hex(
                     "2f35aaff0c870f0510a8bed198e1f8c35e95c996148f2d0c0fb1825b05b8dd35"
                 )
-                .unwrap()
-            ))
+                .unwrap(),
+                identifier: None,
+            })
         );
     }
 

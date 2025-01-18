@@ -111,10 +111,11 @@ pub trait NostrEventsDatabase: fmt::Debug + Send + Sync {
         event_id: &'a EventId,
     ) -> BoxedFuture<'a, Result<DatabaseEventStatus, DatabaseError>>;
 
+    // TODO: rename to `check_coordinate`?
     /// Check if [`Coordinate`] has been deleted before a certain [`Timestamp`]
     fn has_coordinate_been_deleted<'a>(
         &'a self,
-        coordinate: &'a Coordinate,
+        coordinate: &'a CoordinateBorrow<'a>,
         timestamp: &'a Timestamp,
     ) -> BoxedFuture<'a, Result<bool, DatabaseError>>;
 

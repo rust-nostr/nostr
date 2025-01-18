@@ -104,7 +104,7 @@ impl NostrEventsDatabase for NdbDatabase {
 
     fn has_coordinate_been_deleted<'a>(
         &'a self,
-        _coordinate: &'a Coordinate,
+        _coordinate: &'a CoordinateBorrow<'a>,
         _timestamp: &'a Timestamp,
     ) -> BoxedFuture<'a, Result<bool, DatabaseError>> {
         Box::pin(async move { Ok(false) })
