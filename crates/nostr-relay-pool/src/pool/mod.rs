@@ -13,7 +13,7 @@ use async_utility::futures_util::{future, StreamExt};
 use async_utility::task;
 use atomic_destructor::{AtomicDestructor, StealthClone};
 use nostr_database::prelude::*;
-use tokio::sync::{broadcast, mpsc, Mutex};
+use tokio::sync::{broadcast, mpsc, Mutex, RwLockReadGuard};
 
 pub mod constants;
 mod error;
@@ -22,7 +22,7 @@ pub mod options;
 mod output;
 
 pub use self::error::Error;
-use self::inner::InnerRelayPool;
+use self::inner::{InnerRelayPool, Relays};
 pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
 use crate::relay::flags::FlagCheck;
@@ -144,6 +144,41 @@ impl RelayPool {
         self.inner.state.filtering()
     }
 
+    fn internal_relays_with_flag<'a>(
+        &self,
+        txn: &'a RwLockReadGuard<'a, Relays>,
+        flag: RelayServiceFlags,
+        check: FlagCheck,
+    ) -> impl Iterator<Item = (&'a RelayUrl, &'a Relay)> + 'a {
+        txn.iter().filter(move |(_, r)| r.flags().has(flag, check))
+    }
+
+    /// Get relays with `READ` or `WRITE` relays
+    async fn relay_urls(&self) -> Vec<RelayUrl> {
+        let relays = self.inner.atomic.relays.read().await;
+        self.internal_relays_with_flag(
+            &relays,
+            RelayServiceFlags::READ | RelayServiceFlags::WRITE,
+            FlagCheck::Any,
+        )
+        .map(|(k, ..)| k.clone())
+        .collect()
+    }
+
+    async fn read_relay_urls(&self) -> Vec<RelayUrl> {
+        let relays = self.inner.atomic.relays.read().await;
+        self.internal_relays_with_flag(&relays, RelayServiceFlags::READ, FlagCheck::All)
+            .map(|(k, ..)| k.clone())
+            .collect()
+    }
+
+    async fn write_relay_urls(&self) -> Vec<RelayUrl> {
+        let relays = self.inner.atomic.relays.read().await;
+        self.internal_relays_with_flag(&relays, RelayServiceFlags::WRITE, FlagCheck::All)
+            .map(|(k, ..)| k.clone())
+            .collect()
+    }
+
     /// Get all relays
     ///
     /// This method returns all relays added to the pool, including the ones for gossip protocol or other services.
@@ -168,20 +203,29 @@ impl RelayPool {
         check: FlagCheck,
     ) -> HashMap<RelayUrl, Relay> {
         let relays = self.inner.atomic.relays.read().await;
-        self.inner
-            .internal_relays_with_flag(&relays, flag, check)
+        self.internal_relays_with_flag(&relays, flag, check)
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect()
     }
 
-    /// Get [`Relay`]
     #[inline]
+    fn internal_relay<'a>(
+        &self,
+        txn: &'a RwLockReadGuard<'a, Relays>,
+        url: &RelayUrl,
+    ) -> Result<&'a Relay, Error> {
+        txn.get(url).ok_or(Error::RelayNotFound)
+    }
+
+    /// Get relay
     pub async fn relay<U>(&self, url: U) -> Result<Relay, Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.inner.relay(url).await
+        let url: RelayUrl = url.try_into_url()?;
+        let relays = self.inner.atomic.relays.read().await;
+        self.internal_relay(&relays, &url).cloned()
     }
 
     /// Add new relay
@@ -212,9 +256,15 @@ impl RelayPool {
         inherit_pool_subscriptions: bool,
         opts: RelayOptions,
     ) -> Result<Option<Relay>, Error> {
-        self.inner
-            .get_or_add_relay(url, inherit_pool_subscriptions, opts)
-            .await
+        match self.relay(&url).await {
+            Ok(relay) => Ok(Some(relay)),
+            Err(..) => {
+                self.inner
+                    .add_relay(url, inherit_pool_subscriptions, opts)
+                    .await?;
+                Ok(None)
+            }
+        }
     }
 
     /// Remove and disconnect relay
@@ -359,7 +409,7 @@ impl RelayPool {
         let relays = self.inner.atomic.relays.read().await;
 
         // Get relay
-        let relay: &Relay = self.inner.internal_relay(&relays, &url)?;
+        let relay: &Relay = self.internal_relay(&relays, &url)?;
 
         // Connect
         relay.connect();
@@ -382,7 +432,7 @@ impl RelayPool {
         let relays = self.inner.atomic.relays.read().await;
 
         // Get relay
-        let relay: &Relay = self.inner.internal_relay(&relays, &url)?;
+        let relay: &Relay = self.internal_relay(&relays, &url)?;
 
         // Try to connect
         relay.try_connect(timeout).await?;
@@ -403,7 +453,7 @@ impl RelayPool {
         let relays = self.inner.atomic.relays.read().await;
 
         // Get relay
-        let relay: &Relay = self.inner.internal_relay(&relays, &url)?;
+        let relay: &Relay = self.internal_relay(&relays, &url)?;
 
         // Disconnect
         relay.disconnect();
@@ -490,7 +540,7 @@ impl RelayPool {
 
         // Batch messages and construct outputs
         for url in set.into_iter() {
-            let relay: &Relay = self.inner.internal_relay(&relays, &url)?;
+            let relay: &Relay = self.internal_relay(&relays, &url)?;
             match relay.batch_msg(msgs.clone()) {
                 Ok(..) => {
                     // Success, insert relay url in 'success' set result
@@ -511,7 +561,7 @@ impl RelayPool {
 
     /// Send event to all relays with `WRITE` flag (check [`RelayServiceFlags`] for more details).
     pub async fn send_event(&self, event: Event) -> Result<Output<EventId>, Error> {
-        let urls: Vec<RelayUrl> = self.inner.write_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.write_relay_urls().await;
         self.send_event_to(urls, event).await
     }
 
@@ -564,7 +614,7 @@ impl RelayPool {
 
         // Compose futures
         for url in set.into_iter() {
-            let relay: &Relay = self.inner.internal_relay(&relays, &url)?;
+            let relay: &Relay = self.internal_relay(&relays, &url)?;
             let event: Event = event.clone();
             urls.push(url);
             futures.push(relay.send_event(event));
@@ -641,7 +691,7 @@ impl RelayPool {
         }
 
         // Get relay urls
-        let urls: Vec<RelayUrl> = self.inner.read_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.read_relay_urls().await;
 
         // Subscribe
         self.subscribe_with_id_to(urls, id, filters, opts).await
@@ -743,7 +793,7 @@ impl RelayPool {
 
         // Compose futures
         for (url, filters) in targets.into_iter() {
-            let relay: &Relay = self.inner.internal_relay(&relays, &url)?;
+            let relay: &Relay = self.internal_relay(&relays, &url)?;
             let id: SubscriptionId = id.clone();
             urls.push(url);
             futures.push(relay.subscribe_with_id(id, filters, opts));
@@ -814,7 +864,7 @@ impl RelayPool {
         filter: Filter,
         opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
-        let urls: Vec<RelayUrl> = self.inner.relay_urls().await;
+        let urls: Vec<RelayUrl> = self.relay_urls().await;
         self.sync_with(urls, filter, opts).await
     }
 
@@ -890,7 +940,7 @@ impl RelayPool {
 
         // Compose futures
         for (url, filters) in targets.into_iter() {
-            let relay: &Relay = self.inner.internal_relay(&relays, &url)?;
+            let relay: &Relay = self.internal_relay(&relays, &url)?;
             urls.push(url);
             futures.push(relay.sync_multi(filters, opts));
         }
@@ -927,7 +977,7 @@ impl RelayPool {
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<Events, Error> {
-        let urls: Vec<RelayUrl> = self.inner.read_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.read_relay_urls().await;
         self.fetch_events_from(urls, filters, timeout, policy).await
     }
 
@@ -964,7 +1014,7 @@ impl RelayPool {
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<ReceiverStream<Event>, Error> {
-        let urls: Vec<RelayUrl> = self.inner.read_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.read_relay_urls().await;
         self.stream_events_from(urls, filters, timeout, policy)
             .await
     }
@@ -1019,7 +1069,7 @@ impl RelayPool {
         // Return an error if the relay doesn't exists.
         for (url, filters) in targets.into_iter() {
             // Get relay
-            let relay: Relay = self.inner.internal_relay(&relays, &url).cloned()?;
+            let relay: Relay = self.internal_relay(&relays, &url).cloned()?;
 
             // Insert into new map
             map.insert(url, (relay, filters));

@@ -11,16 +11,16 @@ use std::sync::Arc;
 use async_utility::task;
 use atomic_destructor::AtomicDestroyer;
 use nostr_database::prelude::*;
-use tokio::sync::{broadcast, RwLock, RwLockReadGuard};
+use tokio::sync::{broadcast, RwLock};
 
 use super::options::RelayPoolOptions;
 use super::{Error, RelayPoolNotification};
 use crate::relay::options::RelayOptions;
-use crate::relay::{FlagCheck, Relay};
+use crate::relay::Relay;
 use crate::shared::SharedState;
 use crate::RelayServiceFlags;
 
-type Relays = HashMap<RelayUrl, Relay>;
+pub(super) type Relays = HashMap<RelayUrl, Relay>;
 
 // Instead of wrap every field in an `Arc<T>`, which increases the number of atomic operations,
 // put all fields that require an `Arc` here.
@@ -88,59 +88,6 @@ impl InnerRelayPool {
         self.atomic.shutdown.store(true, Ordering::SeqCst);
 
         Ok(())
-    }
-
-    pub(super) fn internal_relays_with_flag<'a>(
-        &self,
-        txn: &'a RwLockReadGuard<'a, Relays>,
-        flag: RelayServiceFlags,
-        check: FlagCheck,
-    ) -> impl Iterator<Item = (&'a RelayUrl, &'a Relay)> + 'a {
-        txn.iter().filter(move |(_, r)| r.flags().has(flag, check))
-    }
-
-    /// Get relays with `READ` or `WRITE` relays
-    pub(super) async fn relay_urls(&self) -> Vec<RelayUrl> {
-        let relays = self.atomic.relays.read().await;
-        self.internal_relays_with_flag(
-            &relays,
-            RelayServiceFlags::READ | RelayServiceFlags::WRITE,
-            FlagCheck::Any,
-        )
-        .map(|(k, ..)| k.clone())
-        .collect()
-    }
-
-    pub(super) async fn read_relay_urls(&self) -> Vec<RelayUrl> {
-        let relays = self.atomic.relays.read().await;
-        self.internal_relays_with_flag(&relays, RelayServiceFlags::READ, FlagCheck::All)
-            .map(|(k, ..)| k.clone())
-            .collect()
-    }
-
-    pub(super) async fn write_relay_urls(&self) -> Vec<RelayUrl> {
-        let relays = self.atomic.relays.read().await;
-        self.internal_relays_with_flag(&relays, RelayServiceFlags::WRITE, FlagCheck::All)
-            .map(|(k, ..)| k.clone())
-            .collect()
-    }
-
-    pub(super) fn internal_relay<'a>(
-        &self,
-        txn: &'a RwLockReadGuard<'a, Relays>,
-        url: &RelayUrl,
-    ) -> Result<&'a Relay, Error> {
-        txn.get(url).ok_or(Error::RelayNotFound)
-    }
-
-    pub async fn relay<U>(&self, url: U) -> Result<Relay, Error>
-    where
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
-        let url: RelayUrl = url.try_into_url()?;
-        let relays = self.atomic.relays.read().await;
-        self.internal_relay(&relays, &url).cloned()
     }
 
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
@@ -221,22 +168,6 @@ impl InnerRelayPool {
         relays.insert(relay.url().clone(), relay);
 
         Ok(true)
-    }
-
-    pub async fn get_or_add_relay(
-        &self,
-        url: RelayUrl,
-        inherit_pool_subscriptions: bool,
-        opts: RelayOptions,
-    ) -> Result<Option<Relay>, Error> {
-        match self.relay(&url).await {
-            Ok(relay) => Ok(Some(relay)),
-            Err(..) => {
-                self.add_relay(url, inherit_pool_subscriptions, opts)
-                    .await?;
-                Ok(None)
-            }
-        }
     }
 
     fn internal_remove_relay(
