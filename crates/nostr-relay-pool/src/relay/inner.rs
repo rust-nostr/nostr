@@ -592,7 +592,8 @@ impl InnerRelay {
         }
     }
 
-    // To run after websocket connection
+    /// To run after websocket connection.
+    /// Run message handlers, pinger and other services
     async fn post_connection(
         &self,
         ws_tx: Sink,
@@ -603,16 +604,6 @@ impl InnerRelay {
         #[cfg(feature = "nip11")]
         self.request_nip11_document();
 
-        // Run message handler
-        self.run_message_handler(ws_tx, ws_rx, rx_nostr).await;
-    }
-
-    async fn run_message_handler(
-        &self,
-        ws_tx: Sink,
-        ws_rx: Stream,
-        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessage>>>,
-    ) {
         // (Re)subscribe to relay
         if self.flags.can_read() {
             if let Err(e) = self.resubscribe().await {
