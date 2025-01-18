@@ -587,6 +587,21 @@ impl Relay {
         Ok(())
     }
 
+    #[inline]
+    pub(crate) async fn fetch_events_with_callback_owned<F>(
+        self,
+        filters: Vec<Filter>,
+        timeout: Duration,
+        policy: ReqExitPolicy,
+        callback: impl Fn(Event) -> F,
+    ) -> Result<(), Error>
+    where
+        F: Future<Output = ()>,
+    {
+        self.fetch_events_with_callback(filters, timeout, policy, callback)
+            .await
+    }
+
     /// Fetch events
     pub async fn fetch_events(
         &self,

@@ -4,23 +4,20 @@
 
 //! Relay Pool
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 
-use async_utility::futures_util::future;
 use async_utility::task;
 use atomic_destructor::AtomicDestroyer;
 use nostr_database::prelude::*;
-use tokio::sync::{broadcast, mpsc, Mutex, RwLock, RwLockReadGuard};
+use tokio::sync::{broadcast, RwLock, RwLockReadGuard};
 
 use super::options::RelayPoolOptions;
 use super::{Error, RelayPoolNotification};
-use crate::relay::options::{RelayOptions, ReqExitPolicy};
+use crate::relay::options::RelayOptions;
 use crate::relay::{FlagCheck, Relay};
 use crate::shared::SharedState;
-use crate::stream::ReceiverStream;
 use crate::RelayServiceFlags;
 
 type Relays = HashMap<RelayUrl, Relay>;
@@ -303,85 +300,5 @@ impl InnerRelayPool {
         }
 
         Ok(())
-    }
-
-    // Keep this method here to avoid to have to `stealth_clone` before spawning the task (see `FULL RELAY CLONE` below)
-    pub async fn stream_events_targeted(
-        &self,
-        targets: HashMap<RelayUrl, Vec<Filter>>,
-        timeout: Duration,
-        policy: ReqExitPolicy,
-    ) -> Result<ReceiverStream<Event>, Error> {
-        // Check if urls set is empty
-        if targets.is_empty() {
-            return Err(Error::NoRelaysSpecified);
-        }
-
-        // Lock with read shared access
-        let relays = self.atomic.relays.read().await;
-
-        // Check if empty
-        if relays.is_empty() {
-            return Err(Error::NoRelays);
-        }
-
-        // Check if urls set contains ONLY already added relays
-        if !targets.keys().all(|url| relays.contains_key(url)) {
-            return Err(Error::RelayNotFound);
-        }
-
-        // Drop
-        drop(relays);
-
-        // Create channel
-        let (tx, rx) = mpsc::channel::<Event>(targets.len() * 512);
-
-        // Spawn
-        let this = self.clone(); // <-- FULL RELAY CLONE
-        task::spawn(async move {
-            // Lock with read shared access
-            let relays = this.atomic.relays.read().await;
-
-            let ids: Mutex<HashSet<EventId>> = Mutex::new(HashSet::new());
-
-            let mut urls: Vec<RelayUrl> = Vec::with_capacity(targets.len());
-            let mut futures = Vec::with_capacity(targets.len());
-
-            // Filter relays and start query
-            for (url, filters) in targets.into_iter() {
-                match this.internal_relay(&relays, &url) {
-                    Ok(relay) => {
-                        urls.push(url);
-                        futures.push(relay.fetch_events_with_callback(
-                            filters,
-                            timeout,
-                            policy,
-                            |event| async {
-                                let mut ids = ids.lock().await;
-                                if ids.insert(event.id) {
-                                    drop(ids);
-                                    let _ = tx.try_send(event);
-                                }
-                            },
-                        ));
-                    }
-                    // TODO: remove this
-                    Err(e) => tracing::error!("{e}"),
-                }
-            }
-
-            // Join futures
-            let list = future::join_all(futures).await;
-
-            // Iter results
-            for (url, result) in urls.into_iter().zip(list.into_iter()) {
-                if let Err(e) = result {
-                    tracing::error!(url = %url, error = %e, "Failed to stream events.");
-                }
-            }
-        });
-
-        // Return stream
-        Ok(ReceiverStream::new(rx))
     }
 }

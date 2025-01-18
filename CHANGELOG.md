@@ -73,6 +73,7 @@
 * pool: refactor relay disconnect logic ([Yuki Kishimoto])
 * pool: check if pool was already shutdown when calling `RelayPool::shutdown` ([Yuki Kishimoto])
 * pool: avoid repeatedly locking the relay channel receiver ([Yuki Kishimoto])
+* pool: refactor `RelayPool::stream_events_targeted` ([Yuki Kishimoto])
 * lmdb: use `EventBorrow` instead of `DatabaseEvent` ([Yuki Kishimoto])
 * ndb: refactor note-to-event conversion ([Yuki Kishimoto])
 * relay-builder: refactor shutdown mechanism to use `Notify` over `broadcast` ([Yuki Kishimoto])

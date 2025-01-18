@@ -10,9 +10,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::futures_util::{future, StreamExt};
+use async_utility::task;
 use atomic_destructor::{AtomicDestructor, StealthClone};
 use nostr_database::prelude::*;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, mpsc, Mutex};
 
 pub mod constants;
 mod error;
@@ -997,9 +998,77 @@ impl RelayPool {
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<ReceiverStream<Event>, Error> {
-        self.inner
-            .stream_events_targeted(targets, timeout, policy)
-            .await
+        // Check if targets map is empty
+        if targets.is_empty() {
+            return Err(Error::NoRelaysSpecified);
+        }
+
+        // Lock with read shared access
+        let relays = self.inner.atomic.relays.read().await;
+
+        // Check if empty
+        if relays.is_empty() {
+            return Err(Error::NoRelays);
+        }
+
+        // Construct new map with also `Relay` struct
+        let mut map: HashMap<RelayUrl, (Relay, Vec<Filter>)> =
+            HashMap::with_capacity(targets.len());
+
+        // Populate the new map.
+        // Return an error if the relay doesn't exists.
+        for (url, filters) in targets.into_iter() {
+            // Get relay
+            let relay: Relay = self.inner.internal_relay(&relays, &url).cloned()?;
+
+            // Insert into new map
+            map.insert(url, (relay, filters));
+        }
+
+        // Drop relays read guard
+        drop(relays);
+
+        // Create channel
+        let (tx, rx) = mpsc::channel::<Event>(map.len() * 512);
+
+        // Spawn stream task
+        task::spawn(async move {
+            // IDs collection, needed to check if an event was already sent to the stream
+            let ids: Mutex<HashSet<EventId>> = Mutex::new(HashSet::new());
+
+            let mut urls: Vec<RelayUrl> = Vec::with_capacity(map.len());
+            let mut futures = Vec::with_capacity(map.len());
+
+            // Populate `urls` and `futures` vectors
+            for (url, (relay, filters)) in map.into_iter() {
+                urls.push(url);
+                futures.push(relay.fetch_events_with_callback_owned(
+                    filters,
+                    timeout,
+                    policy,
+                    |event| async {
+                        let mut ids = ids.lock().await;
+                        if ids.insert(event.id) {
+                            drop(ids);
+                            let _ = tx.try_send(event);
+                        }
+                    },
+                ));
+            }
+
+            // Join all futures
+            let list = future::join_all(futures).await;
+
+            // Iter results
+            for (url, result) in urls.into_iter().zip(list.into_iter()) {
+                if let Err(e) = result {
+                    tracing::error!(url = %url, error = %e, "Failed to stream events.");
+                }
+            }
+        });
+
+        // Return stream
+        Ok(ReceiverStream::new(rx))
     }
 
     /// Handle notifications
