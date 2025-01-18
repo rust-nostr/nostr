@@ -2,7 +2,7 @@ from nostr_sdk import Keys, EventBuilder, PublicKey, Tag, TagStandard
 
 keys = Keys.generate()
 
-other_user_pk = PublicKey.from_bech32("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
+other_user_pk = PublicKey.parse("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
 
 tag = Tag.parse(["p", other_user_pk.to_hex()])
 # OR

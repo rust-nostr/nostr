@@ -18,10 +18,10 @@ async def main():
     print(keys.public_key().to_bech32())
 
     event = EventBuilder.text_note("Hello from rust-nostr Python bindings!").sign_with_keys(keys)
-    event_id = await client.send_event(event)
+    output = await client.send_event(event)
     print("Event sent:")
-    print(f" hex:    {event_id.to_hex()}")
-    print(f" bech32: {event_id.to_bech32()}")
+    print(f" hex:    {output.id.to_hex()}")
+    print(f" bech32: {output.id.to_bech32()}")
 
 
 if __name__ == '__main__':

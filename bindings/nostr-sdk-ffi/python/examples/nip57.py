@@ -1,9 +1,9 @@
 from nostr_sdk import Keys, Event, ZapRequestData, PublicKey, SecretKey, EventBuilder, nip57_anonymous_zap_request, nip57_private_zap_request, nip57_decrypt_private_zap_message
 
-secret_key = SecretKey.from_hex("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+secret_key = SecretKey.parse("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
 keys = Keys(secret_key)
 
-public_key = PublicKey.from_bech32("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
+public_key = PublicKey.parse("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
 relays = ["wss://relay.damus.io"]
 msg = "Zap!"
 data = ZapRequestData(public_key, relays).message(msg)

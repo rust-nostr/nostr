@@ -8,8 +8,8 @@ async def main():
     keys = Keys.generate()
     print(keys.public_key().to_bech32())
 
-    # Configure client to use embedded tor for `.onion` relays
-    connection = Connection().embedded_tor().target(ConnectionTarget.ONION)
+    # Configure client to use a tor proxy for `.onion` relays
+    connection = Connection().addr("127.0.0.1:9050").target(ConnectionTarget.ONION)
     opts = Options().connection(connection)
     signer = NostrSigner.keys(keys)
     client = ClientBuilder().signer(signer).opts(opts).build()
@@ -20,12 +20,12 @@ async def main():
     await client.connect()
 
     event = EventBuilder.text_note("Hello from rust-nostr Python bindings!")
-    res = await client.send_event_builder(event)
+    output = await client.send_event_builder(event)
     print("Event sent:")
-    print(f" hex:    {res.id.to_hex()}")
-    print(f" bech32: {res.id.to_bech32()}")
-    print(f" Successfully sent to:    {res.output.success}")
-    print(f" Failed to send to: {res.output.failed}")
+    print(f" hex:    {output.id.to_hex()}")
+    print(f" bech32: {output.id.to_bech32()}")
+    print(f" Successfully sent to:    {output.success}")
+    print(f" Failed to send to: {output.failed}")
 
 
 if __name__ == '__main__':

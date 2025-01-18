@@ -28,7 +28,7 @@ async def main():
     await client.connect()
 
     # Send an event using the Nostr Signer
-    builder = EventBuilder.text_note("Test from rust-nostr Python bindings!", [])
+    builder = EventBuilder.text_note("Test from rust-nostr Python bindings!")
     await client.send_event_builder(builder)
     await client.set_metadata(Metadata().set_name("Testing rust-nostr"))
 
