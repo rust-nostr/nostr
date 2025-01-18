@@ -394,8 +394,8 @@ impl NostrConnect {
     }
 
     /// Completely shutdown
-    pub async fn shutdown(self) -> Result<(), Error> {
-        Ok(self.pool.shutdown().await?)
+    pub async fn shutdown(self) {
+        self.pool.shutdown().await
     }
 }
 

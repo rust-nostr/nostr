@@ -95,8 +95,8 @@ impl JsClient {
     }
 
     /// Completely shutdown `Client`
-    pub async fn shutdown(&self) -> Result<()> {
-        self.inner.shutdown().await.map_err(into_err)
+    pub async fn shutdown(&self) {
+        self.inner.shutdown().await
     }
 
     /// Get relays with `READ` or `WRITE` flags
@@ -196,14 +196,14 @@ impl JsClient {
     /// (like the ones used for gossip).
     /// Use [`Client::force_remove_all_relays`] to remove every relay.
     #[wasm_bindgen(js_name = removeAllRelays)]
-    pub async fn remove_all_relays(&self) -> Result<()> {
-        self.inner.remove_all_relays().await.map_err(into_err)
+    pub async fn remove_all_relays(&self) {
+        self.inner.remove_all_relays().await
     }
 
     /// Disconnect and force remove all relays
     #[wasm_bindgen(js_name = forceRemoveAllRelays)]
-    pub async fn force_remove_all_relays(&self) -> Result<()> {
-        self.inner.force_remove_all_relays().await.map_err(into_err)
+    pub async fn force_remove_all_relays(&self) {
+        self.inner.force_remove_all_relays().await
     }
 
     /// Connect to a previously added relay

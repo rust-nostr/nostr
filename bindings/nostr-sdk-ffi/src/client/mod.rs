@@ -84,8 +84,8 @@ impl Client {
         self.inner.filtering().clone().into()
     }
 
-    pub async fn shutdown(&self) -> Result<()> {
-        Ok(self.inner.shutdown().await?)
+    pub async fn shutdown(&self) {
+        self.inner.shutdown().await
     }
 
     /// Get relays with `READ` or `WRITE` flags
@@ -170,13 +170,13 @@ impl Client {
     /// Some relays used by some services could not be disconnected with this method
     /// (like the ones used for gossip).
     /// Use [`Client::force_remove_all_relays`] to remove every relay.
-    pub async fn remove_all_relays(&self) -> Result<()> {
-        Ok(self.inner.remove_all_relays().await?)
+    pub async fn remove_all_relays(&self) {
+        self.inner.remove_all_relays().await
     }
 
     /// Disconnect and force remove all relays
-    pub async fn force_remove_all_relays(&self) -> Result<()> {
-        Ok(self.inner.force_remove_all_relays().await?)
+    pub async fn force_remove_all_relays(&self) {
+        self.inner.force_remove_all_relays().await
     }
 
     /// Connect to a previously added relay

@@ -115,7 +115,7 @@ impl RelayPool {
     ///
     /// After this method has been called, the [`RelayPool`] can no longer be used (i.e. can't add relays).
     #[inline]
-    pub async fn shutdown(&self) -> Result<(), Error> {
+    pub async fn shutdown(&self) {
         self.inner.shutdown().await
     }
 
@@ -300,14 +300,14 @@ impl RelayPool {
     /// This method may not remove all relays.
     /// Use [`RelayPool::force_remove_all_relays`] to remove every relay.
     #[inline]
-    pub async fn remove_all_relays(&self) -> Result<(), Error> {
-        self.inner.remove_all_relays(false).await
+    pub async fn remove_all_relays(&self) {
+        self.inner.remove_all_relays().await
     }
 
     /// Disconnect and force remove all relays
     #[inline]
-    pub async fn force_remove_all_relays(&self) -> Result<(), Error> {
-        self.inner.remove_all_relays(true).await
+    pub async fn force_remove_all_relays(&self) {
+        self.inner.force_remove_all_relays().await
     }
 
     /// Connect to all added relays
@@ -1147,6 +1147,12 @@ mod tests {
 
     use super::*;
 
+    fn relay_gossip_opts() -> RelayOptions {
+        let mut flags: RelayServiceFlags = RelayServiceFlags::default();
+        flags.add(RelayServiceFlags::GOSSIP);
+        RelayOptions::default().flags(flags)
+    }
+
     #[tokio::test]
     async fn test_shutdown() {
         let mock = MockRelay::run().await.unwrap();
@@ -1162,7 +1168,7 @@ mod tests {
 
         tokio::time::sleep(Duration::from_secs(1)).await;
 
-        pool.shutdown().await.unwrap();
+        pool.shutdown().await;
 
         assert!(pool.inner.is_shutdown());
 
@@ -1171,6 +1177,149 @@ mod tests {
                 .await
                 .unwrap_err(),
             Error::Shutdown
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_remove_nonexistent_relay() {
+        let pool = RelayPool::default();
+
+        let opts: RelayOptions = RelayOptions::default();
+        pool.add_relay("ws://127.0.0.1:6666", opts).await.unwrap();
+
+        assert!(matches!(
+            pool.remove_relay("ws://127.0.0.1:7777").await.unwrap_err(),
+            Error::RelayNotFound
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_remove_relay() {
+        let pool = RelayPool::default();
+
+        let opts: RelayOptions = RelayOptions::default();
+        pool.add_relay("ws://127.0.0.1:6666", opts).await.unwrap();
+
+        let opts: RelayOptions = relay_gossip_opts();
+        pool.add_relay("ws://127.0.0.1:8888", opts).await.unwrap();
+
+        assert_eq!(pool.relays().await.len(), 2);
+        assert_eq!(pool.all_relays().await.len(), 2);
+
+        // Remove the non-gossip relay
+        assert!(pool.remove_relay("ws://127.0.0.1:6666").await.is_ok());
+        assert!(matches!(
+            pool.relay("ws://127.0.0.1:6666").await.unwrap_err(),
+            Error::RelayNotFound
+        ));
+        assert_eq!(pool.relays().await.len(), 1);
+        assert_eq!(pool.all_relays().await.len(), 1);
+
+        // Try to remove the gossip relay (will not be removed)
+        assert!(pool.remove_relay("ws://127.0.0.1:8888").await.is_ok());
+        assert!(pool.relay("ws://127.0.0.1:8888").await.is_ok()); // The relay exists in the pool!
+        assert!(pool.relays().await.is_empty()); // This gets only the READ/WRITE relays, which are now 0
+        assert_eq!(pool.all_relays().await.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_force_remove_relay() {
+        let pool = RelayPool::default();
+
+        let opts: RelayOptions = RelayOptions::default();
+        pool.add_relay("ws://127.0.0.1:6666", opts).await.unwrap();
+
+        let opts: RelayOptions = relay_gossip_opts();
+        pool.add_relay("ws://127.0.0.1:8888", opts).await.unwrap();
+
+        assert_eq!(pool.relays().await.len(), 2);
+        assert_eq!(pool.all_relays().await.len(), 2);
+
+        // Force remove the non-gossip relay
+        assert!(pool.force_remove_relay("ws://127.0.0.1:6666").await.is_ok());
+        assert!(matches!(
+            pool.relay("ws://127.0.0.1:6666").await.unwrap_err(),
+            Error::RelayNotFound
+        ));
+        assert_eq!(pool.relays().await.len(), 1);
+        assert_eq!(pool.all_relays().await.len(), 1);
+
+        // Force remove the gossip relay
+        assert!(pool.force_remove_relay("ws://127.0.0.1:8888").await.is_ok());
+        assert!(matches!(
+            pool.relay("ws://127.0.0.1:8888").await.unwrap_err(),
+            Error::RelayNotFound
+        ));
+        assert!(pool.relays().await.is_empty());
+        assert!(pool.all_relays().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_remove_all_relays() {
+        let pool = RelayPool::default();
+
+        let opts: RelayOptions = RelayOptions::default();
+        pool.add_relay("ws://127.0.0.1:6666", opts).await.unwrap();
+
+        let opts: RelayOptions = RelayOptions::default();
+        pool.add_relay("ws://127.0.0.1:7777", opts).await.unwrap();
+
+        let opts: RelayOptions = relay_gossip_opts();
+        pool.add_relay("ws://127.0.0.1:8888", opts).await.unwrap();
+
+        assert_eq!(pool.relays().await.len(), 3);
+        assert_eq!(pool.all_relays().await.len(), 3);
+
+        // Remove all relays
+        pool.remove_all_relays().await;
+        assert!(matches!(
+            pool.relay("ws://127.0.0.1:6666").await.unwrap_err(),
+            Error::RelayNotFound
+        ));
+        assert!(matches!(
+            pool.relay("ws://127.0.0.1:7777").await.unwrap_err(),
+            Error::RelayNotFound
+        ));
+        assert!(pool.relay("ws://127.0.0.1:8888").await.is_ok()); // The GOSSIP relay still exists
+        assert!(pool.relays().await.is_empty()); // This gets only the READ/WRITE relays, which are now 0
+        assert_eq!(pool.all_relays().await.len(), 1); // The GOSSIP relay still exists
+    }
+
+    #[tokio::test]
+    async fn test_force_remove_all_relays() {
+        let pool = RelayPool::default();
+
+        let opts: RelayOptions = RelayOptions::default();
+        pool.add_relay("ws://127.0.0.1:6666", opts).await.unwrap();
+
+        let opts: RelayOptions = RelayOptions::default();
+        pool.add_relay("ws://127.0.0.1:7777", opts).await.unwrap();
+
+        let opts: RelayOptions = relay_gossip_opts();
+        pool.add_relay("ws://127.0.0.1:8888", opts).await.unwrap();
+
+        assert_eq!(pool.relays().await.len(), 3);
+        assert_eq!(pool.all_relays().await.len(), 3);
+
+        // Force remove all relays
+        pool.force_remove_all_relays().await;
+
+        // Check if relays map is empty
+        assert!(pool.relays().await.is_empty());
+        assert!(pool.all_relays().await.is_empty());
+
+        // Double check that relays doesn't exist
+        assert!(matches!(
+            pool.relay("ws://127.0.0.1:6666").await.unwrap_err(),
+            Error::RelayNotFound
+        ));
+        assert!(matches!(
+            pool.relay("ws://127.0.0.1:7777").await.unwrap_err(),
+            Error::RelayNotFound
+        ));
+        assert!(matches!(
+            pool.relay("ws://127.0.0.1:8888").await.unwrap_err(),
+            Error::RelayNotFound
         ));
     }
 }

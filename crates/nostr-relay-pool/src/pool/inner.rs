@@ -15,10 +15,10 @@ use tokio::sync::{broadcast, RwLock};
 
 use super::options::RelayPoolOptions;
 use super::{Error, RelayPoolNotification};
+use crate::relay::flags::RelayServiceFlags;
 use crate::relay::options::RelayOptions;
 use crate::relay::Relay;
 use crate::shared::SharedState;
-use crate::RelayServiceFlags;
 
 pub(super) type Relays = HashMap<RelayUrl, Relay>;
 
@@ -42,12 +42,7 @@ pub struct InnerRelayPool {
 impl AtomicDestroyer for InnerRelayPool {
     fn on_destroy(&self) {
         let pool = self.clone();
-        task::spawn(async move {
-            match pool.shutdown().await {
-                Ok(()) => tracing::debug!("Relay pool destroyed."),
-                Err(e) => tracing::error!(error = %e, "Impossible to destroy pool."),
-            }
-        });
+        task::spawn(async move { pool.shutdown().await });
     }
 }
 
@@ -71,13 +66,13 @@ impl InnerRelayPool {
         self.atomic.shutdown.load(Ordering::SeqCst)
     }
 
-    pub async fn shutdown(&self) -> Result<(), Error> {
+    pub async fn shutdown(&self) {
         if self.is_shutdown() {
-            return Ok(());
+            return;
         }
 
         // Disconnect and force remove all relays
-        self.remove_all_relays(true).await?;
+        self.force_remove_all_relays().await;
 
         // Send shutdown notification
         let _ = self
@@ -86,8 +81,6 @@ impl InnerRelayPool {
 
         // Mark as shutdown
         self.atomic.shutdown.store(true, Ordering::SeqCst);
-
-        Ok(())
     }
 
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
@@ -170,38 +163,6 @@ impl InnerRelayPool {
         Ok(true)
     }
 
-    fn internal_remove_relay(
-        &self,
-        relays: &mut Relays,
-        url: RelayUrl,
-        force: bool,
-    ) -> Result<(), Error> {
-        // Remove relay
-        let relay = relays.remove(&url).ok_or(Error::RelayNotFound)?;
-
-        // If NOT force, check if has `GOSSIP` flag
-        if !force {
-            let flags = relay.flags();
-            if flags.has_any(RelayServiceFlags::GOSSIP) {
-                // Remove READ, WRITE and DISCOVERY flags
-                flags.remove(
-                    RelayServiceFlags::READ
-                        | RelayServiceFlags::WRITE
-                        | RelayServiceFlags::DISCOVERY,
-                );
-
-                // Re-insert
-                relays.insert(url, relay);
-                return Ok(());
-            }
-        }
-
-        // Disconnect
-        relay.disconnect();
-
-        Ok(())
-    }
-
     pub async fn remove_relay<U>(&self, url: U, force: bool) -> Result<(), Error>
     where
         U: TryIntoUrl,
@@ -213,23 +174,62 @@ impl InnerRelayPool {
         // Acquire write lock
         let mut relays = self.atomic.relays.write().await;
 
-        // Remove
-        self.internal_remove_relay(&mut relays, url, force)
-    }
+        // Remove relay
+        let relay: Relay = relays.remove(&url).ok_or(Error::RelayNotFound)?;
 
-    pub async fn remove_all_relays(&self, force: bool) -> Result<(), Error> {
-        // Acquire write lock
-        let mut relays = self.atomic.relays.write().await;
-
-        // Collect all relay urls
-        let urls: Vec<RelayUrl> = relays.keys().cloned().collect();
-
-        // Iter urls and remove relays
-        for url in urls.into_iter() {
-            // TODO: don't propagate error here, it will never return error
-            self.internal_remove_relay(&mut relays, url, force)?;
+        // If NOT force, check if it has `GOSSIP` flag
+        if !force {
+            // If can't be removed, re-insert it.
+            if !can_remove_relay(&relay) {
+                relays.insert(url, relay);
+                return Ok(());
+            }
         }
+
+        // Disconnect
+        relay.disconnect();
 
         Ok(())
     }
+
+    pub async fn remove_all_relays(&self) {
+        // Acquire write lock
+        let mut relays = self.atomic.relays.write().await;
+
+        // Retains all relays that can't be removed
+        relays.retain(|_, r| !can_remove_relay(r));
+    }
+
+    pub async fn force_remove_all_relays(&self) {
+        // Acquire write lock
+        let mut relays = self.atomic.relays.write().await;
+
+        // Disconnect all relays
+        for relay in relays.values() {
+            relay.disconnect();
+        }
+
+        // Clear map
+        relays.clear();
+    }
+}
+
+/// Return `true` if the relay can be removed
+///
+/// If it CAN'T be removed,
+/// the flags are automatically updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
+fn can_remove_relay(relay: &Relay) -> bool {
+    let flags = relay.flags();
+    if flags.has_any(RelayServiceFlags::GOSSIP) {
+        // Remove READ, WRITE and DISCOVERY flags
+        flags.remove(
+            RelayServiceFlags::READ | RelayServiceFlags::WRITE | RelayServiceFlags::DISCOVERY,
+        );
+
+        // Relay has `GOSSIP` flag so it can't be removed.
+        return false;
+    }
+
+    // Relay can be removed
+    true
 }

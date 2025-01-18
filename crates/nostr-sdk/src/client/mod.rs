@@ -178,33 +178,31 @@ impl Client {
         self.pool.filtering()
     }
 
-    /// Reset client
+    /// Reset the client
     ///
-    /// This method reset the client to simplify the switch to another account.
+    /// This method resets the client to simplify the switch to another account.
     ///
     /// This method will:
     /// * unsubscribe from all subscriptions
     /// * disconnect and force remove all relays
     /// * unset the signer
-    /// * unset the zapper
     /// * clear the [`RelayFiltering`]
     ///
     /// This method will NOT:
     /// * reset [`Options`]
     /// * remove the database
     /// * clear the gossip graph
-    pub async fn reset(&self) -> Result<(), Error> {
+    pub async fn reset(&self) {
         self.unsubscribe_all().await;
-        self.force_remove_all_relays().await?;
+        self.force_remove_all_relays().await;
         self.unset_signer().await;
         self.filtering().clear().await;
-        Ok(())
     }
 
     /// Completely shutdown client
     #[inline]
-    pub async fn shutdown(&self) -> Result<(), Error> {
-        Ok(self.pool.shutdown().await?)
+    pub async fn shutdown(&self) {
+        self.pool.shutdown().await
     }
 
     /// Get new notification listener
@@ -439,14 +437,14 @@ impl Client {
     /// (like the ones used for gossip).
     /// Use [`Client::force_remove_all_relays`] to remove every relay.
     #[inline]
-    pub async fn remove_all_relays(&self) -> Result<(), Error> {
-        Ok(self.pool.remove_all_relays().await?)
+    pub async fn remove_all_relays(&self) {
+        self.pool.remove_all_relays().await
     }
 
     /// Disconnect and force remove all relays
     #[inline]
-    pub async fn force_remove_all_relays(&self) -> Result<(), Error> {
-        Ok(self.pool.force_remove_all_relays().await?)
+    pub async fn force_remove_all_relays(&self) {
+        self.pool.force_remove_all_relays().await
     }
 
     /// Connect to a previously added relay
