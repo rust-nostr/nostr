@@ -8,7 +8,7 @@ use nostr::nips::nip59;
 use uniffi::Object;
 
 use crate::error::Result;
-use crate::protocol::event::{Event, EventBuilder, Tag, UnsignedEvent};
+use crate::protocol::event::{Event, Tag, UnsignedEvent};
 use crate::protocol::key::PublicKey;
 use crate::protocol::signer::NostrSigner;
 
@@ -19,7 +19,7 @@ use crate::protocol::signer::NostrSigner;
 pub async fn gift_wrap(
     signer: &NostrSigner,
     receiver_pubkey: &PublicKey,
-    rumor: &EventBuilder,
+    rumor: &UnsignedEvent,
     extra_tags: Vec<Arc<Tag>>,
 ) -> Result<Event> {
     Ok(nostr::EventBuilder::gift_wrap(

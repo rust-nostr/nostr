@@ -1338,14 +1338,13 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[cfg(all(feature = "std", feature = "nip59"))]
-    pub async fn seal<T, R>(
+    pub async fn seal<T>(
         signer: &T,
         receiver_pubkey: &PublicKey,
-        rumor: R,
+        rumor: UnsignedEvent,
     ) -> Result<Self, Error>
     where
         T: NostrSigner,
-        R: Into<EventBuilderOrUnsignedEvent>,
     {
         Ok(nip59::make_seal(signer, receiver_pubkey, rumor).await?)
     }
@@ -1394,15 +1393,14 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[cfg(all(feature = "std", feature = "nip59"))]
-    pub async fn gift_wrap<T, R, I>(
+    pub async fn gift_wrap<T, I>(
         signer: &T,
         receiver: &PublicKey,
-        rumor: R,
+        rumor: UnsignedEvent,
         extra_tags: I,
     ) -> Result<Event, Error>
     where
         T: NostrSigner,
-        R: Into<EventBuilderOrUnsignedEvent>,
         I: IntoIterator<Item = Tag>,
     {
         let seal: Event = Self::seal(signer, receiver, rumor)
@@ -1447,7 +1445,10 @@ impl EventBuilder {
         S: Into<String>,
         I: IntoIterator<Item = Tag>,
     {
-        let rumor: Self = Self::private_msg_rumor(receiver, message).tags(rumor_extra_tags);
+        let public_key: PublicKey = signer.get_public_key().await?;
+        let rumor: UnsignedEvent = Self::private_msg_rumor(receiver, message)
+            .tags(rumor_extra_tags)
+            .build(public_key);
         Self::gift_wrap(signer, &receiver, rumor, []).await
     }
 

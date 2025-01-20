@@ -36,6 +36,7 @@
 * nostr: remove `ClientMessage::neg_open_deprecated` ([Yuki Kishimoto])
 * nostr: add `nip98` feature ([Yuki Kishimoto])
 * nostr: remove support for event JSON order preservation ([Yuki Kishimoto])
+* nostr: change `EventBuilder::gift_wrap` rumor arg type ([Yuki Kishimoto])
 * pool: change `Relay::connect` method signature ([Yuki Kishimoto])
 * pool: change `Relay::disconnect` method signature ([Yuki Kishimoto])
 * pool: change `RelayPool::disconnect` method signature ([Yuki Kishimoto])

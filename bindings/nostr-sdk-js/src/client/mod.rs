@@ -19,6 +19,7 @@ use crate::abortable::JsAbortHandle;
 use crate::database::{JsEvents, JsNostrDatabase};
 use crate::duration::JsDuration;
 use crate::error::{into_err, Result};
+use crate::protocol::event::unsigned::JsUnsignedEvent;
 use crate::protocol::event::{JsEvent, JsEventBuilder, JsTag};
 use crate::protocol::filter::JsFilter;
 use crate::protocol::key::JsPublicKey;
@@ -595,7 +596,7 @@ impl JsClient {
     pub async fn gift_wrap(
         &self,
         receiver: &JsPublicKey,
-        rumor: &JsEventBuilder,
+        rumor: &JsUnsignedEvent,
         extra_tags: Option<Vec<JsTag>>,
     ) -> Result<JsSendEventOutput> {
         self.inner
@@ -617,7 +618,7 @@ impl JsClient {
         &self,
         urls: Vec<String>,
         receiver: &JsPublicKey,
-        rumor: &JsEventBuilder,
+        rumor: &JsUnsignedEvent,
         extra_tags: Option<Vec<JsTag>>,
     ) -> Result<JsSendEventOutput> {
         self.inner

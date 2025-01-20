@@ -588,7 +588,7 @@ impl EventBuilder {
     pub async fn seal(
         signer: &NostrSigner,
         receiver_public_key: &PublicKey,
-        rumor: &EventBuilder,
+        rumor: &UnsignedEvent,
     ) -> Result<Self> {
         Ok(Self {
             inner: nostr::EventBuilder::seal(

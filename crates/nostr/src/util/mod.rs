@@ -21,7 +21,7 @@ pub mod hex;
 pub mod hkdf;
 
 use crate::nips::nip01::Coordinate;
-use crate::{key, EventBuilder, EventId, PublicKey, SecretKey, Tag, UnsignedEvent};
+use crate::{key, EventId, PublicKey, SecretKey, Tag};
 
 /// A boxed future
 #[cfg(not(target_arch = "wasm32"))]
@@ -124,25 +124,5 @@ impl From<EventId> for EventIdOrCoordinate {
 impl From<Coordinate> for EventIdOrCoordinate {
     fn from(coordinate: Coordinate) -> Self {
         Self::Coordinate(coordinate)
-    }
-}
-
-/// Event builder or unsigned event
-pub enum EventBuilderOrUnsignedEvent {
-    /// Event Builder
-    EventBuilder(EventBuilder),
-    /// Unsigned event
-    UnsignedEvent(UnsignedEvent),
-}
-
-impl From<EventBuilder> for EventBuilderOrUnsignedEvent {
-    fn from(value: EventBuilder) -> Self {
-        Self::EventBuilder(value)
-    }
-}
-
-impl From<UnsignedEvent> for EventBuilderOrUnsignedEvent {
-    fn from(value: UnsignedEvent) -> Self {
-        Self::UnsignedEvent(value)
     }
 }

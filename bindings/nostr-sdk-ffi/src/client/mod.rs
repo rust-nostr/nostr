@@ -23,7 +23,7 @@ use crate::database::events::Events;
 use crate::database::NostrDatabase;
 use crate::error::Result;
 use crate::notifications::HandleNotification;
-use crate::protocol::event::{Event, EventBuilder, Tag};
+use crate::protocol::event::{Event, EventBuilder, Tag, UnsignedEvent};
 use crate::protocol::filter::Filter;
 use crate::protocol::key::PublicKey;
 use crate::protocol::message::ClientMessage;
@@ -562,7 +562,7 @@ impl Client {
     pub async fn gift_wrap(
         &self,
         receiver: &PublicKey,
-        rumor: &EventBuilder,
+        rumor: &UnsignedEvent,
         extra_tags: Vec<Arc<Tag>>,
     ) -> Result<SendEventOutput> {
         Ok(self
@@ -583,7 +583,7 @@ impl Client {
         &self,
         urls: Vec<String>,
         receiver: &PublicKey,
-        rumor: Arc<EventBuilder>,
+        rumor: &UnsignedEvent,
         extra_tags: Vec<Arc<Tag>>,
     ) -> Result<SendEventOutput> {
         Ok(self
@@ -591,7 +591,7 @@ impl Client {
             .gift_wrap_to(
                 urls,
                 receiver.deref(),
-                rumor.as_ref().deref().clone(),
+                rumor.deref().clone(),
                 extra_tags.into_iter().map(|t| t.as_ref().deref().clone()),
             )
             .await?

@@ -15,8 +15,6 @@ use crate::event::unsigned::UnsignedEvent;
 use crate::event::{self, Event};
 use crate::signer::SignerError;
 #[cfg(feature = "std")]
-use crate::util::EventBuilderOrUnsignedEvent;
-#[cfg(feature = "std")]
 use crate::{EventBuilder, Timestamp, SECP256K1};
 use crate::{JsonUtil, Kind, NostrSigner, PublicKey};
 
@@ -129,29 +127,19 @@ where
 ///
 /// The `rumor` can be an [`EventBuilder`] or an [`UnsignedEvent`].
 #[cfg(feature = "std")]
-pub async fn make_seal<T, R>(
+pub async fn make_seal<T>(
     signer: &T,
     receiver_pubkey: &PublicKey,
-    rumor: R,
+    // TODO: allow to pass a reference
+    mut rumor: UnsignedEvent, // Don't take the `EventBuilder`, read note below.
 ) -> Result<EventBuilder, Error>
 where
     T: NostrSigner,
-    R: Into<EventBuilderOrUnsignedEvent>,
 {
-    // Get or build rumor
-    //
-    // Accept either an event builder or an unsigned event because in some cases a user
-    // may want to use a different `pubkey` for the rumor.
-    let mut rumor: UnsignedEvent = match rumor.into() {
-        EventBuilderOrUnsignedEvent::EventBuilder(rumor) => {
-            // Get public key
-            let public_key = signer.get_public_key().await?;
-
-            // Build unsigned event
-            rumor.build(public_key)
-        }
-        EventBuilderOrUnsignedEvent::UnsignedEvent(rumor) => rumor,
-    };
+    // Take an `UnsignedEvent` as rumor and not an `EventBuilder`!
+    // May be useful to take an `EventBuilder` but it can create issues:
+    // if a dev passes the same cloned `EventBuilder` to send the rumor to multiple users,
+    // the final rumor will have different `created_at` timestamps, so different event IDs.
 
     // Make sure that rumor has event ID
     rumor.ensure_id();
@@ -182,7 +170,7 @@ mod tests {
                 .unwrap();
 
         // Compose Gift Wrap event
-        let rumor: EventBuilder = EventBuilder::text_note("Test");
+        let rumor: UnsignedEvent = EventBuilder::text_note("Test").build(sender_keys.public_key);
         let event: Event =
             EventBuilder::gift_wrap(&sender_keys, &receiver_keys.public_key(), rumor.clone(), [])
                 .await
