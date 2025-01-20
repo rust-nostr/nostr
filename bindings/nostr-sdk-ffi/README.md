@@ -23,7 +23,7 @@ If you want to compile from source or need more options, read on.
 just python
 ```
 
-### Kotlin
+### Kotlin (android)
 
 For most users, we recommend using our official Kotlin package: [org.rust-nostr:nostr-sdk](https://central.sonatype.com/artifact/org.rust-nostr/nostr-sdk/).
 
@@ -38,6 +38,22 @@ just aar
 ```
 
 See [Add your AAR or JAR as a dependency](https://developer.android.com/studio/projects/android-library#psd-add-aar-jar-dependency) in Android's docs for more information on how to integrate such an archive into your project.
+
+### Kotlin Multiplatform
+
+For most users, we recommend using our official Kotlin package: [org.rust-nostr:nostr-sdk-kmp](https://central.sonatype.com/artifact/org.rust-nostr/nostr-sdk-kmp/).
+
+If you want to compile from source or need more options, read on.
+
+#### Build
+
+```bash
+just build
+```
+
+```bash
+just kmp
+```
 
 ### Swift
 

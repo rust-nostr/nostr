@@ -2,6 +2,7 @@ plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.multiplatform")
     id("com.vanniktech.maven.publish") version "0.28.0"
+    id("signing")
 }
 
 apply(plugin = "kotlinx-atomicfu")
@@ -27,14 +28,24 @@ kotlin {
     }
 
     listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64()
+        //iosX64(),               // iOS (x86_64)
+        //iosArm64(),             // iOS (ARM64)
+        //iosSimulatorArm64(),    // iOS simulator
+        macosX64(),             // macOS (Intel-based)
+        macosArm64(),           // macOS (Apple Silicon)
+        linuxX64(),             // Linux (x86_64)
+        linuxArm64(),           // Linux (ARM64)
+        mingwX64()              // Windows (x86_64)
     ).forEach {
         val platform = when (it.targetName) {
-            "iosSimulatorArm64" -> "ios_simulator_arm64"
-            "iosArm64" -> "ios_arm64"
-            "iosX64" -> "ios_x64"
+            //"iosSimulatorArm64" -> "ios_simulator_arm64"
+            //"iosArm64" -> "ios_arm64"
+            //"iosX64" -> "ios_x64"
+            "macosX64" -> "macos_x64"
+            "macosArm64" -> "macos_arm64"
+            "linuxX64" -> "linux_x64"
+            "linuxArm64" -> "linux_arm64"
+            "mingwX64" -> "mingw_x64"
             else -> error("Unsupported target $name")
         }
 
@@ -100,7 +111,7 @@ mavenPublishing {
 
     signAllPublications()
 
-    coordinates("org.rust-nostr", "nostr-sdk-kmp", "0.38.0")
+    coordinates("org.rust-nostr", "nostr-sdk-kmp", "0.39.0-alpha01")
 
     pom {
         name.set("nostr-sdk-kmp")
@@ -125,4 +136,8 @@ mavenPublishing {
             url.set("https://github.com/rust-nostr/nostr")
         }
     }
+}
+
+signing {
+    useGpgCmd()
 }
