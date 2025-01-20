@@ -178,6 +178,7 @@ NIP35 support, better logs and docs, performance improvements, bugs fix and more
 * pool: rename `FilterOptions` to `ReqExitPolicy` ([Yuki Kishimoto])
 * pool: log WebSocket connection error only if different from the last one ([Yuki Kishimoto])
 * pool: reduce atomic operations when cloning ([Yuki Kishimoto])
+* pool: derive `PartialOrd`, `Ord` and `Hash` for `RelayPoolNotification` ([Yuki Kishimoto])
 * sdk: refactor POW difficulty management ([Yuki Kishimoto])
 * connect: require `fmt::Debug`, `Send` and `Sync` for `AuthUrlHandler` ([Yuki Kishimoto])
 * connect: improve secret matching for `NostrConnectRemoteSigner` ([Yuki Kishimoto])
