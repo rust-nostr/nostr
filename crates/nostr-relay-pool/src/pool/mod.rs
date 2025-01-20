@@ -230,18 +230,19 @@ impl RelayPool {
 
     /// Add new relay
     ///
-    /// If are set pool subscriptions, the new added relay will inherit them.
+    /// If the [`RelayServiceFlags::READ`] flag is set in [`RelayOptions`]
+    /// and the pool has some subscriptions, the new added relay will inherit them.
     /// Use [`RelayPool::subscribe_to`] method instead of [`RelayPool::subscribe`],
-    /// to avoid to set pool subscriptions.
+    /// to avoid setting pool subscriptions.
     ///
-    /// Connection is **NOT** automatically started with relay, remember to call [`RelayPool::connect`] or [`RelayPool::connect_relay`]!
+    /// Connection is **NOT** automatically started, remember to call [`RelayPool::connect`] or [`RelayPool::connect_relay`]!
     #[inline]
     pub async fn add_relay<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.inner.add_relay(url, true, opts).await
+        self.inner.add_relay(url, opts).await
     }
 
     // Private API
@@ -253,15 +254,12 @@ impl RelayPool {
     pub async fn __get_or_add_relay(
         &self,
         url: RelayUrl,
-        inherit_pool_subscriptions: bool,
         opts: RelayOptions,
     ) -> Result<Option<Relay>, Error> {
         match self.relay(&url).await {
             Ok(relay) => Ok(Some(relay)),
             Err(..) => {
-                self.inner
-                    .add_relay(url, inherit_pool_subscriptions, opts)
-                    .await?;
+                self.inner.add_relay(url, opts).await?;
                 Ok(None)
             }
         }

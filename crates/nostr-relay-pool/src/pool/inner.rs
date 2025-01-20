@@ -108,12 +108,7 @@ impl InnerRelayPool {
         subscriptions.clear();
     }
 
-    pub async fn add_relay<U>(
-        &self,
-        url: U,
-        inherit_pool_subscriptions: bool,
-        opts: RelayOptions,
-    ) -> Result<bool, Error>
+    pub async fn add_relay<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
     where
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
@@ -149,8 +144,8 @@ impl InnerRelayPool {
             .inner
             .set_notification_sender(self.notification_sender.clone())?;
 
-        // Set relay subscriptions
-        if inherit_pool_subscriptions {
+        // If relay has `READ` flag, inherit pool subscriptions
+        if relay.flags().has_read() {
             let subscriptions = self.subscriptions().await;
             for (id, filters) in subscriptions.into_iter() {
                 relay.inner.update_subscription(id, filters, false).await;

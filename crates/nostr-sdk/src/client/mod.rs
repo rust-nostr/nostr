@@ -271,7 +271,6 @@ impl Client {
     async fn get_or_add_relay_with_flag<U>(
         &self,
         url: U,
-        inherit_pool_subscriptions: bool,
         flag: RelayServiceFlags,
     ) -> Result<bool, Error>
     where
@@ -289,11 +288,7 @@ impl Client {
 
         // Add relay with opts or edit current one
         // TODO: remove clone here
-        match self
-            .pool
-            .__get_or_add_relay(url.clone(), inherit_pool_subscriptions, opts)
-            .await?
-        {
+        match self.pool.__get_or_add_relay(url.clone(), opts).await? {
             Some(relay) => {
                 relay.flags().add(flag);
                 Ok(false)
@@ -329,7 +324,7 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.get_or_add_relay_with_flag(url, true, RelayServiceFlags::default())
+        self.get_or_add_relay_with_flag(url, RelayServiceFlags::default())
             .await
     }
 
@@ -344,12 +339,8 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.get_or_add_relay_with_flag(
-            url,
-            false,
-            RelayServiceFlags::PING | RelayServiceFlags::DISCOVERY,
-        )
-        .await
+        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::DISCOVERY)
+            .await
     }
 
     /// Add read relay
@@ -364,12 +355,8 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.get_or_add_relay_with_flag(
-            url,
-            true,
-            RelayServiceFlags::PING | RelayServiceFlags::READ,
-        )
-        .await
+        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::READ)
+            .await
     }
 
     /// Add write relay
@@ -381,12 +368,8 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.get_or_add_relay_with_flag(
-            url,
-            false,
-            RelayServiceFlags::PING | RelayServiceFlags::WRITE,
-        )
-        .await
+        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::WRITE)
+            .await
     }
 
     #[inline]
@@ -395,12 +378,8 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.get_or_add_relay_with_flag(
-            url,
-            false,
-            RelayServiceFlags::PING | RelayServiceFlags::GOSSIP,
-        )
-        .await
+        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::GOSSIP)
+            .await
     }
 
     /// Remove and disconnect relay
