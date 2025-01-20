@@ -35,20 +35,33 @@ use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};
 /// Relay Pool Notification
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RelayPoolNotification {
-    /// Received an [`Event`]. Does not include events sent by this client.
+    /// Received a new [`Event`] from a relay.
+    ///
+    /// This notification is sent only the **first time** the [`Event`] is seen.
+    /// Events sent by this client are not included.
+    /// This is useful when you only need to process new incoming events
+    /// and avoid handling the same events multiple times.
+    ///
+    /// If you require notifications for all messages, including previously sent or received events,
+    /// consider using the [`RelayPoolNotification::Message`] variant instead.
     Event {
-        /// Relay url
+        /// The URL of the relay from which the event was received.
         relay_url: RelayUrl,
         /// Subscription ID
         subscription_id: SubscriptionId,
-        /// Event
+        /// The received event.
         event: Box<Event>,
     },
-    /// Received a [`RelayMessage`]. Includes messages wrapping events that were sent by this client.
+    /// Received a [`RelayMessage`].
+    ///
+    /// This notification is sent **every time** a [`RelayMessage`] is received,
+    /// regardless of whether it has been received before.
+    ///
+    /// May includes messages wrapping events that were sent by this client.
     Message {
-        /// Relay url
+        /// The URL of the relay from which the message was received.
         relay_url: RelayUrl,
-        /// Relay Message
+        /// The received relay message.
         message: RelayMessage,
     },
     /// Relay status changed
