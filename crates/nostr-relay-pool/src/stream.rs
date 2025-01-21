@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+//! Streams
+
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
