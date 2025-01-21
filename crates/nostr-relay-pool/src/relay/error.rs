@@ -5,7 +5,6 @@
 use std::fmt;
 use std::time::Duration;
 
-use async_wsocket::Error as WsError;
 use nostr::event;
 use nostr::event::builder;
 use nostr::message::MessageHandleError;
@@ -13,13 +12,14 @@ use nostr_database::DatabaseError;
 use tokio::sync::{broadcast, SetError};
 
 use crate::shared::SharedStateError;
+use crate::transport::error::TransportError;
 use crate::RelayPoolNotification;
 
 /// Relay error
 #[derive(Debug)]
 pub enum Error {
-    /// WebSocket error
-    WebSocket(WsError),
+    /// Transport error
+    Transport(TransportError),
     /// Shared state error
     SharedState(SharedStateError),
     /// MessageHandle error
@@ -124,7 +124,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::WebSocket(e) => write!(f, "{e}"),
+            Self::Transport(e) => write!(f, "{e}"),
             Self::SharedState(e) => write!(f, "{e}"),
             Self::MessageHandle(e) => write!(f, "{e}"),
             Self::Event(e) => write!(f, "{e}"),
@@ -181,9 +181,9 @@ impl fmt::Display for Error {
     }
 }
 
-impl From<WsError> for Error {
-    fn from(e: WsError) -> Self {
-        Self::WebSocket(e)
+impl From<TransportError> for Error {
+    fn from(e: TransportError) -> Self {
+        Self::Transport(e)
     }
 }
 

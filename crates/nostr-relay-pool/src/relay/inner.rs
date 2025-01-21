@@ -12,9 +12,7 @@ use std::time::Duration;
 
 use async_utility::{task, time};
 use async_wsocket::futures_util::{self, SinkExt, StreamExt};
-use async_wsocket::{
-    connect as wsocket_connect, ConnectionMode, Error as WsError, Sink, Stream, WsMessage,
-};
+use async_wsocket::{ConnectionMode, WsMessage};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
 use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
@@ -38,6 +36,8 @@ use super::{Error, Reconciliation, RelayNotification, RelayStatus, SubscriptionA
 use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
+use crate::transport::error::TransportError;
+use crate::transport::websocket::{Sink, Stream};
 
 #[derive(Debug)]
 struct RelayChannels {
@@ -140,7 +140,7 @@ impl AtomicDestroyer for InnerRelay {
 }
 
 impl InnerRelay {
-    pub fn new(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
+    pub(super) fn new(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
         let (relay_notification_sender, ..) = broadcast::channel::<RelayNotification>(2048);
 
         Self {
@@ -521,7 +521,7 @@ impl InnerRelay {
         &self,
         timeout: Duration,
         status_on_failure: RelayStatus,
-    ) -> Result<(Sink, Stream), WsError> {
+    ) -> Result<(Sink, Stream), TransportError> {
         // Update status
         self.set_status(RelayStatus::Connecting, true);
 
@@ -529,7 +529,12 @@ impl InnerRelay {
         self.stats.new_attempt();
 
         // Connect
-        match wsocket_connect((&self.url).into(), &self.opts.connection_mode, timeout).await {
+        match self
+            .state
+            .transport
+            .connect((&self.url).into(), &self.opts.connection_mode, timeout)
+            .await
+        {
             Ok((ws_tx, ws_rx)) => {
                 // Update status
                 self.set_status(RelayStatus::Connected, true);
@@ -712,7 +717,7 @@ impl InnerRelay {
             match msg? {
                 #[cfg(not(target_arch = "wasm32"))]
                 WsMessage::Pong(bytes) => {
-                    if self.flags.has_ping() {
+                    if self.flags.has_ping() && self.state.transport.support_ping() {
                         match bytes.try_into() {
                             Ok(nonce) => {
                                 // Nonce from big-endian bytes
@@ -759,7 +764,8 @@ impl InnerRelay {
         loop {
             // Check if support ping
             #[cfg(not(target_arch = "wasm32"))]
-            if self.flags.has_ping() {
+            if self.flags.has_ping() && self.state.transport.support_ping() {
+                // Ping supported, ping!
                 self.atomic.channels.ping();
             }
 

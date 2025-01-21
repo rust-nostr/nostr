@@ -337,7 +337,7 @@ dependencies = [
 [[package]]
 name = "async-wsocket"
 version = "0.12.0"
-source = "git+https://github.com/yukibtc/async-wsocket?rev=da5da94574f73da1b4d638fd9736298a67139c59#da5da94574f73da1b4d638fd9736298a67139c59"
+source = "git+https://github.com/yukibtc/async-wsocket?rev=8c630bbf231d5acdc857e09a3b9401af59b5f1b3#8c630bbf231d5acdc857e09a3b9401af59b5f1b3"
 dependencies = [
  "arti-client",
  "async-utility",
