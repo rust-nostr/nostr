@@ -9,6 +9,9 @@ use std::sync::Arc;
 use nostr::signer::{IntoNostrSigner, NostrSigner};
 use nostr_database::memory::MemoryDatabase;
 use nostr_database::{IntoNostrDatabase, NostrDatabase};
+use nostr_relay_pool::transport::websocket::{
+    DefaultWebsocketTransport, IntoWebSocketTransport, WebSocketTransport,
+};
 
 use crate::{Client, Options};
 
@@ -17,6 +20,8 @@ use crate::{Client, Options};
 pub struct ClientBuilder {
     /// Nostr Signer
     pub signer: Option<Arc<dyn NostrSigner>>,
+    /// WebSocket transport
+    pub websocket_transport: Arc<dyn WebSocketTransport>,
     /// Database
     pub database: Arc<dyn NostrDatabase>,
     /// Client options
@@ -27,6 +32,7 @@ impl Default for ClientBuilder {
     fn default() -> Self {
         Self {
             signer: None,
+            websocket_transport: Arc::new(DefaultWebsocketTransport),
             database: Arc::new(MemoryDatabase::default()),
             opts: Options::default(),
         }
@@ -56,6 +62,18 @@ impl ClientBuilder {
         T: IntoNostrSigner,
     {
         self.signer = Some(signer.into_nostr_signer());
+        self
+    }
+
+    /// Set custom WebSocket transport
+    ///
+    /// By default [`DefaultWebsocketTransport`] is used.
+    #[inline]
+    pub fn websocket_transport<T>(mut self, transport: T) -> Self
+    where
+        T: IntoWebSocketTransport,
+    {
+        self.websocket_transport = transport.into_transport();
         self
     }
 

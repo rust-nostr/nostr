@@ -11,6 +11,9 @@ use nostr::NostrSigner;
 use nostr_database::{IntoNostrDatabase, MemoryDatabase, NostrDatabase};
 use tokio::sync::RwLock;
 
+use crate::transport::websocket::{
+    DefaultWebsocketTransport, IntoWebSocketTransport, WebSocketTransport,
+};
 use crate::{RelayFiltering, RelayFilteringMode};
 
 #[derive(Debug)]
@@ -32,6 +35,7 @@ impl fmt::Display for SharedStateError {
 #[derive(Debug, Clone)]
 pub struct SharedState {
     pub(crate) database: Arc<dyn NostrDatabase>,
+    pub(crate) transport: Arc<dyn WebSocketTransport>,
     signer: Arc<RwLock<Option<Arc<dyn NostrSigner>>>>,
     nip42_auto_authentication: Arc<AtomicBool>,
     min_pow_difficulty: Arc<AtomicU8>,
@@ -43,6 +47,7 @@ impl Default for SharedState {
     fn default() -> Self {
         Self {
             database: MemoryDatabase::new().into_nostr_database(),
+            transport: DefaultWebsocketTransport.into_transport(),
             signer: Arc::new(RwLock::new(None)),
             nip42_auto_authentication: Arc::new(AtomicBool::new(true)),
             min_pow_difficulty: Arc::new(AtomicU8::new(0)),
@@ -54,6 +59,7 @@ impl Default for SharedState {
 impl SharedState {
     pub fn new(
         database: Arc<dyn NostrDatabase>,
+        transport: Arc<dyn WebSocketTransport>,
         signer: Option<Arc<dyn NostrSigner>>,
         filtering_mode: RelayFilteringMode,
         nip42_auto_authentication: bool,
@@ -61,11 +67,21 @@ impl SharedState {
     ) -> Self {
         Self {
             database,
+            transport,
             signer: Arc::new(RwLock::new(signer)),
             nip42_auto_authentication: Arc::new(AtomicBool::new(nip42_auto_authentication)),
             filtering: RelayFiltering::new(filtering_mode),
             min_pow_difficulty: Arc::new(AtomicU8::new(min_pow_difficulty)),
         }
+    }
+
+    /// Set a custom transport
+    pub fn custom_transport<T>(mut self, transport: T) -> Self
+    where
+        T: IntoWebSocketTransport,
+    {
+        self.transport = transport.into_transport();
+        self
     }
 
     /// Check if auto authentication to relays is enabled

@@ -240,7 +240,7 @@ impl InnerLocalRelay {
                             match msg {
                                 Message::Text(json) => {
                                     tracing::trace!("Received {json}");
-                                    self.handle_client_msg(&mut session, &mut tx, ClientMessage::from_json(json)?, &addr)
+                                    self.handle_client_msg(&mut session, &mut tx, ClientMessage::from_json(json.as_bytes())?, &addr)
                                         .await?;
                                 }
                                 Message::Binary(..) => {
@@ -752,7 +752,7 @@ impl InnerLocalRelay {
     where
         S: AsyncRead + AsyncWrite + Unpin,
     {
-        tx.send(Message::Text(msg.as_json())).await?;
+        tx.send(Message::Text(msg.as_json().into())).await?;
         Ok(())
     }
 
@@ -762,7 +762,8 @@ impl InnerLocalRelay {
         I: IntoIterator<Item = RelayMessage>,
         S: AsyncRead + AsyncWrite + Unpin,
     {
-        let mut stream = stream::iter(msgs.into_iter()).map(|msg| Ok(Message::Text(msg.as_json())));
+        let mut stream =
+            stream::iter(msgs.into_iter()).map(|msg| Ok(Message::Text(msg.as_json().into())));
         tx.send_all(&mut stream).await?;
         Ok(())
     }

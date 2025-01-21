@@ -337,7 +337,7 @@ dependencies = [
 [[package]]
 name = "async-wsocket"
 version = "0.12.0"
-source = "git+https://github.com/yukibtc/async-wsocket?rev=da5da94574f73da1b4d638fd9736298a67139c59#da5da94574f73da1b4d638fd9736298a67139c59"
+source = "git+https://github.com/yukibtc/async-wsocket?rev=5fba7927576064ac0698a4ee3df0d26e5cf726dd#5fba7927576064ac0698a4ee3df0d26e5cf726dd"
 dependencies = [
  "arti-client",
  "async-utility",
@@ -4665,9 +4665,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
-version = "0.24.0"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edc5f74e248dc973e0dbb7b74c7e0d6fcc301c694ff50049504004ef4d0cdcd9"
+checksum = "be4bf6fecd69fcdede0ec680aaf474cdab988f9de6bc73d3758f0160e3b7025a"
 dependencies = [
  "futures-util",
  "log",
@@ -5820,9 +5820,9 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "tungstenite"
-version = "0.24.0"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18e5b8366ee7a95b16d32197d0b2604b43a0be89dc5fac9f8e96ccafbaedda8a"
+checksum = "413083a99c579593656008130e29255e54dcaae495be556cc26888f211648c24"
 dependencies = [
  "byteorder",
  "bytes",
@@ -5834,7 +5834,7 @@ dependencies = [
  "rustls",
  "rustls-pki-types",
  "sha1",
- "thiserror 1.0.64",
+ "thiserror 2.0.8",
  "utf-8",
 ]
 

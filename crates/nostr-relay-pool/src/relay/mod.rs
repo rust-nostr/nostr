@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use async_utility::time;
 use async_wsocket::futures_util::Future;
-use async_wsocket::{ConnectionMode, Sink, Stream};
+use async_wsocket::ConnectionMode;
 use atomic_destructor::AtomicDestructor;
 use nostr_database::prelude::*;
 use tokio::sync::broadcast;
@@ -40,6 +40,7 @@ pub use self::options::{
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
 use crate::shared::SharedState;
+use crate::transport::websocket::{Sink, Stream};
 
 /// Subscription auto-closed reason
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -916,7 +917,7 @@ mod tests {
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
         let res = relay.try_connect(Duration::from_secs(2)).await;
-        assert!(matches!(res.unwrap_err(), Error::WebSocket(..)));
+        assert!(matches!(res.unwrap_err(), Error::Transport(..)));
 
         assert_eq!(relay.status(), RelayStatus::Terminated);
 

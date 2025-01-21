@@ -111,9 +111,11 @@
 * pool: add `RelayPool::try_connect` ([Yuki Kishimoto])
 * pool: add `RelayPool::try_connect_relay` ([Yuki Kishimoto])
 * pool: add `RelayPool::wait_for_connection` ([Yuki Kishimoto])
+* pool: add WebSocket transport abstraction ([Yuki Kishimoto])
 * sdk: add `Client::try_connect` ([Yuki Kishimoto])
 * sdk: add `Client::try_connect_relay` ([Yuki Kishimoto])
 * sdk: add `Client::wait_for_connection` ([Yuki Kishimoto])
+* sdk: add `ClientBuilder::websocket_transport` ([Yuki Kishimoto])
 * relay-builder: custom http server ([v0l])
 * cli: allow setting a port in `serve` command ([Yuki Kishimoto])
 

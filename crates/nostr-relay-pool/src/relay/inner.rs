@@ -12,7 +12,7 @@ use std::time::Duration;
 
 use async_utility::{task, time};
 use async_wsocket::futures_util::{self, SinkExt, StreamExt};
-use async_wsocket::{connect as wsocket_connect, ConnectionMode, Sink, Stream, WsMessage};
+use async_wsocket::{ConnectionMode, Message};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
 use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
@@ -36,6 +36,7 @@ use super::{Error, Reconciliation, RelayNotification, RelayStatus, SubscriptionA
 use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
+use crate::transport::websocket::{Sink, Stream};
 
 #[derive(Debug)]
 struct RelayChannels {
@@ -138,7 +139,7 @@ impl AtomicDestroyer for InnerRelay {
 }
 
 impl InnerRelay {
-    pub fn new(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
+    pub(super) fn new(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
         let (relay_notification_sender, ..) = broadcast::channel::<RelayNotification>(2048);
 
         Self {
@@ -532,7 +533,7 @@ impl InnerRelay {
         // At this stem is NOT required to close the WebSocket connection.
         tokio::select! {
             // Connect
-            res = wsocket_connect((&self.url).into(), &self.opts.connection_mode, timeout) => match res {
+            res = self.state.transport.connect((&self.url).into(), &self.opts.connection_mode, timeout) => match res {
                 Ok((ws_tx, ws_rx)) => {
                 // Update status
                 self.set_status(RelayStatus::Connected, true);
@@ -547,7 +548,7 @@ impl InnerRelay {
                 self.set_status(status_on_failure, false);
 
                 // Return error
-                Err(Error::WebSocket(e))
+                Err(Error::Transport(e))
             }
             },
             // Handle termination notification
@@ -659,9 +660,9 @@ impl InnerRelay {
                 // Nostr channel receiver
                 Some(msgs) = rx_nostr.recv() => {
                     // Serialize messages to JSON and compose WebSocket text messages
-                    let msgs: Vec<WsMessage> = msgs
+                    let msgs: Vec<Message> = msgs
                         .into_iter()
-                        .map(|msg| WsMessage::Text(msg.as_json()))
+                        .map(|msg| Message::Text(msg.as_json()))
                         .collect();
 
                     // Calculate messages size
@@ -698,7 +699,7 @@ impl InnerRelay {
                         ping.set_replied(false);
 
                         // Compose ping message
-                        let msg = WsMessage::Ping(nonce.to_be_bytes().to_vec());
+                        let msg = Message::Ping(nonce.to_be_bytes().to_vec());
 
                         // Send WebSocket message
                         send_ws_msgs(ws_tx, vec![msg]).await?;
@@ -727,13 +728,13 @@ impl InnerRelay {
 
         while let Some(msg) = ws_rx.next().await {
             match msg? {
-                WsMessage::Text(json) => self.handle_relay_message(&json).await,
-                WsMessage::Binary(_) => {
+                Message::Text(json) => self.handle_relay_message(&json).await,
+                Message::Binary(_) => {
                     tracing::warn!(url = %self.url, "Binary messages aren't supported.");
                 }
                 #[cfg(not(target_arch = "wasm32"))]
-                WsMessage::Pong(bytes) => {
-                    if self.flags.has_ping() {
+                Message::Pong(bytes) => {
+                    if self.flags.has_ping() && self.state.transport.support_ping() {
                         match bytes.try_into() {
                             Ok(nonce) => {
                                 // Nonce from big-endian bytes
@@ -764,9 +765,9 @@ impl InnerRelay {
                     }
                 }
                 #[cfg(not(target_arch = "wasm32"))]
-                WsMessage::Close(None) => break,
+                Message::Close(None) => break,
                 #[cfg(not(target_arch = "wasm32"))]
-                WsMessage::Close(Some(frame)) => {
+                Message::Close(Some(frame)) => {
                     tracing::info!(code = %frame.code, reason = %frame.reason, "Connection closed by peer.");
                     break;
                 }
@@ -783,7 +784,8 @@ impl InnerRelay {
         loop {
             // Check if support ping
             #[cfg(not(target_arch = "wasm32"))]
-            if self.flags.has_ping() {
+            if self.flags.has_ping() && self.state.transport.support_ping() {
+                // Ping supported, ping!
                 self.atomic.channels.ping();
             }
 
@@ -1848,7 +1850,7 @@ impl InnerRelay {
 }
 
 /// Send WebSocket messages with timeout set to [WEBSOCKET_TX_TIMEOUT].
-async fn send_ws_msgs(tx: &mut Sink, msgs: Vec<WsMessage>) -> Result<(), Error> {
+async fn send_ws_msgs(tx: &mut Sink, msgs: Vec<Message>) -> Result<(), Error> {
     let mut stream = futures_util::stream::iter(msgs.into_iter().map(Ok));
     match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.send_all(&mut stream)).await {
         Some(res) => Ok(res?),

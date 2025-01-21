@@ -83,6 +83,7 @@ impl Client {
         // Construct shared state
         let state = SharedState::new(
             builder.database,
+            builder.websocket_transport,
             builder.signer,
             builder.opts.filtering_mode,
             builder.opts.nip42_auto_authentication,
