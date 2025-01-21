@@ -3,12 +3,14 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
+use std::sync::Arc;
 
 use uniffi::Object;
 
 use super::{Client, Options};
 use crate::database::NostrDatabase;
 use crate::protocol::signer::NostrSigner;
+use crate::transport::websocket::{CustomWebSocketTransport, FFI2RustWebSocketTransport};
 
 #[derive(Clone, Default, Object)]
 pub struct ClientBuilder {
@@ -38,6 +40,14 @@ impl ClientBuilder {
     pub fn database(&self, database: &NostrDatabase) -> Self {
         let mut builder = self.clone();
         builder.inner = builder.inner.database(database.deref().clone());
+        builder
+    }
+
+    /// Set a custom WebSocket transport
+    pub fn websocket_transport(&self, transport: Arc<dyn CustomWebSocketTransport>) -> Self {
+        let mut builder = self.clone();
+        let intermediate = FFI2RustWebSocketTransport { inner: transport };
+        builder.inner = builder.inner.websocket_transport(intermediate);
         builder
     }
 

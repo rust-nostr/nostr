@@ -30,3 +30,29 @@ where
         Self::Generic(e.to_string())
     }
 }
+
+#[derive(Debug)]
+pub(crate) struct MiddleError(String);
+
+impl std::error::Error for MiddleError {}
+
+impl fmt::Display for MiddleError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl MiddleError {
+    pub fn new<S>(msg: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self(msg.into())
+    }
+}
+
+impl From<NostrSdkError> for MiddleError {
+    fn from(e: NostrSdkError) -> Self {
+        Self(e.to_string())
+    }
+}

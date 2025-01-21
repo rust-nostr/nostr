@@ -2827,6 +2827,7 @@ name = "nostr-sdk-ffi"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "async-wsocket",
  "nostr",
  "nostr-connect",
  "nostr-sdk",
