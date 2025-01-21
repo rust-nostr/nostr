@@ -14,6 +14,7 @@ pub mod notifications;
 pub mod nwc;
 pub mod protocol;
 pub mod relay;
+pub mod transport;
 mod util;
 
 /// Get git hash version of `rust-nostr` libraries
