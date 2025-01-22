@@ -7,7 +7,6 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_wsocket::WsMessage;
-use nostr_sdk::async_utility::tokio::sync::{mpsc, Mutex};
 use nostr_sdk::pool::transport::websocket::{Sink, Stream};
 use uniffi::{Enum, Object};
 
@@ -51,52 +50,31 @@ impl TryFrom<WsMessage> for WebSocketMessage {
 
 #[uniffi::export(with_foreign)]
 #[async_trait::async_trait]
-pub trait WebSocketSink: Send + Sync {
+pub trait WebSocketAdaptor: Send + Sync {
     /// Send a WebSocket message
-    async fn send_msg(&self, msg: WebSocketMessage) -> Result<()>;
+    async fn send(&self, msg: WebSocketMessage) -> Result<()>;
+
+    /// Receive a message
+    ///
+    /// This method MUST await for a message.
+    ///
+    /// Return `None` to mark the stream as terminated.
+    async fn recv(&self) -> Result<Option<WebSocketMessage>>;
 
     /// Close the WebSocket connection
     async fn terminate(&self) -> Result<()>;
 }
 
 #[derive(Object)]
-pub struct WebSocketStreamForwarder {
-    tx: mpsc::Sender<WsMessage>,
-    rx: Arc<Mutex<Option<mpsc::Receiver<WsMessage>>>>,
-}
-
-#[uniffi::export(async_runtime = "tokio")]
-impl WebSocketStreamForwarder {
-    /// Create new WebSocket stream forwarder
-    ///
-    /// NOTE: for every connection must be created a new forwarder!
-    #[uniffi::constructor]
-    pub fn new() -> Self {
-        let (tx, rx) = mpsc::channel(4096);
-        Self {
-            tx,
-            rx: Arc::new(Mutex::new(Some(rx))),
-        }
-    }
-
-    /// Forward the message to the ingestor.
-    pub async fn forward(&self, msg: WebSocketMessage) -> Result<()> {
-        self.tx.send(msg.into()).await?;
-        Ok(())
-    }
-}
-
-#[derive(Object)]
-pub struct WebSocketAdaptor {
-    sink: Arc<dyn WebSocketSink>,
-    stream: Arc<WebSocketStreamForwarder>,
+pub struct WebSocketAdaptorWrapper {
+    inner: Arc<dyn WebSocketAdaptor>,
 }
 
 #[uniffi::export]
-impl WebSocketAdaptor {
+impl WebSocketAdaptorWrapper {
     #[uniffi::constructor]
-    pub fn new(sink: Arc<dyn WebSocketSink>, stream: Arc<WebSocketStreamForwarder>) -> Self {
-        Self { sink, stream }
+    pub fn new(adaptor: Arc<dyn WebSocketAdaptor>) -> Self {
+        Self { inner: adaptor }
     }
 }
 
@@ -114,7 +92,7 @@ pub trait CustomWebSocketTransport: Send + Sync {
         url: String,
         mode: ConnectionMode,
         timeout: Duration,
-    ) -> Result<Option<Arc<WebSocketAdaptor>>>;
+    ) -> Result<Option<Arc<WebSocketAdaptorWrapper>>>;
 }
 
 pub(crate) struct FFI2RustWebSocketTransport {
@@ -133,40 +111,47 @@ mod inner {
     use std::pin::Pin;
     use std::task::{Context, Poll};
 
-    use async_wsocket::futures_util::{Sink as SinkTrait, StreamExt};
+    use async_wsocket::futures_util::{Sink as SinkTrait, Stream as StreamTrait, StreamExt};
     use async_wsocket::ConnectionMode;
     use nostr::util::BoxedFuture;
     use nostr::Url;
-    use nostr_sdk::pool::stream::ReceiverStream;
     use nostr_sdk::pool::transport::error::TransportError;
     use nostr_sdk::pool::transport::websocket::WebSocketTransport;
 
     use super::*;
     use crate::error::MiddleError;
 
+    // TODO: use ReusableBoxFuture by tokio-util to avoid reallocation?
     type SinkFuture = Pin<Box<dyn Future<Output = Result<(), TransportError>> + Send>>;
+    type StreamFuture =
+        Pin<Box<dyn Future<Output = Result<Option<WebSocketMessage>, TransportError>> + Send>>;
 
-    struct FFI2RustWebSocketSink {
-        inner: Arc<dyn WebSocketSink>,
+    struct FFI2RustWebSocketAdaptor {
+        // The adaptor
+        adaptor: Arc<dyn WebSocketAdaptor>,
+        // The messages buffer
         buffer: VecDeque<WebSocketMessage>,
         // Future to flush all messages
         send_all_future: Option<SinkFuture>,
         // Future to close websocket
         close_future: Option<SinkFuture>,
+        // Future to recv messages
+        recv_future: Option<StreamFuture>,
     }
 
-    impl FFI2RustWebSocketSink {
-        fn new(sink: Arc<dyn WebSocketSink>) -> Self {
+    impl FFI2RustWebSocketAdaptor {
+        fn new(adaptor: Arc<dyn WebSocketAdaptor>) -> Self {
             Self {
-                inner: sink,
+                adaptor,
                 buffer: VecDeque::new(),
                 send_all_future: None,
                 close_future: None,
+                recv_future: None,
             }
         }
     }
 
-    impl SinkTrait<WsMessage> for FFI2RustWebSocketSink {
+    impl SinkTrait<WsMessage> for FFI2RustWebSocketAdaptor {
         type Error = TransportError;
 
         fn poll_ready(
@@ -222,14 +207,15 @@ mod inner {
 
             // Take buffer
             let messages: VecDeque<WebSocketMessage> = std::mem::take(&mut this.buffer);
-            let sink = this.inner.clone();
+            let adaptor = this.adaptor.clone();
 
             tracing::trace!("flushing buffered messages: {:?}", messages);
 
             // Create a future to send all messages
             let future = async move {
                 for msg in messages.into_iter() {
-                    sink.send_msg(msg)
+                    adaptor
+                        .send(msg)
                         .await
                         .map_err(MiddleError::from)
                         .map_err(TransportError::backend)?;
@@ -271,13 +257,14 @@ mod inner {
                 };
             }
 
-            let sink = this.inner.clone();
+            let adaptor = this.adaptor.clone();
 
             tracing::trace!("starting poll close");
 
-            // Create a future to send all messages
+            // Create a future
             let future = async move {
-                sink.terminate()
+                adaptor
+                    .terminate()
                     .await
                     .map_err(MiddleError::from)
                     .map_err(TransportError::backend)
@@ -288,6 +275,58 @@ mod inner {
 
             // Start polling the future
             this.poll_close(cx)
+        }
+    }
+
+    impl StreamTrait for FFI2RustWebSocketAdaptor {
+        type Item = Result<WsMessage, TransportError>;
+
+        fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            let mut this = self.as_mut();
+
+            // If there's an active future for closing, poll it
+            if let Some(recv_future) = this.recv_future.as_mut() {
+                return match recv_future.as_mut().poll(cx) {
+                    // Close complete, clear the future
+                    Poll::Ready(result) => {
+                        tracing::trace!("poll next completed");
+                        this.recv_future = None;
+
+                        // Convert output
+                        let output: Option<Self::Item> = match result {
+                            Ok(Some(msg)) => Some(Ok(msg.into())),
+                            Ok(None) => None,
+                            Err(e) => Some(Err(e)),
+                        };
+
+                        // Poll
+                        Poll::Ready(output)
+                    }
+                    Poll::Pending => {
+                        tracing::trace!("poll next pending");
+                        Poll::Pending
+                    }
+                };
+            }
+
+            let adaptor = this.adaptor.clone();
+
+            tracing::trace!("starting poll next");
+
+            // Create a future
+            let future = async move {
+                adaptor
+                    .recv()
+                    .await
+                    .map_err(MiddleError::from)
+                    .map_err(TransportError::backend)
+            };
+
+            // Store this future in the state
+            this.recv_future = Some(Box::pin(future));
+
+            // Start polling the future
+            this.poll_next(cx)
         }
     }
 
@@ -312,16 +351,14 @@ mod inner {
                         TransportError::backend(MiddleError::new("WebSocket adaptor not found"))
                     })?;
 
-                let sink: Sink = Box::new(FFI2RustWebSocketSink::new(intermediate.sink.clone()));
+                // Construct socket
+                let socket = FFI2RustWebSocketAdaptor::new(intermediate.inner.clone());
 
-                let stream: Stream = {
-                    let mut rx = intermediate.stream.rx.lock().await;
-                    let inner = rx.take().ok_or_else(|| {
-                        TransportError::backend(MiddleError::new("receiver already taken"))
-                    })?;
-                    drop(rx);
-                    Box::new(ReceiverStream::new(inner).map(Ok)) as Stream
-                };
+                // Split it
+                let (tx, rx) = socket.split();
+
+                let sink: Sink = Box::new(tx) as Sink;
+                let stream: Stream = Box::new(rx) as Stream;
 
                 Ok((sink, stream))
             })

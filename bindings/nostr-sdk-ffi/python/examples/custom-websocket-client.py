@@ -6,14 +6,13 @@ from aiohttp import ClientSession, ClientWebSocketResponse, WSMsgType
 from nostr_sdk import *
 
 
-class Sink(WebSocketSink):
-    def __init__(self, ws: ClientWebSocketResponse):
+class MyAdaptor(WebSocketAdaptor):
+    def __init__(self, session: ClientSession, ws: ClientWebSocketResponse):
+        self.session = session
         self.websocket = ws
-        self.running = True  # Track if the connection is active
 
-    async def send_msg(self, msg: WebSocketMessage):
+    async def send(self, msg: WebSocketMessage):
         try:
-            # Send the message if the WebSocket is still open
             if msg.is_text():
                 await self.websocket.send_str(msg[0])
             elif msg.is_binary():
@@ -21,69 +20,44 @@ class Sink(WebSocketSink):
         except Exception as e:
             # Handle clean closure gracefully
             print(f"Attempted to send on a closed WebSocket: {e}")
-            self.running = False  # Mark the connection as closed
+            raise e
+
+    async def recv(self) -> WebSocketMessage | None:
+        try:
+            # Receive message
+            raw_msg = await self.websocket.receive()
+
+            if raw_msg.type == WSMsgType.TEXT:
+                return WebSocketMessage.TEXT(raw_msg.data)
+            elif raw_msg.type == WSMsgType.BINARY:
+                return WebSocketMessage.BINARY(raw_msg.data)
+            elif raw_msg.type == WSMsgType.PING:
+                return WebSocketMessage.PING(raw_msg.data)
+            elif raw_msg.type == WSMsgType.PONG:
+                return WebSocketMessage.PONG(raw_msg.data)
+            else:
+                raise "unknown message type"
+        except Exception as e:
             raise e
 
     async def terminate(self):
-        # Close the WebSocket connection and update the status
-        self.running = False
-        try:
-            await self.websocket.close()
-        except Exception as e:
-            raise e
-
-
-class Stream:
-    def __init__(self, ws: ClientWebSocketResponse, forwarder: WebSocketStreamForwarder):
-        self.websocket = ws
-        self.forwarder = forwarder
-
-    def run(self):
-        asyncio.create_task(self.listen())
-
-    async def listen(self):
-        while True:
-            try:
-                # Receive message
-                raw_msg = await self.websocket.receive()
-
-                if raw_msg.type == WSMsgType.TEXT:
-                    msg = WebSocketMessage.TEXT(raw_msg.data)
-                elif raw_msg.type == WSMsgType.BINARY:
-                    msg = WebSocketMessage.BINARY(raw_msg.data)
-                elif raw_msg.type == WSMsgType.PING:
-                    msg = WebSocketMessage.PING(raw_msg.data)
-                elif raw_msg.type == WSMsgType.PONG:
-                    msg = WebSocketMessage.PONG(raw_msg.data)
-                else:
-                    continue
-
-                if msg is not None:
-                    await self.forwarder.forward(msg)
-            except Exception as e:
-                print(e)
+        await self.websocket.close()
+        await self.session.close()
 
 class MyWebSocketClient(CustomWebSocketTransport):
-    def __init__(self):
-        self.session = ClientSession()
-
     def support_ping(self) -> bool:
         return False
 
-    async def connect(self, url: "str", mode: "ConnectionMode", timeout) -> WebSocketAdaptor:
+    async def connect(self, url: "str", mode: "ConnectionMode", timeout) -> WebSocketAdaptorWrapper:
         try:
-            ws = await self.session.ws_connect(url)
+            session = ClientSession()
+            ws = await session.ws_connect(url)
 
-            sink = Sink(ws)
-            stream = WebSocketStreamForwarder()
-            adaptor = WebSocketAdaptor(sink, stream)
+            adaptor = MyAdaptor(session, ws)
+            wrapper = WebSocketAdaptorWrapper(adaptor)
 
-            stream = Stream(ws, stream)
-            stream.run()
-
-            return adaptor
+            return wrapper
         except Exception as e:
-            print("connection error")
             raise e
 
 
