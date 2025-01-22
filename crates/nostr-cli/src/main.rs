@@ -113,10 +113,16 @@ async fn run() -> Result<()> {
 
             Ok(())
         }
-        Command::Serve => {
-            let mock = MockRelay::run().await?;
+        Command::Serve { port } => {
+            let mut builder = RelayBuilder::default();
 
-            println!("Relay running at {}", mock.url());
+            if let Some(port) = port {
+                builder = builder.port(port);
+            }
+
+            let relay = LocalRelay::run(builder).await?;
+
+            println!("Relay running at {}", relay.url());
 
             loop {
                 tokio::time::sleep(Duration::from_secs(60)).await

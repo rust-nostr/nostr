@@ -29,7 +29,11 @@ pub enum Command {
         // proxy: Option<SocketAddr>,
     },
     /// Serve a local relay for test purpose
-    Serve,
+    Serve {
+        /// Port
+        #[clap(long)]
+        port: Option<u16>,
+    },
     /// Serve Nostr Connect signer
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
