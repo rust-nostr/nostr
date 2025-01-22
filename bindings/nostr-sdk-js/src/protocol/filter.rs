@@ -447,13 +447,18 @@ impl JsFilter {
     }
 
     #[wasm_bindgen(js_name = customTag)]
-    pub fn custom_tag(self, tag: &JsSingleLetterTag, values: Vec<String>) -> Self {
-        self.inner.custom_tag(**tag, values).into()
+    pub fn custom_tag(self, tag: &JsSingleLetterTag, value: String) -> Self {
+        self.inner.custom_tag(**tag, value).into()
     }
 
-    #[wasm_bindgen(js_name = removeCustomTag)]
-    pub fn remove_custom_tag(self, tag: &JsSingleLetterTag, values: Vec<String>) -> Self {
-        self.inner.remove_custom_tag(**tag, values).into()
+    #[wasm_bindgen(js_name = customTags)]
+    pub fn custom_tags(self, tag: &JsSingleLetterTag, values: Vec<String>) -> Self {
+        self.inner.custom_tags(**tag, values).into()
+    }
+
+    #[wasm_bindgen(js_name = removeCustomTags)]
+    pub fn remove_custom_tags(self, tag: &JsSingleLetterTag, values: Vec<String>) -> Self {
+        self.inner.remove_custom_tags(**tag, values).into()
     }
 
     /// Check if `Filter` is empty

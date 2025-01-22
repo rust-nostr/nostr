@@ -385,15 +385,21 @@ impl Filter {
         builder
     }
 
-    pub fn custom_tag(&self, tag: &SingleLetterTag, content: Vec<String>) -> Self {
+    pub fn custom_tag(&self, tag: &SingleLetterTag, content: String) -> Self {
         let mut builder = self.clone();
         builder.inner = builder.inner.custom_tag(**tag, content);
         builder
     }
 
-    pub fn remove_custom_tag(&self, tag: Arc<SingleLetterTag>, content: Vec<String>) -> Self {
+    pub fn custom_tags(&self, tag: &SingleLetterTag, contents: Vec<String>) -> Self {
         let mut builder = self.clone();
-        builder.inner = builder.inner.remove_custom_tag(**tag, content);
+        builder.inner = builder.inner.custom_tags(**tag, contents);
+        builder
+    }
+
+    pub fn remove_custom_tags(&self, tag: Arc<SingleLetterTag>, contents: Vec<String>) -> Self {
+        let mut builder = self.clone();
+        builder.inner = builder.inner.remove_custom_tags(**tag, contents);
         builder
     }
 

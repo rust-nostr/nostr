@@ -449,7 +449,7 @@ impl Filter {
     /// Add event
     #[inline]
     pub fn event(self, id: EventId) -> Self {
-        self.custom_tag(SingleLetterTag::lowercase(Alphabet::E), [id])
+        self.custom_tag(SingleLetterTag::lowercase(Alphabet::E), id)
     }
 
     /// Add events
@@ -458,7 +458,7 @@ impl Filter {
     where
         I: IntoIterator<Item = EventId>,
     {
-        self.custom_tag(SingleLetterTag::lowercase(Alphabet::E), events)
+        self.custom_tags(SingleLetterTag::lowercase(Alphabet::E), events)
     }
 
     /// Remove events
@@ -467,13 +467,13 @@ impl Filter {
     where
         I: IntoIterator<Item = EventId>,
     {
-        self.remove_custom_tag(SingleLetterTag::lowercase(Alphabet::E), events)
+        self.remove_custom_tags(SingleLetterTag::lowercase(Alphabet::E), events)
     }
 
     /// Add pubkey
     #[inline]
     pub fn pubkey(self, pubkey: PublicKey) -> Self {
-        self.custom_tag(SingleLetterTag::lowercase(Alphabet::P), [pubkey])
+        self.custom_tag(SingleLetterTag::lowercase(Alphabet::P), pubkey)
     }
 
     /// Add pubkeys
@@ -482,7 +482,7 @@ impl Filter {
     where
         I: IntoIterator<Item = PublicKey>,
     {
-        self.custom_tag(SingleLetterTag::lowercase(Alphabet::P), pubkeys)
+        self.custom_tags(SingleLetterTag::lowercase(Alphabet::P), pubkeys)
     }
 
     /// Remove pubkeys
@@ -491,7 +491,7 @@ impl Filter {
     where
         I: IntoIterator<Item = PublicKey>,
     {
-        self.remove_custom_tag(SingleLetterTag::lowercase(Alphabet::P), pubkeys)
+        self.remove_custom_tags(SingleLetterTag::lowercase(Alphabet::P), pubkeys)
     }
 
     /// Add hashtag
@@ -502,7 +502,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        self.custom_tag(SingleLetterTag::lowercase(Alphabet::T), [hashtag.into()])
+        self.custom_tag(SingleLetterTag::lowercase(Alphabet::T), hashtag)
     }
 
     /// Add hashtags
@@ -514,10 +514,7 @@ impl Filter {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.custom_tag(
-            SingleLetterTag::lowercase(Alphabet::T),
-            hashtags.into_iter().map(|s| s.into()),
-        )
+        self.custom_tags(SingleLetterTag::lowercase(Alphabet::T), hashtags)
     }
 
     /// Remove hashtags
@@ -527,10 +524,7 @@ impl Filter {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.remove_custom_tag(
-            SingleLetterTag::lowercase(Alphabet::T),
-            hashtags.into_iter().map(|s| s.into()),
-        )
+        self.remove_custom_tags(SingleLetterTag::lowercase(Alphabet::T), hashtags)
     }
 
     /// Add reference
@@ -541,7 +535,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        self.custom_tag(SingleLetterTag::lowercase(Alphabet::R), [reference.into()])
+        self.custom_tag(SingleLetterTag::lowercase(Alphabet::R), reference)
     }
 
     /// Add references
@@ -553,10 +547,7 @@ impl Filter {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.custom_tag(
-            SingleLetterTag::lowercase(Alphabet::R),
-            references.into_iter().map(|s| s.into()),
-        )
+        self.custom_tags(SingleLetterTag::lowercase(Alphabet::R), references)
     }
 
     /// Remove references
@@ -566,10 +557,7 @@ impl Filter {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.remove_custom_tag(
-            SingleLetterTag::lowercase(Alphabet::R),
-            references.into_iter().map(|s| s.into()),
-        )
+        self.remove_custom_tags(SingleLetterTag::lowercase(Alphabet::R), references)
     }
 
     /// Add identifier
@@ -580,7 +568,7 @@ impl Filter {
     where
         S: Into<String>,
     {
-        self.custom_tag(SingleLetterTag::lowercase(Alphabet::D), [identifier.into()])
+        self.custom_tag(SingleLetterTag::lowercase(Alphabet::D), identifier)
     }
 
     /// Add identifiers
@@ -592,10 +580,7 @@ impl Filter {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.custom_tag(
-            SingleLetterTag::lowercase(Alphabet::D),
-            identifiers.into_iter().map(|s| s.into()),
-        )
+        self.custom_tags(SingleLetterTag::lowercase(Alphabet::D), identifiers)
     }
 
     /// Remove identifiers
@@ -607,10 +592,7 @@ impl Filter {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.remove_custom_tag(
-            SingleLetterTag::lowercase(Alphabet::D),
-            identifiers.into_iter().map(|s| s.into()),
-        )
+        self.remove_custom_tags(SingleLetterTag::lowercase(Alphabet::D), identifiers)
     }
 
     /// Add coordinate
@@ -622,7 +604,7 @@ impl Filter {
     pub fn coordinate(self, coordinate: &Coordinate) -> Self {
         self.custom_tag(
             SingleLetterTag::lowercase(Alphabet::A),
-            [coordinate.to_string()],
+            coordinate.to_string(),
         )
     }
 
@@ -636,7 +618,7 @@ impl Filter {
     where
         I: IntoIterator<Item = &'a Coordinate>,
     {
-        self.custom_tag(
+        self.custom_tags(
             SingleLetterTag::lowercase(Alphabet::A),
             coordinates.into_iter().map(|c| c.to_string()),
         )
@@ -652,7 +634,7 @@ impl Filter {
     where
         I: IntoIterator<Item = &'a Coordinate>,
     {
-        self.remove_custom_tag(
+        self.remove_custom_tags(
             SingleLetterTag::lowercase(Alphabet::A),
             coordinates.into_iter().map(|c| c.to_string()),
         )
@@ -720,7 +702,15 @@ impl Filter {
     }
 
     /// Add custom tag
-    pub fn custom_tag<I, S>(mut self, tag: SingleLetterTag, values: I) -> Self
+    pub fn custom_tag<S>(self, tag: SingleLetterTag, value: S) -> Self
+    where
+        S: Into<String>,
+    {
+        self.custom_tags(tag, [value])
+    }
+
+    /// Add custom tags
+    pub fn custom_tags<I, S>(mut self, tag: SingleLetterTag, values: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: Into<String>,
@@ -731,7 +721,7 @@ impl Filter {
     }
 
     /// Remove custom tag
-    pub fn remove_custom_tag<I, T>(mut self, tag: SingleLetterTag, values: I) -> Self
+    pub fn remove_custom_tags<I, T>(mut self, tag: SingleLetterTag, values: I) -> Self
     where
         I: IntoIterator<Item = T>,
         T: Into<String>,
@@ -982,19 +972,19 @@ mod tests {
 
         // Test remove #d tag
         let mut filter = Filter::new().identifier("myidentifier");
-        filter = filter.custom_tag(SingleLetterTag::lowercase(Alphabet::D), ["mysecondid"]);
+        filter = filter.custom_tag(SingleLetterTag::lowercase(Alphabet::D), "mysecondid");
         filter = filter.identifiers(["test", "test2"]);
-        filter = filter.remove_custom_tag(SingleLetterTag::lowercase(Alphabet::D), ["test2"]);
+        filter = filter.remove_custom_tags(SingleLetterTag::lowercase(Alphabet::D), ["test2"]);
         filter = filter.remove_identifiers(["mysecondid"]);
         assert_eq!(filter, Filter::new().identifiers(["myidentifier", "test"]));
 
         // Test remove custom tag
         let filter =
-            Filter::new().custom_tag(SingleLetterTag::lowercase(Alphabet::C), ["test", "test2"]);
-        let filter = filter.remove_custom_tag(SingleLetterTag::lowercase(Alphabet::C), ["test2"]);
+            Filter::new().custom_tags(SingleLetterTag::lowercase(Alphabet::C), ["test", "test2"]);
+        let filter = filter.remove_custom_tags(SingleLetterTag::lowercase(Alphabet::C), ["test2"]);
         assert_eq!(
             filter,
-            Filter::new().custom_tag(SingleLetterTag::lowercase(Alphabet::C), ["test"])
+            Filter::new().custom_tag(SingleLetterTag::lowercase(Alphabet::C), "test")
         );
     }
 
@@ -1004,12 +994,12 @@ mod tests {
         let filter = Filter::new()
             .identifier("identifier")
             .search("test")
-            .custom_tag(SingleLetterTag::lowercase(Alphabet::J), ["test1"])
+            .custom_tag(SingleLetterTag::lowercase(Alphabet::J), "test1")
             .custom_tag(
                 SingleLetterTag::lowercase(Alphabet::P),
-                ["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"],
+                "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
             )
-            .custom_tag(SingleLetterTag::lowercase(Alphabet::Z), ["rating"]);
+            .custom_tag(SingleLetterTag::lowercase(Alphabet::Z), "rating");
         let json = r##"{"search":"test","#d":["identifier"],"#j":["test1"],"#p":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"],"#z":["rating"]}"##;
         assert_eq!(filter.as_json(), json);
     }
@@ -1018,7 +1008,7 @@ mod tests {
     fn test_filter_serialization_with_uppercase_tag() {
         let filter = Filter::new().custom_tag(
             SingleLetterTag::uppercase(Alphabet::P),
-            ["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"],
+            "379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe",
         );
         let json =
             r##"{"#P":["379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe"]}"##;
