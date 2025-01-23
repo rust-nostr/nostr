@@ -18,6 +18,8 @@ pub enum IndexedDBError {
         /// Message given to the DomException
         message: String,
     },
+    /// Mutex poisoned
+    MutexPoisoned,
 }
 
 impl std::error::Error for IndexedDBError {}
@@ -30,6 +32,7 @@ impl fmt::Display for IndexedDBError {
                 code,
                 message,
             } => write!(f, "DomException {name} ({code}): {message}"),
+            Self::MutexPoisoned => write!(f, "mutex poisoned"),
         }
     }
 }

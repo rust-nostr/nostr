@@ -13,7 +13,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::future::IntoFuture;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub extern crate nostr;
 pub extern crate nostr_database as database;
@@ -23,7 +23,6 @@ use indexed_db_futures::request::{IdbOpenDbRequestLike, OpenDbRequest};
 use indexed_db_futures::web_sys::IdbTransactionMode;
 use indexed_db_futures::{IdbDatabase, IdbQuerySource, IdbVersionChangeEvent};
 use nostr_database::prelude::*;
-use tokio::sync::Mutex;
 use wasm_bindgen::{JsCast, JsValue};
 
 mod error;
@@ -237,14 +236,19 @@ impl WebDatabase {
             let store = tx.object_store(EVENTS_CF)?;
             let key = JsValue::from(event.id.to_hex());
 
-            // Acquire FlatBuffers Builder
-            let mut fbb = self.fbb.lock().await;
-
             // Encode
-            let event_hex: String = hex::encode(event.encode(&mut fbb));
+            let event_hex: String = {
+                // Acquire FlatBuffers Builder
+                let mut fbb = self.fbb.lock().map_err(|_| IndexedDBError::MutexPoisoned)?;
 
-            // Drop FlatBuffers Builder
-            drop(fbb);
+                // Encode
+                let event: String = hex::encode(event.encode(&mut fbb));
+
+                // Drop FlatBuffers Builder
+                drop(fbb);
+
+                event
+            };
 
             // Store key-val
             let value = JsValue::from(event_hex);
@@ -384,14 +388,19 @@ impl NostrEventsDatabase for WebDatabase {
                     .map_err(into_err)?;
                 let key = JsValue::from(event_id.to_hex());
 
-                // Acquire FlatBuffers Builder
-                let mut fbb = self.fbb.lock().await;
-
                 // Encode
-                let value = JsValue::from(hex::encode(set.encode(&mut fbb)));
+                let value: JsValue = {
+                    // Acquire FlatBuffers Builder
+                    let mut fbb = self.fbb.lock().map_err(|_| IndexedDBError::MutexPoisoned)?;
 
-                // Drop FlatBuffers Builder
-                drop(fbb);
+                    // Encode
+                    let value = JsValue::from(hex::encode(set.encode(&mut fbb)));
+
+                    // Drop FlatBuffers Builder
+                    drop(fbb);
+
+                    value
+                };
 
                 // Save
                 store
