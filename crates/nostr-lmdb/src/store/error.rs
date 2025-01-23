@@ -5,9 +5,9 @@
 
 use std::{fmt, io};
 
+use async_utility::tokio::task::JoinError;
 use nostr::{key, secp256k1};
 use nostr_database::flatbuffers;
-use tokio::task::JoinError;
 
 #[derive(Debug)]
 pub enum Error {
@@ -20,18 +20,8 @@ pub enum Error {
     Thread(JoinError),
     Key(key::Error),
     Secp256k1(secp256k1::Error),
-    // /// The event has already been deleted
-    // #[error("Event was previously deleted")]
-    // Deleted,
-    // /// The event duplicates an event we already have
-    // #[error("Duplicate event")]
-    // Duplicate,
-    // /// The delete is invalid (perhaps the author does not match)
-    // #[error("Invalid delete event")]
-    // InvalidDelete,
-    // /// The event was previously replaced
-    // #[error("Event was previously replaced")]
-    // Replaced,
+    /// Mutex poisoned
+    MutexPoisoned,
     /// The event kind is wrong
     WrongEventKind,
     /// Not found
@@ -49,6 +39,7 @@ impl fmt::Display for Error {
             Self::Thread(e) => write!(f, "{e}"),
             Self::Key(e) => write!(f, "{e}"),
             Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::MutexPoisoned => write!(f, "mutex poisoned"),
             Self::NotFound => write!(f, "Not found"),
             Self::WrongEventKind => write!(f, "Wrong event kind"),
         }

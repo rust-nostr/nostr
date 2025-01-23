@@ -6,12 +6,11 @@
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use async_utility::task;
 use heed::{RoTxn, RwTxn};
 use nostr_database::prelude::*;
-use tokio::sync::Mutex;
 
 mod error;
 mod lmdb;
@@ -20,10 +19,12 @@ mod types;
 use self::error::Error;
 use self::lmdb::{index, Lmdb};
 
+type Fbb = Arc<Mutex<FlatBufferBuilder<'static>>>;
+
 #[derive(Debug)]
 pub struct Store {
     db: Lmdb,
-    fbb: Arc<Mutex<FlatBufferBuilder<'static>>>,
+    fbb: Fbb,
 }
 
 impl Store {
@@ -42,8 +43,6 @@ impl Store {
         })
     }
 
-    // TODO: spawn an ingester and remove the `fbb` field (use it in the ingester without mutex)?
-
     #[inline]
     async fn interact<F, R>(&self, f: F) -> Result<R, Error>
     where
@@ -57,13 +56,12 @@ impl Store {
     #[inline]
     async fn interact_with_fbb<F, R>(&self, f: F) -> Result<R, Error>
     where
-        F: FnOnce(Lmdb, &mut FlatBufferBuilder<'static>) -> R + Send + 'static,
+        F: FnOnce(Lmdb, Fbb) -> R + Send + 'static,
         R: Send + 'static,
     {
         let db = self.db.clone();
-        let arc_fbb = self.fbb.clone();
-        let mut fbb = arc_fbb.lock_owned().await;
-        Ok(task::spawn_blocking(move || f(db, &mut fbb)).await?)
+        let fbb = self.fbb.clone();
+        Ok(task::spawn_blocking(move || f(db, fbb)).await?)
     }
 
     /// Store an event.
@@ -146,9 +144,16 @@ impl Store {
                 }
             }
 
-            // Store and index the event
-            db.store(&mut txn, fbb, &event)?;
+            // Acquire lock
+            let mut fbb = fbb.lock().map_err(|_| Error::MutexPoisoned)?;
 
+            // Store and index the event
+            db.store(&mut txn, &mut fbb, &event)?;
+
+            // Immediately drop the lock
+            drop(fbb);
+
+            // Commit
             read_txn.commit()?;
             txn.commit()?;
 
