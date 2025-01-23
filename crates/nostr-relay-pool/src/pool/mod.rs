@@ -6,14 +6,14 @@
 
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use async_utility::futures_util::{future, StreamExt};
 use async_utility::task;
 use atomic_destructor::{AtomicDestructor, StealthClone};
 use nostr_database::prelude::*;
-use tokio::sync::{broadcast, mpsc, Mutex, RwLockReadGuard};
+use tokio::sync::{broadcast, mpsc, RwLockReadGuard};
 
 pub mod constants;
 mod error;
@@ -1053,6 +1053,7 @@ impl RelayPool {
         drop(relays);
 
         // Create channel
+        // TODO: use unbounded channel otherwise events can be lost since below the `try_send` is used.
         let (tx, rx) = mpsc::channel::<Event>(map.len() * 512);
 
         // Spawn stream task
@@ -1070,10 +1071,28 @@ impl RelayPool {
                     filters,
                     timeout,
                     policy,
-                    |event| async {
-                        let mut ids = ids.lock().await;
+                    |event| {
+                        // Use a synchronous mutex here!
+                        //
+                        // From tokio docs:
+                        // ```
+                        // A synchronous mutex will block the current thread when waiting to acquire the lock.
+                        // This, in turn, will block other tasks from processing.
+                        // However, switching to tokio::sync::Mutex usually does not help as the asynchronous mutex uses a synchronous mutex internally.
+                        //
+                        // As a rule of thumb, using a synchronous mutex from within asynchronous code is fine as long
+                        // as contention remains low and the lock is not held across calls to .await.
+                        // ```
+                        //
+                        // SAFETY: panics only if another user of this mutex panicked while holding the mutex.
+                        let mut ids = ids.lock().unwrap();
+
+                        // Check if ID was already seen or insert into set.
                         if ids.insert(event.id) {
+                            // Immediately drop the set
                             drop(ids);
+
+                            // Send event
                             let _ = tx.try_send(event);
                         }
                     },

@@ -14,7 +14,7 @@ use async_wsocket::futures_util::Future;
 use async_wsocket::{ConnectionMode, Sink, Stream};
 use atomic_destructor::AtomicDestructor;
 use nostr_database::prelude::*;
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::broadcast;
 
 pub mod constants;
 mod error;
@@ -510,16 +510,13 @@ impl Relay {
     }
 
     /// Get events of filters with custom callback
-    pub(crate) async fn fetch_events_with_callback<F>(
+    pub(crate) async fn fetch_events_with_callback(
         &self,
         filters: Vec<Filter>,
         timeout: Duration,
         policy: ReqExitPolicy,
-        callback: impl Fn(Event) -> F,
-    ) -> Result<(), Error>
-    where
-        F: Future<Output = ()>,
-    {
+        mut callback: impl FnMut(Event),
+    ) -> Result<(), Error> {
         // Perform health checks
         self.inner.health_check()?;
 
@@ -548,7 +545,7 @@ impl Relay {
                         ..
                     } => {
                         if subscription_id == id {
-                            callback(*event).await;
+                            callback(*event);
                         }
                     }
                     RelayNotification::SubscriptionAutoClosed { reason } => {
@@ -582,16 +579,13 @@ impl Relay {
     }
 
     #[inline]
-    pub(crate) async fn fetch_events_with_callback_owned<F>(
+    pub(crate) async fn fetch_events_with_callback_owned(
         self,
         filters: Vec<Filter>,
         timeout: Duration,
         policy: ReqExitPolicy,
-        callback: impl Fn(Event) -> F,
-    ) -> Result<(), Error>
-    where
-        F: Future<Output = ()>,
-    {
+        callback: impl Fn(Event),
+    ) -> Result<(), Error> {
         self.fetch_events_with_callback(filters, timeout, policy, callback)
             .await
     }
@@ -603,13 +597,12 @@ impl Relay {
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<Events, Error> {
-        let events: Mutex<Events> = Mutex::new(Events::new(&filters));
-        self.fetch_events_with_callback(filters, timeout, policy, |event| async {
-            let mut events = events.lock().await;
+        let mut events: Events = Events::new(&filters);
+        self.fetch_events_with_callback(filters, timeout, policy, |event| {
             events.insert(event);
         })
         .await?;
-        Ok(events.into_inner())
+        Ok(events)
     }
 
     /// Count events
