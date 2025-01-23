@@ -5,7 +5,6 @@
 //! Nostr Database Flatbuffers
 
 use std::borrow::Cow;
-use std::collections::HashSet;
 use std::fmt;
 
 use flatbuffers::InvalidFlatbuffer;
@@ -16,11 +15,8 @@ use nostr::secp256k1::schnorr::Signature;
 
 #[allow(unused_imports, dead_code, clippy::all, unsafe_code, missing_docs)]
 mod event_generated;
-#[allow(unused_imports, dead_code, clippy::all, unsafe_code, missing_docs)]
-mod event_seen_by_generated;
 
 pub use self::event_generated::event_fbs;
-use self::event_seen_by_generated::event_seen_by_fbs;
 
 /// FlatBuffers Error
 #[derive(Debug)]
@@ -166,37 +162,5 @@ impl<'a> FlatBufferDecodeBorrowed<'a> for EventBorrow<'a> {
             content: ev.content().ok_or(Error::NotFound)?,
             sig: &ev.sig().ok_or(Error::NotFound)?.0,
         })
-    }
-}
-
-impl FlatBufferEncode for HashSet<RelayUrl> {
-    fn encode<'a>(&self, fbb: &'a mut FlatBufferBuilder) -> &'a [u8] {
-        fbb.reset();
-
-        let urls: Vec<_> = self
-            .iter()
-            .map(|url| fbb.create_string(url.as_str()))
-            .collect();
-        let args = event_seen_by_fbs::EventSeenByArgs {
-            relay_urls: Some(fbb.create_vector(&urls)),
-        };
-
-        let offset = event_seen_by_fbs::EventSeenBy::create(fbb, &args);
-
-        event_seen_by_fbs::finish_event_seen_by_buffer(fbb, offset);
-
-        fbb.finished_data()
-    }
-}
-
-impl FlatBufferDecode for HashSet<RelayUrl> {
-    fn decode(buf: &[u8]) -> Result<Self, Error> {
-        let ev = event_seen_by_fbs::root_as_event_seen_by(buf)?;
-        Ok(ev
-            .relay_urls()
-            .ok_or(Error::NotFound)?
-            .into_iter()
-            .filter_map(|url| RelayUrl::parse(url).ok())
-            .collect::<HashSet<RelayUrl>>())
     }
 }

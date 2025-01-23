@@ -29,10 +29,10 @@ mod error;
 
 use self::error::{into_err, IndexedDBError};
 
-const CURRENT_DB_VERSION: u32 = 2;
+const CURRENT_DB_VERSION: u32 = 3;
 const EVENTS_CF: &str = "events";
 const EVENTS_SEEN_BY_RELAYS_CF: &str = "event-seen-by-relays";
-const ALL_STORES: [&str; 2] = [EVENTS_CF, EVENTS_SEEN_BY_RELAYS_CF];
+const ALL_STORES: [&str; 1] = [EVENTS_CF];
 
 /// Helper struct for upgrading the inner DB.
 #[derive(Debug, Clone, Default)]
@@ -122,12 +122,12 @@ impl WebDatabase {
                     ..Default::default()
                 };
                 self.apply_migration(CURRENT_DB_VERSION, migration).await?;
-            } else {
-                /* if old_version < 3 {
-                    self.migrate_to_v3().await?;
-                }
-
-                if old_version < 4 {} */
+            } else if old_version < 3 {
+                let migration = OngoingMigration {
+                    drop_stores: [EVENTS_SEEN_BY_RELAYS_CF].into_iter().collect(),
+                    ..Default::default()
+                };
+                self.apply_migration(CURRENT_DB_VERSION, migration).await?;
             }
 
             self.db.close();
@@ -366,81 +366,17 @@ impl NostrEventsDatabase for WebDatabase {
 
     fn event_id_seen(
         &self,
-        event_id: EventId,
-        relay_url: RelayUrl,
+        _event_id: EventId,
+        _relay_url: RelayUrl,
     ) -> BoxedFuture<Result<(), DatabaseError>> {
-        Box::pin(async move {
-            let mut set: HashSet<RelayUrl> = self
-                .event_seen_on_relays(&event_id)
-                .await?
-                .unwrap_or_else(|| HashSet::with_capacity(1));
-
-            if set.insert(relay_url) {
-                let tx = self
-                    .db
-                    .transaction_on_one_with_mode(
-                        EVENTS_SEEN_BY_RELAYS_CF,
-                        IdbTransactionMode::Readwrite,
-                    )
-                    .map_err(into_err)?;
-                let store = tx
-                    .object_store(EVENTS_SEEN_BY_RELAYS_CF)
-                    .map_err(into_err)?;
-                let key = JsValue::from(event_id.to_hex());
-
-                // Encode
-                let value: JsValue = {
-                    // Acquire FlatBuffers Builder
-                    let mut fbb = self.fbb.lock().map_err(|_| IndexedDBError::MutexPoisoned)?;
-
-                    // Encode
-                    let value = JsValue::from(hex::encode(set.encode(&mut fbb)));
-
-                    // Drop FlatBuffers Builder
-                    drop(fbb);
-
-                    value
-                };
-
-                // Save
-                store
-                    .put_key_val(&key, &value)
-                    .map_err(into_err)?
-                    .await
-                    .map_err(into_err)?;
-            }
-
-            Ok(())
-        })
+        Box::pin(async move { Ok(()) })
     }
 
     fn event_seen_on_relays<'a>(
         &'a self,
-        event_id: &'a EventId,
+        _event_id: &'a EventId,
     ) -> BoxedFuture<'a, Result<Option<HashSet<RelayUrl>>, DatabaseError>> {
-        Box::pin(async move {
-            let tx = self
-                .db
-                .transaction_on_one_with_mode(
-                    EVENTS_SEEN_BY_RELAYS_CF,
-                    IdbTransactionMode::Readonly,
-                )
-                .map_err(into_err)?;
-            let store = tx
-                .object_store(EVENTS_SEEN_BY_RELAYS_CF)
-                .map_err(into_err)?;
-            let key = JsValue::from(event_id.to_hex());
-            if let Some(jsvalue) = store.get(&key).map_err(into_err)?.await.map_err(into_err)? {
-                if let Some(set_hex) = js_value_to_string(jsvalue) {
-                    let bytes = hex::decode(set_hex).map_err(DatabaseError::backend)?;
-                    return Ok(Some(
-                        HashSet::decode(&bytes).map_err(DatabaseError::backend)?,
-                    ));
-                }
-            }
-
-            Ok(None)
-        })
+        Box::pin(async move { Err(DatabaseError::NotSupported) })
     }
 
     fn event_by_id<'a>(

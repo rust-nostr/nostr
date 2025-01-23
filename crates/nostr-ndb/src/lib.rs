@@ -122,10 +122,7 @@ impl NostrEventsDatabase for NdbDatabase {
         &'a self,
         _event_id: &'a EventId,
     ) -> BoxedFuture<'a, Result<Option<HashSet<RelayUrl>>, DatabaseError>> {
-        Box::pin(async move {
-            // TODO: use in-memory map to keep track of seen relays
-            Err(DatabaseError::NotSupported)
-        })
+        Box::pin(async move { Err(DatabaseError::NotSupported) })
     }
 
     fn event_by_id<'a>(

@@ -139,24 +139,17 @@ impl NostrEventsDatabase for MemoryDatabase {
 
     fn event_id_seen(
         &self,
-        event_id: EventId,
-        relay_url: RelayUrl,
+        _event_id: EventId,
+        _relay_url: RelayUrl,
     ) -> BoxedFuture<Result<(), DatabaseError>> {
-        Box::pin(async move {
-            let mut seen_event_ids = self.seen_event_ids.write().await;
-            seen_event_ids.seen(event_id, Some(relay_url));
-            Ok(())
-        })
+        Box::pin(async move { Ok(()) })
     }
 
     fn event_seen_on_relays<'a>(
         &'a self,
-        event_id: &'a EventId,
+        _event_id: &'a EventId,
     ) -> BoxedFuture<'a, Result<Option<HashSet<RelayUrl>>, DatabaseError>> {
-        Box::pin(async move {
-            let seen_event_ids = self.seen_event_ids.read().await;
-            Ok(seen_event_ids.get(event_id).cloned())
-        })
+        Box::pin(async move { Err(DatabaseError::NotSupported) })
     }
 
     fn event_by_id<'a>(
@@ -252,11 +245,6 @@ impl SeenTracker {
                 self.queue.push_front(event_id);
             }
         }
-    }
-
-    #[inline]
-    fn get(&self, id: &EventId) -> Option<&HashSet<RelayUrl>> {
-        self.ids.get(id)
     }
 
     #[inline]

@@ -134,6 +134,8 @@
 ### Deprecated
 
 * nostr: deprecate `Keys::vanity` ([Yuki Kishimoto])
+* database: deprecate `NostrEventsDatabase::event_id_seen` ([Yuki Kishimoto])
+* database: deprecate `NostrEventsDatabase::event_seen_on_relays` ([Yuki Kishimoto])
 
 ## [v0.38.0] - 2024/12/31
 

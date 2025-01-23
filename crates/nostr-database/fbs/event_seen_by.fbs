@@ -1,7 +1,0 @@
-namespace EventSeenByFbs;
-
-table EventSeenBy {
-  relay_urls: [string];
-}
-
-root_type EventSeenBy;

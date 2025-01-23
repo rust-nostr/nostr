@@ -5,7 +5,6 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use js_sys::Array;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -17,7 +16,6 @@ use crate::protocol::event::{JsEvent, JsEventId};
 use crate::protocol::filter::JsFilter;
 use crate::protocol::key::JsPublicKey;
 use crate::protocol::nips::nip01::JsMetadata;
-use crate::JsStringArray;
 
 #[wasm_bindgen(js_name = SaveEventStatus)]
 pub enum JsSaveEventStatus {
@@ -102,24 +100,6 @@ impl JsNostrDatabase {
     /// **This method assumes that `Event` was already verified**
     pub async fn save_event(&self, event: &JsEvent) -> Result<JsSaveEventStatus> {
         Ok(self.inner.save_event(event).await.map_err(into_err)?.into())
-    }
-    /// Get list of relays that have seen the [`EventId`]
-    #[wasm_bindgen(js_name = eventSeenOnRelays)]
-    pub async fn event_seen_on_relays(
-        &self,
-        event_id: &JsEventId,
-    ) -> Result<Option<JsStringArray>> {
-        let res = self
-            .inner
-            .event_seen_on_relays(event_id.deref())
-            .await
-            .map_err(into_err)?;
-        Ok(res.map(|set| {
-            set.into_iter()
-                .map(|u| JsValue::from(u.to_string()))
-                .collect::<Array>()
-                .unchecked_into()
-        }))
     }
 
     /// Get [`Event`] by [`EventId`]

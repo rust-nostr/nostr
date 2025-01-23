@@ -990,16 +990,6 @@ impl InnerRelay {
             }
         }
 
-        // Set event as seen by relay
-        if let Err(e) = self
-            .state
-            .database()
-            .event_id_seen(event.id, self.url.clone())
-            .await
-        {
-            tracing::error!("Impossible to set event {} as seen by relay: {e}", event.id);
-        }
-
         let subscription_id: SubscriptionId = SubscriptionId::new(subscription_id);
         let event: Box<Event> = Box::new(event);
 

@@ -127,12 +127,6 @@ impl NostrDatabase {
         Ok(self.inner.save_event(event.deref()).await?.into())
     }
 
-    /// Get list of relays that have seen the [`EventId`]
-    pub async fn event_seen_on_relays(&self, event_id: &EventId) -> Result<Option<Vec<String>>> {
-        let res = self.inner.event_seen_on_relays(event_id.deref()).await?;
-        Ok(res.map(|set| set.into_iter().map(|u| u.to_string()).collect()))
-    }
-
     /// Get [`Event`] by [`EventId`]
     pub async fn event_by_id(&self, event_id: &EventId) -> Result<Option<Arc<Event>>> {
         Ok(self

@@ -122,6 +122,7 @@ pub trait NostrEventsDatabase: fmt::Debug + Send + Sync {
     /// Set [`EventId`] as seen by relay
     ///
     /// Useful for NIP65 (aka gossip)
+    #[deprecated(since = "0.39.0")]
     fn event_id_seen(
         &self,
         event_id: EventId,
@@ -129,6 +130,11 @@ pub trait NostrEventsDatabase: fmt::Debug + Send + Sync {
     ) -> BoxedFuture<Result<(), DatabaseError>>;
 
     /// Get list of relays that have seen the [`EventId`]
+    #[deprecated(
+        since = "0.39.0",
+        note = "For now this method hasn't a replacement and maybe will never have one. \
+        You can keep track of seen IDs by looking at the Relay, RelayPool or Client notifications."
+    )]
     fn event_seen_on_relays<'a>(
         &'a self,
         event_id: &'a EventId,
