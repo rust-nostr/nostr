@@ -27,7 +27,7 @@ pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
 use crate::relay::flags::FlagCheck;
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
-use crate::relay::{Relay, RelayFiltering, RelayStatus};
+use crate::relay::{Relay, RelayFiltering};
 use crate::shared::SharedState;
 use crate::stream::ReceiverStream;
 use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};
@@ -63,22 +63,6 @@ pub enum RelayPoolNotification {
         relay_url: RelayUrl,
         /// The received relay message.
         message: RelayMessage,
-    },
-    /// Relay status changed
-    #[deprecated(since = "0.37.0")]
-    RelayStatus {
-        /// Relay url
-        relay_url: RelayUrl,
-        /// Relay Status
-        status: RelayStatus,
-    },
-    /// Authenticated to relay
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
-    #[deprecated(since = "0.38.0")]
-    Authenticated {
-        /// Relay url
-        relay_url: RelayUrl,
     },
     /// Shutdown
     ///
@@ -576,12 +560,6 @@ impl RelayPool {
         self.send_event_to(urls, event).await
     }
 
-    /// Send multiple events at once to all relays with `WRITE` flag (check [`RelayServiceFlags`] for more details).
-    #[deprecated(since = "0.38.0")]
-    pub async fn batch_event(&self, _events: Vec<Event>) -> Result<Output<()>, Error> {
-        unimplemented!()
-    }
-
     /// Send event to specific relays
     pub async fn send_event_to<I, U>(&self, urls: I, event: Event) -> Result<Output<EventId>, Error>
     where
@@ -652,21 +630,6 @@ impl RelayPool {
         }
 
         Ok(output)
-    }
-
-    /// Send multiple events at once to specific relays
-    #[deprecated(since = "0.38.0")]
-    pub async fn batch_event_to<I, U>(
-        &self,
-        _urls: I,
-        _events: Vec<Event>,
-    ) -> Result<Output<()>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
-    {
-        unimplemented!()
     }
 
     /// Subscribe to filters to all relays with `READ` flag.

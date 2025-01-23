@@ -41,10 +41,8 @@ async fn main() -> Result<()> {
         .target(ConnectionTarget::Onion);
     let opts = Options::new().connection(connection);
 
-    // Create new client with custom options.
-    // Use `Client::new(signer)` to construct the client with a custom signer and default options
-    // or `Client::default()` to create one without signer and with default options.
-    let client = Client::with_opts(keys.clone(), opts);
+    // Create new client with custom options
+    let client = Client::builder().signer(keys.clone()).opts(opts).build();
 
     // Add relays
     client.add_relay("wss://relay.damus.io").await?;

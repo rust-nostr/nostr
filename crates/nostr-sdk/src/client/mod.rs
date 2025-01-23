@@ -62,15 +62,6 @@ impl Client {
         Self::builder().signer(signer).build()
     }
 
-    /// Construct client with signer and options
-    #[deprecated(since = "0.37.0", note = "Use `Client::builder` instead")]
-    pub fn with_opts<T>(signer: T, opts: Options) -> Self
-    where
-        T: IntoNostrSigner,
-    {
-        Self::builder().signer(signer).opts(opts).build()
-    }
-
     /// Construct client
     ///
     /// # Example
@@ -105,10 +96,6 @@ impl Client {
             opts: builder.opts,
         }
     }
-
-    /// Update default difficulty for new [`Event`]
-    #[deprecated(since = "0.38.0")]
-    pub fn update_difficulty(&self, _difficulty: u8) {}
 
     #[inline]
     fn state(&self) -> &SharedState {
@@ -915,12 +902,6 @@ impl Client {
         self.gossip_send_event(event, false).await
     }
 
-    /// Send multiple events at once to all relays with [`RelayServiceFlags::WRITE`] flag.
-    #[deprecated(since = "0.38.0")]
-    pub async fn batch_event(&self, _events: Vec<Event>) -> Result<Output<()>, Error> {
-        unimplemented!()
-    }
-
     /// Send event to specific relays.
     #[inline]
     pub async fn send_event_to<I, U>(&self, urls: I, event: Event) -> Result<Output<EventId>, Error>
@@ -930,21 +911,6 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         Ok(self.pool.send_event_to(urls, event).await?)
-    }
-
-    /// Send multiple events at once to specific relays
-    #[deprecated(since = "0.38.0")]
-    pub async fn batch_event_to<I, U>(
-        &self,
-        _urls: I,
-        _events: Vec<Event>,
-    ) -> Result<Output<()>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
-    {
-        unimplemented!()
     }
 
     /// Build, sign and return [`Event`]
@@ -1029,56 +995,6 @@ impl Client {
     #[inline]
     pub async fn set_metadata(&self, metadata: &Metadata) -> Result<Output<EventId>, Error> {
         let builder = EventBuilder::metadata(metadata);
-        self.send_event_builder(builder).await
-    }
-
-    /// Update relay list
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event_builder` or similar method."
-    )]
-    pub async fn set_relay_list<I>(&self, relays: I) -> Result<Output<EventId>, Error>
-    where
-        I: IntoIterator<Item = (RelayUrl, Option<RelayMetadata>)>,
-    {
-        let builder = EventBuilder::relay_list(relays);
-        self.send_event_builder(builder).await
-    }
-
-    /// Publish text note
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event_builder` or similar method."
-    )]
-    pub async fn publish_text_note<S, I>(
-        &self,
-        content: S,
-        tags: I,
-    ) -> Result<Output<EventId>, Error>
-    where
-        S: Into<String>,
-        I: IntoIterator<Item = Tag>,
-    {
-        let builder = EventBuilder::text_note(content).tags(tags);
-        self.send_event_builder(builder).await
-    }
-
-    /// Set contact list
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event_builder` or similar method."
-    )]
-    pub async fn set_contact_list<I>(&self, list: I) -> Result<Output<EventId>, Error>
-    where
-        I: IntoIterator<Item = Contact>,
-    {
-        let builder = EventBuilder::contact_list(list);
         self.send_event_builder(builder).await
     }
 
@@ -1223,182 +1139,6 @@ impl Client {
         self.send_event_to(urls, event).await
     }
 
-    /// Repost
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event_builder` or similar method."
-    )]
-    pub async fn repost(
-        &self,
-        event: &Event,
-        relay_url: Option<RelayUrl>,
-    ) -> Result<Output<EventId>, Error> {
-        let builder = EventBuilder::repost(event, relay_url);
-        self.send_event_builder(builder).await
-    }
-
-    /// Delete event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event_builder` or similar method."
-    )]
-    pub async fn delete_event<T>(&self, id: T) -> Result<Output<EventId>, Error>
-    where
-        T: Into<EventIdOrCoordinate>,
-    {
-        let builder = EventBuilder::delete([id]);
-        self.send_event_builder(builder).await
-    }
-
-    /// Like event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event_builder` or similar method."
-    )]
-    pub async fn like(&self, event: &Event) -> Result<Output<EventId>, Error> {
-        #[allow(deprecated)]
-        self.reaction(event, "+").await
-    }
-
-    /// Disike event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event_builder` or similar method."
-    )]
-    pub async fn dislike(&self, event: &Event) -> Result<Output<EventId>, Error> {
-        #[allow(deprecated)]
-        self.reaction(event, "-").await
-    }
-
-    /// React to an [`Event`]
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event_builder` or similar method."
-    )]
-    pub async fn reaction<S>(&self, event: &Event, reaction: S) -> Result<Output<EventId>, Error>
-    where
-        S: Into<String>,
-    {
-        let builder = EventBuilder::reaction(event, reaction);
-        self.send_event_builder(builder).await
-    }
-
-    /// Create new channel
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event_builder` or similar method."
-    )]
-    pub async fn new_channel(&self, metadata: &Metadata) -> Result<Output<EventId>, Error> {
-        let builder = EventBuilder::channel(metadata);
-        self.send_event_builder(builder).await
-    }
-
-    /// Update channel metadata
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event_builder` or similar method."
-    )]
-    pub async fn set_channel_metadata(
-        &self,
-        channel_id: EventId,
-        relay_url: Option<RelayUrl>,
-        metadata: &Metadata,
-    ) -> Result<Output<EventId>, Error> {
-        let builder = EventBuilder::channel_metadata(channel_id, relay_url, metadata);
-        self.send_event_builder(builder).await
-    }
-
-    /// Send message to channel
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event_builder` or similar method."
-    )]
-    pub async fn send_channel_msg<S>(
-        &self,
-        channel_id: EventId,
-        relay_url: RelayUrl,
-        msg: S,
-    ) -> Result<Output<EventId>, Error>
-    where
-        S: Into<String>,
-    {
-        let builder = EventBuilder::channel_msg(channel_id, relay_url, msg);
-        self.send_event_builder(builder).await
-    }
-
-    /// Hide channel message
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event_builder` or similar method."
-    )]
-    pub async fn hide_channel_msg<S>(
-        &self,
-        message_id: EventId,
-        reason: Option<S>,
-    ) -> Result<Output<EventId>, Error>
-    where
-        S: Into<String>,
-    {
-        let builder = EventBuilder::hide_channel_msg(message_id, reason);
-        self.send_event_builder(builder).await
-    }
-
-    /// Mute channel user
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/28.md>
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event_builder` or similar method."
-    )]
-    pub async fn mute_channel_user<S>(
-        &self,
-        pubkey: PublicKey,
-        reason: Option<S>,
-    ) -> Result<Output<EventId>, Error>
-    where
-        S: Into<String>,
-    {
-        let builder = EventBuilder::mute_channel_user(pubkey, reason);
-        self.send_event_builder(builder).await
-    }
-
-    /// Create zap receipt event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
-    #[cfg(feature = "nip57")]
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event_builder` or similar method."
-    )]
-    pub async fn zap_receipt<S>(
-        &self,
-        bolt11: S,
-        preimage: Option<S>,
-        zap_request: &Event,
-    ) -> Result<Output<EventId>, Error>
-    where
-        S: Into<String>,
-    {
-        let builder = EventBuilder::zap_receipt(bolt11, preimage, zap_request);
-        self.send_event_builder(builder).await
-    }
-
     /// Construct Gift Wrap and send to relays
     ///
     /// Check [`Client::send_event`] to know how sending events works.
@@ -1465,25 +1205,6 @@ impl Client {
     pub async fn unwrap_gift_wrap(&self, gift_wrap: &Event) -> Result<UnwrappedGift, Error> {
         let signer = self.signer().await?;
         Ok(UnwrappedGift::from_gift_wrap(&signer, gift_wrap).await?)
-    }
-
-    /// File metadata
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
-    #[deprecated(
-        since = "0.37.0",
-        note = "Use the `EventBuilder` in conjunction with `Client::send_event_builder` or similar method."
-    )]
-    pub async fn file_metadata<S>(
-        &self,
-        description: S,
-        metadata: FileMetadata,
-    ) -> Result<Output<EventId>, Error>
-    where
-        S: Into<String>,
-    {
-        let builder = EventBuilder::file_metadata(description, metadata);
-        self.send_event_builder(builder).await
     }
 
     /// Handle notifications

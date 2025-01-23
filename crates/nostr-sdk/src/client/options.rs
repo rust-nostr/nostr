@@ -62,12 +62,6 @@ impl Options {
         self
     }
 
-    /// Set default POW difficulty for `Event`
-    #[deprecated(since = "0.38.0")]
-    pub fn difficulty(self, _difficulty: u8) -> Self {
-        self
-    }
-
     /// Minimum POW difficulty for received events (default: 0)
     #[inline]
     pub fn min_pow(mut self, difficulty: u8) -> Self {
@@ -79,22 +73,6 @@ impl Options {
     #[inline]
     pub fn req_filters_chunk_size(mut self, size: u8) -> Self {
         self.req_filters_chunk_size = size;
-        self
-    }
-
-    /// Timeout (default: 60)
-    ///
-    /// Used in `fetch_events` and similar methods as default timeout.
-    #[deprecated(since = "0.38.0")]
-    pub fn timeout(self, _timeout: Duration) -> Self {
-        self
-    }
-
-    /// Relay connection timeout (default: None)
-    ///
-    /// If set to `None`, the client will try to connect to relay without waiting.
-    #[deprecated(since = "0.37.0")]
-    pub fn connection_timeout(self, _timeout: Option<Duration>) -> Self {
         self
     }
 

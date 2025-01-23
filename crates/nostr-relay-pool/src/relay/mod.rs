@@ -438,12 +438,6 @@ impl Relay {
         .ok_or(Error::Timeout)?
     }
 
-    /// Send multiple [`Event`] at once
-    #[deprecated(since = "0.38.0")]
-    pub async fn batch_event(&self, _events: Vec<Event>) -> Result<(), Error> {
-        unimplemented!()
-    }
-
     /// Resubscribe to all **closed** or not yet initiated subscriptions
     #[inline]
     pub async fn resubscribe(&self) -> Result<(), Error> {

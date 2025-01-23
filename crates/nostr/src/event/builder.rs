@@ -167,16 +167,6 @@ impl EventBuilder {
         }
     }
 
-    /// Add tags
-    #[deprecated(since = "0.37.0", note = "Use `tags` instead")]
-    pub fn add_tags<I>(mut self, tags: I) -> Self
-    where
-        I: IntoIterator<Item = Tag>,
-    {
-        self.tags.extend(tags);
-        self
-    }
-
     /// Add tag
     #[inline]
     pub fn tag(mut self, tag: Tag) -> Self {

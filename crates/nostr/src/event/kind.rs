@@ -26,9 +26,6 @@ pub const REPLACEABLE_RANGE: Range<u16> = 10_000..20_000;
 pub const EPHEMERAL_RANGE: Range<u16> = 20_000..30_000;
 /// Addressable range
 pub const ADDRESSABLE_RANGE: Range<u16> = 30_000..40_000;
-/// Addressable range
-#[deprecated(since = "0.38.0", note = "Use `ADDRESSABLE_RANGE` instead")]
-pub const PARAMETERIZED_REPLACEABLE_RANGE: Range<u16> = ADDRESSABLE_RANGE;
 
 macro_rules! kind_variants {
     ($($name:ident => $value:expr, $doc0:expr, $doc1:expr),* $(,)?) => {
@@ -43,24 +40,6 @@ macro_rules! kind_variants {
                 #[doc = $doc1]
                 $name,
             )*
-            /// Represents a job request event (NIP90).
-            #[deprecated(since = "0.38.0", note = "Use `Custom` variant or `is_job_request` method instead.")]
-            JobRequest(u16),
-            /// Represents a job result event (NIP90).
-            #[deprecated(since = "0.38.0", note = "Use `Custom` variant or `is_job_result` method instead.")]
-            JobResult(u16),
-            /// Represents a regular event.
-            #[deprecated(since = "0.38.0", note = "Use `Custom` variant or `is_regular` method instead.")]
-            Regular(u16),
-            /// Represents a replaceable event.
-            #[deprecated(since = "0.38.0", note = "Use `Custom` variant or `is_replaceable` method instead.")]
-            Replaceable(u16),
-            /// Represents an ephemeral event.
-            #[deprecated(since = "0.38.0", note = "Use `Custom` variant or `is_ephemeral` method instead.")]
-            Ephemeral(u16),
-            /// Represents a parameterized replaceable event.
-            #[deprecated(since = "0.38.0", note = "Use `Custom` variant or `is_addressable` method instead.")]
-            ParameterizedReplaceable(u16),
             /// Represents a custom event.
             Custom(u16),
         }
@@ -82,18 +61,6 @@ macro_rules! kind_variants {
                     $(
                         Kind::$name => $value,
                     )*
-                    #[allow(deprecated)]
-                    Kind::JobRequest(u) => u,
-                    #[allow(deprecated)]
-                    Kind::JobResult(u) => u,
-                    #[allow(deprecated)]
-                    Kind::Regular(u) => u,
-                    #[allow(deprecated)]
-                    Kind::Replaceable(u) => u,
-                    #[allow(deprecated)]
-                    Kind::Ephemeral(u) => u,
-                    #[allow(deprecated)]
-                    Kind::ParameterizedReplaceable(u) => u,
                     Kind::Custom(u) => u,
                 }
             }
@@ -278,12 +245,6 @@ impl Kind {
     #[inline]
     pub fn is_addressable(&self) -> bool {
         ADDRESSABLE_RANGE.contains(&self.as_u16())
-    }
-
-    #[allow(missing_docs)]
-    #[deprecated(since = "0.38.0", note = "Use `is_addressable` instead")]
-    pub fn is_parameterized_replaceable(&self) -> bool {
-        self.is_addressable()
     }
 
     /// Check if it's a NIP90 job request

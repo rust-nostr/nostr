@@ -92,34 +92,16 @@ impl RelayOptions {
         self
     }
 
-    /// Minimum POW for received events (default: 0)
-    #[deprecated(since = "0.38.0")]
-    pub fn pow(self, _difficulty: u8) -> Self {
-        self
-    }
-
     /// Enable/disable auto reconnection (default: true)
     pub fn reconnect(mut self, reconnect: bool) -> Self {
         self.reconnect = reconnect;
         self
     }
 
-    /// Retry interval (default: 10 sec)
-    #[deprecated(since = "0.37.0", note = "use `retry_interval` instead")]
-    pub fn retry_sec(self, retry_sec: u64) -> Self {
-        self.retry_interval(Duration::from_secs(retry_sec))
-    }
-
     /// Retry connection time (default: 10 sec)
     pub fn retry_interval(mut self, interval: Duration) -> Self {
         self.retry_interval = interval;
         self
-    }
-
-    /// Automatically adjust retry seconds based on success/attempts (default: true)
-    #[deprecated(since = "0.37.0", note = "use `adjust_retry_interval` instead")]
-    pub fn adjust_retry_sec(self, adjust_retry_sec: bool) -> Self {
-        self.adjust_retry_interval(adjust_retry_sec)
     }
 
     /// Automatically adjust retry interval based on success/attempts (default: true)
@@ -160,13 +142,6 @@ pub struct SubscribeAutoCloseOptions {
 }
 
 impl SubscribeAutoCloseOptions {
-    #[allow(deprecated)]
-    #[allow(missing_docs)]
-    #[deprecated(since = "0.38.0", note = "use `exit_policy` instead")]
-    pub fn filter(self, filter: FilterOptions) -> Self {
-        self.exit_policy(filter)
-    }
-
     /// Close subscription when [`ReqExitPolicy`] is satisfied
     pub fn exit_policy(mut self, policy: ReqExitPolicy) -> Self {
         self.exit_policy = policy;
@@ -203,10 +178,6 @@ impl SubscribeOptions {
         self.auto_close.is_some()
     }
 }
-
-#[allow(missing_docs)]
-#[deprecated(since = "0.38.0", note = "use `ReqExitPolicy` instead")]
-pub type FilterOptions = ReqExitPolicy;
 
 /// Request (REQ) exit policy
 #[derive(Debug, Clone, Copy, Default)]

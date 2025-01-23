@@ -406,14 +406,7 @@ fn convert(k: nostr::Kind) -> Option<KindStandard> {
         nostr::Kind::Torrent => Some(KindStandard::Torrent),
         nostr::Kind::TorrentComment => Some(KindStandard::TorrentComment),
         nostr::Kind::PeerToPeerOrder => Some(KindStandard::PeerToPeerOrder),
-        #[allow(deprecated)]
-        nostr::Kind::JobRequest(..)
-        | nostr::Kind::JobResult(..)
-        | nostr::Kind::Regular(..)
-        | nostr::Kind::Replaceable(..)
-        | nostr::Kind::Ephemeral(..)
-        | nostr::Kind::ParameterizedReplaceable(..)
-        | nostr::Kind::Custom(..) => None,
+        nostr::Kind::Custom(..) => None,
     }
 }
 
