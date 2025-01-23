@@ -4,6 +4,7 @@
 
 * Rust: https://www.rust-lang.org/tools/install
 * Just: https://just.systems/man/en/ (install with `cargo install just`)
+* UPX: https://github.com/upx/upx
 * When building for Android:
   * NDK v26
   * Set the `ANDROID_SDK_ROOT` env variable (ex. Linux: `~/Android/Sdk`, macOS: `~/Library/Android/sdk`)
