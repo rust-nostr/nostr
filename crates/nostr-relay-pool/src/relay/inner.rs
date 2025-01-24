@@ -710,6 +710,10 @@ impl InnerRelay {
 
         while let Some(msg) = ws_rx.next().await {
             match msg? {
+                WsMessage::Text(json) => self.handle_relay_message(&json).await,
+                WsMessage::Binary(_) => {
+                    tracing::warn!(url = %self.url, "Binary messages aren't supported.");
+                }
                 #[cfg(not(target_arch = "wasm32"))]
                 WsMessage::Pong(bytes) => {
                     if self.flags.has_ping() {
@@ -742,9 +746,12 @@ impl InnerRelay {
                         }
                     }
                 }
-                WsMessage::Text(json) => self.handle_relay_message(&json).await,
-                WsMessage::Binary(_) => {
-                    tracing::warn!(url = %self.url, "Binary messages aren't supported.");
+                #[cfg(not(target_arch = "wasm32"))]
+                WsMessage::Close(None) => break,
+                #[cfg(not(target_arch = "wasm32"))]
+                WsMessage::Close(Some(frame)) => {
+                    tracing::info!(code = %frame.code, reason = %frame.reason, "Connection closed by peer.");
+                    break;
                 }
                 #[cfg(not(target_arch = "wasm32"))]
                 _ => {}

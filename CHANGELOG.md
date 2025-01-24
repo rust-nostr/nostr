@@ -87,6 +87,7 @@
 * pool: avoid repeatedly locking the relay channel receiver ([Yuki Kishimoto])
 * pool: refactor `RelayPool::stream_events_targeted` ([Yuki Kishimoto])
 * pool: refactor relay removal logic and add unit tests ([Yuki Kishimoto])
+* pool: handle `close` WebSocket message ([Yuki Kishimoto])
 * lmdb: use `EventBorrow` instead of `DatabaseEvent` ([Yuki Kishimoto])
 * ndb: refactor note-to-event conversion ([Yuki Kishimoto])
 * relay-builder: refactor shutdown mechanism to use `Notify` over `broadcast` ([Yuki Kishimoto])
