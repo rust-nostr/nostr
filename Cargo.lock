@@ -2830,6 +2830,7 @@ dependencies = [
  "nostr-indexeddb",
  "nostr-lmdb",
  "nostr-ndb",
+ "nostr-redb",
  "nostr-relay-pool",
  "tokio",
  "tracing",
