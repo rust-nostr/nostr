@@ -12,9 +12,7 @@ use std::time::Duration;
 
 use async_utility::{task, time};
 use async_wsocket::futures_util::{self, SinkExt, StreamExt};
-use async_wsocket::{
-    connect as wsocket_connect, ConnectionMode, Error as WsError, Sink, Stream, WsMessage,
-};
+use async_wsocket::{connect as wsocket_connect, ConnectionMode, Sink, Stream, WsMessage};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
 use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
@@ -413,12 +411,11 @@ impl InnerRelay {
                 // TODO: if the relay score is too low, immediately exit.
                 // TODO: at every loop iteration check the score and if it's too low, exit
 
-                tokio::select! {
-                    // Connect and run message handler
-                    _ = relay.connect_and_run(stream, &mut rx_nostr, &mut last_ws_error) => {},
-                    // Handle "termination notification
-                    _ = relay.handle_terminate() => break,
-                }
+                // Connect and run message handler
+                // The termination requests are handled inside this method!
+                relay
+                    .connect_and_run(stream, &mut rx_nostr, &mut last_ws_error)
+                    .await;
 
                 // Update stream to `None`, meaning that it was already used (if was some).
                 stream = None;
@@ -447,10 +444,12 @@ impl InnerRelay {
                         interval.as_secs()
                     );
 
+                    // Sleep before retry to connect
+                    // Handle termination to allow to exit immediately if request is received during the sleep.
                     tokio::select! {
                         // Sleep
                         _ = time::sleep(interval) => {},
-                        // Handle "termination notification
+                        // Handle termination notification
                         _ = relay.handle_terminate() => break,
                     }
                 } else {
@@ -521,16 +520,20 @@ impl InnerRelay {
         &self,
         timeout: Duration,
         status_on_failure: RelayStatus,
-    ) -> Result<(Sink, Stream), WsError> {
+    ) -> Result<(Sink, Stream), Error> {
         // Update status
         self.set_status(RelayStatus::Connecting, true);
 
         // Add attempt
         self.stats.new_attempt();
 
-        // Connect
-        match wsocket_connect((&self.url).into(), &self.opts.connection_mode, timeout).await {
-            Ok((ws_tx, ws_rx)) => {
+        // Try to connect
+        // If during connection the termination request is received, abort the connection and return error.
+        // At this stem is NOT required to close the WebSocket connection.
+        tokio::select! {
+            // Connect
+            res = wsocket_connect((&self.url).into(), &self.opts.connection_mode, timeout) => match res {
+                Ok((ws_tx, ws_rx)) => {
                 // Update status
                 self.set_status(RelayStatus::Connected, true);
 
@@ -544,8 +547,11 @@ impl InnerRelay {
                 self.set_status(status_on_failure, false);
 
                 // Return error
-                Err(e)
+                Err(Error::WebSocket(e))
             }
+            },
+            // Handle termination notification
+            _ = self.handle_terminate() => Err(Error::TerminationRequest),
         }
     }
 
@@ -614,15 +620,21 @@ impl InnerRelay {
         let ping: PingTracker = PingTracker::default();
 
         // Wait that one of the futures terminates/completes
+        // Also also termination here, to allow to close the connection in case of termination request.
         tokio::select! {
+            // Message receiver handler
             res = self.receiver_message_handler(ws_rx, &ping) => match res {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay received exited."),
                 Err(e) => tracing::error!(url = %self.url, error = %e, "Relay receiver exited with error.")
             },
+            // Message sender handler
             res = self.sender_message_handler(&mut ws_tx, rx_nostr, &ping) => match res {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay sender exited."),
                 Err(e) => tracing::error!(url = %self.url, error = %e, "Relay sender exited with error.")
             },
+            // Termination handler
+            _ = self.handle_terminate() => {},
+            // Pinger
             _ = self.pinger() => {}
         }
 

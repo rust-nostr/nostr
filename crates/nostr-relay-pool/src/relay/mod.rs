@@ -985,6 +985,34 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_disconnect_unresponsive_during_try_connect() {
+        // Mock relay
+        let opts = RelayTestOptions {
+            unresponsive_connection: Some(Duration::from_secs(10)),
+        };
+        let mock = MockRelay::run_with_opts(opts).await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let relay = Relay::new(url);
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        // Terminate after 3 secs
+        let r = relay.clone();
+        tokio::spawn(async move {
+            time::sleep(Duration::from_secs(3)).await;
+            r.disconnect();
+        });
+
+        let res = relay.try_connect(Duration::from_secs(7)).await;
+        assert!(matches!(res.unwrap_err(), Error::TerminationRequest));
+
+        assert_eq!(relay.status(), RelayStatus::Terminated);
+
+        assert!(!relay.inner.is_running());
+    }
+
+    #[tokio::test]
     async fn test_wait_for_connection() {
         // Mock relay
         let opts = RelayTestOptions {
