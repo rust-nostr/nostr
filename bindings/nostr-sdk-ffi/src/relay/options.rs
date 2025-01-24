@@ -2,9 +2,11 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::net::{IpAddr, SocketAddr};
 use std::ops::Deref;
 #[cfg(feature = "tor")]
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::time::Duration;
 
 use nostr_sdk::{pool, prelude};
@@ -17,7 +19,10 @@ use crate::error::{NostrSdkError, Result};
 pub enum ConnectionMode {
     Direct,
     Proxy {
-        addr: String,
+        /// IP
+        ip: String,
+        /// Port
+        port: u16,
     },
     #[cfg(feature = "tor")]
     Tor {
@@ -30,7 +35,8 @@ impl From<pool::ConnectionMode> for ConnectionMode {
         match mode {
             pool::ConnectionMode::Direct => Self::Direct,
             pool::ConnectionMode::Proxy(addr) => Self::Proxy {
-                addr: addr.to_string(),
+                ip: addr.ip().to_string(),
+                port: addr.port(),
             },
             #[cfg(feature = "tor")]
             pool::ConnectionMode::Tor { custom_path } => Self::Tor {
@@ -46,7 +52,11 @@ impl TryFrom<ConnectionMode> for pool::ConnectionMode {
     fn try_from(mode: ConnectionMode) -> Result<Self, Self::Error> {
         match mode {
             ConnectionMode::Direct => Ok(Self::Direct),
-            ConnectionMode::Proxy { addr } => Ok(Self::Proxy(addr.parse()?)),
+            ConnectionMode::Proxy { ip, port } => {
+                let ip: IpAddr = IpAddr::from_str(&ip)?;
+                let addr: SocketAddr = SocketAddr::new(ip, port);
+                Ok(Self::Proxy(addr))
+            }
             #[cfg(feature = "tor")]
             ConnectionMode::Tor { custom_path } => Ok(Self::Tor {
                 custom_path: custom_path.map(PathBuf::from),

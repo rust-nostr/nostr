@@ -60,6 +60,7 @@
 * ffi: remove `KindStandard::Custom` variant ([Yuki Kishimoto])
 * ffi: rename `Kind::from_enum` and `Kind::as_enum` to `Kind::from_std` and `Kind::as_std` ([Yuki Kishimoto])
 * ffi: add `tor` feature (disabled by default) ([Yuki Kishimoto])
+* ffi: split `addr` in `ConnectionMode::Proxy` variant ([Yuki Kishimoto])
 * js: rename `Nip07Signer` to `BrowserSigner` ([Yuki Kishimoto])
 * bindings: remove `profile` module ([Yuki Kishimoto])
 * bindings: remove `NostrLibrary` struct and keep only `git_hash_version` func ([Yuki Kishimoto])
