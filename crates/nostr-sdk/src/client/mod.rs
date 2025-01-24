@@ -126,7 +126,9 @@ impl Client {
 
     /// Get current nostr signer
     ///
-    /// Rise error if it not set.
+    /// # Errors
+    ///
+    /// Returns an error if the signer isn't set.
     #[inline]
     pub async fn signer(&self) -> Result<Arc<dyn NostrSigner>, Error> {
         Ok(self.state().signer().await?)
@@ -914,6 +916,8 @@ impl Client {
     }
 
     /// Build, sign and return [`Event`]
+    ///
+    /// This method requires a [`NostrSigner`].
     pub async fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
         let signer = self.signer().await?;
         Ok(builder.sign(&signer).await?)
@@ -921,7 +925,7 @@ impl Client {
 
     /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to relays (check [`Client::send_event`] from more details).
     ///
-    /// Rise an error if the [`NostrSigner`] is not set.
+    /// This method requires a [`NostrSigner`].
     #[inline]
     pub async fn send_event_builder(
         &self,
@@ -933,7 +937,7 @@ impl Client {
 
     /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to specific relays.
     ///
-    /// Rise an error if the [`NostrSigner`] is not set.
+    /// This method requires a [`NostrSigner`].
     #[inline]
     pub async fn send_event_builder_to<I, U>(
         &self,
@@ -973,6 +977,8 @@ impl Client {
 
     /// Update metadata
     ///
+    /// This method requires a [`NostrSigner`].
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     ///
     /// # Example
@@ -1008,7 +1014,9 @@ impl Client {
         Ok(vec![filter])
     }
 
-    /// Get contact list from relays.
+    /// Get the contact list from relays.
+    ///
+    /// This method requires a [`NostrSigner`].
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     pub async fn get_contact_list(&self, timeout: Duration) -> Result<Vec<Contact>, Error> {
@@ -1036,6 +1044,8 @@ impl Client {
 
     /// Get contact list public keys from relays.
     ///
+    /// This method requires a [`NostrSigner`].
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     pub async fn get_contact_list_public_keys(
         &self,
@@ -1053,6 +1063,8 @@ impl Client {
     }
 
     /// Get contact list [`Metadata`] from relays.
+    ///
+    /// This method requires a [`NostrSigner`].
     pub async fn get_contact_list_metadata(
         &self,
         timeout: Duration,
@@ -1089,6 +1101,8 @@ impl Client {
     /// If `gossip` is enabled (see [`Options::gossip`]) the message will be sent to the NIP17 relays (automatically discovered).
     /// If gossip is not enabled will be sent to all relays with [`RelayServiceFlags::WRITE`] flag.
     ///
+    /// This method requires a [`NostrSigner`].
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
     #[cfg(feature = "nip59")]
@@ -1116,6 +1130,8 @@ impl Client {
 
     /// Send a private direct message to specific relays
     ///
+    /// This method requires a [`NostrSigner`].
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
     #[cfg(feature = "nip59")]
@@ -1140,6 +1156,8 @@ impl Client {
     }
 
     /// Construct Gift Wrap and send to relays
+    ///
+    /// This method requires a [`NostrSigner`].
     ///
     /// Check [`Client::send_event`] to know how sending events works.
     ///
@@ -1167,6 +1185,8 @@ impl Client {
     }
 
     /// Construct Gift Wrap and send to specific relays
+    ///
+    /// This method requires a [`NostrSigner`].
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
@@ -1197,7 +1217,9 @@ impl Client {
 
     /// Unwrap Gift Wrap event
     ///
-    /// Internally verify the `seal` event.
+    /// This method requires a [`NostrSigner`].
+    ///
+    /// Check [`UnwrappedGift::from_gift_wrap`] to learn more.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
@@ -1209,7 +1231,7 @@ impl Client {
 
     /// Handle notifications
     ///
-    /// The closure function expect a `bool` as result: `true` means "exit from the notifications loop".
+    /// The closure function expects a `bool` as output: return `true` to exit from the notification loop.
     #[inline]
     pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
     where
