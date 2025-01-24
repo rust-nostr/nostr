@@ -596,7 +596,7 @@ impl InnerRelay {
     /// Run message handlers, pinger and other services
     async fn post_connection(
         &self,
-        ws_tx: Sink,
+        mut ws_tx: Sink,
         ws_rx: Stream,
         rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessage>>>,
     ) {
@@ -619,17 +619,23 @@ impl InnerRelay {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay received exited."),
                 Err(e) => tracing::error!(url = %self.url, error = %e, "Relay receiver exited with error.")
             },
-            res = self.sender_message_handler(ws_tx, rx_nostr, &ping) => match res {
+            res = self.sender_message_handler(&mut ws_tx, rx_nostr, &ping) => match res {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay sender exited."),
                 Err(e) => tracing::error!(url = %self.url, error = %e, "Relay sender exited with error.")
             },
             _ = self.pinger() => {}
         }
+
+        // Always try to close the WebSocket connection
+        match close_ws(&mut ws_tx).await {
+            Ok(..) => tracing::debug!("WebSocket connection closed."),
+            Err(e) => tracing::error!(error = %e, "Can't close WebSocket connection."),
+        }
     }
 
     async fn sender_message_handler(
         &self,
-        mut ws_tx: Sink,
+        ws_tx: &mut Sink,
         rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessage>>>,
         ping: &PingTracker,
     ) -> Result<(), Error> {
@@ -659,7 +665,7 @@ impl InnerRelay {
                     };
 
                     // Send WebSocket messages
-                    send_ws_msgs(&mut ws_tx, msgs).await?;
+                    send_ws_msgs(ws_tx, msgs).await?;
 
                     // Increase sent bytes
                     self.stats.add_bytes_sent(size);
@@ -683,7 +689,7 @@ impl InnerRelay {
                         let msg = WsMessage::Ping(nonce.to_be_bytes().to_vec());
 
                         // Send WebSocket message
-                        send_ws_msgs(&mut ws_tx, vec![msg]).await?;
+                        send_ws_msgs(ws_tx, vec![msg]).await?;
 
                         // Set ping as just sent
                         ping.just_sent().await;
@@ -696,8 +702,7 @@ impl InnerRelay {
             }
         }
 
-        // Close WebSocket
-        close_ws(&mut ws_tx).await
+        Ok(())
     }
 
     async fn receiver_message_handler(
@@ -1841,6 +1846,7 @@ async fn send_ws_msgs(tx: &mut Sink, msgs: Vec<WsMessage>) -> Result<(), Error> 
 
 /// Send WebSocket messages with timeout set to [WEBSOCKET_TX_TIMEOUT].
 async fn close_ws(tx: &mut Sink) -> Result<(), Error> {
+    // TODO: remove timeout from here?
     match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.close()).await {
         Some(res) => Ok(res?),
         None => Err(Error::Timeout),
