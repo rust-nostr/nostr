@@ -148,7 +148,10 @@ impl InnerRelayPool {
         if relay.flags().has_read() {
             let subscriptions = self.subscriptions().await;
             for (id, filters) in subscriptions.into_iter() {
-                relay.inner.update_subscription(id, filters, false).await;
+                relay
+                    .inner
+                    .update_long_lived_subscription(id, filters, false)
+                    .await;
             }
         }
 

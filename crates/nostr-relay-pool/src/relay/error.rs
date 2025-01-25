@@ -119,6 +119,10 @@ pub enum Error {
     AuthenticationFailed,
     /// Premature exit
     PrematureExit,
+    /// Received an event for a non-existent subscription
+    EventFromNotExistentSubscription,
+    /// Receiver an event that doesn't match the subscription filter
+    EventNotMatchFilter,
 }
 
 impl std::error::Error for Error {}
@@ -180,6 +184,10 @@ impl fmt::Display for Error {
             ),
             Self::AuthenticationFailed => write!(f, "authentication failed"),
             Self::PrematureExit => write!(f, "premature exit"),
+            Self::EventFromNotExistentSubscription => {
+                write!(f, "received event for a non-existent subscription")
+            }
+            Self::EventNotMatchFilter => write!(f, "event doesn't match the subscription filter"),
         }
     }
 }

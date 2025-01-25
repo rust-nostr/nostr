@@ -89,20 +89,33 @@ impl RelayChannels {
 }
 
 #[derive(Debug, Clone)]
-struct SubscriptionData {
-    pub filter: Filter,
-    pub subscribed_at: Timestamp,
-    /// Subscription closed by relay
-    pub closed: bool,
+enum SubscriptionData {
+    LongLived {
+        filter: Filter,
+        subscribed_at: Timestamp,
+        /// Subscription closed by relay
+        closed: bool,
+    },
+    AutoClosing {
+        filter: Filter,
+    },
 }
 
-impl Default for SubscriptionData {
-    fn default() -> Self {
-        Self {
+impl SubscriptionData {
+    fn default_long_lived() -> Self {
+        Self::LongLived {
             // TODO: use `Option<Filter>`?
             filter: Filter::new(),
             subscribed_at: Timestamp::zero(),
             closed: false,
+        }
+    }
+
+    #[inline]
+    fn filters(&self) -> &Filters {
+        match self {
+            Self::LongLived { filters, .. } => filters,
+            Self::AutoClosing { filters, .. } => filters,
         }
     }
 }
@@ -271,39 +284,83 @@ impl InnerRelay {
         }
     }
 
-    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
+    pub async fn long_lived_subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
         let subscription = self.atomic.subscriptions.read().await;
         subscription
             .iter()
-            .map(|(k, v)| (k.clone(), v.filter.clone()))
+            .filter_map(|(k, data)| match data {
+                SubscriptionData::LongLived { filter, .. } => {
+                    Some((k.clone(), filter.clone()))
+                }
+                SubscriptionData::AutoClosing { .. } => None,
+            })
             .collect()
     }
 
-    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
+    pub async fn long_lived_subscription(&self, id: &SubscriptionId) -> Option<Filter> {
         let subscription = self.atomic.subscriptions.read().await;
-        subscription.get(id).map(|d| d.filter.clone())
+        subscription.get(id).and_then(|d| match d {
+            SubscriptionData::LongLived { filter, .. } => Some(filter.clone()),
+            SubscriptionData::AutoClosing { .. } => None,
+        })
     }
 
-    pub(crate) async fn update_subscription(
+    pub(crate) async fn add_auto_closing_subscription(
         &self,
         id: SubscriptionId,
         filter: Filter,
+    ) {
+        let mut subscriptions = self.atomic.subscriptions.write().await;
+        subscriptions.insert(
+            id,
+            SubscriptionData::AutoClosing { filter },
+        );
+    }
+
+    pub(crate) async fn update_long_lived_subscription(
+        &self,
+        id: SubscriptionId,
+        f: Filter,
         update_subscribed_at: bool,
     ) {
         let mut subscriptions = self.atomic.subscriptions.write().await;
-        let data: &mut SubscriptionData = subscriptions.entry(id).or_default();
-        data.filter = filter;
+        let data: &mut SubscriptionData = subscriptions
+            .entry(id)
+            .or_insert_with(|| SubscriptionData::default_long_lived());
 
-        if update_subscribed_at {
-            data.subscribed_at = Timestamp::now();
+        // Update data
+        if let SubscriptionData::LongLived {
+            filter,
+            subscribed_at,
+            ..
+        } = data
+        {
+            *filter = f;
+
+            if update_subscribed_at {
+                *subscribed_at = Timestamp::now();
+            }
         }
     }
 
-    /// Mark subscription as closed
+    /// Subscription closed by relay
     async fn subscription_closed(&self, id: &SubscriptionId) {
+        // Acquire lock
         let mut subscriptions = self.atomic.subscriptions.write().await;
-        if let Some(data) = subscriptions.get_mut(id) {
-            data.closed = true;
+
+        // Remove from subscriptions
+        if let Some((id, mut data)) = subscriptions.remove_entry(id) {
+            match &mut data {
+                // Long-lived, mark as closed
+                SubscriptionData::LongLived { closed, .. } => {
+                    *closed = true;
+                }
+                // Auto-closing, immediately return
+                SubscriptionData::AutoClosing { .. } => return,
+            }
+
+            // Reinsert into subscriptions
+            subscriptions.insert(id, data);
         }
     }
 
@@ -311,7 +368,7 @@ impl InnerRelay {
     pub(crate) async fn should_resubscribe(&self, id: &SubscriptionId) -> bool {
         let subscriptions = self.atomic.subscriptions.read().await;
         match subscriptions.get(id) {
-            Some(SubscriptionData {
+            Some(SubscriptionData::LongLived {
                 subscribed_at,
                 closed,
                 ..
@@ -326,7 +383,7 @@ impl InnerRelay {
                 // Many connections and subscription NOT done in current websocket session -> SHOULD re-subscribe
                 self.stats.connected_at() > *subscribed_at && self.stats.success() > 1
             }
-            None => false,
+            Some(SubscriptionData::AutoClosing { .. }) | None => false,
         }
     }
 
@@ -614,7 +671,7 @@ impl InnerRelay {
 
         // (Re)subscribe to relay
         if self.flags.can_read() {
-            if let Err(e) = self.resubscribe().await {
+            if let Err(e) = self.resubscribe_long_lived().await {
                 tracing::error!(url = %self.url, error = %e, "Impossible to subscribe.")
             }
         }
@@ -622,17 +679,17 @@ impl InnerRelay {
         let ping: PingTracker = PingTracker::default();
 
         // Wait that one of the futures terminates/completes
-        // Also also termination here, to allow to close the connection in case of termination request.
+        // Also handle termination here, to allow closing the connection in case of termination request.
         tokio::select! {
-            // Message receiver handler
-            res = self.receiver_message_handler(ws_rx, &ping) => match res {
-                Ok(()) => tracing::trace!(url = %self.url, "Relay received exited."),
-                Err(e) => tracing::error!(url = %self.url, error = %e, "Relay receiver exited with error.")
-            },
             // Message sender handler
             res = self.sender_message_handler(&mut ws_tx, rx_nostr, &ping) => match res {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay sender exited."),
                 Err(e) => tracing::error!(url = %self.url, error = %e, "Relay sender exited with error.")
+            },
+            // Message receiver handler
+            res = self.receiver_message_handler(ws_rx, &ping) => match res {
+                Ok(()) => tracing::trace!(url = %self.url, "Relay received exited."),
+                Err(e) => tracing::error!(url = %self.url, error = %e, "Relay receiver exited with error.")
             },
             // Termination handler
             _ = self.handle_terminate() => {},
@@ -857,7 +914,7 @@ impl InnerRelay {
                                         tracing::info!(url = %relay.url, "Authenticated to relay.");
 
                                         // TODO: ?
-                                        if let Err(e) = relay.resubscribe().await {
+                                        if let Err(e) = relay.resubscribe_long_lived().await {
                                             tracing::error!(
                                                 url = %relay.url,
                                                 error = %e,
@@ -1020,7 +1077,25 @@ impl InnerRelay {
         let subscription_id: SubscriptionId = SubscriptionId::new(subscription_id);
         let event: Box<Event> = Box::new(event);
 
-        // TODO: check if filter match
+        // Check subscription
+        {
+            // Acquire subscriptions
+            let subscriptions = self.atomic.subscriptions.read().await;
+
+            // Check if event match subscription
+            match subscriptions.get(&subscription_id) {
+                Some(data) => {
+                    if !data.filters().match_event(&event) {
+                        return Err(Error::EventNotMatchFilter);
+                    }
+                }
+                None => {
+                    return Err(Error::EventFromNotExistentSubscription);
+                }
+            }
+
+            // the guard is dropped here.
+        }
 
         // Check if event exists
         if let DatabaseEventStatus::NotExistent = status {
@@ -1165,8 +1240,8 @@ impl InnerRelay {
         .ok_or(Error::Timeout)?
     }
 
-    pub async fn resubscribe(&self) -> Result<(), Error> {
-        let subscriptions = self.subscriptions().await;
+    pub async fn resubscribe_long_lived(&self) -> Result<(), Error> {
+        let subscriptions = self.long_lived_subscriptions().await;
         for (id, filter) in subscriptions.into_iter() {
             if !filter.is_empty() && self.should_resubscribe(&id).await {
                 self.send_msg(ClientMessage::req(id, filter))?;
@@ -1209,6 +1284,9 @@ impl InnerRelay {
                     true
                 }
             };
+
+            // Remove subscription
+            relay.remove_subscription(&id).await;
 
             // Close subscription
             if to_close {
@@ -1366,8 +1444,8 @@ impl InnerRelay {
         self.send_msg(ClientMessage::close(id))
     }
 
-    pub async fn unsubscribe_all(&self) -> Result<(), Error> {
-        let subscriptions = self.subscriptions().await;
+    pub async fn unsubscribe_all_long_lived(&self) -> Result<(), Error> {
+        let subscriptions = self.long_lived_subscriptions().await;
 
         for id in subscriptions.into_keys() {
             self.unsubscribe(id).await?;
@@ -1563,6 +1641,7 @@ impl InnerRelay {
     #[inline(never)]
     pub(super) async fn sync_new(
         &self,
+        down_sub_id: SubscriptionId,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: &SyncOptions,
@@ -1583,7 +1662,7 @@ impl InnerRelay {
         // Send initial negentropy message
         let sub_id: SubscriptionId = SubscriptionId::generate();
         let open_msg: ClientMessage =
-            ClientMessage::neg_open(sub_id.clone(), filter, hex::encode(initial_message));
+            ClientMessage::neg_open(sub_id.clone(), filter.clone(), hex::encode(initial_message));
         self.send_msg(open_msg)?;
 
         // Check if negentropy is supported
@@ -1594,7 +1673,6 @@ impl InnerRelay {
         let mut sync_done: bool = false;
         let mut have_ids: Vec<EventId> = Vec::new();
         let mut need_ids: Vec<EventId> = Vec::new();
-        let down_sub_id: SubscriptionId = SubscriptionId::generate();
 
         // Start reconciliation
         while let Ok(notification) = notifications.recv().await {
@@ -1707,6 +1785,7 @@ impl InnerRelay {
     #[inline(never)]
     pub(super) async fn sync_deprecated(
         &self,
+        down_sub_id: SubscriptionId,
         filter: Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: &SyncOptions,
@@ -1731,7 +1810,7 @@ impl InnerRelay {
         let sub_id = SubscriptionId::generate();
         let open_msg = ClientMessage::NegOpen {
             subscription_id: sub_id.clone(),
-            filter: Box::new(filter),
+            filter: Box::new(filter.clone()),
             id_size: Some(32),
             initial_message: hex::encode(initial_message),
         };
@@ -1745,7 +1824,6 @@ impl InnerRelay {
         let mut sync_done: bool = false;
         let mut have_ids: Vec<EventId> = Vec::new();
         let mut need_ids: Vec<EventId> = Vec::new();
-        let down_sub_id: SubscriptionId = SubscriptionId::generate();
 
         // Start reconciliation
         while let Ok(notification) = notifications.recv().await {

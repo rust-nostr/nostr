@@ -222,16 +222,16 @@ impl Relay {
         document.clone()
     }
 
-    /// Get subscriptions
+    /// Get all long-lived subscriptions
     #[inline]
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
-        self.inner.subscriptions().await
+        self.inner.long_lived_subscriptions().await
     }
 
-    /// Get filters by [SubscriptionId]
+    /// Get filters of long-lived subscription by [`SubscriptionId`]
     #[inline]
     pub async fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
-        self.inner.subscription(id).await
+        self.inner.long_lived_subscription(id).await
     }
 
     /// Get options
@@ -439,10 +439,10 @@ impl Relay {
         .ok_or(Error::Timeout)?
     }
 
-    /// Resubscribe to all **closed** or not yet initiated subscriptions
+    /// Resubscribe to all **closed** or not yet initiated long-lived subscriptions
     #[inline]
     pub async fn resubscribe(&self) -> Result<(), Error> {
-        self.inner.resubscribe().await
+        self.inner.resubscribe_long_lived().await
     }
 
     /// Subscribe to filters
@@ -489,6 +489,10 @@ impl Relay {
                 // Send REQ message
                 self.inner.send_msg(msg)?;
 
+                self.inner
+                    .add_auto_closing_subscription(id.clone(), filter.clone())
+                    .await;
+
                 // Spawn auto-closing handler
                 self.inner
                     .spawn_auto_closing_handler(id, filter, opts, notifications)
@@ -498,7 +502,7 @@ impl Relay {
                 self.inner.send_msg(msg)?;
 
                 // No auto-close subscription: update subscription filter
-                self.inner.update_subscription(id, filter, true).await;
+                self.inner.update_long_lived_subscription(id, filter, true).await;
             }
         };
 
@@ -514,7 +518,7 @@ impl Relay {
     /// Unsubscribe from all subscriptions
     #[inline]
     pub async fn unsubscribe_all(&self) -> Result<(), Error> {
-        self.inner.unsubscribe_all().await
+        self.inner.unsubscribe_all_long_lived().await
     }
 
     /// Get events of filter with custom callback
@@ -673,11 +677,15 @@ impl Relay {
             return Err(Error::ReadDisabled);
         }
 
+        // Construct new default reconciliation output
         let mut output: Reconciliation = Reconciliation::default();
+
+        // Generate subscription ID for getting events
+        let down_sub_id: SubscriptionId = SubscriptionId::generate();
 
         match self
             .inner
-            .sync_new(filter.clone(), items.clone(), opts, &mut output)
+            .sync_new(down_sub_id.clone(), filter.clone(), items.clone(), opts, &mut output)
             .await
         {
             Ok(..) => {}
@@ -685,7 +693,7 @@ impl Relay {
                 Error::NegentropyNotSupported
                 | Error::Negentropy(negentropy::Error::UnsupportedProtocolVersion) => {
                     self.inner
-                        .sync_deprecated(filter, items, opts, &mut output)
+                        .sync_deprecated(down_sub_id, filter, items, opts, &mut output)
                         .await?;
                 }
                 e => return Err(e),
