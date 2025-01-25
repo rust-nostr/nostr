@@ -810,8 +810,11 @@ impl Filter {
     #[inline]
     fn search_match(&self, event: &Event) -> bool {
         match &self.search {
-            // TODO: best ways?
-            Some(query) => event.content.to_lowercase().contains(&query.to_lowercase()),
+            Some(query) => event
+                .content
+                .as_bytes()
+                .windows(query.len())
+                .any(|window| window.eq_ignore_ascii_case(query.as_bytes())),
             None => true,
         }
     }
@@ -1211,6 +1214,9 @@ mod tests {
 
         let filter = Filter::new().search("Yuki kishi");
         assert!(filter.match_event(&event));
+
+        let filter = Filter::new().search("yuki kishimoto");
+        assert!(filter.match_event(&event));
     }
 }
 
@@ -1241,7 +1247,7 @@ mod benches {
                     Tag::event(EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96").unwrap()),
                     Tag::from_standardized(TagStandard::Kind { kind: Kind::TextNote, uppercase: false }),
                 ],
-                "test",
+                "#JoininBox is a minimalistic, security focused Linux environment for #JoinMarket with a terminal based graphical menu.\n\nnostr:npub14tq8m9ggnnn2muytj9tdg0q6f26ef3snpd7ukyhvrxgq33vpnghs8shy62 👍🧡\n\nhttps://www.nobsbitcoin.com/joininbox-v0-8-0/",
                 Signature::from_str("273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502").unwrap(),
             );
 
@@ -1249,7 +1255,10 @@ mod benches {
         let pk =
             PublicKey::from_hex("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a")
                 .unwrap();
-        let filter = Filter::new().pubkey(pk).kind(Kind::TextNote);
+        let filter = Filter::new()
+            .pubkey(pk)
+            .search("linux")
+            .kind(Kind::TextNote);
 
         bh.iter(|| {
             black_box(filter.match_event(&event));
