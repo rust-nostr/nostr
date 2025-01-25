@@ -7,6 +7,7 @@
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::fmt;
 use core::hash::Hash;
 use core::str::FromStr;
@@ -316,7 +317,7 @@ impl<'de> Deserialize<'de> for SingleLetterTag {
     }
 }
 
-/// Subscription filters
+/// Subscription filter
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -819,7 +820,7 @@ impl Filter {
         }
     }
 
-    /// Determine if [Filter] match given [Event].
+    /// Determine if the [`Filter`] matches the given [`Event`].
     #[inline]
     pub fn match_event(&self, event: &Event) -> bool {
         self.ids_match(event)
@@ -834,6 +835,56 @@ impl Filter {
 
 impl JsonUtil for Filter {
     type Err = serde_json::Error;
+}
+
+/// Filter list
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Filters {
+    list: Vec<Filter>,
+}
+
+impl Filters {
+    /// Construct from vector of filters.
+    #[inline]
+    pub fn new(list: Vec<Filter>) -> Self {
+        Self { list }
+    }
+
+    /// Construct from single [`Filter`].
+    #[inline]
+    pub fn single(filter: Filter) -> Self {
+        Self::new(vec![filter])
+    }
+
+    /// Get the sum of all limits
+    ///
+    /// Returns `None` if any of the `Filter` doesn't have a limit.
+    pub fn limit(&self) -> Option<usize> {
+        let mut total: usize = 0;
+
+        for filter in self.list.iter() {
+            match filter.limit {
+                Some(limit) => {
+                    total += limit;
+                }
+                None => return None,
+            }
+        }
+
+        Some(total)
+    }
+
+    /// Determine if any of the [`Filter`] matches the given [`Event`].
+    #[inline]
+    pub fn match_event(&self, event: &Event) -> bool {
+        self.list.iter().any(|f| f.match_event(event))
+    }
+
+    /// Get vector of filters.
+    #[inline]
+    pub fn to_vec(self) -> Vec<Filter> {
+        self.list
+    }
 }
 
 fn serialize_generic_tags<S>(generic_tags: &GenericTags, serializer: S) -> Result<S::Ok, S::Error>
