@@ -72,14 +72,14 @@ impl Nip42Session {
     }
 }
 
-pub(super) struct Session {
+pub(super) struct Session<'a> {
     pub subscriptions: HashMap<SubscriptionId, Vec<Filter>>,
-    pub negentropy_subscription: HashMap<SubscriptionId, Negentropy<NegentropyStorageVector>>,
+    pub negentropy_subscription: HashMap<SubscriptionId, Negentropy<'a, NegentropyStorageVector>>,
     pub nip42: Nip42Session,
     pub tokens: Tokens,
 }
 
-impl Session {
+impl Session<'_> {
     const MIN: Duration = Duration::from_secs(60);
 
     fn calculate_elapsed_time(&self, now: Instant, last: Instant) -> Duration {

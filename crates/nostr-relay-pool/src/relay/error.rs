@@ -5,9 +5,9 @@
 use std::fmt;
 use std::time::Duration;
 
-use nostr::event;
-use nostr::event::builder;
+use nostr::event::{self, builder};
 use nostr::message::MessageHandleError;
+use nostr::util::hex;
 use nostr_database::DatabaseError;
 use tokio::sync::{broadcast, SetError};
 
@@ -30,6 +30,8 @@ pub enum Error {
     EventBuilder(builder::Error),
     /// Partial Event error
     PartialEvent(event::partial::Error),
+    /// Hex error
+    Hex(hex::Error),
     /// Negentropy error
     Negentropy(negentropy::Error),
     /// Negentropy error
@@ -132,6 +134,7 @@ impl fmt::Display for Error {
             Self::Event(e) => write!(f, "{e}"),
             Self::EventBuilder(e) => write!(f, "{e}"),
             Self::PartialEvent(e) => write!(f, "{e}"),
+            Self::Hex(e) => write!(f, "{e}"),
             Self::Negentropy(e) => write!(f, "{e}"),
             Self::NegentropyDeprecated(e) => write!(f, "{e}"),
             Self::Database(e) => write!(f, "{e}"),
@@ -217,6 +220,12 @@ impl From<builder::Error> for Error {
 impl From<event::partial::Error> for Error {
     fn from(e: event::partial::Error) -> Self {
         Self::PartialEvent(e)
+    }
+}
+
+impl From<hex::Error> for Error {
+    fn from(e: hex::Error) -> Self {
+        Self::Hex(e)
     }
 }
 

@@ -14,7 +14,7 @@ use async_utility::{task, time};
 use async_wsocket::futures_util::{self, SinkExt, StreamExt};
 use async_wsocket::{ConnectionMode, Message};
 use atomic_destructor::AtomicDestroyer;
-use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
+use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
 use nostr::event::raw::RawEvent;
 use nostr::secp256k1::rand::{self, Rng};
@@ -1567,10 +1567,12 @@ impl InnerRelay {
         output: &mut Reconciliation,
     ) -> Result<(), Error> {
         // Prepare the negentropy client
-        let mut negentropy: Negentropy<NegentropyStorageVector> = prepare_negentropy_client(items)?;
+        let storage: NegentropyStorageVector = prepare_negentropy_storage(items)?;
+        let mut negentropy: Negentropy<NegentropyStorageVector> =
+            Negentropy::borrowed(&storage, NEGENTROPY_FRAME_SIZE_LIMIT)?;
 
         // Initiate reconciliation
-        let initial_message: Bytes = negentropy.initiate()?;
+        let initial_message: Vec<u8> = negentropy.initiate()?;
 
         // Subscribe
         let mut notifications = self.internal_notification_sender.subscribe();
@@ -1606,10 +1608,10 @@ impl InnerRelay {
                                 let mut curr_need_ids: Vec<Id> = Vec::new();
 
                                 // Parse message
-                                let query: Bytes = Bytes::from_hex(message)?;
+                                let query: Vec<u8> = hex::decode(message)?;
 
                                 // Reconcile
-                                let msg: Option<Bytes> = negentropy.reconcile_with_ids(
+                                let msg: Option<Vec<u8>> = negentropy.reconcile_with_ids(
                                     &query,
                                     &mut curr_have_ids,
                                     &mut curr_need_ids,
@@ -1618,7 +1620,7 @@ impl InnerRelay {
                                 // Handle message
                                 self.handle_neg_msg(
                                     subscription_id,
-                                    msg.map(|m| m.to_bytes()),
+                                    msg,
                                     curr_have_ids.into_iter().map(neg_id_to_event_id),
                                     curr_need_ids.into_iter().map(neg_id_to_event_id),
                                     opts,
@@ -1877,15 +1879,15 @@ fn neg_depr_to_event_id(id: BytesDeprecated) -> Option<EventId> {
     EventId::from_slice(id.as_bytes()).ok()
 }
 
-fn prepare_negentropy_client(
+fn prepare_negentropy_storage(
     items: Vec<(EventId, Timestamp)>,
-) -> Result<Negentropy<NegentropyStorageVector>, Error> {
+) -> Result<NegentropyStorageVector, Error> {
     // Compose negentropy storage
     let mut storage = NegentropyStorageVector::with_capacity(items.len());
 
     // Add items
     for (id, timestamp) in items.into_iter() {
-        let id: Id = Id::new(id.to_bytes());
+        let id: Id = Id::from_byte_array(id.to_bytes());
         storage.insert(timestamp.as_u64(), id)?;
     }
 
@@ -1893,7 +1895,7 @@ fn prepare_negentropy_client(
     storage.seal()?;
 
     // Build negentropy client
-    Ok(Negentropy::new(storage, NEGENTROPY_FRAME_SIZE_LIMIT)?)
+    Ok(storage)
 }
 
 /// Check if negentropy is supported

@@ -2629,8 +2629,7 @@ checksum = "e664971378a3987224f7a0e10059782035e89899ae403718ee07de85bec42afe"
 [[package]]
 name = "negentropy"
 version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43a88da9dd148bbcdce323dd6ac47d369b4769d4a3b78c6c52389b9269f77932"
+source = "git+https://github.com/rust-nostr/negentropy?rev=311013ce05dd3f670d9d9c444c09195837837271#311013ce05dd3f670d9d9c444c09195837837271"
 
 [[package]]
 name = "nix"

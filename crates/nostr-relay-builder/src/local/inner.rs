@@ -10,7 +10,7 @@ use async_utility::futures_util::stream::{self, SplitSink};
 use async_utility::futures_util::{SinkExt, StreamExt};
 use async_wsocket::native::{self, Message, WebSocketStream};
 use atomic_destructor::AtomicDestroyer;
-use negentropy::{Bytes, Id, Negentropy, NegentropyStorageVector};
+use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use nostr_database::prelude::*;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
@@ -286,7 +286,7 @@ impl InnerLocalRelay {
 
     async fn handle_client_msg<S>(
         &self,
-        session: &mut Session,
+        session: &mut Session<'_>,
         ws_tx: &mut WsTx<S>,
         msg: ClientMessage,
         addr: &SocketAddr,
@@ -678,17 +678,17 @@ impl InnerLocalRelay {
                 // Construct negentropy storage, add items and seal
                 let mut storage = NegentropyStorageVector::with_capacity(items.len());
                 for (id, timestamp) in items.into_iter() {
-                    let id: Id = Id::new(id.to_bytes());
+                    let id: Id = Id::from_byte_array(id.to_bytes());
                     storage.insert(timestamp.as_u64(), id)?;
                 }
                 storage.seal()?;
 
                 // Construct negentropy client
-                let mut negentropy = Negentropy::new(storage, 60_000)?;
+                let mut negentropy = Negentropy::owned(storage, 60_000)?;
 
                 // Reconcile
-                let bytes: Bytes = Bytes::from_hex(initial_message)?;
-                let message: Bytes = negentropy.reconcile(&bytes)?;
+                let bytes: Vec<u8> = hex::decode(initial_message)?;
+                let message: Vec<u8> = negentropy.reconcile(&bytes)?;
 
                 // Update subscriptions
                 session
@@ -700,7 +700,7 @@ impl InnerLocalRelay {
                     ws_tx,
                     RelayMessage::NegMsg {
                         subscription_id,
-                        message: message.to_hex(),
+                        message: hex::encode(message),
                     },
                 )
                 .await
@@ -712,7 +712,7 @@ impl InnerLocalRelay {
                 match session.negentropy_subscription.get_mut(&subscription_id) {
                     Some(negentropy) => {
                         // Reconcile
-                        let bytes: Bytes = Bytes::from_hex(message)?;
+                        let bytes: Vec<u8> = hex::decode(message)?;
                         let message = negentropy.reconcile(&bytes)?;
 
                         // Reply
@@ -720,7 +720,7 @@ impl InnerLocalRelay {
                             ws_tx,
                             RelayMessage::NegMsg {
                                 subscription_id,
-                                message: message.to_hex(),
+                                message: hex::encode(message),
                             },
                         )
                         .await
