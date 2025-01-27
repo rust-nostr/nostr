@@ -10,8 +10,6 @@
 
 * [Signers](sdk/signers/index.md)
     * [Keys](sdk/signers/keys.md)
-    * [Browser Extension (NIP07)](sdk/nips/07.md)
-    * [Nostr Connect (NIP46)](sdk/signers/nostr-connect.md)
 
 * [Event](sdk/event/index.md)
     * [ID](sdk/event/id.md)
@@ -35,6 +33,7 @@
     * [NIP-19: bech32-encoded entities](sdk/nips/19.md)
     * [NIP-21: nostr URI scheme](sdk/nips/21.md)
     * [NIP-44: Encrypted Payloads](sdk/nips/44.md)
+    * [NIP-46: Nostr Remote Signing](sdk/nips/46.md)
     * [NIP-47: Nostr Wallet Connect](sdk/nips/47.md)
     * [NIP-59: Gift Wrap](sdk/nips/59.md)
     * [NIP-65: Relay List Metadata](sdk/nips/65.md)

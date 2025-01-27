@@ -61,7 +61,7 @@ To generate a new key pair use the `generate()` method:
 </section>
 </custom-tabs>
 
-### Parsing
+### Keys parsing
 
 <custom-tabs category="lang">
 
