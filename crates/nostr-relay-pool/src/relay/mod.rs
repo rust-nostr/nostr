@@ -489,10 +489,6 @@ impl Relay {
                 // Send REQ message
                 self.inner.send_msg(msg)?;
 
-                self.inner
-                    .add_auto_closing_subscription(id.clone(), filter.clone())
-                    .await;
-
                 // Spawn auto-closing handler
                 self.inner
                     .spawn_auto_closing_handler(id, filter, opts, notifications)
@@ -683,6 +679,13 @@ impl Relay {
         // Generate subscription ID for getting events
         let down_sub_id: SubscriptionId = SubscriptionId::generate();
 
+        // Register auto-closing subscription
+        let _guard = self
+            .inner
+            .register_auto_closing_subscription(down_sub_id.clone(), filter.clone())
+            .await;
+
+        // Sync
         match self
             .inner
             .sync_new(down_sub_id.clone(), filter.clone(), items.clone(), opts, &mut output)
