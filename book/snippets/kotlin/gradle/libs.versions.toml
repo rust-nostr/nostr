@@ -1,9 +1,9 @@
 [versions]
 agp = "8.1.4"
-kotlin = "1.9.22"
+kotlin = "1.9.24"
 
 [libraries]
-nostr = { module = "org.rust-nostr:nostr-sdk", version = "0.38.0" }
+nostr = { module = "org.rust-nostr:nostr-sdk", version = "0.38.3" }
 
 [plugins]
 androidLibrary = { id = "com.android.library", version.ref = "agp" }

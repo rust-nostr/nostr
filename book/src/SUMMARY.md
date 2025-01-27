@@ -12,9 +12,7 @@
     * [Keys](sdk/signers/keys.md)
 
 * [Event](sdk/event/index.md)
-    * [ID](sdk/event/id.md)
-    * [Kind](sdk/event/kind.md)
-    * [Tag](sdk/event/tag.md)
+    * [JSON](sdk/event/json.md)
     * [Builder](sdk/event/builder.md)
 
 * [Filters](sdk/messages/filters.md)
@@ -41,6 +39,10 @@
 # Advanced
 
 * [Enabling logging](sdk/logging.md)
+* [Event]()
+  * [ID](sdk/event/id.md)
+  * [Kind](sdk/event/kind.md)
+  * [Tag](sdk/event/tag.md)
 * [Messages](sdk/messages/index.md)
     * [Client Message](sdk/messages/client.md)
     * [Relay Message](sdk/messages/relay.md)
