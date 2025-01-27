@@ -1,16 +1,33 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
+[private]
+default:
+	@just --list
+
 bloat:
     cargo bloat --release -n 1000
+
+# Build all binaries
+build:
+    @cd scripts && bash build-all.sh
 
 # Compile and build Android Archive (AAR)
 aar:
     @cd android && bash build-aar.sh
 
+# Assemble the Kotlin Multiplatform package
+kmp:
+    @cd kmp && bash assemble.sh
+
 # Publish android bindings
 [confirm]
 publish-android: aar
 	cd android && ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
+
+# Publish KMP bindings
+[confirm]
+publish-kmp: aar
+	cd kmp && ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
 
 # Compile and build Swift Package
 swift:

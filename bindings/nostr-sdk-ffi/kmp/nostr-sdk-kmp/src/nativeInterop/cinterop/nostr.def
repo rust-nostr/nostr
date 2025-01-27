@@ -1,0 +1,8 @@
+headers = nostr_sdk.h
+package = nostr_sdk.cinterop
+
+libraryPaths.macos_x64 = src/libs/macos-x64
+libraryPaths.macos_arm64 = src/libs/macos-arm64
+libraryPaths.linux_x64 = src/libs/linux-x64
+libraryPaths.linux_arm64 = src/libs/linux-arm64
+libraryPaths.mingw_x64 = src/libs/mingw-x64
