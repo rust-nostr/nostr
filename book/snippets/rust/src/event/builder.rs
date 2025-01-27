@@ -1,25 +1,42 @@
+// ANCHOR: full
 use nostr_sdk::prelude::*;
 
-pub fn event() -> Result<()> {
-    let keys = Keys::generate();
-
-    // Compose custom event
-    let custom_event = EventBuilder::new(Kind::Custom(1111), "").sign_with_keys(&keys)?;
-
-    // Compose text note
-    let textnote_event = EventBuilder::text_note("Hello").sign_with_keys(&keys)?;
-
-    // Compose reply to above text note
-    let reply_event = EventBuilder::text_note("Reply to hello")
-        .tag(Tag::event(textnote_event.id))
-        .sign_with_keys(&keys)?;
-
-    // Compose POW event
-    let pow_event =
-        EventBuilder::text_note("Another reply with POW")
-            .tag(Tag::event(textnote_event.id))
-            .pow(20)
-            .sign_with_keys(&keys)?;
-
+async fn sign_and_print<T>(signer: &T, builder: EventBuilder) -> Result<()> 
+where
+    T: NostrSigner,
+{
+    // ANCHOR: sign
+    let event: Event = builder.sign(signer).await?;
+    // ANCHOR_END: sign
+    
+    println!("{}", event.as_json());
+    
     Ok(())
 }
+
+pub async fn event() -> Result<()> {
+    let keys = Keys::generate();
+
+    // ANCHOR: standard
+    let builder = EventBuilder::text_note("Hello");
+    // ANCHOR_END: standard
+    
+    sign_and_print(&keys, builder).await?;
+
+    // ANCHOR: std-custom
+    let builder =
+        EventBuilder::text_note("Hello with POW")
+            .tag(Tag::alt("POW text-note"))
+            .pow(20)
+            .custom_created_at(Timestamp::from_secs(1737976769));
+    // ANCHOR_END: std-custom
+
+    sign_and_print(&keys, builder).await?;
+
+    // ANCHOR: custom
+    let builder = EventBuilder::new(Kind::Custom(33001), "My custom event");
+    // ANCHOR_END: custom
+
+    sign_and_print(&keys, builder).await
+}
+// ANCHOR_END: full

@@ -1,27 +1,39 @@
+// ANCHOR: full
 import 'package:nostr_sdk/nostr_sdk.dart';
 
-void event() {
-  final keys = Keys.generate();
+Future<void> signAndPrint({signer = NostrSigner, builder = EventBuilder}) async {
+    // ANCHOR: sign
+    Event event = await builder.sign(signer);
+    // ANCHOR_END: sign
 
-  // Compose custom event
-  final customEvent =
-      EventBuilder(kind: 1111, content: "").signWithKeys(keys: keys);
-  print(customEvent.asJson());
-
-  // Compose text note
-  final textNoteEvent =
-      EventBuilder.textNote(content: "Hello").signWithKeys(keys: keys);
-
-  // Compose reply to above text note
-  final replyEvent = EventBuilder.textNote(content: "Reply to hello")
-      .tag(tag: Tag.parse(tag: ['e', textNoteEvent.id().toHex()]))
-      .signWithKeys(keys: keys);
-  print(replyEvent.asJson());
-
-  // Compose POW event
-  final powEvent = EventBuilder.textNote(content: "Another reply with POW")
-      .tag(tag: Tag.parse(tag: ['e', textNoteEvent.id().toHex()]))
-      .pow(difficulty: 20)
-      .signWithKeys(keys: keys);
-  print(powEvent.asJson());
+    print(event.asJson());
 }
+
+Future<void> event() async {
+    Keys keys = Keys.generate();
+    NostrSigner signer = NostrSigner.keys(keys: keys);
+
+    // ANCHOR: standard
+    EventBuilder builder1 = EventBuilder.textNote(content: "Hello");
+    // ANCHOR_END: standard
+
+    await signAndPrint(signer: signer, builder: builder1);
+
+    // ANCHOR: std-custom
+    Tag tag = Tag.parse(tag: ["client", "rust-nostr"]);
+    EventBuilder builder2 =
+        EventBuilder.textNote(content: "Hello with POW")
+        .tag(tag: tag)
+        .pow(difficulty: 20)
+        .customCreatedAt(createdAt: BigInt.from(1737976769));
+    // ANCHOR_END: std-custom
+
+    await signAndPrint(signer: signer, builder: builder2);
+
+    // ANCHOR: custom
+    EventBuilder builder3 = EventBuilder(kind: 33001, content: "My custom event");
+    // ANCHOR_END: custom
+
+    await signAndPrint(signer: signer, builder: builder3);
+}
+// ANCHOR_END: full

@@ -1,36 +1,44 @@
-import {Keys, EventBuilder, Tag, Timestamp, Kind, loadWasmSync} from "@rust-nostr/nostr-sdk"
+// ANCHOR: full
+import {Keys, EventBuilder, Tag, Timestamp, Kind, loadWasmSync, NostrSigner} from "@rust-nostr/nostr-sdk"
 
-function eventBuilder() {
+async function signAndPrint(signer: NostrSigner, builder: EventBuilder) {
+    // ANCHOR: sign
+    let event = await builder.sign(signer);
+    // ANCHOR_END: sign
+
+    console.log(event.asJson())
+}
+
+async function run() {
     // Load WASM
     loadWasmSync();
 
     let keys = Keys.generate();
+    let signer = NostrSigner.keys(keys);
 
-    // Compose custom event
-    let kind = new Kind(1111);
-    let customEvent = new EventBuilder(kind, "").signWithKeys(keys);
+    // ANCHOR: standard
+    let builder1 = EventBuilder.textNote("Hello");
+    // ANCHOR_END: standard
 
-    // Compose text note
-    let textnoteEvent = EventBuilder.textNote("Hello").signWithKeys(keys);
+    await signAndPrint(signer, builder1);
 
-    // Compose reply to above text note
-    let replyEvent =
-        EventBuilder.textNote("Reply to hello")
-            .tags([Tag.event(textnoteEvent.id)])
-            .signWithKeys(keys);
-
-    // Compose POW event
-    let powEvent =
-        EventBuilder.textNote("Another reply with POW")
-            .tags([Tag.event(textnoteEvent.id)])
+    // ANCHOR: std-custom
+    let builder2 =
+        EventBuilder.textNote("Hello with POW")
+            .tags([Tag.alt("POW text-note")])
             .pow(20)
-            .signWithKeys(keys);
+            .customCreatedAt(Timestamp.fromSecs(1737976769));
+    // ANCHOR_END: std-custom
 
-    // Compose note with custom timestamp
-    let customTimestamp =
-        EventBuilder.textNote("Note with custom timestamp")
-            .customCreatedAt(Timestamp.fromSecs(12345678))
-            .signWithKeys(keys);
+    await signAndPrint(signer, builder2);
+
+    // ANCHOR: custom
+    let kind = new Kind(33001);
+    let builder3 = new EventBuilder(kind, "My custom event");
+    // ANCHOR_END: custom
+
+    await signAndPrint(signer, builder3);
 }
 
-eventBuilder();
+run();
+// ANCHOR_END: full

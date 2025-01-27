@@ -1,28 +1,49 @@
 package rust.nostr.snippets
 
-import rust.nostr.sdk.*
+// ANCHOR: full
+import rust.nostr.sdk.Event
+import rust.nostr.sdk.EventBuilder
+import rust.nostr.sdk.Keys
+import rust.nostr.sdk.Kind
+import rust.nostr.sdk.NostrSigner
+import rust.nostr.sdk.Tag
+import rust.nostr.sdk.Timestamp
 
-// ANCHOR: builder
-fun builder() {
-    val keys = Keys.generate();
+suspend fun signAndPrint(signer: NostrSigner, builder: EventBuilder) {
+    // ANCHOR: sign
+    val event: Event = builder.sign(signer)
+    // ANCHOR_END: sign
 
-    // Compose custom event
-    val customEvent = EventBuilder(kind = Kind(1111u), content = "").signWithKeys(keys);
-
-    // Compose text note
-    val textNoteEvent = EventBuilder.textNote("Hello").signWithKeys(keys);
-
-    // Compose reply to above text note
-    val replyEvent = EventBuilder.textNote("Reply to hello")
-        .tags(listOf(Tag.event(textNoteEvent.id())))
-        .signWithKeys(keys);
-
-    // Compose POW event
-    val powEvent =
-    EventBuilder.textNote("Another reply with POW")
-        .tags(listOf(Tag.event(textNoteEvent.id())))
-        .pow(20u)
-        .signWithKeys(keys);
-    println(powEvent.asJson())
+    print(event.asJson())
 }
-// ANCHOR_END: builder
+
+suspend fun builder() {
+    val keys = Keys.generate()
+    val signer = NostrSigner.keys(keys)
+
+    // ANCHOR: standard
+    val builder1 = EventBuilder.textNote("Hello")
+    // ANCHOR_END: standard
+
+    signAndPrint(signer, builder1)
+
+    // ANCHOR: std-custom
+    val tag = Tag.alt("POW text-note")
+    val builder2 =
+        EventBuilder.textNote("Hello with POW")
+            .tags(listOf(tag))
+            .pow(20u)
+            .customCreatedAt(Timestamp.fromSecs(1737976769u))
+    // ANCHOR_END: std-custom
+
+    signAndPrint(signer, builder2)
+
+    // ANCHOR: custom
+    val kind = Kind(33001u)
+    val builder3 =EventBuilder(kind = kind, content = "My custom event")
+    // ANCHOR_END: custom
+
+    signAndPrint(signer, builder3)
+}
+
+// ANCHOR_END: full

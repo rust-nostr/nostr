@@ -1,17 +1,38 @@
-from nostr_sdk import Keys, EventBuilder, Kind, Tag
+# ANCHOR: full
+from nostr_sdk import Keys, EventBuilder, Kind, Tag, NostrSigner, Timestamp
 
 
-def event_builder():
+async def sign_and_print(signer: NostrSigner, builder: EventBuilder):
+    # ANCHOR: sign
+    event = await builder.sign(signer)
+    # ANCHOR_END: sign
+
+    print(event.as_json())
+
+
+async def event_builder():
     keys = Keys.generate()
+    signer = NostrSigner.keys(keys)
 
-    # Compose custom event
-    custom_event = EventBuilder(Kind(1111), "").sign_with_keys(keys)
+    # ANCHOR: standard
+    builder1 = EventBuilder.text_note("Hello")
+    # ANCHOR_END: standard
 
-    # Compose text note
-    textnote_event = EventBuilder.text_note("Hello").sign_with_keys(keys)
+    await sign_and_print(signer, builder1)
 
-    # Compose reply to above text note
-    reply_event = EventBuilder.text_note("Reply to hello").tags([Tag.event(textnote_event.id())]).sign_with_keys(keys)
+    # ANCHOR: std-custom
+    tag = Tag.alt("POW text-note")
+    custom_timestamp = Timestamp.from_secs(1737976769)
+    builder2 = EventBuilder.text_note("Hello with POW").tags([tag]).pow(20).custom_created_at(custom_timestamp)
+    # ANCHOR_END: std-custom
 
-    # Compose POW event
-    pow_event = EventBuilder.text_note("Another reply with POW").tags([Tag.event(textnote_event.id())]).pow(20).sign_with_keys(keys)
+    await sign_and_print(signer, builder2)
+
+    # ANCHOR: custom
+    kind = Kind(33001)
+    builder3 = EventBuilder(kind, "My custom event")
+    # ANCHOR_END: custom
+
+    await sign_and_print(signer, builder3)
+
+# ANCHOR_END: full
