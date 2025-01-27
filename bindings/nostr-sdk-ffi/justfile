@@ -1,18 +1,44 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
+[private]
+default:
+	@just --list
+
+[private]
 bloat:
     cargo bloat --release -n 1000
 
-# Compile and build Android Archive (AAR)
-aar:
-    @cd android && bash build-aar.sh
+# Build all binaries (android, linux, macos and windows)
+build:
+    @cd scripts && bash all.sh
 
-# Publish android bindings
+# Build the binaries for android
+android:
+    cd scripts && bash android.sh
+
+# Build the binaries for linux
+linux:
+    cd scripts && bash linux.sh
+
+# Build the binaries for macos
+macos:
+    cd scripts && bash macos.sh
+
+# Build the binaries for windows
+win:
+    cd scripts && bash windows.sh
+
+# Assemble the Android Archive (AAR)
+aar:
+    @cd android && bash assemble.sh
+
+# Publish AAR
 [confirm]
-publish-android: aar
+publish-aar: aar
 	cd android && ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
 
 # Compile and build Swift Package
+[macos]
 swift:
     @cd swift && bash build-xcframework.sh
 

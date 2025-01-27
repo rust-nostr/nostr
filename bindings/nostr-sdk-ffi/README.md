@@ -24,15 +24,23 @@ If you want to compile from source or need more options, read on.
 just python
 ```
 
-### Kotlin
+### Kotlin (android)
 
 For most users, we recommend using our official Kotlin package: [org.rust-nostr:nostr-sdk](https://central.sonatype.com/artifact/org.rust-nostr/nostr-sdk/).
 
 If you want to compile from source or need more options, read on.
 
+#### Build binaries
+
+Build the android binaries:
+
+```bash
+just android
+```
+
 #### Android Archive (AAR)
 
-This command will build an AAR file in `ffi/android/lib-release.aar`:
+Assemble and copy the AAR file in `ffi/aar/lib-release.aar`:
 
 ```bash
 just aar

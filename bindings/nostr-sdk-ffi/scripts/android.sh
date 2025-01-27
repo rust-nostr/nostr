@@ -1,17 +1,16 @@
 #!/bin/bash
 
+# Build android binaries and generate kotlin (android) foreign languages
+
 set -exuo pipefail
 
 CDYLIB="libnostr_sdk_ffi.so"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_DIR="${SCRIPT_DIR}/../../../target"
-ANDROID_MAIN_DIR="${SCRIPT_DIR}/lib/src/main"
-ANDROID_MAIN_KOTLIN_DIR="${ANDROID_MAIN_DIR}/kotlin"
-ANDROID_MAIN_JNI_LIBS_DIR="${ANDROID_MAIN_DIR}/jniLibs"
 FFI_DIR="${SCRIPT_DIR}/../ffi"
-FFI_KOTLIN_DIR="${FFI_DIR}/kotlin"
+FFI_KOTLIN_DIR="${FFI_DIR}/kotlin-android"
 FFI_JNI_LIBS_DIR="${FFI_KOTLIN_DIR}/jniLibs"
-FFI_ANDROID_DIR="${FFI_DIR}/android"
+FFI_OUTPUT_DIR="${FFI_DIR}/aar"
 
 # Check if ANDROID_NDK_HOME env is set
 if [ ! -d "${ANDROID_NDK_HOME}" ] ; then \
@@ -30,9 +29,7 @@ cargo ndk --version || cargo install cargo-ndk
 
 # Clean
 rm -rf "${FFI_KOTLIN_DIR}"
-rm -rf "${FFI_ANDROID_DIR}"
-rm -rf "${ANDROID_MAIN_KOTLIN_DIR}"
-rm -rf "${ANDROID_MAIN_JNI_LIBS_DIR}"
+rm -rf "${FFI_OUTPUT_DIR}"
 
 # Install targets
 rustup target add aarch64-linux-android     # ARM64   (Most modern devices - ~60-75%)
@@ -65,15 +62,3 @@ cargo run -p nostr-sdk-ffi --features uniffi-cli --bin uniffi-bindgen generate -
 # * https://web.archive.org/web/20170808222202/http://hwstats.unity3d.com:80/mobile/cpu-android.html
 #
 upx --best --android-shlib "${FFI_JNI_LIBS_DIR}/arm64-v8a/${CDYLIB}" "${FFI_JNI_LIBS_DIR}/armeabi-v7a/${CDYLIB}" "${FFI_JNI_LIBS_DIR}/x86_64/${CDYLIB}"
-
-# Assemble AAR
-mkdir -p "${ANDROID_MAIN_KOTLIN_DIR}"
-cp -r "${FFI_JNI_LIBS_DIR}" "${ANDROID_MAIN_DIR}"
-cp -r "${FFI_KOTLIN_DIR}/rust" "${ANDROID_MAIN_KOTLIN_DIR}"
-"${SCRIPT_DIR}/gradlew" assembleRelease
-
-# Copy AAR to the output dir
-mkdir -p "${FFI_ANDROID_DIR}"
-cp "${SCRIPT_DIR}/lib/build/outputs/aar/lib-release.aar" "${FFI_ANDROID_DIR}"
-
-echo "Done!"
