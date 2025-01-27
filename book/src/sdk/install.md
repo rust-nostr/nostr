@@ -60,16 +60,16 @@ If your `version`/`platform` is not currently supported, you can compile the whe
 #### Python version
 
 | 3.8 | 3.9 | 3.10 | 3.11 | 3.12 | 3.13 |
-| --- | --- | ---- | ---- | ---- | ---- |
-| ❌  | ✅  |  ✅  |  ✅  |  ✅  |  ❌  |
+|-----|-----|------|------|------|------|
+| ❌   | ✅   | ✅    | ✅    | ✅    | ❌    |
 
 #### Platform support
 
-|   OS       | x64 | aarch64 | arm | i686 |
-| ---------- | --- | ------- | --- |------|
-| Linux      | ✅  | ✅      | ❌  | ❌   |
-| macOS      | ✅  | ✅      | ❌  | ❌   |
-| Windows    | ✅  | ❌      | ❌  | ❌   |
+| OS      | x64 | aarch64 | arm | i686 |
+|---------|-----|---------|-----|------|
+| Linux   | ✅   | ✅       | ❌   | ❌    |
+| macOS   | ✅   | ✅       | ❌   | ❌    |
+| Windows | ✅   | ❌       | ❌   | ❌    |
 
 ### Known issues
 
@@ -144,7 +144,9 @@ main();
 <div slot="title">Kotlin</div>
 <section>
 
-To use the Kotlin language bindings for `nostr-sdk` in your Android project add the following to your gradle dependencies:
+Add the following library to your gradle dependencies:
+
+### Android
 
 ```kotlin
 repositories {
@@ -156,11 +158,34 @@ dependencies {
 }
 ```
 
+### JVM
+
+```kotlin
+repositories {
+    mavenCentral()
+}
+
+dependencies { 
+    implementation("org.rust-nostr:nostr-sdk-jvm:0.39.0-alpha.1")
+}
+```
+
+### Import the library
+
 Import the library in your code:
 
 ```kotlin
 import rust.nostr.sdk.*
 ```
+
+### Supported platforms
+
+| OS      | x64 | aarch64 | arm | i686 | Package         |
+|---------|-----|---------|-----|------|-----------------|
+| Android | ✅   | ✅       | ✅   | ✅    | `nostr-sdk`     |
+| Linux   | ✅   | ✅       | ❌   | ❌    | `nostr-sdk-jvm` |
+| macOS   | ✅   | ✅       | ❌   | ❌    | `nostr-sdk-jvm` |
+| Windows | ✅   | ❌       | ❌   | ❌    | `nostr-sdk-jvm` |
 
 ### Known issues
 
@@ -174,10 +199,19 @@ class file for com.sun.jna.Pointer not found
 
 The solution is to add JNA as a dependency like so:
 
+##### Android 
+
 ```kotlin
 dependencies {
-    // ...
     implementation("net.java.dev.jna:jna:5.15.0@aar")
+}
+```
+
+##### JVM
+
+```kotlin
+dependencies {
+    implementation("net.java.dev.jna:jna:5.15.0")
 }
 ```
 

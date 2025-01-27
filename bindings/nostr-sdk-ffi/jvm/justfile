@@ -1,0 +1,12 @@
+set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
+
+[private]
+default:
+	@just --list
+
+test:
+  ./gradlew test
+
+clean:
+  rm -rf ./build/
+  rm -rf ./lib/build/
