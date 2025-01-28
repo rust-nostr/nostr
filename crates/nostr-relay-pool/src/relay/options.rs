@@ -25,6 +25,7 @@ pub struct RelayOptions {
     pub(super) limits: RelayLimits,
     pub(super) max_avg_latency: Option<Duration>,
     pub(super) filtering_mode: RelayFilteringMode,
+    pub(super) verify_event_matching: bool,
 }
 
 impl Default for RelayOptions {
@@ -38,6 +39,7 @@ impl Default for RelayOptions {
             limits: RelayLimits::default(),
             max_avg_latency: None,
             filtering_mode: RelayFilteringMode::default(),
+            verify_event_matching: true,
         }
     }
 }
@@ -129,6 +131,13 @@ impl RelayOptions {
     #[inline]
     pub fn filtering_mode(mut self, mode: RelayFilteringMode) -> Self {
         self.filtering_mode = mode;
+        self
+    }
+
+    /// Event matching verification (default: true)
+    #[inline]
+    pub fn event_matching_verification(mut self, enabled: bool) -> Self {
+        self.verify_event_matching = enabled;
         self
     }
 }

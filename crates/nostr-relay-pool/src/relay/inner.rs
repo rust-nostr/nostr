@@ -1134,7 +1134,7 @@ impl InnerRelay {
         let event: Box<Event> = Box::new(event);
 
         // Check subscription
-        {
+        if self.opts.verify_event_matching {
             // Acquire subscriptions
             let subscriptions = self.atomic.subscriptions.read().await;
 
@@ -1142,6 +1142,9 @@ impl InnerRelay {
             match subscriptions.get(&subscription_id) {
                 Some(data) => {
                     if !data.filters().match_event(&event) {
+                        // TODO: keep track of number of events received that doesn't match
+                        // TODO: if the non-matching events number is X, set status to `banned`.
+
                         return Err(Error::EventNotMatchFilter);
                     }
                 }
