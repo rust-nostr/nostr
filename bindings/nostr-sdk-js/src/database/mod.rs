@@ -5,6 +5,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
+use nostr_redb::NostrRedb;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -74,22 +75,17 @@ impl From<Arc<dyn NostrDatabase>> for JsNostrDatabase {
 
 #[wasm_bindgen(js_class = NostrDatabase)]
 impl JsNostrDatabase {
-    /// Open/Create database with **unlimited** capacity
-    pub async fn indexeddb(name: &str) -> Result<JsNostrDatabase> {
-        let db = WebDatabase::open(name).await.map_err(into_err)?;
+    /// Open (or create) persistent web database
+    pub async fn web(name: &str) -> Result<JsNostrDatabase> {
+        let db = NostrRedb::web(name).await.map_err(into_err)?;
         Ok(Self {
             inner: db.into_nostr_database(),
         })
     }
 
-    /// Open/Create database with **limited** capacity
-    #[wasm_bindgen(js_name = indexeddbBounded)]
-    pub async fn indexeddb_bounded(name: &str, max_capacity: u64) -> Result<JsNostrDatabase> {
-        let db = Arc::new(
-            WebDatabase::open_bounded(name, max_capacity as usize)
-                .await
-                .map_err(into_err)?,
-        );
+    #[wasm_bindgen(js_name = inMemory)]
+    pub fn in_memory() -> Result<JsNostrDatabase> {
+        let db = NostrRedb::in_memory().map_err(into_err)?;
         Ok(Self {
             inner: db.into_nostr_database(),
         })

@@ -22,6 +22,7 @@ atomic-destructor.workspace = true
 negentropy = { workspace = true, features = ["std"] }
 nostr = { workspace = true, default-features = false, features = ["std"] }
 nostr-database.workspace = true
+nostr-redb.workspace = true
 tokio = { workspace = true, features = ["macros", "net", "sync"] }
 tracing.workspace = true
 

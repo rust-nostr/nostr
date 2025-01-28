@@ -32,6 +32,7 @@ nostr-database = { version = "0.38", path = "./crates/nostr-database", default-f
 nostr-indexeddb = { version = "0.38", path = "./crates/nostr-indexeddb", default-features = false }
 nostr-lmdb = { version = "0.38", path = "./crates/nostr-lmdb", default-features = false }
 nostr-ndb = { version = "0.38", path = "./crates/nostr-ndb", default-features = false }
+nostr-redb = { version = "0.38", path = "./crates/nostr-redb", default-features = false }
 nostr-relay-builder = { version = "0.38", path = "./crates/nostr-relay-builder", default-features = false }
 nostr-relay-pool = { version = "0.38", path = "./crates/nostr-relay-pool", default-features = false }
 nostr-sdk = { version = "0.38", path = "./crates/nostr-sdk", default-features = false }
@@ -45,6 +46,7 @@ wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", default-features = false }
 
 [patch.crates-io]
+async-utility = { git = "https://github.com/yukibtc/async-utility", rev = "575b6fb0b4e270ae44208d4b7c234366d33e32f6" }
 # Patch needed to reduce bindings size
 bip39 = { git = "https://github.com/yukibtc/rust-bip39", rev = "eade7c56eff5f320e8eb5beee23dd8fb46413938" } # Uses bitcoin_hashes v0.14
 

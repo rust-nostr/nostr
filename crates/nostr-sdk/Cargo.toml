@@ -53,6 +53,7 @@ nostr-indexeddb = { workspace = true, optional = true }
 
 [dev-dependencies]
 nostr-connect.workspace = true
+nostr-redb.workspace = true
 tokio = { workspace = true, features = ["macros"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
@@ -87,6 +88,9 @@ required-features = ["all-nips"]
 [[example]]
 name = "nostrdb"
 required-features = ["ndb"]
+
+[[example]]
+name = "redb"
 
 [[example]]
 name = "stream-events"
