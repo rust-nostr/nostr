@@ -36,7 +36,7 @@ use super::{Error, Reconciliation, RelayNotification, RelayStatus, SubscriptionA
 use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
-use crate::transport::websocket::{Sink, Stream};
+use crate::transport::websocket::{BoxSink, BoxStream};
 
 #[derive(Debug)]
 struct RelayChannels {
@@ -388,7 +388,7 @@ impl InnerRelay {
         }
     }
 
-    pub(super) fn spawn_connection_task(&self, mut stream: Option<(Sink, Stream)>) {
+    pub(super) fn spawn_connection_task(&self, mut stream: Option<(BoxSink, BoxStream)>) {
         if self.is_running() {
             tracing::warn!(url = %self.url, "Connection task is already running.");
             return;
@@ -521,7 +521,7 @@ impl InnerRelay {
         &self,
         timeout: Duration,
         status_on_failure: RelayStatus,
-    ) -> Result<(Sink, Stream), Error> {
+    ) -> Result<(BoxSink, BoxStream), Error> {
         // Update status
         self.set_status(RelayStatus::Connecting, true);
 
@@ -561,7 +561,7 @@ impl InnerRelay {
     /// If `stream` arg is passed, no connection attempt will be done.
     async fn connect_and_run(
         &self,
-        stream: Option<(Sink, Stream)>,
+        stream: Option<(BoxSink, BoxStream)>,
         rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessage>>>,
         last_ws_error: &mut Option<String>,
     ) {
@@ -603,8 +603,8 @@ impl InnerRelay {
     /// Run message handlers, pinger and other services
     async fn post_connection(
         &self,
-        mut ws_tx: Sink,
-        ws_rx: Stream,
+        mut ws_tx: BoxSink,
+        ws_rx: BoxStream,
         rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessage>>>,
     ) {
         // Request information document
@@ -648,7 +648,7 @@ impl InnerRelay {
 
     async fn sender_message_handler(
         &self,
-        ws_tx: &mut Sink,
+        ws_tx: &mut BoxSink,
         rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessage>>>,
         ping: &PingTracker,
     ) -> Result<(), Error> {
@@ -720,7 +720,7 @@ impl InnerRelay {
 
     async fn receiver_message_handler(
         &self,
-        mut ws_rx: Stream,
+        mut ws_rx: BoxStream,
         ping: &PingTracker,
     ) -> Result<(), Error> {
         #[cfg(target_arch = "wasm32")]
@@ -1852,7 +1852,7 @@ impl InnerRelay {
 }
 
 /// Send WebSocket messages with timeout set to [WEBSOCKET_TX_TIMEOUT].
-async fn send_ws_msgs(tx: &mut Sink, msgs: Vec<Message>) -> Result<(), Error> {
+async fn send_ws_msgs(tx: &mut BoxSink, msgs: Vec<Message>) -> Result<(), Error> {
     let mut stream = futures_util::stream::iter(msgs.into_iter().map(Ok));
     match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.send_all(&mut stream)).await {
         Some(res) => Ok(res?),
@@ -1861,7 +1861,7 @@ async fn send_ws_msgs(tx: &mut Sink, msgs: Vec<Message>) -> Result<(), Error> {
 }
 
 /// Send WebSocket messages with timeout set to [WEBSOCKET_TX_TIMEOUT].
-async fn close_ws(tx: &mut Sink) -> Result<(), Error> {
+async fn close_ws(tx: &mut BoxSink) -> Result<(), Error> {
     // TODO: remove timeout from here?
     match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.close()).await {
         Some(res) => Ok(res?),

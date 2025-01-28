@@ -8,7 +8,7 @@ use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_wsocket::futures_util::{self, SinkExt, StreamExt, TryStreamExt};
+use async_wsocket::futures_util::{Sink, SinkExt, Stream, StreamExt, TryStreamExt};
 use async_wsocket::{ConnectionMode, Message, WebSocket};
 use nostr::util::BoxedFuture;
 use nostr::Url;
@@ -17,17 +17,16 @@ use super::error::TransportError;
 
 /// WebSocket transport sink
 #[cfg(not(target_arch = "wasm32"))]
-pub type Sink = Box<dyn futures_util::Sink<Message, Error = TransportError> + Send + Unpin>;
+pub type BoxSink = Box<dyn Sink<Message, Error = TransportError> + Send + Unpin>;
 /// WebSocket transport stream
 #[cfg(not(target_arch = "wasm32"))]
-pub type Stream =
-    Box<dyn futures_util::Stream<Item = Result<Message, TransportError>> + Send + Unpin>;
+pub type BoxStream = Box<dyn Stream<Item = Result<Message, TransportError>> + Send + Unpin>;
 /// WebSocket transport sink
 #[cfg(target_arch = "wasm32")]
-pub type Sink = Box<dyn futures_util::Sink<Message, Error = TransportError> + Unpin>;
+pub type BoxSink = Box<dyn Sink<Message, Error = TransportError> + Unpin>;
 /// WebSocket transport stream
 #[cfg(target_arch = "wasm32")]
-pub type Stream = Box<dyn futures_util::Stream<Item = Result<Message, TransportError>> + Unpin>;
+pub type BoxStream = Box<dyn Stream<Item = Result<Message, TransportError>> + Unpin>;
 
 #[doc(hidden)]
 pub trait IntoWebSocketTransport {
@@ -69,7 +68,7 @@ pub trait WebSocketTransport: fmt::Debug + Send + Sync {
         url: &'a Url,
         mode: &'a ConnectionMode,
         timeout: Duration,
-    ) -> BoxedFuture<'a, Result<(Sink, Stream), TransportError>>;
+    ) -> BoxedFuture<'a, Result<(BoxSink, BoxStream), TransportError>>;
 }
 
 /// Default websocket transport
@@ -86,7 +85,7 @@ impl WebSocketTransport for DefaultWebsocketTransport {
         url: &'a Url,
         mode: &'a ConnectionMode,
         timeout: Duration,
-    ) -> BoxedFuture<'a, Result<(Sink, Stream), TransportError>> {
+    ) -> BoxedFuture<'a, Result<(BoxSink, BoxStream), TransportError>> {
         Box::pin(async move {
             // Connect
             let socket: WebSocket = async_wsocket::connect(url, mode, timeout)
@@ -95,8 +94,8 @@ impl WebSocketTransport for DefaultWebsocketTransport {
 
             // Split sink and stream
             let (tx, rx) = socket.split();
-            let sink: Sink = Box::new(tx.sink_map_err(TransportError::backend)) as Sink;
-            let stream: Stream = Box::new(rx.map_err(TransportError::backend)) as Stream;
+            let sink: BoxSink = Box::new(tx.sink_map_err(TransportError::backend)) as BoxSink;
+            let stream: BoxStream = Box::new(rx.map_err(TransportError::backend)) as BoxStream;
             Ok((sink, stream))
         })
     }
