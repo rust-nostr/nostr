@@ -150,8 +150,7 @@ impl InnerRelayPool {
             for (id, filters) in subscriptions.into_iter() {
                 relay
                     .inner
-                    .update_long_lived_subscription(id, filters, false)
-                    .await;
+                    .update_long_lived_subscription(id, filters, false);
             }
         }
 

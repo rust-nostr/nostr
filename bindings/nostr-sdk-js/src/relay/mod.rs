@@ -212,11 +212,10 @@ impl JsRelay {
     /// ### Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
-    pub async fn subscribe(&self, filter: &JsFilter, opts: &JsSubscribeOptions) -> Result<String> {
+    pub fn subscribe(&self, filter: &JsFilter, opts: &JsSubscribeOptions) -> Result<String> {
         Ok(self
             .inner
             .subscribe(filter.deref().clone(), **opts) // TODO: allow to pass opts as reference
-            .await
             .map_err(into_err)?
             .to_string())
     }
@@ -227,7 +226,7 @@ impl JsRelay {
     ///
     /// It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
     #[wasm_bindgen(js_name = subscribeWithId)]
-    pub async fn subscribe_with_id(
+    pub fn subscribe_with_id(
         &self,
         id: &str,
         filter: &JsFilter,
@@ -235,22 +234,20 @@ impl JsRelay {
     ) -> Result<()> {
         self.inner
             .subscribe_with_id(SubscriptionId::new(id), filter.deref().clone(), **opts) // TODO: allow to pass opts as reference
-            .await
             .map_err(into_err)
     }
 
     /// Unsubscribe
-    pub async fn unsubscribe(&self, id: String) -> Result<()> {
+    pub fn unsubscribe(&self, id: String) -> Result<()> {
         self.inner
             .unsubscribe(SubscriptionId::new(id))
-            .await
             .map_err(into_err)
     }
 
     /// Unsubscribe from all subscriptions
     #[wasm_bindgen(js_name = unsubscribeAll)]
-    pub async fn unsubscribe_all(&self) -> Result<()> {
-        self.inner.unsubscribe_all().await.map_err(into_err)
+    pub fn unsubscribe_all(&self) -> Result<()> {
+        self.inner.unsubscribe_all().map_err(into_err)
     }
 
     /// Fetch events

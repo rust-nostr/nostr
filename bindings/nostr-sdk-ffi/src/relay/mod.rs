@@ -165,22 +165,20 @@ impl Relay {
         self.inner.document().await.into()
     }
 
-    pub async fn subscriptions(&self) -> HashMap<String, Arc<Filter>> {
+    pub fn subscriptions(&self) -> HashMap<String, Arc<Filter>> {
         self.inner
             .subscriptions()
-            .await
             .into_iter()
             .map(|(id, f)| (id.to_string(), Arc::new(f.into())))
             .collect()
     }
 
     /// Get filters by subscription ID
-    pub async fn subscription(&self, id: String) -> Option<Arc<Filter>> {
+    pub fn subscription(&self, id: String) -> Option<Arc<Filter>> {
         let id = SubscriptionId::new(id);
         self.inner
             .subscription(&id)
-            .await
-            .map(|f| Arc::new(f.into()))
+            .map(|f| f.into_iter().map(|f| Arc::new(f.into())).collect())
     }
 
     pub fn opts(&self) -> RelayOptions {
@@ -249,11 +247,10 @@ impl Relay {
     /// It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
     ///
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
-    pub async fn subscribe(&self, filter: &Filter, opts: &SubscribeOptions) -> Result<String> {
+    pub fn subscribe(&self, filter: &Filter, opts: &SubscribeOptions) -> Result<String> {
         Ok(self
             .inner
-            .subscribe(filter.deref().clone(), **opts)
-            .await?
+            .subscribe(filter.deref().clone(), **opts)?
             .to_string())
     }
 
@@ -264,7 +261,7 @@ impl Relay {
     /// It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
     ///
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
-    pub async fn subscribe_with_id(
+    pub fn subscribe_with_id(
         &self,
         id: String,
         filter: &Filter,
@@ -272,18 +269,17 @@ impl Relay {
     ) -> Result<()> {
         Ok(self
             .inner
-            .subscribe_with_id(SubscriptionId::new(id), filter.deref().clone(), **opts)
-            .await?)
+            .subscribe_with_id(SubscriptionId::new(id), filter.deref().clone(), **opts)?)
     }
 
     /// Unsubscribe
-    pub async fn unsubscribe(&self, id: String) -> Result<()> {
-        Ok(self.inner.unsubscribe(SubscriptionId::new(id)).await?)
+    pub fn unsubscribe(&self, id: String) -> Result<()> {
+        Ok(self.inner.unsubscribe(SubscriptionId::new(id))?)
     }
 
     /// Unsubscribe from all subscriptions
-    pub async fn unsubscribe_all(&self) -> Result<()> {
-        Ok(self.inner.unsubscribe_all().await?)
+    pub fn unsubscribe_all(&self) -> Result<()> {
+        Ok(self.inner.unsubscribe_all()?)
     }
 
     /// Fetch events

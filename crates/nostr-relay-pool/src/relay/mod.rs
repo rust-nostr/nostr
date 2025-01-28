@@ -224,14 +224,14 @@ impl Relay {
 
     /// Get all long-lived subscriptions
     #[inline]
-    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
-        self.inner.long_lived_subscriptions().await
+    pub fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
+        self.inner.long_lived_subscriptions()
     }
 
     /// Get filters of long-lived subscription by [`SubscriptionId`]
     #[inline]
-    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
-        self.inner.long_lived_subscription(id).await
+    pub fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
+        self.inner.long_lived_subscription(id)
     }
 
     /// Get options
@@ -439,12 +439,6 @@ impl Relay {
         .ok_or(Error::Timeout)?
     }
 
-    /// Resubscribe to all **closed** or not yet initiated long-lived subscriptions
-    #[inline]
-    pub async fn resubscribe(&self) -> Result<(), Error> {
-        self.inner.resubscribe_long_lived().await
-    }
-
     /// Subscribe to filters
     ///
     /// Internally generate a new random [`SubscriptionId`]. Check `subscribe_with_id` method to use a custom [SubscriptionId].
@@ -452,13 +446,13 @@ impl Relay {
     /// ### Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
-    pub async fn subscribe(
+    pub fn subscribe(
         &self,
         filters: Filter,
         opts: SubscribeOptions,
     ) -> Result<SubscriptionId, Error> {
         let id: SubscriptionId = SubscriptionId::generate();
-        self.subscribe_with_id(id.clone(), filters, opts).await?;
+        self.subscribe_with_id(id.clone(), filters, opts)?;
         Ok(id)
     }
 
@@ -467,7 +461,7 @@ impl Relay {
     /// ### Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
-    pub async fn subscribe_with_id(
+    pub fn subscribe_with_id(
         &self,
         id: SubscriptionId,
         filter: Filter,
@@ -494,7 +488,7 @@ impl Relay {
                 self.inner.send_msg(msg)?;
 
                 // No auto-close subscription: update subscription filter
-                self.inner.update_long_lived_subscription(id, filter, true).await;
+                self.inner.update_long_lived_subscription(id, filter, true);
             }
         };
 
@@ -503,14 +497,14 @@ impl Relay {
 
     /// Unsubscribe
     #[inline]
-    pub async fn unsubscribe(&self, id: SubscriptionId) -> Result<(), Error> {
-        self.inner.unsubscribe(id).await
+    pub fn unsubscribe(&self, id: SubscriptionId) -> Result<(), Error> {
+        self.inner.unsubscribe(id)
     }
 
     /// Unsubscribe from all subscriptions
     #[inline]
-    pub async fn unsubscribe_all(&self) -> Result<(), Error> {
-        self.inner.unsubscribe_all_long_lived().await
+    pub fn unsubscribe_all(&self) -> Result<(), Error> {
+        self.inner.unsubscribe_all_long_lived()
     }
 
     /// Get events of filter with custom callback
@@ -535,7 +529,7 @@ impl Relay {
         let mut notifications = self.inner.internal_notification_sender.subscribe();
 
         // Subscribe with auto-close
-        let id: SubscriptionId = self.subscribe(filter, subscribe_opts).await?;
+        let id: SubscriptionId = self.subscribe(filter, subscribe_opts)?;
 
         time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
@@ -678,8 +672,7 @@ impl Relay {
         // Register auto-closing subscription
         let _guard = self
             .inner
-            .register_auto_closing_subscription(down_sub_id.clone(), filter.clone())
-            .await;
+            .register_auto_closing_subscription(down_sub_id.clone(), filter.clone());
 
         // Sync
         match self
@@ -1203,7 +1196,6 @@ mod tests {
         let filter = Filter::new().kind(Kind::TextNote).limit(3);
         relay
             .subscribe(vec![filter], SubscribeOptions::default())
-            .await
             .unwrap();
 
         // Keep up the test

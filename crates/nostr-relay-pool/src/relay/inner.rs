@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 #[cfg(feature = "nip11")]
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use async_utility::{task, time};
@@ -20,7 +20,11 @@ use nostr::event::raw::RawEvent;
 use nostr::secp256k1::rand::{self, Rng};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, OnceCell, RwLock};
+#[cfg(feature = "nip11")]
+use tokio::sync::RwLock;
+use tokio::sync::{
+    broadcast, Mutex as TokioMutex, MutexGuard as TokioMutexGuard, Notify, OnceCell,
+};
 
 use super::constants::{
     BATCH_EVENT_ITERATION_TIMEOUT, DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL,
@@ -42,7 +46,7 @@ use crate::transport::websocket::{BoxSink, BoxStream};
 struct RelayChannels {
     nostr: (
         Sender<Vec<ClientMessage>>,
-        Mutex<Receiver<Vec<ClientMessage>>>,
+        TokioMutex<Receiver<Vec<ClientMessage>>>,
     ),
     ping: Notify,
     terminate: Notify,
@@ -53,7 +57,7 @@ impl RelayChannels {
         let (tx_nostr, rx_nostr) = mpsc::channel(1024);
 
         Self {
-            nostr: (tx_nostr, Mutex::new(rx_nostr)),
+            nostr: (tx_nostr, TokioMutex::new(rx_nostr)),
             ping: Notify::new(),
             terminate: Notify::new(),
         }
@@ -69,7 +73,7 @@ impl RelayChannels {
     }
 
     #[inline]
-    pub async fn rx_nostr(&self) -> MutexGuard<'_, Receiver<Vec<ClientMessage>>> {
+    pub async fn rx_nostr(&self) -> TokioMutexGuard<'_, Receiver<Vec<ClientMessage>>> {
         self.nostr.1.lock().await
     }
 
@@ -135,7 +139,7 @@ impl SubscriptionData {
 pub(crate) struct AutoClosingSubscriptionGuard<'a> {
     url: &'a RelayUrl,
     id: SubscriptionId,
-    subscriptions: &'a RwLock<HashMap<SubscriptionId, SubscriptionData>>,
+    subscriptions: &'a Mutex<HashMap<SubscriptionId, SubscriptionData>>,
     dropped: bool,
 }
 
@@ -143,7 +147,7 @@ impl<'a> AutoClosingSubscriptionGuard<'a> {
     fn new(
         url: &'a RelayUrl,
         id: SubscriptionId,
-        subscriptions: &'a RwLock<HashMap<SubscriptionId, SubscriptionData>>,
+        subscriptions: &'a Mutex<HashMap<SubscriptionId, SubscriptionData>>,
     ) -> Self {
         Self {
             url,
@@ -164,15 +168,10 @@ impl Drop for AutoClosingSubscriptionGuard<'_> {
         #[cfg(debug_assertions)]
         tracing::debug!(url = %self.url, id = %self.id, "Dropping auto-closing subscription guard.");
 
-        loop {
-            // Remove from map
-            let mut subscriptions = match self.subscriptions.try_write() {
-                Ok(subscriptions) => subscriptions,
-                Err(_) => continue,
-            };
-
+        // Remove from map
+        {
+            let mut subscriptions = self.subscriptions.lock().unwrap();
             subscriptions.remove(&self.id);
-            break;
         }
 
         #[cfg(debug_assertions)]
@@ -193,7 +192,7 @@ pub(super) struct AtomicPrivateData {
     #[cfg(feature = "nip11")]
     last_document_fetch: AtomicU64,
     channels: RelayChannels,
-    subscriptions: RwLock<HashMap<SubscriptionId, SubscriptionData>>,
+    subscriptions: Mutex<HashMap<SubscriptionId, SubscriptionData>>,
     running: AtomicBool,
 }
 
@@ -228,7 +227,7 @@ impl InnerRelay {
                 #[cfg(feature = "nip11")]
                 last_document_fetch: AtomicU64::new(0),
                 channels: RelayChannels::new(),
-                subscriptions: RwLock::new(HashMap::new()),
+                subscriptions: Mutex::new(HashMap::new()),
                 running: AtomicBool::new(false),
             }),
             flags: AtomicRelayServiceFlags::new(opts.flags),
@@ -348,8 +347,8 @@ impl InnerRelay {
         }
     }
 
-    pub async fn long_lived_subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
-        let subscription = self.atomic.subscriptions.read().await;
+    pub fn long_lived_subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
+        let subscription = self.atomic.subscriptions.lock().unwrap();
         subscription
             .iter()
             .filter_map(|(k, data)| match data.r#type {
@@ -361,8 +360,8 @@ impl InnerRelay {
             .collect()
     }
 
-    pub async fn long_lived_subscription(&self, id: &SubscriptionId) -> Option<Filter> {
-        let subscription = self.atomic.subscriptions.read().await;
+    pub fn long_lived_subscription(&self, id: &SubscriptionId) -> Option<Filter> {
+        let subscription = self.atomic.subscriptions.lock().unwrap();
         subscription.get(id).and_then(|d| match d.r#type {
             SubscriptionType::LongLived { .. } => Some(d.filter.clone()),
             SubscriptionType::AutoClosing => None,
@@ -371,14 +370,14 @@ impl InnerRelay {
 
     /// Save the subscription in the map and when [`AutoClosingSubscriptionGuard`] drops, auto-remove it.
     #[must_use]
-    pub(crate) async fn register_auto_closing_subscription(
+    pub(crate) fn register_auto_closing_subscription(
         &self,
         id: SubscriptionId,
         filter: Filter,
     ) -> AutoClosingSubscriptionGuard {
         // Insert into the subscription map
         {
-            let mut subscriptions = self.atomic.subscriptions.write().await;
+            let mut subscriptions = self.atomic.subscriptions.lock().unwrap();
             subscriptions.insert(
                 id.clone(),
                 SubscriptionData::auto_closing(filter),
@@ -388,13 +387,13 @@ impl InnerRelay {
         AutoClosingSubscriptionGuard::new(&self.url, id, &self.atomic.subscriptions)
     }
 
-    pub(crate) async fn update_long_lived_subscription(
+    pub(crate) fn update_long_lived_subscription(
         &self,
         id: SubscriptionId,
         f: Filter,
         update_subscribed_at: bool,
     ) {
-        let mut subscriptions = self.atomic.subscriptions.write().await;
+        let mut subscriptions = self.atomic.subscriptions.lock().unwrap();
         let data: &mut SubscriptionData = subscriptions
             .entry(id)
             .or_insert_with(SubscriptionData::default_long_lived);
@@ -410,9 +409,9 @@ impl InnerRelay {
     }
 
     /// Subscription closed by relay
-    async fn subscription_closed(&self, id: &SubscriptionId) {
+    fn subscription_closed(&self, id: &SubscriptionId) {
         // Acquire lock
-        let mut subscriptions = self.atomic.subscriptions.write().await;
+        let mut subscriptions = self.atomic.subscriptions.lock().unwrap();
 
         // Remove from subscriptions
         if let Some((id, mut data)) = subscriptions.remove_entry(id) {
@@ -431,8 +430,8 @@ impl InnerRelay {
     }
 
     /// Check if it should subscribe for current websocket session
-    pub(crate) async fn should_resubscribe(&self, id: &SubscriptionId) -> bool {
-        let subscriptions = self.atomic.subscriptions.read().await;
+    pub(crate) fn should_resubscribe(&self, id: &SubscriptionId) -> bool {
+        let subscriptions = self.atomic.subscriptions.lock().unwrap();
         match subscriptions.get(id).map(|d| &d.r#type) {
             Some(SubscriptionType::LongLived {
                 subscribed_at,
@@ -677,7 +676,7 @@ impl InnerRelay {
     async fn connect_and_run(
         &self,
         stream: Option<(BoxSink, BoxStream)>,
-        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessage>>>,
+        rx_nostr: &mut TokioMutexGuard<'_, Receiver<Vec<ClientMessage>>>,
         last_ws_error: &mut Option<String>,
     ) {
         match stream {
@@ -720,7 +719,7 @@ impl InnerRelay {
         &self,
         mut ws_tx: BoxSink,
         ws_rx: BoxStream,
-        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessage>>>,
+        rx_nostr: &mut TokioMutexGuard<'_, Receiver<Vec<ClientMessage>>>,
     ) {
         // Request information document
         #[cfg(feature = "nip11")]
@@ -728,7 +727,7 @@ impl InnerRelay {
 
         // (Re)subscribe to relay
         if self.flags.can_read() {
-            if let Err(e) = self.resubscribe_long_lived().await {
+            if let Err(e) = self.resubscribe_long_lived() {
                 tracing::error!(url = %self.url, error = %e, "Impossible to subscribe.")
             }
         }
@@ -764,7 +763,7 @@ impl InnerRelay {
     async fn sender_message_handler(
         &self,
         ws_tx: &mut BoxSink,
-        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessage>>>,
+        rx_nostr: &mut TokioMutexGuard<'_, Receiver<Vec<ClientMessage>>>,
         ping: &PingTracker,
     ) -> Result<(), Error> {
         #[cfg(target_arch = "wasm32")]
@@ -937,7 +936,7 @@ impl InnerRelay {
                         );
 
                         // Update subscription
-                        let mut subscriptions = self.atomic.subscriptions.write().await;
+                        let mut subscriptions = self.atomic.subscriptions.lock().unwrap();
                         if let Some(data) = subscriptions.get_mut(id) {
                             data.eose = true;
                         }
@@ -952,7 +951,7 @@ impl InnerRelay {
                             msg = %message,
                             "Subscription closed."
                         );
-                        self.subscription_closed(subscription_id).await;
+                        self.subscription_closed(subscription_id);
                     }
                     RelayMessage::Auth { challenge } => {
                         tracing::debug!(
@@ -977,7 +976,7 @@ impl InnerRelay {
                                         tracing::info!(url = %relay.url, "Authenticated to relay.");
 
                                         // TODO: ?
-                                        if let Err(e) = relay.resubscribe_long_lived().await {
+                                        if let Err(e) = relay.resubscribe_long_lived() {
                                             tracing::error!(
                                                 url = %relay.url,
                                                 error = %e,
@@ -1143,7 +1142,7 @@ impl InnerRelay {
         // Check subscription
         if self.opts.verify_event_matching {
             // Acquire subscriptions
-            let mut subscriptions = self.atomic.subscriptions.write().await;
+            let mut subscriptions = self.atomic.subscriptions.lock().unwrap();
 
             match subscriptions.get_mut(&subscription_id) {
                 Some(data) => {
@@ -1342,10 +1341,10 @@ impl InnerRelay {
         .ok_or(Error::Timeout)?
     }
 
-    pub async fn resubscribe_long_lived(&self) -> Result<(), Error> {
-        let subscriptions = self.long_lived_subscriptions().await;
+    pub fn resubscribe_long_lived(&self) -> Result<(), Error> {
+        let subscriptions = self.long_lived_subscriptions();
         for (id, filter) in subscriptions.into_iter() {
-            if !filter.is_empty() && self.should_resubscribe(&id).await {
+            if !filter.is_empty() && self.should_resubscribe(&id) {
                 self.send_msg(ClientMessage::req(id, filter))?;
             } else {
                 tracing::debug!("Skip re-subscription of '{id}'");
@@ -1365,9 +1364,8 @@ impl InnerRelay {
         let relay = self.clone(); // <-- FULL RELAY CLONE HERE
         task::spawn(async move {
             // Register auto-closing subscription
-            let guard: AutoClosingSubscriptionGuard = relay
-                .register_auto_closing_subscription(id.clone(), filter.clone())
-                .await;
+            let guard: AutoClosingSubscriptionGuard =
+                relay.register_auto_closing_subscription(id.clone(), filter.clone());
 
             // Check if CLOSE needed
             let to_close: bool = match relay
@@ -1543,10 +1541,10 @@ impl InnerRelay {
         .await?
     }
 
-    pub async fn unsubscribe(&self, id: SubscriptionId) -> Result<(), Error> {
+    pub fn unsubscribe(&self, id: SubscriptionId) -> Result<(), Error> {
         // Remove subscription
         {
-            let mut subscriptions = self.atomic.subscriptions.write().await;
+            let mut subscriptions = self.atomic.subscriptions.lock().unwrap();
             subscriptions.remove(&id);
         }
 
@@ -1554,13 +1552,13 @@ impl InnerRelay {
         self.send_msg(ClientMessage::close(id))
     }
 
-    pub async fn unsubscribe_all_long_lived(&self) -> Result<(), Error> {
+    pub fn unsubscribe_all_long_lived(&self) -> Result<(), Error> {
         // TODO: don't clone the map
-        let subscriptions = self.long_lived_subscriptions().await;
+        let subscriptions = self.long_lived_subscriptions();
 
         for id in subscriptions.into_keys() {
             // TODO: use `subscriptions.remove(id)` and then `self.send_msg(ClientMessage::close(id))`
-            self.unsubscribe(id).await?;
+            self.unsubscribe(id)?;
         }
 
         Ok(())
