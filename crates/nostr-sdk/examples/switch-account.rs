@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
         .author(keys1.public_key)
         .kind(Kind::TextNote)
         .limit(10);
-    client.subscribe(vec![filter], None).await?;
+    client.subscribe(filter, None).await?;
 
     // Wait a little
     tokio::time::sleep(Duration::from_secs(20)).await;
@@ -46,7 +46,7 @@ async fn main() -> Result<()> {
         .author(keys2.public_key)
         .kind(Kind::TextNote)
         .limit(5);
-    client.subscribe(vec![filter], None).await?;
+    client.subscribe(filter, None).await?;
 
     client
         .handle_notifications(|notification| async move {

@@ -20,9 +20,7 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     let filter = Filter::new().author(public_key).kind(Kind::Metadata);
-    let events = client
-        .fetch_events(vec![filter], Duration::from_secs(10))
-        .await?;
+    let events = client.fetch_events(filter, Duration::from_secs(10)).await?;
     println!("{events:#?}");
 
     let filter = Filter::new()
@@ -32,7 +30,7 @@ async fn main() -> Result<()> {
     let events = client
         .fetch_events_from(
             ["wss://relay.damus.io", "wss://relay.rip"],
-            vec![filter],
+            filter,
             Duration::from_secs(10),
         )
         .await?;

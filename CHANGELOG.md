@@ -39,6 +39,7 @@
 * nostr: change `EventBuilder::gift_wrap` rumor arg type ([Yuki Kishimoto])
 * nostr: change `Filter::custom_tag` value arg type ([Yuki Kishimoto])
 * nostr: rename `Filter::remove_custom_tag` to `Filter::remove_custom_tags` ([Yuki Kishimoto])
+* nostr: take a single filter per REQ and COUNT ([Yuki Kishimoto])
 * pool: change `Relay::connect` method signature ([Yuki Kishimoto])
 * pool: change `Relay::disconnect` method signature ([Yuki Kishimoto])
 * pool: change `RelayPool::disconnect` method signature ([Yuki Kishimoto])

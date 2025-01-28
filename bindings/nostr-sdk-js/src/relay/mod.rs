@@ -209,15 +209,10 @@ impl JsRelay {
     /// ### Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
-    pub async fn subscribe(
-        &self,
-        filters: Vec<JsFilter>,
-        opts: &JsSubscribeOptions,
-    ) -> Result<String> {
-        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
+    pub async fn subscribe(&self, filter: &JsFilter, opts: &JsSubscribeOptions) -> Result<String> {
         Ok(self
             .inner
-            .subscribe(filters, **opts) // TODO: allow to pass opts as reference
+            .subscribe(filter.deref().clone(), **opts) // TODO: allow to pass opts as reference
             .await
             .map_err(into_err)?
             .to_string())
@@ -232,12 +227,11 @@ impl JsRelay {
     pub async fn subscribe_with_id(
         &self,
         id: &str,
-        filters: Vec<JsFilter>,
+        filter: &JsFilter,
         opts: &JsSubscribeOptions,
     ) -> Result<()> {
-        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         self.inner
-            .subscribe_with_id(SubscriptionId::new(id), filters, **opts) // TODO: allow to pass opts as reference
+            .subscribe_with_id(SubscriptionId::new(id), filter.deref().clone(), **opts) // TODO: allow to pass opts as reference
             .await
             .map_err(into_err)
     }
@@ -260,14 +254,13 @@ impl JsRelay {
     #[wasm_bindgen(js_name = fetchEvents)]
     pub async fn fetch_events(
         &self,
-        filters: Vec<JsFilter>,
+        filter: &JsFilter,
         timeout: &JsDuration,
         policy: &JsReqExitPolicy,
     ) -> Result<JsEvents> {
-        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         Ok(self
             .inner
-            .fetch_events(filters, **timeout, **policy)
+            .fetch_events(filter.deref().clone(), **timeout, **policy)
             .await
             .map_err(into_err)?
             .into())
@@ -275,11 +268,10 @@ impl JsRelay {
 
     /// Count events
     #[wasm_bindgen(js_name = countEvents)]
-    pub async fn count_events(&self, filters: Vec<JsFilter>, timeout: &JsDuration) -> Result<u64> {
-        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
+    pub async fn count_events(&self, filter: &JsFilter, timeout: &JsDuration) -> Result<u64> {
         Ok(self
             .inner
-            .count_events(filters, **timeout)
+            .count_events(filter.deref().clone(), **timeout)
             .await
             .map_err(into_err)? as u64)
     }

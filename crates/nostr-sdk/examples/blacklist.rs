@@ -27,9 +27,7 @@ async fn main() -> Result<()> {
     let filter = Filter::new()
         .authors([muted_public_key, public_key])
         .kind(Kind::Metadata);
-    let events = client
-        .fetch_events(vec![filter], Duration::from_secs(10))
-        .await?;
+    let events = client.fetch_events(filter, Duration::from_secs(10)).await?;
     println!("Received {} events.", events.len());
 
     Ok(())

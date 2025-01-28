@@ -138,7 +138,7 @@ impl NostrConnectRemoteSigner {
 
         // Subscribe
         self.pool
-            .subscribe(vec![filter], SubscribeOptions::default())
+            .subscribe(filter, SubscribeOptions::default())
             .await?;
 
         // Mark as bootstrapped

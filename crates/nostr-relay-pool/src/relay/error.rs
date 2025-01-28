@@ -74,8 +74,6 @@ pub enum Error {
     ReadDisabled,
     /// Write actions disabled
     WriteDisabled,
-    /// Filters empty
-    FiltersEmpty,
     /// Negentropy not supported
     NegentropyNotSupported,
     /// Unknown negentropy error
@@ -157,7 +155,6 @@ impl fmt::Display for Error {
             Self::BatchMessagesEmpty => write!(f, "can't batch empty list of messages"),
             Self::ReadDisabled => write!(f, "read actions are disabled"),
             Self::WriteDisabled => write!(f, "write actions are disabled"),
-            Self::FiltersEmpty => write!(f, "filters empty"),
             Self::NegentropyNotSupported => write!(f, "negentropy not supported"),
             Self::UnknownNegentropyError => write!(f, "unknown negentropy error"),
             Self::RelayMessageTooLarge { size, max_size } => write!(

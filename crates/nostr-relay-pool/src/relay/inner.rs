@@ -90,7 +90,7 @@ impl RelayChannels {
 
 #[derive(Debug, Clone)]
 struct SubscriptionData {
-    pub filters: Vec<Filter>,
+    pub filter: Filter,
     pub subscribed_at: Timestamp,
     /// Subscription closed by relay
     pub closed: bool,
@@ -99,7 +99,8 @@ struct SubscriptionData {
 impl Default for SubscriptionData {
     fn default() -> Self {
         Self {
-            filters: Vec::new(),
+            // TODO: use `Option<Filter>`?
+            filter: Filter::new(),
             subscribed_at: Timestamp::zero(),
             closed: false,
         }
@@ -270,28 +271,28 @@ impl InnerRelay {
         }
     }
 
-    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
         let subscription = self.atomic.subscriptions.read().await;
         subscription
             .iter()
-            .map(|(k, v)| (k.clone(), v.filters.clone()))
+            .map(|(k, v)| (k.clone(), v.filter.clone()))
             .collect()
     }
 
-    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
+    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
         let subscription = self.atomic.subscriptions.read().await;
-        subscription.get(id).map(|d| d.filters.clone())
+        subscription.get(id).map(|d| d.filter.clone())
     }
 
     pub(crate) async fn update_subscription(
         &self,
         id: SubscriptionId,
-        filters: Vec<Filter>,
+        filter: Filter,
         update_subscribed_at: bool,
     ) {
         let mut subscriptions = self.atomic.subscriptions.write().await;
         let data: &mut SubscriptionData = subscriptions.entry(id).or_default();
-        data.filters = filters;
+        data.filter = filter;
 
         if update_subscribed_at {
             data.subscribed_at = Timestamp::now();
@@ -1166,9 +1167,9 @@ impl InnerRelay {
 
     pub async fn resubscribe(&self) -> Result<(), Error> {
         let subscriptions = self.subscriptions().await;
-        for (id, filters) in subscriptions.into_iter() {
-            if !filters.is_empty() && self.should_resubscribe(&id).await {
-                self.send_msg(ClientMessage::req(id, filters))?;
+        for (id, filter) in subscriptions.into_iter() {
+            if !filter.is_empty() && self.should_resubscribe(&id).await {
+                self.send_msg(ClientMessage::req(id, filter))?;
             } else {
                 tracing::debug!("Skip re-subscription of '{id}'");
             }
@@ -1180,13 +1181,13 @@ impl InnerRelay {
     pub(super) fn spawn_auto_closing_handler(
         &self,
         id: SubscriptionId,
-        filters: Vec<Filter>,
+        filter: Filter,
         opts: SubscribeAutoCloseOptions,
     ) {
         let relay = self.clone(); // <-- FULL RELAY CLONE HERE
         task::spawn(async move {
             // Check if CLOSE needed
-            let to_close: bool = match relay.handle_auto_closing(&id, filters, opts).await {
+            let to_close: bool = match relay.handle_auto_closing(&id, filter, opts).await {
                 Some((to_close, reason)) => {
                     // Send subscription auto-closed notification
                     if let Some(reason) = reason {
@@ -1218,7 +1219,7 @@ impl InnerRelay {
     async fn handle_auto_closing(
         &self,
         id: &SubscriptionId,
-        filters: Vec<Filter>,
+        filter: Filter,
         opts: SubscribeAutoCloseOptions,
     ) -> Option<(bool, Option<SubscriptionAutoClosedReason>)> {
         time::timeout(opts.timeout, async move {
@@ -1307,8 +1308,7 @@ impl InnerRelay {
                         // Resend REQ
                         if require_resubscription {
                             require_resubscription = false;
-                            let msg: ClientMessage =
-                                ClientMessage::req(id.clone(), filters.clone());
+                            let msg: ClientMessage = ClientMessage::req(id.clone(), filter.clone());
                             let _ = self.send_msg(msg);
                         }
                     }
@@ -1518,7 +1518,7 @@ impl InnerRelay {
         }
 
         let filter = Filter::new().ids(ids);
-        self.send_msg(ClientMessage::req(down_sub_id.clone(), vec![filter]))?;
+        self.send_msg(ClientMessage::req(down_sub_id.clone(), filter))?;
 
         *in_flight_down = true;
 

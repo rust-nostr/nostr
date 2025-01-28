@@ -95,7 +95,7 @@ impl NostrConnect {
     ///     connect.auth_url_handler(MyAuthUrlHandler);
     ///
     ///     // ...
-    ///     
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -178,7 +178,7 @@ impl NostrConnect {
 
         // Subscribe
         self.pool
-            .subscribe(vec![filter], SubscribeOptions::default())
+            .subscribe(filter, SubscribeOptions::default())
             .await?;
 
         Ok(notifications)

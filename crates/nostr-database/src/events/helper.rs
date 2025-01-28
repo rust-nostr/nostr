@@ -542,42 +542,36 @@ impl InternalDatabaseHelper {
             .filter(move |event| !self.deleted_ids.contains(&event.id) && filter.match_event(event))
     }
 
-    fn internal_query<I>(&self, filters: I) -> InternalQueryResult
-    where
-        I: IntoIterator<Item = Filter>,
-    {
+    fn internal_query(&self, filter: Filter) -> InternalQueryResult {
+        if filter.is_empty() {
+            return InternalQueryResult::All;
+        }
+
+        if let (Some(since), Some(until)) = (filter.since, filter.until) {
+            if since > until {
+                return InternalQueryResult::Set(BTreeSet::new());
+            }
+        }
+
         let mut matching_ids: BTreeSet<&DatabaseEvent> = BTreeSet::new();
+        let limit: Option<usize> = filter.limit;
 
-        for filter in filters.into_iter() {
-            if filter.is_empty() {
-                return InternalQueryResult::All;
-            }
-
-            if let (Some(since), Some(until)) = (filter.since, filter.until) {
-                if since > until {
-                    continue;
+        let evs: Box<dyn Iterator<Item = &DatabaseEvent>> = match QueryPattern::from(filter) {
+            QueryPattern::Author(params) => self.internal_query_by_author(params),
+            QueryPattern::KindAuthor(params) => self.internal_query_by_kind_and_author(params),
+            QueryPattern::ParamReplaceable(params) => {
+                match self.internal_query_param_replaceable(params) {
+                    Some(ev) => Box::new(iter::once(ev)),
+                    None => Box::new(iter::empty()),
                 }
             }
+            QueryPattern::Generic(filter) => Box::new(self.internal_generic_query(*filter)),
+        };
 
-            let limit: Option<usize> = filter.limit;
-
-            let evs: Box<dyn Iterator<Item = &DatabaseEvent>> = match QueryPattern::from(filter) {
-                QueryPattern::Author(params) => self.internal_query_by_author(params),
-                QueryPattern::KindAuthor(params) => self.internal_query_by_kind_and_author(params),
-                QueryPattern::ParamReplaceable(params) => {
-                    match self.internal_query_param_replaceable(params) {
-                        Some(ev) => Box::new(iter::once(ev)),
-                        None => Box::new(iter::empty()),
-                    }
-                }
-                QueryPattern::Generic(filter) => Box::new(self.internal_generic_query(*filter)),
-            };
-
-            if let Some(limit) = limit {
-                matching_ids.extend(evs.take(limit))
-            } else {
-                matching_ids.extend(evs)
-            }
+        if let Some(limit) = limit {
+            matching_ids.extend(evs.take(limit))
+        } else {
+            matching_ids.extend(evs)
         }
 
         InternalQueryResult::Set(matching_ids)
@@ -594,29 +588,23 @@ impl InternalDatabaseHelper {
     }
 
     /// Query
-    pub fn query<'a, I>(&'a self, filters: I) -> Box<dyn Iterator<Item = &'a Event> + 'a>
-    where
-        I: IntoIterator<Item = Filter>,
-    {
-        match self.internal_query(filters) {
+    pub fn query<'a>(&'a self, filter: Filter) -> Box<dyn Iterator<Item = &'a Event> + 'a> {
+        match self.internal_query(filter) {
             InternalQueryResult::All => Box::new(self.events.iter().map(|ev| ev.as_ref())),
             InternalQueryResult::Set(set) => Box::new(set.into_iter().map(|ev| ev.as_ref())),
         }
     }
 
     /// Count events
-    pub fn count<I>(&self, filters: I) -> usize
-    where
-        I: IntoIterator<Item = Filter>,
-    {
-        match self.internal_query(filters) {
+    pub fn count(&self, filter: Filter) -> usize {
+        match self.internal_query(filter) {
             InternalQueryResult::All => self.events.len(),
             InternalQueryResult::Set(set) => set.len(),
         }
     }
 
     pub fn negentropy_items(&self, filter: Filter) -> Vec<(EventId, Timestamp)> {
-        match self.internal_query([filter]) {
+        match self.internal_query(filter) {
             InternalQueryResult::All => self
                 .events
                 .iter()
@@ -647,7 +635,7 @@ impl InternalDatabaseHelper {
     }
 
     pub fn delete(&mut self, filter: Filter) -> Option<HashSet<EventId>> {
-        match self.internal_query([filter]) {
+        match self.internal_query(filter) {
             InternalQueryResult::All => {
                 self.clear();
                 None
@@ -741,32 +729,26 @@ impl DatabaseHelper {
     }
 
     /// Query
-    pub async fn query(&self, filters: Vec<Filter>) -> Events {
+    pub async fn query(&self, filter: Filter) -> Events {
         let inner = self.inner.read().await;
-        let mut events = Events::new(&filters);
-        events.extend(inner.query(filters).cloned());
+        let mut events = Events::new(&filter);
+        events.extend(inner.query(filter).cloned());
         events
     }
 
     /// Query
-    pub fn fast_query<'a, I>(
+    pub fn fast_query<'a>(
         &self,
         txn: &'a QueryTransaction,
-        filters: I,
-    ) -> Box<dyn Iterator<Item = &'a Event> + 'a>
-    where
-        I: IntoIterator<Item = Filter>,
-    {
-        txn.guard.query(filters)
+        filter: Filter,
+    ) -> Box<dyn Iterator<Item = &'a Event> + 'a> {
+        txn.guard.query(filter)
     }
 
     /// Count events
-    pub async fn count<I>(&self, filters: I) -> usize
-    where
-        I: IntoIterator<Item = Filter>,
-    {
+    pub async fn count(&self, filter: Filter) -> usize {
         let inner = self.inner.read().await;
-        inner.count(filters)
+        inner.count(filter)
     }
 
     /// Get negentropy items
@@ -868,35 +850,38 @@ mod tests {
             Event::from_json(EVENTS[1]).unwrap(),
             Event::from_json(EVENTS[0]).unwrap(),
         ];
-        assert_eq!(
-            indexes.query(vec![Filter::new()]).await.to_vec(),
-            expected_output
-        );
-        assert_eq!(indexes.count([Filter::new()]).await, 8);
+        assert_eq!(indexes.query(Filter::new()).await.to_vec(), expected_output);
+        assert_eq!(indexes.count(Filter::new()).await, 8);
 
         // Test get previously deleted replaceable event (check if was deleted by indexes)
         assert!(indexes
-            .query(vec![Filter::new()
-                .kind(Kind::Metadata)
-                .author(keys_a.public_key())])
+            .query(
+                Filter::new()
+                    .kind(Kind::Metadata)
+                    .author(keys_a.public_key())
+            )
             .await
             .is_empty());
 
         // Test get previously deleted param. replaceable event (check if was deleted by indexes)
         assert!(indexes
-            .query(vec![Filter::new()
-                .kind(Kind::Custom(32122))
-                .author(keys_a.public_key())
-                .identifier("id-2")])
+            .query(
+                Filter::new()
+                    .kind(Kind::Custom(32122))
+                    .author(keys_a.public_key())
+                    .identifier("id-2")
+            )
             .await
             .is_empty());
 
         // Test get param replaceable events WITHOUT using indexes (identifier not passed)
         assert_eq!(
             indexes
-                .query(vec![Filter::new()
-                    .kind(Kind::Custom(32122))
-                    .author(keys_b.public_key())])
+                .query(
+                    Filter::new()
+                        .kind(Kind::Custom(32122))
+                        .author(keys_b.public_key())
+                )
                 .await
                 .to_vec(),
             vec![
@@ -908,10 +893,12 @@ mod tests {
         // Test get param replaceable events using indexes
         assert_eq!(
             indexes
-                .query(vec![Filter::new()
-                    .kind(Kind::Custom(32122))
-                    .author(keys_b.public_key())
-                    .identifier("id-3")])
+                .query(
+                    Filter::new()
+                        .kind(Kind::Custom(32122))
+                        .author(keys_b.public_key())
+                        .identifier("id-3")
+                )
                 .await
                 .to_vec(),
             vec![Event::from_json(EVENTS[4]).unwrap()]
@@ -919,7 +906,7 @@ mod tests {
 
         assert_eq!(
             indexes
-                .query(vec![Filter::new().author(keys_a.public_key())])
+                .query(Filter::new().author(keys_a.public_key()))
                 .await
                 .to_vec(),
             vec![
@@ -933,9 +920,11 @@ mod tests {
 
         assert_eq!(
             indexes
-                .query(vec![Filter::new()
-                    .author(keys_a.public_key())
-                    .kinds([Kind::TextNote, Kind::Custom(32121)])])
+                .query(
+                    Filter::new()
+                        .author(keys_a.public_key())
+                        .kinds([Kind::TextNote, Kind::Custom(32121)])
+                )
                 .await
                 .to_vec(),
             vec![
@@ -946,9 +935,11 @@ mod tests {
 
         assert_eq!(
             indexes
-                .query(vec![Filter::new()
-                    .authors([keys_a.public_key(), keys_b.public_key()])
-                    .kinds([Kind::TextNote, Kind::Custom(32121)])])
+                .query(
+                    Filter::new()
+                        .authors([keys_a.public_key(), keys_b.public_key()])
+                        .kinds([Kind::TextNote, Kind::Custom(32121)])
+                )
                 .await
                 .to_vec(),
             vec![
@@ -960,7 +951,7 @@ mod tests {
         // Test get param replaceable events using identifier
         assert_eq!(
             indexes
-                .query(vec![Filter::new().identifier("id-1")])
+                .query(Filter::new().identifier("id-1"))
                 .await
                 .to_vec(),
             vec![
@@ -973,7 +964,7 @@ mod tests {
         // Test get param replaceable events with multiple tags using identifier
         assert_eq!(
             indexes
-                .query(vec![Filter::new().identifier("multi-id")])
+                .query(Filter::new().identifier("multi-id"))
                 .await
                 .to_vec(),
             vec![Event::from_json(EVENTS[13]).unwrap()]
@@ -981,10 +972,12 @@ mod tests {
         // As above but by using kind and pubkey
         assert_eq!(
             indexes
-                .query(vec![Filter::new()
-                    .pubkey(keys_a.public_key())
-                    .kind(Kind::Custom(30333))
-                    .limit(1)])
+                .query(
+                    Filter::new()
+                        .pubkey(keys_a.public_key())
+                        .kind(Kind::Custom(30333))
+                        .limit(1)
+                )
                 .await
                 .to_vec(),
             vec![Event::from_json(EVENTS[13]).unwrap()]
@@ -997,9 +990,11 @@ mod tests {
         assert!(res.to_discard.is_empty());
         assert_eq!(
             indexes
-                .query(vec![Filter::new()
-                    .kind(Kind::Metadata)
-                    .author(keys_a.public_key())])
+                .query(
+                    Filter::new()
+                        .kind(Kind::Metadata)
+                        .author(keys_a.public_key())
+                )
                 .await
                 .to_vec(),
             vec![first_ev_metadata.clone()]
@@ -1012,9 +1007,11 @@ mod tests {
         assert!(res.to_discard.contains(&first_ev_metadata.id));
         assert_eq!(
             indexes
-                .query(vec![Filter::new()
-                    .kind(Kind::Metadata)
-                    .author(keys_a.public_key())])
+                .query(
+                    Filter::new()
+                        .kind(Kind::Metadata)
+                        .author(keys_a.public_key())
+                )
                 .await
                 .to_vec(),
             vec![ev]

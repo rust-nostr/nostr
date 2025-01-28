@@ -136,20 +136,14 @@ impl NostrDatabase {
             .map(|e| Arc::new(e.into())))
     }
 
-    pub async fn count(&self, filters: Vec<Arc<Filter>>) -> Result<u64> {
-        let filters = filters
-            .into_iter()
-            .map(|f| f.as_ref().deref().clone())
-            .collect();
-        Ok(self.inner.count(filters).await? as u64)
+    pub async fn count(&self, filter: &Filter) -> Result<u64> {
+        Ok(self.inner.count(filter.deref().clone()).await? as u64)
     }
 
-    pub async fn query(&self, filters: Vec<Arc<Filter>>) -> Result<Arc<Events>> {
-        let filters = filters
-            .into_iter()
-            .map(|f| f.as_ref().deref().clone())
-            .collect();
-        Ok(Arc::new(self.inner.query(filters).await?.into()))
+    pub async fn query(&self, filter: &Filter) -> Result<Arc<Events>> {
+        Ok(Arc::new(
+            self.inner.query(filter.deref().clone()).await?.into(),
+        ))
     }
 
     /// Delete all events that match the `Filter`

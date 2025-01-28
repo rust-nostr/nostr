@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
     // Stream events from all connected relays
     let filter = Filter::new().kind(Kind::TextNote).limit(100);
     let mut stream = client
-        .stream_events(vec![filter], Duration::from_secs(15))
+        .stream_events(filter, Duration::from_secs(15))
         .await?;
 
     while let Some(event) = stream.next().await {

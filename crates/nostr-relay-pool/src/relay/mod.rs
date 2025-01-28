@@ -224,13 +224,13 @@ impl Relay {
 
     /// Get subscriptions
     #[inline]
-    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
         self.inner.subscriptions().await
     }
 
     /// Get filters by [SubscriptionId]
     #[inline]
-    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
+    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
         self.inner.subscription(id).await
     }
 
@@ -447,7 +447,7 @@ impl Relay {
 
     /// Subscribe to filters
     ///
-    /// Internally generate a new random [SubscriptionId]. Check `subscribe_with_id` method to use a custom [SubscriptionId].
+    /// Internally generate a new random [`SubscriptionId`]. Check `subscribe_with_id` method to use a custom [SubscriptionId].
     ///
     /// ### Auto-closing subscription
     ///
@@ -456,7 +456,7 @@ impl Relay {
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
     pub async fn subscribe(
         &self,
-        filters: Vec<Filter>,
+        filters: Filter,
         opts: SubscribeOptions,
     ) -> Result<SubscriptionId, Error> {
         let id: SubscriptionId = SubscriptionId::generate();
@@ -464,7 +464,7 @@ impl Relay {
         Ok(id)
     }
 
-    /// Subscribe with custom [SubscriptionId]
+    /// Subscribe with custom [`SubscriptionId`]
     ///
     /// ### Auto-closing subscription
     ///
@@ -474,24 +474,19 @@ impl Relay {
     pub async fn subscribe_with_id(
         &self,
         id: SubscriptionId,
-        filters: Vec<Filter>,
+        filter: Filter,
         opts: SubscribeOptions,
     ) -> Result<(), Error> {
-        // Check if filters are empty
-        if filters.is_empty() {
-            return Err(Error::FiltersEmpty);
-        }
-
         // Compose and send REQ message
-        let msg: ClientMessage = ClientMessage::req(id.clone(), filters.clone());
+        let msg: ClientMessage = ClientMessage::req(id.clone(), filter.clone());
         self.send_msg(msg)?;
 
         // Check if auto-close condition is set
         match opts.auto_close {
-            Some(opts) => self.inner.spawn_auto_closing_handler(id, filters, opts),
+            Some(opts) => self.inner.spawn_auto_closing_handler(id, filter, opts),
             None => {
-                // No auto-close subscription: update subscription filters
-                self.inner.update_subscription(id, filters, true).await;
+                // No auto-close subscription: update subscription filter
+                self.inner.update_subscription(id, filter, true).await;
             }
         };
 
@@ -510,10 +505,10 @@ impl Relay {
         self.inner.unsubscribe_all().await
     }
 
-    /// Get events of filters with custom callback
+    /// Get events of filter with custom callback
     pub(crate) async fn fetch_events_with_callback(
         &self,
-        filters: Vec<Filter>,
+        filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
         mut callback: impl FnMut(Event),
@@ -532,7 +527,7 @@ impl Relay {
         let mut notifications = self.inner.internal_notification_sender.subscribe();
 
         // Subscribe with auto-close
-        let id: SubscriptionId = self.subscribe(filters, subscribe_opts).await?;
+        let id: SubscriptionId = self.subscribe(filter, subscribe_opts).await?;
 
         time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
@@ -582,24 +577,24 @@ impl Relay {
     #[inline]
     pub(crate) async fn fetch_events_with_callback_owned(
         self,
-        filters: Vec<Filter>,
+        filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
         callback: impl Fn(Event),
     ) -> Result<(), Error> {
-        self.fetch_events_with_callback(filters, timeout, policy, callback)
+        self.fetch_events_with_callback(filter, timeout, policy, callback)
             .await
     }
 
     /// Fetch events
     pub async fn fetch_events(
         &self,
-        filters: Vec<Filter>,
+        filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<Events, Error> {
-        let mut events: Events = Events::new(&filters);
-        self.fetch_events_with_callback(filters, timeout, policy, |event| {
+        let mut events: Events = Events::new(&filter);
+        self.fetch_events_with_callback(filter, timeout, policy, |event| {
             events.insert(event);
         })
         .await?;
@@ -607,13 +602,9 @@ impl Relay {
     }
 
     /// Count events
-    pub async fn count_events(
-        &self,
-        filters: Vec<Filter>,
-        timeout: Duration,
-    ) -> Result<usize, Error> {
+    pub async fn count_events(&self, filter: Filter, timeout: Duration) -> Result<usize, Error> {
         let id = SubscriptionId::generate();
-        self.send_msg(ClientMessage::count(id.clone(), filters))?;
+        self.send_msg(ClientMessage::count(id.clone(), filter))?;
 
         let mut count = 0;
 
@@ -662,20 +653,6 @@ impl Relay {
         items: Vec<(EventId, Timestamp)>,
         opts: &SyncOptions,
     ) -> Result<Reconciliation, Error> {
-        // Compose map
-        let mut map = HashMap::with_capacity(1);
-        map.insert(filter, items);
-
-        // Reconcile
-        self.sync_multi(map, opts).await
-    }
-
-    /// Sync events with relays (negentropy reconciliation)
-    pub async fn sync_multi(
-        &self,
-        map: HashMap<Filter, Vec<(EventId, Timestamp)>>,
-        opts: &SyncOptions,
-    ) -> Result<Reconciliation, Error> {
         // Perform health checks
         self.inner.health_check()?;
 
@@ -686,23 +663,21 @@ impl Relay {
 
         let mut output: Reconciliation = Reconciliation::default();
 
-        for (filter, items) in map.into_iter() {
-            match self
-                .inner
-                .sync_new(filter.clone(), items.clone(), opts, &mut output)
-                .await
-            {
-                Ok(..) => {}
-                Err(e) => match e {
-                    Error::NegentropyNotSupported
-                    | Error::Negentropy(negentropy::Error::UnsupportedProtocolVersion) => {
-                        self.inner
-                            .sync_deprecated(filter, items, opts, &mut output)
-                            .await?;
-                    }
-                    e => return Err(e),
-                },
-            }
+        match self
+            .inner
+            .sync_new(filter.clone(), items.clone(), opts, &mut output)
+            .await
+        {
+            Ok(..) => {}
+            Err(e) => match e {
+                Error::NegentropyNotSupported
+                | Error::Negentropy(negentropy::Error::UnsupportedProtocolVersion) => {
+                    self.inner
+                        .sync_deprecated(filter, items, opts, &mut output)
+                        .await?;
+                }
+                e => return Err(e),
+            },
         }
 
         Ok(output)
@@ -1111,7 +1086,7 @@ mod tests {
         // Unauthenticated fetch (MUST return error)
         let err = relay
             .fetch_events(
-                vec![filter.clone()],
+                filter.clone(),
                 Duration::from_secs(5),
                 ReqExitPolicy::ExitOnEOSE,
             )
@@ -1133,7 +1108,7 @@ mod tests {
         // Unauthenticated fetch (MUST return error)
         let err = relay
             .fetch_events(
-                vec![filter.clone()],
+                filter.clone(),
                 Duration::from_secs(5),
                 ReqExitPolicy::ExitOnEOSE,
             )
@@ -1146,11 +1121,7 @@ mod tests {
 
         // Authenticated fetch
         let res = relay
-            .fetch_events(
-                vec![filter],
-                Duration::from_secs(5),
-                ReqExitPolicy::ExitOnEOSE,
-            )
+            .fetch_events(filter, Duration::from_secs(5), ReqExitPolicy::ExitOnEOSE)
             .await;
         assert!(res.is_ok());
     }

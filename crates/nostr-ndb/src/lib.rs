@@ -139,19 +139,19 @@ impl NostrEventsDatabase for NdbDatabase {
         })
     }
 
-    fn count(&self, filters: Vec<Filter>) -> BoxedFuture<Result<usize, DatabaseError>> {
+    fn count(&self, filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>> {
         Box::pin(async move {
             let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
-            let res: Vec<QueryResult> = ndb_query(&self.db, &txn, filters)?;
+            let res: Vec<QueryResult> = ndb_query(&self.db, &txn, filter)?;
             Ok(res.len())
         })
     }
 
-    fn query(&self, filters: Vec<Filter>) -> BoxedFuture<Result<Events, DatabaseError>> {
+    fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>> {
         Box::pin(async move {
             let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
-            let mut events: Events = Events::new(&filters);
-            let res: Vec<QueryResult> = ndb_query(&self.db, &txn, filters)?;
+            let mut events: Events = Events::new(&filter);
+            let res: Vec<QueryResult> = ndb_query(&self.db, &txn, filter)?;
             events.extend(
                 res.into_iter()
                     .filter_map(|r| ndb_note_to_event(r.note).ok())
@@ -167,7 +167,7 @@ impl NostrEventsDatabase for NdbDatabase {
     ) -> BoxedFuture<Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
         Box::pin(async move {
             let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
-            let res: Vec<QueryResult> = ndb_query(&self.db, &txn, vec![filter])?;
+            let res: Vec<QueryResult> = ndb_query(&self.db, &txn, filter)?;
             Ok(res
                 .into_iter()
                 .map(|r| ndb_note_to_neg_item(r.note))
@@ -190,10 +190,10 @@ impl NostrDatabaseWipe for NdbDatabase {
 fn ndb_query<'a>(
     db: &Ndb,
     txn: &'a Transaction,
-    filters: Vec<Filter>,
+    filter: Filter,
 ) -> Result<Vec<QueryResult<'a>>, DatabaseError> {
-    let filters: Vec<nostrdb::Filter> = filters.into_iter().map(ndb_filter_conversion).collect();
-    db.query(txn, &filters, MAX_RESULTS)
+    let filter: nostrdb::Filter = ndb_filter_conversion(filter);
+    db.query(txn, &[filter], MAX_RESULTS)
         .map_err(DatabaseError::backend)
 }
 

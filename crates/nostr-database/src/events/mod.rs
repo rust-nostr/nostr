@@ -146,13 +146,13 @@ pub trait NostrEventsDatabase: fmt::Debug + Send + Sync {
         event_id: &'a EventId,
     ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>>;
 
-    /// Count number of [`Event`] found by filters
+    /// Count the number of events found with [`Filter`].
     ///
     /// Use `Filter::new()` or `Filter::default()` to count all events.
-    fn count(&self, filters: Vec<Filter>) -> BoxedFuture<Result<usize, DatabaseError>>;
+    fn count(&self, filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>>;
 
-    /// Query store with filters
-    fn query(&self, filters: Vec<Filter>) -> BoxedFuture<Result<Events, DatabaseError>>;
+    /// Query stored events.
+    fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>>;
 
     /// Get `negentropy` items
     fn negentropy_items(
@@ -160,7 +160,7 @@ pub trait NostrEventsDatabase: fmt::Debug + Send + Sync {
         filter: Filter,
     ) -> BoxedFuture<Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
         Box::pin(async move {
-            let events: Events = self.query(vec![filter]).await?;
+            let events: Events = self.query(filter).await?;
             Ok(events.into_iter().map(|e| (e.id, e.created_at)).collect())
         })
     }
@@ -181,7 +181,7 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
                 .author(public_key)
                 .kind(Kind::Metadata)
                 .limit(1);
-            let events: Events = self.query(vec![filter]).await?;
+            let events: Events = self.query(filter).await?;
             match events.first_owned() {
                 Some(event) => Ok(Some(
                     Metadata::from_json(event.content).map_err(DatabaseError::backend)?,
@@ -201,7 +201,7 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
                 .author(public_key)
                 .kind(Kind::ContactList)
                 .limit(1);
-            let events: Events = self.query(vec![filter]).await?;
+            let events: Events = self.query(filter).await?;
             match events.first_owned() {
                 Some(event) => Ok(event.tags.public_keys().copied().collect()),
                 None => Ok(HashSet::new()),
@@ -219,7 +219,7 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
                 .author(public_key)
                 .kind(Kind::ContactList)
                 .limit(1);
-            let events: Events = self.query(vec![filter]).await?;
+            let events: Events = self.query(filter).await?;
             match events.first_owned() {
                 Some(event) => {
                     // Get contacts metadata
@@ -227,7 +227,7 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
                         .authors(event.tags.public_keys().copied())
                         .kind(Kind::Metadata);
                     let mut contacts: HashSet<Profile> = self
-                        .query(vec![filter])
+                        .query(filter)
                         .await?
                         .into_iter()
                         .map(|e| {
@@ -257,7 +257,7 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
                 .author(public_key)
                 .kind(Kind::RelayList)
                 .limit(1);
-            let events: Events = self.query(vec![filter]).await?;
+            let events: Events = self.query(filter).await?;
 
             // Extract relay list (NIP65)
             match events.first_owned() {
@@ -280,7 +280,7 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
         Box::pin(async move {
             // Query
             let filter: Filter = Filter::default().authors(public_keys).kind(Kind::RelayList);
-            let events: Events = self.query(vec![filter]).await?;
+            let events: Events = self.query(filter).await?;
 
             let mut map = HashMap::with_capacity(events.len());
 

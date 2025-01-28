@@ -80,11 +80,7 @@ impl NWC {
 
         // Subscribe
         self.relay
-            .subscribe_with_id(
-                SubscriptionId::new(ID),
-                vec![filter],
-                SubscribeOptions::default(),
-            )
+            .subscribe_with_id(SubscriptionId::new(ID), filter, SubscribeOptions::default())
             .await?;
 
         // Mark as bootstrapped

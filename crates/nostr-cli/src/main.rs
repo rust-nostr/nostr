@@ -283,7 +283,7 @@ async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
             } else if database {
                 // Query database
                 let now = Instant::now();
-                let events = db.query(vec![filter]).await?;
+                let events = db.query(filter).await?;
 
                 let duration = now.elapsed();
                 println!(

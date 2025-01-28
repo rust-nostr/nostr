@@ -13,16 +13,13 @@ use super::constant::{CHECK_OUTDATED_INTERVAL, MAX_RELAYS_LIST, PUBKEY_METADATA_
 const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
 
 #[derive(Debug)]
-pub struct BrokenDownFilters {
+pub enum BrokenDownFilters {
     /// Filters by url
-    pub filters: HashMap<RelayUrl, BTreeSet<Filter>>,
+    Filters(HashMap<RelayUrl, Filter>),
     /// Filters that match a certain pattern but where no relays are available
-    pub orphans: Option<BTreeSet<Filter>>,
+    Orphan(Filter),
     /// Filters that can be sent to read relays (generic query, not related to public keys)
-    pub others: Option<BTreeSet<Filter>>,
-    /// All inbox and outbox relays
-    // TODO: remove?
-    pub urls: HashSet<RelayUrl>,
+    Other(Filter),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -353,137 +350,98 @@ impl GossipGraph {
         self.map_nip65_relays(txn, public_keys, RelayMetadata::Read)
     }
 
-    pub async fn break_down_filters<I>(&self, filters: I) -> BrokenDownFilters
-    where
-        I: IntoIterator<Item = Filter>,
-    {
-        let mut map: HashMap<RelayUrl, BTreeSet<Filter>> = HashMap::new();
-        let mut orphans: BTreeSet<Filter> = BTreeSet::new();
-        let mut others: BTreeSet<Filter> = BTreeSet::new();
-        let mut urls: HashSet<RelayUrl> = HashSet::new();
-
+    pub async fn break_down_filter(&self, filter: Filter) -> BrokenDownFilters {
         let txn = self.public_keys.read().await;
 
-        for filter in filters.into_iter() {
-            // Extract `p` tag from generic tags and parse public key hex
-            let p_tag: Option<BTreeSet<PublicKey>> = filter.generic_tags.get(&P_TAG).map(|s| {
-                s.iter()
-                    .filter_map(|p| PublicKey::from_hex(p).ok())
-                    .collect()
-            });
+        // Extract `p` tag from generic tags and parse public key hex
+        let p_tag: Option<BTreeSet<PublicKey>> = filter.generic_tags.get(&P_TAG).map(|s| {
+            s.iter()
+                .filter_map(|p| PublicKey::from_hex(p).ok())
+                .collect()
+        });
 
-            // Match pattern
-            match (&filter.authors, &p_tag) {
-                (Some(authors), None) => {
-                    // Get map of outbox relays
-                    let mut outbox = self.map_nip65_outbox_relays(&txn, authors);
+        // Match pattern
+        match (&filter.authors, &p_tag) {
+            (Some(authors), None) => {
+                // Get map of outbox relays
+                let mut outbox: HashMap<RelayUrl, BTreeSet<PublicKey>> =
+                    self.map_nip65_outbox_relays(&txn, authors);
 
-                    // Extend with NIP17 relays
-                    outbox.extend(self.map_nip17_relays(&txn, authors));
+                // Extend with NIP17 relays
+                outbox.extend(self.map_nip17_relays(&txn, authors));
 
-                    // No relay available for the authors
-                    if outbox.is_empty() {
-                        orphans.insert(filter.clone());
-                        continue;
-                    }
-
-                    // Construct new filters
-                    for (relay, pk_set) in outbox.into_iter() {
-                        urls.insert(relay.clone());
-
-                        // Clone filter and change authors
-                        let mut new_filter: Filter = filter.clone();
-                        new_filter.authors = Some(pk_set);
-
-                        // Update map
-                        map.entry(relay)
-                            .and_modify(|f| {
-                                f.insert(new_filter.clone());
-                            })
-                            .or_default()
-                            .insert(new_filter);
-                    }
+                // No relay available for the authors
+                if outbox.is_empty() {
+                    return BrokenDownFilters::Orphan(filter);
                 }
-                (None, Some(p_public_keys)) => {
-                    // Get map of inbox relays
-                    let mut inbox = self.map_nip65_inbox_relays(&txn, p_public_keys);
 
-                    // Extend with NIP17 relays
-                    inbox.extend(self.map_nip17_relays(&txn, p_public_keys));
+                let mut map: HashMap<RelayUrl, Filter> = HashMap::with_capacity(outbox.len());
 
-                    // No relay available for the p tags
-                    if inbox.is_empty() {
-                        orphans.insert(filter.clone());
-                        continue;
-                    }
+                // Construct new filters
+                for (relay, pk_set) in outbox.into_iter() {
+                    // Clone filter and change authors
+                    let mut new_filter: Filter = filter.clone();
+                    new_filter.authors = Some(pk_set);
 
-                    // Construct new filters
-                    for (relay, pk_set) in inbox.into_iter() {
-                        urls.insert(relay.clone());
-
-                        // Clone filter and change p tags
-                        let mut new_filter: Filter = filter.clone();
-                        new_filter
-                            .generic_tags
-                            .insert(P_TAG, pk_set.into_iter().map(|p| p.to_string()).collect());
-
-                        // Update map
-                        map.entry(relay)
-                            .and_modify(|f| {
-                                f.insert(new_filter.clone());
-                            })
-                            .or_default()
-                            .insert(new_filter);
-                    }
+                    // Update map
+                    map.insert(relay, new_filter);
                 }
-                (Some(authors), Some(p_public_keys)) => {
-                    // Get map of outbox and inbox relays
-                    let mut relays =
-                        self.get_nip65_relays(&txn, authors.union(p_public_keys), None);
 
-                    // Extend with NIP17 relays
-                    relays.extend(self.get_nip17_relays(&txn, authors.union(p_public_keys)));
-
-                    // No relay available for the authors and p tags
-                    if relays.is_empty() {
-                        orphans.insert(filter.clone());
-                        continue;
-                    }
-
-                    for relay in relays.into_iter() {
-                        urls.insert(relay.clone());
-
-                        // Update map
-                        map.entry(relay)
-                            .and_modify(|f| {
-                                f.insert(filter.clone());
-                            })
-                            .or_default()
-                            .insert(filter.clone());
-                    }
-                }
-                // Nothing to do, add to `other` list
-                (None, None) => {
-                    others.insert(filter);
-                }
+                BrokenDownFilters::Filters(map)
             }
-        }
+            (None, Some(p_public_keys)) => {
+                // Get map of inbox relays
+                let mut inbox: HashMap<RelayUrl, BTreeSet<PublicKey>> =
+                    self.map_nip65_inbox_relays(&txn, p_public_keys);
 
-        tracing::debug!(gossip = %map.len(), orphans = %orphans.len(), others = %others.len(), "Broken down filters:");
+                // Extend with NIP17 relays
+                inbox.extend(self.map_nip17_relays(&txn, p_public_keys));
 
-        BrokenDownFilters {
-            filters: map,
-            orphans: if orphans.is_empty() {
-                None
-            } else {
-                Some(orphans)
-            },
-            others: if others.is_empty() {
-                None
-            } else {
-                Some(others)
-            },
-            urls,
+                // No relay available for the p tags
+                if inbox.is_empty() {
+                    return BrokenDownFilters::Orphan(filter);
+                }
+
+                let mut map: HashMap<RelayUrl, Filter> = HashMap::with_capacity(inbox.len());
+
+                // Construct new filters
+                for (relay, pk_set) in inbox.into_iter() {
+                    // Clone filter and change p tags
+                    let mut new_filter: Filter = filter.clone();
+                    new_filter
+                        .generic_tags
+                        .insert(P_TAG, pk_set.into_iter().map(|p| p.to_string()).collect());
+
+                    // Update map
+                    map.insert(relay, new_filter);
+                }
+
+                BrokenDownFilters::Filters(map)
+            }
+            (Some(authors), Some(p_public_keys)) => {
+                // Get map of outbox and inbox relays
+                let mut relays: HashSet<RelayUrl> =
+                    self.get_nip65_relays(&txn, authors.union(p_public_keys), None);
+
+                // Extend with NIP17 relays
+                relays.extend(self.get_nip17_relays(&txn, authors.union(p_public_keys)));
+
+                // No relay available for the authors and p tags
+                if relays.is_empty() {
+                    return BrokenDownFilters::Orphan(filter);
+                }
+
+                let mut map: HashMap<RelayUrl, Filter> = HashMap::with_capacity(relays.len());
+
+                for relay in relays.into_iter() {
+                    // Update map
+                    map.insert(relay, filter.clone());
+                }
+
+                BrokenDownFilters::Filters(map)
+            }
+            // Nothing to do, add to `other` list
+            (None, None) => BrokenDownFilters::Other(filter),
         }
     }
 }
@@ -508,18 +466,6 @@ mod tests {
         ("wss://relay.rip", Some(RelayMetadata::Write)),
         ("wss://relay.snort.social", Some(RelayMetadata::Read)),
     ];
-
-    macro_rules! btreeset {
-        ($( $x:expr ),* $(,)?) => {
-            {
-                let mut set = BTreeSet::new();
-                $(
-                    set.insert($x);
-                )*
-                set
-            }
-        };
-    }
 
     fn build_relay_list_event(
         secret_key: &str,
@@ -547,7 +493,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_break_down_filters() {
+    async fn test_break_down_filter() {
         let keys_a = Keys::parse(SECRET_KEY_A).unwrap();
         let keys_b = Keys::parse(SECRET_KEY_B).unwrap();
 
@@ -561,113 +507,94 @@ mod tests {
 
         let graph = setup_graph().await;
 
-        // Single filter, single author
-        let filters = btreeset![Filter::new().author(keys_a.public_key)];
-        let broken_down = graph.break_down_filters(filters.clone()).await;
+        // Single author
+        let filter = Filter::new().author(keys_a.public_key);
+        match graph.break_down_filter(filter.clone()).await {
+            BrokenDownFilters::Filters(map) => {
+                assert_eq!(map.get(&damus_url).unwrap(), &filter);
+                assert_eq!(map.get(&nostr_bg_url).unwrap(), &filter);
+                assert_eq!(map.get(&nos_lol_url).unwrap(), &filter);
+                assert!(!map.contains_key(&nostr_mom_url));
+            }
+            _ => panic!("Expected filters"),
+        }
 
-        assert_eq!(broken_down.filters.get(&damus_url).unwrap(), &filters);
-        assert_eq!(broken_down.filters.get(&nostr_bg_url).unwrap(), &filters);
-        assert_eq!(broken_down.filters.get(&nos_lol_url).unwrap(), &filters);
-        assert!(!broken_down.filters.contains_key(&nostr_mom_url));
-        assert!(broken_down.orphans.is_none());
-        assert!(broken_down.others.is_none());
-
-        // Multiple filters, multiple authors
+        // Multiple authors
         let authors_filter = Filter::new().authors([keys_a.public_key, keys_b.public_key]);
+        match graph.break_down_filter(authors_filter.clone()).await {
+            BrokenDownFilters::Filters(map) => {
+                assert_eq!(map.get(&damus_url).unwrap(), &authors_filter);
+                assert_eq!(
+                    map.get(&nostr_bg_url).unwrap(),
+                    &Filter::new().author(keys_a.public_key)
+                );
+                assert_eq!(
+                    map.get(&nos_lol_url).unwrap(),
+                    &Filter::new().author(keys_a.public_key)
+                );
+                assert!(!map.contains_key(&nostr_mom_url));
+                assert_eq!(
+                    map.get(&nostr_info_url).unwrap(),
+                    &Filter::new().author(keys_b.public_key)
+                );
+                assert_eq!(
+                    map.get(&relay_rip_url).unwrap(),
+                    &Filter::new().author(keys_b.public_key)
+                );
+                assert!(!map.contains_key(&snort_url));
+            }
+            _ => panic!("Expected filters"),
+        }
+
+        // Other filter
         let search_filter = Filter::new().search("Test").limit(10);
-        let filters = btreeset![authors_filter.clone(), search_filter.clone()];
-        let broken_down = graph.break_down_filters(filters.clone()).await;
+        match graph.break_down_filter(search_filter.clone()).await {
+            BrokenDownFilters::Other(filter) => {
+                assert_eq!(filter, search_filter);
+            }
+            _ => panic!("Expected other"),
+        }
 
-        assert_eq!(
-            broken_down.filters.get(&damus_url).unwrap(),
-            &btreeset![authors_filter]
-        );
-        assert_eq!(
-            broken_down.filters.get(&nostr_bg_url).unwrap(),
-            &btreeset![Filter::new().author(keys_a.public_key)]
-        );
-        assert_eq!(
-            broken_down.filters.get(&nos_lol_url).unwrap(),
-            &btreeset![Filter::new().author(keys_a.public_key)]
-        );
-        assert!(!broken_down.filters.contains_key(&nostr_mom_url));
-        assert_eq!(
-            broken_down.filters.get(&nostr_info_url).unwrap(),
-            &btreeset![Filter::new().author(keys_b.public_key)]
-        );
-        assert_eq!(
-            broken_down.filters.get(&relay_rip_url).unwrap(),
-            &btreeset![Filter::new().author(keys_b.public_key)]
-        );
-        assert!(!broken_down.filters.contains_key(&snort_url));
-        assert!(broken_down.orphans.is_none());
-        assert_eq!(broken_down.others, Some(btreeset![search_filter]));
-
-        // Multiple filters, multiple authors and single p tags
-        let authors_filter = Filter::new().authors([keys_a.public_key, keys_b.public_key]);
+        // Single p tags
         let p_tag_filter = Filter::new().pubkey(keys_a.public_key);
-        let search_filter = Filter::new().search("Test").limit(10);
-        let filters = btreeset![
-            authors_filter.clone(),
-            p_tag_filter.clone(),
-            search_filter.clone(),
-        ];
-        let broken_down = graph.break_down_filters(filters.clone()).await;
+        match graph.break_down_filter(p_tag_filter.clone()).await {
+            BrokenDownFilters::Filters(map) => {
+                assert_eq!(map.get(&damus_url).unwrap(), &p_tag_filter);
+                assert_eq!(map.get(&nostr_bg_url).unwrap(), &p_tag_filter);
+                assert_eq!(map.get(&nostr_mom_url).unwrap(), &p_tag_filter);
+                assert!(!map.contains_key(&nos_lol_url));
+                assert!(!map.contains_key(&nostr_info_url));
+                assert!(!map.contains_key(&relay_rip_url));
+                assert!(!map.contains_key(&snort_url));
+            }
+            _ => panic!("Expected filters"),
+        }
 
-        assert_eq!(
-            broken_down.filters.get(&damus_url).unwrap(),
-            &btreeset![p_tag_filter.clone(), authors_filter]
-        );
-        assert_eq!(
-            broken_down.filters.get(&nostr_bg_url).unwrap(),
-            &btreeset![
-                p_tag_filter.clone(),
-                Filter::new().author(keys_a.public_key),
-            ]
-        );
-        assert_eq!(
-            broken_down.filters.get(&nos_lol_url).unwrap(),
-            &btreeset![Filter::new().author(keys_a.public_key)]
-        );
-        assert_eq!(
-            broken_down.filters.get(&nostr_mom_url).unwrap(),
-            &btreeset![p_tag_filter]
-        );
-        assert_eq!(
-            broken_down.filters.get(&nostr_info_url).unwrap(),
-            &btreeset![Filter::new().author(keys_b.public_key)]
-        );
-        assert_eq!(
-            broken_down.filters.get(&relay_rip_url).unwrap(),
-            &btreeset![Filter::new().author(keys_b.public_key)]
-        );
-        assert!(!broken_down.filters.contains_key(&snort_url));
-        assert!(broken_down.orphans.is_none());
-        assert_eq!(broken_down.others, Some(btreeset![search_filter]));
-
-        // Single filter, both author and p tag
-        let filters = btreeset![Filter::new()
+        // Both author and p tag
+        let filter = Filter::new()
             .author(keys_a.public_key)
-            .pubkey(keys_b.public_key)];
-        let broken_down = graph.break_down_filters(filters.clone()).await;
-
-        assert_eq!(broken_down.filters.get(&damus_url).unwrap(), &filters);
-        assert_eq!(broken_down.filters.get(&nostr_bg_url).unwrap(), &filters);
-        assert_eq!(broken_down.filters.get(&nos_lol_url).unwrap(), &filters);
-        assert_eq!(broken_down.filters.get(&nostr_mom_url).unwrap(), &filters);
-        assert_eq!(broken_down.filters.get(&nostr_info_url).unwrap(), &filters);
-        assert_eq!(broken_down.filters.get(&relay_rip_url).unwrap(), &filters);
-        assert_eq!(broken_down.filters.get(&snort_url).unwrap(), &filters);
-        assert!(broken_down.orphans.is_none());
-        assert!(broken_down.others.is_none());
+            .pubkey(keys_b.public_key);
+        match graph.break_down_filter(filter.clone()).await {
+            BrokenDownFilters::Filters(map) => {
+                assert_eq!(map.get(&damus_url).unwrap(), &filter);
+                assert_eq!(map.get(&nostr_bg_url).unwrap(), &filter);
+                assert_eq!(map.get(&nos_lol_url).unwrap(), &filter);
+                assert_eq!(map.get(&nostr_mom_url).unwrap(), &filter);
+                assert_eq!(map.get(&nostr_info_url).unwrap(), &filter);
+                assert_eq!(map.get(&relay_rip_url).unwrap(), &filter);
+                assert_eq!(map.get(&snort_url).unwrap(), &filter);
+            }
+            _ => panic!("Expected filters"),
+        }
 
         // test orphan filters
         let random_keys = Keys::generate();
-        let filters = btreeset![Filter::new().author(random_keys.public_key)];
-        let broken_down = graph.break_down_filters(filters.clone()).await;
-
-        assert!(broken_down.filters.is_empty());
-        assert_eq!(broken_down.orphans, Some(filters.clone()));
-        assert!(broken_down.others.is_none());
+        let filter = Filter::new().author(random_keys.public_key);
+        match graph.break_down_filter(filter.clone()).await {
+            BrokenDownFilters::Orphan(f) => {
+                assert_eq!(f, filter);
+            }
+            _ => panic!("Expected filters"),
+        }
     }
 }

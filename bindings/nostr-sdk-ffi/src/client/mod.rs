@@ -216,25 +216,20 @@ impl Client {
         self.inner.disconnect().await
     }
 
-    pub async fn subscriptions(&self) -> HashMap<String, Vec<Arc<Filter>>> {
+    pub async fn subscriptions(&self) -> HashMap<String, Arc<Filter>> {
         self.inner
             .subscriptions()
             .await
             .into_iter()
-            .map(|(id, filters)| {
-                (
-                    id.to_string(),
-                    filters.into_iter().map(|f| Arc::new(f.into())).collect(),
-                )
-            })
+            .map(|(id, f)| (id.to_string(), Arc::new(f.into())))
             .collect()
     }
 
-    pub async fn subscription(&self, id: String) -> Option<Vec<Arc<Filter>>> {
+    pub async fn subscription(&self, id: String) -> Option<Arc<Filter>> {
         self.inner
             .subscription(&SubscriptionId::new(id))
             .await
-            .map(|filters| filters.into_iter().map(|f| Arc::new(f.into())).collect())
+            .map(|f| Arc::new(f.into()))
     }
 
     /// Subscribe to filters
@@ -248,16 +243,12 @@ impl Client {
     #[uniffi::method(default(opts = None))]
     pub async fn subscribe(
         &self,
-        filters: Vec<Arc<Filter>>,
+        filter: &Filter,
         opts: Option<Arc<SubscribeAutoCloseOptions>>,
     ) -> Result<SubscribeOutput> {
-        let filters = filters
-            .into_iter()
-            .map(|f| f.as_ref().deref().clone())
-            .collect();
         Ok(self
             .inner
-            .subscribe(filters, opts.map(|o| **o))
+            .subscribe(filter.deref().clone(), opts.map(|o| **o))
             .await?
             .into())
     }
@@ -274,16 +265,16 @@ impl Client {
     pub async fn subscribe_with_id(
         &self,
         id: String,
-        filters: Vec<Arc<Filter>>,
+        filter: &Filter,
         opts: Option<Arc<SubscribeAutoCloseOptions>>,
     ) -> Result<Output> {
-        let filters = filters
-            .into_iter()
-            .map(|f| f.as_ref().deref().clone())
-            .collect();
         Ok(self
             .inner
-            .subscribe_with_id(SubscriptionId::new(id), filters, opts.map(|o| **o))
+            .subscribe_with_id(
+                SubscriptionId::new(id),
+                filter.deref().clone(),
+                opts.map(|o| **o),
+            )
             .await?
             .into())
     }
@@ -297,16 +288,12 @@ impl Client {
     pub async fn subscribe_to(
         &self,
         urls: Vec<String>,
-        filters: Vec<Arc<Filter>>,
+        filter: &Filter,
         opts: Option<Arc<SubscribeAutoCloseOptions>>,
     ) -> Result<SubscribeOutput> {
-        let filters = filters
-            .into_iter()
-            .map(|f| f.as_ref().deref().clone())
-            .collect();
         Ok(self
             .inner
-            .subscribe_to(urls, filters, opts.map(|o| **o))
+            .subscribe_to(urls, filter.deref().clone(), opts.map(|o| **o))
             .await?
             .into())
     }
@@ -321,16 +308,17 @@ impl Client {
         &self,
         urls: Vec<String>,
         id: String,
-        filters: Vec<Arc<Filter>>,
+        filter: &Filter,
         opts: Option<Arc<SubscribeAutoCloseOptions>>,
     ) -> Result<Output> {
-        let filters = filters
-            .into_iter()
-            .map(|f| f.as_ref().deref().clone())
-            .collect();
         Ok(self
             .inner
-            .subscribe_with_id_to(urls, SubscriptionId::new(id), filters, opts.map(|o| **o))
+            .subscribe_with_id_to(
+                urls,
+                SubscriptionId::new(id),
+                filter.deref().clone(),
+                opts.map(|o| **o),
+            )
             .await?
             .into())
     }
@@ -363,32 +351,24 @@ impl Client {
     ///
     /// If `gossip` is enabled (see `Options`) the events will be requested also to
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
-    pub async fn fetch_events(
-        &self,
-        filters: Vec<Arc<Filter>>,
-        timeout: Duration,
-    ) -> Result<Events> {
-        let filters = filters
-            .into_iter()
-            .map(|f| f.as_ref().deref().clone())
-            .collect();
-        Ok(self.inner.fetch_events(filters, timeout).await?.into())
+    pub async fn fetch_events(&self, filter: &Filter, timeout: Duration) -> Result<Events> {
+        Ok(self
+            .inner
+            .fetch_events(filter.deref().clone(), timeout)
+            .await?
+            .into())
     }
 
     /// Fetch events from specific relays
     pub async fn fetch_events_from(
         &self,
         urls: Vec<String>,
-        filters: Vec<Arc<Filter>>,
+        filter: &Filter,
         timeout: Duration,
     ) -> Result<Events> {
-        let filters = filters
-            .into_iter()
-            .map(|f| f.as_ref().deref().clone())
-            .collect();
         Ok(self
             .inner
-            .fetch_events_from(urls, filters, timeout)
+            .fetch_events_from(urls, filter.deref().clone(), timeout)
             .await?
             .into())
     }
@@ -407,16 +387,12 @@ impl Client {
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     pub async fn fetch_combined_events(
         &self,
-        filters: Vec<Arc<Filter>>,
+        filter: &Filter,
         timeout: Duration,
     ) -> Result<Events> {
-        let filters = filters
-            .into_iter()
-            .map(|f| f.as_ref().deref().clone())
-            .collect();
         Ok(self
             .inner
-            .fetch_combined_events(filters, timeout)
+            .fetch_combined_events(filter.deref().clone(), timeout)
             .await?
             .into())
     }

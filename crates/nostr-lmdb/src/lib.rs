@@ -129,12 +129,12 @@ impl NostrEventsDatabase for NostrLMDB {
         })
     }
 
-    fn count(&self, filters: Vec<Filter>) -> BoxedFuture<Result<usize, DatabaseError>> {
-        Box::pin(async move { self.db.count(filters).await.map_err(DatabaseError::backend) })
+    fn count(&self, filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>> {
+        Box::pin(async move { self.db.count(filter).await.map_err(DatabaseError::backend) })
     }
 
-    fn query(&self, filters: Vec<Filter>) -> BoxedFuture<Result<Events, DatabaseError>> {
-        Box::pin(async move { self.db.query(filters).await.map_err(DatabaseError::backend) })
+    fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>> {
+        Box::pin(async move { self.db.query(filter).await.map_err(DatabaseError::backend) })
     }
 
     fn negentropy_items(
@@ -268,7 +268,7 @@ mod tests {
         }
 
         async fn count_all(&self) -> usize {
-            self.db.count(vec![Filter::new()]).await.unwrap()
+            self.db.count(Filter::new()).await.unwrap()
         }
     }
 
@@ -310,9 +310,7 @@ mod tests {
 
         // Test filter query
         let events = db
-            .query(vec![Filter::new()
-                .author(keys.public_key)
-                .kind(Kind::Metadata)])
+            .query(Filter::new().author(keys.public_key).kind(Kind::Metadata))
             .await
             .unwrap();
         assert_eq!(events.to_vec(), vec![expected_event.clone()]);
@@ -342,9 +340,7 @@ mod tests {
 
         // Test filter query
         let events = db
-            .query(vec![Filter::new()
-                .author(keys.public_key)
-                .kind(Kind::Metadata)])
+            .query(Filter::new().author(keys.public_key).kind(Kind::Metadata))
             .await
             .unwrap();
         assert_eq!(events.to_vec(), vec![new_expected_event]);
@@ -375,7 +371,7 @@ mod tests {
         assert_eq!(event, expected_event);
 
         // Test filter query
-        let events = db.query(vec![coordinate.clone().into()]).await.unwrap();
+        let events = db.query(coordinate.clone().into()).await.unwrap();
         assert_eq!(events.to_vec(), vec![expected_event.clone()]);
 
         // Check if number of events in database match the expected
@@ -404,7 +400,7 @@ mod tests {
         assert_eq!(event, new_expected_event);
 
         // Test filter query
-        let events = db.query(vec![coordinate.into()]).await.unwrap();
+        let events = db.query(coordinate.into()).await.unwrap();
         assert_eq!(events.to_vec(), vec![new_expected_event]);
 
         // Check if number of events in database match the expected
@@ -428,28 +424,19 @@ mod tests {
 
         let _added_events: usize = db.add_random_events().await;
 
-        let events = db
-            .query(vec![Filter::new().search("Account A")])
-            .await
-            .unwrap();
+        let events = db.query(Filter::new().search("Account A")).await.unwrap();
         assert_eq!(events.len(), 1);
 
-        let events = db
-            .query(vec![Filter::new().search("account a")])
-            .await
-            .unwrap();
+        let events = db.query(Filter::new().search("account a")).await.unwrap();
         assert_eq!(events.len(), 1);
 
-        let events = db
-            .query(vec![Filter::new().search("text note")])
-            .await
-            .unwrap();
+        let events = db.query(Filter::new().search("text note")).await.unwrap();
         assert_eq!(events.len(), 2);
 
-        let events = db.query(vec![Filter::new().search("notes")]).await.unwrap();
+        let events = db.query(Filter::new().search("notes")).await.unwrap();
         assert_eq!(events.len(), 0);
 
-        let events = db.query(vec![Filter::new().search("hola")]).await.unwrap();
+        let events = db.query(Filter::new().search("hola")).await.unwrap();
         assert_eq!(events.len(), 0);
     }
 
@@ -480,7 +467,7 @@ mod tests {
             Event::from_json(EVENTS[0]).unwrap(),
         ];
         assert_eq!(
-            db.query(vec![Filter::new()]).await.unwrap().to_vec(),
+            db.query(Filter::new()).await.unwrap().to_vec(),
             expected_output
         );
         assert_eq!(db.count_all().await, 8);

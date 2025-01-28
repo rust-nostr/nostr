@@ -40,21 +40,18 @@ impl JsClientMessage {
     }
 
     /// Create new `REQ` message
-    pub fn req(subscription_id: &str, filters: Vec<JsFilter>) -> Self {
+    pub fn req(subscription_id: &str, filter: &JsFilter) -> Self {
         Self {
-            inner: ClientMessage::req(
-                SubscriptionId::new(subscription_id),
-                filters.into_iter().map(|f| f.into()).collect(),
-            ),
+            inner: ClientMessage::req(SubscriptionId::new(subscription_id), filter.deref().clone()),
         }
     }
 
     /// Create new `COUNT` message
-    pub fn count(subscription_id: &str, filters: Vec<JsFilter>) -> Self {
+    pub fn count(subscription_id: &str, filter: &JsFilter) -> Self {
         Self {
             inner: ClientMessage::count(
                 SubscriptionId::new(subscription_id),
-                filters.into_iter().map(|f| f.into()).collect(),
+                filter.deref().clone(),
             ),
         }
     }

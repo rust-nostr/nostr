@@ -3,7 +3,6 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -251,11 +250,11 @@ impl Store {
         .await?
     }
 
-    pub async fn count(&self, filters: Vec<Filter>) -> Result<usize, Error> {
+    pub async fn count(&self, filter: Filter) -> Result<usize, Error> {
         self.interact(move |db| {
             let txn = db.read_txn()?;
-            let output = db.query(&txn, filters)?;
-            let len: usize = output.len();
+            let output = db.query(&txn, filter)?;
+            let len: usize = output.count();
             txn.commit()?;
             Ok(len)
         })
@@ -263,12 +262,12 @@ impl Store {
     }
 
     // Lookup ID: EVENT_ORD_IMPL
-    pub async fn query(&self, filters: Vec<Filter>) -> Result<Events, Error> {
+    pub async fn query(&self, filter: Filter) -> Result<Events, Error> {
         self.interact(move |db| {
-            let mut events: Events = Events::new(&filters);
+            let mut events: Events = Events::new(&filter);
 
             let txn: RoTxn = db.read_txn()?;
-            let output: BTreeSet<EventBorrow> = db.query(&txn, filters)?;
+            let output = db.query(&txn, filter)?;
             events.extend(output.into_iter().map(|e| e.into_owned()));
             txn.commit()?;
 
@@ -283,7 +282,7 @@ impl Store {
     ) -> Result<Vec<(EventId, Timestamp)>, Error> {
         self.interact(move |db| {
             let txn = db.read_txn()?;
-            let events = db.query(&txn, vec![filter])?;
+            let events = db.query(&txn, filter)?;
             let items = events
                 .into_iter()
                 .map(|e| (EventId::from_byte_array(*e.id), e.created_at))

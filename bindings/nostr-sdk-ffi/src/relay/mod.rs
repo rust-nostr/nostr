@@ -165,27 +165,22 @@ impl Relay {
         self.inner.document().await.into()
     }
 
-    pub async fn subscriptions(&self) -> HashMap<String, Vec<Arc<Filter>>> {
+    pub async fn subscriptions(&self) -> HashMap<String, Arc<Filter>> {
         self.inner
             .subscriptions()
             .await
             .into_iter()
-            .map(|(id, filters)| {
-                (
-                    id.to_string(),
-                    filters.into_iter().map(|f| Arc::new(f.into())).collect(),
-                )
-            })
+            .map(|(id, f)| (id.to_string(), Arc::new(f.into())))
             .collect()
     }
 
     /// Get filters by subscription ID
-    pub async fn subscription(&self, id: String) -> Option<Vec<Arc<Filter>>> {
+    pub async fn subscription(&self, id: String) -> Option<Arc<Filter>> {
         let id = SubscriptionId::new(id);
         self.inner
             .subscription(&id)
             .await
-            .map(|f| f.into_iter().map(|f| Arc::new(f.into())).collect())
+            .map(|f| Arc::new(f.into()))
     }
 
     pub fn opts(&self) -> RelayOptions {
@@ -254,20 +249,10 @@ impl Relay {
     /// It's possible to automatically close a subscription by configuring the `SubscribeOptions`.
     ///
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
-    pub async fn subscribe(
-        &self,
-        filters: Vec<Arc<Filter>>,
-        opts: &SubscribeOptions,
-    ) -> Result<String> {
+    pub async fn subscribe(&self, filter: &Filter, opts: &SubscribeOptions) -> Result<String> {
         Ok(self
             .inner
-            .subscribe(
-                filters
-                    .into_iter()
-                    .map(|f| f.as_ref().deref().clone())
-                    .collect(),
-                **opts,
-            )
+            .subscribe(filter.deref().clone(), **opts)
             .await?
             .to_string())
     }
@@ -282,19 +267,12 @@ impl Relay {
     pub async fn subscribe_with_id(
         &self,
         id: String,
-        filters: Vec<Arc<Filter>>,
+        filter: &Filter,
         opts: &SubscribeOptions,
     ) -> Result<()> {
         Ok(self
             .inner
-            .subscribe_with_id(
-                SubscriptionId::new(id),
-                filters
-                    .into_iter()
-                    .map(|f| f.as_ref().deref().clone())
-                    .collect(),
-                **opts,
-            )
+            .subscribe_with_id(SubscriptionId::new(id), filter.deref().clone(), **opts)
             .await?)
     }
 
@@ -311,28 +289,23 @@ impl Relay {
     /// Fetch events
     pub async fn fetch_events(
         &self,
-        filters: Vec<Arc<Filter>>,
+        filter: &Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<Events> {
-        let filters = filters
-            .into_iter()
-            .map(|f| f.as_ref().deref().clone())
-            .collect();
         Ok(self
             .inner
-            .fetch_events(filters, timeout, policy.into())
+            .fetch_events(filter.deref().clone(), timeout, policy.into())
             .await?
             .into())
     }
 
     /// Count events
-    pub async fn count_events(&self, filters: Vec<Arc<Filter>>, timeout: Duration) -> Result<u64> {
-        let filters = filters
-            .into_iter()
-            .map(|f| f.as_ref().deref().clone())
-            .collect();
-        Ok(self.inner.count_events(filters, timeout).await? as u64)
+    pub async fn count_events(&self, filter: &Filter, timeout: Duration) -> Result<u64> {
+        Ok(self
+            .inner
+            .count_events(filter.deref().clone(), timeout)
+            .await? as u64)
     }
 
     /// Sync events with relays (negentropy reconciliation)

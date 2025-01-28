@@ -294,24 +294,8 @@ impl Lmdb {
         }
     }
 
-    pub fn query<'a, I>(
-        &self,
-        txn: &'a RoTxn,
-        filters: I,
-    ) -> Result<BTreeSet<EventBorrow<'a>>, Error>
-    where
-        I: IntoIterator<Item = Filter>,
-    {
-        let mut output: BTreeSet<EventBorrow<'a>> = BTreeSet::new();
-        for filter in filters.into_iter() {
-            let events = self.single_filter_query(txn, filter)?;
-            output.extend(events);
-        }
-        Ok(output)
-    }
-
     pub fn delete(&self, read_txn: &RoTxn, txn: &mut RwTxn, filter: Filter) -> Result<(), Error> {
-        let events = self.single_filter_query(read_txn, filter)?;
+        let events = self.query(read_txn, filter)?;
         for event in events.into_iter() {
             self.remove(txn, &event)?;
         }
@@ -319,7 +303,7 @@ impl Lmdb {
     }
 
     /// Find all events that match the filter
-    fn single_filter_query<'a>(
+    pub fn query<'a>(
         &self,
         txn: &'a RoTxn,
         filter: Filter,

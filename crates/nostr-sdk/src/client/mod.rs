@@ -4,7 +4,7 @@
 
 //! Client
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::iter;
 use std::sync::Arc;
@@ -25,7 +25,7 @@ pub use self::error::Error;
 pub use self::options::Options;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Connection, ConnectionTarget};
-use crate::gossip::graph::GossipGraph;
+use crate::gossip::graph::{BrokenDownFilters, GossipGraph};
 
 /// Nostr client
 #[derive(Debug, Clone)]
@@ -498,13 +498,13 @@ impl Client {
 
     /// Get pool subscriptions
     #[inline]
-    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
         self.pool.subscriptions().await
     }
 
     /// Get pool subscription
     #[inline]
-    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
+    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
         self.pool.subscription(id).await
     }
 
@@ -536,25 +536,25 @@ impl Client {
     ///     .since(Timestamp::now());
     ///
     /// // Subscribe
-    /// let output = client.subscribe(vec![subscription], None).await?;
+    /// let output = client.subscribe(subscription, None).await?;
     /// println!("Subscription ID: {}", output.val);
     ///
     /// // Auto-closing subscription
     /// let id = SubscriptionId::generate();
     /// let subscription = Filter::new().kind(Kind::TextNote).limit(10);
     /// let opts = SubscribeAutoCloseOptions::default().exit_policy(ReqExitPolicy::ExitOnEOSE);
-    /// let output = client.subscribe(vec![subscription], Some(opts)).await?;
+    /// let output = client.subscribe(subscription, Some(opts)).await?;
     /// println!("Subscription ID: {} [auto-closing]", output.val);
     /// # Ok(())
     /// # }
     /// ```
     pub async fn subscribe(
         &self,
-        filters: Vec<Filter>,
+        filter: Filter,
         opts: Option<SubscribeAutoCloseOptions>,
     ) -> Result<Output<SubscriptionId>, Error> {
         let id: SubscriptionId = SubscriptionId::generate();
-        let output: Output<()> = self.subscribe_with_id(id.clone(), filters, opts).await?;
+        let output: Output<()> = self.subscribe_with_id(id.clone(), filter, opts).await?;
         Ok(Output {
             val: id,
             success: output.success,
@@ -575,15 +575,15 @@ impl Client {
     pub async fn subscribe_with_id(
         &self,
         id: SubscriptionId,
-        filters: Vec<Filter>,
+        filter: Filter,
         opts: Option<SubscribeAutoCloseOptions>,
     ) -> Result<Output<()>, Error> {
         let opts: SubscribeOptions = SubscribeOptions::default().close_on(opts);
 
         if self.opts.gossip {
-            self.gossip_subscribe(id, filters, opts).await
+            self.gossip_subscribe(id, filter, opts).await
         } else {
-            Ok(self.pool.subscribe_with_id(id, filters, opts).await?)
+            Ok(self.pool.subscribe_with_id(id, filter, opts).await?)
         }
     }
 
@@ -599,7 +599,7 @@ impl Client {
     pub async fn subscribe_to<I, U>(
         &self,
         urls: I,
-        filters: Vec<Filter>,
+        filter: Filter,
         opts: Option<SubscribeAutoCloseOptions>,
     ) -> Result<Output<SubscriptionId>, Error>
     where
@@ -608,10 +608,10 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let opts: SubscribeOptions = SubscribeOptions::default().close_on(opts);
-        Ok(self.pool.subscribe_to(urls, filters, opts).await?)
+        Ok(self.pool.subscribe_to(urls, filter, opts).await?)
     }
 
-    /// Subscribe to filters with custom [SubscriptionId] to specific relays
+    /// Subscribe to filter with custom [SubscriptionId] to specific relays
     ///
     /// ### Auto-closing subscription
     ///
@@ -621,7 +621,7 @@ impl Client {
         &self,
         urls: I,
         id: SubscriptionId,
-        filters: Vec<Filter>,
+        filter: Filter,
         opts: Option<SubscribeAutoCloseOptions>,
     ) -> Result<Output<()>, Error>
     where
@@ -632,7 +632,7 @@ impl Client {
         let opts: SubscribeOptions = SubscribeOptions::default().close_on(opts);
         Ok(self
             .pool
-            .subscribe_with_id_to(urls, id, filters, opts)
+            .subscribe_with_id_to(urls, id, filter, opts)
             .await?)
     }
 
@@ -647,7 +647,7 @@ impl Client {
         opts: SubscribeOptions,
     ) -> Result<Output<()>, Error>
     where
-        I: IntoIterator<Item = (U, Vec<Filter>)>,
+        I: IntoIterator<Item = (U, Filter)>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
@@ -720,23 +720,19 @@ impl Client {
     ///     .since(Timestamp::now());
     ///
     /// let _events = client
-    ///     .fetch_events(vec![subscription], Duration::from_secs(10))
+    ///     .fetch_events(subscription, Duration::from_secs(10))
     ///     .await
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn fetch_events(
-        &self,
-        filters: Vec<Filter>,
-        timeout: Duration,
-    ) -> Result<Events, Error> {
+    pub async fn fetch_events(&self, filter: Filter, timeout: Duration) -> Result<Events, Error> {
         if self.opts.gossip {
-            return self.gossip_fetch_events(filters, timeout).await;
+            return self.gossip_fetch_events(filter, timeout).await;
         }
 
         Ok(self
             .pool
-            .fetch_events(filters, timeout, ReqExitPolicy::default())
+            .fetch_events(filter, timeout, ReqExitPolicy::default())
             .await?)
     }
 
@@ -745,7 +741,7 @@ impl Client {
     pub async fn fetch_events_from<I, U>(
         &self,
         urls: I,
-        filters: Vec<Filter>,
+        filter: Filter,
         timeout: Duration,
     ) -> Result<Events, Error>
     where
@@ -755,7 +751,7 @@ impl Client {
     {
         Ok(self
             .pool
-            .fetch_events_from(urls, filters, timeout, ReqExitPolicy::default())
+            .fetch_events_from(urls, filter, timeout, ReqExitPolicy::default())
             .await?)
     }
 
@@ -778,14 +774,12 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() -> Result<()> {
     /// # let client = Client::default();
-    /// # let filters = vec![Filter::new().limit(1)];
+    /// # let filter = Filter::new().limit(1);
     /// // Query database
-    /// let stored_events: Events = client.database().query(filters.clone()).await?;
+    /// let stored_events: Events = client.database().query(filter.clone()).await?;
     ///
     /// // Query relays
-    /// let fetched_events: Events = client
-    ///     .fetch_events(filters, Duration::from_secs(10))
-    ///     .await?;
+    /// let fetched_events: Events = client.fetch_events(filter, Duration::from_secs(10)).await?;
     ///
     /// // Merge result
     /// let events: Events = stored_events.merge(fetched_events);
@@ -799,14 +793,14 @@ impl Client {
     /// ```
     pub async fn fetch_combined_events(
         &self,
-        filters: Vec<Filter>,
+        filter: Filter,
         timeout: Duration,
     ) -> Result<Events, Error> {
         // Query database
-        let stored_events: Events = self.database().query(filters.clone()).await?;
+        let stored_events: Events = self.database().query(filter.clone()).await?;
 
         // Query relays
-        let fetched_events: Events = self.fetch_events(filters, timeout).await?;
+        let fetched_events: Events = self.fetch_events(filter, timeout).await?;
 
         // Merge result
         Ok(stored_events.merge(fetched_events))
@@ -818,16 +812,16 @@ impl Client {
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     pub async fn stream_events(
         &self,
-        filters: Vec<Filter>,
+        filter: Filter,
         timeout: Duration,
     ) -> Result<ReceiverStream<Event>, Error> {
         // Check if gossip is enabled
         if self.opts.gossip {
-            self.gossip_stream_events(filters, timeout).await
+            self.gossip_stream_events(filter, timeout).await
         } else {
             Ok(self
                 .pool
-                .stream_events(filters, timeout, ReqExitPolicy::default())
+                .stream_events(filter, timeout, ReqExitPolicy::default())
                 .await?)
         }
     }
@@ -837,7 +831,7 @@ impl Client {
     pub async fn stream_events_from<I, U>(
         &self,
         urls: I,
-        filters: Vec<Filter>,
+        filter: Filter,
         timeout: Duration,
     ) -> Result<ReceiverStream<Event>, Error>
     where
@@ -847,7 +841,7 @@ impl Client {
     {
         Ok(self
             .pool
-            .stream_events_from(urls, filters, timeout, ReqExitPolicy::default())
+            .stream_events_from(urls, filter, timeout, ReqExitPolicy::default())
             .await?)
     }
 
@@ -856,7 +850,7 @@ impl Client {
     /// Stream events from specific relays with specific filters
     pub async fn stream_events_targeted(
         &self,
-        targets: HashMap<RelayUrl, Vec<Filter>>,
+        targets: HashMap<RelayUrl, Filter>,
         timeout: Duration,
     ) -> Result<ReceiverStream<Event>, Error> {
         Ok(self
@@ -865,7 +859,7 @@ impl Client {
             .await?)
     }
 
-    /// Send client message to a **specific relays**
+    /// Send the client message to a **specific relays**
     #[inline]
     pub async fn send_msg_to<I, U>(&self, urls: I, msg: ClientMessage) -> Result<Output<()>, Error>
     where
@@ -969,7 +963,7 @@ impl Client {
             .author(public_key)
             .kind(Kind::Metadata)
             .limit(1);
-        let events: Events = self.fetch_events(vec![filter], timeout).await?;
+        let events: Events = self.fetch_events(filter, timeout).await?;
         match events.first() {
             Some(event) => Ok(Metadata::try_from(event)?),
             None => Err(Error::MetadataNotFound),
@@ -1005,14 +999,14 @@ impl Client {
         self.send_event_builder(builder).await
     }
 
-    async fn get_contact_list_filters(&self) -> Result<Vec<Filter>, Error> {
+    async fn get_contact_list_filter(&self) -> Result<Filter, Error> {
         let signer = self.signer().await?;
         let public_key = signer.get_public_key().await?;
         let filter: Filter = Filter::new()
             .author(public_key)
             .kind(Kind::ContactList)
             .limit(1);
-        Ok(vec![filter])
+        Ok(filter)
     }
 
     /// Get the contact list from relays.
@@ -1022,8 +1016,8 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     pub async fn get_contact_list(&self, timeout: Duration) -> Result<Vec<Contact>, Error> {
         let mut contact_list: Vec<Contact> = Vec::new();
-        let filters: Vec<Filter> = self.get_contact_list_filters().await?;
-        let events: Events = self.fetch_events(filters, timeout).await?;
+        let filter: Filter = self.get_contact_list_filter().await?;
+        let events: Events = self.fetch_events(filter, timeout).await?;
 
         // Get first event (result of `fetch_events` is sorted DESC by timestamp)
         if let Some(event) = events.first_owned() {
@@ -1053,8 +1047,8 @@ impl Client {
         timeout: Duration,
     ) -> Result<Vec<PublicKey>, Error> {
         let mut pubkeys: Vec<PublicKey> = Vec::new();
-        let filters: Vec<Filter> = self.get_contact_list_filters().await?;
-        let events: Events = self.fetch_events(filters, timeout).await?;
+        let filter: Filter = self.get_contact_list_filter().await?;
+        let events: Events = self.fetch_events(filter, timeout).await?;
 
         for event in events.into_iter() {
             pubkeys.extend(event.tags.public_keys());
@@ -1076,16 +1070,10 @@ impl Client {
 
         let chunk_size: usize = self.opts.req_filters_chunk_size as usize;
         for chunk in public_keys.chunks(chunk_size) {
-            let mut filters: Vec<Filter> = Vec::new();
-            for public_key in chunk.iter() {
-                filters.push(
-                    Filter::new()
-                        .author(*public_key)
-                        .kind(Kind::Metadata)
-                        .limit(1),
-                );
-            }
-            let events: Events = self.fetch_events(filters, timeout).await?;
+            let filter: Filter = Filter::new()
+                .authors(chunk.iter().copied())
+                .kind(Kind::Metadata);
+            let events: Events = self.fetch_events(filter, timeout).await?;
             for event in events.into_iter() {
                 let metadata = Metadata::from_json(&event.content)?;
                 if let Some(m) = contacts.get_mut(&event.pubkey) {
@@ -1256,8 +1244,7 @@ impl Client {
                 .kinds([Kind::RelayList, Kind::InboxRelays]);
 
             // Query from database
-            let database = self.database();
-            let stored_events: Events = database.query(vec![filter.clone()]).await?;
+            let stored_events: Events = self.database().query(filter.clone()).await?;
 
             // Get DISCOVERY and READ relays
             // TODO: avoid clone of both url and relay
@@ -1272,7 +1259,7 @@ impl Client {
 
             // Get events from discovery and read relays
             let events: Events = self
-                .fetch_events_from(relays, vec![filter], Duration::from_secs(10))
+                .fetch_events_from(relays, filter, Duration::from_secs(10))
                 .await?;
 
             // Update last check for these public keys
@@ -1291,12 +1278,9 @@ impl Client {
     }
 
     /// Break down filters for gossip and discovery relays
-    async fn break_down_filters(
-        &self,
-        filters: Vec<Filter>,
-    ) -> Result<HashMap<RelayUrl, Vec<Filter>>, Error> {
+    async fn break_down_filter(&self, filter: Filter) -> Result<HashMap<RelayUrl, Filter>, Error> {
         // Extract all public keys from filters
-        let public_keys = filters.iter().flat_map(|f| f.extract_public_keys());
+        let public_keys = filter.extract_public_keys();
 
         // Check outdated ones
         let outdated_public_keys = self.gossip_graph.check_outdated(public_keys).await;
@@ -1305,85 +1289,39 @@ impl Client {
         self.update_outdated_gossip_graph(outdated_public_keys)
             .await?;
 
-        // Broken down filters
-        let broken_down = self.gossip_graph.break_down_filters(filters).await;
+        // Broken-down filters
+        let filters: HashMap<RelayUrl, Filter> =
+            match self.gossip_graph.break_down_filter(filter).await {
+                BrokenDownFilters::Filters(filters) => filters,
+                BrokenDownFilters::Orphan(filter) | BrokenDownFilters::Other(filter) => {
+                    // Get read relays
+                    let read_relays = self
+                        .pool
+                        .relays_with_flag(RelayServiceFlags::READ, FlagCheck::All)
+                        .await;
 
-        let mut filters: HashMap<RelayUrl, BTreeSet<Filter>> = broken_down.filters;
-
-        // Get read relays
-        let read_relays = self
-            .pool
-            .relays_with_flag(RelayServiceFlags::READ, FlagCheck::All)
-            .await;
-
-        match (broken_down.orphans, broken_down.others) {
-            (Some(orphans), Some(others)) => {
-                for url in read_relays.into_keys() {
-                    filters
-                        .entry(url)
-                        .and_modify(|f| {
-                            f.extend(orphans.clone());
-                            f.extend(others.clone());
-                        })
-                        .or_insert_with(|| {
-                            let mut new = BTreeSet::new();
-                            new.extend(orphans.clone());
-                            new.extend(others.clone());
-                            new
-                        });
+                    let mut map = HashMap::with_capacity(read_relays.len());
+                    for url in read_relays.into_keys() {
+                        map.insert(url, filter.clone());
+                    }
+                    map
                 }
-            }
-            (Some(orphans), None) => {
-                for url in read_relays.into_keys() {
-                    filters
-                        .entry(url)
-                        .and_modify(|f| {
-                            f.extend(orphans.clone());
-                        })
-                        .or_insert_with(|| {
-                            let mut new = BTreeSet::new();
-                            new.extend(orphans.clone());
-                            new
-                        });
-                }
-            }
-            (None, Some(others)) => {
-                // Extend filters with read relays and "other" filters (the filters that aren't linked to public keys)
-                for url in read_relays.into_keys() {
-                    filters
-                        .entry(url)
-                        .and_modify(|f| {
-                            f.extend(others.clone());
-                        })
-                        .or_insert_with(|| {
-                            let mut new = BTreeSet::new();
-                            new.extend(others.clone());
-                            new
-                        });
-                }
-            }
-            (None, None) => {
-                // Nothing to do
-            }
-        }
+            };
 
-        // Add outbox and inbox relays
-        for url in broken_down.urls.into_iter() {
-            if self.add_gossip_relay(&url).await? {
+        // Add gossip (outbox and inbox) relays
+        for url in filters.keys() {
+            if self.add_gossip_relay(url).await? {
                 self.connect_relay(url).await?;
             }
         }
 
         // Check if filters are empty
+        // TODO: this can't be empty, right?
         if filters.is_empty() {
             return Err(Error::GossipFiltersEmpty);
         }
 
-        // Convert btree filters to vec
-        Ok(filters
-            .into_iter()
-            .map(|(u, f)| (u, f.into_iter().collect()))
-            .collect())
+        Ok(filters)
     }
 
     async fn gossip_send_event(&self, event: Event, nip17: bool) -> Result<Output<EventId>, Error> {
@@ -1458,10 +1396,10 @@ impl Client {
 
     async fn gossip_stream_events(
         &self,
-        filters: Vec<Filter>,
+        filter: Filter,
         timeout: Duration,
     ) -> Result<ReceiverStream<Event>, Error> {
-        let filters = self.break_down_filters(filters).await?;
+        let filters = self.break_down_filter(filter).await?;
 
         // Stream events
         let stream: ReceiverStream<Event> = self
@@ -1474,13 +1412,13 @@ impl Client {
 
     async fn gossip_fetch_events(
         &self,
-        filters: Vec<Filter>,
+        filter: Filter,
         timeout: Duration,
     ) -> Result<Events, Error> {
-        let mut events: Events = Events::new(&filters);
+        let mut events: Events = Events::new(&filter);
 
         // Stream events
-        let mut stream: ReceiverStream<Event> = self.gossip_stream_events(filters, timeout).await?;
+        let mut stream: ReceiverStream<Event> = self.gossip_stream_events(filter, timeout).await?;
 
         while let Some(event) = stream.next().await {
             events.insert(event);
@@ -1492,10 +1430,10 @@ impl Client {
     async fn gossip_subscribe(
         &self,
         id: SubscriptionId,
-        filters: Vec<Filter>,
+        filter: Filter,
         opts: SubscribeOptions,
     ) -> Result<Output<()>, Error> {
-        let filters = self.break_down_filters(filters).await?;
+        let filters = self.break_down_filter(filter).await?;
         Ok(self.pool.subscribe_targeted(id, filters, opts).await?)
     }
 
@@ -1505,26 +1443,19 @@ impl Client {
         opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
         // Break down filter
-        let temp_filters = self.break_down_filters(vec![filter]).await?;
+        let temp_filters = self.break_down_filter(filter).await?;
 
         let database = self.database();
-        let mut filters = HashMap::with_capacity(temp_filters.len());
+        let mut filters: HashMap<RelayUrl, (Filter, Vec<_>)> =
+            HashMap::with_capacity(temp_filters.len());
 
         // Iterate broken down filters and compose new filters for targeted reconciliation
-        for (url, value) in temp_filters.into_iter() {
-            let mut map = HashMap::with_capacity(value.len());
+        for (url, filter) in temp_filters.into_iter() {
+            // Get items
+            let items: Vec<(EventId, Timestamp)> =
+                database.negentropy_items(filter.clone()).await?;
 
-            // Iterate per-url filters and get items
-            for filter in value.into_iter() {
-                // Get items
-                let items: Vec<(EventId, Timestamp)> =
-                    database.negentropy_items(filter.clone()).await?;
-
-                // Add filter and items to map
-                map.insert(filter, items);
-            }
-
-            filters.insert(url, map);
+            filters.insert(url, (filter, items));
         }
 
         // Reconciliation

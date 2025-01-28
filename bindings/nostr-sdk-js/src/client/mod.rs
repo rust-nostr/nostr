@@ -259,12 +259,11 @@ impl JsClient {
     /// It's possible to automatically close a subscription by configuring the `SubscribeAutoCloseOptions`.
     pub async fn subscribe(
         &self,
-        filters: Vec<JsFilter>,
+        filter: &JsFilter,
         opts: Option<JsSubscribeAutoCloseOptions>,
     ) -> Result<JsSubscribeOutput> {
-        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         self.inner
-            .subscribe(filters, opts.map(|o| *o))
+            .subscribe(filter.deref().clone(), opts.map(|o| *o))
             .await
             .map_err(into_err)
             .map(|o| o.into())
@@ -282,12 +281,15 @@ impl JsClient {
     pub async fn subscribe_with_id(
         &self,
         id: &str,
-        filters: Vec<JsFilter>,
+        filter: &JsFilter,
         opts: Option<JsSubscribeAutoCloseOptions>,
     ) -> Result<JsOutput> {
-        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         self.inner
-            .subscribe_with_id(SubscriptionId::new(id), filters, opts.map(|o| *o))
+            .subscribe_with_id(
+                SubscriptionId::new(id),
+                filter.deref().clone(),
+                opts.map(|o| *o),
+            )
             .await
             .map_err(into_err)
             .map(|o| o.into())
@@ -302,12 +304,11 @@ impl JsClient {
     pub async fn subscribe_to(
         &self,
         urls: Vec<String>,
-        filters: Vec<JsFilter>,
+        filter: &JsFilter,
         opts: Option<JsSubscribeAutoCloseOptions>,
     ) -> Result<JsSubscribeOutput> {
-        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         self.inner
-            .subscribe_to(urls, filters, opts.map(|o| *o))
+            .subscribe_to(urls, filter.deref().clone(), opts.map(|o| *o))
             .await
             .map_err(into_err)
             .map(|o| o.into())
@@ -323,12 +324,16 @@ impl JsClient {
         &self,
         urls: Vec<String>,
         id: &str,
-        filters: Vec<JsFilter>,
+        filter: &JsFilter,
         opts: Option<JsSubscribeAutoCloseOptions>,
     ) -> Result<JsOutput> {
-        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         self.inner
-            .subscribe_with_id_to(urls, SubscriptionId::new(id), filters, opts.map(|o| *o))
+            .subscribe_with_id_to(
+                urls,
+                SubscriptionId::new(id),
+                filter.deref().clone(),
+                opts.map(|o| *o),
+            )
             .await
             .map_err(into_err)
             .map(|o| o.into())
@@ -370,15 +375,10 @@ impl JsClient {
     /// If `gossip` is enabled (see `Options`) the events will be requested also to
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     #[wasm_bindgen(js_name = fetchEvents)]
-    pub async fn fetch_events(
-        &self,
-        filters: Vec<JsFilter>,
-        timeout: &JsDuration,
-    ) -> Result<JsEvents> {
-        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
+    pub async fn fetch_events(&self, filter: &JsFilter, timeout: &JsDuration) -> Result<JsEvents> {
         let events: Events = self
             .inner
-            .fetch_events(filters, **timeout)
+            .fetch_events(filter.deref().clone(), **timeout)
             .await
             .map_err(into_err)?;
         Ok(events.into())
@@ -389,13 +389,12 @@ impl JsClient {
     pub async fn fetch_events_from(
         &self,
         urls: Vec<String>,
-        filters: Vec<JsFilter>,
+        filter: &JsFilter,
         timeout: &JsDuration,
     ) -> Result<JsEvents> {
-        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         let events: Events = self
             .inner
-            .fetch_events_from(urls, filters, **timeout)
+            .fetch_events_from(urls, filter.deref().clone(), **timeout)
             .await
             .map_err(into_err)?;
         Ok(events.into())
@@ -416,13 +415,12 @@ impl JsClient {
     #[wasm_bindgen(js_name = fetchCombinedEvents)]
     pub async fn fetch_combined_events(
         &self,
-        filters: Vec<JsFilter>,
+        filter: &JsFilter,
         timeout: &JsDuration,
     ) -> Result<JsEvents> {
-        let filters: Vec<Filter> = filters.into_iter().map(|f| f.into()).collect();
         let events: Events = self
             .inner
-            .fetch_combined_events(filters, **timeout)
+            .fetch_combined_events(filter.deref().clone(), **timeout)
             .await
             .map_err(into_err)?;
         Ok(events.into())

@@ -265,8 +265,8 @@ impl InnerLocalRelay {
                 event = new_event.recv() => {
                     if let Ok(event) = event {
                          // Iter subscriptions
-                        for (id, filters) in session.subscriptions.iter() {
-                            if filters.iter().any(|f| f.match_event(&event)) {
+                        for (id, filter) in session.subscriptions.iter() {
+                            if filter.match_event(&event) {
                                 self.send_msg(&mut tx, RelayMessage::event(id.to_owned(), event.clone())).await?;
                             }
                         }
@@ -529,7 +529,7 @@ impl InnerLocalRelay {
             }
             ClientMessage::Req {
                 subscription_id,
-                filters,
+                filter,
             } => {
                 // Check number of subscriptions
                 if session.subscriptions.len() >= self.rate_limit.max_reqs
@@ -582,7 +582,7 @@ impl InnerLocalRelay {
 
                 // check query policy plugins
                 for plugin in self.query_policy.iter() {
-                    if let PolicyResult::Reject(msg) = plugin.admit_query(&filters, addr).await {
+                    if let PolicyResult::Reject(msg) = plugin.admit_query(&filter, addr).await {
                         return self
                             .send_msg(
                                 ws_tx,
@@ -598,10 +598,10 @@ impl InnerLocalRelay {
                 // Update session subscriptions
                 session
                     .subscriptions
-                    .insert(subscription_id.clone(), filters.clone());
+                    .insert(subscription_id.clone(), *filter.clone());
 
                 // Query database
-                let events = self.database.query(filters).await?;
+                let events = self.database.query(*filter).await?;
 
                 tracing::debug!(
                     "Found {} events for subscription '{subscription_id}'",
@@ -620,11 +620,20 @@ impl InnerLocalRelay {
 
                 Ok(())
             }
+            ClientMessage::ReqMultiFilter { subscription_id, .. } => {
+                self.send_msg(
+                    ws_tx,
+                    RelayMessage::Closed {
+                        subscription_id,
+                        message: format!("{}: multi-filter REQs aren't supported (https://github.com/nostr-protocol/nips/pull/1645)", MachineReadablePrefix::Unsupported),
+                    },
+                ).await
+            }
             ClientMessage::Count {
                 subscription_id,
-                filters,
+                filter,
             } => {
-                let count: usize = self.database.count(filters).await?;
+                let count: usize = self.database.count(*filter).await?;
                 self.send_msg(ws_tx, RelayMessage::count(subscription_id, count))
                     .await
             }

@@ -182,15 +182,6 @@ impl JsFilter {
         }
     }
 
-    /// Clone object
-    #[inline]
-    #[allow(clippy::should_implement_trait)]
-    pub fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-        }
-    }
-
     #[wasm_bindgen(js_name = fromJson)]
     pub fn from_json(json: &str) -> Result<JsFilter> {
         Ok(Self {

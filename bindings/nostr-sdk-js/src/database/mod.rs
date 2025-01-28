@@ -113,14 +113,21 @@ impl JsNostrDatabase {
             .map(|e| e.into()))
     }
 
-    pub async fn count(&self, filters: Vec<JsFilter>) -> Result<u64> {
-        let filters = filters.into_iter().map(|f| f.into()).collect();
-        Ok(self.inner.count(filters).await.map_err(into_err)? as u64)
+    pub async fn count(&self, filter: &JsFilter) -> Result<u64> {
+        Ok(self
+            .inner
+            .count(filter.deref().clone())
+            .await
+            .map_err(into_err)? as u64)
     }
 
-    pub async fn query(&self, filters: Vec<JsFilter>) -> Result<JsEvents> {
-        let filters = filters.into_iter().map(|f| f.into()).collect();
-        Ok(self.inner.query(filters).await.map_err(into_err)?.into())
+    pub async fn query(&self, filter: &JsFilter) -> Result<JsEvents> {
+        Ok(self
+            .inner
+            .query(filter.deref().clone())
+            .await
+            .map_err(into_err)?
+            .into())
     }
 
     /// Wipe all data

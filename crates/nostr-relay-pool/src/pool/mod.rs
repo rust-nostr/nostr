@@ -458,13 +458,13 @@ impl RelayPool {
 
     /// Get subscriptions
     #[inline]
-    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
         self.inner.subscriptions().await
     }
 
     /// Get subscription
     #[inline]
-    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
+    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
         self.inner.subscription(id).await
     }
 
@@ -472,8 +472,8 @@ impl RelayPool {
     ///
     /// When a new relay will be added, saved subscriptions will be automatically used for it.
     #[inline]
-    pub async fn save_subscription(&self, id: SubscriptionId, filters: Vec<Filter>) {
-        self.inner.save_subscription(id, filters).await
+    pub async fn save_subscription(&self, id: SubscriptionId, filter: Filter) {
+        self.inner.save_subscription(id, filter).await
     }
 
     /// Send a client message to specific relays
@@ -637,11 +637,11 @@ impl RelayPool {
     /// Check [`RelayPool::subscribe_with_id_to`] docs to learn more.
     pub async fn subscribe(
         &self,
-        filters: Vec<Filter>,
+        filter: Filter,
         opts: SubscribeOptions,
     ) -> Result<Output<SubscriptionId>, Error> {
         let id: SubscriptionId = SubscriptionId::generate();
-        let output: Output<()> = self.subscribe_with_id(id.clone(), filters, opts).await?;
+        let output: Output<()> = self.subscribe_with_id(id.clone(), filter, opts).await?;
         Ok(Output {
             val: id,
             success: output.success,
@@ -655,20 +655,20 @@ impl RelayPool {
     pub async fn subscribe_with_id(
         &self,
         id: SubscriptionId,
-        filters: Vec<Filter>,
+        filter: Filter,
         opts: SubscribeOptions,
     ) -> Result<Output<()>, Error> {
         // Check if isn't auto-closing subscription
         if !opts.is_auto_closing() {
             // Save subscription
-            self.save_subscription(id.clone(), filters.clone()).await;
+            self.save_subscription(id.clone(), filter.clone()).await;
         }
 
         // Get relay urls
         let urls: Vec<RelayUrl> = self.read_relay_urls().await;
 
         // Subscribe
-        self.subscribe_with_id_to(urls, id, filters, opts).await
+        self.subscribe_with_id_to(urls, id, filter, opts).await
     }
 
     /// Subscribe to filters to specific relays
@@ -677,7 +677,7 @@ impl RelayPool {
     pub async fn subscribe_to<I, U>(
         &self,
         urls: I,
-        filters: Vec<Filter>,
+        filter: Filter,
         opts: SubscribeOptions,
     ) -> Result<Output<SubscriptionId>, Error>
     where
@@ -687,7 +687,7 @@ impl RelayPool {
     {
         let id: SubscriptionId = SubscriptionId::generate();
         let output: Output<()> = self
-            .subscribe_with_id_to(urls, id.clone(), filters, opts)
+            .subscribe_with_id_to(urls, id.clone(), filter, opts)
             .await?;
         Ok(Output {
             val: id,
@@ -711,7 +711,7 @@ impl RelayPool {
         &self,
         urls: I,
         id: SubscriptionId,
-        filters: Vec<Filter>,
+        filter: Filter,
         opts: SubscribeOptions,
     ) -> Result<Output<()>, Error>
     where
@@ -719,7 +719,7 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let targets = urls.into_iter().map(|u| (u, filters.clone()));
+        let targets = urls.into_iter().map(|u| (u, filter.clone()));
         self.subscribe_targeted(id, targets, opts).await
     }
 
@@ -733,12 +733,12 @@ impl RelayPool {
         opts: SubscribeOptions,
     ) -> Result<Output<()>, Error>
     where
-        I: IntoIterator<Item = (U, Vec<Filter>)>,
+        I: IntoIterator<Item = (U, Filter)>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Collect targets
-        let targets: HashMap<RelayUrl, Vec<Filter>> = targets
+        let targets: HashMap<RelayUrl, Filter> = targets
             .into_iter()
             .map(|(u, f)| Ok((u.try_into_url()?, f)))
             .collect::<Result<_, Error>>()?;
@@ -766,11 +766,11 @@ impl RelayPool {
         let mut output: Output<()> = Output::default();
 
         // Compose futures
-        for (url, filters) in targets.into_iter() {
+        for (url, filter) in targets.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
             let id: SubscriptionId = id.clone();
             urls.push(url);
-            futures.push(relay.subscribe_with_id(id, filters, opts));
+            futures.push(relay.subscribe_with_id(id, filter, opts));
         }
 
         // Join futures
@@ -862,12 +862,10 @@ impl RelayPool {
             .negentropy_items(filter.clone())
             .await?;
 
-        // Compose filters
-        let mut filters: HashMap<Filter, Vec<(EventId, Timestamp)>> = HashMap::with_capacity(1);
-        filters.insert(filter, items);
+        let tup: (Filter, Vec<(EventId, Timestamp)>) = (filter, items);
 
         // Reconcile
-        let targets = urls.into_iter().map(|u| (u, filters.clone()));
+        let targets = urls.into_iter().map(|u| (u, tup.clone()));
         self.sync_targeted(targets, opts).await
     }
 
@@ -878,12 +876,12 @@ impl RelayPool {
         opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
-        I: IntoIterator<Item = (U, HashMap<Filter, Vec<(EventId, Timestamp)>>)>,
+        I: IntoIterator<Item = (U, (Filter, Vec<(EventId, Timestamp)>))>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Collect targets
-        let targets: HashMap<RelayUrl, HashMap<Filter, Vec<(EventId, Timestamp)>>> = targets
+        let targets: HashMap<RelayUrl, (Filter, Vec<(EventId, Timestamp)>)> = targets
             .into_iter()
             .map(|(u, v)| Ok((u.try_into_url()?, v)))
             .collect::<Result<_, Error>>()?;
@@ -913,10 +911,10 @@ impl RelayPool {
         let mut output: Output<Reconciliation> = Output::default();
 
         // Compose futures
-        for (url, filters) in targets.into_iter() {
+        for (url, (filter, items)) in targets.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
             urls.push(url);
-            futures.push(relay.sync_multi(filters, opts));
+            futures.push(relay.sync_with_items(filter, items, opts));
         }
 
         // Join futures
@@ -947,19 +945,19 @@ impl RelayPool {
     /// Fetch events from relays with [`RelayServiceFlags::READ`] flag.
     pub async fn fetch_events(
         &self,
-        filters: Vec<Filter>,
+        filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<Events, Error> {
         let urls: Vec<RelayUrl> = self.read_relay_urls().await;
-        self.fetch_events_from(urls, filters, timeout, policy).await
+        self.fetch_events_from(urls, filter, timeout, policy).await
     }
 
     /// Fetch events from specific relays
     pub async fn fetch_events_from<I, U>(
         &self,
         urls: I,
-        filters: Vec<Filter>,
+        filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<Events, Error>
@@ -968,11 +966,11 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let mut events: Events = Events::new(&filters);
+        let mut events: Events = Events::new(&filter);
 
         // Stream events
         let mut stream = self
-            .stream_events_from(urls, filters, timeout, policy)
+            .stream_events_from(urls, filter, timeout, policy)
             .await?;
         while let Some(event) = stream.next().await {
             events.insert(event);
@@ -984,20 +982,19 @@ impl RelayPool {
     /// Stream events from relays with `READ` flag.
     pub async fn stream_events(
         &self,
-        filters: Vec<Filter>,
+        filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<ReceiverStream<Event>, Error> {
         let urls: Vec<RelayUrl> = self.read_relay_urls().await;
-        self.stream_events_from(urls, filters, timeout, policy)
-            .await
+        self.stream_events_from(urls, filter, timeout, policy).await
     }
 
     /// Stream events from specific relays
     pub async fn stream_events_from<I, U>(
         &self,
         urls: I,
-        filters: Vec<Filter>,
+        filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<ReceiverStream<Event>, Error>
@@ -1008,7 +1005,7 @@ impl RelayPool {
     {
         let targets = urls
             .into_iter()
-            .map(|u| Ok((u.try_into_url()?, filters.clone())))
+            .map(|u| Ok((u.try_into_url()?, filter.clone())))
             .collect::<Result<_, Error>>()?;
         self.stream_events_targeted(targets, timeout, policy).await
     }
@@ -1018,11 +1015,11 @@ impl RelayPool {
     /// Stream events from specific relays with specific filters
     pub async fn stream_events_targeted(
         &self,
-        targets: HashMap<RelayUrl, Vec<Filter>>,
+        targets: HashMap<RelayUrl, Filter>,
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<ReceiverStream<Event>, Error> {
-        // Check if targets map is empty
+        // Check if `targets` map is empty
         if targets.is_empty() {
             return Err(Error::NoRelaysSpecified);
         }
@@ -1036,17 +1033,16 @@ impl RelayPool {
         }
 
         // Construct new map with also `Relay` struct
-        let mut map: HashMap<RelayUrl, (Relay, Vec<Filter>)> =
-            HashMap::with_capacity(targets.len());
+        let mut map: HashMap<RelayUrl, (Relay, Filter)> = HashMap::with_capacity(targets.len());
 
         // Populate the new map.
         // Return an error if the relay doesn't exists.
-        for (url, filters) in targets.into_iter() {
+        for (url, filter) in targets.into_iter() {
             // Get relay
             let relay: Relay = self.internal_relay(&relays, &url).cloned()?;
 
             // Insert into new map
-            map.insert(url, (relay, filters));
+            map.insert(url, (relay, filter));
         }
 
         // Drop relays read guard
@@ -1065,10 +1061,10 @@ impl RelayPool {
             let mut futures = Vec::with_capacity(map.len());
 
             // Populate `urls` and `futures` vectors
-            for (url, (relay, filters)) in map.into_iter() {
+            for (url, (relay, filter)) in map.into_iter() {
                 urls.push(url);
                 futures.push(relay.fetch_events_with_callback_owned(
-                    filters,
+                    filter,
                     timeout,
                     policy,
                     |event| {

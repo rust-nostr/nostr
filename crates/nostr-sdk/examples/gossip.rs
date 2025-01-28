@@ -46,9 +46,7 @@ async fn main() -> Result<()> {
 
     // Get events
     let filter = Filter::new().author(pubkey).kind(Kind::TextNote).limit(3);
-    let events = client
-        .fetch_events(vec![filter], Duration::from_secs(10))
-        .await?;
+    let events = client.fetch_events(filter, Duration::from_secs(10)).await?;
 
     for event in events.into_iter() {
         println!("{}", event.as_json());

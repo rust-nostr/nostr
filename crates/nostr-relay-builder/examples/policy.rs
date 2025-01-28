@@ -38,14 +38,11 @@ struct RejectAuthorLimit {
 impl QueryPolicy for RejectAuthorLimit {
     fn admit_query<'a>(
         &'a self,
-        query: &'a [Filter],
+        query: &'a Filter,
         _addr: &'a SocketAddr,
     ) -> BoxedFuture<'a, PolicyResult> {
         Box::pin(async move {
-            if query
-                .iter()
-                .any(|f| f.authors.as_ref().map(|a| a.len()).unwrap_or(0) > self.limit)
-            {
+            if query.authors.as_ref().map(|a| a.len()).unwrap_or(0) > self.limit {
                 PolicyResult::Reject("query too expensive".to_string())
             } else {
                 PolicyResult::Accept

@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
         .kind(Kind::GiftWrap)
         .limit(0); // Limit set to 0 to get only new events! Timestamp::now() CAN'T be used for gift wrap since the timestamps are tweaked!
 
-    client.subscribe(vec![subscription], None).await?;
+    client.subscribe(subscription, None).await?;
 
     client
         .handle_notifications(|notification| async {

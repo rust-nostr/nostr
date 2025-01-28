@@ -20,11 +20,18 @@ pub enum ClientMessageEnum {
     },
     Req {
         subscription_id: String,
+        filter: Arc<Filter>,
+    },
+    /// Multi-filter REQ (deprecated)
+    ///
+    /// <https://github.com/nostr-protocol/nips/pull/1645>
+    ReqMultiFilter {
+        subscription_id: String,
         filters: Vec<Arc<Filter>>,
     },
     Count {
         subscription_id: String,
-        filters: Vec<Arc<Filter>>,
+        filter: Arc<Filter>,
     },
     Close {
         subscription_id: String,
@@ -59,8 +66,15 @@ impl From<ClientMessageEnum> for nostr::ClientMessage {
             }
             ClientMessageEnum::Req {
                 subscription_id,
-                filters,
+                filter,
             } => Self::Req {
+                subscription_id: SubscriptionId::new(subscription_id),
+                filter: Box::new(filter.as_ref().deref().clone()),
+            },
+            ClientMessageEnum::ReqMultiFilter {
+                subscription_id,
+                filters,
+            } => Self::ReqMultiFilter {
                 subscription_id: SubscriptionId::new(subscription_id),
                 filters: filters
                     .into_iter()
@@ -69,13 +83,10 @@ impl From<ClientMessageEnum> for nostr::ClientMessage {
             },
             ClientMessageEnum::Count {
                 subscription_id,
-                filters,
+                filter,
             } => Self::Count {
                 subscription_id: SubscriptionId::new(subscription_id),
-                filters: filters
-                    .into_iter()
-                    .map(|f| f.as_ref().deref().clone())
-                    .collect(),
+                filter: Box::new(filter.as_ref().deref().clone()),
             },
             ClientMessageEnum::Close { subscription_id } => {
                 Self::Close(SubscriptionId::new(subscription_id))
@@ -116,17 +127,24 @@ impl From<nostr::ClientMessage> for ClientMessageEnum {
             },
             nostr::ClientMessage::Req {
                 subscription_id,
-                filters,
+                filter,
             } => Self::Req {
+                subscription_id: subscription_id.to_string(),
+                filter: Arc::new((*filter).into()),
+            },
+            nostr::ClientMessage::ReqMultiFilter {
+                subscription_id,
+                filters,
+            } => Self::ReqMultiFilter {
                 subscription_id: subscription_id.to_string(),
                 filters: filters.into_iter().map(|f| Arc::new(f.into())).collect(),
             },
             nostr::ClientMessage::Count {
                 subscription_id,
-                filters,
+                filter,
             } => Self::Count {
                 subscription_id: subscription_id.to_string(),
-                filters: filters.into_iter().map(|f| Arc::new(f.into())).collect(),
+                filter: Arc::new((*filter).into()),
             },
             nostr::ClientMessage::Close(subscription_id) => Self::Close {
                 subscription_id: subscription_id.to_string(),
@@ -191,28 +209,22 @@ impl ClientMessage {
 
     /// Create new `REQ` message
     #[uniffi::constructor]
-    pub fn req(subscription_id: &str, filters: Vec<Arc<Filter>>) -> Self {
+    pub fn req(subscription_id: &str, filter: &Filter) -> Self {
         Self {
             inner: nostr::ClientMessage::req(
                 SubscriptionId::new(subscription_id),
-                filters
-                    .into_iter()
-                    .map(|f| f.as_ref().deref().clone())
-                    .collect(),
+                filter.deref().clone(),
             ),
         }
     }
 
     /// Create new `COUNT` message
     #[uniffi::constructor]
-    pub fn count(subscription_id: &str, filters: Vec<Arc<Filter>>) -> Self {
+    pub fn count(subscription_id: &str, filter: &Filter) -> Self {
         Self {
             inner: nostr::ClientMessage::count(
                 SubscriptionId::new(subscription_id),
-                filters
-                    .into_iter()
-                    .map(|f| f.as_ref().deref().clone())
-                    .collect(),
+                filter.deref().clone(),
             ),
         }
     }

@@ -386,12 +386,12 @@ impl NostrEventsDatabase for WebDatabase {
         Box::pin(async move { Ok(self.helper.event_by_id(event_id).await) })
     }
 
-    fn count(&self, filters: Vec<Filter>) -> BoxedFuture<Result<usize, DatabaseError>> {
-        Box::pin(async move { Ok(self.helper.count(filters).await) })
+    fn count(&self, filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>> {
+        Box::pin(async move { Ok(self.helper.count(filter).await) })
     }
 
-    fn query(&self, filters: Vec<Filter>) -> BoxedFuture<Result<Events, DatabaseError>> {
-        Box::pin(async move { Ok(self.helper.query(filters).await) })
+    fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>> {
+        Box::pin(async move { Ok(self.helper.query(filter).await) })
     }
 
     fn negentropy_items(

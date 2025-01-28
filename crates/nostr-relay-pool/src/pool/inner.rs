@@ -27,7 +27,7 @@ pub(super) type Relays = HashMap<RelayUrl, Relay>;
 #[derive(Debug)]
 pub(super) struct AtomicPrivateData {
     pub(super) relays: RwLock<Relays>,
-    subscriptions: RwLock<HashMap<SubscriptionId, Vec<Filter>>>,
+    subscriptions: RwLock<HashMap<SubscriptionId, Filter>>,
     shutdown: AtomicBool,
 }
 
@@ -83,19 +83,19 @@ impl InnerRelayPool {
         self.atomic.shutdown.store(true, Ordering::SeqCst);
     }
 
-    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
         self.atomic.subscriptions.read().await.clone()
     }
 
-    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
+    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
         let subscriptions = self.atomic.subscriptions.read().await;
         subscriptions.get(id).cloned()
     }
 
-    pub async fn save_subscription(&self, id: SubscriptionId, filters: Vec<Filter>) {
+    pub async fn save_subscription(&self, id: SubscriptionId, filter: Filter) {
         let mut subscriptions = self.atomic.subscriptions.write().await;
-        let current: &mut Vec<Filter> = subscriptions.entry(id).or_default();
-        *current = filters;
+        let current: &mut Filter = subscriptions.entry(id).or_default();
+        *current = filter;
     }
 
     pub(crate) async fn remove_subscription(&self, id: &SubscriptionId) {
