@@ -452,8 +452,6 @@ impl Relay {
     /// ### Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
-    ///
-    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
     pub async fn subscribe(
         &self,
         filters: Filter,
@@ -469,8 +467,6 @@ impl Relay {
     /// ### Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
-    ///
-    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
     pub async fn subscribe_with_id(
         &self,
         id: SubscriptionId,

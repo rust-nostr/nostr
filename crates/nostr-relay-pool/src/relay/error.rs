@@ -123,6 +123,8 @@ pub enum Error {
     EventFromNotExistentSubscription,
     /// Receiver an event that doesn't match the subscription filter
     EventNotMatchFilter,
+    /// Received too many events for the subscription
+    TooManyEvents,
 }
 
 impl std::error::Error for Error {}
@@ -188,6 +190,7 @@ impl fmt::Display for Error {
                 write!(f, "received event for a non-existent subscription")
             }
             Self::EventNotMatchFilter => write!(f, "event doesn't match the subscription filter"),
+            Self::TooManyEvents => write!(f, "received too many events for the subscription"),
         }
     }
 }

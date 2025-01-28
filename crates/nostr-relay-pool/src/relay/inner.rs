@@ -83,39 +83,50 @@ impl RelayChannels {
         self.ping.notify_one()
     }
 
+    /// Terminate all the futures in `tokio::select!`
     pub fn terminate(&self) {
         self.terminate.notify_one()
     }
 }
 
-#[derive(Debug, Clone)]
-enum SubscriptionData {
+#[derive(Debug)]
+enum SubscriptionType {
     LongLived {
-        filter: Filter,
         subscribed_at: Timestamp,
         /// Subscription closed by relay
         closed: bool,
     },
-    AutoClosing {
-        filter: Filter,
-    },
+    AutoClosing,
+}
+
+#[derive(Debug)]
+struct SubscriptionData {
+    r#type: SubscriptionType,
+    filter: Filter,
+    received_events: usize,
+    eose: bool,
 }
 
 impl SubscriptionData {
     fn default_long_lived() -> Self {
-        Self::LongLived {
+        Self {
+            r#type: SubscriptionType::LongLived {
+                subscribed_at: Timestamp::zero(),
+                closed: false,
+            },
             // TODO: use `Option<Filter>`?
             filter: Filter::new(),
-            subscribed_at: Timestamp::zero(),
-            closed: false,
+            received_events: 0,
+            eose: false,
         }
     }
 
-    #[inline]
-    fn filters(&self) -> &Filters {
-        match self {
-            Self::LongLived { filters, .. } => filters,
-            Self::AutoClosing { filters, .. } => filters,
+    fn auto_closing(filter: Filter) -> Self {
+        Self {
+            r#type: SubscriptionType::AutoClosing,
+            filter,
+            received_events: 0,
+            eose: false,
         }
     }
 }
@@ -260,6 +271,7 @@ impl InnerRelay {
                 RelayStatus::Terminated => {
                     tracing::info!("Completely disconnected from '{}'", self.url)
                 }
+                RelayStatus::Banned => tracing::warn!(url = %self.url, "Banned."),
             }
         }
 
@@ -340,20 +352,20 @@ impl InnerRelay {
         let subscription = self.atomic.subscriptions.read().await;
         subscription
             .iter()
-            .filter_map(|(k, data)| match data {
-                SubscriptionData::LongLived { filter, .. } => {
-                    Some((k.clone(), filter.clone()))
+            .filter_map(|(k, data)| match data.r#type {
+                SubscriptionType::LongLived { .. } => {
+                    Some((k.clone(), data.filter.clone()))
                 }
-                SubscriptionData::AutoClosing { .. } => None,
+                SubscriptionType::AutoClosing => None,
             })
             .collect()
     }
 
     pub async fn long_lived_subscription(&self, id: &SubscriptionId) -> Option<Filter> {
         let subscription = self.atomic.subscriptions.read().await;
-        subscription.get(id).and_then(|d| match d {
-            SubscriptionData::LongLived { filter, .. } => Some(filter.clone()),
-            SubscriptionData::AutoClosing { .. } => None,
+        subscription.get(id).and_then(|d| match d.r#type {
+            SubscriptionType::LongLived { .. } => Some(d.filter.clone()),
+            SubscriptionType::AutoClosing => None,
         })
     }
 
@@ -369,9 +381,7 @@ impl InnerRelay {
             let mut subscriptions = self.atomic.subscriptions.write().await;
             subscriptions.insert(
                 id.clone(),
-                SubscriptionData::AutoClosing {
-                    filter,
-                },
+                SubscriptionData::auto_closing(filter),
             );
         }
 
@@ -387,16 +397,11 @@ impl InnerRelay {
         let mut subscriptions = self.atomic.subscriptions.write().await;
         let data: &mut SubscriptionData = subscriptions
             .entry(id)
-            .or_insert_with(|| SubscriptionData::default_long_lived());
+            .or_insert_with(SubscriptionData::default_long_lived);
 
         // Update data
-        if let SubscriptionData::LongLived {
-            filter,
-            subscribed_at,
-            ..
-        } = data
-        {
-            *filter = f;
+        if let SubscriptionType::LongLived { subscribed_at, .. } = &mut data.r#type {
+            data.filter = f;
 
             if update_subscribed_at {
                 *subscribed_at = Timestamp::now();
@@ -411,13 +416,13 @@ impl InnerRelay {
 
         // Remove from subscriptions
         if let Some((id, mut data)) = subscriptions.remove_entry(id) {
-            match &mut data {
+            match &mut data.r#type {
                 // Long-lived, mark as closed
-                SubscriptionData::LongLived { closed, .. } => {
+                SubscriptionType::LongLived { closed, .. } => {
                     *closed = true;
                 }
                 // Auto-closing, immediately return
-                SubscriptionData::AutoClosing { .. } => return,
+                SubscriptionType::AutoClosing => return,
             }
 
             // Reinsert into subscriptions
@@ -428,11 +433,10 @@ impl InnerRelay {
     /// Check if it should subscribe for current websocket session
     pub(crate) async fn should_resubscribe(&self, id: &SubscriptionId) -> bool {
         let subscriptions = self.atomic.subscriptions.read().await;
-        match subscriptions.get(id) {
-            Some(SubscriptionData::LongLived {
+        match subscriptions.get(id).map(|d| &d.r#type) {
+            Some(SubscriptionType::LongLived {
                 subscribed_at,
                 closed,
-                ..
             }) => {
                 // Never subscribed -> SHOULD subscribe
                 // Subscription closed by relay -> SHOULD subscribe
@@ -444,7 +448,7 @@ impl InnerRelay {
                 // Many connections and subscription NOT done in current websocket session -> SHOULD re-subscribe
                 self.stats.connected_at() > *subscribed_at && self.stats.success() > 1
             }
-            Some(SubscriptionData::AutoClosing { .. }) | None => false,
+            Some(SubscriptionType::AutoClosing) | None => false,
         }
     }
 
@@ -538,8 +542,8 @@ impl InnerRelay {
                 // Get status
                 let status: RelayStatus = relay.status();
 
-                // If the status is set to "terminated", break loop.
-                if status.is_terminated() {
+                // If the relay is terminated or banned, break the loop.
+                if status.is_terminated() || status.is_banned() {
                     break;
                 }
 
@@ -626,9 +630,6 @@ impl InnerRelay {
     async fn handle_terminate(&self) {
         // Wait to be notified
         self.atomic.channels.terminate.notified().await;
-
-        // Update status
-        self.set_status(RelayStatus::Terminated, true);
     }
 
     pub(super) async fn _try_connect(
@@ -934,6 +935,12 @@ impl InnerRelay {
                             id = %id,
                             "Received EOSE."
                         );
+
+                        // Update subscription
+                        let mut subscriptions = self.atomic.subscriptions.write().await;
+                        if let Some(data) = subscriptions.get_mut(id) {
+                            data.eose = true;
+                        }
                     }
                     RelayMessage::Closed {
                         subscription_id,
@@ -1136,15 +1143,29 @@ impl InnerRelay {
         // Check subscription
         if self.opts.verify_event_matching {
             // Acquire subscriptions
-            let subscriptions = self.atomic.subscriptions.read().await;
+            let mut subscriptions = self.atomic.subscriptions.write().await;
 
-            // Check if event match subscription
-            match subscriptions.get(&subscription_id) {
+            match subscriptions.get_mut(&subscription_id) {
                 Some(data) => {
-                    if !data.filters().match_event(&event) {
-                        // TODO: keep track of number of events received that doesn't match
-                        // TODO: if the non-matching events number is X, set status to `banned`.
+                    // EOSE received, not check anymore the limit
+                    if !data.eose {
+                        // Check if `filters` has a limit
+                        if let Some(limit) = data.filter.limit {
+                            // Update number of received events
+                            data.received_events = data.received_events.saturating_add(1);
 
+                            if data.received_events > limit {
+                                self.ban();
+                            }
+
+                            return Err(Error::TooManyEvents);
+                        }
+                    }
+
+                    // Check if event match subscription
+                    if !data.filter.match_event(&event) {
+                        // Ban relay
+                        self.ban();
                         return Err(Error::EventNotMatchFilter);
                     }
                 }
@@ -1186,7 +1207,29 @@ impl InnerRelay {
             return;
         }
 
+        // Notify termination
         self.atomic.channels.terminate();
+
+        // Update status
+        self.set_status(RelayStatus::Terminated, true);
+
+        // Shutdown all notification loops
+        self.send_notification(RelayNotification::Shutdown, false);
+    }
+
+    fn ban(&self) {
+        // Check if it's already banned
+        if self.status().is_banned() {
+            return;
+        }
+
+        // Notify termination
+        self.atomic.channels.terminate();
+
+        // Update status
+        self.set_status(RelayStatus::Banned, true);
+
+        // Shutdown all notification loops
         self.send_notification(RelayNotification::Shutdown, false);
     }
 
@@ -1322,7 +1365,7 @@ impl InnerRelay {
         let relay = self.clone(); // <-- FULL RELAY CLONE HERE
         task::spawn(async move {
             // Register auto-closing subscription
-            let _guard: AutoClosingSubscriptionGuard = relay
+            let guard: AutoClosingSubscriptionGuard = relay
                 .register_auto_closing_subscription(id.clone(), filter.clone())
                 .await;
 
@@ -1354,6 +1397,9 @@ impl InnerRelay {
                 tracing::debug!(id = %id, "Auto-closing subscription.");
                 relay.send_msg(ClientMessage::close(id))?;
             }
+
+            // Drop guard
+            drop(guard);
 
             Ok::<(), Error>(())
         });

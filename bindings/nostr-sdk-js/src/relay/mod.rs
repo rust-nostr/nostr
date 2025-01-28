@@ -84,6 +84,8 @@ pub enum JsRelayStatus {
     Disconnected,
     /// Completely disconnected
     Terminated,
+    /// Banned
+    Banned,
 }
 
 impl From<RelayStatus> for JsRelayStatus {
@@ -95,6 +97,7 @@ impl From<RelayStatus> for JsRelayStatus {
             RelayStatus::Connected => Self::Connected,
             RelayStatus::Disconnected => Self::Disconnected,
             RelayStatus::Terminated => Self::Terminated,
+            RelayStatus::Banned => Self::Banned,
         }
     }
 }

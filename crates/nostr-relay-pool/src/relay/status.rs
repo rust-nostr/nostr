@@ -40,6 +40,7 @@ impl AtomicRelayStatus {
             3 => RelayStatus::Connected,
             4 => RelayStatus::Disconnected,
             5 => RelayStatus::Terminated,
+            6 => RelayStatus::Banned,
             _ => unreachable!(),
         }
     }
@@ -60,6 +61,8 @@ pub enum RelayStatus {
     Disconnected = 4,
     /// Completely disconnected
     Terminated = 5,
+    /// Banned
+    Banned = 6,
 }
 
 impl fmt::Display for RelayStatus {
@@ -71,6 +74,7 @@ impl fmt::Display for RelayStatus {
             Self::Connected => write!(f, "Connected"),
             Self::Disconnected => write!(f, "Disconnected"),
             Self::Terminated => write!(f, "Terminated"),
+            Self::Banned => write!(f, "Banned"),
         }
     }
 }
@@ -86,15 +90,21 @@ impl RelayStatus {
         matches!(self, Self::Connected)
     }
 
-    /// Check if is `disconnected` or `terminated`
+    /// Check if is `disconnected`, `terminated` or `banned`.
     #[inline]
     pub(crate) fn is_disconnected(&self) -> bool {
-        matches!(self, Self::Disconnected | Self::Terminated)
+        matches!(self, Self::Disconnected | Self::Terminated | Self::Banned)
     }
 
     /// Check if is [`RelayStatus::Terminated`]
     pub(crate) fn is_terminated(&self) -> bool {
         matches!(self, Self::Terminated)
+    }
+
+    /// Check if is [`RelayStatus::Banned`]
+    #[inline]
+    pub fn is_banned(&self) -> bool {
+        matches!(self, Self::Banned)
     }
 
     /// Check if relay can start a connection (status is `initialized` or `terminated`)
