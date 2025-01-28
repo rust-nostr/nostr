@@ -924,6 +924,7 @@ mod tests {
         // Mock relay
         let opts = RelayTestOptions {
             unresponsive_connection: Some(Duration::from_secs(2)),
+            send_random_events: false,
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
@@ -956,6 +957,7 @@ mod tests {
         // Mock relay
         let opts = RelayTestOptions {
             unresponsive_connection: Some(Duration::from_secs(10)),
+            send_random_events: false,
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
@@ -984,6 +986,7 @@ mod tests {
         // Mock relay
         let opts = RelayTestOptions {
             unresponsive_connection: Some(Duration::from_secs(10)),
+            send_random_events: false,
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
@@ -1012,6 +1015,7 @@ mod tests {
         // Mock relay
         let opts = RelayTestOptions {
             unresponsive_connection: Some(Duration::from_secs(2)),
+            send_random_events: false,
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
@@ -1143,6 +1147,74 @@ mod tests {
             .fetch_events(filter, Duration::from_secs(5), ReqExitPolicy::ExitOnEOSE)
             .await;
         assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_fetch_events_ban_relay() {
+        // Mock relay
+        let opts = RelayTestOptions {
+            unresponsive_connection: None,
+            send_random_events: true,
+        };
+        let mock = MockRelay::run_with_opts(opts).await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let relay = Relay::new(url);
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.try_connect(Duration::from_secs(3)).await.unwrap();
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        let filter = Filter::new().kind(Kind::Metadata).limit(1);
+        let res = relay
+            .fetch_events(
+                vec![filter],
+                Duration::from_secs(5),
+                ReqExitPolicy::ExitOnEOSE,
+            )
+            .await;
+        assert!(matches!(res.unwrap_err(), Error::NotConnected));
+
+        assert_eq!(relay.status(), RelayStatus::Banned);
+
+        assert!(!relay.inner.is_running());
+    }
+
+    #[tokio::test]
+    async fn test_subscribe_ban_relay() {
+        // Mock relay
+        let opts = RelayTestOptions {
+            unresponsive_connection: None,
+            send_random_events: true,
+        };
+        let mock = MockRelay::run_with_opts(opts).await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let relay = Relay::new(url);
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.try_connect(Duration::from_secs(3)).await.unwrap();
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        let filter = Filter::new().kind(Kind::TextNote).limit(3);
+        relay
+            .subscribe(vec![filter], SubscribeOptions::default())
+            .await
+            .unwrap();
+
+        // Keep up the test
+        relay
+            .handle_notifications(|_| async { Ok(false) })
+            .await
+            .unwrap();
+
+        assert_eq!(relay.status(), RelayStatus::Banned);
+
+        assert!(!relay.inner.is_running());
     }
 
     // TODO: add negentropy reconciliation test
