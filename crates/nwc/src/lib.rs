@@ -99,7 +99,7 @@ impl NWC {
         let mut notifications = self.relay.notifications();
 
         // Send request
-        let id: EventId = self.relay.send_event(event).await?;
+        let id: EventId = self.relay.send_event(&event).await?;
 
         time::timeout(Some(self.opts.timeout), async {
             while let Ok(notification) = notifications.recv().await {

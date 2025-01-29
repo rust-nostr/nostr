@@ -357,7 +357,7 @@ impl Relay {
         notifications: &mut broadcast::Receiver<RelayNotification>,
         event: &Event,
     ) -> Result<(bool, String), Error> {
-        // Send message
+        // Send the EVENT message
         self.inner
             .send_msg(ClientMessage::Event(Cow::Borrowed(event)))?;
 
@@ -367,16 +367,15 @@ impl Relay {
             .await
     }
 
-    // TODO: take reference here?
     /// Send event and wait for `OK` relay msg
-    pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
+    pub async fn send_event(&self, event: &Event) -> Result<EventId, Error> {
         // Health, write permission and number of messages checks are executed in `batch_msg` method.
 
         // Subscribe to notifications
         let mut notifications = self.inner.internal_notification_sender.subscribe();
 
         // Send event
-        let (status, message) = self._send_event(&mut notifications, &event).await?;
+        let (status, message) = self._send_event(&mut notifications, event).await?;
 
         // Check status
         if status {
@@ -393,7 +392,7 @@ impl Relay {
                     .await?;
 
                 // Try to resend event
-                let (status, message) = self._send_event(&mut notifications, &event).await?;
+                let (status, message) = self._send_event(&mut notifications, event).await?;
 
                 // Check status
                 return if status {
@@ -741,7 +740,7 @@ mod tests {
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
             .unwrap();
-        relay.send_event(event).await.unwrap();
+        relay.send_event(&event).await.unwrap();
     }
 
     #[tokio::test]
@@ -1052,7 +1051,7 @@ mod tests {
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
             .unwrap();
-        let err = relay.send_event(event).await.unwrap_err();
+        let err = relay.send_event(&event).await.unwrap_err();
         if let Error::RelayMessage(msg) = err {
             assert_eq!(
                 MachineReadablePrefix::parse(&msg).unwrap(),
@@ -1069,7 +1068,7 @@ mod tests {
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
             .unwrap();
-        assert!(relay.send_event(event).await.is_ok());
+        assert!(relay.send_event(&event).await.is_ok());
     }
 
     #[tokio::test]
@@ -1093,7 +1092,7 @@ mod tests {
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
             .unwrap();
-        relay.send_event(event).await.unwrap();
+        relay.send_event(&event).await.unwrap();
 
         let filter = Filter::new().kind(Kind::TextNote).limit(3);
 

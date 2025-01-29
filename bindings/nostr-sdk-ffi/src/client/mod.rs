@@ -410,16 +410,12 @@ impl Client {
     /// Send event to all relays with `WRITE` flag.
     /// If `gossip` is enabled (see `Options`) the event will be sent also to NIP65 relays (automatically discovered).
     pub async fn send_event(&self, event: &Event) -> Result<SendEventOutput> {
-        Ok(self.inner.send_event(event.deref().clone()).await?.into())
+        Ok(self.inner.send_event(event.deref()).await?.into())
     }
 
     /// Send event to specific relays.
     pub async fn send_event_to(&self, urls: Vec<String>, event: &Event) -> Result<SendEventOutput> {
-        Ok(self
-            .inner
-            .send_event_to(urls, event.deref().clone())
-            .await?
-            .into())
+        Ok(self.inner.send_event_to(urls, event.deref()).await?.into())
     }
 
     /// Signs the `EventBuilder` into an `Event` using the `NostrSigner`

@@ -443,7 +443,7 @@ impl JsClient {
     #[wasm_bindgen(js_name = sendEvent)]
     pub async fn send_event(&self, event: &JsEvent) -> Result<JsSendEventOutput> {
         self.inner
-            .send_event(event.deref().clone())
+            .send_event(event.deref())
             .await
             .map_err(into_err)
             .map(|id| id.into())
@@ -457,7 +457,7 @@ impl JsClient {
         event: &JsEvent,
     ) -> Result<JsSendEventOutput> {
         self.inner
-            .send_event_to(urls, event.deref().clone())
+            .send_event_to(urls, event.deref())
             .await
             .map_err(into_err)
             .map(|id| id.into())
