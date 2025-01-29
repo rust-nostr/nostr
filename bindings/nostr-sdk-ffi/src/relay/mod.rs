@@ -278,7 +278,7 @@ impl Relay {
 
     /// Unsubscribe
     pub async fn unsubscribe(&self, id: String) -> Result<()> {
-        Ok(self.inner.unsubscribe(SubscriptionId::new(id)).await?)
+        Ok(self.inner.unsubscribe(&SubscriptionId::new(id)).await?)
     }
 
     /// Unsubscribe from all subscriptions

@@ -12,11 +12,11 @@ use crate::protocol::event::{JsEvent, JsEventId};
 
 #[wasm_bindgen(js_name = RelayMessage)]
 pub struct JsRelayMessage {
-    inner: RelayMessage,
+    inner: RelayMessage<'static>,
 }
 
-impl From<RelayMessage> for JsRelayMessage {
-    fn from(inner: RelayMessage) -> Self {
+impl From<RelayMessage<'static>> for JsRelayMessage {
+    fn from(inner: RelayMessage<'static>) -> Self {
         Self { inner }
     }
 }

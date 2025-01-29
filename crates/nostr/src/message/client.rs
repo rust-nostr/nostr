@@ -5,7 +5,7 @@
 
 //! Client messages
 
-use alloc::boxed::Box;
+use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
@@ -16,23 +16,23 @@ use super::MessageHandleError;
 use crate::{Event, Filter, JsonUtil, SubscriptionId};
 
 /// Messages sent by clients, received by relays
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ClientMessage {
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ClientMessage<'a> {
     /// Event
-    Event(Box<Event>),
+    Event(Cow<'a, Event>),
     /// Req
     Req {
         /// Subscription ID
-        subscription_id: SubscriptionId,
+        subscription_id: Cow<'a, SubscriptionId>,
         /// Filter
-        filter: Box<Filter>,
+        filter: Cow<'a, Filter>,
     },
     /// Multi-filter REQ (deprecated)
     ///
     /// <https://github.com/nostr-protocol/nips/pull/1645>
     ReqMultiFilter {
         /// Subscription ID
-        subscription_id: SubscriptionId,
+        subscription_id: Cow<'a, SubscriptionId>,
         /// Filters
         filters: Vec<Filter>,
     },
@@ -41,72 +41,52 @@ pub enum ClientMessage {
     /// <https://github.com/nostr-protocol/nips/blob/master/45.md>
     Count {
         /// Subscription ID
-        subscription_id: SubscriptionId,
+        subscription_id: Cow<'a, SubscriptionId>,
         /// Filter
-        filter: Box<Filter>,
+        filter: Cow<'a, Filter>,
     },
     /// Close
-    Close(SubscriptionId),
+    Close(Cow<'a, SubscriptionId>),
     /// Auth
-    Auth(Box<Event>),
+    Auth(Cow<'a, Event>),
     /// Negentropy Open
     NegOpen {
         /// Subscription ID
-        subscription_id: SubscriptionId,
+        subscription_id: Cow<'a, SubscriptionId>,
         /// Filter
-        filter: Box<Filter>,
+        filter: Cow<'a, Filter>,
         /// ID size (deprecated)
         id_size: Option<u8>,
         /// Initial message (hex)
-        initial_message: String,
+        initial_message: Cow<'a, str>,
     },
     /// Negentropy Message
     NegMsg {
         /// Subscription ID
-        subscription_id: SubscriptionId,
+        subscription_id: Cow<'a, SubscriptionId>,
         /// Message
-        message: String,
+        message: Cow<'a, str>,
     },
     /// Negentropy Close
     NegClose {
         /// Subscription ID
-        subscription_id: SubscriptionId,
+        subscription_id: Cow<'a, SubscriptionId>,
     },
 }
 
-impl Serialize for ClientMessage {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let json_value: Value = self.as_value();
-        json_value.serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for ClientMessage {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let json_value = Value::deserialize(deserializer)?;
-        ClientMessage::from_value(json_value).map_err(serde::de::Error::custom)
-    }
-}
-
-impl ClientMessage {
+impl ClientMessage<'_> {
     /// Create `EVENT` message
     #[inline]
     pub fn event(event: Event) -> Self {
-        Self::Event(Box::new(event))
+        Self::Event(Cow::Owned(event))
     }
 
     /// Create `REQ` message
     #[inline]
     pub fn req(subscription_id: SubscriptionId, filter: Filter) -> Self {
         Self::Req {
-            subscription_id,
-            filter: Box::new(filter),
+            subscription_id: Cow::Owned(subscription_id),
+            filter: Cow::Owned(filter),
         }
     }
 
@@ -114,21 +94,21 @@ impl ClientMessage {
     #[inline]
     pub fn count(subscription_id: SubscriptionId, filter: Filter) -> Self {
         Self::Count {
-            subscription_id,
-            filter: Box::new(filter),
+            subscription_id: Cow::Owned(subscription_id),
+            filter: Cow::Owned(filter),
         }
     }
 
     /// Create new `CLOSE` message
     #[inline]
     pub fn close(subscription_id: SubscriptionId) -> Self {
-        Self::Close(subscription_id)
+        Self::Close(Cow::Owned(subscription_id))
     }
 
     /// Create `AUTH` message
     #[inline]
     pub fn auth(event: Event) -> Self {
-        Self::Auth(Box::new(event))
+        Self::Auth(Cow::Owned(event))
     }
 
     /// Create new `NEG-OPEN` message
@@ -138,10 +118,10 @@ impl ClientMessage {
         initial_message: String,
     ) -> Self {
         Self::NegOpen {
-            subscription_id,
-            filter: Box::new(filter),
+            subscription_id: Cow::Owned(subscription_id),
+            filter: Cow::Owned(filter),
             id_size: None,
-            initial_message,
+            initial_message: Cow::Owned(initial_message),
         }
     }
 
@@ -261,7 +241,7 @@ impl ClientMessage {
                 let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
                 let filters: Vec<Filter> = serde_json::from_value(Value::Array(v[2..].to_vec()))?;
                 return Ok(Self::ReqMultiFilter {
-                    subscription_id,
+                    subscription_id: Cow::Owned(subscription_id),
                     filters,
                 });
             } else {
@@ -311,12 +291,7 @@ impl ClientMessage {
                 let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
                 let filter: Filter = Filter::from_json(v[2].to_string())?;
                 let initial_message: String = serde_json::from_value(v[3].clone())?;
-                return Ok(Self::NegOpen {
-                    subscription_id,
-                    filter: Box::new(filter),
-                    id_size: None,
-                    initial_message,
-                });
+                return Ok(Self::neg_open(subscription_id, filter, initial_message));
             }
 
             // Old negentropy protocol message
@@ -328,10 +303,10 @@ impl ClientMessage {
                         .ok_or(MessageHandleError::InvalidMessageFormat)? as u8;
                 let initial_message: String = serde_json::from_value(v[4].clone())?;
                 return Ok(Self::NegOpen {
-                    subscription_id,
-                    filter: Box::new(filter),
+                    subscription_id: Cow::Owned(subscription_id),
+                    filter: Cow::Owned(filter),
                     id_size: Some(id_size),
-                    initial_message,
+                    initial_message: Cow::Owned(initial_message),
                 });
             }
 
@@ -345,8 +320,8 @@ impl ClientMessage {
                 let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
                 let message: String = serde_json::from_value(v[2].clone())?;
                 return Ok(Self::NegMsg {
-                    subscription_id,
-                    message,
+                    subscription_id: Cow::Owned(subscription_id),
+                    message: Cow::Owned(message),
                 });
             } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
@@ -358,7 +333,9 @@ impl ClientMessage {
         if v[0] == "NEG-CLOSE" {
             if v_len >= 2 {
                 let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-                return Ok(Self::NegClose { subscription_id });
+                return Ok(Self::NegClose {
+                    subscription_id: Cow::Owned(subscription_id),
+                });
             } else {
                 return Err(MessageHandleError::InvalidMessageFormat);
             }
@@ -368,7 +345,27 @@ impl ClientMessage {
     }
 }
 
-impl JsonUtil for ClientMessage {
+impl Serialize for ClientMessage<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let json_value: Value = self.as_value();
+        json_value.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for ClientMessage<'_> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let json_value = Value::deserialize(deserializer)?;
+        ClientMessage::from_value(json_value).map_err(serde::de::Error::custom)
+    }
+}
+
+impl JsonUtil for ClientMessage<'_> {
     type Err = MessageHandleError;
 
     /// Deserialize [`ClientMessage`] from JSON string

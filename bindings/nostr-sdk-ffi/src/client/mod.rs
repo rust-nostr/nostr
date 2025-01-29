@@ -325,7 +325,7 @@ impl Client {
 
     pub async fn unsubscribe(&self, subscription_id: String) {
         self.inner
-            .unsubscribe(SubscriptionId::new(subscription_id))
+            .unsubscribe(&SubscriptionId::new(subscription_id))
             .await
     }
 

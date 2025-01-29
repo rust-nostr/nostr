@@ -239,7 +239,7 @@ impl JsRelay {
     /// Unsubscribe
     pub async fn unsubscribe(&self, id: String) -> Result<()> {
         self.inner
-            .unsubscribe(SubscriptionId::new(id))
+            .unsubscribe(&SubscriptionId::new(id))
             .await
             .map_err(into_err)
     }
