@@ -1183,11 +1183,15 @@ impl InnerRelay {
         id: SubscriptionId,
         filter: Filter,
         opts: SubscribeAutoCloseOptions,
+        notifications: broadcast::Receiver<RelayNotification>,
     ) {
         let relay = self.clone(); // <-- FULL RELAY CLONE HERE
         task::spawn(async move {
             // Check if CLOSE needed
-            let to_close: bool = match relay.handle_auto_closing(&id, filter, opts).await {
+            let to_close: bool = match relay
+                .handle_auto_closing(&id, filter, opts, notifications)
+                .await
+            {
                 Some((to_close, reason)) => {
                     // Send subscription auto-closed notification
                     if let Some(reason) = reason {
@@ -1221,15 +1225,13 @@ impl InnerRelay {
         id: &SubscriptionId,
         filter: Filter,
         opts: SubscribeAutoCloseOptions,
+        mut notifications: broadcast::Receiver<RelayNotification>,
     ) -> Option<(bool, Option<SubscriptionAutoClosedReason>)> {
         time::timeout(opts.timeout, async move {
             let mut counter: u16 = 0;
             let mut received_eose: bool = false;
             let mut require_resubscription: bool = false;
             let mut last_event: Option<Instant> = None;
-
-            // Subscribe to notifications
-            let mut notifications = self.internal_notification_sender.subscribe();
 
             // Listen to notifications with timeout
             // If no notification is received within no-events timeout, `None` is returned.

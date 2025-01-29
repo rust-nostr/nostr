@@ -477,14 +477,26 @@ impl Relay {
         filter: Filter,
         opts: SubscribeOptions,
     ) -> Result<(), Error> {
-        // Compose and send REQ message
+        // Compose REQ message
         let msg: ClientMessage = ClientMessage::req(id.clone(), filter.clone());
-        self.send_msg(msg)?;
 
         // Check if auto-close condition is set
         match opts.auto_close {
-            Some(opts) => self.inner.spawn_auto_closing_handler(id, filter, opts),
+            Some(opts) => {
+                // Subscribe to notifications
+                let notifications = self.inner.internal_notification_sender.subscribe();
+
+                // Send REQ message
+                self.inner.send_msg(msg)?;
+
+                // Spawn auto-closing handler
+                self.inner
+                    .spawn_auto_closing_handler(id, filter, opts, notifications)
+            }
             None => {
+                // Send REQ message
+                self.inner.send_msg(msg)?;
+
                 // No auto-close subscription: update subscription filter
                 self.inner.update_subscription(id, filter, true).await;
             }
