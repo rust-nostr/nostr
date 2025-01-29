@@ -62,7 +62,7 @@ pub enum RelayPoolNotification {
         /// The URL of the relay from which the message was received.
         relay_url: RelayUrl,
         /// The received relay message.
-        message: RelayMessage,
+        message: RelayMessage<'static>,
     },
     /// Shutdown
     ///
@@ -479,7 +479,11 @@ impl RelayPool {
     /// Send a client message to specific relays
     ///
     /// Note: **the relays must already be added!**
-    pub async fn send_msg_to<I, U>(&self, urls: I, msg: ClientMessage) -> Result<Output<()>, Error>
+    pub async fn send_msg_to<I, U>(
+        &self,
+        urls: I,
+        msg: ClientMessage<'_>,
+    ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -494,7 +498,7 @@ impl RelayPool {
     pub async fn batch_msg_to<I, U>(
         &self,
         urls: I,
-        msgs: Vec<ClientMessage>,
+        msgs: Vec<ClientMessage<'_>>,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -797,9 +801,9 @@ impl RelayPool {
     }
 
     /// Unsubscribe from subscription
-    pub async fn unsubscribe(&self, id: SubscriptionId) {
+    pub async fn unsubscribe(&self, id: &SubscriptionId) {
         // Remove subscription from pool
-        self.inner.remove_subscription(&id).await;
+        self.inner.remove_subscription(id).await;
 
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
@@ -808,7 +812,7 @@ impl RelayPool {
 
         // Remove subscription from relays
         for relay in relays.values() {
-            if let Err(e) = relay.unsubscribe(id.clone()).await {
+            if let Err(e) = relay.unsubscribe(id).await {
                 tracing::error!("{e}");
             }
         }

@@ -3,6 +3,7 @@
 // Distributed under the MIT software license
 
 use core::ops::Deref;
+use std::borrow::Cow;
 use std::sync::Arc;
 
 use nostr::{JsonUtil, SubscriptionId};
@@ -49,8 +50,8 @@ pub enum RelayMessageEnum {
     },
 }
 
-impl From<nostr::RelayMessage> for RelayMessageEnum {
-    fn from(value: nostr::RelayMessage) -> Self {
+impl<'a> From<nostr::RelayMessage<'a>> for RelayMessageEnum {
+    fn from(value: nostr::RelayMessage<'a>) -> Self {
         match value {
             nostr::RelayMessage::Event {
                 subscription_id,
@@ -64,9 +65,11 @@ impl From<nostr::RelayMessage> for RelayMessageEnum {
                 message,
             } => Self::Closed {
                 subscription_id: subscription_id.to_string(),
-                message,
+                message: message.into_owned(),
             },
-            nostr::RelayMessage::Notice(message) => Self::Notice { message },
+            nostr::RelayMessage::Notice(message) => Self::Notice {
+                message: message.into_owned(),
+            },
             nostr::RelayMessage::EndOfStoredEvents(sub_id) => Self::EndOfStoredEvents {
                 subscription_id: sub_id.to_string(),
             },
@@ -77,9 +80,11 @@ impl From<nostr::RelayMessage> for RelayMessageEnum {
             } => Self::Ok {
                 event_id: Arc::new(event_id.into()),
                 status,
-                message,
+                message: message.into_owned(),
             },
-            nostr::RelayMessage::Auth { challenge } => Self::Auth { challenge },
+            nostr::RelayMessage::Auth { challenge } => Self::Auth {
+                challenge: challenge.into_owned(),
+            },
             nostr::RelayMessage::Count {
                 subscription_id,
                 count,
@@ -92,37 +97,34 @@ impl From<nostr::RelayMessage> for RelayMessageEnum {
                 message,
             } => Self::NegMsg {
                 subscription_id: subscription_id.to_string(),
-                message,
+                message: message.into_owned(),
             },
             nostr::RelayMessage::NegErr {
                 subscription_id,
                 message,
             } => Self::NegErr {
                 subscription_id: subscription_id.to_string(),
-                message,
+                message: message.into_owned(),
             },
         }
     }
 }
 
-impl From<RelayMessageEnum> for nostr::RelayMessage {
+impl From<RelayMessageEnum> for nostr::RelayMessage<'static> {
     fn from(value: RelayMessageEnum) -> Self {
         match value {
             RelayMessageEnum::EventMsg {
                 subscription_id,
                 event,
-            } => Self::Event {
-                subscription_id: SubscriptionId::new(subscription_id),
-                event: Box::new(event.as_ref().deref().clone()),
-            },
+            } => Self::event(
+                SubscriptionId::new(subscription_id),
+                event.as_ref().deref().clone(),
+            ),
             RelayMessageEnum::Closed {
                 subscription_id,
                 message,
-            } => Self::Closed {
-                subscription_id: SubscriptionId::new(subscription_id),
-                message,
-            },
-            RelayMessageEnum::Notice { message } => Self::Notice(message),
+            } => Self::closed(SubscriptionId::new(subscription_id), message),
+            RelayMessageEnum::Notice { message } => Self::notice(message),
             RelayMessageEnum::EndOfStoredEvents { subscription_id } => {
                 Self::eose(SubscriptionId::new(subscription_id))
             }
@@ -130,32 +132,25 @@ impl From<RelayMessageEnum> for nostr::RelayMessage {
                 event_id,
                 status,
                 message,
-            } => Self::Ok {
-                event_id: **event_id,
-                status,
-                message,
-            },
-            RelayMessageEnum::Auth { challenge } => Self::Auth { challenge },
+            } => Self::ok(**event_id, status, message),
+            RelayMessageEnum::Auth { challenge } => Self::auth(challenge),
             RelayMessageEnum::Count {
                 subscription_id,
                 count,
-            } => Self::Count {
-                subscription_id: SubscriptionId::new(subscription_id),
-                count: count as usize,
-            },
+            } => Self::count(SubscriptionId::new(subscription_id), count as usize),
             RelayMessageEnum::NegMsg {
                 subscription_id,
                 message,
             } => Self::NegMsg {
-                subscription_id: SubscriptionId::new(subscription_id),
-                message,
+                subscription_id: Cow::Owned(SubscriptionId::new(subscription_id)),
+                message: Cow::Owned(message),
             },
             RelayMessageEnum::NegErr {
                 subscription_id,
                 message,
             } => Self::NegErr {
-                subscription_id: SubscriptionId::new(subscription_id),
-                message,
+                subscription_id: Cow::Owned(SubscriptionId::new(subscription_id)),
+                message: Cow::Owned(message),
             },
         }
     }
@@ -164,11 +159,11 @@ impl From<RelayMessageEnum> for nostr::RelayMessage {
 #[derive(Debug, PartialEq, Eq, Hash, Object)]
 #[uniffi::export(Debug, Eq, Hash)]
 pub struct RelayMessage {
-    inner: nostr::RelayMessage,
+    inner: nostr::RelayMessage<'static>,
 }
 
-impl From<nostr::RelayMessage> for RelayMessage {
-    fn from(inner: nostr::RelayMessage) -> Self {
+impl From<nostr::RelayMessage<'static>> for RelayMessage {
+    fn from(inner: nostr::RelayMessage<'static>) -> Self {
         Self { inner }
     }
 }

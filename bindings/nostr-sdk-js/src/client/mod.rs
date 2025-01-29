@@ -342,7 +342,7 @@ impl JsClient {
     /// Unsubscribe
     pub async fn unsubscribe(&self, subscription_id: &str) {
         self.inner
-            .unsubscribe(SubscriptionId::new(subscription_id))
+            .unsubscribe(&SubscriptionId::new(subscription_id))
             .await;
     }
 
