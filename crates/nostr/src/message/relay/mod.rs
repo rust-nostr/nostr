@@ -45,6 +45,10 @@ pub enum MachineReadablePrefix {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     Error,
+    /// Unsupported
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+    Unsupported,
     /// Authentication required
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
@@ -64,6 +68,7 @@ impl fmt::Display for MachineReadablePrefix {
             Self::RateLimited => write!(f, "rate-limited"),
             Self::Invalid => write!(f, "invalid"),
             Self::Error => write!(f, "error"),
+            Self::Unsupported => write!(f, "unsupported"),
             Self::AuthRequired => write!(f, "auth-required"),
             Self::Restricted => write!(f, "restricted"),
         }
@@ -80,6 +85,7 @@ impl MachineReadablePrefix {
             m if m.starts_with("rate-limited:") => Some(Self::RateLimited),
             m if m.starts_with("invalid:") => Some(Self::Invalid),
             m if m.starts_with("error:") => Some(Self::Error),
+            m if m.starts_with("unsupported:") => Some(Self::Unsupported),
             m if m.starts_with("auth-required:") => Some(Self::AuthRequired),
             m if m.starts_with("restricted:") => Some(Self::Restricted),
             _ => None,
