@@ -198,7 +198,7 @@ impl JsRelay {
     pub async fn send_event(&self, event: &JsEvent) -> Result<JsEventId> {
         Ok(self
             .inner
-            .send_event(event.deref().clone())
+            .send_event(event.deref())
             .await
             .map_err(into_err)?
             .into())

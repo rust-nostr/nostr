@@ -235,9 +235,7 @@ impl Relay {
 
     /// Send event and wait for `OK` relay msg
     pub async fn send_event(&self, event: &Event) -> Result<Arc<EventId>> {
-        Ok(Arc::new(
-            self.inner.send_event(event.deref().clone()).await?.into(),
-        ))
+        Ok(Arc::new(self.inner.send_event(event.deref()).await?.into()))
     }
 
     /// Subscribe to filters
