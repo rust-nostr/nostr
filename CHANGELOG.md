@@ -95,6 +95,7 @@
 * lmdb: use `EventBorrow` instead of `DatabaseEvent` ([Yuki Kishimoto])
 * ndb: refactor note-to-event conversion ([Yuki Kishimoto])
 * relay-builder: refactor shutdown mechanism to use `Notify` over `broadcast` ([Yuki Kishimoto])
+* relay-builder: increase default max REQs to 500 ([Yuki Kishimoto])
 
 ### Added
 

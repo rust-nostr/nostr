@@ -28,7 +28,7 @@ pub struct RateLimit {
 impl Default for RateLimit {
     fn default() -> Self {
         Self {
-            max_reqs: 20,
+            max_reqs: 500,
             notes_per_minute: 60,
         }
     }
