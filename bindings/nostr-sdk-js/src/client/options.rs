@@ -51,13 +51,6 @@ impl JsOptions {
         self.inner.min_pow(difficulty).into()
     }
 
-    #[wasm_bindgen(js_name = reqFiltersChunkSize)]
-    pub fn req_filters_chunk_size(self, req_filters_chunk_size: u8) -> Self {
-        self.inner
-            .req_filters_chunk_size(req_filters_chunk_size)
-            .into()
-    }
-
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>

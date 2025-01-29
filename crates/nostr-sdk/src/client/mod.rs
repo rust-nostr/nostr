@@ -1068,18 +1068,13 @@ impl Client {
         let mut contacts: HashMap<PublicKey, Metadata> =
             public_keys.iter().map(|p| (*p, Metadata::new())).collect();
 
-        let chunk_size: usize = self.opts.req_filters_chunk_size as usize;
-        for chunk in public_keys.chunks(chunk_size) {
-            let filter: Filter = Filter::new()
-                .authors(chunk.iter().copied())
-                .kind(Kind::Metadata);
-            let events: Events = self.fetch_events(filter, timeout).await?;
-            for event in events.into_iter() {
-                let metadata = Metadata::from_json(&event.content)?;
-                if let Some(m) = contacts.get_mut(&event.pubkey) {
-                    *m = metadata
-                };
-            }
+        let filter: Filter = Filter::new().authors(public_keys).kind(Kind::Metadata);
+        let events: Events = self.fetch_events(filter, timeout).await?;
+        for event in events.into_iter() {
+            let metadata = Metadata::from_json(&event.content)?;
+            if let Some(m) = contacts.get_mut(&event.pubkey) {
+                *m = metadata
+            };
         }
 
         Ok(contacts)

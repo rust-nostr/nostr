@@ -57,12 +57,6 @@ impl Options {
         builder
     }
 
-    pub fn req_filters_chunk_size(&self, req_filters_chunk_size: u8) -> Self {
-        let mut builder = self.clone();
-        builder.inner = builder.inner.req_filters_chunk_size(req_filters_chunk_size);
-        builder
-    }
-
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>

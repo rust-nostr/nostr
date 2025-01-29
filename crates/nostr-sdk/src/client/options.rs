@@ -17,7 +17,6 @@ use nostr_relay_pool::prelude::*;
 pub struct Options {
     pub(super) autoconnect: bool,
     pub(super) min_pow_difficulty: u8,
-    pub(super) req_filters_chunk_size: u8,
     pub(super) nip42_auto_authentication: bool,
     pub(super) gossip: bool,
     #[cfg(not(target_arch = "wasm32"))]
@@ -33,7 +32,6 @@ impl Default for Options {
         Self {
             autoconnect: false,
             min_pow_difficulty: 0,
-            req_filters_chunk_size: 10,
             nip42_auto_authentication: true,
             gossip: false,
             #[cfg(not(target_arch = "wasm32"))]
@@ -70,9 +68,8 @@ impl Options {
     }
 
     /// REQ filters chunk size (default: 10)
-    #[inline]
-    pub fn req_filters_chunk_size(mut self, size: u8) -> Self {
-        self.req_filters_chunk_size = size;
+    #[deprecated(since = "0.39.0")]
+    pub fn req_filters_chunk_size(self, _size: u8) -> Self {
         self
     }
 
