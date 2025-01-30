@@ -204,7 +204,9 @@ impl EventBuilder {
         self
     }
 
-    /// Build unsigned event
+    /// Build an unsigned event
+    ///
+    /// This method removes all the `p` tags that match the author public key.
     pub fn build_with_ctx<T>(self, supplier: &T, public_key: PublicKey) -> UnsignedEvent
     where
         T: TimeSupplier,
@@ -278,7 +280,9 @@ impl EventBuilder {
         }
     }
 
-    /// Build unsigned event
+    /// Build an unsigned event
+    ///
+    /// This method removes all the `p` tags that match the author public key.
     #[inline]
     #[cfg(feature = "std")]
     pub fn build(self, pubkey: PublicKey) -> UnsignedEvent {
@@ -288,6 +292,8 @@ impl EventBuilder {
     /// Build, sign and return [`Event`]
     ///
     /// Shortcut for `builder.build(public_key).sign(signer)`.
+    ///
+    /// Check [`EventBuilder::build`] to learn more.
     #[inline]
     #[cfg(feature = "std")]
     pub async fn sign<T>(self, signer: &T) -> Result<Event, Error>
@@ -299,6 +305,8 @@ impl EventBuilder {
     }
 
     /// Build, sign and return [`Event`] using [`Keys`] signer
+    ///
+    /// Check [`EventBuilder::sign_with_ctx`] to learn more.
     #[inline]
     #[cfg(feature = "std")]
     pub fn sign_with_keys(self, keys: &Keys) -> Result<Event, Error> {
@@ -306,6 +314,8 @@ impl EventBuilder {
     }
 
     /// Build, sign and return [`Event`] using [`Keys`] signer
+    ///
+    /// Check [`EventBuilder::build_with_ctx`] to learn more.
     pub fn sign_with_ctx<C, R, T>(
         self,
         secp: &Secp256k1<C>,
