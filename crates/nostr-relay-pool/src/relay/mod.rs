@@ -677,7 +677,13 @@ impl Relay {
         // Sync
         match self
             .inner
-            .sync_new(down_sub_id.clone(), filter.clone(), items.clone(), opts, &mut output)
+            .sync_new(
+                down_sub_id.clone(),
+                filter.clone(),
+                items.clone(),
+                opts,
+                &mut output,
+            )
             .await
         {
             Ok(..) => {}

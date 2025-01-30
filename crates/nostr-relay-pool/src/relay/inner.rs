@@ -352,9 +352,7 @@ impl InnerRelay {
         subscription
             .iter()
             .filter_map(|(k, data)| match data.r#type {
-                SubscriptionType::LongLived { .. } => {
-                    Some((k.clone(), data.filter.clone()))
-                }
+                SubscriptionType::LongLived { .. } => Some((k.clone(), data.filter.clone())),
                 SubscriptionType::AutoClosing => None,
             })
             .collect()
@@ -378,10 +376,7 @@ impl InnerRelay {
         // Insert into the subscription map
         {
             let mut subscriptions = self.atomic.subscriptions.lock().unwrap();
-            subscriptions.insert(
-                id.clone(),
-                SubscriptionData::auto_closing(filter),
-            );
+            subscriptions.insert(id.clone(), SubscriptionData::auto_closing(filter));
         }
 
         AutoClosingSubscriptionGuard::new(&self.url, id, &self.atomic.subscriptions)
