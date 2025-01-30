@@ -1,5 +1,5 @@
 // Copyright (c) 2022-2023 Yuki Kishimoto
-// Copyright (c) 2023-2024 Rust Nostr Developers
+// Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
 use once_cell::sync::Lazy; // TODO: use `std::sync::LazyLock` when MSRV >= 1.80.0

@@ -1,5 +1,5 @@
 // Copyright (c) 2023 ProTom
-// Copyright (c) 2023-2024 Rust Nostr Developers
+// Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
 //! NIP15: Nostr Marketplace (for resilient marketplaces)

@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024 Rust Nostr Developers
+// Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
 use nostr::nips::nip48;
