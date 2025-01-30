@@ -1168,11 +1168,7 @@ mod tests {
 
         let filter = Filter::new().kind(Kind::Metadata).limit(1);
         let res = relay
-            .fetch_events(
-                vec![filter],
-                Duration::from_secs(5),
-                ReqExitPolicy::ExitOnEOSE,
-            )
+            .fetch_events(filter, Duration::from_secs(5), ReqExitPolicy::ExitOnEOSE)
             .await;
         assert!(matches!(res.unwrap_err(), Error::NotConnected));
 
@@ -1201,7 +1197,7 @@ mod tests {
 
         let filter = Filter::new().kind(Kind::TextNote).limit(3);
         relay
-            .subscribe(vec![filter], SubscribeOptions::default())
+            .subscribe(filter, SubscribeOptions::default())
             .unwrap();
 
         // Keep up the test
