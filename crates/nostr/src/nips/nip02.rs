@@ -2,7 +2,9 @@
 // Copyright (c) 2023-2024 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Contact
+//! NIP02: Follow List
+//!
+//! <https://github.com/nostr-protocol/nips/blob/master/02.md>
 
 use alloc::string::String;
 
@@ -10,7 +12,7 @@ use crate::key::PublicKey;
 use crate::types::RelayUrl;
 
 /// Contact
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Contact {
     /// Public key
     pub public_key: PublicKey,
@@ -21,16 +23,13 @@ pub struct Contact {
 }
 
 impl Contact {
-    /// Create new [`Contact`]
+    /// Create new contact
     #[inline]
-    pub fn new<S>(public_key: PublicKey, relay_url: Option<RelayUrl>, alias: Option<S>) -> Self
-    where
-        S: Into<String>,
-    {
+    pub fn new(public_key: PublicKey) -> Self {
         Self {
             public_key,
-            relay_url,
-            alias: alias.map(|a| a.into()),
+            relay_url: None,
+            alias: None,
         }
     }
 }

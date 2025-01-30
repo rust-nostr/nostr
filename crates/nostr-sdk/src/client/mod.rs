@@ -1029,7 +1029,11 @@ impl Client {
                     uppercase: false,
                 }) = tag.to_standardized()
                 {
-                    contact_list.push(Contact::new(public_key, relay_url, alias))
+                    contact_list.push(Contact {
+                        public_key,
+                        relay_url,
+                        alias,
+                    })
                 }
             }
         }

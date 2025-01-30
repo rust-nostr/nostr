@@ -4,6 +4,7 @@
 
 use std::sync::Arc;
 
+use nostr::nips::nip02;
 use nostr::RelayUrl;
 use uniffi::Record;
 
@@ -17,7 +18,7 @@ pub struct Contact {
     pub alias: Option<String>,
 }
 
-impl TryFrom<Contact> for nostr::Contact {
+impl TryFrom<Contact> for nip02::Contact {
     type Error = NostrSdkError;
 
     fn try_from(contact: Contact) -> Result<Self, Self::Error> {
@@ -25,10 +26,10 @@ impl TryFrom<Contact> for nostr::Contact {
             Some(url) => Some(RelayUrl::parse(&url)?),
             None => None,
         };
-        Ok(nostr::Contact::new(
-            **contact.public_key,
+        Ok(nip02::Contact {
+            public_key: **contact.public_key,
             relay_url,
-            contact.alias,
-        ))
+            alias: contact.alias,
+        })
     }
 }

@@ -7,12 +7,10 @@
 #![allow(unknown_lints)]
 #![allow(ambiguous_glob_reexports)]
 
-pub mod contact;
 pub mod image;
 pub mod time;
 pub mod url;
 
-pub use self::contact::*;
 pub use self::image::*;
 pub use self::time::*;
 pub use self::url::*;

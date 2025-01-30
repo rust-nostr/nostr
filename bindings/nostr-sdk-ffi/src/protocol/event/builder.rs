@@ -7,7 +7,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::util::EventIdOrCoordinate;
-use nostr::{Contact as ContactSdk, RelayUrl, Url};
+use nostr::{RelayUrl, Url};
 use uniffi::Object;
 
 use super::{Event, EventId, Kind};
@@ -196,7 +196,7 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/02.md>
     #[uniffi::constructor]
     pub fn contact_list(contacts: Vec<Contact>) -> Result<Self> {
-        let mut list: Vec<ContactSdk> = Vec::with_capacity(contacts.len());
+        let mut list = Vec::with_capacity(contacts.len());
         for contact in contacts.into_iter() {
             list.push(contact.try_into()?);
         }

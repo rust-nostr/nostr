@@ -48,7 +48,11 @@ impl JsContact {
             None => None,
         };
         Ok(Self {
-            inner: Contact::new(**public_key, relay_url, alias),
+            inner: Contact {
+                public_key: **public_key,
+                relay_url,
+                alias,
+            },
         })
     }
 

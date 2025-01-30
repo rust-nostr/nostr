@@ -7,6 +7,7 @@
 //! See all at <https://github.com/nostr-protocol/nips>
 
 pub mod nip01;
+pub mod nip02;
 #[cfg(feature = "nip04")]
 pub mod nip04;
 #[cfg(all(feature = "std", feature = "nip05"))]
