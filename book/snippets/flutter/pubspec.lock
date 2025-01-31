@@ -247,11 +247,11 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "2e63f8f6cfac533061b8f8f776898aca3291d95a"
-      resolved-ref: "2e63f8f6cfac533061b8f8f776898aca3291d95a"
+      ref: "v0.39.0"
+      resolved-ref: "72a9156ff76f48d9a60dd859f4f69b74e51c8ee2"
       url: "https://github.com/rust-nostr/nostr-sdk-flutter.git"
     source: git
-    version: "0.38.0"
+    version: "0.39.0"
   package_config:
     dependency: transitive
     description:
