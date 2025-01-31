@@ -4,6 +4,8 @@
 
 //! Web's IndexedDB Storage backend for Nostr SDK
 
+#![cfg(target_arch = "wasm32")]
+
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 #![allow(unknown_lints, clippy::arc_with_non_send_sync)]
