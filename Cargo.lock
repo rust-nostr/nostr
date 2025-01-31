@@ -2629,8 +2629,9 @@ checksum = "e664971378a3987224f7a0e10059782035e89899ae403718ee07de85bec42afe"
 
 [[package]]
 name = "negentropy"
-version = "0.4.3"
-source = "git+https://github.com/rust-nostr/negentropy?rev=311013ce05dd3f670d9d9c444c09195837837271#311013ce05dd3f670d9d9c444c09195837837271"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0efe882e02d206d8d279c20eb40e03baf7cb5136a1476dc084a324fbc3ec42d"
 
 [[package]]
 name = "nix"
@@ -2779,7 +2780,7 @@ dependencies = [
  "base64 0.22.1",
  "hyper",
  "hyper-util",
- "negentropy 0.4.3",
+ "negentropy 0.5.0",
  "nostr",
  "nostr-database",
  "tokio",
@@ -2795,7 +2796,7 @@ dependencies = [
  "async-wsocket",
  "atomic-destructor",
  "negentropy 0.3.1",
- "negentropy 0.4.3",
+ "negentropy 0.5.0",
  "nostr",
  "nostr-database",
  "nostr-relay-builder",

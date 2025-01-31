@@ -22,8 +22,7 @@ async-utility = "0.3"
 async-wsocket = "0.13"
 atomic-destructor = { version = "0.3", default-features = false }
 js-sys = "0.3"
-#negentropy = { version = "0.4", default-features = false }
-negentropy = { git = "https://github.com/rust-nostr/negentropy", rev = "311013ce05dd3f670d9d9c444c09195837837271", default-features = false }
+negentropy = { version = "0.5", default-features = false }
 negentropy-deprecated = { package = "negentropy", version = "0.3", default-features = false }
 nostr = { version = "0.38", path = "./crates/nostr", default-features = false }
 nostr-connect = { version = "0.38", path = "./crates/nostr-connect", default-features = false }

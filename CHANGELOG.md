@@ -70,6 +70,7 @@
 ### Changed
 
 * Bump `async-wsocket` to 0.13 ([Yuki Kishimoto])
+* Bump `negentropy` to 0.5 ([Yuki Kishimoto])
 * nostr: refactor `PublicKey` to use byte array internally ([Yuki Kishimoto])
 * nostr: bump `bip39` to 2.1 ([Yuki Kishimoto])
 * nostr: move `types::filter` to `crate::filter` ([Yuki Kishimoto])
