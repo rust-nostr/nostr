@@ -29,7 +29,7 @@ jobs:
         PYBIN: "/opt/python/${{ matrix.python }}/bin"
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Needed because inside container
       - name: "Setup Rust"
@@ -59,7 +59,7 @@ jobs:
         working-directory: bindings/nostr-sdk-ffi/python
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: "Setup Python"
         uses: actions/setup-python@v4
@@ -93,7 +93,7 @@ jobs:
         python: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: true
 
@@ -127,7 +127,7 @@ jobs:
         python: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: true
 
@@ -160,7 +160,7 @@ jobs:
         python: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: true
       - uses: actions/setup-python@v4
@@ -189,7 +189,7 @@ jobs:
     if: github.event.inputs.dry-run == 'false'
     steps:
       - name: "Checkout"
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: "Download artifacts in dist/ directory"
         uses: actions/download-artifact@v4
