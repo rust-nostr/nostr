@@ -7,16 +7,17 @@
 * Bump versions
   * Rust in various `Cargo.toml`
   * Android in `lib/build.gradle.kts`
+  * JVM in `lib/build.gradle.kts`
   * Python in `setup.py`
   * Flutter in `pubspec.yaml` (other repository)
   * JavaScript in `package.json`
-  * Swift Package NOT require version update
+  * Swift Package DOESN'T require version update
 
 * Commit and push (**without tag**): `Bump to vX.X.X`
 
 * Release crates and bindings
     * Publish crates with `just release` or `bash ./contrib/scripts/release.sh`
-    * Publish `Kotlin` bindings
+    * Publish `Kotlin` (android + JVM) bindings
     * Publish `Python` bindings
     * Publish `JavaScript` bindings
     * Publish `Swift` bindings

@@ -24,16 +24,16 @@ atomic-destructor = { version = "0.3", default-features = false }
 js-sys = "0.3"
 negentropy = { version = "0.5", default-features = false }
 negentropy-deprecated = { package = "negentropy", version = "0.3", default-features = false }
-nostr = { version = "0.38", path = "./crates/nostr", default-features = false }
-nostr-connect = { version = "0.38", path = "./crates/nostr-connect", default-features = false }
-nostr-database = { version = "0.38", path = "./crates/nostr-database", default-features = false }
-nostr-indexeddb = { version = "0.38", path = "./crates/nostr-indexeddb", default-features = false }
-nostr-lmdb = { version = "0.38", path = "./crates/nostr-lmdb", default-features = false }
-nostr-ndb = { version = "0.38", path = "./crates/nostr-ndb", default-features = false }
-nostr-relay-builder = { version = "0.38", path = "./crates/nostr-relay-builder", default-features = false }
-nostr-relay-pool = { version = "0.38", path = "./crates/nostr-relay-pool", default-features = false }
-nostr-sdk = { version = "0.38", path = "./crates/nostr-sdk", default-features = false }
-nwc = { version = "0.38", path = "./crates/nwc", default-features = false }
+nostr = { version = "0.39", path = "./crates/nostr", default-features = false }
+nostr-connect = { version = "0.39", path = "./crates/nostr-connect", default-features = false }
+nostr-database = { version = "0.39", path = "./crates/nostr-database", default-features = false }
+nostr-indexeddb = { version = "0.39", path = "./crates/nostr-indexeddb", default-features = false }
+nostr-lmdb = { version = "0.39", path = "./crates/nostr-lmdb", default-features = false }
+nostr-ndb = { version = "0.39", path = "./crates/nostr-ndb", default-features = false }
+nostr-relay-builder = { version = "0.39", path = "./crates/nostr-relay-builder", default-features = false }
+nostr-relay-pool = { version = "0.39", path = "./crates/nostr-relay-pool", default-features = false }
+nostr-sdk = { version = "0.39", path = "./crates/nostr-sdk", default-features = false }
+nwc = { version = "0.39", path = "./crates/nwc", default-features = false }
 serde_json = { version = "1.0", default-features = false }
 tokio = { version = ">=1.37", default-features = false }
 tracing = { version = "0.1", default-features = false }
