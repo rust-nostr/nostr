@@ -88,7 +88,7 @@ impl WebSocketTransport for DefaultWebsocketTransport {
     ) -> BoxedFuture<'a, Result<(BoxSink, BoxStream), TransportError>> {
         Box::pin(async move {
             // Connect
-            let socket: WebSocket = async_wsocket::connect(url, mode, timeout)
+            let socket: WebSocket = WebSocket::connect(url, mode, timeout)
                 .await
                 .map_err(TransportError::backend)?;
 

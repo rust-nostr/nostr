@@ -336,8 +336,9 @@ dependencies = [
 
 [[package]]
 name = "async-wsocket"
-version = "0.12.0"
-source = "git+https://github.com/yukibtc/async-wsocket?rev=5fba7927576064ac0698a4ee3df0d26e5cf726dd#5fba7927576064ac0698a4ee3df0d26e5cf726dd"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "197c8c4d501d615e193e548ff0225925306b1f413a0f27f0b0952367ff25e41c"
 dependencies = [
  "arti-client",
  "async-utility",
