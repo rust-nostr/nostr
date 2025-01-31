@@ -30,7 +30,7 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     let filter: Filter = Filter::new().pubkey(keys.public_key()).limit(0);
-    client.subscribe(vec![filter], None).await?;
+    client.subscribe(filter, None).await?;
 
     // Handle subscription notifications with `handle_notifications` method
     client

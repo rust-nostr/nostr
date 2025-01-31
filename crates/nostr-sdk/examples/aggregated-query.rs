@@ -24,9 +24,9 @@ async fn main() -> Result<()> {
         .author(public_key)
         .kind(Kind::TextNote)
         .limit(50);
-    let stored_events = client.database().query(vec![filter.clone()]).await?;
+    let stored_events = client.database().query(filter.clone()).await?;
     let fetched_events = client
-        .fetch_events(vec![filter], Duration::from_secs(10))
+        .fetch_events(filter, Duration::from_secs(10))
         .await?;
     let events = stored_events.merge(fetched_events);
 
@@ -38,12 +38,12 @@ async fn main() -> Result<()> {
 
     // Query events from database
     let filter = Filter::new().author(public_key).kind(Kind::TextNote);
-    let stored_events = client.database().query(vec![filter]).await?;
+    let stored_events = client.database().query(filter).await?;
 
     // Query events from relays
     let filter = Filter::new().author(public_key).kind(Kind::Metadata);
     let fetched_events = client
-        .fetch_events(vec![filter], Duration::from_secs(10))
+        .fetch_events(filter, Duration::from_secs(10))
         .await?;
 
     // Add temp relay and fetch other events
@@ -53,7 +53,7 @@ async fn main() -> Result<()> {
     let fetched_events_from = client
         .fetch_events_from(
             ["wss://nostr.oxtr.dev"],
-            vec![filter],
+            filter,
             Duration::from_secs(10),
         )
         .await?;
