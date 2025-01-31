@@ -22,7 +22,7 @@ function run() {
     // Create Request client message
     console.log("  Request Client Message:");
     let f = new Filter().id(event.id);
-    clientMessage = ClientMessage.req("ABC123", [f]);
+    clientMessage = ClientMessage.req("ABC123", f);
     console.log(`     - JSON: ${clientMessage.asJson()}`);
     // ANCHOR_END: req-message
 
@@ -55,7 +55,7 @@ function run() {
     // Create Count client message (NIP45)
     console.log("  Count Client Message:");
     f = new Filter().pubkey(keys.publicKey);
-    clientMessage = ClientMessage.count("ABC123", [f]);
+    clientMessage = ClientMessage.count("ABC123", f);
     console.log(`     - JSON: ${clientMessage.asJson()}`);
     // ANCHOR_END: count-message
 
