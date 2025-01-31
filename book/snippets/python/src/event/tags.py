@@ -5,7 +5,7 @@ from nostr_sdk import EventBuilder, Keys, Tag, Contact, Coordinate, Kind, RelayM
 def tags():
     # Generate keys and events
     keys = Keys.generate()
-    event = EventBuilder.contact_list([Contact(keys.public_key(), "", "")]).sign_with_keys(keys)
+    event = EventBuilder.contact_list([Contact(public_key=keys.public_key(), relay_url=None, alias=None)]).sign_with_keys(keys)
 
     print()
     print("Tags:")

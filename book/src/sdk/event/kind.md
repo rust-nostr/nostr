@@ -20,18 +20,18 @@ TODO
 <div slot="title">Python</div>
 <section>
 
-Working with kinds is facilitated by the `Kind` and `KindEnum` classes. 
+Working with kinds is facilitated by the `Kind` and `KindStandard` classes. 
 If you are familiar already with the specific integer value for a given Kind it is as simple as calling an instance of the class `Kind()` and passing the specific number for the Kind you wish to create.
 
 In the example below we've used the common `0`/`1`/`3` Kinds (user metadata, text note and following list, respectively) as an illustration of this.
 
-Once we've created the `Kind` object we can use the `as_enum()` method to present the Kind object as an easy to read `KindEnum` object.
+Once we've created the `Kind` object we can use the `as_std()` method to present the Kind object as an easy to read `KindStandard` object.
 
 ```python,ignore
 {{#include ../../../snippets/python/src/event/kind.py:kind-int}}
 ```
 
-Alternatively, if you are less familiar with the specific integer values for a Kind we can use the individual Kind classes, in conjunction with the `KindEnum` class, to generate the objects. 
+Alternatively, if you are less familiar with the specific integer values for a Kind we can use the individual Kind classes, in conjunction with the `KindStandard` class, to generate the objects. 
 Below we see the `TEXT_NOTE()`, `METADATA()` and `CONTACT_LIST()` enums being passed to an instance of the `Kind` class via the `from_enum()` method.
 
 In order to present these as their integer values we can use the `as_u16()` method.

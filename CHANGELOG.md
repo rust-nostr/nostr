@@ -25,9 +25,13 @@
 
 -->
 
-## [Unreleased]
+## [v0.39.0] - 2025/01/31
 
 ### Summary
+
+Add NIP96 support, add NIP22 helpers, NIP01 adjustments, add `try_connect` and `wait_for_connection` methods for better connection handling,
+support for custom WebSocket clients (both in Rust, Python, Kotlin and Swift), new JVM bindings, 
+huge reduction of UniFFI bindings binaries size, many cleanups, refactoring and performance improvements and more!
 
 ### Breaking changes
 
@@ -1072,7 +1076,8 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [cipres]: https://github.com/PancakesArchitect (nostr:npub1r3cnzta52fee26c83cnes8wvzkch3kud2kll67k402x04mttt26q0wfx0c)
 
 <!-- Tags -->
-[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.38.0...HEAD
+[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.39.0...HEAD
+[v0.39.0]: https://github.com/rust-nostr/nostr/compare/v0.38.0...v0.39.0
 [v0.38.0]: https://github.com/rust-nostr/nostr/compare/v0.37.0...v0.38.0
 [v0.37.0]: https://github.com/rust-nostr/nostr/compare/v0.36.0...v0.37.0
 [v0.36.0]: https://github.com/rust-nostr/nostr/compare/v0.35.0...v0.36.0

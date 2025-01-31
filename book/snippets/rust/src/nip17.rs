@@ -26,7 +26,7 @@ pub async fn run() -> Result<()> {
         .kind(Kind::GiftWrap)
         .pubkey(bob_keys.public_key())
         .limit(0);
-    let subscription_id = bob_client.subscribe(vec![message_filter], None).await?;
+    let subscription_id = bob_client.subscribe(message_filter, None).await?;
 
     // Alice sends private message to Bob
     alice_client.send_private_msg(bob_keys.public_key(), "Hello Bob!", []).await?;

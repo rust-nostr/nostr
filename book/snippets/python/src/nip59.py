@@ -12,7 +12,7 @@ async def nip59():
     bob_signer = NostrSigner.keys(bob_keys)
 
     # Compose rumor
-    rumor = EventBuilder.text_note("Test")
+    rumor: UnsignedEvent = EventBuilder.text_note("Test").build(alice_keys.public_key())
 
     # Build gift wrap with sender keys
     gw: Event = await gift_wrap(alice_signer, bob_keys.public_key(), rumor, None)

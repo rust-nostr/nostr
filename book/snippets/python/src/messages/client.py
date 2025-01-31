@@ -22,7 +22,7 @@ def client_message():
     # Request client message
     print("  Request Client Message:")
     f = Filter().id(event.id())
-    message = ClientMessage.req(subscription_id="ABC123", filters=[f])
+    message = ClientMessage.req(subscription_id="ABC123", filter=f)
     print(f"     - Request Message: {message.as_enum().is_req()}")
     print(f"     - JSON: {message.as_json()}")
     # ANCHOR_END: req-message
@@ -43,7 +43,7 @@ def client_message():
     message = ClientMessage.from_json('["REQ","ABC123",{"#p":["421a4dd67be773903f805bcb7975b4d3377893e0e09d7563b8972ee41031f551"]}]')
     print(f"     - ENUM: {message.as_enum()}")
     f = Filter().pubkey(keys.public_key())
-    message = ClientMessage.from_enum(cast(ClientMessageEnum, ClientMessageEnum.REQ("ABC123", filters=[f])))
+    message = ClientMessage.from_enum(cast(ClientMessageEnum, ClientMessageEnum.REQ("ABC123", filter=f)))
     print(f"     - JSON: {message.as_json()}")
     # ANCHOR_END: parse-message
 
@@ -61,7 +61,7 @@ def client_message():
     # Count client message (NIP45)
     print("  Count Client Message:")
     f = Filter().pubkey(keys.public_key())
-    message = ClientMessage.count(subscription_id="ABC123", filters=[f])
+    message = ClientMessage.count(subscription_id="ABC123", filter=f)
     print(f"     - Count Message: {message.as_enum().is_count()}")
     print(f"     - JSON: {message.as_json()}")
     # ANCHOR_END: count-message

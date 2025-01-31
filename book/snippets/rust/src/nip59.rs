@@ -9,7 +9,7 @@ pub async fn run() -> Result<()> {
     let bob_keys = Keys::parse("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")?;
 
     // Compose rumor
-    let rumor: EventBuilder = EventBuilder::text_note("Test");
+    let rumor: UnsignedEvent = EventBuilder::text_note("Test").build(alice_keys.public_key);
 
     // Build gift wrap with sender keys
     let gw: Event = EventBuilder::gift_wrap(&alice_keys, &bob_keys.public_key(), rumor, None).await?;

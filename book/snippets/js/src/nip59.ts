@@ -13,7 +13,7 @@ async function run() {
     const bob_signer = NostrSigner.keys(bob_keys);
 
     // Compose rumor
-    const rumor = EventBuilder.textNote("Test")
+    const rumor = EventBuilder.textNote("Test").build(alice_keys.publicKey)
 
     // Build gift wrap with sender keys
     const gw = await EventBuilder.giftWrap(alice_signer, bob_keys.publicKey, rumor)
