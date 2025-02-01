@@ -13,19 +13,19 @@ use crate::protocol::filter::JsFilter;
 
 #[wasm_bindgen(js_name = ClientMessage)]
 pub struct JsClientMessage {
-    inner: ClientMessage,
+    inner: ClientMessage<'static>,
 }
 
 impl Deref for JsClientMessage {
-    type Target = ClientMessage;
+    type Target = ClientMessage<'static>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl From<ClientMessage> for JsClientMessage {
-    fn from(inner: ClientMessage) -> Self {
+impl From<ClientMessage<'static>> for JsClientMessage {
+    fn from(inner: ClientMessage<'static>) -> Self {
         Self { inner }
     }
 }

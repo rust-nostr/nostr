@@ -198,7 +198,7 @@ impl JsRelay {
     pub async fn send_event(&self, event: &JsEvent) -> Result<JsEventId> {
         Ok(self
             .inner
-            .send_event(event.deref().clone())
+            .send_event(event.deref())
             .await
             .map_err(into_err)?
             .into())
@@ -239,7 +239,7 @@ impl JsRelay {
     /// Unsubscribe
     pub async fn unsubscribe(&self, id: String) -> Result<()> {
         self.inner
-            .unsubscribe(SubscriptionId::new(id))
+            .unsubscribe(&SubscriptionId::new(id))
             .await
             .map_err(into_err)
     }

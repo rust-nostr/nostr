@@ -2,6 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::borrow::Cow;
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -58,24 +59,22 @@ pub enum ClientMessageEnum {
     },
 }
 
-impl From<ClientMessageEnum> for nostr::ClientMessage {
+impl From<ClientMessageEnum> for nostr::ClientMessage<'static> {
     fn from(value: ClientMessageEnum) -> Self {
         match value {
-            ClientMessageEnum::EventMsg { event } => {
-                Self::Event(Box::new(event.as_ref().deref().clone()))
-            }
+            ClientMessageEnum::EventMsg { event } => Self::event(event.as_ref().deref().clone()),
             ClientMessageEnum::Req {
                 subscription_id,
                 filter,
-            } => Self::Req {
-                subscription_id: SubscriptionId::new(subscription_id),
-                filter: Box::new(filter.as_ref().deref().clone()),
-            },
+            } => Self::req(
+                SubscriptionId::new(subscription_id),
+                filter.as_ref().deref().clone(),
+            ),
             ClientMessageEnum::ReqMultiFilter {
                 subscription_id,
                 filters,
             } => Self::ReqMultiFilter {
-                subscription_id: SubscriptionId::new(subscription_id),
+                subscription_id: Cow::Owned(SubscriptionId::new(subscription_id)),
                 filters: filters
                     .into_iter()
                     .map(|f| f.as_ref().deref().clone())
@@ -84,43 +83,41 @@ impl From<ClientMessageEnum> for nostr::ClientMessage {
             ClientMessageEnum::Count {
                 subscription_id,
                 filter,
-            } => Self::Count {
-                subscription_id: SubscriptionId::new(subscription_id),
-                filter: Box::new(filter.as_ref().deref().clone()),
-            },
+            } => Self::count(
+                SubscriptionId::new(subscription_id),
+                filter.as_ref().deref().clone(),
+            ),
             ClientMessageEnum::Close { subscription_id } => {
-                Self::Close(SubscriptionId::new(subscription_id))
+                Self::close(SubscriptionId::new(subscription_id))
             }
-            ClientMessageEnum::Auth { event } => {
-                Self::Auth(Box::new(event.as_ref().deref().clone()))
-            }
+            ClientMessageEnum::Auth { event } => Self::auth(event.as_ref().deref().clone()),
             ClientMessageEnum::NegOpen {
                 subscription_id,
                 filter,
                 id_size,
                 initial_message,
             } => Self::NegOpen {
-                subscription_id: SubscriptionId::new(subscription_id),
-                filter: Box::new(filter.as_ref().deref().clone()),
+                subscription_id: Cow::Owned(SubscriptionId::new(subscription_id)),
+                filter: Cow::Owned(filter.as_ref().deref().clone()),
                 id_size,
-                initial_message,
+                initial_message: Cow::Owned(initial_message),
             },
             ClientMessageEnum::NegMsg {
                 subscription_id,
                 message,
             } => Self::NegMsg {
-                subscription_id: SubscriptionId::new(subscription_id),
-                message,
+                subscription_id: Cow::Owned(SubscriptionId::new(subscription_id)),
+                message: Cow::Owned(message),
             },
             ClientMessageEnum::NegClose { subscription_id } => Self::NegClose {
-                subscription_id: SubscriptionId::new(subscription_id),
+                subscription_id: Cow::Owned(SubscriptionId::new(subscription_id)),
             },
         }
     }
 }
 
-impl From<nostr::ClientMessage> for ClientMessageEnum {
-    fn from(value: nostr::ClientMessage) -> Self {
+impl<'a> From<nostr::ClientMessage<'a>> for ClientMessageEnum {
+    fn from(value: nostr::ClientMessage<'a>) -> Self {
         match value {
             nostr::ClientMessage::Event(event) => Self::EventMsg {
                 event: Arc::new(event.as_ref().to_owned().into()),
@@ -130,7 +127,7 @@ impl From<nostr::ClientMessage> for ClientMessageEnum {
                 filter,
             } => Self::Req {
                 subscription_id: subscription_id.to_string(),
-                filter: Arc::new((*filter).into()),
+                filter: Arc::new(filter.into_owned().into()),
             },
             nostr::ClientMessage::ReqMultiFilter {
                 subscription_id,
@@ -144,7 +141,7 @@ impl From<nostr::ClientMessage> for ClientMessageEnum {
                 filter,
             } => Self::Count {
                 subscription_id: subscription_id.to_string(),
-                filter: Arc::new((*filter).into()),
+                filter: Arc::new(filter.into_owned().into()),
             },
             nostr::ClientMessage::Close(subscription_id) => Self::Close {
                 subscription_id: subscription_id.to_string(),
@@ -161,14 +158,14 @@ impl From<nostr::ClientMessage> for ClientMessageEnum {
                 subscription_id: subscription_id.to_string(),
                 filter: Arc::new(filter.as_ref().to_owned().into()),
                 id_size,
-                initial_message,
+                initial_message: initial_message.into_owned(),
             },
             nostr::ClientMessage::NegMsg {
                 subscription_id,
                 message,
             } => Self::NegMsg {
                 subscription_id: subscription_id.to_string(),
-                message,
+                message: message.into_owned(),
             },
             nostr::ClientMessage::NegClose { subscription_id } => Self::NegClose {
                 subscription_id: subscription_id.to_string(),
@@ -180,19 +177,19 @@ impl From<nostr::ClientMessage> for ClientMessageEnum {
 #[derive(Debug, PartialEq, Eq, Object)]
 #[uniffi::export(Debug, Eq)]
 pub struct ClientMessage {
-    inner: nostr::ClientMessage,
+    inner: nostr::ClientMessage<'static>,
 }
 
 impl Deref for ClientMessage {
-    type Target = nostr::ClientMessage;
+    type Target = nostr::ClientMessage<'static>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl From<nostr::ClientMessage> for ClientMessage {
-    fn from(inner: nostr::ClientMessage) -> Self {
+impl From<nostr::ClientMessage<'static>> for ClientMessage {
+    fn from(inner: nostr::ClientMessage<'static>) -> Self {
         Self { inner }
     }
 }

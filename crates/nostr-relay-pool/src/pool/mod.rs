@@ -62,7 +62,7 @@ pub enum RelayPoolNotification {
         /// The URL of the relay from which the message was received.
         relay_url: RelayUrl,
         /// The received relay message.
-        message: RelayMessage,
+        message: RelayMessage<'static>,
     },
     /// Shutdown
     ///
@@ -479,7 +479,11 @@ impl RelayPool {
     /// Send a client message to specific relays
     ///
     /// Note: **the relays must already be added!**
-    pub async fn send_msg_to<I, U>(&self, urls: I, msg: ClientMessage) -> Result<Output<()>, Error>
+    pub async fn send_msg_to<I, U>(
+        &self,
+        urls: I,
+        msg: ClientMessage<'_>,
+    ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -494,7 +498,7 @@ impl RelayPool {
     pub async fn batch_msg_to<I, U>(
         &self,
         urls: I,
-        msgs: Vec<ClientMessage>,
+        msgs: Vec<ClientMessage<'_>>,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -555,13 +559,17 @@ impl RelayPool {
     }
 
     /// Send event to all relays with `WRITE` flag (check [`RelayServiceFlags`] for more details).
-    pub async fn send_event(&self, event: Event) -> Result<Output<EventId>, Error> {
+    pub async fn send_event(&self, event: &Event) -> Result<Output<EventId>, Error> {
         let urls: Vec<RelayUrl> = self.write_relay_urls().await;
         self.send_event_to(urls, event).await
     }
 
     /// Send event to specific relays
-    pub async fn send_event_to<I, U>(&self, urls: I, event: Event) -> Result<Output<EventId>, Error>
+    pub async fn send_event_to<I, U>(
+        &self,
+        urls: I,
+        event: &Event,
+    ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -591,7 +599,7 @@ impl RelayPool {
         }
 
         // Save event into database
-        self.inner.state.database().save_event(&event).await?;
+        self.inner.state.database().save_event(event).await?;
 
         let mut urls: Vec<RelayUrl> = Vec::with_capacity(set.len());
         let mut futures = Vec::with_capacity(set.len());
@@ -604,7 +612,6 @@ impl RelayPool {
         // Compose futures
         for url in set.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
-            let event: Event = event.clone();
             urls.push(url);
             futures.push(relay.send_event(event));
         }
@@ -797,9 +804,9 @@ impl RelayPool {
     }
 
     /// Unsubscribe from subscription
-    pub async fn unsubscribe(&self, id: SubscriptionId) {
+    pub async fn unsubscribe(&self, id: &SubscriptionId) {
         // Remove subscription from pool
-        self.inner.remove_subscription(&id).await;
+        self.inner.remove_subscription(id).await;
 
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
@@ -808,7 +815,7 @@ impl RelayPool {
 
         // Remove subscription from relays
         for relay in relays.values() {
-            if let Err(e) = relay.unsubscribe(id.clone()).await {
+            if let Err(e) = relay.unsubscribe(id).await {
                 tracing::error!("{e}");
             }
         }

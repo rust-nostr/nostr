@@ -4,6 +4,7 @@
 
 //! Relay
 
+use std::borrow::Cow;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -66,7 +67,7 @@ pub enum RelayNotification {
     /// Received a [`RelayMessage`]. Includes messages wrapping events that were sent by this client.
     Message {
         /// Relay Message
-        message: RelayMessage,
+        message: RelayMessage<'static>,
     },
     /// Relay status changed
     RelayStatus {
@@ -341,47 +342,44 @@ impl Relay {
 
     /// Send msg to relay
     #[inline]
-    pub fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
-        self.batch_msg(vec![msg])
+    pub fn send_msg(&self, msg: ClientMessage<'_>) -> Result<(), Error> {
+        self.inner.send_msg(msg)
     }
 
     /// Send multiple [`ClientMessage`] at once
     #[inline]
-    pub fn batch_msg(&self, msgs: Vec<ClientMessage>) -> Result<(), Error> {
+    pub fn batch_msg(&self, msgs: Vec<ClientMessage<'_>>) -> Result<(), Error> {
         self.inner.batch_msg(msgs)
     }
 
     async fn _send_event(
         &self,
         notifications: &mut broadcast::Receiver<RelayNotification>,
-        event: Event,
-    ) -> Result<(EventId, bool, String), Error> {
-        let id: EventId = event.id;
-
-        // Send message
-        // TODO: avoid clone
-        self.send_msg(ClientMessage::event(event))?;
+        event: &Event,
+    ) -> Result<(bool, String), Error> {
+        // Send the EVENT message
+        self.inner
+            .send_msg(ClientMessage::Event(Cow::Borrowed(event)))?;
 
         // Wait for OK
         self.inner
-            .wait_for_ok(notifications, id, BATCH_EVENT_ITERATION_TIMEOUT)
+            .wait_for_ok(notifications, &event.id, BATCH_EVENT_ITERATION_TIMEOUT)
             .await
     }
 
     /// Send event and wait for `OK` relay msg
-    pub async fn send_event(&self, event: Event) -> Result<EventId, Error> {
+    pub async fn send_event(&self, event: &Event) -> Result<EventId, Error> {
         // Health, write permission and number of messages checks are executed in `batch_msg` method.
 
         // Subscribe to notifications
         let mut notifications = self.inner.internal_notification_sender.subscribe();
 
         // Send event
-        let (event_id, status, message) =
-            self._send_event(&mut notifications, event.clone()).await?;
+        let (status, message) = self._send_event(&mut notifications, event).await?;
 
         // Check status
         if status {
-            return Ok(event_id);
+            return Ok(event.id);
         }
 
         // If auth required, wait for authentication adn resend it
@@ -394,12 +392,11 @@ impl Relay {
                     .await?;
 
                 // Try to resend event
-                let (event_id, status, message) =
-                    self._send_event(&mut notifications, event).await?;
+                let (status, message) = self._send_event(&mut notifications, event).await?;
 
                 // Check status
                 return if status {
-                    Ok(event_id)
+                    Ok(event.id)
                 } else {
                     Err(Error::RelayMessage(message))
                 };
@@ -478,7 +475,10 @@ impl Relay {
         opts: SubscribeOptions,
     ) -> Result<(), Error> {
         // Compose REQ message
-        let msg: ClientMessage = ClientMessage::req(id.clone(), filter.clone());
+        let msg: ClientMessage = ClientMessage::Req {
+            subscription_id: Cow::Borrowed(&id),
+            filter: Cow::Borrowed(&filter),
+        };
 
         // Check if auto-close condition is set
         match opts.auto_close {
@@ -507,7 +507,7 @@ impl Relay {
 
     /// Unsubscribe
     #[inline]
-    pub async fn unsubscribe(&self, id: SubscriptionId) -> Result<(), Error> {
+    pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<(), Error> {
         self.inner.unsubscribe(id).await
     }
 
@@ -552,8 +552,8 @@ impl Relay {
                             },
                         ..
                     } => {
-                        if subscription_id == id {
-                            callback(*event);
+                        if subscription_id.as_ref() == &id {
+                            callback(event.into_owned());
                         }
                     }
                     RelayNotification::SubscriptionAutoClosed { reason } => {
@@ -616,7 +616,11 @@ impl Relay {
     /// Count events
     pub async fn count_events(&self, filter: Filter, timeout: Duration) -> Result<usize, Error> {
         let id = SubscriptionId::generate();
-        self.send_msg(ClientMessage::count(id.clone(), filter))?;
+        let msg = ClientMessage::Count {
+            subscription_id: Cow::Borrowed(&id),
+            filter: Cow::Owned(filter),
+        };
+        self.inner.send_msg(msg)?;
 
         let mut count = 0;
 
@@ -631,7 +635,7 @@ impl Relay {
                         },
                 } = notification
                 {
-                    if subscription_id == id {
+                    if subscription_id.as_ref() == &id {
                         count = c;
                         break;
                     }
@@ -642,7 +646,7 @@ impl Relay {
         .ok_or(Error::Timeout)?;
 
         // Unsubscribe
-        self.send_msg(ClientMessage::close(id))?;
+        self.inner.send_msg(ClientMessage::close(id))?;
 
         Ok(count)
     }
@@ -677,7 +681,7 @@ impl Relay {
 
         match self
             .inner
-            .sync_new(filter.clone(), items.clone(), opts, &mut output)
+            .sync_new(&filter, items.clone(), opts, &mut output)
             .await
         {
             Ok(..) => {}
@@ -685,7 +689,7 @@ impl Relay {
                 Error::NegentropyNotSupported
                 | Error::Negentropy(negentropy::Error::UnsupportedProtocolVersion) => {
                     self.inner
-                        .sync_deprecated(filter, items, opts, &mut output)
+                        .sync_deprecated(&filter, items, opts, &mut output)
                         .await?;
                 }
                 e => return Err(e),
@@ -736,7 +740,7 @@ mod tests {
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
             .unwrap();
-        relay.send_event(event).await.unwrap();
+        relay.send_event(&event).await.unwrap();
     }
 
     #[tokio::test]
@@ -1047,7 +1051,7 @@ mod tests {
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
             .unwrap();
-        let err = relay.send_event(event).await.unwrap_err();
+        let err = relay.send_event(&event).await.unwrap_err();
         if let Error::RelayMessage(msg) = err {
             assert_eq!(
                 MachineReadablePrefix::parse(&msg).unwrap(),
@@ -1064,7 +1068,7 @@ mod tests {
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
             .unwrap();
-        assert!(relay.send_event(event).await.is_ok());
+        assert!(relay.send_event(&event).await.is_ok());
     }
 
     #[tokio::test]
@@ -1088,7 +1092,7 @@ mod tests {
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
             .unwrap();
-        relay.send_event(event).await.unwrap();
+        relay.send_event(&event).await.unwrap();
 
         let filter = Filter::new().kind(Kind::TextNote).limit(3);
 

@@ -253,7 +253,7 @@ impl NostrConnect {
         let mut notifications = self.pool.notifications();
 
         // Send request
-        self.pool.send_event(event).await?;
+        self.pool.send_event(&event).await?;
 
         time::timeout(Some(self.timeout), async {
             while let Ok(notification) = notifications.recv().await {

@@ -656,7 +656,7 @@ impl Client {
 
     /// Unsubscribe
     #[inline]
-    pub async fn unsubscribe(&self, id: SubscriptionId) {
+    pub async fn unsubscribe(&self, id: &SubscriptionId) {
         self.pool.unsubscribe(id).await;
     }
 
@@ -861,7 +861,11 @@ impl Client {
 
     /// Send the client message to a **specific relays**
     #[inline]
-    pub async fn send_msg_to<I, U>(&self, urls: I, msg: ClientMessage) -> Result<Output<()>, Error>
+    pub async fn send_msg_to<I, U>(
+        &self,
+        urls: I,
+        msg: ClientMessage<'_>,
+    ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -875,7 +879,7 @@ impl Client {
     pub async fn batch_msg_to<I, U>(
         &self,
         urls: I,
-        msgs: Vec<ClientMessage>,
+        msgs: Vec<ClientMessage<'_>>,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -890,7 +894,7 @@ impl Client {
     /// Send [`Event`] to all relays with [`RelayServiceFlags::WRITE`] flag.
     /// If `gossip` is enabled (see [`Options::gossip`]) the event will be sent also to NIP65 relays (automatically discovered).
     #[inline]
-    pub async fn send_event(&self, event: Event) -> Result<Output<EventId>, Error> {
+    pub async fn send_event(&self, event: &Event) -> Result<Output<EventId>, Error> {
         // NOT gossip, send event to all relays
         if !self.opts.gossip {
             return Ok(self.pool.send_event(event).await?);
@@ -901,7 +905,11 @@ impl Client {
 
     /// Send event to specific relays.
     #[inline]
-    pub async fn send_event_to<I, U>(&self, urls: I, event: Event) -> Result<Output<EventId>, Error>
+    pub async fn send_event_to<I, U>(
+        &self,
+        urls: I,
+        event: &Event,
+    ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -927,7 +935,7 @@ impl Client {
         builder: EventBuilder,
     ) -> Result<Output<EventId>, Error> {
         let event: Event = self.sign_event_builder(builder).await?;
-        self.send_event(event).await
+        self.send_event(&event).await
     }
 
     /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to specific relays.
@@ -945,7 +953,7 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let event: Event = self.sign_event_builder(builder).await?;
-        self.send_event_to(urls, event).await
+        self.send_event_to(urls, &event).await
     }
 
     /// Fetch the newest public key metadata from relays.
@@ -1110,10 +1118,10 @@ impl Client {
 
         // NOT gossip, send to all relays
         if !self.opts.gossip {
-            return self.send_event(event).await;
+            return self.send_event(&event).await;
         }
 
-        self.gossip_send_event(event, true).await
+        self.gossip_send_event(&event, true).await
     }
 
     /// Send a private direct message to specific relays
@@ -1140,7 +1148,7 @@ impl Client {
         let signer = self.signer().await?;
         let event: Event =
             EventBuilder::private_msg(&signer, receiver, message, rumor_extra_tags).await?;
-        self.send_event_to(urls, event).await
+        self.send_event_to(urls, &event).await
     }
 
     /// Construct Gift Wrap and send to relays
@@ -1169,7 +1177,7 @@ impl Client {
             EventBuilder::gift_wrap(&signer, receiver, rumor, extra_tags).await?;
 
         // Send
-        self.send_event(gift_wrap).await
+        self.send_event(&gift_wrap).await
     }
 
     /// Construct Gift Wrap and send to specific relays
@@ -1200,7 +1208,7 @@ impl Client {
             EventBuilder::gift_wrap(&signer, receiver, rumor, extra_tags).await?;
 
         // Send
-        self.send_event_to(urls, gift_wrap).await
+        self.send_event_to(urls, &gift_wrap).await
     }
 
     /// Unwrap Gift Wrap event
@@ -1323,7 +1331,11 @@ impl Client {
         Ok(filters)
     }
 
-    async fn gossip_send_event(&self, event: Event, nip17: bool) -> Result<Output<EventId>, Error> {
+    async fn gossip_send_event(
+        &self,
+        event: &Event,
+        nip17: bool,
+    ) -> Result<Output<EventId>, Error> {
         // Get all public keys involved in the event
         let public_keys = event
             .tags
