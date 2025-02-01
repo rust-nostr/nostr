@@ -365,21 +365,6 @@ impl NostrEventsDatabase for WebDatabase {
         })
     }
 
-    fn event_id_seen(
-        &self,
-        _event_id: EventId,
-        _relay_url: RelayUrl,
-    ) -> BoxedFuture<Result<(), DatabaseError>> {
-        Box::pin(async move { Ok(()) })
-    }
-
-    fn event_seen_on_relays<'a>(
-        &'a self,
-        _event_id: &'a EventId,
-    ) -> BoxedFuture<'a, Result<Option<HashSet<RelayUrl>>, DatabaseError>> {
-        Box::pin(async move { Err(DatabaseError::NotSupported) })
-    }
-
     fn event_by_id<'a>(
         &'a self,
         event_id: &'a EventId,

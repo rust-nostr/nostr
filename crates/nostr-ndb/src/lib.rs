@@ -10,7 +10,6 @@
 #![allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive for async_trait
 
 use std::borrow::Cow;
-use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 
 pub extern crate nostr;
@@ -108,21 +107,6 @@ impl NostrEventsDatabase for NdbDatabase {
         _timestamp: &'a Timestamp,
     ) -> BoxedFuture<'a, Result<bool, DatabaseError>> {
         Box::pin(async move { Ok(false) })
-    }
-
-    fn event_id_seen(
-        &self,
-        _event_id: EventId,
-        _relay_url: RelayUrl,
-    ) -> BoxedFuture<Result<(), DatabaseError>> {
-        Box::pin(async move { Ok(()) })
-    }
-
-    fn event_seen_on_relays<'a>(
-        &'a self,
-        _event_id: &'a EventId,
-    ) -> BoxedFuture<'a, Result<Option<HashSet<RelayUrl>>, DatabaseError>> {
-        Box::pin(async move { Err(DatabaseError::NotSupported) })
     }
 
     fn event_by_id<'a>(

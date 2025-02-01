@@ -42,6 +42,8 @@
 
 ### Removed
 
+* database: remove deprecated ([Yuki Kishimoto])
+
 ### Deprecated
 
 ## [v0.39.0] - 2025/01/31
