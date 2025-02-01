@@ -222,16 +222,16 @@ impl Relay {
         document.clone()
     }
 
-    /// Get subscriptions
+    /// Get all long-lived subscriptions
     #[inline]
-    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
-        self.inner.subscriptions().await
+    pub fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
+        self.inner.long_lived_subscriptions()
     }
 
-    /// Get filters by [SubscriptionId]
+    /// Get filters of long-lived subscription by [`SubscriptionId`]
     #[inline]
-    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
-        self.inner.subscription(id).await
+    pub fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
+        self.inner.long_lived_subscription(id)
     }
 
     /// Get options
@@ -439,12 +439,6 @@ impl Relay {
         .ok_or(Error::Timeout)?
     }
 
-    /// Resubscribe to all **closed** or not yet initiated subscriptions
-    #[inline]
-    pub async fn resubscribe(&self) -> Result<(), Error> {
-        self.inner.resubscribe().await
-    }
-
     /// Subscribe to filters
     ///
     /// Internally generate a new random [`SubscriptionId`]. Check `subscribe_with_id` method to use a custom [SubscriptionId].
@@ -452,15 +446,13 @@ impl Relay {
     /// ### Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
-    ///
-    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
-    pub async fn subscribe(
+    pub fn subscribe(
         &self,
         filters: Filter,
         opts: SubscribeOptions,
     ) -> Result<SubscriptionId, Error> {
         let id: SubscriptionId = SubscriptionId::generate();
-        self.subscribe_with_id(id.clone(), filters, opts).await?;
+        self.subscribe_with_id(id.clone(), filters, opts)?;
         Ok(id)
     }
 
@@ -469,9 +461,7 @@ impl Relay {
     /// ### Auto-closing subscription
     ///
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
-    ///
-    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
-    pub async fn subscribe_with_id(
+    pub fn subscribe_with_id(
         &self,
         id: SubscriptionId,
         filter: Filter,
@@ -498,7 +488,7 @@ impl Relay {
                 self.inner.send_msg(msg)?;
 
                 // No auto-close subscription: update subscription filter
-                self.inner.update_subscription(id, filter, true).await;
+                self.inner.update_long_lived_subscription(id, filter, true);
             }
         };
 
@@ -507,14 +497,14 @@ impl Relay {
 
     /// Unsubscribe
     #[inline]
-    pub async fn unsubscribe(&self, id: SubscriptionId) -> Result<(), Error> {
-        self.inner.unsubscribe(id).await
+    pub fn unsubscribe(&self, id: SubscriptionId) -> Result<(), Error> {
+        self.inner.unsubscribe(id)
     }
 
     /// Unsubscribe from all subscriptions
     #[inline]
-    pub async fn unsubscribe_all(&self) -> Result<(), Error> {
-        self.inner.unsubscribe_all().await
+    pub fn unsubscribe_all(&self) -> Result<(), Error> {
+        self.inner.unsubscribe_all_long_lived()
     }
 
     /// Get events of filter with custom callback
@@ -539,7 +529,7 @@ impl Relay {
         let mut notifications = self.inner.internal_notification_sender.subscribe();
 
         // Subscribe with auto-close
-        let id: SubscriptionId = self.subscribe(filter, subscribe_opts).await?;
+        let id: SubscriptionId = self.subscribe(filter, subscribe_opts)?;
 
         time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
@@ -673,11 +663,27 @@ impl Relay {
             return Err(Error::ReadDisabled);
         }
 
+        // Construct new default reconciliation output
         let mut output: Reconciliation = Reconciliation::default();
 
+        // Generate subscription ID for getting events
+        let down_sub_id: SubscriptionId = SubscriptionId::generate();
+
+        // Register auto-closing subscription
+        let _guard = self
+            .inner
+            .register_auto_closing_subscription(down_sub_id.clone(), filter.clone());
+
+        // Sync
         match self
             .inner
-            .sync_new(filter.clone(), items.clone(), opts, &mut output)
+            .sync_new(
+                down_sub_id.clone(),
+                filter.clone(),
+                items.clone(),
+                opts,
+                &mut output,
+            )
             .await
         {
             Ok(..) => {}
@@ -685,7 +691,7 @@ impl Relay {
                 Error::NegentropyNotSupported
                 | Error::Negentropy(negentropy::Error::UnsupportedProtocolVersion) => {
                     self.inner
-                        .sync_deprecated(filter, items, opts, &mut output)
+                        .sync_deprecated(down_sub_id, filter, items, opts, &mut output)
                         .await?;
                 }
                 e => return Err(e),
@@ -917,6 +923,7 @@ mod tests {
         // Mock relay
         let opts = RelayTestOptions {
             unresponsive_connection: Some(Duration::from_secs(2)),
+            send_random_events: false,
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
@@ -949,6 +956,7 @@ mod tests {
         // Mock relay
         let opts = RelayTestOptions {
             unresponsive_connection: Some(Duration::from_secs(10)),
+            send_random_events: false,
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
@@ -977,6 +985,7 @@ mod tests {
         // Mock relay
         let opts = RelayTestOptions {
             unresponsive_connection: Some(Duration::from_secs(10)),
+            send_random_events: false,
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
@@ -1005,6 +1014,7 @@ mod tests {
         // Mock relay
         let opts = RelayTestOptions {
             unresponsive_connection: Some(Duration::from_secs(2)),
+            send_random_events: false,
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
@@ -1136,6 +1146,69 @@ mod tests {
             .fetch_events(filter, Duration::from_secs(5), ReqExitPolicy::ExitOnEOSE)
             .await;
         assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_fetch_events_ban_relay() {
+        // Mock relay
+        let opts = RelayTestOptions {
+            unresponsive_connection: None,
+            send_random_events: true,
+        };
+        let mock = MockRelay::run_with_opts(opts).await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let relay = Relay::new(url);
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.try_connect(Duration::from_secs(3)).await.unwrap();
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        let filter = Filter::new().kind(Kind::Metadata).limit(1);
+        let res = relay
+            .fetch_events(filter, Duration::from_secs(5), ReqExitPolicy::ExitOnEOSE)
+            .await;
+        assert!(matches!(res.unwrap_err(), Error::NotConnected));
+
+        assert_eq!(relay.status(), RelayStatus::Banned);
+
+        assert!(!relay.inner.is_running());
+    }
+
+    #[tokio::test]
+    async fn test_subscribe_ban_relay() {
+        // Mock relay
+        let opts = RelayTestOptions {
+            unresponsive_connection: None,
+            send_random_events: true,
+        };
+        let mock = MockRelay::run_with_opts(opts).await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let relay = Relay::new(url);
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.try_connect(Duration::from_secs(3)).await.unwrap();
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        let filter = Filter::new().kind(Kind::TextNote).limit(3);
+        relay
+            .subscribe(filter, SubscribeOptions::default())
+            .unwrap();
+
+        // Keep up the test
+        relay
+            .handle_notifications(|_| async { Ok(false) })
+            .await
+            .unwrap();
+
+        assert_eq!(relay.status(), RelayStatus::Banned);
+
+        assert!(!relay.inner.is_running());
     }
 
     // TODO: add negentropy reconciliation test
