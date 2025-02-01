@@ -54,6 +54,7 @@ buildargs=(
 
 skip_msrv=(
     "-p nostr-sdk --features tor"     # MSRV: 1.77.0
+    "-p nostr-sdk --all-features"     # MSRV: 1.77.0 (since uses tor)
     "-p nostr-cli"                    # MSRV: 1.74.0
 )
 
