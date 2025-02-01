@@ -32,10 +32,11 @@ echo "CI: $is_ci"
 echo "MSRV: $is_msrv"
 
 buildargs=(
-    "-p nostr" # Only std feature
-    "-p nostr --features all-nips" # std + all-nips
-    "-p nostr --no-default-features --features alloc" # Only alloc feature
-    "-p nostr --no-default-features --features alloc,all-nips" # alloc + all-nips
+    "-p nostr"                                                    # Only std feature
+    "-p nostr --features all-nips"                                # std + all-nips
+    "-p nostr --no-default-features --features alloc"             # Only alloc feature
+    "-p nostr --no-default-features --features alloc,all-nips"    # alloc + all-nips
+    "-p nostr --all-features"                                     # Only std feature
     "-p nostr-database"
     "-p nostr-lmdb"
     "-p nostr-indexeddb --target wasm32-unknown-unknown"
@@ -44,9 +45,10 @@ buildargs=(
     "-p nostr-relay-builder"
     "-p nostr-connect"
     "-p nwc"
-    "-p nostr-sdk" # No default features
-    "-p nostr-sdk --features all-nips"
-    "-p nostr-sdk --features tor"
+    "-p nostr-sdk"                                                # No default features
+    "-p nostr-sdk --features all-nips"                            # Only NIPs features
+    "-p nostr-sdk --features tor"                                 # Embedded tor client
+    "-p nostr-sdk --all-features"                                 # All features
     "-p nostr-cli"
 )
 
