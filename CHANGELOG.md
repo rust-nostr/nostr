@@ -34,6 +34,7 @@
 ### Changed
 
 * nostr: manually impl eq and cmp traits for `RelayUrl` ([Yuki Kishimoto])
+* ffi: improve `Events::merge` and `Events::to_vec` performance ([Yuki Kishimoto])
 
 ### Added
 
