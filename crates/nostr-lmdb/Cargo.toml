@@ -13,7 +13,7 @@ keywords = ["nostr", "database", "lmdb"]
 
 [dependencies]
 async-utility.workspace = true
-heed = { version = "0.20", default-features = false, features = ["read-txn-no-tls"] }
+heed = { version = "0.21", default-features = false, features = ["read-txn-no-tls"] }
 nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
 
