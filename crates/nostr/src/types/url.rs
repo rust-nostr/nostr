@@ -5,8 +5,10 @@
 //! Urls
 
 use alloc::string::String;
+use core::cmp::Ordering;
 use core::convert::Infallible;
 use core::fmt;
+use core::hash::{Hash, Hasher};
 use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::net::IpAddr; // TODO: use `core::net` when MSRV will be at 1.77.0
@@ -48,7 +50,7 @@ impl From<ParseError> for Error {
 }
 
 /// Relay URL
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone)]
 pub struct RelayUrl {
     url: Url,
     has_trailing_slash: bool,
@@ -58,6 +60,32 @@ impl fmt::Debug for RelayUrl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let url: &str = self.as_str();
         f.debug_tuple("RelayUrl").field(&url).finish()
+    }
+}
+
+impl PartialEq for RelayUrl {
+    fn eq(&self, other: &Self) -> bool {
+        self.url == other.url
+    }
+}
+
+impl Eq for RelayUrl {}
+
+impl PartialOrd for RelayUrl {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for RelayUrl {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.url.cmp(&other.url)
+    }
+}
+
+impl Hash for RelayUrl {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.url.hash(state);
     }
 }
 

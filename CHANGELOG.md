@@ -25,6 +25,24 @@
 
 -->
 
+## [Unreleased]
+
+### Summary
+
+### Breaking changes
+
+### Changed
+
+* nostr: manually impl eq and cmp traits for `RelayUrl` ([Yuki Kishimoto])
+
+### Added
+
+### Fixed
+
+### Removed
+
+### Deprecated
+
 ## [v0.39.0] - 2025/01/31
 
 ### Summary
