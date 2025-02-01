@@ -79,9 +79,11 @@ impl NWC {
             .limit(0); // Limit to 0 means give me 0 events until EOSE
 
         // Subscribe
-        self.relay
-            .subscribe_with_id(SubscriptionId::new(ID), filter, SubscribeOptions::default())
-            .await?;
+        self.relay.subscribe_with_id(
+            SubscriptionId::new(ID),
+            filter,
+            SubscribeOptions::default(),
+        )?;
 
         // Mark as bootstrapped
         self.bootstrapped.store(true, Ordering::SeqCst);

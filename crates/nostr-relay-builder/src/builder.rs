@@ -127,6 +127,8 @@ pub trait QueryPolicy: fmt::Debug + Send + Sync {
 pub struct RelayTestOptions {
     /// Simulate unresponsive connection
     pub unresponsive_connection: Option<Duration>,
+    /// Send random events to the clients
+    pub send_random_events: bool,
 }
 
 /// NIP42 mode

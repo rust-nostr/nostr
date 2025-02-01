@@ -601,7 +601,19 @@ impl InnerLocalRelay {
                     .insert(subscription_id.clone(), *filter.clone());
 
                 // Query database
-                let events = self.database.query(*filter).await?;
+                let events = if self.test.send_random_events {
+                    let mut events = Vec::with_capacity(500);
+
+                    let keys = Keys::generate();
+
+                    for _ in 0..500 {
+                        events.push(EventBuilder::text_note("Test").sign_with_keys(&keys)?);
+                    }
+
+                    events
+                } else {
+                    self.database.query(*filter).await?.to_vec()
+                };
 
                 tracing::debug!(
                     "Found {} events for subscription '{subscription_id}'",

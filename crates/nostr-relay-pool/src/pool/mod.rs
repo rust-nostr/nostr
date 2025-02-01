@@ -761,24 +761,14 @@ impl RelayPool {
             return Err(Error::RelayNotFound);
         }
 
-        let mut urls: Vec<RelayUrl> = Vec::with_capacity(targets.len());
-        let mut futures = Vec::with_capacity(targets.len());
         let mut output: Output<()> = Output::default();
 
         // Compose futures
         for (url, filter) in targets.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
             let id: SubscriptionId = id.clone();
-            urls.push(url);
-            futures.push(relay.subscribe_with_id(id, filter, opts));
-        }
 
-        // Join futures
-        let list = future::join_all(futures).await;
-
-        // Iter results and construct output
-        for (url, result) in urls.into_iter().zip(list.into_iter()) {
-            match result {
+            match relay.subscribe_with_id(id, filter, opts) {
                 Ok(..) => {
                     // Success, insert relay url in 'success' set result
                     output.success.insert(url);
@@ -808,7 +798,7 @@ impl RelayPool {
 
         // Remove subscription from relays
         for relay in relays.values() {
-            if let Err(e) = relay.unsubscribe(id.clone()).await {
+            if let Err(e) = relay.unsubscribe(id.clone()) {
                 tracing::error!("{e}");
             }
         }
@@ -822,11 +812,11 @@ impl RelayPool {
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
 
-        // TODO: use join_all and return `Output`?
+        // TODO: return `Output`?
 
         // Unsubscribe relays
         for relay in relays.values() {
-            if let Err(e) = relay.unsubscribe_all().await {
+            if let Err(e) = relay.unsubscribe_all() {
                 tracing::error!("{e}");
             }
         }
