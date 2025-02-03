@@ -559,13 +559,17 @@ impl RelayPool {
     }
 
     /// Send event to all relays with `WRITE` flag (check [`RelayServiceFlags`] for more details).
-    pub async fn send_event(&self, event: Event) -> Result<Output<EventId>, Error> {
+    pub async fn send_event(&self, event: &Event) -> Result<Output<EventId>, Error> {
         let urls: Vec<RelayUrl> = self.write_relay_urls().await;
         self.send_event_to(urls, event).await
     }
 
     /// Send event to specific relays
-    pub async fn send_event_to<I, U>(&self, urls: I, event: Event) -> Result<Output<EventId>, Error>
+    pub async fn send_event_to<I, U>(
+        &self,
+        urls: I,
+        event: &Event,
+    ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -595,7 +599,7 @@ impl RelayPool {
         }
 
         // Save event into database
-        self.inner.state.database().save_event(&event).await?;
+        self.inner.state.database().save_event(event).await?;
 
         let mut urls: Vec<RelayUrl> = Vec::with_capacity(set.len());
         let mut futures = Vec::with_capacity(set.len());
@@ -608,7 +612,6 @@ impl RelayPool {
         // Compose futures
         for url in set.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
-            let event: Event = event.clone();
             urls.push(url);
             futures.push(relay.send_event(event));
         }
