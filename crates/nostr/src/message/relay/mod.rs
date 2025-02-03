@@ -5,7 +5,7 @@
 
 //! Relay messages
 
-use alloc::boxed::Box;
+use alloc::borrow::Cow;
 use alloc::string::String;
 use core::fmt;
 
@@ -95,7 +95,7 @@ impl MachineReadablePrefix {
 
 /// Messages sent by relays, received by clients
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum RelayMessage {
+pub enum RelayMessage<'a> {
     /// Event
     ///
     /// Used to send events requested by clients.
@@ -105,9 +105,9 @@ pub enum RelayMessage {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     Event {
         /// Subscription ID
-        subscription_id: SubscriptionId,
+        subscription_id: Cow<'a, SubscriptionId>,
         /// Event
-        event: Box<Event>,
+        event: Cow<'a, Event>,
     },
     /// Ok
     ///
@@ -122,7 +122,7 @@ pub enum RelayMessage {
         /// Status
         status: bool,
         /// Message
-        message: String,
+        message: Cow<'a, str>,
     },
     /// End of stored events
     ///
@@ -131,7 +131,7 @@ pub enum RelayMessage {
     /// JSON: `["EOSE", <subscription_id>]`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    EndOfStoredEvents(SubscriptionId),
+    EndOfStoredEvents(Cow<'a, SubscriptionId>),
     /// Notice
     ///
     /// Used to send human-readable error messages or other things to clients.
@@ -139,7 +139,7 @@ pub enum RelayMessage {
     /// JSON: `["NOTICE", <message>]`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    Notice(String),
+    Notice(Cow<'a, str>),
     /// Closed
     ///
     /// Used to indicate that a subscription was ended on the server side.
@@ -149,9 +149,9 @@ pub enum RelayMessage {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     Closed {
         /// Subscription ID
-        subscription_id: SubscriptionId,
+        subscription_id: Cow<'a, SubscriptionId>,
         /// Message
-        message: String,
+        message: Cow<'a, str>,
     },
     /// Auth
     ///
@@ -160,7 +160,7 @@ pub enum RelayMessage {
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     Auth {
         /// Challenge
-        challenge: String,
+        challenge: Cow<'a, str>,
     },
     /// Count
     ///
@@ -169,53 +169,33 @@ pub enum RelayMessage {
     /// <https://github.com/nostr-protocol/nips/blob/master/45.md>
     Count {
         /// Subscription ID
-        subscription_id: SubscriptionId,
+        subscription_id: Cow<'a, SubscriptionId>,
         /// Events count
         count: usize,
     },
     /// Negentropy Message
     NegMsg {
         /// Subscription ID
-        subscription_id: SubscriptionId,
+        subscription_id: Cow<'a, SubscriptionId>,
         /// Message
-        message: String,
+        message: Cow<'a, str>,
     },
     /// Negentropy Error
     NegErr {
         /// Subscription ID
-        subscription_id: SubscriptionId,
+        subscription_id: Cow<'a, SubscriptionId>,
         /// Error message
-        message: String,
+        message: Cow<'a, str>,
     },
 }
 
-impl Serialize for RelayMessage {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let json_value: Value = self.as_value();
-        json_value.serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for RelayMessage {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let json_value = Value::deserialize(deserializer)?;
-        RelayMessage::from_value(json_value).map_err(serde::de::Error::custom)
-    }
-}
-
-impl RelayMessage {
+impl RelayMessage<'_> {
     /// Create `EVENT` message
     #[inline]
     pub fn event(subscription_id: SubscriptionId, event: Event) -> Self {
         Self::Event {
-            subscription_id,
-            event: Box::new(event),
+            subscription_id: Cow::Owned(subscription_id),
+            event: Cow::Owned(event),
         }
     }
 
@@ -225,7 +205,7 @@ impl RelayMessage {
     where
         S: Into<String>,
     {
-        Self::Notice(message.into())
+        Self::Notice(Cow::Owned(message.into()))
     }
 
     /// Create `CLOSED` message
@@ -235,15 +215,15 @@ impl RelayMessage {
         S: Into<String>,
     {
         Self::Closed {
-            subscription_id,
-            message: message.into(),
+            subscription_id: Cow::Owned(subscription_id),
+            message: Cow::Owned(message.into()),
         }
     }
 
     /// Create `EOSE` message
     #[inline]
     pub fn eose(subscription_id: SubscriptionId) -> Self {
-        Self::EndOfStoredEvents(subscription_id)
+        Self::EndOfStoredEvents(Cow::Owned(subscription_id))
     }
 
     /// Create `OK` message
@@ -255,7 +235,7 @@ impl RelayMessage {
         Self::Ok {
             event_id,
             status,
-            message: message.into(),
+            message: Cow::Owned(message.into()),
         }
     }
 
@@ -266,7 +246,7 @@ impl RelayMessage {
         S: Into<String>,
     {
         Self::Auth {
-            challenge: challenge.into(),
+            challenge: Cow::Owned(challenge.into()),
         }
     }
 
@@ -274,9 +254,16 @@ impl RelayMessage {
     #[inline]
     pub fn count(subscription_id: SubscriptionId, count: usize) -> Self {
         Self::Count {
-            subscription_id,
+            subscription_id: Cow::Owned(subscription_id),
             count,
         }
+    }
+
+    /// Deserialize from [`Value`]
+    #[inline]
+    pub fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
+        let raw = RawRelayMessage::from_value(msg)?;
+        RelayMessage::try_from(raw)
     }
 
     fn as_value(&self) -> Value {
@@ -313,16 +300,29 @@ impl RelayMessage {
             } => json!(["NEG-ERR", subscription_id, message]),
         }
     }
+}
 
-    /// Deserialize from [`Value`]
-    #[inline]
-    pub fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
-        let raw = RawRelayMessage::from_value(msg)?;
-        RelayMessage::try_from(raw)
+impl Serialize for RelayMessage<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let json_value: Value = self.as_value();
+        json_value.serialize(serializer)
     }
 }
 
-impl JsonUtil for RelayMessage {
+impl<'de> Deserialize<'de> for RelayMessage<'_> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let json_value = Value::deserialize(deserializer)?;
+        RelayMessage::from_value(json_value).map_err(serde::de::Error::custom)
+    }
+}
+
+impl JsonUtil for RelayMessage<'_> {
     type Err = MessageHandleError;
 
     /// Deserialize [`RelayMessage`] from JSON string
@@ -343,7 +343,7 @@ impl JsonUtil for RelayMessage {
     }
 }
 
-impl TryFrom<RawRelayMessage> for RelayMessage {
+impl TryFrom<RawRelayMessage> for RelayMessage<'_> {
     type Error = MessageHandleError;
 
     fn try_from(raw: RawRelayMessage) -> Result<Self, Self::Error> {
@@ -351,51 +351,41 @@ impl TryFrom<RawRelayMessage> for RelayMessage {
             RawRelayMessage::Event {
                 subscription_id,
                 event,
-            } => Ok(Self::Event {
-                subscription_id: SubscriptionId::new(subscription_id),
-                event: Box::new(event.try_into()?),
-            }),
+            } => Ok(Self::event(
+                SubscriptionId::new(subscription_id),
+                event.try_into()?,
+            )),
             RawRelayMessage::Ok {
                 event_id,
                 status,
                 message,
-            } => Ok(Self::Ok {
-                event_id: EventId::from_hex(&event_id)?,
-                status,
-                message,
-            }),
-            RawRelayMessage::EndOfStoredEvents(subscription_id) => Ok(Self::EndOfStoredEvents(
-                SubscriptionId::new(subscription_id),
-            )),
-            RawRelayMessage::Notice(message) => Ok(Self::Notice(message)),
+            } => Ok(Self::ok(EventId::from_hex(&event_id)?, status, message)),
+            RawRelayMessage::EndOfStoredEvents(subscription_id) => {
+                Ok(Self::eose(SubscriptionId::new(subscription_id)))
+            }
+            RawRelayMessage::Notice(message) => Ok(Self::notice(message)),
             RawRelayMessage::Closed {
                 subscription_id,
                 message,
-            } => Ok(Self::Closed {
-                subscription_id: SubscriptionId::new(subscription_id),
-                message,
-            }),
-            RawRelayMessage::Auth { challenge } => Ok(Self::Auth { challenge }),
+            } => Ok(Self::closed(SubscriptionId::new(subscription_id), message)),
+            RawRelayMessage::Auth { challenge } => Ok(Self::auth(challenge)),
             RawRelayMessage::Count {
                 subscription_id,
                 count,
-            } => Ok(Self::Count {
-                subscription_id: SubscriptionId::new(subscription_id),
-                count,
-            }),
+            } => Ok(Self::count(SubscriptionId::new(subscription_id), count)),
             RawRelayMessage::NegMsg {
                 subscription_id,
                 message,
             } => Ok(Self::NegMsg {
-                subscription_id: SubscriptionId::new(subscription_id),
-                message,
+                subscription_id: Cow::Owned(SubscriptionId::new(subscription_id)),
+                message: Cow::Owned(message),
             }),
             RawRelayMessage::NegErr {
                 subscription_id,
                 message,
             } => Ok(Self::NegErr {
-                subscription_id: SubscriptionId::new(subscription_id),
-                message,
+                subscription_id: Cow::Owned(SubscriptionId::new(subscription_id)),
+                message: Cow::Owned(message),
             }),
         }
     }

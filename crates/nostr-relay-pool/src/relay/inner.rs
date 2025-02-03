@@ -2,6 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::borrow::Cow;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 #[cfg(feature = "nip11")]
@@ -38,11 +39,13 @@ use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
 use crate::transport::websocket::{BoxSink, BoxStream};
 
+type ClientMessageJson = String;
+
 #[derive(Debug)]
 struct RelayChannels {
     nostr: (
-        Sender<Vec<ClientMessage>>,
-        Mutex<Receiver<Vec<ClientMessage>>>,
+        Sender<Vec<ClientMessageJson>>,
+        Mutex<Receiver<Vec<ClientMessageJson>>>,
     ),
     ping: Notify,
     terminate: Notify,
@@ -60,6 +63,10 @@ impl RelayChannels {
     }
 
     pub fn send_client_msgs(&self, msgs: Vec<ClientMessage>) -> Result<(), Error> {
+        // Serialize messages to JSON
+        let msgs: Vec<ClientMessageJson> = msgs.into_iter().map(|msg| msg.as_json()).collect();
+
+        // Send
         self.nostr
             .0
             .try_send(msgs)
@@ -69,7 +76,7 @@ impl RelayChannels {
     }
 
     #[inline]
-    pub async fn rx_nostr(&self) -> MutexGuard<'_, Receiver<Vec<ClientMessage>>> {
+    pub async fn rx_nostr(&self) -> MutexGuard<'_, Receiver<Vec<ClientMessageJson>>> {
         self.nostr.1.lock().await
     }
 
@@ -563,7 +570,7 @@ impl InnerRelay {
     async fn connect_and_run(
         &self,
         stream: Option<(BoxSink, BoxStream)>,
-        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessage>>>,
+        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
         last_ws_error: &mut Option<String>,
     ) {
         match stream {
@@ -606,7 +613,7 @@ impl InnerRelay {
         &self,
         mut ws_tx: BoxSink,
         ws_rx: BoxStream,
-        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessage>>>,
+        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
     ) {
         // Request information document
         #[cfg(feature = "nip11")]
@@ -650,7 +657,7 @@ impl InnerRelay {
     async fn sender_message_handler(
         &self,
         ws_tx: &mut BoxSink,
-        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessage>>>,
+        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
         ping: &PingTracker,
     ) -> Result<(), Error> {
         #[cfg(target_arch = "wasm32")]
@@ -660,10 +667,10 @@ impl InnerRelay {
             tokio::select! {
                 // Nostr channel receiver
                 Some(msgs) = rx_nostr.recv() => {
-                    // Serialize messages to JSON and compose WebSocket text messages
+                    // Compose WebSocket text messages
                     let msgs: Vec<Message> = msgs
                         .into_iter()
-                        .map(|msg| Message::Text(msg.as_json()))
+                        .map(Message::Text)
                         .collect();
 
                     // Calculate messages size
@@ -844,7 +851,7 @@ impl InnerRelay {
                         // Check if NIP42 auto authentication is enabled
                         if self.state.is_auto_authentication_enabled() {
                             let relay = self.clone();
-                            let challenge: String = challenge.clone();
+                            let challenge: String = challenge.to_string();
                             task::spawn(async move {
                                 // Authenticate to relay
                                 match relay.auth(challenge).await {
@@ -897,7 +904,10 @@ impl InnerRelay {
         }
     }
 
-    async fn handle_raw_relay_message(&self, msg: &str) -> Result<Option<RelayMessage>, Error> {
+    async fn handle_raw_relay_message(
+        &self,
+        msg: &str,
+    ) -> Result<Option<RelayMessage<'static>>, Error> {
         let size: usize = msg.len();
 
         tracing::trace!(url = %self.url, size = %size, msg = %msg, "Received new relay message.");
@@ -927,7 +937,7 @@ impl InnerRelay {
         &self,
         subscription_id: String,
         event: RawEvent,
-    ) -> Result<Option<RelayMessage>, Error> {
+    ) -> Result<Option<RelayMessage<'static>>, Error> {
         let kind: Kind = Kind::from(event.kind);
 
         // Check event size
@@ -1018,7 +1028,6 @@ impl InnerRelay {
         }
 
         let subscription_id: SubscriptionId = SubscriptionId::new(subscription_id);
-        let event: Box<Event> = Box::new(event);
 
         // TODO: check if filter match
 
@@ -1034,15 +1043,15 @@ impl InnerRelay {
             self.send_notification(
                 RelayNotification::Event {
                     subscription_id: subscription_id.clone(),
-                    event: event.clone(),
+                    event: Box::new(event.clone()),
                 },
                 true,
             );
         }
 
         Ok(Some(RelayMessage::Event {
-            subscription_id,
-            event,
+            subscription_id: Cow::Owned(subscription_id),
+            event: Cow::Owned(event),
         }))
     }
 
@@ -1057,11 +1066,11 @@ impl InnerRelay {
     }
 
     #[inline]
-    pub fn send_msg(&self, msg: ClientMessage) -> Result<(), Error> {
+    pub fn send_msg(&self, msg: ClientMessage<'_>) -> Result<(), Error> {
         self.batch_msg(vec![msg])
     }
 
-    pub fn batch_msg(&self, msgs: Vec<ClientMessage>) -> Result<(), Error> {
+    pub fn batch_msg(&self, msgs: Vec<ClientMessage<'_>>) -> Result<(), Error> {
         // Perform health checks
         self.health_check()?;
 
@@ -1080,20 +1089,20 @@ impl InnerRelay {
             return Err(Error::ReadDisabled);
         }
 
-        // Send message
+        // Send messages
         self.atomic.channels.send_client_msgs(msgs)
     }
 
-    fn send_neg_msg(&self, id: SubscriptionId, message: String) -> Result<(), Error> {
+    fn send_neg_msg(&self, id: &SubscriptionId, message: &str) -> Result<(), Error> {
         self.send_msg(ClientMessage::NegMsg {
-            subscription_id: id,
-            message,
+            subscription_id: Cow::Borrowed(id),
+            message: Cow::Borrowed(message),
         })
     }
 
-    fn send_neg_close(&self, id: SubscriptionId) -> Result<(), Error> {
+    fn send_neg_close(&self, id: &SubscriptionId) -> Result<(), Error> {
         self.send_msg(ClientMessage::NegClose {
-            subscription_id: id,
+            subscription_id: Cow::Borrowed(id),
         })
     }
 
@@ -1109,14 +1118,13 @@ impl InnerRelay {
         // Subscribe to notifications
         let mut notifications = self.internal_notification_sender.subscribe();
 
-        // Send AUTH message
-        let id: EventId = event.id;
-        self.send_msg(ClientMessage::auth(event))?;
+        // Send the AUTH message
+        self.send_msg(ClientMessage::Auth(Cow::Borrowed(&event)))?;
 
         // Wait for OK
         // The event ID is already checked in `wait_for_ok` method
-        let (_, status, message) = self
-            .wait_for_ok(&mut notifications, id, BATCH_EVENT_ITERATION_TIMEOUT)
+        let (status, message) = self
+            .wait_for_ok(&mut notifications, &event.id, BATCH_EVENT_ITERATION_TIMEOUT)
             .await?;
 
         // Check status
@@ -1130,9 +1138,9 @@ impl InnerRelay {
     pub(super) async fn wait_for_ok(
         &self,
         notifications: &mut broadcast::Receiver<RelayNotification>,
-        id: EventId,
+        id: &EventId,
         timeout: Duration,
-    ) -> Result<(EventId, bool, String), Error> {
+    ) -> Result<(bool, String), Error> {
         time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
                 match notification {
@@ -1145,8 +1153,8 @@ impl InnerRelay {
                             },
                     } => {
                         // Check if it can return
-                        if id == event_id {
-                            return Ok((event_id, status, message));
+                        if id == &event_id {
+                            return Ok((status, message.into_owned()));
                         }
                     }
                     RelayNotification::RelayStatus { status } => {
@@ -1166,10 +1174,14 @@ impl InnerRelay {
     }
 
     pub async fn resubscribe(&self) -> Result<(), Error> {
+        // TODO: avoid subscriptions clone
         let subscriptions = self.subscriptions().await;
         for (id, filter) in subscriptions.into_iter() {
             if !filter.is_empty() && self.should_resubscribe(&id).await {
-                self.send_msg(ClientMessage::req(id, filter))?;
+                self.send_msg(ClientMessage::Req {
+                    subscription_id: Cow::Owned(id),
+                    filter: Cow::Owned(filter),
+                })?;
             } else {
                 tracing::debug!("Skip re-subscription of '{id}'");
             }
@@ -1189,7 +1201,7 @@ impl InnerRelay {
         task::spawn(async move {
             // Check if CLOSE needed
             let to_close: bool = match relay
-                .handle_auto_closing(&id, filter, opts, notifications)
+                .handle_auto_closing(&id, &filter, opts, notifications)
                 .await
             {
                 Some((to_close, reason)) => {
@@ -1213,7 +1225,7 @@ impl InnerRelay {
             // Close subscription
             if to_close {
                 tracing::debug!(id = %id, "Auto-closing subscription.");
-                relay.send_msg(ClientMessage::close(id))?;
+                relay.send_msg(ClientMessage::Close(Cow::Owned(id)))?;
             }
 
             Ok::<(), Error>(())
@@ -1223,7 +1235,7 @@ impl InnerRelay {
     async fn handle_auto_closing(
         &self,
         id: &SubscriptionId,
-        filter: Filter,
+        filter: &Filter,
         opts: SubscribeAutoCloseOptions,
         mut notifications: broadcast::Receiver<RelayNotification>,
     ) -> Option<(bool, Option<SubscriptionAutoClosedReason>)> {
@@ -1251,7 +1263,7 @@ impl InnerRelay {
                         RelayMessage::Event {
                             subscription_id, ..
                         } => {
-                            if &subscription_id == id {
+                            if subscription_id.as_ref() == id {
                                 // If no-events timeout is enabled, update instant of last event received
                                 if opts.idle_timeout.is_some() {
                                     last_event = Some(Instant::now());
@@ -1269,7 +1281,7 @@ impl InnerRelay {
                             }
                         }
                         RelayMessage::EndOfStoredEvents(subscription_id) => {
-                            if &subscription_id == id {
+                            if subscription_id.as_ref() == id {
                                 received_eose = true;
                                 if let ReqExitPolicy::ExitOnEOSE
                                 | ReqExitPolicy::WaitDurationAfterEOSE(_) = opts.exit_policy
@@ -1282,7 +1294,7 @@ impl InnerRelay {
                             subscription_id,
                             message,
                         } => {
-                            if &subscription_id == id {
+                            if subscription_id.as_ref() == id {
                                 // Check if auth required
                                 match MachineReadablePrefix::parse(&message) {
                                     Some(MachineReadablePrefix::AuthRequired) => {
@@ -1291,14 +1303,18 @@ impl InnerRelay {
                                         } else {
                                             return Some((
                                                 false,
-                                                Some(SubscriptionAutoClosedReason::Closed(message)),
+                                                Some(SubscriptionAutoClosedReason::Closed(
+                                                    message.into_owned(),
+                                                )),
                                             )); // No need to send CLOSE msg
                                         }
                                     }
                                     _ => {
                                         return Some((
                                             false,
-                                            Some(SubscriptionAutoClosedReason::Closed(message)),
+                                            Some(SubscriptionAutoClosedReason::Closed(
+                                                message.into_owned(),
+                                            )),
                                         )); // No need to send CLOSE msg
                                     }
                                 }
@@ -1310,7 +1326,10 @@ impl InnerRelay {
                         // Resend REQ
                         if require_resubscription {
                             require_resubscription = false;
-                            let msg: ClientMessage = ClientMessage::req(id.clone(), filter.clone());
+                            let msg = ClientMessage::Req {
+                                subscription_id: Cow::Borrowed(id),
+                                filter: Cow::Borrowed(filter),
+                            };
                             let _ = self.send_msg(msg);
                         }
                     }
@@ -1358,18 +1377,18 @@ impl InnerRelay {
         .await?
     }
 
-    pub async fn unsubscribe(&self, id: SubscriptionId) -> Result<(), Error> {
+    pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<(), Error> {
         // Remove subscription
-        self.remove_subscription(&id).await;
+        self.remove_subscription(id).await;
 
         // Send CLOSE message
-        self.send_msg(ClientMessage::close(id))
+        self.send_msg(ClientMessage::Close(Cow::Borrowed(id)))
     }
 
     pub async fn unsubscribe_all(&self) -> Result<(), Error> {
-        let subscriptions = self.subscriptions().await;
+        let subscriptions = self.atomic.subscriptions.read().await;
 
-        for id in subscriptions.into_keys() {
+        for id in subscriptions.keys() {
             self.unsubscribe(id).await?;
         }
 
@@ -1379,7 +1398,7 @@ impl InnerRelay {
     #[inline(never)]
     fn handle_neg_msg<I>(
         &self,
-        subscription_id: SubscriptionId,
+        subscription_id: &SubscriptionId,
         msg: Option<Vec<u8>>,
         curr_have_ids: I,
         curr_need_ids: I,
@@ -1419,7 +1438,7 @@ impl InnerRelay {
         }
 
         match msg {
-            Some(query) => self.send_neg_msg(subscription_id, hex::encode(query)),
+            Some(query) => self.send_neg_msg(subscription_id, &hex::encode(query)),
             None => {
                 // Mark sync as done
                 *sync_done = true;
@@ -1520,7 +1539,10 @@ impl InnerRelay {
         }
 
         let filter = Filter::new().ids(ids);
-        self.send_msg(ClientMessage::req(down_sub_id.clone(), filter))?;
+        self.send_msg(ClientMessage::Req {
+            subscription_id: Cow::Borrowed(down_sub_id),
+            filter: Cow::Owned(filter),
+        })?;
 
         *in_flight_down = true;
 
@@ -1533,7 +1555,7 @@ impl InnerRelay {
         in_flight_up: &mut HashSet<EventId>,
         event_id: EventId,
         status: bool,
-        message: String,
+        message: Cow<'_, str>,
         output: &mut Reconciliation,
     ) {
         if in_flight_up.remove(&event_id) {
@@ -1551,10 +1573,10 @@ impl InnerRelay {
                     .send_failures
                     .entry(self.url.clone())
                     .and_modify(|map| {
-                        map.insert(event_id, message.clone());
+                        map.insert(event_id, message.to_string());
                     })
                     .or_default()
-                    .insert(event_id, message);
+                    .insert(event_id, message.into_owned());
             }
         }
     }
@@ -1563,7 +1585,7 @@ impl InnerRelay {
     #[inline(never)]
     pub(super) async fn sync_new(
         &self,
-        filter: Filter,
+        filter: &Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: &SyncOptions,
         output: &mut Reconciliation,
@@ -1582,8 +1604,12 @@ impl InnerRelay {
 
         // Send initial negentropy message
         let sub_id: SubscriptionId = SubscriptionId::generate();
-        let open_msg: ClientMessage =
-            ClientMessage::neg_open(sub_id.clone(), filter, hex::encode(initial_message));
+        let open_msg: ClientMessage = ClientMessage::NegOpen {
+            subscription_id: Cow::Borrowed(&sub_id),
+            filter: Cow::Borrowed(filter),
+            id_size: None,
+            initial_message: Cow::Owned(hex::encode(initial_message)),
+        };
         self.send_msg(open_msg)?;
 
         // Check if negentropy is supported
@@ -1605,12 +1631,12 @@ impl InnerRelay {
                             subscription_id,
                             message,
                         } => {
-                            if subscription_id == sub_id {
+                            if subscription_id.as_ref() == &sub_id {
                                 let mut curr_have_ids: Vec<Id> = Vec::new();
                                 let mut curr_need_ids: Vec<Id> = Vec::new();
 
                                 // Parse message
-                                let query: Vec<u8> = hex::decode(message)?;
+                                let query: Vec<u8> = hex::decode(message.as_ref())?;
 
                                 // Reconcile
                                 let msg: Option<Vec<u8>> = negentropy.reconcile_with_ids(
@@ -1621,7 +1647,7 @@ impl InnerRelay {
 
                                 // Handle message
                                 self.handle_neg_msg(
-                                    subscription_id,
+                                    &subscription_id,
                                     msg,
                                     curr_have_ids.into_iter().map(neg_id_to_event_id),
                                     curr_need_ids.into_iter().map(neg_id_to_event_id),
@@ -1637,8 +1663,8 @@ impl InnerRelay {
                             subscription_id,
                             message,
                         } => {
-                            if subscription_id == sub_id {
-                                return Err(Error::RelayMessage(message));
+                            if subscription_id.as_ref() == &sub_id {
+                                return Err(Error::RelayMessage(message.into_owned()));
                             }
                         }
                         RelayMessage::Ok {
@@ -1658,12 +1684,12 @@ impl InnerRelay {
                             subscription_id,
                             event,
                         } => {
-                            if subscription_id == down_sub_id {
+                            if subscription_id.as_ref() == &down_sub_id {
                                 output.received.insert(event.id);
                             }
                         }
                         RelayMessage::EndOfStoredEvents(id) => {
-                            if id == down_sub_id {
+                            if id.as_ref() == &down_sub_id {
                                 in_flight_down = false;
                             }
                         }
@@ -1707,7 +1733,7 @@ impl InnerRelay {
     #[inline(never)]
     pub(super) async fn sync_deprecated(
         &self,
-        filter: Filter,
+        filter: &Filter,
         items: Vec<(EventId, Timestamp)>,
         opts: &SyncOptions,
         output: &mut Reconciliation,
@@ -1729,11 +1755,11 @@ impl InnerRelay {
 
         // Send initial negentropy message
         let sub_id = SubscriptionId::generate();
-        let open_msg = ClientMessage::NegOpen {
-            subscription_id: sub_id.clone(),
-            filter: Box::new(filter),
+        let open_msg: ClientMessage = ClientMessage::NegOpen {
+            subscription_id: Cow::Borrowed(&sub_id),
+            filter: Cow::Borrowed(filter),
             id_size: Some(32),
-            initial_message: hex::encode(initial_message),
+            initial_message: Cow::Owned(hex::encode(initial_message)),
         };
         self.send_msg(open_msg)?;
 
@@ -1756,12 +1782,13 @@ impl InnerRelay {
                             subscription_id,
                             message,
                         } => {
-                            if subscription_id == sub_id {
+                            if subscription_id.as_ref() == &sub_id {
                                 let mut curr_have_ids: Vec<BytesDeprecated> = Vec::new();
                                 let mut curr_need_ids: Vec<BytesDeprecated> = Vec::new();
 
                                 // Parse message
-                                let query: BytesDeprecated = BytesDeprecated::from_hex(message)?;
+                                let query: BytesDeprecated =
+                                    BytesDeprecated::from_hex(message.as_ref())?;
 
                                 // Reconcile
                                 let msg: Option<BytesDeprecated> = negentropy.reconcile_with_ids(
@@ -1772,7 +1799,7 @@ impl InnerRelay {
 
                                 // Handle message
                                 self.handle_neg_msg(
-                                    subscription_id,
+                                    &subscription_id,
                                     msg.map(|m| m.to_bytes()),
                                     curr_have_ids.into_iter().filter_map(neg_depr_to_event_id),
                                     curr_need_ids.into_iter().filter_map(neg_depr_to_event_id),
@@ -1788,8 +1815,8 @@ impl InnerRelay {
                             subscription_id,
                             message,
                         } => {
-                            if subscription_id == sub_id {
-                                return Err(Error::RelayMessage(message));
+                            if subscription_id.as_ref() == &sub_id {
+                                return Err(Error::RelayMessage(message.into_owned()));
                             }
                         }
                         RelayMessage::Ok {
@@ -1809,12 +1836,12 @@ impl InnerRelay {
                             subscription_id,
                             event,
                         } => {
-                            if subscription_id == down_sub_id {
+                            if subscription_id.as_ref() == &down_sub_id {
                                 output.received.insert(event.id);
                             }
                         }
                         RelayMessage::EndOfStoredEvents(id) => {
-                            if id == down_sub_id {
+                            if id.as_ref() == &down_sub_id {
                                 in_flight_down = false;
                             }
                         }
@@ -1914,7 +1941,7 @@ async fn check_negentropy_support(
                     RelayMessage::NegMsg {
                         subscription_id, ..
                     } => {
-                        if &subscription_id == sub_id {
+                        if subscription_id.as_ref() == sub_id {
                             break;
                         }
                     }
@@ -1922,8 +1949,8 @@ async fn check_negentropy_support(
                         subscription_id,
                         message,
                     } => {
-                        if &subscription_id == sub_id {
-                            return Err(Error::RelayMessage(message));
+                        if subscription_id.as_ref() == sub_id {
+                            return Err(Error::RelayMessage(message.into_owned()));
                         }
                     }
                     RelayMessage::Notice(message) => {
