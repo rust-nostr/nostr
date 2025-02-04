@@ -149,6 +149,10 @@ pub struct EventBuilder {
     pub custom_created_at: Option<Timestamp>,
     /// POW difficulty
     pub pow: Option<u8>,
+    /// Allow self-tagging
+    ///
+    /// If enabled, the `p` tags that match the signing keypair will not be discarded.
+    pub allow_self_tagging: bool,
 }
 
 impl EventBuilder {
@@ -164,6 +168,7 @@ impl EventBuilder {
             content: content.into(),
             custom_created_at: None,
             pow: None,
+            allow_self_tagging: false,
         }
     }
 
@@ -204,20 +209,28 @@ impl EventBuilder {
         self
     }
 
+    /// Allow self-tagging
+    ///
+    /// When this mode is enabled, any `p` tags referencing the author’s public key will not be discarded.
+    pub fn allow_self_tagging(mut self) -> Self {
+        self.allow_self_tagging = true;
+        self
+    }
+
     /// Build an unsigned event
     ///
-    /// This method removes all the `p` tags that match the author public key.
+    /// By default, this method removes any `p` tags that match the author's public key.
+    /// To allow self-tagging, call [`EventBuilder::allow_self_tagging`] first.
     pub fn build_with_ctx<T>(self, supplier: &T, public_key: PublicKey) -> UnsignedEvent
     where
         T: TimeSupplier,
     {
-        // Tagging yourself is senseless.
-        // Remove all `p` tags that match the event author (`public_key`).
-        let public_key_hex: String = public_key.to_hex();
-        let mut tags: Vec<Tag> = self
-            .tags
-            .into_iter()
-            .filter(|t| {
+        let mut tags: Vec<Tag> = self.tags;
+
+        // If self-tagging isn't allowed, discard all `p` tags that match the event author.
+        if !self.allow_self_tagging {
+            let public_key_hex: String = public_key.to_hex();
+            tags.retain(|t| {
                 if t.kind() == TagKind::p() {
                     if let Some(content) = t.content() {
                         if content == public_key_hex {
@@ -227,8 +240,8 @@ impl EventBuilder {
                 }
 
                 true // No `p` tag or author public key not match
-            })
-            .collect();
+            });
+        }
 
         // Check if should be POW
         match self.pow {
@@ -282,7 +295,8 @@ impl EventBuilder {
 
     /// Build an unsigned event
     ///
-    /// This method removes all the `p` tags that match the author public key.
+    /// By default, this method removes any `p` tags that match the author's public key.
+    /// To allow self-tagging, call [`EventBuilder::allow_self_tagging`] first.
     #[inline]
     #[cfg(feature = "std")]
     pub fn build(self, pubkey: PublicKey) -> UnsignedEvent {

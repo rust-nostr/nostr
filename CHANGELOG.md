@@ -40,6 +40,8 @@
 
 ### Added
 
+* nostr: add `EventBuilder::allow_self_tagging` ([Yuki Kishimoto])
+
 ### Fixed
 
 ### Removed

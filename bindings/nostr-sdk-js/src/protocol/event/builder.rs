@@ -77,9 +77,18 @@ impl JsEventBuilder {
         self.inner.pow(difficulty).into()
     }
 
+    /// Allow self-tagging
+    ///
+    /// When this mode is enabled, any `p` tags referencing the author’s public key will not be discarded.
+    pub fn allow_self_tagging(self) -> Self {
+        self.inner.allow_self_tagging().into()
+    }
+
     /// Build, sign and return event
     ///
-    /// **This method consume the builder, so it will no longer be usable!**
+    /// Check [`EventBuilder::build`] to learn more.
+    ///
+    /// **This method consumes the builder, so it will no longer be usable!**
     #[wasm_bindgen(js_name = sign)]
     pub async fn sign(self, signer: &JsNostrSigner) -> Result<JsEvent> {
         let event = self.inner.sign(signer.deref()).await.map_err(into_err)?;
@@ -88,16 +97,21 @@ impl JsEventBuilder {
 
     /// Build, sign and return event using keys signer
     ///
-    /// **This method consume the builder, so it will no longer be usable!**
+    /// Check [`EventBuilder::build`] to learn more.
+    ///
+    /// **This method consumes the builder, so it will no longer be usable!**
     #[wasm_bindgen(js_name = signWithKeys)]
     pub fn sign_with_keys(self, keys: &JsKeys) -> Result<JsEvent> {
         let event = self.inner.sign_with_keys(keys.deref()).map_err(into_err)?;
         Ok(event.into())
     }
 
-    /// Build unsigned event
+    /// Build an unsigned event
     ///
-    /// **This method consume the builder, so it will no longer be usable!**
+    /// By default, this method removes any `p` tags that match the author's public key.
+    /// To allow self-tagging, call [`EventBuilder::allow_self_tagging`] first.
+    ///
+    /// **This method consumes the builder, so it will no longer be usable!**
     #[wasm_bindgen(js_name = build)]
     pub fn build(self, public_key: &JsPublicKey) -> JsUnsignedEvent {
         self.inner.build(**public_key).into()

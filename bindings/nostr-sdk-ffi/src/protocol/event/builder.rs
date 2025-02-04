@@ -86,16 +86,35 @@ impl EventBuilder {
         builder
     }
 
+    /// Allow self-tagging
+    ///
+    /// When this mode is enabled, any `p` tags referencing the author’s public key will not be discarded.
+    pub fn allow_self_tagging(&self) -> Self {
+        let mut builder = self.clone();
+        builder.inner = builder.inner.allow_self_tagging();
+        builder
+    }
+
+    /// Build, sign and return [`Event`]
+    ///
+    /// Check [`EventBuilder::build`] to learn more.
     pub async fn sign(&self, signer: &NostrSigner) -> Result<Event> {
         let event = self.inner.clone().sign(signer.deref()).await?;
         Ok(event.into())
     }
 
+    /// Build, sign and return [`Event`] using [`Keys`] signer
+    ///
+    /// Check [`EventBuilder::build`] to learn more.
     pub fn sign_with_keys(&self, keys: &Keys) -> Result<Event> {
         let event = self.inner.clone().sign_with_keys(keys.deref())?;
         Ok(event.into())
     }
 
+    /// Build an unsigned event
+    ///
+    /// By default, this method removes any `p` tags that match the author's public key.
+    /// To allow self-tagging, call [`EventBuilder::allow_self_tagging`] first.
     pub fn build(&self, public_key: &PublicKey) -> UnsignedEvent {
         self.inner.clone().build(**public_key).into()
     }
