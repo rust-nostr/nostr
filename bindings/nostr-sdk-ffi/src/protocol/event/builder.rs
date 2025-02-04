@@ -53,9 +53,6 @@ impl Deref for EventBuilder {
 
 #[uniffi::export(async_runtime = "tokio")]
 impl EventBuilder {
-    // `#[uniffi::export(async_runtime = "tokio")]` require an async method
-    async fn _none(&self) {}
-
     #[uniffi::constructor]
     pub fn new(kind: &Kind, content: &str) -> Self {
         Self {
