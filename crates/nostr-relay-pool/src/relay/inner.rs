@@ -41,6 +41,10 @@ use crate::transport::websocket::{BoxSink, BoxStream};
 
 type ClientMessageJson = String;
 
+enum IngesterCommand {
+    Authenticate { challenge: String },
+}
+
 #[derive(Debug)]
 struct RelayChannels {
     nostr: (
@@ -628,18 +632,25 @@ impl InnerRelay {
 
         let ping: PingTracker = PingTracker::default();
 
+        let (ingester_tx, ingester_rx) = mpsc::unbounded_channel();
+
         // Wait that one of the futures terminates/completes
         // Also also termination here, to allow to close the connection in case of termination request.
         tokio::select! {
-            // Message receiver handler
-            res = self.receiver_message_handler(ws_rx, &ping) => match res {
-                Ok(()) => tracing::trace!(url = %self.url, "Relay received exited."),
-                Err(e) => tracing::error!(url = %self.url, error = %e, "Relay receiver exited with error.")
-            },
             // Message sender handler
             res = self.sender_message_handler(&mut ws_tx, rx_nostr, &ping) => match res {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay sender exited."),
                 Err(e) => tracing::error!(url = %self.url, error = %e, "Relay sender exited with error.")
+            },
+            // Message receiver handler
+            res = self.receiver_message_handler(ws_rx, &ping, ingester_tx) => match res {
+                Ok(()) => tracing::trace!(url = %self.url, "Relay receiver exited."),
+                Err(e) => tracing::error!(url = %self.url, error = %e, "Relay receiver exited with error.")
+            },
+            // Ingester: perform actions
+            res = self.ingester(ingester_rx) => match res {
+                Ok(()) => tracing::trace!(url = %self.url, "Relay ingester exited."),
+                Err(e) => tracing::error!(url = %self.url, error = %e, "Relay ingester exited with error.")
             },
             // Termination handler
             _ = self.handle_terminate() => {},
@@ -730,13 +741,14 @@ impl InnerRelay {
         &self,
         mut ws_rx: BoxStream,
         ping: &PingTracker,
+        ingester_tx: mpsc::UnboundedSender<IngesterCommand>,
     ) -> Result<(), Error> {
         #[cfg(target_arch = "wasm32")]
         let _ping = ping;
 
         while let Some(msg) = ws_rx.next().await {
             match msg? {
-                Message::Text(json) => self.handle_relay_message(&json).await,
+                Message::Text(json) => self.handle_relay_message(&json, &ingester_tx).await,
                 Message::Binary(_) => {
                     tracing::warn!(url = %self.url, "Binary messages aren't supported.");
                 }
@@ -787,6 +799,46 @@ impl InnerRelay {
         Ok(())
     }
 
+    async fn ingester(
+        &self,
+        mut rx: mpsc::UnboundedReceiver<IngesterCommand>,
+    ) -> Result<(), Error> {
+        while let Some(command) = rx.recv().await {
+            match command {
+                // Authenticate to relay
+                IngesterCommand::Authenticate { challenge } => {
+                    match self.auth(challenge).await {
+                        Ok(..) => {
+                            self.send_notification(RelayNotification::Authenticated, false);
+
+                            tracing::info!(url = %self.url, "Authenticated to relay.");
+
+                            // TODO: ?
+                            if let Err(e) = self.resubscribe().await {
+                                tracing::error!(
+                                    url = %self.url,
+                                    error = %e,
+                                    "Impossible to resubscribe."
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            self.send_notification(RelayNotification::AuthenticationFailed, false);
+
+                            tracing::error!(
+                                url = %self.url,
+                                error = %e,
+                                "Can't authenticate to relay."
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Send a signal every [`PING_INTERVAL`] to the other tasks, asking to ping the relay.
     async fn pinger(&self) {
         loop {
@@ -802,7 +854,11 @@ impl InnerRelay {
         }
     }
 
-    async fn handle_relay_message(&self, msg: &str) {
+    async fn handle_relay_message(
+        &self,
+        msg: &str,
+        ingester_tx: &mpsc::UnboundedSender<IngesterCommand>,
+    ) {
         match self.handle_raw_relay_message(msg).await {
             Ok(Some(message)) => {
                 match &message {
@@ -850,41 +906,9 @@ impl InnerRelay {
 
                         // Check if NIP42 auto authentication is enabled
                         if self.state.is_auto_authentication_enabled() {
-                            let relay = self.clone();
-                            let challenge: String = challenge.to_string();
-                            task::spawn(async move {
-                                // Authenticate to relay
-                                match relay.auth(challenge).await {
-                                    Ok(..) => {
-                                        relay.send_notification(
-                                            RelayNotification::Authenticated,
-                                            false,
-                                        );
-
-                                        tracing::info!(url = %relay.url, "Authenticated to relay.");
-
-                                        // TODO: ?
-                                        if let Err(e) = relay.resubscribe().await {
-                                            tracing::error!(
-                                                url = %relay.url,
-                                                error = %e,
-                                                "Impossible to resubscribe."
-                                            );
-                                        }
-                                    }
-                                    Err(e) => {
-                                        relay.send_notification(
-                                            RelayNotification::AuthenticationFailed,
-                                            false,
-                                        );
-
-                                        tracing::error!(
-                                            url = %relay.url,
-                                            error = %e,
-                                            "Can't authenticate to relay."
-                                        );
-                                    }
-                                }
+                            // Forward action to ingester
+                            let _ = ingester_tx.send(IngesterCommand::Authenticate {
+                                challenge: challenge.to_string(),
                             });
                         }
                     }
