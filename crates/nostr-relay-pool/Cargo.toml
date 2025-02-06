@@ -29,7 +29,11 @@ tracing.workspace = true
 
 [dev-dependencies]
 nostr-relay-builder.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [[example]]
 name = "pool"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bench)'] }

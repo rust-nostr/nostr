@@ -57,6 +57,7 @@ release:
 # Run benches (unstable)
 bench:
 	RUSTFLAGS='--cfg=bench' cargo +nightly bench -p nostr
+	RUSTFLAGS='--cfg=bench' cargo +nightly bench -p nostr-relay-pool
 
 # Check cargo duplicate dependencies
 dup:
