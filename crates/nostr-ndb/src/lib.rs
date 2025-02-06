@@ -114,12 +114,14 @@ impl NostrEventsDatabase for NdbDatabase {
         event_id: &'a EventId,
     ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>> {
         Box::pin(async move {
-            let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
-            let note = self
-                .db
-                .get_note_by_id(&txn, event_id.as_bytes())
-                .map_err(DatabaseError::backend)?;
-            Ok(Some(ndb_note_to_event(note)?.into_owned()))
+            let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
+            let res: Result<Note, nostrdb::Error> =
+                self.db.get_note_by_id(&txn, event_id.as_bytes());
+            match res {
+                Ok(note) => Ok(Some(ndb_note_to_event(note)?.into_owned())),
+                Err(nostrdb::Error::NotFound) => Ok(None),
+                Err(e) => Err(DatabaseError::backend(e)),
+            }
         })
     }
 

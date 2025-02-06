@@ -36,6 +36,7 @@
 * nostr: manually impl eq and cmp traits for `RelayUrl` ([Yuki Kishimoto])
 * nostr: use `Cow` in `ClientMessage` and `RelayMessage` ([Yuki Kishimoto])
 * pool: take event reference in `send_event` methods ([Yuki Kishimoto])
+* ndb: return `None` in `NostrEventsDatabase::event_by_id` if event doesn't exist ([Yuki Kishimoto])
 * ffi: improve `Events::merge` and `Events::to_vec` performance ([Yuki Kishimoto])
 
 ### Added
