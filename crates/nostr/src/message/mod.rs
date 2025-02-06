@@ -18,7 +18,7 @@ pub mod client;
 pub mod relay;
 
 pub use self::client::ClientMessage;
-pub use self::relay::{MachineReadablePrefix, RawRelayMessage, RelayMessage};
+pub use self::relay::{MachineReadablePrefix, RelayMessage};
 use crate::event;
 use crate::util::hex;
 
@@ -29,8 +29,6 @@ pub enum MessageHandleError {
     Json(serde_json::Error),
     /// Event error
     Event(event::Error),
-    /// Raw event error
-    RawEvent(event::raw::Error),
     /// Invalid message format
     InvalidMessageFormat,
     /// Empty message
@@ -45,7 +43,6 @@ impl fmt::Display for MessageHandleError {
         match self {
             Self::Json(e) => write!(f, "{e}"),
             Self::Event(e) => write!(f, "{e}"),
-            Self::RawEvent(e) => write!(f, "{e}"),
             Self::InvalidMessageFormat => write!(f, "Invalid format"),
             Self::EmptyMsg => write!(f, "Empty message"),
         }
@@ -61,12 +58,6 @@ impl From<serde_json::Error> for MessageHandleError {
 impl From<event::Error> for MessageHandleError {
     fn from(e: event::Error) -> Self {
         Self::Event(e)
-    }
-}
-
-impl From<event::raw::Error> for MessageHandleError {
-    fn from(e: event::raw::Error) -> Self {
-        Self::RawEvent(e)
     }
 }
 
