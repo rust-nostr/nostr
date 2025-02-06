@@ -12,7 +12,7 @@ use tokio::sync::RwLock;
 
 use crate::{
     Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper, Events,
-    NostrDatabase, NostrDatabaseWipe, NostrEventsDatabase, RejectedReason, SaveEventStatus,
+    NostrDatabase, NostrDatabaseWipe, NostrEventsDatabase, SaveEventStatus,
 };
 
 /// Database options
@@ -95,7 +95,7 @@ impl NostrEventsDatabase for MemoryDatabase {
                 let mut seen_event_ids = self.seen_event_ids.write().await;
                 seen_event_ids.seen(event.id, None);
 
-                Ok(SaveEventStatus::Rejected(RejectedReason::Other))
+                Ok(SaveEventStatus::Success)
             }
         })
     }
