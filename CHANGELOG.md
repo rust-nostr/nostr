@@ -93,7 +93,7 @@
 
 ### Removed
 
-* nostr: remove `RawRelayMessage` ([Yuki Kishimoto])
+* nostr: remove `RawRelayMessage`, `RawEvent`, `PartialEvent` and `MissingPartialEvent` ([Yuki Kishimoto])
 * database: remove deprecated ([Yuki Kishimoto])
 * pool: remove min POW difficulty check in favor of `AdmitPolicy` trait ([Yuki Kishimoto])
 

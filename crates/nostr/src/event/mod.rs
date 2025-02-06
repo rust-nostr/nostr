@@ -21,8 +21,6 @@ pub mod builder;
 mod error;
 pub mod id;
 pub mod kind;
-pub mod partial;
-pub mod raw;
 pub mod tag;
 pub mod unsigned;
 
@@ -30,7 +28,6 @@ pub use self::builder::EventBuilder;
 pub use self::error::Error;
 pub use self::id::EventId;
 pub use self::kind::Kind;
-pub use self::partial::{MissingPartialEvent, PartialEvent};
 pub use self::tag::{Tag, TagKind, TagStandard, Tags};
 pub use self::unsigned::UnsignedEvent;
 use crate::nips::nip01::CoordinateBorrow;
