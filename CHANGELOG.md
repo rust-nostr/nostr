@@ -42,6 +42,7 @@
 ### Added
 
 * nostr: add `EventBuilder::allow_self_tagging` ([Yuki Kishimoto])
+* pool: event verification cache ([Yuki Kishimoto])
 
 ### Fixed
 

@@ -1033,8 +1033,17 @@ impl InnerRelay {
 
         // Check if event exists
         if let DatabaseEventStatus::NotExistent = status {
-            // Verify event
-            event.verify()?;
+            // Check if event was already verified
+            //
+            // This is useful if someone continue to send the same invalid event:
+            // since invalid events aren't stored in the database,
+            // skipping this check would result in the re-verification of the event.
+            // This may also be useful to avoid double verification if the event is received at the exact same time by many different Relay instances.
+            //
+            // This is important since event signature verification is a heavy job!
+            if !self.state.verified(&event.id)? {
+                event.verify()?;
+            }
 
             // Save into database
             self.state.database().save_event(&event).await?;

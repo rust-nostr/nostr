@@ -2,12 +2,16 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::collections::hash_map::DefaultHasher;
 use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
+use lru::LruCache;
 use nostr::prelude::IntoNostrSigner;
-use nostr::NostrSigner;
+use nostr::{EventId, NostrSigner};
 use nostr_database::{IntoNostrDatabase, MemoryDatabase, NostrDatabase};
 use tokio::sync::RwLock;
 
@@ -16,9 +20,12 @@ use crate::transport::websocket::{
 };
 use crate::{RelayFiltering, RelayFilteringMode};
 
+const MAX_VERIFICATION_CACHE_SIZE: usize = 4_000_000;
+
 #[derive(Debug)]
 pub enum SharedStateError {
     SignerNotConfigured,
+    MutexPoisoned,
 }
 
 impl std::error::Error for SharedStateError {}
@@ -27,6 +34,7 @@ impl fmt::Display for SharedStateError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::SignerNotConfigured => write!(f, "signer not configured"),
+            Self::MutexPoisoned => write!(f, "mutex poisoned"),
         }
     }
 }
@@ -40,19 +48,20 @@ pub struct SharedState {
     nip42_auto_authentication: Arc<AtomicBool>,
     min_pow_difficulty: Arc<AtomicU8>,
     pub(crate) filtering: RelayFiltering,
+    verification_cache: Arc<Mutex<LruCache<u64, ()>>>,
     // TODO: add a semaphore to limit number of concurrent websocket connections attempts?
 }
 
 impl Default for SharedState {
     fn default() -> Self {
-        Self {
-            database: MemoryDatabase::new().into_nostr_database(),
-            transport: DefaultWebsocketTransport.into_transport(),
-            signer: Arc::new(RwLock::new(None)),
-            nip42_auto_authentication: Arc::new(AtomicBool::new(true)),
-            min_pow_difficulty: Arc::new(AtomicU8::new(0)),
-            filtering: RelayFiltering::default(),
-        }
+        Self::new(
+            MemoryDatabase::new().into_nostr_database(),
+            DefaultWebsocketTransport.into_transport(),
+            None,
+            RelayFilteringMode::default(),
+            true,
+            0,
+        )
     }
 }
 
@@ -65,6 +74,10 @@ impl SharedState {
         nip42_auto_authentication: bool,
         min_pow_difficulty: u8,
     ) -> Self {
+        let max_verification_cache_size: NonZeroUsize =
+            NonZeroUsize::new(MAX_VERIFICATION_CACHE_SIZE)
+                .expect("MAX_VERIFICATION_CACHE_SIZE must be greater than 0");
+
         Self {
             database,
             transport,
@@ -72,6 +85,7 @@ impl SharedState {
             nip42_auto_authentication: Arc::new(AtomicBool::new(nip42_auto_authentication)),
             filtering: RelayFiltering::new(filtering_mode),
             min_pow_difficulty: Arc::new(AtomicU8::new(min_pow_difficulty)),
+            verification_cache: Arc::new(Mutex::new(LruCache::new(max_verification_cache_size))),
         }
     }
 
@@ -153,4 +167,26 @@ impl SharedState {
     pub fn filtering(&self) -> &RelayFiltering {
         &self.filtering
     }
+
+    pub(crate) fn verified(&self, id: &EventId) -> Result<bool, SharedStateError> {
+        let mut cache = self
+            .verification_cache
+            .lock()
+            .map_err(|_| SharedStateError::MutexPoisoned)?;
+
+        // Hash event ID
+        let id: u64 = hash(&id);
+
+        // Returns `Some(T)` if the key already exists
+        Ok(cache.put(id, ()).is_some())
+    }
+}
+
+fn hash<T>(val: &T) -> u64
+where
+    T: Hash,
+{
+    let mut hasher: DefaultHasher = DefaultHasher::new();
+    val.hash(&mut hasher);
+    hasher.finish()
 }
