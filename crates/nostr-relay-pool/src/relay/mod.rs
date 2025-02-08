@@ -1142,5 +1142,72 @@ mod tests {
         assert!(res.is_ok());
     }
 
+    #[tokio::test]
+    async fn test_subscribe_ephemeral_event() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        // Sender
+        let relay1 = Relay::new(url.clone());
+        relay1
+            .try_connect(Duration::from_millis(500))
+            .await
+            .unwrap();
+
+        // Fetcher
+        let relay2 = Relay::new(url);
+        relay2
+            .try_connect(Duration::from_millis(500))
+            .await
+            .unwrap();
+
+        // Signer
+        let keys = Keys::generate();
+
+        // Event
+        let kind = Kind::Custom(22_222); // Ephemeral kind
+        let event: Event = EventBuilder::new(kind, "").sign_with_keys(&keys).unwrap();
+
+        let event_id: EventId = event.id;
+
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(2)).await;
+            relay1.send_event(&event).await.unwrap();
+        });
+
+        // Subscribe
+        let filter = Filter::new().kind(kind);
+        let sub_id = relay2
+            .subscribe(filter, SubscribeOptions::default())
+            .await
+            .unwrap();
+
+        // Listen for notifications
+        let fut = relay2.handle_notifications(|notification| async {
+            if let RelayNotification::Event {
+                subscription_id,
+                event,
+            } = notification
+            {
+                if subscription_id == sub_id {
+                    if event.id == event_id {
+                        return Ok(true);
+                    } else {
+                        panic!("Unexpected event");
+                    }
+                } else {
+                    panic!("Unexpected subscription ID");
+                }
+            }
+            Ok(false)
+        });
+
+        tokio::time::timeout(Duration::from_secs(5), fut)
+            .await
+            .unwrap()
+            .unwrap();
+    }
+
     // TODO: add negentropy reconciliation test
 }
