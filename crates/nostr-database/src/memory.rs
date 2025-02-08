@@ -4,9 +4,10 @@
 
 //! Memory (RAM) Storage backend for Nostr apps
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 
+use lru::LruCache;
 use nostr::prelude::*;
 use tokio::sync::RwLock;
 
@@ -14,6 +15,8 @@ use crate::{
     Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper, Events,
     NostrDatabase, NostrDatabaseWipe, NostrEventsDatabase, SaveEventStatus,
 };
+
+const MAX_EVENTS: usize = 35_000;
 
 /// Database options
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -23,6 +26,8 @@ pub struct MemoryDatabaseOptions {
     /// Max events and IDs to store in memory (default: 35_000)
     ///
     /// `None` means no limits.
+    ///
+    /// If `Some(0)` is passed, the default value will be used.
     pub max_events: Option<usize>,
 }
 
@@ -30,7 +35,7 @@ impl Default for MemoryDatabaseOptions {
     fn default() -> Self {
         Self {
             events: false,
-            max_events: Some(35_000),
+            max_events: Some(MAX_EVENTS),
         }
     }
 }
@@ -42,12 +47,18 @@ impl MemoryDatabaseOptions {
     }
 }
 
+#[derive(Debug, Clone)]
+enum InnerMemoryDatabase {
+    /// Just an event ID tracker
+    Tracker(Arc<RwLock<LruCache<EventId, ()>>>),
+    /// A full in-memory events store
+    Full(DatabaseHelper),
+}
+
 /// Memory Database (RAM)
 #[derive(Debug, Clone)]
 pub struct MemoryDatabase {
-    opts: MemoryDatabaseOptions,
-    seen_event_ids: Arc<RwLock<SeenTracker>>,
-    helper: DatabaseHelper,
+    inner: InnerMemoryDatabase,
 }
 
 impl Default for MemoryDatabase {
@@ -63,15 +74,32 @@ impl MemoryDatabase {
     }
 
     /// New Memory database
-    pub fn with_opts(opts: MemoryDatabaseOptions) -> Self {
-        Self {
-            opts,
-            seen_event_ids: Arc::new(RwLock::new(SeenTracker::new(opts.max_events))),
-            helper: match opts.max_events {
+    pub fn with_opts(mut opts: MemoryDatabaseOptions) -> Self {
+        // Check if `Some(0)`
+        if let Some(0) = opts.max_events {
+            opts.max_events = Some(MAX_EVENTS);
+        }
+
+        // Check if event storing is allowed
+        let inner: InnerMemoryDatabase = if opts.events {
+            let helper: DatabaseHelper = match opts.max_events {
                 Some(max) => DatabaseHelper::bounded(max),
                 None => DatabaseHelper::unbounded(),
-            },
-        }
+            };
+            InnerMemoryDatabase::Full(helper)
+        } else {
+            let cache: LruCache<EventId, ()> = match opts.max_events {
+                Some(max) if max > 0 => {
+                    // SAFETY: checked above if > 0
+                    let max: NonZeroUsize = NonZeroUsize::new(max).unwrap();
+                    LruCache::new(max)
+                }
+                _ => LruCache::unbounded(),
+            };
+            InnerMemoryDatabase::Tracker(Arc::new(RwLock::new(cache)))
+        };
+
+        Self { inner }
     }
 }
 
@@ -87,15 +115,18 @@ impl NostrEventsDatabase for MemoryDatabase {
         event: &'a Event,
     ) -> BoxedFuture<'a, Result<SaveEventStatus, DatabaseError>> {
         Box::pin(async move {
-            if self.opts.events {
-                let DatabaseEventResult { status, .. } = self.helper.index_event(event).await;
-                Ok(status)
-            } else {
-                // Mark it as seen
-                let mut seen_event_ids = self.seen_event_ids.write().await;
-                seen_event_ids.seen(event.id, None);
+            match &self.inner {
+                InnerMemoryDatabase::Tracker(tracker) => {
+                    // Mark it as seen
+                    let mut seen_event_ids = tracker.write().await;
+                    seen_event_ids.put(event.id, ());
 
-                Ok(SaveEventStatus::Success)
+                    Ok(SaveEventStatus::Success)
+                }
+                InnerMemoryDatabase::Full(helper) => {
+                    let DatabaseEventResult { status, .. } = helper.index_event(event).await;
+                    Ok(status)
+                }
             }
         })
     }
@@ -105,21 +136,25 @@ impl NostrEventsDatabase for MemoryDatabase {
         event_id: &'a EventId,
     ) -> BoxedFuture<'a, Result<DatabaseEventStatus, DatabaseError>> {
         Box::pin(async move {
-            if self.opts.events {
-                if self.helper.has_event_id_been_deleted(event_id).await {
-                    Ok(DatabaseEventStatus::Deleted)
-                } else if self.helper.has_event(event_id).await {
-                    Ok(DatabaseEventStatus::Saved)
-                } else {
-                    Ok(DatabaseEventStatus::NotExistent)
+            match &self.inner {
+                InnerMemoryDatabase::Tracker(tracker) => {
+                    let seen_event_ids = tracker.read().await;
+
+                    Ok(if seen_event_ids.contains(event_id) {
+                        DatabaseEventStatus::Saved
+                    } else {
+                        DatabaseEventStatus::NotExistent
+                    })
                 }
-            } else {
-                let seen_event_ids = self.seen_event_ids.read().await;
-                Ok(if seen_event_ids.contains(event_id) {
-                    DatabaseEventStatus::Saved
-                } else {
-                    DatabaseEventStatus::NotExistent
-                })
+                InnerMemoryDatabase::Full(helper) => {
+                    if helper.has_event_id_been_deleted(event_id).await {
+                        Ok(DatabaseEventStatus::Deleted)
+                    } else if helper.has_event(event_id).await {
+                        Ok(DatabaseEventStatus::Saved)
+                    } else {
+                        Ok(DatabaseEventStatus::NotExistent)
+                    }
+                }
             }
         })
     }
@@ -130,10 +165,12 @@ impl NostrEventsDatabase for MemoryDatabase {
         timestamp: &'a Timestamp,
     ) -> BoxedFuture<'a, Result<bool, DatabaseError>> {
         Box::pin(async move {
-            Ok(self
-                .helper
-                .has_coordinate_been_deleted(coordinate, timestamp)
-                .await)
+            match &self.inner {
+                InnerMemoryDatabase::Tracker(..) => Ok(false),
+                InnerMemoryDatabase::Full(helper) => Ok(helper
+                    .has_coordinate_been_deleted(coordinate, timestamp)
+                    .await),
+            }
         })
     }
 
@@ -141,28 +178,53 @@ impl NostrEventsDatabase for MemoryDatabase {
         &'a self,
         event_id: &'a EventId,
     ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>> {
-        Box::pin(async move { Ok(self.helper.event_by_id(event_id).await) })
+        Box::pin(async move {
+            match &self.inner {
+                InnerMemoryDatabase::Tracker(..) => Ok(None),
+                InnerMemoryDatabase::Full(helper) => Ok(helper.event_by_id(event_id).await),
+            }
+        })
     }
 
     fn count(&self, filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>> {
-        Box::pin(async move { Ok(self.helper.count(filter).await) })
+        Box::pin(async move {
+            match &self.inner {
+                InnerMemoryDatabase::Tracker(..) => Ok(0),
+                InnerMemoryDatabase::Full(helper) => Ok(helper.count(filter).await),
+            }
+        })
     }
 
     fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>> {
-        Box::pin(async move { Ok(self.helper.query(filter).await) })
+        Box::pin(async move {
+            match &self.inner {
+                InnerMemoryDatabase::Tracker(..) => Ok(Events::new(&filter)),
+                InnerMemoryDatabase::Full(helper) => Ok(helper.query(filter).await),
+            }
+        })
     }
 
     fn negentropy_items(
         &self,
         filter: Filter,
     ) -> BoxedFuture<Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
-        Box::pin(async move { Ok(self.helper.negentropy_items(filter).await) })
+        Box::pin(async move {
+            match &self.inner {
+                InnerMemoryDatabase::Tracker(..) => Ok(Vec::new()),
+                InnerMemoryDatabase::Full(helper) => Ok(helper.negentropy_items(filter).await),
+            }
+        })
     }
 
     fn delete(&self, filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
         Box::pin(async move {
-            self.helper.delete(filter).await;
-            Ok(())
+            match &self.inner {
+                InnerMemoryDatabase::Tracker(..) => Ok(()),
+                InnerMemoryDatabase::Full(helper) => {
+                    helper.delete(filter).await;
+                    Ok(())
+                }
+            }
         })
     }
 }
@@ -170,134 +232,17 @@ impl NostrEventsDatabase for MemoryDatabase {
 impl NostrDatabaseWipe for MemoryDatabase {
     fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
         Box::pin(async move {
-            // Clear helper
-            self.helper.clear().await;
+            match &self.inner {
+                InnerMemoryDatabase::Tracker(tracker) => {
+                    let mut seen_event_ids = tracker.write().await;
+                    seen_event_ids.clear();
+                }
+                InnerMemoryDatabase::Full(helper) => {
+                    helper.clear().await;
+                }
+            }
 
-            // Clear
-            let mut seen_event_ids = self.seen_event_ids.write().await;
-            seen_event_ids.clear();
             Ok(())
         })
-    }
-}
-
-#[derive(Debug)]
-struct SeenTracker {
-    ids: HashMap<EventId, HashSet<RelayUrl>>,
-    capacity: Option<usize>,
-    queue: VecDeque<EventId>,
-}
-
-impl SeenTracker {
-    fn new(capacity: Option<usize>) -> Self {
-        Self {
-            ids: HashMap::new(),
-            capacity,
-            queue: VecDeque::new(),
-        }
-    }
-
-    fn check_capacity(&mut self) {
-        // Remove last item if queue > capacity
-        if let Some(capacity) = self.capacity {
-            if self.queue.len() >= capacity {
-                if let Some(last) = self.queue.pop_back() {
-                    self.ids.remove(&last);
-                }
-            }
-        }
-    }
-
-    fn seen(&mut self, event_id: EventId, relay_url: Option<RelayUrl>) {
-        match self.ids.get_mut(&event_id) {
-            Some(set) => {
-                if let Some(url) = relay_url {
-                    set.insert(url);
-                }
-            }
-            None => {
-                self.check_capacity();
-
-                let set: HashSet<RelayUrl> = match relay_url {
-                    Some(url) => {
-                        let mut set: HashSet<RelayUrl> = HashSet::with_capacity(1);
-                        set.insert(url);
-                        set
-                    }
-                    None => HashSet::new(),
-                };
-                self.ids.insert(event_id, set);
-                self.queue.push_front(event_id);
-            }
-        }
-    }
-
-    #[inline]
-    fn contains(&self, id: &EventId) -> bool {
-        self.ids.contains_key(id)
-    }
-
-    fn clear(&mut self) {
-        self.ids.clear();
-        self.queue.clear();
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_seen_tracker_without_capacity() {
-        let mut tracker = SeenTracker::new(None);
-
-        let id0 = EventId::all_zeros();
-        tracker.seen(id0, None);
-
-        let id1 = EventId::from_byte_array([1u8; 32]);
-        tracker.seen(id1, None);
-
-        let id2 = EventId::from_byte_array([2u8; 32]);
-        tracker.seen(id2, None);
-
-        assert_eq!(tracker.ids.len(), 3);
-        assert_eq!(tracker.queue.len(), 3);
-        assert!(tracker.capacity.is_none());
-
-        assert!(tracker.contains(&id0));
-        assert!(tracker.queue.contains(&id0));
-
-        assert!(tracker.contains(&id1));
-        assert!(tracker.queue.contains(&id1));
-
-        assert!(tracker.contains(&id2));
-        assert!(tracker.queue.contains(&id2));
-    }
-
-    #[test]
-    fn test_seen_tracker_with_capacity() {
-        let mut tracker = SeenTracker::new(Some(2));
-
-        let id0 = EventId::all_zeros();
-        tracker.seen(id0, None);
-
-        let id1 = EventId::from_byte_array([1u8; 32]);
-        tracker.seen(id1, None);
-
-        let id2 = EventId::from_byte_array([2u8; 32]);
-        tracker.seen(id2, None);
-
-        assert_eq!(tracker.ids.len(), 2);
-        assert_eq!(tracker.queue.len(), 2);
-        assert!(tracker.capacity.is_some());
-
-        assert!(!tracker.contains(&id0));
-        assert!(!tracker.queue.contains(&id0));
-
-        assert!(tracker.contains(&id1));
-        assert!(tracker.queue.contains(&id1));
-
-        assert!(tracker.contains(&id2));
-        assert!(tracker.queue.contains(&id2));
     }
 }

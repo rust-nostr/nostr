@@ -2728,6 +2728,7 @@ name = "nostr-database"
 version = "0.39.0"
 dependencies = [
  "flatbuffers",
+ "lru",
  "nostr",
  "tokio",
 ]
