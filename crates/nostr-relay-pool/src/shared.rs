@@ -20,7 +20,9 @@ use crate::transport::websocket::{
 };
 use crate::{RelayFiltering, RelayFilteringMode};
 
-const MAX_VERIFICATION_CACHE_SIZE: usize = 4_000_000;
+// LruCache pre-allocate, so keep this at a reasonable value.
+// A good value may be <= 128k, considering that stored values are the 64-bit hashes of the event IDs.
+const MAX_VERIFICATION_CACHE_SIZE: usize = 128_000;
 
 #[derive(Debug)]
 pub enum SharedStateError {
