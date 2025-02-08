@@ -1,3 +1,4 @@
 ffi/
 ENV/
 *.o
+swift/*.xcframework
