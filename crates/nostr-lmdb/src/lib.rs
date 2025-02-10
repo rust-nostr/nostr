@@ -64,15 +64,13 @@ impl NostrEventsDatabase for NostrLMDB {
         Box::pin(async move {
             if self
                 .db
-                .event_is_deleted(*event_id)
-                .await
+                .event_is_deleted(event_id)
                 .map_err(DatabaseError::backend)?
             {
                 Ok(DatabaseEventStatus::Deleted)
             } else if self
                 .db
                 .has_event(event_id)
-                .await
                 .map_err(DatabaseError::backend)?
             {
                 Ok(DatabaseEventStatus::Saved)
@@ -91,7 +89,6 @@ impl NostrEventsDatabase for NostrLMDB {
             if let Some(t) = self
                 .db
                 .when_is_coordinate_deleted(coordinate)
-                .await
                 .map_err(DatabaseError::backend)?
             {
                 Ok(&t >= timestamp)
@@ -108,17 +105,16 @@ impl NostrEventsDatabase for NostrLMDB {
         Box::pin(async move {
             self.db
                 .get_event_by_id(event_id)
-                .await
                 .map_err(DatabaseError::backend)
         })
     }
 
     fn count(&self, filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>> {
-        Box::pin(async move { self.db.count(filter).await.map_err(DatabaseError::backend) })
+        Box::pin(async move { self.db.count(filter).map_err(DatabaseError::backend) })
     }
 
     fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>> {
-        Box::pin(async move { self.db.query(filter).await.map_err(DatabaseError::backend) })
+        Box::pin(async move { self.db.query(filter).map_err(DatabaseError::backend) })
     }
 
     fn negentropy_items(
@@ -128,7 +124,6 @@ impl NostrEventsDatabase for NostrLMDB {
         Box::pin(async move {
             self.db
                 .negentropy_items(filter)
-                .await
                 .map_err(DatabaseError::backend)
         })
     }

@@ -15,7 +15,7 @@ use nostr::prelude::*;
 use nostr_database::flatbuffers::FlatBufferDecodeBorrowed;
 use nostr_database::{FlatBufferBuilder, FlatBufferEncode};
 
-pub(super) mod index;
+mod index;
 
 use super::error::Error;
 use super::types::DatabaseFilter;
@@ -136,12 +136,16 @@ impl Lmdb {
     }
 
     /// Get a read transaction
+    ///
+    /// This should never block the current thread
     #[inline]
     pub(crate) fn read_txn(&self) -> Result<RoTxn, Error> {
         Ok(self.env.read_txn()?)
     }
 
     /// Get a write transaction
+    ///
+    /// This blocks the current thread if there is another write txn
     #[inline]
     pub(crate) fn write_txn(&self) -> Result<RwTxn, Error> {
         Ok(self.env.write_txn()?)
@@ -700,17 +704,9 @@ impl Lmdb {
         coordinate: &'a CoordinateBorrow<'a>,
     ) -> Result<Option<Timestamp>, Error> {
         let key: Vec<u8> = index::make_coordinate_index_key(coordinate);
-        self.when_is_coordinate_deleted_by_key(txn, key)
-    }
-
-    pub(crate) fn when_is_coordinate_deleted_by_key(
-        &self,
-        txn: &RoTxn,
-        coordinate_key: Vec<u8>,
-    ) -> Result<Option<Timestamp>, Error> {
         Ok(self
             .deleted_coordinates
-            .get(txn, &coordinate_key)?
+            .get(txn, &key)?
             .map(Timestamp::from_secs))
     }
 

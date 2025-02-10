@@ -18,7 +18,7 @@ mod types;
 
 use self::error::Error;
 use self::ingester::{Ingester, IngesterItem};
-use self::lmdb::{index, Lmdb};
+use self::lmdb::Lmdb;
 
 #[derive(Debug)]
 pub struct Store {
@@ -65,96 +65,72 @@ impl Store {
     }
 
     /// Get an event by ID
-    pub async fn get_event_by_id(&self, id: &EventId) -> Result<Option<Event>, Error> {
-        let bytes = id.to_bytes();
-        self.interact(move |db| {
-            let txn = db.read_txn()?;
-            let event: Option<Event> = db.get_event_by_id(&txn, &bytes)?.map(|e| e.into_owned());
-            txn.commit()?;
-            Ok(event)
-        })
-        .await?
+    pub fn get_event_by_id(&self, id: &EventId) -> Result<Option<Event>, Error> {
+        let txn = self.db.read_txn()?;
+        let event: Option<Event> = self
+            .db
+            .get_event_by_id(&txn, id.as_bytes())?
+            .map(|e| e.into_owned());
+        txn.commit()?;
+        Ok(event)
     }
 
     /// Do we have an event
-    pub async fn has_event(&self, id: &EventId) -> Result<bool, Error> {
-        let bytes = id.to_bytes();
-        self.interact(move |db| {
-            let txn = db.read_txn()?;
-            let has: bool = db.has_event(&txn, &bytes)?;
-            txn.commit()?;
-            Ok(has)
-        })
-        .await?
+    pub fn has_event(&self, id: &EventId) -> Result<bool, Error> {
+        let txn = self.db.read_txn()?;
+        let has: bool = self.db.has_event(&txn, id.as_bytes())?;
+        txn.commit()?;
+        Ok(has)
     }
 
     /// Is the event deleted
-    pub async fn event_is_deleted(&self, id: EventId) -> Result<bool, Error> {
-        self.interact(move |db| {
-            let txn = db.read_txn()?;
-            let deleted: bool = db.is_deleted(&txn, &id)?;
-            txn.commit()?;
-            Ok(deleted)
-        })
-        .await?
+    pub fn event_is_deleted(&self, id: &EventId) -> Result<bool, Error> {
+        let txn = self.db.read_txn()?;
+        let deleted: bool = self.db.is_deleted(&txn, id)?;
+        txn.commit()?;
+        Ok(deleted)
     }
 
     #[inline]
-    pub async fn when_is_coordinate_deleted<'a>(
+    pub fn when_is_coordinate_deleted<'a>(
         &self,
         coordinate: &'a CoordinateBorrow<'a>,
     ) -> Result<Option<Timestamp>, Error> {
-        let coordinate_key: Vec<u8> = index::make_coordinate_index_key(coordinate);
-        self.interact(move |db| {
-            let txn = db.read_txn()?;
-            let when = db.when_is_coordinate_deleted_by_key(&txn, coordinate_key)?;
-            txn.commit()?;
-            Ok(when)
-        })
-        .await?
+        let txn = self.db.read_txn()?;
+        let when = self.db.when_is_coordinate_deleted(&txn, coordinate)?;
+        txn.commit()?;
+        Ok(when)
     }
 
-    pub async fn count(&self, filter: Filter) -> Result<usize, Error> {
-        self.interact(move |db| {
-            let txn = db.read_txn()?;
-            let output = db.query(&txn, filter)?;
-            let len: usize = output.count();
-            txn.commit()?;
-            Ok(len)
-        })
-        .await?
+    pub fn count(&self, filter: Filter) -> Result<usize, Error> {
+        let txn = self.db.read_txn()?;
+        let output = self.db.query(&txn, filter)?;
+        let len: usize = output.count();
+        txn.commit()?;
+        Ok(len)
     }
 
     // Lookup ID: EVENT_ORD_IMPL
-    pub async fn query(&self, filter: Filter) -> Result<Events, Error> {
-        self.interact(move |db| {
-            let mut events: Events = Events::new(&filter);
+    pub fn query(&self, filter: Filter) -> Result<Events, Error> {
+        let mut events: Events = Events::new(&filter);
 
-            let txn: RoTxn = db.read_txn()?;
-            let output = db.query(&txn, filter)?;
-            events.extend(output.into_iter().map(|e| e.into_owned()));
-            txn.commit()?;
+        let txn: RoTxn = self.db.read_txn()?;
+        let output = self.db.query(&txn, filter)?;
+        events.extend(output.into_iter().map(|e| e.into_owned()));
+        txn.commit()?;
 
-            Ok(events)
-        })
-        .await?
+        Ok(events)
     }
 
-    pub async fn negentropy_items(
-        &self,
-        filter: Filter,
-    ) -> Result<Vec<(EventId, Timestamp)>, Error> {
-        self.interact(move |db| {
-            let txn = db.read_txn()?;
-            let events = db.query(&txn, filter)?;
-            let items = events
-                .into_iter()
-                .map(|e| (EventId::from_byte_array(*e.id), e.created_at))
-                .collect();
-            txn.commit()?;
-            Ok(items)
-        })
-        .await?
+    pub fn negentropy_items(&self, filter: Filter) -> Result<Vec<(EventId, Timestamp)>, Error> {
+        let txn = self.db.read_txn()?;
+        let events = self.db.query(&txn, filter)?;
+        let items = events
+            .into_iter()
+            .map(|e| (EventId::from_byte_array(*e.id), e.created_at))
+            .collect();
+        txn.commit()?;
+        Ok(items)
     }
 
     pub async fn delete(&self, filter: Filter) -> Result<(), Error> {
