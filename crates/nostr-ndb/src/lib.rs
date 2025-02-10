@@ -76,7 +76,10 @@ impl NostrEventsDatabase for NdbDatabase {
         event: &'a Event,
     ) -> BoxedFuture<'a, Result<SaveEventStatus, DatabaseError>> {
         Box::pin(async move {
-            let msg = RelayMessage::event(SubscriptionId::new("ndb"), event.clone());
+            let msg = RelayMessage::Event {
+                subscription_id: Cow::Owned(SubscriptionId::new("ndb")),
+                event: Cow::Borrowed(event),
+            };
             let json: String = msg.as_json();
             self.db
                 .process_event(&json)

@@ -39,6 +39,7 @@
 * pool: use the relay ingester to perform actions ([Yuki Kishimoto])
 * pool: avoid spawning a task for every authentication request ([Yuki Kishimoto])
 * ndb: return `None` in `NostrEventsDatabase::event_by_id` if event doesn't exist ([Yuki Kishimoto])
+* ndb: avoid event clone when calling `NostrEventsDatabase::save_event` ([Yuki Kishimoto])
 * ffi: improve `Events::merge` and `Events::to_vec` performance ([Yuki Kishimoto])
 
 ### Added
