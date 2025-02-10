@@ -238,6 +238,20 @@ Add the following to the dependencies array in your `Package.swift`:
 .package(url: "https://github.com/rust-nostr/nostr-sdk-swift.git", from: "0.39.0"),
 ```
 
+### Supported platforms
+
+| OS               | x86_64 | aarch64 | armv7 | x86 |
+|------------------|--------|---------|-------|-----|
+| iOS (>=14.0)     | ❌      | ✅       | ❌     | ❌   |
+| iOS Simulator    | ✅      | ✅       | ❌     | ❌   |
+| **Mac Catalyst   | ✅      | ✅       | ❌     | ❌   |
+| macOS (>=12.0)   | ✅      | ✅       | ❌     | ❌   |
+| visionOS (>=1.0) | ❌      | ❌       | ❌     | ❌   |
+| watchOS          | ❌      | ❌       | ❌     | ❌   |
+| tvOS             | ❌      | ❌       | ❌     | ❌   |
+
+** Available from `0.40.0-beta.1`!
+
 </section>
 
 <div slot="title">Flutter</div>
