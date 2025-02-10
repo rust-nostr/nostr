@@ -53,6 +53,7 @@
 
 ### Added
 
+* nostr: add `nip21::extract_from_text` function ([Yuki Kishimoto])
 * nostr: add `EventBuilder::allow_self_tagging` ([Yuki Kishimoto])
 * nostr: add `Nip19Event::from_event` ([Yuki Kishimoto])
 * nostr: add `Tag::len` method ([Yuki Kishimoto])
