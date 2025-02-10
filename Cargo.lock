@@ -2753,6 +2753,7 @@ dependencies = [
  "nostr-database",
  "tempfile",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

@@ -5,25 +5,25 @@
 
 use std::fs;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::mpsc::Sender;
 
 use async_utility::task;
-use heed::{RoTxn, RwTxn};
+use heed::RoTxn;
 use nostr_database::prelude::*;
 
 mod error;
+mod ingester;
 mod lmdb;
 mod types;
 
 use self::error::Error;
+use self::ingester::{Ingester, IngesterItem};
 use self::lmdb::{index, Lmdb};
-
-type Fbb = Arc<Mutex<FlatBufferBuilder<'static>>>;
 
 #[derive(Debug)]
 pub struct Store {
     db: Lmdb,
-    fbb: Fbb,
+    ingester: Sender<IngesterItem>,
 }
 
 impl Store {
@@ -36,10 +36,10 @@ impl Store {
         // Create the directory if it doesn't exist
         fs::create_dir_all(path)?;
 
-        Ok(Store {
-            db: Lmdb::new(path)?,
-            fbb: Arc::new(Mutex::new(FlatBufferBuilder::with_capacity(70_000))),
-        })
+        let db: Lmdb = Lmdb::new(path)?;
+        let ingester: Sender<IngesterItem> = Ingester::run(db.clone());
+
+        Ok(Self { db, ingester })
     }
 
     #[inline]
@@ -52,152 +52,16 @@ impl Store {
         Ok(task::spawn_blocking(move || f(db)).await?)
     }
 
-    #[inline]
-    async fn interact_with_fbb<F, R>(&self, f: F) -> Result<R, Error>
-    where
-        F: FnOnce(Lmdb, Fbb) -> R + Send + 'static,
-        R: Send + 'static,
-    {
-        let db = self.db.clone();
-        let fbb = self.fbb.clone();
-        Ok(task::spawn_blocking(move || f(db, fbb)).await?)
-    }
-
     /// Store an event.
     pub async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, Error> {
-        if event.kind.is_ephemeral() {
-            return Ok(SaveEventStatus::Rejected(RejectedReason::Ephemeral));
-        }
+        let (item, rx) = IngesterItem::with_feedback(event.clone());
 
-        // TODO: avoid this clone
-        let event = event.clone();
+        // Send to the ingester
+        // This will never block the current thread according to `std::sync::mpsc::Sender` docs
+        self.ingester.send(item).map_err(|_| Error::MpscSend)?;
 
-        self.interact_with_fbb(move |db, fbb| {
-            // Acquire read transaction
-            let read_txn = db.read_txn()?;
-
-            // Already exists
-            if db.has_event(&read_txn, event.id.as_bytes())? {
-                return Ok(SaveEventStatus::Rejected(RejectedReason::Duplicate));
-            }
-
-            // Reject event if ID was deleted
-            if db.is_deleted(&read_txn, &event.id)? {
-                return Ok(SaveEventStatus::Rejected(RejectedReason::Deleted));
-            }
-
-            // Reject event if ADDR was deleted after it's created_at date
-            // (non-parameterized or parameterized)
-            if let Some(coordinate) = event.coordinate() {
-                if let Some(time) = db.when_is_coordinate_deleted(&read_txn, &coordinate)? {
-                    if event.created_at <= time {
-                        return Ok(SaveEventStatus::Rejected(RejectedReason::Deleted));
-                    }
-                }
-            }
-
-            // Acquire write transaction
-            let mut txn = db.write_txn()?;
-
-            // Remove replaceable events being replaced
-            if event.kind.is_replaceable() {
-                // Find replaceable event
-                if let Some(stored) =
-                    db.find_replaceable_event(&read_txn, &event.pubkey, event.kind)?
-                {
-                    if stored.created_at > event.created_at {
-                        txn.abort();
-                        return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
-                    }
-
-                    let coordinate: Coordinate = Coordinate::new(event.kind, event.pubkey);
-                    db.remove_replaceable(&read_txn, &mut txn, &coordinate, event.created_at)?;
-                }
-            }
-
-            // Remove parameterized replaceable events being replaced
-            if event.kind.is_addressable() {
-                if let Some(identifier) = event.tags.identifier() {
-                    let coordinate: Coordinate =
-                        Coordinate::new(event.kind, event.pubkey).identifier(identifier);
-
-                    // Find param replaceable event
-                    if let Some(stored) = db.find_addressable_event(&read_txn, &coordinate)? {
-                        if stored.created_at > event.created_at {
-                            txn.abort();
-                            return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
-                        }
-
-                        db.remove_addressable(&read_txn, &mut txn, &coordinate, Timestamp::max())?;
-                    }
-                }
-            }
-
-            // Handle deletion events
-            if let Kind::EventDeletion = event.kind {
-                let invalid: bool = Self::handle_deletion_event(&db, &read_txn, &mut txn, &event)?;
-
-                if invalid {
-                    txn.abort();
-                    return Ok(SaveEventStatus::Rejected(RejectedReason::InvalidDelete));
-                }
-            }
-
-            // Acquire lock
-            let mut fbb = fbb.lock().map_err(|_| Error::MutexPoisoned)?;
-
-            // Store and index the event
-            db.store(&mut txn, &mut fbb, &event)?;
-
-            // Immediately drop the lock
-            drop(fbb);
-
-            // Commit
-            read_txn.commit()?;
-            txn.commit()?;
-
-            Ok(SaveEventStatus::Success)
-        })
-        .await?
-    }
-
-    fn handle_deletion_event(
-        db: &Lmdb,
-        read_txn: &RoTxn,
-        txn: &mut RwTxn,
-        event: &Event,
-    ) -> Result<bool, Error> {
-        for id in event.tags.event_ids() {
-            if let Some(target) = db.get_event_by_id(read_txn, id.as_bytes())? {
-                // Author must match
-                if target.pubkey != event.pubkey.as_bytes() {
-                    return Ok(true);
-                }
-
-                // Mark as deleted and remove event
-                db.mark_deleted(txn, id)?;
-                db.remove(txn, &target)?;
-            }
-        }
-
-        for coordinate in event.tags.coordinates() {
-            // Author must match
-            if coordinate.public_key != event.pubkey {
-                return Ok(true);
-            }
-
-            // Mark deleted
-            db.mark_coordinate_deleted(txn, &coordinate.borrow(), event.created_at)?;
-
-            // Remove events (up to the created_at of the deletion event)
-            if coordinate.kind.is_replaceable() {
-                db.remove_replaceable(read_txn, txn, coordinate, event.created_at)?;
-            } else if coordinate.kind.is_addressable() {
-                db.remove_addressable(read_txn, txn, coordinate, event.created_at)?;
-            }
-        }
-
-        Ok(false)
+        // Wait for a reply
+        rx.await?
     }
 
     /// Get an event by ID
