@@ -138,7 +138,7 @@ impl From<nip49::Error> for Error {
 }
 
 /// To ensure total matching on prefixes when decoding a [`Nip19`] object
-enum Nip19Prefix {
+pub(super) enum Nip19Prefix {
     /// Secret Key
     NSec,
     /// Encrypted Secret Key
@@ -156,11 +156,9 @@ enum Nip19Prefix {
     NAddr,
 }
 
-impl FromStr for Nip19Prefix {
-    type Err = Error;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value {
+impl Nip19Prefix {
+    pub fn from_hrp(hrp: &str) -> Result<Self, Error> {
+        match hrp {
             PREFIX_BECH32_SECRET_KEY => Ok(Nip19Prefix::NSec),
             #[cfg(feature = "nip49")]
             PREFIX_BECH32_SECRET_KEY_ENCRYPTED => Ok(Nip19Prefix::NCryptSec),
@@ -169,6 +167,38 @@ impl FromStr for Nip19Prefix {
             PREFIX_BECH32_PROFILE => Ok(Nip19Prefix::NProfile),
             PREFIX_BECH32_EVENT => Ok(Nip19Prefix::NEvent),
             PREFIX_BECH32_COORDINATE => Ok(Nip19Prefix::NAddr),
+            _ => Err(Error::WrongPrefix),
+        }
+    }
+
+    /// Get prefix len
+    pub fn len(&self) -> usize {
+        match self {
+            Self::NSec => PREFIX_BECH32_SECRET_KEY.len(),
+            #[cfg(feature = "nip49")]
+            Self::NCryptSec => PREFIX_BECH32_SECRET_KEY_ENCRYPTED.len(),
+            Self::NPub => PREFIX_BECH32_PUBLIC_KEY.len(),
+            Self::Note => PREFIX_BECH32_NOTE_ID.len(),
+            Self::NProfile => PREFIX_BECH32_PROFILE.len(),
+            Self::NEvent => PREFIX_BECH32_EVENT.len(),
+            Self::NAddr => PREFIX_BECH32_COORDINATE.len(),
+        }
+    }
+}
+
+impl FromStr for Nip19Prefix {
+    type Err = Error;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            m if m.starts_with(PREFIX_BECH32_SECRET_KEY) => Ok(Nip19Prefix::NSec),
+            #[cfg(feature = "nip49")]
+            m if m.starts_with(PREFIX_BECH32_SECRET_KEY_ENCRYPTED) => Ok(Nip19Prefix::NCryptSec),
+            m if m.starts_with(PREFIX_BECH32_PUBLIC_KEY) => Ok(Nip19Prefix::NPub),
+            m if m.starts_with(PREFIX_BECH32_NOTE_ID) => Ok(Nip19Prefix::Note),
+            m if m.starts_with(PREFIX_BECH32_PROFILE) => Ok(Nip19Prefix::NProfile),
+            m if m.starts_with(PREFIX_BECH32_EVENT) => Ok(Nip19Prefix::NEvent),
+            m if m.starts_with(PREFIX_BECH32_COORDINATE) => Ok(Nip19Prefix::NAddr),
             _ => Err(Error::WrongPrefix),
         }
     }
@@ -211,7 +241,7 @@ impl FromBech32 for Nip19 {
 
     fn from_bech32(hash: &str) -> Result<Self, Self::Err> {
         let (hrp, data) = bech32::decode(hash)?;
-        let prefix: Nip19Prefix = Nip19Prefix::from_str(hrp.as_str())?;
+        let prefix: Nip19Prefix = Nip19Prefix::from_hrp(hrp.as_str())?;
 
         match prefix {
             Nip19Prefix::NSec => Ok(Self::Secret(SecretKey::from_slice(data.as_slice())?)),

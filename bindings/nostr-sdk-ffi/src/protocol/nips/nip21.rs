@@ -82,3 +82,12 @@ impl Nip21 {
         Ok(self.inner.to_nostr_uri()?)
     }
 }
+
+/// Extract `nostr:` URIs from a text
+#[uniffi::export]
+pub fn nip21_extract_from_text(text: &str) -> Vec<Arc<Nip21>> {
+    nip21::extract_from_text(text)
+        .into_iter()
+        .map(|i| Arc::new(i.into()))
+        .collect()
+}

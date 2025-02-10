@@ -52,6 +52,7 @@
 
 ### Added
 
+* nostr: add `nip21::extract_from_text` ([Yuki Kishimoto])
 * nostr: add `EventBuilder::allow_self_tagging` ([Yuki Kishimoto])
 * nostr: add `Tag::len` ([Yuki Kishimoto])
 * nostr: add `push`, `pop`, `insert`, `remove` and `extend` methods to `Tags` struct ([Yuki Kishimoto])
