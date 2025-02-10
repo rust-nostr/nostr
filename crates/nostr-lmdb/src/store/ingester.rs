@@ -5,7 +5,7 @@
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 
-use heed::{RoTxn, RwTxn};
+use heed::RwTxn;
 use nostr::nips::nip01::Coordinate;
 use nostr::{Event, Kind, Timestamp};
 use nostr_database::{FlatBufferBuilder, RejectedReason, SaveEventStatus};
@@ -102,27 +102,32 @@ impl Ingester {
             return Ok(SaveEventStatus::Rejected(RejectedReason::Ephemeral));
         }
 
-        // Acquire read transaction
-        let read_txn = self.db.read_txn()?;
+        // Initial read txn checks
+        {
+            // Acquire read txn
+            let read_txn = self.db.read_txn()?;
 
-        // Already exists
-        if self.db.has_event(&read_txn, event.id.as_bytes())? {
-            return Ok(SaveEventStatus::Rejected(RejectedReason::Duplicate));
-        }
+            // Already exists
+            if self.db.has_event(&read_txn, event.id.as_bytes())? {
+                return Ok(SaveEventStatus::Rejected(RejectedReason::Duplicate));
+            }
 
-        // Reject event if ID was deleted
-        if self.db.is_deleted(&read_txn, &event.id)? {
-            return Ok(SaveEventStatus::Rejected(RejectedReason::Deleted));
-        }
+            // Reject event if ID was deleted
+            if self.db.is_deleted(&read_txn, &event.id)? {
+                return Ok(SaveEventStatus::Rejected(RejectedReason::Deleted));
+            }
 
-        // Reject event if ADDR was deleted after it's created_at date
-        // (non-parameterized or parameterized)
-        if let Some(coordinate) = event.coordinate() {
-            if let Some(time) = self.db.when_is_coordinate_deleted(&read_txn, &coordinate)? {
-                if event.created_at <= time {
-                    return Ok(SaveEventStatus::Rejected(RejectedReason::Deleted));
+            // Reject event if ADDR was deleted after it's created_at date
+            // (non-parameterized or parameterized)
+            if let Some(coordinate) = event.coordinate() {
+                if let Some(time) = self.db.when_is_coordinate_deleted(&read_txn, &coordinate)? {
+                    if event.created_at <= time {
+                        return Ok(SaveEventStatus::Rejected(RejectedReason::Deleted));
+                    }
                 }
             }
+
+            read_txn.commit()?;
         }
 
         // Acquire write transaction
@@ -131,18 +136,23 @@ impl Ingester {
         // Remove replaceable events being replaced
         if event.kind.is_replaceable() {
             // Find replaceable event
-            if let Some(stored) =
-                self.db
-                    .find_replaceable_event(&read_txn, &event.pubkey, event.kind)?
+            if let Some(stored) = self
+                .db
+                .find_replaceable_event(&txn, &event.pubkey, event.kind)?
             {
                 if stored.created_at > event.created_at {
                     txn.abort();
                     return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
                 }
 
+                // Acquire read txn
+                let read_txn = self.db.read_txn()?;
+
                 let coordinate: Coordinate = Coordinate::new(event.kind, event.pubkey);
                 self.db
                     .remove_replaceable(&read_txn, &mut txn, &coordinate, event.created_at)?;
+
+                read_txn.commit()?;
             }
         }
 
@@ -153,11 +163,14 @@ impl Ingester {
                     Coordinate::new(event.kind, event.pubkey).identifier(identifier);
 
                 // Find param replaceable event
-                if let Some(stored) = self.db.find_addressable_event(&read_txn, &coordinate)? {
+                if let Some(stored) = self.db.find_addressable_event(&txn, &coordinate)? {
                     if stored.created_at > event.created_at {
                         txn.abort();
                         return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
                     }
+
+                    // Acquire read txn
+                    let read_txn = self.db.read_txn()?;
 
                     self.db.remove_addressable(
                         &read_txn,
@@ -165,13 +178,15 @@ impl Ingester {
                         &coordinate,
                         Timestamp::max(),
                     )?;
+
+                    read_txn.commit()?;
                 }
             }
         }
 
         // Handle deletion events
         if let Kind::EventDeletion = event.kind {
-            let invalid: bool = self.handle_deletion_event(&read_txn, &mut txn, &event)?;
+            let invalid: bool = self.handle_deletion_event(&mut txn, &event)?;
 
             if invalid {
                 txn.abort();
@@ -183,20 +198,17 @@ impl Ingester {
         self.db.store(&mut txn, fbb, &event)?;
 
         // Commit
-        read_txn.commit()?;
         txn.commit()?;
 
         Ok(SaveEventStatus::Success)
     }
 
-    fn handle_deletion_event(
-        &self,
-        read_txn: &RoTxn,
-        txn: &mut RwTxn,
-        event: &Event,
-    ) -> nostr::Result<bool, Error> {
+    fn handle_deletion_event(&self, txn: &mut RwTxn, event: &Event) -> nostr::Result<bool, Error> {
+        // Acquire read txn
+        let read_txn = self.db.read_txn()?;
+
         for id in event.tags.event_ids() {
-            if let Some(target) = self.db.get_event_by_id(read_txn, id.as_bytes())? {
+            if let Some(target) = self.db.get_event_by_id(&read_txn, id.as_bytes())? {
                 // Author must match
                 if target.pubkey != event.pubkey.as_bytes() {
                     return Ok(true);
@@ -221,12 +233,14 @@ impl Ingester {
             // Remove events (up to the created_at of the deletion event)
             if coordinate.kind.is_replaceable() {
                 self.db
-                    .remove_replaceable(read_txn, txn, coordinate, event.created_at)?;
+                    .remove_replaceable(&read_txn, txn, coordinate, event.created_at)?;
             } else if coordinate.kind.is_addressable() {
                 self.db
-                    .remove_addressable(read_txn, txn, coordinate, event.created_at)?;
+                    .remove_addressable(&read_txn, txn, coordinate, event.created_at)?;
             }
         }
+
+        read_txn.commit()?;
 
         Ok(false)
     }
