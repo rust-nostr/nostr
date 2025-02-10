@@ -55,7 +55,9 @@ from nostr_sdk import *
 ### Support matrix
 
 The wheels are distributed for the following python `versions` and `platforms`.
-If your `version`/`platform` is not currently supported, you can compile the wheel by your self following [these instructions](https://github.com/rust-nostr/nostr/blob/master/bindings/nostr-sdk-ffi/README.md#python).
+If your `version`/`platform` is not currently supported, 
+you can compile the wheel by yourself 
+following [these instructions](https://github.com/rust-nostr/nostr/blob/master/bindings/nostr-sdk-ffi/README.md#python).
 
 #### Python version
 
@@ -144,7 +146,7 @@ main();
 <div slot="title">Kotlin</div>
 <section>
 
-Add the following library to your gradle dependencies:
+Add the following library to your Gradle dependencies:
 
 ### Android
 
@@ -232,7 +234,7 @@ as a package dependency in Xcode.
 
 ### Swift Package
 
-Add the following to the dependencies array in your `Package.swift`:
+Add the following to the dependency array in your `Package.swift`:
 
 ``` swift
 .package(url: "https://github.com/rust-nostr/nostr-sdk-swift.git", from: "0.39.0"),
