@@ -32,6 +32,7 @@
 ### Breaking changes
 
 * nostr: update `Tags::new` signature ([Yuki Kishimoto])
+* nostr: remove `WeakTag` ([Yuki Kishimoto])
 
 ### Changed
 
