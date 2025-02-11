@@ -36,6 +36,16 @@ impl Tags {
         }
     }
 
+    /// Extract `nostr:` URIs from a text and construct tags.
+    ///
+    /// This method deduplicates the tags.
+    #[uniffi::constructor]
+    pub fn from_text(text: &str) -> Self {
+        Self {
+            inner: list::Tags::from_text(text),
+        }
+    }
+
     /// Get number of tags
     pub fn len(&self) -> u64 {
         self.inner.len() as u64
