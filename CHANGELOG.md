@@ -33,6 +33,7 @@
 
 * nostr: update `Nip19Event` relays field type from `Vec<String>` to `Vec<RelayUrl>` ([Yuki Kishimoto])
 * nostr: update `Tags::new` signature ([Yuki Kishimoto])
+* nostr: remove `WeakTag` ([Yuki Kishimoto])
 
 ### Changed
 
