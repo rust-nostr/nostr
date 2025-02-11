@@ -9,6 +9,7 @@ use nostr::event::tag::list;
 use uniffi::Object;
 
 use super::{Tag, TagKind, TagStandard};
+use crate::error::Result;
 use crate::protocol::event::{EventId, PublicKey, Timestamp};
 use crate::protocol::nips::nip01::Coordinate;
 
@@ -26,14 +27,21 @@ impl From<list::Tags> for Tags {
 #[uniffi::export]
 impl Tags {
     #[uniffi::constructor]
-    pub fn new(list: Vec<Arc<Tag>>) -> Self {
+    pub fn from_list(list: Vec<Arc<Tag>>) -> Self {
         Self {
-            inner: list::Tags::new(
+            inner: list::Tags::from_list(
                 list.into_iter()
                     .map(|t| t.as_ref().deref().clone())
                     .collect(),
             ),
         }
+    }
+
+    #[uniffi::constructor]
+    pub fn parse(tags: Vec<Vec<String>>) -> Result<Self> {
+        Ok(Self {
+            inner: list::Tags::parse(tags)?,
+        })
     }
 
     /// Get number of tags

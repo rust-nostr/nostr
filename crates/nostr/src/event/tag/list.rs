@@ -19,15 +19,15 @@ use std::sync::OnceLock as OnceCell;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::Tag;
+use super::{Error, Tag};
 use crate::nips::nip01::Coordinate;
 use crate::{EventId, PublicKey, SingleLetterTag, TagKind, TagStandard, Timestamp};
 
 /// Tags Indexes
 pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<String>>;
 
-/// Tag list
-#[derive(Clone)]
+/// Tags collection
+#[derive(Clone, Default)]
 pub struct Tags {
     list: Vec<Tag>,
     indexes: OnceCell<TagsIndexes>,
@@ -66,13 +66,49 @@ impl Hash for Tags {
 }
 
 impl Tags {
-    /// Construct a new tag list.
+    /// Construct a new empty collection.
     #[inline]
-    pub fn new(list: Vec<Tag>) -> Self {
+    pub fn new() -> Self {
+        Self {
+            list: Vec::new(),
+            indexes: OnceCell::new(),
+        }
+    }
+
+    /// Constructs a new, empty collection with at least the specified capacity.
+    ///
+    /// Check [`Vec::with_capacity`] doc to learn more.
+    #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            list: Vec::with_capacity(capacity),
+            indexes: OnceCell::new(),
+        }
+    }
+
+    /// Construct the collection from a list of tags.
+    pub fn from_list(list: Vec<Tag>) -> Self {
         Self {
             list,
             indexes: OnceCell::new(),
         }
+    }
+
+    /// Parse tags
+    pub fn parse<I1, I2, S>(tags: I1) -> Result<Self, Error>
+    where
+        I1: IntoIterator<Item = I2>,
+        I2: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        let mut list: Vec<Tag> = Vec::new();
+
+        for tag in tags.into_iter() {
+            let tag: Tag = Tag::parse(tag)?;
+            list.push(tag);
+        }
+
+        Ok(Self::from_list(list))
     }
 
     /// Get number of tags.
@@ -396,7 +432,7 @@ impl<'de> Deserialize<'de> for Tags {
     {
         type Data = Vec<Tag>;
         let tags: Vec<Tag> = Data::deserialize(deserializer)?;
-        Ok(Self::new(tags))
+        Ok(Self::from_list(tags))
     }
 }
 

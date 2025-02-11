@@ -72,7 +72,7 @@ impl EventBorrow<'_> {
             PublicKey::from_byte_array(*self.pubkey),
             self.created_at,
             Kind::from_u16(self.kind),
-            Tags::new(self.tags.into_iter().map(|t| t.into_owned()).collect()),
+            Tags::from_list(self.tags.into_iter().map(|t| t.into_owned()).collect()),
             self.content,
             // SAFETY: signature panic only if it's not 64 byte long
             Signature::from_slice(self.sig.as_slice()).expect("valid signature"),

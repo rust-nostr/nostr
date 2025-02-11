@@ -267,7 +267,7 @@ impl EventBuilder {
                             pubkey: public_key,
                             created_at,
                             kind: self.kind,
-                            tags: Tags::new(tags),
+                            tags: Tags::from_list(tags),
                             content: self.content,
                         };
                     }
@@ -284,7 +284,7 @@ impl EventBuilder {
                         .custom_created_at
                         .unwrap_or_else(|| Timestamp::now_with_supplier(supplier)),
                     kind: self.kind,
-                    tags: Tags::new(tags),
+                    tags: Tags::from_list(tags),
                     content: self.content,
                 };
                 unsigned.ensure_id();
