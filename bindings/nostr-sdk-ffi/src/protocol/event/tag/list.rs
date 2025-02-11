@@ -37,6 +37,16 @@ impl Tags {
         }
     }
 
+    /// Extract `nostr:` URIs from a text and construct tags.
+    ///
+    /// This method deduplicates the tags.
+    #[uniffi::constructor]
+    pub fn from_text(text: &str) -> Self {
+        Self {
+            inner: list::Tags::from_text(text),
+        }
+    }
+
     #[uniffi::constructor]
     pub fn parse(tags: Vec<Vec<String>>) -> Result<Self> {
         Ok(Self {

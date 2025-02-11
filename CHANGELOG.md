@@ -58,7 +58,7 @@
 * nostr: add `Nip19Event::from_event` ([Yuki Kishimoto])
 * nostr: add `Tag::len` method ([Yuki Kishimoto])
 * nostr: add `push`, `pop`, `insert`, `remove`, `extend` and `retain` methods to `Tags` struct ([Yuki Kishimoto])
-* nostr: add `Tags::from_list`, `Tags::with_capacity` and `Tags::parse` constructors ([Yuki Kishimoto])
+* nostr: add `with_capacity`, `from_list`, `from_text` and `parse` constructors to `Tags` struct ([Yuki Kishimoto])
 * nostr: add `Tags::dedup` method ([Yuki Kishimoto])
 * pool: event verification cache ([Yuki Kishimoto])
 * ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])
