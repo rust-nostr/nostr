@@ -26,8 +26,8 @@ use crate::{EventId, PublicKey, SingleLetterTag, TagKind, TagStandard, Timestamp
 /// Tags Indexes
 pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<String>>;
 
-/// Tag list
-#[derive(Clone)]
+/// Tags collection
+#[derive(Clone, Default)]
 pub struct Tags {
     list: Vec<Tag>,
     indexes: OnceCell<TagsIndexes>,
@@ -66,9 +66,17 @@ impl Hash for Tags {
 }
 
 impl Tags {
-    /// Construct a new tag list.
+    /// Construct a new empty collection.
     #[inline]
-    pub fn new(list: Vec<Tag>) -> Self {
+    pub fn new() -> Self {
+        Self {
+            list: Vec::new(),
+            indexes: OnceCell::new(),
+        }
+    }
+
+    /// Construct the collection from a list of tags.
+    pub fn from_list(list: Vec<Tag>) -> Self {
         Self {
             list,
             indexes: OnceCell::new(),
@@ -378,7 +386,7 @@ impl<'de> Deserialize<'de> for Tags {
     {
         type Data = Vec<Tag>;
         let tags: Vec<Tag> = Data::deserialize(deserializer)?;
-        Ok(Self::new(tags))
+        Ok(Self::from_list(tags))
     }
 }
 
