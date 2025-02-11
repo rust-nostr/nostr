@@ -53,6 +53,7 @@
 
 * nostr: add `EventBuilder::allow_self_tagging` ([Yuki Kishimoto])
 * nostr: add `Nip19Event::from_event` ([Yuki Kishimoto])
+* nostr: add `push`, `pop`, `insert`, `remove`, `extend` and `retain` methods to `Tags` struct ([Yuki Kishimoto])
 * pool: event verification cache ([Yuki Kishimoto])
 * ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])
 

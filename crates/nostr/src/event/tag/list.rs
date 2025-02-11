@@ -87,6 +87,110 @@ impl Tags {
         self.list.is_empty()
     }
 
+    /// Appends a [`Tag`] to the back of the collection.
+    ///
+    /// Check [`Vec::push`] doc to learn more.
+    ///
+    /// This erases the [`TagsIndexes`].
+    pub fn push(&mut self, tag: Tag) {
+        // Erase indexes
+        self.erase_indexes();
+
+        // Append
+        self.list.push(tag);
+    }
+
+    /// Removes the last [`Tag`] and returns it, or `None` if it's empty.
+    ///
+    /// Check [`Vec::pop`] doc to learn more.
+    ///
+    /// This erases the [`TagsIndexes`].
+    pub fn pop(&mut self) -> Option<Tag> {
+        // Erase indexes
+        self.erase_indexes();
+
+        // Pop last item
+        self.list.pop()
+    }
+
+    /// Inserts a [`Tag`] at position `index` within the vector,
+    /// shifting all tags after it to the right.
+    ///
+    /// Returns `true` if the [`Tag`] is inserted successfully.
+    /// Returns `false` if `index > len`.
+    ///
+    /// Check [`Vec::insert`] doc to learn more.
+    ///
+    /// This erases the [`TagsIndexes`].
+    pub fn insert(&mut self, index: usize, tag: Tag) -> bool {
+        // Check if `index` is bigger than collection len
+        if index > self.list.len() {
+            return false;
+        }
+
+        // Erase indexes
+        self.erase_indexes();
+
+        // Insert at position
+        self.list.insert(index, tag);
+
+        // Inserted successfully
+        true
+    }
+
+    /// Removes and returns the [`Tag`] at position `index` within the vector,
+    /// shifting all tags after it to the left.
+    ///
+    /// Check [`Vec::remove`] doc to learn more.
+    ///
+    /// This erases the [`TagsIndexes`].
+    pub fn remove(&mut self, index: usize) -> Option<Tag> {
+        // Check if `index` is bigger than collection len
+        if index > self.list.len() {
+            return None;
+        }
+
+        // Erase indexes
+        self.erase_indexes();
+
+        // Remove from collection
+        Some(self.list.remove(index))
+    }
+
+    /// Extends the collection.
+    ///
+    /// Check [`Vec::extend`] doc to learn more.
+    ///
+    /// This erases the [`TagsIndexes`].
+    pub fn extend<I>(&mut self, iter: I)
+    where
+        I: IntoIterator<Item = Tag>,
+    {
+        // Erase indexes
+        self.erase_indexes();
+
+        // Extend list
+        self.list.extend(iter);
+    }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements e for which `f(&e)` returns `false`.
+    ///
+    /// Check [`Vec::retain`] doc to learn more.
+    ///
+    /// This erases the [`TagsIndexes`].
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&Tag) -> bool,
+    {
+        // Erase indexes
+        self.erase_indexes();
+
+        // Retain tags
+        self.list.retain(|t| f(t));
+    }
+
     /// Get first tag
     #[inline]
     pub fn first(&self) -> Option<&Tag> {
@@ -240,6 +344,13 @@ impl Tags {
                 .insert(content.to_string());
         }
         idx
+    }
+
+    #[inline]
+    fn erase_indexes(&mut self) {
+        if self.indexes.get().is_some() {
+            self.indexes = OnceCell::new();
+        }
     }
 
     /// Get indexes
