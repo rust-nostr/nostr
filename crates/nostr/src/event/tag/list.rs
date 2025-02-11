@@ -198,6 +198,93 @@ impl Tags {
         self.list.extend(iter);
     }
 
+    /// Deduplicate tags
+    ///
+    /// # Deduplication policy
+    ///
+    /// - Two tags are considered duplicates if:
+    ///   1) They have the same [`TagKind`]
+    ///   2) They contain the same content (if applicable)
+    ///
+    /// - Among duplicates, the longest tag is retained; shorter ones are discarded.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// # use nostr::Tags;
+    /// let tags = [
+    ///     vec!["t", "test"], // This will be discarded since exists one with same kind + content and with longer len.
+    ///     vec!["t", "test1"],
+    ///     vec!["t", "test", "wss://relay.damus.io"],
+    /// ];
+    /// let mut tags = Tags::parse(tags).unwrap();
+    ///
+    /// let expected_tags = [
+    ///     vec!["t", "test1"],
+    ///     vec!["t", "test", "wss://relay.damus.io"],
+    /// ];
+    /// let mut expected_tags = Tags::parse(expected_tags).unwrap();
+    ///
+    /// assert_eq!(tags, expected_tags);
+    /// ```
+    pub fn dedup(&mut self) {
+        // Erase indexes
+        self.erase_indexes();
+
+        // If there are no tags, nothing to do
+        if self.list.is_empty() {
+            return;
+        }
+
+        // Keep track which tag survives
+        let mut keep: Vec<bool> = vec![true; self.list.len()];
+
+        // Map from (&str, &str) → index of whichever tag is longest
+        let mut map: BTreeMap<(TagKind, Option<&str>), usize> = BTreeMap::new();
+
+        // Figure out which tags to keep
+        for (idx, tag) in self.list.iter().enumerate() {
+            let kind: TagKind = tag.kind();
+            let content: Option<&str> = tag.content();
+
+            let key: (TagKind, Option<&str>) = (kind, content);
+
+            match map.get(&key) {
+                // The value already exists
+                Some(&old_idx) => {
+                    // Compare lengths; keep whichever is longer.
+                    if tag.len() > self.list[old_idx].len() {
+                        // The current tag is longer -> discard the older one and update the map.
+                        keep[old_idx] = false;
+                        map.insert(key, idx);
+                    } else {
+                        // The tag in the map is longer -> discard the current one.
+                        keep[idx] = false;
+                    }
+                }
+                // Key not exists, insert.
+                None => {
+                    map.insert(key, idx);
+                }
+            }
+        }
+
+        // We never use references in the map again after the loop,
+        // so any borrowed strings are no longer needed.
+        drop(map);
+
+        // Rebuild list
+        let mut new_list: Vec<Tag> = Vec::with_capacity(self.list.len());
+        for (idx, tag) in self.list.drain(..).enumerate() {
+            if keep[idx] {
+                new_list.push(tag);
+            }
+        }
+
+        // Update
+        self.list = new_list;
+    }
+
     /// Get first tag
     #[inline]
     pub fn first(&self) -> Option<&Tag> {
@@ -409,12 +496,143 @@ impl<'de> Deserialize<'de> for Tags {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Event, JsonUtil};
+    use super::*;
+    use crate::{Event, JsonUtil, RelayUrl};
 
     #[test]
     fn test_extract_d_tag() {
         let json = r#"{"id":"3dfdbb371de782f51812dc4809ea1104d80e143cec1091a4be07f518ef09e3d7","pubkey":"b8aef32a5421205c1f89ad09e2d93873df68a8611b247f62af005655eadc0efb","created_at":1728728536,"kind":30000,"sig":"0395c41fd95d52b534eaa29c82cd9437130cf63e67117b1587914375fdfb878137287a1d15653161f91ea919afb06358784217409a9ff0323261f683b2936829","content":"older_param_replaceable","tags":[["d","1"]]}"#;
         let event = Event::from_json(json).unwrap();
         assert_eq!(event.tags.identifier(), Some("1"));
+    }
+
+    #[test]
+    fn test_tags_dedup() {
+        let pubkey1 =
+            PublicKey::from_hex("b8aef32a5421205c1f89ad09e2d93873df68a8611b247f62af005655eadc0efb")
+                .unwrap();
+        let pubkey2 =
+            PublicKey::from_hex("f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785")
+                .unwrap();
+
+        let event1 =
+            EventId::from_hex("3dfdbb371de782f51812dc4809ea1104d80e143cec1091a4be07f518ef09e3d7")
+                .unwrap();
+        let event2 =
+            EventId::from_hex("2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45")
+                .unwrap();
+
+        let long_p_tag_1 = Tag::from_standardized_without_cell(TagStandard::PublicKey {
+            public_key: pubkey1,
+            relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
+            uppercase: false,
+            alias: None,
+        });
+
+        let long_e_tag_2 = Tag::from_standardized_without_cell(TagStandard::Event {
+            event_id: event2,
+            relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
+            marker: None,
+            public_key: None,
+            uppercase: false,
+        });
+
+        let empty_list: Vec<String> = Vec::new();
+
+        let list = vec![
+            Tag::protected(),
+            Tag::custom(TagKind::p(), empty_list.clone()), // Non standard p tag
+            Tag::public_key(pubkey1),
+            Tag::public_key(pubkey2),
+            Tag::event(event1),
+            Tag::event(event2),
+            Tag::identifier("test"),
+            Tag::alt("testing deduplication"),
+            Tag::alt("test"),
+            long_e_tag_2.clone(),
+            Tag::event(event2),
+            Tag::protected(),
+            long_p_tag_1.clone(),
+            Tag::public_key(pubkey2),
+            Tag::identifier("test"),
+        ];
+
+        let mut tags = Tags::from_list(list);
+        tags.dedup();
+
+        let expected = vec![
+            Tag::protected(),
+            Tag::custom(TagKind::p(), empty_list), // Non standard p tag
+            Tag::public_key(pubkey2),
+            Tag::event(event1),
+            Tag::identifier("test"),
+            Tag::alt("testing deduplication"),
+            Tag::alt("test"),
+            long_e_tag_2,
+            long_p_tag_1,
+        ];
+
+        assert_eq!(tags.to_vec(), expected);
+    }
+}
+
+#[cfg(bench)]
+mod benches {
+    use test::{black_box, Bencher};
+
+    use super::*;
+    use crate::RelayUrl;
+
+    #[bench]
+    pub fn tags_dedup(bh: &mut Bencher) {
+        let pubkey1 =
+            PublicKey::from_hex("b8aef32a5421205c1f89ad09e2d93873df68a8611b247f62af005655eadc0efb")
+                .unwrap();
+        let pubkey2 =
+            PublicKey::from_hex("f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785")
+                .unwrap();
+
+        let event1 =
+            EventId::from_hex("3dfdbb371de782f51812dc4809ea1104d80e143cec1091a4be07f518ef09e3d7")
+                .unwrap();
+        let event2 =
+            EventId::from_hex("2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45")
+                .unwrap();
+
+        let long_p_tag_1 = Tag::from_standardized_without_cell(TagStandard::PublicKey {
+            public_key: pubkey1,
+            relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
+            uppercase: false,
+            alias: None,
+        });
+
+        let long_e_tag_2 = Tag::from_standardized_without_cell(TagStandard::Event {
+            event_id: event2,
+            relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
+            marker: None,
+            public_key: None,
+            uppercase: false,
+        });
+
+        let list = vec![
+            Tag::public_key(pubkey1),
+            Tag::public_key(pubkey2),
+            Tag::event(event1),
+            Tag::event(event2),
+            Tag::identifier("test"),
+            Tag::alt("testing deduplication"),
+            Tag::alt("test"),
+            long_e_tag_2.clone(),
+            Tag::event(event2),
+            long_p_tag_1.clone(),
+            Tag::public_key(pubkey2),
+            Tag::identifier("test"),
+        ];
+
+        let mut tags = Tags::from_list(list);
+
+        bh.iter(|| {
+            black_box(tags.dedup());
+        });
     }
 }
