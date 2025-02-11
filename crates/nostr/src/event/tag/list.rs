@@ -19,7 +19,7 @@ use std::sync::OnceLock as OnceCell;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::Tag;
+use super::{Error, Tag};
 use crate::nips::nip01::Coordinate;
 use crate::{EventId, PublicKey, SingleLetterTag, TagKind, TagStandard, Timestamp};
 
@@ -81,6 +81,23 @@ impl Tags {
             list,
             indexes: OnceCell::new(),
         }
+    }
+
+    /// Parse tags
+    pub fn parse<I1, I2, S>(tags: I1) -> Result<Self, Error>
+    where
+        I1: IntoIterator<Item = I2>,
+        I2: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        let mut list: Vec<Tag> = Vec::new();
+
+        for tag in tags.into_iter() {
+            let tag: Tag = Tag::parse(tag)?;
+            list.push(tag);
+        }
+
+        Ok(Self::from_list(list))
     }
 
     /// Get number of tags.
