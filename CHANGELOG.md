@@ -54,6 +54,7 @@
 
 * nostr: add `EventBuilder::allow_self_tagging` ([Yuki Kishimoto])
 * nostr: add `Nip19Event::from_event` ([Yuki Kishimoto])
+* nostr: add `Tag::len` ([Yuki Kishimoto])
 * nostr: add `push`, `pop`, `insert`, `remove` and `extend` methods to `Tags` struct ([Yuki Kishimoto])
 * nostr: add `Tags::from_list` ([Yuki Kishimoto])
 * nostr: add `Tags::parse` ([Yuki Kishimoto])
