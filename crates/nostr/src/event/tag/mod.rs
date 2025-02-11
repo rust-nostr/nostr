@@ -166,6 +166,13 @@ impl Tag {
         }
     }
 
+    /// Get tag len
+    #[inline]
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        self.buf.len()
+    }
+
     /// Get as slice of strings
     #[inline]
     pub fn as_slice(&self) -> &[String] {
