@@ -23,7 +23,6 @@ mod error;
 pub mod kind;
 pub mod list;
 pub mod standard;
-pub(super) mod weak;
 
 pub use self::cow::CowTag;
 pub use self::error::Error;
