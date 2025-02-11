@@ -75,6 +75,17 @@ impl Tags {
         }
     }
 
+    /// Constructs a new, empty collection with at least the specified capacity.
+    ///
+    /// Check [`Vec::with_capacity`] doc to learn more.
+    #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            list: Vec::with_capacity(capacity),
+            indexes: OnceCell::new(),
+        }
+    }
+
     /// Construct the collection from a list of tags.
     pub fn from_list(list: Vec<Tag>) -> Self {
         Self {
