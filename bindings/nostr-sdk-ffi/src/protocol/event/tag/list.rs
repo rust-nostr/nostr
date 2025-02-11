@@ -26,9 +26,9 @@ impl From<list::Tags> for Tags {
 #[uniffi::export]
 impl Tags {
     #[uniffi::constructor]
-    pub fn new(list: Vec<Arc<Tag>>) -> Self {
+    pub fn from_list(list: Vec<Arc<Tag>>) -> Self {
         Self {
-            inner: list::Tags::new(
+            inner: list::Tags::from_list(
                 list.into_iter()
                     .map(|t| t.as_ref().deref().clone())
                     .collect(),

@@ -24,10 +24,10 @@ impl From<Tags> for JsTags {
 
 #[wasm_bindgen(js_class = Tags)]
 impl JsTags {
-    #[wasm_bindgen(constructor)]
-    pub fn new(list: Vec<JsTag>) -> Self {
+    #[wasm_bindgen(js_name = fromList)]
+    pub fn from_list(list: Vec<JsTag>) -> Self {
         Self {
-            inner: Tags::new(list.into_iter().map(|t| t.inner).collect()),
+            inner: Tags::from_list(list.into_iter().map(|t| t.inner).collect()),
         }
     }
 
