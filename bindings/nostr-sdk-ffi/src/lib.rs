@@ -3,6 +3,7 @@
 // Distributed under the MIT software license
 
 #![allow(clippy::new_without_default)]
+#![allow(clippy::len_without_is_empty)]
 
 pub mod client;
 pub mod connect;

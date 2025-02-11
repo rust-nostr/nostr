@@ -91,6 +91,11 @@ impl Tag {
         self.inner.as_standardized().cloned().map(|t| t.into())
     }
 
+    /// Get tag len
+    pub fn len(&self) -> u64 {
+        self.inner.len() as u64
+    }
+
     /// Get array of strings
     pub fn as_vec(&self) -> Vec<String> {
         self.inner.as_slice().to_vec()
