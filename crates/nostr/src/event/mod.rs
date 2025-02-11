@@ -149,7 +149,7 @@ impl Event {
             pubkey: public_key,
             created_at,
             kind,
-            tags: Tags::new(tags.into_iter().collect()),
+            tags: Tags::from_list(tags.into_iter().collect()),
             content: content.into(),
             sig,
         }

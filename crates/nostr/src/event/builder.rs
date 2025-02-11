@@ -4,7 +4,6 @@
 
 //! Event builder
 
-use alloc::collections::BTreeSet;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
@@ -16,7 +15,6 @@ use secp256k1::rand::{CryptoRng, Rng};
 use secp256k1::{Secp256k1, Signing, Verification};
 use serde_json::{json, Value};
 
-use super::tag::weak::WeakTag;
 #[cfg(all(feature = "std", feature = "nip04", feature = "nip46"))]
 use crate::nips::nip46::Message as NostrConnectMessage;
 use crate::prelude::*;
@@ -267,7 +265,7 @@ impl EventBuilder {
                             pubkey: public_key,
                             created_at,
                             kind: self.kind,
-                            tags: Tags::new(tags),
+                            tags: Tags::from_list(tags),
                             content: self.content,
                         };
                     }
@@ -284,7 +282,7 @@ impl EventBuilder {
                         .custom_created_at
                         .unwrap_or_else(|| Timestamp::now_with_supplier(supplier)),
                     kind: self.kind,
-                    tags: Tags::new(tags),
+                    tags: Tags::from_list(tags),
                     content: self.content,
                 };
                 unsigned.ensure_id();
@@ -414,7 +412,7 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        let mut tags: Vec<Tag> = Vec::new();
+        let mut tags: Tags = Tags::new();
 
         // Add `e` and `p` tag of **root** event
         match root {
@@ -482,13 +480,11 @@ impl EventBuilder {
                 .cloned(),
         );
 
-        // Dedup tags using `WeakTag`
-        // TODO: compose directly tags with `BTreeSet<WeakTag>` instead of iterate and collect?
-        #[allow(clippy::mutable_key_type)]
-        let tags: BTreeSet<WeakTag> = tags.into_iter().map(WeakTag::new).collect();
+        // Dedup tags
+        tags.dedup();
 
         // Compose event
-        Self::new(Kind::TextNote, content).tags(tags.into_iter().map(|w| w.into_inner()))
+        Self::new(Kind::TextNote, content).tags(tags)
     }
 
     /// Comment
@@ -580,13 +576,11 @@ impl EventBuilder {
         // Add others `p` tags of comment_to event
         extend_nip22_p_tags(comment_to, &mut tags);
 
-        // Dedup tags using `WeakTag`
-        // TODO: compose directly tags with `BTreeSet<WeakTag>` instead of iterate and collect?
-        #[allow(clippy::mutable_key_type)]
-        let tags: BTreeSet<WeakTag> = tags.into_iter().map(WeakTag::new).collect();
+        // Dedup tags
+        tags.dedup();
 
         // Compose event
-        Self::new(Kind::Comment, content).tags(tags.into_iter().map(|w| w.into_inner()))
+        Self::new(Kind::Comment, content).tags(tags)
     }
 
     /// Long-form text note (generally referred to as "articles" or "blog posts").

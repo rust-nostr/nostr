@@ -19,15 +19,16 @@ use std::sync::OnceLock as OnceCell;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::Tag;
+use super::{Error, Tag};
 use crate::nips::nip01::Coordinate;
-use crate::{EventId, PublicKey, SingleLetterTag, TagKind, TagStandard, Timestamp};
+use crate::nips::nip21::{self, Nip21};
+use crate::{EventId, PublicKey, RelayUrl, SingleLetterTag, TagKind, TagStandard, Timestamp};
 
 /// Tags Indexes
 pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<String>>;
 
-/// Tag list
-#[derive(Clone)]
+/// Tags collection
+#[derive(Clone, Default)]
 pub struct Tags {
     list: Vec<Tag>,
     indexes: OnceCell<TagsIndexes>,
@@ -66,13 +67,108 @@ impl Hash for Tags {
 }
 
 impl Tags {
-    /// Construct a new tag list.
+    /// Construct a new empty collection.
     #[inline]
-    pub fn new(list: Vec<Tag>) -> Self {
+    pub fn new() -> Self {
+        Self {
+            list: Vec::new(),
+            indexes: OnceCell::new(),
+        }
+    }
+
+    /// Constructs a new, empty collection with at least the specified capacity.
+    ///
+    /// Check [`Vec::with_capacity`] doc to learn more.
+    #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            list: Vec::with_capacity(capacity),
+            indexes: OnceCell::new(),
+        }
+    }
+
+    /// Construct the collection from a list of tags.
+    pub fn from_list(list: Vec<Tag>) -> Self {
         Self {
             list,
             indexes: OnceCell::new(),
         }
+    }
+
+    /// Extract `nostr:` URIs from a text and construct tags.
+    ///
+    /// This method deduplicates the tags.
+    pub fn from_text(text: &str) -> Self {
+        let list: Vec<Nip21> = nip21::extract_from_text(text);
+
+        // The capacity here may be over-estimated since items in the `list` aren't deduplicated
+        let mut tags: Self = Self::with_capacity(list.len());
+
+        for item in list.into_iter() {
+            match item {
+                Nip21::Pubkey(pk) => tags.push(Tag::public_key(pk)),
+                Nip21::Profile(profile) => {
+                    let standard: TagStandard = TagStandard::PublicKey {
+                        public_key: profile.public_key,
+                        relay_url: profile.relays.into_iter().next(),
+                        alias: None,
+                        uppercase: false,
+                    };
+                    tags.push(Tag::from_standardized_without_cell(standard));
+                }
+                Nip21::EventId(id) => {
+                    let standard: TagStandard = TagStandard::Quote {
+                        event_id: id,
+                        relay_url: None,
+                        public_key: None,
+                    };
+                    tags.push(Tag::from_standardized_without_cell(standard));
+                }
+                Nip21::Event(event) => {
+                    let standard: TagStandard = TagStandard::Quote {
+                        event_id: event.event_id,
+                        relay_url: event
+                            .relays
+                            .into_iter()
+                            .filter_map(|url| RelayUrl::parse(&url).ok())
+                            .next(),
+                        public_key: event.author,
+                    };
+                    tags.push(Tag::from_standardized_without_cell(standard));
+                }
+                Nip21::Coordinate(coordinate) => {
+                    let standard: TagStandard = TagStandard::Coordinate {
+                        relay_url: coordinate.relays.first().cloned(),
+                        coordinate,
+                        uppercase: false,
+                    };
+                    tags.push(Tag::from_standardized_without_cell(standard));
+                }
+            }
+        }
+
+        // Dedup
+        tags.dedup();
+
+        // Return
+        tags
+    }
+
+    /// Parse tags
+    pub fn parse<I1, I2, S>(tags: I1) -> Result<Self, Error>
+    where
+        I1: IntoIterator<Item = I2>,
+        I2: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        let mut list: Vec<Tag> = Vec::new();
+
+        for tag in tags.into_iter() {
+            let tag: Tag = Tag::parse(tag)?;
+            list.push(tag);
+        }
+
+        Ok(Self::from_list(list))
     }
 
     /// Get number of tags.
@@ -85,6 +181,179 @@ impl Tags {
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.list.is_empty()
+    }
+
+    /// Appends a [`Tag`] to the back of the collection.
+    ///
+    /// Check [`Vec::push`] doc to learn more.
+    ///
+    /// This erases the [`TagsIndexes`].
+    pub fn push(&mut self, tag: Tag) {
+        // Erase indexes
+        self.erase_indexes();
+
+        // Append
+        self.list.push(tag);
+    }
+
+    /// Removes the last [`Tag`] and returns it, or `None` if it's empty.
+    ///
+    /// Check [`Vec::pop`] doc to learn more.
+    ///
+    /// This erases the [`TagsIndexes`].
+    pub fn pop(&mut self) -> Option<Tag> {
+        // Erase indexes
+        self.erase_indexes();
+
+        // Pop last item
+        self.list.pop()
+    }
+
+    /// Inserts a [`Tag`] at position `index` within the vector,
+    /// shifting all tags after it to the right.
+    ///
+    /// Returns `true` if the [`Tag`] is inserted successfully.
+    /// Returns `false` if `index > len`.
+    ///
+    /// Check [`Vec::insert`] doc to learn more.
+    ///
+    /// This erases the [`TagsIndexes`].
+    pub fn insert(&mut self, index: usize, tag: Tag) -> bool {
+        // Check if `index` is bigger than collection len
+        if index > self.list.len() {
+            return false;
+        }
+
+        // Erase indexes
+        self.erase_indexes();
+
+        // Insert at position
+        self.list.insert(index, tag);
+
+        // Inserted successfully
+        true
+    }
+
+    /// Removes and returns the [`Tag`] at position `index` within the vector,
+    /// shifting all tags after it to the left.
+    ///
+    /// Check [`Vec::remove`] doc to learn more.
+    ///
+    /// This erases the [`TagsIndexes`].
+    pub fn remove(&mut self, index: usize) -> Option<Tag> {
+        // Check if `index` is bigger than collection len
+        if index > self.list.len() {
+            return None;
+        }
+
+        // Erase indexes
+        self.erase_indexes();
+
+        // Remove from collection
+        Some(self.list.remove(index))
+    }
+
+    /// Extends the collection.
+    ///
+    /// Check [`Vec::extend`] doc to learn more.
+    ///
+    /// This erases the [`TagsIndexes`].
+    pub fn extend<I>(&mut self, iter: I)
+    where
+        I: IntoIterator<Item = Tag>,
+    {
+        // Erase indexes
+        self.erase_indexes();
+
+        // Extend list
+        self.list.extend(iter);
+    }
+
+    /// Deduplicate tags
+    ///
+    /// # Deduplication policy
+    ///
+    /// - Two tags are considered duplicates if:
+    ///   1) They have the same [`TagKind`]
+    ///   2) They contain the same content (if applicable)
+    ///
+    /// - Among duplicates, the longest tag is retained; shorter ones are discarded.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// # use nostr::Tags;
+    /// let tags = [
+    ///     vec!["t", "test"], // This will be discarded since exists one with same kind + content and with longer len.
+    ///     vec!["t", "test1"],
+    ///     vec!["t", "test", "wss://relay.damus.io"],
+    /// ];
+    /// let mut tags = Tags::parse(tags).unwrap();
+    ///
+    /// let expected_tags = [
+    ///     vec!["t", "test1"],
+    ///     vec!["t", "test", "wss://relay.damus.io"],
+    /// ];
+    /// let mut expected_tags = Tags::parse(expected_tags).unwrap();
+    ///
+    /// assert_eq!(tags, expected_tags);
+    /// ```
+    pub fn dedup(&mut self) {
+        // Erase indexes
+        self.erase_indexes();
+
+        // If there are no tags, nothing to do
+        if self.list.is_empty() {
+            return;
+        }
+
+        // Keep track which tag survives
+        let mut keep: Vec<bool> = vec![true; self.list.len()];
+
+        // Map from (&str, &str) → index of whichever tag is longest
+        let mut map: BTreeMap<(TagKind, Option<&str>), usize> = BTreeMap::new();
+
+        // Figure out which tags to keep
+        for (idx, tag) in self.list.iter().enumerate() {
+            let kind: TagKind = tag.kind();
+            let content: Option<&str> = tag.content();
+
+            let key: (TagKind, Option<&str>) = (kind, content);
+
+            match map.get(&key) {
+                // The value already exists
+                Some(&old_idx) => {
+                    // Compare lengths; keep whichever is longer.
+                    if tag.len() > self.list[old_idx].len() {
+                        // The current tag is longer -> discard the older one and update the map.
+                        keep[old_idx] = false;
+                        map.insert(key, idx);
+                    } else {
+                        // The tag in the map is longer -> discard the current one.
+                        keep[idx] = false;
+                    }
+                }
+                // Key not exists, insert.
+                None => {
+                    map.insert(key, idx);
+                }
+            }
+        }
+
+        // We never use references in the map again after the loop,
+        // so any borrowed strings are no longer needed.
+        drop(map);
+
+        // Rebuild list
+        let mut new_list: Vec<Tag> = Vec::with_capacity(self.list.len());
+        for (idx, tag) in self.list.drain(..).enumerate() {
+            if keep[idx] {
+                new_list.push(tag);
+            }
+        }
+
+        // Update
+        self.list = new_list;
     }
 
     /// Get first tag
@@ -242,6 +511,13 @@ impl Tags {
         idx
     }
 
+    #[inline]
+    fn erase_indexes(&mut self) {
+        if self.indexes.get().is_some() {
+            self.indexes = OnceCell::new();
+        }
+    }
+
     /// Get indexes
     #[inline]
     pub fn indexes(&self) -> &TagsIndexes {
@@ -285,18 +561,203 @@ impl<'de> Deserialize<'de> for Tags {
     {
         type Data = Vec<Tag>;
         let tags: Vec<Tag> = Data::deserialize(deserializer)?;
-        Ok(Self::new(tags))
+        Ok(Self::from_list(tags))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{Event, JsonUtil};
+    use super::*;
+    use crate::nips::nip19::{Nip19Event, Nip19Profile};
+    use crate::{Event, FromBech32, JsonUtil, RelayUrl};
 
     #[test]
     fn test_extract_d_tag() {
         let json = r#"{"id":"3dfdbb371de782f51812dc4809ea1104d80e143cec1091a4be07f518ef09e3d7","pubkey":"b8aef32a5421205c1f89ad09e2d93873df68a8611b247f62af005655eadc0efb","created_at":1728728536,"kind":30000,"sig":"0395c41fd95d52b534eaa29c82cd9437130cf63e67117b1587914375fdfb878137287a1d15653161f91ea919afb06358784217409a9ff0323261f683b2936829","content":"older_param_replaceable","tags":[["d","1"]]}"#;
         let event = Event::from_json(json).unwrap();
         assert_eq!(event.tags.identifier(), Some("1"));
+    }
+
+    #[test]
+    fn test_tags_from_text() {
+        let p_tag1 = Tag::public_key(
+            PublicKey::parse("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")
+                .unwrap(),
+        );
+
+        let nip19_event = Nip19Event::from_bech32("nevent1qqsz8xjlh82ykfr3swjk5fw0l3v33pcsaq4z6f7q0zy2dxrfm7x2yeqpz4mhxue69uhkummnw3ezummcw3ezuer9wchsygrgmqgktyvpqzma5slu9rmarlqj24zxdcg3tzrtneamxfhktmzzwgpsgqqqqqqsmxphku").unwrap();
+        let e_tag = Tag::from_standardized_without_cell(TagStandard::Quote {
+            event_id: nip19_event.event_id,
+            relay_url: nip19_event
+                .relays
+                .into_iter()
+                .filter_map(|url| RelayUrl::parse(&url).ok())
+                .next(),
+            public_key: nip19_event.author,
+        });
+
+        let profile = Nip19Profile::from_bech32("nprofile1qqsqfyvdlsmvj0nakmxq6c8n0c2j9uwrddjd8a95ynzn9479jhlth3gpvemhxue69uhkv6tvw3jhytnwdaehgu3wwa5kuef0dec82c33w94xwcmdd3cxketedsux6ertwecrgues0pk8xdrew33h27pkd4unvvpkw3nkv7pe0p68gat58ycrw6ps0fenwdnvva48w0mzwfhkzerrv9ehg0t5wf6k2qgnwaehxw309ac82unsd3jhqct89ejhxtcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsh8njvk").unwrap();
+        let p_tag3 = Tag::from_standardized_without_cell(TagStandard::PublicKey {
+            public_key: profile.public_key,
+            relay_url: profile.relays.into_iter().next(),
+            alias: None,
+            uppercase: false,
+        });
+
+        let profile = Nip19Profile::from_bech32("nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40").unwrap();
+        let p_tag4 = Tag::from_standardized_without_cell(TagStandard::PublicKey {
+            public_key: profile.public_key,
+            relay_url: profile.relays.into_iter().next(),
+            alias: None,
+            uppercase: false,
+        });
+
+        let vector = vec![
+            ("#rustnostr #nostr #kotlin #jvm\n\nnostr:nevent1qqsz8xjlh82ykfr3swjk5fw0l3v33pcsaq4z6f7q0zy2dxrfm7x2yeqpz4mhxue69uhkummnw3ezummcw3ezuer9wchsygrgmqgktyvpqzma5slu9rmarlqj24zxdcg3tzrtneamxfhktmzzwgpsgqqqqqqsmxphku", vec![e_tag]),
+            ("I have never been very active in discussions but working on rust-nostr (at the time called nostr-rs-sdk) since September 2022 🦀 \n\nIf I remember correctly there were also nostr:nprofile1qqsqfyvdlsmvj0nakmxq6c8n0c2j9uwrddjd8a95ynzn9479jhlth3gpvemhxue69uhkv6tvw3jhytnwdaehgu3wwa5kuef0dec82c33w94xwcmdd3cxketedsux6ertwecrgues0pk8xdrew33h27pkd4unvvpkw3nkv7pe0p68gat58ycrw6ps0fenwdnvva48w0mzwfhkzerrv9ehg0t5wf6k2qgnwaehxw309ac82unsd3jhqct89ejhxtcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsh8njvk and nostr:nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40", vec![p_tag3, p_tag4.clone()]),
+            ("Test ending with full stop: nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet.", vec![p_tag1.clone()]),
+            ("nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet", vec![p_tag1.clone()]),
+            ("Public key without prefix npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet", vec![]),
+            ("Public key `nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet+.", vec![p_tag1.clone()]),
+            ("Duplicated npub: nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet, nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet", vec![p_tag1]),
+            ("Uppercase nostr:npub1DRVpZev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eSEET", vec![]),
+            ("Npub and nprofile that point to the same public key: nostr:npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c and nostr:nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40", vec![p_tag4]),
+            ("content without nostr URIs", vec![]),
+        ];
+
+        for (content, expected) in vector {
+            let tags = Tags::from_text(content);
+            assert_eq!(tags.to_vec(), expected);
+        }
+    }
+
+    #[test]
+    fn test_tags_dedup() {
+        let pubkey1 =
+            PublicKey::from_hex("b8aef32a5421205c1f89ad09e2d93873df68a8611b247f62af005655eadc0efb")
+                .unwrap();
+        let pubkey2 =
+            PublicKey::from_hex("f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785")
+                .unwrap();
+
+        let event1 =
+            EventId::from_hex("3dfdbb371de782f51812dc4809ea1104d80e143cec1091a4be07f518ef09e3d7")
+                .unwrap();
+        let event2 =
+            EventId::from_hex("2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45")
+                .unwrap();
+
+        let long_p_tag_1 = Tag::from_standardized_without_cell(TagStandard::PublicKey {
+            public_key: pubkey1,
+            relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
+            uppercase: false,
+            alias: None,
+        });
+
+        let long_e_tag_2 = Tag::from_standardized_without_cell(TagStandard::Event {
+            event_id: event2,
+            relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
+            marker: None,
+            public_key: None,
+            uppercase: false,
+        });
+
+        let empty_list: Vec<String> = Vec::new();
+
+        let list = vec![
+            Tag::protected(),
+            Tag::custom(TagKind::p(), empty_list.clone()), // Non standard p tag
+            Tag::public_key(pubkey1),
+            Tag::public_key(pubkey2),
+            Tag::event(event1),
+            Tag::event(event2),
+            Tag::identifier("test"),
+            Tag::alt("testing deduplication"),
+            Tag::alt("test"),
+            long_e_tag_2.clone(),
+            Tag::event(event2),
+            Tag::protected(),
+            long_p_tag_1.clone(),
+            Tag::public_key(pubkey2),
+            Tag::identifier("test"),
+        ];
+
+        let mut tags = Tags::from_list(list);
+        tags.dedup();
+
+        let expected = vec![
+            Tag::protected(),
+            Tag::custom(TagKind::p(), empty_list), // Non standard p tag
+            Tag::public_key(pubkey2),
+            Tag::event(event1),
+            Tag::identifier("test"),
+            Tag::alt("testing deduplication"),
+            Tag::alt("test"),
+            long_e_tag_2,
+            long_p_tag_1,
+        ];
+
+        assert_eq!(tags.to_vec(), expected);
+    }
+}
+
+#[cfg(bench)]
+mod benches {
+    use test::{black_box, Bencher};
+
+    use super::*;
+    use crate::RelayUrl;
+
+    #[bench]
+    pub fn tags_dedup(bh: &mut Bencher) {
+        let pubkey1 =
+            PublicKey::from_hex("b8aef32a5421205c1f89ad09e2d93873df68a8611b247f62af005655eadc0efb")
+                .unwrap();
+        let pubkey2 =
+            PublicKey::from_hex("f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785")
+                .unwrap();
+
+        let event1 =
+            EventId::from_hex("3dfdbb371de782f51812dc4809ea1104d80e143cec1091a4be07f518ef09e3d7")
+                .unwrap();
+        let event2 =
+            EventId::from_hex("2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45")
+                .unwrap();
+
+        let long_p_tag_1 = Tag::from_standardized_without_cell(TagStandard::PublicKey {
+            public_key: pubkey1,
+            relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
+            uppercase: false,
+            alias: None,
+        });
+
+        let long_e_tag_2 = Tag::from_standardized_without_cell(TagStandard::Event {
+            event_id: event2,
+            relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
+            marker: None,
+            public_key: None,
+            uppercase: false,
+        });
+
+        let list = vec![
+            Tag::public_key(pubkey1),
+            Tag::public_key(pubkey2),
+            Tag::event(event1),
+            Tag::event(event2),
+            Tag::identifier("test"),
+            Tag::alt("testing deduplication"),
+            Tag::alt("test"),
+            long_e_tag_2.clone(),
+            Tag::event(event2),
+            long_p_tag_1.clone(),
+            Tag::public_key(pubkey2),
+            Tag::identifier("test"),
+        ];
+
+        let mut tags = Tags::from_list(list);
+
+        bh.iter(|| {
+            black_box(tags.dedup());
+        });
     }
 }
