@@ -23,7 +23,6 @@ mod error;
 pub mod kind;
 pub mod list;
 pub mod standard;
-pub(super) mod weak;
 
 pub use self::cow::CowTag;
 pub use self::error::Error;
@@ -164,6 +163,13 @@ impl Tag {
             Some(inner) => inner,
             None => TagStandard::parse(&self.buf).ok(),
         }
+    }
+
+    /// Get tag len
+    #[inline]
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        self.buf.len()
     }
 
     /// Get as slice of strings
