@@ -346,20 +346,16 @@ pub struct Nip19Event {
     pub event_id: EventId,
     pub author: Option<PublicKey>,
     pub kind: Option<Kind>,
-    pub relays: Vec<String>,
+    pub relays: Vec<RelayUrl>,
 }
 
 impl Nip19Event {
-    pub fn new<I, S>(event_id: EventId, relays: I) -> Self
-    where
-        I: IntoIterator<Item = S>,
-        S: Into<String>,
-    {
+    pub fn new(event_id: EventId) -> Self {
         Self {
             event_id,
             author: None,
             kind: None,
-            relays: relays.into_iter().map(|u| u.into()).collect(),
+            relays: Vec::new(),
         }
     }
 
@@ -377,11 +373,21 @@ impl Nip19Event {
         self
     }
 
+    /// Add kind
+    #[inline]
+    pub fn relays<I>(mut self, relays: I) -> Self
+    where
+        I: IntoIterator<Item = RelayUrl>,
+    {
+        self.relays = relays.into_iter().collect();
+        self
+    }
+
     fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
         let mut event_id: Option<EventId> = None;
         let mut author: Option<PublicKey> = None;
         let mut kind: Option<Kind> = None;
-        let mut relays: Vec<String> = Vec::new();
+        let mut relays: Vec<RelayUrl> = Vec::new();
 
         while !data.is_empty() {
             let t = data.first().ok_or(Error::TLV)?;
@@ -404,7 +410,9 @@ impl Nip19Event {
                     }
                 }
                 RELAY => {
-                    relays.push(String::from_utf8_lossy(bytes).to_string());
+                    let url: Cow<str> = String::from_utf8_lossy(bytes);
+                    let url: RelayUrl = RelayUrl::parse(&url)?;
+                    relays.push(url);
                 }
                 KIND => {
                     if kind.is_none() {
@@ -450,7 +458,7 @@ impl ToBech32 for Nip19Event {
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
         // Allocate capacity
-        let relays_len: usize = self.relays.iter().map(|u| 2 + u.len()).sum();
+        let relays_len: usize = self.relays.iter().map(|u| 2 + u.as_str().len()).sum();
         let author_len: usize = if self.author.is_some() {
             FIXED_1_1_32_BYTES_TVL
         } else {
@@ -476,6 +484,7 @@ impl ToBech32 for Nip19Event {
         }
 
         for relay in self.relays.iter() {
+            let relay: &str = relay.as_str();
             bytes.push(RELAY); // Type
             bytes.push(relay.len() as u8); // Len
             bytes.extend(relay.as_bytes()); // Value

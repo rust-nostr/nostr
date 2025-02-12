@@ -31,6 +31,8 @@
 
 ### Breaking changes
 
+* nostr: update `Nip19Event` relays field type from `Vec<String>` to `Vec<RelayUrl>` ([Yuki Kishimoto])
+
 ### Changed
 
 * nostr: manually impl eq and cmp traits for `RelayUrl` ([Yuki Kishimoto])
