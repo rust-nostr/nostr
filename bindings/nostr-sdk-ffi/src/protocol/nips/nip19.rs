@@ -2,6 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::nips::nip19::{self, FromBech32, ToBech32};
@@ -12,7 +13,7 @@ use uniffi::{Enum, Object};
 use super::nip01::Coordinate;
 use super::nip49::EncryptedSecretKey;
 use crate::error::Result;
-use crate::protocol::event::{EventId, Kind};
+use crate::protocol::event::{Event, EventId, Kind};
 use crate::protocol::key::{PublicKey, SecretKey};
 
 /// A representation any `NIP19` bech32 nostr object. Useful for decoding
@@ -117,6 +118,13 @@ impl Nip19Event {
             .filter_map(|url| RelayUrl::parse(url).ok())
             .collect();
         Self { inner }
+    }
+
+    #[uniffi::constructor]
+    pub fn from_event(event: &Event) -> Self {
+        Self {
+            inner: nip19::Nip19Event::from_event(event.deref()),
+        }
     }
 
     #[uniffi::constructor]
