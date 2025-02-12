@@ -2,11 +2,13 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
+
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::error::{into_err, Result};
-use crate::protocol::event::{JsEventId, JsKind};
+use crate::protocol::event::{JsEvent, JsEventId, JsKind};
 use crate::protocol::key::JsPublicKey;
 
 #[wasm_bindgen(js_name = Nip19Event)]
@@ -37,6 +39,13 @@ impl JsNip19Event {
             .filter_map(|url| RelayUrl::parse(url).ok())
             .collect();
         Self { inner }
+    }
+
+    #[wasm_bindgen(js_name = fromEvent)]
+    pub fn from_event(event: &JsEvent) -> Self {
+        Self {
+            inner: Nip19Event::from_event(event.deref()),
+        }
     }
 
     #[wasm_bindgen(js_name = fromBech32)]

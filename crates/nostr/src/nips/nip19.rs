@@ -23,7 +23,7 @@ use super::nip05::Nip05Profile;
 use super::nip49::{self, EncryptedSecretKey};
 use crate::event::id::EventId;
 use crate::types::url::{self, RelayUrl, TryIntoUrl};
-use crate::{event, key, Kind, PublicKey, SecretKey};
+use crate::{event, key, Event, Kind, PublicKey, SecretKey};
 
 pub const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 pub const PREFIX_BECH32_SECRET_KEY_ENCRYPTED: &str = "ncryptsec";
@@ -357,6 +357,11 @@ impl Nip19Event {
             kind: None,
             relays: Vec::new(),
         }
+    }
+
+    /// Construct new NIP19 event from [`Event`].
+    pub fn from_event(event: &Event) -> Self {
+        Self::new(event.id).author(event.pubkey).kind(event.kind)
     }
 
     /// Add author
