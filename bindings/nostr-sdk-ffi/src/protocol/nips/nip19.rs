@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use nostr::nips::nip19::{self, FromBech32, ToBech32};
 use nostr::nips::nip21::NostrURI;
+use nostr::types::RelayUrl;
 use uniffi::{Enum, Object};
 
 use super::nip01::Coordinate;
@@ -108,9 +109,13 @@ impl Nip19Event {
         kind: Option<Arc<Kind>>,
         relays: &[String],
     ) -> Self {
-        let mut inner = nip19::Nip19Event::new(**event_id, relays);
+        let mut inner = nip19::Nip19Event::new(**event_id);
         inner.author = author.map(|p| **p);
         inner.kind = kind.map(|k| **k);
+        inner.relays = relays
+            .iter()
+            .filter_map(|url| RelayUrl::parse(url).ok())
+            .collect();
         Self { inner }
     }
 
@@ -149,7 +154,7 @@ impl Nip19Event {
     }
 
     pub fn relays(&self) -> Vec<String> {
-        self.inner.relays.clone()
+        self.inner.relays.iter().map(|u| u.to_string()).collect()
     }
 }
 

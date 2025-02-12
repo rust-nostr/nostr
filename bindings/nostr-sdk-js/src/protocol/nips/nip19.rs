@@ -29,9 +29,13 @@ impl JsNip19Event {
         kind: Option<JsKind>,
         relays: Vec<String>,
     ) -> Self {
-        let mut inner = Nip19Event::new(**event_id, relays);
+        let mut inner = Nip19Event::new(**event_id);
         inner.author = author.map(|p| *p);
         inner.kind = kind.map(|k| *k);
+        inner.relays = relays
+            .iter()
+            .filter_map(|url| RelayUrl::parse(url).ok())
+            .collect();
         Self { inner }
     }
 
@@ -73,7 +77,7 @@ impl JsNip19Event {
     }
 
     pub fn relays(&self) -> Vec<String> {
-        self.inner.relays.clone()
+        self.inner.relays.iter().map(|u| u.to_string()).collect()
     }
 }
 
