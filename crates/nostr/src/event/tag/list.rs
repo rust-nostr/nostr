@@ -26,6 +26,23 @@ use crate::{EventId, PublicKey, SingleLetterTag, TagKind, TagStandard, Timestamp
 /// Tags Indexes
 pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<String>>;
 
+struct DedupVal {
+    // First index where the tag was seen
+    first_index: usize,
+    // The best index, so in this case the longest one
+    best_index: usize,
+}
+
+impl DedupVal {
+    #[inline]
+    fn new(idx: usize) -> Self {
+        Self {
+            first_index: idx,
+            best_index: idx,
+        }
+    }
+}
+
 /// Tags collection
 #[derive(Clone, Default)]
 pub struct Tags {
@@ -231,8 +248,8 @@ impl Tags {
     /// let mut tags = Tags::parse(tags).unwrap();
     ///
     /// let expected_tags = [
+    ///     vec!["t", "test", "wss://relay.damus.io"], // Replaced the previous shorted tag
     ///     vec!["t", "test1"],
-    ///     vec!["t", "test", "wss://relay.damus.io"],
     /// ];
     /// let mut expected_tags = Tags::parse(expected_tags).unwrap();
     ///
@@ -247,11 +264,8 @@ impl Tags {
             return;
         }
 
-        // Keep track which tag survives
-        let mut keep: Vec<bool> = vec![true; self.list.len()];
-
-        // Map from (&str, &str) → index of whichever tag is longest
-        let mut map: BTreeMap<(TagKind, Option<&str>), usize> = BTreeMap::new();
+        // Construct new map
+        let mut map: BTreeMap<(TagKind, Option<&str>), DedupVal> = BTreeMap::new();
 
         // Figure out which tags to keep
         for (idx, tag) in self.list.iter().enumerate() {
@@ -261,39 +275,34 @@ impl Tags {
             let key: (TagKind, Option<&str>) = (kind, content);
 
             // Try to get the index from the map
-            match map.get(&key) {
+            match map.get_mut(&key) {
                 // The key already exists
-                Some(&old_idx) => {
+                Some(val) => {
                     // Compare lengths; keep whichever is longer.
-                    if tag.len() > self.list[old_idx].len() {
-                        // The current tag is longer -> discard the older one and update the map.
-                        keep[old_idx] = false;
-                        map.insert(key, idx);
-                    } else {
-                        // The tag in the map is longer -> discard the current one.
-                        keep[idx] = false;
+                    if tag.len() > self.list[val.best_index].len() {
+                        // The current tag is longer -> update best index with the current one
+                        val.best_index = idx;
                     }
                 }
                 // Key not exists, insert.
                 None => {
-                    map.insert(key, idx);
+                    map.insert(key, DedupVal::new(idx));
                 }
             }
         }
 
-        // We never use references in the map again after the loop
-        drop(map);
-
-        // Rebuild list
-        let mut new_list: Vec<Tag> = Vec::with_capacity(self.list.len());
-        for (idx, tag) in self.list.drain(..).enumerate() {
-            if keep[idx] {
-                new_list.push(tag);
-            }
+        // Build a new list, placing the best duplicate at the earliest index
+        let mut new_list = vec![None; self.list.len()];
+        for DedupVal {
+            first_index,
+            best_index,
+        } in map.into_values()
+        {
+            new_list[first_index] = Some(self.list[best_index].clone()); // TODO: avoid clone here
         }
 
-        // Update
-        self.list = new_list;
+        // Flatten out the resulting list, skipping positions that are `None`
+        self.list = new_list.into_iter().flatten().collect();
     }
 
     /// Get first tag
@@ -574,13 +583,13 @@ mod tests {
         let expected = vec![
             Tag::protected(),
             Tag::custom(TagKind::p(), empty_list), // Non standard p tag
+            long_p_tag_1,
             Tag::public_key(pubkey2),
             Tag::event(event1),
+            long_e_tag_2,
             Tag::identifier("test"),
             Tag::alt("testing deduplication"),
             Tag::alt("test"),
-            long_e_tag_2,
-            long_p_tag_1,
         ];
 
         assert_eq!(tags.to_vec(), expected);
