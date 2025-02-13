@@ -32,6 +32,8 @@
 ### Breaking changes
 
 * nostr: update `Nip19Event` relays field type from `Vec<String>` to `Vec<RelayUrl>` ([Yuki Kishimoto])
+* nostr: update `Tags::new` signature ([Yuki Kishimoto])
+* nostr: remove `WeakTag` ([Yuki Kishimoto])
 
 ### Changed
 
@@ -53,6 +55,10 @@
 
 * nostr: add `EventBuilder::allow_self_tagging` ([Yuki Kishimoto])
 * nostr: add `Nip19Event::from_event` ([Yuki Kishimoto])
+* nostr: add `Tag::len` method ([Yuki Kishimoto])
+* nostr: add `push`, `pop`, `insert`, `remove`, `extend` and `retain` methods to `Tags` struct ([Yuki Kishimoto])
+* nostr: add `Tags::from_list`, `Tags::with_capacity` and `Tags::parse` constructors ([Yuki Kishimoto])
+* nostr: add `Tags::dedup` method ([Yuki Kishimoto])
 * pool: event verification cache ([Yuki Kishimoto])
 * ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])
 

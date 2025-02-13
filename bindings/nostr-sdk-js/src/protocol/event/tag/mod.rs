@@ -70,6 +70,11 @@ impl JsTag {
         self.inner.single_letter_tag().map(|s| s.into())
     }
 
+    /// Get tag len
+    pub fn len(&self) -> u64 {
+        self.inner.len() as u64
+    }
+
     /// Get array of strings
     #[inline]
     #[wasm_bindgen(js_name = asVec)]

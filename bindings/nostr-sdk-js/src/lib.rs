@@ -5,6 +5,7 @@
 #![allow(clippy::arc_with_non_send_sync)]
 #![allow(clippy::should_implement_trait)]
 #![allow(clippy::new_without_default)]
+#![allow(clippy::len_without_is_empty)]
 #![allow(clippy::drop_non_drop)]
 #![allow(non_snake_case)]
 // rust-analyzer not work well with multiple different targets in workspace

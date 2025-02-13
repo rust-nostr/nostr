@@ -2,14 +2,17 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use js_sys::Array;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use super::JsTag;
+use crate::error::{into_err, Result};
 use crate::protocol::event::JsEventId;
 use crate::protocol::key::JsPublicKey;
 use crate::protocol::nips::nip01::JsCoordinate;
 use crate::protocol::types::JsTimestamp;
+use crate::JsStringArray;
 
 #[wasm_bindgen(js_name = Tags)]
 pub struct JsTags {
@@ -24,11 +27,34 @@ impl From<Tags> for JsTags {
 
 #[wasm_bindgen(js_class = Tags)]
 impl JsTags {
-    #[wasm_bindgen(constructor)]
-    pub fn new(list: Vec<JsTag>) -> Self {
+    #[wasm_bindgen(js_name = fromList)]
+    pub fn from_list(list: Vec<JsTag>) -> Self {
         Self {
-            inner: Tags::new(list.into_iter().map(|t| t.inner).collect()),
+            inner: Tags::from_list(list.into_iter().map(|t| t.inner).collect()),
         }
+    }
+
+    #[wasm_bindgen]
+    pub fn parse(tags: Vec<JsStringArray>) -> Result<JsTags> {
+        let mut new_tags: Vec<Vec<String>> = Vec::with_capacity(tags.len());
+
+        for tag in tags.into_iter() {
+            let array: Array = tag.dyn_into()?;
+            let mut tag: Vec<String> = Vec::with_capacity(array.length() as usize);
+
+            for val in array.into_iter() {
+                let val: String = val
+                    .as_string()
+                    .ok_or_else(|| JsValue::from_str("tag values must be strings"))?;
+                tag.push(val);
+            }
+
+            new_tags.push(tag);
+        }
+
+        Ok(Self {
+            inner: Tags::parse(new_tags).map_err(into_err)?,
+        })
     }
 
     /// Get number of tags
