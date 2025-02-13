@@ -36,8 +36,8 @@ pub enum Error {
     ImpossibleToZap(String),
     /// Broken down filters for gossip are empty
     GossipFiltersEmpty,
-    /// DMs relays not found
-    DMsRelaysNotFound,
+    /// Private message (NIP17) relays not found
+    PrivateMsgRelaysNotFound,
     /// Metadata not found
     MetadataNotFound,
 }
@@ -65,7 +65,7 @@ impl fmt::Display for Error {
             Self::GossipFiltersEmpty => {
                 write!(f, "gossip broken down filters are empty")
             }
-            Self::DMsRelaysNotFound => write!(f, "DMs relays not found"),
+            Self::PrivateMsgRelaysNotFound => write!(f, "Private message relays not found. The user is not ready to receive private messages."),
             Self::MetadataNotFound => write!(f, "metadata not found"),
         }
     }
