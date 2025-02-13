@@ -1342,19 +1342,27 @@ impl Client {
     async fn gossip_send_event(
         &self,
         event: &Event,
-        nip17: bool,
+        is_nip17: bool,
     ) -> Result<Output<EventId>, Error> {
-        // Get all public keys involved in the event
-        let public_keys = event
-            .tags
-            .public_keys()
-            .copied()
-            .chain(iter::once(event.pubkey));
+        let is_gift_wrap: bool = event.kind == Kind::GiftWrap;
 
-        // Check what are up to date in the gossip graph and which ones require an update
-        self.check_and_update_gossip_graph(public_keys).await?;
+        // Get involved public keys and check what are up to date in the gossip graph and which ones require an update.
+        if is_gift_wrap {
+            // Get only p tags since the author of a gift wrap is randomized
+            let public_keys = event.tags.public_keys().copied();
+            self.check_and_update_gossip_graph(public_keys).await?;
+        } else {
+            // Get all public keys involved in the event: author + p tags
+            let public_keys = event
+                .tags
+                .public_keys()
+                .copied()
+                .chain(iter::once(event.pubkey));
+            self.check_and_update_gossip_graph(public_keys).await?;
+        };
 
-        let urls: HashSet<RelayUrl> = if nip17 && event.kind == Kind::GiftWrap {
+        // Check if NIP17 or NIP65
+        let urls: HashSet<RelayUrl> = if is_nip17 && is_gift_wrap {
             // Get NIP17 relays
             // Get only for relays for p tags since gift wraps are signed with random key (random author)
             let relays = self
