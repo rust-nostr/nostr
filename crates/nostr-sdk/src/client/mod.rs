@@ -1407,8 +1407,11 @@ impl Client {
             // Extend OUTBOX relays with WRITE ones
             outbox.extend(write_relays);
 
-            // Union of OUTBOX (and WRITE) with INBOX relays
-            outbox.union(&inbox).cloned().collect()
+            // Extend outbox relays with inbox ones
+            outbox.extend(inbox);
+
+            // Return all relays
+            outbox
         };
 
         // Send event
