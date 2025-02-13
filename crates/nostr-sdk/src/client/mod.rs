@@ -1099,6 +1099,11 @@ impl Client {
     ///
     /// This method requires a [`NostrSigner`].
     ///
+    /// # Errors
+    ///
+    /// Returns [`Error::PrivateMsgRelaysNotFound`] if the receiver hasn't set the NIP17 list,
+    /// meaning that is not ready to receive private messages.
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
     #[cfg(feature = "nip59")]
@@ -1356,8 +1361,12 @@ impl Client {
                 .get_nip17_inbox_relays(event.tags.public_keys())
                 .await;
 
+            // Clients SHOULD publish kind 14 events to the 10050-listed relays.
+            // If that is not found, that indicates the user is not ready to receive messages under this NIP and clients shouldn't try.
+            //
+            // <https://github.com/nostr-protocol/nips/blob/6e7a618e7f873bb91e743caacc3b09edab7796a0/17.md>
             if relays.is_empty() {
-                return Err(Error::DMsRelaysNotFound);
+                return Err(Error::PrivateMsgRelaysNotFound);
             }
 
             // Add outbox and inbox relays
