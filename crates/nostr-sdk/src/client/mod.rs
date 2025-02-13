@@ -1245,46 +1245,53 @@ impl Client {
 
 // Gossip
 impl Client {
-    async fn update_outdated_gossip_graph(
-        &self,
-        outdated_public_keys: HashSet<PublicKey>,
-    ) -> Result<(), Error> {
-        if !outdated_public_keys.is_empty() {
-            // Compose filters
-            let filter: Filter = Filter::default()
-                .authors(outdated_public_keys.clone())
-                .kinds([Kind::RelayList, Kind::InboxRelays]);
+    /// Check if there are outdated public keys and update them
+    async fn check_and_update_gossip_graph<I>(&self, public_keys: I) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = PublicKey>,
+    {
+        let outdated_public_keys: HashSet<PublicKey> =
+            self.gossip_graph.check_outdated(public_keys).await;
 
-            // Query from database
-            let stored_events: Events = self.database().query(filter.clone()).await?;
-
-            // Get DISCOVERY and READ relays
-            // TODO: avoid clone of both url and relay
-            let relays = self
-                .pool
-                .relays_with_flag(
-                    RelayServiceFlags::DISCOVERY | RelayServiceFlags::READ,
-                    FlagCheck::Any,
-                )
-                .await
-                .into_keys();
-
-            // Get events from discovery and read relays
-            let events: Events = self
-                .fetch_events_from(relays, filter, Duration::from_secs(10))
-                .await?;
-
-            // Update last check for these public keys
-            self.gossip_graph
-                .update_last_check(outdated_public_keys)
-                .await;
-
-            // Merge database and relays events
-            let merged: Events = events.merge(stored_events);
-
-            // Update gossip graph
-            self.gossip_graph.update(merged).await;
+        // No outdated public keys, immediately return.
+        if outdated_public_keys.is_empty() {
+            return Ok(());
         }
+
+        // Compose filters
+        let filter: Filter = Filter::default()
+            .authors(outdated_public_keys.clone())
+            .kinds([Kind::RelayList, Kind::InboxRelays]);
+
+        // Query from database
+        let stored_events: Events = self.database().query(filter.clone()).await?;
+
+        // Get DISCOVERY and READ relays
+        // TODO: avoid clone of both url and relay
+        let relays = self
+            .pool
+            .relays_with_flag(
+                RelayServiceFlags::DISCOVERY | RelayServiceFlags::READ,
+                FlagCheck::Any,
+            )
+            .await
+            .into_keys();
+
+        // Get events from discovery and read relays
+        let events: Events = self
+            .fetch_events_from(relays, filter, Duration::from_secs(10))
+            .await?;
+
+        // Update last check for these public keys
+        self.gossip_graph
+            .update_last_check(outdated_public_keys)
+            .await;
+
+        // Merge database and relays events
+        let merged: Events = events.merge(stored_events);
+
+        // Update gossip graph
+        self.gossip_graph.update(merged).await;
 
         Ok(())
     }
@@ -1294,12 +1301,8 @@ impl Client {
         // Extract all public keys from filters
         let public_keys = filter.extract_public_keys();
 
-        // Check outdated ones
-        let outdated_public_keys = self.gossip_graph.check_outdated(public_keys).await;
-
-        // Update outdated public keys
-        self.update_outdated_gossip_graph(outdated_public_keys)
-            .await?;
+        // Check and update outdated public keys
+        self.check_and_update_gossip_graph(public_keys).await?;
 
         // Broken-down filters
         let filters: HashMap<RelayUrl, Filter> =
@@ -1349,9 +1352,7 @@ impl Client {
             .chain(iter::once(event.pubkey));
 
         // Check what are up to date in the gossip graph and which ones require an update
-        let outdated_public_keys = self.gossip_graph.check_outdated(public_keys).await;
-        self.update_outdated_gossip_graph(outdated_public_keys)
-            .await?;
+        self.check_and_update_gossip_graph(public_keys).await?;
 
         let urls: HashSet<RelayUrl> = if nip17 && event.kind == Kind::GiftWrap {
             // Get NIP17 relays
