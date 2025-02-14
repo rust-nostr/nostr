@@ -42,6 +42,8 @@ impl fmt::Display for WrongKindError {
 pub enum Error {
     /// Unsigned event error
     Event(super::Error),
+    /// NIP01 error
+    NIP01(nip01::Error),
     /// OpenTimestamps error
     #[cfg(feature = "nip03")]
     NIP03(String),
@@ -72,6 +74,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Event(e) => write!(f, "{e}"),
+            Self::NIP01(e) => write!(f, "{e}"),
             #[cfg(feature = "nip03")]
             Self::NIP03(e) => write!(f, "{e}"),
             #[cfg(feature = "nip04")]
@@ -97,6 +100,12 @@ impl From<SignerError> for Error {
 impl From<super::Error> for Error {
     fn from(e: super::Error) -> Self {
         Self::Event(e)
+    }
+}
+
+impl From<nip01::Error> for Error {
+    fn from(e: nip01::Error) -> Self {
+        Self::NIP01(e)
     }
 }
 
@@ -1704,7 +1713,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[inline]
-    pub fn git_issue(issue: GitIssue) -> Self {
+    pub fn git_issue(issue: GitIssue) -> Result<Self, Error> {
         issue.to_event_builder()
     }
 

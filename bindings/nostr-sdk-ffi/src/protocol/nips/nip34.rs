@@ -76,12 +76,10 @@ impl From<GitRepositoryAnnouncement> for nip34::GitRepositoryAnnouncement {
 /// Git Issue
 #[derive(Record)]
 pub struct GitIssue {
-    /// The issue content (markdown)
-    pub content: String,
     /// The repository address
     pub repository: Arc<Coordinate>,
-    /// Public keys (owners or other users)
-    pub public_keys: Vec<Arc<PublicKey>>,
+    /// The issue content (markdown)
+    pub content: String,
     /// Subject
     pub subject: Option<String>,
     /// Labels
@@ -91,9 +89,8 @@ pub struct GitIssue {
 impl From<GitIssue> for nip34::GitIssue {
     fn from(value: GitIssue) -> Self {
         Self {
-            content: value.content,
             repository: value.repository.as_ref().deref().clone(),
-            public_keys: value.public_keys.into_iter().map(|p| **p).collect(),
+            content: value.content,
             subject: value.subject,
             labels: value.labels,
         }

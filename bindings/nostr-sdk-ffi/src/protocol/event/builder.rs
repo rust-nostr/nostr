@@ -846,10 +846,10 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[uniffi::constructor]
-    pub fn git_issue(issue: GitIssue) -> Self {
-        Self {
-            inner: nostr::EventBuilder::git_issue(issue.into()),
-        }
+    pub fn git_issue(issue: GitIssue) -> Result<Self> {
+        Ok(Self {
+            inner: nostr::EventBuilder::git_issue(issue.into())?,
+        })
     }
 
     /// Git Patch

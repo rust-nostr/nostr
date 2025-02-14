@@ -871,9 +871,9 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[wasm_bindgen(js_name = gitIssue)]
-    pub fn git_issue(issue: JsGitIssue) -> Self {
-        Self {
-            inner: EventBuilder::git_issue(issue.into()),
-        }
+    pub fn git_issue(issue: JsGitIssue) -> Result<JsEventBuilder> {
+        Ok(Self {
+            inner: EventBuilder::git_issue(issue.into()).map_err(into_err)?,
+        })
     }
 }
