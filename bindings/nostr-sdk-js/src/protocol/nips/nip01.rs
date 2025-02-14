@@ -33,23 +33,12 @@ impl From<Coordinate> for JsCoordinate {
 #[wasm_bindgen(js_class = Coordinate)]
 impl JsCoordinate {
     #[wasm_bindgen(constructor)]
-    pub fn new(
-        kind: &JsKind,
-        public_key: &JsPublicKey,
-        identifier: Option<String>,
-        relays: Option<Vec<String>>,
-    ) -> Self {
+    pub fn new(kind: &JsKind, public_key: &JsPublicKey, identifier: Option<String>) -> Self {
         Self {
             inner: Coordinate {
                 kind: **kind,
                 public_key: **public_key,
                 identifier: identifier.unwrap_or_default(),
-                // TODO: propagate error
-                relays: relays
-                    .unwrap_or_default()
-                    .into_iter()
-                    .filter_map(|u| RelayUrl::parse(&u).ok())
-                    .collect(),
             },
         }
     }
@@ -76,11 +65,6 @@ impl JsCoordinate {
     #[wasm_bindgen(getter)]
     pub fn identifier(&self) -> String {
         self.inner.identifier.clone()
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn relays(&self) -> Vec<String> {
-        self.inner.relays.iter().map(|u| u.to_string()).collect()
     }
 
     #[wasm_bindgen(js_name = toString)]

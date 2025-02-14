@@ -736,7 +736,6 @@ impl Nip19Coordinate {
             kind: kind.ok_or_else(|| Error::FieldMissing("kind".to_string()))?,
             public_key: pubkey.ok_or_else(|| Error::FieldMissing("pubkey".to_string()))?,
             identifier: identifier.ok_or_else(|| Error::FieldMissing("identifier".to_string()))?,
-            relays: Vec::new(),
         };
 
         Ok(Self { coordinate, relays })

@@ -10,7 +10,6 @@ use alloc::borrow::ToOwned;
 #[cfg(not(feature = "std"))]
 use alloc::collections::BTreeMap as AllocMap;
 use alloc::string::{String, ToString};
-use alloc::vec::Vec;
 use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
@@ -24,8 +23,8 @@ use serde_json::Value;
 
 use super::nip19::FromBech32;
 use super::nip21::FromNostrUri;
-use crate::types::{RelayUrl, Url};
-use crate::{event, key, Filter, JsonUtil, Kind, PublicKey, Tag, TagStandard};
+use crate::types::Url;
+use crate::{event, key, Filter, JsonUtil, Kind, PublicKey, Tag};
 
 /// Raw Event error
 #[derive(Debug, PartialEq, Eq)]
@@ -84,8 +83,6 @@ pub struct Coordinate {
     /// Needed for a parametrized replaceable event.
     /// Leave empty for a replaceable event.
     pub identifier: String,
-    /// Relays
-    pub relays: Vec<RelayUrl>,
 }
 
 impl fmt::Display for Coordinate {
@@ -102,7 +99,6 @@ impl Coordinate {
             kind,
             public_key,
             identifier: String::new(),
-            relays: Vec::new(),
         }
     }
 
@@ -145,7 +141,6 @@ impl Coordinate {
                 kind: Kind::from_str(kind_str)?,
                 public_key: PublicKey::from_hex(public_key_str)?,
                 identifier: identifier.to_owned(),
-                relays: Vec::new(),
             })
         } else {
             Err(Error::InvalidCoordinate)
@@ -181,11 +176,7 @@ impl Coordinate {
 
 impl From<Coordinate> for Tag {
     fn from(coordinate: Coordinate) -> Self {
-        Self::from_standardized(TagStandard::Coordinate {
-            relay_url: coordinate.relays.first().cloned(),
-            coordinate,
-            uppercase: false,
-        })
+        Self::coordinate(coordinate)
     }
 }
 
@@ -245,7 +236,6 @@ impl CoordinateBorrow<'_> {
             kind: *self.kind,
             public_key: *self.public_key,
             identifier: self.identifier.map(|s| s.to_string()).unwrap_or_default(),
-            relays: Vec::new(),
         }
     }
 }

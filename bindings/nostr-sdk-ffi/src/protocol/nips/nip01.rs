@@ -7,7 +7,7 @@ use std::str::FromStr;
 
 use nostr::nips::nip01;
 use nostr::serde_json::Value;
-use nostr::{JsonUtil, RelayUrl, Url};
+use nostr::{JsonUtil, Url};
 use uniffi::{Object, Record};
 
 use crate::error::Result;
@@ -48,30 +48,19 @@ impl From<Coordinate> for nip01::Coordinate {
             kind: value.inner.kind,
             public_key: value.inner.public_key,
             identifier: value.inner.identifier,
-            relays: value.inner.relays,
         }
     }
 }
 
 #[uniffi::export]
 impl Coordinate {
-    #[uniffi::constructor(default(identifier = "", relays = []))]
-    pub fn new(
-        kind: &Kind,
-        public_key: &PublicKey,
-        identifier: String,
-        relays: Vec<String>,
-    ) -> Self {
+    #[uniffi::constructor(default(identifier = ""))]
+    pub fn new(kind: &Kind, public_key: &PublicKey, identifier: String) -> Self {
         Self {
             inner: nip01::Coordinate {
                 kind: **kind,
                 public_key: **public_key,
                 identifier,
-                // TODO: propagate error
-                relays: relays
-                    .into_iter()
-                    .filter_map(|u| RelayUrl::parse(&u).ok())
-                    .collect(),
             },
         }
     }
@@ -91,10 +80,6 @@ impl Coordinate {
 
     pub fn identifier(&self) -> String {
         self.inner.identifier.clone()
-    }
-
-    pub fn relays(&self) -> Vec<String> {
-        self.inner.relays.iter().map(|u| u.to_string()).collect()
     }
 }
 
