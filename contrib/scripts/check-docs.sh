@@ -13,6 +13,6 @@ buildargs=(
 
 for arg in "${buildargs[@]}"; do
     echo  "Checking '$arg' docs"
-    cargo doc $arg --all-features
+    cargo doc --no-deps $arg --all-features
     echo
 done
