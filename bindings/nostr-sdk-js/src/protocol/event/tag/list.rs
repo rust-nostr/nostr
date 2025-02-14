@@ -34,6 +34,16 @@ impl JsTags {
         }
     }
 
+    /// Extract `nostr:` URIs from a text and construct tags.
+    ///
+    /// This method deduplicates the tags.
+    #[wasm_bindgen(js_name = fromText)]
+    pub fn from_text(text: &str) -> Self {
+        Self {
+            inner: list::Tags::from_text(text),
+        }
+    }
+
     #[wasm_bindgen]
     pub fn parse(tags: Vec<JsStringArray>) -> Result<JsTags> {
         let mut new_tags: Vec<Vec<String>> = Vec::with_capacity(tags.len());

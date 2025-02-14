@@ -25,6 +25,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::{Error, Tag};
 use crate::nips::nip01::Coordinate;
+use crate::nips::nip21::{self, Nip21};
 use crate::{EventId, PublicKey, SingleLetterTag, TagKind, TagStandard, Timestamp};
 
 /// Tags Indexes
@@ -113,6 +114,61 @@ impl Tags {
             list,
             indexes: OnceCell::new(),
         }
+    }
+
+    /// Extract `nostr:` URIs from a text and construct tags.
+    ///
+    /// This method deduplicates the tags.
+    pub fn from_text(text: &str) -> Self {
+        let list: Vec<Nip21> = nip21::extract_from_text(text);
+
+        // The capacity here may be over-estimated since items in the `list` aren't deduplicated
+        let mut tags: Self = Self::with_capacity(list.len());
+
+        for item in list.into_iter() {
+            match item {
+                Nip21::Pubkey(pk) => tags.push(Tag::public_key(pk)),
+                Nip21::Profile(profile) => {
+                    let standard: TagStandard = TagStandard::PublicKey {
+                        public_key: profile.public_key,
+                        relay_url: profile.relays.into_iter().next(),
+                        alias: None,
+                        uppercase: false,
+                    };
+                    tags.push(Tag::from_standardized_without_cell(standard));
+                }
+                Nip21::EventId(id) => {
+                    let standard: TagStandard = TagStandard::Quote {
+                        event_id: id,
+                        relay_url: None,
+                        public_key: None,
+                    };
+                    tags.push(Tag::from_standardized_without_cell(standard));
+                }
+                Nip21::Event(event) => {
+                    let standard: TagStandard = TagStandard::Quote {
+                        event_id: event.event_id,
+                        relay_url: event.relays.into_iter().next(),
+                        public_key: event.author,
+                    };
+                    tags.push(Tag::from_standardized_without_cell(standard));
+                }
+                Nip21::Coordinate(coordinate) => {
+                    let standard: TagStandard = TagStandard::Coordinate {
+                        relay_url: coordinate.relays.first().cloned(),
+                        coordinate,
+                        uppercase: false,
+                    };
+                    tags.push(Tag::from_standardized_without_cell(standard));
+                }
+            }
+        }
+
+        // Dedup
+        tags.dedup();
+
+        // Return
+        tags
     }
 
     /// Parse tags
@@ -548,13 +604,63 @@ impl<'de> Deserialize<'de> for Tags {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Event, JsonUtil, RelayUrl};
+    use crate::nips::nip19::{Nip19Event, Nip19Profile};
+    use crate::{Event, FromBech32, JsonUtil, RelayUrl};
 
     #[test]
     fn test_extract_d_tag() {
         let json = r#"{"id":"3dfdbb371de782f51812dc4809ea1104d80e143cec1091a4be07f518ef09e3d7","pubkey":"b8aef32a5421205c1f89ad09e2d93873df68a8611b247f62af005655eadc0efb","created_at":1728728536,"kind":30000,"sig":"0395c41fd95d52b534eaa29c82cd9437130cf63e67117b1587914375fdfb878137287a1d15653161f91ea919afb06358784217409a9ff0323261f683b2936829","content":"older_param_replaceable","tags":[["d","1"]]}"#;
         let event = Event::from_json(json).unwrap();
         assert_eq!(event.tags.identifier(), Some("1"));
+    }
+
+    #[test]
+    fn test_tags_from_text() {
+        let p_tag1 = Tag::public_key(
+            PublicKey::parse("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")
+                .unwrap(),
+        );
+
+        let nip19_event = Nip19Event::from_bech32("nevent1qqsz8xjlh82ykfr3swjk5fw0l3v33pcsaq4z6f7q0zy2dxrfm7x2yeqpz4mhxue69uhkummnw3ezummcw3ezuer9wchsygrgmqgktyvpqzma5slu9rmarlqj24zxdcg3tzrtneamxfhktmzzwgpsgqqqqqqsmxphku").unwrap();
+        let e_tag = Tag::from_standardized_without_cell(TagStandard::Quote {
+            event_id: nip19_event.event_id,
+            relay_url: nip19_event.relays.into_iter().next(),
+            public_key: nip19_event.author,
+        });
+
+        let profile = Nip19Profile::from_bech32("nprofile1qqsqfyvdlsmvj0nakmxq6c8n0c2j9uwrddjd8a95ynzn9479jhlth3gpvemhxue69uhkv6tvw3jhytnwdaehgu3wwa5kuef0dec82c33w94xwcmdd3cxketedsux6ertwecrgues0pk8xdrew33h27pkd4unvvpkw3nkv7pe0p68gat58ycrw6ps0fenwdnvva48w0mzwfhkzerrv9ehg0t5wf6k2qgnwaehxw309ac82unsd3jhqct89ejhxtcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsh8njvk").unwrap();
+        let p_tag3 = Tag::from_standardized_without_cell(TagStandard::PublicKey {
+            public_key: profile.public_key,
+            relay_url: profile.relays.into_iter().next(),
+            alias: None,
+            uppercase: false,
+        });
+
+        let profile = Nip19Profile::from_bech32("nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40").unwrap();
+        let p_tag4 = Tag::from_standardized_without_cell(TagStandard::PublicKey {
+            public_key: profile.public_key,
+            relay_url: profile.relays.into_iter().next(),
+            alias: None,
+            uppercase: false,
+        });
+
+        let vector = vec![
+            ("#rustnostr #nostr #kotlin #jvm\n\nnostr:nevent1qqsz8xjlh82ykfr3swjk5fw0l3v33pcsaq4z6f7q0zy2dxrfm7x2yeqpz4mhxue69uhkummnw3ezummcw3ezuer9wchsygrgmqgktyvpqzma5slu9rmarlqj24zxdcg3tzrtneamxfhktmzzwgpsgqqqqqqsmxphku", vec![e_tag]),
+            ("I have never been very active in discussions but working on rust-nostr (at the time called nostr-rs-sdk) since September 2022 🦀 \n\nIf I remember correctly there were also nostr:nprofile1qqsqfyvdlsmvj0nakmxq6c8n0c2j9uwrddjd8a95ynzn9479jhlth3gpvemhxue69uhkv6tvw3jhytnwdaehgu3wwa5kuef0dec82c33w94xwcmdd3cxketedsux6ertwecrgues0pk8xdrew33h27pkd4unvvpkw3nkv7pe0p68gat58ycrw6ps0fenwdnvva48w0mzwfhkzerrv9ehg0t5wf6k2qgnwaehxw309ac82unsd3jhqct89ejhxtcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsh8njvk and nostr:nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40", vec![p_tag3, p_tag4.clone()]),
+            ("Test ending with full stop: nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet.", vec![p_tag1.clone()]),
+            ("nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet", vec![p_tag1.clone()]),
+            ("Public key without prefix npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet", vec![]),
+            ("Public key `nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet+.", vec![p_tag1.clone()]),
+            ("Duplicated npub: nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet, nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet", vec![p_tag1]),
+            ("Uppercase nostr:npub1DRVpZev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eSEET", vec![]),
+            ("Npub and nprofile that point to the same public key: nostr:npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c and nostr:nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40", vec![p_tag4]),
+            ("content without nostr URIs", vec![]),
+        ];
+
+        for (content, expected) in vector {
+            let tags = Tags::from_text(content);
+            assert_eq!(tags.to_vec(), expected);
+        }
     }
 
     #[test]
