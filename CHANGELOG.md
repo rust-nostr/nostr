@@ -59,6 +59,7 @@
 * nostr: add `nip21::extract_from_text` function ([Yuki Kishimoto])
 * nostr: add `EventBuilder::allow_self_tagging` ([Yuki Kishimoto])
 * nostr: add `Nip19Event::from_event` ([Yuki Kishimoto])
+* nostr: add `Tag::client` constructor ([Yuki Kishimoto])
 * nostr: add `Tag::len` method ([Yuki Kishimoto])
 * nostr: add `push`, `pop`, `insert`, `remove`, `extend` and `retain` methods to `Tags` struct ([Yuki Kishimoto])
 * nostr: add `with_capacity`, `from_list`, `from_text` and `parse` constructors to `Tags` struct ([Yuki Kishimoto])

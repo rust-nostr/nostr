@@ -140,6 +140,16 @@ impl JsTag {
         }
     }
 
+    /// Construct `["client", "<name>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/89.md>
+    #[inline]
+    pub fn client(name: String) -> Self {
+        Self {
+            inner: Tag::client(name),
+        }
+    }
+
     /// Compose `["expiration", "<timestamp>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>

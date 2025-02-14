@@ -231,6 +231,19 @@ impl Tag {
         Self::from_standardized_without_cell(TagStandard::POW { nonce, difficulty })
     }
 
+    /// Construct `["client", "<name>"]` tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/89.md>
+    pub fn client<S>(name: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::from_standardized_without_cell(TagStandard::Client {
+            name: name.into(),
+            address: None,
+        })
+    }
+
     /// Compose `["expiration", "<timestamp>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
