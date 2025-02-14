@@ -3,7 +3,9 @@
 // Distributed under the MIT software license
 
 use core::ops::Deref;
+use core::str::FromStr;
 
+use nostr::hashes::sha1::Hash as Sha1Hash;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -68,7 +70,7 @@ impl From<JsGitRepositoryAnnouncement> for GitRepositoryAnnouncement {
                 .into_iter()
                 .filter_map(|u| RelayUrl::parse(&u).ok())
                 .collect(),
-            euc: value.euc,
+            euc: value.euc.and_then(|euc| Sha1Hash::from_str(&euc).ok()),
             maintainers: value.maintainers.into_iter().map(|p| *p).collect(),
         }
     }

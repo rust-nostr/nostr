@@ -861,10 +861,12 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[wasm_bindgen(js_name = gitRepositoryAnnouncement)]
-    pub fn git_repository_announcement(data: JsGitRepositoryAnnouncement) -> Self {
-        Self {
-            inner: EventBuilder::git_repository_announcement(data.into()),
-        }
+    pub fn git_repository_announcement(
+        data: JsGitRepositoryAnnouncement,
+    ) -> Result<JsEventBuilder> {
+        Ok(Self {
+            inner: EventBuilder::git_repository_announcement(data.into()).map_err(into_err)?,
+        })
     }
 
     /// Git Issue

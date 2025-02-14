@@ -67,7 +67,7 @@ impl From<GitRepositoryAnnouncement> for nip34::GitRepositoryAnnouncement {
                 .into_iter()
                 .filter_map(|u| RelayUrl::parse(&u).ok())
                 .collect(),
-            euc: value.euc,
+            euc: value.euc.and_then(|euc| Sha1Hash::from_str(&euc).ok()),
             maintainers: value.maintainers.into_iter().map(|p| **p).collect(),
         }
     }

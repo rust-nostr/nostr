@@ -1705,7 +1705,9 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[inline]
-    pub fn git_repository_announcement(announcement: GitRepositoryAnnouncement) -> Self {
+    pub fn git_repository_announcement(
+        announcement: GitRepositoryAnnouncement,
+    ) -> Result<Self, Error> {
         announcement.to_event_builder()
     }
 

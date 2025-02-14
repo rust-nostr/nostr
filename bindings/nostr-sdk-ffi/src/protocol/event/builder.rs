@@ -836,10 +836,10 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[uniffi::constructor]
-    pub fn git_repository_announcement(data: GitRepositoryAnnouncement) -> Self {
-        Self {
-            inner: nostr::EventBuilder::git_repository_announcement(data.into()),
-        }
+    pub fn git_repository_announcement(data: GitRepositoryAnnouncement) -> Result<Self> {
+        Ok(Self {
+            inner: nostr::EventBuilder::git_repository_announcement(data.into())?,
+        })
     }
 
     /// Git Issue

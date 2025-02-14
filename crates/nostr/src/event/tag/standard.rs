@@ -72,7 +72,7 @@ pub enum TagStandard {
     /// Git earliest unique commit ID
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    GitEarliestUniqueCommitId(String),
+    GitEarliestUniqueCommitId(Sha1Hash),
     /// Git repo maintainers
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
@@ -722,8 +722,8 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::GitCommit(hash) => {
                 vec![tag_kind, hash.to_string()]
             }
-            TagStandard::GitEarliestUniqueCommitId(id) => {
-                vec![tag_kind, id, EUC.to_string()]
+            TagStandard::GitEarliestUniqueCommitId(commit) => {
+                vec![tag_kind, commit.to_string(), EUC.to_string()]
             }
             TagStandard::GitMaintainers(public_keys) => {
                 let mut tag: Vec<String> = Vec::with_capacity(1 + public_keys.len());
@@ -1178,7 +1178,9 @@ where
                 metadata: Some(RelayMetadata::from_str(tag_2)?),
             })
         } else if tag_2 == EUC {
-            Ok(TagStandard::GitEarliestUniqueCommitId(tag_1.to_string()))
+            // ["r", "<commit-id>", "euc"]
+            let commit: Sha1Hash = Sha1Hash::from_str(tag_1)?;
+            Ok(TagStandard::GitEarliestUniqueCommitId(commit))
         } else {
             Err(Error::UnknownStandardizedTag)
         };
@@ -1875,9 +1877,9 @@ mod tests {
 
         assert_eq!(
             vec!["r", "5e664e5a7845cd1373c79f580ca4fe29ab5b34d2", "euc"],
-            TagStandard::GitEarliestUniqueCommitId(String::from(
-                "5e664e5a7845cd1373c79f580ca4fe29ab5b34d2"
-            ))
+            TagStandard::GitEarliestUniqueCommitId(
+                Sha1Hash::from_str("5e664e5a7845cd1373c79f580ca4fe29ab5b34d2").unwrap()
+            )
             .to_vec()
         );
 
@@ -2459,9 +2461,9 @@ mod tests {
 
         assert_eq!(
             TagStandard::parse(&["r", "5e664e5a7845cd1373c79f580ca4fe29ab5b34d2", "euc"]).unwrap(),
-            TagStandard::GitEarliestUniqueCommitId(String::from(
-                "5e664e5a7845cd1373c79f580ca4fe29ab5b34d2"
-            ))
+            TagStandard::GitEarliestUniqueCommitId(
+                Sha1Hash::from_str("5e664e5a7845cd1373c79f580ca4fe29ab5b34d2").unwrap()
+            )
         );
 
         assert_eq!(
