@@ -44,16 +44,20 @@ When referring to the type for which block is implemented, prefer using `Self`, 
 impl ErrorKind {
     // GOOD
     fn print(&self) {
-        Self::Io => println!("Io"),
-        Self::Network => println!("Network"),
-        Self::Json => println!("Json"),
+        match self {
+            Self::Io => println!("Io"),
+            Self::Network => println!("Network"),
+            Self::Json => println!("Json"),
+        }
     }
 
     // BAD
     fn print(&self) {
-        ErrorKind::Io => println!("Io"),
-        ErrorKind::Network => println!("Network"),
-        ErrorKind::Json => println!("Json"),
+        match self {
+            ErrorKind::Io => println!("Io"),
+            ErrorKind::Network => println!("Network"),
+            ErrorKind::Json => println!("Json"),
+        }
     }
 }
 ```
