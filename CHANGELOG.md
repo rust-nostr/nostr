@@ -66,6 +66,7 @@
 * nostr: add `EncryptedSecretKey::decrypt` method ([Yuki Kishimoto])
 * nostr: add `Nip19Coordinate` struct ([Yuki Kishimoto])
 * nostr: add `Coordinate::verify` method ([Yuki Kishimoto])
+* nostr: add `TagStandard::Client` variant ([Yuki Kishimoto])
 * pool: event verification cache ([Yuki Kishimoto])
 * ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])
 
