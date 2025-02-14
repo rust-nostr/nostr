@@ -483,9 +483,10 @@ mod tests {
     async fn setup_graph() -> GossipGraph {
         let graph = GossipGraph::new();
 
-        let mut events = Vec::new();
-        events.push(build_relay_list_event(SECRET_KEY_A, KEY_A_RELAYS.to_vec()));
-        events.push(build_relay_list_event(SECRET_KEY_B, KEY_B_RELAYS.to_vec()));
+        let events = vec![
+            build_relay_list_event(SECRET_KEY_A, KEY_A_RELAYS.to_vec()),
+            build_relay_list_event(SECRET_KEY_B, KEY_B_RELAYS.to_vec()),
+        ];
 
         graph.update(events).await;
 
