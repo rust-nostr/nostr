@@ -134,6 +134,7 @@ pub enum TagStandard {
         uppercase: bool,
     },
     Relay(RelayUrl),
+    Relays(Vec<RelayUrl>),
     /// Proof of Work
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
@@ -159,7 +160,6 @@ pub enum TagStandard {
     Description(String),
     Bolt11(String),
     Preimage(String),
-    Relays(Vec<Url>),
     Amount {
         millisats: u64,
         bolt11: Option<String>,
@@ -324,7 +324,7 @@ impl TagStandard {
             }
             TagKind::Protected => return Ok(Self::Protected),
             TagKind::Relays => {
-                let urls: Vec<Url> = extract_urls(tag)?;
+                let urls: Vec<RelayUrl> = extract_relay_urls(tag)?;
                 return Ok(Self::Relays(urls));
             }
             TagKind::Web => {
@@ -1240,6 +1240,18 @@ where
     let mut list: Vec<Url> = Vec::with_capacity(tag.len().saturating_sub(1));
     for url in tag.iter().skip(1) {
         list.push(Url::parse(url.as_ref())?);
+    }
+    Ok(list)
+}
+
+fn extract_relay_urls<S>(tag: &[S]) -> Result<Vec<RelayUrl>, Error>
+where
+    S: AsRef<str>,
+{
+    // Skip index 0 because is the tag kind
+    let mut list: Vec<RelayUrl> = Vec::with_capacity(tag.len().saturating_sub(1));
+    for url in tag.iter().skip(1) {
+        list.push(RelayUrl::parse(url.as_ref())?);
     }
     Ok(list)
 }
@@ -2252,9 +2264,9 @@ mod tests {
             ])
             .unwrap(),
             TagStandard::Relays(vec![
-                Url::parse("wss://relay.damus.io/").unwrap(),
-                Url::parse("wss://nostr-relay.wlvs.space/").unwrap(),
-                Url::parse("wss://nostr.fmt.wiz.biz").unwrap(),
+                RelayUrl::parse("wss://relay.damus.io/").unwrap(),
+                RelayUrl::parse("wss://nostr-relay.wlvs.space/").unwrap(),
+                RelayUrl::parse("wss://nostr.fmt.wiz.biz").unwrap(),
             ])
         );
 

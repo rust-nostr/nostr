@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use nostr::hashes::sha1::Hash as Sha1Hash;
 use nostr::nips::nip34;
-use nostr::Url;
+use nostr::{RelayUrl, Url};
 use uniffi::{Enum, Record};
 
 use crate::error::NostrSdkError;
@@ -65,7 +65,7 @@ impl From<GitRepositoryAnnouncement> for nip34::GitRepositoryAnnouncement {
             relays: value
                 .relays
                 .into_iter()
-                .filter_map(|u| Url::parse(&u).ok())
+                .filter_map(|u| RelayUrl::parse(&u).ok())
                 .collect(),
             euc: value.euc,
             maintainers: value.maintainers.into_iter().map(|p| **p).collect(),

@@ -160,7 +160,7 @@ impl TryFrom<LiveEvent> for nip53::LiveEvent {
             relays: value
                 .relays
                 .into_iter()
-                .filter_map(|u| Url::parse(&u).ok())
+                .filter_map(|u| RelayUrl::parse(&u).ok())
                 .collect(),
             host: match value.host {
                 Some(h) => Some(h.try_into()?),

@@ -5,7 +5,7 @@
 use std::ops::Deref;
 
 use nostr::nips::nip57;
-use nostr::Url;
+use nostr::RelayUrl;
 use uniffi::{Enum, Object};
 
 use crate::error::Result;
@@ -59,7 +59,7 @@ impl ZapRequestData {
         Self {
             inner: nip57::ZapRequestData::new(
                 **public_key,
-                relays.into_iter().filter_map(|u| Url::parse(&u).ok()),
+                relays.into_iter().filter_map(|u| RelayUrl::parse(&u).ok()),
             ),
         }
     }

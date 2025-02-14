@@ -664,9 +664,9 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::Bolt11 { bolt11 } => Ok(Self::Bolt11(bolt11)),
             TagStandard::Preimage { preimage } => Ok(Self::Preimage(preimage)),
             TagStandard::Relays { urls } => {
-                let mut parsed_urls: Vec<Url> = Vec::with_capacity(urls.len());
+                let mut parsed_urls: Vec<RelayUrl> = Vec::with_capacity(urls.len());
                 for url in urls.into_iter() {
-                    parsed_urls.push(Url::parse(&url)?);
+                    parsed_urls.push(RelayUrl::parse(&url)?);
                 }
                 Ok(Self::Relays(parsed_urls))
             }

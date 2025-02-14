@@ -18,7 +18,9 @@ use hashes::sha1::Hash as Sha1Hash;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip10::Marker;
 use crate::types::url::Url;
-use crate::{EventBuilder, EventId, Kind, PublicKey, Tag, TagKind, TagStandard, Timestamp};
+use crate::{
+    EventBuilder, EventId, Kind, PublicKey, RelayUrl, Tag, TagKind, TagStandard, Timestamp,
+};
 
 /// Earlier unique commit ID
 pub const EUC: &str = "euc";
@@ -45,7 +47,7 @@ pub struct GitRepositoryAnnouncement {
     /// Urls for git-cloning
     pub clone: Vec<Url>,
     /// Relays that this repository will monitor for patches and issues
-    pub relays: Vec<Url>,
+    pub relays: Vec<RelayUrl>,
     /// Earliest unique commit ID
     ///
     /// `euc` marker should be the commit ID of the earliest unique commit of this repo,

@@ -148,7 +148,7 @@ pub struct LiveEvent {
     /// Total participants
     pub total_participants: Option<u64>,
     /// Relays
-    pub relays: Vec<Url>,
+    pub relays: Vec<RelayUrl>,
     /// Host
     pub host: Option<LiveEventHost>,
     /// Speakers

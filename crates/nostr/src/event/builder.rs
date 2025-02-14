@@ -916,7 +916,7 @@ impl EventBuilder {
     /// # let public_key = PublicKey::from_bech32(
     /// # "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
     /// # ).unwrap();
-    /// # let relays = [Url::parse("wss://relay.damus.io").unwrap()];
+    /// # let relays = [RelayUrl::parse("wss://relay.damus.io").unwrap()];
     /// let data = ZapRequestData::new(public_key, relays).message("Zap!");
     ///
     /// let anon_zap: Event = nip57::anonymous_zap_request(data.clone()).unwrap();

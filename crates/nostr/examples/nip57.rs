@@ -9,7 +9,7 @@ fn main() -> Result<()> {
 
     let public_key =
         PublicKey::from_bech32("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")?;
-    let relays = [Url::parse("wss://relay.damus.io").unwrap()];
+    let relays = [RelayUrl::parse("wss://relay.damus.io").unwrap()];
     let data = ZapRequestData::new(public_key, relays).message("Zap!");
 
     let public_zap: Event = EventBuilder::public_zap_request(data.clone()).sign_with_keys(&keys)?;

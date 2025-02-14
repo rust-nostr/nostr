@@ -66,7 +66,7 @@ impl From<JsGitRepositoryAnnouncement> for GitRepositoryAnnouncement {
             relays: value
                 .relays
                 .into_iter()
-                .filter_map(|u| Url::parse(&u).ok())
+                .filter_map(|u| RelayUrl::parse(&u).ok())
                 .collect(),
             euc: value.euc,
             maintainers: value.maintainers.into_iter().map(|p| *p).collect(),

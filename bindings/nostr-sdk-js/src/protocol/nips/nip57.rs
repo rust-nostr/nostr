@@ -78,7 +78,7 @@ impl JsZapRequestData {
                 public_key: **public_key,
                 relays: relays
                     .into_iter()
-                    .filter_map(|r| Url::parse(&r).ok())
+                    .filter_map(|r| RelayUrl::parse(&r).ok())
                     .collect(),
                 message: message.to_string(),
                 amount: amount.map(|n| n as u64),
