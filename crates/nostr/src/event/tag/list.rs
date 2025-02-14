@@ -153,10 +153,10 @@ impl Tags {
                     };
                     tags.push(Tag::from_standardized_without_cell(standard));
                 }
-                Nip21::Coordinate(coordinate) => {
+                Nip21::Coordinate(addr) => {
                     let standard: TagStandard = TagStandard::Coordinate {
-                        relay_url: coordinate.relays.first().cloned(),
-                        coordinate,
+                        relay_url: addr.relays.first().cloned(),
+                        coordinate: addr.coordinate,
                         uppercase: false,
                     };
                     tags.push(Tag::from_standardized_without_cell(standard));

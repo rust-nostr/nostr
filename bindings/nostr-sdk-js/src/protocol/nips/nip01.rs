@@ -87,16 +87,6 @@ impl JsCoordinate {
     pub fn _to_string(&self) -> String {
         self.inner.to_string()
     }
-
-    #[wasm_bindgen(js_name = toBech32)]
-    pub fn to_bech32(&self) -> Result<String> {
-        self.inner.to_bech32().map_err(into_err)
-    }
-
-    #[wasm_bindgen(js_name = toNostrUri)]
-    pub fn to_nostr_uri(&self) -> Result<String> {
-        self.inner.to_nostr_uri().map_err(into_err)
-    }
 }
 
 #[wasm_bindgen(js_name = Metadata)]

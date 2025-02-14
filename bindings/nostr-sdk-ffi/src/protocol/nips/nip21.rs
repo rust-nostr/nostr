@@ -9,8 +9,7 @@ use uniffi::{Enum, Object};
 use crate::error::Result;
 use crate::protocol::event::EventId;
 use crate::protocol::key::PublicKey;
-use crate::protocol::nips::nip01::Coordinate;
-use crate::protocol::nips::nip19::{Nip19Event, Nip19Profile};
+use crate::protocol::nips::nip19::{Nip19Coordinate, Nip19Event, Nip19Profile};
 
 /// A representation any `NIP21` object. Useful for decoding
 /// `NIP21` strings without necessarily knowing what you're decoding
@@ -26,7 +25,7 @@ pub enum Nip21Enum {
     /// nostr::nevent
     Event { event: Arc<Nip19Event> },
     /// nostr::naddr
-    Coord { coordinate: Arc<Coordinate> },
+    Addr { coordinate: Arc<Nip19Coordinate> },
 }
 
 impl From<nip21::Nip21> for Nip21Enum {
@@ -44,7 +43,7 @@ impl From<nip21::Nip21> for Nip21Enum {
             nip21::Nip21::Event(event) => Self::Event {
                 event: Arc::new(event.into()),
             },
-            nip21::Nip21::Coordinate(coordinate) => Self::Coord {
+            nip21::Nip21::Coordinate(coordinate) => Self::Addr {
                 coordinate: Arc::new(coordinate.into()),
             },
         }

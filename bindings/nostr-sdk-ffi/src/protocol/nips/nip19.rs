@@ -34,7 +34,7 @@ pub enum Nip19Enum {
     /// nevent
     Event { event: Arc<Nip19Event> },
     /// naddr
-    Coord { coordinate: Arc<Coordinate> },
+    Addr { coordinate: Arc<Nip19Coordinate> },
 }
 
 impl From<nip19::Nip19> for Nip19Enum {
@@ -58,7 +58,7 @@ impl From<nip19::Nip19> for Nip19Enum {
             nip19::Nip19::Event(event) => Self::Event {
                 event: Arc::new(event.into()),
             },
-            nip19::Nip19::Coordinate(coordinate) => Self::Coord {
+            nip19::Nip19::Coordinate(coordinate) => Self::Addr {
                 coordinate: Arc::new(coordinate.into()),
             },
         }
@@ -212,6 +212,58 @@ impl Nip19Profile {
 
     pub fn public_key(&self) -> Arc<PublicKey> {
         Arc::new(self.inner.public_key.into())
+    }
+
+    pub fn relays(&self) -> Vec<String> {
+        self.inner.relays.iter().map(|u| u.to_string()).collect()
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Object)]
+#[uniffi::export(Debug, Eq, Hash)]
+pub struct Nip19Coordinate {
+    inner: nip19::Nip19Coordinate,
+}
+
+impl From<nip19::Nip19Coordinate> for Nip19Coordinate {
+    fn from(inner: nip19::Nip19Coordinate) -> Self {
+        Self { inner }
+    }
+}
+
+#[uniffi::export]
+impl Nip19Coordinate {
+    #[uniffi::constructor(default(relays = []))]
+    pub fn new(coordinate: &Coordinate, relays: &[String]) -> Result<Self> {
+        Ok(Self {
+            inner: nip19::Nip19Coordinate::new(coordinate.deref().clone(), relays)?,
+        })
+    }
+
+    #[uniffi::constructor]
+    pub fn from_bech32(bech32: &str) -> Result<Self> {
+        Ok(Self {
+            inner: nip19::Nip19Coordinate::from_bech32(bech32)?,
+        })
+    }
+
+    #[uniffi::constructor]
+    pub fn from_nostr_uri(uri: &str) -> Result<Self> {
+        Ok(Self {
+            inner: nip19::Nip19Coordinate::from_nostr_uri(uri)?,
+        })
+    }
+
+    pub fn to_bech32(&self) -> Result<String> {
+        Ok(self.inner.to_bech32()?)
+    }
+
+    pub fn to_nostr_uri(&self) -> Result<String> {
+        Ok(self.inner.to_nostr_uri()?)
+    }
+
+    pub fn coordinate(&self) -> Coordinate {
+        self.inner.coordinate.clone().into()
     }
 
     pub fn relays(&self) -> Vec<String> {

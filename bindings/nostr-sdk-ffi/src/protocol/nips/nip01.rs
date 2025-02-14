@@ -6,8 +6,6 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 use nostr::nips::nip01;
-use nostr::nips::nip19::ToBech32;
-use nostr::nips::nip21::ToNostrUri;
 use nostr::serde_json::Value;
 use nostr::{JsonUtil, RelayUrl, Url};
 use uniffi::{Object, Record};
@@ -81,14 +79,6 @@ impl Coordinate {
     #[uniffi::constructor]
     pub fn parse(coordinate: &str) -> Result<Self> {
         Ok(nip01::Coordinate::from_str(coordinate)?.into())
-    }
-
-    pub fn to_bech32(&self) -> Result<String> {
-        Ok(self.inner.to_bech32()?)
-    }
-
-    pub fn to_nostr_uri(&self) -> Result<String> {
-        Ok(self.inner.to_nostr_uri()?)
     }
 
     pub fn kind(&self) -> Kind {
