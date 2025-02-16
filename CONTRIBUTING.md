@@ -19,7 +19,7 @@ The commit **must** be formatted as following:
 ```
 <context>: <short descriptrion>
 
-<optional description explaining reasons for the changes>
+<description explaining reasons for the changes>
 ```
 
 If applicable, link the `issue`/`PR` to be closed with:
@@ -27,16 +27,18 @@ If applicable, link the `issue`/`PR` to be closed with:
 * Closes <url>
 * Fixes <url>
 
-The `context` should be:
+The `context` **must be**:
 
-* `nostr` if changes are related to the main Rust `nostr` crate (or `protocol`?)
-* `sdk`, `cli`, `pool`, `signer`, `nwc` and so on for the others Rust crates (so remove the `nostr-` prefix)
-* `ffi` for `UniFFI`, `js` for `JavaScript` bindings and so on
+* `nostr` for changes to the `nostr` crate
+* `sdk`, `cli`, `pool`, `connect`, `nwc` and so on for the others crates (remote the `nostr-` prefix)
+* `ffi` for changes to `UniFFI` bindings
+* `js` for changes to `JavaScript` bindings
+* `test` for changes to the unit tests
+* `doc` for changes to the documentation
+* `contrib` for changes to the scripts and tools
+* `ci` for changes to the CI code
+* `refactor` for structural changes that do not change behavior
 * `book` if changes are related to the `book`
-* `doc` for the `.md` files (except for `CHANGELOG.md`?)
-
-Anything that does not have a specific context can be left without the `<context>:` prefix,
-e.g. a change to the main `justfile` commands or change to `CHANGELOG.md`.
 
 ### Examples
 
@@ -69,8 +71,8 @@ ffi: expose `EventBuilder::mute_list`
 ```
 ffi: add `AbortHandle`
 
-* Return `AbortHandle` in `Client::handle_notifications`
-* Another change...
+- Return `AbortHandle` in `Client::handle_notifications`
+- Another change...
 ```
 
 ```
@@ -93,8 +95,6 @@ If you deprecated an API as part of a contribution, we encourage you to "own" th
 and send a follow-up to remove it as part of the next release cycle.
 
 ## Coding Conventions
-
-Usage of `.unwrap()` or `.expect("...")` methods is allowed **only** in `examples` or `tests`.
 
 Install https://github.com/casey/just and use `just precommit` or `just check` 
 to format and check the code before committing.
