@@ -67,6 +67,15 @@ impl JsCoordinate {
         self.inner.identifier.clone()
     }
 
+    /// Check if the coordinate is valid.
+    ///
+    /// Returns `false` if:
+    /// - the `Kind` is `replaceable` and the identifier is not empty
+    /// - the `Kind` is `addressable` and the identifier is empty
+    pub fn verify(&self) -> bool {
+        self.inner.verify().is_ok()
+    }
+
     #[wasm_bindgen(js_name = toString)]
     pub fn _to_string(&self) -> String {
         self.inner.to_string()

@@ -81,6 +81,15 @@ impl Coordinate {
     pub fn identifier(&self) -> String {
         self.inner.identifier.clone()
     }
+
+    /// Check if the coordinate is valid.
+    ///
+    /// Returns `false` if:
+    /// - the `Kind` is `replaceable` and the identifier is not empty
+    /// - the `Kind` is `addressable` and the identifier is empty
+    pub fn verify(&self) -> bool {
+        self.inner.verify().is_ok()
+    }
 }
 
 #[derive(Record)]
