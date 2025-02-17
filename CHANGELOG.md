@@ -40,6 +40,7 @@
 * nostr: change `EventId::new` signature ([Yuki Kishimoto])
 * nostr: change `EventBuilder::git_repository_announcement` constructor signature ([Yuki Kishimoto])
 * nostr: change `EventBuilder::git_issue` constructor signature ([Yuki Kishimoto])
+* nostr: change `EventBuilder::git_patch` constructor signature ([Yuki Kishimoto])
 
 ### Changed
 
@@ -79,6 +80,7 @@
 
 * nostr: fix `EventBuilder::git_repository_announcement` constructor according to last NIP34 rev ([Yuki Kishimoto])
 * nostr: fix `EventBuilder::git_issue` constructor according to last NIP34 rev ([Yuki Kishimoto])
+* nostr: fix `EventBuilder::git_patch` constructor according to last NIP34 rev ([Yuki Kishimoto])
 
 ### Removed
 

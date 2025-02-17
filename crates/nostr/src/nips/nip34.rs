@@ -17,15 +17,11 @@ use hashes::sha1::Hash as Sha1Hash;
 
 use crate::event::builder::{Error, EventBuilder, WrongKindError};
 use crate::nips::nip01::{self, Coordinate};
-use crate::nips::nip10::Marker;
 use crate::types::url::Url;
-use crate::{EventId, Kind, PublicKey, RelayUrl, Tag, TagKind, TagStandard, Timestamp};
+use crate::{Kind, PublicKey, RelayUrl, Tag, TagKind, TagStandard, Timestamp};
 
 /// Earlier unique commit ID marker
 pub const EUC: &str = "euc";
-
-const GIT_PATCH_ALT: &str = "git patch";
-const GIT_PATCH_COVER_LETTER_ALT: &str = "git patch cover letter";
 
 /// Git Repository Announcement
 ///
@@ -234,41 +230,49 @@ impl fmt::Display for GitPatchContent {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GitPatch {
     /// Repository ID
-    pub repo_id: String,
+    pub repository: Coordinate,
     /// Patch
     pub content: GitPatchContent,
-    /// Maintainers
-    pub maintainers: Vec<PublicKey>,
     /// Earliest unique commit ID of repo
-    pub euc: String,
-    /// Root proposal ID
-    pub root_proposal_id: Option<EventId>,
+    pub euc: Sha1Hash,
+    /// Labels
+    pub labels: Vec<String>,
 }
 
 impl GitPatch {
-    pub(crate) fn to_event_builder(self) -> EventBuilder {
+    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
+        // Check if repository address kind is wrong
+        if self.repository.kind != Kind::GitRepoAnnouncement {
+            return Err(Error::WrongKind {
+                received: self.repository.kind,
+                expected: WrongKindError::Single(Kind::GitRepoAnnouncement),
+            });
+        }
+
+        // Verify coordinate
+        self.repository.verify()?;
+
+        let owner_public_key: PublicKey = self.repository.public_key;
+
+        let mut tags: Vec<Tag> = Vec::with_capacity(3);
+
+        // Push coordinate
+        tags.push(Tag::coordinate(self.repository));
+
+        // Tag repo owner
+        tags.push(Tag::public_key(owner_public_key));
+
+        // Add EUC (without `euc` marker)
+        tags.push(Tag::reference(self.euc.to_string()));
+
+        // Serialize content to string (used later)
         let content: String = self.content.to_string();
-
-        let mut tags: Vec<Tag> = Vec::with_capacity(2);
-
-        // Add coordinate
-        tags.reserve_exact(self.maintainers.len());
-        tags.extend(self.maintainers.iter().copied().map(|p| {
-            Tag::coordinate(
-                Coordinate::new(Kind::GitRepoAnnouncement, p).identifier(self.repo_id.clone()),
-            )
-        }));
-
-        // Add EUC (as reference, not with `euc` marker)
-        tags.push(Tag::reference(self.euc));
 
         // Handle patch content
         match self.content {
-            GitPatchContent::CoverLetter { title, .. } => {
-                // Add cover letter tags
-                tags.reserve_exact(2);
+            GitPatchContent::CoverLetter { .. } => {
+                // Add cover letter hashtag
                 tags.push(Tag::hashtag("cover-letter"));
-                tags.push(Tag::alt(format!("{GIT_PATCH_COVER_LETTER_ALT}: {title}")));
             }
             GitPatchContent::Patch {
                 commit,
@@ -277,7 +281,7 @@ impl GitPatch {
                 committer,
                 ..
             } => {
-                tags.reserve_exact(6);
+                tags.reserve_exact(5);
                 tags.push(Tag::reference(commit.to_string()));
                 tags.push(Tag::from_standardized_without_cell(TagStandard::GitCommit(
                     commit,
@@ -299,33 +303,14 @@ impl GitPatch {
                         committer.offset_minutes.to_string(),
                     ],
                 ));
-                tags.push(Tag::alt(GIT_PATCH_ALT));
             }
         }
 
-        // Handle root proposal ID
-        match self.root_proposal_id {
-            Some(root_proposal_id) => {
-                tags.reserve_exact(3);
-                tags.push(Tag::hashtag("root"));
-                tags.push(Tag::hashtag("revision-root"));
-                tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
-                    event_id: root_proposal_id,
-                    relay_url: None,
-                    marker: Some(Marker::Reply),
-                    public_key: None,
-                    uppercase: false,
-                }));
-            }
-            None => tags.push(Tag::hashtag("root")),
-        }
-
-        // Add public keys
-        tags.reserve_exact(self.maintainers.len());
-        tags.extend(self.maintainers.into_iter().map(Tag::public_key));
+        // Add labels
+        tags.extend(self.labels.into_iter().map(Tag::hashtag));
 
         // Build
-        EventBuilder::new(Kind::GitPatch, content).tags(tags)
+        Ok(EventBuilder::new(Kind::GitPatch, content).tags(tags))
     }
 }
 
@@ -416,6 +401,69 @@ mod tests {
             ],
             vec!["subject", "My issue subject"],
             vec!["t", "bug"],
+        ])
+        .unwrap();
+        assert_eq!(event.tags, tags);
+    }
+
+    #[test]
+    fn test_git_patch() {
+        let pk =
+            PublicKey::parse("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")
+                .unwrap();
+        let repository = Coordinate::new(Kind::GitRepoAnnouncement, pk).identifier("rust-nostr");
+
+        let repo = GitPatch {
+            repository,
+            content: GitPatchContent::Patch {
+                content: String::from("<patch>"),
+                commit: Sha1Hash::from_str("b1fa697b5cd42fbb6ec9fef9009609200387e0b4").unwrap(),
+                parent_commit: Sha1Hash::from_str("c88d901b42ff8389330d6d5d4044cf1d196696f3")
+                    .unwrap(),
+                committer: GitPatchCommitter {
+                    name: Some(String::from("Yuki Kishimoto")),
+                    email: Some(String::from("yukikishimoto@protonmail.com")),
+                    timestamp: Timestamp::from_secs(1739794763),
+                    offset_minutes: 0,
+                },
+                commit_pgp_sig: None,
+            },
+            euc: Sha1Hash::from_str("59429cfc6cb35b0a1ddace73b5a5c5ed57b8f5ca").unwrap(),
+            labels: vec![String::from("root")],
+        };
+
+        let keys = Keys::generate();
+        let event: Event = repo
+            .to_event_builder()
+            .unwrap()
+            .sign_with_keys(&keys)
+            .unwrap();
+
+        assert_eq!(event.kind, Kind::GitPatch);
+        assert_eq!(event.content, "<patch>");
+
+        let tags = Tags::parse([
+            vec![
+                "a",
+                "30617:68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272:rust-nostr",
+            ],
+            vec![
+                "p",
+                "68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272",
+            ],
+            vec!["r", "59429cfc6cb35b0a1ddace73b5a5c5ed57b8f5ca"],
+            vec!["r", "b1fa697b5cd42fbb6ec9fef9009609200387e0b4"],
+            vec!["commit", "b1fa697b5cd42fbb6ec9fef9009609200387e0b4"],
+            vec!["parent-commit", "c88d901b42ff8389330d6d5d4044cf1d196696f3"],
+            vec!["commit-pgp-sig", ""],
+            vec![
+                "committer",
+                "Yuki Kishimoto",
+                "yukikishimoto@protonmail.com",
+                "1739794763",
+                "0",
+            ],
+            vec!["t", "root"],
         ])
         .unwrap();
         assert_eq!(event.tags, tags);

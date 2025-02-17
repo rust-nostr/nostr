@@ -1723,7 +1723,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[inline]
-    pub fn git_patch(patch: GitPatch) -> Self {
+    pub fn git_patch(patch: GitPatch) -> Result<Self, Error> {
         patch.to_event_builder()
     }
 

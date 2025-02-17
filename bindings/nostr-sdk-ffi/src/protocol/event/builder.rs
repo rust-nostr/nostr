@@ -858,7 +858,7 @@ impl EventBuilder {
     #[uniffi::constructor]
     pub fn git_patch(patch: GitPatch) -> Result<Self> {
         Ok(Self {
-            inner: nostr::EventBuilder::git_patch(patch.try_into()?),
+            inner: nostr::EventBuilder::git_patch(patch.try_into()?)?,
         })
     }
 }
