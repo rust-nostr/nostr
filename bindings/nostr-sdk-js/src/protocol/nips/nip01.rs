@@ -33,23 +33,12 @@ impl From<Coordinate> for JsCoordinate {
 #[wasm_bindgen(js_class = Coordinate)]
 impl JsCoordinate {
     #[wasm_bindgen(constructor)]
-    pub fn new(
-        kind: &JsKind,
-        public_key: &JsPublicKey,
-        identifier: Option<String>,
-        relays: Option<Vec<String>>,
-    ) -> Self {
+    pub fn new(kind: &JsKind, public_key: &JsPublicKey, identifier: Option<String>) -> Self {
         Self {
             inner: Coordinate {
                 kind: **kind,
                 public_key: **public_key,
                 identifier: identifier.unwrap_or_default(),
-                // TODO: propagate error
-                relays: relays
-                    .unwrap_or_default()
-                    .into_iter()
-                    .filter_map(|u| RelayUrl::parse(&u).ok())
-                    .collect(),
             },
         }
     }
@@ -78,24 +67,18 @@ impl JsCoordinate {
         self.inner.identifier.clone()
     }
 
-    #[wasm_bindgen(getter)]
-    pub fn relays(&self) -> Vec<String> {
-        self.inner.relays.iter().map(|u| u.to_string()).collect()
+    /// Check if the coordinate is valid.
+    ///
+    /// Returns `false` if:
+    /// - the `Kind` is `replaceable` and the identifier is not empty
+    /// - the `Kind` is `addressable` and the identifier is empty
+    pub fn verify(&self) -> bool {
+        self.inner.verify().is_ok()
     }
 
     #[wasm_bindgen(js_name = toString)]
     pub fn _to_string(&self) -> String {
         self.inner.to_string()
-    }
-
-    #[wasm_bindgen(js_name = toBech32)]
-    pub fn to_bech32(&self) -> Result<String> {
-        self.inner.to_bech32().map_err(into_err)
-    }
-
-    #[wasm_bindgen(js_name = toNostrUri)]
-    pub fn to_nostr_uri(&self) -> Result<String> {
-        self.inner.to_nostr_uri().map_err(into_err)
     }
 }
 

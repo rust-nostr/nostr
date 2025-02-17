@@ -13,8 +13,10 @@ use core::str::FromStr;
 
 use bech32::Fe32;
 
-use super::nip01::Coordinate;
-use super::nip19::{self, FromBech32, Nip19, Nip19Event, Nip19Prefix, Nip19Profile, ToBech32};
+use super::nip19::{
+    self, FromBech32, Nip19, Nip19Coordinate, Nip19Event, Nip19Prefix, Nip19Profile, ToBech32,
+};
+use crate::nips::nip01::Coordinate;
 use crate::{EventId, PublicKey};
 
 /// URI scheme
@@ -110,8 +112,9 @@ impl ToNostrUri for Nip19Profile {}
 impl FromNostrUri for Nip19Profile {}
 impl ToNostrUri for Nip19Event {}
 impl FromNostrUri for Nip19Event {}
-impl ToNostrUri for Coordinate {}
 impl FromNostrUri for Coordinate {}
+impl ToNostrUri for Nip19Coordinate {}
+impl FromNostrUri for Nip19Coordinate {}
 
 /// A representation any `NIP21` object. Useful for decoding
 /// `NIP21` strings without necessarily knowing what you're decoding
@@ -127,7 +130,7 @@ pub enum Nip21 {
     /// nostr::nevent
     Event(Nip19Event),
     /// nostr::naddr
-    Coordinate(Coordinate),
+    Coordinate(Nip19Coordinate),
 }
 
 impl From<Nip21> for Nip19 {

@@ -6,11 +6,9 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/01.md>
 
-use alloc::borrow::ToOwned;
 #[cfg(not(feature = "std"))]
 use alloc::collections::BTreeMap as AllocMap;
 use alloc::string::{String, ToString};
-use alloc::vec::Vec;
 use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
@@ -24,8 +22,8 @@ use serde_json::Value;
 
 use super::nip19::FromBech32;
 use super::nip21::FromNostrUri;
-use crate::types::{RelayUrl, Url};
-use crate::{event, key, Filter, JsonUtil, Kind, PublicKey, Tag, TagStandard};
+use crate::types::Url;
+use crate::{event, key, Filter, JsonUtil, Kind, PublicKey, Tag};
 
 /// Raw Event error
 #[derive(Debug, PartialEq, Eq)]
@@ -84,8 +82,6 @@ pub struct Coordinate {
     /// Needed for a parametrized replaceable event.
     /// Leave empty for a replaceable event.
     pub identifier: String,
-    /// Relays
-    pub relays: Vec<RelayUrl>,
 }
 
 impl fmt::Display for Coordinate {
@@ -102,17 +98,11 @@ impl Coordinate {
             kind,
             public_key,
             identifier: String::new(),
-            relays: Vec::new(),
         }
     }
 
     /// Parse coordinate from `<kind>:<pubkey>:[<d-tag>]` format, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
-    pub fn parse<S>(coordinate: S) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
-        let coordinate: &str = coordinate.as_ref();
-
+    pub fn parse(coordinate: &str) -> Result<Self, Error> {
         // Try from hex
         if let Ok(coordinate) = Self::from_kpi_format(coordinate) {
             return Ok(coordinate);
@@ -132,23 +122,15 @@ impl Coordinate {
     }
 
     /// Try to parse from `<kind>:<pubkey>:[<d-tag>]` format
-    pub fn from_kpi_format<S>(coordinate: S) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
-        let coordinate: &str = coordinate.as_ref();
+    pub fn from_kpi_format(coordinate: &str) -> Result<Self, Error> {
         let mut kpi = coordinate.split(':');
-        if let (Some(kind_str), Some(public_key_str), Some(identifier)) =
-            (kpi.next(), kpi.next(), kpi.next())
-        {
-            Ok(Self {
+        match (kpi.next(), kpi.next(), kpi.next()) {
+            (Some(kind_str), Some(public_key_str), Some(identifier)) => Ok(Self {
                 kind: Kind::from_str(kind_str)?,
                 public_key: PublicKey::from_hex(public_key_str)?,
-                identifier: identifier.to_owned(),
-                relays: Vec::new(),
-            })
-        } else {
-            Err(Error::InvalidCoordinate)
+                identifier: identifier.to_string(),
+            }),
+            _ => Err(Error::InvalidCoordinate),
         }
     }
 
@@ -169,6 +151,18 @@ impl Coordinate {
         !self.identifier.is_empty()
     }
 
+    /// Check if the coordinate is valid.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::InvalidCoordinate`] if:
+    /// - the [`Kind`] is `replaceable` and the identifier is not empty
+    /// - the [`Kind`] is `addressable` and the identifier is empty
+    #[inline]
+    pub fn verify(&self) -> Result<(), Error> {
+        verify_coordinate(&self.kind, &self.identifier)
+    }
+
     /// Borrow coordinate
     pub fn borrow(&self) -> CoordinateBorrow<'_> {
         CoordinateBorrow {
@@ -179,13 +173,28 @@ impl Coordinate {
     }
 }
 
+fn verify_coordinate(kind: &Kind, identifier: &str) -> Result<(), Error> {
+    let is_replaceable: bool = kind.is_replaceable();
+    let is_addressable: bool = kind.is_addressable();
+
+    if !is_replaceable && !is_addressable {
+        return Err(Error::InvalidCoordinate);
+    }
+
+    if is_replaceable && !identifier.is_empty() {
+        return Err(Error::InvalidCoordinate);
+    }
+
+    if is_addressable && identifier.is_empty() {
+        return Err(Error::InvalidCoordinate);
+    }
+
+    Ok(())
+}
+
 impl From<Coordinate> for Tag {
     fn from(coordinate: Coordinate) -> Self {
-        Self::from_standardized(TagStandard::Coordinate {
-            relay_url: coordinate.relays.first().cloned(),
-            coordinate,
-            uppercase: false,
-        })
+        Self::coordinate(coordinate)
     }
 }
 
@@ -245,7 +254,6 @@ impl CoordinateBorrow<'_> {
             kind: *self.kind,
             public_key: *self.public_key,
             identifier: self.identifier.map(|s| s.to_string()).unwrap_or_default(),
-            relays: Vec::new(),
         }
     }
 }
@@ -525,6 +533,39 @@ mod tests {
         assert_eq!(coordinate.kind.as_u16(), 20500);
         assert_eq!(coordinate.public_key, expected_public_key);
         assert_eq!(coordinate.identifier, "");
+    }
+
+    #[test]
+    fn test_verify_coordinate() {
+        // Valid: replaceable
+        let coordinate: &str =
+            "15000:aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4:";
+        let coordinate: Coordinate = Coordinate::parse(coordinate).unwrap();
+        assert!(coordinate.verify().is_ok());
+
+        // Valid: addressable
+        let coordinate: &str =
+            "30023:aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4:ipsum";
+        let coordinate: Coordinate = Coordinate::parse(coordinate).unwrap();
+        assert!(coordinate.verify().is_ok());
+
+        // Invalid: ephemeral kind
+        let coordinate: &str =
+            "20500:aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4:";
+        let coordinate: Coordinate = Coordinate::parse(coordinate).unwrap();
+        assert!(coordinate.verify().is_err());
+
+        // Invalid: replaceable with identifier
+        let coordinate: &str =
+            "11111:aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4:test";
+        let coordinate: Coordinate = Coordinate::parse(coordinate).unwrap();
+        assert!(coordinate.verify().is_err());
+
+        // Invalid: addressable without identifier
+        let coordinate: &str =
+            "30023:aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4:";
+        let coordinate: Coordinate = Coordinate::parse(coordinate).unwrap();
+        assert!(coordinate.verify().is_err());
     }
 }
 

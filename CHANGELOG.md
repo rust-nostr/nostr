@@ -36,6 +36,7 @@
 * nostr: remove `WeakTag` ([Yuki Kishimoto])
 * nostr: change `TagStandard::Relays` variant inner value from `Vec<Url>` to `Vec<RelayUrl>` ([Yuki Kishimoto])
 * nostr: split `NostrURI` into `ToNostrUri` and `FromNostrUri` traits ([Yuki Kishimoto])
+* nostr: replaced generic parameter `S: AsRef<str>` with `&str` in `Coordinate::parse` and `Coordinate::from_kpi_format` ([Yuki Kishimoto])
 
 ### Changed
 
@@ -63,6 +64,8 @@
 * nostr: add `with_capacity`, `from_list`, `from_text` and `parse` constructors to `Tags` struct ([Yuki Kishimoto])
 * nostr: add `Tags::dedup` method ([Yuki Kishimoto])
 * nostr: add `EncryptedSecretKey::decrypt` method ([Yuki Kishimoto])
+* nostr: add `Nip19Coordinate` struct ([Yuki Kishimoto])
+* nostr: add `Coordinate::verify` method ([Yuki Kishimoto])
 * pool: event verification cache ([Yuki Kishimoto])
 * ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])
 

@@ -7,6 +7,7 @@ use std::ops::Deref;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
+use super::nip01::JsCoordinate;
 use crate::error::{into_err, Result};
 use crate::protocol::event::{JsEvent, JsEventId, JsKind};
 use crate::protocol::key::JsPublicKey;
@@ -138,6 +139,60 @@ impl JsNip19Profile {
     #[wasm_bindgen(js_name = publicKey)]
     pub fn public_key(&self) -> JsPublicKey {
         self.inner.public_key.into()
+    }
+
+    pub fn relays(&self) -> Vec<String> {
+        self.inner.relays.iter().map(|u| u.to_string()).collect()
+    }
+}
+
+#[wasm_bindgen(js_name = Nip19Coordinate)]
+pub struct JsNip19Coordinate {
+    inner: Nip19Coordinate,
+}
+
+impl From<Nip19Coordinate> for JsNip19Coordinate {
+    fn from(inner: Nip19Coordinate) -> Self {
+        Self { inner }
+    }
+}
+
+#[wasm_bindgen(js_class = Nip19Coordinate)]
+impl JsNip19Coordinate {
+    #[wasm_bindgen(constructor)]
+    pub fn new(coordinate: &JsCoordinate, relays: Vec<String>) -> Result<JsNip19Coordinate> {
+        Ok(Self {
+            inner: Nip19Coordinate::new(coordinate.deref().clone(), relays).map_err(into_err)?,
+        })
+    }
+
+    #[wasm_bindgen(js_name = fromBech32)]
+    pub fn from_bech32(bech32: &str) -> Result<JsNip19Coordinate> {
+        Ok(Self {
+            inner: Nip19Coordinate::from_bech32(bech32).map_err(into_err)?,
+        })
+    }
+
+    #[wasm_bindgen(js_name = fromNostrUri)]
+    pub fn from_nostr_uri(uri: &str) -> Result<JsNip19Coordinate> {
+        Ok(Self {
+            inner: Nip19Coordinate::from_nostr_uri(uri).map_err(into_err)?,
+        })
+    }
+
+    #[wasm_bindgen(js_name = toBech32)]
+    pub fn to_bech32(&self) -> Result<String> {
+        self.inner.to_bech32().map_err(into_err)
+    }
+
+    #[wasm_bindgen(js_name = toNostrUri)]
+    pub fn to_nostr_uri(&self) -> Result<String> {
+        self.inner.to_nostr_uri().map_err(into_err)
+    }
+
+    #[wasm_bindgen]
+    pub fn coordinate(&self) -> JsCoordinate {
+        self.inner.coordinate.clone().into()
     }
 
     pub fn relays(&self) -> Vec<String> {

@@ -12,6 +12,7 @@ use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
+use core::ops::Deref;
 use core::str::FromStr;
 
 use bech32::{self, Bech32, Hrp};
@@ -223,7 +224,7 @@ pub enum Nip19 {
     /// nevent
     Event(Nip19Event),
     /// naddr
-    Coordinate(Coordinate),
+    Coordinate(Nip19Coordinate),
 }
 
 pub trait FromBech32: Sized {
@@ -253,7 +254,7 @@ impl FromBech32 for Nip19 {
             Nip19Prefix::NProfile => Ok(Self::Profile(Nip19Profile::from_bech32_data(data)?)),
             Nip19Prefix::NEvent => Ok(Self::Event(Nip19Event::from_bech32_data(data)?)),
             Nip19Prefix::Note => Ok(Self::EventId(EventId::from_slice(data.as_slice())?)),
-            Nip19Prefix::NAddr => Ok(Self::Coordinate(Coordinate::from_bech32_data(data)?)),
+            Nip19Prefix::NAddr => Ok(Self::Coordinate(Nip19Coordinate::from_bech32_data(data)?)),
         }
     }
 }
@@ -639,7 +640,52 @@ impl FromBech32 for Nip19Profile {
     }
 }
 
-impl Coordinate {
+impl FromBech32 for Coordinate {
+    type Err = Error;
+
+    fn from_bech32(addr: &str) -> Result<Self, Self::Err> {
+        let (hrp, data) = bech32::decode(addr)?;
+
+        if hrp != HRP_COORDINATE {
+            return Err(Error::WrongPrefix);
+        }
+
+        let coordinate = Nip19Coordinate::from_bech32_data(data)?;
+
+        Ok(coordinate.coordinate)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct Nip19Coordinate {
+    pub coordinate: Coordinate,
+    pub relays: Vec<RelayUrl>,
+}
+
+impl Deref for Nip19Coordinate {
+    type Target = Coordinate;
+
+    fn deref(&self) -> &Self::Target {
+        &self.coordinate
+    }
+}
+
+impl Nip19Coordinate {
+    pub fn new<I, U>(coordinate: Coordinate, relays: I) -> Result<Self, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        Ok(Self {
+            coordinate,
+            relays: relays
+                .into_iter()
+                .map(|u| u.try_into_url())
+                .collect::<Result<_, _>>()?,
+        })
+    }
+
     fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
         let mut identifier: Option<String> = None;
         let mut pubkey: Option<PublicKey> = None;
@@ -686,16 +732,17 @@ impl Coordinate {
             data.drain(..l + 2);
         }
 
-        Ok(Self {
+        let coordinate = Coordinate {
             kind: kind.ok_or_else(|| Error::FieldMissing("kind".to_string()))?,
             public_key: pubkey.ok_or_else(|| Error::FieldMissing("pubkey".to_string()))?,
             identifier: identifier.ok_or_else(|| Error::FieldMissing("identifier".to_string()))?,
-            relays,
-        })
+        };
+
+        Ok(Self { coordinate, relays })
     }
 }
 
-impl FromBech32 for Coordinate {
+impl FromBech32 for Nip19Coordinate {
     type Err = Error;
 
     fn from_bech32(addr: &str) -> Result<Self, Self::Err> {
@@ -709,7 +756,7 @@ impl FromBech32 for Coordinate {
     }
 }
 
-impl ToBech32 for Coordinate {
+impl ToBech32 for Nip19Coordinate {
     type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
@@ -850,7 +897,7 @@ mod tests {
     #[test]
     fn from_bech32_naddr() {
         let coordinate: &str = "naddr1qqxnzd3exgersv33xymnsve3qgs8suecw4luyht9ekff89x4uacneapk8r5dyk0gmn6uwwurf6u9rusrqsqqqa282m3gxt";
-        let coordinate: Coordinate = Coordinate::from_bech32(coordinate).unwrap();
+        let coordinate = Nip19Coordinate::from_bech32(coordinate).unwrap();
 
         let expected_pubkey: PublicKey =
             PublicKey::from_hex("787338757fc25d65cd929394d5e7713cf43638e8d259e8dcf5c73b834eb851f2")

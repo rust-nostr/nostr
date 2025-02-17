@@ -6,10 +6,8 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 use nostr::nips::nip01;
-use nostr::nips::nip19::ToBech32;
-use nostr::nips::nip21::ToNostrUri;
 use nostr::serde_json::Value;
-use nostr::{JsonUtil, RelayUrl, Url};
+use nostr::{JsonUtil, Url};
 use uniffi::{Object, Record};
 
 use crate::error::Result;
@@ -50,30 +48,19 @@ impl From<Coordinate> for nip01::Coordinate {
             kind: value.inner.kind,
             public_key: value.inner.public_key,
             identifier: value.inner.identifier,
-            relays: value.inner.relays,
         }
     }
 }
 
 #[uniffi::export]
 impl Coordinate {
-    #[uniffi::constructor(default(identifier = "", relays = []))]
-    pub fn new(
-        kind: &Kind,
-        public_key: &PublicKey,
-        identifier: String,
-        relays: Vec<String>,
-    ) -> Self {
+    #[uniffi::constructor(default(identifier = ""))]
+    pub fn new(kind: &Kind, public_key: &PublicKey, identifier: String) -> Self {
         Self {
             inner: nip01::Coordinate {
                 kind: **kind,
                 public_key: **public_key,
                 identifier,
-                // TODO: propagate error
-                relays: relays
-                    .into_iter()
-                    .filter_map(|u| RelayUrl::parse(&u).ok())
-                    .collect(),
             },
         }
     }
@@ -81,14 +68,6 @@ impl Coordinate {
     #[uniffi::constructor]
     pub fn parse(coordinate: &str) -> Result<Self> {
         Ok(nip01::Coordinate::from_str(coordinate)?.into())
-    }
-
-    pub fn to_bech32(&self) -> Result<String> {
-        Ok(self.inner.to_bech32()?)
-    }
-
-    pub fn to_nostr_uri(&self) -> Result<String> {
-        Ok(self.inner.to_nostr_uri()?)
     }
 
     pub fn kind(&self) -> Kind {
@@ -103,8 +82,13 @@ impl Coordinate {
         self.inner.identifier.clone()
     }
 
-    pub fn relays(&self) -> Vec<String> {
-        self.inner.relays.iter().map(|u| u.to_string()).collect()
+    /// Check if the coordinate is valid.
+    ///
+    /// Returns `false` if:
+    /// - the `Kind` is `replaceable` and the identifier is not empty
+    /// - the `Kind` is `addressable` and the identifier is empty
+    pub fn verify(&self) -> bool {
+        self.inner.verify().is_ok()
     }
 }
 
