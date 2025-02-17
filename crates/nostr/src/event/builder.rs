@@ -1730,6 +1730,18 @@ impl EventBuilder {
         ])
     }
 
+    /// User Statuses
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/38.md>
+    #[inline]
+    pub fn live_status<S>(status: LiveStatus, content: S) -> Self
+    where
+        S: Into<String>,
+    {
+        let tags: Vec<Tag> = status.into();
+        Self::new(Kind::UserStatus, content).tags(tags)
+    }
+
     /// Git Repository Announcement
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>

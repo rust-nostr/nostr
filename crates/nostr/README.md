@@ -136,7 +136,7 @@ The following crate feature flags are available:
 |     ✅     | [34 - `git` stuff](https://github.com/nostr-protocol/nips/blob/master/34.md)                                    |
 |     ✅     | [35 - Torrents](https://github.com/nostr-protocol/nips/blob/master/35.md)                                       |
 |     ✅     | [36 - Sensitive Content](https://github.com/nostr-protocol/nips/blob/master/36.md)                              |
-|     ❌     | [38 - User Statuses](https://github.com/nostr-protocol/nips/blob/master/38.md)                                  |
+|     ✅     | [38 - User Statuses](https://github.com/nostr-protocol/nips/blob/master/38.md)                                  |
 |     ✅     | [39 - External Identities in Profiles](https://github.com/nostr-protocol/nips/blob/master/39.md)                |
 |     ✅     | [40 - Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)                           |
 |     ✅     | [42 - Authentication of clients to relays](https://github.com/nostr-protocol/nips/blob/master/42.md)            |
@@ -151,7 +151,7 @@ The following crate feature flags are available:
 |     ❌     | [52 - Calendar Events](https://github.com/nostr-protocol/nips/blob/master/52.md)                                |
 |     ✅     | [53 - Live Activities](https://github.com/nostr-protocol/nips/blob/master/53.md)                                |
 |     ❌     | [54 - Wiki](https://github.com/nostr-protocol/nips/blob/master/54.md)                                           |
-|     -      | [55 - Android Signer Application](https://github.com/nostr-protocol/nips/blob/master/55.md)                     |
+|     -     | [55 - Android Signer Application](https://github.com/nostr-protocol/nips/blob/master/55.md)                     |
 |     ✅     | [56 - Reporting](https://github.com/nostr-protocol/nips/blob/master/56.md)                                      |
 |     ✅     | [57 - Lightning Zaps](https://github.com/nostr-protocol/nips/blob/master/57.md)                                 |
 |     ✅     | [58 - Badges](https://github.com/nostr-protocol/nips/blob/master/58.md)                                         |
