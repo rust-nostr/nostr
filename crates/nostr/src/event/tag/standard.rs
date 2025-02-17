@@ -142,6 +142,15 @@ pub enum TagStandard {
         nonce: u128,
         difficulty: u8,
     },
+    /// Client
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/89.md>
+    Client {
+        /// Client name
+        name: String,
+        /// Client address and optional hint
+        address: Option<(Coordinate, Option<RelayUrl>)>,
+    },
     Delegation {
         delegator: PublicKey,
         conditions: Conditions,
@@ -307,6 +316,7 @@ impl TagStandard {
                     msg: extract_optional_string(tag, 1).map(|s| s.to_string()),
                 })
             }
+            TagKind::Client => return parse_client_tag(tag),
             TagKind::Clone => {
                 let urls: Vec<Url> = extract_urls(tag)?;
                 return Ok(Self::GitClone(urls));
@@ -560,6 +570,7 @@ impl TagStandard {
             }),
             Self::Relay(..) => TagKind::Relay,
             Self::POW { .. } => TagKind::Nonce,
+            Self::Client { .. } => TagKind::Client,
             Self::Delegation { .. } => TagKind::Delegation,
             Self::ContentWarning { .. } => TagKind::ContentWarning,
             Self::Expiration(..) => TagKind::Expiration,
@@ -781,6 +792,23 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::Relay(url) => vec![tag_kind, url.to_string()],
             TagStandard::POW { nonce, difficulty } => {
                 vec![tag_kind, nonce.to_string(), difficulty.to_string()]
+            }
+            TagStandard::Client { name, address } => {
+                let mut tag: Vec<String> = vec![tag_kind, name];
+
+                match address {
+                    Some((coordinate, Some(hint))) => {
+                        tag.reserve_exact(2);
+                        tag.push(coordinate.to_string());
+                        tag.push(hint.to_string());
+                    }
+                    Some((coordinate, None)) => {
+                        tag.push(coordinate.to_string());
+                    }
+                    _ => {}
+                }
+
+                tag
             }
             TagStandard::Delegation {
                 delegator,
@@ -1202,6 +1230,51 @@ where
     })
 }
 
+fn parse_client_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
+where
+    S: AsRef<str>,
+{
+    // Possible cases:
+    // - ["client", "My Client"]
+    // - ["client", "My Client", "31990:app1-pubkey:<d-identifier>"]
+    // - ["client", "My Client", "31990:app1-pubkey:<d-identifier>", "wss://relay1"]
+
+    // Require at least 2 values
+    if tag.len() < 2 {
+        return Err(Error::UnknownStandardizedTag);
+    }
+
+    // The client name
+    let tag_1: &str = tag[1].as_ref();
+
+    // Optionally, the coordinate and the relay hint
+    let tag_2: Option<&str> = tag.get(2).map(|t| t.as_ref());
+    let tag_3: Option<&str> = tag.get(3).map(|t| t.as_ref());
+
+    // Since the address is optional,
+    // don't return an error if the coordinate or relay hint parsing fails.
+    let address: Option<(Coordinate, Option<RelayUrl>)> = match tag_2 {
+        // Try to parse the coordinate
+        Some(coordinate) => match Coordinate::parse(coordinate) {
+            // Coordinate parsing success
+            Ok(coordinate) => {
+                let relay_url: Option<RelayUrl> = tag_3.and_then(|url| RelayUrl::parse(url).ok());
+                Some((coordinate, relay_url))
+            }
+            // Failed to parse the coordinate
+            Err(..) => None,
+        },
+        // Nothing to parse
+        None => None,
+    };
+
+    // Construct tag
+    Ok(TagStandard::Client {
+        name: tag_1.to_string(),
+        address,
+    })
+}
+
 fn parse_delegation_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
 where
     S: AsRef<str>,
@@ -1518,6 +1591,39 @@ mod tests {
                 difficulty: 20
             }
             .to_vec()
+        );
+
+        assert_eq!(
+            vec!["client", "voyage"],
+            TagStandard::Client {
+                name: String::from("voyage"),
+                address: None
+            }
+            .to_vec()
+        );
+
+        assert_eq!(
+            vec!["client", "voyage", "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum"],
+            TagStandard::Client {
+                name: String::from("voyage"),
+                address: Some((Coordinate::parse("30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum").unwrap(), None))
+            }.to_vec()
+        );
+
+        assert_eq!(
+            vec!["client", "voyage", "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum"],
+            TagStandard::Client {
+                name: String::from("voyage"),
+                address: Some((Coordinate::parse("30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum").unwrap(), None))
+            }.to_vec()
+        );
+
+        assert_eq!(
+            vec!["client", "voyage", "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum", "wss://relay.damus.io"],
+            TagStandard::Client {
+                name: String::from("voyage"),
+                address: Some((Coordinate::parse("30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum").unwrap(), Some(RelayUrl::parse("wss://relay.damus.io").unwrap())))
+            }.to_vec()
         );
 
         assert_eq!(
@@ -2105,6 +2211,38 @@ mod tests {
             TagStandard::POW {
                 nonce: 1,
                 difficulty: 20
+            }
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["client", "voyage"]).unwrap(),
+            TagStandard::Client {
+                name: String::from("voyage"),
+                address: None
+            }
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["client", "voyage", "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum"]).unwrap(),
+            TagStandard::Client {
+                name: String::from("voyage"),
+                address: Some((Coordinate::parse("30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum").unwrap(), None))
+            }
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["client", "voyage", "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum", ""]).unwrap(),
+            TagStandard::Client {
+                name: String::from("voyage"),
+                address: Some((Coordinate::parse("30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum").unwrap(), None))
+            }
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["client", "voyage", "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum", "wss://relay.damus.io"]).unwrap(),
+            TagStandard::Client {
+                name: String::from("voyage"),
+                address: Some((Coordinate::parse("30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum").unwrap(), Some(RelayUrl::parse("wss://relay.damus.io").unwrap())))
             }
         );
 

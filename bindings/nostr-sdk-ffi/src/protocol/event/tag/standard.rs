@@ -13,7 +13,7 @@ use nostr::nips::nip10;
 use nostr::nips::nip26::Conditions;
 use nostr::secp256k1::schnorr::Signature;
 use nostr::{RelayUrl, Url};
-use uniffi::Enum;
+use uniffi::{Enum, Record};
 
 use crate::error::NostrSdkError;
 use crate::protocol::event::kind::Kind;
@@ -30,6 +30,14 @@ use crate::protocol::nips::nip73::ExternalContentId;
 use crate::protocol::nips::nip90::DataVendingMachineStatus;
 use crate::protocol::nips::nip98::HttpMethod;
 use crate::protocol::types::{ImageDimensions, Timestamp};
+
+#[derive(Record)]
+pub struct TagClientAddress {
+    /// Coordinate
+    pub coordinate: Arc<Coordinate>,
+    /// Relay hint
+    pub hint: Option<String>,
+}
 
 /// Standardized tag
 #[derive(Enum)]
@@ -136,6 +144,10 @@ pub enum TagStandard {
     POW {
         nonce: String,
         difficulty: u8,
+    },
+    Client {
+        name: String,
+        address: Option<TagClientAddress>,
     },
     Delegation {
         delegator: Arc<PublicKey>,
@@ -405,6 +417,13 @@ impl From<tag::TagStandard> for TagStandard {
                 nonce: nonce.to_string(),
                 difficulty,
             },
+            tag::TagStandard::Client { name, address } => Self::Client {
+                name,
+                address: address.map(|(coordinate, hint)| TagClientAddress {
+                    coordinate: Arc::new(coordinate.into()),
+                    hint: hint.map(|url| url.to_string()),
+                }),
+            },
             tag::TagStandard::Delegation {
                 delegator,
                 conditions,
@@ -638,6 +657,19 @@ impl TryFrom<TagStandard> for tag::TagStandard {
             TagStandard::POW { nonce, difficulty } => Ok(Self::POW {
                 nonce: nonce.parse()?,
                 difficulty,
+            }),
+            TagStandard::Client { name, address } => Ok(Self::Client {
+                name,
+                address: match address {
+                    Some(address) => {
+                        let hint: Option<RelayUrl> = match address.hint {
+                            Some(url) => Some(RelayUrl::parse(&url)?),
+                            None => None,
+                        };
+                        Some((address.coordinate.as_ref().deref().clone(), hint))
+                    }
+                    None => None,
+                },
             }),
             TagStandard::Delegation {
                 delegator,
