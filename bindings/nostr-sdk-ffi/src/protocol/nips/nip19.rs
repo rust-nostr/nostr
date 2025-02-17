@@ -6,7 +6,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::nips::nip19::{self, FromBech32, ToBech32};
-use nostr::nips::nip21::NostrURI;
+use nostr::nips::nip21::{FromNostrUri, ToNostrUri};
 use nostr::types::RelayUrl;
 use uniffi::{Enum, Object};
 

@@ -5,8 +5,8 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::nips::nip21::NostrURI;
-use nostr::prelude::ToBech32;
+use nostr::nips::nip19::ToBech32;
+use nostr::nips::nip21::ToNostrUri;
 use uniffi::Object;
 
 use super::Kind;

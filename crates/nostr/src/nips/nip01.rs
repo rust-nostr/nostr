@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::nip19::FromBech32;
-use super::nip21::NostrURI;
+use super::nip21::FromNostrUri;
 use crate::types::{RelayUrl, Url};
 use crate::{event, key, Filter, JsonUtil, Kind, PublicKey, Tag, TagStandard};
 

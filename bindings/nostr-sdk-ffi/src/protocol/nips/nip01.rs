@@ -7,7 +7,7 @@ use std::str::FromStr;
 
 use nostr::nips::nip01;
 use nostr::nips::nip19::ToBech32;
-use nostr::nips::nip21::NostrURI;
+use nostr::nips::nip21::ToNostrUri;
 use nostr::serde_json::Value;
 use nostr::{JsonUtil, RelayUrl, Url};
 use uniffi::{Object, Record};

@@ -77,19 +77,24 @@ fn split_uri(uri: &str) -> Result<&str, Error> {
     splitted.next().ok_or(Error::InvalidURI)
 }
 
-/// Nostr URI trait
-pub trait NostrURI: Sized + ToBech32 + FromBech32
+/// To nostr URI trait
+pub trait ToNostrUri: ToBech32
 where
     Error: From<<Self as ToBech32>::Err>,
-    Error: From<<Self as FromBech32>::Err>,
 {
     /// Get nostr URI
     #[inline]
     fn to_nostr_uri(&self) -> Result<String, Error> {
         Ok(format!("{SCHEME}:{}", self.to_bech32()?))
     }
+}
 
-    /// From `nostr` URI
+/// From nostr URI trait
+pub trait FromNostrUri: FromBech32
+where
+    Error: From<<Self as FromBech32>::Err>,
+{
+    /// From `nostr:` URI
     #[inline]
     fn from_nostr_uri(uri: &str) -> Result<Self, Error> {
         let data: &str = split_uri(uri)?;
@@ -97,11 +102,16 @@ where
     }
 }
 
-impl NostrURI for PublicKey {}
-impl NostrURI for EventId {}
-impl NostrURI for Nip19Profile {}
-impl NostrURI for Nip19Event {}
-impl NostrURI for Coordinate {}
+impl ToNostrUri for PublicKey {}
+impl FromNostrUri for PublicKey {}
+impl ToNostrUri for EventId {}
+impl FromNostrUri for EventId {}
+impl ToNostrUri for Nip19Profile {}
+impl FromNostrUri for Nip19Profile {}
+impl ToNostrUri for Nip19Event {}
+impl FromNostrUri for Nip19Event {}
+impl ToNostrUri for Coordinate {}
+impl FromNostrUri for Coordinate {}
 
 /// A representation any `NIP21` object. Useful for decoding
 /// `NIP21` strings without necessarily knowing what you're decoding

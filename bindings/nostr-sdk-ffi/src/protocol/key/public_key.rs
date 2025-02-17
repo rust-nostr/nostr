@@ -5,7 +5,7 @@
 use std::ops::Deref;
 
 use nostr::nips::nip19::ToBech32;
-use nostr::nips::nip21::NostrURI;
+use nostr::nips::nip21::ToNostrUri;
 use uniffi::Object;
 
 use crate::error::Result;

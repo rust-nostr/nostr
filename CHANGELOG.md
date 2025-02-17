@@ -35,6 +35,7 @@
 * nostr: update `Tags::new` signature ([Yuki Kishimoto])
 * nostr: remove `WeakTag` ([Yuki Kishimoto])
 * nostr: change `TagStandard::Relays` variant inner value from `Vec<Url>` to `Vec<RelayUrl>` ([Yuki Kishimoto])
+* nostr: split `NostrURI` into `ToNostrUri` and `FromNostrUri` traits ([Yuki Kishimoto])
 
 ### Changed
 
