@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::sync::Arc;
 
 use nostr::nips::nip49::{self, Version};
 use nostr::{FromBech32, ToBech32};
@@ -76,7 +75,7 @@ impl EncryptedSecretKey {
     #[uniffi::constructor]
     pub fn new(
         secret_key: &SecretKey,
-        password: String,
+        password: &str,
         log_n: u8,
         key_security: KeySecurity,
     ) -> Result<Self> {
@@ -108,8 +107,8 @@ impl EncryptedSecretKey {
     }
 
     /// Decrypt secret key
-    pub fn to_secret_key(&self, password: String) -> Result<Arc<SecretKey>> {
-        Ok(Arc::new(self.inner.to_secret_key(password)?.into()))
+    pub fn decrypt(&self, password: &str) -> Result<SecretKey> {
+        Ok(self.inner.decrypt(password)?.into())
     }
 
     pub fn to_bech32(&self) -> Result<String> {

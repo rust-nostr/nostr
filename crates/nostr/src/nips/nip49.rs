@@ -183,32 +183,28 @@ impl EncryptedSecretKey {
     /// Encrypted Secret Key len
     pub const LEN: usize = 1 + 1 + SALT_SIZE + NONCE_SIZE + 1 + CIPHERTEXT_SIZE; // 91;
 
-    /// Encrypt [SecretKey]
+    /// Encrypt secret key
     #[inline]
     #[cfg(feature = "std")]
-    pub fn new<S>(
+    pub fn new(
         secret_key: &SecretKey,
-        password: S,
+        password: &str,
         log_n: u8,
         key_security: KeySecurity,
-    ) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
+    ) -> Result<Self, Error> {
         Self::new_with_rng(&mut OsRng, secret_key, password, log_n, key_security)
     }
 
-    /// Encrypt [SecretKey]
-    pub fn new_with_rng<R, S>(
+    /// Encrypt secret key
+    pub fn new_with_rng<R>(
         rng: &mut R,
         secret_key: &SecretKey,
-        password: S,
+        password: &str,
         log_n: u8,
         key_security: KeySecurity,
     ) -> Result<Self, Error>
     where
         R: RngCore + CryptoRng,
-        S: AsRef<str>,
     {
         // Generate salt
         let salt: [u8; SALT_SIZE] = {
@@ -228,7 +224,7 @@ impl EncryptedSecretKey {
 
         // Compose payload
         let payload = Payload {
-            msg: &secret_key.to_secret_bytes(),
+            msg: secret_key.as_secret_bytes(),
             aad: &[key_security as u8],
         };
 
@@ -307,7 +303,7 @@ impl EncryptedSecretKey {
         bytes
     }
 
-    /// Get encrypted secret key version
+    /// Get the encrypted secret key version
     #[inline]
     pub fn version(&self) -> Version {
         self.version
@@ -326,10 +322,16 @@ impl EncryptedSecretKey {
     }
 
     /// Decrypt secret key
+    #[deprecated(since = "0.40.0", note = "Use `decrypt` instead")]
     pub fn to_secret_key<S>(self, password: S) -> Result<SecretKey, Error>
     where
         S: AsRef<str>,
     {
+        self.decrypt(password.as_ref())
+    }
+
+    /// Decrypt secret key
+    pub fn decrypt(&self, password: &str) -> Result<SecretKey, Error> {
         // Derive key
         let key: [u8; KEY_SIZE] = derive_key(password, &self.salt, self.log_n)?;
 
@@ -345,6 +347,7 @@ impl EncryptedSecretKey {
         // Decrypt
         let bytes: Vec<u8> = cipher.decrypt(&self.nonce.into(), payload)?;
 
+        // Parse secret key from bytes
         Ok(SecretKey::from_slice(&bytes)?)
     }
 }
@@ -369,12 +372,8 @@ impl<'de> Deserialize<'de> for EncryptedSecretKey {
     }
 }
 
-fn derive_key<S>(password: S, salt: &[u8; SALT_SIZE], log_n: u8) -> Result<[u8; KEY_SIZE], Error>
-where
-    S: AsRef<str>,
-{
+fn derive_key(password: &str, salt: &[u8; SALT_SIZE], log_n: u8) -> Result<[u8; KEY_SIZE], Error> {
     // Unicode Normalization
-    let password: &str = password.as_ref();
     let password: String = password.nfkc().collect();
 
     // Compose params
@@ -396,7 +395,7 @@ mod tests {
     #[test]
     fn test_encrypted_secret_key_decryption() {
         let encrypted_secret_key = EncryptedSecretKey::from_bech32(CRYPTSEC).unwrap();
-        let secret_key: SecretKey = encrypted_secret_key.to_secret_key("nostr").unwrap();
+        let secret_key: SecretKey = encrypted_secret_key.decrypt("nostr").unwrap();
         assert_eq!(secret_key.to_secret_hex(), SECRET_KEY)
     }
 
@@ -412,7 +411,7 @@ mod tests {
         let original_secret_key = SecretKey::from_hex(SECRET_KEY).unwrap();
         let encrypted_secret_key =
             EncryptedSecretKey::new(&original_secret_key, "test", 16, KeySecurity::Medium).unwrap();
-        let secret_key: SecretKey = encrypted_secret_key.to_secret_key("test").unwrap();
+        let secret_key: SecretKey = encrypted_secret_key.decrypt("test").unwrap();
         assert_eq!(original_secret_key, secret_key);
         assert_eq!(encrypted_secret_key.version(), Version::default());
         assert_eq!(encrypted_secret_key.key_security(), KeySecurity::Medium);

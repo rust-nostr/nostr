@@ -107,16 +107,10 @@ impl JsEncryptedSecretKey {
         self.inner.key_security().into()
     }
 
-    /// Consume `EncryptedSecretKey` and return `SecretKey`
-    #[wasm_bindgen(js_name = toSecretKey)]
-    pub fn to_secret_key(self, password: &str) -> Result<JsSecretKey> {
-        Ok(self.inner.to_secret_key(password).map_err(into_err)?.into())
-    }
-
-    /// Decrypt to `SecretKey`
+    /// Decrypt secret key
     #[wasm_bindgen(js_name = asSecretKey)]
-    pub fn as_secret_key(&self, password: &str) -> Result<JsSecretKey> {
-        Ok(self.inner.to_secret_key(password).map_err(into_err)?.into())
+    pub fn decrypt(&self, password: &str) -> Result<JsSecretKey> {
+        Ok(self.inner.decrypt(password).map_err(into_err)?.into())
     }
 
     #[wasm_bindgen(js_name = toBech32)]

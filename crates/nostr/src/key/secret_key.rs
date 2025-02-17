@@ -135,10 +135,7 @@ impl SecretKey {
     /// To use custom values check [`EncryptedSecretKey`] constructors.
     #[inline]
     #[cfg(all(feature = "std", feature = "nip49"))]
-    pub fn encrypt<S>(&self, password: S) -> Result<EncryptedSecretKey, nip49::Error>
-    where
-        S: AsRef<str>,
-    {
+    pub fn encrypt(&self, password: &str) -> Result<EncryptedSecretKey, nip49::Error> {
         EncryptedSecretKey::new(self, password, 16, KeySecurity::Unknown)
     }
 }

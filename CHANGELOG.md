@@ -62,6 +62,7 @@
 * nostr: add `push`, `pop`, `insert`, `remove`, `extend` and `retain` methods to `Tags` struct ([Yuki Kishimoto])
 * nostr: add `with_capacity`, `from_list`, `from_text` and `parse` constructors to `Tags` struct ([Yuki Kishimoto])
 * nostr: add `Tags::dedup` method ([Yuki Kishimoto])
+* nostr: add `EncryptedSecretKey::decrypt` method ([Yuki Kishimoto])
 * pool: event verification cache ([Yuki Kishimoto])
 * ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])
 
@@ -72,6 +73,8 @@
 * database: remove deprecated ([Yuki Kishimoto])
 
 ### Deprecated
+
+* nostr: deprecate `EncryptedSecretKey::to_secret_key` method ([Yuki Kishimoto])
 
 ## [v0.39.0] - 2025/01/31
 
