@@ -9,11 +9,9 @@ use nostr::event::{self, builder};
 use nostr::message::MessageHandleError;
 use nostr::util::hex;
 use nostr_database::DatabaseError;
-use tokio::sync::{broadcast, SetError};
 
 use crate::shared::SharedStateError;
 use crate::transport::error::TransportError;
-use crate::RelayPoolNotification;
 
 /// Relay error
 #[derive(Debug)]
@@ -38,8 +36,8 @@ pub enum Error {
     NegentropyDeprecated(negentropy_deprecated::Error),
     /// Database error
     Database(DatabaseError),
-    /// OnceCell error
-    SetPoolNotificationSender(SetError<broadcast::Sender<RelayPoolNotification>>),
+    /// Pool notification sender already set
+    PoolNotificationSenderAlreadySet,
     /// Generic timeout
     Timeout,
     /// Not replied to ping
@@ -136,7 +134,9 @@ impl fmt::Display for Error {
             Self::Negentropy(e) => write!(f, "{e}"),
             Self::NegentropyDeprecated(e) => write!(f, "{e}"),
             Self::Database(e) => write!(f, "{e}"),
-            Self::SetPoolNotificationSender(e) => write!(f, "{e}"),
+            Self::PoolNotificationSenderAlreadySet => {
+                write!(f, "pool notification sender already set")
+            }
             Self::Timeout => write!(f, "timeout"),
             Self::NotRepliedToPing => write!(f, "not replied to ping"),
             Self::CantParsePong => write!(f, "can't parse pong"),
@@ -241,11 +241,5 @@ impl From<negentropy_deprecated::Error> for Error {
 impl From<DatabaseError> for Error {
     fn from(e: DatabaseError) -> Self {
         Self::Database(e)
-    }
-}
-
-impl From<SetError<broadcast::Sender<RelayPoolNotification>>> for Error {
-    fn from(e: SetError<broadcast::Sender<RelayPoolNotification>>) -> Self {
-        Self::SetPoolNotificationSender(e)
     }
 }

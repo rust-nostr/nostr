@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 #[cfg(feature = "nip11")]
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use async_utility::{task, time};
@@ -21,7 +21,7 @@ use nostr::event::raw::RawEvent;
 use nostr::secp256k1::rand::{self, Rng};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, OnceCell, RwLock};
+use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, RwLock};
 
 use super::constants::{
     BATCH_EVENT_ITERATION_TIMEOUT, DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL,
@@ -141,7 +141,7 @@ pub(crate) struct InnerRelay {
     pub(super) stats: RelayConnectionStats,
     pub(super) state: SharedState,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
-    external_notification_sender: OnceCell<broadcast::Sender<RelayPoolNotification>>,
+    external_notification_sender: OnceLock<broadcast::Sender<RelayPoolNotification>>,
 }
 
 impl AtomicDestroyer for InnerRelay {
@@ -171,7 +171,7 @@ impl InnerRelay {
             stats: RelayConnectionStats::default(),
             state,
             internal_notification_sender: relay_notification_sender,
-            external_notification_sender: OnceCell::new(),
+            external_notification_sender: OnceLock::new(),
         }
     }
 
@@ -355,8 +355,9 @@ impl InnerRelay {
         &self,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
     ) -> Result<(), Error> {
-        self.external_notification_sender.set(notification_sender)?;
-        Ok(())
+        self.external_notification_sender
+            .set(notification_sender)
+            .map_err(|_| Error::PoolNotificationSenderAlreadySet)
     }
 
     fn send_notification(&self, notification: RelayNotification, external: bool) {
