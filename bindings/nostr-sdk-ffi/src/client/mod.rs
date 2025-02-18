@@ -56,13 +56,6 @@ impl Client {
         }
     }
 
-    /// Update minimum POW difficulty for received events
-    ///
-    /// Events with a POW lower than the current value will be ignored to prevent resources exhaustion.
-    pub fn update_min_pow_difficulty(&self, difficulty: u8) {
-        self.inner.update_min_pow_difficulty(difficulty);
-    }
-
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>

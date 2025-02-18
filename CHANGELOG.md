@@ -94,9 +94,11 @@
 ### Removed
 
 * database: remove deprecated ([Yuki Kishimoto])
+* pool: remove min POW difficulty check in favor of `AdmitPolicy` trait ([Yuki Kishimoto])
 
 ### Deprecated
 
+* Deprecate options to set min POW difficulty ([Yuki Kishimoto])
 * nostr: deprecate `EncryptedSecretKey::to_secret_key` method ([Yuki Kishimoto])
 
 ## [v0.39.0] - 2025/01/31

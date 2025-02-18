@@ -102,11 +102,6 @@ pub enum Error {
     },
     /// Event expired
     EventExpired,
-    /// POW difficulty too low
-    PowDifficultyTooLow {
-        /// Min. difficulty
-        min: u8,
-    },
     /// Notification Handler error
     Handler(String),
     /// Max latency exceeded
@@ -174,7 +169,6 @@ impl fmt::Display for Error {
                 "Received event with too many tags: tags={size}, max_tags={max_size}"
             ),
             Self::EventExpired => write!(f, "event expired"),
-            Self::PowDifficultyTooLow { min } => write!(f, "POW difficulty too low (min. {min})"),
             Self::Handler(e) => write!(f, "{e}"),
             Self::MaximumLatencyExceeded { max, current } => write!(
                 f,

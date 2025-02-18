@@ -44,12 +44,6 @@ impl JsOptions {
         self.inner.autoconnect(val).into()
     }
 
-    /// Minimum POW difficulty for received events
-    #[wasm_bindgen(js_name = minPow)]
-    pub fn min_pow(self, difficulty: u8) -> Self {
-        self.inner.min_pow(difficulty).into()
-    }
-
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>

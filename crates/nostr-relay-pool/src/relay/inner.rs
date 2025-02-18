@@ -989,12 +989,6 @@ impl InnerRelay {
         // Deserialize partial event (id, pubkey and sig)
         let partial_event: PartialEvent = PartialEvent::from_raw(&event)?;
 
-        // Check min POW
-        let difficulty: u8 = self.state.minimum_pow_difficulty();
-        if difficulty > 0 && !partial_event.id.check_pow(difficulty) {
-            return Err(Error::PowDifficultyTooLow { min: difficulty });
-        }
-
         // Check if event status
         let status: DatabaseEventStatus = self.state.database().check_id(&partial_event.id).await?;
 

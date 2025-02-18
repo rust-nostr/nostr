@@ -6,7 +6,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::num::NonZeroUsize;
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
 use lru::LruCache;
@@ -51,7 +51,6 @@ pub struct SharedState {
     pub(crate) transport: Arc<dyn WebSocketTransport>,
     signer: Arc<RwLock<Option<Arc<dyn NostrSigner>>>>,
     nip42_auto_authentication: Arc<AtomicBool>,
-    min_pow_difficulty: Arc<AtomicU8>,
     verification_cache: Arc<Mutex<LruCache<u64, ()>>>,
     pub(crate) admit_policy: OnceLock<Arc<dyn AdmitPolicy>>,
     // TODO: add a semaphore to limit number of concurrent websocket connections attempts?
@@ -65,7 +64,6 @@ impl Default for SharedState {
             None,
             None,
             true,
-            0,
         )
     }
 }
@@ -77,7 +75,6 @@ impl SharedState {
         signer: Option<Arc<dyn NostrSigner>>,
         admit_policy: Option<Arc<dyn AdmitPolicy>>,
         nip42_auto_authentication: bool,
-        min_pow_difficulty: u8,
     ) -> Self {
         let max_verification_cache_size: NonZeroUsize =
             NonZeroUsize::new(MAX_VERIFICATION_CACHE_SIZE)
@@ -88,7 +85,6 @@ impl SharedState {
             transport,
             signer: Arc::new(RwLock::new(signer)),
             nip42_auto_authentication: Arc::new(AtomicBool::new(nip42_auto_authentication)),
-            min_pow_difficulty: Arc::new(AtomicU8::new(min_pow_difficulty)),
             verification_cache: Arc::new(Mutex::new(LruCache::new(max_verification_cache_size))),
             admit_policy: match admit_policy {
                 Some(policy) => OnceLock::from(policy),
@@ -136,15 +132,11 @@ impl SharedState {
     /// All received events must have a difficulty equal or greater than the set one.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
-    #[inline]
-    pub fn set_pow(&self, difficulty: u8) {
-        self.min_pow_difficulty.store(difficulty, Ordering::SeqCst);
-    }
-
-    #[inline]
-    pub(crate) fn minimum_pow_difficulty(&self) -> u8 {
-        self.min_pow_difficulty.load(Ordering::SeqCst)
-    }
+    #[deprecated(
+        since = "0.40.0",
+        note = "This no longer works, please use `AdmitPolicy` instead."
+    )]
+    pub fn set_pow(&self, _difficulty: u8) {}
 
     /// Get database
     #[inline]

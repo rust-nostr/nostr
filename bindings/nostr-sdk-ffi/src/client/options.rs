@@ -50,13 +50,6 @@ impl Options {
         builder
     }
 
-    /// Minimum POW difficulty for received events
-    pub fn min_pow(&self, difficulty: u8) -> Self {
-        let mut builder = self.clone();
-        builder.inner = builder.inner.min_pow(difficulty);
-        builder
-    }
-
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
