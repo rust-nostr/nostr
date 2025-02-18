@@ -166,6 +166,12 @@ impl EventBuilder {
 
     /// Text note reply
     ///
+    /// This adds only the most significant tags, like:
+    /// - `p` tag with the author of the `reply_to` and `root` events;
+    /// - `e` tag of the `reply_to` and `root` events.
+    ///
+    /// Any additional necessary tag can be added with [`EventBuilder::tag`] or [`EventBuilder::tags`].
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/10.md>
     #[uniffi::constructor(default(root = None, relay_url = None))]
     pub fn text_note_reply(
