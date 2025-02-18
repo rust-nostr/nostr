@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::ops::Deref;
+
 use js_sys::Array;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
@@ -17,6 +19,14 @@ use crate::JsStringArray;
 #[wasm_bindgen(js_name = Tags)]
 pub struct JsTags {
     inner: Tags,
+}
+
+impl Deref for JsTags {
+    type Target = Tags;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
 }
 
 impl From<Tags> for JsTags {

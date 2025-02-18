@@ -37,6 +37,7 @@
 * nostr: change `TagStandard::Relays` variant inner value from `Vec<Url>` to `Vec<RelayUrl>` ([Yuki Kishimoto])
 * nostr: split `NostrURI` into `ToNostrUri` and `FromNostrUri` traits ([Yuki Kishimoto])
 * nostr: replaced generic parameter `S: AsRef<str>` with `&str` in `Coordinate::parse` and `Coordinate::from_kpi_format` ([Yuki Kishimoto])
+* nostr: change `EventId::new` signature ([Yuki Kishimoto])
 
 ### Changed
 

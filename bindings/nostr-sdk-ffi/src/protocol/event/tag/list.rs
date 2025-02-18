@@ -18,6 +18,14 @@ pub struct Tags {
     inner: list::Tags,
 }
 
+impl Deref for Tags {
+    type Target = list::Tags;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
 impl From<list::Tags> for Tags {
     fn from(inner: list::Tags) -> Self {
         Self { inner }

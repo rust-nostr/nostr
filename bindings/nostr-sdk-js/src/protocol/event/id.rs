@@ -7,7 +7,7 @@ use core::ops::Deref;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use super::{JsKind, JsTag};
+use super::{JsKind, JsTags};
 use crate::error::{into_err, Result};
 use crate::protocol::key::JsPublicKey;
 use crate::protocol::types::JsTimestamp;
@@ -45,16 +45,15 @@ impl JsEventId {
         pubkey: &JsPublicKey,
         created_at: &JsTimestamp,
         kind: &JsKind,
-        tags: Vec<JsTag>,
+        tags: &JsTags,
         content: &str,
     ) -> Self {
-        let tags: Vec<Tag> = tags.into_iter().map(|t| t.into()).collect();
         Self {
             inner: EventId::new(
                 pubkey.deref(),
                 created_at.deref(),
                 kind.deref(),
-                &tags,
+                tags.deref(),
                 content,
             ),
         }
