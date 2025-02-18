@@ -862,4 +862,41 @@ mod benches {
 
         assert!(tags.len() == 2000);
     }
+
+    #[bench]
+    pub fn tags_push(bh: &mut Bencher) {
+        let mut tags = Tags::new();
+
+        bh.iter(|| {
+            black_box(tags.push(Tag::protected()));
+        });
+    }
+
+    #[bench]
+    pub fn vec_tag_push(bh: &mut Bencher) {
+        let mut tags = Vec::new();
+
+        bh.iter(|| {
+            black_box(tags.push(Tag::protected()));
+        });
+    }
+
+    #[bench]
+    pub fn tags_pop(bh: &mut Bencher) {
+        let mut tags = generate_tags(4000);
+
+        bh.iter(|| {
+            black_box(tags.pop());
+        });
+    }
+
+    #[bench]
+    pub fn vec_tag_pop(bh: &mut Bencher) {
+        let tags = generate_tags(4000);
+        let mut tags = tags.to_vec();
+
+        bh.iter(|| {
+            black_box(tags.pop());
+        });
+    }
 }
