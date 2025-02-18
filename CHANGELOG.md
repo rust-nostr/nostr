@@ -38,6 +38,9 @@
 * nostr: split `NostrURI` into `ToNostrUri` and `FromNostrUri` traits ([Yuki Kishimoto])
 * nostr: replaced generic parameter `S: AsRef<str>` with `&str` in `Coordinate::parse` and `Coordinate::from_kpi_format` ([Yuki Kishimoto])
 * nostr: change `EventId::new` signature ([Yuki Kishimoto])
+* nostr: change `EventBuilder::git_repository_announcement` constructor signature ([Yuki Kishimoto])
+* nostr: change `EventBuilder::git_issue` constructor signature ([Yuki Kishimoto])
+* nostr: change `EventBuilder::git_patch` constructor signature ([Yuki Kishimoto])
 
 ### Changed
 
@@ -74,6 +77,10 @@
 * ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])
 
 ### Fixed
+
+* nostr: fix `EventBuilder::git_repository_announcement` constructor according to last NIP34 rev ([Yuki Kishimoto])
+* nostr: fix `EventBuilder::git_issue` constructor according to last NIP34 rev ([Yuki Kishimoto])
+* nostr: fix `EventBuilder::git_patch` constructor according to last NIP34 rev ([Yuki Kishimoto])
 
 ### Removed
 

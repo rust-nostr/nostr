@@ -3,7 +3,9 @@
 // Distributed under the MIT software license
 
 use core::ops::Deref;
+use core::str::FromStr;
 
+use nostr::hashes::sha1::Hash as Sha1Hash;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -68,7 +70,7 @@ impl From<JsGitRepositoryAnnouncement> for GitRepositoryAnnouncement {
                 .into_iter()
                 .filter_map(|u| RelayUrl::parse(&u).ok())
                 .collect(),
-            euc: value.euc,
+            euc: value.euc.and_then(|euc| Sha1Hash::from_str(&euc).ok()),
             maintainers: value.maintainers.into_iter().map(|p| *p).collect(),
         }
     }
@@ -77,15 +79,12 @@ impl From<JsGitRepositoryAnnouncement> for GitRepositoryAnnouncement {
 /// Git Issue
 #[wasm_bindgen(js_name = GitIssue)]
 pub struct JsGitIssue {
-    /// The issue content (markdown)
-    #[wasm_bindgen(getter_with_clone)]
-    pub content: String,
     /// The repository address
     #[wasm_bindgen(getter_with_clone)]
     pub repository: JsCoordinate,
-    /// Public keys (owners or other users)
+    /// The issue content (markdown)
     #[wasm_bindgen(getter_with_clone)]
-    pub public_keys: Vec<JsPublicKey>,
+    pub content: String,
     /// Subject
     #[wasm_bindgen(getter_with_clone)]
     pub subject: Option<String>,
@@ -97,9 +96,8 @@ pub struct JsGitIssue {
 impl From<JsGitIssue> for GitIssue {
     fn from(value: JsGitIssue) -> Self {
         Self {
-            content: value.content,
             repository: value.repository.deref().clone(),
-            public_keys: value.public_keys.into_iter().map(|p| *p).collect(),
+            content: value.content,
             subject: value.subject,
             labels: value.labels,
         }

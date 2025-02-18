@@ -336,7 +336,9 @@ impl From<tag::TagStandard> for TagStandard {
                 hash: hash.to_string(),
             },
             tag::TagStandard::GitEarliestUniqueCommitId(commit) => {
-                Self::GitEarliestUniqueCommitId { commit }
+                Self::GitEarliestUniqueCommitId {
+                    commit: commit.to_string(),
+                }
             }
             tag::TagStandard::GitMaintainers(public_keys) => Self::GitMaintainers {
                 public_keys: public_keys
@@ -571,9 +573,9 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 Ok(Self::GitClone(parsed_urls))
             }
             TagStandard::GitCommit { hash } => Ok(Self::GitCommit(Sha1Hash::from_str(&hash)?)),
-            TagStandard::GitEarliestUniqueCommitId { commit } => {
-                Ok(Self::GitEarliestUniqueCommitId(commit))
-            }
+            TagStandard::GitEarliestUniqueCommitId { commit } => Ok(
+                Self::GitEarliestUniqueCommitId(Sha1Hash::from_str(&commit)?),
+            ),
             TagStandard::GitMaintainers { public_keys } => Ok(Self::GitMaintainers(
                 public_keys.into_iter().map(|p| **p).collect(),
             )),

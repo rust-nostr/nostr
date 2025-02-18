@@ -12,7 +12,6 @@ use nostr::{RelayUrl, Url};
 use uniffi::{Enum, Record};
 
 use crate::error::NostrSdkError;
-use crate::protocol::event::EventId;
 use crate::protocol::key::PublicKey;
 use crate::protocol::nips::nip01::Coordinate;
 use crate::protocol::types::Timestamp;
@@ -67,7 +66,7 @@ impl From<GitRepositoryAnnouncement> for nip34::GitRepositoryAnnouncement {
                 .into_iter()
                 .filter_map(|u| RelayUrl::parse(&u).ok())
                 .collect(),
-            euc: value.euc,
+            euc: value.euc.and_then(|euc| Sha1Hash::from_str(&euc).ok()),
             maintainers: value.maintainers.into_iter().map(|p| **p).collect(),
         }
     }
@@ -76,12 +75,10 @@ impl From<GitRepositoryAnnouncement> for nip34::GitRepositoryAnnouncement {
 /// Git Issue
 #[derive(Record)]
 pub struct GitIssue {
-    /// The issue content (markdown)
-    pub content: String,
     /// The repository address
     pub repository: Arc<Coordinate>,
-    /// Public keys (owners or other users)
-    pub public_keys: Vec<Arc<PublicKey>>,
+    /// The issue content (markdown)
+    pub content: String,
     /// Subject
     pub subject: Option<String>,
     /// Labels
@@ -91,9 +88,8 @@ pub struct GitIssue {
 impl From<GitIssue> for nip34::GitIssue {
     fn from(value: GitIssue) -> Self {
         Self {
-            content: value.content,
             repository: value.repository.as_ref().deref().clone(),
-            public_keys: value.public_keys.into_iter().map(|p| **p).collect(),
+            content: value.content,
             subject: value.subject,
             labels: value.labels,
         }
@@ -189,16 +185,14 @@ impl TryFrom<GitPatchContent> for nip34::GitPatchContent {
 /// Git Patch
 #[derive(Record)]
 pub struct GitPatch {
-    /// Repository ID
-    pub repo_id: String,
+    /// Repository
+    pub repository: Arc<Coordinate>,
     /// Patch
     pub content: GitPatchContent,
-    /// Maintainers
-    pub maintainers: Vec<Arc<PublicKey>>,
     /// Earliest unique commit ID of repo
     pub euc: String,
-    /// Root proposal ID
-    pub root_proposal_id: Option<Arc<EventId>>,
+    /// Labels
+    pub labels: Vec<String>,
 }
 
 impl TryFrom<GitPatch> for nip34::GitPatch {
@@ -206,11 +200,10 @@ impl TryFrom<GitPatch> for nip34::GitPatch {
 
     fn try_from(value: GitPatch) -> Result<Self, Self::Error> {
         Ok(Self {
-            repo_id: value.repo_id,
+            repository: value.repository.as_ref().deref().clone(),
             content: value.content.try_into()?,
-            maintainers: value.maintainers.into_iter().map(|p| **p).collect(),
-            euc: value.euc,
-            root_proposal_id: value.root_proposal_id.map(|e| **e),
+            euc: Sha1Hash::from_str(&value.euc)?,
+            labels: value.labels,
         })
     }
 }
