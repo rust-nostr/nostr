@@ -151,6 +151,10 @@ pub struct EventBuilder {
     ///
     /// If enabled, the `p` tags that match the signing keypair will not be discarded.
     pub allow_self_tagging: bool,
+    /// Deduplicate tags
+    ///
+    /// For more details check [`Tags::dedup`].
+    pub dedup_tags: bool,
 }
 
 impl EventBuilder {
@@ -167,6 +171,7 @@ impl EventBuilder {
             custom_created_at: None,
             pow: None,
             allow_self_tagging: false,
+            dedup_tags: false,
         }
     }
 
@@ -215,6 +220,14 @@ impl EventBuilder {
         self
     }
 
+    /// Deduplicate tags
+    ///
+    /// For more details check [`Tags::dedup`].
+    pub fn dedup_tags(mut self) -> Self {
+        self.dedup_tags = true;
+        self
+    }
+
     /// Build an unsigned event
     ///
     /// By default, this method removes any `p` tags that match the author's public key.
@@ -237,6 +250,11 @@ impl EventBuilder {
 
                 true // No `p` tag or author public key not match
             });
+        }
+
+        // Deduplicate tags
+        if self.dedup_tags {
+            self.tags.dedup();
         }
 
         // Check if should be POW
@@ -481,11 +499,8 @@ impl EventBuilder {
                 .cloned(),
         );
 
-        // Dedup tags
-        tags.dedup();
-
         // Compose event
-        Self::new(Kind::TextNote, content).tags(tags)
+        Self::new(Kind::TextNote, content).tags(tags).dedup_tags()
     }
 
     /// Comment
@@ -577,11 +592,8 @@ impl EventBuilder {
         // Add others `p` tags of comment_to event
         extend_nip22_p_tags(comment_to, &mut tags);
 
-        // Dedup tags
-        tags.dedup();
-
         // Compose event
-        Self::new(Kind::Comment, content).tags(tags)
+        Self::new(Kind::Comment, content).tags(tags).dedup_tags()
     }
 
     /// Long-form text note (generally referred to as "articles" or "blog posts").
