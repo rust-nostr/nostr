@@ -21,6 +21,7 @@ pub mod duration;
 pub mod error;
 pub mod logger;
 pub mod nwc;
+pub mod policy;
 pub mod protocol;
 pub mod relay;
 pub mod signer;

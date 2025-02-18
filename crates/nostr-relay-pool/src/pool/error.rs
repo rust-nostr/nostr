@@ -8,11 +8,14 @@ use std::fmt;
 use nostr::types::url;
 use nostr_database::DatabaseError;
 
+use crate::__private::SharedStateError;
 use crate::relay;
 
 /// Relay Pool error
 #[derive(Debug)]
 pub enum Error {
+    /// Shared state error
+    SharedState(SharedStateError),
     /// Url parse error
     RelayUrl(url::Error),
     /// Relay error
@@ -47,6 +50,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::SharedState(e) => write!(f, "{e}"),
             Self::RelayUrl(e) => write!(f, "{e}"),
             Self::Relay(e) => write!(f, "{e}"),
             Self::Database(e) => write!(f, "{e}"),
@@ -60,6 +64,12 @@ impl fmt::Display for Error {
             Self::RelayNotFound => write!(f, "relay not found"),
             Self::Shutdown => write!(f, "relay pool is shutdown"),
         }
+    }
+}
+
+impl From<SharedStateError> for Error {
+    fn from(e: SharedStateError) -> Self {
+        Self::SharedState(e)
     }
 }
 

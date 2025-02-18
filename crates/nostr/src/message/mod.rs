@@ -106,6 +106,12 @@ impl SubscriptionId {
         // Cut the hash and encode to hex
         Self::new(hex::encode(&hash[..16]))
     }
+
+    /// Get as `&str`
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
 }
 
 impl fmt::Display for SubscriptionId {

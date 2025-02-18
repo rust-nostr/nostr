@@ -85,7 +85,7 @@ impl Client {
             builder.database,
             builder.websocket_transport,
             builder.signer,
-            builder.opts.filtering_mode,
+            builder.admit_policy,
             builder.opts.nip42_auto_authentication,
             builder.opts.min_pow_difficulty,
         );

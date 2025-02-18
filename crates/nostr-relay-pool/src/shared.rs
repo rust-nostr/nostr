@@ -7,7 +7,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use lru::LruCache;
 use nostr::prelude::IntoNostrSigner;
@@ -15,6 +15,7 @@ use nostr::{EventId, NostrSigner};
 use nostr_database::{IntoNostrDatabase, MemoryDatabase, NostrDatabase};
 use tokio::sync::RwLock;
 
+use crate::policy::AdmitPolicy;
 use crate::transport::websocket::{
     DefaultWebsocketTransport, IntoWebSocketTransport, WebSocketTransport,
 };
@@ -27,6 +28,8 @@ const MAX_VERIFICATION_CACHE_SIZE: usize = 128_000;
 #[derive(Debug)]
 pub enum SharedStateError {
     SignerNotConfigured,
+    /// Admit policy already set
+    AdmitPolicyAlreadySet,
     MutexPoisoned,
 }
 
@@ -36,6 +39,7 @@ impl fmt::Display for SharedStateError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::SignerNotConfigured => write!(f, "signer not configured"),
+            Self::AdmitPolicyAlreadySet => write!(f, "admission policy already set"),
             Self::MutexPoisoned => write!(f, "mutex poisoned"),
         }
     }
@@ -51,6 +55,7 @@ pub struct SharedState {
     min_pow_difficulty: Arc<AtomicU8>,
     pub(crate) filtering: RelayFiltering,
     verification_cache: Arc<Mutex<LruCache<u64, ()>>>,
+    pub(crate) admit_policy: OnceLock<Arc<dyn AdmitPolicy>>,
     // TODO: add a semaphore to limit number of concurrent websocket connections attempts?
 }
 
@@ -59,6 +64,7 @@ impl Default for SharedState {
         Self::new(
             MemoryDatabase::new().into_nostr_database(),
             DefaultWebsocketTransport.into_transport(),
+            None,
             None,
             RelayFilteringMode::default(),
             true,
@@ -72,6 +78,7 @@ impl SharedState {
         database: Arc<dyn NostrDatabase>,
         transport: Arc<dyn WebSocketTransport>,
         signer: Option<Arc<dyn NostrSigner>>,
+        admit_policy: Option<Arc<dyn AdmitPolicy>>,
         filtering_mode: RelayFilteringMode,
         nip42_auto_authentication: bool,
         min_pow_difficulty: u8,
@@ -88,6 +95,10 @@ impl SharedState {
             filtering: RelayFiltering::new(filtering_mode),
             min_pow_difficulty: Arc::new(AtomicU8::new(min_pow_difficulty)),
             verification_cache: Arc::new(Mutex::new(LruCache::new(max_verification_cache_size))),
+            admit_policy: match admit_policy {
+                Some(policy) => OnceLock::from(policy),
+                None => OnceLock::new(),
+            },
         }
     }
 
@@ -98,6 +109,17 @@ impl SharedState {
     {
         self.transport = transport.into_transport();
         self
+    }
+
+    /// Set an admission policy
+    #[inline]
+    pub(crate) fn set_admit_policy<T>(&self, policy: T) -> Result<(), SharedStateError>
+    where
+        T: AdmitPolicy + 'static,
+    {
+        self.admit_policy
+            .set(Arc::new(policy))
+            .map_err(|_| SharedStateError::AdmitPolicyAlreadySet)
     }
 
     /// Check if auto authentication to relays is enabled

@@ -40,6 +40,7 @@ pub use self::options::{
 };
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
+use crate::policy::AdmitPolicy;
 use crate::shared::SharedState;
 use crate::transport::websocket::{BoxSink, BoxStream};
 
@@ -178,6 +179,16 @@ impl Relay {
         Self {
             inner: AtomicDestructor::new(InnerRelay::new(url, state, opts)),
         }
+    }
+
+    /// Set an admission policy
+    #[inline]
+    pub fn set_admit_policy<T>(&self, policy: T) -> Result<(), Error>
+    where
+        T: AdmitPolicy + 'static,
+    {
+        self.inner.state.set_admit_policy(policy)?;
+        Ok(())
     }
 
     /// Get relay url

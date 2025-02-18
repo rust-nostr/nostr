@@ -25,6 +25,7 @@ pub use self::error::Error;
 use self::inner::{InnerRelayPool, Relays};
 pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
+use crate::policy::AdmitPolicy;
 use crate::relay::flags::FlagCheck;
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
 use crate::relay::{Relay, RelayFiltering};
@@ -103,6 +104,16 @@ impl RelayPool {
         Self {
             inner: AtomicDestructor::new(InnerRelayPool::new(opts, state)),
         }
+    }
+
+    /// Set an admission policy
+    #[inline]
+    pub fn set_admit_policy<T>(&self, policy: T) -> Result<(), Error>
+    where
+        T: AdmitPolicy + 'static,
+    {
+        self.inner.state.set_admit_policy(policy)?;
+        Ok(())
     }
 
     /// Completely shutdown pool

@@ -34,6 +34,7 @@ use super::options::{RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, Syn
 use super::ping::PingTracker;
 use super::stats::RelayConnectionStats;
 use super::{Error, Reconciliation, RelayNotification, RelayStatus, SubscriptionAutoClosedReason};
+use crate::policy::AdmitStatus;
 use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
@@ -1046,6 +1047,16 @@ impl InnerRelay {
                 .state
                 .database()
                 .has_coordinate_been_deleted(&coordinate, &event.created_at)
+                .await?
+            {
+                return Ok(None);
+            }
+        }
+
+        // Check event admission policy
+        if let Some(policy) = self.state.admit_policy.get() {
+            if let AdmitStatus::Rejected = policy
+                .admit_event(&self.url, &subscription_id, &event)
                 .await?
             {
                 return Ok(None);

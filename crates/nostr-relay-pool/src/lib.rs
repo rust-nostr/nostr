@@ -18,6 +18,7 @@ extern crate test;
 
 pub use async_wsocket::ConnectionMode;
 
+pub mod policy;
 pub mod pool;
 pub mod prelude;
 pub mod relay;

@@ -81,6 +81,7 @@
 * nostr: add `EventBuilder::dedup_tags` method ([Yuki Kishimoto])
 * nostr: impl `FromIterator<Tag>` for `Tags` ([Yuki Kishimoto])
 * pool: event verification cache ([Yuki Kishimoto])
+* pool: add `AdmitPolicy` trait ([Yuki Kishimoto])
 * ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])
 
 ### Fixed

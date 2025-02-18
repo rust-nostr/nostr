@@ -10,6 +10,7 @@ use wasm_bindgen::prelude::*;
 use super::options::JsOptions;
 use super::{JsClient, JsNostrSigner};
 use crate::database::JsNostrDatabase;
+use crate::policy::{FFI2RustAdmitPolicy, JsAdmitPolicy};
 
 #[wasm_bindgen(js_name = ClientBuilder)]
 pub struct JsClientBuilder {
@@ -38,6 +39,13 @@ impl JsClientBuilder {
 
     pub fn database(self, database: &JsNostrDatabase) -> Self {
         self.inner.database(database.deref().clone()).into()
+    }
+
+    #[wasm_bindgen(js_name = admitPolicy)]
+    pub fn admit_policy(self, policy: JsAdmitPolicy) -> Self {
+        self.inner
+            .admit_policy(FFI2RustAdmitPolicy { inner: policy })
+            .into()
     }
 
     pub fn opts(self, opts: &JsOptions) -> Self {
