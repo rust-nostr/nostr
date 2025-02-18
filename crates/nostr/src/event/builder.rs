@@ -514,6 +514,14 @@ impl EventBuilder {
 
     /// Comment
     ///
+    /// This adds only that most significant tags, like:
+    /// - `p` tag with the author of the `comment_to` event;
+    /// - the `a`/`e` and `k` tags of the `comment_to` event;
+    /// - `P` tag with the author of the `root` event;
+    /// - the `A`/`E` and `K` tags of the `root` event.
+    ///
+    /// Any additional necessary tag can be added with [`EventBuilder::tag`] or [`EventBuilder::tags`].
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/22.md>
     pub fn comment<S>(
         content: S,
@@ -531,6 +539,39 @@ impl EventBuilder {
         // The added tags will be at least 3
         let mut tags: Vec<Tag> = Vec::with_capacity(3);
 
+        // Tag the author of the event you are replying to.
+        // This is the most significant public key since it's the one you are replying to, so put it first.
+        tags.push(Tag::public_key(comment_to.pubkey));
+
+        // Add `k` tag of event kind
+        tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
+            kind: comment_to.kind,
+            uppercase: false,
+        }));
+
+        // If event has coordinate, add `a` tag otherwise push `e` tag
+        match comment_to.coordinate() {
+            Some(coordinate) => {
+                tags.push(Tag::from_standardized_without_cell(
+                    TagStandard::Coordinate {
+                        coordinate: coordinate.into_owned(),
+                        relay_url: relay_url.clone(),
+                        uppercase: false, // <--- Same as root event but lowercase
+                    },
+                ));
+            }
+            None => {
+                // Add `e` tag of event author
+                tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
+                    event_id: comment_to.id,
+                    relay_url: relay_url.clone(),
+                    marker: None,
+                    public_key: Some(comment_to.pubkey),
+                    uppercase: false,
+                }));
+            }
+        }
+
         // Add `A`, `E` and `K` tag of **root** event
         if let Some(root) = root {
             // If event has coordinate, add it to tags otherwise push the event ID
@@ -539,7 +580,7 @@ impl EventBuilder {
                     tags.push(Tag::from_standardized_without_cell(
                         TagStandard::Coordinate {
                             coordinate: coordinate.into_owned(),
-                            relay_url: relay_url.clone(),
+                            relay_url,
                             uppercase: true,
                         },
                     ));
@@ -548,7 +589,7 @@ impl EventBuilder {
                     // ID and author
                     tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
                         event_id: root.id,
-                        relay_url: relay_url.clone(),
+                        relay_url,
                         marker: None,
                         public_key: Some(root.pubkey),
                         uppercase: true,
@@ -556,53 +597,25 @@ impl EventBuilder {
                 }
             }
 
-            // Add `p` tag of `root` event
-            tags.push(Tag::public_key(root.pubkey));
+            // Add `P` tag of the root event
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::PublicKey {
+                    public_key: root.pubkey,
+                    relay_url: None,
+                    alias: None,
+                    uppercase: true,
+                },
+            ));
 
-            // Kind
+            // Add `K` tag of the root event
             tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
                 kind: root.kind,
                 uppercase: true,
             }));
-
-            // Add others `p` tags
-            extend_nip22_p_tags(root, &mut tags);
         }
-
-        // Add `p` tag of `comment_to` event
-        tags.push(Tag::public_key(comment_to.pubkey));
-
-        // Add `a` tag (if event has it)
-        if let Some(coordinate) = comment_to.coordinate() {
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::Coordinate {
-                    coordinate: coordinate.into_owned(),
-                    relay_url: relay_url.clone(),
-                    uppercase: false, // <--- Same as root event but lowercase
-                },
-            ));
-        }
-
-        // Add `e` tag of event author
-        tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
-            event_id: comment_to.id,
-            relay_url,
-            marker: None,
-            public_key: Some(comment_to.pubkey),
-            uppercase: false,
-        }));
-
-        // Add `k` tag of event kind
-        tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
-            kind: comment_to.kind,
-            uppercase: false,
-        }));
-
-        // Add others `p` tags of comment_to event
-        extend_nip22_p_tags(comment_to, &mut tags);
 
         // Compose event
-        Self::new(Kind::Comment, content).tags(tags).dedup_tags()
+        Self::new(Kind::Comment, content).tags(tags)
     }
 
     /// Long-form text note (generally referred to as "articles" or "blog posts").
@@ -1736,36 +1749,6 @@ impl EventBuilder {
     }
 
     // TODO: add `torrent_comment`
-}
-
-// Extend NIP22 `p` tags
-//
-// This function filters all the `p` tags that are standardized and with lowercase tag kind.
-// Moreover, keep only the public key and the relay hint, all other fields are discarded
-//
-// <https://github.com/nostr-protocol/nips/blob/master/22.md>
-fn extend_nip22_p_tags(event: &Event, tags: &mut Vec<Tag>) {
-    tags.extend(event.tags.iter().filter_map(|t| {
-        match t.as_standardized()? {
-            TagStandard::PublicKey {
-                public_key,
-                relay_url,
-                uppercase: false,
-                ..
-            } => {
-                // Rebuild tag keeping only the public key and the relay hint
-                Some(Tag::from_standardized_without_cell(
-                    TagStandard::PublicKey {
-                        public_key: *public_key,
-                        relay_url: relay_url.clone(),
-                        alias: None,
-                        uppercase: false,
-                    },
-                ))
-            }
-            _ => None,
-        }
-    }))
 }
 
 #[cfg(test)]
