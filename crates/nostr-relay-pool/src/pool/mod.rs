@@ -28,7 +28,7 @@ pub use self::output::Output;
 use crate::policy::AdmitPolicy;
 use crate::relay::flags::FlagCheck;
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
-use crate::relay::{Relay, RelayFiltering};
+use crate::relay::Relay;
 use crate::shared::SharedState;
 use crate::stream::ReceiverStream;
 use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};
@@ -144,12 +144,6 @@ impl RelayPool {
     #[inline]
     pub fn database(&self) -> &Arc<dyn NostrDatabase> {
         self.inner.state.database()
-    }
-
-    /// Get relay filtering
-    #[inline]
-    pub fn filtering(&self) -> &RelayFiltering {
-        self.inner.state.filtering()
     }
 
     fn internal_relays_with_flag<'a>(

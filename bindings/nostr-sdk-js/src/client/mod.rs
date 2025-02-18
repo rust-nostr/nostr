@@ -26,7 +26,6 @@ use crate::protocol::key::JsPublicKey;
 use crate::protocol::message::{JsClientMessage, JsRelayMessage};
 use crate::protocol::nips::nip01::JsMetadata;
 use crate::protocol::nips::nip59::JsUnwrappedGift;
-use crate::relay::filtering::JsRelayFiltering;
 use crate::relay::options::{JsRelayOptions, JsSubscribeAutoCloseOptions, JsSyncOptions};
 use crate::relay::{JsRelay, JsRelayArray};
 use crate::signer::JsNostrSigner;
@@ -88,11 +87,6 @@ impl JsClient {
     #[wasm_bindgen(getter)]
     pub fn database(&self) -> JsNostrDatabase {
         self.inner.database().clone().into()
-    }
-
-    /// Get relay filtering
-    pub fn filtering(&self) -> JsRelayFiltering {
-        self.inner.filtering().clone().into()
     }
 
     /// Completely shutdown `Client`

@@ -28,7 +28,6 @@ use super::constants::{
     MIN_ATTEMPTS, MIN_SUCCESS_RATE, NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT,
     NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, WEBSOCKET_TX_TIMEOUT,
 };
-use super::filtering::CheckFiltering;
 use super::flags::AtomicRelayServiceFlags;
 use super::options::{RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, SyncOptions};
 use super::ping::PingTracker;
@@ -990,37 +989,11 @@ impl InnerRelay {
         // Deserialize partial event (id, pubkey and sig)
         let partial_event: PartialEvent = PartialEvent::from_raw(&event)?;
 
-        // Check filtering
-        match self
-            .state
-            .filtering()
-            .check_partial_event(&partial_event)
-            .await
-        {
-            CheckFiltering::Allow => {
-                // Nothing to do
-            }
-            CheckFiltering::EventIdBlacklisted(id) => {
-                tracing::debug!("Received event with blacklisted ID: {id}");
-                return Ok(None);
-            }
-            CheckFiltering::PublicKeyBlacklisted(pubkey) => {
-                tracing::debug!("Received event authored by blacklisted public key: {pubkey}");
-                return Ok(None);
-            }
-            CheckFiltering::PublicKeyNotInWhitelist(pubkey) => {
-                tracing::debug!("Received event authored by non-whitelisted public key: {pubkey}");
-                return Ok(None);
-            }
-        }
-
         // Check min POW
         let difficulty: u8 = self.state.minimum_pow_difficulty();
         if difficulty > 0 && !partial_event.id.check_pow(difficulty) {
             return Err(Error::PowDifficultyTooLow { min: difficulty });
         }
-
-        // TODO: check if word/hashtag is blacklisted
 
         // Check if event status
         let status: DatabaseEventStatus = self.state.database().check_id(&partial_event.id).await?;

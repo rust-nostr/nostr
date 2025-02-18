@@ -35,9 +35,7 @@ pub use self::relay::options::{
     RelayOptions, SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection, SyncOptions,
 };
 pub use self::relay::stats::RelayConnectionStats;
-pub use self::relay::{
-    Reconciliation, Relay, RelayFiltering, RelayFilteringMode, RelayNotification, RelayStatus,
-};
+pub use self::relay::{Reconciliation, Relay, RelayNotification, RelayStatus};
 
 // Not public API.
 #[doc(hidden)]

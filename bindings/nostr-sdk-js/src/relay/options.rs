@@ -7,7 +7,6 @@ use core::ops::Deref;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use super::filtering::JsRelayFilteringMode;
 use super::flags::JsRelayServiceFlags;
 use super::limits::JsRelayLimits;
 use crate::duration::JsDuration;
@@ -82,12 +81,6 @@ impl JsRelayOptions {
     /// Set custom limits
     pub fn limits(self, limits: &JsRelayLimits) -> Self {
         self.inner.limits(limits.deref().clone()).into()
-    }
-
-    /// Set filtering mode (default: blacklist)
-    #[wasm_bindgen(js_name = filteringMode)]
-    pub fn filtering_mode(self, mode: JsRelayFilteringMode) -> Self {
-        self.inner.filtering_mode(mode.into()).into()
     }
 }
 

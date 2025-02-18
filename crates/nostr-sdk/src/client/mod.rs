@@ -162,12 +162,6 @@ impl Client {
         self.pool.database()
     }
 
-    /// Get filtering
-    #[inline]
-    pub fn filtering(&self) -> &RelayFiltering {
-        self.pool.filtering()
-    }
-
     /// Reset the client
     ///
     /// This method resets the client to simplify the switch to another account.
@@ -186,7 +180,6 @@ impl Client {
         self.unsubscribe_all().await;
         self.force_remove_all_relays().await;
         self.unset_signer().await;
-        self.filtering().clear().await;
     }
 
     /// Completely shutdown client

@@ -42,6 +42,7 @@
 * nostr: change `EventBuilder::git_repository_announcement` constructor signature ([Yuki Kishimoto])
 * nostr: change `EventBuilder::git_issue` constructor signature ([Yuki Kishimoto])
 * nostr: change `EventBuilder::git_patch` constructor signature ([Yuki Kishimoto])
+* pool: drop `RelayFiltering` ([Yuki Kishimoto])
 
 ### Changed
 

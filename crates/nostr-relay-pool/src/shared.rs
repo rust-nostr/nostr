@@ -19,7 +19,6 @@ use crate::policy::AdmitPolicy;
 use crate::transport::websocket::{
     DefaultWebsocketTransport, IntoWebSocketTransport, WebSocketTransport,
 };
-use crate::{RelayFiltering, RelayFilteringMode};
 
 // LruCache pre-allocate, so keep this at a reasonable value.
 // A good value may be <= 128k, considering that stored values are the 64-bit hashes of the event IDs.
@@ -53,7 +52,6 @@ pub struct SharedState {
     signer: Arc<RwLock<Option<Arc<dyn NostrSigner>>>>,
     nip42_auto_authentication: Arc<AtomicBool>,
     min_pow_difficulty: Arc<AtomicU8>,
-    pub(crate) filtering: RelayFiltering,
     verification_cache: Arc<Mutex<LruCache<u64, ()>>>,
     pub(crate) admit_policy: OnceLock<Arc<dyn AdmitPolicy>>,
     // TODO: add a semaphore to limit number of concurrent websocket connections attempts?
@@ -66,7 +64,6 @@ impl Default for SharedState {
             DefaultWebsocketTransport.into_transport(),
             None,
             None,
-            RelayFilteringMode::default(),
             true,
             0,
         )
@@ -79,7 +76,6 @@ impl SharedState {
         transport: Arc<dyn WebSocketTransport>,
         signer: Option<Arc<dyn NostrSigner>>,
         admit_policy: Option<Arc<dyn AdmitPolicy>>,
-        filtering_mode: RelayFilteringMode,
         nip42_auto_authentication: bool,
         min_pow_difficulty: u8,
     ) -> Self {
@@ -92,7 +88,6 @@ impl SharedState {
             transport,
             signer: Arc::new(RwLock::new(signer)),
             nip42_auto_authentication: Arc::new(AtomicBool::new(nip42_auto_authentication)),
-            filtering: RelayFiltering::new(filtering_mode),
             min_pow_difficulty: Arc::new(AtomicU8::new(min_pow_difficulty)),
             verification_cache: Arc::new(Mutex::new(LruCache::new(max_verification_cache_size))),
             admit_policy: match admit_policy {
@@ -184,12 +179,6 @@ impl SharedState {
     pub async fn unset_signer(&self) {
         let mut s = self.signer.write().await;
         *s = None;
-    }
-
-    /// Get relay filtering
-    #[inline]
-    pub fn filtering(&self) -> &RelayFiltering {
-        &self.filtering
     }
 
     pub(crate) fn verified(&self, id: &EventId) -> Result<bool, SharedStateError> {

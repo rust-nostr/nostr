@@ -31,7 +31,7 @@ use crate::protocol::nips::nip01::Metadata;
 use crate::protocol::nips::nip59::UnwrappedGift;
 use crate::protocol::signer::NostrSigner;
 use crate::relay::options::{SubscribeAutoCloseOptions, SyncOptions};
-use crate::relay::{Relay, RelayFiltering, RelayOptions};
+use crate::relay::{Relay, RelayOptions};
 
 #[derive(Object)]
 pub struct Client {
@@ -77,11 +77,6 @@ impl Client {
 
     pub fn database(&self) -> NostrDatabase {
         self.inner.database().clone().into()
-    }
-
-    /// Get filtering
-    pub fn filtering(&self) -> RelayFiltering {
-        self.inner.filtering().clone().into()
     }
 
     pub async fn shutdown(&self) {

@@ -23,7 +23,6 @@ pub struct Options {
     pub(super) connection: Connection,
     pub(super) relay_limits: RelayLimits,
     pub(super) max_avg_latency: Option<Duration>,
-    pub(super) filtering_mode: RelayFilteringMode,
     pub(super) pool: RelayPoolOptions,
 }
 
@@ -38,7 +37,6 @@ impl Default for Options {
             connection: Connection::default(),
             relay_limits: RelayLimits::default(),
             max_avg_latency: None,
-            filtering_mode: RelayFilteringMode::default(),
             pool: RelayPoolOptions::default(),
         }
     }
@@ -110,13 +108,6 @@ impl Options {
     #[inline]
     pub fn max_avg_latency(mut self, max: Duration) -> Self {
         self.max_avg_latency = Some(max);
-        self
-    }
-
-    /// Relay filtering mode (default: blacklist)
-    #[inline]
-    pub fn filtering_mode(mut self, mode: RelayFilteringMode) -> Self {
-        self.filtering_mode = mode;
         self
     }
 
