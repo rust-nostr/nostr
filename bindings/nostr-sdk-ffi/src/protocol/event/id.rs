@@ -3,15 +3,14 @@
 // Distributed under the MIT software license
 
 use std::ops::Deref;
-use std::sync::Arc;
 
 use nostr::nips::nip19::ToBech32;
 use nostr::nips::nip21::ToNostrUri;
 use uniffi::Object;
 
-use super::Kind;
+use super::{Kind, Tags};
 use crate::error::Result;
-use crate::protocol::event::{PublicKey, Tag, Timestamp};
+use crate::protocol::event::{PublicKey, Timestamp};
 
 #[derive(Debug, PartialEq, Eq, Hash, Object)]
 #[uniffi::export(Debug, Eq, Hash)]
@@ -40,19 +39,18 @@ impl EventId {
         public_key: &PublicKey,
         created_at: &Timestamp,
         kind: &Kind,
-        tags: &[Arc<Tag>],
+        tags: &Tags,
         content: &str,
-    ) -> Result<Self> {
-        let tags: Vec<nostr::Tag> = tags.iter().map(|t| t.as_ref().deref().clone()).collect();
-        Ok(Self {
+    ) -> Self {
+        Self {
             inner: nostr::EventId::new(
                 public_key.deref(),
                 created_at.deref(),
                 kind.deref(),
-                &tags,
+                tags.deref(),
                 content,
             ),
-        })
+        }
     }
 
     /// Try to parse event ID from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri

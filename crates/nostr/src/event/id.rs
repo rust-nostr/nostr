@@ -14,7 +14,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 
 use super::error::Error;
-use super::{Kind, Tag};
+use super::{Kind, Tag, Tags};
 use crate::nips::nip13;
 use crate::nips::nip19::FromBech32;
 use crate::nips::nip21::FromNostrUri;
@@ -44,7 +44,7 @@ impl EventId {
         public_key: &PublicKey,
         created_at: &Timestamp,
         kind: &Kind,
-        tags: &[Tag],
+        tags: &Tags,
         content: &str,
     ) -> Self {
         let json: Value = json!([0, public_key, created_at, kind, tags, content]);

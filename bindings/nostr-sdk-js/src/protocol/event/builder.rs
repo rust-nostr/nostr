@@ -84,6 +84,13 @@ impl JsEventBuilder {
         self.inner.allow_self_tagging().into()
     }
 
+    /// Deduplicate tags
+    ///
+    /// For more details check [`Tags::dedup`].
+    pub fn dedup_tags(self) -> Self {
+        self.inner.dedup_tags().into()
+    }
+
     /// Build, sign and return event
     ///
     /// Check [`EventBuilder::build`] to learn more.

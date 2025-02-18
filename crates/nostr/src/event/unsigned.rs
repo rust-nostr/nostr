@@ -74,7 +74,7 @@ impl UnsignedEvent {
             &self.pubkey,
             &self.created_at,
             &self.kind,
-            self.tags.as_slice(),
+            &self.tags,
             &self.content,
         )
     }

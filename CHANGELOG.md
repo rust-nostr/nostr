@@ -37,6 +37,7 @@
 * nostr: change `TagStandard::Relays` variant inner value from `Vec<Url>` to `Vec<RelayUrl>` ([Yuki Kishimoto])
 * nostr: split `NostrURI` into `ToNostrUri` and `FromNostrUri` traits ([Yuki Kishimoto])
 * nostr: replaced generic parameter `S: AsRef<str>` with `&str` in `Coordinate::parse` and `Coordinate::from_kpi_format` ([Yuki Kishimoto])
+* nostr: change `EventId::new` signature ([Yuki Kishimoto])
 
 ### Changed
 
@@ -68,6 +69,7 @@
 * nostr: add `Nip19Coordinate` struct ([Yuki Kishimoto])
 * nostr: add `Coordinate::verify` method ([Yuki Kishimoto])
 * nostr: add `TagStandard::Client` variant ([Yuki Kishimoto])
+* nostr: add `EventBuilder::dedup_tags` method ([Yuki Kishimoto])
 * pool: event verification cache ([Yuki Kishimoto])
 * ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])
 

@@ -95,6 +95,15 @@ impl EventBuilder {
         builder
     }
 
+    /// Deduplicate tags
+    ///
+    /// For more details check [`Tags::dedup`].
+    pub fn dedup_tags(&self) -> Self {
+        let mut builder = self.clone();
+        builder.inner = builder.inner.dedup_tags();
+        builder
+    }
+
     /// Build, sign and return [`Event`]
     ///
     /// Check [`EventBuilder::build`] to learn more.
