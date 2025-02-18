@@ -141,7 +141,7 @@ pub struct EventBuilder {
     // These if changed may break the previously constructed events
     // (i.e., change the content of a NIP46 event or of a NIP59 seal).
     kind: Kind,
-    tags: Vec<Tag>,
+    tags: Tags,
     content: String,
     /// Custom timestamp
     pub custom_created_at: Option<Timestamp>,
@@ -162,7 +162,7 @@ impl EventBuilder {
     {
         Self {
             kind,
-            tags: Vec::new(),
+            tags: Tags::new(),
             content: content.into(),
             custom_created_at: None,
             pow: None,
@@ -219,16 +219,14 @@ impl EventBuilder {
     ///
     /// By default, this method removes any `p` tags that match the author's public key.
     /// To allow self-tagging, call [`EventBuilder::allow_self_tagging`] first.
-    pub fn build_with_ctx<T>(self, supplier: &T, public_key: PublicKey) -> UnsignedEvent
+    pub fn build_with_ctx<T>(mut self, supplier: &T, public_key: PublicKey) -> UnsignedEvent
     where
         T: TimeSupplier,
     {
-        let mut tags: Vec<Tag> = self.tags;
-
         // If self-tagging isn't allowed, discard all `p` tags that match the event author.
         if !self.allow_self_tagging {
             let public_key_hex: String = public_key.to_hex();
-            tags.retain(|t| {
+            self.tags.retain(|t| {
                 if t.kind() == TagKind::p() {
                     if let Some(content) = t.content() {
                         if content == public_key_hex {
@@ -246,18 +244,21 @@ impl EventBuilder {
             Some(difficulty) if difficulty > 0 => {
                 let mut nonce: u128 = 0;
 
-                tags.reserve_exact(1);
-
                 loop {
                     nonce += 1;
 
-                    tags.push(Tag::pow(nonce, difficulty));
+                    self.tags.push(Tag::pow(nonce, difficulty));
 
                     let created_at: Timestamp = self
                         .custom_created_at
                         .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
-                    let id: EventId =
-                        EventId::new(&public_key, &created_at, &self.kind, &tags, &self.content);
+                    let id: EventId = EventId::new(
+                        &public_key,
+                        &created_at,
+                        &self.kind,
+                        &self.tags,
+                        &self.content,
+                    );
 
                     if id.check_pow(difficulty) {
                         return UnsignedEvent {
@@ -265,12 +266,12 @@ impl EventBuilder {
                             pubkey: public_key,
                             created_at,
                             kind: self.kind,
-                            tags: Tags::from_list(tags),
+                            tags: self.tags,
                             content: self.content,
                         };
                     }
 
-                    tags.pop();
+                    self.tags.pop();
                 }
             }
             // No POW difficulty set OR difficulty == 0
@@ -282,7 +283,7 @@ impl EventBuilder {
                         .custom_created_at
                         .unwrap_or_else(|| Timestamp::now_with_supplier(supplier)),
                     kind: self.kind,
-                    tags: Tags::from_list(tags),
+                    tags: self.tags,
                     content: self.content,
                 };
                 unsigned.ensure_id();
