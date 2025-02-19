@@ -32,6 +32,8 @@ use crate::{
     Alphabet, Event, ImageDimensions, JsonUtil, Kind, PublicKey, SingleLetterTag, Timestamp,
 };
 
+const ALL_RELAYS: &str = "ALL_RELAYS";
+
 /// Standardized tag
 #[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -135,6 +137,10 @@ pub enum TagStandard {
     },
     Relay(RelayUrl),
     Relays(Vec<RelayUrl>),
+    /// All relays tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
+    AllRelays,
     /// Proof of Work
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
@@ -374,7 +380,13 @@ impl TagStandard {
                     character: Alphabet::U,
                     uppercase: false,
                 }) => Ok(Self::AbsoluteURL(Url::parse(tag_1)?)),
-                TagKind::Relay => Ok(Self::Relay(RelayUrl::parse(tag_1)?)),
+                TagKind::Relay => {
+                    if tag_1 == ALL_RELAYS {
+                        Ok(Self::AllRelays)
+                    } else {
+                        Ok(Self::Relay(RelayUrl::parse(tag_1)?))
+                    }
+                }
                 TagKind::Expiration => Ok(Self::Expiration(Timestamp::from_str(tag_1)?)),
                 TagKind::Subject => Ok(Self::Subject(tag_1.to_string())),
                 TagKind::Challenge => Ok(Self::Challenge(tag_1.to_string())),
@@ -568,7 +580,7 @@ impl TagStandard {
                 character: Alphabet::K,
                 uppercase: *uppercase,
             }),
-            Self::Relay(..) => TagKind::Relay,
+            Self::Relay(..) | Self::AllRelays => TagKind::Relay,
             Self::POW { .. } => TagKind::Nonce,
             Self::Client { .. } => TagKind::Client,
             Self::Delegation { .. } => TagKind::Delegation,
@@ -790,6 +802,7 @@ impl From<TagStandard> for Vec<String> {
             }
             TagStandard::Kind { kind, .. } => vec![tag_kind, kind.to_string()],
             TagStandard::Relay(url) => vec![tag_kind, url.to_string()],
+            TagStandard::AllRelays => vec![tag_kind, ALL_RELAYS.to_string()],
             TagStandard::POW { nonce, difficulty } => {
                 vec![tag_kind, nonce.to_string(), difficulty.to_string()]
             }
@@ -1798,6 +1811,13 @@ mod tests {
         );
 
         assert_eq!(
+            vec!["relay", "wss://relay.damus.io"],
+            TagStandard::Relay(RelayUrl::parse("wss://relay.damus.io").unwrap()).to_vec()
+        );
+
+        assert_eq!(vec!["relay", "ALL_RELAYS"], TagStandard::AllRelays.to_vec());
+
+        assert_eq!(
             vec![
                 "delegation",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
@@ -2393,6 +2413,16 @@ mod tests {
             TagStandard::Delegation { delegator: PublicKey::from_str(
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
             ).unwrap(), conditions: Conditions::from_str("kind=1").unwrap(), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8").unwrap() }
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["relay", "wss://relay.damus.io"]).unwrap(),
+            TagStandard::Relay(RelayUrl::parse("wss://relay.damus.io").unwrap())
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["relay", "ALL_RELAYS"]).unwrap(),
+            TagStandard::AllRelays
         );
 
         assert_eq!(

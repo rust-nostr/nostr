@@ -141,6 +141,10 @@ pub enum TagStandard {
     RelayUrl {
         relay_url: String,
     },
+    /// All relays tag
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
+    AllRelays,
     POW {
         nonce: String,
         difficulty: u8,
@@ -415,6 +419,7 @@ impl From<tag::TagStandard> for TagStandard {
             tag::TagStandard::Relay(url) => Self::RelayUrl {
                 relay_url: url.to_string(),
             },
+            tag::TagStandard::AllRelays => Self::AllRelays,
             tag::TagStandard::POW { nonce, difficulty } => Self::POW {
                 nonce: nonce.to_string(),
                 difficulty,
@@ -656,6 +661,7 @@ impl TryFrom<TagStandard> for tag::TagStandard {
                 uppercase,
             }),
             TagStandard::RelayUrl { relay_url } => Ok(Self::Relay(RelayUrl::parse(&relay_url)?)),
+            TagStandard::AllRelays => Ok(Self::AllRelays),
             TagStandard::POW { nonce, difficulty } => Ok(Self::POW {
                 nonce: nonce.parse()?,
                 difficulty,

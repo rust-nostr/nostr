@@ -151,11 +151,12 @@ The following crate feature flags are available:
 |     ❌     | [52 - Calendar Events](https://github.com/nostr-protocol/nips/blob/master/52.md)                                |
 |     ✅     | [53 - Live Activities](https://github.com/nostr-protocol/nips/blob/master/53.md)                                |
 |     ❌     | [54 - Wiki](https://github.com/nostr-protocol/nips/blob/master/54.md)                                           |
-|     -     | [55 - Android Signer Application](https://github.com/nostr-protocol/nips/blob/master/55.md)                     |
+|     -      | [55 - Android Signer Application](https://github.com/nostr-protocol/nips/blob/master/55.md)                     |
 |     ✅     | [56 - Reporting](https://github.com/nostr-protocol/nips/blob/master/56.md)                                      |
 |     ✅     | [57 - Lightning Zaps](https://github.com/nostr-protocol/nips/blob/master/57.md)                                 |
 |     ✅     | [58 - Badges](https://github.com/nostr-protocol/nips/blob/master/58.md)                                         |
 |     ✅     | [59 - Gift Wrap](https://github.com/nostr-protocol/nips/blob/master/59.md)                                      |
+|     ✅     | [62 - Request to Vanish](https://github.com/nostr-protocol/nips/blob/master/62.md)                              |
 |     ✅     | [65 - Relay List Metadata](https://github.com/nostr-protocol/nips/blob/master/65.md)                            |
 |     ✅     | [70 - Protected Events](https://github.com/nostr-protocol/nips/blob/master/70.md)                               |
 |     ❌     | [71 - Video Events](https://github.com/nostr-protocol/nips/blob/master/71.md)                                   |

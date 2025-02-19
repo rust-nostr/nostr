@@ -17,6 +17,7 @@ use serde_json::{json, Value};
 
 #[cfg(all(feature = "std", feature = "nip04", feature = "nip46"))]
 use crate::nips::nip46::Message as NostrConnectMessage;
+use crate::nips::nip62::VanishTarget;
 use crate::prelude::*;
 
 /// Wrong kind error
@@ -65,6 +66,8 @@ pub enum Error {
         /// The expected kind (single or range)
         expected: WrongKindError,
     },
+    /// Empty tags, while at least one tag is required
+    EmptyTags,
 }
 
 #[cfg(feature = "std")]
@@ -87,6 +90,7 @@ impl fmt::Display for Error {
             Self::WrongKind { received, expected } => {
                 write!(f, "Wrong kind: received={received}, expected={expected}")
             }
+            Self::EmptyTags => write!(f, "Empty tags, while at least one tag is required"),
         }
     }
 }
@@ -722,6 +726,41 @@ impl EventBuilder {
             middle.into()
         });
         Self::new(Kind::EventDeletion, reason.into()).tags(tags)
+    }
+
+    /// Request to vanish
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
+    #[inline]
+    pub fn request_vanish<I>(target: VanishTarget) -> Result<Self, Error> {
+        Self::request_vanish_with_reason(target, "")
+    }
+
+    /// Request to vanish with reason
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
+    pub fn request_vanish_with_reason<S>(target: VanishTarget, reason: S) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
+        let mut builder = Self::new(Kind::RequestToVanish, reason);
+
+        match target {
+            VanishTarget::AllRelays => {
+                builder = builder.tag(Tag::all_relays());
+            }
+            VanishTarget::Relays(list) => {
+                // Check if the list is empty
+                if list.is_empty() {
+                    // Empty list, return error.
+                    return Err(Error::EmptyTags);
+                }
+
+                builder = builder.tags(list.into_iter().map(Tag::relay));
+            }
+        }
+
+        Ok(builder)
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event

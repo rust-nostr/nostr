@@ -270,6 +270,10 @@ pub enum KindStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/69.md>
     PeerToPeerOrder,
+    /// Request to Vanish (NIP62)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
+    RequestToVanish,
     /// Client Authentication (NIP42)
     Authentication,
     /// Wallet Connect Request (NIP47)
@@ -406,6 +410,7 @@ fn convert(k: nostr::Kind) -> Option<KindStandard> {
         nostr::Kind::Torrent => Some(KindStandard::Torrent),
         nostr::Kind::TorrentComment => Some(KindStandard::TorrentComment),
         nostr::Kind::PeerToPeerOrder => Some(KindStandard::PeerToPeerOrder),
+        nostr_sdk::Kind::RequestToVanish => Some(KindStandard::RequestToVanish),
         nostr::Kind::Custom(..) => None,
     }
 }
@@ -487,6 +492,7 @@ impl From<KindStandard> for nostr::Kind {
             KindStandard::Torrent => Self::Torrent,
             KindStandard::TorrentComment => Self::TorrentComment,
             KindStandard::PeerToPeerOrder => Self::PeerToPeerOrder,
+            KindStandard::RequestToVanish => Self::RequestToVanish,
         }
     }
 }

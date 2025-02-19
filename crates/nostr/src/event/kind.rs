@@ -150,6 +150,7 @@ kind_variants! {
     Torrent => 2003, "Torrent", "<https://github.com/nostr-protocol/nips/blob/master/35.md>",
     TorrentComment => 2004, "Torrent Comment", "<https://github.com/nostr-protocol/nips/blob/master/35.md>",
     PeerToPeerOrder => 38383, "Peer-to-peer Order events", "<https://github.com/nostr-protocol/nips/blob/master/69.md>",
+    RequestToVanish => 62, "Request to Vanish", "<https://github.com/nostr-protocol/nips/blob/master/62.md>",
 }
 
 impl PartialEq for Kind {

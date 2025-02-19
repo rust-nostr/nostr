@@ -279,6 +279,24 @@ impl Tag {
         })
     }
 
+    /// Relay url
+    ///
+    /// JSON: `["relay", "<relay-url>"]`
+    #[inline]
+    pub fn relay(url: RelayUrl) -> Self {
+        Self::from_standardized_without_cell(TagStandard::Relay(url))
+    }
+
+    /// All relays
+    ///
+    /// JSON: `["relay", "ALL_RELAYS"]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
+    #[inline]
+    pub fn all_relays() -> Self {
+        Self::from_standardized_without_cell(TagStandard::AllRelays)
+    }
+
     /// Compose `["t", "<hashtag>"]` tag
     #[inline]
     pub fn hashtag<T>(hashtag: T) -> Self

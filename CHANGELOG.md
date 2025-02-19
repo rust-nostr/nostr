@@ -61,6 +61,7 @@
 
 ### Added
 
+* nostr: add NIP-62 support ([awiteb])
 * nostr: add `nip21::extract_from_text` function ([Yuki Kishimoto])
 * nostr: add `EventBuilder::allow_self_tagging` ([Yuki Kishimoto])
 * nostr: add `Nip19Event::from_event` ([Yuki Kishimoto])
@@ -1141,6 +1142,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [Roland Bewick]: https://github.com/rolznz (nostr:npub1zk6u7mxlflguqteghn8q7xtu47hyerruv6379c36l8lxzzr4x90q0gl6ef)
 [Francisco Calderón]: https://github.com/grunch (nostr:npub1qqqqqqqx2tj99mng5qgc07cgezv5jm95dj636x4qsq7svwkwmwnse3rfkq)
 [cipres]: https://github.com/PancakesArchitect (nostr:npub1r3cnzta52fee26c83cnes8wvzkch3kud2kll67k402x04mttt26q0wfx0c)
+[awiteb]: https://git.4rs.nl (nostr:nprofile1qqsqqqqqq9g9uljgjfcyd6dm4fegk8em2yfz0c3qp3tc6mntkrrhawgpzfmhxue69uhkummnw3ezudrjwvhxumq3dg0ly)
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.39.0...HEAD
