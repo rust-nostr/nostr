@@ -59,6 +59,7 @@
 ---
 
 [Donate](donate.md)
+[Patrons](patrons.md)
 [Maintainers](maintainers.md)
 [Changelog](changelog.md)
 [License](license.md)
