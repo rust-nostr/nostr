@@ -1,4 +1,4 @@
-package rust.nostr.snippets
+package rust.nostr.snippets.event
 
 // ANCHOR: full
 import rust.nostr.sdk.Event
@@ -16,5 +16,9 @@ fun json() {
     // ANCHOR_END: serialize
 
     println(json)
+}
+
+fun main() {
+    json()
 }
 // ANCHOR_END: full

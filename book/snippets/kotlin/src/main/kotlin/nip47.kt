@@ -1,6 +1,7 @@
 package rust.nostr.snippets
 
 // ANCHOR: full
+import kotlinx.coroutines.runBlocking
 import rust.nostr.sdk.*
 
 suspend fun nip47() {
@@ -26,5 +27,9 @@ suspend fun nip47() {
     val makeInvoiceParams = MakeInvoiceRequest(amount = 100u, description = null, descriptionHash = null, expiry = null)
     val result = nwc.makeInvoice(makeInvoiceParams)
     println("Invoice: ${result.invoice}")
+}
+
+fun main() {
+    runBlocking { nip47() }
 }
 // ANCHOR_END: full

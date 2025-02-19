@@ -38,7 +38,7 @@ The first step is to generate random keys needed for the client and construct th
 <section>
 
 ```kotlin,ignore
-{{#include ../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Hello.kt:client}}
+{{#include ../../snippets/kotlin/src/main/kotlin/Hello.kt:client}}
 ```
 
 </section>
@@ -98,7 +98,7 @@ Next, add some relays to your client and connect to them.
 <section>
 
 ```kotlin,ignore
-{{#include ../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Hello.kt:connect}}
+{{#include ../../snippets/kotlin/src/main/kotlin/Hello.kt:connect}}
 ```
 
 </section>
@@ -160,7 +160,7 @@ build a text note with the [EventBuilder](event/builder.md) and publish it to re
 <section>
 
 ```kotlin,ignore
-{{#include ../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Hello.kt:publish}}
+{{#include ../../snippets/kotlin/src/main/kotlin/Hello.kt:publish}}
 ```
 
 </section>
@@ -220,7 +220,7 @@ Published the event, you can inspect the output to ensure everything worked corr
 <section>
 
 ```kotlin,ignore
-{{#include ../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Hello.kt:output}}
+{{#include ../../snippets/kotlin/src/main/kotlin/Hello.kt:output}}
 ```
 
 </section>
@@ -280,7 +280,7 @@ Here’s the full example that includes all the steps from generating keys to in
 <section>
 
 ```kotlin,ignore
-{{#include ../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Hello.kt:full}}
+{{#include ../../snippets/kotlin/src/main/kotlin/Hello.kt:full}}
 ```
 
 </section>

@@ -41,7 +41,7 @@ In the below example we are going to build a text note:
 <section>
 
 ```kotlin,ignore
-{{#include ../../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/event/Builder.kt:standard}}
+{{#include ../../../snippets/kotlin/src/main/kotlin/event/Builder.kt:standard}}
 ```
 
 </section>
@@ -101,7 +101,7 @@ setting a fixed timestamp or adding more tags:
 <section>
 
 ```kotlin,ignore
-{{#include ../../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/event/Builder.kt:std-custom}}
+{{#include ../../../snippets/kotlin/src/main/kotlin/event/Builder.kt:std-custom}}
 ```
 
 </section>
@@ -160,7 +160,7 @@ If you need to create a non-standard event, you can use the default `EventBuilde
 <section>
 
 ```kotlin,ignore
-{{#include ../../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/event/Builder.kt:custom}}
+{{#include ../../../snippets/kotlin/src/main/kotlin/event/Builder.kt:custom}}
 ```
 
 </section>
@@ -221,7 +221,7 @@ After the `EventBuilder` construction, you can finally build and sign the event:
 <section>
 
 ```kotlin,ignore
-{{#include ../../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/event/Builder.kt:sign}}
+{{#include ../../../snippets/kotlin/src/main/kotlin/event/Builder.kt:sign}}
 ```
 
 </section>
@@ -280,7 +280,7 @@ After the `EventBuilder` construction, you can finally build and sign the event:
 <section>
 
 ```kotlin,ignore
-{{#include ../../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/event/Builder.kt:full}}
+{{#include ../../../snippets/kotlin/src/main/kotlin/event/Builder.kt:full}}
 ```
 
 </section>

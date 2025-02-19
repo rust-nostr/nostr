@@ -35,7 +35,7 @@
 <section>
 
 ```kotlin,ignore
-{{#include ../../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/event/Json.kt:deserialize}}
+{{#include ../../../snippets/kotlin/src/main/kotlin/event/Json.kt:deserialize}}
 ```
 
 </section>
@@ -94,7 +94,7 @@
 <section>
 
 ```kotlin,ignore
-{{#include ../../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/event/Json.kt:serialize}}
+{{#include ../../../snippets/kotlin/src/main/kotlin/event/Json.kt:serialize}}
 ```
 
 </section>
@@ -153,7 +153,7 @@
 <section>
 
 ```kotlin,ignore
-{{#include ../../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/event/Json.kt:full}}
+{{#include ../../../snippets/kotlin/src/main/kotlin/event/Json.kt:full}}
 ```
 
 </section>

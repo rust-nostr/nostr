@@ -1,6 +1,7 @@
-package rust.nostr.snippets
+package rust.nostr.snippets.event
 
 // ANCHOR: full
+import kotlinx.coroutines.runBlocking
 import rust.nostr.sdk.Event
 import rust.nostr.sdk.EventBuilder
 import rust.nostr.sdk.Keys
@@ -46,4 +47,7 @@ suspend fun builder() {
     signAndPrint(signer, builder3)
 }
 
+fun main() {
+    runBlocking { builder() }
+}
 // ANCHOR_END: full

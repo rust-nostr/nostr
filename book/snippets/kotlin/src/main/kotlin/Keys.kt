@@ -27,3 +27,8 @@ fun restore() {
     keys = Keys(secretKey = secretKey)
 }
 // ANCHOR_END: restore
+
+fun main() {
+    generate()
+    restore()
+}

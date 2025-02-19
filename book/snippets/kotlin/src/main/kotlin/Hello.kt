@@ -1,6 +1,7 @@
 package rust.nostr.snippets
 
 // ANCHOR: full
+import kotlinx.coroutines.runBlocking
 import rust.nostr.sdk.*
 
 suspend fun hello() {
@@ -25,5 +26,9 @@ suspend fun hello() {
     println("Sent to: ${output.success}")
     println("Not sent to: ${output.failed}")
     // ANCHOR_END: output
+}
+
+fun main() {
+    runBlocking { hello() }
 }
 // ANCHOR_END: full

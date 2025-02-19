@@ -37,7 +37,7 @@ To generate a new key pair use the `generate()` method:
 <section>
 
 ```kotlin,ignore
-{{#include ../../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Keys.kt:generate}}
+{{#include ../../../snippets/kotlin/src/main/kotlin/Keys.kt:generate}}
 ```
 
 </section>
@@ -96,7 +96,7 @@ To generate a new key pair use the `generate()` method:
 <section>
 
 ```kotlin,ignore
-{{#include ../../../snippets/kotlin/shared/src/main/kotlin/rust/nostr/snippets/Keys.kt:restore}}
+{{#include ../../../snippets/kotlin/src/main/kotlin/Keys.kt:restore}}
 ```
 
 </section>
