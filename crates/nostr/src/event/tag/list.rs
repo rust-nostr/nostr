@@ -577,6 +577,16 @@ impl IntoIterator for Tags {
     }
 }
 
+impl FromIterator<Tag> for Tags {
+    #[inline]
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = Tag>,
+    {
+        Self::from_list(iter.into_iter().collect())
+    }
+}
+
 impl Serialize for Tags {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -606,6 +616,22 @@ mod tests {
     use super::*;
     use crate::nips::nip19::{Nip19Event, Nip19Profile};
     use crate::{Event, FromBech32, JsonUtil, RelayUrl};
+
+    #[test]
+    fn test_collect() {
+        let tags = vec![
+            Tag::identifier("1"),
+            Tag::identifier("2"),
+            Tag::identifier("3"),
+            Tag::identifier("4"),
+        ];
+        let tags: Tags = tags
+            .into_iter()
+            .filter(|t| t.content() == Some("3"))
+            .collect();
+        assert_eq!(tags.len(), 1);
+        assert_eq!(tags.identifier(), Some("3"));
+    }
 
     #[test]
     fn test_extract_d_tag() {
