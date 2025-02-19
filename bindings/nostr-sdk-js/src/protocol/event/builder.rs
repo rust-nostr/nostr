@@ -161,6 +161,12 @@ impl JsEventBuilder {
 
     /// Text note reply
     ///
+    /// This adds only that most significant tags, like:
+    /// - `p` tag with the author of the `reply_to` and `root` events;
+    /// - `e` tag of the `reply_to` and `root` events.
+    ///
+    /// Any additional necessary tag can be added with [`EventBuilder::tag`] or [`EventBuilder::tags`].
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/10.md>
     #[wasm_bindgen(js_name = textNoteReply)]
     pub fn text_note_reply(
@@ -181,7 +187,13 @@ impl JsEventBuilder {
 
     /// Comment
     ///
-    /// If no `root` is passed, the `comment_to` will be used for root `e` tag.
+    /// This adds only that most significant tags, like:
+    /// - `p` tag with the author of the `comment_to` event;
+    /// - the `a`/`e` and `k` tags of the `comment_to` event;
+    /// - `P` tag with the author of the `root` event;
+    /// - the `A`/`E` and `K` tags of the `root` event.
+    ///
+    /// Any additional necessary tag can be added with [`EventBuilder::tag`] or [`EventBuilder::tags`].
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/22.md>
     #[wasm_bindgen(js_name = comment)]

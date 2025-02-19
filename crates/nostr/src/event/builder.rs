@@ -430,6 +430,12 @@ impl EventBuilder {
 
     /// Text note reply
     ///
+    /// This adds only that most significant tags, like:
+    /// - `p` tag with the author of the `reply_to` and `root` events;
+    /// - `e` tag of the `reply_to` and `root` events.
+    ///
+    /// Any additional necessary tag can be added with [`EventBuilder::tag`] or [`EventBuilder::tags`].
+    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/10.md>
     pub fn text_note_reply<S>(
         content: S,
@@ -440,26 +446,15 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        let mut tags: Tags = Tags::new();
+        let mut tags: Vec<Tag> = Vec::with_capacity(2);
 
-        // Add `e` and `p` tag of **root** event
         match root {
             Some(root) => {
-                // ID and author
-                tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
-                    event_id: root.id,
-                    relay_url: relay_url.clone(),
-                    marker: Some(Marker::Root),
-                    public_key: Some(root.pubkey),
-                    uppercase: false,
-                }));
-                tags.push(Tag::public_key(root.pubkey));
-
                 // Check if root event is different from reply event
-                if root != reply_to {
+                if root.id != reply_to.id {
                     tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
                         event_id: reply_to.id,
-                        relay_url,
+                        relay_url: relay_url.clone(),
                         marker: Some(Marker::Reply),
                         public_key: Some(reply_to.pubkey),
                         uppercase: false,
@@ -467,20 +462,17 @@ impl EventBuilder {
                     tags.push(Tag::public_key(reply_to.pubkey));
                 }
 
-                // Add others `p` tags
-                tags.extend(
-                    root.tags
-                        .iter()
-                        .filter(|t| {
-                            t.kind()
-                                == TagKind::SingleLetter(SingleLetterTag {
-                                    character: Alphabet::P,
-                                    uppercase: false,
-                                })
-                        })
-                        .cloned(),
-                );
+                // ID and author
+                tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
+                    event_id: root.id,
+                    relay_url,
+                    marker: Some(Marker::Root),
+                    public_key: Some(root.pubkey),
+                    uppercase: false,
+                }));
+                tags.push(Tag::public_key(root.pubkey));
             }
+            // No root tag, add only reply_to tags
             None => {
                 tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
                     event_id: reply_to.id,
@@ -493,26 +485,19 @@ impl EventBuilder {
             }
         }
 
-        // Add others `p` tags of reply_to event
-        tags.extend(
-            reply_to
-                .tags
-                .iter()
-                .filter(|t| {
-                    t.kind()
-                        == TagKind::SingleLetter(SingleLetterTag {
-                            character: Alphabet::P,
-                            uppercase: false,
-                        })
-                })
-                .cloned(),
-        );
-
         // Compose event
-        Self::new(Kind::TextNote, content).tags(tags).dedup_tags()
+        Self::new(Kind::TextNote, content).tags(tags)
     }
 
     /// Comment
+    ///
+    /// This adds only that most significant tags, like:
+    /// - `p` tag with the author of the `comment_to` event;
+    /// - the `a`/`e` and `k` tags of the `comment_to` event;
+    /// - `P` tag with the author of the `root` event;
+    /// - the `A`/`E` and `K` tags of the `root` event.
+    ///
+    /// Any additional necessary tag can be added with [`EventBuilder::tag`] or [`EventBuilder::tags`].
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/22.md>
     pub fn comment<S>(
@@ -531,6 +516,39 @@ impl EventBuilder {
         // The added tags will be at least 3
         let mut tags: Vec<Tag> = Vec::with_capacity(3);
 
+        // Tag the author of the event you are replying to.
+        // This is the most significant public key since it's the one you are replying to, so put it first.
+        tags.push(Tag::public_key(comment_to.pubkey));
+
+        // Add `k` tag of event kind
+        tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
+            kind: comment_to.kind,
+            uppercase: false,
+        }));
+
+        // If event has coordinate, add `a` tag otherwise push `e` tag
+        match comment_to.coordinate() {
+            Some(coordinate) => {
+                tags.push(Tag::from_standardized_without_cell(
+                    TagStandard::Coordinate {
+                        coordinate: coordinate.into_owned(),
+                        relay_url: relay_url.clone(),
+                        uppercase: false, // <--- Same as root event but lowercase
+                    },
+                ));
+            }
+            None => {
+                // Add `e` tag of event author
+                tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
+                    event_id: comment_to.id,
+                    relay_url: relay_url.clone(),
+                    marker: None,
+                    public_key: Some(comment_to.pubkey),
+                    uppercase: false,
+                }));
+            }
+        }
+
         // Add `A`, `E` and `K` tag of **root** event
         if let Some(root) = root {
             // If event has coordinate, add it to tags otherwise push the event ID
@@ -539,7 +557,7 @@ impl EventBuilder {
                     tags.push(Tag::from_standardized_without_cell(
                         TagStandard::Coordinate {
                             coordinate: coordinate.into_owned(),
-                            relay_url: relay_url.clone(),
+                            relay_url,
                             uppercase: true,
                         },
                     ));
@@ -548,7 +566,7 @@ impl EventBuilder {
                     // ID and author
                     tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
                         event_id: root.id,
-                        relay_url: relay_url.clone(),
+                        relay_url,
                         marker: None,
                         public_key: Some(root.pubkey),
                         uppercase: true,
@@ -556,53 +574,25 @@ impl EventBuilder {
                 }
             }
 
-            // Add `p` tag of `root` event
-            tags.push(Tag::public_key(root.pubkey));
+            // Add `P` tag of the root event
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::PublicKey {
+                    public_key: root.pubkey,
+                    relay_url: None,
+                    alias: None,
+                    uppercase: true,
+                },
+            ));
 
-            // Kind
+            // Add `K` tag of the root event
             tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
                 kind: root.kind,
                 uppercase: true,
             }));
-
-            // Add others `p` tags
-            extend_nip22_p_tags(root, &mut tags);
         }
-
-        // Add `p` tag of `comment_to` event
-        tags.push(Tag::public_key(comment_to.pubkey));
-
-        // Add `a` tag (if event has it)
-        if let Some(coordinate) = comment_to.coordinate() {
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::Coordinate {
-                    coordinate: coordinate.into_owned(),
-                    relay_url: relay_url.clone(),
-                    uppercase: false, // <--- Same as root event but lowercase
-                },
-            ));
-        }
-
-        // Add `e` tag of event author
-        tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
-            event_id: comment_to.id,
-            relay_url,
-            marker: None,
-            public_key: Some(comment_to.pubkey),
-            uppercase: false,
-        }));
-
-        // Add `k` tag of event kind
-        tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
-            kind: comment_to.kind,
-            uppercase: false,
-        }));
-
-        // Add others `p` tags of comment_to event
-        extend_nip22_p_tags(comment_to, &mut tags);
 
         // Compose event
-        Self::new(Kind::Comment, content).tags(tags).dedup_tags()
+        Self::new(Kind::Comment, content).tags(tags)
     }
 
     /// Long-form text note (generally referred to as "articles" or "blog posts").
@@ -1738,36 +1728,6 @@ impl EventBuilder {
     // TODO: add `torrent_comment`
 }
 
-// Extend NIP22 `p` tags
-//
-// This function filters all the `p` tags that are standardized and with lowercase tag kind.
-// Moreover, keep only the public key and the relay hint, all other fields are discarded
-//
-// <https://github.com/nostr-protocol/nips/blob/master/22.md>
-fn extend_nip22_p_tags(event: &Event, tags: &mut Vec<Tag>) {
-    tags.extend(event.tags.iter().filter_map(|t| {
-        match t.as_standardized()? {
-            TagStandard::PublicKey {
-                public_key,
-                relay_url,
-                uppercase: false,
-                ..
-            } => {
-                // Rebuild tag keeping only the public key and the relay hint
-                Some(Tag::from_standardized_without_cell(
-                    TagStandard::PublicKey {
-                        public_key: *public_key,
-                        relay_url: relay_url.clone(),
-                        alias: None,
-                        uppercase: false,
-                    },
-                ))
-            }
-            _ => None,
-        }
-    }))
-}
-
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "std")]
@@ -2033,24 +1993,44 @@ mod tests {
     #[test]
     #[cfg(feature = "std")]
     fn test_text_note_reply() {
-        let keys = Keys::generate();
         let json: &str = r###"{"kind":1,"created_at":1732718325,"content":"## rust-nostr v0.37 is out! 🦀\n\n### Summary\n\nAdd support to NIP17 relay list in SDK (when `gossip` option is enabled), add NIP22 and NIP73 support, \nfix Swift Package, many performance improvements and bug fixes and more!\n\nFrom this release all the rust features are be disabled by default (except `std` feature in `nostr` crate).\n\nFull changelog: https://rust-nostr.org/changelog\n\n### Contributors\n\nThanks to all contributors!\n\n* nostr:npub1zuuajd7u3sx8xu92yav9jwxpr839cs0kc3q6t56vd5u9q033xmhsk6c2uc \n* nostr:npub1q0uulk2ga9dwkp8hsquzx38hc88uqggdntelgqrtkm29r3ass6fq8y9py9 \n* nostr:npub1zfss807aer0j26mwp2la0ume0jqde3823rmu97ra6sgyyg956e0s6xw445 \n* nostr:npub1zwnx29tj2lnem8wvjcx7avm8l4unswlz6zatk0vxzeu62uqagcash7fhrf \n* nostr:npub1acxjpdrlk2vw320dxcy3prl87g5kh4c73wp0knullrmp7c4mc7nq88gj3j \n\n### Links\n\nhttps://rust-nostr.org\nhttps://rust-nostr.org/donate\n\n#rustnostr #nostr #rustlang #programming #rust #python #javascript #kotlin #swift #flutter","tags":[["t","rustnostr"],["t","nostr"],["t","rustlang"],["t","programming"],["t","rust"],["t","python"],["t","javascript"],["t","kotlin"],["t","swift"],["t","flutter"],["p","1739d937dc8c0c7370aa27585938c119e25c41f6c441a5d34c6d38503e3136ef","","mention"],["p","03f9cfd948e95aeb04f780382344f7c1cfc0210d9af3f4006bb6d451c7b08692","","mention"],["p","126103bfddc8df256b6e0abfd7f3797c80dcc4ea88f7c2f87dd4104220b4d65f","","mention"],["p","13a665157257e79d9dcc960deeb367fd79383be2d0babb3d861679a5701d463b","","mention"],["p","ee0d20b47fb298e8a9ed3609108fe7f2296bd71e8b82fb4f9ff8f61f62bbc7a6","","mention"]],"pubkey":"68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272","id":"8262a50cf7832351ae3f21c429e111bb31be0cf754ec437e015534bf5cc2eee8","sig":"7e81ff3dfb78ba59b09b48d5218331a3259c56f702a6b8e118938a219879d60e7062e90fc1b070a4c472988d1801ec55714388efc6a4a3876a8a957c5c7808b6"}"###;
         let root_event = Event::from_json(json).unwrap();
 
         assert_eq!(root_event.tags.public_keys().count(), 5);
 
         // Build reply
+        let reply_keys = Keys::generate();
         let reply = EventBuilder::text_note_reply("Test reply", &root_event, None, None)
-            .sign_with_keys(&keys)
+            .sign_with_keys(&reply_keys)
             .unwrap();
-        assert_eq!(reply.tags.public_keys().count(), 6); // Previous 5 + root author
+        assert_eq!(reply.tags.public_keys().count(), 1); // Root author
+        assert_eq!(
+            reply.tags.public_keys().copied().next().unwrap(),
+            root_event.pubkey
+        );
+        assert_eq!(reply.tags.event_ids().count(), 1); // Root event ID
+        assert_eq!(
+            reply.tags.event_ids().copied().next().unwrap(),
+            root_event.id
+        );
 
         // Build reply of reply
-        let reply =
+        let other_keys = Keys::generate();
+        let reply_of_reply =
             EventBuilder::text_note_reply("Test reply of reply", &reply, Some(&root_event), None)
-                .sign_with_keys(&keys)
+                .sign_with_keys(&other_keys)
                 .unwrap();
-        assert_eq!(reply.tags.public_keys().count(), 6); // Previous 5 + root author
+        assert_eq!(reply_of_reply.tags.public_keys().count(), 2); // Reply + root author
+
+        let mut pks = reply_of_reply.tags.public_keys().copied();
+        assert_eq!(pks.next().unwrap(), reply.pubkey);
+        assert_eq!(pks.next().unwrap(), root_event.pubkey);
+
+        assert_eq!(reply_of_reply.tags.event_ids().count(), 2); // Reply + root event IDs
+
+        let mut ids = reply_of_reply.tags.event_ids().copied();
+        assert_eq!(ids.next().unwrap(), reply.id);
+        assert_eq!(ids.next().unwrap(), root_event.id);
     }
 }
 
