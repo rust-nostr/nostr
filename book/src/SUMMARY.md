@@ -33,6 +33,7 @@
     * [NIP-44: Encrypted Payloads](sdk/nips/44.md)
     * [NIP-46: Nostr Remote Signing](sdk/nips/46.md)
     * [NIP-47: Nostr Wallet Connect](sdk/nips/47.md)
+    * [NIP-49: Private Key Encryption](sdk/nips/49.md)
     * [NIP-59: Gift Wrap](sdk/nips/59.md)
     * [NIP-65: Relay List Metadata](sdk/nips/65.md)
 
