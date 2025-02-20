@@ -1045,25 +1045,7 @@ impl Client {
     /// This method requires a [`NostrSigner`].
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// # use nostr_sdk::prelude::*;
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let keys = Keys::generate();
-    /// #   let client = Client::new(keys);
-    /// let metadata = Metadata::new()
-    ///     .name("username")
-    ///     .display_name("My Username")
-    ///     .about("Description")
-    ///     .picture(Url::parse("https://example.com/avatar.png").unwrap())
-    ///     .nip05("username@example.com");
-    ///
-    /// client.set_metadata(&metadata).await.unwrap();
-    /// # }
-    /// ```
-    #[inline]
+    #[deprecated(since = "0.40.0", note = "Use `EventBuilder` + `send_event` instead")]
     pub async fn set_metadata(&self, metadata: &Metadata) -> Result<Output<EventId>, Error> {
         let builder = EventBuilder::metadata(metadata);
         self.send_event_builder(builder).await

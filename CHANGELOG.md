@@ -102,6 +102,7 @@
 
 * Deprecate options to set min POW difficulty ([Yuki Kishimoto])
 * nostr: deprecate `EncryptedSecretKey::to_secret_key` method ([Yuki Kishimoto])
+* sdk: deprecate `Client::set_metadata` ([Yuki Kishimoto])
 
 ## [v0.39.0] - 2025/01/31
 
