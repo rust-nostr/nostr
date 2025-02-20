@@ -372,6 +372,10 @@ impl JsClient {
 
     /// Fetch events from relays
     ///
+    /// This is an auto-closing subscription and will be closed automatically on `EOSE`.
+    ///
+    /// # Gossip
+    ///
     /// If `gossip` is enabled (see `Options`) the events will be requested also to
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     #[wasm_bindgen(js_name = fetchEvents)]
@@ -385,6 +389,8 @@ impl JsClient {
     }
 
     /// Fetch events from specific relays
+    ///
+    /// This is an auto-closing subscription and will be closed automatically on `EOSE`.
     #[wasm_bindgen(js_name = fetchEventsFrom)]
     pub async fn fetch_events_from(
         &self,
@@ -402,6 +408,8 @@ impl JsClient {
 
     /// Get events both from database and relays
     ///
+    /// This is an auto-closing subscription and will be closed automatically on `EOSE`.
+    ///
     /// You can obtain the same result by merging the `Events` from different type of sources.
     ///
     /// This method will be deprecated in the future!
@@ -409,6 +417,8 @@ impl JsClient {
     /// The optimal solution is to execute a [`Client::sync`] to get all old events, [`Client::subscribe`] to get all
     /// new future events, [`NostrDatabase::query`] to query events and [`Client::handle_notifications`] to listen-for/handle new events (i.e. to know when update the UI).
     /// This will allow very fast queries, low bandwidth usage (depending on how many events the client have to reconcile) and a lower load on the relays.
+    ///
+    /// # Gossip
     ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).

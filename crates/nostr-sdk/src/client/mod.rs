@@ -704,6 +704,14 @@ impl Client {
 
     /// Fetch events from relays
     ///
+    /// # Overview
+    ///
+    /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
+    /// To use another exit policy, check [`RelayPool::fetch_events`].
+    /// For long-lived subscriptions, check [`Client::subscribe`].
+    ///
+    /// # Gossip
+    ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
@@ -727,16 +735,24 @@ impl Client {
     /// ```
     pub async fn fetch_events(&self, filter: Filter, timeout: Duration) -> Result<Events, Error> {
         if self.opts.gossip {
-            return self.gossip_fetch_events(filter, timeout).await;
+            return self
+                .gossip_fetch_events(filter, timeout, ReqExitPolicy::ExitOnEOSE)
+                .await;
         }
 
         Ok(self
             .pool
-            .fetch_events(filter, timeout, ReqExitPolicy::default())
+            .fetch_events(filter, timeout, ReqExitPolicy::ExitOnEOSE)
             .await?)
     }
 
     /// Fetch events from specific relays
+    ///
+    /// # Overview
+    ///
+    /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
+    /// To use another exit policy, check [`RelayPool::fetch_events_from`].
+    /// For long-lived subscriptions, check [`Client::subscribe_to`].
     #[inline]
     pub async fn fetch_events_from<I, U>(
         &self,
@@ -751,21 +767,29 @@ impl Client {
     {
         Ok(self
             .pool
-            .fetch_events_from(urls, filter, timeout, ReqExitPolicy::default())
+            .fetch_events_from(urls, filter, timeout, ReqExitPolicy::ExitOnEOSE)
             .await?)
     }
 
     /// Get events both from database and relays
     ///
+    /// # Overview
+    ///
+    /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
+    /// For long-lived subscriptions, check [`Client::subscribe`].
+    ///
+    /// # Gossip
+    ///
+    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
+    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
+    ///
+    /// # Notes and alternative example
     ///
     /// This method will be deprecated in the future!
     /// This is a temporary solution for who still want to query events both from database and relays and merge the result.
     /// The optimal solution is to execute a [`Client::sync`] to reconcile missing events, [`Client::subscribe`] to get all
     /// new future events, [`NostrDatabase::query`] to query stored events and [`Client::handle_notifications`] to listen-for/handle new events (i.e. to know when update the UI).
     /// This will allow very fast queries, low bandwidth usage (depending on how many events the client have to reconcile) and a lower load on the relays.
-    ///
-    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
-    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// You can obtain the same result with:
     /// ```rust,no_run
@@ -808,6 +832,14 @@ impl Client {
 
     /// Stream events from relays
     ///
+    /// # Overview
+    ///
+    /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
+    /// To use another exit policy, check [`RelayPool::stream_events`].
+    /// For long-lived subscriptions, check [`Client::subscribe`].
+    ///
+    /// # Gossip
+    ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be streamed also from
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     pub async fn stream_events(
@@ -817,16 +849,23 @@ impl Client {
     ) -> Result<ReceiverStream<Event>, Error> {
         // Check if gossip is enabled
         if self.opts.gossip {
-            self.gossip_stream_events(filter, timeout).await
+            self.gossip_stream_events(filter, timeout, ReqExitPolicy::ExitOnEOSE)
+                .await
         } else {
             Ok(self
                 .pool
-                .stream_events(filter, timeout, ReqExitPolicy::default())
+                .stream_events(filter, timeout, ReqExitPolicy::ExitOnEOSE)
                 .await?)
         }
     }
 
     /// Stream events from specific relays
+    ///
+    /// # Overview
+    ///
+    /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
+    /// To use another exit policy, check [`RelayPool::stream_events_from`].
+    /// For long-lived subscriptions, check [`Client::subscribe_to`].
     #[inline]
     pub async fn stream_events_from<I, U>(
         &self,
@@ -845,9 +884,13 @@ impl Client {
             .await?)
     }
 
-    /// Targeted streaming events
-    ///
     /// Stream events from specific relays with specific filters
+    ///
+    /// # Overview
+    ///
+    /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
+    /// To use another exit policy, check [`RelayPool::stream_events_targeted`].
+    /// For long-lived subscriptions, check [`Client::subscribe_targeted`].
     pub async fn stream_events_targeted(
         &self,
         targets: HashMap<RelayUrl, Filter>,
@@ -1430,13 +1473,14 @@ impl Client {
         &self,
         filter: Filter,
         timeout: Duration,
+        policy: ReqExitPolicy,
     ) -> Result<ReceiverStream<Event>, Error> {
         let filters = self.break_down_filter(filter).await?;
 
         // Stream events
         let stream: ReceiverStream<Event> = self
             .pool
-            .stream_events_targeted(filters, timeout, ReqExitPolicy::default())
+            .stream_events_targeted(filters, timeout, policy)
             .await?;
 
         Ok(stream)
@@ -1446,11 +1490,13 @@ impl Client {
         &self,
         filter: Filter,
         timeout: Duration,
+        policy: ReqExitPolicy,
     ) -> Result<Events, Error> {
         let mut events: Events = Events::new(&filter);
 
         // Stream events
-        let mut stream: ReceiverStream<Event> = self.gossip_stream_events(filter, timeout).await?;
+        let mut stream: ReceiverStream<Event> =
+            self.gossip_stream_events(filter, timeout, policy).await?;
 
         while let Some(event) = stream.next().await {
             events.insert(event);
