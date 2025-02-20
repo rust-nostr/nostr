@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-#![allow(dead_code)]
+//! BTreeSet with capacity
 
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -20,12 +20,17 @@ pub enum OverCapacityPolicy {
     Last,
 }
 
+/// Capacity
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum Capacity {
+    /// Unbounded
     #[default]
     Unbounded,
+    /// Bounded
     Bounded {
+        /// Max values
         max: usize,
+        /// Policy
         policy: OverCapacityPolicy,
     },
 }
@@ -50,6 +55,7 @@ impl Ord for Capacity {
 }
 
 impl Capacity {
+    /// Bounded capacity with default policy
     #[inline]
     pub fn bounded(max: usize) -> Self {
         Self::Bounded {
@@ -59,6 +65,7 @@ impl Capacity {
     }
 }
 
+/// Insert result
 pub struct InsertResult<T> {
     /// Return if the value was inserted or not
     pub inserted: bool,
@@ -66,6 +73,7 @@ pub struct InsertResult<T> {
     pub pop: Option<T>,
 }
 
+/// BTreeSet with capacity
 #[derive(Debug, Clone)]
 pub struct BTreeCappedSet<T> {
     set: BTreeSet<T>,
@@ -124,6 +132,7 @@ impl<T> BTreeCappedSet<T>
 where
     T: Ord,
 {
+    /// New bounded set
     #[inline]
     pub fn bounded(max: usize) -> Self {
         Self {
@@ -132,6 +141,7 @@ where
         }
     }
 
+    /// New bounded set with policy
     #[inline]
     pub fn bounded_with_policy(max: usize, policy: OverCapacityPolicy) -> Self {
         Self {
@@ -140,6 +150,7 @@ where
         }
     }
 
+    /// New unbounded set
     #[inline]
     pub fn unbounded() -> Self {
         Self {
@@ -171,16 +182,19 @@ where
         }
     }
 
+    /// Get len
     #[inline]
     pub fn len(&self) -> usize {
         self.set.len()
     }
 
+    /// Check if empty
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.set.is_empty()
     }
 
+    /// Check if contains
     #[inline]
     pub fn contains<Q>(&self, value: &Q) -> bool
     where
@@ -255,6 +269,7 @@ where
         }
     }
 
+    /// Remove
     #[inline]
     pub fn remove<Q>(&mut self, value: &Q) -> bool
     where
@@ -282,6 +297,7 @@ where
         self.set.last()
     }
 
+    /// Iter
     #[inline]
     pub fn iter(&self) -> Iter<'_, T> {
         self.set.iter()

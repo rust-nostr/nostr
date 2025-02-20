@@ -18,6 +18,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 pub mod borrow;
 pub mod builder;
+mod collection;
 mod error;
 pub mod id;
 pub mod kind;
@@ -25,6 +26,7 @@ pub mod tag;
 pub mod unsigned;
 
 pub use self::builder::EventBuilder;
+pub use self::collection::Events;
 pub use self::error::Error;
 pub use self::id::EventId;
 pub use self::kind::Kind;

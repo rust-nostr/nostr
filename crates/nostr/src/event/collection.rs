@@ -6,9 +6,9 @@ use std::collections::btree_set::IntoIter;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
-use nostr::{Event, Filter};
-
-use super::tree::{BTreeCappedSet, Capacity, OverCapacityPolicy};
+use super::Event;
+use crate::filter::Filter;
+use crate::private::tree::{BTreeCappedSet, Capacity, OverCapacityPolicy};
 
 // Lookup ID: EVENT_ORD_IMPL
 const POLICY: OverCapacityPolicy = OverCapacityPolicy::Last;
@@ -157,9 +157,8 @@ impl IntoIterator for Events {
 
 #[cfg(test)]
 mod tests {
-    use nostr::{JsonUtil, Kind};
-
     use super::*;
+    use crate::{JsonUtil, Kind};
 
     #[test]
     fn test_events_equality() {

@@ -2,5 +2,4 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-pub mod events;
 pub mod tree;

@@ -13,7 +13,6 @@ use std::sync::Arc;
 
 pub use nostr;
 
-mod collections;
 mod error;
 mod events;
 #[cfg(feature = "flatbuf")]
@@ -23,7 +22,6 @@ pub mod prelude;
 pub mod profile;
 mod wipe;
 
-pub use self::collections::events::Events;
 pub use self::error::DatabaseError;
 pub use self::events::helper::{DatabaseEventResult, DatabaseHelper};
 pub use self::events::{

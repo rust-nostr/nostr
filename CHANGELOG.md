@@ -49,6 +49,7 @@
 * nostr: manually impl eq and cmp traits for `RelayUrl` ([Yuki Kishimoto])
 * nostr: use `Cow` in `ClientMessage` and `RelayMessage` ([Yuki Kishimoto])
 * nostr: derive `PartialOrd`, `Ord`, and `Hash` traits in `Nip21` enum ([Yuki Kishimoto])
+* database: move `Events` struct to `nostr` crate ([Yuki Kishimoto])
 * pool: take event reference in `send_event` methods ([Yuki Kishimoto])
 * pool: use the relay ingester to perform actions ([Yuki Kishimoto])
 * pool: avoid spawning a task for every authentication request ([Yuki Kishimoto])

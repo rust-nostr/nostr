@@ -11,12 +11,11 @@ use std::iter;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::nips::nip01::{Coordinate, CoordinateBorrow};
-use nostr::{Alphabet, Event, EventId, Filter, Kind, PublicKey, SingleLetterTag, Timestamp};
+use nostr::__private::tree::{BTreeCappedSet, Capacity, InsertResult, OverCapacityPolicy};
+use nostr::prelude::*;
 use tokio::sync::{OwnedRwLockReadGuard, RwLock};
 
-use crate::collections::tree::{BTreeCappedSet, Capacity, InsertResult, OverCapacityPolicy};
-use crate::{Events, RejectedReason, SaveEventStatus};
+use crate::{RejectedReason, SaveEventStatus};
 
 type DatabaseEvent = Arc<Event>;
 

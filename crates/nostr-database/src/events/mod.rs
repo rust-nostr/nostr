@@ -10,7 +10,7 @@ use nostr::prelude::*;
 
 pub mod helper;
 
-use crate::{DatabaseError, Events, Profile};
+use crate::{DatabaseError, Profile};
 
 /// NIP65 relays map
 pub type RelaysMap = HashMap<RelayUrl, Option<RelayMetadata>>;

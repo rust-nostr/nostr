@@ -48,6 +48,7 @@ pub mod key;
 pub mod message;
 pub mod nips;
 pub mod prelude;
+mod private;
 pub mod signer;
 pub mod types;
 pub mod util;
@@ -80,3 +81,10 @@ pub use self::util::SECP256K1;
 #[doc(hidden)]
 #[cfg(feature = "std")]
 pub type Result<T, E = alloc::boxed::Box<dyn std::error::Error>> = std::result::Result<T, E>;
+
+// Not public API.
+#[doc(hidden)]
+pub mod __private {
+    #[doc(hidden)]
+    pub use super::private::*;
+}
