@@ -45,7 +45,7 @@ use crate::transport::websocket::{BoxSink, BoxStream};
 pub enum SubscriptionAutoClosedReason {
     /// NIP42 authentication failed
     AuthenticationFailed,
-    /// Closed
+    /// Closed with message
     Closed(String),
     /// Completed
     Completed,

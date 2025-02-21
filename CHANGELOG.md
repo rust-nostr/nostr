@@ -63,6 +63,7 @@
 * pool: use the relay ingester to perform actions ([Yuki Kishimoto])
 * pool: avoid spawning a task for every authentication request ([Yuki Kishimoto])
 * pool: use `std::sync::OnceLock` instead of `tokio::sync::OnceCell` ([Yuki Kishimoto])
+* pool: handle `CLOSED` with empty msg as subscription completed ([Yuki Kishimoto])
 * lmdb: bump MSRV to 1.72.0 ([Yuki Kishimoto])
 * lmdb: implement event ingester ([Yuki Kishimoto])
 * lmdb: avoid spawning thread for read methods ([Yuki Kishimoto])
