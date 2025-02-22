@@ -14,7 +14,7 @@ pub async fn run() -> Result<()> {
 
     // Get balance
     let balance = nwc.get_balance().await?;
-    println!("Balance: {balance} SAT");
+    println!("Balance: {balance} mSAT");
 
     // Pay an invoice
     let params = PayInvoiceRequest::new("lnbc..");

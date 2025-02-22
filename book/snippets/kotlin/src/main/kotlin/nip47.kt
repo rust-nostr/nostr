@@ -17,7 +17,7 @@ suspend fun nip47() {
 
     // Get balance
     val balance = nwc.getBalance()
-    println("Balance: $balance SAT")
+    println("Balance: $balance mSAT")
 
     // Pay an invoice
     val payInvoiceParams = PayInvoiceRequest(invoice = "lnbc...", amount = null, id = null)

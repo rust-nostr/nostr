@@ -17,7 +17,7 @@ async function main() {
 
     // Get balance
     let balance = await nwc.getBalance();
-    console.log("Balance: " + balance + " SAT");
+    console.log("Balance", balance, "mSAT");
 
     // Pay an invoice
     let payInvoiceParams = new PayInvoiceRequest();

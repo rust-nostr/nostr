@@ -15,7 +15,7 @@ async def main():
 
     # Get balance
     balance = await nwc.get_balance()
-    print(f"Balance: {balance} SAT")
+    print(f"Balance: {balance} mSAT")
 
     # Pay an invoice
     params = PayInvoiceRequest(invoice = "lnbc..", id = None, amount = None)
