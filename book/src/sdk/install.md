@@ -42,6 +42,8 @@ pip install nostr-sdk
 
 Alternatively, you can manually add the dependency in your `requrements.txt`, `setup.py`, etc.:
 
+<!-- TODO: change the supported python versions (add 3.13) -->
+
 ```
 nostr-sdk==0.39.0
 ```
