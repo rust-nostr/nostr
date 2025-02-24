@@ -167,11 +167,8 @@ impl TryFrom<Nip19> for Nip21 {
 impl Nip21 {
     /// Parse NIP21 string
     #[inline]
-    pub fn parse<S>(uri: S) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
-        let data: &str = split_uri(uri.as_ref())?;
+    pub fn parse(uri: &str) -> Result<Self, Error> {
+        let data: &str = split_uri(uri)?;
         let nip19: Nip19 = Nip19::from_bech32(data)?;
         Self::try_from(nip19)
     }
