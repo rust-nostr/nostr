@@ -588,26 +588,44 @@ impl InnerLocalRelay {
 
                 let filter: Filter = filter.into_owned();
 
-                // Update session subscriptions
-                session
-                    .subscriptions
-                    .insert(subscription_id.clone().into_owned(), filter.clone());
+                // Check if subscription has IDs
+                let ids_len: Option<usize> = filter.ids.as_ref().map(|ids| ids.len());
 
                 // Query database
-                let events = self.database.query(filter).await?;
+                let events: Events = self.database.query(filter.clone()).await?;
+                let events_len: usize = events.len();
 
                 tracing::debug!(
-                    "Found {} events for subscription '{subscription_id}'",
-                    events.len()
+                    "Found {events_len} events for subscription '{subscription_id}'",
                 );
 
-                let mut json_msgs: Vec<String> = Vec::with_capacity(events.len() + 1);
+                let mut json_msgs: Vec<String> = Vec::with_capacity(events_len + 1);
                 json_msgs.extend(
                     events
                         .into_iter()
                         .map(|event| RelayMessage::Event {subscription_id: Cow::Borrowed(subscription_id.as_ref()), event: Cow::Owned(event)}.as_json()),
                 );
-                json_msgs.push(RelayMessage::EndOfStoredEvents(subscription_id).as_json());
+
+                let eose_or_closed: RelayMessage = match ids_len {
+                    // Requested IDs len is the same as the query output, close the subscription.
+                    Some(ids_len) if ids_len == events_len => {
+                        RelayMessage::Closed {
+                            subscription_id,
+                            message: Cow::Borrowed(""),
+                        }
+                    },
+                    // The stored events are all served
+                    _ => {
+                        // Save the subscription
+                        session
+                            .subscriptions
+                            .insert(subscription_id.clone().into_owned(), filter);
+
+                        // Return EOSE
+                        RelayMessage::EndOfStoredEvents(subscription_id)
+                    }
+                };
+                json_msgs.push(eose_or_closed.as_json());
 
                 // Send JSON messages
                 send_json_msgs(ws_tx, json_msgs).await
