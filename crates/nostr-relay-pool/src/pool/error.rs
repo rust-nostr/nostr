@@ -6,7 +6,6 @@ use std::convert::Infallible;
 use std::fmt;
 
 use nostr::types::url;
-use nostr_database::DatabaseError;
 
 use crate::__private::SharedStateError;
 use crate::relay;
@@ -20,8 +19,6 @@ pub enum Error {
     RelayUrl(url::Error),
     /// Relay error
     Relay(relay::Error),
-    /// Database error
-    Database(DatabaseError),
     /// Infallible
     Infallible(Infallible),
     /// Notification Handler error
@@ -53,7 +50,6 @@ impl fmt::Display for Error {
             Self::SharedState(e) => write!(f, "{e}"),
             Self::RelayUrl(e) => write!(f, "{e}"),
             Self::Relay(e) => write!(f, "{e}"),
-            Self::Database(e) => write!(f, "{e}"),
             Self::Infallible(e) => write!(f, "{e}"),
             Self::Handler(e) => write!(f, "{e}"),
             Self::TooManyRelays { limit } => write!(f, "too many relays (limit: {limit})"),
@@ -82,12 +78,6 @@ impl From<url::Error> for Error {
 impl From<relay::Error> for Error {
     fn from(e: relay::Error) -> Self {
         Self::Relay(e)
-    }
-}
-
-impl From<DatabaseError> for Error {
-    fn from(e: DatabaseError) -> Self {
-        Self::Database(e)
     }
 }
 

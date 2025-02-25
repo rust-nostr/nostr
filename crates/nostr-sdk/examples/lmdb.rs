@@ -22,14 +22,10 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
-    // Publish a text note
-    let builder = EventBuilder::text_note("Hello world");
-    client.send_event_builder(builder).await?;
-
     // Negentropy sync
     let filter = Filter::new().author(keys.public_key());
     let (tx, mut rx) = SyncProgress::channel();
-    let opts = SyncOptions::default().progress(tx);
+    let opts = SyncOptions::default().dry_run().progress(tx);
 
     tokio::spawn(async move {
         while rx.changed().await.is_ok() {
@@ -52,11 +48,6 @@ async fn main() -> Result<()> {
             println!("  - {id}: {e}");
         }
     }
-
-    // Query events from database
-    let filter = Filter::new().author(keys.public_key()).limit(10);
-    let events = client.database().query(filter).await?;
-    println!("Events: {events:?}");
 
     Ok(())
 }

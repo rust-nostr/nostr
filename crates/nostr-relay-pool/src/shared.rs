@@ -12,7 +12,6 @@ use std::sync::{Arc, Mutex, OnceLock};
 use lru::LruCache;
 use nostr::prelude::IntoNostrSigner;
 use nostr::{EventId, NostrSigner};
-use nostr_database::{IntoNostrDatabase, MemoryDatabase, NostrDatabase};
 use tokio::sync::RwLock;
 
 use crate::policy::AdmitPolicy;
@@ -22,7 +21,7 @@ use crate::transport::websocket::{
 
 // LruCache pre-allocate, so keep this at a reasonable value.
 // A good value may be <= 128k, considering that stored values are the 64-bit hashes of the event IDs.
-const MAX_VERIFICATION_CACHE_SIZE: usize = 128_000;
+const MAX_SEEN_IDS_TRACKER_SIZE: usize = 128_000;
 
 #[derive(Debug)]
 pub enum SharedStateError {
@@ -47,45 +46,35 @@ impl fmt::Display for SharedStateError {
 // TODO: reduce atomic operations
 #[derive(Debug, Clone)]
 pub struct SharedState {
-    pub(crate) database: Arc<dyn NostrDatabase>,
     pub(crate) transport: Arc<dyn WebSocketTransport>,
     signer: Arc<RwLock<Option<Arc<dyn NostrSigner>>>>,
     nip42_auto_authentication: Arc<AtomicBool>,
-    verification_cache: Arc<Mutex<LruCache<u64, ()>>>,
+    seen_ids_cache: Arc<Mutex<LruCache<u64, ()>>>,
     pub(crate) admit_policy: OnceLock<Arc<dyn AdmitPolicy>>,
     // TODO: add a semaphore to limit number of concurrent websocket connections attempts?
 }
 
 impl Default for SharedState {
     fn default() -> Self {
-        Self::new(
-            MemoryDatabase::new().into_nostr_database(),
-            DefaultWebsocketTransport.into_transport(),
-            None,
-            None,
-            true,
-        )
+        Self::new(DefaultWebsocketTransport.into_transport(), None, None, true)
     }
 }
 
 impl SharedState {
     pub fn new(
-        database: Arc<dyn NostrDatabase>,
         transport: Arc<dyn WebSocketTransport>,
         signer: Option<Arc<dyn NostrSigner>>,
         admit_policy: Option<Arc<dyn AdmitPolicy>>,
         nip42_auto_authentication: bool,
     ) -> Self {
-        let max_verification_cache_size: NonZeroUsize =
-            NonZeroUsize::new(MAX_VERIFICATION_CACHE_SIZE)
-                .expect("MAX_VERIFICATION_CACHE_SIZE must be greater than 0");
+        let max_seen_ids_cache_size: NonZeroUsize = NonZeroUsize::new(MAX_SEEN_IDS_TRACKER_SIZE)
+            .expect("MAX_SEEN_IDS_TRACKER_SIZE must be greater than 0");
 
         Self {
-            database,
             transport,
             signer: Arc::new(RwLock::new(signer)),
             nip42_auto_authentication: Arc::new(AtomicBool::new(nip42_auto_authentication)),
-            verification_cache: Arc::new(Mutex::new(LruCache::new(max_verification_cache_size))),
+            seen_ids_cache: Arc::new(Mutex::new(LruCache::new(max_seen_ids_cache_size))),
             admit_policy: match admit_policy {
                 Some(policy) => OnceLock::from(policy),
                 None => OnceLock::new(),
@@ -138,12 +127,6 @@ impl SharedState {
     )]
     pub fn set_pow(&self, _difficulty: u8) {}
 
-    /// Get database
-    #[inline]
-    pub fn database(&self) -> &Arc<dyn NostrDatabase> {
-        &self.database
-    }
-
     /// Check if signer is configured
     pub async fn has_signer(&self) -> bool {
         let signer = self.signer.read().await;
@@ -173,9 +156,12 @@ impl SharedState {
         *s = None;
     }
 
-    pub(crate) fn verified(&self, id: &EventId) -> Result<bool, SharedStateError> {
+    /// Check if the [`EventId`] has already been seen.
+    ///
+    /// This keep track at max of [`MAX_SEEN_IDS_TRACKER_SIZE`] IDs.
+    pub(crate) fn seen(&self, id: &EventId) -> Result<bool, SharedStateError> {
         let mut cache = self
-            .verification_cache
+            .seen_ids_cache
             .lock()
             .map_err(|_| SharedStateError::MutexPoisoned)?;
 

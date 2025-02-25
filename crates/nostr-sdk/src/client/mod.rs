@@ -31,6 +31,7 @@ use crate::gossip::{BrokenDownFilters, Gossip};
 #[derive(Debug, Clone)]
 pub struct Client {
     pool: RelayPool,
+    database: Arc<dyn NostrDatabase>,
     gossip: Gossip,
     opts: Options,
 }
@@ -82,7 +83,6 @@ impl Client {
     fn from_builder(builder: ClientBuilder) -> Self {
         // Construct shared state
         let state = SharedState::new(
-            builder.database,
             builder.websocket_transport,
             builder.signer,
             builder.admit_policy,
@@ -92,6 +92,7 @@ impl Client {
         // Construct client
         Self {
             pool: RelayPool::__with_shared_state(builder.opts.pool, state),
+            database: builder.database,
             gossip: Gossip::new(),
             opts: builder.opts,
         }
@@ -159,7 +160,7 @@ impl Client {
     /// Get database
     #[inline]
     pub fn database(&self) -> &Arc<dyn NostrDatabase> {
-        self.pool.database()
+        &self.database
     }
 
     /// Reset the client
@@ -675,7 +676,17 @@ impl Client {
             return self.gossip_sync_negentropy(filter, opts).await;
         }
 
-        Ok(self.pool.sync(filter, opts).await?)
+        // TODO: use transactional zero-copy query and remove negentropy_items method
+
+        // Get items
+        let items: SyncItems = if opts.do_up() {
+            SyncItems::Full(self.database.query(filter.clone()).await?)
+        } else {
+            SyncItems::Down(self.database.negentropy_items(filter.clone()).await?)
+        };
+
+        // Sync
+        Ok(self.pool.sync(filter, items, opts).await?)
     }
 
     /// Sync events with specific relays (negentropy reconciliation)
@@ -692,7 +703,14 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        Ok(self.pool.sync_with(urls, filter, opts).await?)
+        // Get items
+        let items: SyncItems = if opts.do_up() {
+            SyncItems::Full(self.database.query(filter.clone()).await?)
+        } else {
+            SyncItems::Down(self.database.negentropy_items(filter.clone()).await?)
+        };
+
+        Ok(self.pool.sync_with(urls, filter, items, opts).await?)
     }
 
     /// Fetch events from relays
@@ -896,6 +914,10 @@ impl Client {
     }
 
     /// Send the client message to a **specific relays**
+    ///
+    /// # Database
+    ///
+    /// If the message is a [`ClientMessage::Event`], the [`Event`] will be saved into the database.
     #[inline]
     pub async fn send_msg_to<I, U>(
         &self,
@@ -907,10 +929,20 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
+        // Save into the database
+        if let ClientMessage::Event(event) = &msg {
+            self.database.save_event(event).await?;
+        }
+
+        // Send to relays
         Ok(self.pool.send_msg_to(urls, msg).await?)
     }
 
     /// Batch send client messages to **specific relays**
+    ///
+    /// # Database
+    ///
+    /// All the [`ClientMessage::Event`] will be saved into the database.
     #[inline]
     pub async fn batch_msg_to<I, U>(
         &self,
@@ -922,6 +954,14 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
+        // Save events into the database
+        for msg in msgs.iter() {
+            if let ClientMessage::Event(event) = msg {
+                self.database.save_event(event).await?;
+            }
+        }
+
+        // Batch send to relays
         Ok(self.pool.batch_msg_to(urls, msgs).await?)
     }
 
@@ -936,8 +976,15 @@ impl Client {
     /// If `gossip` is enabled (see [`Options::gossip`]):
     /// - the [`Event`] will be sent also to NIP65 relays (automatically discovered);
     /// - the gossip data will be updated, if the [`Event`] is a NIP17/NIP65 relay list.
+    ///
+    /// # Database
+    ///
+    /// This method saves the [`Event`] into the database.
     #[inline]
     pub async fn send_event(&self, event: &Event) -> Result<Output<EventId>, Error> {
+        // Save event into the database
+        self.database.save_event(event).await?;
+
         // NOT gossip, send event to all relays
         if !self.opts.gossip {
             return Ok(self.pool.send_event(event).await?);
@@ -956,6 +1003,10 @@ impl Client {
     ///
     /// If `gossip` is enabled (see [`Options::gossip`]) and the [`Event`] is a NIP17/NIP65 relay list,
     /// the gossip data will be updated.
+    ///
+    /// # Database
+    ///
+    /// This method saves the [`Event`] into the database.
     #[inline]
     pub async fn send_event_to<I, U>(
         &self,
@@ -967,6 +1018,9 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
+        // Save event into the database
+        self.database.save_event(event).await?;
+
         // If gossip is enabled, update the gossip graph
         if self.opts.gossip {
             self.gossip.process_event(event).await;
@@ -1138,10 +1192,13 @@ impl Client {
 
     /// Send a private direct message
     ///
+    /// This method requires a [`NostrSigner`].
+    /// Check [`Client::send_event`] to know how sending events works.
+    ///
+    /// # Gossip
+    ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the message will be sent to the NIP17 relays (automatically discovered).
     /// If gossip is not enabled will be sent to all relays with [`RelayServiceFlags::WRITE`] flag.
-    ///
-    /// This method requires a [`NostrSigner`].
     ///
     /// # Errors
     ///
@@ -1176,6 +1233,7 @@ impl Client {
     /// Send a private direct message to specific relays
     ///
     /// This method requires a [`NostrSigner`].
+    /// Check [`Client::send_event_to`] to know how sending events works.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
@@ -1232,6 +1290,7 @@ impl Client {
     /// Construct Gift Wrap and send to specific relays
     ///
     /// This method requires a [`NostrSigner`].
+    /// Check [`Client::send_event_to`] to know how sending events works.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
@@ -1348,7 +1407,10 @@ impl Client {
 
         // Broken-down filters
         let filters: HashMap<RelayUrl, Filter> = match self.gossip.break_down_filter(filter).await {
-            BrokenDownFilters::Filters(filters) => filters,
+            BrokenDownFilters::Filters(filters) => {
+                // TODO: must use also all READ relays (?)
+                filters
+            }
             BrokenDownFilters::Orphan(filter) | BrokenDownFilters::Other(filter) => {
                 // Get read relays
                 let read_relays = self
@@ -1518,15 +1580,17 @@ impl Client {
         // Break down filter
         let temp_filters = self.break_down_filter(filter).await?;
 
-        let database = self.database();
-        let mut filters: HashMap<RelayUrl, (Filter, Vec<_>)> =
+        let mut filters: HashMap<RelayUrl, (Filter, SyncItems)> =
             HashMap::with_capacity(temp_filters.len());
 
         // Iterate broken down filters and compose new filters for targeted reconciliation
         for (url, filter) in temp_filters.into_iter() {
             // Get items
-            let items: Vec<(EventId, Timestamp)> =
-                database.negentropy_items(filter.clone()).await?;
+            let items: SyncItems = if opts.do_up() {
+                SyncItems::Full(self.database.query(filter.clone()).await?)
+            } else {
+                SyncItems::Down(self.database.negentropy_items(filter.clone()).await?)
+            };
 
             filters.insert(url, (filter, items));
         }

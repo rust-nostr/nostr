@@ -17,8 +17,8 @@ use async_wsocket::{ConnectionMode, Message};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
+use nostr::prelude::*;
 use nostr::secp256k1::rand::{self, Rng};
-use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, RwLock};
 
@@ -31,7 +31,9 @@ use super::flags::AtomicRelayServiceFlags;
 use super::options::{RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, SyncOptions};
 use super::ping::PingTracker;
 use super::stats::RelayConnectionStats;
-use super::{Error, Reconciliation, RelayNotification, RelayStatus, SubscriptionAutoClosedReason};
+use super::{
+    Error, Reconciliation, RelayNotification, RelayStatus, SubscriptionAutoClosedReason, SyncItems,
+};
 use crate::policy::AdmitStatus;
 use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
@@ -420,10 +422,6 @@ impl InnerRelay {
 
             // Auto-connect loop
             loop {
-                // TODO: check in the relays state database if relay can connect (different from the previous check)
-                // TODO: if the relay score is too low, immediately exit.
-                // TODO: at every loop iteration check the score and if it's too low, exit
-
                 // Connect and run message handler
                 // The termination requests are handled inside this method!
                 relay
@@ -1001,44 +999,12 @@ impl InnerRelay {
             }
         }
 
-        // Check if event status
-        let status: DatabaseEventStatus = self.state.database().check_id(&event.id).await?;
-
-        // Event deleted
-        if let DatabaseEventStatus::Deleted = status {
-            return Ok(None);
-        }
-
-        // Check if coordinate has been deleted
-        if let Some(coordinate) = event.coordinate() {
-            if self
-                .state
-                .database()
-                .has_coordinate_been_deleted(&coordinate, &event.created_at)
-                .await?
-            {
-                return Ok(None);
-            }
-        }
-
         // TODO: check if filter match
 
-        // Check if event exists
-        if let DatabaseEventStatus::NotExistent = status {
-            // Check if event was already verified
-            //
-            // This is useful if someone continue to send the same invalid event:
-            // since invalid events aren't stored in the database,
-            // skipping this check would result in the re-verification of the event.
-            // This may also be useful to avoid double verification if the event is received at the exact same time by many different Relay instances.
-            //
-            // This is important since event signature verification is a heavy job!
-            if !self.state.verified(&event.id)? {
-                event.verify()?;
-            }
-
-            // Save into database
-            self.state.database().save_event(&event).await?;
+        // Check if event was already seen
+        if !self.state.seen(&event.id)? {
+            // Verify
+            event.verify()?;
 
             // Send notification
             self.send_notification(
@@ -1405,6 +1371,7 @@ impl InnerRelay {
         curr_need_ids: I,
         opts: &SyncOptions,
         output: &mut Reconciliation,
+        events: &HashMap<EventId, Event>,
         have_ids: &mut Vec<EventId>,
         need_ids: &mut Vec<EventId>,
         sync_done: &mut bool,
@@ -1417,7 +1384,7 @@ impl InnerRelay {
         // If event ID wasn't already seen, add to the HAVE IDs
         // Add to HAVE IDs only if `do_up` is true
         for id in curr_have_ids.into_iter() {
-            if output.local.insert(id) && opts.do_up() {
+            if output.local.insert(id) && opts.do_up() && !events.is_empty() {
                 have_ids.push(id);
                 counter += 1;
             }
@@ -1451,8 +1418,9 @@ impl InnerRelay {
     }
 
     #[inline(never)]
-    async fn upload_neg_events(
+    fn upload_neg_events(
         &self,
+        events: &mut HashMap<EventId, Event>,
         have_ids: &mut Vec<EventId>,
         in_flight_up: &mut HashSet<EventId>,
         opts: &SyncOptions,
@@ -1466,20 +1434,15 @@ impl InnerRelay {
 
         while !have_ids.is_empty() && in_flight_up.len() < NEGENTROPY_HIGH_WATER_UP {
             if let Some(id) = have_ids.pop() {
-                match self.state.database().event_by_id(&id).await {
-                    Ok(Some(event)) => {
+                match events.remove(&id) {
+                    Some(event) => {
                         in_flight_up.insert(id);
                         self.send_msg(ClientMessage::event(event))?;
                         num_sent += 1;
                     }
-                    Ok(None) => {
+                    None => {
                         // Event not found
                     }
-                    Err(e) => tracing::error!(
-                        url = %self.url,
-                        error = %e,
-                        "Can't upload event."
-                    ),
                 }
             }
         }
@@ -1587,12 +1550,12 @@ impl InnerRelay {
     pub(super) async fn sync_new(
         &self,
         filter: &Filter,
-        items: Vec<(EventId, Timestamp)>,
+        items: SyncItems,
         opts: &SyncOptions,
         output: &mut Reconciliation,
     ) -> Result<(), Error> {
         // Prepare the negentropy client
-        let storage: NegentropyStorageVector = prepare_negentropy_storage(items)?;
+        let storage: NegentropyStorageVector = prepare_negentropy_storage(&items)?;
         let mut negentropy: Negentropy<NegentropyStorageVector> =
             Negentropy::borrowed(&storage, NEGENTROPY_FRAME_SIZE_LIMIT)?;
 
@@ -1615,6 +1578,12 @@ impl InnerRelay {
 
         // Check if negentropy is supported
         check_negentropy_support(&sub_id, opts, &mut temp_notifications).await?;
+
+        // Construct events map for event upload
+        let mut events = match items {
+            SyncItems::Down(..) => HashMap::new(),
+            SyncItems::Full(events) => events.into_iter().map(|e| (e.id, e)).collect(),
+        };
 
         let mut in_flight_up: HashSet<EventId> = HashSet::new();
         let mut in_flight_down: bool = false;
@@ -1654,6 +1623,7 @@ impl InnerRelay {
                                     curr_need_ids.into_iter().map(neg_id_to_event_id),
                                     opts,
                                     output,
+                                    &events,
                                     &mut have_ids,
                                     &mut need_ids,
                                     &mut sync_done,
@@ -1698,8 +1668,7 @@ impl InnerRelay {
                     }
 
                     // Send events
-                    self.upload_neg_events(&mut have_ids, &mut in_flight_up, opts)
-                        .await?;
+                    self.upload_neg_events(&mut events, &mut have_ids, &mut in_flight_up, opts)?;
 
                     // Get events
                     self.req_neg_events(&mut need_ids, &mut in_flight_down, &down_sub_id, opts)?;
@@ -1735,13 +1704,13 @@ impl InnerRelay {
     pub(super) async fn sync_deprecated(
         &self,
         filter: &Filter,
-        items: Vec<(EventId, Timestamp)>,
+        items: SyncItems,
         opts: &SyncOptions,
         output: &mut Reconciliation,
     ) -> Result<(), Error> {
         // Compose negentropy struct, add items and seal
         let mut negentropy = NegentropyDeprecated::new(32, Some(NEGENTROPY_FRAME_SIZE_LIMIT))?;
-        for (id, timestamp) in items.into_iter() {
+        for (id, timestamp) in items.iter() {
             let id = BytesDeprecated::from_slice(id.as_bytes());
             negentropy.add_item(timestamp.as_u64(), id)?;
         }
@@ -1766,6 +1735,12 @@ impl InnerRelay {
 
         // Check if negentropy is supported
         check_negentropy_support(&sub_id, opts, &mut temp_notifications).await?;
+
+        // Construct events map for event upload
+        let mut events = match items {
+            SyncItems::Down(..) => HashMap::new(),
+            SyncItems::Full(events) => events.into_iter().map(|e| (e.id, e)).collect(),
+        };
 
         let mut in_flight_up: HashSet<EventId> = HashSet::new();
         let mut in_flight_down: bool = false;
@@ -1806,6 +1781,7 @@ impl InnerRelay {
                                     curr_need_ids.into_iter().filter_map(neg_depr_to_event_id),
                                     opts,
                                     output,
+                                    &events,
                                     &mut have_ids,
                                     &mut need_ids,
                                     &mut sync_done,
@@ -1850,8 +1826,7 @@ impl InnerRelay {
                     }
 
                     // Send events
-                    self.upload_neg_events(&mut have_ids, &mut in_flight_up, opts)
-                        .await?;
+                    self.upload_neg_events(&mut events, &mut have_ids, &mut in_flight_up, opts)?;
 
                     // Get events
                     self.req_neg_events(&mut need_ids, &mut in_flight_down, &down_sub_id, opts)?;
@@ -1909,14 +1884,12 @@ fn neg_depr_to_event_id(id: BytesDeprecated) -> Option<EventId> {
     EventId::from_slice(id.as_bytes()).ok()
 }
 
-fn prepare_negentropy_storage(
-    items: Vec<(EventId, Timestamp)>,
-) -> Result<NegentropyStorageVector, Error> {
+fn prepare_negentropy_storage(items: &SyncItems) -> Result<NegentropyStorageVector, Error> {
     // Compose negentropy storage
     let mut storage = NegentropyStorageVector::with_capacity(items.len());
 
     // Add items
-    for (id, timestamp) in items.into_iter() {
+    for (id, timestamp) in items.iter() {
         let id: Id = Id::from_byte_array(id.to_bytes());
         storage.insert(timestamp.as_u64(), id)?;
     }

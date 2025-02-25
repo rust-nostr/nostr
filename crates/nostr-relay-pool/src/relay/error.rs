@@ -8,7 +8,6 @@ use std::time::Duration;
 use nostr::event::{self, builder};
 use nostr::message::MessageHandleError;
 use nostr::util::hex;
-use nostr_database::DatabaseError;
 
 use crate::policy::PolicyError;
 use crate::shared::SharedStateError;
@@ -35,8 +34,6 @@ pub enum Error {
     Negentropy(negentropy::Error),
     /// Negentropy error
     NegentropyDeprecated(negentropy_deprecated::Error),
-    /// Database error
-    Database(DatabaseError),
     /// Pool notification sender already set
     PoolNotificationSenderAlreadySet,
     /// Generic timeout
@@ -129,7 +126,6 @@ impl fmt::Display for Error {
             Self::Hex(e) => write!(f, "{e}"),
             Self::Negentropy(e) => write!(f, "{e}"),
             Self::NegentropyDeprecated(e) => write!(f, "{e}"),
-            Self::Database(e) => write!(f, "{e}"),
             Self::PoolNotificationSenderAlreadySet => {
                 write!(f, "pool notification sender already set")
             }
@@ -230,11 +226,5 @@ impl From<negentropy::Error> for Error {
 impl From<negentropy_deprecated::Error> for Error {
     fn from(e: negentropy_deprecated::Error) -> Self {
         Self::NegentropyDeprecated(e)
-    }
-}
-
-impl From<DatabaseError> for Error {
-    fn from(e: DatabaseError) -> Self {
-        Self::Database(e)
     }
 }

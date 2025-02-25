@@ -224,6 +224,7 @@ impl SyncProgress {
 #[derive(Debug, Clone)]
 pub struct SyncOptions {
     pub(super) initial_timeout: Duration,
+    // TODO: move direction to another SyncOptions in nostr-sdk crate
     pub(super) direction: SyncDirection,
     pub(super) dry_run: bool,
     pub(super) progress: Option<Sender<SyncProgress>>,
@@ -265,7 +266,7 @@ impl SyncOptions {
 
     /// Dry run
     ///
-    /// Just check what event are missing: execute reconciliation but WITHOUT
+    /// Check what events are missing: execute a reconciliation **without**
     /// getting/sending full events.
     #[inline]
     pub fn dry_run(mut self) -> Self {
@@ -283,12 +284,12 @@ impl SyncOptions {
     }
 
     #[inline]
-    pub(super) fn do_up(&self) -> bool {
+    pub fn do_up(&self) -> bool {
         !self.dry_run && matches!(self.direction, SyncDirection::Up | SyncDirection::Both)
     }
 
     #[inline]
-    pub(super) fn do_down(&self) -> bool {
+    pub fn do_down(&self) -> bool {
         !self.dry_run && matches!(self.direction, SyncDirection::Down | SyncDirection::Both)
     }
 }

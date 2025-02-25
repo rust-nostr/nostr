@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use async_utility::task;
 use atomic_destructor::AtomicDestroyer;
-use nostr_database::prelude::*;
+use nostr::prelude::*;
 use tokio::sync::{broadcast, RwLock};
 
 use super::options::RelayPoolOptions;

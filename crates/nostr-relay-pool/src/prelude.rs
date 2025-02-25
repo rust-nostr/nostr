@@ -11,7 +11,6 @@
 // External crates
 pub use async_utility::futures_util::StreamExt; // Needed for `RelayPool::stream_events_of`
 pub use nostr::prelude::*;
-pub use nostr_database::*;
 
 // Internal modules
 pub use crate::policy::*;

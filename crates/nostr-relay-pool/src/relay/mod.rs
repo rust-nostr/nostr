@@ -7,14 +7,13 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::time;
 use async_wsocket::futures_util::Future;
 use async_wsocket::ConnectionMode;
 use atomic_destructor::AtomicDestructor;
-use nostr_database::prelude::*;
+use nostr::prelude::*;
 use tokio::sync::broadcast;
 
 pub mod constants;
@@ -96,6 +95,36 @@ pub enum RelayNotification {
 //     // pub receive: HashMap<EventId, Vec<String>>,
 // }
 
+/// Sync items
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SyncItems {
+    /// Down only
+    ///
+    /// Passing these items, you will be able only to do a DOWN sync.
+    Down(Vec<(EventId, Timestamp)>),
+    /// Full
+    ///
+    /// This supports both sync in UP and DOWN directions.
+    // TODO: this may increase a lot the memory usage if the sync is very large
+    Full(Events),
+}
+
+impl SyncItems {
+    pub(crate) fn len(&self) -> usize {
+        match self {
+            SyncItems::Down(items) => items.len(),
+            SyncItems::Full(events) => events.len(),
+        }
+    }
+
+    pub(crate) fn iter(&self) -> Box<dyn Iterator<Item = (EventId, Timestamp)> + '_> {
+        match self {
+            SyncItems::Down(items) => Box::new(items.iter().map(|(id, ts)| (*id, *ts))),
+            SyncItems::Full(events) => Box::new(events.iter().map(|e| (e.id, e.created_at))),
+        }
+    }
+}
+
 /// Reconciliation output
 #[derive(Debug, Clone, Default)]
 pub struct Reconciliation {
@@ -112,7 +141,7 @@ pub struct Reconciliation {
 }
 
 impl Reconciliation {
-    pub(crate) fn merge(&mut self, other: Reconciliation) {
+    pub(crate) fn merge(&mut self, other: Self) {
         self.local.extend(other.local);
         self.remote.extend(other.remote);
         self.sent.extend(other.sent);
@@ -157,17 +186,7 @@ impl Relay {
     /// Create new relay with default in-memory database and custom options
     #[inline]
     pub fn with_opts(url: RelayUrl, opts: RelayOptions) -> Self {
-        let database = Arc::new(MemoryDatabase::default());
-        Self::custom(url, database, opts)
-    }
-
-    /// Create new relay with **custom** database and/or options
-    pub fn custom<T>(url: RelayUrl, database: T, opts: RelayOptions) -> Self
-    where
-        T: IntoNostrDatabase,
-    {
         let mut state = SharedState::default();
-        state.database = database.into_nostr_database();
         Self::internal_custom(url, state, opts)
     }
 
@@ -654,21 +673,10 @@ impl Relay {
     }
 
     /// Sync events with relays (negentropy reconciliation)
-    pub async fn sync(&self, filter: Filter, opts: &SyncOptions) -> Result<Reconciliation, Error> {
-        let items = self
-            .inner
-            .state
-            .database()
-            .negentropy_items(filter.clone())
-            .await?;
-        self.sync_with_items(filter, items, opts).await
-    }
-
-    /// Sync events with relays (negentropy reconciliation)
-    pub async fn sync_with_items(
+    pub async fn sync(
         &self,
         filter: Filter,
-        items: Vec<(EventId, Timestamp)>,
+        items: SyncItems,
         opts: &SyncOptions,
     ) -> Result<Reconciliation, Error> {
         // Perform health checks

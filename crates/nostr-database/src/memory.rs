@@ -12,7 +12,7 @@ use nostr::prelude::*;
 use tokio::sync::RwLock;
 
 use crate::{
-    Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper, Events,
+    Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper,
     NostrDatabase, NostrDatabaseWipe, NostrEventsDatabase, SaveEventStatus,
 };
 

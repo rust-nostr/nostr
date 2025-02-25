@@ -6,13 +6,13 @@
 
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use std::time::Duration;
 
 use async_utility::futures_util::{future, StreamExt};
 use async_utility::task;
 use atomic_destructor::{AtomicDestructor, StealthClone};
-use nostr_database::prelude::*;
+use nostr::prelude::*;
 use tokio::sync::{broadcast, mpsc, RwLockReadGuard};
 
 pub mod constants;
@@ -28,7 +28,7 @@ pub use self::output::Output;
 use crate::policy::AdmitPolicy;
 use crate::relay::flags::FlagCheck;
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
-use crate::relay::Relay;
+use crate::relay::{Relay, SyncItems};
 use crate::shared::SharedState;
 use crate::stream::ReceiverStream;
 use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};
@@ -138,12 +138,6 @@ impl RelayPool {
     #[inline]
     pub fn state(&self) -> &SharedState {
         &self.inner.state
-    }
-
-    /// Get database
-    #[inline]
-    pub fn database(&self) -> &Arc<dyn NostrDatabase> {
-        self.inner.state.database()
     }
 
     fn internal_relays_with_flag<'a>(
@@ -533,13 +527,6 @@ impl RelayPool {
             return Err(Error::RelayNotFound);
         }
 
-        // Save events
-        for msg in msgs.iter() {
-            if let ClientMessage::Event(event) = msg {
-                self.inner.state.database().save_event(event).await?;
-            }
-        }
-
         let mut output: Output<()> = Output::default();
 
         // Batch messages and construct outputs
@@ -602,9 +589,6 @@ impl RelayPool {
         if !set.iter().all(|url| relays.contains_key(url)) {
             return Err(Error::RelayNotFound);
         }
-
-        // Save event into database
-        self.inner.state.database().save_event(event).await?;
 
         let mut urls: Vec<RelayUrl> = Vec::with_capacity(set.len());
         let mut futures = Vec::with_capacity(set.len());
@@ -848,10 +832,11 @@ impl RelayPool {
     pub async fn sync(
         &self,
         filter: Filter,
+        items: SyncItems,
         opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
         let urls: Vec<RelayUrl> = self.relay_urls().await;
-        self.sync_with(urls, filter, opts).await
+        self.sync_with(urls, filter, items, opts).await
     }
 
     /// Sync events with specific relays (negentropy reconciliation)
@@ -859,6 +844,7 @@ impl RelayPool {
         &self,
         urls: I,
         filter: Filter,
+        items: SyncItems,
         opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
@@ -866,15 +852,7 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        // Get items
-        let items: Vec<(EventId, Timestamp)> = self
-            .inner
-            .state
-            .database()
-            .negentropy_items(filter.clone())
-            .await?;
-
-        let tup: (Filter, Vec<(EventId, Timestamp)>) = (filter, items);
+        let tup: (Filter, SyncItems) = (filter, items);
 
         // Reconcile
         let targets = urls.into_iter().map(|u| (u, tup.clone()));
@@ -888,12 +866,12 @@ impl RelayPool {
         opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
-        I: IntoIterator<Item = (U, (Filter, Vec<(EventId, Timestamp)>))>,
+        I: IntoIterator<Item = (U, (Filter, SyncItems))>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Collect targets
-        let targets: HashMap<RelayUrl, (Filter, Vec<(EventId, Timestamp)>)> = targets
+        let targets: HashMap<RelayUrl, (Filter, SyncItems)> = targets
             .into_iter()
             .map(|(u, v)| Ok((u.try_into_url()?, v)))
             .collect::<Result<_, Error>>()?;
@@ -926,7 +904,7 @@ impl RelayPool {
         for (url, (filter, items)) in targets.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
             urls.push(url);
-            futures.push(relay.sync_with_items(filter, items, opts));
+            futures.push(relay.sync(filter, items, opts));
         }
 
         // Join futures

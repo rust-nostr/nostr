@@ -2807,7 +2807,6 @@ dependencies = [
  "negentropy 0.3.1",
  "negentropy 0.5.0",
  "nostr",
- "nostr-database",
  "nostr-relay-builder",
  "tokio",
  "tracing",
