@@ -25,13 +25,13 @@ pub use self::error::Error;
 pub use self::options::Options;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Connection, ConnectionTarget};
-use crate::gossip::graph::{BrokenDownFilters, GossipGraph};
+use crate::gossip::{BrokenDownFilters, Gossip};
 
 /// Nostr client
 #[derive(Debug, Clone)]
 pub struct Client {
     pool: RelayPool,
-    gossip_graph: GossipGraph,
+    gossip: Gossip,
     opts: Options,
 }
 
@@ -93,7 +93,7 @@ impl Client {
         // Construct client
         Self {
             pool: RelayPool::__with_shared_state(builder.opts.pool, state),
-            gossip_graph: GossipGraph::new(),
+            gossip: Gossip::new(),
             opts: builder.opts,
         }
     }
@@ -951,7 +951,7 @@ impl Client {
         }
 
         // Update gossip graph
-        self.gossip_graph.process_event(event).await;
+        self.gossip.process_event(event).await;
 
         // Send event using gossip
         self.gossip_send_event(event, false).await
@@ -976,7 +976,7 @@ impl Client {
     {
         // If gossip is enabled, update the gossip graph
         if self.opts.gossip {
-            self.gossip_graph.process_event(event).await;
+            self.gossip.process_event(event).await;
         }
 
         // Send event to relays
@@ -1315,12 +1315,12 @@ impl Client {
 // Gossip
 impl Client {
     /// Check if there are outdated public keys and update them
-    async fn check_and_update_gossip_graph<I>(&self, public_keys: I) -> Result<(), Error>
+    async fn check_and_update_gossip<I>(&self, public_keys: I) -> Result<(), Error>
     where
         I: IntoIterator<Item = PublicKey>,
     {
         let outdated_public_keys: HashSet<PublicKey> =
-            self.gossip_graph.check_outdated(public_keys).await;
+            self.gossip.check_outdated(public_keys).await;
 
         // No outdated public keys, immediately return.
         if outdated_public_keys.is_empty() {
@@ -1352,15 +1352,13 @@ impl Client {
             .await?;
 
         // Update last check for these public keys
-        self.gossip_graph
-            .update_last_check(outdated_public_keys)
-            .await;
+        self.gossip.update_last_check(outdated_public_keys).await;
 
         // Merge database and relays events
         let merged: Events = events.merge(stored_events);
 
         // Update gossip graph
-        self.gossip_graph.update(merged).await;
+        self.gossip.update(merged).await;
 
         Ok(())
     }
@@ -1371,26 +1369,25 @@ impl Client {
         let public_keys = filter.extract_public_keys();
 
         // Check and update outdated public keys
-        self.check_and_update_gossip_graph(public_keys).await?;
+        self.check_and_update_gossip(public_keys).await?;
 
         // Broken-down filters
-        let filters: HashMap<RelayUrl, Filter> =
-            match self.gossip_graph.break_down_filter(filter).await {
-                BrokenDownFilters::Filters(filters) => filters,
-                BrokenDownFilters::Orphan(filter) | BrokenDownFilters::Other(filter) => {
-                    // Get read relays
-                    let read_relays = self
-                        .pool
-                        .relays_with_flag(RelayServiceFlags::READ, FlagCheck::All)
-                        .await;
+        let filters: HashMap<RelayUrl, Filter> = match self.gossip.break_down_filter(filter).await {
+            BrokenDownFilters::Filters(filters) => filters,
+            BrokenDownFilters::Orphan(filter) | BrokenDownFilters::Other(filter) => {
+                // Get read relays
+                let read_relays = self
+                    .pool
+                    .relays_with_flag(RelayServiceFlags::READ, FlagCheck::All)
+                    .await;
 
-                    let mut map = HashMap::with_capacity(read_relays.len());
-                    for url in read_relays.into_keys() {
-                        map.insert(url, filter.clone());
-                    }
-                    map
+                let mut map = HashMap::with_capacity(read_relays.len());
+                for url in read_relays.into_keys() {
+                    map.insert(url, filter.clone());
                 }
-            };
+                map
+            }
+        };
 
         // Add gossip (outbox and inbox) relays
         for url in filters.keys() {
@@ -1419,7 +1416,7 @@ impl Client {
         if is_gift_wrap {
             // Get only p tags since the author of a gift wrap is randomized
             let public_keys = event.tags.public_keys().copied();
-            self.check_and_update_gossip_graph(public_keys).await?;
+            self.check_and_update_gossip(public_keys).await?;
         } else {
             // Get all public keys involved in the event: author + p tags
             let public_keys = event
@@ -1427,7 +1424,7 @@ impl Client {
                 .public_keys()
                 .copied()
                 .chain(iter::once(event.pubkey));
-            self.check_and_update_gossip_graph(public_keys).await?;
+            self.check_and_update_gossip(public_keys).await?;
         };
 
         // Check if NIP17 or NIP65
@@ -1435,7 +1432,7 @@ impl Client {
             // Get NIP17 relays
             // Get only for relays for p tags since gift wraps are signed with random key (random author)
             let relays = self
-                .gossip_graph
+                .gossip
                 .get_nip17_inbox_relays(event.tags.public_keys())
                 .await;
 
@@ -1457,12 +1454,9 @@ impl Client {
             relays
         } else {
             // Get NIP65 relays
-            let mut outbox = self
-                .gossip_graph
-                .get_nip65_outbox_relays(&[event.pubkey])
-                .await;
+            let mut outbox = self.gossip.get_nip65_outbox_relays(&[event.pubkey]).await;
             let inbox = self
-                .gossip_graph
+                .gossip
                 .get_nip65_inbox_relays(event.tags.public_keys())
                 .await;
 
