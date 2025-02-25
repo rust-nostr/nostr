@@ -18,6 +18,7 @@ extern crate test;
 
 pub use async_wsocket::ConnectionMode;
 
+pub mod policy;
 pub mod pool;
 pub mod prelude;
 pub mod relay;
@@ -34,9 +35,7 @@ pub use self::relay::options::{
     RelayOptions, SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection, SyncOptions,
 };
 pub use self::relay::stats::RelayConnectionStats;
-pub use self::relay::{
-    Reconciliation, Relay, RelayFiltering, RelayFilteringMode, RelayNotification, RelayStatus,
-};
+pub use self::relay::{Reconciliation, Relay, RelayNotification, RelayStatus};
 
 // Not public API.
 #[doc(hidden)]

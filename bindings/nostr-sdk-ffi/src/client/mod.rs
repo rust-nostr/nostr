@@ -31,7 +31,7 @@ use crate::protocol::nips::nip01::Metadata;
 use crate::protocol::nips::nip59::UnwrappedGift;
 use crate::protocol::signer::NostrSigner;
 use crate::relay::options::{SubscribeAutoCloseOptions, SyncOptions};
-use crate::relay::{Relay, RelayFiltering, RelayOptions};
+use crate::relay::{Relay, RelayOptions};
 
 #[derive(Object)]
 pub struct Client {
@@ -56,13 +56,6 @@ impl Client {
         }
     }
 
-    /// Update minimum POW difficulty for received events
-    ///
-    /// Events with a POW lower than the current value will be ignored to prevent resources exhaustion.
-    pub fn update_min_pow_difficulty(&self, difficulty: u8) {
-        self.inner.update_min_pow_difficulty(difficulty);
-    }
-
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
@@ -77,11 +70,6 @@ impl Client {
 
     pub fn database(&self) -> NostrDatabase {
         self.inner.database().clone().into()
-    }
-
-    /// Get filtering
-    pub fn filtering(&self) -> RelayFiltering {
-        self.inner.filtering().clone().into()
     }
 
     pub async fn shutdown(&self) {

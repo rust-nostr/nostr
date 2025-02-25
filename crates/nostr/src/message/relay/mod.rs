@@ -7,14 +7,13 @@
 
 use alloc::borrow::Cow;
 use alloc::string::String;
+use alloc::vec::IntoIter;
 use core::fmt;
 
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{json, Value};
 
-mod raw;
-
-pub use self::raw::RawRelayMessage;
 use super::MessageHandleError;
 use crate::{Event, EventId, JsonUtil, SubscriptionId};
 
@@ -260,10 +259,85 @@ impl RelayMessage<'_> {
     }
 
     /// Deserialize from [`Value`]
-    #[inline]
     pub fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
-        let raw = RawRelayMessage::from_value(msg)?;
-        RelayMessage::try_from(raw)
+        let Value::Array(v) = msg else {
+            return Err(MessageHandleError::InvalidMessageFormat);
+        };
+
+        if v.is_empty() {
+            return Err(MessageHandleError::InvalidMessageFormat);
+        }
+
+        let mut v_iter = v.into_iter();
+
+        // Index 0
+        let v_type: String = next_and_deser(&mut v_iter)?;
+
+        match v_type.as_str() {
+            "NOTICE" => {
+                // ["NOTICE", <message>]
+                let message: String = next_and_deser(&mut v_iter)?; // Index 1
+                Ok(Self::notice(message))
+            }
+            "CLOSED" => {
+                // ["CLOSED", <subscription_id>, <message>]
+                Ok(Self::Closed {
+                    subscription_id: next_and_deser(&mut v_iter)?, // Index 1
+                    message: next_and_deser(&mut v_iter)?,         // Index 2
+                })
+            }
+            "EVENT" => {
+                // ["EVENT", <subscription id>, <event JSON>]
+                Ok(Self::Event {
+                    subscription_id: next_and_deser(&mut v_iter)?, // Index 1
+                    event: next_and_deser(&mut v_iter)?,           // Index 2
+                })
+            }
+            "EOSE" => {
+                // ["EOSE", <subscription_id>]
+                let subscription_id: SubscriptionId = next_and_deser(&mut v_iter)?; // Index 1
+                Ok(Self::eose(subscription_id))
+            }
+            "OK" => {
+                // ["OK", <event_id>, <true|false>, <message>]
+                Ok(Self::Ok {
+                    event_id: next_and_deser(&mut v_iter)?, // Index 1
+                    status: next_and_deser(&mut v_iter)?,   // Index 2
+                    message: next_and_deser(&mut v_iter)?,  // Index 3
+                })
+            }
+            "AUTH" => {
+                // ["AUTH", <challenge>]
+                Ok(Self::Auth {
+                    challenge: next_and_deser(&mut v_iter)?, // Index 1
+                })
+            }
+            "COUNT" => {
+                // ["COUNT", <subscription id>, {"count": num}]
+                let subscription_id: SubscriptionId = next_and_deser(&mut v_iter)?; // Index 1
+                let Count { count } = next_and_deser(&mut v_iter)?; // Index 2
+
+                Ok(Self::Count {
+                    subscription_id: Cow::Owned(subscription_id),
+                    count,
+                })
+            }
+            "NEG-MSG" => {
+                // ["NEG-MSG", <subscription ID string>, <message, lowercase hex-encoded>]
+                Ok(Self::NegMsg {
+                    subscription_id: next_and_deser(&mut v_iter)?, // Index 1
+                    message: next_and_deser(&mut v_iter)?,         // Index 2
+                })
+            }
+            "NEG-ERR" => {
+                // ["NEG-ERR", <subscription ID string>, <reason-code>]
+                Ok(Self::NegErr {
+                    subscription_id: next_and_deser(&mut v_iter)?, // Index 1
+                    message: next_and_deser(&mut v_iter)?,         // Index 2
+                })
+            }
+            _ => Err(MessageHandleError::InvalidMessageFormat),
+        }
     }
 
     fn as_value(&self) -> Value {
@@ -343,52 +417,20 @@ impl JsonUtil for RelayMessage<'_> {
     }
 }
 
-impl TryFrom<RawRelayMessage> for RelayMessage<'_> {
-    type Error = MessageHandleError;
+#[inline]
+fn next_and_deser<T>(iter: &mut IntoIter<Value>) -> Result<T, MessageHandleError>
+where
+    T: DeserializeOwned,
+{
+    let val: Value = iter
+        .next()
+        .ok_or(MessageHandleError::InvalidMessageFormat)?;
+    Ok(serde_json::from_value(val)?)
+}
 
-    fn try_from(raw: RawRelayMessage) -> Result<Self, Self::Error> {
-        match raw {
-            RawRelayMessage::Event {
-                subscription_id,
-                event,
-            } => Ok(Self::event(
-                SubscriptionId::new(subscription_id),
-                event.try_into()?,
-            )),
-            RawRelayMessage::Ok {
-                event_id,
-                status,
-                message,
-            } => Ok(Self::ok(EventId::from_hex(&event_id)?, status, message)),
-            RawRelayMessage::EndOfStoredEvents(subscription_id) => {
-                Ok(Self::eose(SubscriptionId::new(subscription_id)))
-            }
-            RawRelayMessage::Notice(message) => Ok(Self::notice(message)),
-            RawRelayMessage::Closed {
-                subscription_id,
-                message,
-            } => Ok(Self::closed(SubscriptionId::new(subscription_id), message)),
-            RawRelayMessage::Auth { challenge } => Ok(Self::auth(challenge)),
-            RawRelayMessage::Count {
-                subscription_id,
-                count,
-            } => Ok(Self::count(SubscriptionId::new(subscription_id), count)),
-            RawRelayMessage::NegMsg {
-                subscription_id,
-                message,
-            } => Ok(Self::NegMsg {
-                subscription_id: Cow::Owned(SubscriptionId::new(subscription_id)),
-                message: Cow::Owned(message),
-            }),
-            RawRelayMessage::NegErr {
-                subscription_id,
-                message,
-            } => Ok(Self::NegErr {
-                subscription_id: Cow::Owned(SubscriptionId::new(subscription_id)),
-                message: Cow::Owned(message),
-            }),
-        }
-    }
+#[derive(Deserialize)]
+struct Count {
+    count: usize,
 }
 
 #[cfg(feature = "std")]
@@ -573,16 +615,6 @@ mod tests {
             parsed_event,
             RelayMessage::event(SubscriptionId::new("random_string"), event)
         );
-    }
-
-    #[test]
-    fn test_raw_relay_message() {
-        pub const SAMPLE_EVENT: &str = r#"["EVENT", "random_string", {"id":"70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5","pubkey":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe","created_at":1612809991,"kind":1,"tags":[],"content":"test","sig":"273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502"}]"#;
-
-        let raw = RawRelayMessage::from_json(SAMPLE_EVENT).unwrap();
-        let msg = RelayMessage::try_from(raw).unwrap();
-
-        assert_eq!(msg, RelayMessage::from_json(SAMPLE_EVENT).unwrap());
     }
 }
 

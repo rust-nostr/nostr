@@ -7,7 +7,6 @@ use std::ops::Deref;
 use nostr_sdk::prelude::*;
 use wasm_bindgen::prelude::*;
 
-use crate::relay::filtering::JsRelayFilteringMode;
 use crate::relay::limits::JsRelayLimits;
 
 #[wasm_bindgen(js_name = Options)]
@@ -45,12 +44,6 @@ impl JsOptions {
         self.inner.autoconnect(val).into()
     }
 
-    /// Minimum POW difficulty for received events
-    #[wasm_bindgen(js_name = minPow)]
-    pub fn min_pow(self, difficulty: u8) -> Self {
-        self.inner.min_pow(difficulty).into()
-    }
-
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
@@ -68,11 +61,5 @@ impl JsOptions {
     #[wasm_bindgen(js_name = relayLimits)]
     pub fn relay_limits(self, limits: &JsRelayLimits) -> Self {
         self.inner.relay_limits(limits.deref().clone()).into()
-    }
-
-    /// Set filtering mode (default: blacklist)
-    #[wasm_bindgen(js_name = filteringMode)]
-    pub fn filtering_mode(self, mode: JsRelayFilteringMode) -> Self {
-        self.inner.filtering_mode(mode.into()).into()
     }
 }

@@ -10,6 +10,7 @@ use nostr::message::MessageHandleError;
 use nostr::util::hex;
 use nostr_database::DatabaseError;
 
+use crate::policy::PolicyError;
 use crate::shared::SharedStateError;
 use crate::transport::error::TransportError;
 
@@ -20,14 +21,14 @@ pub enum Error {
     Transport(TransportError),
     /// Shared state error
     SharedState(SharedStateError),
+    /// Policy error
+    Policy(PolicyError),
     /// MessageHandle error
     MessageHandle(MessageHandleError),
     /// Event error
     Event(event::Error),
     /// Event Builder error
     EventBuilder(builder::Error),
-    /// Partial Event error
-    PartialEvent(event::partial::Error),
     /// Hex error
     Hex(hex::Error),
     /// Negentropy error
@@ -99,11 +100,6 @@ pub enum Error {
     },
     /// Event expired
     EventExpired,
-    /// POW difficulty too low
-    PowDifficultyTooLow {
-        /// Min. difficulty
-        min: u8,
-    },
     /// Notification Handler error
     Handler(String),
     /// Max latency exceeded
@@ -126,10 +122,10 @@ impl fmt::Display for Error {
         match self {
             Self::Transport(e) => write!(f, "{e}"),
             Self::SharedState(e) => write!(f, "{e}"),
+            Self::Policy(e) => write!(f, "{e}"),
             Self::MessageHandle(e) => write!(f, "{e}"),
             Self::Event(e) => write!(f, "{e}"),
             Self::EventBuilder(e) => write!(f, "{e}"),
-            Self::PartialEvent(e) => write!(f, "{e}"),
             Self::Hex(e) => write!(f, "{e}"),
             Self::Negentropy(e) => write!(f, "{e}"),
             Self::NegentropyDeprecated(e) => write!(f, "{e}"),
@@ -170,7 +166,6 @@ impl fmt::Display for Error {
                 "Received event with too many tags: tags={size}, max_tags={max_size}"
             ),
             Self::EventExpired => write!(f, "event expired"),
-            Self::PowDifficultyTooLow { min } => write!(f, "POW difficulty too low (min. {min})"),
             Self::Handler(e) => write!(f, "{e}"),
             Self::MaximumLatencyExceeded { max, current } => write!(
                 f,
@@ -196,6 +191,12 @@ impl From<SharedStateError> for Error {
     }
 }
 
+impl From<PolicyError> for Error {
+    fn from(e: PolicyError) -> Self {
+        Self::Policy(e)
+    }
+}
+
 impl From<MessageHandleError> for Error {
     fn from(e: MessageHandleError) -> Self {
         Self::MessageHandle(e)
@@ -211,12 +212,6 @@ impl From<event::Error> for Error {
 impl From<builder::Error> for Error {
     fn from(e: builder::Error) -> Self {
         Self::EventBuilder(e)
-    }
-}
-
-impl From<event::partial::Error> for Error {
-    fn from(e: event::partial::Error) -> Self {
-        Self::PartialEvent(e)
     }
 }
 

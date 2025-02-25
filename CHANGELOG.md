@@ -42,6 +42,7 @@
 * nostr: change `EventBuilder::git_repository_announcement` constructor signature ([Yuki Kishimoto])
 * nostr: change `EventBuilder::git_issue` constructor signature ([Yuki Kishimoto])
 * nostr: change `EventBuilder::git_patch` constructor signature ([Yuki Kishimoto])
+* pool: drop `RelayFiltering` ([Yuki Kishimoto])
 
 ### Changed
 
@@ -81,6 +82,7 @@
 * nostr: add `EventBuilder::dedup_tags` method ([Yuki Kishimoto])
 * nostr: impl `FromIterator<Tag>` for `Tags` ([Yuki Kishimoto])
 * pool: event verification cache ([Yuki Kishimoto])
+* pool: add `AdmitPolicy` trait ([Yuki Kishimoto])
 * ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])
 
 ### Fixed
@@ -91,10 +93,13 @@
 
 ### Removed
 
+* nostr: remove `RawRelayMessage`, `RawEvent`, `PartialEvent` and `MissingPartialEvent` ([Yuki Kishimoto])
 * database: remove deprecated ([Yuki Kishimoto])
+* pool: remove min POW difficulty check in favor of `AdmitPolicy` trait ([Yuki Kishimoto])
 
 ### Deprecated
 
+* Deprecate options to set min POW difficulty ([Yuki Kishimoto])
 * nostr: deprecate `EncryptedSecretKey::to_secret_key` method ([Yuki Kishimoto])
 
 ## [v0.39.0] - 2025/01/31

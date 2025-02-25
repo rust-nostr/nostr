@@ -9,6 +9,7 @@ use std::sync::Arc;
 use nostr::signer::{IntoNostrSigner, NostrSigner};
 use nostr_database::memory::MemoryDatabase;
 use nostr_database::{IntoNostrDatabase, NostrDatabase};
+use nostr_relay_pool::policy::AdmitPolicy;
 use nostr_relay_pool::transport::websocket::{
     DefaultWebsocketTransport, IntoWebSocketTransport, WebSocketTransport,
 };
@@ -22,6 +23,8 @@ pub struct ClientBuilder {
     pub signer: Option<Arc<dyn NostrSigner>>,
     /// WebSocket transport
     pub websocket_transport: Arc<dyn WebSocketTransport>,
+    /// Admission policy
+    pub admit_policy: Option<Arc<dyn AdmitPolicy>>,
     /// Database
     pub database: Arc<dyn NostrDatabase>,
     /// Client options
@@ -33,6 +36,7 @@ impl Default for ClientBuilder {
         Self {
             signer: None,
             websocket_transport: Arc::new(DefaultWebsocketTransport),
+            admit_policy: None,
             database: Arc::new(MemoryDatabase::default()),
             opts: Options::default(),
         }
@@ -74,6 +78,16 @@ impl ClientBuilder {
         T: IntoWebSocketTransport,
     {
         self.websocket_transport = transport.into_transport();
+        self
+    }
+
+    /// Set an admission policy
+    #[inline]
+    pub fn admit_policy<T>(mut self, policy: T) -> Self
+    where
+        T: AdmitPolicy + 'static,
+    {
+        self.admit_policy = Some(Arc::new(policy));
         self
     }
 

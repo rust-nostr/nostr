@@ -13,6 +13,7 @@ pub mod logger;
 pub mod negentropy;
 pub mod notifications;
 pub mod nwc;
+pub mod policy;
 pub mod protocol;
 pub mod relay;
 pub mod transport;

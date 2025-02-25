@@ -9,6 +9,7 @@ use uniffi::Object;
 
 use super::{Client, Options};
 use crate::database::NostrDatabase;
+use crate::policy::{AdmitPolicy, FFI2RustAdmitPolicy};
 use crate::protocol::signer::NostrSigner;
 use crate::transport::websocket::{CustomWebSocketTransport, FFI2RustWebSocketTransport};
 
@@ -48,6 +49,14 @@ impl ClientBuilder {
         let mut builder = self.clone();
         let intermediate = FFI2RustWebSocketTransport { inner: transport };
         builder.inner = builder.inner.websocket_transport(intermediate);
+        builder
+    }
+
+    /// Set an admission policy
+    pub fn admit_policy(&self, policy: Arc<dyn AdmitPolicy>) -> Self {
+        let mut builder = self.clone();
+        let intermediate = FFI2RustAdmitPolicy { inner: policy };
+        builder.inner = builder.inner.admit_policy(intermediate);
         builder
     }
 

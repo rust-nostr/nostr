@@ -19,7 +19,6 @@ use tokio::sync::broadcast;
 
 pub mod constants;
 mod error;
-mod filtering;
 pub mod flags;
 mod inner;
 pub mod limits;
@@ -30,7 +29,6 @@ mod status;
 
 use self::constants::{BATCH_EVENT_ITERATION_TIMEOUT, WAIT_FOR_AUTHENTICATION_TIMEOUT};
 pub use self::error::Error;
-pub use self::filtering::{RelayFiltering, RelayFilteringMode};
 pub use self::flags::{AtomicRelayServiceFlags, FlagCheck, RelayServiceFlags};
 use self::inner::InnerRelay;
 pub use self::limits::RelayLimits;
@@ -40,6 +38,7 @@ pub use self::options::{
 };
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
+use crate::policy::AdmitPolicy;
 use crate::shared::SharedState;
 use crate::transport::websocket::{BoxSink, BoxStream};
 
@@ -169,7 +168,6 @@ impl Relay {
     {
         let mut state = SharedState::default();
         state.database = database.into_nostr_database();
-        state.filtering = RelayFiltering::new(opts.filtering_mode);
         Self::internal_custom(url, state, opts)
     }
 
@@ -178,6 +176,16 @@ impl Relay {
         Self {
             inner: AtomicDestructor::new(InnerRelay::new(url, state, opts)),
         }
+    }
+
+    /// Set an admission policy
+    #[inline]
+    pub fn set_admit_policy<T>(&self, policy: T) -> Result<(), Error>
+    where
+        T: AdmitPolicy + 'static,
+    {
+        self.inner.state.set_admit_policy(policy)?;
+        Ok(())
     }
 
     /// Get relay url
@@ -207,12 +215,6 @@ impl Relay {
     #[inline]
     pub fn flags(&self) -> &AtomicRelayServiceFlags {
         &self.inner.flags
-    }
-
-    /// Get relay filtering
-    #[inline]
-    pub fn filtering(&self) -> &RelayFiltering {
-        self.inner.state.filtering()
     }
 
     /// Get [`RelayInformationDocument`]

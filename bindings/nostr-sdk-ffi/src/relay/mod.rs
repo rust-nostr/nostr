@@ -10,13 +10,11 @@ use std::time::Duration;
 use nostr_sdk::{pool, RelayUrl, SubscriptionId};
 use uniffi::{Object, Record};
 
-pub mod filtering;
 pub mod limits;
 pub mod options;
 pub mod stats;
 pub mod status;
 
-pub use self::filtering::{RelayFiltering, RelayFilteringMode};
 pub use self::limits::RelayLimits;
 use self::options::SyncOptions;
 pub use self::options::{ConnectionMode, RelayOptions, ReqExitPolicy, SubscribeOptions};
@@ -150,11 +148,6 @@ impl Relay {
     pub fn flags(&self) -> AtomicRelayServiceFlags {
         self.inner.flags()
     } */
-
-    /// Get relay filtering
-    pub fn filtering(&self) -> RelayFiltering {
-        self.inner.filtering().clone().into()
-    }
 
     /// Check if `Relay` is connected
     pub fn is_connected(&self) -> bool {

@@ -25,9 +25,10 @@ pub use self::error::Error;
 use self::inner::{InnerRelayPool, Relays};
 pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
+use crate::policy::AdmitPolicy;
 use crate::relay::flags::FlagCheck;
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
-use crate::relay::{Relay, RelayFiltering};
+use crate::relay::Relay;
 use crate::shared::SharedState;
 use crate::stream::ReceiverStream;
 use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};
@@ -105,6 +106,16 @@ impl RelayPool {
         }
     }
 
+    /// Set an admission policy
+    #[inline]
+    pub fn set_admit_policy<T>(&self, policy: T) -> Result<(), Error>
+    where
+        T: AdmitPolicy + 'static,
+    {
+        self.inner.state.set_admit_policy(policy)?;
+        Ok(())
+    }
+
     /// Completely shutdown pool
     ///
     /// This method disconnects and removes all relays from the [`RelayPool`] and then
@@ -133,12 +144,6 @@ impl RelayPool {
     #[inline]
     pub fn database(&self) -> &Arc<dyn NostrDatabase> {
         self.inner.state.database()
-    }
-
-    /// Get relay filtering
-    #[inline]
-    pub fn filtering(&self) -> &RelayFiltering {
-        self.inner.state.filtering()
     }
 
     fn internal_relays_with_flag<'a>(

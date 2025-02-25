@@ -26,7 +26,6 @@ use crate::protocol::key::JsPublicKey;
 use crate::protocol::message::{JsClientMessage, JsRelayMessage};
 use crate::protocol::nips::nip01::JsMetadata;
 use crate::protocol::nips::nip59::JsUnwrappedGift;
-use crate::relay::filtering::JsRelayFiltering;
 use crate::relay::options::{JsRelayOptions, JsSubscribeAutoCloseOptions, JsSyncOptions};
 use crate::relay::{JsRelay, JsRelayArray};
 use crate::signer::JsNostrSigner;
@@ -60,15 +59,6 @@ impl JsClient {
         JsClientBuilder::new()
     }
 
-    /// Update minimum POW difficulty for received events
-    ///
-    /// Events with a POW lower than the current value will be ignored to prevent resources exhaustion.
-    #[inline]
-    #[wasm_bindgen(js_name = updateMinPowDifficulty)]
-    pub fn update_min_pow_difficulty(&self, difficulty: u8) {
-        self.inner.update_min_pow_difficulty(difficulty);
-    }
-
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
@@ -88,11 +78,6 @@ impl JsClient {
     #[wasm_bindgen(getter)]
     pub fn database(&self) -> JsNostrDatabase {
         self.inner.database().clone().into()
-    }
-
-    /// Get relay filtering
-    pub fn filtering(&self) -> JsRelayFiltering {
-        self.inner.filtering().clone().into()
     }
 
     /// Completely shutdown `Client`

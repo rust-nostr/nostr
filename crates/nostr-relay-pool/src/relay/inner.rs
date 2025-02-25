@@ -17,7 +17,6 @@ use async_wsocket::{ConnectionMode, Message};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
-use nostr::event::raw::RawEvent;
 use nostr::secp256k1::rand::{self, Rng};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
@@ -28,12 +27,12 @@ use super::constants::{
     MIN_ATTEMPTS, MIN_SUCCESS_RATE, NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT,
     NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, WEBSOCKET_TX_TIMEOUT,
 };
-use super::filtering::CheckFiltering;
 use super::flags::AtomicRelayServiceFlags;
 use super::options::{RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, SyncOptions};
 use super::ping::PingTracker;
 use super::stats::RelayConnectionStats;
 use super::{Error, Reconciliation, RelayNotification, RelayStatus, SubscriptionAutoClosedReason};
+use crate::policy::AdmitStatus;
 use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
@@ -949,24 +948,25 @@ impl InnerRelay {
         }
 
         // Handle msg
-        match RawRelayMessage::from_json(msg)? {
-            RawRelayMessage::Event {
+        match RelayMessage::from_json(msg)? {
+            RelayMessage::Event {
                 subscription_id,
                 event,
-            } => self.handle_raw_event(subscription_id, event).await,
-            m => Ok(Some(RelayMessage::try_from(m)?)),
+            } => {
+                self.handle_event_msg(subscription_id.into_owned(), event.into_owned())
+                    .await
+            }
+            m => Ok(Some(m)),
         }
     }
 
-    async fn handle_raw_event(
+    async fn handle_event_msg(
         &self,
-        subscription_id: String,
-        event: RawEvent,
+        subscription_id: SubscriptionId,
+        event: Event,
     ) -> Result<Option<RelayMessage<'static>>, Error> {
-        let kind: Kind = Kind::from(event.kind);
-
         // Check event size
-        if let Some(max_size) = self.opts.limits.events.get_max_size(&kind) {
+        if let Some(max_size) = self.opts.limits.events.get_max_size(&event.kind) {
             let size: usize = event.as_json().len();
             let max_size: usize = max_size as usize;
             if size > max_size {
@@ -975,7 +975,7 @@ impl InnerRelay {
         }
 
         // Check tags limit
-        if let Some(max_num_tags) = self.opts.limits.events.get_max_num_tags(&kind) {
+        if let Some(max_num_tags) = self.opts.limits.events.get_max_num_tags(&event.kind) {
             let size: usize = event.tags.len();
             let max_num_tags: usize = max_num_tags as usize;
             if size > max_num_tags {
@@ -986,58 +986,27 @@ impl InnerRelay {
             }
         }
 
-        // Deserialize partial event (id, pubkey and sig)
-        let partial_event: PartialEvent = PartialEvent::from_raw(&event)?;
+        // Check if the event is expired
+        if event.is_expired() {
+            return Err(Error::EventExpired);
+        }
 
-        // Check filtering
-        match self
-            .state
-            .filtering()
-            .check_partial_event(&partial_event)
-            .await
-        {
-            CheckFiltering::Allow => {
-                // Nothing to do
-            }
-            CheckFiltering::EventIdBlacklisted(id) => {
-                tracing::debug!("Received event with blacklisted ID: {id}");
-                return Ok(None);
-            }
-            CheckFiltering::PublicKeyBlacklisted(pubkey) => {
-                tracing::debug!("Received event authored by blacklisted public key: {pubkey}");
-                return Ok(None);
-            }
-            CheckFiltering::PublicKeyNotInWhitelist(pubkey) => {
-                tracing::debug!("Received event authored by non-whitelisted public key: {pubkey}");
+        // Check event admission policy
+        if let Some(policy) = self.state.admit_policy.get() {
+            if let AdmitStatus::Rejected = policy
+                .admit_event(&self.url, &subscription_id, &event)
+                .await?
+            {
                 return Ok(None);
             }
         }
-
-        // Check min POW
-        let difficulty: u8 = self.state.minimum_pow_difficulty();
-        if difficulty > 0 && !partial_event.id.check_pow(difficulty) {
-            return Err(Error::PowDifficultyTooLow { min: difficulty });
-        }
-
-        // TODO: check if word/hashtag is blacklisted
 
         // Check if event status
-        let status: DatabaseEventStatus = self.state.database().check_id(&partial_event.id).await?;
+        let status: DatabaseEventStatus = self.state.database().check_id(&event.id).await?;
 
         // Event deleted
         if let DatabaseEventStatus::Deleted = status {
             return Ok(None);
-        }
-
-        // Deserialize missing fields
-        let missing: MissingPartialEvent = MissingPartialEvent::from_raw(event)?;
-
-        // Compose full event
-        let event: Event = partial_event.merge(missing);
-
-        // Check if it's expired
-        if event.is_expired() {
-            return Err(Error::EventExpired);
         }
 
         // Check if coordinate has been deleted
@@ -1051,8 +1020,6 @@ impl InnerRelay {
                 return Ok(None);
             }
         }
-
-        let subscription_id: SubscriptionId = SubscriptionId::new(subscription_id);
 
         // TODO: check if filter match
 

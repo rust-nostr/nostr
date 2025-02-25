@@ -16,14 +16,12 @@ use nostr_relay_pool::prelude::*;
 #[derive(Debug, Clone)]
 pub struct Options {
     pub(super) autoconnect: bool,
-    pub(super) min_pow_difficulty: u8,
     pub(super) nip42_auto_authentication: bool,
     pub(super) gossip: bool,
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) connection: Connection,
     pub(super) relay_limits: RelayLimits,
     pub(super) max_avg_latency: Option<Duration>,
-    pub(super) filtering_mode: RelayFilteringMode,
     pub(super) pool: RelayPoolOptions,
 }
 
@@ -31,14 +29,12 @@ impl Default for Options {
     fn default() -> Self {
         Self {
             autoconnect: false,
-            min_pow_difficulty: 0,
             nip42_auto_authentication: true,
             gossip: false,
             #[cfg(not(target_arch = "wasm32"))]
             connection: Connection::default(),
             relay_limits: RelayLimits::default(),
             max_avg_latency: None,
-            filtering_mode: RelayFilteringMode::default(),
             pool: RelayPoolOptions::default(),
         }
     }
@@ -61,9 +57,11 @@ impl Options {
     }
 
     /// Minimum POW difficulty for received events (default: 0)
-    #[inline]
-    pub fn min_pow(mut self, difficulty: u8) -> Self {
-        self.min_pow_difficulty = difficulty;
+    #[deprecated(
+        since = "0.40.0",
+        note = "This no longer works, please use `AdmitPolicy` instead."
+    )]
+    pub fn min_pow(self, _difficulty: u8) -> Self {
         self
     }
 
@@ -110,13 +108,6 @@ impl Options {
     #[inline]
     pub fn max_avg_latency(mut self, max: Duration) -> Self {
         self.max_avg_latency = Some(max);
-        self
-    }
-
-    /// Relay filtering mode (default: blacklist)
-    #[inline]
-    pub fn filtering_mode(mut self, mode: RelayFilteringMode) -> Self {
-        self.filtering_mode = mode;
         self
     }
 

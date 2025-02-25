@@ -11,7 +11,7 @@ use nostr_sdk::pool;
 use uniffi::{Enum, Object};
 
 use crate::error::Result;
-use crate::relay::{ConnectionMode, RelayFilteringMode, RelayLimits};
+use crate::relay::{ConnectionMode, RelayLimits};
 
 #[derive(Clone, Object)]
 pub struct Options {
@@ -47,13 +47,6 @@ impl Options {
     pub fn autoconnect(&self, val: bool) -> Self {
         let mut builder = self.clone();
         builder.inner = builder.inner.autoconnect(val);
-        builder
-    }
-
-    /// Minimum POW difficulty for received events
-    pub fn min_pow(&self, difficulty: u8) -> Self {
-        let mut builder = self.clone();
-        builder.inner = builder.inner.min_pow(difficulty);
         builder
     }
 
@@ -93,13 +86,6 @@ impl Options {
     pub fn max_avg_latency(&self, max: Duration) -> Self {
         let mut builder = self.clone();
         builder.inner = builder.inner.max_avg_latency(max);
-        builder
-    }
-
-    /// Set filtering mode (default: blacklist)
-    pub fn filtering_mode(&self, mode: RelayFilteringMode) -> Self {
-        let mut builder = self.clone();
-        builder.inner = builder.inner.filtering_mode(mode.into());
         builder
     }
 }

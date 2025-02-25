@@ -85,9 +85,8 @@ impl Client {
             builder.database,
             builder.websocket_transport,
             builder.signer,
-            builder.opts.filtering_mode,
+            builder.admit_policy,
             builder.opts.nip42_auto_authentication,
-            builder.opts.min_pow_difficulty,
         );
 
         // Construct client
@@ -106,10 +105,11 @@ impl Client {
     /// Update minimum POW difficulty for received events
     ///
     /// Events with a POW lower than the current value will be ignored to prevent resources exhaustion.
-    #[inline]
-    pub fn update_min_pow_difficulty(&self, difficulty: u8) {
-        self.state().set_pow(difficulty);
-    }
+    #[deprecated(
+        since = "0.40.0",
+        note = "This no longer works, please use `AdmitPolicy` instead."
+    )]
+    pub fn update_min_pow_difficulty(&self, _difficulty: u8) {}
 
     /// Auto authenticate to relays (default: true)
     ///
@@ -162,12 +162,6 @@ impl Client {
         self.pool.database()
     }
 
-    /// Get filtering
-    #[inline]
-    pub fn filtering(&self) -> &RelayFiltering {
-        self.pool.filtering()
-    }
-
     /// Reset the client
     ///
     /// This method resets the client to simplify the switch to another account.
@@ -186,7 +180,6 @@ impl Client {
         self.unsubscribe_all().await;
         self.force_remove_all_relays().await;
         self.unset_signer().await;
-        self.filtering().clear().await;
     }
 
     /// Completely shutdown client
