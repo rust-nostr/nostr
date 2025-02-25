@@ -932,10 +932,17 @@ impl Client {
         Ok(self.pool.batch_msg_to(urls, msgs).await?)
     }
 
-    /// Send event
+    /// Send the event to relays
     ///
-    /// Send [`Event`] to all relays with [`RelayServiceFlags::WRITE`] flag.
-    /// If `gossip` is enabled (see [`Options::gossip`]) the event will be sent also to NIP65 relays (automatically discovered).
+    /// # Overview
+    ///
+    /// Send the [`Event`] to all relays with [`RelayServiceFlags::WRITE`] flag.
+    ///
+    /// # Gossip
+    ///
+    /// If `gossip` is enabled (see [`Options::gossip`]):
+    /// - the [`Event`] will be sent also to NIP65 relays (automatically discovered);
+    /// - the gossip data will be updated, if the [`Event`] is a NIP17/NIP65 relay list.
     #[inline]
     pub async fn send_event(&self, event: &Event) -> Result<Output<EventId>, Error> {
         // NOT gossip, send event to all relays
@@ -943,10 +950,19 @@ impl Client {
             return Ok(self.pool.send_event(event).await?);
         }
 
+        // Update gossip graph
+        self.gossip_graph.process_event(event).await;
+
+        // Send event using gossip
         self.gossip_send_event(event, false).await
     }
 
-    /// Send event to specific relays.
+    /// Send event to specific relays
+    ///
+    /// # Gossip
+    ///
+    /// If `gossip` is enabled (see [`Options::gossip`]) and the [`Event`] is a NIP17/NIP65 relay list,
+    /// the gossip data will be updated.
     #[inline]
     pub async fn send_event_to<I, U>(
         &self,
@@ -958,6 +974,12 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
+        // If gossip is enabled, update the gossip graph
+        if self.opts.gossip {
+            self.gossip_graph.process_event(event).await;
+        }
+
+        // Send event to relays
         Ok(self.pool.send_event_to(urls, event).await?)
     }
 
@@ -969,9 +991,11 @@ impl Client {
         Ok(builder.sign(&signer).await?)
     }
 
-    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to relays (check [`Client::send_event`] from more details).
+    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to relays.
     ///
     /// This method requires a [`NostrSigner`].
+    ///
+    /// Check [`Client::send_event`] from more details.
     #[inline]
     pub async fn send_event_builder(
         &self,
@@ -984,6 +1008,8 @@ impl Client {
     /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to specific relays.
     ///
     /// This method requires a [`NostrSigner`].
+    ///
+    /// Check [`Client::send_event_to`] from more details.
     #[inline]
     pub async fn send_event_builder_to<I, U>(
         &self,

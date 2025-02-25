@@ -6,7 +6,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 
 use nostr::prelude::*;
-use tokio::sync::{RwLock, RwLockReadGuard};
+use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use super::constant::{CHECK_OUTDATED_INTERVAL, MAX_RELAYS_LIST, PUBKEY_METADATA_OUTDATED_AFTER};
 
@@ -54,6 +54,20 @@ impl GossipGraph {
         }
     }
 
+    pub async fn process_event(&self, event: &Event) {
+        // Check if the event can be processed
+        // This avoids the acquire of the lock for every event processed that is not a NIP17 or NIP65
+        if event.kind != Kind::RelayList && event.kind != Kind::InboxRelays {
+            return;
+        }
+
+        // Acquire write lock
+        let mut public_keys = self.public_keys.write().await;
+
+        // Update
+        self.update_event(&mut public_keys, event);
+    }
+
     /// Update graph
     ///
     /// Only the first [`MAX_RELAYS_LIST`] relays will be used.
@@ -64,61 +78,65 @@ impl GossipGraph {
         let mut public_keys = self.public_keys.write().await;
 
         for event in events.into_iter() {
-            if event.kind == Kind::RelayList {
-                public_keys
-                    .entry(event.pubkey)
-                    .and_modify(|lists| {
-                        // Update only if new metadata has more recent timestamp
-                        if event.created_at >= lists.nip65.event_created_at {
-                            lists.nip65 = RelayList {
-                                collection: nip65::extract_relay_list(&event)
-                                    .take(MAX_RELAYS_LIST)
-                                    .map(|(u, m)| (u.clone(), *m))
-                                    .collect(),
-                                event_created_at: event.created_at,
-                                last_update: Timestamp::now(),
-                            };
-                        }
-                    })
-                    .or_insert_with(|| RelayLists {
-                        nip65: RelayList {
-                            collection: nip65::extract_relay_list(&event)
+            self.update_event(&mut public_keys, &event);
+        }
+    }
+
+    fn update_event(&self, public_keys: &mut RwLockWriteGuard<PublicKeyMap>, event: &Event) {
+        if event.kind == Kind::RelayList {
+            public_keys
+                .entry(event.pubkey)
+                .and_modify(|lists| {
+                    // Update only if new metadata has more recent timestamp
+                    if event.created_at >= lists.nip65.event_created_at {
+                        lists.nip65 = RelayList {
+                            collection: nip65::extract_relay_list(event)
                                 .take(MAX_RELAYS_LIST)
                                 .map(|(u, m)| (u.clone(), *m))
                                 .collect(),
                             event_created_at: event.created_at,
                             last_update: Timestamp::now(),
-                        },
-                        ..Default::default()
-                    });
-            } else if event.kind == Kind::InboxRelays {
-                public_keys
-                    .entry(event.pubkey)
-                    .and_modify(|lists| {
-                        // Update only if new metadata has more recent timestamp
-                        if event.created_at >= lists.nip17.event_created_at {
-                            lists.nip17 = RelayList {
-                                collection: nip17::extract_relay_list(&event)
-                                    .take(MAX_RELAYS_LIST)
-                                    .cloned()
-                                    .collect(),
-                                event_created_at: event.created_at,
-                                last_update: Timestamp::now(),
-                            };
-                        }
-                    })
-                    .or_insert_with(|| RelayLists {
-                        nip17: RelayList {
-                            collection: nip17::extract_relay_list(&event)
+                        };
+                    }
+                })
+                .or_insert_with(|| RelayLists {
+                    nip65: RelayList {
+                        collection: nip65::extract_relay_list(event)
+                            .take(MAX_RELAYS_LIST)
+                            .map(|(u, m)| (u.clone(), *m))
+                            .collect(),
+                        event_created_at: event.created_at,
+                        last_update: Timestamp::now(),
+                    },
+                    ..Default::default()
+                });
+        } else if event.kind == Kind::InboxRelays {
+            public_keys
+                .entry(event.pubkey)
+                .and_modify(|lists| {
+                    // Update only if new metadata has more recent timestamp
+                    if event.created_at >= lists.nip17.event_created_at {
+                        lists.nip17 = RelayList {
+                            collection: nip17::extract_relay_list(event)
                                 .take(MAX_RELAYS_LIST)
                                 .cloned()
                                 .collect(),
                             event_created_at: event.created_at,
                             last_update: Timestamp::now(),
-                        },
-                        ..Default::default()
-                    });
-            }
+                        };
+                    }
+                })
+                .or_insert_with(|| RelayLists {
+                    nip17: RelayList {
+                        collection: nip17::extract_relay_list(event)
+                            .take(MAX_RELAYS_LIST)
+                            .cloned()
+                            .collect(),
+                        event_created_at: event.created_at,
+                        last_update: Timestamp::now(),
+                    },
+                    ..Default::default()
+                });
         }
     }
 
