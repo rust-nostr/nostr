@@ -2677,6 +2677,7 @@ dependencies = [
  "instant",
  "js-sys",
  "nostr-ots",
+ "regex",
  "reqwest",
  "scrypt",
  "secp256k1",
