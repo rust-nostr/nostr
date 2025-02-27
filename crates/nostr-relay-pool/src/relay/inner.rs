@@ -39,6 +39,7 @@ use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
 use crate::transport::websocket::{BoxSink, BoxStream};
+use crate::SyncDirection;
 
 type ClientMessageJson = String;
 
@@ -1369,9 +1370,9 @@ impl InnerRelay {
         msg: Option<Vec<u8>>,
         curr_have_ids: I,
         curr_need_ids: I,
+        direction: &SyncDirection,
         opts: &SyncOptions,
         output: &mut Reconciliation,
-        events: &HashMap<EventId, Event>,
         have_ids: &mut Vec<EventId>,
         need_ids: &mut Vec<EventId>,
         sync_done: &mut bool,
@@ -1384,7 +1385,7 @@ impl InnerRelay {
         // If event ID wasn't already seen, add to the HAVE IDs
         // Add to HAVE IDs only if `do_up` is true
         for id in curr_have_ids.into_iter() {
-            if output.local.insert(id) && opts.do_up() && !events.is_empty() {
+            if output.local.insert(id) && direction.do_up() && !opts.dry_run {
                 have_ids.push(id);
                 counter += 1;
             }
@@ -1393,7 +1394,7 @@ impl InnerRelay {
         // If event ID wasn't already seen, add to the NEED IDs
         // Add to NEED IDs only if `do_down` is true
         for id in curr_need_ids.into_iter() {
-            if output.remote.insert(id) && opts.do_down() {
+            if output.remote.insert(id) && direction.do_down() && !opts.dry_run {
                 need_ids.push(id);
                 counter += 1;
             }
@@ -1423,10 +1424,15 @@ impl InnerRelay {
         events: &mut HashMap<EventId, Event>,
         have_ids: &mut Vec<EventId>,
         in_flight_up: &mut HashSet<EventId>,
+        direction: &SyncDirection,
         opts: &SyncOptions,
     ) -> Result<(), Error> {
         // Check if should skip the upload
-        if !opts.do_up() || have_ids.is_empty() || in_flight_up.len() > NEGENTROPY_LOW_WATER_UP {
+        if !direction.do_up()
+            || opts.dry_run
+            || have_ids.is_empty()
+            || in_flight_up.len() > NEGENTROPY_LOW_WATER_UP
+        {
             return Ok(());
         }
 
@@ -1472,10 +1478,11 @@ impl InnerRelay {
         need_ids: &mut Vec<EventId>,
         in_flight_down: &mut bool,
         down_sub_id: &SubscriptionId,
+        direction: &SyncDirection,
         opts: &SyncOptions,
     ) -> Result<(), Error> {
         // Check if should skip the download
-        if !opts.do_down() || need_ids.is_empty() || *in_flight_down {
+        if !direction.do_down() || opts.dry_run || need_ids.is_empty() || *in_flight_down {
             return Ok(());
         }
 
@@ -1579,10 +1586,13 @@ impl InnerRelay {
         // Check if negentropy is supported
         check_negentropy_support(&sub_id, opts, &mut temp_notifications).await?;
 
+        // Get direction
+        let direction: SyncDirection = items.direction();
+
         // Construct events map for event upload
         let mut events = match items {
             SyncItems::Down(..) => HashMap::new(),
-            SyncItems::Full(events) => events.into_iter().map(|e| (e.id, e)).collect(),
+            SyncItems::Full { events, .. } => events.into_iter().map(|e| (e.id, e)).collect(),
         };
 
         let mut in_flight_up: HashSet<EventId> = HashSet::new();
@@ -1621,9 +1631,9 @@ impl InnerRelay {
                                     msg,
                                     curr_have_ids.into_iter().map(neg_id_to_event_id),
                                     curr_need_ids.into_iter().map(neg_id_to_event_id),
+                                    &direction,
                                     opts,
                                     output,
-                                    &events,
                                     &mut have_ids,
                                     &mut need_ids,
                                     &mut sync_done,
@@ -1668,10 +1678,22 @@ impl InnerRelay {
                     }
 
                     // Send events
-                    self.upload_neg_events(&mut events, &mut have_ids, &mut in_flight_up, opts)?;
+                    self.upload_neg_events(
+                        &mut events,
+                        &mut have_ids,
+                        &mut in_flight_up,
+                        &direction,
+                        opts,
+                    )?;
 
                     // Get events
-                    self.req_neg_events(&mut need_ids, &mut in_flight_down, &down_sub_id, opts)?;
+                    self.req_neg_events(
+                        &mut need_ids,
+                        &mut in_flight_down,
+                        &down_sub_id,
+                        &direction,
+                        opts,
+                    )?;
                 }
                 RelayNotification::RelayStatus { status } => {
                     if status.is_disconnected() {
@@ -1736,10 +1758,13 @@ impl InnerRelay {
         // Check if negentropy is supported
         check_negentropy_support(&sub_id, opts, &mut temp_notifications).await?;
 
+        // Get direction
+        let direction: SyncDirection = items.direction();
+
         // Construct events map for event upload
         let mut events = match items {
             SyncItems::Down(..) => HashMap::new(),
-            SyncItems::Full(events) => events.into_iter().map(|e| (e.id, e)).collect(),
+            SyncItems::Full { events, .. } => events.into_iter().map(|e| (e.id, e)).collect(),
         };
 
         let mut in_flight_up: HashSet<EventId> = HashSet::new();
@@ -1779,9 +1804,9 @@ impl InnerRelay {
                                     msg.map(|m| m.to_bytes()),
                                     curr_have_ids.into_iter().filter_map(neg_depr_to_event_id),
                                     curr_need_ids.into_iter().filter_map(neg_depr_to_event_id),
+                                    &direction,
                                     opts,
                                     output,
-                                    &events,
                                     &mut have_ids,
                                     &mut need_ids,
                                     &mut sync_done,
@@ -1826,10 +1851,22 @@ impl InnerRelay {
                     }
 
                     // Send events
-                    self.upload_neg_events(&mut events, &mut have_ids, &mut in_flight_up, opts)?;
+                    self.upload_neg_events(
+                        &mut events,
+                        &mut have_ids,
+                        &mut in_flight_up,
+                        &direction,
+                        opts,
+                    )?;
 
                     // Get events
-                    self.req_neg_events(&mut need_ids, &mut in_flight_down, &down_sub_id, opts)?;
+                    self.req_neg_events(
+                        &mut need_ids,
+                        &mut in_flight_down,
+                        &down_sub_id,
+                        &direction,
+                        opts,
+                    )?;
                 }
                 RelayNotification::RelayStatus { status } => {
                     if status.is_disconnected() {

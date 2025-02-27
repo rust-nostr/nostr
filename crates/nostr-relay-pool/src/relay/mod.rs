@@ -105,22 +105,41 @@ pub enum SyncItems {
     /// Full
     ///
     /// This supports both sync in UP and DOWN directions.
-    // TODO: this may increase a lot the memory usage if the sync is very large
-    Full(Events),
+    Full {
+        /// Events
+        events: Events,
+        /// Execute sync only in UP direction (send local events to relay/s)
+        ///
+        /// Use `false` to execute a sync in both directions.
+        up_only: bool,
+    },
 }
 
 impl SyncItems {
     pub(crate) fn len(&self) -> usize {
         match self {
             SyncItems::Down(items) => items.len(),
-            SyncItems::Full(events) => events.len(),
+            SyncItems::Full { events, .. } => events.len(),
         }
     }
 
     pub(crate) fn iter(&self) -> Box<dyn Iterator<Item = (EventId, Timestamp)> + '_> {
         match self {
             SyncItems::Down(items) => Box::new(items.iter().map(|(id, ts)| (*id, *ts))),
-            SyncItems::Full(events) => Box::new(events.iter().map(|e| (e.id, e.created_at))),
+            SyncItems::Full { events, .. } => Box::new(events.iter().map(|e| (e.id, e.created_at))),
+        }
+    }
+
+    pub(crate) fn direction(&self) -> SyncDirection {
+        match self {
+            SyncItems::Down(_) => SyncDirection::Down,
+            SyncItems::Full { up_only, .. } => {
+                if *up_only {
+                    SyncDirection::Up
+                } else {
+                    SyncDirection::Both
+                }
+            }
         }
     }
 }

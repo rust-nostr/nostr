@@ -193,6 +193,18 @@ pub enum SyncDirection {
     Both,
 }
 
+impl SyncDirection {
+    #[inline]
+    pub(crate) fn do_up(&self) -> bool {
+        matches!(self, SyncDirection::Up | SyncDirection::Both)
+    }
+
+    #[inline]
+    pub(crate) fn do_down(&self) -> bool {
+        matches!(self, SyncDirection::Down | SyncDirection::Both)
+    }
+}
+
 /// Sync (negentropy reconciliation) progress
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SyncProgress {
@@ -225,7 +237,7 @@ impl SyncProgress {
 pub struct SyncOptions {
     pub(super) initial_timeout: Duration,
     // TODO: move direction to another SyncOptions in nostr-sdk crate
-    pub(super) direction: SyncDirection,
+    pub direction: SyncDirection,
     pub(super) dry_run: bool,
     pub(super) progress: Option<Sender<SyncProgress>>,
 }
@@ -281,15 +293,5 @@ impl SyncOptions {
     pub fn progress(mut self, sender: Sender<SyncProgress>) -> Self {
         self.progress = Some(sender);
         self
-    }
-
-    #[inline]
-    pub fn do_up(&self) -> bool {
-        !self.dry_run && matches!(self.direction, SyncDirection::Up | SyncDirection::Both)
-    }
-
-    #[inline]
-    pub fn do_down(&self) -> bool {
-        !self.dry_run && matches!(self.direction, SyncDirection::Down | SyncDirection::Both)
     }
 }

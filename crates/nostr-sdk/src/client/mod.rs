@@ -660,6 +660,27 @@ impl Client {
         self.pool.unsubscribe_all().await;
     }
 
+    async fn get_sync_items(&self, filter: Filter, opts: &SyncOptions) -> Result<SyncItems, Error> {
+        // Check sync direction
+        let (up, down): (bool, bool) = match opts.direction {
+            SyncDirection::Down => (false, true),
+            SyncDirection::Up => (true, false),
+            SyncDirection::Both => (true, true),
+        };
+
+        // Get items
+        if up {
+            Ok(SyncItems::Full {
+                events: self.database.query(filter).await?,
+                up_only: up && !down,
+            })
+        } else {
+            Ok(SyncItems::Down(
+                self.database.negentropy_items(filter).await?,
+            ))
+        }
+    }
+
     /// Sync events with relays (negentropy reconciliation)
     ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be reconciled also from
@@ -676,14 +697,8 @@ impl Client {
             return self.gossip_sync_negentropy(filter, opts).await;
         }
 
-        // TODO: use transactional zero-copy query and remove negentropy_items method
-
         // Get items
-        let items: SyncItems = if opts.do_up() {
-            SyncItems::Full(self.database.query(filter.clone()).await?)
-        } else {
-            SyncItems::Down(self.database.negentropy_items(filter.clone()).await?)
-        };
+        let items: SyncItems = self.get_sync_items(filter.clone(), opts).await?;
 
         // Sync
         Ok(self.pool.sync(filter, items, opts).await?)
@@ -704,12 +719,9 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         // Get items
-        let items: SyncItems = if opts.do_up() {
-            SyncItems::Full(self.database.query(filter.clone()).await?)
-        } else {
-            SyncItems::Down(self.database.negentropy_items(filter.clone()).await?)
-        };
+        let items: SyncItems = self.get_sync_items(filter.clone(), opts).await?;
 
+        // Sync
         Ok(self.pool.sync_with(urls, filter, items, opts).await?)
     }
 
@@ -1586,11 +1598,7 @@ impl Client {
         // Iterate broken down filters and compose new filters for targeted reconciliation
         for (url, filter) in temp_filters.into_iter() {
             // Get items
-            let items: SyncItems = if opts.do_up() {
-                SyncItems::Full(self.database.query(filter.clone()).await?)
-            } else {
-                SyncItems::Down(self.database.negentropy_items(filter.clone()).await?)
-            };
+            let items: SyncItems = self.get_sync_items(filter.clone(), opts).await?;
 
             filters.insert(url, (filter, items));
         }
