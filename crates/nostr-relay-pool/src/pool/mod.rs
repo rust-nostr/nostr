@@ -150,7 +150,8 @@ impl RelayPool {
     }
 
     /// Get relays with `READ` or `WRITE` relays
-    async fn relay_urls(&self) -> Vec<RelayUrl> {
+    #[doc(hidden)]
+    pub async fn __relay_urls(&self) -> Vec<RelayUrl> {
         let relays = self.inner.atomic.relays.read().await;
         self.internal_relays_with_flag(
             &relays,
@@ -161,14 +162,18 @@ impl RelayPool {
         .collect()
     }
 
-    async fn read_relay_urls(&self) -> Vec<RelayUrl> {
+    /// Get only READ relays
+    #[doc(hidden)]
+    pub async fn __read_relay_urls(&self) -> Vec<RelayUrl> {
         let relays = self.inner.atomic.relays.read().await;
         self.internal_relays_with_flag(&relays, RelayServiceFlags::READ, FlagCheck::All)
             .map(|(k, ..)| k.clone())
             .collect()
     }
 
-    async fn write_relay_urls(&self) -> Vec<RelayUrl> {
+    /// Get only WRITE relays
+    #[doc(hidden)]
+    pub async fn __write_relay_urls(&self) -> Vec<RelayUrl> {
         let relays = self.inner.atomic.relays.read().await;
         self.internal_relays_with_flag(&relays, RelayServiceFlags::WRITE, FlagCheck::All)
             .map(|(k, ..)| k.clone())
@@ -552,7 +557,7 @@ impl RelayPool {
 
     /// Send event to all relays with `WRITE` flag (check [`RelayServiceFlags`] for more details).
     pub async fn send_event(&self, event: &Event) -> Result<Output<EventId>, Error> {
-        let urls: Vec<RelayUrl> = self.write_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.__write_relay_urls().await;
         self.send_event_to(urls, event).await
     }
 
@@ -661,7 +666,7 @@ impl RelayPool {
         }
 
         // Get relay urls
-        let urls: Vec<RelayUrl> = self.read_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.__read_relay_urls().await;
 
         // Subscribe
         self.subscribe_with_id_to(urls, id, filter, opts).await
@@ -835,7 +840,7 @@ impl RelayPool {
         items: SyncItems,
         opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
-        let urls: Vec<RelayUrl> = self.relay_urls().await;
+        let urls: Vec<RelayUrl> = self.__relay_urls().await;
         self.sync_with(urls, filter, items, opts).await
     }
 
@@ -939,7 +944,7 @@ impl RelayPool {
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<Events, Error> {
-        let urls: Vec<RelayUrl> = self.read_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.__read_relay_urls().await;
         self.fetch_events_from(urls, filter, timeout, policy).await
     }
 
@@ -976,7 +981,7 @@ impl RelayPool {
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<ReceiverStream<Event>, Error> {
-        let urls: Vec<RelayUrl> = self.read_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.__read_relay_urls().await;
         self.stream_events_from(urls, filter, timeout, policy).await
     }
 
