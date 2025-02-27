@@ -1,4 +1,6 @@
 from nostr_sdk import Keys, EventBuilder, Nip19Profile, Nip19, Nip19Event, Coordinate, Kind
+
+
 def nip19():
     keys = Keys.generate()
 
@@ -57,3 +59,7 @@ def nip19():
     decode_coord = Nip19.from_bech32(coord.to_bech32())
     print(f" Coordinate (decoded): {decode_coord}")
     # ANCHOR_END: nip19-naddr-decode
+
+
+if __name__ == '__main__':
+   nip19()

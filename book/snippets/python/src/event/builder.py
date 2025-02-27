@@ -1,4 +1,5 @@
 # ANCHOR: full
+import asyncio
 from nostr_sdk import Keys, EventBuilder, Kind, Tag, NostrSigner, Timestamp
 
 
@@ -35,4 +36,6 @@ async def event_builder():
 
     await sign_and_print(signer, builder3)
 
+if __name__ == '__main__':
+   asyncio.run(event_builder())
 # ANCHOR_END: full

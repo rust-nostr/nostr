@@ -13,4 +13,7 @@ def event_json():
     # ANCHOR_END: serialize
 
     print(json)
+
+if __name__ == '__main__':
+   event_json()
 # ANCHOR_END: full

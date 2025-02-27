@@ -1,4 +1,5 @@
 # ANCHOR: full
+import asyncio
 from nostr_sdk import NostrWalletConnectUri, Nwc, PayInvoiceRequest, MakeInvoiceRequest
 
 
@@ -26,4 +27,7 @@ async def main():
     result = await nwc.make_invoice(params)
     print(f"Invoice: {result.invoice}")
 
+
+if __name__ == '__main__':
+   asyncio.run(main())
 # ANCHOR_END: full

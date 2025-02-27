@@ -156,3 +156,6 @@ def filters():
     print(f"     Event match for filter: {f.match_event(event)}")
     print(f"     Event2 match for filter: {f.match_event(event2)}")
     # ANCHOR_END: other-match
+
+if __name__ == '__main__':
+   filters()

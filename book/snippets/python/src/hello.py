@@ -1,11 +1,13 @@
 # ANCHOR: full
-from nostr_sdk import Keys, Client, EventBuilder
+import asyncio
+from nostr_sdk import Keys, Client, EventBuilder, NostrSigner
 
 
 async def hello():
     # ANCHOR: client
     keys = Keys.generate()
-    client = Client(keys)
+    signer = NostrSigner.keys(keys)
+    client = Client(signer)
     # ANCHOR_END: client
 
     # ANCHOR: connect
@@ -24,4 +26,6 @@ async def hello():
     print(f"Not send to: {output.failed}")
     # ANCHOR_END: output
 
+if __name__ == '__main__':
+   asyncio.run(hello())
 # ANCHOR_END: full

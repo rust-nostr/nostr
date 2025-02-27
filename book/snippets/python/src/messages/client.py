@@ -93,3 +93,6 @@ def client_message():
     print(f"     - JSON: {message.as_json()}")
     print(f"     - Negative Error Message: {message.as_enum().is_neg_msg()}")
     # ANCHOR_END: neg-msg
+
+if __name__ == '__main__':
+   client_message()

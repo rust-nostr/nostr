@@ -4,7 +4,6 @@ from nostr_sdk import Timestamp, EventBuilder, Keys, Kind, gift_wrap, Tag
 def timestamps():
     # Generate keys and Events
     alice_keys = Keys.generate()
-    bob_keys = Keys.generate()
 
     print()
     print("Timestamps:")
@@ -36,3 +35,6 @@ def timestamps():
     tag = Tag.expiration(timestamp)
     print(f"     Tag: {tag.as_standardized()}")
     # ANCHOR_END: timestamp-tag
+
+if __name__ == '__main__':
+   timestamps()

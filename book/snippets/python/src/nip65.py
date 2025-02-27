@@ -1,5 +1,6 @@
 from nostr_sdk import EventBuilder, Tag, Kind, Keys, RelayMetadata
 
+
 def nip65():
     # Get Keys
     keys = Keys.generate()
@@ -38,3 +39,6 @@ def nip65():
     # Print event as json
     print(f" Event: {event.as_json()}")
     # ANCHOR_END: relay-metadata-custom
+
+if __name__ == '__main__':
+   nip65()

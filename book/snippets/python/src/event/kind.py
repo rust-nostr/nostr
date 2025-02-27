@@ -1,4 +1,3 @@
-from typing import cast
 from nostr_sdk import Kind, KindStandard, EventBuilder, Keys, Metadata
 
 
@@ -61,3 +60,6 @@ def kind():
     kind = Kind(10001)
     print(f"     - Is {kind.as_u16()} relay replaceable?: {kind.is_replaceable()}")
     # ANCHOR_END: kind-tests
+
+if __name__ == '__main__':
+   kind()

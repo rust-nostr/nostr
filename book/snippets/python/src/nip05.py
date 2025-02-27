@@ -1,3 +1,4 @@
+import asyncio
 from nostr_sdk import Metadata, PublicKey, verify_nip05, get_nip05_profile
 
 
@@ -8,8 +9,6 @@ async def nip05():
         .set_name("TestName") \
         .set_nip05("TestName@rustNostr.com")
     # ANCHOR_END: set-metadata
-
-    print()
 
     # ANCHOR: verify-nip05
     print("Verify NIP-05:")
@@ -30,3 +29,6 @@ async def nip05():
     profile = await get_nip05_profile(nip_05)
     print(f"     {nip_05} Public key: {profile.public_key().to_bech32()}")
     # ANCHOR_END: nip05-profile
+
+if __name__ == '__main__':
+   asyncio.run(nip05())

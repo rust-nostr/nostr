@@ -1,3 +1,4 @@
+import asyncio
 from nostr_sdk import Keys, EventBuilder, Event, gift_wrap, UnwrappedGift, UnsignedEvent, NostrSigner
 
 
@@ -15,7 +16,7 @@ async def nip59():
     rumor: UnsignedEvent = EventBuilder.text_note("Test").build(alice_keys.public_key())
 
     # Build gift wrap with sender keys
-    gw: Event = await gift_wrap(alice_signer, bob_keys.public_key(), rumor, None)
+    gw: Event = await gift_wrap(alice_signer, bob_keys.public_key(), rumor)
     print(f" Gift Wrap:\n{gw.as_json()}")
 
     # Extract rumor from gift wrap with receiver keys
@@ -25,3 +26,6 @@ async def nip59():
     unwrapped_rumor: UnsignedEvent = unwrapped_gift.rumor()
     print(f"     Sender: {sender.to_bech32()}")
     print(f"     Rumor: {unwrapped_rumor.as_json()}")
+
+if __name__ == '__main__':
+   asyncio.run(nip59())

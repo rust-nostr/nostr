@@ -1,9 +1,10 @@
 from nostr_sdk import Keys, Metadata, EventBuilder
+
+
 def nip01():
     # Generate random keys
     keys = Keys.generate()
 
-    print()
     # ANCHOR: create-event
     # Create metadata object with desired content
     metadata_content = Metadata()\
@@ -32,7 +33,6 @@ def nip01():
     print(f"     JSON      : {event.as_json()}")
     # ANCHOR_END: create-event
 
-    print()
     # ANCHOR: create-metadata
     # Deserialize Metadata from event
     print("Deserializing Metadata Event:")
@@ -47,3 +47,6 @@ def nip01():
     print(f"     Banner    : {metadata.get_banner()}")
     print(f"     NIP05     : {metadata.get_nip05()}")
     # ANCHOR_END: create-metadata
+
+if __name__ == '__main__':
+   nip01()

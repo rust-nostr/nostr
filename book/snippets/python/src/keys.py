@@ -22,3 +22,7 @@ def restore():
     secret_key = SecretKey.parse("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
     keys = Keys(secret_key)
 # ANCHOR_END: restore
+
+if __name__ == '__main__':
+   generate()
+   restore()

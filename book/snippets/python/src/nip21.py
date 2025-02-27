@@ -83,3 +83,6 @@ def nip21():
         coord_bech32 = Coordinate.parse(coord_uri).to_bech32()
         print(f" Coordinate (bech32): {coord_bech32}")
     # ANCHOR_END: naddr
+
+if __name__ == '__main__':
+   nip21()

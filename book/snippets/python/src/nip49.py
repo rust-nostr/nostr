@@ -30,4 +30,8 @@ def decrypt():
 
     print(f"Decrypted secret key: {secret_key.to_bech32()}")
 
+
+if __name__ == '__main__':
+   encrypt()
+   decrypt()
 # ANCHOR_END: full

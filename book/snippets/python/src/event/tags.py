@@ -76,3 +76,6 @@ def tags():
     print(f"     - Tag1 (Title?)  : {tag.kind().is_title()}")
     print(f"     - Tag1 (Summary?): {tag.kind().is_summary()}")
     # ANCHOR_END: logical
+
+if __name__ == '__main__':
+   tags()

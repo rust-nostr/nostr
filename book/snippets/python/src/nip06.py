@@ -64,3 +64,6 @@ def nip06():
         nsec = Keys.from_mnemonic(words, passphrase, account).secret_key().to_bech32()
         print(f"     Account #{account} bech32: {nsec}")
     # ANCHOR_END: keys-from-seed-accounts-pass
+
+if __name__ == '__main__':
+   nip06()

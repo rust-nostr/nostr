@@ -101,3 +101,6 @@ def relay_message():
     print(f"     - Negative Error Message: {message.as_enum().is_neg_msg()}")
     print(f"     - JSON: {message.as_json()}")
     # ANCHOR_END: neg-msg
+
+if __name__ == '__main__':
+   relay_message()

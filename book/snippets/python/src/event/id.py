@@ -57,3 +57,6 @@ def event_id():
     print(f"     - Event ID: {event.id()}")
     print(f"     - Verify the ID & Signature: {event.verify()}")
     # ANCHOR_END: access-verify
+
+if __name__ == '__main__':
+   event_id()

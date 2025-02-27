@@ -1,5 +1,6 @@
 from nostr_sdk import Keys, PublicKey, nip44_encrypt, nip44_decrypt, Nip44Version
 
+
 def nip44():
     print("\nEncrypting and Decrypting Messages (NIP-44):")
     keys = Keys.generate()
@@ -11,3 +12,6 @@ def nip44():
 
     plaintext = nip44_decrypt(keys.secret_key(), pk, ciphertext)
     print(f" Decrypted: {plaintext}")
+
+if __name__ == '__main__':
+   nip44()
