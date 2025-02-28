@@ -1329,19 +1329,17 @@ impl Client {
         let stored_events: Events = self.database().query(filter.clone()).await?;
 
         // Get DISCOVERY and READ relays
-        // TODO: avoid clone of both url and relay
-        let relays = self
+        let urls: Vec<RelayUrl> = self
             .pool
-            .relays_with_flag(
+            .__relay_urls_with_flag(
                 RelayServiceFlags::DISCOVERY | RelayServiceFlags::READ,
                 FlagCheck::Any,
             )
-            .await
-            .into_keys();
+            .await;
 
         // Get events from discovery and read relays
         let events: Events = self
-            .fetch_events_from(relays, filter, Duration::from_secs(10))
+            .fetch_events_from(urls, filter, Duration::from_secs(10))
             .await?;
 
         // Update last check for these public keys
@@ -1369,13 +1367,10 @@ impl Client {
             BrokenDownFilters::Filters(filters) => filters,
             BrokenDownFilters::Orphan(filter) | BrokenDownFilters::Other(filter) => {
                 // Get read relays
-                let read_relays = self
-                    .pool
-                    .relays_with_flag(RelayServiceFlags::READ, FlagCheck::All)
-                    .await;
+                let read_relays: Vec<RelayUrl> = self.pool.__read_relay_urls().await;
 
                 let mut map = HashMap::with_capacity(read_relays.len());
-                for url in read_relays.into_keys() {
+                for url in read_relays.into_iter() {
                     map.insert(url, filter.clone());
                 }
                 map
@@ -1461,12 +1456,7 @@ impl Client {
             }
 
             // Get WRITE relays
-            // TODO: avoid clone of both url and relay
-            let write_relays = self
-                .pool
-                .relays_with_flag(RelayServiceFlags::WRITE, FlagCheck::All)
-                .await
-                .into_keys();
+            let write_relays: Vec<RelayUrl> = self.pool.__write_relay_urls().await;
 
             // Extend OUTBOX relays with WRITE ones
             outbox.extend(write_relays);

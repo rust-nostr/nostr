@@ -60,6 +60,7 @@
 * ndb: return `None` in `NostrEventsDatabase::event_by_id` if event doesn't exist ([Yuki Kishimoto])
 * ndb: avoid event clone when calling `NostrEventsDatabase::save_event` ([Yuki Kishimoto])
 * sdk: auto-update the gossip data when sending an event ([Yuki Kishimoto])
+* sdk: avoid full clone of relays when only urls are needed ([Yuki Kishimoto])
 * ffi: improve `Events::merge` and `Events::to_vec` performance ([Yuki Kishimoto])
 * ci: release wheels also for python `3.13` ([Yuki Kishimoto])
 
