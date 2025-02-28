@@ -32,6 +32,7 @@
 ### Breaking changes
 
 * nostr: update `Nip19Event` relays field type from `Vec<String>` to `Vec<RelayUrl>` ([Yuki Kishimoto])
+* nostr: change the `Err` type of `ToBech32` to `Infallible` for `SecretKey`, `PublicKey` and `EventId` ([awiteb])
 * nostr: update `Tags::new` signature ([Yuki Kishimoto])
 * nostr: remove `WeakTag` ([Yuki Kishimoto])
 * nostr: change `TagStandard::Relays` variant inner value from `Vec<Url>` to `Vec<RelayUrl>` ([Yuki Kishimoto])

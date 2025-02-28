@@ -8,6 +8,7 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::convert::Infallible;
 use core::fmt;
 use core::str::FromStr;
 
@@ -65,6 +66,12 @@ impl fmt::Display for Error {
 impl From<nip19::Error> for Error {
     fn from(e: nip19::Error) -> Self {
         Self::NIP19(e)
+    }
+}
+
+impl From<Infallible> for Error {
+    fn from(_: Infallible) -> Self {
+        unreachable!()
     }
 }
 

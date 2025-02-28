@@ -11,6 +11,7 @@
 use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use core::convert::Infallible;
 use core::fmt;
 use core::ops::Deref;
 use core::str::FromStr;
@@ -128,6 +129,12 @@ impl From<key::Error> for Error {
 impl From<event::Error> for Error {
     fn from(e: event::Error) -> Self {
         Self::Event(e)
+    }
+}
+
+impl From<Infallible> for Error {
+    fn from(_: Infallible) -> Self {
+        unreachable!()
     }
 }
 
@@ -264,13 +271,13 @@ impl ToBech32 for Nip19 {
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
         match self {
-            Nip19::Secret(sec) => sec.to_bech32(),
+            Nip19::Secret(sec) => Ok(sec.to_bech32()?),
             #[cfg(feature = "nip49")]
             Nip19::EncryptedSecret(cryptsec) => cryptsec.to_bech32(),
-            Nip19::Pubkey(pubkey) => pubkey.to_bech32(),
+            Nip19::Pubkey(pubkey) => Ok(pubkey.to_bech32()?),
             Nip19::Event(event) => event.to_bech32(),
             Nip19::Profile(profile) => profile.to_bech32(),
-            Nip19::EventId(event_id) => event_id.to_bech32(),
+            Nip19::EventId(event_id) => Ok(event_id.to_bech32()?),
             Nip19::Coordinate(coordinate) => coordinate.to_bech32(),
         }
     }
@@ -291,13 +298,13 @@ impl FromBech32 for SecretKey {
 }
 
 impl ToBech32 for SecretKey {
-    type Err = Error;
+    type Err = Infallible;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        Ok(bech32::encode::<Bech32>(
-            HRP_SECRET_KEY,
-            self.as_secret_bytes(),
-        )?)
+        Ok(
+            bech32::encode::<Bech32>(HRP_SECRET_KEY, self.as_secret_bytes())
+                .expect("Less than 1023"),
+        )
     }
 }
 
@@ -343,10 +350,10 @@ impl FromBech32 for PublicKey {
 }
 
 impl ToBech32 for PublicKey {
-    type Err = Error;
+    type Err = Infallible;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        Ok(bech32::encode::<Bech32>(HRP_PUBLIC_KEY, self.as_bytes())?)
+        Ok(bech32::encode::<Bech32>(HRP_PUBLIC_KEY, self.as_bytes()).expect("Less than 1023"))
     }
 }
 
@@ -365,10 +372,10 @@ impl FromBech32 for EventId {
 }
 
 impl ToBech32 for EventId {
-    type Err = Error;
+    type Err = Infallible;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        Ok(bech32::encode::<Bech32>(HRP_NOTE_ID, self.as_bytes())?)
+        Ok(bech32::encode::<Bech32>(HRP_NOTE_ID, self.as_bytes()).expect("Less than 1023"))
     }
 }
 
