@@ -11,11 +11,11 @@
 use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use bech32::primitives::decode::{CheckedHrpstring, CheckedHrpstringError};
 use core::fmt;
 use core::ops::Deref;
 use core::str::FromStr;
 
+use bech32::primitives::decode::{CheckedHrpstring, CheckedHrpstringError};
 use bech32::{self, Bech32, Hrp};
 
 use super::nip01::Coordinate;
