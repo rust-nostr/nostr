@@ -1020,6 +1020,10 @@ impl Client {
 
     /// Fetch the newest public key metadata from relays.
     ///
+    /// Returns [`None`] if the [`Metadata`] of the  [`PublicKey`] has not been found.
+    ///
+    /// Check [`Client::fetch_events`] for more details.
+    ///
     /// If you only want to consult stored data,
     /// consider `client.database().profile(PUBKEY)`.
     ///
@@ -1028,15 +1032,15 @@ impl Client {
         &self,
         public_key: PublicKey,
         timeout: Duration,
-    ) -> Result<Metadata, Error> {
+    ) -> Result<Option<Metadata>, Error> {
         let filter: Filter = Filter::new()
             .author(public_key)
             .kind(Kind::Metadata)
             .limit(1);
         let events: Events = self.fetch_events(filter, timeout).await?;
         match events.first() {
-            Some(event) => Ok(Metadata::try_from(event)?),
-            None => Err(Error::MetadataNotFound),
+            Some(event) => Ok(Some(Metadata::try_from(event)?)),
+            None => Ok(None),
         }
     }
 

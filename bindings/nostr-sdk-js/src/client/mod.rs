@@ -496,7 +496,11 @@ impl JsClient {
             .map(|id| id.into())
     }
 
-    /// Fetch the newest public key metadata from database and connected relays.
+    /// Fetch the newest public key metadata from relays.
+    ///
+    /// Returns `None` if the `Metadata` of the `PublicKey` has not been found.
+    ///
+    /// Check `Client.fetchEvents` for more details.
     ///
     /// If you only want to consult cached data,
     /// consider `client.database().profile(PUBKEY)`.
@@ -507,12 +511,13 @@ impl JsClient {
         &self,
         public_key: &JsPublicKey,
         timeout: &JsDuration,
-    ) -> Result<JsMetadata> {
-        self.inner
+    ) -> Result<Option<JsMetadata>> {
+        Ok(self
+            .inner
             .fetch_metadata(**public_key, **timeout)
             .await
-            .map_err(into_err)
-            .map(|m| m.into())
+            .map_err(into_err)?
+            .map(|m| m.into()))
     }
 
     /// Update metadata

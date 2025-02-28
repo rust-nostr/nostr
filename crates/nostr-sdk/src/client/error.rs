@@ -38,8 +38,6 @@ pub enum Error {
     GossipFiltersEmpty,
     /// Private message (NIP17) relays not found
     PrivateMsgRelaysNotFound,
-    /// Metadata not found
-    MetadataNotFound,
 }
 
 impl std::error::Error for Error {}
@@ -66,7 +64,6 @@ impl fmt::Display for Error {
                 write!(f, "gossip broken down filters are empty")
             }
             Self::PrivateMsgRelaysNotFound => write!(f, "Private message relays not found. The user is not ready to receive private messages."),
-            Self::MetadataNotFound => write!(f, "metadata not found"),
         }
     }
 }

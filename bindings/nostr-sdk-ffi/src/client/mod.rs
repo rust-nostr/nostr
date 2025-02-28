@@ -451,7 +451,11 @@ impl Client {
             .into())
     }
 
-    /// Fetch the newest public key metadata from database and connected relays.
+    /// Fetch the newest public key metadata from relays.
+    ///
+    /// Returns `None` if the `Metadata` of the `PublicKey` has not been found.
+    ///
+    /// Check `Client::fetch_events` for more details.
     ///
     /// If you only want to consult cached data,
     /// consider `client.database().profile(PUBKEY)`.
@@ -461,12 +465,12 @@ impl Client {
         &self,
         public_key: &PublicKey,
         timeout: Duration,
-    ) -> Result<Metadata> {
+    ) -> Result<Option<Arc<Metadata>>> {
         Ok(self
             .inner
             .fetch_metadata(**public_key, timeout)
             .await?
-            .into())
+            .map(|m| Arc::new(m.into())))
     }
 
     pub async fn set_metadata(&self, metadata: &Metadata) -> Result<SendEventOutput> {
