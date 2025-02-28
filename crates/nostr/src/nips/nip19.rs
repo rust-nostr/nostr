@@ -11,6 +11,7 @@
 use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use bech32::primitives::decode::{CheckedHrpstring, CheckedHrpstringError};
 use core::fmt;
 use core::ops::Deref;
 use core::str::FromStr;
@@ -54,11 +55,29 @@ const FIXED_1_1_32_BYTES_TVL: usize = 1 + 1 + 32;
 /// 1 (type) + 1 (len) + 4 (value - 32-bit unsigned number)
 const FIXED_KIND_BYTES_TVL: usize = 1 + 1 + 4;
 
+struct Nip19BechChecksum;
+
+impl bech32::Checksum for Nip19BechChecksum {
+    type MidstateRepr = u32;
+    const CODE_LENGTH: usize = usize::MAX;
+    const CHECKSUM_LENGTH: usize = 6;
+    const GENERATOR_SH: [u32; 5] = [
+        0x3b6a_57b2,
+        0x2650_8e6d,
+        0x1ea1_19fa,
+        0x3d42_33dd,
+        0x2a14_62b3,
+    ];
+    const TARGET_RESIDUE: u32 = 1;
+}
+
 /// `NIP19` error
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
     /// Relay Url parse error
     RelayUrl(url::Error),
+    /// Bech32 checksum error.
+    Checksum(CheckedHrpstringError),
     /// Bech32 decode error.
     Bech32Decode(bech32::DecodeError),
     /// Bech32 encode error
@@ -87,6 +106,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::RelayUrl(e) => write!(f, "{e}"),
+            Self::Checksum(e) => write!(f, "{e}"),
             Self::Bech32Decode(e) => write!(f, "{e}"),
             Self::Bech32Encode(e) => write!(f, "{e}"),
             Self::Keys(e) => write!(f, "{e}"),
@@ -104,6 +124,12 @@ impl fmt::Display for Error {
 impl From<url::Error> for Error {
     fn from(e: url::Error) -> Self {
         Self::RelayUrl(e)
+    }
+}
+
+impl From<CheckedHrpstringError> for Error {
+    fn from(e: CheckedHrpstringError) -> Self {
+        Self::Checksum(e)
     }
 }
 
@@ -241,7 +267,9 @@ impl FromBech32 for Nip19 {
     type Err = Error;
 
     fn from_bech32(hash: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(hash)?;
+        let hrp_str = CheckedHrpstring::new::<Nip19BechChecksum>(hash)?;
+        let (hrp, data) = (hrp_str.hrp(), hrp_str.byte_iter().collect::<Vec<u8>>());
+
         let prefix: Nip19Prefix = Nip19Prefix::from_hrp(hrp.as_str())?;
 
         match prefix {
@@ -280,7 +308,8 @@ impl FromBech32 for SecretKey {
     type Err = Error;
 
     fn from_bech32(secret_key: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(secret_key)?;
+        let hrp_str = CheckedHrpstring::new::<Nip19BechChecksum>(secret_key)?;
+        let (hrp, data) = (hrp_str.hrp(), hrp_str.byte_iter().collect::<Vec<u8>>());
 
         if hrp != HRP_SECRET_KEY {
             return Err(Error::WrongPrefix);
@@ -306,7 +335,8 @@ impl FromBech32 for EncryptedSecretKey {
     type Err = Error;
 
     fn from_bech32(secret_key: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(secret_key)?;
+        let hrp_str = CheckedHrpstring::new::<Nip19BechChecksum>(secret_key)?;
+        let (hrp, data) = (hrp_str.hrp(), hrp_str.byte_iter().collect::<Vec<u8>>());
 
         if hrp != HRP_SECRET_KEY_ENCRYPTED {
             return Err(Error::WrongPrefix);
@@ -332,7 +362,8 @@ impl FromBech32 for PublicKey {
     type Err = Error;
 
     fn from_bech32(public_key: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(public_key)?;
+        let hrp_str = CheckedHrpstring::new::<Nip19BechChecksum>(public_key)?;
+        let (hrp, data) = (hrp_str.hrp(), hrp_str.byte_iter().collect::<Vec<u8>>());
 
         if hrp != HRP_PUBLIC_KEY {
             return Err(Error::WrongPrefix);
@@ -354,7 +385,8 @@ impl FromBech32 for EventId {
     type Err = Error;
 
     fn from_bech32(id: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(id)?;
+        let hrp_str = CheckedHrpstring::new::<Nip19BechChecksum>(id)?;
+        let (hrp, data) = (hrp_str.hrp(), hrp_str.byte_iter().collect::<Vec<u8>>());
 
         if hrp != HRP_NOTE_ID {
             return Err(Error::WrongPrefix);
@@ -479,7 +511,8 @@ impl FromBech32 for Nip19Event {
     type Err = Error;
 
     fn from_bech32(event: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(event)?;
+        let hrp_str = CheckedHrpstring::new::<Nip19BechChecksum>(event)?;
+        let (hrp, data) = (hrp_str.hrp(), hrp_str.byte_iter().collect::<Vec<u8>>());
 
         if hrp != HRP_EVENT {
             return Err(Error::WrongPrefix);
@@ -630,7 +663,8 @@ impl FromBech32 for Nip19Profile {
     type Err = Error;
 
     fn from_bech32(profile: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(profile)?;
+        let hrp_str = CheckedHrpstring::new::<Nip19BechChecksum>(profile)?;
+        let (hrp, data) = (hrp_str.hrp(), hrp_str.byte_iter().collect::<Vec<u8>>());
 
         if hrp != HRP_PROFILE {
             return Err(Error::WrongPrefix);
@@ -644,7 +678,8 @@ impl FromBech32 for Coordinate {
     type Err = Error;
 
     fn from_bech32(addr: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(addr)?;
+        let hrp_str = CheckedHrpstring::new::<Nip19BechChecksum>(addr)?;
+        let (hrp, data) = (hrp_str.hrp(), hrp_str.byte_iter().collect::<Vec<u8>>());
 
         if hrp != HRP_COORDINATE {
             return Err(Error::WrongPrefix);
@@ -746,7 +781,8 @@ impl FromBech32 for Nip19Coordinate {
     type Err = Error;
 
     fn from_bech32(addr: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(addr)?;
+        let hrp_str = CheckedHrpstring::new::<Nip19BechChecksum>(addr)?;
+        let (hrp, data) = (hrp_str.hrp(), hrp_str.byte_iter().collect::<Vec<u8>>());
 
         if hrp != HRP_COORDINATE {
             return Err(Error::WrongPrefix);
