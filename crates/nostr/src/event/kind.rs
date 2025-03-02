@@ -152,6 +152,9 @@ kind_variants! {
     PeerToPeerOrder => 38383, "Peer-to-peer Order events", "<https://github.com/nostr-protocol/nips/blob/master/69.md>",
     RequestToVanish => 62, "Request to Vanish", "<https://github.com/nostr-protocol/nips/blob/master/62.md>",
     UserStatus => 30315, "User Status", "<https://github.com/nostr-protocol/nips/blob/master/38.md>",
+    CashuWallet => 17375, "Cashu Wallet", "<https://github.com/nostr-protocol/nips/blob/master/60.md>",
+    CashuWalletUnspentProof => 7375, "Cashu Wallet Unspent Proof", "<https://github.com/nostr-protocol/nips/blob/master/60.md>",
+    CashuWalletSpendingHistory => 7376, "Cashu Wallet Spending History", "<https://github.com/nostr-protocol/nips/blob/master/60.md>",
 }
 
 impl PartialEq for Kind {

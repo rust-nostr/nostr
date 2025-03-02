@@ -330,6 +330,18 @@ pub enum KindStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/38.md>
     UserStatus,
+    /// Cashu Wallet
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/60.md>
+    CashuWallet,
+    /// Cashu Wallet Unspent Proof
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/60.md>
+    CashuWalletUnspentProof,
+    /// Cashu Wallet Spending History
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/60.md>
+    CashuWalletSpendingHistory,
 }
 
 fn convert(k: nostr::Kind) -> Option<KindStandard> {
@@ -416,6 +428,9 @@ fn convert(k: nostr::Kind) -> Option<KindStandard> {
         nostr::Kind::PeerToPeerOrder => Some(KindStandard::PeerToPeerOrder),
         nostr::Kind::RequestToVanish => Some(KindStandard::RequestToVanish),
         nostr::Kind::UserStatus => Some(KindStandard::UserStatus),
+        nostr::Kind::CashuWallet => Some(KindStandard::CashuWallet),
+        nostr::Kind::CashuWalletUnspentProof => Some(KindStandard::CashuWalletUnspentProof),
+        nostr::Kind::CashuWalletSpendingHistory => Some(KindStandard::CashuWalletSpendingHistory),
         nostr::Kind::Custom(..) => None,
     }
 }
@@ -499,6 +514,9 @@ impl From<KindStandard> for nostr::Kind {
             KindStandard::PeerToPeerOrder => Self::PeerToPeerOrder,
             KindStandard::RequestToVanish => Self::RequestToVanish,
             KindStandard::UserStatus => Self::UserStatus,
+            KindStandard::CashuWallet => Self::CashuWallet,
+            KindStandard::CashuWalletUnspentProof => Self::CashuWalletUnspentProof,
+            KindStandard::CashuWalletSpendingHistory => Self::CashuWalletSpendingHistory,
         }
     }
 }
