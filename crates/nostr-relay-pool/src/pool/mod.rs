@@ -209,7 +209,7 @@ impl RelayPool {
         .await
     }
 
-    /// Get relays that have a certain [RelayServiceFlag] enabled
+    /// Get relays that have a certain [`RelayServiceFlags`] enabled
     pub async fn relays_with_flag(
         &self,
         flag: RelayServiceFlags,

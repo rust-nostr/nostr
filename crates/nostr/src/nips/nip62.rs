@@ -4,7 +4,7 @@
 
 //! NIP-62: Request to Vanish
 //!
-//! https://github.com/nostr-protocol/nips/blob/master/62.md
+//! <https://github.com/nostr-protocol/nips/blob/master/62.md>
 
 use alloc::vec::Vec;
 

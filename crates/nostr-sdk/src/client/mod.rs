@@ -170,7 +170,6 @@ impl Client {
     /// * unsubscribe from all subscriptions
     /// * disconnect and force remove all relays
     /// * unset the signer
-    /// * clear the [`RelayFiltering`]
     ///
     /// This method will NOT:
     /// * reset [`Options`]
@@ -781,7 +780,7 @@ impl Client {
     /// This method will be deprecated in the future!
     /// This is a temporary solution for who still want to query events both from database and relays and merge the result.
     /// The optimal solution is to execute a [`Client::sync`] to reconcile missing events, [`Client::subscribe`] to get all
-    /// new future events, [`NostrDatabase::query`] to query stored events and [`Client::handle_notifications`] to listen-for/handle new events (i.e. to know when update the UI).
+    /// new future events, [`NostrEventsDatabase::query`] to query stored events and [`Client::handle_notifications`] to listen-for/handle new events (i.e. to know when update the UI).
     /// This will allow very fast queries, low bandwidth usage (depending on how many events the client have to reconcile) and a lower load on the relays.
     ///
     /// You can obtain the same result with:

@@ -29,7 +29,6 @@ static METACHAR_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r#"\\([$`"\\\n])"
 ///
 /// If the input contains mismatched quotes (a quoted string missing a matching ending quote),
 /// a `MismatchedQuotes` error is returned.
-/// ```
 pub fn split(input: &str) -> Result<Vec<String>, MismatchedQuotes> {
     let mut words = Vec::new();
     let mut field = String::new();
