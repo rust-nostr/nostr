@@ -203,6 +203,8 @@ impl Tag {
     }
 
     /// Compose `["t", "<hashtag>"]` tag
+    ///
+    /// This will convert the hashtag to lowercase.
     #[uniffi::constructor]
     pub fn hashtag(hashtag: &str) -> Self {
         Self {

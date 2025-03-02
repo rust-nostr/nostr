@@ -298,12 +298,14 @@ impl Tag {
     }
 
     /// Compose `["t", "<hashtag>"]` tag
+    ///
+    /// This will convert the hashtag to lowercase.
     #[inline]
     pub fn hashtag<T>(hashtag: T) -> Self
     where
-        T: Into<String>,
+        T: AsRef<str>,
     {
-        Self::from_standardized_without_cell(TagStandard::Hashtag(hashtag.into()))
+        Self::from_standardized_without_cell(TagStandard::Hashtag(hashtag.as_ref().to_lowercase()))
     }
 
     /// Compose `["r", "<value>"]` tag
@@ -608,6 +610,15 @@ mod tests {
             Tag::custom(TagKind::Client, ["nostr-sdk"])
         );
     }
+
+    #[test]
+    fn test_hashtag() {
+        assert_eq!(
+            Tag::parse(["t", "Nostr"]).unwrap(),
+            Tag::custom(TagKind::t(), ["Nostr"])
+        );
+        assert_eq!(Tag::hashtag("Nostr"), Tag::custom(TagKind::t(), ["nostr"]));
+    }
 }
 
 #[cfg(bench)]
@@ -677,6 +688,14 @@ mod benches {
             "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum",
             "wss://relay.nostr.org",
         ];
+        bh.iter(|| {
+            black_box(Tag::parse(tag)).unwrap();
+        });
+    }
+
+    #[bench]
+    pub fn parse_t_tag(bh: &mut Bencher) {
+        let tag = ["t", "test"];
         bh.iter(|| {
             black_box(Tag::parse(tag)).unwrap();
         });

@@ -1689,7 +1689,7 @@ impl EventBuilder {
     where
         ID: Into<String>,
         I: IntoIterator<Item = S>,
-        S: Into<String>,
+        S: AsRef<str>,
     {
         let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
         Self::new(Kind::InterestSet, "").tags(

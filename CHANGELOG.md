@@ -42,6 +42,7 @@
 * nostr: change `EventBuilder::git_repository_announcement` constructor signature ([Yuki Kishimoto])
 * nostr: change `EventBuilder::git_issue` constructor signature ([Yuki Kishimoto])
 * nostr: change `EventBuilder::git_patch` constructor signature ([Yuki Kishimoto])
+* nostr: `TagStandard::parse` now returns `Err(Error::UnknownStandardizedTag)` for non-lowercase hashtags as per NIP-24 ([awiteb])
 * pool: drop `RelayFiltering` ([Yuki Kishimoto])
 * sdk: change `Client::fetch_metadata` output ([Yuki Kishimoto]) 
 
@@ -94,6 +95,7 @@
 * nostr: fix `EventBuilder::git_repository_announcement` constructor according to last NIP34 rev ([Yuki Kishimoto])
 * nostr: fix `EventBuilder::git_issue` constructor according to last NIP34 rev ([Yuki Kishimoto])
 * nostr: fix `EventBuilder::git_patch` constructor according to last NIP34 rev ([Yuki Kishimoto])
+* nostr: `Tag::hashtag` now lowercases the hashtag as per NIP-24 ([awiteb])
 
 ### Removed
 

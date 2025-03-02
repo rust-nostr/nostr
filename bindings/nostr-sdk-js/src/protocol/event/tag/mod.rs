@@ -195,6 +195,8 @@ impl JsTag {
     }
 
     /// Compose `["t", "<hashtag>"]` tag
+    ///
+    /// This will convert the hashtag to lowercase.
     #[inline]
     pub fn hashtag(hashtag: &str) -> Self {
         Self {

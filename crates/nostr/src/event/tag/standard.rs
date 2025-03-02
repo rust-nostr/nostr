@@ -315,6 +315,13 @@ impl TagStandard {
                 } => {
                     return parse_q_tag(tag);
                 }
+                // Parse `t` tag
+                SingleLetterTag {
+                    character: Alphabet::T,
+                    uppercase: false,
+                } => {
+                    return parse_t_tag(tag);
+                }
                 _ => (), // Covered later
             },
             TagKind::Anon => {
@@ -356,10 +363,6 @@ impl TagStandard {
             let tag_1: &str = tag[1].as_ref();
 
             return match tag_kind {
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::T,
-                    uppercase: false,
-                }) => Ok(Self::Hashtag(tag_1.to_string())),
                 TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::G,
                     uppercase: false,
@@ -1243,6 +1246,25 @@ where
         relay_url,
         public_key,
     })
+}
+
+fn parse_t_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
+where
+    S: AsRef<str>,
+{
+    // ["t", "<hashtag>"]
+
+    let hashtag: &str = tag.get(1).ok_or(Error::UnknownStandardizedTag)?.as_ref();
+
+    // Not all languages have distinct uppercase and lowercase letters.
+    // `char::is_uppercase` and `char::is_lowercase` will return `false` for those languages.
+    // So, to verify that a hashtag is invalid (non-lowercase),
+    // check if there is at least one uppercase char.
+    if hashtag.chars().any(char::is_uppercase) {
+        return Err(Error::UnknownStandardizedTag);
+    }
+
+    Ok(TagStandard::Hashtag(hashtag.to_string()))
 }
 
 fn parse_client_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
@@ -2534,5 +2556,12 @@ mod tests {
                 Url::parse("https://github.com/rust-nostr").unwrap(),
             ])
         );
+
+        assert_eq!(
+            TagStandard::parse(&["t", "Nostr"]),
+            Err(Error::UnknownStandardizedTag)
+        );
+        assert!(TagStandard::parse(&["t", "nostr"]).is_ok());
+        assert!(TagStandard::parse(&["t", "سلام"]).is_ok());
     }
 }
