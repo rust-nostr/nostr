@@ -76,8 +76,7 @@ impl Ingester {
                 match tx {
                     // Send to receiver
                     Some(tx) => {
-                        // SAFETY: panic only if the receiver is not listening
-                        tx.send(res).unwrap();
+                        let _ = tx.send(res);
                     }
                     // Log error if `Result::Err`
                     None => {
