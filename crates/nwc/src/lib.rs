@@ -50,7 +50,7 @@ impl NWC {
     /// New `NWC` client with custom [`NostrWalletConnectOptions`].
     pub fn with_opts(uri: NostrWalletConnectURI, opts: NostrWalletConnectOptions) -> Self {
         Self {
-            relay: Relay::with_opts(uri.relay_url.clone(), opts.relay.clone()),
+            relay: Relay::with_opts(uri.relays.first().cloned().unwrap(), opts.relay.clone()),
             uri,
             opts,
             bootstrapped: Arc::new(AtomicBool::new(false)),

@@ -43,6 +43,7 @@
 * nostr: change `EventBuilder::git_issue` constructor signature ([Yuki Kishimoto])
 * nostr: change `EventBuilder::git_patch` constructor signature ([Yuki Kishimoto])
 * nostr: `TagStandard::parse` now returns `Err(Error::UnknownStandardizedTag)` for non-lowercase hashtags as per NIP-24 ([awiteb])
+* nostr: update `NostrWalletConnectURI` to support multiple relay URLs ([Yuki Kishimoto])
 * pool: drop `RelayFiltering` ([Yuki Kishimoto])
 * sdk: change `Client::fetch_metadata` output ([Yuki Kishimoto]) 
 

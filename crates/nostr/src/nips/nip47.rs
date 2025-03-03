@@ -866,7 +866,7 @@ pub struct NostrWalletConnectURI {
     /// App Pubkey
     pub public_key: PublicKey,
     /// URL of the relay of choice where the `App` is connected and the `Signer` must send and listen for messages.
-    pub relay_url: RelayUrl,
+    pub relays: Vec<RelayUrl>,
     /// 32-byte randomly generated hex encoded string
     pub secret: SecretKey,
     /// A lightning address that clients can use to automatically setup the lud16 field on the user's profile if they have none configured.
@@ -878,13 +878,13 @@ impl NostrWalletConnectURI {
     #[inline]
     pub fn new(
         public_key: PublicKey,
-        relay_url: RelayUrl,
+        relays: Vec<RelayUrl>,
         random_secret_key: SecretKey,
         lud16: Option<String>,
     ) -> Self {
         Self {
             public_key,
-            relay_url,
+            relays,
             secret: random_secret_key,
             lud16,
         }
@@ -904,14 +904,16 @@ impl NostrWalletConnectURI {
         if let Some(pubkey) = url.domain() {
             let public_key = PublicKey::from_hex(pubkey).map_err(|_| Error::InvalidURI)?;
 
-            let mut relay_url: Option<RelayUrl> = None;
+            let mut relays: Vec<RelayUrl> = Vec::new();
             let mut secret: Option<SecretKey> = None;
             let mut lud16: Option<String> = None;
 
             for (key, value) in url.query_pairs() {
                 match key {
                     Cow::Borrowed("relay") => {
-                        relay_url = RelayUrl::parse(value.as_ref()).ok();
+                        if let Ok(relay_url) = RelayUrl::parse(value.as_ref()) {
+                            relays.push(relay_url);
+                        }
                     }
                     Cow::Borrowed("secret") => {
                         secret = SecretKey::from_hex(value.as_ref()).ok();
@@ -923,10 +925,11 @@ impl NostrWalletConnectURI {
                 }
             }
 
-            if let (Some(relay_url), Some(secret)) = (relay_url, secret) {
+            // If relays aren't empty and the secret is set, return
+            if let (false, Some(secret)) = (relays.is_empty(), secret) {
                 return Ok(Self {
                     public_key,
-                    relay_url,
+                    relays,
                     secret,
                     lud16,
                 });
@@ -947,14 +950,21 @@ impl FromStr for NostrWalletConnectURI {
 
 impl fmt::Display for NostrWalletConnectURI {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // trailing slash is removed, this breaks some clients
-        let relay_url: &str = self.relay_url.as_str_without_trailing_slash();
+        let mut relays_str: String = String::new();
+
+        for relay_url in self.relays.iter() {
+            // trailing slash is removed, this breaks some clients
+            let relay_url: &str = relay_url.as_str_without_trailing_slash();
+
+            relays_str.push_str("&relay=");
+            relays_str.push_str(&url_encode(relay_url));
+        }
+
         write!(
             f,
-            "{NOSTR_WALLET_CONNECT_URI_SCHEME}://{}?relay={}&secret={}",
+            "{NOSTR_WALLET_CONNECT_URI_SCHEME}://{}?secret={}{relays_str}",
             self.public_key,
-            url_encode(relay_url),
-            url_encode(self.secret.to_secret_hex())
+            self.secret.to_secret_hex(),
         )?;
         if let Some(lud16) = &self.lud16 {
             write!(f, "&lud16={}", url_encode(lud16))?;
@@ -966,7 +976,7 @@ impl fmt::Display for NostrWalletConnectURI {
 impl Serialize for NostrWalletConnectURI {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: Serializer,
     {
         serializer.serialize_str(&self.to_string())
     }
@@ -975,7 +985,7 @@ impl Serialize for NostrWalletConnectURI {
 impl<'a> Deserialize<'a> for NostrWalletConnectURI {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'a>,
+        D: Deserializer<'a>,
     {
         let uri = String::deserialize(deserializer)?;
         NostrWalletConnectURI::from_str(&uri).map_err(serde::de::Error::custom)
@@ -999,19 +1009,19 @@ mod tests {
                 .unwrap();
         let uri = NostrWalletConnectURI::new(
             pubkey,
-            relay_url,
+            vec![relay_url],
             secret,
             Some("nostr@nostr.com".to_string()),
         );
         assert_eq!(
             uri.to_string(),
-            "nostr+walletconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?relay=wss%3A%2F%2Frelay.damus.io&secret=71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c&lud16=nostr%40nostr.com".to_string()
+            "nostr+walletconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?secret=71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c&relay=wss%3A%2F%2Frelay.damus.io&lud16=nostr%40nostr.com".to_string()
         );
     }
 
     #[test]
     fn test_parse_uri() {
-        let uri = "nostr+walletconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?relay=wss%3A%2F%2Frelay.damus.io&secret=71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c&lud16=nostr%40nostr.com";
+        let uri = "nostr+walletconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?secret=71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c&relay=wss%3A%2F%2Frelay.damus.io&lud16=nostr%40nostr.com";
         let uri = NostrWalletConnectURI::from_str(uri).unwrap();
 
         let pubkey =
@@ -1025,7 +1035,7 @@ mod tests {
             uri,
             NostrWalletConnectURI::new(
                 pubkey,
-                relay_url,
+                vec![relay_url],
                 secret,
                 Some("nostr@nostr.com".to_string())
             )

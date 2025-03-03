@@ -606,15 +606,18 @@ impl JsNostrWalletConnectURI {
     #[wasm_bindgen(constructor)]
     pub fn new(
         public_key: &JsPublicKey,
-        relay_url: &str,
+        relays: Vec<String>,
         random_secret_key: &JsSecretKey,
         lud16: Option<String>,
     ) -> Result<JsNostrWalletConnectURI> {
-        let relay_url = RelayUrl::parse(relay_url).map_err(into_err)?;
         Ok(Self {
             inner: NostrWalletConnectURI::new(
                 **public_key,
-                relay_url,
+                relays
+                    .into_iter()
+                    .map(|r| RelayUrl::parse(&r))
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(into_err)?,
                 random_secret_key.deref().clone(),
                 lud16,
             ),
@@ -634,10 +637,9 @@ impl JsNostrWalletConnectURI {
         self.inner.public_key.into()
     }
 
-    /// URL of the relay of choice where the `App` is connected and the `Signer` must send and listen for messages.
-    #[wasm_bindgen(js_name = relayUrl)]
-    pub fn relay_url(&self) -> String {
-        self.inner.relay_url.to_string()
+    /// URLs of the relays of choice where the `App` is connected and the `Signer` must send and listen for messages.
+    pub fn relays(&self) -> Vec<String> {
+        self.inner.relays.iter().map(|r| r.to_string()).collect()
     }
 
     /// 32-byte randomly generated hex encoded string
