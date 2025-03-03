@@ -1,5 +1,13 @@
 # Nostr Connect (NIP46)
 
+## Description
+
+This NIP introduces remote signing for Nostr, allowing for secure and
+decentralized signing of events using a hardware device or remote signer. The
+protocol enables 2-way communication between the remote signer and a Nostr
+client, providing a method for private key exposure minimization and improved
+security.
+
 ## State
 
 **This library is in an ALPHA state**, things that are implemented generally work but the API will change in breaking ways.
