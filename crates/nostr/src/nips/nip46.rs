@@ -931,8 +931,7 @@ impl fmt::Display for NostrConnectURI {
                 let mut relays_str: String = String::new();
 
                 for relay_url in relays.iter() {
-                    let relay_url = relay_url.to_string();
-                    let relay_url = relay_url.strip_suffix('/').unwrap_or(&relay_url);
+                    let relay_url: &str = relay_url.as_str_without_trailing_slash();
 
                     relays_str.push_str("&relay=");
                     relays_str.push_str(relay_url);
