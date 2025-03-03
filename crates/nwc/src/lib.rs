@@ -11,6 +11,7 @@
 #![allow(unknown_lints)] // TODO: remove when MSRV >= 1.72.0, required for `clippy::arc_with_non_send_sync`
 #![allow(clippy::arc_with_non_send_sync)]
 
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -35,7 +36,7 @@ const ID: &str = "nwc";
 #[derive(Debug, Clone)]
 pub struct NWC {
     uri: NostrWalletConnectURI,
-    relay: Relay,
+    pool: RelayPool,
     opts: NostrWalletConnectOptions,
     bootstrapped: Arc<AtomicBool>,
 }
@@ -50,17 +51,17 @@ impl NWC {
     /// New `NWC` client with custom [`NostrWalletConnectOptions`].
     pub fn with_opts(uri: NostrWalletConnectURI, opts: NostrWalletConnectOptions) -> Self {
         Self {
-            relay: Relay::with_opts(uri.relays.first().cloned().unwrap(), opts.relay.clone()),
             uri,
+            pool: RelayPool::default(),
             opts,
             bootstrapped: Arc::new(AtomicBool::new(false)),
         }
     }
 
-    /// Get relay status
-    #[inline]
-    pub fn status(&self) -> RelayStatus {
-        self.relay.status()
+    /// Get relays status
+    pub async fn status(&self) -> HashMap<RelayUrl, RelayStatus> {
+        let relays = self.pool.relays().await;
+        relays.into_iter().map(|(u, r)| (u, r.status())).collect()
     }
 
     /// Connect and subscribe
@@ -70,8 +71,13 @@ impl NWC {
             return Ok(());
         }
 
-        // Connect
-        self.relay.connect();
+        // Add relays
+        for url in self.uri.relays.iter() {
+            self.pool.add_relay(url, self.opts.relay.clone()).await?;
+        }
+
+        // Connect to relays
+        self.pool.connect().await;
 
         let filter = Filter::new()
             .author(self.uri.public_key)
@@ -79,7 +85,7 @@ impl NWC {
             .limit(0); // Limit to 0 means give me 0 events until EOSE
 
         // Subscribe
-        self.relay
+        self.pool
             .subscribe_with_id(SubscriptionId::new(ID), filter, SubscribeOptions::default())
             .await?;
 
@@ -96,16 +102,16 @@ impl NWC {
         // Convert request to event
         let event: Event = req.to_event(&self.uri)?;
 
-        let mut notifications = self.relay.notifications();
+        let mut notifications = self.pool.notifications();
 
         // Send request
-        let id: EventId = self.relay.send_event(&event).await?;
+        let output: Output<EventId> = self.pool.send_event(&event).await?;
 
         time::timeout(Some(self.opts.timeout), async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayNotification::Event { event, .. } = notification {
+                if let RelayPoolNotification::Event { event, .. } = notification {
                     if event.kind == Kind::WalletConnectResponse
-                        && event.tags.event_ids().next().copied() == Some(id)
+                        && event.tags.event_ids().next() == Some(output.id())
                     {
                         return Ok(Response::from_event(&self.uri, &event)?);
                     }
@@ -185,7 +191,7 @@ impl NWC {
 
     /// Completely shutdown [NWC] client
     #[inline]
-    pub fn shutdown(self) {
-        self.relay.disconnect()
+    pub async fn shutdown(self) {
+        self.pool.disconnect().await
     }
 }

@@ -2,6 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::collections::HashMap;
 use std::ops::Deref;
 
 use uniffi::Object;
@@ -49,9 +50,14 @@ impl NWC {
         }
     }
 
-    /// Get relay status
-    pub fn status(&self) -> RelayStatus {
-        self.inner.status().into()
+    /// Get relays status
+    pub async fn status(&self) -> HashMap<String, RelayStatus> {
+        self.inner
+            .status()
+            .await
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.into()))
+            .collect()
     }
 
     /// Pay invoice

@@ -17,7 +17,6 @@ use crate::protocol::nips::nip47::{
     JsMakeInvoiceRequest, JsMakeInvoiceResponse, JsNostrWalletConnectURI, JsPayInvoiceRequest,
     JsPayInvoiceResponse, JsPayKeysendRequest, JsPayKeysendResponse,
 };
-use crate::relay::JsRelayStatus;
 
 #[wasm_bindgen]
 extern "C" {
@@ -56,11 +55,6 @@ impl JsNwc {
         Self {
             inner: NWC::with_opts(uri.deref().clone(), opts.deref().clone()),
         }
-    }
-
-    /// Get relay status
-    pub fn status(&self) -> JsRelayStatus {
-        self.inner.status().into()
     }
 
     /// Pay invoice
