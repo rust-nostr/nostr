@@ -22,8 +22,6 @@ pub enum Error {
     Relay(relay::Error),
     /// Database error
     Database(DatabaseError),
-    /// Infallible
-    Infallible(Infallible),
     /// Notification Handler error
     Handler(String),
     /// Too many relays
@@ -54,7 +52,6 @@ impl fmt::Display for Error {
             Self::RelayUrl(e) => write!(f, "{e}"),
             Self::Relay(e) => write!(f, "{e}"),
             Self::Database(e) => write!(f, "{e}"),
-            Self::Infallible(e) => write!(f, "{e}"),
             Self::Handler(e) => write!(f, "{e}"),
             Self::TooManyRelays { limit } => write!(f, "too many relays (limit: {limit})"),
             Self::NoRelays => write!(f, "no relays"),
@@ -92,7 +89,7 @@ impl From<DatabaseError> for Error {
 }
 
 impl From<Infallible> for Error {
-    fn from(e: Infallible) -> Self {
-        Self::Infallible(e)
+    fn from(_: Infallible) -> Self {
+        unreachable!()
     }
 }
