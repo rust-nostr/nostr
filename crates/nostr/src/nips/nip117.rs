@@ -16,7 +16,7 @@ use super::nip44::{self, v2, ConversationKey, Version};
 use crate::event::builder;
 use crate::key::public_key::PublicKey;
 use crate::util::hkdf;
-use crate::{Event, EventBuilder, JsonUtil, Keys, Kind, Tag, TagKind, UnsignedEvent};
+use crate::{Event, EventBuilder, JsonUtil, Keys, Kind, Tag, UnsignedEvent};
 
 const KEY_DERIVATION_HKDF_EXPAND_SIZE: usize = 32;
 
@@ -236,7 +236,7 @@ impl DoubleRatchetSessionState {
         // Build event
         Ok(
             EventBuilder::new(Kind::DoubleRatchetMessage, encrypted_message)
-                .tag(Tag::custom(TagKind::Header, [encrypted_header]))
+                .tag(Tag::header(encrypted_header))
                 .sign_with_keys(our_current_key)?,
         )
     }
