@@ -17,7 +17,6 @@ use secp256k1::rand::RngCore;
 
 pub mod v2;
 
-use self::v2::ConversationKey;
 use crate::{key, PublicKey, SecretKey};
 
 /// Error
@@ -105,6 +104,28 @@ impl TryFrom<u8> for Version {
     }
 }
 
+/// NIP44 Conversation Key
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ConversationKey {
+    /// Version 2
+    V2(v2::ConversationKey),
+}
+
+impl ConversationKey {
+    /// Derive the conversation key
+    pub fn derive(
+        secret_key: &SecretKey,
+        public_key: &PublicKey,
+        version: Version,
+    ) -> Result<Self, Error> {
+        match version {
+            Version::V2 => Ok(Self::V2(v2::ConversationKey::derive(
+                secret_key, public_key,
+            )?)),
+        }
+    }
+}
+
 /// Encrypt
 #[inline]
 #[cfg(feature = "std")]
@@ -117,27 +138,37 @@ pub fn encrypt<T>(
 where
     T: AsRef<[u8]>,
 {
-    encrypt_with_rng(&mut OsRng, secret_key, public_key, content, version)
+    let conversation_key = ConversationKey::derive(secret_key, public_key, version)?;
+    encrypt_with_conversation_key(&conversation_key, content)
+}
+
+/// Encrypt with [`ConversationKey`]
+#[inline]
+#[cfg(feature = "std")]
+pub fn encrypt_with_conversation_key<T>(
+    conversation_key: &ConversationKey,
+    content: T,
+) -> Result<String, Error>
+where
+    T: AsRef<[u8]>,
+{
+    encrypt_with_rng(&mut OsRng, conversation_key, content)
 }
 
 /// Encrypt
 pub fn encrypt_with_rng<R, T>(
     rng: &mut R,
-    secret_key: &SecretKey,
-    public_key: &PublicKey,
+    conversation_key: &ConversationKey,
     content: T,
-    version: Version,
 ) -> Result<String, Error>
 where
     R: RngCore,
     T: AsRef<[u8]>,
 {
-    match version {
-        Version::V2 => {
-            let conversation_key: ConversationKey =
-                ConversationKey::derive(secret_key, public_key)?;
+    match conversation_key {
+        ConversationKey::V2(conversation_key) => {
             let payload: Vec<u8> =
-                v2::encrypt_to_bytes_with_rng(rng, &conversation_key, content.as_ref())?;
+                v2::encrypt_to_bytes_with_rng(rng, conversation_key, content.as_ref())?;
             Ok(general_purpose::STANDARD.encode(payload))
         }
     }
@@ -174,9 +205,43 @@ where
 
     match Version::try_from(version)? {
         Version::V2 => {
-            let conversation_key: ConversationKey =
-                ConversationKey::derive(secret_key, public_key)?;
+            let conversation_key: v2::ConversationKey =
+                v2::ConversationKey::derive(secret_key, public_key)?;
             v2::decrypt_to_bytes(&conversation_key, &payload)
+        }
+    }
+}
+
+/// Decrypt with [`ConversationKey`]
+#[inline]
+pub fn decrypt_with_conversation_key<T>(
+    conversation_key: &ConversationKey,
+    payload: T,
+) -> Result<String, Error>
+where
+    T: AsRef<[u8]>,
+{
+    let bytes: Vec<u8> = decrypt_to_bytes_with_conversation_key(conversation_key, payload)?;
+    String::from_utf8(bytes).map_err(|_| Error::Utf8Encode)
+}
+
+/// Decrypt **without** converting bytes to UTF-8 string
+pub fn decrypt_to_bytes_with_conversation_key<T>(
+    conversation_key: &ConversationKey,
+    payload: T,
+) -> Result<Vec<u8>, Error>
+where
+    T: AsRef<[u8]>,
+{
+    // Decode base64 payload
+    let payload: Vec<u8> = general_purpose::STANDARD.decode(payload)?;
+
+    // Get version byte
+    let version: u8 = *payload.first().ok_or(Error::VersionNotFound)?;
+
+    match (Version::try_from(version)?, conversation_key) {
+        (Version::V2, ConversationKey::V2(conversation_key)) => {
+            v2::decrypt_to_bytes(conversation_key, &payload)
         }
     }
 }
