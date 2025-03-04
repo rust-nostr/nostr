@@ -94,7 +94,7 @@ do
 
     # If CI, clean every time to avoid to go out of space (GitHub Actions issue)
     if [ "$is_ci" == true ]; then
-        cargo clean
+        cargo $version clean
     fi
 
     echo
