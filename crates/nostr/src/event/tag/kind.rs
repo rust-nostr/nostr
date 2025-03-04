@@ -63,6 +63,8 @@ pub enum TagKind<'a> {
     Expiration,
     /// File
     File,
+    /// Header
+    Header,
     /// Image
     Image,
     /// Lnurl
@@ -281,6 +283,7 @@ impl<'a> TagKind<'a> {
             Self::Ends => "ends",
             Self::Expiration => "expiration",
             Self::File => "file",
+            Self::Header => "header",
             Self::Image => "image",
             Self::Lnurl => "lnurl",
             Self::Magnet => "magnet",
@@ -349,6 +352,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "ends" => Self::Ends,
             "expiration" => Self::Expiration,
             "file" => Self::File,
+            "header" => Self::Header,
             "image" => Self::Image,
             "lnurl" => Self::Lnurl,
             "magnet" => Self::Magnet,
@@ -434,6 +438,9 @@ mod tests {
 
         assert_eq!(TagKind::from("file"), TagKind::File);
         assert_eq!(TagKind::File.as_str(), "file");
+
+        assert_eq!(TagKind::from("header"), TagKind::Header);
+        assert_eq!(TagKind::Header.as_str(), "header");
 
         assert_eq!(TagKind::from("maintainers"), TagKind::Maintainers);
         assert_eq!(TagKind::Maintainers.as_str(), "maintainers");
