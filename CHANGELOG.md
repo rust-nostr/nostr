@@ -45,8 +45,10 @@
 * nostr: change `EventBuilder::git_patch` constructor signature ([Yuki Kishimoto])
 * nostr: `TagStandard::parse` now returns `Err(Error::UnknownStandardizedTag)` for non-lowercase hashtags as per NIP-24 ([awiteb])
 * nostr: update `NostrWalletConnectURI` to support multiple relay URLs ([Yuki Kishimoto])
+* nostr: remove `EventIdOrCoordinate` enum ([Yuki Kishimoto])
+* nostr: change `EventBuilder::delete` arguments ([Yuki Kishimoto])
 * pool: drop `RelayFiltering` ([Yuki Kishimoto])
-* sdk: change `Client::fetch_metadata` output ([Yuki Kishimoto]) 
+* sdk: change `Client::fetch_metadata` output ([Yuki Kishimoto])
 
 ### Changed
 
@@ -88,6 +90,7 @@
 * nostr: add `TagStandard::Client` variant ([Yuki Kishimoto])
 * nostr: add `EventBuilder::dedup_tags` method ([Yuki Kishimoto])
 * nostr: impl `FromIterator<Tag>` for `Tags` ([Yuki Kishimoto])
+* nostr: add `EventDeletionRequest` struct ([Yuki Kishimoto])
 * pool: event verification cache ([Yuki Kishimoto])
 * pool: add `AdmitPolicy` trait ([Yuki Kishimoto])
 * ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])

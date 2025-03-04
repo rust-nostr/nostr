@@ -30,6 +30,12 @@ impl From<Coordinate> for JsCoordinate {
     }
 }
 
+impl From<JsCoordinate> for Coordinate {
+    fn from(coordinate: JsCoordinate) -> Self {
+        coordinate.inner
+    }
+}
+
 #[wasm_bindgen(js_class = Coordinate)]
 impl JsCoordinate {
     #[wasm_bindgen(constructor)]

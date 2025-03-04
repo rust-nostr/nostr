@@ -20,8 +20,7 @@ pub mod hex;
 #[cfg(feature = "nip44")]
 pub mod hkdf;
 
-use crate::nips::nip01::Coordinate;
-use crate::{key, EventId, PublicKey, SecretKey, Tag};
+use crate::{key, PublicKey, SecretKey};
 
 /// A boxed future
 #[cfg(not(target_arch = "wasm32"))]
@@ -95,34 +94,5 @@ where
     #[inline]
     fn try_as_pretty_json(&self) -> Result<String, Self::Err> {
         Ok(serde_json::to_string_pretty(self)?)
-    }
-}
-
-/// Event ID or Coordinate
-pub enum EventIdOrCoordinate {
-    /// Event ID
-    Id(EventId),
-    /// Event Coordinate (`a` tag)
-    Coordinate(Coordinate),
-}
-
-impl From<EventIdOrCoordinate> for Tag {
-    fn from(value: EventIdOrCoordinate) -> Self {
-        match value {
-            EventIdOrCoordinate::Id(id) => id.into(),
-            EventIdOrCoordinate::Coordinate(a) => a.into(),
-        }
-    }
-}
-
-impl From<EventId> for EventIdOrCoordinate {
-    fn from(id: EventId) -> Self {
-        Self::Id(id)
-    }
-}
-
-impl From<Coordinate> for EventIdOrCoordinate {
-    fn from(coordinate: Coordinate) -> Self {
-        Self::Coordinate(coordinate)
     }
 }

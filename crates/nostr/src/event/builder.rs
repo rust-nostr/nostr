@@ -700,32 +700,12 @@ impl EventBuilder {
         }
     }
 
-    /// Event deletion
+    /// Event deletion request
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
     #[inline]
-    pub fn delete<I, T>(ids: I) -> Self
-    where
-        I: IntoIterator<Item = T>,
-        T: Into<EventIdOrCoordinate>,
-    {
-        Self::delete_with_reason(ids, "")
-    }
-
-    /// Event deletion with reason
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
-    pub fn delete_with_reason<I, T, S>(ids: I, reason: S) -> Self
-    where
-        I: IntoIterator<Item = T>,
-        T: Into<EventIdOrCoordinate>,
-        S: Into<String>,
-    {
-        let tags = ids.into_iter().map(|t| {
-            let middle: EventIdOrCoordinate = t.into();
-            middle.into()
-        });
-        Self::new(Kind::EventDeletion, reason.into()).tags(tags)
+    pub fn delete(request: EventDeletionRequest) -> Self {
+        request.to_event_builder()
     }
 
     /// Request to vanish

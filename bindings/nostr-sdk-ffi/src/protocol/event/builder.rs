@@ -6,7 +6,6 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use nostr::util::EventIdOrCoordinate;
 use nostr::{RelayUrl, Url};
 use uniffi::Object;
 
@@ -15,6 +14,7 @@ use crate::error::Result;
 use crate::protocol::event::{PublicKey, Tag, Timestamp, UnsignedEvent};
 use crate::protocol::key::Keys;
 use crate::protocol::nips::nip01::{Coordinate, Metadata};
+use crate::protocol::nips::nip09::EventDeletionRequest;
 use crate::protocol::nips::nip15::{ProductData, StallData};
 use crate::protocol::nips::nip34::{GitIssue, GitPatch, GitRepositoryAnnouncement};
 use crate::protocol::nips::nip46::NostrConnectMessage;
@@ -253,29 +253,13 @@ impl EventBuilder {
         })
     }
 
-    /// Event deletion
+    /// Event deletion request
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
-    #[uniffi::constructor(default(ids = [], coordinates = [], reason = None))]
-    pub fn delete(
-        ids: &[Arc<EventId>],
-        coordinates: &[Arc<Coordinate>],
-        reason: Option<String>,
-    ) -> Self {
-        let coordinates = coordinates
-            .iter()
-            .map(|c| c.as_ref().deref().clone())
-            .map(EventIdOrCoordinate::from);
-        let ids = ids
-            .iter()
-            .map(|e| ***e)
-            .map(EventIdOrCoordinate::from)
-            .chain(coordinates);
+    #[uniffi::constructor]
+    pub fn delete(request: EventDeletionRequest) -> Self {
         Self {
-            inner: match reason {
-                Some(reason) => nostr::EventBuilder::delete_with_reason(ids, reason),
-                None => nostr::EventBuilder::delete(ids),
-            },
+            inner: nostr::EventBuilder::delete(request.into()),
         }
     }
 

@@ -10,9 +10,11 @@ fn main() -> Result<()> {
     let event_id =
         EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96")?;
 
-    let event: Event =
-        EventBuilder::delete_with_reason(vec![event_id], "these posts were published by accident")
-            .sign_with_keys(&keys)?;
+    let request = EventDeletionRequest::new()
+        .id(event_id)
+        .reason("these posts were published by accident");
+
+    let event: Event = EventBuilder::delete(request).sign_with_keys(&keys)?;
     println!("{}", event.as_json());
 
     Ok(())

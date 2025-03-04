@@ -16,6 +16,7 @@ pub mod nip05;
 pub mod nip06;
 #[cfg(all(feature = "nip07", target_arch = "wasm32"))]
 pub mod nip07;
+pub mod nip09;
 pub mod nip10;
 #[cfg(all(feature = "std", feature = "nip11"))]
 pub mod nip11;

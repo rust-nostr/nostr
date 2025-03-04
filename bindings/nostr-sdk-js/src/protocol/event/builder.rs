@@ -11,6 +11,7 @@ use super::{JsEvent, JsEventId, JsKind, JsTag, JsUnsignedEvent};
 use crate::error::{into_err, Result};
 use crate::protocol::key::{JsKeys, JsPublicKey};
 use crate::protocol::nips::nip01::{JsCoordinate, JsMetadata};
+use crate::protocol::nips::nip09::JsEventDeletionRequest;
 use crate::protocol::nips::nip15::{JsProductData, JsStallData};
 use crate::protocol::nips::nip34::{JsGitIssue, JsGitRepositoryAnnouncement};
 use crate::protocol::nips::nip51::{
@@ -247,25 +248,9 @@ impl JsEventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
     #[wasm_bindgen]
-    pub fn delete(
-        ids: Vec<JsEventId>,
-        coordinates: Vec<JsCoordinate>,
-        reason: Option<String>,
-    ) -> Self {
-        let coordinates = coordinates
-            .into_iter()
-            .map(|c| c.deref().clone())
-            .map(EventIdOrCoordinate::from);
-        let ids = ids
-            .into_iter()
-            .map(|id| *id)
-            .map(EventIdOrCoordinate::from)
-            .chain(coordinates);
+    pub fn delete(request: JsEventDeletionRequest) -> Self {
         Self {
-            inner: match reason {
-                Some(reason) => EventBuilder::delete_with_reason(ids, reason),
-                None => EventBuilder::delete(ids),
-            },
+            inner: EventBuilder::delete(request.into()),
         }
     }
 
