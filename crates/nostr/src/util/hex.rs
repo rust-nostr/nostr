@@ -101,7 +101,7 @@ where
         let low_idx: usize = high_idx + 1;
         let low: u8 = val(hex[low_idx], low_idx)?;
 
-        *byte = high << 4 | low;
+        *byte = (high << 4) | low;
     }
 
     Ok(())
