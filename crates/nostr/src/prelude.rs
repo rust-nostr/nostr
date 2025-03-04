@@ -42,6 +42,8 @@ pub use crate::nips::nip09::{self, *};
 pub use crate::nips::nip10::{self, *};
 #[cfg(all(feature = "std", feature = "nip11"))]
 pub use crate::nips::nip11::{self, *};
+#[cfg(all(feature = "std", feature = "nip117"))]
+pub use crate::nips::nip117::{self, *};
 pub use crate::nips::nip13::{self, *};
 pub use crate::nips::nip15::{self, *};
 pub use crate::nips::nip17::{self, *};

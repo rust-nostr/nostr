@@ -20,6 +20,8 @@ pub mod nip09;
 pub mod nip10;
 #[cfg(all(feature = "std", feature = "nip11"))]
 pub mod nip11;
+#[cfg(all(feature = "std", feature = "nip117"))]
+pub mod nip117;
 pub mod nip13;
 pub mod nip15;
 pub mod nip17;

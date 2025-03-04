@@ -308,6 +308,15 @@ impl Tag {
         Self::from_standardized_without_cell(TagStandard::Hashtag(hashtag.as_ref().to_lowercase()))
     }
 
+    /// Compose `["header", "<value>"]` tag
+    #[inline]
+    pub fn header<T>(value: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self::from_standardized_without_cell(TagStandard::Header(value.into()))
+    }
+
     /// Compose `["r", "<value>"]` tag
     #[inline]
     pub fn reference<T>(reference: T) -> Self

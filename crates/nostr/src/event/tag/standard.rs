@@ -79,6 +79,8 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     GitMaintainers(Vec<PublicKey>),
+    /// Header
+    Header(String),
     /// Public Key
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
@@ -341,6 +343,7 @@ impl TagStandard {
             }
             TagKind::Delegation => return parse_delegation_tag(tag),
             TagKind::Encrypted => return Ok(Self::Encrypted),
+            TagKind::Header => return parse_header_tag(tag),
             TagKind::Maintainers => {
                 let public_keys: Vec<PublicKey> = extract_public_keys(tag)?;
                 return Ok(Self::GitMaintainers(public_keys));
@@ -539,6 +542,7 @@ impl TagStandard {
                 TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::R))
             }
             Self::GitMaintainers(..) => TagKind::Maintainers,
+            Self::Header(..) => TagKind::Header,
             Self::PublicKey { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::P,
                 uppercase: *uppercase,
@@ -708,6 +712,9 @@ impl From<TagStandard> for Vec<String> {
                     tag.push(public_key.to_hex());
                 }
                 tag
+            }
+            TagStandard::Header(header) => {
+                vec![tag_kind, header]
             }
             TagStandard::PublicKey {
                 public_key,
@@ -1331,6 +1338,18 @@ where
     }
 }
 
+fn parse_header_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
+where
+    S: AsRef<str>,
+{
+    if tag.len() == 2 {
+        let tag_1: &str = tag[1].as_ref();
+        Ok(TagStandard::Header(tag_1.to_string()))
+    } else {
+        Err(Error::UnknownStandardizedTag)
+    }
+}
+
 #[inline]
 fn extract_optional_string<S>(tag: &[S], index: usize) -> Option<&str>
 where
@@ -1522,6 +1541,11 @@ mod tests {
                 reason: Some(String::from("reason"))
             }
             .to_vec()
+        );
+
+        assert_eq!(
+            vec!["header", "abcdef"],
+            TagStandard::Header(String::from("abcdef")).to_vec()
         );
 
         assert_eq!(
@@ -1978,6 +2002,11 @@ mod tests {
         assert_eq!(
             TagStandard::parse(&["content-warning"]).unwrap(),
             TagStandard::ContentWarning { reason: None }
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["header", "abcdef"]).unwrap(),
+            TagStandard::Header(String::from("abcdef"))
         );
 
         assert_eq!(
