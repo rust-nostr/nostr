@@ -2,7 +2,7 @@
 name = "nostr-relay-builder"
 version = "0.39.0"
 edition = "2021"
-description = "Nostr Relay Builder"
+description = "Build your own custom nostr relay!"
 authors.workspace = true
 homepage.workspace = true
 repository.workspace = true
