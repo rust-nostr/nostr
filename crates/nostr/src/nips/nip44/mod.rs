@@ -124,6 +124,13 @@ impl ConversationKey {
             )?)),
         }
     }
+
+    /// Get as bytes
+    pub fn as_bytes(&self) -> &[u8] {
+        match self {
+            Self::V2(v2) => v2.as_bytes(),
+        }
+    }
 }
 
 /// Encrypt
