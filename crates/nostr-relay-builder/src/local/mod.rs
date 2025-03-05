@@ -19,6 +19,8 @@ use crate::builder::RelayBuilder;
 use crate::error::Error;
 
 /// A local nostr relay
+///
+/// This is automatically shutdown when all instances/clones are dropped!
 #[derive(Debug, Clone)]
 pub struct LocalRelay {
     inner: AtomicDestructor<InnerLocalRelay>,

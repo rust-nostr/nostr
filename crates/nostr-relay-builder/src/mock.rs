@@ -14,6 +14,8 @@ use crate::error::Error;
 use crate::local::LocalRelay;
 
 /// A mock relay for (unit) tests.
+///
+/// Check [`LocalRelay`] for more details.
 #[derive(Debug, Clone)]
 pub struct MockRelay {
     local: LocalRelay,
