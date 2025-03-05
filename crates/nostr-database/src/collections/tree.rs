@@ -237,6 +237,28 @@ where
         }
     }
 
+    /// Force insert the value
+    ///
+    /// If the capacity is full, automatically increases the capacity.
+    pub fn force_insert(&mut self, value: T) -> InsertResult<T> {
+        let inserted: bool = self.set.insert(value);
+
+        // If successfully inserted, check if the capacity must be increased
+        if inserted {
+            if let Capacity::Bounded { max, .. } = self.capacity {
+                if self.set.len() >= max {
+                    self.capacity = Capacity::bounded(max + 1);
+                }
+            }
+        }
+
+        // Insert value
+        InsertResult {
+            inserted,
+            pop: None,
+        }
+    }
+
     /// Extend with values
     pub fn extend<I>(&mut self, values: I)
     where

@@ -70,9 +70,20 @@ impl Events {
     /// Insert [`Event`]
     ///
     /// If the set did not previously contain an equal value, `true` is returned.
+    /// If the collection is full, the older events will be discarded.
+    /// Use [`Events::force_insert`] to always make sure the event is inserted.
     #[inline]
     pub fn insert(&mut self, event: Event) -> bool {
         self.set.insert(event).inserted
+    }
+
+    /// Force insert [`Event`]
+    ///
+    /// Use [`Events::insert`] to respect the max collection capacity (if any).
+    /// If the collection capacity is full, this method will increase it.
+    #[inline]
+    pub fn force_insert(&mut self, event: Event) -> bool {
+        self.set.force_insert(event).inserted
     }
 
     /// Insert events
