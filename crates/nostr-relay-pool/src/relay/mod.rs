@@ -609,7 +609,18 @@ impl Relay {
     ) -> Result<Events, Error> {
         let mut events: Events = Events::new(&filter);
         self.fetch_events_with_callback(filter, timeout, policy, |event| {
-            events.insert(event);
+            // Use force insert here!
+            // Due to the configurable REQ exit policy, the user may want to wait for events after EOSE.
+            // If the filter had a limit, the force insert allows adding events post-EOSE.
+            //
+            // For example, if we use `Events::insert` here,
+            // if the filter is '{"kinds":[1],"limit":3}' and the policy `ReqExitPolicy::WaitForEventsAfterEOSE(1)`,
+            // the events collection will discard 1 event because the filter limit is 3 and the total received events are 4.
+            //
+            // Events::force_insert automatically increases the capacity if needed, without discarding events.
+            //
+            // LOOKUP_ID: EVENTS_FORCE_INSERT
+            events.force_insert(event);
         })
         .await?;
         Ok(events)

@@ -996,7 +996,8 @@ impl RelayPool {
             .stream_events_from(urls, filter, timeout, policy)
             .await?;
         while let Some(event) = stream.next().await {
-            events.insert(event);
+            // To find out more about why the `force_insert` was used, search for EVENTS_FORCE_INSERT ine the code.
+            events.force_insert(event);
         }
 
         Ok(events)
