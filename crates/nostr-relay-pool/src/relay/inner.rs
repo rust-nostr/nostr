@@ -31,7 +31,10 @@ use super::flags::AtomicRelayServiceFlags;
 use super::options::{RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, SyncOptions};
 use super::ping::PingTracker;
 use super::stats::RelayConnectionStats;
-use super::{Error, Reconciliation, RelayNotification, RelayStatus, SubscriptionAutoClosedReason};
+use super::{
+    Error, Reconciliation, RelayNotification, RelayStatus, SubscriptionActivity,
+    SubscriptionAutoClosedReason,
+};
 use crate::policy::AdmitStatus;
 use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
@@ -42,6 +45,11 @@ type ClientMessageJson = String;
 
 enum IngesterCommand {
     Authenticate { challenge: String },
+}
+
+struct HandleAutoClosing {
+    to_close: bool,
+    reason: Option<SubscriptionAutoClosedReason>,
 }
 
 #[derive(Debug)]
@@ -384,7 +392,6 @@ impl InnerRelay {
                     RelayNotification::RelayStatus { .. } => None,
                     RelayNotification::Authenticated => None,
                     RelayNotification::AuthenticationFailed => None,
-                    RelayNotification::SubscriptionAutoClosed { .. } => None,
                     RelayNotification::Shutdown => Some(RelayPoolNotification::Shutdown),
                 };
 
@@ -1197,21 +1204,22 @@ impl InnerRelay {
         filter: Filter,
         opts: SubscribeAutoCloseOptions,
         notifications: broadcast::Receiver<RelayNotification>,
+        activity: Option<Sender<SubscriptionActivity>>,
     ) {
         let relay = self.clone(); // <-- FULL RELAY CLONE HERE
         task::spawn(async move {
             // Check if CLOSE needed
             let to_close: bool = match relay
-                .handle_auto_closing(&id, &filter, opts, notifications)
+                .handle_auto_closing(&id, &filter, opts, notifications, &activity)
                 .await
             {
-                Some((to_close, reason)) => {
-                    // Send subscription auto-closed notification
+                Some(HandleAutoClosing { to_close, reason }) => {
+                    // Send activity
                     if let Some(reason) = reason {
-                        relay.send_notification(
-                            RelayNotification::SubscriptionAutoClosed { reason },
-                            false,
-                        );
+                        if let Some(activity) = &activity {
+                            // TODO: handle error?
+                            let _ = activity.send(SubscriptionActivity::Closed(reason)).await;
+                        }
                     }
 
                     to_close
@@ -1222,6 +1230,9 @@ impl InnerRelay {
                     true
                 }
             };
+
+            // Drop activity sender to terminate the receiver activity loop
+            drop(activity);
 
             // Close subscription
             if to_close {
@@ -1239,7 +1250,8 @@ impl InnerRelay {
         filter: &Filter,
         opts: SubscribeAutoCloseOptions,
         mut notifications: broadcast::Receiver<RelayNotification>,
-    ) -> Option<(bool, Option<SubscriptionAutoClosedReason>)> {
+        activity: &Option<Sender<SubscriptionActivity>>,
+    ) -> Option<HandleAutoClosing> {
         time::timeout(opts.timeout, async move {
             let mut counter: u16 = 0;
             let mut received_eose: bool = false;
@@ -1255,16 +1267,30 @@ impl InnerRelay {
                 if let (Some(idle_timeout), Some(last_event)) = (opts.idle_timeout, last_event) {
                     if last_event.elapsed() > idle_timeout {
                         // Close the subscription
-                        return Some((true, None)); // TODO: use SubscriptionAutoClosedReason::Timeout?
+                        return Some(HandleAutoClosing {
+                            to_close: true,
+                            reason: None,
+                        });
                     }
                 }
 
                 match notification {
                     RelayNotification::Message { message, .. } => match message {
                         RelayMessage::Event {
-                            subscription_id, ..
+                            subscription_id,
+                            event,
                         } => {
                             if subscription_id.as_ref() == id {
+                                // Send activity
+                                if let Some(activity) = activity {
+                                    // TODO: handle error?
+                                    let _ = activity
+                                        .send(SubscriptionActivity::ReceivedEvent(
+                                            event.into_owned(),
+                                        ))
+                                        .await;
+                                }
+
                                 // If no-events timeout is enabled, update instant of last event received
                                 if opts.idle_timeout.is_some() {
                                     last_event = Some(Instant::now());
@@ -1302,21 +1328,21 @@ impl InnerRelay {
                                         if self.state.is_auto_authentication_enabled() {
                                             require_resubscription = true;
                                         } else {
-                                            return Some((
-                                                false,
-                                                Some(SubscriptionAutoClosedReason::Closed(
+                                            return Some(HandleAutoClosing {
+                                                to_close: false, // No need to send CLOSE msg
+                                                reason: Some(SubscriptionAutoClosedReason::Closed(
                                                     message.into_owned(),
                                                 )),
-                                            )); // No need to send CLOSE msg
+                                            });
                                         }
                                     }
                                     _ => {
-                                        return Some((
-                                            false,
-                                            Some(SubscriptionAutoClosedReason::Closed(
+                                        return Some(HandleAutoClosing {
+                                            to_close: false, // No need to send CLOSE msg
+                                            reason: Some(SubscriptionAutoClosedReason::Closed(
                                                 message.into_owned(),
                                             )),
-                                        )); // No need to send CLOSE msg
+                                        });
                                     }
                                 }
                             }
@@ -1335,18 +1361,24 @@ impl InnerRelay {
                         }
                     }
                     RelayNotification::AuthenticationFailed => {
-                        return Some((
-                            false,
-                            Some(SubscriptionAutoClosedReason::AuthenticationFailed),
-                        )); // No need to send CLOSE msg
+                        return Some(HandleAutoClosing {
+                            to_close: false, // No need to send CLOSE msg
+                            reason: Some(SubscriptionAutoClosedReason::AuthenticationFailed),
+                        });
                     }
                     RelayNotification::RelayStatus { status } => {
                         if status.is_disconnected() {
-                            return Some((false, None)); // No need to send CLOSE msg
+                            return Some(HandleAutoClosing {
+                                to_close: false, // No need to send CLOSE msg
+                                reason: None,
+                            });
                         }
                     }
                     RelayNotification::Shutdown => {
-                        return Some((false, None)); // No need to send CLOSE msg
+                        return Some(HandleAutoClosing {
+                            to_close: false, // No need to send CLOSE msg
+                            reason: None,
+                        });
                     }
                     _ => (),
                 }
@@ -1356,6 +1388,25 @@ impl InnerRelay {
                 time::timeout(Some(duration), async {
                     while let Ok(notification) = notifications.recv().await {
                         match notification {
+                            RelayNotification::Message {
+                                message:
+                                    RelayMessage::Event {
+                                        subscription_id,
+                                        event,
+                                    },
+                            } => {
+                                if subscription_id.as_ref() == id {
+                                    // Send activity
+                                    if let Some(activity) = activity {
+                                        // TODO: handle error?
+                                        let _ = activity
+                                            .send(SubscriptionActivity::ReceivedEvent(
+                                                event.into_owned(),
+                                            ))
+                                            .await;
+                                    }
+                                }
+                            }
                             RelayNotification::RelayStatus { status } => {
                                 if status.is_disconnected() {
                                     return Ok(());
@@ -1373,7 +1424,10 @@ impl InnerRelay {
                 .await;
             }
 
-            Some((true, Some(SubscriptionAutoClosedReason::Completed))) // Need to send CLOSE msg
+            Some(HandleAutoClosing {
+                to_close: true, // Need to send CLOSE msg
+                reason: Some(SubscriptionAutoClosedReason::Completed),
+            })
         })
         .await?
     }

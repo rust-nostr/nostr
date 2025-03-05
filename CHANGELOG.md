@@ -65,6 +65,7 @@
 * lmdb: avoid long-lived read txn when ingesting event ([Yuki Kishimoto])
 * ndb: return `None` in `NostrEventsDatabase::event_by_id` if event doesn't exist ([Yuki Kishimoto])
 * ndb: avoid event clone when calling `NostrEventsDatabase::save_event` ([Yuki Kishimoto])
+* pool: better handling of auto-closing subscription activity when fetching events ([Yuki Kishimoto])
 * sdk: auto-update the gossip data when sending an event ([Yuki Kishimoto])
 * sdk: avoid full clone of relays when only urls are needed ([Yuki Kishimoto])
 * nwc: allow usage of multiple relays ([Yuki Kishimoto])

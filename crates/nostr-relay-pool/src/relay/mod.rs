@@ -15,7 +15,7 @@ use async_wsocket::futures_util::Future;
 use async_wsocket::ConnectionMode;
 use atomic_destructor::AtomicDestructor;
 use nostr_database::prelude::*;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, mpsc};
 
 pub mod constants;
 mod error;
@@ -53,6 +53,14 @@ pub enum SubscriptionAutoClosedReason {
     Completed,
 }
 
+#[derive(Debug)]
+enum SubscriptionActivity {
+    /// Received an event
+    ReceivedEvent(Event),
+    /// Subscription closed
+    Closed(SubscriptionAutoClosedReason),
+}
+
 /// Relay Notification
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RelayNotification {
@@ -79,11 +87,6 @@ pub enum RelayNotification {
     Authenticated,
     /// Authentication failed
     AuthenticationFailed,
-    /// Subscription auto-closed
-    SubscriptionAutoClosed {
-        /// Reason
-        reason: SubscriptionAutoClosedReason,
-    },
     /// Shutdown
     Shutdown,
 }
@@ -476,34 +479,54 @@ impl Relay {
         filter: Filter,
         opts: SubscribeOptions,
     ) -> Result<(), Error> {
+        // Check if auto-close condition is set
+        match opts.auto_close {
+            Some(opts) => self.subscribe_auto_closing(id, filter, opts, None),
+            None => self.subscribe_long_lived(id, filter).await,
+        }
+    }
+
+    fn subscribe_auto_closing(
+        &self,
+        id: SubscriptionId,
+        filter: Filter,
+        opts: SubscribeAutoCloseOptions,
+        activity: Option<mpsc::Sender<SubscriptionActivity>>,
+    ) -> Result<(), Error> {
         // Compose REQ message
         let msg: ClientMessage = ClientMessage::Req {
             subscription_id: Cow::Borrowed(&id),
             filter: Cow::Borrowed(&filter),
         };
 
-        // Check if auto-close condition is set
-        match opts.auto_close {
-            Some(opts) => {
-                // Subscribe to notifications
-                let notifications = self.inner.internal_notification_sender.subscribe();
+        // Subscribe to notifications
+        let notifications = self.inner.internal_notification_sender.subscribe();
 
-                // Send REQ message
-                self.inner.send_msg(msg)?;
+        // Send REQ message
+        self.inner.send_msg(msg)?;
 
-                // Spawn auto-closing handler
-                self.inner
-                    .spawn_auto_closing_handler(id, filter, opts, notifications)
-            }
-            None => {
-                // Send REQ message
-                self.inner.send_msg(msg)?;
+        // Spawn auto-closing handler
+        self.inner
+            .spawn_auto_closing_handler(id, filter, opts, notifications, activity);
 
-                // No auto-close subscription: update subscription filter
-                self.inner.update_subscription(id, filter, true).await;
-            }
+        // Return
+        Ok(())
+    }
+
+    async fn subscribe_long_lived(&self, id: SubscriptionId, filter: Filter) -> Result<(), Error> {
+        // Compose REQ message
+        let msg: ClientMessage = ClientMessage::Req {
+            subscription_id: Cow::Borrowed(&id),
+            filter: Cow::Borrowed(&filter),
         };
 
+        // Send REQ message
+        self.inner.send_msg(msg)?;
+
+        // No auto-close subscription: update subscription filter
+        self.inner.update_subscription(id, filter, true).await;
+
+        // Return
         Ok(())
     }
 
@@ -530,60 +553,40 @@ impl Relay {
         // Perform health checks
         self.inner.health_check()?;
 
-        // Compose options
-        let auto_close_opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
+        // Create channel
+        let (tx, mut rx) = mpsc::channel(512);
+
+        // Compose auto-closing options
+        let opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
             .exit_policy(policy)
             .timeout(Some(timeout));
-        let subscribe_opts: SubscribeOptions =
-            SubscribeOptions::default().close_on(Some(auto_close_opts));
 
-        // Subscribe to channel
-        let mut notifications = self.inner.internal_notification_sender.subscribe();
+        // Subscribe
+        let id: SubscriptionId = SubscriptionId::generate();
+        self.subscribe_auto_closing(id, filter, opts, Some(tx))?;
 
-        // Subscribe with auto-close
-        let id: SubscriptionId = self.subscribe(filter, subscribe_opts).await?;
-
-        time::timeout(Some(timeout), async {
-            while let Ok(notification) = notifications.recv().await {
-                match notification {
-                    RelayNotification::Message {
-                        message:
-                            RelayMessage::Event {
-                                subscription_id,
-                                event,
-                            },
-                        ..
-                    } => {
-                        if subscription_id.as_ref() == &id {
-                            callback(event.into_owned());
+        // Handle subscription activity
+        while let Some(activity) = rx.recv().await {
+            match activity {
+                SubscriptionActivity::ReceivedEvent(event) => {
+                    callback(event);
+                }
+                SubscriptionActivity::Closed(reason) => {
+                    match reason {
+                        // NIP42 authentication failed
+                        SubscriptionAutoClosedReason::AuthenticationFailed => {
+                            return Err(Error::AuthenticationFailed);
                         }
-                    }
-                    RelayNotification::SubscriptionAutoClosed { reason } => {
-                        match reason {
-                            SubscriptionAutoClosedReason::AuthenticationFailed => {
-                                return Err(Error::AuthenticationFailed);
-                            }
-                            SubscriptionAutoClosedReason::Closed(message) => {
-                                return Err(Error::RelayMessage(message));
-                            }
-                            // Completed
-                            SubscriptionAutoClosedReason::Completed => break,
+                        // Closed by relay
+                        SubscriptionAutoClosedReason::Closed(message) => {
+                            return Err(Error::RelayMessage(message));
                         }
+                        // Completed
+                        SubscriptionAutoClosedReason::Completed => break,
                     }
-                    RelayNotification::RelayStatus { status } => {
-                        if status.is_disconnected() {
-                            return Err(Error::NotConnected);
-                        }
-                    }
-                    RelayNotification::Shutdown => return Err(Error::ReceivedShutdown),
-                    _ => (),
                 }
             }
-
-            Ok(())
-        })
-        .await
-        .ok_or(Error::Timeout)??;
+        }
 
         Ok(())
     }
@@ -738,6 +741,31 @@ mod tests {
     use nostr_relay_builder::prelude::*;
 
     use super::{Error, *};
+
+    /// Setup public (without NIP42 auth) relay with N events to test event fetching
+    ///
+    /// **Adds ONLY text notes**
+    async fn setup_event_fetching_relay(num_events: usize) -> (Relay, MockRelay) {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let relay = Relay::new(url);
+        relay.connect();
+
+        // Signer
+        let keys = Keys::generate();
+
+        // Send some events
+        for i in 0..num_events {
+            let event = EventBuilder::text_note(i.to_string())
+                .sign_with_keys(&keys)
+                .unwrap();
+            relay.send_event(&event).await.unwrap();
+        }
+
+        (relay, mock)
+    }
 
     #[tokio::test]
     async fn test_ok_msg() {
@@ -1153,6 +1181,102 @@ mod tests {
             .fetch_events(filter, Duration::from_secs(5), ReqExitPolicy::ExitOnEOSE)
             .await;
         assert!(res.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_fetch_events_exit_on_eose() {
+        let (relay, _mock) = setup_event_fetching_relay(5).await;
+
+        // Exit on EOSE
+        let events = relay
+            .fetch_events(
+                Filter::new().kind(Kind::TextNote),
+                Duration::from_secs(5),
+                ReqExitPolicy::ExitOnEOSE,
+            )
+            .await
+            .unwrap();
+        assert_eq!(events.len(), 5);
+
+        // Exit on EOSE
+        let events = relay
+            .fetch_events(
+                Filter::new().kind(Kind::TextNote).limit(3),
+                Duration::from_secs(5),
+                ReqExitPolicy::ExitOnEOSE,
+            )
+            .await
+            .unwrap();
+        assert_eq!(events.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_fetch_events_wait_for_events_after_eose() {
+        let (relay, _mock) = setup_event_fetching_relay(10).await;
+
+        // Task to send additional events
+        let r = relay.clone();
+        tokio::spawn(async move {
+            // Signer
+            let keys = Keys::generate();
+
+            // Send more events
+            for _ in 0..2 {
+                // Sleep
+                tokio::time::sleep(Duration::from_secs(2)).await;
+
+                // Build and send event
+                let event = EventBuilder::text_note("Additional")
+                    .sign_with_keys(&keys)
+                    .unwrap();
+                r.send_event(&event).await.unwrap();
+            }
+        });
+
+        let events = relay
+            .fetch_events(
+                Filter::new().kind(Kind::TextNote).limit(3),
+                Duration::from_secs(15),
+                ReqExitPolicy::WaitForEventsAfterEOSE(2),
+            )
+            .await
+            .unwrap();
+        assert_eq!(events.len(), 5); // 3 events received until EOSE + 2 new events
+    }
+
+    #[tokio::test]
+    async fn test_fetch_events_wait_for_duration_after_eose() {
+        let (relay, _mock) = setup_event_fetching_relay(5).await;
+
+        // Task to send additional events
+        let r = relay.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(2)).await;
+
+            // Signer
+            let keys = Keys::generate();
+
+            // Send more events
+            for _ in 0..2 {
+                // Build and send event
+                let event = EventBuilder::text_note("Additional")
+                    .sign_with_keys(&keys)
+                    .unwrap();
+                r.send_event(&event).await.unwrap();
+
+                tokio::time::sleep(Duration::from_secs(2)).await;
+            }
+        });
+
+        let events = relay
+            .fetch_events(
+                Filter::new().kind(Kind::TextNote),
+                Duration::from_secs(15),
+                ReqExitPolicy::WaitDurationAfterEOSE(Duration::from_secs(3)),
+            )
+            .await
+            .unwrap();
+        assert_eq!(events.len(), 6); // 5 events received until EOSE + 1 new events
     }
 
     #[tokio::test]
