@@ -175,6 +175,8 @@ impl RelayOptions {
 pub enum ReqExitPolicy {
     /// Exit on EOSE
     ExitOnEOSE,
+    /// Wait to receive N events and then exit.
+    WaitForEvents { num: u16 },
     /// After EOSE is received, keep listening for N more events that match the filter.
     WaitForEventsAfterEOSE { num: u16 },
     /// After EOSE is received, keep listening for matching events for `Duration` more time.
@@ -185,6 +187,7 @@ impl From<ReqExitPolicy> for prelude::ReqExitPolicy {
     fn from(value: ReqExitPolicy) -> Self {
         match value {
             ReqExitPolicy::ExitOnEOSE => Self::ExitOnEOSE,
+            ReqExitPolicy::WaitForEvents { num } => Self::WaitForEvents(num),
             ReqExitPolicy::WaitForEventsAfterEOSE { num } => Self::WaitForEventsAfterEOSE(num),
             ReqExitPolicy::WaitDurationAfterEOSE { duration } => {
                 Self::WaitDurationAfterEOSE(duration)

@@ -96,6 +96,7 @@
 * database: add `Events::force_insert` ([Yuki Kishimoto])
 * pool: event verification cache ([Yuki Kishimoto])
 * pool: add `AdmitPolicy` trait ([Yuki Kishimoto])
+* pool: add `ReqExitPolicy::WaitForEvents` variant ([Yuki Kishimoto])
 * ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])
 * js: add `KindStandard` enum ([Yuki Kishimoto])
 

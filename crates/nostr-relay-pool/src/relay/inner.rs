@@ -1253,7 +1253,8 @@ impl InnerRelay {
         activity: &Option<Sender<SubscriptionActivity>>,
     ) -> Option<HandleAutoClosing> {
         time::timeout(opts.timeout, async move {
-            let mut counter: u16 = 0;
+            let mut wait_for_events_counter: u16 = 0;
+            let mut wait_for_events_after_eose_counter: u16 = 0;
             let mut received_eose: bool = false;
             let mut require_resubscription: bool = false;
             let mut last_event: Option<Instant> = None;
@@ -1296,14 +1297,23 @@ impl InnerRelay {
                                     last_event = Some(Instant::now());
                                 }
 
-                                if let ReqExitPolicy::WaitForEventsAfterEOSE(num) = opts.exit_policy
-                                {
-                                    if received_eose {
-                                        counter += 1;
-                                        if counter >= num {
+                                // Check exit policy
+                                match opts.exit_policy {
+                                    ReqExitPolicy::WaitForEvents(num) => {
+                                        wait_for_events_counter += 1;
+                                        if wait_for_events_counter >= num {
                                             break;
                                         }
                                     }
+                                    ReqExitPolicy::WaitForEventsAfterEOSE(num) => {
+                                        if received_eose {
+                                            wait_for_events_after_eose_counter += 1;
+                                            if wait_for_events_after_eose_counter >= num {
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    _ => {}
                                 }
                             }
                         }

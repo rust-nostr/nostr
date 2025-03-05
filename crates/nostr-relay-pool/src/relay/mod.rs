@@ -1211,6 +1211,46 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_fetch_events_wait_for_events() {
+        let (relay, _mock) = setup_event_fetching_relay(5).await;
+
+        let events = relay
+            .fetch_events(
+                Filter::new().kind(Kind::TextNote),
+                Duration::from_secs(15),
+                ReqExitPolicy::WaitForEvents(2),
+            )
+            .await
+            .unwrap();
+        assert_eq!(events.len(), 2); // Requested all text notes but exit after receive 2
+
+        // Task to send additional event
+        let r = relay.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(2)).await;
+
+            // Signer
+            let keys = Keys::generate();
+
+            // Build and send event
+            let event = EventBuilder::metadata(&Metadata::new().name("Test"))
+                .sign_with_keys(&keys)
+                .unwrap();
+            r.send_event(&event).await.unwrap();
+        });
+
+        let events = relay
+            .fetch_events(
+                Filter::new().kind(Kind::Metadata),
+                Duration::from_secs(5),
+                ReqExitPolicy::WaitForEvents(1),
+            )
+            .await
+            .unwrap();
+        assert_eq!(events.len(), 1);
+    }
+
+    #[tokio::test]
     async fn test_fetch_events_wait_for_events_after_eose() {
         let (relay, _mock) = setup_event_fetching_relay(10).await;
 

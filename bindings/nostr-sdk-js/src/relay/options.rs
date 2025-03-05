@@ -108,6 +108,14 @@ impl JsReqExitPolicy {
         }
     }
 
+    /// Wait to receive N events and then exit.
+    #[wasm_bindgen(js_name = waitForEvents)]
+    pub fn wait_for_events(num: u16) -> Self {
+        Self {
+            inner: ReqExitPolicy::WaitForEvents(num),
+        }
+    }
+
     /// After EOSE is received, keep listening for N more events that match the filter
     #[wasm_bindgen(js_name = waitForEventsAfterEOSE)]
     pub fn wait_for_events_after_eose(num: u16) -> Self {

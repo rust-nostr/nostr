@@ -175,6 +175,8 @@ pub enum ReqExitPolicy {
     /// Exit on EOSE.
     #[default]
     ExitOnEOSE,
+    /// Wait to receive N events and then exit.
+    WaitForEvents(u16),
     /// After EOSE is received, keep listening for N more events that match the filter.
     WaitForEventsAfterEOSE(u16),
     /// After EOSE is received, keep listening for matching events for [`Duration`] more time.
