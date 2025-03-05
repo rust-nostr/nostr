@@ -91,6 +91,7 @@
 * nostr: add `EventBuilder::dedup_tags` method ([Yuki Kishimoto])
 * nostr: impl `FromIterator<Tag>` for `Tags` ([Yuki Kishimoto])
 * nostr: add `EventDeletionRequest` struct ([Yuki Kishimoto])
+* nostr: add `notifications` field to NIP47 `GetInfoResponse` ([Yuki Kishimoto])
 * pool: event verification cache ([Yuki Kishimoto])
 * pool: add `AdmitPolicy` trait ([Yuki Kishimoto])
 * ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])

@@ -557,6 +557,9 @@ pub struct JsGetInfoResponse {
     /// Available methods for this connection
     #[wasm_bindgen(getter_with_clone)]
     pub methods: Vec<String>,
+    /// List of supported notifications for this connection (optional)
+    #[wasm_bindgen(getter_with_clone)]
+    pub notifications: Vec<String>,
 }
 
 impl From<GetInfoResponse> for JsGetInfoResponse {
@@ -569,6 +572,7 @@ impl From<GetInfoResponse> for JsGetInfoResponse {
             block_height: value.block_height,
             block_hash: value.block_hash,
             methods: value.methods,
+            notifications: value.notifications,
         }
     }
 }
@@ -583,6 +587,7 @@ impl From<JsGetInfoResponse> for GetInfoResponse {
             block_height: value.block_height,
             block_hash: value.block_hash,
             methods: value.methods,
+            notifications: value.notifications,
         }
     }
 }

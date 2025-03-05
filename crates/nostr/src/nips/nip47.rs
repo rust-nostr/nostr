@@ -607,6 +607,10 @@ pub struct GetInfoResponse {
     pub block_hash: String,
     /// Available methods for this connection
     pub methods: Vec<String>,
+    /// List of supported notifications for this connection (optional)
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub notifications: Vec<String>,
 }
 
 /// NIP47 Response Result

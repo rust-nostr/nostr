@@ -734,6 +734,8 @@ pub struct GetInfoResponse {
     pub block_hash: String,
     /// Available methods for this connection
     pub methods: Vec<String>,
+    /// List of supported notifications for this connection (optional)
+    pub notifications: Vec<String>,
 }
 
 impl From<nip47::GetInfoResponse> for GetInfoResponse {
@@ -746,6 +748,7 @@ impl From<nip47::GetInfoResponse> for GetInfoResponse {
             block_height: value.block_height,
             block_hash: value.block_hash,
             methods: value.methods,
+            notifications: value.notifications,
         }
     }
 }
@@ -760,6 +763,7 @@ impl From<GetInfoResponse> for nip47::GetInfoResponse {
             block_height: value.block_height,
             block_hash: value.block_hash,
             methods: value.methods,
+            notifications: value.notifications,
         }
     }
 }
