@@ -2746,6 +2746,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-gossip"
+version = "0.39.0"
+dependencies = [
+ "async-utility",
+ "lru",
+ "nostr",
+ "rusqlite",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "nostr-indexeddb"
 version = "0.39.0"
 dependencies = [
@@ -2834,6 +2846,7 @@ dependencies = [
  "nostr",
  "nostr-connect",
  "nostr-database",
+ "nostr-gossip",
  "nostr-indexeddb",
  "nostr-lmdb",
  "nostr-ndb",

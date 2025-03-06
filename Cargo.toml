@@ -28,6 +28,7 @@ negentropy-deprecated = { package = "negentropy", version = "0.3", default-featu
 nostr = { version = "0.39", path = "./crates/nostr", default-features = false }
 nostr-connect = { version = "0.39", path = "./crates/nostr-connect", default-features = false }
 nostr-database = { version = "0.39", path = "./crates/nostr-database", default-features = false }
+nostr-gossip = { version = "0.39", path = "./crates/nostr-gossip", default-features = false }
 nostr-indexeddb = { version = "0.39", path = "./crates/nostr-indexeddb", default-features = false }
 nostr-lmdb = { version = "0.39", path = "./crates/nostr-lmdb", default-features = false }
 nostr-ndb = { version = "0.39", path = "./crates/nostr-ndb", default-features = false }
