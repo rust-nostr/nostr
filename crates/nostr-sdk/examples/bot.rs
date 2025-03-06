@@ -9,10 +9,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let keys = Keys::parse("nsec12kcgs78l06p30jz7z7h3n2x2cy99nw2z6zspjdp7qc206887mwvs95lnkx")?;
-    let client = Client::builder()
-        .signer(keys.clone())
-        .opts(Options::new().gossip(true))
-        .build();
+    let client = Client::builder().signer(keys.clone()).build();
 
     println!("Bot public key: {}", keys.public_key().to_bech32()?);
 

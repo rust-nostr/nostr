@@ -16,7 +16,6 @@ use nostr_relay_pool::prelude::*;
 #[derive(Debug, Clone, Default)]
 pub struct Options {
     pub(super) autoconnect: bool,
-    pub(super) gossip: bool,
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) connection: Connection,
     pub(super) relay_limits: RelayLimits,
@@ -65,9 +64,8 @@ impl Options {
     }
 
     /// Enable gossip model (default: false)
-    #[inline]
-    pub fn gossip(mut self, enable: bool) -> Self {
-        self.gossip = enable;
+    #[deprecated(since = "0.40.0", note = "Use ClientBuilder::gossip instead")]
+    pub fn gossip(self, _enable: bool) -> Self {
         self
     }
 

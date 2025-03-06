@@ -17,6 +17,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = []
+gossip = ["dep:nostr-gossip"]
 tor = ["nostr-relay-pool/tor"]
 lmdb = ["dep:nostr-lmdb"]
 ndb = ["dep:nostr-ndb"]
@@ -40,6 +41,7 @@ nip98 = ["nostr/nip98"]
 async-utility.workspace = true
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
+nostr-gossip = { workspace = true, optional = true }
 nostr-relay-pool.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true, features = ["std", "attributes"] }
@@ -74,7 +76,7 @@ name = "fetch-events"
 
 [[example]]
 name = "gossip"
-required-features = ["all-nips"]
+required-features = ["all-nips", "gossip"]
 
 [[example]]
 name = "nostr-connect"

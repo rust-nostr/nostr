@@ -12,6 +12,7 @@ args=(
     "-p nostr-relay-pool"
     "-p nwc"
     "-p nostr-connect"
+    "-p nostr-gossip"
     "-p nostr-sdk"
     "-p nostr-cli"
 )
