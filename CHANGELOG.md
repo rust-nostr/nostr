@@ -48,7 +48,8 @@
 * nostr: remove `EventIdOrCoordinate` enum ([Yuki Kishimoto])
 * nostr: change `EventBuilder::delete` arguments ([Yuki Kishimoto])
 * pool: drop `RelayFiltering` ([Yuki Kishimoto])
-* sdk: change `Client::fetch_metadata` output ([Yuki Kishimoto])
+* pool: remove `Relay` constructors ([Yuki Kishimoto])
+* sdk: change `Client::fetch_metadata` output ([Yuki Kishimoto]) 
 
 ### Changed
 

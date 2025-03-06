@@ -7,7 +7,6 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::time;
@@ -151,31 +150,8 @@ impl Ord for Relay {
 }
 
 impl Relay {
-    /// Create new relay with **default** options and in-memory database
     #[inline]
-    pub fn new(url: RelayUrl) -> Self {
-        Self::with_opts(url, RelayOptions::default())
-    }
-
-    /// Create new relay with default in-memory database and custom options
-    #[inline]
-    pub fn with_opts(url: RelayUrl, opts: RelayOptions) -> Self {
-        let database = Arc::new(MemoryDatabase::default());
-        Self::custom(url, database, opts)
-    }
-
-    /// Create new relay with **custom** database and/or options
-    pub fn custom<T>(url: RelayUrl, database: T, opts: RelayOptions) -> Self
-    where
-        T: IntoNostrDatabase,
-    {
-        let mut state = SharedState::default();
-        state.database = database.into_nostr_database();
-        Self::internal_custom(url, state, opts)
-    }
-
-    #[inline]
-    pub(crate) fn internal_custom(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
+    pub(crate) fn new(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
         Self {
             inner: AtomicDestructor::new(InnerRelay::new(url, state, opts)),
         }
@@ -742,6 +718,10 @@ mod tests {
 
     use super::{Error, *};
 
+    fn new_relay(url: RelayUrl, opts: RelayOptions) -> Relay {
+        Relay::new(url, SharedState::default(), opts)
+    }
+
     /// Setup public (without NIP42 auth) relay with N events to test event fetching
     ///
     /// **Adds ONLY text notes**
@@ -750,7 +730,7 @@ mod tests {
         let mock = MockRelay::run().await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let relay = Relay::new(url);
+        let relay = new_relay(url, RelayOptions::default());
         relay.connect();
 
         // Signer
@@ -773,7 +753,7 @@ mod tests {
         let mock = MockRelay::run().await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let relay = Relay::new(url);
+        let relay: Relay = new_relay(url, RelayOptions::default());
 
         relay.try_connect(Duration::from_secs(3)).await.unwrap();
 
@@ -790,7 +770,7 @@ mod tests {
         let mock = MockRelay::run().await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let relay = Relay::new(url);
+        let relay: Relay = new_relay(url, RelayOptions::default());
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
@@ -813,7 +793,7 @@ mod tests {
         let mock = MockRelay::run().await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let relay = Relay::with_opts(url, RelayOptions::default().reconnect(false));
+        let relay: Relay = new_relay(url, RelayOptions::default().reconnect(false));
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
@@ -836,7 +816,7 @@ mod tests {
         let mock = MockRelay::run().await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let relay = Relay::new(url);
+        let relay: Relay = new_relay(url, RelayOptions::default());
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
@@ -860,7 +840,7 @@ mod tests {
         let opts = RelayOptions::default()
             .adjust_retry_interval(false)
             .retry_interval(Duration::from_secs(1));
-        let relay = Relay::with_opts(url, opts);
+        let relay: Relay = new_relay(url, opts);
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
@@ -889,8 +869,7 @@ mod tests {
         let mock = MockRelay::run().await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let opts = RelayOptions::default();
-        let relay = Relay::with_opts(url, opts);
+        let relay: Relay = new_relay(url, RelayOptions::default());
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
@@ -906,8 +885,7 @@ mod tests {
     async fn test_connect_to_unreachable_relay() {
         let url = RelayUrl::parse("wss://127.0.0.1:666").unwrap();
 
-        let opts = RelayOptions::default();
-        let relay = Relay::with_opts(url, opts);
+        let relay: Relay = new_relay(url, RelayOptions::default());
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
@@ -925,8 +903,7 @@ mod tests {
         let mock = MockRelay::run().await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let opts = RelayOptions::default();
-        let relay = Relay::with_opts(url, opts);
+        let relay: Relay = new_relay(url, RelayOptions::default());
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
@@ -943,8 +920,7 @@ mod tests {
     async fn test_try_connect_to_unreachable_relay() {
         let url = RelayUrl::parse("wss://127.0.0.1:666").unwrap();
 
-        let opts = RelayOptions::default();
-        let relay = Relay::with_opts(url, opts);
+        let relay: Relay = new_relay(url, RelayOptions::default());
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
@@ -966,7 +942,7 @@ mod tests {
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let relay = Relay::new(url);
+        let relay: Relay = new_relay(url, RelayOptions::default());
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
@@ -998,7 +974,7 @@ mod tests {
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let relay = Relay::new(url);
+        let relay: Relay = new_relay(url, RelayOptions::default());
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
@@ -1026,7 +1002,7 @@ mod tests {
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let relay = Relay::new(url);
+        let relay: Relay = new_relay(url, RelayOptions::default());
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
@@ -1054,7 +1030,7 @@ mod tests {
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let relay = Relay::new(url);
+        let relay: Relay = new_relay(url, RelayOptions::default());
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
@@ -1079,7 +1055,7 @@ mod tests {
         let mock = LocalRelay::run(builder).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let relay = Relay::new(url);
+        let relay: Relay = new_relay(url, RelayOptions::default());
 
         relay.inner.state.automatic_authentication(true);
 
@@ -1122,7 +1098,7 @@ mod tests {
         let mock = LocalRelay::run(builder).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let relay = Relay::new(url);
+        let relay: Relay = new_relay(url, RelayOptions::default());
 
         relay.connect();
 
@@ -1326,14 +1302,15 @@ mod tests {
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
         // Sender
-        let relay1 = Relay::new(url.clone());
+        let relay1: Relay = new_relay(url.clone(), RelayOptions::default());
+        relay1.connect();
         relay1
             .try_connect(Duration::from_millis(500))
             .await
             .unwrap();
 
         // Fetcher
-        let relay2 = Relay::new(url);
+        let relay2 = new_relay(url, RelayOptions::default());
         relay2
             .try_connect(Duration::from_millis(500))
             .await

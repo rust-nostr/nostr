@@ -137,7 +137,7 @@ impl InnerRelayPool {
         }
 
         // Compose new relay
-        let relay: Relay = Relay::internal_custom(url, self.state.clone(), opts);
+        let relay: Relay = Relay::new(url, self.state.clone(), opts);
 
         // Set notification sender
         relay

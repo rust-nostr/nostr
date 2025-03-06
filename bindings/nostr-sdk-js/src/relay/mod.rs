@@ -99,16 +99,6 @@ impl From<RelayStatus> for JsRelayStatus {
 
 #[wasm_bindgen(js_class = Relay)]
 impl JsRelay {
-    /// Create new `Relay` with `in-memory` database
-    #[wasm_bindgen(constructor)]
-    pub fn new(url: &str, opts: Option<JsRelayOptions>) -> Result<JsRelay> {
-        let url: RelayUrl = RelayUrl::parse(url).map_err(into_err)?;
-        let opts: RelayOptions = opts.map(|o| o.deref().clone()).unwrap_or_default();
-        Ok(Self {
-            inner: Relay::with_opts(url, opts),
-        })
-    }
-
     /// Get relay url
     pub fn url(&self) -> String {
         self.inner.url().to_string()
