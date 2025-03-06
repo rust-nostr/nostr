@@ -23,9 +23,9 @@ use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, RwLock};
 
 use super::constants::{
-    BATCH_EVENT_ITERATION_TIMEOUT, DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL,
-    MIN_ATTEMPTS, MIN_SUCCESS_RATE, NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT,
-    NEGENTROPY_HIGH_WATER_UP, NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, WEBSOCKET_TX_TIMEOUT,
+    DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE,
+    NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP,
+    NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, WAIT_FOR_OK_TIMEOUT, WEBSOCKET_TX_TIMEOUT,
 };
 use super::flags::AtomicRelayServiceFlags;
 use super::options::{RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, SyncOptions};
@@ -1132,7 +1132,7 @@ impl InnerRelay {
         // Wait for OK
         // The event ID is already checked in `wait_for_ok` method
         let (status, message) = self
-            .wait_for_ok(&mut notifications, &event.id, BATCH_EVENT_ITERATION_TIMEOUT)
+            .wait_for_ok(&mut notifications, &event.id, WAIT_FOR_OK_TIMEOUT)
             .await?;
 
         // Check status

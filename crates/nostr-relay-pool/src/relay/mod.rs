@@ -26,7 +26,7 @@ mod ping;
 pub mod stats;
 mod status;
 
-use self::constants::{BATCH_EVENT_ITERATION_TIMEOUT, WAIT_FOR_AUTHENTICATION_TIMEOUT};
+use self::constants::{WAIT_FOR_AUTHENTICATION_TIMEOUT, WAIT_FOR_OK_TIMEOUT};
 pub use self::error::Error;
 pub use self::flags::{AtomicRelayServiceFlags, FlagCheck, RelayServiceFlags};
 use self::inner::InnerRelay;
@@ -344,7 +344,7 @@ impl Relay {
 
         // Wait for OK
         self.inner
-            .wait_for_ok(notifications, &event.id, BATCH_EVENT_ITERATION_TIMEOUT)
+            .wait_for_ok(notifications, &event.id, WAIT_FOR_OK_TIMEOUT)
             .await
     }
 
