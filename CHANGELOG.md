@@ -51,6 +51,7 @@
 * pool: remove `Relay` constructors ([Yuki Kishimoto])
 * pool: change `RelayPool::new` signature ([Yuki Kishimoto])
 * sdk: change `Client::fetch_metadata` output ([Yuki Kishimoto]) 
+* sdk: remove `Client::state` ([Yuki Kishimoto])
 
 ### Changed
 

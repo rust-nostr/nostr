@@ -12,7 +12,6 @@ use std::time::Duration;
 
 use nostr::prelude::*;
 use nostr_database::prelude::*;
-use nostr_relay_pool::__private::SharedState;
 use nostr_relay_pool::prelude::*;
 use tokio::sync::broadcast;
 
@@ -97,11 +96,6 @@ impl Client {
         }
     }
 
-    #[inline]
-    fn state(&self) -> &SharedState {
-        self.pool.state()
-    }
-
     /// Update minimum POW difficulty for received events
     ///
     /// Events with a POW lower than the current value will be ignored to prevent resources exhaustion.
@@ -116,13 +110,13 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[inline]
     pub fn automatic_authentication(&self, enable: bool) {
-        self.state().automatic_authentication(enable);
+        self.pool.state().automatic_authentication(enable);
     }
 
     /// Check if signer is configured
     #[inline]
     pub async fn has_signer(&self) -> bool {
-        self.state().has_signer().await
+        self.pool.state().has_signer().await
     }
 
     /// Get current nostr signer
@@ -132,7 +126,7 @@ impl Client {
     /// Returns an error if the signer isn't set.
     #[inline]
     pub async fn signer(&self) -> Result<Arc<dyn NostrSigner>, Error> {
-        Ok(self.state().signer().await?)
+        Ok(self.pool.state().signer().await?)
     }
 
     /// Set nostr signer
@@ -141,13 +135,13 @@ impl Client {
     where
         T: IntoNostrSigner,
     {
-        self.state().set_signer(signer).await;
+        self.pool.state().set_signer(signer).await;
     }
 
     /// Unset nostr signer
     #[inline]
     pub async fn unset_signer(&self) {
-        self.state().unset_signer().await;
+        self.pool.state().unset_signer().await;
     }
 
     /// Get [`RelayPool`]
