@@ -231,10 +231,22 @@ impl Relay {
         self.inner.internal_notification_sender.subscribe()
     }
 
-    /// Connect to relay
+    /// Connect to the relay
+    ///
+    /// # Overview
+    ///
+    /// If the relay’s status is not [`RelayStatus::Initialized`] or [`RelayStatus::Terminated`],
+    /// this method returns immediately without doing anything.
+    /// Otherwise, the connection task will be spawned, which will attempt to connect to relay.
     ///
     /// This method returns immediately and doesn't provide any information on if the connection was successful or not.
+    ///
+    /// # Automatic reconnection
+    ///
+    /// By default, in case of disconnection, the connection task will automatically attempt to reconnect.
+    /// This behavior can be disabled by changing [`RelayOptions::reconnect`] option.
     pub fn connect(&self) {
+        // Immediately return if can't connect
         if !self.status().can_connect() {
             return;
         }
@@ -279,12 +291,22 @@ impl Relay {
 
     /// Try to establish a connection with the relay.
     ///
-    /// Attempts to establish a connection without spawning the connection task if it fails.
+    /// # Overview
+    ///
+    /// If the relay’s status is not [`RelayStatus::Initialized`] or [`RelayStatus::Terminated`],
+    /// this method returns immediately without doing anything.
+    /// Otherwise, attempts to establish a connection without spawning the connection task if it fails.
     /// This means that if the connection fails, no automatic retries are scheduled.
     /// Use [`Relay::connect`] if you want to immediately spawn a connection task,
     /// regardless of whether the initial connection succeeds.
     ///
     /// Returns an error if the connection fails.
+    ///
+    /// # Automatic reconnection
+    ///
+    /// By default, in case of disconnection (after a first successful connection),
+    /// the connection task will automatically attempt to reconnect.
+    /// This behavior can be disabled by changing [`RelayOptions::reconnect`] option.
     pub async fn try_connect(&self, timeout: Duration) -> Result<(), Error> {
         // Check if relay can't connect
         if !self.status().can_connect() {
@@ -304,7 +326,9 @@ impl Relay {
         Ok(())
     }
 
-    /// Disconnect from relay and set status to 'Terminated'
+    /// Disconnect from relay and set status to [`RelayStatus::Terminated`].
+    ///
+    /// Returns immediately if the status is already [`RelayStatus::Terminated`].
     #[inline]
     pub fn disconnect(&self) {
         self.inner.disconnect()

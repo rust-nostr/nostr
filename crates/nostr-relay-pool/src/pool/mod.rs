@@ -320,6 +320,17 @@ impl RelayPool {
     }
 
     /// Connect to all added relays
+    ///
+    /// Attempts to initiate a connection for every relay currently in
+    /// [`RelayStatus::Initialized`] or [`RelayStatus::Terminated`].
+    /// A background connection task is spawned for each such relay, which then tries
+    /// to establish the connection.
+    /// Any relay not in one of these two statuses is skipped.
+    ///
+    /// For further details, see the documentation of [`Relay::connect`].
+    ///
+    /// [`RelayStatus::Initialized`]: crate::relay::RelayStatus::Initialized
+    /// [`RelayStatus::Terminated`]: crate::relay::RelayStatus::Terminated
     pub async fn connect(&self) {
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
@@ -350,7 +361,9 @@ impl RelayPool {
 
     /// Try to establish a connection with the relays.
     ///
-    /// Attempts to establish a connection without spawning the connection task if it fails.
+    /// Attempts to establish a connection for every relay currently in
+    /// [`RelayStatus::Initialized`] or [`RelayStatus::Terminated`]
+    /// without spawning the connection task if it fails.
     /// This means that if the connection fails, no automatic retries are scheduled.
     /// Use [`RelayPool::connect`] if you want to immediately spawn a connection task,
     /// regardless of whether the initial connection succeeds.

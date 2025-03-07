@@ -141,18 +141,42 @@ impl JsRelay {
         self.inner.queue() as u64
     }
 
-    /// Connect to relay
+    /// Connect to the relay
+    ///
+    /// # Overview
+    ///
+    /// If the relay’s status is not [`RelayStatus::Initialized`] or [`RelayStatus::Terminated`],
+    /// this method returns immediately without doing anything.
+    /// Otherwise, the connection task will be spawned, which will attempt to connect to relay.
     ///
     /// This method returns immediately and doesn't provide any information on if the connection was successful or not.
+    ///
+    /// # Automatic reconnection
+    ///
+    /// By default, in case of disconnection, the connection task will automatically attempt to reconnect.
+    /// This behavior can be disabled by changing [`RelayOptions::reconnect`] option.
     pub fn connect(&self) {
         self.inner.connect()
     }
 
-    /// Try to connect to relay
+    /// Try to establish a connection with the relay.
     ///
-    /// This method returns an error if the connection fails.
-    /// If the connection fails,
-    /// a task will continue to retry in the background (unless configured differently in `RelayOptions`.
+    /// # Overview
+    ///
+    /// If the relay’s status is not [`RelayStatus::Initialized`] or [`RelayStatus::Terminated`],
+    /// this method returns immediately without doing anything.
+    /// Otherwise, attempts to establish a connection without spawning the connection task if it fails.
+    /// This means that if the connection fails, no automatic retries are scheduled.
+    /// Use [`Relay::connect`] if you want to immediately spawn a connection task,
+    /// regardless of whether the initial connection succeeds.
+    ///
+    /// Returns an error if the connection fails.
+    ///
+    /// # Automatic reconnection
+    ///
+    /// By default, in case of disconnection (after a first successful connection),
+    /// the connection task will automatically attempt to reconnect.
+    /// This behavior can be disabled by changing [`RelayOptions::reconnect`] option.
     #[wasm_bindgen(js_name = tryConnect)]
     pub async fn try_connect(&self, timeout: &JsDuration) -> Result<()> {
         self.inner.try_connect(**timeout).await.map_err(into_err)
