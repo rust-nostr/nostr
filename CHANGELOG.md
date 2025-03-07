@@ -49,6 +49,7 @@
 * nostr: change `EventBuilder::delete` arguments ([Yuki Kishimoto])
 * pool: drop `RelayFiltering` ([Yuki Kishimoto])
 * pool: remove `Relay` constructors ([Yuki Kishimoto])
+* pool: change `RelayPool::new` signature ([Yuki Kishimoto])
 * sdk: change `Client::fetch_metadata` output ([Yuki Kishimoto]) 
 
 ### Changed
@@ -98,6 +99,7 @@
 * pool: event verification cache ([Yuki Kishimoto])
 * pool: add `AdmitPolicy` trait ([Yuki Kishimoto])
 * pool: add `ReqExitPolicy::WaitForEvents` variant ([Yuki Kishimoto])
+* pool: add `RelayPoolBuilder` ([Yuki Kishimoto])
 * ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])
 * js: add `KindStandard` enum ([Yuki Kishimoto])
 

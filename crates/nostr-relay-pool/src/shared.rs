@@ -7,7 +7,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex};
 
 use lru::LruCache;
 use nostr::prelude::IntoNostrSigner;
@@ -16,9 +16,7 @@ use nostr_database::{IntoNostrDatabase, MemoryDatabase, NostrDatabase};
 use tokio::sync::RwLock;
 
 use crate::policy::AdmitPolicy;
-use crate::transport::websocket::{
-    DefaultWebsocketTransport, IntoWebSocketTransport, WebSocketTransport,
-};
+use crate::transport::websocket::{DefaultWebsocketTransport, WebSocketTransport};
 
 // LruCache pre-allocate, so keep this at a reasonable value.
 // A good value may be <= 128k, considering that stored values are the 64-bit hashes of the event IDs.
@@ -27,8 +25,6 @@ const MAX_VERIFICATION_CACHE_SIZE: usize = 128_000;
 #[derive(Debug)]
 pub enum SharedStateError {
     SignerNotConfigured,
-    /// Admit policy already set
-    AdmitPolicyAlreadySet,
     MutexPoisoned,
 }
 
@@ -38,13 +34,11 @@ impl fmt::Display for SharedStateError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::SignerNotConfigured => write!(f, "signer not configured"),
-            Self::AdmitPolicyAlreadySet => write!(f, "admission policy already set"),
             Self::MutexPoisoned => write!(f, "mutex poisoned"),
         }
     }
 }
 
-// TODO: reduce atomic operations
 #[derive(Debug, Clone)]
 pub struct SharedState {
     pub(crate) database: Arc<dyn NostrDatabase>,
@@ -52,15 +46,14 @@ pub struct SharedState {
     signer: Arc<RwLock<Option<Arc<dyn NostrSigner>>>>,
     nip42_auto_authentication: Arc<AtomicBool>,
     verification_cache: Arc<Mutex<LruCache<u64, ()>>>,
-    pub(crate) admit_policy: OnceLock<Arc<dyn AdmitPolicy>>,
-    // TODO: add a semaphore to limit number of concurrent websocket connections attempts?
+    pub(crate) admit_policy: Option<Arc<dyn AdmitPolicy>>,
 }
 
 impl Default for SharedState {
     fn default() -> Self {
         Self::new(
             MemoryDatabase::new().into_nostr_database(),
-            DefaultWebsocketTransport.into_transport(),
+            Arc::new(DefaultWebsocketTransport),
             None,
             None,
             true,
@@ -86,31 +79,8 @@ impl SharedState {
             signer: Arc::new(RwLock::new(signer)),
             nip42_auto_authentication: Arc::new(AtomicBool::new(nip42_auto_authentication)),
             verification_cache: Arc::new(Mutex::new(LruCache::new(max_verification_cache_size))),
-            admit_policy: match admit_policy {
-                Some(policy) => OnceLock::from(policy),
-                None => OnceLock::new(),
-            },
+            admit_policy,
         }
-    }
-
-    /// Set a custom transport
-    pub fn custom_transport<T>(mut self, transport: T) -> Self
-    where
-        T: IntoWebSocketTransport,
-    {
-        self.transport = transport.into_transport();
-        self
-    }
-
-    /// Set an admission policy
-    #[inline]
-    pub(crate) fn set_admit_policy<T>(&self, policy: T) -> Result<(), SharedStateError>
-    where
-        T: AdmitPolicy + 'static,
-    {
-        self.admit_policy
-            .set(Arc::new(policy))
-            .map_err(|_| SharedStateError::AdmitPolicyAlreadySet)
     }
 
     /// Check if auto authentication to relays is enabled

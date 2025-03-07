@@ -13,31 +13,15 @@ use std::time::Duration;
 use nostr_relay_pool::prelude::*;
 
 /// Options
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Options {
     pub(super) autoconnect: bool,
-    pub(super) nip42_auto_authentication: bool,
     pub(super) gossip: bool,
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) connection: Connection,
     pub(super) relay_limits: RelayLimits,
     pub(super) max_avg_latency: Option<Duration>,
     pub(super) pool: RelayPoolOptions,
-}
-
-impl Default for Options {
-    fn default() -> Self {
-        Self {
-            autoconnect: false,
-            nip42_auto_authentication: true,
-            gossip: false,
-            #[cfg(not(target_arch = "wasm32"))]
-            connection: Connection::default(),
-            relay_limits: RelayLimits::default(),
-            max_avg_latency: None,
-            pool: RelayPoolOptions::default(),
-        }
-    }
 }
 
 impl Options {
@@ -76,7 +60,7 @@ impl Options {
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[inline]
     pub fn automatic_authentication(mut self, enabled: bool) -> Self {
-        self.nip42_auto_authentication = enabled;
+        self.pool = self.pool.automatic_authentication(enabled);
         self
     }
 

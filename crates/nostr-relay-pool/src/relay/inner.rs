@@ -999,7 +999,7 @@ impl InnerRelay {
         }
 
         // Check event admission policy
-        if let Some(policy) = self.state.admit_policy.get() {
+        if let Some(policy) = &self.state.admit_policy {
             if let AdmitStatus::Rejected = policy
                 .admit_event(&self.url, &subscription_id, &event)
                 .await?

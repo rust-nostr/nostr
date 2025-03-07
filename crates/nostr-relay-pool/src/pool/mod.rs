@@ -15,17 +15,18 @@ use atomic_destructor::{AtomicDestructor, StealthClone};
 use nostr_database::prelude::*;
 use tokio::sync::{broadcast, mpsc, RwLockReadGuard};
 
+pub mod builder;
 pub mod constants;
 mod error;
 mod inner;
 pub mod options;
 mod output;
 
+pub use self::builder::RelayPoolBuilder;
 pub use self::error::Error;
 use self::inner::{InnerRelayPool, Relays};
 pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
-use crate::policy::AdmitPolicy;
 use crate::relay::flags::FlagCheck;
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
 use crate::relay::Relay;
@@ -79,7 +80,7 @@ pub struct RelayPool {
 
 impl Default for RelayPool {
     fn default() -> Self {
-        Self::new(RelayPoolOptions::default())
+        Self::builder().build()
     }
 }
 
@@ -92,28 +93,25 @@ impl StealthClone for RelayPool {
 }
 
 impl RelayPool {
-    /// Create new `RelayPool`
+    /// Construct new default relay pool
+    ///
+    /// Use [`RelayPool::builder`] to customize it.
     #[inline]
-    pub fn new(opts: RelayPoolOptions) -> Self {
-        Self::__with_shared_state(opts, SharedState::default())
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// New relay pool builder
+    #[inline]
+    pub fn builder() -> RelayPoolBuilder {
+        RelayPoolBuilder::default()
     }
 
     #[inline]
-    #[doc(hidden)]
-    pub fn __with_shared_state(opts: RelayPoolOptions, state: SharedState) -> Self {
+    fn from_builder(builder: RelayPoolBuilder) -> Self {
         Self {
-            inner: AtomicDestructor::new(InnerRelayPool::new(opts, state)),
+            inner: AtomicDestructor::new(InnerRelayPool::from_builder(builder)),
         }
-    }
-
-    /// Set an admission policy
-    #[inline]
-    pub fn set_admit_policy<T>(&self, policy: T) -> Result<(), Error>
-    where
-        T: AdmitPolicy + 'static,
-    {
-        self.inner.state.set_admit_policy(policy)?;
-        Ok(())
     }
 
     /// Completely shutdown pool

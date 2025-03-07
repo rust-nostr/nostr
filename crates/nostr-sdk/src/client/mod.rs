@@ -80,18 +80,18 @@ impl Client {
     }
 
     fn from_builder(builder: ClientBuilder) -> Self {
-        // Construct shared state
-        let state = SharedState::new(
-            builder.database,
-            builder.websocket_transport,
-            builder.signer,
-            builder.admit_policy,
-            builder.opts.nip42_auto_authentication,
-        );
+        // Construct relay pool builder
+        let pool_builder: RelayPoolBuilder = RelayPoolBuilder {
+            websocket_transport: builder.websocket_transport,
+            admit_policy: builder.admit_policy,
+            opts: builder.opts.pool,
+            __database: builder.database,
+            __signer: builder.signer,
+        };
 
         // Construct client
         Self {
-            pool: RelayPool::__with_shared_state(builder.opts.pool, state),
+            pool: pool_builder.build(),
             gossip: Gossip::new(),
             opts: builder.opts,
         }

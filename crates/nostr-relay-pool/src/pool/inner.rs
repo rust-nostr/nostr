@@ -14,7 +14,7 @@ use nostr_database::prelude::*;
 use tokio::sync::{broadcast, RwLock};
 
 use super::options::RelayPoolOptions;
-use super::{Error, RelayPoolNotification};
+use super::{Error, RelayPoolBuilder, RelayPoolNotification};
 use crate::relay::flags::RelayServiceFlags;
 use crate::relay::options::RelayOptions;
 use crate::relay::Relay;
@@ -47,18 +47,24 @@ impl AtomicDestroyer for InnerRelayPool {
 }
 
 impl InnerRelayPool {
-    pub fn new(opts: RelayPoolOptions, state: SharedState) -> Self {
-        let (notification_sender, _) = broadcast::channel(opts.notification_channel_size);
+    pub(super) fn from_builder(builder: RelayPoolBuilder) -> Self {
+        let (notification_sender, _) = broadcast::channel(builder.opts.notification_channel_size);
 
         Self {
-            state,
+            state: SharedState::new(
+                builder.__database,
+                builder.websocket_transport,
+                builder.__signer,
+                builder.admit_policy,
+                builder.opts.nip42_auto_authentication,
+            ),
             atomic: Arc::new(AtomicPrivateData {
                 relays: RwLock::new(HashMap::new()),
                 subscriptions: RwLock::new(HashMap::new()),
                 shutdown: AtomicBool::new(false),
             }),
             notification_sender,
-            opts,
+            opts: builder.opts,
         }
     }
 

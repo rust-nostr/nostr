@@ -10,6 +10,7 @@ use super::constants::DEFAULT_NOTIFICATION_CHANNEL_SIZE;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RelayPoolOptions {
     pub(super) max_relays: Option<usize>,
+    pub(super) nip42_auto_authentication: bool,
     pub(super) notification_channel_size: usize,
 }
 
@@ -17,6 +18,7 @@ impl Default for RelayPoolOptions {
     fn default() -> Self {
         Self {
             max_relays: None,
+            nip42_auto_authentication: true,
             notification_channel_size: DEFAULT_NOTIFICATION_CHANNEL_SIZE,
         }
     }
@@ -33,6 +35,15 @@ impl RelayPoolOptions {
     #[inline]
     pub fn max_relays(mut self, num: Option<usize>) -> Self {
         self.max_relays = num;
+        self
+    }
+
+    /// Auto authenticate to relays (default: true)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    #[inline]
+    pub fn automatic_authentication(mut self, enabled: bool) -> Self {
+        self.nip42_auto_authentication = enabled;
         self
     }
 
