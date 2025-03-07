@@ -48,17 +48,17 @@ impl AtomicRelayStatus {
 /// Relay connection status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RelayStatus {
-    /// Initialized
+    /// The relay has just been created.
     Initialized = 0,
-    /// Pending
+    /// The relay will try to connect shortly.
     Pending = 1,
-    /// Connecting
+    /// Trying to connect.
     Connecting = 2,
-    /// Connected
+    /// Connected.
     Connected = 3,
-    /// Disconnected, will retry to connect again
+    /// The connection failed, but another attempt will occur soon.
     Disconnected = 4,
-    /// Completely disconnected
+    /// The connection has been terminated and no retry will occur.
     Terminated = 5,
 }
 
