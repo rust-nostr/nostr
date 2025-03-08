@@ -7,7 +7,7 @@
 use core::ops::RangeInclusive;
 use core::time::Duration;
 
-pub(super) const WAIT_FOR_OK_TIMEOUT: Duration = Duration::from_secs(15);
+pub(super) const WAIT_FOR_OK_TIMEOUT: Duration = Duration::from_secs(10);
 pub(super) const WAIT_FOR_AUTHENTICATION_TIMEOUT: Duration = Duration::from_secs(7);
 pub(super) const DEFAULT_CONNECTION_TIMEOUT: Duration = Duration::from_secs(60);
 
