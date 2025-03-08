@@ -6,6 +6,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -112,6 +113,12 @@ impl RelayPool {
         Self {
             inner: AtomicDestructor::new(InnerRelayPool::from_builder(builder)),
         }
+    }
+
+    /// Check if the relay pool is shutdown.
+    #[inline]
+    pub fn is_shutdown(&self) -> bool {
+        self.inner.atomic.shutdown.load(Ordering::SeqCst)
     }
 
     /// Completely shutdown pool
@@ -257,7 +264,7 @@ impl RelayPool {
         let url: RelayUrl = url.try_into_url()?;
 
         // Check if the pool has been shutdown
-        if self.inner.is_shutdown() {
+        if self.is_shutdown() {
             return Err(Error::Shutdown);
         }
 
@@ -1296,13 +1303,13 @@ mod tests {
 
         pool.connect().await;
 
-        assert!(!pool.inner.is_shutdown());
+        assert!(!pool.is_shutdown());
 
         tokio::time::sleep(Duration::from_secs(1)).await;
 
         pool.shutdown().await;
 
-        assert!(pool.inner.is_shutdown());
+        assert!(pool.is_shutdown());
 
         assert!(matches!(
             pool.add_relay(&url, RelayOptions::default())

@@ -26,7 +26,7 @@ pub(super) type Relays = HashMap<RelayUrl, Relay>;
 pub(super) struct AtomicPrivateData {
     pub(super) relays: RwLock<Relays>,
     pub(super) subscriptions: RwLock<HashMap<SubscriptionId, Filter>>,
-    shutdown: AtomicBool,
+    pub(super) shutdown: AtomicBool,
 }
 
 #[derive(Debug, Clone)]
@@ -64,10 +64,6 @@ impl InnerRelayPool {
             notification_sender,
             opts: builder.opts,
         }
-    }
-
-    pub(super) fn is_shutdown(&self) -> bool {
-        self.atomic.shutdown.load(Ordering::SeqCst)
     }
 
     pub async fn shutdown(&self) {

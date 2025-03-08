@@ -102,6 +102,7 @@
 * pool: add `AdmitPolicy` trait ([Yuki Kishimoto])
 * pool: add `ReqExitPolicy::WaitForEvents` variant ([Yuki Kishimoto])
 * pool: add `RelayPoolBuilder` ([Yuki Kishimoto])
+* pool: add `RelayPool::is_shutdown` method ([Yuki Kishimoto])
 * ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])
 * js: add `KindStandard` enum ([Yuki Kishimoto])
 
