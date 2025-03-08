@@ -217,7 +217,7 @@ impl InnerRelay {
         }
 
         // Send notification
-        self.send_notification(RelayNotification::RelayStatus { status }, true);
+        self.send_notification(RelayNotification::RelayStatus { status }, false);
     }
 
     /// Perform health checks
