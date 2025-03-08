@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 #[cfg(feature = "nip11")]
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::{task, time};
@@ -148,7 +148,7 @@ pub(crate) struct InnerRelay {
     pub(super) stats: RelayConnectionStats,
     pub(super) state: SharedState,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
-    external_notification_sender: OnceLock<broadcast::Sender<RelayPoolNotification>>,
+    external_notification_sender: Option<broadcast::Sender<RelayPoolNotification>>,
 }
 
 impl AtomicDestroyer for InnerRelay {
@@ -178,7 +178,7 @@ impl InnerRelay {
             stats: RelayConnectionStats::default(),
             state,
             internal_notification_sender: relay_notification_sender,
-            external_notification_sender: OnceLock::new(),
+            external_notification_sender: None,
         }
     }
 
@@ -359,16 +359,14 @@ impl InnerRelay {
     }
 
     pub(crate) fn set_notification_sender(
-        &self,
+        &mut self,
         notification_sender: broadcast::Sender<RelayPoolNotification>,
-    ) -> Result<(), Error> {
-        self.external_notification_sender
-            .set(notification_sender)
-            .map_err(|_| Error::PoolNotificationSenderAlreadySet)
+    ) {
+        self.external_notification_sender = Some(notification_sender);
     }
 
     fn send_notification(&self, notification: RelayNotification, external: bool) {
-        match (external, self.external_notification_sender.get()) {
+        match (external, &self.external_notification_sender) {
             (true, Some(external_notification_sender)) => {
                 // Clone and send internal notification
                 let _ = self.internal_notification_sender.send(notification.clone());

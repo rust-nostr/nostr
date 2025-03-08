@@ -143,12 +143,12 @@ impl InnerRelayPool {
         }
 
         // Compose new relay
-        let relay: Relay = Relay::new(url, self.state.clone(), opts);
+        let mut relay: Relay = Relay::new(url, self.state.clone(), opts);
 
         // Set notification sender
         relay
             .inner
-            .set_notification_sender(self.notification_sender.clone())?;
+            .set_notification_sender(self.notification_sender.clone());
 
         // If relay has `READ` flag, inherit pool subscriptions
         if relay.flags().has_read() {

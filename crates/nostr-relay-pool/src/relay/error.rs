@@ -37,8 +37,6 @@ pub enum Error {
     NegentropyDeprecated(negentropy_deprecated::Error),
     /// Database error
     Database(DatabaseError),
-    /// Pool notification sender already set
-    PoolNotificationSenderAlreadySet,
     /// Generic timeout
     Timeout,
     /// Not replied to ping
@@ -130,9 +128,6 @@ impl fmt::Display for Error {
             Self::Negentropy(e) => write!(f, "{e}"),
             Self::NegentropyDeprecated(e) => write!(f, "{e}"),
             Self::Database(e) => write!(f, "{e}"),
-            Self::PoolNotificationSenderAlreadySet => {
-                write!(f, "pool notification sender already set")
-            }
             Self::Timeout => write!(f, "timeout"),
             Self::NotRepliedToPing => write!(f, "not replied to ping"),
             Self::CantParsePong => write!(f, "can't parse pong"),
