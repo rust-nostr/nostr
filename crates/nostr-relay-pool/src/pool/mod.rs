@@ -253,7 +253,49 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.inner.add_relay(url, opts).await
+        // Convert into url
+        let url: RelayUrl = url.try_into_url()?;
+
+        // Check if the pool has been shutdown
+        if self.inner.is_shutdown() {
+            return Err(Error::Shutdown);
+        }
+
+        // Get relays
+        let mut relays = self.inner.atomic.relays.write().await;
+
+        // Check if map already contains url
+        if relays.contains_key(&url) {
+            return Ok(false);
+        }
+
+        // Check number fo relays and limit
+        if let Some(max) = self.inner.opts.max_relays {
+            if relays.len() >= max {
+                return Err(Error::TooManyRelays { limit: max });
+            }
+        }
+
+        // Compose new relay
+        let mut relay: Relay = Relay::new(url, self.inner.state.clone(), opts);
+
+        // Set notification sender
+        relay
+            .inner
+            .set_notification_sender(self.inner.notification_sender.clone());
+
+        // If relay has `READ` flag, inherit pool subscriptions
+        if relay.flags().has_read() {
+            let subscriptions = self.subscriptions().await;
+            for (id, filters) in subscriptions.into_iter() {
+                relay.inner.update_subscription(id, filters, false).await;
+            }
+        }
+
+        // Insert relay into map
+        relays.insert(relay.url().clone(), relay);
+
+        Ok(true)
     }
 
     // Private API
@@ -270,10 +312,39 @@ impl RelayPool {
         match self.relay(&url).await {
             Ok(relay) => Ok(Some(relay)),
             Err(..) => {
-                self.inner.add_relay(url, opts).await?;
+                self.add_relay(url, opts).await?;
                 Ok(None)
             }
         }
+    }
+
+    async fn _remove_relay<U>(&self, url: U, force: bool) -> Result<(), Error>
+    where
+        U: TryIntoUrl,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Convert into url
+        let url: RelayUrl = url.try_into_url()?;
+
+        // Acquire write lock
+        let mut relays = self.inner.atomic.relays.write().await;
+
+        // Remove relay
+        let relay: Relay = relays.remove(&url).ok_or(Error::RelayNotFound)?;
+
+        // If NOT force, check if it has `GOSSIP` flag
+        if !force {
+            // If can't be removed, re-insert it.
+            if !can_remove_relay(&relay) {
+                relays.insert(url, relay);
+                return Ok(());
+            }
+        }
+
+        // Disconnect
+        relay.disconnect();
+
+        Ok(())
     }
 
     /// Remove and disconnect relay
@@ -289,7 +360,7 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.inner.remove_relay(url, false).await
+        self._remove_relay(url, false).await
     }
 
     /// Force remove and disconnect relay
@@ -301,7 +372,7 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.inner.remove_relay(url, true).await
+        self._remove_relay(url, true).await
     }
 
     /// Disconnect and remove all relays
@@ -310,7 +381,11 @@ impl RelayPool {
     /// Use [`RelayPool::force_remove_all_relays`] to remove every relay.
     #[inline]
     pub async fn remove_all_relays(&self) {
-        self.inner.remove_all_relays().await
+        // Acquire write lock
+        let mut relays = self.inner.atomic.relays.write().await;
+
+        // Retains all relays that can't be removed
+        relays.retain(|_, r| !can_remove_relay(r));
     }
 
     /// Disconnect and force remove all relays
@@ -486,13 +561,14 @@ impl RelayPool {
     /// Get subscriptions
     #[inline]
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
-        self.inner.subscriptions().await
+        self.inner.atomic.subscriptions.read().await.clone()
     }
 
-    /// Get subscription
+    /// Get a subscription
     #[inline]
     pub async fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
-        self.inner.subscription(id).await
+        let subscriptions = self.inner.atomic.subscriptions.read().await;
+        subscriptions.get(id).cloned()
     }
 
     /// Register subscription in the [RelayPool]
@@ -500,7 +576,19 @@ impl RelayPool {
     /// When a new relay will be added, saved subscriptions will be automatically used for it.
     #[inline]
     pub async fn save_subscription(&self, id: SubscriptionId, filter: Filter) {
-        self.inner.save_subscription(id, filter).await
+        let mut subscriptions = self.inner.atomic.subscriptions.write().await;
+        let current: &mut Filter = subscriptions.entry(id).or_default();
+        *current = filter;
+    }
+
+    async fn remove_subscription(&self, id: &SubscriptionId) {
+        let mut subscriptions = self.inner.atomic.subscriptions.write().await;
+        subscriptions.remove(id);
+    }
+
+    async fn remove_all_subscriptions(&self) {
+        let mut subscriptions = self.inner.atomic.subscriptions.write().await;
+        subscriptions.clear();
     }
 
     /// Send a client message to specific relays
@@ -833,7 +921,7 @@ impl RelayPool {
     /// Unsubscribe from subscription
     pub async fn unsubscribe(&self, id: &SubscriptionId) {
         // Remove subscription from pool
-        self.inner.remove_subscription(id).await;
+        self.remove_subscription(id).await;
 
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
@@ -851,7 +939,7 @@ impl RelayPool {
     /// Unsubscribe from all subscriptions
     pub async fn unsubscribe_all(&self) {
         // Remove subscriptions from pool
-        self.inner.remove_all_subscriptions().await;
+        self.remove_all_subscriptions().await;
 
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
@@ -1163,6 +1251,26 @@ impl RelayPool {
         }
         Ok(())
     }
+}
+
+/// Return `true` if the relay can be removed
+///
+/// If it CAN'T be removed,
+/// the flags are automatically updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
+fn can_remove_relay(relay: &Relay) -> bool {
+    let flags = relay.flags();
+    if flags.has_any(RelayServiceFlags::GOSSIP) {
+        // Remove READ, WRITE and DISCOVERY flags
+        flags.remove(
+            RelayServiceFlags::READ | RelayServiceFlags::WRITE | RelayServiceFlags::DISCOVERY,
+        );
+
+        // Relay has `GOSSIP` flag so it can't be removed.
+        return false;
+    }
+
+    // Relay can be removed
+    true
 }
 
 #[cfg(test)]
