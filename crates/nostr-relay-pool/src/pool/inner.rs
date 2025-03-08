@@ -71,8 +71,10 @@ impl InnerRelayPool {
     }
 
     pub async fn shutdown(&self) {
-        // TODO: use atomic swap?
-        if self.is_shutdown() {
+        // Mark as shutdown
+        // If the previous value was `true`,
+        // meaning that was already shutdown, immediately returns.
+        if self.atomic.shutdown.swap(true, Ordering::SeqCst) {
             return;
         }
 
@@ -83,9 +85,6 @@ impl InnerRelayPool {
         let _ = self
             .notification_sender
             .send(RelayPoolNotification::Shutdown);
-
-        // Mark as shutdown
-        self.atomic.shutdown.store(true, Ordering::SeqCst);
     }
 
     pub async fn force_remove_all_relays(&self) {
