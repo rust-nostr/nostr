@@ -8,7 +8,7 @@ use super::nip01::JsCoordinate;
 use crate::protocol::event::id::JsEventId;
 
 /// Event deletion request
-#[wasm_bindgen(js_name = GitRepositoryAnnouncement)]
+#[wasm_bindgen(js_name = EventDeletionRequest)]
 pub struct JsEventDeletionRequest {
     /// Event IDs
     #[wasm_bindgen(getter_with_clone)]
