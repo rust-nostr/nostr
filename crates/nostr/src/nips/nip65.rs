@@ -38,12 +38,19 @@ pub enum RelayMetadata {
     Write,
 }
 
+impl RelayMetadata {
+    /// Get as `&str`.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Read => "read",
+            Self::Write => "write",
+        }
+    }
+}
+
 impl fmt::Display for RelayMetadata {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Read => write!(f, "read"),
-            Self::Write => write!(f, "write"),
-        }
+        write!(f, "{}", self.as_str())
     }
 }
 

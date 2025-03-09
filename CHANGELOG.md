@@ -97,6 +97,7 @@
 * nostr: impl `FromIterator<Tag>` for `Tags` ([Yuki Kishimoto])
 * nostr: add `EventDeletionRequest` struct ([Yuki Kishimoto])
 * nostr: add `notifications` field to NIP47 `GetInfoResponse` ([Yuki Kishimoto])
+* nostr: add `RelayMetadata::as_str` method ([Yuki Kishimoto])
 * database: add `Events::force_insert` ([Yuki Kishimoto])
 * pool: event verification cache ([Yuki Kishimoto])
 * pool: add `AdmitPolicy` trait ([Yuki Kishimoto])
