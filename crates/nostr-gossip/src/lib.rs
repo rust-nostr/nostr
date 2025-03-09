@@ -16,14 +16,20 @@
 use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::num::NonZeroUsize;
+#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
 use std::path::Path;
-use std::sync::{mpsc, Arc, Mutex};
+#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
+use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
+#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
 use std::thread;
 
 use async_utility::task;
 use lru::LruCache;
 use nostr::prelude::*;
 use rusqlite::{Connection, OpenFlags};
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
+use tokio::sync::mpsc;
 
 mod constant;
 pub mod prelude;
@@ -49,17 +55,22 @@ pub enum BrokenDownFilters {
 
 #[derive(Debug, Clone)]
 struct Pool {
-    /// Read-only store
+    /// Store
     store: Arc<Mutex<Store>>,
     /// Event ingester
+    #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
     tx: mpsc::Sender<Event>,
+    #[cfg(all(target_family = "wasm", target_os = "unknown"))]
+    tx: mpsc::UnboundedSender<Event>,
 }
 
 impl Pool {
-    #[inline]
     fn new(s1: Store, s2: Store) -> Self {
         // Create new asynchronous channel
+        #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
         let (tx, rx) = mpsc::channel();
+        #[cfg(all(target_family = "wasm", target_os = "unknown"))]
+        let (tx, rx) = mpsc::unbounded_channel();
 
         // Spawn ingester with the store and the channel receiver
         Self::spawn_ingester(s1, rx);
@@ -70,6 +81,7 @@ impl Pool {
         }
     }
 
+    #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
     async fn interact<F, R>(&self, f: F) -> Result<R, Error>
     where
         F: FnOnce(&mut Store) -> R + Send + 'static,
@@ -83,6 +95,22 @@ impl Pool {
         .await?)
     }
 
+    #[cfg(all(target_family = "wasm", target_os = "unknown"))]
+    async fn interact<F, R>(&self, f: F) -> Result<R, Error>
+    where
+        F: FnOnce(&mut Store) -> R + Send + 'static,
+        R: Send + 'static,
+    {
+        let store: Arc<Mutex<Store>> = self.store.clone();
+        Ok(task::spawn(async move {
+            let mut conn = store.lock().expect("Failed to lock store");
+            f(&mut conn)
+        })
+        .join()
+        .await?)
+    }
+
+    #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
     fn spawn_ingester(mut store: Store, rx: mpsc::Receiver<Event>) {
         thread::spawn(move || {
             #[cfg(debug_assertions)]
@@ -104,6 +132,31 @@ impl Pool {
 
             #[cfg(debug_assertions)]
             tracing::debug!("Gossip ingester thread exited");
+        });
+    }
+
+    #[cfg(all(target_family = "wasm", target_os = "unknown"))]
+    fn spawn_ingester(mut store: Store, mut rx: mpsc::UnboundedReceiver<Event>) {
+        task::spawn(async move {
+            #[cfg(debug_assertions)]
+            tracing::debug!("Gossip ingester task started");
+
+            let size: NonZeroUsize = CACHE_SIZE.unwrap();
+            let mut cache: LruCache<EventId, ()> = LruCache::new(size);
+
+            // Listen for items
+            while let Some(event) = rx.recv().await {
+                // Update cache and check if was already processed
+                if cache.put(event.id, ()).is_none() {
+                    // Process event
+                    if let Err(e) = store.process_event(&event) {
+                        tracing::error!(error = %e, "Gossip event ingestion failed.");
+                    }
+                }
+            }
+
+            #[cfg(debug_assertions)]
+            tracing::debug!("Gossip ingester task exited");
         });
     }
 }
@@ -139,6 +192,7 @@ impl Gossip {
     }
 
     /// New persistent gossip storage
+    #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
     pub async fn persistent<P>(path: P) -> Result<Self, Error>
     where
         P: AsRef<Path> + Send + 'static,

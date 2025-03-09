@@ -15,8 +15,14 @@ keywords = ["nostr", "gossip"]
 async-utility.workspace = true
 lru.workspace = true
 nostr = { workspace = true, features = ["std"] }
-rusqlite = { version = "0.32", features = ["bundled"] }
 tracing = { workspace = true, features = ["std"] }
+
+[target.'cfg(not(all(target_family = "wasm", target_os = "unknown")))'.dependencies]
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+[target.'cfg(all(target_family = "wasm", target_os = "unknown"))'.dependencies]
+rusqlite = { version = "0.32", features = ["precompiled-wasm"] }
+tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt"] }

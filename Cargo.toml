@@ -47,6 +47,7 @@ web-sys = { version = "0.3", default-features = false }
 [patch.crates-io]
 # Patch needed to reduce bindings size
 bip39 = { git = "https://github.com/yukibtc/rust-bip39", rev = "eade7c56eff5f320e8eb5beee23dd8fb46413938" } # Uses bitcoin_hashes v0.14
+rusqlite = { git = "https://github.com/yukibtc/rusqlite", rev = "846aeb3e4088b11d8804bd3261464ba84352a2f6" } # rusqlite v0.32 with WASM support
 
 [profile.release]
 lto = true

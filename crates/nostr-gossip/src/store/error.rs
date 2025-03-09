@@ -4,6 +4,9 @@
 
 use std::fmt;
 
+#[cfg(all(target_family = "wasm", target_os = "unknown"))]
+use async_utility::task::Error as JoinError;
+#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
 use async_utility::tokio::task::JoinError;
 use nostr::types::url;
 use rusqlite::types::FromSqlError;
