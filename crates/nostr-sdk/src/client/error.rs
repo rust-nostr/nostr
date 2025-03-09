@@ -22,7 +22,7 @@ pub enum Error {
     /// Signer error
     Signer(SignerError),
     /// [`EventBuilder`] error
-    EventBuilder(builder::Error),
+    EventBuilder(event::builder::Error),
     /// Json error
     Json(serde_json::Error),
     /// Shared state error
@@ -92,8 +92,8 @@ impl From<SignerError> for Error {
     }
 }
 
-impl From<builder::Error> for Error {
-    fn from(e: builder::Error) -> Self {
+impl From<event::builder::Error> for Error {
+    fn from(e: event::builder::Error) -> Self {
         Self::EventBuilder(e)
     }
 }
