@@ -19,6 +19,7 @@ pub mod connect;
 pub mod database;
 pub mod duration;
 pub mod error;
+pub mod gossip;
 pub mod logger;
 pub mod nwc;
 pub mod policy;
