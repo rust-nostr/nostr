@@ -22,7 +22,8 @@ use crate::{EventId, PublicKey};
 
 /// URI scheme
 pub const SCHEME: &str = "nostr";
-const SCHEME_WITH_COLON: &str = "nostr:";
+/// URI scheme with colon
+pub(crate) const SCHEME_WITH_COLON: &str = "nostr:";
 
 /// Unsupported Bech32 Type
 #[derive(Debug, PartialEq, Eq)]
