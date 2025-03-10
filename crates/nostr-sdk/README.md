@@ -104,6 +104,7 @@ The following crate feature flags are available:
 
 | Feature     | Default | Description                                                                                  |
 |-------------|:-------:|----------------------------------------------------------------------------------------------|
+| `gossip`    |   No    | Enable gossip support                                                                        |
 | `tor`       |   No    | Enable support for embedded tor client                                                       |
 | `lmdb`      |   No    | Enable LMDB storage backend                                                                  |
 | `ndb`       |   No    | Enable [nostrdb](https://github.com/damus-io/nostrdb) storage backend                        |

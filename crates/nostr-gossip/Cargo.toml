@@ -1,0 +1,28 @@
+[package]
+name = "nostr-gossip"
+version = "0.39.0"
+edition = "2021"
+description = "Gossip storage for nostr apps"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "gossip"]
+
+[dependencies]
+async-utility.workspace = true
+lru.workspace = true
+nostr = { workspace = true, features = ["std"] }
+tracing = { workspace = true, features = ["std"] }
+
+[target.'cfg(not(all(target_family = "wasm", target_os = "unknown")))'.dependencies]
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+[target.'cfg(all(target_family = "wasm", target_os = "unknown"))'.dependencies]
+rusqlite = { version = "0.32", features = ["precompiled-wasm"] }
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }

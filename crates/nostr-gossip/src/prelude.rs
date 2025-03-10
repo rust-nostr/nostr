@@ -10,11 +10,6 @@
 
 // External crates
 pub use nostr::prelude::*;
-pub use nostr_database::prelude::*;
-#[cfg(feature = "gossip")]
-pub use nostr_gossip::prelude::*;
-pub use nostr_relay_pool::prelude::*;
 
 // Internal modules
-pub use crate::client::*;
 pub use crate::*;

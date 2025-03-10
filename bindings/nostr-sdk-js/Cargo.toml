@@ -11,7 +11,7 @@ crate-type = ["cdylib"]
 console_error_panic_hook = "0.1"
 js-sys.workspace = true
 nostr-connect.workspace = true
-nostr-sdk = { workspace = true, default-features = false, features = ["all-nips", "indexeddb"] }
+nostr-sdk = { workspace = true, default-features = false, features = ["all-nips", "indexeddb", "gossip"] }
 nwc.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
@@ -19,7 +19,7 @@ wasm-bindgen = { workspace = true, features = ["std"] }
 wasm-bindgen-futures.workspace = true
 
 [package.metadata.wasm-pack.profile.profiling]
-wasm-opt = true
+wasm-opt = false # Optimizations causes issues to SQLite gossip storage
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_bindgen_unstable_test_coverage)'] }
