@@ -272,3 +272,43 @@ impl Connection {
         self
     }
 }
+
+/// Send event target
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum SendEventTarget {
+    /// All added relays with write permission
+    WriteRelays,
+    /// Gossip relays (NIP-65)
+    Gossip,
+    /// Gossip to private inboxes (NIP-17)
+    GossipPrivateInbox,
+}
+
+/// Send event options
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SendEventOptions {
+    /// Send timeout
+    pub timeout: Duration,
+    /// Overwrite target
+    pub overwrite_target: Option<SendEventTarget>,
+}
+
+impl Default for SendEventOptions {
+    fn default() -> Self {
+        Self {
+            timeout: Duration::from_secs(10),
+            overwrite_target: None,
+        }
+    }
+}
+
+impl SendEventOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn overwrite_target(mut self, target: SendEventTarget) -> Self {
+        self.overwrite_target = Some(target);
+        self
+    }
+}

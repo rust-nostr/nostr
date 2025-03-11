@@ -25,7 +25,7 @@ pub mod options;
 pub use self::builder::ClientBuilder;
 pub use self::error::Error;
 use self::middleware::AdmissionPolicyMiddleware;
-pub use self::options::{ClientOptions, SleepWhenIdle};
+pub use self::options::{ClientOptions, SendEventOptions, SendEventTarget, SleepWhenIdle};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Connection, ConnectionTarget};
 use crate::gossip::{self, BrokenDownFilters, GossipFilterPattern, GossipWrapper};
@@ -959,19 +959,60 @@ impl Client {
     /// - the gossip data will be updated, if the [`Event`] is a NIP17/NIP65 relay list.
     #[inline]
     pub async fn send_event(&self, event: &Event) -> Result<Output<EventId>, Error> {
+        self.send_event_with_opts(event, SendEventOptions::default())
+            .await
+    }
+
+    /// Send the event to relays
+    ///
+    /// # Overview
+    ///
+    /// Send the [`Event`] to all relays with [`RelayServiceFlags::WRITE`] flag.
+    ///
+    /// # Gossip
+    ///
+    /// If `gossip` is enabled:
+    /// - the [`Event`] will be sent also to NIP65 relays (automatically discovered);
+    /// - the gossip data will be updated, if the [`Event`] is a NIP17/NIP65 relay list.
+    ///
+    /// # Options
+    ///
+    /// You can overwrite the target with [`SendEventOptions::overwrite_target`].
+    pub async fn send_event_with_opts(
+        &self,
+        event: &Event,
+        opts: SendEventOptions,
+    ) -> Result<Output<EventId>, Error> {
+        // Check if target is overwritten
+        let (is_gossip, is_nip17): (bool, bool) = match opts.overwrite_target {
+            Some(overwrite_target) => match overwrite_target {
+                SendEventTarget::WriteRelays => (false, false),
+                SendEventTarget::Gossip => (true, false),
+                SendEventTarget::GossipPrivateInbox => (true, true),
+            },
+            None => (self.gossip.is_some(), false),
+        };
+
         match &self.gossip {
             Some(gossip) => {
                 // Process event for gossip
                 gossip.process(event, None).await?;
 
                 // Send event using gossip
-                self.gossip_send_event(gossip, event, false).await
+                if is_gossip {
+                    return self.gossip_send_event(gossip, event, is_nip17).await;
+                }
             }
             None => {
-                // NOT gossip, send event to all relays
-                Ok(self.pool.send_event(event).await?)
+                // Gossip is not configured but the target is set to gossip, return error.
+                if is_gossip {
+                    todo!("Return error: GossipNotConfigured")
+                }
             }
         }
+
+        // NOT gossip, send event to all relays
+        Ok(self.pool.send_event(event).await?)
     }
 
     /// Send event to specific relays
