@@ -23,7 +23,7 @@ use crate::event::{builder, Event, EventBuilder};
 use crate::signer::NostrSigner;
 #[cfg(feature = "std")]
 use crate::util::JsonUtil;
-use crate::{Tag, TagStandard, Url};
+use crate::{Kind, PublicKey, Tag, TagKind, TagStandard, Timestamp, Url};
 
 /// [`HttpData`] required tags
 #[derive(Debug, PartialEq, Eq)]
@@ -217,4 +217,111 @@ impl TryFrom<Vec<Tag>> for HttpData {
             payload,
         })
     }
+}
+
+pub fn verify_auth_header(
+    auth_header: &str,
+    url: &Url,
+    method: HttpMethod,
+    body: Option<&[u8]>,
+) -> Result<PublicKey, String> {
+    // Original code at https://github.com/damus-io/notepush/blob/63c5f7e7236f7bfe09f665b5fb4a03b412284d13/src/nip98_auth.rs
+    
+    if auth_header.is_empty() {
+        return Err("Nostr authorization header missing".to_string());
+    }
+
+    let auth_header_parts: Vec<&str> = auth_header.split_whitespace().collect();
+    if auth_header_parts.len() != 2 {
+        return Err("Nostr authorization header does not have 2 parts".to_string());
+    }
+
+    if auth_header_parts[0] != "Nostr" {
+        return Err("Nostr authorization header does not start with `Nostr`".to_string());
+    }
+
+    let base64_encoded_event = auth_header_parts[1];
+    if base64_encoded_event.is_empty() {
+        return Err("Nostr authorization header does not have a base64 encoded event".to_string());
+    }
+    
+    let decoded_event_json = general_purpose::STANDARD
+        .decode(base64_encoded_event)
+        .map_err(|_| {
+            "Failed to decode base64 encoded event from Nostr authorization header".to_string()
+        })?;
+
+    let event: Event = Event::from_json(decoded_event_json)
+        .map_err(|_| "Could not parse Nostr note from JSON".to_string())?;
+
+    if event.kind != Kind::HttpAuth {
+        return Err("Nostr note kind in authorization header is incorrect".to_string());
+    }
+
+    let authorized_url: &Url = event
+        .tags
+        .find_standardized(TagKind::u())
+        .and_then(|tag| match tag {
+            TagStandard::AbsoluteURL(u) => Some(u),
+            _ => None,
+        })
+        .ok_or_else(|| "Missing 'u' tag from Nostr authorization header".to_string())?;
+
+    let authorized_method: &HttpMethod = event
+        .tags.find_standardized(TagKind::Method)
+        .and_then(|tag| match tag {
+            TagStandard::Method(u) => Some(u),
+            _ => None,
+        })
+        .ok_or_else(|| "Missing 'method' tag from Nostr authorization header".to_string())?;
+
+    if authorized_url != url || authorized_method != &method {
+        return Err(format!(
+            "Auth note url and/or method does not match request. Auth note url: {}; Request url: {}; Auth note method: {}; Request method: {}",
+            authorized_url, url, authorized_method, method
+        ));
+    }
+
+    let current_time: Timestamp = Timestamp::now();
+    let note_created_at: Timestamp = event.created_at;
+    let time_delta = TimeDelta::subtracting(current_time, note_created_at);
+    if (time_delta.negative && time_delta.delta_abs_seconds > 30)
+        || (!time_delta.negative && time_delta.delta_abs_seconds > 60)
+    {
+        return Err(format!(
+            "Auth note is too old. Current time: {}; Note created at: {}; Time delta: {} seconds",
+            current_time, note_created_at, time_delta
+        ));
+    }
+
+    if let Some(body_data) = body {
+        let authorized_content_hash_bytes: Vec<u8> = hex::decode(
+            note.get_tag_content(TagKind::Payload)
+                .ok_or("Missing 'payload' tag from Nostr authorization header")?,
+        )
+            .map_err(|_| {
+                "Failed to decode hex encoded payload from Nostr authorization header".to_string()
+            })?;
+
+        let authorized_content_hash: Sha256Hash =
+            Sha256Hash::from_slice(&authorized_content_hash_bytes)
+                .map_err(|_| "Failed to convert hex encoded payload to Sha256Hash".to_string())?;
+
+        let body_hash = Sha256Hash::hash(body_data);
+        if authorized_content_hash != body_hash {
+            return Err("Auth note payload hash does not match request body hash".to_string());
+        }
+    } else {
+        let authorized_content_hash_string = note.get_tag_content(nostr::TagKind::Payload);
+        if authorized_content_hash_string.is_some() {
+            return Err("Auth note has payload tag but request has no body".to_string());
+        }
+    }
+
+    // Verify both the Event ID and the cryptographic signature
+    if event.verify().is_err() {
+        return Err("Auth note id or signature is invalid".to_string());
+    }
+
+    Ok(note.pubkey)
 }
