@@ -3,7 +3,7 @@
 ## Description
 
 A simplified interface to build secure messaging apps on nostr with MLS ([RFC 9420](https://datatracker.ietf.org/doc/html/rfc9420)), 
-according to the [NIP104](https://github.com/nostr-protocol/nips/pull/1427).
+according to [NIP-EE](https://github.com/nostr-protocol/nips/pull/1427).
 
 ## State
 

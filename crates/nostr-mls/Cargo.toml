@@ -2,7 +2,7 @@
 name = "nostr-mls"
 version = "0.39.0"
 edition = "2021"
-description = "A simplified interface to build secure messaging apps on nostr with MLS, according to NIP104."
+description = "A simplified interface to build secure messaging apps on nostr with MLS."
 authors = ["Jeff Gardner", "Yuki Kishimoto <yukikishimoto@protonmail.com>", "Rust Nostr Developers"]
 homepage.workspace = true
 repository.workspace = true

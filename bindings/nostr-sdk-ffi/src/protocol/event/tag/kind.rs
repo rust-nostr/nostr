@@ -67,11 +67,11 @@ pub enum TagKind {
     Amount,
     /// Lnurl (NIP57)
     Lnurl,
-    /// MLS Protocol Version (NIP104)
+    /// MLS Protocol Version (NIP-EE)
     MlsProtocolVersion,
-    /// MLS Cipher Suite (NIP104)
+    /// MLS Cipher Suite (NIP-EE)
     MlsCiphersuite,
-    /// MLS Extensions (NIP104)
+    /// MLS Extensions (NIP-EE)
     MlsExtensions,
     /// Name tag
     Name,

@@ -434,7 +434,7 @@ From this release all the rust features are disabled by default (except `std` fe
 
 ### Added
 
-* nostr: add NIP104 tag and event kinds ([erskingardner])
+* nostr: add NIP-EE tag and event kinds ([erskingardner])
 * nostr: add `SingleLetterTag::as_str` and `TagKind::as_str` ([Yuki Kishimoto])
 * nostr: add `Kind::Comment` ([reyamir])
 * nostr: add `EventBuilder::comment` ([reyamir])
