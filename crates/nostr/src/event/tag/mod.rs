@@ -287,6 +287,17 @@ impl Tag {
         Self::from_standardized_without_cell(TagStandard::Relay(url))
     }
 
+    /// Relay URLs
+    ///
+    /// JSON: `["relays", "<relay-url>", "<relay-url>"]`
+    #[inline]
+    pub fn relays<I>(urls: I) -> Self
+    where
+        I: IntoIterator<Item = RelayUrl>,
+    {
+        Self::from_standardized_without_cell(TagStandard::Relays(urls.into_iter().collect()))
+    }
+
     /// All relays
     ///
     /// JSON: `["relay", "ALL_RELAYS"]`
