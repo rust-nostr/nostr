@@ -2864,6 +2864,7 @@ dependencies = [
  "openmls_rust_crypto",
  "openmls_traits",
  "tls_codec",
+ "tokio",
  "tracing",
 ]
 

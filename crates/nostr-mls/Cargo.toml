@@ -22,3 +22,7 @@ tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
 openmls_memory_storage = { git = "https://github.com/openmls/openmls", rev = "e2fc5e1d6250b294d6a786618f01e70139651bd3" }
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread"] }
+
+[[example]]
+name = "mls"
