@@ -145,6 +145,7 @@ kind_variants! {
     LongFormTextNote => 30023, "Long-form Text Note", "<https://github.com/nostr-protocol/nips/blob/master/23.md>",
     GitRepoAnnouncement => 30617, "Git Repository Announcement", "<https://github.com/nostr-protocol/nips/blob/master/34.md>",
     FileMetadata => 1063, "File Metadata", "<https://github.com/nostr-protocol/nips/blob/master/94.md>",
+    BlossomAuth => 24242, "Blossom Authorization", "<https://github.com/hzrd149/blossom/blob/master/buds/01.md>",
     HttpAuth => 27235, "HTTP Auth", "<https://github.com/nostr-protocol/nips/blob/master/98.md>",
     ApplicationSpecificData => 30078, "Application-specific Data", "<https://github.com/nostr-protocol/nips/blob/master/78.md>",
     Torrent => 2003, "Torrent", "<https://github.com/nostr-protocol/nips/blob/master/35.md>",

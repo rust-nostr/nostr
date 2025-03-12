@@ -29,6 +29,7 @@
 
 ### Added
 
+* blossom: add new crate with Blossom support ([Daniel D’Aquino])
 * mls-storage: add new crate with traits and types for mls storage implementations ([JeffG])
 
 ## v0.41.0 - 2025/04/15
@@ -1236,3 +1237,4 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [awiteb]: https://git.4rs.nl (nostr:nprofile1qqsqqqqqq9g9uljgjfcyd6dm4fegk8em2yfz0c3qp3tc6mntkrrhawgpzfmhxue69uhkummnw3ezudrjwvhxumq3dg0ly)
 [magine]: https://github.com/ma233 (?)
 [daywalker90]: https://github.com/daywalker90 (nostr:npub1kuemsj7xryp0uje36dr53scn9mxxh8ema90hw9snu46633n9n2hqp3drjt)
+[Daniel D’Aquino]: https://github.com/danieldaquino (nostr:npub13v47pg9dxjq96an8jfev9znhm0k7ntwtlh9y335paj9kyjsjpznqzzl3l8)
