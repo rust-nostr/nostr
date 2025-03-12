@@ -539,21 +539,21 @@ impl From<JsGetBalanceResponse> for GetBalanceResponse {
 pub struct JsGetInfoResponse {
     /// The alias of the lightning node
     #[wasm_bindgen(getter_with_clone)]
-    pub alias: String,
+    pub alias: Option<String>,
     /// The color of the current node in hex code format
     #[wasm_bindgen(getter_with_clone)]
-    pub color: String,
+    pub color: Option<String>,
     /// Lightning Node's public key
     #[wasm_bindgen(getter_with_clone)]
-    pub pubkey: String,
+    pub pubkey: Option<String>,
     /// Active network
     #[wasm_bindgen(getter_with_clone)]
-    pub network: String,
+    pub network: Option<String>,
     /// Current block height
-    pub block_height: u32,
+    pub block_height: Option<u32>,
     /// Most Recent Block Hash
     #[wasm_bindgen(getter_with_clone)]
-    pub block_hash: String,
+    pub block_hash: Option<String>,
     /// Available methods for this connection
     #[wasm_bindgen(getter_with_clone)]
     pub methods: Vec<String>,
@@ -567,7 +567,7 @@ impl From<GetInfoResponse> for JsGetInfoResponse {
         Self {
             alias: value.alias,
             color: value.color,
-            pubkey: value.pubkey,
+            pubkey: value.pubkey.map(|p| p.to_string()),
             network: value.network,
             block_height: value.block_height,
             block_hash: value.block_hash,
@@ -582,7 +582,7 @@ impl From<JsGetInfoResponse> for GetInfoResponse {
         Self {
             alias: value.alias,
             color: value.color,
-            pubkey: value.pubkey,
+            pubkey: value.pubkey.and_then(|p| p.parse().ok()),
             network: value.network,
             block_height: value.block_height,
             block_hash: value.block_hash,

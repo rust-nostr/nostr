@@ -594,17 +594,29 @@ pub struct GetBalanceResponse {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct GetInfoResponse {
     /// The alias of the lightning node
-    pub alias: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alias: Option<String>,
     /// The color of the current node in hex code format
-    pub color: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
     /// Lightning Node's public key
-    pub pubkey: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pubkey: Option<secp256k1::PublicKey>,
     /// Active network
-    pub network: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub network: Option<String>,
     /// Current block height
-    pub block_height: u32,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_height: Option<u32>,
     /// Most Recent Block Hash
-    pub block_hash: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_hash: Option<String>,
     /// Available methods for this connection
     pub methods: Vec<String>,
     /// List of supported notifications for this connection (optional)
