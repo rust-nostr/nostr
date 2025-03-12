@@ -2704,6 +2704,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-blossom"
+version = "0.41.0"
+dependencies = [
+ "base64 0.22.1",
+ "clap",
+ "nostr",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "nostr-cli"
 version = "0.41.0"
 dependencies = [

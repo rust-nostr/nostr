@@ -25,6 +25,12 @@
 
 -->
 
+## Unreleased
+
+### Added
+
+* blossom: add new crate with Blossom support ([Daniel D’Aquino])
+
 ## v0.41.0 - 2025/04/15
 
 ### Breaking changes

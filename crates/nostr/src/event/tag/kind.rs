@@ -125,6 +125,8 @@ pub enum TagKind<'a> {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
     Runtime,
+    /// Server
+    Server,
     /// Size of the file in bytes
     Size,
     /// Starts
@@ -333,6 +335,7 @@ impl<'a> TagKind<'a> {
             Self::Repository => "repo",
             Self::Request => "request",
             Self::Runtime => "runtime",
+            Self::Server => "server",
             Self::Size => "size",
             Self::Starts => "starts",
             Self::Status => "status",
@@ -405,6 +408,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "repo" => Self::Repository,
             "request" => Self::Request,
             "runtime" => Self::Runtime,
+            "server" => Self::Server,
             "size" => Self::Size,
             "starts" => Self::Starts,
             "status" => Self::Status,
