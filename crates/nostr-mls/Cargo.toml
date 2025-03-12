@@ -2,8 +2,8 @@
 name = "nostr-mls"
 version = "0.39.0"
 edition = "2021"
-description = "A library to help use OpenMLS with Nostr."
-authors = ["Jeff Gardner"]
+description = "A simplified interface to build secure messaging apps on nostr with MLS, according to NIP104."
+authors = ["Jeff Gardner", "Yuki Kishimoto <yukikishimoto@protonmail.com>", "Rust Nostr Developers"]
 homepage.workspace = true
 repository.workspace = true
 license.workspace = true
@@ -12,17 +12,13 @@ rust-version.workspace = true
 keywords = ["nostr", "mls", "openmls"]
 
 [dependencies]
-openmls = { version = "0.6", git = "https://github.com/openmls/openmls", rev = "e2fc5e1" }
-openmls_basic_credential = { version = "0.3", git = "https://github.com/openmls/openmls", rev = "e2fc5e1" }
-openmls_rust_crypto = { version = "0.3", git = "https://github.com/openmls/openmls", rev = "e2fc5e1" }
-openmls_traits = { version = "0.3", git = "https://github.com/openmls/openmls", rev = "e2fc5e1" }
-openmls-sled-storage = { version = "0.1.0", git = "https://github.com/erskingardner/openmls-sled-storage", branch = "master" }
-serde = { version = "1", features = ["derive"] }
+nostr = { workspace = true, features = ["std", "nip44"] }
+openmls = { git = "https://github.com/openmls/openmls", rev = "e2fc5e1d6250b294d6a786618f01e70139651bd3", default-features = false }
+openmls_basic_credential = { git = "https://github.com/openmls/openmls", rev = "e2fc5e1d6250b294d6a786618f01e70139651bd3", default-features = false }
+openmls_rust_crypto = { git = "https://github.com/openmls/openmls", rev = "e2fc5e1d6250b294d6a786618f01e70139651bd3", default-features = false }
+openmls_traits = { git = "https://github.com/openmls/openmls", rev = "e2fc5e1d6250b294d6a786618f01e70139651bd3", default-features = false }
 tls_codec = "0.4"
-hex = "0.4"
-rand = "0.8"
-thiserror = "1.0"
-tracing = "0.1"
+tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
-tempfile = "3.13"
+openmls_memory_storage = { git = "https://github.com/openmls/openmls", rev = "e2fc5e1d6250b294d6a786618f01e70139651bd3" }
