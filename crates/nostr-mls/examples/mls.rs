@@ -5,24 +5,22 @@
 use nostr_mls::prelude::*;
 use openmls_memory_storage::MemoryStorage;
 
+fn generate_identity() -> (Keys, NostrMls<MemoryStorage>) {
+    let keys = Keys::generate();
+    let nostr_mls = NostrMls::new(MemoryStorage::default());
+    (keys, nostr_mls)
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let relay_url = RelayUrl::parse("ws://localhost:8080").unwrap();
 
-    // Open/create storage
-    let storage = MemoryStorage::default();
-
-    // Initialize nostr MLS instance
-    let nostr_mls = NostrMls::new(storage);
-
-    // Generate nostr keys
-    let alice_keys = Keys::generate();
-    let bob_keys = Keys::generate();
+    let (alice_keys, alice_nostr_mls) = generate_identity();
+    let (bob_keys, bob_nostr_mls) = generate_identity();
 
     // Create key package for Bob
-    // The encoded key package is the one that will be published in a 443 event to the Nostr network
-    let bob_key_package_event: Event = nostr_mls
-        .create_key_package(&alice_keys, &bob_keys.public_key, [relay_url.clone()])
+    let bob_key_package_event: Event = bob_nostr_mls
+        .create_key_package(&bob_keys, [relay_url.clone()])
         .await?;
 
     // ================================
@@ -30,10 +28,11 @@ async fn main() -> Result<()> {
     // ================================
 
     // To create a group, Alice fetches Bob's key package from the Nostr network and parses it
-    let bob_key_package: KeyPackage = nostr_mls.parse_key_package_event(&bob_key_package_event)?;
+    let bob_key_package: KeyPackage =
+        alice_nostr_mls.parse_key_package_event(&bob_key_package_event)?;
 
     // Alice creates the group, adding Bob.
-    let group_create_result = nostr_mls.create_group(
+    let group_create_result = alice_nostr_mls.create_group(
         "Bob & Alice",
         "A secret chat between Bob and Alice",
         &alice_keys.public_key,
@@ -53,12 +52,20 @@ async fn main() -> Result<()> {
 
     // Now, let's also try sending a message to the group (using an unsigned Kind: 9 event)
     // We don't have to wait for Bob to join the group before we send our first message.
-    let message_rumor =
-        EventBuilder::new(Kind::Custom(9), "Hi Bob!").build(alice_keys.public_key());
+    let rumor = EventBuilder::new(Kind::Custom(9), "Hi Bob!").build(alice_keys.public_key());
 
-    // This is the serialized message object that will be encrypted into a Kind: 445 event and published.
-    let message_event =
-        nostr_mls.create_message(alice_mls_group.group_id(), &alice_group_data, message_rumor)?;
+    // Get the export secret value for this epoch of the group
+    // In real usage you would want to do this once per epoch, per group, and cache it.
+    // 🚨 It's critical that you delete this secret after some period of time to preserve forward secrecy.
+    // For example, once the group has moved 2 epochs beyond this one.
+    let CreateMessage {
+        event: message_event,
+        secret,
+    } = alice_nostr_mls.create_message(
+        alice_mls_group.group_id(),
+        alice_group_data.nostr_group_id,
+        rumor,
+    )?;
 
     // ================================
     // We're now acting as Bob
@@ -66,7 +73,7 @@ async fn main() -> Result<()> {
 
     // First Bob recieves the Gift-wrapped welcome message from Alice and decrypts it.
     // Bob can now preview the welcome message to see what group he might be joining
-    let welcome_preview = nostr_mls
+    let welcome_preview = bob_nostr_mls
         .preview_welcome_event(serialized_welcome_message.clone())
         .expect("Error previewing welcome event");
     assert_eq!(
@@ -80,7 +87,7 @@ async fn main() -> Result<()> {
     );
 
     // Bob can now join the group
-    let join_result = nostr_mls.join_group_from_welcome(serialized_welcome_message.clone())?;
+    let join_result = bob_nostr_mls.join_group_from_welcome(serialized_welcome_message.clone())?;
     let bob_mls_group = join_result.mls_group;
     let bob_group_data = join_result.nostr_group_data;
 
@@ -97,8 +104,8 @@ async fn main() -> Result<()> {
 
     // The resulting serialized message is the MLS encrypted message that Bob sent
     // Now Bob can process the MLS message content and do what's needed with it
-    let rumor = nostr_mls
-        .process_message(bob_mls_group.group_id(), &message_event)?
+    let rumor = bob_nostr_mls
+        .process_message(bob_mls_group.group_id(), secret, &message_event)?
         .unwrap();
 
     assert_eq!(

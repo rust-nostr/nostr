@@ -52,19 +52,14 @@ where
     }
 
     /// Create key package [`Event`]
-    ///
-    /// The output [`Event`] is ready to be sent to the relays of the receiver public key.
-    pub async fn create_key_package<T, I>(
-        &self,
-        signer: &T,
-        receiver: &PublicKey,
-        relays: I,
-    ) -> Result<Event, Error>
+    pub async fn create_key_package<T, I>(&self, signer: &T, relays: I) -> Result<Event, Error>
     where
         T: NostrSigner,
         I: IntoIterator<Item = RelayUrl>,
     {
-        let serialized_key_package: String = self.create_key_package_for_event(receiver)?;
+        let public_key: PublicKey = signer.get_public_key().await?;
+
+        let serialized_key_package: String = self.create_key_package_for_event(&public_key)?;
 
         let ciphersuite: String = self.ciphersuite_value().to_string();
         let extensions: String = self.extensions_value();

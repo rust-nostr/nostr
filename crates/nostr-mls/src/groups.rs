@@ -43,6 +43,14 @@ pub struct ExportSecret {
     pub epoch: u64,
 }
 
+/// Create message result
+pub struct CreateMessage {
+    /// The event to publish to group relays
+    pub event: Event,
+    /// The secret for the current epoch
+    pub secret: ExportSecret,
+}
+
 impl<Storage> NostrMls<Storage>
 where
     Storage: StorageProvider,
@@ -62,6 +70,12 @@ where
             group.ciphersuite().signature_algorithm(),
         )
         .ok_or(Error::CantLoadSigner)
+    }
+
+    /// Load group by ID
+    pub fn load_group(&self, group_id: &GroupId) -> Result<Option<MlsGroup>, Error> {
+        MlsGroup::load(self.provider.storage(), group_id)
+            .map_err(|e| Error::Provider(e.to_string()))
     }
 
     /// Creates a new MLS group with the specified members and settings.
@@ -199,13 +213,9 @@ where
     /// - Message serialization fails
     pub fn create_message_for_event(
         &self,
-        group_id: &GroupId,
+        group: &mut MlsGroup,
         mut rumor: UnsignedEvent,
     ) -> Result<Vec<u8>, Error> {
-        let mut group = MlsGroup::load(self.provider.storage(), group_id)
-            .map_err(|e| Error::Provider(e.to_string()))?
-            .ok_or(Error::GroupNotFound)?;
-
         // Load signer
         let signer: SignatureKeyPair = self.load_signer(&group)?;
 
@@ -225,46 +235,47 @@ where
     pub fn create_message(
         &self,
         group_id: &GroupId,
-        group_data: &NostrGroupDataExtension,
+        nostr_group_id: [u8; 32],
         rumor: UnsignedEvent,
-    ) -> Result<Event, Error> {
-        let serialized_message = self.create_message_for_event(group_id, rumor)?;
+    ) -> Result<CreateMessage, Error> {
+        // Load group
+        let mut group = self.load_group(group_id)?.ok_or(Error::GroupNotFound)?;
 
-        // Get the export secret value for this epoch of the group
-        // In real usage you would want to do this once per epoch, per group, and cache it.
-        // 🚨 It's critical that you delete this secret after some period of time to preserve forward secrecy.
-        // For example, once the group has moved 2 epochs beyond this one.
-        let ExportSecret { secret_key, .. } = self.export_secret(group_id)?;
+        // Create message
+        let message: Vec<u8> = self.create_message_for_event(&mut group, rumor)?;
+
+        // Export secret
+        let secret: ExportSecret = self.export_secret(group_id)?;
 
         // Convert that secret to nostr keys
-        let export_nostr_keys = Keys::new(secret_key);
+        let export_nostr_keys: Keys = Keys::new(secret.secret_key.clone());
 
         // Encrypt the message content
-        let encrypted_content = nip44::encrypt(
+        let encrypted_content: String = nip44::encrypt(
             export_nostr_keys.secret_key(),
-            &export_nostr_keys.public_key(),
-            &serialized_message,
-            nip44::Version::V2,
+            &export_nostr_keys.public_key,
+            &message,
+            nip44::Version::default(),
         )?;
 
-        // Now we'll create a Kind: 445 event with the encrypted message content
+        // Generate ephemeral key
         let ephemeral_nostr_keys: Keys = Keys::generate();
 
-        let tag = Tag::custom(TagKind::h(), [hex::encode(group_data.nostr_group_id)]);
+        let tag: Tag = Tag::custom(TagKind::h(), [hex::encode(nostr_group_id)]);
         let event = EventBuilder::new(Kind::MlsGroupMessage, encrypted_content)
             .tag(tag)
             .sign_with_keys(&ephemeral_nostr_keys)?;
 
-        Ok(event)
+        Ok(CreateMessage { event, secret })
     }
 
-    /// Exports a secret key from the MLS group.
+    /// Exports a secret key from the MLS group for the **current** epoch.
     ///
-    /// This secret is used for NIP-44 encrypting the content field of Group Message Events (kind:445)
+    /// This secret is used for NIP-44 encrypting the content field of Group Message Events (kind:445).
+    ///
+    /// In real usage you would want to do this once per epoch, per group, and cache it.
     pub fn export_secret(&self, group_id: &GroupId) -> Result<ExportSecret, Error> {
-        let group = MlsGroup::load(self.provider.storage(), group_id)
-            .map_err(|e| Error::Provider(e.to_string()))?
-            .ok_or(Error::GroupNotFound)?;
+        let group = self.load_group(group_id)?.ok_or(Error::GroupNotFound)?;
 
         let export_secret: Vec<u8> = group.export_secret(&self.provider, "nostr", b"nostr", 32)?;
 
@@ -299,14 +310,10 @@ where
     /// - There is an error processing the message
     pub fn process_message_for_group(
         &self,
-        group_id: &GroupId,
+        group: &mut MlsGroup,
         message: &[u8],
         // TODO: return another enum instead of Option
     ) -> Result<Option<UnsignedEvent>, Error> {
-        let mut group = MlsGroup::load(self.provider.storage(), group_id)
-            .map_err(|e| Error::Provider(e.to_string()))?
-            .ok_or(Error::GroupNotFound)?;
-
         let mls_message = MlsMessageIn::tls_deserialize_exact(message)?;
 
         tracing::debug!(target: "nostr_openmls::groups::process_message_for_group", "Received message: {:?}", mls_message);
@@ -360,6 +367,7 @@ where
     pub fn process_message(
         &self,
         group_id: &GroupId,
+        secret: ExportSecret,
         event: &Event,
     ) -> Result<Option<UnsignedEvent>, Error> {
         if event.kind != Kind::MlsGroupMessage {
@@ -369,21 +377,21 @@ where
             });
         }
 
-        let ExportSecret { secret_key, .. } = self.export_secret(group_id)?;
+        // Load group
+        let mut group = self.load_group(group_id)?.ok_or(Error::GroupNotFound)?;
 
-        let export_nostr_keys = Keys::new(secret_key);
+        let export_nostr_keys = Keys::new(secret.secret_key);
 
-        // Bob fetches the message event (Kind: 445) from Nostr and, using
-        // the exporter secret key, decrypts the message content to bytes
-        let serialized_message = nip44::decrypt_to_bytes(
+        // Decrypt message
+        let message: Vec<u8> = nip44::decrypt_to_bytes(
             export_nostr_keys.secret_key(),
-            &export_nostr_keys.public_key(),
+            &export_nostr_keys.public_key,
             &event.content,
         )?;
 
         // The resulting serialized message is the MLS encrypted message that Bob sent
         // Now Bob can process the MLS message content and do what's needed with it
-        self.process_message_for_group(group_id, &serialized_message)
+        self.process_message_for_group(&mut group, &message)
     }
 
     /// Returns a list of Nostr hex-encoded public keys for all members in an MLS group.
@@ -407,11 +415,7 @@ where
     /// - The specified group is not found
     /// - A member's credential cannot be parsed
     /// - A member's identity bytes cannot be converted to a string
-    pub fn member_public_keys(&self, group_id: &GroupId) -> Result<Vec<PublicKey>, Error> {
-        let group = MlsGroup::load(self.provider.storage(), group_id)
-            .map_err(|e| Error::Provider(e.to_string()))?
-            .ok_or(Error::GroupNotFound)?;
-
+    pub fn member_public_keys(&self, group: &MlsGroup) -> Result<Vec<PublicKey>, Error> {
         // Store members in a variable to extend its lifetime
         let mut members = group.members();
         members.try_fold(Vec::new(), |mut acc, m| {
@@ -453,12 +457,12 @@ where
     /// - Failed to generate or store signature keypair
     /// - Failed to perform self-update operation
     pub fn self_update(&self, group_id: &GroupId) -> Result<SelfUpdate, Error> {
-        let mut group = MlsGroup::load(self.provider.storage(), group_id)
-            .map_err(|e| Error::Provider(e.to_string()))?
-            .ok_or(Error::GroupNotFound)?;
-
         let current_secret: ExportSecret = self.export_secret(group_id)?;
+
         tracing::debug!(target: "nostr_openmls::groups::self_update", "Current epoch: {:?}", current_secret.epoch);
+
+        // Load group
+        let mut group = self.load_group(group_id)?.ok_or(Error::GroupNotFound)?;
 
         // Load current signer
         let current_signer: SignatureKeyPair = self.load_signer(&group)?;

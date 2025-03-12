@@ -14,12 +14,13 @@ pub mod extension;
 pub mod groups;
 pub mod key_package;
 pub mod prelude;
-mod welcomes;
+pub mod welcomes;
 
 use self::constant::{DEFAULT_CIPHERSUITE, REQUIRED_EXTENSIONS};
 pub use self::error::Error;
 
 /// The main struct for the Nostr MLS implementation.
+#[derive(Debug)]
 pub struct NostrMls<Storage>
 where
     Storage: StorageProvider,
@@ -33,6 +34,7 @@ where
 }
 
 /// The provider struct for Nostr MLS that implements the OpenMLS Provider trait.
+#[derive(Debug)]
 pub struct NostrMlsProvider<Storage> {
     crypto: RustCrypto,
     storage: Storage,
@@ -107,7 +109,6 @@ mod tests {
     use super::*;
 
     pub fn create_test_nostr_mls() -> NostrMls<MemoryStorage> {
-        let storage = MemoryStorage::default();
-        NostrMls::new(storage)
+        NostrMls::new(MemoryStorage::default())
     }
 }

@@ -10,7 +10,7 @@ use std::{fmt, str};
 use nostr::nips::nip44;
 use nostr::types::url;
 use nostr::util::hex;
-use nostr::{event, key, Kind};
+use nostr::{event, key, Kind, SignerError};
 use openmls::credentials::errors::BasicCredentialError;
 use openmls::error::LibraryError;
 use openmls::extensions::errors::InvalidExtensionError;
@@ -33,6 +33,8 @@ pub enum Error {
     Event(event::Error),
     /// Event Builder error
     EventBuilder(event::builder::Error),
+    /// Nostr Signer error
+    Signer(SignerError),
     /// NIP44 error
     NIP44(nip44::Error),
     /// Relay URL error
@@ -101,6 +103,7 @@ impl fmt::Display for Error {
             Self::Keys(e) => write!(f, "{e}"),
             Self::Event(e) => write!(f, "{e}"),
             Self::EventBuilder(e) => write!(f, "{e}"),
+            Self::Signer(e) => write!(f, "{e}"),
             Self::NIP44(e) => write!(f, "{e}"),
             Self::RelayUrl(e) => write!(f, "{e}"),
             Self::Tls(e) => write!(f, "{e}"),
@@ -162,6 +165,12 @@ impl From<event::Error> for Error {
 impl From<event::builder::Error> for Error {
     fn from(e: event::builder::Error) -> Self {
         Self::EventBuilder(e)
+    }
+}
+
+impl From<SignerError> for Error {
+    fn from(e: SignerError) -> Self {
+        Self::Signer(e)
     }
 }
 
