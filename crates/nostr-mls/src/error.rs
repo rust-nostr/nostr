@@ -7,9 +7,10 @@
 use std::string::FromUtf8Error;
 use std::{fmt, str};
 
+use nostr::nips::nip44;
 use nostr::types::url;
 use nostr::util::hex;
-use nostr::{event, key};
+use nostr::{event, key, Kind};
 use openmls::credentials::errors::BasicCredentialError;
 use openmls::error::LibraryError;
 use openmls::extensions::errors::InvalidExtensionError;
@@ -30,6 +31,10 @@ pub enum Error {
     Keys(key::Error),
     /// Event error
     Event(event::Error),
+    /// Event Builder error
+    EventBuilder(event::builder::Error),
+    /// NIP44 error
+    NIP44(nip44::Error),
     /// Relay URL error
     RelayUrl(url::Error),
     /// TLS error
@@ -74,6 +79,13 @@ pub enum Error {
     CantLoadSigner,
     /// Invalid Welcome message
     InvalidWelcomeMessage,
+    /// Unexpected event
+    UnexpectedEvent {
+        /// Expected event kind
+        expected: Kind,
+        /// Received event kind
+        received: Kind,
+    },
     /// Unexpected extension type
     UnexpectedExtensionType,
     /// Nostr group data extension not found
@@ -88,6 +100,8 @@ impl fmt::Display for Error {
             Self::Hex(e) => write!(f, "{e}"),
             Self::Keys(e) => write!(f, "{e}"),
             Self::Event(e) => write!(f, "{e}"),
+            Self::EventBuilder(e) => write!(f, "{e}"),
+            Self::NIP44(e) => write!(f, "{e}"),
             Self::RelayUrl(e) => write!(f, "{e}"),
             Self::Tls(e) => write!(f, "{e}"),
             Self::Utf8(e) => write!(f, "{e}"),
@@ -113,6 +127,10 @@ impl fmt::Display for Error {
             Self::OwnLeafNotFound => write!(f, "own leaf not found"),
             Self::CantLoadSigner => write!(f, "can't load signer"),
             Self::InvalidWelcomeMessage => write!(f, "invalid welcome message"),
+            Self::UnexpectedEvent { expected, received } => write!(
+                f,
+                "unexpected event kind: expected={expected}, received={received}"
+            ),
             Self::UnexpectedExtensionType => {
                 write!(f, "Unexpected extension type")
             }
@@ -138,6 +156,18 @@ impl From<key::Error> for Error {
 impl From<event::Error> for Error {
     fn from(e: event::Error) -> Self {
         Self::Event(e)
+    }
+}
+
+impl From<event::builder::Error> for Error {
+    fn from(e: event::builder::Error) -> Self {
+        Self::EventBuilder(e)
+    }
+}
+
+impl From<nip44::Error> for Error {
+    fn from(e: nip44::Error) -> Self {
+        Self::NIP44(e)
     }
 }
 

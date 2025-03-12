@@ -1,7 +1,7 @@
 //! Nostr MLS Key Packages
 
 use nostr::util::hex;
-use nostr::PublicKey;
+use nostr::{Event, EventBuilder, Kind, NostrSigner, PublicKey, RelayUrl, Tag, TagKind};
 use openmls::key_packages::KeyPackage;
 use openmls::prelude::*;
 use openmls::storage::StorageProvider;
@@ -51,6 +51,38 @@ where
         Ok(hex::encode(key_package_serialized))
     }
 
+    /// Create key package [`Event`]
+    ///
+    /// The output [`Event`] is ready to be sent to the relays of the receiver public key.
+    pub async fn create_key_package<T, I>(
+        &self,
+        signer: &T,
+        receiver: &PublicKey,
+        relays: I,
+    ) -> Result<Event, Error>
+    where
+        T: NostrSigner,
+        I: IntoIterator<Item = RelayUrl>,
+    {
+        let serialized_key_package: String = self.create_key_package_for_event(receiver)?;
+
+        let ciphersuite: String = self.ciphersuite_value().to_string();
+        let extensions: String = self.extensions_value();
+
+        let tags = [
+            Tag::custom(TagKind::MlsProtocolVersion, ["1.0"]),
+            Tag::custom(TagKind::MlsCiphersuite, [ciphersuite]),
+            Tag::custom(TagKind::MlsExtensions, [extensions]),
+            Tag::relays(relays),
+            Tag::protected(),
+        ];
+
+        let builder: EventBuilder =
+            EventBuilder::new(Kind::MlsKeyPackage, serialized_key_package).tags(tags);
+
+        Ok(builder.sign(signer).await?)
+    }
+
     /// Parses and validates a hex-encoded key package.
     ///
     /// This function takes a hex-encoded key package string, decodes it, deserializes it into a
@@ -80,6 +112,18 @@ where
             key_package_in.validate(self.provider.crypto(), ProtocolVersion::Mls10)?;
 
         Ok(key_package)
+    }
+
+    /// Parse key package from [`Event`]
+    pub fn parse_key_package_event(&self, event: &Event) -> Result<KeyPackage, Error> {
+        if event.kind != Kind::MlsKeyPackage {
+            return Err(Error::UnexpectedEvent {
+                expected: Kind::MlsKeyPackage,
+                received: event.kind,
+            });
+        }
+
+        self.parse_key_package(&event.content)
     }
 
     /// Deletes a key package from the MLS provider's storage.

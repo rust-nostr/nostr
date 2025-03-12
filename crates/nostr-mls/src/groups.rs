@@ -2,7 +2,12 @@
 
 use std::str;
 
-use nostr::{JsonUtil, PublicKey, RelayUrl, SecretKey, UnsignedEvent};
+use nostr::nips::nip44;
+use nostr::util::hex;
+use nostr::{
+    Event, EventBuilder, JsonUtil, Keys, Kind, PublicKey, RelayUrl, SecretKey, Tag, TagKind,
+    UnsignedEvent,
+};
 use openmls::group::GroupId;
 use openmls::prelude::*;
 use openmls::storage::StorageProvider;
@@ -216,6 +221,43 @@ where
         Ok(serialized_message)
     }
 
+    /// Create message [`Event`]
+    pub fn create_message(
+        &self,
+        group_id: &GroupId,
+        group_data: &NostrGroupDataExtension,
+        rumor: UnsignedEvent,
+    ) -> Result<Event, Error> {
+        let serialized_message = self.create_message_for_event(group_id, rumor)?;
+
+        // Get the export secret value for this epoch of the group
+        // In real usage you would want to do this once per epoch, per group, and cache it.
+        // 🚨 It's critical that you delete this secret after some period of time to preserve forward secrecy.
+        // For example, once the group has moved 2 epochs beyond this one.
+        let ExportSecret { secret_key, .. } = self.export_secret(group_id)?;
+
+        // Convert that secret to nostr keys
+        let export_nostr_keys = Keys::new(secret_key);
+
+        // Encrypt the message content
+        let encrypted_content = nip44::encrypt(
+            export_nostr_keys.secret_key(),
+            &export_nostr_keys.public_key(),
+            &serialized_message,
+            nip44::Version::V2,
+        )?;
+
+        // Now we'll create a Kind: 445 event with the encrypted message content
+        let ephemeral_nostr_keys: Keys = Keys::generate();
+
+        let tag = Tag::custom(TagKind::h(), [hex::encode(group_data.nostr_group_id)]);
+        let event = EventBuilder::new(Kind::MlsGroupMessage, encrypted_content)
+            .tag(tag)
+            .sign_with_keys(&ephemeral_nostr_keys)?;
+
+        Ok(event)
+    }
+
     /// Exports a secret key from the MLS group.
     ///
     /// This secret is used for NIP-44 encrypting the content field of Group Message Events (kind:445)
@@ -312,6 +354,36 @@ where
                 Ok(None)
             }
         }
+    }
+
+    /// Process message
+    pub fn process_message(
+        &self,
+        group_id: &GroupId,
+        event: &Event,
+    ) -> Result<Option<UnsignedEvent>, Error> {
+        if event.kind != Kind::MlsGroupMessage {
+            return Err(Error::UnexpectedEvent {
+                expected: Kind::MlsGroupMessage,
+                received: event.kind,
+            });
+        }
+
+        let ExportSecret { secret_key, .. } = self.export_secret(group_id)?;
+
+        let export_nostr_keys = Keys::new(secret_key);
+
+        // Bob fetches the message event (Kind: 445) from Nostr and, using
+        // the exporter secret key, decrypts the message content to bytes
+        let serialized_message = nip44::decrypt_to_bytes(
+            export_nostr_keys.secret_key(),
+            &export_nostr_keys.public_key(),
+            &event.content,
+        )?;
+
+        // The resulting serialized message is the MLS encrypted message that Bob sent
+        // Now Bob can process the MLS message content and do what's needed with it
+        self.process_message_for_group(group_id, &serialized_message)
     }
 
     /// Returns a list of Nostr hex-encoded public keys for all members in an MLS group.
