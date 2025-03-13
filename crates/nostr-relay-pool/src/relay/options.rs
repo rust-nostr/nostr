@@ -9,7 +9,7 @@ use std::time::Duration;
 use async_wsocket::ConnectionMode;
 use tokio::sync::watch::{self, Receiver, Sender};
 
-use super::constants::DEFAULT_RETRY_INTERVAL;
+use super::constants::{DEFAULT_NOTIFICATION_CHANNEL_SIZE, DEFAULT_RETRY_INTERVAL};
 use super::flags::RelayServiceFlags;
 use crate::RelayLimits;
 
@@ -23,6 +23,7 @@ pub struct RelayOptions {
     pub(super) adjust_retry_interval: bool,
     pub(super) limits: RelayLimits,
     pub(super) max_avg_latency: Option<Duration>,
+    pub(super) notification_channel_size: usize,
 }
 
 impl Default for RelayOptions {
@@ -35,6 +36,7 @@ impl Default for RelayOptions {
             adjust_retry_interval: true,
             limits: RelayLimits::default(),
             max_avg_latency: None,
+            notification_channel_size: DEFAULT_NOTIFICATION_CHANNEL_SIZE,
         }
     }
 }
@@ -119,6 +121,13 @@ impl RelayOptions {
     #[inline]
     pub fn max_avg_latency(mut self, max: Option<Duration>) -> Self {
         self.max_avg_latency = max;
+        self
+    }
+
+    /// Notification channel size (default: [`DEFAULT_NOTIFICATION_CHANNEL_SIZE`])
+    #[inline]
+    pub fn notification_channel_size(mut self, size: usize) -> Self {
+        self.notification_channel_size = size;
         self
     }
 }

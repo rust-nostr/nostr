@@ -159,7 +159,8 @@ impl AtomicDestroyer for InnerRelay {
 
 impl InnerRelay {
     pub(super) fn new(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
-        let (relay_notification_sender, ..) = broadcast::channel::<RelayNotification>(2048);
+        let (relay_notification_sender, ..) =
+            broadcast::channel::<RelayNotification>(opts.notification_channel_size);
 
         Self {
             url,

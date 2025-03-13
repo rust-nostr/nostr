@@ -50,6 +50,7 @@
 * pool: drop `RelayFiltering` ([Yuki Kishimoto])
 * pool: remove `Relay` constructors ([Yuki Kishimoto])
 * pool: change `RelayPool::new` signature ([Yuki Kishimoto])
+* pool: now can set the notification channel size of a single `Relay` using `RelayOptions` ([magine])
 * sdk: change `Client::fetch_metadata` output ([Yuki Kishimoto]) 
 * sdk: remove `Client::state` ([Yuki Kishimoto])
 
@@ -1177,6 +1178,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [Francisco Calderón]: https://github.com/grunch (nostr:npub1qqqqqqqx2tj99mng5qgc07cgezv5jm95dj636x4qsq7svwkwmwnse3rfkq)
 [cipres]: https://github.com/PancakesArchitect (nostr:npub1r3cnzta52fee26c83cnes8wvzkch3kud2kll67k402x04mttt26q0wfx0c)
 [awiteb]: https://git.4rs.nl (nostr:nprofile1qqsqqqqqq9g9uljgjfcyd6dm4fegk8em2yfz0c3qp3tc6mntkrrhawgpzfmhxue69uhkummnw3ezudrjwvhxumq3dg0ly)
+[magine]: https://github.com/ma233 (?)
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.39.0...HEAD
