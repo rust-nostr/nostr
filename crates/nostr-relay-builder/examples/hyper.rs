@@ -118,6 +118,7 @@ async fn main() -> nostr_relay_builder::prelude::Result<()> {
     let relay = LocalRelay::new(builder).await?;
 
     let http_addr: SocketAddr = "127.0.0.1:8000".parse()?;
+    tracing::info!("Listening on: {}", &http_addr);
     let listener = TcpListener::bind(&http_addr).await?;
     loop {
         let (socket, addr) = listener.accept().await?;
