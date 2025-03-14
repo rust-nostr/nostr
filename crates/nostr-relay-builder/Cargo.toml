@@ -3,12 +3,12 @@ name = "nostr-relay-builder"
 version = "0.39.0"
 edition = "2021"
 description = "Build your own custom nostr relay!"
-authors.workspace = true
-homepage.workspace = true
-repository.workspace = true
-license.workspace = true
+authors = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
 readme = "README.md"
-rust-version.workspace = true
+rust-version = { workspace = true }
 keywords = ["nostr", "relay", "builder"]
 
 [features]
@@ -16,14 +16,14 @@ default = []
 tor = ["async-wsocket/tor-launch-service"]
 
 [dependencies]
-async-utility.workspace = true
-async-wsocket.workspace = true
-atomic-destructor.workspace = true
+async-utility = { workspace = true }
+async-wsocket = { workspace = true }
+atomic-destructor = { workspace = true }
 negentropy = { workspace = true, features = ["std"] }
 nostr = { workspace = true, default-features = false, features = ["std"] }
-nostr-database.workspace = true
+nostr-database = { workspace = true }
 tokio = { workspace = true, features = ["macros", "net", "sync"] }
-tracing.workspace = true
+tracing = { workspace = true }
 
 [dev-dependencies]
 base64 = "0.22"
