@@ -55,7 +55,7 @@
 		"type": "git",
 		"url": "git+https://github.com/rust-nostr/nostr.git"
 	},
-	"author": "rust-nostr <reya@lume.nu> (https://rust-nostr.org)",
+	"author": "rust-nostr (https://rust-nostr.org)",
 	"license": "MIT",
 	"bugs": {
 		"url": "https://github.com/rust-nostr/nostr/issues"
