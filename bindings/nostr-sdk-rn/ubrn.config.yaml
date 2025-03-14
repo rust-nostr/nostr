@@ -1,0 +1,5 @@
+---
+rust:
+  repo: https://github.com/rust-nostr/nostr
+  branch: master
+  manifestPath: bindings/nostr-sdk-ffi/Cargo.toml
