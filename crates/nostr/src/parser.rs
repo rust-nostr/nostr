@@ -13,6 +13,8 @@ use crate::types::url::{ParseError, Url};
 
 const URL_SCHEME_SEPARATOR: &str = "://";
 const HASHTAG: char = '#';
+const LINE_BREAK: &str = "\n";
+const WHITESPACE: &str = " ";
 
 /// Parser error
 #[derive(Debug, PartialEq, Eq)]
@@ -59,9 +61,13 @@ pub enum Token<'a> {
     /// Hashtag
     Hashtag(&'a str),
     /// Other text
+    ///
+    /// Spaces at the beginning or end of a text are parsed as [`Token::Whitespace`].
     Text(&'a str),
     /// Line break
     LineBreak,
+    /// A whitespace
+    Whitespace,
 }
 
 /// Nostr parser
@@ -77,7 +83,7 @@ impl Default for NostrParser {
 }
 
 impl NostrParser {
-    const RE: &'static str = r##"(?i)\b((?:[a-z][a-z0-9+\-.]*)://[a-z0-9._~:/?#\[\]@!$&'()*+;=%-]+)|(nostr:[a-z]+1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+)|(#[^\s!@#$%^&*(),.?":{}|<>]+)|(\n)"##;
+    const RE: &'static str = r##"(?i)\b((?:[a-z][a-z0-9+\-.]*)://[a-z0-9._~:/?#\[\]@!$&'()*+;=%-]+)|(nostr:[a-z]+1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+)|((^|\s)#[^\s!@#$%^&*(),.?":{}|<>]+)|(\n)"##;
 
     /// Construct new nostr parser
     ///
@@ -87,7 +93,7 @@ impl NostrParser {
     ///
     /// ## Urls
     ///
-    /// Regex: `\b((?:[a-z][a-z0-9+\-.]*)://[a-z0-9._~:/?#\[\]@!$&'()*+;=%-]+)`
+    /// Regex: `(?i)\b((?:[a-z][a-z0-9+\-.]*)://[a-z0-9._~:/?#\[\]@!$&'()*+;=%-]+)`
     ///
     /// Pattern details:
     /// - `(?:[a-z][a-z0-9+\-.]*)`: captures a scheme like `http`, `https`, `ftp`, etc.
@@ -106,9 +112,10 @@ impl NostrParser {
     ///
     /// ## Hashtags
     ///
-    /// Regex: `#[^\s!@#$%^&*(),.?":{}|<>]+`.
+    /// Regex: `(^|\s)#[^\s!@#$%^&*(),.?":{}|<>]+`.
     ///
     /// Pattern details:
+    /// - `(^|\s)`: either the start of the string (`^`) or a whitespace character (`\s`);
     /// - `#`: the hashtag prefix;
     /// - `[^\s!@#$%^&*(),.?":{}|<>]`: chars that aren't allowed in the hashtag;
     ///
@@ -126,7 +133,9 @@ impl NostrParser {
         NostrParserIter {
             text,
             matches: self.re.find_iter(text),
-            pending: None,
+            pending_match: None,
+            pending_str_match: None,
+            pending_token: None,
             last_match_end: 0,
         }
     }
@@ -139,7 +148,11 @@ pub struct NostrParserIter<'a, 'p> {
     /// Regex matches
     matches: Matches<'p, 'a>,
     /// A pending match
-    pending: Option<Match<'a>>,
+    pending_match: Option<Match<'a>>,
+    /// A pending match string
+    pending_str_match: Option<&'a str>,
+    /// Pending token
+    pending_token: Option<Token<'a>>,
     /// Last regex match end index
     last_match_end: usize,
 }
@@ -150,21 +163,53 @@ impl<'a> NostrParserIter<'a, '_> {
         self.last_match_end = mat.end();
 
         // Match str
-        match mat.as_str() {
-            // Line break
-            "\n" => Token::LineBreak,
+        self.handle_str(mat.as_str())
+    }
+
+    fn handle_str(&mut self, match_str: &'a str) -> Token<'a> {
+        match match_str {
             // URL
             m if m.contains(URL_SCHEME_SEPARATOR) => match Url::parse(m) {
                 Ok(url) => Token::Url(url),
-                Err(_) => Token::Text(m),
+                // Fallback to text
+                Err(_) => self.handle_str_as_text(m),
             },
             // Nostr URI
             m if m.starts_with(nip21::SCHEME_WITH_COLON) => match Nip21::parse(m) {
                 Ok(uri) => Token::Nostr(uri),
-                Err(_) => Token::Text(m),
+                // Fallback to text
+                Err(_) => self.handle_str_as_text(m),
             },
             // Hashtag
             m if m.starts_with(HASHTAG) && m.len() > 1 => Token::Hashtag(&m[1..]),
+            // Fallback: treat it as text
+            m => self.handle_str_as_text(m),
+        }
+    }
+
+    fn handle_str_as_text(&mut self, match_str: &'a str) -> Token<'a> {
+        match match_str {
+            // Line break
+            LINE_BREAK => Token::LineBreak,
+            // Line break with other stuff
+            m if m.starts_with(LINE_BREAK) && m.len() > 1 => {
+                self.pending_str_match = Some(&m[1..]);
+                Token::LineBreak
+            }
+            // Whitespace
+            WHITESPACE => Token::Whitespace,
+            // Whitespace with other stuff
+            m if m.starts_with(WHITESPACE) && m.len() > 1 => {
+                self.pending_str_match = Some(&m[1..]);
+                Token::Whitespace
+            }
+            // Stuff that terminate with a whitespace
+            m if m.ends_with(WHITESPACE) && m.len() > 1 => {
+                self.pending_token = Some(Token::Whitespace);
+
+                // Handle it as text
+                Token::Text(&m[..m.len() - 1])
+            }
             // Fallback: treat it as plain text
             m => Token::Text(m),
         }
@@ -175,12 +220,28 @@ impl<'a> Iterator for NostrParserIter<'a, '_> {
     type Item = Token<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // Handle a pending match
-        if let Some(pending) = self.pending.take() {
+        // Return a pending token
+        if let Some(pending_token) = self.pending_token.take() {
             #[cfg(all(feature = "std", debug_assertions, test))]
-            dbg!(&pending, self.last_match_end);
+            dbg!(&pending_token);
 
-            return Some(self.handle_match(pending));
+            return Some(pending_token);
+        }
+
+        // Return a pending match string
+        if let Some(pending_str_match) = self.pending_str_match.take() {
+            #[cfg(all(feature = "std", debug_assertions, test))]
+            dbg!(&pending_str_match);
+
+            return Some(self.handle_str(pending_str_match));
+        }
+
+        // Handle a pending match
+        if let Some(pending_match) = self.pending_match.take() {
+            #[cfg(all(feature = "std", debug_assertions, test))]
+            dbg!(&pending_match, self.last_match_end);
+
+            return Some(self.handle_match(pending_match));
         }
 
         match self.matches.next() {
@@ -192,13 +253,13 @@ impl<'a> Iterator for NostrParserIter<'a, '_> {
                 if mat.start() > self.last_match_end {
                     // Update pending match
                     // This will be handled at next iteration, in `handle_match` method.
-                    self.pending = Some(mat);
+                    self.pending_match = Some(mat);
 
                     // Capture text that appears between last match and this match start
-                    let token = Token::Text(&self.text[self.last_match_end..mat.start()]);
+                    let data: &str = &self.text[self.last_match_end..mat.start()];
 
                     // Return the token
-                    return Some(token);
+                    return Some(self.handle_str_as_text(data));
                 }
 
                 // Handle match
@@ -210,14 +271,14 @@ impl<'a> Iterator for NostrParserIter<'a, '_> {
                     return None;
                 }
 
-                // Treat remaining as plain text
-                let token: Token = Token::Text(&self.text[self.last_match_end..]);
+                // Handle missing text
+                let data: &str = &self.text[self.last_match_end..];
 
                 // Update last match end
                 self.last_match_end = self.text.len();
 
                 // Return the token
-                Some(token)
+                Some(self.handle_str_as_text(data))
             }
         }
     }
@@ -236,31 +297,41 @@ mod tests {
     fn test_parser() {
         let test_vectors: Vec<(&str, Vec<Token>)> = vec![
             ("Hello nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet, take a look at https://example.com/foo/bar.html. Thanks!", vec![
-                Token::Text("Hello "),
+                Token::Text("Hello"),
+                Token::Whitespace,
                 Token::Nostr(Nip21::Pubkey(PublicKey::parse("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet").unwrap())),
-                Token::Text(", take a look at "),
+                Token::Text(", take a look at"),
+                Token::Whitespace,
                 Token::Url(Url::parse("https://example.com/foo/bar.html.").unwrap()),
-                Token::Text(" Thanks!"),
+                Token::Whitespace,
+                Token::Text("Thanks!"),
             ]),
             ("I have never been very active in discussions but working on rust-nostr (at the time called nostr-rs-sdk) since September 2022 🦀 \n\nIf I remember correctly there were also nostr:nprofile1qqsqfyvdlsmvj0nakmxq6c8n0c2j9uwrddjd8a95ynzn9479jhlth3gpvemhxue69uhkv6tvw3jhytnwdaehgu3wwa5kuef0dec82c33w94xwcmdd3cxketedsux6ertwecrgues0pk8xdrew33h27pkd4unvvpkw3nkv7pe0p68gat58ycrw6ps0fenwdnvva48w0mzwfhkzerrv9ehg0t5wf6k2qgnwaehxw309ac82unsd3jhqct89ejhxtcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsh8njvk and nostr:nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40", vec![
-                Token::Text("I have never been very active in discussions but working on rust-nostr (at the time called nostr-rs-sdk) since September 2022 🦀 "),
+                Token::Text("I have never been very active in discussions but working on rust-nostr (at the time called nostr-rs-sdk) since September 2022 🦀"),
+                Token::Whitespace,
                 Token::LineBreak,
                 Token::LineBreak,
-                Token::Text("If I remember correctly there were also "),
+                Token::Text("If I remember correctly there were also"),
+                Token::Whitespace,
                 Token::Nostr(Nip21::Profile(Nip19Profile::from_bech32("nprofile1qqsqfyvdlsmvj0nakmxq6c8n0c2j9uwrddjd8a95ynzn9479jhlth3gpvemhxue69uhkv6tvw3jhytnwdaehgu3wwa5kuef0dec82c33w94xwcmdd3cxketedsux6ertwecrgues0pk8xdrew33h27pkd4unvvpkw3nkv7pe0p68gat58ycrw6ps0fenwdnvva48w0mzwfhkzerrv9ehg0t5wf6k2qgnwaehxw309ac82unsd3jhqct89ejhxtcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsh8njvk").unwrap())),
-                Token::Text(" and "),
+                Token::Whitespace,
+                Token::Text("and"),
+                Token::Whitespace,
                 Token::Nostr(Nip21::Profile(Nip19Profile::from_bech32("nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40").unwrap())),
             ]),
             ("nostr:nprofile1qqs8a474cw4lqmapcq8hr7res4nknar2ey34fsffk0k42cjsdyn7yqqpz9mhxue69uhkummnw3ezuamfdejj7qgwwaehxw309ahx7uewd3hkctcpzemhxue69uhk2er9dchxummnw3ezumrpdejz73pa0sl or anyone else who knows rust for that matter do you know if any good rust resources other than the rust book?", vec![
                 Token::Nostr(Nip21::Profile(Nip19Profile::from_bech32("nprofile1qqs8a474cw4lqmapcq8hr7res4nknar2ey34fsffk0k42cjsdyn7yqqpz9mhxue69uhkummnw3ezuamfdejj7qgwwaehxw309ahx7uewd3hkctcpzemhxue69uhk2er9dchxummnw3ezumrpdejz73pa0sl").unwrap())),
-                Token::Text(" or anyone else who knows rust for that matter do you know if any good rust resources other than the rust book?"),
+                Token::Whitespace,
+                Token::Text("or anyone else who knows rust for that matter do you know if any good rust resources other than the rust book?"),
             ]),
             ("I've uses both the book and rustlings: https://github.com/rust-lang/rustlings/\n\nThere is also the \"Rust by example\" book: https://doc.rust-lang.org/rust-by-example/\n\nWhile you read the book, try to make projects from scratch (not just simple ones). At the end, writing code is the best way to learn it.", vec![
-                Token::Text("I've uses both the book and rustlings: "),
+                Token::Text("I've uses both the book and rustlings:"),
+                Token::Whitespace,
                 Token::Url(Url::parse("https://github.com/rust-lang/rustlings/").unwrap()),
                 Token::LineBreak,
                 Token::LineBreak,
-                Token::Text("There is also the \"Rust by example\" book: "),
+                Token::Text("There is also the \"Rust by example\" book:"),
+                Token::Whitespace,
                 Token::Url(Url::parse("https://doc.rust-lang.org/rust-by-example/").unwrap()),
                 Token::LineBreak,
                 Token::LineBreak,
@@ -272,13 +343,18 @@ mod tests {
             ]),
             ("test", vec![Token::Text("test")]),
             ("#rust-nostr", vec![Token::Hashtag("rust-nostr")]),
-            ("#rustnostr #rust-nostr #rust #kotlin", vec![Token::Hashtag("rustnostr"), Token::Text(" "), Token::Hashtag("rust-nostr"), Token::Text(" "), Token::Hashtag("rust"), Token::Text(" "), Token::Hashtag("kotlin")]),
+            ("#rustnostr #rust-nostr #rust #kotlin", vec![Token::Hashtag("rustnostr"), Token::Whitespace, Token::Hashtag("rust-nostr"), Token::Whitespace, Token::Hashtag("rust"), Token::Whitespace, Token::Hashtag("kotlin")]),
             ("Hey nostr:nprofile1qqsx3kq3vkgczq9hmfplc28h687py42yvms3zkyxh8nmkvn0vhkyyuspz4mhxue69uhkummnw3ezummcw3ezuer9wchsz9thwden5te0wfjkccte9ejxzmt4wvhxjme0qy88wumn8ghj7mn0wvhxcmmv9u0uehfp  and #rust-nostr fans, can you enlighten me please:\nWhen I am calculating my Web of Trust I do the following:\n0. Create client with outbox model enabled\n1. Get my follows, mutes, reports in one fetch call\n2. Get follows, mutes, reports of my follows in another fetch call, using an authors filter that has all follows in it\n3. Calculate scores with my weights locally\n\nQuestion:\nWhy did step 2. take hours to complete?\n\nIt seems like it's trying to connect to loads of relays.\nMy guess is either I am doing sth horribly wrong or there is no smart relay set calculation for filters in the pool.\n\nIn ndk this calculation takes under 10 seconds to complete, even without any caching. It will first look at the filters and calculate a relay set that has all authors in it then does the fetching.\n\n#asknostr #rust", vec![
-                Token::Text("Hey "),
+                Token::Text("Hey"),
+                Token::Whitespace,
                 Token::Nostr(Nip21::Profile(Nip19Profile::from_bech32("nprofile1qqsx3kq3vkgczq9hmfplc28h687py42yvms3zkyxh8nmkvn0vhkyyuspz4mhxue69uhkummnw3ezummcw3ezuer9wchsz9thwden5te0wfjkccte9ejxzmt4wvhxjme0qy88wumn8ghj7mn0wvhxcmmv9u0uehfp").unwrap())),
-                Token::Text("  and "),
+                Token::Whitespace,
+                Token::Whitespace,
+                Token::Text("and"),
+                Token::Whitespace,
                 Token::Hashtag("rust-nostr"),
-                Token::Text(" fans, can you enlighten me please:"),
+                Token::Whitespace,
+                Token::Text("fans, can you enlighten me please:"),
                 Token::LineBreak,
                 Token::Text("When I am calculating my Web of Trust I do the following:"),
                 Token::LineBreak,
@@ -305,20 +381,56 @@ mod tests {
                 Token::LineBreak,
                 Token::LineBreak,
                 Token::Hashtag("asknostr"),
-                Token::Text(" "),
+                Token::Whitespace,
                 Token::Hashtag("rust"),
             ]),
             ("Try this FTP server: ftp://example.com", vec![
-                Token::Text("Try this FTP server: "),
+                Token::Text("Try this FTP server:"),
+                Token::Whitespace,
                 Token::Url(Url::parse("ftp://example.com").unwrap())
             ]),
             ("My relays are: wss://relay.damus.io, wss://nos.lol and wss://example.com", vec![
-                Token::Text("My relays are: "),
+                Token::Text("My relays are:"),
+                Token::Whitespace,
                 Token::Url(Url::parse("wss://relay.damus.io").unwrap()),
-                Token::Text(", "),
+                Token::Text(","),
+                Token::Whitespace,
                 Token::Url(Url::parse("wss://nos.lol").unwrap()),
-                Token::Text(" and "),
+                Token::Whitespace,
+                Token::Text("and"),
+                Token::Whitespace,
                 Token::Url(Url::parse("wss://example.com").unwrap())
+            ]),
+            ("https://example.com#title-1", vec![
+                Token::Url(Url::parse("https://example.com#title-1").unwrap()),
+            ]),
+            ("bob#alice", vec![
+                Token::Text("bob#alice"),
+            ]),
+            ("#alice #bob\n#carol", vec![
+                Token::Hashtag("alice"),
+                Token::Whitespace,
+                Token::Hashtag("bob"),
+                Token::LineBreak,
+                Token::Hashtag("carol"),
+            ]),
+            ("#hashtag ", vec![
+                Token::Hashtag("hashtag"),
+                Token::Whitespace,
+            ]),
+            ("#", vec![
+                Token::Text("#"),
+            ]),
+            ("# ", vec![
+                Token::Text("#"),
+                Token::Whitespace,
+            ]),
+            ("#\n", vec![
+                Token::Text("#"),
+                Token::LineBreak,
+            ]),
+            ("#$", vec![
+                Token::Text("#$"),
             ]),
         ];
 
