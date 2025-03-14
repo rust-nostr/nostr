@@ -41,6 +41,7 @@ buildargs=(
     "-p nostr-lmdb"
     "-p nostr-indexeddb --target wasm32-unknown-unknown"
     "-p nostr-ndb"
+    "-p nostr-mls"
     "-p nostr-relay-pool"
     "-p nostr-relay-builder"
     "-p nostr-connect"

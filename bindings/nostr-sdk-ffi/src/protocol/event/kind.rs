@@ -300,13 +300,13 @@ pub enum KindStandard {
     PrivateDirectMessage,
     /// Inbox Relays (NIP17)
     InboxRelays,
-    /// MLS Key Package Relays (NIP104)
+    /// MLS Key Package Relays (NIP-EE)
     MlsKeyPackageRelays,
-    /// MLS Key Package (NIP104)
+    /// MLS Key Package (NIP-EE)
     MlsKeyPackage,
-    /// MLS Welcome (NIP104)
+    /// MLS Welcome (NIP-EE)
     MlsWelcome,
-    /// MLS Group Message (NIP104)
+    /// MLS Group Message (NIP-EE)
     MlsGroupMessage,
     /// Long-form Text Note (NIP23)
     LongFormTextNote,
