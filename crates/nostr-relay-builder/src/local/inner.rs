@@ -251,9 +251,7 @@ impl InnerLocalRelay {
                                         tracing::error!("Can't send msg to client: {e}");
                                     }
                                 }
-                                Message::Ping(val) => {
-                                    let _ = tx.send(Message::Pong(val)).await;
-                                }
+                                Message::Ping(..) => {}
                                 Message::Pong(..) => {}
                                 Message::Close(..) => {}
                                 Message::Frame(..) => {}
