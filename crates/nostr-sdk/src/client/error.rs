@@ -7,6 +7,8 @@ use std::fmt;
 use nostr::prelude::*;
 use nostr::serde_json;
 use nostr_database::prelude::*;
+#[cfg(feature = "gossip")]
+use nostr_gossip as gossip;
 use nostr_relay_pool::__private::SharedStateError;
 use nostr_relay_pool::prelude::*;
 
@@ -25,6 +27,9 @@ pub enum Error {
     EventBuilder(event::builder::Error),
     /// Json error
     Json(serde_json::Error),
+    /// Gossip error
+    #[cfg(feature = "gossip")]
+    Gossip(gossip::Error),
     /// Shared state error
     SharedState(SharedStateError),
     /// NIP59
@@ -51,6 +56,8 @@ impl fmt::Display for Error {
             Self::Signer(e) => write!(f, "{e}"),
             Self::EventBuilder(e) => write!(f, "{e}"),
             Self::Json(e) => write!(f, "{e}"),
+            #[cfg(feature = "gossip")]
+            Self::Gossip(e) => write!(f, "{e}"),
             Self::SharedState(e) => write!(f, "{e}"),
             #[cfg(feature = "nip59")]
             Self::NIP59(e) => write!(f, "{e}"),
@@ -101,6 +108,13 @@ impl From<event::builder::Error> for Error {
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
         Self::Json(e)
+    }
+}
+
+#[cfg(feature = "gossip")]
+impl From<gossip::Error> for Error {
+    fn from(e: gossip::Error) -> Self {
+        Self::Gossip(e)
     }
 }
 

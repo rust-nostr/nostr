@@ -52,11 +52,6 @@ impl JsOptions {
         self.inner.automatic_authentication(enabled).into()
     }
 
-    /// Enable gossip model (default: false)
-    pub fn gossip(self, enable: bool) -> Self {
-        self.inner.gossip(enable).into()
-    }
-
     /// Set custom relay limits
     #[wasm_bindgen(js_name = relayLimits)]
     pub fn relay_limits(self, limits: &JsRelayLimits) -> Self {
