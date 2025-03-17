@@ -82,6 +82,7 @@
 * nostr: add NIP-38 support ([reyamir])
 * nostr: add NIP-60 event kinds ([Yuki Kishimoto])
 * nostr: add NIP-62 support ([awiteb])
+* nostr: add `NostrParser` ([Yuki Kishimoto])
 * nostr: add `nip21::extract_from_text` function ([Yuki Kishimoto])
 * nostr: add `EventBuilder::allow_self_tagging` ([Yuki Kishimoto])
 * nostr: add `Nip19Event::from_event` ([Yuki Kishimoto])

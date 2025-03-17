@@ -47,6 +47,8 @@ pub mod filter;
 pub mod key;
 pub mod message;
 pub mod nips;
+#[cfg(feature = "parser")]
+pub mod parser;
 pub mod prelude;
 pub mod signer;
 pub mod types;
