@@ -8,8 +8,3 @@ strip = true        # Strip symbols from binary
 [build]
 target = "wasm32-unknown-unknown"
 rustflags = ["-C", "panic=abort"]
-
-[unstable]
-unstable-options = true
-build-std = ["core", "alloc", "std", "panic_abort"]
-build-std-features = ["optimize_for_size", "panic_immediate_abort"]
