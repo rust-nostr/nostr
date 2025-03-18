@@ -71,6 +71,7 @@
 * ndb: avoid event clone when calling `NostrEventsDatabase::save_event` ([Yuki Kishimoto])
 * pool: better handling of auto-closing subscription activity when fetching events ([Yuki Kishimoto])
 * pool: reduce `WAIT_FOR_OK_TIMEOUT` to 10 secs ([Yuki Kishimoto])
+* pool: handle CLOSED message when syncing ([Yuki Kishimoto])
 * sdk: auto-update the gossip data when sending an event ([Yuki Kishimoto])
 * sdk: avoid full clone of relays when only urls are needed ([Yuki Kishimoto])
 * nwc: allow usage of multiple relays ([Yuki Kishimoto])

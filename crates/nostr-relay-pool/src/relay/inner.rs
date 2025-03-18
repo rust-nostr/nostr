@@ -1757,6 +1757,13 @@ impl InnerRelay {
                                 in_flight_down = false;
                             }
                         }
+                        RelayMessage::Closed {
+                            subscription_id, ..
+                        } => {
+                            if subscription_id.as_ref() == &down_sub_id {
+                                in_flight_down = false;
+                            }
+                        }
                         _ => (),
                     }
 
@@ -1906,6 +1913,13 @@ impl InnerRelay {
                         }
                         RelayMessage::EndOfStoredEvents(id) => {
                             if id.as_ref() == &down_sub_id {
+                                in_flight_down = false;
+                            }
+                        }
+                        RelayMessage::Closed {
+                            subscription_id, ..
+                        } => {
+                            if subscription_id.as_ref() == &down_sub_id {
                                 in_flight_down = false;
                             }
                         }
