@@ -25,9 +25,13 @@
 
 -->
 
-## [Unreleased]
+## [v0.40.0]
 
 ### Summary
+
+Add NIP-38 and NIP-62 support, add nostr parser, to easily parse any text and extract nostr URIs, URLs and more, 
+extend `Tags` capabilities (i.e., add deduplication support), add admission policies, to selectively select which events to allow receiving and which to reject, 
+add Mac Catalyst support for Swift package, many cleanups, refactoring and performance improvements and more!
 
 ### Breaking changes
 
@@ -1183,7 +1187,8 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [magine]: https://github.com/ma233 (?)
 
 <!-- Tags -->
-[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.39.0...HEAD
+[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.40.0...HEAD
+[v0.40.0]: https://github.com/rust-nostr/nostr/compare/v0.39.0...v0.40.0
 [v0.39.0]: https://github.com/rust-nostr/nostr/compare/v0.38.0...v0.39.0
 [v0.38.0]: https://github.com/rust-nostr/nostr/compare/v0.37.0...v0.38.0
 [v0.37.0]: https://github.com/rust-nostr/nostr/compare/v0.36.0...v0.37.0
