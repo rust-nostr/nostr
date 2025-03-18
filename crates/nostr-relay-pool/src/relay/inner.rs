@@ -899,7 +899,7 @@ impl InnerRelay {
                             url = %self.url,
                             id = %subscription_id,
                             msg = %message,
-                            "Subscription closed."
+                            "Subscription closed by relay."
                         );
                         self.subscription_closed(subscription_id).await;
                     }
