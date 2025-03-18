@@ -29,10 +29,6 @@ check-fmt:
 check-bindings:
 	@bash contrib/scripts/check-bindings.sh
 
-# Check the book snippets
-check-book:
-	@bash contrib/scripts/check-book.sh
-
 # Check all the crates
 check-crates:
 	@bash contrib/scripts/check-crates.sh
@@ -65,10 +61,6 @@ dup:
 # Remove artifacts that cargo has generated
 clean:
 	cargo clean
-
-# Build and serve the book
-book:
-    cd book && just serve
 
 # Get many-events.json to test database performance
 many-events:

@@ -4,9 +4,6 @@ members = [
     "bindings/nostr-sdk-js",
     "crates/*",
 ]
-exclude = [
-    "book/*"
-]
 default-members = ["crates/*"]
 resolver = "2"
 
