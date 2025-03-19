@@ -17,11 +17,6 @@ The project is split up into several crates in the `crates/` directory:
 * Binaries (tools):
     * [**nostr-cli**](./crates/nostr-cli): Nostr CLI
 
-### Bindings
-
-**nostr** and **nostr-sdk** crates can be embedded inside other environments, like Swift, Kotlin, Python and JavaScript. 
-Please, explore the [`bindings/`](./bindings) directory to learn more.
-
 ### Embedded
 
 **nostr** crate can be used in [`no_std`](https://docs.rust-embedded.org/book/intro/no-std.html) environments. 

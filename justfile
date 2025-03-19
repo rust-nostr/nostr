@@ -25,10 +25,6 @@ fmt:
 check-fmt:
 	@bash contrib/scripts/check-fmt.sh check
 
-# Check all the bindings
-check-bindings:
-	@bash contrib/scripts/check-bindings.sh
-
 # Check all the crates
 check-crates:
 	@bash contrib/scripts/check-crates.sh
@@ -69,4 +65,4 @@ many-events:
 
 # Count the lines of codes of this project
 loc:
-	@echo "--- Counting lines of .rs files (LOC):" && find crates/ bindings/ -type f -name "*.rs" -not -path "*/target/*" -exec cat {} \; | wc -l
+	@echo "--- Counting lines of .rs files (LOC):" && find crates/ -type f -name "*.rs" -not -path "*/target/*" -exec cat {} \; | wc -l

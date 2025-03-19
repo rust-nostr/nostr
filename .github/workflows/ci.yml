@@ -37,15 +37,6 @@ jobs:
     - name: Check
       run: bash contrib/scripts/check-crates.sh msrv ci
 
-  check-bindings:
-    name: Check bindings
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-    - name: Check
-      run: bash contrib/scripts/check-bindings.sh
-
   check-docs:
     name: Check docs
     runs-on: ubuntu-latest

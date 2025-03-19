@@ -1,4 +1,0 @@
-[bindings.kotlin]
-package_name = "rust.nostr.sdk"
-android = true
-android_cleaner = true

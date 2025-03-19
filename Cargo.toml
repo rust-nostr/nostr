@@ -1,8 +1,5 @@
 [workspace]
-members = [
-    "bindings/nostr-sdk-ffi",
-    "crates/*",
-]
+members = ["crates/*"]
 default-members = ["crates/*"]
 resolver = "2"
 
@@ -30,7 +27,6 @@ nostr-ndb = { version = "0.40", path = "./crates/nostr-ndb", default-features = 
 nostr-relay-builder = { version = "0.40", path = "./crates/nostr-relay-builder", default-features = false }
 nostr-relay-pool = { version = "0.40", path = "./crates/nostr-relay-pool", default-features = false }
 nostr-sdk = { version = "0.40", path = "./crates/nostr-sdk", default-features = false }
-nwc = { version = "0.40", path = "./crates/nwc", default-features = false }
 serde_json = { version = "1.0", default-features = false }
 tokio = { version = ">=1.37", default-features = false }
 tracing = { version = "0.1", default-features = false }
@@ -38,10 +34,6 @@ tracing-subscriber = "0.3"
 wasm-bindgen = { version = "0.2", default-features = false }
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", default-features = false }
-
-[patch.crates-io]
-# Patch needed to reduce bindings size
-bip39 = { git = "https://github.com/yukibtc/rust-bip39", rev = "eade7c56eff5f320e8eb5beee23dd8fb46413938" } # Uses bitcoin_hashes v0.14
 
 [profile.release]
 lto = true
