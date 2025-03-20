@@ -231,6 +231,14 @@ impl<'a> TagKind<'a> {
         Self::SingleLetter(SingleLetterTag::lowercase(Alphabet::T))
     }
 
+    /// Construct `u` kind
+    ///
+    /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::U))`.
+    #[inline]
+    pub fn u() -> Self {
+        Self::SingleLetter(SingleLetterTag::lowercase(Alphabet::U))
+    }
+
     /// Construct `q` kind
     ///
     /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::Q))`.

@@ -25,6 +25,24 @@
 
 -->
 
+## [Unreleased]
+
+### Summary
+
+### Breaking changes
+
+### Changed
+
+### Added
+
+* nostr: add `TagKind::u` constructor ([Yuki Kishimoto])
+
+### Fixed
+
+### Removed
+
+### Deprecated
+
 ## [v0.40.0]
 
 ### Summary
