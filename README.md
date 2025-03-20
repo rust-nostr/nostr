@@ -26,20 +26,6 @@ Check the example in the [`embedded/`](./crates/nostr/examples/embedded) directo
 
 Learn more about `rust-nostr` at <https://rust-nostr.org>.
 
-## Available packages
-
-* **nostr**:
-    * Rust: https://crates.io/crates/nostr
-* **nostr-sdk** (re-export everything from `nostr` library):
-    * Rust: https://crates.io/crates/nostr-sdk
-    * Python: https://pypi.org/project/nostr-sdk
-    * Kotlin: 
-      * Android: https://central.sonatype.com/artifact/org.rust-nostr/nostr-sdk
-      * JVM: https://central.sonatype.com/artifact/org.rust-nostr/nostr-sdk-jvm
-    * Swift: https://github.com/rust-nostr/nostr-sdk-swift
-    * JavaScript: https://www.npmjs.com/package/@rust-nostr/nostr-sdk
-    * Flutter: https://github.com/rust-nostr/nostr-sdk-flutter
-
 ## State
 
 **These libraries are in ALPHA state**, things that are implemented generally work but the API will change in breaking ways.
