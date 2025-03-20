@@ -135,6 +135,10 @@ name = "nip96"
 required-features = ["std", "nip96"]
 
 [[example]]
+name = "nip98"
+required-features = ["std", "nip98"]
+
+[[example]]
 name = "parser"
 required-features = ["std", "parser"]
 
