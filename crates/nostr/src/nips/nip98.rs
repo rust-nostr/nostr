@@ -79,7 +79,7 @@ impl From<builder::Error> for Error {
 /// HTTP Method
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/98.md>
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum HttpMethod {
     /// GET
     GET,

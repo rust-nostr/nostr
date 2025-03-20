@@ -36,6 +36,7 @@
 ### Added
 
 * nostr: add `TagKind::u` constructor ([Yuki Kishimoto])
+* nostr: derive `Copy` for `HttpMethod` ([Yuki Kishimoto])
 
 ### Fixed
 
