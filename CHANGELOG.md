@@ -33,6 +33,8 @@
 
 ### Changed
 
+* lmdb: enable POSIX semaphores for macOS and iOS targets ([Yuki Kishimoto])
+
 ### Added
 
 * nostr: add `TagKind::u` constructor ([Yuki Kishimoto])
