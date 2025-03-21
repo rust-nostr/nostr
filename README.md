@@ -18,11 +18,6 @@ The project is split up into several crates in the `crates/` directory:
 * Binaries (tools):
     * [**nostr-cli**](./crates/nostr-cli): Nostr CLI
 
-### Bindings
-
-**nostr** and **nostr-sdk** crates can be embedded inside other environments, like Swift, Kotlin, Python and JavaScript. 
-Please, explore the [`bindings/`](./bindings) directory to learn more.
-
 ### Embedded
 
 **nostr** crate can be used in [`no_std`](https://docs.rust-embedded.org/book/intro/no-std.html) environments. 
@@ -31,20 +26,6 @@ Check the example in the [`embedded/`](./crates/nostr/examples/embedded) directo
 ## Book
 
 Learn more about `rust-nostr` at <https://rust-nostr.org>.
-
-## Available packages
-
-* **nostr**:
-    * Rust: https://crates.io/crates/nostr
-* **nostr-sdk** (re-export everything from `nostr` library):
-    * Rust: https://crates.io/crates/nostr-sdk
-    * Python: https://pypi.org/project/nostr-sdk
-    * Kotlin: 
-      * Android: https://central.sonatype.com/artifact/org.rust-nostr/nostr-sdk
-      * JVM: https://central.sonatype.com/artifact/org.rust-nostr/nostr-sdk-jvm
-    * Swift: https://github.com/rust-nostr/nostr-sdk-swift
-    * JavaScript: https://www.npmjs.com/package/@rust-nostr/nostr-sdk
-    * Flutter: https://github.com/rust-nostr/nostr-sdk-flutter
 
 ## State
 

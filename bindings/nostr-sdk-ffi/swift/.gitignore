@@ -1,6 +1,0 @@
-.swiftpm/
-.build/
-*.xcodeproj
-Sources/
-**/Headers/*.h
-**/nostr_sdkFFI.a

@@ -31,6 +31,30 @@
 
 ### Breaking changes
 
+### Changed
+
+### Added
+
+* nostr: add `TagKind::u` constructor ([Yuki Kishimoto])
+* nostr: derive `Copy` for `HttpMethod` ([Yuki Kishimoto])
+* nostr: add `nip98::verify_auth_header` ([Yuki Kishimoto])
+
+### Fixed
+
+### Removed
+
+### Deprecated
+
+## [v0.40.0]
+
+### Summary
+
+Add NIP-38 and NIP-62 support, add nostr parser, to easily parse any text and extract nostr URIs, URLs and more, 
+extend `Tags` capabilities (i.e., add deduplication support), add admission policies, to selectively select which events to allow receiving and which to reject, 
+add Mac Catalyst support for Swift package, many cleanups, refactoring and performance improvements and more!
+
+### Breaking changes
+
 * nostr: update `Nip19Event` relays field type from `Vec<String>` to `Vec<RelayUrl>` ([Yuki Kishimoto])
 * nostr: change the `Err` type of `ToBech32` to `Infallible` for `SecretKey`, `PublicKey` and `EventId` ([awiteb])
 * nostr: update `Tags::new` signature ([Yuki Kishimoto])
@@ -50,6 +74,7 @@
 * pool: drop `RelayFiltering` ([Yuki Kishimoto])
 * pool: remove `Relay` constructors ([Yuki Kishimoto])
 * pool: change `RelayPool::new` signature ([Yuki Kishimoto])
+* pool: now can set the notification channel size of a single `Relay` using `RelayOptions` ([magine])
 * sdk: change `Client::fetch_metadata` output ([Yuki Kishimoto]) 
 * sdk: remove `Client::state` ([Yuki Kishimoto])
 
@@ -70,6 +95,7 @@
 * ndb: avoid event clone when calling `NostrEventsDatabase::save_event` ([Yuki Kishimoto])
 * pool: better handling of auto-closing subscription activity when fetching events ([Yuki Kishimoto])
 * pool: reduce `WAIT_FOR_OK_TIMEOUT` to 10 secs ([Yuki Kishimoto])
+* pool: handle CLOSED message when syncing ([Yuki Kishimoto])
 * sdk: auto-update the gossip data when sending an event ([Yuki Kishimoto])
 * sdk: avoid full clone of relays when only urls are needed ([Yuki Kishimoto])
 * nwc: allow usage of multiple relays ([Yuki Kishimoto])
@@ -81,6 +107,7 @@
 * nostr: add NIP-38 support ([reyamir])
 * nostr: add NIP-60 event kinds ([Yuki Kishimoto])
 * nostr: add NIP-62 support ([awiteb])
+* nostr: add `NostrParser` ([Yuki Kishimoto])
 * nostr: add `nip21::extract_from_text` function ([Yuki Kishimoto])
 * nostr: add `EventBuilder::allow_self_tagging` ([Yuki Kishimoto])
 * nostr: add `Nip19Event::from_event` ([Yuki Kishimoto])
@@ -1177,9 +1204,11 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [Francisco Calderón]: https://github.com/grunch (nostr:npub1qqqqqqqx2tj99mng5qgc07cgezv5jm95dj636x4qsq7svwkwmwnse3rfkq)
 [cipres]: https://github.com/PancakesArchitect (nostr:npub1r3cnzta52fee26c83cnes8wvzkch3kud2kll67k402x04mttt26q0wfx0c)
 [awiteb]: https://git.4rs.nl (nostr:nprofile1qqsqqqqqq9g9uljgjfcyd6dm4fegk8em2yfz0c3qp3tc6mntkrrhawgpzfmhxue69uhkummnw3ezudrjwvhxumq3dg0ly)
+[magine]: https://github.com/ma233 (?)
 
 <!-- Tags -->
-[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.39.0...HEAD
+[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.40.0...HEAD
+[v0.40.0]: https://github.com/rust-nostr/nostr/compare/v0.39.0...v0.40.0
 [v0.39.0]: https://github.com/rust-nostr/nostr/compare/v0.38.0...v0.39.0
 [v0.38.0]: https://github.com/rust-nostr/nostr/compare/v0.37.0...v0.38.0
 [v0.37.0]: https://github.com/rust-nostr/nostr/compare/v0.36.0...v0.37.0

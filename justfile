@@ -25,14 +25,6 @@ fmt:
 check-fmt:
 	@bash contrib/scripts/check-fmt.sh check
 
-# Check all the bindings
-check-bindings:
-	@bash contrib/scripts/check-bindings.sh
-
-# Check the book snippets
-check-book:
-	@bash contrib/scripts/check-book.sh
-
 # Check all the crates
 check-crates:
 	@bash contrib/scripts/check-crates.sh
@@ -66,10 +58,6 @@ dup:
 clean:
 	cargo clean
 
-# Build and serve the book
-book:
-    cd book && just serve
-
 # Get many-events.json to test database performance
 many-events:
 	curl https://cdn.jb55.com/s/many-events.json.zst -o many-events.json.zst
@@ -77,4 +65,4 @@ many-events:
 
 # Count the lines of codes of this project
 loc:
-	@echo "--- Counting lines of .rs files (LOC):" && find crates/ bindings/ -type f -name "*.rs" -not -path "*/target/*" -exec cat {} \; | wc -l
+	@echo "--- Counting lines of .rs files (LOC):" && find crates/ -type f -name "*.rs" -not -path "*/target/*" -exec cat {} \; | wc -l

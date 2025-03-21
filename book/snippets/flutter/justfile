@@ -1,5 +1,0 @@
-#!/usr/bin/env just --justfile
-
-test:
-    flutter pub get
-    dart analyze --fatal-infos

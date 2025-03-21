@@ -1,9 +1,0 @@
-target/
-node_modules/
-**/*.rs.bk
-Cargo.lock
-package-lock.json
-bin/
-pkg/
-wasm-pack.log
-*.tgz

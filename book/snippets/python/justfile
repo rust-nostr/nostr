@@ -1,8 +1,0 @@
-venv:
-	python -m venv venv || virtualenv venv
-
-requirements: venv
-	. venv/bin/activate && pip install -r requirements.txt
-
-test: requirements
-	export PYRIGHT_PYTHON_FORCE_VERSION=latest && . venv/bin/activate && pyright src

@@ -11,6 +11,9 @@ pub(super) const WAIT_FOR_OK_TIMEOUT: Duration = Duration::from_secs(10);
 pub(super) const WAIT_FOR_AUTHENTICATION_TIMEOUT: Duration = Duration::from_secs(7);
 pub(super) const DEFAULT_CONNECTION_TIMEOUT: Duration = Duration::from_secs(60);
 
+/// Relay default notification channel size
+pub const DEFAULT_NOTIFICATION_CHANNEL_SIZE: usize = 2048;
+
 /// Max relay size
 pub const MAX_MESSAGE_SIZE: u32 = 5 * 1024 * 1024; // 5 MB
 /// Max event size

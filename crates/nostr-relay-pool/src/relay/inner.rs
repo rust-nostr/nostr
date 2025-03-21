@@ -159,7 +159,8 @@ impl AtomicDestroyer for InnerRelay {
 
 impl InnerRelay {
     pub(super) fn new(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
-        let (relay_notification_sender, ..) = broadcast::channel::<RelayNotification>(2048);
+        let (relay_notification_sender, ..) =
+            broadcast::channel::<RelayNotification>(opts.notification_channel_size);
 
         Self {
             url,
@@ -898,7 +899,7 @@ impl InnerRelay {
                             url = %self.url,
                             id = %subscription_id,
                             msg = %message,
-                            "Subscription closed."
+                            "Subscription closed by relay."
                         );
                         self.subscription_closed(subscription_id).await;
                     }
@@ -1756,6 +1757,13 @@ impl InnerRelay {
                                 in_flight_down = false;
                             }
                         }
+                        RelayMessage::Closed {
+                            subscription_id, ..
+                        } => {
+                            if subscription_id.as_ref() == &down_sub_id {
+                                in_flight_down = false;
+                            }
+                        }
                         _ => (),
                     }
 
@@ -1905,6 +1913,13 @@ impl InnerRelay {
                         }
                         RelayMessage::EndOfStoredEvents(id) => {
                             if id.as_ref() == &down_sub_id {
+                                in_flight_down = false;
+                            }
+                        }
+                        RelayMessage::Closed {
+                            subscription_id, ..
+                        } => {
+                            if subscription_id.as_ref() == &down_sub_id {
                                 in_flight_down = false;
                             }
                         }
