@@ -3,7 +3,7 @@ name = "nostr-mls"
 version = "0.39.0"
 edition = "2021"
 description = "A simplified interface to build secure messaging apps on nostr with MLS."
-authors = ["Jeff Gardner", "Yuki Kishimoto <yukikishimoto@protonmail.com>", "Rust Nostr Developers"]
+authors = ["Jeff Gardner <j@jeffg.me>", "Yuki Kishimoto <yukikishimoto@protonmail.com>", "Rust Nostr Developers"]
 homepage.workspace = true
 repository.workspace = true
 license.workspace = true
@@ -13,15 +13,15 @@ keywords = ["nostr", "mls", "openmls"]
 
 [dependencies]
 nostr = { workspace = true, features = ["std", "nip44"] }
-openmls = { git = "https://github.com/openmls/openmls", rev = "e2fc5e1d6250b294d6a786618f01e70139651bd3", default-features = false }
-openmls_basic_credential = { git = "https://github.com/openmls/openmls", rev = "e2fc5e1d6250b294d6a786618f01e70139651bd3", default-features = false }
-openmls_rust_crypto = { git = "https://github.com/openmls/openmls", rev = "e2fc5e1d6250b294d6a786618f01e70139651bd3", default-features = false }
-openmls_traits = { git = "https://github.com/openmls/openmls", rev = "e2fc5e1d6250b294d6a786618f01e70139651bd3", default-features = false }
+openmls = { git = "https://github.com/openmls/openmls", rev = "054e263906730376932e9752ec85ed0aa0ca4a77", default-features = false }
+openmls_basic_credential = { git = "https://github.com/openmls/openmls", rev = "054e263906730376932e9752ec85ed0aa0ca4a77", default-features = false }
+openmls_rust_crypto = { git = "https://github.com/openmls/openmls", rev = "054e263906730376932e9752ec85ed0aa0ca4a77", default-features = false }
+openmls_traits = { git = "https://github.com/openmls/openmls", rev = "054e263906730376932e9752ec85ed0aa0ca4a77", default-features = false }
 tls_codec = "0.4"
 tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
-openmls_memory_storage = { git = "https://github.com/openmls/openmls", rev = "e2fc5e1d6250b294d6a786618f01e70139651bd3" }
+openmls_memory_storage = { git = "https://github.com/openmls/openmls", rev = "054e263906730376932e9752ec85ed0aa0ca4a77" }
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread"] }
 
 [[example]]

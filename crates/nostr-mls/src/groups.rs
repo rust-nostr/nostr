@@ -217,7 +217,7 @@ where
         mut rumor: UnsignedEvent,
     ) -> Result<Vec<u8>, Error> {
         // Load signer
-        let signer: SignatureKeyPair = self.load_signer(&group)?;
+        let signer: SignatureKeyPair = self.load_signer(group)?;
 
         // Ensure rumor ID and serialize as JSON
         rumor.ensure_id();
@@ -492,8 +492,12 @@ where
             .with_extensions(own_leaf.extensions().clone())
             .build();
 
-        let (mls_message, _welcome, _group_info) =
-            group.self_update(&self.provider, &current_signer, leaf_node_params)?;
+        let commit_message_bundle = group.self_update_with_new_signer(
+            &self.provider,
+            &current_signer,
+            &new_signature_keypair,
+            leaf_node_params,
+        )?;
 
         // Merge the commit
         group.merge_pending_commit(&self.provider)?;
@@ -504,7 +508,7 @@ where
         tracing::debug!(target: "nostr_openmls::groups::self_update", "New epoch: {:?}", new_secret.epoch);
 
         // Serialize the message
-        let serialized_message = mls_message.tls_serialize_detached()?;
+        let serialized_message = commit_message_bundle.commit().tls_serialize_detached()?;
 
         Ok(SelfUpdate {
             serialized_message,
