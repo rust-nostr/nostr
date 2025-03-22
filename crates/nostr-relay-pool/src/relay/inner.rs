@@ -901,7 +901,13 @@ impl InnerRelay {
                             msg = %message,
                             "Subscription closed by relay."
                         );
-                        self.subscription_closed(subscription_id).await;
+
+                        // For details, search in the code for CLOSED_EMPTY_MSG_BEHAVIOUR
+                        if message.is_empty() {
+                            self.remove_subscription(subscription_id).await;
+                        } else {
+                            self.subscription_closed(subscription_id).await;
+                        }
                     }
                     RelayMessage::Auth { challenge } => {
                         tracing::debug!(
@@ -1331,6 +1337,26 @@ impl InnerRelay {
                             message,
                         } => {
                             if subscription_id.as_ref() == id {
+                                // If the message is empty, it (probably) indicates that no error occurred.
+                                // Instead, the relay may have decided to close the subscription
+                                // because all possible events have been served, making it unnecessary
+                                // to keep the subscription open.
+                                //
+                                // # Example
+                                //
+                                // Send a request with `{"ids":["<id>"]}` filter.
+                                // In this case, when the relay sends the matching event, it no longer makes sense to keep the subscription open, as no more events will ever be served.
+                                // Discussion: https://github.com/nostrability/nostrability/issues/167
+                                //
+                                // Lookup identifier: CLOSED_EMPTY_MSG_BEHAVIOUR
+                                if message.is_empty() {
+                                    // Mark subscription as completed and no need to send CLOSE msg
+                                    return Some((
+                                        false,
+                                        Some(SubscriptionAutoClosedReason::Completed),
+                                    ));
+                                }
+
                                 // Check if auth required
                                 match MachineReadablePrefix::parse(&message) {
                                     Some(MachineReadablePrefix::AuthRequired) => {
