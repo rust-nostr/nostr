@@ -195,6 +195,25 @@ impl Tag {
         self.buf.push(value.into());
     }
 
+    /// Removes the last value and returns it.
+    /// If the [`Tag`] has only **one** value, returns `None`, since it can't be empty.
+    ///
+    /// Check [`Vec::pop`] doc to learn more.
+    ///
+    /// This erases the [`TagStandard`] cell, if any.
+    pub fn pop(&mut self) -> Option<String> {
+        // The tag must have at least one value!
+        if self.buf.len() <= 1 {
+            return None;
+        }
+
+        // Erase indexes
+        self.erase_standardized();
+
+        // Pop last item
+        self.buf.pop()
+    }
+
     /// Inserts a value at position `index` within the vector,
     /// shifting all other values after it to the right.
     ///
@@ -588,6 +607,19 @@ mod tests {
         tag.push("test2");
         assert_eq!(tag.len(), 3);
         assert_eq!(tag.to_vec(), ["d", "test", "test2"]);
+    }
+
+    #[test]
+    fn test_tag_pop() {
+        let mut tag = Tag::parse(["d", "test"]).unwrap();
+        assert_eq!(tag.pop().unwrap(), "test");
+        assert_eq!(tag.len(), 1);
+
+        // Can't pop if the tag has only one value
+        assert!(tag.pop().is_none());
+        assert_eq!(tag.len(), 1);
+
+        assert_eq!(tag.to_vec(), ["d"]);
     }
 
     #[test]
