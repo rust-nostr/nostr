@@ -195,6 +195,44 @@ impl Tag {
         self.buf.push(value.into());
     }
 
+    /// Inserts a value at position `index` within the vector,
+    /// shifting all other values after it to the right.
+    ///
+    /// The value at index `0` and `1` can't be empty.
+    /// If an empty string is passed for those indexes, `false` is returned.
+    ///
+    /// Returns `true` if the value has been inserted or updated successfully.
+    /// Returns `false` if `index > len`.
+    ///
+    /// Check [`Vec::insert`] doc to learn more.
+    ///
+    /// This erases the [`TagStandard`] cell, if any.
+    pub fn insert<S>(&mut self, index: usize, value: S) -> bool
+    where
+        S: Into<String>,
+    {
+        // Check if `index` is bigger than collection len
+        if index > self.buf.len() {
+            return false;
+        }
+
+        let value: String = value.into();
+
+        // Return false if the value is empty at position 0 or 1
+        if (index == 0 || index == 1) && value.is_empty() {
+            return false;
+        }
+
+        // Erase indexes
+        self.erase_standardized();
+
+        // Insert at position
+        self.buf.insert(index, value);
+
+        // Inserted successfully
+        true
+    }
+
     /// Get as slice of strings
     #[inline]
     pub fn as_slice(&self) -> &[String] {
@@ -550,6 +588,25 @@ mod tests {
         tag.push("test2");
         assert_eq!(tag.len(), 3);
         assert_eq!(tag.to_vec(), ["d", "test", "test2"]);
+    }
+
+    #[test]
+    fn test_tag_insert() {
+        let mut tag = Tag::parse(["p", "val", "relay", "other"]).unwrap();
+
+        // Can't insert an empty value at index 0
+        assert!(!tag.insert(0, ""));
+        assert_eq!(tag.len(), 4);
+
+        // Can't insert an empty value at index 1
+        assert!(!tag.insert(1, ""));
+        assert_eq!(tag.len(), 4);
+
+        // Insert a value at index 1
+        assert!(tag.insert(1, "pk"));
+        assert_eq!(tag.len(), 5);
+
+        assert_eq!(tag.to_vec(), ["p", "pk", "val", "relay", "other"]);
     }
 
     #[test]
