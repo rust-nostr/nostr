@@ -93,6 +93,13 @@ impl Tag {
         }
     }
 
+    #[inline]
+    fn erase_standardized(&mut self) {
+        if self.standardized.get().is_some() {
+            self.standardized = OnceCell::new();
+        }
+    }
+
     /// Parse tag
     ///
     /// Return error if the tag is empty!
@@ -170,6 +177,22 @@ impl Tag {
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.buf.len()
+    }
+
+    /// Appends a value to the back of the [`Tag`].
+    ///
+    /// Check [`Vec::push`] doc to learn more.
+    ///
+    /// This erases the [`TagStandard`] cell, if any.
+    pub fn push<S>(&mut self, value: S)
+    where
+        S: Into<String>,
+    {
+        // Erase indexes
+        self.erase_standardized();
+
+        // Append
+        self.buf.push(value.into());
     }
 
     /// Get as slice of strings
@@ -519,6 +542,14 @@ mod tests {
             t.content(),
             Some("2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45")
         );
+    }
+
+    #[test]
+    fn test_tag_push() {
+        let mut tag = Tag::parse(["d", "test"]).unwrap();
+        tag.push("test2");
+        assert_eq!(tag.len(), 3);
+        assert_eq!(tag.to_vec(), ["d", "test", "test2"]);
     }
 
     #[test]
