@@ -252,6 +252,23 @@ impl Tag {
         true
     }
 
+    /// Extends the collection.
+    ///
+    /// Check [`Vec::extend`] doc to learn more.
+    ///
+    /// This erases the [`TagStandard`] cell, if any.
+    pub fn extend<I, S>(&mut self, iter: I)
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        // Erase standardized tag
+        self.erase_standardized();
+
+        // Extend list
+        self.buf.extend(iter.into_iter().map(|v| v.into()));
+    }
+
     /// Get as slice of strings
     #[inline]
     pub fn as_slice(&self) -> &[String] {
@@ -620,6 +637,14 @@ mod tests {
         assert_eq!(tag.len(), 1);
 
         assert_eq!(tag.to_vec(), ["d"]);
+    }
+
+    #[test]
+    fn test_tag_extend() {
+        let mut tag = Tag::parse(["p", "pk"]).unwrap();
+        tag.extend(["test", "test1"]);
+        assert_eq!(tag.len(), 4);
+        assert_eq!(tag.to_vec(), ["p", "pk", "test", "test1"]);
     }
 
     #[test]
