@@ -20,7 +20,7 @@ use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDe
 use nostr::secp256k1::rand::{self, Rng};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, RwLock};
+use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard};
 
 use super::constants::{
     DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE,
@@ -347,11 +347,6 @@ impl InnerRelay {
             }
             None => false,
         }
-    }
-
-    pub(crate) async fn remove_subscription(&self, id: &SubscriptionId) {
-        let mut subscriptions = self.atomic.subscriptions.write().await;
-        subscriptions.remove(id);
     }
 
     #[inline]
@@ -1441,19 +1436,32 @@ impl InnerRelay {
         .await?
     }
 
-    pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<(), Error> {
-        // Remove subscription
-        self.remove_subscription(id).await;
+    fn _unsubscribe(
+        &self,
+        subscriptions: &mut RwLockWriteGuard<HashMap<SubscriptionId, SubscriptionData>>,
+        id: &SubscriptionId,
+    ) -> Result<(), Error> {
+        // Remove the subscription from the map
+        subscriptions.remove(id);
 
         // Send CLOSE message
         self.send_msg(ClientMessage::Close(Cow::Borrowed(id)))
     }
 
-    pub async fn unsubscribe_all(&self) -> Result<(), Error> {
-        let subscriptions = self.atomic.subscriptions.read().await;
+    pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<(), Error> {
+        let mut subscriptions = self.atomic.subscriptions.write().await;
+        self._unsubscribe(&mut subscriptions, id)
+    }
 
-        for id in subscriptions.keys() {
-            self.unsubscribe(id).await?;
+    pub async fn unsubscribe_all(&self) -> Result<(), Error> {
+        let mut subscriptions = self.atomic.subscriptions.write().await;
+
+        // All IDs
+        let ids: Vec<SubscriptionId> = subscriptions.keys().cloned().collect();
+
+        // Unsubscribe
+        for id in ids.into_iter() {
+            self._unsubscribe(&mut subscriptions, &id)?;
         }
 
         Ok(())

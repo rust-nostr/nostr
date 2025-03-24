@@ -47,6 +47,12 @@
 
 ### Deprecated
 
+## [v0.40.1]
+
+### Fixed
+
+* pool: fix `Relay::unsubscribe_all` method hangs ([Yuki Kishimoto])
+
 ## [v0.40.0]
 
 ### Summary

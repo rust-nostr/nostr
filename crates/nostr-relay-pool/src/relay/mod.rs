@@ -1376,5 +1376,27 @@ mod tests {
             .unwrap();
     }
 
+    #[tokio::test]
+    async fn test_unsubscribe_all() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        // Sender
+        let relay: Relay = new_relay(url.clone(), RelayOptions::default());
+        relay.connect();
+
+        // Subscribe
+        let filter = Filter::new().kind(Kind::TextNote);
+        relay
+            .subscribe(filter, SubscribeOptions::default())
+            .await
+            .unwrap();
+
+        time::sleep(Duration::from_secs(1)).await;
+
+        relay.unsubscribe_all().await.unwrap();
+    }
+
     // TODO: add negentropy reconciliation test
 }
