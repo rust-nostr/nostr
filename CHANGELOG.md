@@ -34,6 +34,7 @@
 ### Changed
 
 * lmdb: enable POSIX semaphores for macOS and iOS targets ([Yuki Kishimoto])
+* pool: extend unit tests ([Yuki Kishimoto])
 
 ### Added
 

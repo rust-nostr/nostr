@@ -760,6 +760,25 @@ mod tests {
         (relay, mock)
     }
 
+    async fn setup_subscription_relay() -> (SubscriptionId, Relay, MockRelay) {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        // Sender
+        let relay: Relay = new_relay(url.clone(), RelayOptions::default());
+        relay.connect();
+
+        // Subscribe
+        let filter = Filter::new().kind(Kind::TextNote);
+        let id = relay
+            .subscribe(filter, SubscribeOptions::default())
+            .await
+            .unwrap();
+
+        (id, relay, mock)
+    }
+
     #[tokio::test]
     async fn test_ok_msg() {
         // Mock relay
@@ -1377,25 +1396,27 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_unsubscribe() {
+        let (id, relay, _mock) = setup_subscription_relay().await;
+
+        time::sleep(Duration::from_secs(1)).await;
+
+        assert!(relay.subscription(&id).await.is_some());
+
+        relay.unsubscribe(&id).await.unwrap();
+
+        assert!(relay.subscription(&id).await.is_none());
+    }
+
+    #[tokio::test]
     async fn test_unsubscribe_all() {
-        // Mock relay
-        let mock = MockRelay::run().await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
-
-        // Sender
-        let relay: Relay = new_relay(url.clone(), RelayOptions::default());
-        relay.connect();
-
-        // Subscribe
-        let filter = Filter::new().kind(Kind::TextNote);
-        relay
-            .subscribe(filter, SubscribeOptions::default())
-            .await
-            .unwrap();
+        let (_id, relay, _mock) = setup_subscription_relay().await;
 
         time::sleep(Duration::from_secs(1)).await;
 
         relay.unsubscribe_all().await.unwrap();
+
+        relay.subscriptions().await.is_empty();
     }
 
     // TODO: add negentropy reconciliation test
