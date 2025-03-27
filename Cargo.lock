@@ -1155,7 +1155,7 @@ checksum = "b48e8e38a4aa565da767322b5ca55fb0f8347983c5bc7f7647db069405420479"
 dependencies = [
  "heck",
  "indexmap 2.5.0",
- "itertools 0.12.1",
+ "itertools 0.14.0",
  "proc-macro-crate",
  "proc-macro2",
  "quote",
@@ -2819,9 +2819,9 @@ dependencies = [
 
 [[package]]
 name = "nostrdb"
-version = "0.5.1"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33673e11ea05bd0b4e601bd85695c03936d02e147044bb06821ada4c2c7b9255"
+checksum = "593e342d6df5ea9ea74de29f484cc77377a4f1d4d6322c741fc465699ee76809"
 dependencies = [
  "bindgen",
  "cc",
@@ -2831,7 +2831,6 @@ dependencies = [
  "thiserror 2.0.8",
  "tokio",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]

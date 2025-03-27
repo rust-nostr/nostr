@@ -34,6 +34,7 @@
 ### Changed
 
 * lmdb: enable POSIX semaphores for macOS and iOS targets ([Yuki Kishimoto])
+* ndb: bump nostrdb to 0.6.1 ([Yuki Kishimoto])
 * pool: extend unit tests ([Yuki Kishimoto])
 
 ### Added
