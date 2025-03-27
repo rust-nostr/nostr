@@ -1,0 +1,19 @@
+[package]
+name = "nostr-keyring"
+version = "0.40.0"
+edition = "2021"
+description = "Keyring for nostr"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version = "1.75.0"
+keywords = ["nostr", "keyring"]
+
+[dependencies]
+keyring = { version = "3.6", features = ["apple-native", "linux-native", "windows-native"] } # MSRV: 1.75.0
+nostr = { workspace = true, features = ["std"] }
+
+[[example]]
+name = "keyring"
