@@ -16,6 +16,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
 use super::nip04;
+use crate::serde::ser::SerializeStruct;
 use crate::types::url::form_urlencoded::byte_serialize;
 use crate::types::url::{RelayUrl, Url};
 #[cfg(feature = "std")]
@@ -660,7 +661,11 @@ impl Serialize for ResponseResult {
             ResponseResult::MultiPayKeysend(p) => p.serialize(serializer),
             ResponseResult::MakeInvoice(p) => p.serialize(serializer),
             ResponseResult::LookupInvoice(p) => p.serialize(serializer),
-            ResponseResult::ListTransactions(p) => p.serialize(serializer),
+            ResponseResult::ListTransactions(p) => {
+                let mut state = serializer.serialize_struct("ListTransactions", 1)?;
+                state.serialize_field("transactions", p)?;
+                state.end()
+            }
             ResponseResult::GetBalance(p) => p.serialize(serializer),
             ResponseResult::GetInfo(p) => p.serialize(serializer),
         }
@@ -1083,6 +1088,34 @@ mod tests {
         } else {
             panic!("Invalid request params");
         }
+    }
+
+    #[test]
+    fn test_serialization_list_transactions() {
+        let response_result = Response {
+            result: Some(ResponseResult::ListTransactions(vec![
+                LookupInvoiceResponse {
+                    transaction_type: Some(TransactionType::Incoming),
+                    invoice: Some(String::from("abcd")),
+                    description: Some(String::from("string")),
+                    amount: 123,
+                    fees_paid: 1,
+                    created_at: Timestamp::from(123456),
+                    expires_at: Some(Timestamp::from(1234567)),
+                    description_hash: None,
+                    payment_hash: String::new(),
+                    metadata: None,
+                    settled_at: None,
+                    preimage: None,
+                },
+            ])),
+            result_type: Method::ListTransactions,
+            error: None,
+        };
+        let response_result_json = serde_json::to_string(&response_result).unwrap();
+        let reponse_result_deserialized: Response =
+            serde_json::from_str(&response_result_json).unwrap();
+        assert_eq!(response_result, reponse_result_deserialized)
     }
 
     #[test]
