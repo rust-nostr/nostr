@@ -43,6 +43,7 @@
 * nostr: derive `Copy` for `HttpMethod` ([Yuki Kishimoto])
 * nostr: add `nip98::verify_auth_header` ([Yuki Kishimoto])
 * nostr: add `push`, `pop`, `insert` and `extend` methods to the `Tag` struct ([Yuki Kishimoto])
+* nostr: add `nip47::Notification` ([daywalker90])
 
 ### Fixed
 

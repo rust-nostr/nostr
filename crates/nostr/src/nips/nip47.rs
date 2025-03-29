@@ -1013,6 +1013,169 @@ impl<'a> Deserialize<'a> for NostrWalletConnectURI {
     }
 }
 
+/// NIP-47 NotificationType
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum NotificationType {
+    /// A payment was successfully received by the wallet
+    #[serde(rename = "payment_received")]
+    PaymentReceived,
+    /// A payment was successfully sent by the wallet
+    #[serde(rename = "payment_sent")]
+    PaymentSent,
+}
+
+impl fmt::Display for NotificationType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            NotificationType::PaymentReceived => write!(f, "payment_received"),
+            NotificationType::PaymentSent => write!(f, "payment_sent"),
+        }
+    }
+}
+
+impl FromStr for NotificationType {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "payment_received" => Ok(NotificationType::PaymentReceived),
+            "payment_sent" => Ok(NotificationType::PaymentSent),
+            _ => Err(Error::InvalidURI),
+        }
+    }
+}
+
+/// NIP-47 Notification
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Notification {
+    /// Notification type
+    pub notification_type: NotificationType,
+    /// Notification result
+    pub notification: NotificationResult,
+}
+
+/// NIP-47 Notification
+#[derive(Debug, Clone, Deserialize)]
+pub struct NotificationTemplate {
+    /// Notification type
+    pub notification_type: NotificationType,
+    /// Notification result
+    pub notification: Value,
+}
+
+impl Notification {
+    /// Deserialize from [Event]
+    #[inline]
+    pub fn from_event(uri: &NostrWalletConnectURI, event: &Event) -> Result<Self, Error> {
+        let decrypt_res: String = nip04::decrypt(&uri.secret, &event.pubkey, &event.content)?;
+        Self::from_json(decrypt_res)
+    }
+
+    /// Deserialize from JSON string
+    pub fn from_value(value: Value) -> Result<Self, Error> {
+        let template: NotificationTemplate = serde_json::from_value(value)?;
+
+        let result = template.notification;
+        let result = match template.notification_type {
+            NotificationType::PaymentReceived => {
+                let result: PaymentNotification = serde_json::from_value(result)?;
+                NotificationResult::PaymentReceived(result)
+            }
+            NotificationType::PaymentSent => {
+                let result: PaymentNotification = serde_json::from_value(result)?;
+                NotificationResult::PaymentSent(result)
+            }
+        };
+
+        Ok(Self {
+            notification_type: template.notification_type,
+            notification: result,
+        })
+    }
+
+    /// Convert [Notification] to [PaymentNotification]
+    pub fn to_pay_notification(self) -> Result<PaymentNotification, Error> {
+        if let NotificationResult::PaymentReceived(result) = self.notification {
+            return Ok(result);
+        }
+        if let NotificationResult::PaymentSent(result) = self.notification {
+            return Ok(result);
+        }
+
+        Err(Error::UnexpectedResult)
+    }
+}
+
+impl JsonUtil for Notification {
+    type Err = Error;
+}
+
+impl<'de> Deserialize<'de> for Notification {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value: Value = Value::deserialize(deserializer).map_err(serde::de::Error::custom)?;
+        Self::from_value(value).map_err(serde::de::Error::custom)
+    }
+}
+
+/// NIP47 Notification Result
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NotificationResult {
+    /// Payment received
+    PaymentReceived(PaymentNotification),
+    /// Payment sent
+    PaymentSent(PaymentNotification),
+}
+
+impl Serialize for NotificationResult {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            NotificationResult::PaymentReceived(p) => p.serialize(serializer),
+            NotificationResult::PaymentSent(p) => p.serialize(serializer),
+        }
+    }
+}
+
+/// NIP-47 payment notification
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct PaymentNotification {
+    /// Transaction type
+    #[serde(rename = "type")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transaction_type: Option<TransactionType>,
+    /// Bolt11 invoice
+    pub invoice: String,
+    /// Invoice's description
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Invoice's description hash
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description_hash: Option<String>,
+    /// Payment preimage
+    pub preimage: String,
+    /// Payment hash
+    pub payment_hash: String,
+    /// Amount in millisatoshis
+    pub amount: u64,
+    /// Fees paid in millisatoshis
+    pub fees_paid: u64,
+    /// Creation timestamp in seconds since epoch
+    pub created_at: Timestamp,
+    /// Expiration timestamp in seconds since epoch
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<Timestamp>,
+    /// Settled timestamp in seconds since epoch
+    pub settled_at: Timestamp,
+    /// Optional metadata about the payment
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Value>,
+}
+
 #[cfg(test)]
 mod tests {
     use core::str::FromStr;
@@ -1159,5 +1322,51 @@ mod tests {
                 }
             ]))
         )
+    }
+
+    #[test]
+    fn test_notifications_parse_and_serialization() {
+        let json = r#"{
+            "notification_type": "payment_received",
+            "notification": {
+                "type": "incoming",
+                "invoice": "abcd",
+                "description": "string1",
+                "description_hash": "string2",
+                "preimage": "string3",
+                "payment_hash": "string4",
+                "amount": 1234,
+                "fees_paid": 123,
+                "created_at": 123456789,
+                "expires_at": 546132287,
+                "settled_at": 843548111,
+                "metadata": {}
+            }
+        }"#;
+        let notification_parsed = Notification::from_json(json).unwrap();
+        assert_eq!(
+            notification_parsed.notification_type,
+            NotificationType::PaymentReceived
+        );
+        let notification_result = NotificationResult::PaymentReceived(PaymentNotification {
+            transaction_type: Some(TransactionType::Incoming),
+            invoice: String::from("abcd"),
+            description: Some(String::from("string1")),
+            description_hash: Some(String::from("string2")),
+            preimage: String::from("string3"),
+            payment_hash: String::from("string4"),
+            amount: 1234,
+            fees_paid: 123,
+            created_at: Timestamp::from_secs(123456789),
+            expires_at: Some(Timestamp::from_secs(546132287)),
+            settled_at: Timestamp::from_secs(843548111),
+            metadata: Some(Value::Object(serde_json::Map::new())),
+        });
+        assert_eq!(notification_parsed.notification, notification_result);
+
+        let notification_json = serde_json::to_string(&notification_parsed).unwrap();
+        let reponse_result_deserialized: Notification =
+            serde_json::from_str(&notification_json).unwrap();
+        assert_eq!(notification_parsed, reponse_result_deserialized)
     }
 }
