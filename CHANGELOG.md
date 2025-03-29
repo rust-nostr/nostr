@@ -43,6 +43,7 @@
 * nostr: derive `Copy` for `HttpMethod` ([Yuki Kishimoto])
 * nostr: add `nip98::verify_auth_header` ([Yuki Kishimoto])
 * nostr: add `push`, `pop`, `insert` and `extend` methods to the `Tag` struct ([Yuki Kishimoto])
+* nostr: add `nip47::Notification` ([daywalker90])
 
 ### Fixed
 
@@ -1216,6 +1217,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [cipres]: https://github.com/PancakesArchitect (nostr:npub1r3cnzta52fee26c83cnes8wvzkch3kud2kll67k402x04mttt26q0wfx0c)
 [awiteb]: https://git.4rs.nl (nostr:nprofile1qqsqqqqqq9g9uljgjfcyd6dm4fegk8em2yfz0c3qp3tc6mntkrrhawgpzfmhxue69uhkummnw3ezudrjwvhxumq3dg0ly)
 [magine]: https://github.com/ma233 (?)
+[daywalker90]: https://github.com/daywalker90 (nostr:npub1kuemsj7xryp0uje36dr53scn9mxxh8ema90hw9snu46633n9n2hqp3drjt)
 
 <!-- Tags -->
 [Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.40.0...HEAD
