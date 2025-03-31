@@ -8,6 +8,7 @@ args=(
     "-p nostr-lmdb"
     "-p nostr-ndb"
     "-p nostr-indexeddb"
+    "-p nostr-keyring"
     "-p nostr-relay-builder"
     "-p nostr-relay-pool"
     "-p nwc"

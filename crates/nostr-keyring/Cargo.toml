@@ -1,0 +1,32 @@
+[package]
+name = "nostr-keyring"
+version = "0.40.0"
+edition = "2021"
+description = "Keyring for nostr"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version = "1.75.0"
+keywords = ["nostr", "keyring"]
+
+[features]
+default = []
+# Enables async APIs
+async = ["dep:async-utility"]
+
+[dependencies]
+async-utility = { workspace = true, optional = true }
+keyring = { version = "3.6", features = ["apple-native", "linux-native", "windows-native"] } # MSRV: 1.75.0
+nostr = { workspace = true, features = ["std"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+
+[[example]]
+name = "async"
+required-features = ["async"]
+
+[[example]]
+name = "blocking"
