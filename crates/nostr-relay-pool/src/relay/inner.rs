@@ -214,6 +214,7 @@ impl InnerRelay {
                 RelayStatus::Terminated => {
                     tracing::info!("Completely disconnected from '{}'", self.url)
                 }
+                RelayStatus::Banned => tracing::info!(url = %self.url, "Relay banned."),
             }
         }
 
@@ -228,6 +229,11 @@ impl InnerRelay {
         // Relay not ready (never called connect method)
         if status.is_initialized() {
             return Err(Error::NotReady);
+        }
+
+        // Te relay has been banned
+        if status.is_banned() {
+            return Err(Error::Banned);
         }
 
         if !status.is_connected()
@@ -437,8 +443,8 @@ impl InnerRelay {
                 // Get status
                 let status: RelayStatus = relay.status();
 
-                // If the status is set to "terminated", break loop.
-                if status.is_terminated() {
+                // If the relay is terminated or banned, break the loop.
+                if status.is_terminated() || status.is_banned() {
                     break;
                 }
 
@@ -522,12 +528,10 @@ impl InnerRelay {
         self.opts.retry_interval
     }
 
+    #[inline]
     async fn handle_terminate(&self) {
         // Wait to be notified
         self.atomic.channels.terminate.notified().await;
-
-        // Update status
-        self.set_status(RelayStatus::Terminated, true);
     }
 
     pub(super) async fn _try_connect(
@@ -1058,12 +1062,38 @@ impl InnerRelay {
     }
 
     pub fn disconnect(&self) {
-        // Check if it's already terminated
-        if self.status().is_terminated() {
+        let status = self.status();
+
+        // Check if it's already terminated or banned
+        if status.is_terminated() || status.is_banned() {
             return;
         }
 
+        // Notify termination
         self.atomic.channels.terminate();
+
+        // Update status
+        self.set_status(RelayStatus::Terminated, true);
+
+        // Shutdown all notification loops
+        self.send_notification(RelayNotification::Shutdown, false);
+    }
+
+    pub fn ban(&self) {
+        let status = self.status();
+
+        // Check if it's already terminated or banned
+        if status.is_terminated() || status.is_banned() {
+            return;
+        }
+
+        // Notify termination
+        self.atomic.channels.terminate();
+
+        // Update status
+        self.set_status(RelayStatus::Banned, true);
+
+        // Shutdown all notification loops
         self.send_notification(RelayNotification::Shutdown, false);
     }
 

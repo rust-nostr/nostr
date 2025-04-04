@@ -266,8 +266,8 @@ impl Relay {
     pub async fn wait_for_connection(&self, timeout: Duration) {
         let status: RelayStatus = self.status();
 
-        // Already connected
-        if status.is_connected() {
+        // Immediately returns if the relay is already connected, if it's terminated or banned.
+        if status.is_connected() || status.is_terminated() || status.is_banned() {
             return;
         }
 
@@ -278,11 +278,18 @@ impl Relay {
         time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
                 // Wait for status change. Break loop when connect.
-                if let RelayNotification::RelayStatus {
-                    status: RelayStatus::Connected,
-                } = notification
-                {
-                    break;
+                if let RelayNotification::RelayStatus { status } = notification {
+                    match status {
+                        // Waiting for connection
+                        RelayStatus::Initialized
+                        | RelayStatus::Pending
+                        | RelayStatus::Connecting
+                        | RelayStatus::Disconnected => {}
+                        // Connected or terminated/banned
+                        RelayStatus::Connected | RelayStatus::Terminated | RelayStatus::Banned => {
+                            break
+                        }
+                    }
                 }
             }
         })
@@ -300,7 +307,7 @@ impl Relay {
     /// Use [`Relay::connect`] if you want to immediately spawn a connection task,
     /// regardless of whether the initial connection succeeds.
     ///
-    /// Returns an error if the connection fails.
+    /// Returns an error if the connection fails or if the relay has been banned.
     ///
     /// # Automatic reconnection
     ///
@@ -308,8 +315,14 @@ impl Relay {
     /// the connection task will automatically attempt to reconnect.
     /// This behavior can be disabled by changing [`RelayOptions::reconnect`] option.
     pub async fn try_connect(&self, timeout: Duration) -> Result<(), Error> {
+        let status: RelayStatus = self.status();
+
+        if status.is_banned() {
+            return Err(Error::Banned);
+        }
+
         // Check if relay can't connect
-        if !self.status().can_connect() {
+        if !status.can_connect() {
             return Ok(());
         }
 
@@ -327,11 +340,17 @@ impl Relay {
     }
 
     /// Disconnect from relay and set status to [`RelayStatus::Terminated`].
-    ///
-    /// Returns immediately if the status is already [`RelayStatus::Terminated`].
     #[inline]
     pub fn disconnect(&self) {
         self.inner.disconnect()
+    }
+
+    /// Ban relay and set status to [`RelayStatus::Banned`].
+    ///
+    /// A banned relay can't reconnect again.
+    #[inline]
+    pub fn ban(&self) {
+        self.inner.ban()
     }
 
     /// Send msg to relay
@@ -1051,6 +1070,41 @@ mod tests {
         assert_eq!(relay.status(), RelayStatus::Terminated);
 
         assert!(!relay.inner.is_running());
+    }
+
+    #[tokio::test]
+    async fn test_ban_relay() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let relay = new_relay(url, RelayOptions::default());
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.try_connect(Duration::from_secs(2)).await.unwrap();
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        relay.ban();
+
+        assert_eq!(relay.status(), RelayStatus::Banned);
+        assert!(!relay.inner.is_running());
+
+        // Retry to connect
+        let res = relay.try_connect(Duration::from_secs(2)).await;
+        assert!(matches!(res.unwrap_err(), Error::Banned));
+
+        assert_eq!(relay.status(), RelayStatus::Banned);
+
+        // Try to call disconnect. The status mustn't change.
+        relay.disconnect();
+
+        assert_eq!(relay.status(), RelayStatus::Banned);
+
+        // Health check
+        let res = relay.inner.health_check();
+        assert!(matches!(res.unwrap_err(), Error::Banned));
     }
 
     #[tokio::test]

@@ -59,6 +59,8 @@ pub enum Error {
     NotReady,
     /// Relay not connected
     NotConnected,
+    /// Relay banned
+    Banned,
     /// Received termination request
     TerminationRequest,
     /// Received shutdown
@@ -140,6 +142,7 @@ impl fmt::Display for Error {
             }
             Self::NotReady => write!(f, "relay is initialized but not ready"),
             Self::NotConnected => write!(f, "relay not connected"),
+            Self::Banned => write!(f, "relay banned"),
             Self::TerminationRequest => write!(f, "received termination request"),
             Self::ReceivedShutdown => write!(f, "received shutdown"),
             Self::RelayMessage(message) => write!(f, "{message}"),
