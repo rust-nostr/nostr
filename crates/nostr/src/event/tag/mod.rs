@@ -308,14 +308,14 @@ impl Tag {
         Self::from_standardized_without_cell(TagStandard::Identifier(identifier.into()))
     }
 
-    /// Compose `["a", "<coordinate>"]` tag
+    /// Compose `["a", "<coordinate>", "<optional-relay-url>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
-    pub fn coordinate(coordinate: Coordinate) -> Self {
+    pub fn coordinate(coordinate: Coordinate, relay_url: Option<RelayUrl>) -> Self {
         Self::from_standardized_without_cell(TagStandard::Coordinate {
             coordinate,
-            relay_url: None,
+            relay_url,
             uppercase: false,
         })
     }

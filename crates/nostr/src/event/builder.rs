@@ -1658,7 +1658,7 @@ impl EventBuilder {
         let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
         Self::new(Kind::VideosCurationSet, "").tags(
             tags.into_iter()
-                .chain(video.into_iter().map(Tag::coordinate)),
+                .chain(video.into_iter().map(|c| Tag::coordinate(c, None))),
         )
     }
 

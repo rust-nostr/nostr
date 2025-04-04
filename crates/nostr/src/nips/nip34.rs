@@ -148,7 +148,7 @@ impl GitIssue {
         let mut tags: Vec<Tag> = Vec::with_capacity(2);
 
         // Add coordinate
-        tags.push(Tag::coordinate(self.repository));
+        tags.push(Tag::coordinate(self.repository, None));
 
         // Add owner public key
         tags.push(Tag::public_key(owner_public_key));
@@ -257,7 +257,7 @@ impl GitPatch {
         let mut tags: Vec<Tag> = Vec::with_capacity(3);
 
         // Push coordinate
-        tags.push(Tag::coordinate(self.repository));
+        tags.push(Tag::coordinate(self.repository, None));
 
         // Tag repo owner
         tags.push(Tag::public_key(owner_public_key));

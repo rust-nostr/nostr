@@ -31,6 +31,7 @@
 
 ### Breaking changes
 
+* nostr: add optional relay URL arg to `Tag::coordinate` ([Yuki Kishimoto])
 * pool: remove `Error::Failed` variant ([Yuki Kishimoto])
 * pool: returns `Output` instead of an error if the message/event sending fails for all relays ([Yuki Kishimoto])
 
