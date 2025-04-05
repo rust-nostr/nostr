@@ -106,6 +106,7 @@ add Mac Catalyst support for Swift package, many cleanups, refactoring and perfo
 * pool: use the relay ingester to perform actions ([Yuki Kishimoto])
 * pool: avoid spawning a task for every authentication request ([Yuki Kishimoto])
 * pool: use `std::sync::OnceLock` instead of `tokio::sync::OnceCell` ([Yuki Kishimoto])
+* pool: handle `CLOSED` with empty msg as subscription completed ([Yuki Kishimoto])
 * lmdb: bump MSRV to 1.72.0 ([Yuki Kishimoto])
 * lmdb: implement event ingester ([Yuki Kishimoto])
 * lmdb: avoid spawning thread for read methods ([Yuki Kishimoto])
@@ -118,6 +119,7 @@ add Mac Catalyst support for Swift package, many cleanups, refactoring and perfo
 * sdk: auto-update the gossip data when sending an event ([Yuki Kishimoto])
 * sdk: avoid full clone of relays when only urls are needed ([Yuki Kishimoto])
 * nwc: allow usage of multiple relays ([Yuki Kishimoto])
+* relay-builder: send `CLOSED` if all possible events have been served ([Yuki Kishimoto])
 * ffi: improve `Events::merge` and `Events::to_vec` performance ([Yuki Kishimoto])
 * ci: release wheels also for python `3.13` ([Yuki Kishimoto])
 
