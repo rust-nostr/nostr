@@ -1722,6 +1722,14 @@ impl EventBuilder {
         Self::new(Kind::UserStatus, content).tags(tags)
     }
 
+    /// Code Snippets
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    #[inline]
+    pub fn code_snippet(snippet: CodeSnippet) -> Self {
+        snippet.to_event_builder()
+    }
+
     /// Git Repository Announcement
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>

@@ -231,6 +231,26 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
     Label(Vec<String>),
+    /// Required dependency
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    Dependency(String),
+    /// File extension
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    Extension(String),
+    /// License of the shared content
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    License(String),
+    /// Runtime or environment specification
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    Runtime(String),
+    /// Reference to the origin repository
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    Repository(String),
     /// Protected event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
@@ -383,6 +403,7 @@ impl TagStandard {
                     character: Alphabet::U,
                     uppercase: false,
                 }) => Ok(Self::AbsoluteURL(Url::parse(tag_1)?)),
+                TagKind::Dependency => Ok(Self::Dependency(tag_1.to_string())),
                 TagKind::Relay => {
                     if tag_1 == ALL_RELAYS {
                         Ok(Self::AllRelays)
@@ -391,6 +412,10 @@ impl TagStandard {
                     }
                 }
                 TagKind::Expiration => Ok(Self::Expiration(Timestamp::from_str(tag_1)?)),
+                TagKind::Extension => Ok(Self::Extension(tag_1.to_string())),
+                TagKind::License => Ok(Self::License(tag_1.to_string())),
+                TagKind::Runtime => Ok(Self::Runtime(tag_1.to_string())),
+                TagKind::Repository => Ok(Self::Repository(tag_1.to_string())),
                 TagKind::Subject => Ok(Self::Subject(tag_1.to_string())),
                 TagKind::Challenge => Ok(Self::Challenge(tag_1.to_string())),
                 TagKind::Commit => Ok(Self::GitCommit(Sha1Hash::from_str(tag_1)?)),
@@ -602,6 +627,11 @@ impl TagStandard {
             Self::Relays(..) => TagKind::Relays,
             Self::Amount { .. } => TagKind::Amount,
             Self::Name(..) => TagKind::Name,
+            Self::Dependency(..) => TagKind::Dependency,
+            Self::Extension(..) => TagKind::Extension,
+            Self::License(..) => TagKind::License,
+            Self::Runtime(..) => TagKind::Runtime,
+            Self::Repository(..) => TagKind::Repository,
             Self::Lnurl(..) => TagKind::Lnurl,
             Self::Url(..) => TagKind::Url,
             Self::MimeType(..) => TagKind::SingleLetter(SingleLetterTag {
@@ -887,12 +917,13 @@ impl From<TagStandard> for Vec<String> {
                 }
                 tag
             }
-            TagStandard::Name(name) => {
-                vec![tag_kind, name]
-            }
-            TagStandard::Lnurl(lnurl) => {
-                vec![tag_kind, lnurl]
-            }
+            TagStandard::Name(name) => vec![tag_kind, name],
+            TagStandard::Dependency(dep) => vec![tag_kind, dep],
+            TagStandard::Extension(ext) => vec![tag_kind, ext],
+            TagStandard::License(license) => vec![tag_kind, license],
+            TagStandard::Runtime(runtime) => vec![tag_kind, runtime],
+            TagStandard::Repository(repo) => vec![tag_kind, repo],
+            TagStandard::Lnurl(lnurl) => vec![tag_kind, lnurl],
             TagStandard::Url(url) => vec![tag_kind, url.to_string()],
             TagStandard::MimeType(mime) => vec![tag_kind, mime],
             TagStandard::Aes256Gcm { key, iv } => vec![tag_kind, key, iv],
@@ -1640,6 +1671,31 @@ mod tests {
         );
 
         assert_eq!(
+            vec!["dep", "nostr"],
+            TagStandard::Dependency(String::from("nostr")).to_vec()
+        );
+
+        assert_eq!(
+            vec!["extension", "rs"],
+            TagStandard::Extension(String::from("rs")).to_vec()
+        );
+
+        assert_eq!(
+            vec!["license", "MIT"],
+            TagStandard::License(String::from("MIT")).to_vec()
+        );
+
+        assert_eq!(
+            vec!["runtime", "rustc 1.70.0"],
+            TagStandard::Runtime(String::from("rustc 1.70.0")).to_vec()
+        );
+
+        assert_eq!(
+            vec!["repo", "https://github.com/rust-nostr/nostr"],
+            TagStandard::Repository(String::from("https://github.com/rust-nostr/nostr")).to_vec()
+        );
+
+        assert_eq!(
             vec!["client", "voyage", "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum"],
             TagStandard::Client {
                 name: String::from("voyage"),
@@ -2264,6 +2320,31 @@ mod tests {
                 name: String::from("voyage"),
                 address: None
             }
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["dep", "nostr"]).unwrap(),
+            TagStandard::Dependency(String::from("nostr"))
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["extension", "rs"]).unwrap(),
+            TagStandard::Extension(String::from("rs"))
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["license", "MIT"]).unwrap(),
+            TagStandard::License(String::from("MIT"))
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["runtime", "rustc 1.70.0"]).unwrap(),
+            TagStandard::Runtime(String::from("rustc 1.70.0"))
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["repo", "https://github.com/rust-nostr/nostr"]).unwrap(),
+            TagStandard::Repository(String::from("https://github.com/rust-nostr/nostr"))
         );
 
         assert_eq!(
