@@ -552,21 +552,21 @@ impl InnerRelay {
             // Connect
             res = self.state.transport.connect((&self.url).into(), &self.opts.connection_mode, timeout) => match res {
                 Ok((ws_tx, ws_rx)) => {
-                // Update status
-                self.set_status(RelayStatus::Connected, true);
+                    // Update status
+                    self.set_status(RelayStatus::Connected, true);
 
-                // Increment success stats
-                self.stats.new_success();
+                    // Increment success stats
+                    self.stats.new_success();
 
-                Ok((ws_tx, ws_rx))
-            }
-            Err(e) => {
-                // Update status
-                self.set_status(status_on_failure, false);
+                    Ok((ws_tx, ws_rx))
+                }
+                Err(e) => {
+                    // Update status
+                    self.set_status(status_on_failure, false);
 
-                // Return error
-                Err(Error::Transport(e))
-            }
+                    // Return error
+                    Err(Error::Transport(e))
+                }
             },
             // Handle termination notification
             _ = self.handle_terminate() => Err(Error::TerminationRequest),
