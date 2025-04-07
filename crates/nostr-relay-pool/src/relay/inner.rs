@@ -226,12 +226,12 @@ impl InnerRelay {
     pub(super) fn health_check(&self) -> Result<(), Error> {
         let status: RelayStatus = self.status();
 
-        // Relay not ready (never called connect method)
+        // Relay is not ready (never called connect method)
         if status.is_initialized() {
             return Err(Error::NotReady);
         }
 
-        // Te relay has been banned
+        // The relay has been banned
         if status.is_banned() {
             return Err(Error::Banned);
         }
@@ -465,7 +465,7 @@ impl InnerRelay {
                     );
 
                     // Sleep before retry to connect
-                    // Handle termination to allow to exit immediately if request is received during the sleep.
+                    // Handle termination to allow exiting immediately if request is received during the sleep.
                     tokio::select! {
                         // Sleep
                         _ = time::sleep(interval) => {},
@@ -542,7 +542,7 @@ impl InnerRelay {
         // Update status
         self.set_status(RelayStatus::Connecting, true);
 
-        // Add attempt
+        // Increase the attempts
         self.stats.new_attempt();
 
         // Try to connect
@@ -640,7 +640,7 @@ impl InnerRelay {
         let (ingester_tx, ingester_rx) = mpsc::unbounded_channel();
 
         // Wait that one of the futures terminates/completes
-        // Also also termination here, to allow to close the connection in case of termination request.
+        // Add also termination here, to allow closing the connection in case of termination request.
         tokio::select! {
             // Message sender handler
             res = self.sender_message_handler(&mut ws_tx, rx_nostr, &ping) => match res {
@@ -1030,9 +1030,9 @@ impl InnerRelay {
 
         // Check if event exists
         if let DatabaseEventStatus::NotExistent = status {
-            // Check if event was already verified
+            // Check if the event was already verified.
             //
-            // This is useful if someone continue to send the same invalid event:
+            // This is useful if someone continues to send the same invalid event:
             // since invalid events aren't stored in the database,
             // skipping this check would result in the re-verification of the event.
             // This may also be useful to avoid double verification if the event is received at the exact same time by many different Relay instances.
@@ -1042,7 +1042,7 @@ impl InnerRelay {
                 event.verify()?;
             }
 
-            // Save into database
+            // Save into the database
             self.state.database().save_event(&event).await?;
 
             // Send notification
@@ -1106,7 +1106,7 @@ impl InnerRelay {
         // Perform health checks
         self.health_check()?;
 
-        // Check if list is empty
+        // Check if the list is empty
         if msgs.is_empty() {
             return Err(Error::BatchMessagesEmpty);
         }
@@ -1558,7 +1558,7 @@ impl InnerRelay {
         in_flight_up: &mut HashSet<EventId>,
         opts: &SyncOptions,
     ) -> Result<(), Error> {
-        // Check if should skip the upload
+        // Check if it should skip the upload
         if !opts.do_up() || have_ids.is_empty() || in_flight_up.len() > NEGENTROPY_LOW_WATER_UP {
             return Ok(());
         }
@@ -1612,7 +1612,7 @@ impl InnerRelay {
         down_sub_id: &SubscriptionId,
         opts: &SyncOptions,
     ) -> Result<(), Error> {
-        // Check if should skip the download
+        // Check if it should skip the download
         if !opts.do_down() || need_ids.is_empty() || *in_flight_down {
             return Ok(());
         }
@@ -1704,7 +1704,7 @@ impl InnerRelay {
         let mut notifications = self.internal_notification_sender.subscribe();
         let mut temp_notifications = self.internal_notification_sender.subscribe();
 
-        // Send initial negentropy message
+        // Send the initial negentropy message
         let sub_id: SubscriptionId = SubscriptionId::generate();
         let open_msg: ClientMessage = ClientMessage::NegOpen {
             subscription_id: Cow::Borrowed(&sub_id),
@@ -1747,7 +1747,7 @@ impl InnerRelay {
                                     &mut curr_need_ids,
                                 )?;
 
-                                // Handle message
+                                // Handle the message
                                 self.handle_neg_msg(
                                     &subscription_id,
                                     msg,
@@ -1862,7 +1862,7 @@ impl InnerRelay {
         let mut notifications = self.internal_notification_sender.subscribe();
         let mut temp_notifications = self.internal_notification_sender.subscribe();
 
-        // Send initial negentropy message
+        // Send the initial negentropy message
         let sub_id = SubscriptionId::generate();
         let open_msg: ClientMessage = ClientMessage::NegOpen {
             subscription_id: Cow::Borrowed(&sub_id),
@@ -1906,7 +1906,7 @@ impl InnerRelay {
                                     &mut curr_need_ids,
                                 )?;
 
-                                // Handle message
+                                // Handle the message
                                 self.handle_neg_msg(
                                     &subscription_id,
                                     msg.map(|m| m.to_bytes()),
@@ -2071,7 +2071,7 @@ async fn check_negentropy_support(
                     }
                     RelayMessage::Notice(message) => {
                         if message == "ERROR: negentropy error: negentropy query missing elements" {
-                            // The NEG-OPEN message is send with 4 elements instead of 5
+                            // The NEG-OPEN message is sent with 4 elements instead of 5
                             // If the relay return this error means that is not support new
                             // negentropy protocol
                             return Err(Error::Negentropy(
