@@ -37,6 +37,7 @@ pub use self::options::{
 };
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
+use crate::policy::AdmitStatus;
 use crate::shared::SharedState;
 use crate::transport::websocket::{BoxSink, BoxStream};
 
@@ -324,6 +325,15 @@ impl Relay {
         // Check if relay can't connect
         if !status.can_connect() {
             return Ok(());
+        }
+
+        // Check connection policy
+        if let AdmitStatus::Rejected { reason } = self.inner.check_connection_policy().await? {
+            // Set status to "terminated"
+            self.inner.set_status(RelayStatus::Terminated, false);
+
+            // Return error
+            return Err(Error::ConnectionRejected { reason });
         }
 
         // Try to connect
@@ -745,10 +755,33 @@ impl Relay {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use async_utility::time;
     use nostr_relay_builder::prelude::*;
 
     use super::{Error, *};
+    use crate::policy::{AdmitPolicy, PolicyError};
+
+    #[derive(Debug)]
+    struct CustomTestPolicy {
+        banned_relays: HashSet<RelayUrl>,
+    }
+
+    impl AdmitPolicy for CustomTestPolicy {
+        fn admit_connection<'a>(
+            &'a self,
+            relay_url: &'a RelayUrl,
+        ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
+            Box::pin(async move {
+                if self.banned_relays.contains(relay_url) {
+                    Ok(AdmitStatus::rejected("banned"))
+                } else {
+                    Ok(AdmitStatus::Success)
+                }
+            })
+        }
+    }
 
     fn new_relay(url: RelayUrl, opts: RelayOptions) -> Relay {
         Relay::new(url, SharedState::default(), opts)
@@ -1471,6 +1504,35 @@ mod tests {
         relay.unsubscribe_all().await.unwrap();
 
         relay.subscriptions().await.is_empty();
+    }
+
+    #[tokio::test]
+    async fn test_admit_connection() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let mut relay = new_relay(url.clone(), RelayOptions::default());
+
+        relay.inner.state.admit_policy = Some(Arc::new(CustomTestPolicy {
+            banned_relays: HashSet::from([url]),
+        }));
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.connect();
+
+        time::sleep(Duration::from_secs(2)).await;
+
+        assert_eq!(relay.status(), RelayStatus::Terminated);
+        assert!(!relay.inner.is_running());
+
+        // Retry to connect
+        let res = relay.try_connect(Duration::from_secs(2)).await;
+        assert!(matches!(res.unwrap_err(), Error::ConnectionRejected { .. }));
+
+        assert_eq!(relay.status(), RelayStatus::Terminated);
+        assert!(!relay.inner.is_running());
     }
 
     // TODO: add negentropy reconciliation test

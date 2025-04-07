@@ -407,6 +407,13 @@ impl InnerRelay {
         }
     }
 
+    pub(super) async fn check_connection_policy(&self) -> Result<AdmitStatus, Error> {
+        match &self.state.admit_policy {
+            Some(policy) => Ok(policy.admit_connection(&self.url).await?),
+            None => Ok(AdmitStatus::Success),
+        }
+    }
+
     pub(super) fn spawn_connection_task(&self, mut stream: Option<(BoxSink, BoxStream)>) {
         if self.is_running() {
             tracing::warn!(url = %self.url, "Connection task is already running.");
@@ -427,9 +434,20 @@ impl InnerRelay {
 
             // Auto-connect loop
             loop {
-                // TODO: check in the relays state database if relay can connect (different from the previous check)
-                // TODO: if the relay score is too low, immediately exit.
-                // TODO: at every loop iteration check the score and if it's too low, exit
+                match relay.check_connection_policy().await {
+                    Ok(status) => {
+                        if let AdmitStatus::Rejected { reason } = status {
+                            if let Some(reason) = reason {
+                                tracing::warn!(reason = %reason, "Connection rejected by admission policy.");
+                            }
+
+                            // Set the status to "terminated" and break loop.
+                            relay.set_status(RelayStatus::Terminated, false);
+                            break;
+                        }
+                    }
+                    Err(e) => tracing::error!(error = %e, "Impossible to check connection policy."),
+                }
 
                 // Connect and run message handler
                 // The termination requests are handled inside this method!
@@ -998,7 +1016,7 @@ impl InnerRelay {
 
         // Check event admission policy
         if let Some(policy) = &self.state.admit_policy {
-            if let AdmitStatus::Rejected = policy
+            if let AdmitStatus::Rejected { .. } = policy
                 .admit_event(&self.url, &subscription_id, &event)
                 .await?
             {

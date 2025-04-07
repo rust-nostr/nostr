@@ -34,6 +34,7 @@
 * nostr: add optional relay URL arg to `Tag::coordinate` ([Yuki Kishimoto])
 * pool: remove `Error::Failed` variant ([Yuki Kishimoto])
 * pool: returns `Output` instead of an error if the message/event sending fails for all relays ([Yuki Kishimoto])
+* pool: add `reason` field to `AdmitStatus::Rejected` variant ([Yuki Kishimoto])
 
 ### Changed
 
@@ -49,6 +50,7 @@
 * nostr: add `push`, `pop`, `insert` and `extend` methods to the `Tag` struct ([Yuki Kishimoto])
 * nostr: add `nip47::Notification` ([daywalker90])
 * pool: add `Relay::ban` method ([Yuki Kishimoto])
+* pool: add `AdmitPolicy::admit_connection` method ([Yuki Kishimoto])
 
 ### Fixed
 
