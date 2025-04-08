@@ -32,6 +32,7 @@
 ### Breaking changes
 
 * nostr: add optional relay URL arg to `Tag::coordinate` ([Yuki Kishimoto])
+* nostr: update `TagStandard::Label` and `EventBuilder::label` ([Yuki Kishimoto])
 * pool: remove `Error::Failed` variant ([Yuki Kishimoto])
 * pool: returns `Output` instead of an error if the message/event sending fails for all relays ([Yuki Kishimoto])
 * pool: add `reason` field to `AdmitStatus::Rejected` variant ([Yuki Kishimoto])
@@ -56,6 +57,7 @@
 ### Fixed
 
 * nostr: fix missing `transactions` object in serialization of nip47 ListTransactions ResponseResult ([daywalker90])
+* nostr: fix NIP32 implementation ([Yuki Kishimoto])
 
 ### Removed
 

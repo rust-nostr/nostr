@@ -230,7 +230,12 @@ pub enum TagStandard {
     /// Label
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
-    Label(Vec<String>),
+    Label {
+        /// Label value
+        value: String,
+        /// Label namespace
+        namespace: Option<String>,
+    },
     /// Required dependency
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
@@ -309,10 +314,9 @@ impl TagStandard {
                 // Parse `l` tag
                 SingleLetterTag {
                     character: Alphabet::L,
-                    uppercase: false,
+                    uppercase,
                 } => {
-                    let labels = tag.iter().skip(1).map(|u| u.as_ref().to_string()).collect();
-                    return Ok(Self::Label(labels));
+                    return parse_l_tag(tag, uppercase);
                 }
                 // Parse `p` tag
                 SingleLetterTag {
@@ -454,10 +458,6 @@ impl TagStandard {
                 TagKind::Payload => Ok(Self::Payload(Sha256Hash::from_str(tag_1)?)),
                 TagKind::Request => Ok(Self::Request(Event::from_json(tag_1)?)),
                 TagKind::Word => Ok(Self::Word(tag_1.to_string())),
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::L,
-                    uppercase: true,
-                }) => Ok(Self::LabelNamespace(tag_1.to_string())),
                 TagKind::Alt => Ok(Self::Alt(tag_1.to_string())),
                 TagKind::Dim => Ok(Self::Dim(ImageDimensions::from_str(tag_1)?)),
                 _ => Err(Error::UnknownStandardizedTag),
@@ -671,7 +671,7 @@ impl TagStandard {
                 character: Alphabet::L,
                 uppercase: true,
             }),
-            Self::Label(..) => TagKind::SingleLetter(SingleLetterTag {
+            Self::Label { .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::L,
                 uppercase: false,
             }),
@@ -981,10 +981,11 @@ impl From<TagStandard> for Vec<String> {
             }
             TagStandard::Word(word) => vec![tag_kind, word],
             TagStandard::LabelNamespace(n) => vec![tag_kind, n],
-            TagStandard::Label(l) => {
-                let mut tag: Vec<String> = Vec::with_capacity(1 + l.len());
-                tag.push(tag_kind);
-                tag.extend(l);
+            TagStandard::Label { value, namespace } => {
+                let mut tag: Vec<String> = vec![tag_kind, value];
+                if let Some(namespace) = namespace {
+                    tag.push(namespace);
+                }
                 tag
             }
             TagStandard::Protected => vec![tag_kind],
@@ -1121,6 +1122,30 @@ where
                 None => None,
             },
             uppercase,
+        });
+    }
+
+    Err(Error::UnknownStandardizedTag)
+}
+
+fn parse_l_tag<S>(tag: &[S], uppercase: bool) -> Result<TagStandard, Error>
+where
+    S: AsRef<str>,
+{
+    // ["L", "<namespace>"]
+    if uppercase && tag.len() == 2 {
+        let tag_1: &str = tag[1].as_ref();
+        return Ok(TagStandard::LabelNamespace(tag_1.to_string()));
+    }
+
+    // ["l", "<label>"] or ["l", "<label>", "<namespace>"]
+    if !uppercase && tag.len() >= 2 {
+        let tag_1: &str = tag[1].as_ref();
+        let tag_2: Option<&str> = tag.get(2).map(|t| t.as_ref());
+
+        return Ok(TagStandard::Label {
+            value: tag_1.to_string(),
+            namespace: tag_2.map(|n| n.to_string()),
         });
     }
 
@@ -1938,12 +1963,20 @@ mod tests {
 
         assert_eq!(
             vec!["l", "IT-MI"],
-            TagStandard::Label(vec!["IT-MI".to_string()]).to_vec()
+            TagStandard::Label {
+                value: "IT-MI".to_string(),
+                namespace: None
+            }
+            .to_vec()
         );
 
         assert_eq!(
             vec!["l", "IT-MI", "ISO-3166-2"],
-            TagStandard::Label(vec!["IT-MI".to_string(), "ISO-3166-2".to_string()]).to_vec()
+            TagStandard::Label {
+                value: "IT-MI".to_string(),
+                namespace: Some("ISO-3166-2".to_string())
+            }
+            .to_vec()
         );
 
         assert_eq!(
@@ -2584,12 +2617,18 @@ mod tests {
 
         assert_eq!(
             TagStandard::parse(&["l", "IT-MI"]).unwrap(),
-            TagStandard::Label(vec!["IT-MI".to_string()])
+            TagStandard::Label {
+                value: "IT-MI".to_string(),
+                namespace: None
+            }
         );
 
         assert_eq!(
             TagStandard::parse(&["l", "IT-MI", "ISO-3166-2"]).unwrap(),
-            TagStandard::Label(vec!["IT-MI".to_string(), "ISO-3166-2".to_string()])
+            TagStandard::Label {
+                value: "IT-MI".to_string(),
+                namespace: Some("ISO-3166-2".to_string())
+            }
         );
 
         assert_eq!(

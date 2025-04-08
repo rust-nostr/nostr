@@ -1697,16 +1697,19 @@ impl EventBuilder {
     /// Label
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
-    pub fn label<S, I>(namespace: S, labels: I) -> Self
+    pub fn label<S1, S2>(namespace: S1, label: S2) -> Self
     where
-        S: Into<String>,
-        I: IntoIterator<Item = String>,
+        S1: Into<String>,
+        S2: Into<String>,
     {
         let namespace: String = namespace.into();
-        let labels: Vec<String> = labels.into_iter().chain([namespace.clone()]).collect();
+        let label: String = label.into();
         Self::new(Kind::Label, "").tags([
-            Tag::from_standardized_without_cell(TagStandard::LabelNamespace(namespace)),
-            Tag::from_standardized_without_cell(TagStandard::Label(labels)),
+            Tag::from_standardized_without_cell(TagStandard::LabelNamespace(namespace.clone())),
+            Tag::from_standardized_without_cell(TagStandard::Label {
+                value: label,
+                namespace: Some(namespace),
+            }),
         ])
     }
 

@@ -147,7 +147,10 @@ impl CodeSnippet {
 
         // `l` tag used for label in all event kinds except Code Snippets (1337)
         // is used as the programming language
-        add_if_some(self.language.map(|l| TagStandard::Label(vec![l])));
+        add_if_some(self.language.map(|l| TagStandard::Label {
+            value: l,
+            namespace: None,
+        }));
         add_if_some(self.name.map(TagStandard::Name));
         add_if_some(self.extension.map(TagStandard::Extension));
         add_if_some(self.description.map(TagStandard::Description));
