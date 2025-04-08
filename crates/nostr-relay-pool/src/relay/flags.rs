@@ -126,31 +126,35 @@ impl AtomicRelayServiceFlags {
 
     /// Add [RelayServiceFlags] together.
     pub fn add(&self, other: RelayServiceFlags) {
-        let _ = self
-            .flags
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |f| {
-                let mut f: RelayServiceFlags = RelayServiceFlags(f);
-                f.add(other);
-                Some(f.to_u64())
-            });
+        // Load current
+        let current: u64 = self.flags.load(Ordering::SeqCst);
+
+        // Construct and add flag
+        let mut flags: RelayServiceFlags = RelayServiceFlags(current);
+        flags.add(other);
+
+        // Store
+        self.flags.store(flags.to_u64(), Ordering::SeqCst);
     }
 
     /// Remove [RelayServiceFlags] from this.
     pub fn remove(&self, other: RelayServiceFlags) {
-        let _ = self
-            .flags
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |f| {
-                let mut f: RelayServiceFlags = RelayServiceFlags(f);
-                f.remove(other);
-                Some(f.to_u64())
-            });
+        // Load current
+        let current: u64 = self.flags.load(Ordering::SeqCst);
+
+        // Construct and remove flag
+        let mut flags: RelayServiceFlags = RelayServiceFlags(current);
+        flags.remove(other);
+
+        // Store
+        self.flags.store(flags.to_u64(), Ordering::SeqCst);
     }
 
     /// Check whether [RelayServiceFlags] are included in this one.
     pub fn has(&self, flags: RelayServiceFlags, check: FlagCheck) -> bool {
-        let _f: u64 = self.flags.load(Ordering::SeqCst);
-        let f: RelayServiceFlags = RelayServiceFlags(_f);
-        f.has(flags, check)
+        let current: u64 = self.flags.load(Ordering::SeqCst);
+        let current: RelayServiceFlags = RelayServiceFlags(current);
+        current.has(flags, check)
     }
 
     /// Check if [RelayServiceFlags] has **any** of the passed flags.
