@@ -414,97 +414,106 @@ impl InnerRelay {
         }
     }
 
-    pub(super) fn spawn_connection_task(&self, mut stream: Option<(BoxSink, BoxStream)>) {
+    pub(super) fn spawn_connection_task(&self, stream: Option<(BoxSink, BoxStream)>) {
         if self.is_running() {
             tracing::warn!(url = %self.url, "Connection task is already running.");
             return;
         }
 
-        let relay = self.clone();
-        task::spawn(async move {
-            // Set that connection task is running
-            relay.atomic.running.store(true, Ordering::SeqCst);
+        // Spawn task
+        let relay: InnerRelay = self.clone();
+        task::spawn(relay.connection_task(stream));
+    }
 
-            // Lock receiver
-            let mut rx_nostr = relay.atomic.channels.rx_nostr().await;
+    async fn connection_task(self, mut stream: Option<(BoxSink, BoxStream)>) {
+        // Set connection task as running
+        let is_running: bool = self.atomic.running.swap(true, Ordering::SeqCst);
 
-            // Last websocket error
-            // Store it to avoid printing every time the same connection error
-            let mut last_ws_error = None;
+        // Re-check if is already running.
+        // This must never happen.
+        assert!(
+            !is_running,
+            "Connection task for '{}' is already running.",
+            self.url
+        );
 
-            // Auto-connect loop
-            loop {
-                match relay.check_connection_policy().await {
-                    Ok(status) => {
-                        if let AdmitStatus::Rejected { reason } = status {
-                            if let Some(reason) = reason {
-                                tracing::warn!(reason = %reason, "Connection rejected by admission policy.");
-                            }
+        // Lock receiver
+        let mut rx_nostr = self.atomic.channels.rx_nostr().await;
 
-                            // Set the status to "terminated" and break loop.
-                            relay.set_status(RelayStatus::Terminated, false);
-                            break;
+        // Last websocket error
+        // Store it to avoid printing every time the same connection error
+        let mut last_ws_error = None;
+
+        // Auto-connect loop
+        loop {
+            // Check if the connection is allowed
+            match self.check_connection_policy().await {
+                Ok(status) => {
+                    // Connection rejected, update status and break the loop.
+                    if let AdmitStatus::Rejected { reason } = status {
+                        if let Some(reason) = reason {
+                            tracing::warn!(reason = %reason, "Connection rejected by admission policy.");
                         }
+
+                        // Set the status to "terminated" and break loop.
+                        self.set_status(RelayStatus::Terminated, false);
+                        break;
                     }
-                    Err(e) => tracing::error!(error = %e, "Impossible to check connection policy."),
                 }
-
-                // Connect and run message handler
-                // The termination requests are handled inside this method!
-                relay
-                    .connect_and_run(stream, &mut rx_nostr, &mut last_ws_error)
-                    .await;
-
-                // Update stream to `None`, meaning that it was already used (if was some).
-                stream = None;
-
-                // Get status
-                let status: RelayStatus = relay.status();
-
-                // If the relay is terminated or banned, break the loop.
-                if status.is_terminated() || status.is_banned() {
-                    break;
-                }
-
-                // Check if reconnection is enabled
-                if relay.opts.reconnect {
-                    // Check if relay is marked as disconnected. If not, update status.
-                    // Check if disconnected to avoid a possible double log
-                    if !status.is_disconnected() {
-                        relay.set_status(RelayStatus::Disconnected, true);
-                    }
-
-                    // Sleep before retry to connect
-                    let interval: Duration = relay.calculate_retry_interval();
-                    tracing::debug!(
-                        "Reconnecting to '{}' relay in {} secs",
-                        relay.url,
-                        interval.as_secs()
-                    );
-
-                    // Sleep before retry to connect
-                    // Handle termination to allow exiting immediately if request is received during the sleep.
-                    tokio::select! {
-                        // Sleep
-                        _ = time::sleep(interval) => {},
-                        // Handle termination notification
-                        _ = relay.handle_terminate() => break,
-                    }
-                } else {
-                    // Reconnection disabled, set status to "terminated"
-                    relay.set_status(RelayStatus::Terminated, true);
-
-                    // Break loop and exit
-                    tracing::debug!(url = %relay.url, "Reconnection disabled, breaking loop.");
-                    break;
-                }
+                Err(e) => tracing::error!(error = %e, "Impossible to check connection policy."),
             }
 
-            // Set that connection task is no longer running
-            relay.atomic.running.store(false, Ordering::SeqCst);
+            // Connect and run message handler
+            // The termination requests are handled inside this method!
+            self.connect_and_run(stream.take(), &mut rx_nostr, &mut last_ws_error)
+                .await;
 
-            tracing::debug!(url = %relay.url, "Auto connect loop terminated.");
-        });
+            // Get status
+            let status: RelayStatus = self.status();
+
+            // If the relay is terminated or banned, break the loop.
+            if status.is_terminated() || status.is_banned() {
+                break;
+            }
+
+            // Check if reconnection is enabled
+            if self.opts.reconnect {
+                // Check if relay is marked as disconnected. If not, update status.
+                // Check if disconnected to avoid a possible double log
+                if !status.is_disconnected() {
+                    self.set_status(RelayStatus::Disconnected, true);
+                }
+
+                // Sleep before retry to connect
+                let interval: Duration = self.calculate_retry_interval();
+                tracing::debug!(
+                    "Reconnecting to '{}' relay in {} secs",
+                    self.url,
+                    interval.as_secs()
+                );
+
+                // Sleep before retry to connect
+                // Handle termination to allow exiting immediately if request is received during the sleep.
+                tokio::select! {
+                    // Sleep
+                    _ = time::sleep(interval) => {},
+                    // Handle termination notification
+                    _ = self.handle_terminate() => break,
+                }
+            } else {
+                // Reconnection disabled, set status to "terminated"
+                self.set_status(RelayStatus::Terminated, true);
+
+                // Break loop and exit
+                tracing::debug!(url = %self.url, "Reconnection disabled, breaking loop.");
+                break;
+            }
+        }
+
+        // Set that connection task is no longer running
+        self.atomic.running.store(false, Ordering::SeqCst);
+
+        tracing::debug!(url = %self.url, "Auto connect loop terminated.");
     }
 
     /// Depending on attempts and success, use default or incremental retry interval
