@@ -46,7 +46,7 @@ use crate::transport::websocket::{BoxSink, BoxStream};
 pub enum SubscriptionAutoClosedReason {
     /// NIP42 authentication failed
     AuthenticationFailed,
-    /// Closed
+    /// Closed with message
     Closed(String),
     /// Completed
     Completed,
@@ -1162,6 +1162,53 @@ mod tests {
         relay.wait_for_connection(Duration::from_secs(3)).await;
 
         assert_eq!(relay.status(), RelayStatus::Connected);
+    }
+
+    #[tokio::test]
+    async fn test_fetch_events() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let relay = Relay::new(url);
+
+        relay.connect();
+
+        // Signer
+        let keys = Keys::generate();
+
+        // Send an event
+        let event = EventBuilder::text_note("Test")
+            .sign_with_keys(&keys)
+            .unwrap();
+        let id = relay.send_event(&event).await.unwrap();
+
+        // Fetch by author and kind
+        let filter = Filter::new()
+            .author(keys.public_key)
+            .kind(Kind::TextNote)
+            .limit(3);
+        let res = relay
+            .fetch_events(filter, Duration::from_secs(5), ReqExitPolicy::ExitOnEOSE)
+            .await;
+        assert!(res.is_ok());
+        assert_eq!(res.unwrap().len(), 1);
+
+        // Fetch by ID
+        let filter = Filter::new().id(id);
+        let res = relay
+            .fetch_events(filter, Duration::from_secs(5), ReqExitPolicy::ExitOnEOSE)
+            .await;
+        assert!(res.is_ok());
+        assert_eq!(res.unwrap().len(), 1);
+
+        // Fetch without results
+        let filter = Filter::new().kind(Kind::Metadata);
+        let res = relay
+            .fetch_events(filter, Duration::from_secs(5), ReqExitPolicy::ExitOnEOSE)
+            .await;
+        assert!(res.is_ok());
+        assert_eq!(res.unwrap().len(), 0);
     }
 
     #[tokio::test]
