@@ -93,6 +93,13 @@ impl Tag {
         }
     }
 
+    #[inline]
+    fn erase_standardized(&mut self) {
+        if self.standardized.get().is_some() {
+            self.standardized = OnceCell::new();
+        }
+    }
+
     /// Parse tag
     ///
     /// Return error if the tag is empty!
@@ -172,6 +179,96 @@ impl Tag {
         self.buf.len()
     }
 
+    /// Appends a value to the back of the [`Tag`].
+    ///
+    /// Check [`Vec::push`] doc to learn more.
+    ///
+    /// This erases the [`TagStandard`] cell, if any.
+    pub fn push<S>(&mut self, value: S)
+    where
+        S: Into<String>,
+    {
+        // Erase indexes
+        self.erase_standardized();
+
+        // Append
+        self.buf.push(value.into());
+    }
+
+    /// Removes the last value and returns it.
+    /// If the [`Tag`] has only **one** value, returns `None`, since it can't be empty.
+    ///
+    /// Check [`Vec::pop`] doc to learn more.
+    ///
+    /// This erases the [`TagStandard`] cell, if any.
+    pub fn pop(&mut self) -> Option<String> {
+        // The tag must have at least one value!
+        if self.buf.len() <= 1 {
+            return None;
+        }
+
+        // Erase indexes
+        self.erase_standardized();
+
+        // Pop last item
+        self.buf.pop()
+    }
+
+    /// Inserts a value at position `index` within the vector,
+    /// shifting all other values after it to the right.
+    ///
+    /// The value at index `0` and `1` can't be empty.
+    /// If an empty string is passed for those indexes, `false` is returned.
+    ///
+    /// Returns `true` if the value has been inserted or updated successfully.
+    /// Returns `false` if `index > len`.
+    ///
+    /// Check [`Vec::insert`] doc to learn more.
+    ///
+    /// This erases the [`TagStandard`] cell, if any.
+    pub fn insert<S>(&mut self, index: usize, value: S) -> bool
+    where
+        S: Into<String>,
+    {
+        // Check if `index` is bigger than collection len
+        if index > self.buf.len() {
+            return false;
+        }
+
+        let value: String = value.into();
+
+        // Return false if the value is empty at position 0 or 1
+        if (index == 0 || index == 1) && value.is_empty() {
+            return false;
+        }
+
+        // Erase indexes
+        self.erase_standardized();
+
+        // Insert at position
+        self.buf.insert(index, value);
+
+        // Inserted successfully
+        true
+    }
+
+    /// Extends the collection.
+    ///
+    /// Check [`Vec::extend`] doc to learn more.
+    ///
+    /// This erases the [`TagStandard`] cell, if any.
+    pub fn extend<I, S>(&mut self, iter: I)
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        // Erase standardized tag
+        self.erase_standardized();
+
+        // Extend list
+        self.buf.extend(iter.into_iter().map(|v| v.into()));
+    }
+
     /// Get as slice of strings
     #[inline]
     pub fn as_slice(&self) -> &[String] {
@@ -211,14 +308,14 @@ impl Tag {
         Self::from_standardized_without_cell(TagStandard::Identifier(identifier.into()))
     }
 
-    /// Compose `["a", "<coordinate>"]` tag
+    /// Compose `["a", "<coordinate>", "<optional-relay-url>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
-    pub fn coordinate(coordinate: Coordinate) -> Self {
+    pub fn coordinate(coordinate: Coordinate, relay_url: Option<RelayUrl>) -> Self {
         Self::from_standardized_without_cell(TagStandard::Coordinate {
             coordinate,
-            relay_url: None,
+            relay_url,
             uppercase: false,
         })
     }
@@ -519,6 +616,54 @@ mod tests {
             t.content(),
             Some("2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45")
         );
+    }
+
+    #[test]
+    fn test_tag_push() {
+        let mut tag = Tag::parse(["d", "test"]).unwrap();
+        tag.push("test2");
+        assert_eq!(tag.len(), 3);
+        assert_eq!(tag.to_vec(), ["d", "test", "test2"]);
+    }
+
+    #[test]
+    fn test_tag_pop() {
+        let mut tag = Tag::parse(["d", "test"]).unwrap();
+        assert_eq!(tag.pop().unwrap(), "test");
+        assert_eq!(tag.len(), 1);
+
+        // Can't pop if the tag has only one value
+        assert!(tag.pop().is_none());
+        assert_eq!(tag.len(), 1);
+
+        assert_eq!(tag.to_vec(), ["d"]);
+    }
+
+    #[test]
+    fn test_tag_extend() {
+        let mut tag = Tag::parse(["p", "pk"]).unwrap();
+        tag.extend(["test", "test1"]);
+        assert_eq!(tag.len(), 4);
+        assert_eq!(tag.to_vec(), ["p", "pk", "test", "test1"]);
+    }
+
+    #[test]
+    fn test_tag_insert() {
+        let mut tag = Tag::parse(["p", "val", "relay", "other"]).unwrap();
+
+        // Can't insert an empty value at index 0
+        assert!(!tag.insert(0, ""));
+        assert_eq!(tag.len(), 4);
+
+        // Can't insert an empty value at index 1
+        assert!(!tag.insert(1, ""));
+        assert_eq!(tag.len(), 4);
+
+        // Insert a value at index 1
+        assert!(tag.insert(1, "pk"));
+        assert_eq!(tag.len(), 5);
+
+        assert_eq!(tag.to_vec(), ["p", "pk", "val", "relay", "other"]);
     }
 
     #[test]

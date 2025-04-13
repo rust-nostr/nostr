@@ -84,7 +84,7 @@ impl EventDeletionRequest {
         }
 
         for coordinate in self.coordinates.into_iter() {
-            tags.push(Tag::coordinate(coordinate));
+            tags.push(Tag::coordinate(coordinate, None));
         }
 
         EventBuilder::new(Kind::EventDeletion, self.reason.unwrap_or_default())

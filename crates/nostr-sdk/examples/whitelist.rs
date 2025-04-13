@@ -21,10 +21,10 @@ impl AdmitPolicy for WoT {
     ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
         Box::pin(async move {
             if self.allowed_public_keys.contains(&event.pubkey) {
-                return Ok(AdmitStatus::Success);
+                return Ok(AdmitStatus::success());
             }
 
-            Ok(AdmitStatus::Rejected)
+            Ok(AdmitStatus::rejected("Not in whitelist"))
         })
     }
 }

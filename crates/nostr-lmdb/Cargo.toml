@@ -13,11 +13,17 @@ keywords = ["nostr", "database", "lmdb"]
 
 [dependencies]
 async-utility.workspace = true
-heed = { version = "0.20", default-features = false, features = ["read-txn-no-tls"] }
 nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
 tokio = { workspace = true, features = ["sync"] }
 tracing.workspace = true
+
+[target.'cfg(not(all(target_os = "macos", target_os = "ios")))'.dependencies]
+heed = { version = "0.20", default-features = false, features = ["read-txn-no-tls"] }
+
+# POSIX semaphores are required for Apple's App Sandbox on iOS & macOS
+[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
+heed = { version = "0.20", default-features = false, features = ["read-txn-no-tls", "posix-sem"] }
 
 [dev-dependencies]
 tempfile = "3"

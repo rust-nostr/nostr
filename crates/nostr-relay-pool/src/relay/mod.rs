@@ -37,6 +37,7 @@ pub use self::options::{
 };
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
+use crate::policy::AdmitStatus;
 use crate::shared::SharedState;
 use crate::transport::websocket::{BoxSink, BoxStream};
 
@@ -266,8 +267,8 @@ impl Relay {
     pub async fn wait_for_connection(&self, timeout: Duration) {
         let status: RelayStatus = self.status();
 
-        // Already connected
-        if status.is_connected() {
+        // Immediately returns if the relay is already connected, if it's terminated or banned.
+        if status.is_connected() || status.is_terminated() || status.is_banned() {
             return;
         }
 
@@ -278,11 +279,18 @@ impl Relay {
         time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
                 // Wait for status change. Break loop when connect.
-                if let RelayNotification::RelayStatus {
-                    status: RelayStatus::Connected,
-                } = notification
-                {
-                    break;
+                if let RelayNotification::RelayStatus { status } = notification {
+                    match status {
+                        // Waiting for connection
+                        RelayStatus::Initialized
+                        | RelayStatus::Pending
+                        | RelayStatus::Connecting
+                        | RelayStatus::Disconnected => {}
+                        // Connected or terminated/banned
+                        RelayStatus::Connected | RelayStatus::Terminated | RelayStatus::Banned => {
+                            break
+                        }
+                    }
                 }
             }
         })
@@ -300,7 +308,7 @@ impl Relay {
     /// Use [`Relay::connect`] if you want to immediately spawn a connection task,
     /// regardless of whether the initial connection succeeds.
     ///
-    /// Returns an error if the connection fails.
+    /// Returns an error if the connection fails or if the relay has been banned.
     ///
     /// # Automatic reconnection
     ///
@@ -308,9 +316,24 @@ impl Relay {
     /// the connection task will automatically attempt to reconnect.
     /// This behavior can be disabled by changing [`RelayOptions::reconnect`] option.
     pub async fn try_connect(&self, timeout: Duration) -> Result<(), Error> {
+        let status: RelayStatus = self.status();
+
+        if status.is_banned() {
+            return Err(Error::Banned);
+        }
+
         // Check if relay can't connect
-        if !self.status().can_connect() {
+        if !status.can_connect() {
             return Ok(());
+        }
+
+        // Check connection policy
+        if let AdmitStatus::Rejected { reason } = self.inner.check_connection_policy().await? {
+            // Set status to "terminated"
+            self.inner.set_status(RelayStatus::Terminated, false);
+
+            // Return error
+            return Err(Error::ConnectionRejected { reason });
         }
 
         // Try to connect
@@ -327,11 +350,17 @@ impl Relay {
     }
 
     /// Disconnect from relay and set status to [`RelayStatus::Terminated`].
-    ///
-    /// Returns immediately if the status is already [`RelayStatus::Terminated`].
     #[inline]
     pub fn disconnect(&self) {
         self.inner.disconnect()
+    }
+
+    /// Ban relay and set status to [`RelayStatus::Banned`].
+    ///
+    /// A banned relay can't reconnect again.
+    #[inline]
+    pub fn ban(&self) {
+        self.inner.ban()
     }
 
     /// Send msg to relay
@@ -726,10 +755,33 @@ impl Relay {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use async_utility::time;
     use nostr_relay_builder::prelude::*;
 
     use super::{Error, *};
+    use crate::policy::{AdmitPolicy, PolicyError};
+
+    #[derive(Debug)]
+    struct CustomTestPolicy {
+        banned_relays: HashSet<RelayUrl>,
+    }
+
+    impl AdmitPolicy for CustomTestPolicy {
+        fn admit_connection<'a>(
+            &'a self,
+            relay_url: &'a RelayUrl,
+        ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
+            Box::pin(async move {
+                if self.banned_relays.contains(relay_url) {
+                    Ok(AdmitStatus::rejected("banned"))
+                } else {
+                    Ok(AdmitStatus::Success)
+                }
+            })
+        }
+    }
 
     fn new_relay(url: RelayUrl, opts: RelayOptions) -> Relay {
         Relay::new(url, SharedState::default(), opts)
@@ -758,6 +810,25 @@ mod tests {
         }
 
         (relay, mock)
+    }
+
+    async fn setup_subscription_relay() -> (SubscriptionId, Relay, MockRelay) {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        // Sender
+        let relay: Relay = new_relay(url.clone(), RelayOptions::default());
+        relay.connect();
+
+        // Subscribe
+        let filter = Filter::new().kind(Kind::TextNote);
+        let id = relay
+            .subscribe(filter, SubscribeOptions::default())
+            .await
+            .unwrap();
+
+        (id, relay, mock)
     }
 
     #[tokio::test]
@@ -1032,6 +1103,41 @@ mod tests {
         assert_eq!(relay.status(), RelayStatus::Terminated);
 
         assert!(!relay.inner.is_running());
+    }
+
+    #[tokio::test]
+    async fn test_ban_relay() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let relay = new_relay(url, RelayOptions::default());
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.try_connect(Duration::from_secs(2)).await.unwrap();
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        relay.ban();
+
+        assert_eq!(relay.status(), RelayStatus::Banned);
+        assert!(!relay.inner.is_running());
+
+        // Retry to connect
+        let res = relay.try_connect(Duration::from_secs(2)).await;
+        assert!(matches!(res.unwrap_err(), Error::Banned));
+
+        assert_eq!(relay.status(), RelayStatus::Banned);
+
+        // Try to call disconnect. The status mustn't change.
+        relay.disconnect();
+
+        assert_eq!(relay.status(), RelayStatus::Banned);
+
+        // Health check
+        let res = relay.inner.health_check();
+        assert!(matches!(res.unwrap_err(), Error::Banned));
     }
 
     #[tokio::test]
@@ -1374,6 +1480,59 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_unsubscribe() {
+        let (id, relay, _mock) = setup_subscription_relay().await;
+
+        time::sleep(Duration::from_secs(1)).await;
+
+        assert!(relay.subscription(&id).await.is_some());
+
+        relay.unsubscribe(&id).await.unwrap();
+
+        assert!(relay.subscription(&id).await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_unsubscribe_all() {
+        let (_id, relay, _mock) = setup_subscription_relay().await;
+
+        time::sleep(Duration::from_secs(1)).await;
+
+        relay.unsubscribe_all().await.unwrap();
+
+        relay.subscriptions().await.is_empty();
+    }
+
+    #[tokio::test]
+    async fn test_admit_connection() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let mut relay = new_relay(url.clone(), RelayOptions::default());
+
+        relay.inner.state.admit_policy = Some(Arc::new(CustomTestPolicy {
+            banned_relays: HashSet::from([url]),
+        }));
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.connect();
+
+        time::sleep(Duration::from_secs(2)).await;
+
+        assert_eq!(relay.status(), RelayStatus::Terminated);
+        assert!(!relay.inner.is_running());
+
+        // Retry to connect
+        let res = relay.try_connect(Duration::from_secs(2)).await;
+        assert!(matches!(res.unwrap_err(), Error::ConnectionRejected { .. }));
+
+        assert_eq!(relay.status(), RelayStatus::Terminated);
+        assert!(!relay.inner.is_running());
     }
 
     // TODO: add negentropy reconciliation test

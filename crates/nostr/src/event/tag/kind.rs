@@ -47,6 +47,10 @@ pub enum TagKind<'a> {
     CurrentParticipants,
     /// Delegation
     Delegation,
+    /// Required dependency
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    Dependency,
     /// Description
     Description,
     /// Size of the file in pixels
@@ -61,10 +65,18 @@ pub enum TagKind<'a> {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
     Expiration,
+    /// File extension
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    Extension,
     /// File
     File,
     /// Image
     Image,
+    /// License of the shared content
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    License,
     /// Lnurl
     Lnurl,
     /// Magnet
@@ -103,8 +115,16 @@ pub enum TagKind<'a> {
     Relay,
     /// Relays
     Relays,
+    /// Reference to the origin repository
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    Repository,
     /// Request
     Request,
+    /// Runtime or environment specification
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+    Runtime,
     /// Size of the file in bytes
     Size,
     /// Starts
@@ -282,14 +302,17 @@ impl<'a> TagKind<'a> {
             Self::ContentWarning => "content-warning",
             Self::CurrentParticipants => "current_participants",
             Self::Delegation => "delegation",
+            Self::Dependency => "dep",
             Self::Description => "description",
             Self::Dim => "dim",
             Self::Emoji => "emoji",
             Self::Encrypted => "encrypted",
             Self::Ends => "ends",
             Self::Expiration => "expiration",
+            Self::Extension => "extension",
             Self::File => "file",
             Self::Image => "image",
+            Self::License => "license",
             Self::Lnurl => "lnurl",
             Self::Magnet => "magnet",
             Self::Maintainers => "maintainers",
@@ -307,7 +330,9 @@ impl<'a> TagKind<'a> {
             Self::Recording => "recording",
             Self::Relay => "relay",
             Self::Relays => "relays",
+            Self::Repository => "repo",
             Self::Request => "request",
+            Self::Runtime => "runtime",
             Self::Size => "size",
             Self::Starts => "starts",
             Self::Status => "status",
@@ -350,14 +375,17 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "content-warning" => Self::ContentWarning,
             "current_participants" => Self::CurrentParticipants,
             "delegation" => Self::Delegation,
+            "dep" => Self::Dependency,
             "description" => Self::Description,
             "dim" => Self::Dim,
             "emoji" => Self::Emoji,
             "encrypted" => Self::Encrypted,
             "ends" => Self::Ends,
             "expiration" => Self::Expiration,
+            "extension" => Self::Extension,
             "file" => Self::File,
             "image" => Self::Image,
+            "license" => Self::License,
             "lnurl" => Self::Lnurl,
             "magnet" => Self::Magnet,
             "maintainers" => Self::Maintainers,
@@ -374,7 +402,9 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "recording" => Self::Recording,
             "relay" => Self::Relay,
             "relays" => Self::Relays,
+            "repo" => Self::Repository,
             "request" => Self::Request,
+            "runtime" => Self::Runtime,
             "size" => Self::Size,
             "starts" => Self::Starts,
             "status" => Self::Status,
@@ -437,14 +467,29 @@ mod tests {
         assert_eq!(TagKind::from("clone"), TagKind::Clone);
         assert_eq!(TagKind::Clone.as_str(), "clone");
 
+        assert_eq!(TagKind::from("dep"), TagKind::Dependency);
+        assert_eq!(TagKind::Dependency.as_str(), "dep");
+
         assert_eq!(TagKind::from("expiration"), TagKind::Expiration);
         assert_eq!(TagKind::Expiration.as_str(), "expiration");
+
+        assert_eq!(TagKind::from("extension"), TagKind::Extension);
+        assert_eq!(TagKind::Extension.as_str(), "extension");
 
         assert_eq!(TagKind::from("file"), TagKind::File);
         assert_eq!(TagKind::File.as_str(), "file");
 
+        assert_eq!(TagKind::from("license"), TagKind::License);
+        assert_eq!(TagKind::License.as_str(), "license");
+
         assert_eq!(TagKind::from("maintainers"), TagKind::Maintainers);
         assert_eq!(TagKind::Maintainers.as_str(), "maintainers");
+
+        assert_eq!(TagKind::from("repo"), TagKind::Repository);
+        assert_eq!(TagKind::Repository.as_str(), "repo");
+
+        assert_eq!(TagKind::from("runtime"), TagKind::Runtime);
+        assert_eq!(TagKind::Runtime.as_str(), "runtime");
 
         assert_eq!(TagKind::from("tracker"), TagKind::Tracker);
         assert_eq!(TagKind::Tracker.as_str(), "tracker");

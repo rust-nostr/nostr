@@ -21,10 +21,10 @@ impl AdmitPolicy for Filtering {
     ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
         Box::pin(async move {
             if self.muted_public_keys.contains(&event.pubkey) {
-                return Ok(AdmitStatus::Rejected);
+                return Ok(AdmitStatus::rejected("Muted"));
             }
 
-            Ok(AdmitStatus::Success)
+            Ok(AdmitStatus::success())
         })
     }
 }

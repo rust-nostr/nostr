@@ -7,7 +7,7 @@
 
 <!-- Template
 
-## [Unreleased]
+## Unreleased
 
 ### Summary
 
@@ -25,27 +25,51 @@
 
 -->
 
-## [Unreleased]
+## Unreleased
 
 ### Summary
 
 ### Breaking changes
 
+* nostr: add optional relay URL arg to `Tag::coordinate` ([Yuki Kishimoto])
+* nostr: update `TagStandard::Label` and `EventBuilder::label` ([Yuki Kishimoto])
+* pool: remove `Error::Failed` variant ([Yuki Kishimoto])
+* pool: returns `Output` instead of an error if the message/event sending fails for all relays ([Yuki Kishimoto])
+* pool: add `reason` field to `AdmitStatus::Rejected` variant ([Yuki Kishimoto])
+
 ### Changed
+
+* lmdb: enable POSIX semaphores for macOS and iOS targets ([Yuki Kishimoto])
+* ndb: bump nostrdb to 0.6.1 ([Yuki Kishimoto])
+* pool: extend unit tests ([Yuki Kishimoto])
 
 ### Added
 
+* nostr: add NIP-C0 (Code Snippets) support ([awiteb])
 * nostr: add `TagKind::u` constructor ([Yuki Kishimoto])
 * nostr: derive `Copy` for `HttpMethod` ([Yuki Kishimoto])
 * nostr: add `nip98::verify_auth_header` ([Yuki Kishimoto])
+* nostr: add `push`, `pop`, `insert` and `extend` methods to the `Tag` struct ([Yuki Kishimoto])
+* nostr: add `nip47::Notification` ([daywalker90])
+* pool: add `Relay::ban` method ([Yuki Kishimoto])
+* pool: add `AdmitPolicy::admit_connection` method ([Yuki Kishimoto])
 
 ### Fixed
+
+* nostr: fix missing `transactions` object in serialization of nip47 ListTransactions ResponseResult ([daywalker90])
+* nostr: fix NIP32 implementation ([Yuki Kishimoto])
 
 ### Removed
 
 ### Deprecated
 
-## [v0.40.0]
+## v0.40.1 - 2025/03/24
+
+### Fixed
+
+* pool: fix `Relay::unsubscribe_all` method hangs ([Yuki Kishimoto])
+
+## v0.40.0 - 2025/03/18
 
 ### Summary
 
@@ -154,7 +178,7 @@ add Mac Catalyst support for Swift package, many cleanups, refactoring and perfo
 * Deprecate options to set min POW difficulty ([Yuki Kishimoto])
 * nostr: deprecate `EncryptedSecretKey::to_secret_key` method ([Yuki Kishimoto])
 
-## [v0.39.0] - 2025/01/31
+## v0.39.0 - 2025/01/31
 
 ### Summary
 
@@ -286,7 +310,7 @@ huge reduction of UniFFI bindings binaries size, many cleanups, refactoring and 
 * database: deprecate `NostrEventsDatabase::event_seen_on_relays` ([Yuki Kishimoto])
 * sdk: deprecate `Options::req_filters_chunk_size` ([Yuki Kishimoto])
 
-## [v0.38.0] - 2024/12/31
+## v0.38.0 - 2024/12/31
 
 ### Summary
 
@@ -397,7 +421,7 @@ NIP35 support, better logs and docs, performance improvements, bugs fix and more
 * sdk: deprecate `timeout` option ([Yuki Kishimoto])
 * sdk: deprecate `Options::difficulty` and `Client::update_difficulty` ([Yuki Kishimoto])
 
-## [v0.37.0] - 2024/11/27
+## v0.37.0 - 2024/11/27
 
 ### Summary
 
@@ -511,7 +535,7 @@ From this release all the rust features are disabled by default (except `std` fe
 * sdk: deprecate `Client::with_opts` ([Yuki Kishimoto])
 * sdk: deprecate `Options::connection_timeout` ([Yuki Kishimoto])
 
-## [v0.36.0] - 2024/11/05
+## v0.36.0 - 2024/11/05
 
 ### Summary
 
@@ -646,7 +670,7 @@ Note for devs who are using `nostr-protocol` (Python), `org.rust-nostr:nostr` (K
 * webln: remove `nostr-webln` crate ([Yuki Kishimoto])
 * sqlite: remove `nostr-sqlite` crate ([Yuki Kishimoto])
 
-## [v0.35.0] - 2024/09/19
+## v0.35.0 - 2024/09/19
 
 ### Summary
 
@@ -780,7 +804,7 @@ allow usage of embedded tor client on mobile devices, many improvements, bugs fi
 * js(nostr): remove `Keys::vanity` ([Yuki Kishimoto])
 * cli: remove `reverse` flag from `query` command ([Yuki Kishimoto])
 
-## [v0.34.0] - 2024/08/15
+## v0.34.0 - 2024/08/15
 
 ### Summary
 
@@ -865,7 +889,7 @@ better consistency (`RelayPool::get_events_of` and `Relay::get_events_of` get ev
 * sdk: remove `Client::send_direct_msg` ([Yuki Kishimoto])
 * cli: remove `tracing-subscriber` dep ([Yuki Kishimoto])
 
-## [v0.33.0] - 2024/07/16
+## v0.33.0 - 2024/07/16
 
 ### Summary
 
@@ -938,7 +962,7 @@ bug fixes (NIP-42 auth not works correctly, NIP-46 "ACK" message not handled, ..
 * pool: remove `RelayStatus::Stop` ([Yuki Kishimoto])
 * Remove all `start` and `stop` methods ([Yuki Kishimoto])
 
-## [v0.32.0] - 2024/06/07
+## v0.32.0 - 2024/06/07
 
 ### Summary
 
@@ -1018,7 +1042,7 @@ Note for kotlin devs: from this release the packages will be published at `org.r
 * sqlite: removed `deadpool-sqlite` dep ([Yuki Kishimoto])
 * ffi(nostr): remove `Keys::from_mnemonic_with_account` and `Keys::from_mnemonic_advanced` ([Yuki Kishimoto])
 
-## [v0.31.0] - 2024/05/17
+## v0.31.0 - 2024/05/17
 
 ### Summary
 
@@ -1094,7 +1118,7 @@ removed zap split from `client.zap` method, many improvements and more!
 * nostr: remove `GenericTagValue` ([Yuki Kishimoto])
 * ffi(nostr): remove `Kind::match*` methods ([Yuki Kishimoto])
 
-## [v0.30.0] - 2024/04/15
+## v0.30.0 - 2024/04/15
 
 ### Summary
 
@@ -1205,17 +1229,4 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [cipres]: https://github.com/PancakesArchitect (nostr:npub1r3cnzta52fee26c83cnes8wvzkch3kud2kll67k402x04mttt26q0wfx0c)
 [awiteb]: https://git.4rs.nl (nostr:nprofile1qqsqqqqqq9g9uljgjfcyd6dm4fegk8em2yfz0c3qp3tc6mntkrrhawgpzfmhxue69uhkummnw3ezudrjwvhxumq3dg0ly)
 [magine]: https://github.com/ma233 (?)
-
-<!-- Tags -->
-[Unreleased]: https://github.com/rust-nostr/nostr/compare/v0.40.0...HEAD
-[v0.40.0]: https://github.com/rust-nostr/nostr/compare/v0.39.0...v0.40.0
-[v0.39.0]: https://github.com/rust-nostr/nostr/compare/v0.38.0...v0.39.0
-[v0.38.0]: https://github.com/rust-nostr/nostr/compare/v0.37.0...v0.38.0
-[v0.37.0]: https://github.com/rust-nostr/nostr/compare/v0.36.0...v0.37.0
-[v0.36.0]: https://github.com/rust-nostr/nostr/compare/v0.35.0...v0.36.0
-[v0.35.0]: https://github.com/rust-nostr/nostr/compare/v0.34.0...v0.35.0
-[v0.34.0]: https://github.com/rust-nostr/nostr/compare/v0.33.0...v0.34.0
-[v0.33.0]: https://github.com/rust-nostr/nostr/compare/v0.32.0...v0.33.0
-[v0.32.0]: https://github.com/rust-nostr/nostr/compare/v0.31.0...v0.32.0
-[v0.31.0]: https://github.com/rust-nostr/nostr/compare/v0.30.0...v0.31.0
-[v0.30.0]: https://github.com/rust-nostr/nostr/compare/v0.29.0...v0.30.0
+[daywalker90]: https://github.com/daywalker90 (nostr:npub1kuemsj7xryp0uje36dr53scn9mxxh8ema90hw9snu46633n9n2hqp3drjt)

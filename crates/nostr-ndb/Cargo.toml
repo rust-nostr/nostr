@@ -14,4 +14,4 @@ keywords = ["nostr", "database", "ndb", "nostrdb"]
 [dependencies]
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
-nostrdb = "0.5"
+nostrdb = "0.6"

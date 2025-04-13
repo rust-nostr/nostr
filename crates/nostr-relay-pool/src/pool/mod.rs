@@ -673,10 +673,6 @@ impl RelayPool {
             }
         }
 
-        if output.success.is_empty() {
-            return Err(Error::Failed);
-        }
-
         Ok(output)
     }
 
@@ -752,10 +748,6 @@ impl RelayPool {
                     output.failed.insert(url, e.to_string());
                 }
             }
-        }
-
-        if output.success.is_empty() {
-            return Err(Error::Failed);
         }
 
         Ok(output)
@@ -916,10 +908,6 @@ impl RelayPool {
                     output.failed.insert(url, e.to_string());
                 }
             }
-        }
-
-        if output.success.is_empty() {
-            return Err(Error::Failed);
         }
 
         Ok(output)

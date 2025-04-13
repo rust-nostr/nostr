@@ -194,7 +194,7 @@ fn verify_coordinate(kind: &Kind, identifier: &str) -> Result<(), Error> {
 
 impl From<Coordinate> for Tag {
     fn from(coordinate: Coordinate) -> Self {
-        Self::coordinate(coordinate)
+        Self::coordinate(coordinate, None)
     }
 }
 

@@ -78,6 +78,7 @@ pub use crate::nips::nip94::{self, *};
 pub use crate::nips::nip96::{self, *};
 #[cfg(feature = "nip98")]
 pub use crate::nips::nip98::{self, *};
+pub use crate::nips::nipc0::{self, *};
 #[cfg(feature = "parser")]
 pub use crate::parser::{self, *};
 pub use crate::signer::{self, *};

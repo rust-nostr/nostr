@@ -40,16 +40,49 @@ impl PolicyError {
 }
 
 /// Admission status
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum AdmitStatus {
     /// Admission succeeds
     Success,
     /// Admission rejected
-    Rejected,
+    Rejected {
+        /// Optional reason
+        reason: Option<String>,
+    },
+}
+
+impl AdmitStatus {
+    /// Success
+    #[inline]
+    pub fn success() -> Self {
+        Self::Success
+    }
+
+    /// Rejection with reason
+    #[inline]
+    pub fn rejected<S>(reason: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::Rejected {
+            reason: Some(reason.into()),
+        }
+    }
 }
 
 /// Admission policy
 pub trait AdmitPolicy: fmt::Debug + Send + Sync {
+    /// Admit connecting to a relay
+    ///
+    /// Returns [`AdmitStatus::Success`] if the connection is allowed, otherwise [`AdmitStatus::Rejected`].
+    fn admit_connection<'a>(
+        &'a self,
+        relay_url: &'a RelayUrl,
+    ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
+        let _ = relay_url;
+        Box::pin(async move { Ok(AdmitStatus::Success) })
+    }
+
     /// Admit [`Event`]
     ///
     /// Returns [`AdmitStatus::Success`] if the event is admitted, otherwise [`AdmitStatus::Rejected`].
@@ -58,5 +91,8 @@ pub trait AdmitPolicy: fmt::Debug + Send + Sync {
         relay_url: &'a RelayUrl,
         subscription_id: &'a SubscriptionId,
         event: &'a Event,
-    ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>>;
+    ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
+        let _ = (relay_url, subscription_id, event);
+        Box::pin(async move { Ok(AdmitStatus::Success) })
+    }
 }

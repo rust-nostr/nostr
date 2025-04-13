@@ -17,7 +17,9 @@ pub extern crate nostr_database as database;
 pub extern crate nostrdb;
 
 use nostr_database::prelude::*;
-use nostrdb::{Config, Filter as NdbFilter, Ndb, NdbStrVariant, Note, QueryResult, Transaction};
+use nostrdb::{
+    Config, Filter as NdbFilter, IngestMetadata, Ndb, NdbStrVariant, Note, QueryResult, Transaction,
+};
 
 const MAX_RESULTS: i32 = 10_000;
 
@@ -82,7 +84,7 @@ impl NostrEventsDatabase for NdbDatabase {
             };
             let json: String = msg.as_json();
             self.db
-                .process_event(&json)
+                .process_event_with(&json, IngestMetadata::new())
                 .map_err(DatabaseError::backend)?;
             // TODO: shouldn't return a success since we don't know if the ingestion was successful or not.
             Ok(SaveEventStatus::Success)
@@ -131,7 +133,7 @@ impl NostrEventsDatabase for NdbDatabase {
     fn count(&self, filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>> {
         Box::pin(async move {
             let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
-            let res: Vec<QueryResult> = ndb_query(&self.db, &txn, filter)?;
+            let res: Vec<QueryResult> = ndb_query(&self.db, &txn, &filter)?;
             Ok(res.len())
         })
     }
@@ -140,7 +142,7 @@ impl NostrEventsDatabase for NdbDatabase {
         Box::pin(async move {
             let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
             let mut events: Events = Events::new(&filter);
-            let res: Vec<QueryResult> = ndb_query(&self.db, &txn, filter)?;
+            let res: Vec<QueryResult> = ndb_query(&self.db, &txn, &filter)?;
             events.extend(
                 res.into_iter()
                     .filter_map(|r| ndb_note_to_event(r.note).ok())
@@ -156,7 +158,7 @@ impl NostrEventsDatabase for NdbDatabase {
     ) -> BoxedFuture<Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
         Box::pin(async move {
             let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
-            let res: Vec<QueryResult> = ndb_query(&self.db, &txn, filter)?;
+            let res: Vec<QueryResult> = ndb_query(&self.db, &txn, &filter)?;
             Ok(res
                 .into_iter()
                 .map(|r| ndb_note_to_neg_item(r.note))
@@ -179,37 +181,37 @@ impl NostrDatabaseWipe for NdbDatabase {
 fn ndb_query<'a>(
     db: &Ndb,
     txn: &'a Transaction,
-    filter: Filter,
+    filter: &Filter,
 ) -> Result<Vec<QueryResult<'a>>, DatabaseError> {
     let filter: nostrdb::Filter = ndb_filter_conversion(filter);
     db.query(txn, &[filter], MAX_RESULTS)
         .map_err(DatabaseError::backend)
 }
 
-fn ndb_filter_conversion(f: Filter) -> nostrdb::Filter {
+fn ndb_filter_conversion(f: &Filter) -> nostrdb::Filter {
     let mut filter = NdbFilter::new();
 
-    if let Some(ids) = f.ids {
+    if let Some(ids) = &f.ids {
         if !ids.is_empty() {
             filter = filter.ids(ids.iter().map(|p| p.as_bytes()));
         }
     }
 
-    if let Some(authors) = f.authors {
+    if let Some(authors) = &f.authors {
         if !authors.is_empty() {
             filter = filter.authors(authors.iter().map(|p| p.as_bytes()));
         }
     }
 
-    if let Some(kinds) = f.kinds {
+    if let Some(kinds) = &f.kinds {
         if !kinds.is_empty() {
-            filter = filter.kinds(kinds.into_iter().map(|p| p.as_u16() as u64));
+            filter = filter.kinds(kinds.iter().map(|p| p.as_u16() as u64));
         }
     }
 
     if !f.generic_tags.is_empty() {
-        for (single_letter, set) in f.generic_tags.into_iter() {
-            filter = filter.tags(set, single_letter.as_char());
+        for (single_letter, set) in f.generic_tags.iter() {
+            filter = filter.tags(set.iter().map(|s| s.as_str()), single_letter.as_char());
         }
     }
 

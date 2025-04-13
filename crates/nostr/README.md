@@ -172,6 +172,7 @@ The following crate feature flags are available:
 |     ✅     | [96 - HTTP File Storage Integration](https://github.com/nostr-protocol/nips/blob/master/96.md)                  |
 |     ✅     | [98 - HTTP Auth](https://github.com/nostr-protocol/nips/blob/master/98.md)                                      |
 |     ❌     | [99 - Classified Listings](https://github.com/nostr-protocol/nips/blob/master/99.md)                            |
+|     ✅     | [C0 - Code Snippets](https://github.com/nostr-protocol/nips/blob/master/C0.md)                                  |
 
 ## State
 

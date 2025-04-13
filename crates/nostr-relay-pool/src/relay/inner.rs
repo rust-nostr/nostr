@@ -20,7 +20,7 @@ use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDe
 use nostr::secp256k1::rand::{self, Rng};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, RwLock};
+use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard};
 
 use super::constants::{
     DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE,
@@ -214,6 +214,7 @@ impl InnerRelay {
                 RelayStatus::Terminated => {
                     tracing::info!("Completely disconnected from '{}'", self.url)
                 }
+                RelayStatus::Banned => tracing::info!(url = %self.url, "Relay banned."),
             }
         }
 
@@ -225,9 +226,14 @@ impl InnerRelay {
     pub(super) fn health_check(&self) -> Result<(), Error> {
         let status: RelayStatus = self.status();
 
-        // Relay not ready (never called connect method)
+        // Relay is not ready (never called connect method)
         if status.is_initialized() {
             return Err(Error::NotReady);
+        }
+
+        // The relay has been banned
+        if status.is_banned() {
+            return Err(Error::Banned);
         }
 
         if !status.is_connected()
@@ -349,11 +355,6 @@ impl InnerRelay {
         }
     }
 
-    pub(crate) async fn remove_subscription(&self, id: &SubscriptionId) {
-        let mut subscriptions = self.atomic.subscriptions.write().await;
-        subscriptions.remove(id);
-    }
-
     #[inline]
     pub fn queue(&self) -> usize {
         self.atomic.channels.nostr_queue()
@@ -406,86 +407,113 @@ impl InnerRelay {
         }
     }
 
-    pub(super) fn spawn_connection_task(&self, mut stream: Option<(BoxSink, BoxStream)>) {
+    pub(super) async fn check_connection_policy(&self) -> Result<AdmitStatus, Error> {
+        match &self.state.admit_policy {
+            Some(policy) => Ok(policy.admit_connection(&self.url).await?),
+            None => Ok(AdmitStatus::Success),
+        }
+    }
+
+    pub(super) fn spawn_connection_task(&self, stream: Option<(BoxSink, BoxStream)>) {
         if self.is_running() {
             tracing::warn!(url = %self.url, "Connection task is already running.");
             return;
         }
 
-        let relay = self.clone();
-        task::spawn(async move {
-            // Set that connection task is running
-            relay.atomic.running.store(true, Ordering::SeqCst);
+        // Spawn task
+        let relay: InnerRelay = self.clone();
+        task::spawn(relay.connection_task(stream));
+    }
 
-            // Lock receiver
-            let mut rx_nostr = relay.atomic.channels.rx_nostr().await;
+    async fn connection_task(self, mut stream: Option<(BoxSink, BoxStream)>) {
+        // Set connection task as running
+        let is_running: bool = self.atomic.running.swap(true, Ordering::SeqCst);
 
-            // Last websocket error
-            // Store it to avoid printing every time the same connection error
-            let mut last_ws_error = None;
+        // Re-check if is already running.
+        // This must never happen.
+        assert!(
+            !is_running,
+            "Connection task for '{}' is already running.",
+            self.url
+        );
 
-            // Auto-connect loop
-            loop {
-                // TODO: check in the relays state database if relay can connect (different from the previous check)
-                // TODO: if the relay score is too low, immediately exit.
-                // TODO: at every loop iteration check the score and if it's too low, exit
+        // Lock receiver
+        let mut rx_nostr = self.atomic.channels.rx_nostr().await;
 
-                // Connect and run message handler
-                // The termination requests are handled inside this method!
-                relay
-                    .connect_and_run(stream, &mut rx_nostr, &mut last_ws_error)
-                    .await;
+        // Last websocket error
+        // Store it to avoid printing every time the same connection error
+        let mut last_ws_error = None;
 
-                // Update stream to `None`, meaning that it was already used (if was some).
-                stream = None;
+        // Auto-connect loop
+        loop {
+            // Check if the connection is allowed
+            match self.check_connection_policy().await {
+                Ok(status) => {
+                    // Connection rejected, update status and break the loop.
+                    if let AdmitStatus::Rejected { reason } = status {
+                        if let Some(reason) = reason {
+                            tracing::warn!(reason = %reason, "Connection rejected by admission policy.");
+                        }
 
-                // Get status
-                let status: RelayStatus = relay.status();
-
-                // If the status is set to "terminated", break loop.
-                if status.is_terminated() {
-                    break;
-                }
-
-                // Check if reconnection is enabled
-                if relay.opts.reconnect {
-                    // Check if relay is marked as disconnected. If not, update status.
-                    // Check if disconnected to avoid a possible double log
-                    if !status.is_disconnected() {
-                        relay.set_status(RelayStatus::Disconnected, true);
+                        // Set the status to "terminated" and break loop.
+                        self.set_status(RelayStatus::Terminated, false);
+                        break;
                     }
-
-                    // Sleep before retry to connect
-                    let interval: Duration = relay.calculate_retry_interval();
-                    tracing::debug!(
-                        "Reconnecting to '{}' relay in {} secs",
-                        relay.url,
-                        interval.as_secs()
-                    );
-
-                    // Sleep before retry to connect
-                    // Handle termination to allow to exit immediately if request is received during the sleep.
-                    tokio::select! {
-                        // Sleep
-                        _ = time::sleep(interval) => {},
-                        // Handle termination notification
-                        _ = relay.handle_terminate() => break,
-                    }
-                } else {
-                    // Reconnection disabled, set status to "terminated"
-                    relay.set_status(RelayStatus::Terminated, true);
-
-                    // Break loop and exit
-                    tracing::debug!(url = %relay.url, "Reconnection disabled, breaking loop.");
-                    break;
                 }
+                Err(e) => tracing::error!(error = %e, "Impossible to check connection policy."),
             }
 
-            // Set that connection task is no longer running
-            relay.atomic.running.store(false, Ordering::SeqCst);
+            // Connect and run message handler
+            // The termination requests are handled inside this method!
+            self.connect_and_run(stream.take(), &mut rx_nostr, &mut last_ws_error)
+                .await;
 
-            tracing::debug!(url = %relay.url, "Auto connect loop terminated.");
-        });
+            // Get status
+            let status: RelayStatus = self.status();
+
+            // If the relay is terminated or banned, break the loop.
+            if status.is_terminated() || status.is_banned() {
+                break;
+            }
+
+            // Check if reconnection is enabled
+            if self.opts.reconnect {
+                // Check if relay is marked as disconnected. If not, update status.
+                // Check if disconnected to avoid a possible double log
+                if !status.is_disconnected() {
+                    self.set_status(RelayStatus::Disconnected, true);
+                }
+
+                // Sleep before retry to connect
+                let interval: Duration = self.calculate_retry_interval();
+                tracing::debug!(
+                    "Reconnecting to '{}' relay in {} secs",
+                    self.url,
+                    interval.as_secs()
+                );
+
+                // Sleep before retry to connect
+                // Handle termination to allow exiting immediately if request is received during the sleep.
+                tokio::select! {
+                    // Sleep
+                    _ = time::sleep(interval) => {},
+                    // Handle termination notification
+                    _ = self.handle_terminate() => break,
+                }
+            } else {
+                // Reconnection disabled, set status to "terminated"
+                self.set_status(RelayStatus::Terminated, true);
+
+                // Break loop and exit
+                tracing::debug!(url = %self.url, "Reconnection disabled, breaking loop.");
+                break;
+            }
+        }
+
+        // Set that connection task is no longer running
+        self.atomic.running.store(false, Ordering::SeqCst);
+
+        tracing::debug!(url = %self.url, "Auto connect loop terminated.");
     }
 
     /// Depending on attempts and success, use default or incremental retry interval
@@ -527,12 +555,10 @@ impl InnerRelay {
         self.opts.retry_interval
     }
 
+    #[inline]
     async fn handle_terminate(&self) {
         // Wait to be notified
         self.atomic.channels.terminate.notified().await;
-
-        // Update status
-        self.set_status(RelayStatus::Terminated, true);
     }
 
     pub(super) async fn _try_connect(
@@ -543,7 +569,7 @@ impl InnerRelay {
         // Update status
         self.set_status(RelayStatus::Connecting, true);
 
-        // Add attempt
+        // Increase the attempts
         self.stats.new_attempt();
 
         // Try to connect
@@ -553,21 +579,21 @@ impl InnerRelay {
             // Connect
             res = self.state.transport.connect((&self.url).into(), &self.opts.connection_mode, timeout) => match res {
                 Ok((ws_tx, ws_rx)) => {
-                // Update status
-                self.set_status(RelayStatus::Connected, true);
+                    // Update status
+                    self.set_status(RelayStatus::Connected, true);
 
-                // Increment success stats
-                self.stats.new_success();
+                    // Increment success stats
+                    self.stats.new_success();
 
-                Ok((ws_tx, ws_rx))
-            }
-            Err(e) => {
-                // Update status
-                self.set_status(status_on_failure, false);
+                    Ok((ws_tx, ws_rx))
+                }
+                Err(e) => {
+                    // Update status
+                    self.set_status(status_on_failure, false);
 
-                // Return error
-                Err(Error::Transport(e))
-            }
+                    // Return error
+                    Err(Error::Transport(e))
+                }
             },
             // Handle termination notification
             _ = self.handle_terminate() => Err(Error::TerminationRequest),
@@ -641,7 +667,7 @@ impl InnerRelay {
         let (ingester_tx, ingester_rx) = mpsc::unbounded_channel();
 
         // Wait that one of the futures terminates/completes
-        // Also also termination here, to allow to close the connection in case of termination request.
+        // Add also termination here, to allow closing the connection in case of termination request.
         tokio::select! {
             // Message sender handler
             res = self.sender_message_handler(&mut ws_tx, rx_nostr, &ping) => match res {
@@ -999,7 +1025,7 @@ impl InnerRelay {
 
         // Check event admission policy
         if let Some(policy) = &self.state.admit_policy {
-            if let AdmitStatus::Rejected = policy
+            if let AdmitStatus::Rejected { .. } = policy
                 .admit_event(&self.url, &subscription_id, &event)
                 .await?
             {
@@ -1031,9 +1057,9 @@ impl InnerRelay {
 
         // Check if event exists
         if let DatabaseEventStatus::NotExistent = status {
-            // Check if event was already verified
+            // Check if the event was already verified.
             //
-            // This is useful if someone continue to send the same invalid event:
+            // This is useful if someone continues to send the same invalid event:
             // since invalid events aren't stored in the database,
             // skipping this check would result in the re-verification of the event.
             // This may also be useful to avoid double verification if the event is received at the exact same time by many different Relay instances.
@@ -1043,7 +1069,7 @@ impl InnerRelay {
                 event.verify()?;
             }
 
-            // Save into database
+            // Save into the database
             self.state.database().save_event(&event).await?;
 
             // Send notification
@@ -1063,12 +1089,38 @@ impl InnerRelay {
     }
 
     pub fn disconnect(&self) {
-        // Check if it's already terminated
-        if self.status().is_terminated() {
+        let status = self.status();
+
+        // Check if it's already terminated or banned
+        if status.is_terminated() || status.is_banned() {
             return;
         }
 
+        // Notify termination
         self.atomic.channels.terminate();
+
+        // Update status
+        self.set_status(RelayStatus::Terminated, true);
+
+        // Shutdown all notification loops
+        self.send_notification(RelayNotification::Shutdown, false);
+    }
+
+    pub fn ban(&self) {
+        let status = self.status();
+
+        // Check if it's already terminated or banned
+        if status.is_terminated() || status.is_banned() {
+            return;
+        }
+
+        // Notify termination
+        self.atomic.channels.terminate();
+
+        // Update status
+        self.set_status(RelayStatus::Banned, true);
+
+        // Shutdown all notification loops
         self.send_notification(RelayNotification::Shutdown, false);
     }
 
@@ -1081,7 +1133,7 @@ impl InnerRelay {
         // Perform health checks
         self.health_check()?;
 
-        // Check if list is empty
+        // Check if the list is empty
         if msgs.is_empty() {
             return Err(Error::BatchMessagesEmpty);
         }
@@ -1441,19 +1493,32 @@ impl InnerRelay {
         .await?
     }
 
-    pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<(), Error> {
-        // Remove subscription
-        self.remove_subscription(id).await;
+    fn _unsubscribe(
+        &self,
+        subscriptions: &mut RwLockWriteGuard<HashMap<SubscriptionId, SubscriptionData>>,
+        id: &SubscriptionId,
+    ) -> Result<(), Error> {
+        // Remove the subscription from the map
+        subscriptions.remove(id);
 
         // Send CLOSE message
         self.send_msg(ClientMessage::Close(Cow::Borrowed(id)))
     }
 
-    pub async fn unsubscribe_all(&self) -> Result<(), Error> {
-        let subscriptions = self.atomic.subscriptions.read().await;
+    pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<(), Error> {
+        let mut subscriptions = self.atomic.subscriptions.write().await;
+        self._unsubscribe(&mut subscriptions, id)
+    }
 
-        for id in subscriptions.keys() {
-            self.unsubscribe(id).await?;
+    pub async fn unsubscribe_all(&self) -> Result<(), Error> {
+        let mut subscriptions = self.atomic.subscriptions.write().await;
+
+        // All IDs
+        let ids: Vec<SubscriptionId> = subscriptions.keys().cloned().collect();
+
+        // Unsubscribe
+        for id in ids.into_iter() {
+            self._unsubscribe(&mut subscriptions, &id)?;
         }
 
         Ok(())
@@ -1520,7 +1585,7 @@ impl InnerRelay {
         in_flight_up: &mut HashSet<EventId>,
         opts: &SyncOptions,
     ) -> Result<(), Error> {
-        // Check if should skip the upload
+        // Check if it should skip the upload
         if !opts.do_up() || have_ids.is_empty() || in_flight_up.len() > NEGENTROPY_LOW_WATER_UP {
             return Ok(());
         }
@@ -1574,7 +1639,7 @@ impl InnerRelay {
         down_sub_id: &SubscriptionId,
         opts: &SyncOptions,
     ) -> Result<(), Error> {
-        // Check if should skip the download
+        // Check if it should skip the download
         if !opts.do_down() || need_ids.is_empty() || *in_flight_down {
             return Ok(());
         }
@@ -1666,7 +1731,7 @@ impl InnerRelay {
         let mut notifications = self.internal_notification_sender.subscribe();
         let mut temp_notifications = self.internal_notification_sender.subscribe();
 
-        // Send initial negentropy message
+        // Send the initial negentropy message
         let sub_id: SubscriptionId = SubscriptionId::generate();
         let open_msg: ClientMessage = ClientMessage::NegOpen {
             subscription_id: Cow::Borrowed(&sub_id),
@@ -1709,7 +1774,7 @@ impl InnerRelay {
                                     &mut curr_need_ids,
                                 )?;
 
-                                // Handle message
+                                // Handle the message
                                 self.handle_neg_msg(
                                     &subscription_id,
                                     msg,
@@ -1824,7 +1889,7 @@ impl InnerRelay {
         let mut notifications = self.internal_notification_sender.subscribe();
         let mut temp_notifications = self.internal_notification_sender.subscribe();
 
-        // Send initial negentropy message
+        // Send the initial negentropy message
         let sub_id = SubscriptionId::generate();
         let open_msg: ClientMessage = ClientMessage::NegOpen {
             subscription_id: Cow::Borrowed(&sub_id),
@@ -1868,7 +1933,7 @@ impl InnerRelay {
                                     &mut curr_need_ids,
                                 )?;
 
-                                // Handle message
+                                // Handle the message
                                 self.handle_neg_msg(
                                     &subscription_id,
                                     msg.map(|m| m.to_bytes()),
@@ -2033,7 +2098,7 @@ async fn check_negentropy_support(
                     }
                     RelayMessage::Notice(message) => {
                         if message == "ERROR: negentropy error: negentropy query missing elements" {
-                            // The NEG-OPEN message is send with 4 elements instead of 5
+                            // The NEG-OPEN message is sent with 4 elements instead of 5
                             // If the relay return this error means that is not support new
                             // negentropy protocol
                             return Err(Error::Negentropy(
