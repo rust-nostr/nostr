@@ -1,8 +1,8 @@
 [package]
-name = "nostr-mls"
+name = "nostr-mls-database"
 version = "0.40.0"
 edition = "2021"
-description = "A simplified interface to build secure messaging apps on nostr with MLS."
+description = "Database for nostr-mls that wraps OpenMLS storage backends"
 authors = ["Jeff Gardner <j@jeffg.me>", "Yuki Kishimoto <yukikishimoto@protonmail.com>", "Rust Nostr Developers"]
 homepage.workspace = true
 repository.workspace = true
@@ -12,18 +12,9 @@ rust-version.workspace = true
 keywords = ["nostr", "mls", "openmls"]
 
 [dependencies]
-nostr = { workspace = true, features = ["std", "nip44"] }
-nostr-mls-database = { workspace = true }
 openmls = { git = "https://github.com/openmls/openmls", rev = "054e263906730376932e9752ec85ed0aa0ca4a77", default-features = false }
-openmls_basic_credential = { git = "https://github.com/openmls/openmls", rev = "054e263906730376932e9752ec85ed0aa0ca4a77", default-features = false }
-openmls_rust_crypto = { git = "https://github.com/openmls/openmls", rev = "054e263906730376932e9752ec85ed0aa0ca4a77", default-features = false }
 openmls_traits = { git = "https://github.com/openmls/openmls", rev = "054e263906730376932e9752ec85ed0aa0ca4a77", default-features = false }
-tls_codec = "0.4"
 tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
 openmls_memory_storage = { git = "https://github.com/openmls/openmls", rev = "054e263906730376932e9752ec85ed0aa0ca4a77" }
-tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread"] }
-
-[[example]]
-name = "mls"

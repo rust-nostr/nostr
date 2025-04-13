@@ -4,6 +4,7 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![doc = include_str!("../README.md")]
 
+use nostr_mls_database::NostrMlsDatabase;
 use openmls::prelude::*;
 use openmls::storage::StorageProvider;
 use openmls_rust_crypto::RustCrypto;
@@ -23,7 +24,7 @@ pub use self::error::Error;
 #[derive(Debug)]
 pub struct NostrMls<Storage>
 where
-    Storage: StorageProvider,
+    Storage: NostrMlsDatabase,
 {
     /// The ciphersuite to use
     pub ciphersuite: Ciphersuite,

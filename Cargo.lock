@@ -2832,6 +2832,7 @@ name = "nostr-mls"
 version = "0.40.0"
 dependencies = [
  "nostr",
+ "nostr-mls-database",
  "openmls",
  "openmls_basic_credential",
  "openmls_memory_storage",
@@ -2839,6 +2840,16 @@ dependencies = [
  "openmls_traits",
  "tls_codec",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "nostr-mls-database"
+version = "0.40.0"
+dependencies = [
+ "openmls",
+ "openmls_memory_storage",
+ "openmls_traits",
  "tracing",
 ]
 
