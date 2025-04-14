@@ -45,6 +45,9 @@ buildargs=(
     "-p nostr-mls-memory-storage"
     "-p nostr-mls-sqlite-storage"
     "-p nostr-mls"
+    "-p nostr-sqldb --no-default-features --features postgres"    # PostgreSQL
+    "-p nostr-sqldb --no-default-features --features mysql"       # MySQL
+    "-p nostr-sqldb --no-default-features --features sqlite"      # SQLite
     "-p nostr-indexeddb --target wasm32-unknown-unknown"
     "-p nostr-ndb"
     "-p nostr-keyring"
