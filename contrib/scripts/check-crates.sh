@@ -39,6 +39,9 @@ buildargs=(
     "-p nostr-gossip-memory"
     "-p nostr-gossip-test-suite"
     "-p nostr-lmdb"
+    "-p nostr-sqldb --no-default-features --features postgres"    # PostgreSQL
+    "-p nostr-sqldb --no-default-features --features mysql"       # MySQL
+    "-p nostr-sqldb --no-default-features --features sqlite"      # SQLite
     "-p nostr-indexeddb --target wasm32-unknown-unknown"
     "-p nostr-ndb"
     "-p nostr-keyring"

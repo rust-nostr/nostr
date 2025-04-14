@@ -8,6 +8,7 @@ members = [
     "database/nostr-indexeddb",
     "database/nostr-lmdb",
     "database/nostr-ndb",
+    "database/nostr-sqldb",
 
     # Gossip
     "gossip/nostr-gossip",
