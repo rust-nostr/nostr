@@ -13,16 +13,16 @@ keywords = ["nostr", "mls", "openmls"]
 
 [dependencies]
 nostr = { workspace = true, features = ["std", "nip44"] }
-nostr-mls-database = { workspace = true }
-openmls = { git = "https://github.com/openmls/openmls", rev = "054e263906730376932e9752ec85ed0aa0ca4a77", default-features = false }
-openmls_basic_credential = { git = "https://github.com/openmls/openmls", rev = "054e263906730376932e9752ec85ed0aa0ca4a77", default-features = false }
-openmls_rust_crypto = { git = "https://github.com/openmls/openmls", rev = "054e263906730376932e9752ec85ed0aa0ca4a77", default-features = false }
-openmls_traits = { git = "https://github.com/openmls/openmls", rev = "054e263906730376932e9752ec85ed0aa0ca4a77", default-features = false }
+nostr-mls-storage = { workspace = true }
+openmls = { git = "https://github.com/erskingardner/openmls", rev = "df17af38cbf881de46ab3d783215183c9feb6ffb", default-features = false }
+openmls_basic_credential = { git = "https://github.com/erskingardner/openmls", rev = "df17af38cbf881de46ab3d783215183c9feb6ffb", default-features = false }
+openmls_rust_crypto = { git = "https://github.com/erskingardner/openmls", rev = "df17af38cbf881de46ab3d783215183c9feb6ffb", default-features = false }
+openmls_traits = { git = "https://github.com/erskingardner/openmls", rev = "df17af38cbf881de46ab3d783215183c9feb6ffb", default-features = false }
 tls_codec = "0.4"
 tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
-openmls_memory_storage = { git = "https://github.com/openmls/openmls", rev = "054e263906730376932e9752ec85ed0aa0ca4a77" }
+openmls_memory_storage = { git = "https://github.com/erskingardner/openmls", rev = "df17af38cbf881de46ab3d783215183c9feb6ffb" }
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread"] }
 
 [[example]]

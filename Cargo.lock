@@ -2510,7 +2510,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -2868,7 +2868,7 @@ name = "nostr-mls"
 version = "0.40.0"
 dependencies = [
  "nostr",
- "nostr-mls-database",
+ "nostr-mls-storage",
  "openmls",
  "openmls_basic_credential",
  "openmls_memory_storage",
@@ -2880,12 +2880,36 @@ dependencies = [
 ]
 
 [[package]]
-name = "nostr-mls-database"
+name = "nostr-mls-memory-storage"
 version = "0.40.0"
 dependencies = [
- "openmls",
+ "nostr",
+ "nostr-mls-storage",
  "openmls_memory_storage",
  "openmls_traits",
+ "tracing",
+]
+
+[[package]]
+name = "nostr-mls-sqlite-storage"
+version = "0.40.0"
+dependencies = [
+ "nostr-mls-storage",
+ "openmls_sqlite_storage",
+ "openmls_traits",
+ "refinery",
+ "rusqlite",
+ "serde",
+ "tracing",
+]
+
+[[package]]
+name = "nostr-mls-storage"
+version = "0.40.0"
+dependencies = [
+ "nostr",
+ "openmls_traits",
+ "serde",
  "tracing",
 ]
 
@@ -3173,7 +3197,7 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 [[package]]
 name = "openmls"
 version = "0.6.1"
-source = "git+https://github.com/openmls/openmls?rev=054e263906730376932e9752ec85ed0aa0ca4a77#054e263906730376932e9752ec85ed0aa0ca4a77"
+source = "git+https://github.com/erskingardner/openmls?rev=df17af38cbf881de46ab3d783215183c9feb6ffb#df17af38cbf881de46ab3d783215183c9feb6ffb"
 dependencies = [
  "log",
  "openmls_traits",
@@ -3186,7 +3210,7 @@ dependencies = [
 [[package]]
 name = "openmls_basic_credential"
 version = "0.3.0"
-source = "git+https://github.com/openmls/openmls?rev=054e263906730376932e9752ec85ed0aa0ca4a77#054e263906730376932e9752ec85ed0aa0ca4a77"
+source = "git+https://github.com/erskingardner/openmls?rev=df17af38cbf881de46ab3d783215183c9feb6ffb#df17af38cbf881de46ab3d783215183c9feb6ffb"
 dependencies = [
  "ed25519-dalek",
  "openmls_traits",
@@ -3199,7 +3223,7 @@ dependencies = [
 [[package]]
 name = "openmls_memory_storage"
 version = "0.3.0"
-source = "git+https://github.com/openmls/openmls?rev=054e263906730376932e9752ec85ed0aa0ca4a77#054e263906730376932e9752ec85ed0aa0ca4a77"
+source = "git+https://github.com/erskingardner/openmls?rev=df17af38cbf881de46ab3d783215183c9feb6ffb#df17af38cbf881de46ab3d783215183c9feb6ffb"
 dependencies = [
  "log",
  "openmls_traits",
@@ -3211,7 +3235,7 @@ dependencies = [
 [[package]]
 name = "openmls_rust_crypto"
 version = "0.3.0"
-source = "git+https://github.com/openmls/openmls?rev=054e263906730376932e9752ec85ed0aa0ca4a77#054e263906730376932e9752ec85ed0aa0ca4a77"
+source = "git+https://github.com/erskingardner/openmls?rev=df17af38cbf881de46ab3d783215183c9feb6ffb#df17af38cbf881de46ab3d783215183c9feb6ffb"
 dependencies = [
  "aes-gcm",
  "chacha20poly1305",
@@ -3233,9 +3257,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "openmls_sqlite_storage"
+version = "0.1.0"
+source = "git+https://github.com/erskingardner/openmls?rev=df17af38cbf881de46ab3d783215183c9feb6ffb#df17af38cbf881de46ab3d783215183c9feb6ffb"
+dependencies = [
+ "log",
+ "openmls_traits",
+ "refinery",
+ "rusqlite",
+ "serde",
+ "thiserror 1.0.64",
+]
+
+[[package]]
 name = "openmls_traits"
 version = "0.3.0"
-source = "git+https://github.com/openmls/openmls?rev=054e263906730376932e9752ec85ed0aa0ca4a77#054e263906730376932e9752ec85ed0aa0ca4a77"
+source = "git+https://github.com/erskingardner/openmls?rev=df17af38cbf881de46ab3d783215183c9feb6ffb#df17af38cbf881de46ab3d783215183c9feb6ffb"
 dependencies = [
  "serde",
  "tls_codec",
@@ -3440,7 +3477,7 @@ version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90fcb95eef784c2ac79119d1dd819e162b5da872ce6f3c3abe1e8ca1c082f72b"
 dependencies = [
- "siphasher",
+ "siphasher 0.3.11",
 ]
 
 [[package]]
@@ -3783,6 +3820,50 @@ dependencies = [
  "getrandom 0.2.15",
  "libredox",
  "thiserror 2.0.8",
+]
+
+[[package]]
+name = "refinery"
+version = "0.8.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ba5d693abf62492c37268512ff35b77655d2e957ca53dab85bf993fe9172d15"
+dependencies = [
+ "refinery-core",
+ "refinery-macros",
+]
+
+[[package]]
+name = "refinery-core"
+version = "0.8.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a83581f18c1a4c3a6ebd7a174bdc665f17f618d79f7edccb6a0ac67e660b319"
+dependencies = [
+ "async-trait",
+ "cfg-if",
+ "log",
+ "regex",
+ "rusqlite",
+ "serde",
+ "siphasher 1.0.1",
+ "thiserror 1.0.64",
+ "time",
+ "toml",
+ "url",
+ "walkdir",
+]
+
+[[package]]
+name = "refinery-macros"
+version = "0.8.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72c225407d8e52ef8cf094393781ecda9a99d6544ec28d90a6915751de259264"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "refinery-core",
+ "regex",
+ "syn 2.0.90",
 ]
 
 [[package]]
@@ -4410,6 +4491,12 @@ name = "siphasher"
 version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "38b58827f4464d87d377d175e90bf58eb00fd8716ff0a62f80356b5e61555d0d"
+
+[[package]]
+name = "siphasher"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56199f7ddabf13fe5074ce809e7d3f42b42ae711800501b5b16ea82ad029c39d"
 
 [[package]]
 name = "slab"

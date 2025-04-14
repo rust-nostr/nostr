@@ -24,8 +24,9 @@ nostr-database = { version = "0.40", path = "./crates/nostr-database", default-f
 nostr-indexeddb = { version = "0.40", path = "./crates/nostr-indexeddb", default-features = false }
 nostr-lmdb = { version = "0.40", path = "./crates/nostr-lmdb", default-features = false }
 nostr-mls = { version = "0.40", path = "./crates/nostr-mls", default-features = false }
-nostr-mls-database = { version = "0.40", path = "./crates/nostr-mls-database", default-features = false }
-nostr-mls-sqlite = { version = "0.40", path = "./crates/nostr-mls-sqlite", default-features = false }
+nostr-mls-storage = { version = "0.40", path = "./crates/nostr-mls-storage", default-features = false }
+nostr-mls-sqlite-storage = { version = "0.40", path = "./crates/nostr-mls-sqlite-storage", default-features = false }
+nostr-mls-memory-storage = { version = "0.40", path = "./crates/nostr-mls-memory-storage", default-features = false }
 nostr-ndb = { version = "0.40", path = "./crates/nostr-ndb", default-features = false }
 nostr-relay-builder = { version = "0.40", path = "./crates/nostr-relay-builder", default-features = false }
 nostr-relay-pool = { version = "0.40", path = "./crates/nostr-relay-pool", default-features = false }
