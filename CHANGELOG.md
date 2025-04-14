@@ -43,6 +43,7 @@
 * ndb: bump nostrdb to 0.6.1 ([Yuki Kishimoto])
 * pool: extend unit tests ([Yuki Kishimoto])
 * pool: better handling of `CLOSED` message for REQs ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/778)
+* relay-builder: send `CLOSED` if all possible events have been served ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/778)
 
 ### Added
 
