@@ -42,6 +42,7 @@
 * lmdb: enable POSIX semaphores for macOS and iOS targets ([Yuki Kishimoto])
 * ndb: bump nostrdb to 0.6.1 ([Yuki Kishimoto])
 * pool: extend unit tests ([Yuki Kishimoto])
+* pool: better handling of `CLOSED` message for REQs ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/778)
 
 ### Added
 

@@ -47,6 +47,11 @@ enum IngesterCommand {
     Authenticate { challenge: String },
 }
 
+enum HandleClosedMsg {
+    MarkAsClosed,
+    Remove,
+}
+
 struct HandleAutoClosing {
     to_close: bool,
     reason: Option<SubscriptionAutoClosedReason>,
@@ -927,7 +932,49 @@ impl InnerRelay {
                             msg = %message,
                             "Subscription closed by relay."
                         );
-                        self.subscription_closed(subscription_id).await;
+
+                        // Check machine-readable prefix
+                        let res: HandleClosedMsg = match MachineReadablePrefix::parse(message) {
+                            Some(MachineReadablePrefix::Duplicate) => HandleClosedMsg::Remove,
+                            Some(MachineReadablePrefix::Pow) => HandleClosedMsg::Remove,
+                            Some(MachineReadablePrefix::Blocked) => HandleClosedMsg::Remove,
+                            Some(MachineReadablePrefix::RateLimited) => {
+                                // TODO: add something like MarkAsRateLimited?
+                                // TODO: And retry after some time to re-subscribe
+                                HandleClosedMsg::MarkAsClosed
+                            }
+                            Some(MachineReadablePrefix::Invalid) => HandleClosedMsg::Remove,
+                            Some(MachineReadablePrefix::Error) => HandleClosedMsg::Remove,
+                            Some(MachineReadablePrefix::Unsupported) => HandleClosedMsg::Remove,
+                            Some(MachineReadablePrefix::AuthRequired) => {
+                                // Authentication is handled in other parts of code,
+                                // so here just mark as closed.
+                                HandleClosedMsg::MarkAsClosed
+                            }
+                            Some(MachineReadablePrefix::Restricted) => HandleClosedMsg::Remove,
+                            None => {
+                                // Doesn't mach any prefix,
+                                // meaning that it probably closed without errors,
+                                // so remove it.
+                                HandleClosedMsg::Remove
+                            }
+                        };
+
+                        match res {
+                            HandleClosedMsg::MarkAsClosed => {
+                                self.subscription_closed(subscription_id).await;
+                            }
+                            HandleClosedMsg::Remove => {
+                                tracing::debug!(
+                                    url = %self.url,
+                                    id = %subscription_id,
+                                    "Removing subscription."
+                                );
+
+                                let mut subscriptions = self.atomic.subscriptions.write().await;
+                                subscriptions.remove(subscription_id);
+                            }
+                        }
                     }
                     RelayMessage::Auth { challenge } => {
                         tracing::debug!(
@@ -1383,12 +1430,11 @@ impl InnerRelay {
                             message,
                         } => {
                             if subscription_id.as_ref() == id {
-                                // Check if auth required
+                                // Check machine-readable prefix
                                 match MachineReadablePrefix::parse(&message) {
                                     Some(MachineReadablePrefix::AuthRequired) => {
-                                        if self.state.is_auto_authentication_enabled() {
-                                            require_resubscription = true;
-                                        } else {
+                                        // Authentication is not enabled, return.
+                                        if !self.state.is_auto_authentication_enabled() {
                                             return Some(HandleAutoClosing {
                                                 to_close: false, // No need to send CLOSE msg
                                                 reason: Some(SubscriptionAutoClosedReason::Closed(
@@ -1396,13 +1442,35 @@ impl InnerRelay {
                                                 )),
                                             });
                                         }
+
+                                        // Needs to re-subscribe
+                                        require_resubscription = true;
                                     }
-                                    _ => {
+                                    Some(_) => {
                                         return Some(HandleAutoClosing {
                                             to_close: false, // No need to send CLOSE msg
                                             reason: Some(SubscriptionAutoClosedReason::Closed(
                                                 message.into_owned(),
                                             )),
+                                        });
+                                    }
+                                    // Mark subscription as completed.
+                                    //
+                                    // If we are arrived at this point,
+                                    // means that no error should be occurred,
+                                    // so the subscription can be marked as completed.
+                                    //
+                                    // # Example
+                                    //
+                                    // Send a request with `{"ids":["<id>"]}` filter.
+                                    // In this case, when the relay sends the matching event,
+                                    // it no longer makes sense to keep the subscription open,
+                                    // as no more events will ever be served.
+                                    // Discussion: https://github.com/nostrability/nostrability/issues/167
+                                    None => {
+                                        return Some(HandleAutoClosing {
+                                            to_close: false,
+                                            reason: Some(SubscriptionAutoClosedReason::Completed),
                                         });
                                     }
                                 }
