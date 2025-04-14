@@ -10,18 +10,14 @@ pub trait GroupStorage {
     fn all_groups(&self) -> Result<Vec<Group>, GroupError>;
     fn find_group_by_mls_group_id(&self, mls_group_id: &[u8]) -> Result<Group, GroupError>;
     fn find_group_by_nostr_group_id(&self, nostr_group_id: &str) -> Result<Group, GroupError>;
-    fn create_group(&self, group: Group) -> Result<Group, GroupError>;
     fn save_group(&self, group: Group) -> Result<Group, GroupError>;
-    fn delete_group(&self, mls_group_id: &[u8]) -> Result<(), GroupError>;
     fn messages(&self, mls_group_id: &[u8]) -> Result<Vec<Message>, GroupError>;
-    fn members(&self, mls_group_id: &[u8]) -> Result<Vec<PublicKey>, GroupError>;
     fn admins(&self, mls_group_id: &[u8]) -> Result<Vec<PublicKey>, GroupError>;
     fn group_relays(&self, mls_group_id: &[u8]) -> Result<Vec<GroupRelay>, GroupError>;
-    fn self_update_keys(&self, mls_group_id: &[u8]) -> Result<Group, GroupError>;
-    fn create_group_relay(&self, group_relay: GroupRelay) -> Result<GroupRelay, GroupError>;
-    fn delete_group_relay(&self, group_relay: GroupRelay) -> Result<GroupRelay, GroupError>;
+    fn save_group_relay(&self, group_relay: GroupRelay) -> Result<GroupRelay, GroupError>;
 }
 
+// TODO: MOVE TO nostr-mls
 impl Group {
     /// Validates the members and admins of a group during creation
     ///

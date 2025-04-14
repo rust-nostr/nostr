@@ -1,10 +1,10 @@
 pub mod groups;
-pub mod invites;
 pub mod messages;
+pub mod welcomes;
 
 use crate::groups::GroupStorage;
-use crate::invites::InviteStorage;
 use crate::messages::MessageStorage;
+use crate::welcomes::WelcomeStorage;
 use openmls_traits::storage::StorageProvider;
 
 const CURRENT_VERSION: u16 = 1;
@@ -28,7 +28,7 @@ impl Backend {
 }
 
 pub trait NostrMlsStorageProvider<S: StorageProvider<CURRENT_VERSION>>:
-    GroupStorage + MessageStorage + InviteStorage
+    GroupStorage + MessageStorage + WelcomeStorage
 {
     /// Returns the backend type.
     ///

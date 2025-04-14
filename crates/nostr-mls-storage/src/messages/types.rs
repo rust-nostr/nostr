@@ -1,5 +1,5 @@
 use crate::messages::parser::SerializableToken;
-use nostr::{EventId, PublicKey, Tags, Timestamp, UnsignedEvent};
+use nostr::{event::Kind, EventId, PublicKey, Tags, Timestamp, UnsignedEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -25,7 +25,7 @@ pub struct Message {
     /// The pubkey of the author of the message
     pub pubkey: PublicKey,
     /// The kind of the message
-    pub kind: u16,
+    pub kind: Kind,
     /// The MLS group id of the message
     pub mls_group_id: Vec<u8>,
     /// The created at timestamp of the message
