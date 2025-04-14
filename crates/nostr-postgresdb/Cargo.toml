@@ -1,0 +1,21 @@
+[package]
+name = "nostr-postgresdb"
+version = "0.40.0"
+edition = "2021"
+description = "Postgres storage backend for Nostr apps"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "database", "postgres"]
+
+[dependencies]
+nostr = { workspace = true, features = ["std"] }
+nostr-database = { workspace = true, features = ["flatbuf"] }
+tracing.workspace = true
+diesel = { version = "2", features = ["postgres", "serde_json"] }
+diesel-async = { version = "0.5", features = ["postgres", "deadpool"] }
+diesel_migrations = { version = "2", features = ["postgres"] }
+deadpool = { version = "0.12", features = ["managed", "rt_tokio_1"] }
