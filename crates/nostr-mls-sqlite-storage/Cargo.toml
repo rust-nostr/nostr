@@ -12,7 +12,7 @@ rust-version.workspace = true
 keywords = ["nostr", "mls", "openmls", "sqlite"]
 
 [dependencies]
-nostr = { workspace = true }
+nostr = { workspace = true, features = ["std", "parser"] }
 nostr-mls-storage = { workspace = true }
 openmls_sqlite_storage = { git = "https://github.com/erskingardner/openmls", rev = "df17af38cbf881de46ab3d783215183c9feb6ffb", default-features = false }
 openmls_traits = { git = "https://github.com/erskingardner/openmls", rev = "df17af38cbf881de46ab3d783215183c9feb6ffb", default-features = false }
