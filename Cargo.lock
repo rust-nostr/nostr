@@ -2893,11 +2893,13 @@ version = "0.40.0"
 dependencies = [
  "nostr",
  "nostr-mls-memory-storage",
+ "nostr-mls-sqlite-storage",
  "nostr-mls-storage",
  "openmls",
  "openmls_basic_credential",
  "openmls_rust_crypto",
  "openmls_traits",
+ "tempfile",
  "tls_codec",
  "tokio",
  "tracing",

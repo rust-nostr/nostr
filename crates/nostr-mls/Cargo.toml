@@ -27,7 +27,14 @@ tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
 nostr-mls-memory-storage = { workspace = true }
+nostr-mls-sqlite-storage = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread"] }
+tempfile = "3.8"
 
 [[example]]
-name = "mls"
+name = "mls_memory"
+path = "examples/mls_memory.rs"
+
+[[example]]
+name = "mls_sqlite"
+path = "examples/mls_sqlite.rs"
