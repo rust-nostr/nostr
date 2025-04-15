@@ -5,7 +5,6 @@
 ///
 /// SQLite-based storage is persistent and will be saved to a file. It's useful for production applications
 /// where data persistence is required.
-///
 mod db;
 mod error;
 mod groups;
@@ -13,13 +12,13 @@ mod messages;
 mod migrations;
 mod welcomes;
 
-use nostr_mls_storage::Backend;
-use nostr_mls_storage::NostrMlsStorageProvider;
+use std::path::Path;
+use std::sync::{Arc, Mutex};
+
+use nostr_mls_storage::{Backend, NostrMlsStorageProvider};
 use openmls_sqlite_storage::Codec;
 use rusqlite::Connection;
 use serde::Serialize;
-use std::path::Path;
-use std::sync::{Arc, Mutex};
 
 #[derive(Default)]
 pub struct JsonCodec;
@@ -175,8 +174,9 @@ impl NostrMlsStorageProvider for NostrMlsSqliteStorage {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tempfile::tempdir;
+
+    use super::*;
 
     #[test]
     fn test_new_in_memory() {

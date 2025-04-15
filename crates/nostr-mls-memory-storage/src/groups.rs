@@ -1,10 +1,12 @@
-use crate::NostrMlsMemoryStorage;
+use std::sync::Arc;
+
 use nostr::PublicKey;
 use nostr_mls_storage::groups::error::GroupError;
 use nostr_mls_storage::groups::types::*;
 use nostr_mls_storage::groups::GroupStorage;
 use nostr_mls_storage::messages::types::Message;
-use std::sync::Arc;
+
+use crate::NostrMlsMemoryStorage;
 
 impl GroupStorage for NostrMlsMemoryStorage {
     fn save_group(&self, group: Group) -> Result<Group, GroupError> {

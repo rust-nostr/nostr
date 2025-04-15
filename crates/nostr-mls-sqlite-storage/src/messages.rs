@@ -1,11 +1,12 @@
-/// Implementation of MessageStorage trait for SQLite storage.
-use crate::db;
-use crate::NostrMlsSqliteStorage;
 use nostr::EventId;
 use nostr_mls_storage::messages::error::MessageError;
 use nostr_mls_storage::messages::types::{Message, ProcessedMessage};
 use nostr_mls_storage::messages::MessageStorage;
 use rusqlite::params;
+
+/// Implementation of MessageStorage trait for SQLite storage.
+use crate::db;
+use crate::NostrMlsSqliteStorage;
 
 impl MessageStorage for NostrMlsSqliteStorage {
     fn save_message(&self, message: Message) -> Result<Message, MessageError> {
@@ -125,11 +126,12 @@ impl MessageStorage for NostrMlsSqliteStorage {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use nostr::{EventId, Kind, PublicKey, Tags, Timestamp, UnsignedEvent};
     use nostr_mls_storage::groups::types::{Group, GroupState, GroupType};
     use nostr_mls_storage::groups::GroupStorage;
     use nostr_mls_storage::messages::types::ProcessedMessageState;
+
+    use super::*;
 
     #[test]
     fn test_save_and_find_message() {

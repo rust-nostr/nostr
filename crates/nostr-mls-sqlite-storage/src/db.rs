@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 /// Database utilities for SQLite storage.
 use nostr::{EventId, Kind, PublicKey, RelayUrl, Tags, Timestamp, UnsignedEvent};
 use nostr_mls_storage::groups::types::{Group, GroupRelay, GroupState, GroupType};
@@ -7,7 +9,6 @@ use nostr_mls_storage::welcomes::types::{
     ProcessedWelcome, ProcessedWelcomeState, Welcome, WelcomeState,
 };
 use rusqlite::{Result as SqliteResult, Row};
-use std::str::FromStr;
 
 /// Convert a row to a Group struct
 pub fn row_to_group(row: &Row) -> SqliteResult<Group> {

@@ -1,12 +1,12 @@
 //! Nostr MLS Welcomes
 
+use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls::prelude::*;
 use tls_codec::Deserialize as TlsDeserialize;
 
 use crate::error::Error;
 use crate::extension::NostrGroupDataExtension;
 use crate::NostrMls;
-use nostr_mls_storage::NostrMlsStorageProvider;
 
 /// Welcome preview
 #[derive(Debug)]

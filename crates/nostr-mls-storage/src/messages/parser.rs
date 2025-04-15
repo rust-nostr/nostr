@@ -116,8 +116,9 @@ pub fn parse(content: &str) -> Vec<SerializableToken> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use nostr::serde_json::json;
+
+    use super::*;
 
     #[test]
     fn test_parse_basic_text() {

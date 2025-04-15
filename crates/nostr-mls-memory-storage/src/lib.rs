@@ -5,21 +5,20 @@
 ///
 /// Memory-based storage is non-persistent and will be cleared when the application terminates.
 /// It's useful for testing or ephemeral applications where persistence isn't required.
-///
 mod groups;
 mod messages;
 mod welcomes;
+
+use std::num::NonZeroUsize;
+use std::sync::{Arc, RwLock};
 
 use lru::LruCache;
 use nostr::EventId;
 use nostr_mls_storage::groups::types::{Group, GroupRelay};
 use nostr_mls_storage::messages::types::{Message, ProcessedMessage};
 use nostr_mls_storage::welcomes::types::{ProcessedWelcome, Welcome};
-use nostr_mls_storage::Backend;
-use nostr_mls_storage::NostrMlsStorageProvider;
+use nostr_mls_storage::{Backend, NostrMlsStorageProvider};
 use openmls_memory_storage::MemoryStorage;
-use std::num::NonZeroUsize;
-use std::sync::{Arc, RwLock};
 
 /// Default cache size for each LRU cache
 const DEFAULT_CACHE_SIZE: usize = 1000;
@@ -161,8 +160,6 @@ impl NostrMlsStorageProvider for NostrMlsMemoryStorage {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use nostr::{EventId, Kind, PublicKey, RelayUrl, Tags, UnsignedEvent};
     use nostr_mls_storage::groups::types::{Group, GroupState, GroupType};
     use nostr_mls_storage::groups::GroupStorage;
@@ -172,6 +169,8 @@ mod tests {
     use nostr_mls_storage::welcomes::WelcomeStorage;
     #[cfg(test)]
     use openmls_memory_storage::MemoryStorage;
+
+    use super::*;
 
     #[test]
     fn test_new_with_storage() {

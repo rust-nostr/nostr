@@ -8,6 +8,7 @@ use nostr::{
     Event, EventBuilder, JsonUtil, Keys, Kind, PublicKey, RelayUrl, SecretKey, Tag, TagKind,
     UnsignedEvent,
 };
+use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls::group::GroupId;
 use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
@@ -16,7 +17,6 @@ use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 use super::extension::NostrGroupDataExtension;
 use super::NostrMls;
 use crate::error::Error;
-use nostr_mls_storage::NostrMlsStorageProvider;
 
 #[allow(missing_docs)]
 #[derive(Debug)]

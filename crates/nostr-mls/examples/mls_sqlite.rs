@@ -2,10 +2,9 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use tempfile::TempDir;
-
 use nostr_mls::prelude::*;
 use nostr_mls_sqlite_storage::NostrMlsSqliteStorage;
+use tempfile::TempDir;
 
 /// Generate a new identity and return the keys, NostrMls instance, and temp directory
 /// We use a different temp directory for each identity because OpenMLS doesn't have a concept of partitioning storage for different identities.

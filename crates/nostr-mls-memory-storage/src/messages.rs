@@ -1,9 +1,11 @@
-use crate::NostrMlsMemoryStorage;
+use std::sync::Arc;
+
 use nostr::EventId;
 use nostr_mls_storage::messages::error::MessageError;
 use nostr_mls_storage::messages::types::*;
 use nostr_mls_storage::messages::MessageStorage;
-use std::sync::Arc;
+
+use crate::NostrMlsMemoryStorage;
 
 impl MessageStorage for NostrMlsMemoryStorage {
     fn save_message(&self, message: Message) -> Result<Message, MessageError> {

@@ -108,8 +108,9 @@ where
 /// Tests module for nostr-mls
 #[cfg(test)]
 pub mod tests {
-    use super::*;
     use nostr_mls_memory_storage::NostrMlsMemoryStorage;
+
+    use super::*;
 
     /// Create a test NostrMls instance with an in-memory storage provider
     pub fn create_test_nostr_mls() -> NostrMls<NostrMlsMemoryStorage> {

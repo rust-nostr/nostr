@@ -1,6 +1,8 @@
-use crate::messages::parser::SerializableToken;
-use nostr::{event::Kind, EventId, PublicKey, Tags, Timestamp, UnsignedEvent};
+use nostr::event::Kind;
+use nostr::{EventId, PublicKey, Tags, Timestamp, UnsignedEvent};
 use serde::{Deserialize, Serialize};
+
+use crate::messages::parser::SerializableToken;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProcessedMessage {

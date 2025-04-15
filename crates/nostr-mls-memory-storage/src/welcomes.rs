@@ -1,9 +1,11 @@
-use crate::NostrMlsMemoryStorage;
+use std::sync::Arc;
+
 use nostr::EventId;
 use nostr_mls_storage::welcomes::error::WelcomeError;
 use nostr_mls_storage::welcomes::types::*;
 use nostr_mls_storage::welcomes::WelcomeStorage;
-use std::sync::Arc;
+
+use crate::NostrMlsMemoryStorage;
 
 impl WelcomeStorage for NostrMlsMemoryStorage {
     fn save_welcome(&self, welcome: Welcome) -> Result<Welcome, WelcomeError> {

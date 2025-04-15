@@ -1,10 +1,11 @@
 pub mod error;
 pub mod types;
 
-use crate::messages::types::Message;
 use error::GroupError;
 use nostr::PublicKey;
 use types::*;
+
+use crate::messages::types::Message;
 
 pub trait GroupStorage {
     fn all_groups(&self) -> Result<Vec<Group>, GroupError>;
