@@ -103,6 +103,14 @@ where
             .collect::<Vec<String>>()
             .join(",")
     }
+
+    /// Get a reference to the underlying storage provider
+    ///
+    /// This method provides direct access to the underlying storage implementation
+    /// if you need to access methods not delegated by this struct.
+    pub fn storage(&self) -> &Storage {
+        &self.provider.storage
+    }
 }
 
 /// Tests module for nostr-mls
