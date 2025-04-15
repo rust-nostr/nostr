@@ -1,18 +1,17 @@
 use deadpool::managed::{Object, Pool};
-use diesel::{
-    QueryResult,
-    dsl::{Eq, Filter as DieselFilter, InnerJoin, IntoBoxed},
-    pg::Pg,
-    prelude::*,
-    result::{DatabaseErrorKind, Error as DieselError},
-};
-use diesel_async::{
-    AsyncConnection, AsyncPgConnection, RunQueryDsl,
-    pooled_connection::AsyncDieselConnectionManager, scoped_futures::ScopedFutureExt,
-};
-use super::model::{EventDataDb, EventDb};
-use nostr::{event::*, filter::Filter};
+use diesel::dsl::{Eq, Filter as DieselFilter, InnerJoin, IntoBoxed};
+use diesel::pg::Pg;
+use diesel::prelude::*;
+use diesel::result::{DatabaseErrorKind, Error as DieselError};
+use diesel::QueryResult;
+use diesel_async::pooled_connection::AsyncDieselConnectionManager;
+use diesel_async::scoped_futures::ScopedFutureExt;
+use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
+use nostr::event::*;
+use nostr::filter::Filter;
 use nostr_database::*;
+
+use super::model::{EventDataDb, EventDb};
 use super::schema::nostr::{event_tags, events};
 
 /// Shorthand for a database connection pool type
@@ -34,11 +33,14 @@ impl NostrPostgres {
         Ok(Self { pool })
     }
 
-    pub (crate) async fn get_connection(&self) -> Result<PostgresConnection, DatabaseError> {
+    pub(crate) async fn get_connection(&self) -> Result<PostgresConnection, DatabaseError> {
         self.pool.get().await.map_err(DatabaseError::backend)
     }
 
-    pub (crate) async fn save(&self, event_data: EventDataDb) -> Result<SaveEventStatus, DatabaseError> {
+    pub(crate) async fn save(
+        &self,
+        event_data: EventDataDb,
+    ) -> Result<SaveEventStatus, DatabaseError> {
         let mut db = self.get_connection().await?;
         let result: QueryResult<bool> = db
             .transaction(|c| {
@@ -70,7 +72,10 @@ impl NostrPostgres {
         }
     }
 
-    pub (crate) async fn event_by_id(&self, event_id: &EventId) -> Result<Option<EventDb>, DatabaseError> {
+    pub(crate) async fn event_by_id(
+        &self,
+        event_id: &EventId,
+    ) -> Result<Option<EventDb>, DatabaseError> {
         let event_id = event_id.to_hex();
         let res = events::table
             .select(EventDb::as_select())

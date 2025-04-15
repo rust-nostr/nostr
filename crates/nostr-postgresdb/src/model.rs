@@ -1,10 +1,8 @@
-use crate::schema::nostr::event_tags;
-use crate::schema::nostr::events;
 use diesel::prelude::*;
 use nostr::event::Event;
-use nostr_database::DatabaseError;
-use nostr_database::FlatBufferBuilder;
-use nostr_database::FlatBufferEncode;
+use nostr_database::{DatabaseError, FlatBufferBuilder, FlatBufferEncode};
+
+use crate::schema::nostr::{event_tags, events};
 
 /// DB representation of [`Event`]
 #[derive(Queryable, Selectable, Insertable, AsChangeset, Debug, Clone)]

@@ -5,14 +5,16 @@ mod schema;
 
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
+pub use migrations::run_migrations;
 use model::{EventDataDb, EventDb};
-use nostr::{event::*, filter::Filter, types::Timestamp, util::BoxedFuture};
+use nostr::event::*;
+use nostr::filter::Filter;
+use nostr::types::Timestamp;
+use nostr::util::BoxedFuture;
 use nostr_database::*;
 use postgres::{build_filter_query, with_limit};
-use schema::nostr::events;
-
-pub use migrations::run_migrations;
 pub use postgres::{postgres_connection_pool, NostrPostgres};
+use schema::nostr::events;
 
 impl NostrDatabase for NostrPostgres {
     fn backend(&self) -> Backend {
