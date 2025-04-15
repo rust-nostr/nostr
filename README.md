@@ -12,6 +12,9 @@ The project is split up into several crates in the `crates/` directory:
     - [**nostr-ndb**](./crates/nostr-ndb): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
     - [**nostr-indexeddb**](./crates/nostr-indexeddb): IndexedDB storage backend
   - [**nostr-mls**](./crates/nostr-mls): A simplified interface to build secure messaging apps on nostr with MLS
+  - [**nostr-mls-storage**](./crates/nostr-mls-storage): Defines traits and types that allow for storage backend abstraction
+    - [**nostr-mls-memory-storage**](./crates/nostr-mls-memory-storage): Implementation of the NostrMlsStorageProvider traits using an in-memory database.
+    - [**nostr-mls-sqlite-storage**](./crates/nostr-mls-sqlite-storage): Implementation of the NostrMlsStorageProvider traits using a sqlite database.
   - [**nostr-keyring**](./crates/nostr-keyring): Nostr Keyring
   - [**nostr-relay-pool**](./crates/nostr-relay-pool): Nostr Relay Pool
   - [**nostr-sdk**](./crates/nostr-sdk): High level client library
