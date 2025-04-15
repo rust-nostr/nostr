@@ -1,6 +1,6 @@
 [package]
 name = "nostr-postgresdb"
-version = "0.40.0"
+version = "0.41.0"
 edition = "2021"
 description = "Postgres storage backend for Nostr apps"
 authors.workspace = true
@@ -19,3 +19,11 @@ diesel = { version = "2", features = ["postgres", "serde_json"] }
 diesel-async = { version = "0.5", features = ["postgres", "deadpool"] }
 diesel_migrations = { version = "2", features = ["postgres"] }
 deadpool = { version = "0.12", features = ["managed", "rt_tokio_1"] }
+
+[dev-dependencies]
+tokio.workspace = true
+nostr-relay-builder = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[[example]]
+name = "postgres-relay"

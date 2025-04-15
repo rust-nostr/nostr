@@ -2935,7 +2935,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-postgresdb"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "deadpool",
  "diesel",
@@ -2943,7 +2943,10 @@ dependencies = [
  "diesel_migrations",
  "nostr",
  "nostr-database",
+ "nostr-relay-builder",
+ "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
