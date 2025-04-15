@@ -25,9 +25,7 @@
 
 -->
 
-## Unreleased
-
-### Summary
+## v0.41.0 - 2025/04/15
 
 ### Breaking changes
 
@@ -58,15 +56,12 @@
 * nostr: derive `Hash` for `EventBuilder` and `Metadata` ([Yuki Kishimoto])
 * pool: add `Relay::ban` method ([Yuki Kishimoto])
 * pool: add `AdmitPolicy::admit_connection` method ([Yuki Kishimoto])
+* keyring: add `NostrKeyring` ([Yuki Kishimoto])
 
 ### Fixed
 
 * nostr: fix missing `transactions` object in serialization of nip47 ListTransactions ResponseResult ([daywalker90])
 * nostr: fix NIP32 implementation ([Yuki Kishimoto])
-
-### Removed
-
-### Deprecated
 
 ## v0.40.1 - 2025/03/24
 

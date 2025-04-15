@@ -2674,7 +2674,7 @@ dependencies = [
 
 [[package]]
 name = "nostr"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "aes",
  "base64 0.22.1",
@@ -2705,7 +2705,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-cli"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "clap",
  "dialoguer",
@@ -2723,7 +2723,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-connect"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "async-utility",
  "dialoguer",
@@ -2737,7 +2737,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-database"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "flatbuffers",
  "lru",
@@ -2747,7 +2747,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-indexeddb"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "indexed_db_futures",
  "nostr",
@@ -2757,7 +2757,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-keyring"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "async-utility",
  "keyring",
@@ -2767,7 +2767,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-lmdb"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "async-utility",
  "heed",
@@ -2780,7 +2780,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-ndb"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "nostr",
  "nostr-database",
@@ -2802,7 +2802,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-relay-builder"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "async-utility",
  "async-wsocket",
@@ -2820,7 +2820,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-relay-pool"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "async-utility",
  "async-wsocket",
@@ -2838,7 +2838,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-sdk"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "async-utility",
  "nostr",
@@ -2995,7 +2995,7 @@ checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 
 [[package]]
 name = "nwc"
-version = "0.40.0"
+version = "0.41.0"
 dependencies = [
  "async-utility",
  "nostr",
