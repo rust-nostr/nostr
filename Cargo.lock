@@ -2892,10 +2892,10 @@ name = "nostr-mls"
 version = "0.40.0"
 dependencies = [
  "nostr",
+ "nostr-mls-memory-storage",
  "nostr-mls-storage",
  "openmls",
  "openmls_basic_credential",
- "openmls_memory_storage",
  "openmls_rust_crypto",
  "openmls_traits",
  "tls_codec",

@@ -15,3 +15,7 @@ pub use crate::extension::*;
 pub use crate::groups::*;
 pub use crate::welcomes::*;
 pub use crate::*;
+
+// Re-export for tests and examples
+#[cfg(any(test, feature = "test-utils"))]
+pub use nostr_mls_memory_storage::NostrMlsMemoryStorage;

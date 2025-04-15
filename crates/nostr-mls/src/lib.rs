@@ -4,9 +4,8 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![doc = include_str!("../README.md")]
 
-use nostr_mls_database::NostrMlsDatabase;
+use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls::prelude::*;
-use openmls::storage::StorageProvider;
 use openmls_rust_crypto::RustCrypto;
 
 mod constant;
@@ -24,7 +23,7 @@ pub use self::error::Error;
 #[derive(Debug)]
 pub struct NostrMls<Storage>
 where
-    Storage: NostrMlsDatabase,
+    Storage: NostrMlsStorageProvider,
 {
     /// The ciphersuite to use
     pub ciphersuite: Ciphersuite,
@@ -36,21 +35,24 @@ where
 
 /// The provider struct for Nostr MLS that implements the OpenMLS Provider trait.
 #[derive(Debug)]
-pub struct NostrMlsProvider<Storage> {
+pub struct NostrMlsProvider<Storage>
+where
+    Storage: NostrMlsStorageProvider,
+{
     crypto: RustCrypto,
     storage: Storage,
 }
 
 impl<Storage> OpenMlsProvider for NostrMlsProvider<Storage>
 where
-    Storage: StorageProvider,
+    Storage: NostrMlsStorageProvider,
 {
     type CryptoProvider = RustCrypto;
     type RandProvider = RustCrypto;
-    type StorageProvider = Storage;
+    type StorageProvider = Storage::OpenMlsStorageProvider;
 
     fn storage(&self) -> &Self::StorageProvider {
-        &self.storage
+        self.storage.openmls_storage()
     }
 
     fn crypto(&self) -> &Self::CryptoProvider {
@@ -64,7 +66,7 @@ where
 
 impl<Storage> NostrMls<Storage>
 where
-    Storage: StorageProvider,
+    Storage: NostrMlsStorageProvider,
 {
     /// Construct new nostr MLS instance
     pub fn new(storage: Storage) -> Self {
@@ -103,13 +105,14 @@ where
     }
 }
 
+/// Tests module for nostr-mls
 #[cfg(test)]
-mod tests {
-    use openmls_memory_storage::MemoryStorage;
-
+pub mod tests {
     use super::*;
+    use nostr_mls_memory_storage::NostrMlsMemoryStorage;
 
-    pub fn create_test_nostr_mls() -> NostrMls<MemoryStorage> {
-        NostrMls::new(MemoryStorage::default())
+    /// Create a test NostrMls instance with an in-memory storage provider
+    pub fn create_test_nostr_mls() -> NostrMls<NostrMlsMemoryStorage> {
+        NostrMls::new(NostrMlsMemoryStorage::default())
     }
 }

@@ -75,7 +75,7 @@ impl NostrMlsSqliteStorage {
 
         // Initialize the OpenMLS storage
         if let Err(e) = openmls_storage.initialize() {
-            return Err(error::Error::OpenMlsError(e.to_string()));
+            return Err(error::Error::OpenMls(e.to_string()));
         }
 
         // Create a new connection for the Nostr MLS storage
@@ -114,7 +114,7 @@ impl NostrMlsSqliteStorage {
 
         // Initialize the OpenMLS storage
         if let Err(e) = openmls_storage.initialize() {
-            return Err(error::Error::OpenMlsError(e.to_string()));
+            return Err(error::Error::OpenMls(e.to_string()));
         }
 
         // For in-memory databases, we need to share the connection

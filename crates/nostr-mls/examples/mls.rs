@@ -3,11 +3,11 @@
 // Distributed under the MIT software license
 
 use nostr_mls::prelude::*;
-use openmls_memory_storage::MemoryStorage;
+use nostr_mls_memory_storage::NostrMlsMemoryStorage;
 
-fn generate_identity() -> (Keys, NostrMls<MemoryStorage>) {
+fn generate_identity() -> (Keys, NostrMls<NostrMlsMemoryStorage>) {
     let keys = Keys::generate();
-    let nostr_mls = NostrMls::new(MemoryStorage::default());
+    let nostr_mls = NostrMls::new(NostrMlsMemoryStorage::default());
     (keys, nostr_mls)
 }
 

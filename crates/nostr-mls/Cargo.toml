@@ -11,6 +11,10 @@ readme = "README.md"
 rust-version.workspace = true
 keywords = ["nostr", "mls", "openmls"]
 
+[features]
+default = []
+test-utils = []
+
 [dependencies]
 nostr = { workspace = true, features = ["std", "nip44"] }
 nostr-mls-storage = { workspace = true }
@@ -22,7 +26,7 @@ tls_codec = "0.4"
 tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
-openmls_memory_storage = { git = "https://github.com/erskingardner/openmls", rev = "df17af38cbf881de46ab3d783215183c9feb6ffb" }
+nostr-mls-memory-storage = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread"] }
 
 [[example]]

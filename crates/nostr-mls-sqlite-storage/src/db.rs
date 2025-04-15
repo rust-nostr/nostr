@@ -41,10 +41,7 @@ pub fn row_to_group(row: &Row) -> SqliteResult<Group> {
     };
 
     // Convert last_message_at to Timestamp if it exists
-    let last_message_at = match last_message_at {
-        Some(ts) => Some(Timestamp::from(ts as u64)),
-        None => None,
-    };
+    let last_message_at = last_message_at.map(|ts| Timestamp::from(ts as u64));
 
     Ok(Group {
         mls_group_id,
@@ -119,8 +116,8 @@ pub fn row_to_message(row: &Row) -> SqliteResult<Message> {
         )
     })?;
 
-    let kind = Kind::from(kind_value as u16);
-    let created_at = Timestamp::from(created_at_value as u64);
+    let kind = Kind::from(kind_value);
+    let created_at = Timestamp::from(created_at_value);
 
     let tags: Tags = serde_json::from_str(&tags_json).map_err(|e| {
         rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))

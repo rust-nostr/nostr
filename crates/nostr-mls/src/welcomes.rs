@@ -1,12 +1,12 @@
 //! Nostr MLS Welcomes
 
 use openmls::prelude::*;
-use openmls::storage::StorageProvider;
 use tls_codec::Deserialize as TlsDeserialize;
 
 use crate::error::Error;
 use crate::extension::NostrGroupDataExtension;
 use crate::NostrMls;
+use nostr_mls_storage::NostrMlsStorageProvider;
 
 /// Welcome preview
 #[derive(Debug)]
@@ -28,7 +28,7 @@ pub struct JoinedGroupResult {
 
 impl<Storage> NostrMls<Storage>
 where
-    Storage: StorageProvider,
+    Storage: NostrMlsStorageProvider,
 {
     /// Parses a welcome message and extracts group information.
     ///

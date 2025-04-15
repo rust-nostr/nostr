@@ -14,7 +14,7 @@ pub enum Error {
     Migration(String),
 
     /// Error from OpenMLS
-    OpenMlsError(String),
+    OpenMls(String),
 }
 
 impl Display for Error {
@@ -23,7 +23,7 @@ impl Display for Error {
             Self::Database(msg) => write!(f, "Database error: {}", msg),
             Self::Rusqlite(err) => write!(f, "SQLite error: {}", err),
             Self::Migration(msg) => write!(f, "Migration error: {}", msg),
-            Self::OpenMlsError(msg) => write!(f, "OpenMLS error: {}", msg),
+            Self::OpenMls(msg) => write!(f, "OpenMLS error: {}", msg),
         }
     }
 }

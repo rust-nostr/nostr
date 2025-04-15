@@ -4,16 +4,17 @@ use nostr::util::hex;
 use nostr::{Event, EventBuilder, Kind, NostrSigner, PublicKey, RelayUrl, Tag, TagKind};
 use openmls::key_packages::KeyPackage;
 use openmls::prelude::*;
-use openmls::storage::StorageProvider;
 use openmls_basic_credential::SignatureKeyPair;
+use openmls_traits::storage::StorageProvider;
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
 use crate::error::Error;
 use crate::NostrMls;
+use nostr_mls_storage::NostrMlsStorageProvider;
 
 impl<Storage> NostrMls<Storage>
 where
-    Storage: StorageProvider,
+    Storage: NostrMlsStorageProvider,
 {
     /// Creates a key package for a Nostr event.
     ///

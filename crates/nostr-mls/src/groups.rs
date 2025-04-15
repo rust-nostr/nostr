@@ -10,13 +10,13 @@ use nostr::{
 };
 use openmls::group::GroupId;
 use openmls::prelude::*;
-use openmls::storage::StorageProvider;
 use openmls_basic_credential::SignatureKeyPair;
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
 use super::extension::NostrGroupDataExtension;
 use super::NostrMls;
 use crate::error::Error;
+use nostr_mls_storage::NostrMlsStorageProvider;
 
 #[allow(missing_docs)]
 #[derive(Debug)]
@@ -53,7 +53,7 @@ pub struct CreateMessage {
 
 impl<Storage> NostrMls<Storage>
 where
-    Storage: StorageProvider,
+    Storage: NostrMlsStorageProvider,
 {
     #[inline]
     fn get_own_leaf<'a>(&self, group: &'a MlsGroup) -> Result<&'a LeafNode, Error> {
