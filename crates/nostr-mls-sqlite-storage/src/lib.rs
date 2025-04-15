@@ -6,7 +6,7 @@
 /// SQLite-based storage is persistent and will be saved to a file. It's useful for production applications
 /// where data persistence is required.
 mod db;
-mod error;
+pub mod error;
 mod groups;
 mod messages;
 mod migrations;
