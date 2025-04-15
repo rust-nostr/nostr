@@ -42,7 +42,7 @@ pub struct Message {
     pub tokens: Vec<SerializableToken>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum ProcessedMessageState {
     Processed,
     Failed,

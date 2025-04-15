@@ -27,9 +27,8 @@ impl Backend {
     }
 }
 
-pub trait NostrMlsStorageProvider<S: StorageProvider<CURRENT_VERSION>>:
-    GroupStorage + MessageStorage + WelcomeStorage
-{
+pub trait NostrMlsStorageProvider: GroupStorage + MessageStorage + WelcomeStorage {
+    type OpenMlsStorageProvider: StorageProvider<CURRENT_VERSION>;
     /// Returns the backend type.
     ///
     /// # Returns
@@ -45,7 +44,7 @@ pub trait NostrMlsStorageProvider<S: StorageProvider<CURRENT_VERSION>>:
     /// # Returns
     ///
     /// A reference to the openmls storage implementation.
-    fn openmls_storage(&self) -> &S;
+    fn openmls_storage(&self) -> &Self::OpenMlsStorageProvider;
 
     /// Get a mutable reference to the openmls storage provider.
     ///
@@ -55,7 +54,7 @@ pub trait NostrMlsStorageProvider<S: StorageProvider<CURRENT_VERSION>>:
     /// # Returns
     ///
     /// A mutable reference to the openmls storage implementation.
-    fn openmls_storage_mut(&mut self) -> &mut S;
+    fn openmls_storage_mut(&mut self) -> &mut Self::OpenMlsStorageProvider;
 }
 
 #[cfg(test)]

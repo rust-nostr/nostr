@@ -18,11 +18,9 @@ use nostr_mls_storage::welcomes::types::{ProcessedWelcome, Welcome};
 use nostr_mls_storage::Backend;
 use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls_memory_storage::MemoryStorage;
-use openmls_traits::storage::StorageProvider;
 use std::num::NonZeroUsize;
 use std::sync::{Arc, RwLock};
 
-const CURRENT_VERSION: u16 = 1;
 /// Default cache size for each LRU cache
 const DEFAULT_CACHE_SIZE: usize = 1000;
 
@@ -48,12 +46,9 @@ const DEFAULT_CACHE_SIZE: usize = 1000;
 /// - Exclusive writers (for create/save/delete operations)
 ///
 /// This approach optimizes for read-heavy workloads while still ensuring data consistency.
-pub struct NostrMlsMemoryStorage<S>
-where
-    S: StorageProvider<CURRENT_VERSION>,
-{
+pub struct NostrMlsMemoryStorage {
     /// The underlying storage implementation that conforms to OpenMLS's [`StorageProvider`]
-    openmls_storage: S,
+    openmls_storage: MemoryStorage,
     /// LRU Cache for Group objects, keyed by MLS group ID (Vec<u8>)
     groups_cache: RwLock<LruCache<Vec<u8>, Arc<Group>>>,
     /// LRU Cache for Group objects, keyed by Nostr group ID (String)
@@ -72,10 +67,7 @@ where
     processed_messages_cache: RwLock<LruCache<EventId, Arc<ProcessedMessage>>>,
 }
 
-impl<S> NostrMlsMemoryStorage<S>
-where
-    S: StorageProvider<CURRENT_VERSION>,
-{
+impl NostrMlsMemoryStorage {
     /// Creates a new [`NostrMlsMemoryStorage`] with the provided storage implementation.
     ///
     /// # Arguments
@@ -85,7 +77,7 @@ where
     /// # Returns
     ///
     /// A new instance of [`NostrMlsMemoryStorage`] wrapping the provided storage implementation.
-    pub fn new(storage_implementation: S) -> Self {
+    pub fn new(storage_implementation: MemoryStorage) -> Self {
         Self::with_cache_size(storage_implementation, DEFAULT_CACHE_SIZE)
     }
 
@@ -99,7 +91,7 @@ where
     /// # Returns
     ///
     /// A new instance of [`NostrMlsMemoryStorage`] wrapping the provided storage implementation.
-    pub fn with_cache_size(storage_implementation: S, cache_size: usize) -> Self {
+    pub fn with_cache_size(storage_implementation: MemoryStorage, cache_size: usize) -> Self {
         // Ensure cache_size is non-zero
         let size = NonZeroUsize::new(cache_size)
             .unwrap_or_else(|| NonZeroUsize::new(DEFAULT_CACHE_SIZE).unwrap());
@@ -118,7 +110,7 @@ where
     }
 }
 
-impl Default for NostrMlsMemoryStorage<MemoryStorage> {
+impl Default for NostrMlsMemoryStorage {
     /// Creates a new [`NostrMlsMemoryStorage`] with a default OpenMLS memory storage implementation.
     ///
     /// # Returns
@@ -130,10 +122,9 @@ impl Default for NostrMlsMemoryStorage<MemoryStorage> {
 }
 
 /// Implementation of [`NostrMlsStorageProvider`] for memory-based storage.
-impl<S> NostrMlsStorageProvider<S> for NostrMlsMemoryStorage<S>
-where
-    S: StorageProvider<CURRENT_VERSION>,
-{
+impl NostrMlsStorageProvider for NostrMlsMemoryStorage {
+    type OpenMlsStorageProvider = MemoryStorage;
+
     /// Returns the backend type.
     ///
     /// # Returns
@@ -151,7 +142,7 @@ where
     /// # Returns
     ///
     /// A reference to the openmls storage implementation.
-    fn openmls_storage(&self) -> &S {
+    fn openmls_storage(&self) -> &Self::OpenMlsStorageProvider {
         &self.openmls_storage
     }
 
@@ -163,7 +154,7 @@ where
     /// # Returns
     ///
     /// A mutable reference to the openmls storage implementation.
-    fn openmls_storage_mut(&mut self) -> &mut S {
+    fn openmls_storage_mut(&mut self) -> &mut Self::OpenMlsStorageProvider {
         &mut self.openmls_storage
     }
 }

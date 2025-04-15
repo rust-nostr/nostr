@@ -1,5 +1,4 @@
 use crate::NostrMlsMemoryStorage;
-use crate::CURRENT_VERSION;
 use nostr::PublicKey;
 use nostr_mls_storage::groups::error::GroupError;
 use nostr_mls_storage::groups::types::*;
@@ -7,8 +6,7 @@ use nostr_mls_storage::groups::GroupStorage;
 use nostr_mls_storage::messages::types::Message;
 use std::sync::Arc;
 
-use openmls_traits::storage::StorageProvider;
-impl<S: StorageProvider<CURRENT_VERSION>> GroupStorage for NostrMlsMemoryStorage<S> {
+impl GroupStorage for NostrMlsMemoryStorage {
     fn save_group(&self, group: Group) -> Result<Group, GroupError> {
         // Create Arc for the group
         let group_arc = Arc::new(group.clone());

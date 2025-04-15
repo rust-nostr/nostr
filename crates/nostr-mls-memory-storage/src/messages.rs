@@ -1,14 +1,11 @@
 use crate::NostrMlsMemoryStorage;
-use crate::CURRENT_VERSION;
 use nostr::EventId;
 use nostr_mls_storage::messages::error::MessageError;
 use nostr_mls_storage::messages::types::*;
 use nostr_mls_storage::messages::MessageStorage;
 use std::sync::Arc;
 
-use openmls_traits::storage::StorageProvider;
-
-impl<S: StorageProvider<CURRENT_VERSION>> MessageStorage for NostrMlsMemoryStorage<S> {
+impl MessageStorage for NostrMlsMemoryStorage {
     fn save_message(&self, message: Message) -> Result<Message, MessageError> {
         let message_arc = Arc::new(message.clone());
 

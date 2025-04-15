@@ -1,14 +1,11 @@
 use crate::NostrMlsMemoryStorage;
-use crate::CURRENT_VERSION;
 use nostr::EventId;
 use nostr_mls_storage::welcomes::error::WelcomeError;
 use nostr_mls_storage::welcomes::types::*;
 use nostr_mls_storage::welcomes::WelcomeStorage;
 use std::sync::Arc;
 
-use openmls_traits::storage::StorageProvider;
-
-impl<S: StorageProvider<CURRENT_VERSION>> WelcomeStorage for NostrMlsMemoryStorage<S> {
+impl WelcomeStorage for NostrMlsMemoryStorage {
     fn save_welcome(&self, welcome: Welcome) -> Result<Welcome, WelcomeError> {
         let welcome_arc = Arc::new(welcome.clone());
 
