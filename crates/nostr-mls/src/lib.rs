@@ -111,6 +111,13 @@ where
     pub fn storage(&self) -> &Storage {
         &self.provider.storage
     }
+
+    /// Get a mutable reference to the underlying storage provider
+    ///
+    /// This method provides mutable access to the underlying storage implementation.
+    pub fn storage_mut(&mut self) -> &mut Storage {
+        &mut self.provider.storage
+    }
 }
 
 /// Tests module for nostr-mls
