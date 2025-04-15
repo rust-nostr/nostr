@@ -55,7 +55,7 @@
 * nostr: add `push`, `pop`, `insert` and `extend` methods to the `Tag` struct ([Yuki Kishimoto])
 * nostr: add `nip47::Notification` ([daywalker90])
 * nostr: add `MachineReadablePrefix::as_str` method ([Yuki Kishimoto])
-* nostr: derive `Hash` for `Metadata` ([Yuki Kishimoto])
+* nostr: derive `Hash` for `EventBuilder` and `Metadata` ([Yuki Kishimoto])
 * pool: add `Relay::ban` method ([Yuki Kishimoto])
 * pool: add `AdmitPolicy::admit_connection` method ([Yuki Kishimoto])
 
