@@ -60,17 +60,7 @@ pub enum MachineReadablePrefix {
 
 impl fmt::Display for MachineReadablePrefix {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Duplicate => write!(f, "duplicate"),
-            Self::Pow => write!(f, "pow"),
-            Self::Blocked => write!(f, "blocked"),
-            Self::RateLimited => write!(f, "rate-limited"),
-            Self::Invalid => write!(f, "invalid"),
-            Self::Error => write!(f, "error"),
-            Self::Unsupported => write!(f, "unsupported"),
-            Self::AuthRequired => write!(f, "auth-required"),
-            Self::Restricted => write!(f, "restricted"),
-        }
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -88,6 +78,21 @@ impl MachineReadablePrefix {
             m if m.starts_with("auth-required:") => Some(Self::AuthRequired),
             m if m.starts_with("restricted:") => Some(Self::Restricted),
             _ => None,
+        }
+    }
+
+    /// Get as `&str`
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Duplicate => "duplicate",
+            Self::Pow => "pow",
+            Self::Blocked => "blocked",
+            Self::RateLimited => "rate-limited",
+            Self::Invalid => "invalid",
+            Self::Error => "error",
+            Self::Unsupported => "unsupported",
+            Self::AuthRequired => "auth-required",
+            Self::Restricted => "restricted",
         }
     }
 }
