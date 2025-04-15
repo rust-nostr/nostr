@@ -148,7 +148,7 @@ impl From<nip59::Error> for Error {
 }
 
 /// Event builder
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct EventBuilder {
     // Not expose the kind, tags and content.
     // These if changed may break the previously constructed events
