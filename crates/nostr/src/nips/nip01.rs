@@ -6,14 +6,11 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/01.md>
 
-#[cfg(not(feature = "std"))]
-use alloc::collections::BTreeMap as AllocMap;
+use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
-#[cfg(feature = "std")]
-use std::collections::HashMap as AllocMap;
 
 use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
@@ -259,7 +256,7 @@ impl CoordinateBorrow<'_> {
 }
 
 /// Metadata
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Metadata {
     /// Name
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -304,7 +301,7 @@ pub struct Metadata {
         deserialize_with = "deserialize_custom_fields"
     )]
     #[serde(default)]
-    pub custom: AllocMap<String, Value>,
+    pub custom: BTreeMap<String, Value>,
 }
 
 impl Metadata {
@@ -420,7 +417,7 @@ impl JsonUtil for Metadata {
 }
 
 fn serialize_custom_fields<S>(
-    custom_fields: &AllocMap<String, Value>,
+    custom_fields: &BTreeMap<String, Value>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -433,14 +430,14 @@ where
     map.end()
 }
 
-fn deserialize_custom_fields<'de, D>(deserializer: D) -> Result<AllocMap<String, Value>, D::Error>
+fn deserialize_custom_fields<'de, D>(deserializer: D) -> Result<BTreeMap<String, Value>, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct GenericTagsVisitor;
 
     impl<'de> Visitor<'de> for GenericTagsVisitor {
-        type Value = AllocMap<String, Value>;
+        type Value = BTreeMap<String, Value>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
             formatter.write_str("map where keys are strings and values are valid json")
@@ -450,11 +447,7 @@ where
         where
             M: MapAccess<'de>,
         {
-            #[cfg(not(feature = "std"))]
-            let mut custom_fields: AllocMap<String, Value> = AllocMap::new();
-            #[cfg(feature = "std")]
-            let mut custom_fields: AllocMap<String, Value> =
-                AllocMap::with_capacity(map.size_hint().unwrap_or_default());
+            let mut custom_fields: BTreeMap<String, Value> = BTreeMap::new();
             while let Some(field_name) = map.next_key::<String>()? {
                 if let Ok(value) = map.next_value::<Value>() {
                     custom_fields.insert(field_name, value);
