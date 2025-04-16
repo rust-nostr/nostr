@@ -4,20 +4,20 @@
 
 The project is split up into several crates in the `crates/` directory:
 
-- Libraries:
-  - [**nostr**](./crates/nostr): Rust implementation of Nostr protocol
-  - [**nostr-connect**](./crates/nostr-connect): Nostr Connect (NIP46)
-  - [**nostr-database**](./crates/nostr-database): Database for Nostr apps
-    - [**nostr-lmdb**](./crates/nostr-lmdb): LMDB storage backend
-    - [**nostr-ndb**](./crates/nostr-ndb): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
-    - [**nostr-indexeddb**](./crates/nostr-indexeddb): IndexedDB storage backend
-  - [**nostr-mls-storage**](./crates/nostr-mls-storage/): Storage traits for using MLS messaging
-  - [**nostr-keyring**](./crates/nostr-keyring): Nostr Keyring
-  - [**nostr-relay-pool**](./crates/nostr-relay-pool): Nostr Relay Pool
-  - [**nostr-sdk**](./crates/nostr-sdk): High level client library
-  - [**nwc**](./crates/nwc): Nostr Wallet Connect (NWC) client
-- Binaries (tools):
-  - [**nostr-cli**](./crates/nostr-cli): Nostr CLI
+* Libraries:
+    * [**nostr**](./crates/nostr): Rust implementation of Nostr protocol
+    * [**nostr-connect**](./crates/nostr-connect): Nostr Connect (NIP46)
+    * [**nostr-database**](./crates/nostr-database): Database for Nostr apps
+        * [**nostr-lmdb**](./crates/nostr-lmdb): LMDB storage backend
+        * [**nostr-ndb**](./crates/nostr-ndb): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
+        * [**nostr-indexeddb**](./crates/nostr-indexeddb): IndexedDB storage backend
+    * [**nostr-mls-storage**](./crates/nostr-mls-storage/): Storage traits for using MLS messaging
+    * [**nostr-keyring**](./crates/nostr-keyring): Nostr Keyring
+    * [**nostr-relay-pool**](./crates/nostr-relay-pool): Nostr Relay Pool
+    * [**nostr-sdk**](./crates/nostr-sdk): High level client library
+    * [**nwc**](./crates/nwc): Nostr Wallet Connect (NWC) client
+* Binaries (tools):
+    * [**nostr-cli**](./crates/nostr-cli): Nostr CLI
 
 ### Embedded
 
