@@ -139,6 +139,7 @@ pub fn build_filter_query<'a>(filter: Filter) -> QuerySetJoinType<'a> {
     let mut query = events::table
         .distinct_on(events::id)
         .inner_join(event_tags::table)
+        .filter(events::deleted.eq(false))
         .into_boxed();
 
     if let Some(limit) = filter.limit {

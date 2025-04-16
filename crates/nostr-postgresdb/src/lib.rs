@@ -66,8 +66,10 @@ impl NostrEventsDatabase for NostrPostgres {
     ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>> {
         Box::pin(async move {
             let event = match self.event_by_id(_event_id).await? {
-                Some(e) => Some(Event::decode(&e.payload).map_err(DatabaseError::backend)?),
-                None => None,
+                Some(e) if !e.deleted => {
+                    Some(Event::decode(&e.payload).map_err(DatabaseError::backend)?)
+                }
+                _ => None,
             };
             Ok(event)
         })
