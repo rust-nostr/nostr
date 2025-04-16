@@ -5,10 +5,6 @@
 ///
 /// Memory-based storage is non-persistent and will be cleared when the application terminates.
 /// It's useful for testing or ephemeral applications where persistence isn't required.
-mod groups;
-mod messages;
-mod welcomes;
-
 use std::num::NonZeroUsize;
 use std::sync::{Arc, RwLock};
 
@@ -19,6 +15,10 @@ use nostr_mls_storage::messages::types::{Message, ProcessedMessage};
 use nostr_mls_storage::welcomes::types::{ProcessedWelcome, Welcome};
 use nostr_mls_storage::{Backend, NostrMlsStorageProvider};
 use openmls_memory_storage::MemoryStorage;
+
+mod groups;
+mod messages;
+mod welcomes;
 
 /// Default cache size for each LRU cache
 const DEFAULT_CACHE_SIZE: usize = 1000;

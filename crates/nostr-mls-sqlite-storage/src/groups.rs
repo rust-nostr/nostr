@@ -1,3 +1,5 @@
+//! Implementation of GroupStorage trait for SQLite storage.
+
 use nostr::PublicKey;
 use nostr_mls_storage::groups::error::GroupError;
 use nostr_mls_storage::groups::types::{Group, GroupRelay};
@@ -5,9 +7,7 @@ use nostr_mls_storage::groups::GroupStorage;
 use nostr_mls_storage::messages::types::Message;
 use rusqlite::params;
 
-/// Implementation of GroupStorage trait for SQLite storage.
-use crate::db;
-use crate::NostrMlsSqliteStorage;
+use crate::{db, NostrMlsSqliteStorage};
 
 impl GroupStorage for NostrMlsSqliteStorage {
     fn all_groups(&self) -> Result<Vec<Group>, GroupError> {

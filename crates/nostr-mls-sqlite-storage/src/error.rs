@@ -1,5 +1,5 @@
 /// Error types for the SQLite storage implementation.
-use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::fmt;
 
 /// Error type for SQLite storage operations.
 #[derive(Debug)]
@@ -17,8 +17,10 @@ pub enum Error {
     OpenMls(String),
 }
 
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Database(msg) => write!(f, "Database error: {}", msg),
             Self::Rusqlite(err) => write!(f, "SQLite error: {}", err),
@@ -27,8 +29,6 @@ impl Display for Error {
         }
     }
 }
-
-impl std::error::Error for Error {}
 
 impl From<rusqlite::Error> for Error {
     fn from(err: rusqlite::Error) -> Self {

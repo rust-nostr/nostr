@@ -1,9 +1,10 @@
+use nostr::EventId;
+
 pub mod error;
 pub mod types;
 
-use error::WelcomeError;
-use nostr::EventId;
-use types::*;
+use self::error::WelcomeError;
+use self::types::*;
 
 pub trait WelcomeStorage {
     fn save_welcome(&self, welcome: Welcome) -> Result<Welcome, WelcomeError>;

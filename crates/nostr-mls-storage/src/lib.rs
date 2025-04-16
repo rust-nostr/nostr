@@ -1,12 +1,12 @@
+use openmls_traits::storage::StorageProvider;
+
 pub mod groups;
 pub mod messages;
 pub mod welcomes;
 
-use openmls_traits::storage::StorageProvider;
-
-use crate::groups::GroupStorage;
-use crate::messages::MessageStorage;
-use crate::welcomes::WelcomeStorage;
+use self::groups::GroupStorage;
+use self::messages::MessageStorage;
+use self::welcomes::WelcomeStorage;
 
 const CURRENT_VERSION: u16 = 1;
 

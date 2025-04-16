@@ -1,12 +1,12 @@
+//! Implementation of WelcomeStorage trait for SQLite storage.
+
 use nostr::EventId;
 use nostr_mls_storage::welcomes::error::WelcomeError;
 use nostr_mls_storage::welcomes::types::{ProcessedWelcome, Welcome};
 use nostr_mls_storage::welcomes::WelcomeStorage;
 use rusqlite::params;
 
-/// Implementation of WelcomeStorage trait for SQLite storage.
-use crate::db;
-use crate::NostrMlsSqliteStorage;
+use crate::{db, NostrMlsSqliteStorage};
 
 impl WelcomeStorage for NostrMlsSqliteStorage {
     fn save_welcome(&self, welcome: Welcome) -> Result<Welcome, WelcomeError> {

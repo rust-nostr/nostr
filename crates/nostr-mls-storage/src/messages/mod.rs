@@ -1,10 +1,11 @@
+use nostr::EventId;
+
 pub mod error;
 pub mod parser;
 pub mod types;
 
-use error::MessageError;
-use nostr::EventId;
-use types::*;
+use self::error::MessageError;
+use self::types::*;
 
 pub trait MessageStorage {
     fn save_message(&self, message: Message) -> Result<Message, MessageError>;

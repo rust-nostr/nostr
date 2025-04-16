@@ -1,7 +1,7 @@
 use nostr::{EventId, PublicKey, Timestamp, UnsignedEvent};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessedWelcome {
     /// The event id of the processed welcome
     pub wrapper_event_id: EventId,
@@ -15,7 +15,7 @@ pub struct ProcessedWelcome {
     pub failure_reason: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Welcome {
     /// The event id of the kind 444 welcome
     pub id: EventId,

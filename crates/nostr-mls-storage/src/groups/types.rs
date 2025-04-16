@@ -1,7 +1,7 @@
 use nostr::{EventId, PublicKey, RelayUrl, Timestamp};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GroupType {
     /// A group with only two members
     DirectMessage,
@@ -14,6 +14,7 @@ impl From<String> for GroupType {
         match s.as_str() {
             "DirectMessage" => Self::DirectMessage,
             "Group" => Self::Group,
+            // TODO: remove this panic
             _ => panic!("Invalid group type: {}", s),
         }
     }
@@ -28,7 +29,7 @@ impl From<GroupType> for String {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GroupState {
     Active,
     Inactive,
@@ -53,7 +54,7 @@ impl From<GroupState> for String {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Group {
     /// This is the MLS group ID, this will serve as the PK in the DB and doesn't change
     pub mls_group_id: Vec<u8>,
@@ -77,7 +78,7 @@ pub struct Group {
     pub state: GroupState,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupRelay {
     pub relay_url: RelayUrl,
     pub mls_group_id: Vec<u8>,

@@ -18,6 +18,7 @@ impl fmt::Display for MessageError {
     }
 }
 
+// TODO: derive Debug trait instead?
 impl fmt::Debug for MessageError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self)

@@ -2,9 +2,9 @@ use nostr::event::Kind;
 use nostr::{EventId, PublicKey, Tags, Timestamp, UnsignedEvent};
 use serde::{Deserialize, Serialize};
 
-use crate::messages::parser::SerializableToken;
+use super::parser::SerializableToken;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessedMessage {
     /// The event id of the processed message
     pub wrapper_event_id: EventId,
@@ -20,7 +20,7 @@ pub struct ProcessedMessage {
 
 /// This is the processed rumor message that represents a message in a group
 /// We store the deconstructed messages but also the UnsignedEvent.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     /// The event id of the message
     pub id: EventId,

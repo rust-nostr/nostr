@@ -1,10 +1,10 @@
+use nostr::PublicKey;
+
 pub mod error;
 pub mod types;
 
-use error::GroupError;
-use nostr::PublicKey;
-use types::*;
-
+use self::error::GroupError;
+use self::types::*;
 use crate::messages::types::Message;
 
 pub trait GroupStorage {

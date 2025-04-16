@@ -18,6 +18,7 @@ impl fmt::Display for GroupError {
     }
 }
 
+// TODO: derive Debug trait instead?
 impl fmt::Debug for GroupError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self)
