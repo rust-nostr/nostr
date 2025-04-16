@@ -59,6 +59,7 @@ buildargs=(
 
 skip_msrv=(
     "-p nostr-lmdb"                       # MSRV: 1.72.0
+    "-p nostr-mls-storage"                # MSRV: 1.74.0
     "-p nostr-keyring"                    # MSRV: 1.75.0
     "-p nostr-keyring --features async"   # MSRV: 1.75.0
     "-p nostr-sdk --features tor"         # MSRV: 1.77.0
