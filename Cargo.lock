@@ -2779,6 +2779,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-mls-storage"
+version = "0.41.0"
+dependencies = [
+ "nostr",
+ "openmls_traits",
+ "serde",
+]
+
+[[package]]
 name = "nostr-ndb"
 version = "0.41.0"
 dependencies = [
@@ -3058,6 +3067,15 @@ name = "opaque-debug"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
+
+[[package]]
+name = "openmls_traits"
+version = "0.3.0"
+source = "git+https://github.com/erskingardner/openmls?rev=df17af38cbf881de46ab3d783215183c9feb6ffb#df17af38cbf881de46ab3d783215183c9feb6ffb"
+dependencies = [
+ "serde",
+ "tls_codec",
+]
 
 [[package]]
 name = "opentimestamps"
@@ -4549,6 +4567,28 @@ name = "tinyvec_macros"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
+
+[[package]]
+name = "tls_codec"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0de2e01245e2bb89d6f05801c564fa27624dbd7b1846859876c7dad82e90bf6b"
+dependencies = [
+ "serde",
+ "tls_codec_derive",
+ "zeroize",
+]
+
+[[package]]
+name = "tls_codec_derive"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d2e76690929402faae40aebdda620a2c0e25dd6d3b9afe48867dfd95991f4bd"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.90",
+]
 
 [[package]]
 name = "tokio"

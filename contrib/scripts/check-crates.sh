@@ -41,6 +41,7 @@ buildargs=(
     "-p nostr --all-features"                                     # All features
     "-p nostr-database"
     "-p nostr-lmdb"
+    "-p nostr-mls-storage"
     "-p nostr-indexeddb --target wasm32-unknown-unknown"
     "-p nostr-ndb"
     "-p nostr-keyring"

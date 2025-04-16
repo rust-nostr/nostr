@@ -10,3 +10,6 @@ many-events.json.zst
 .idea/
 .vscode/
 env/
+.repomix-*.txt
+vibe-tools.config.json
+.cursor/rules/
