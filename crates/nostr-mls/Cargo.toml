@@ -17,7 +17,7 @@ test-utils = []
 
 [dependencies]
 nostr = { workspace = true, features = ["std", "nip44"] }
-nostr-mls-storage = { workspace = true }
+nostr-mls-storage.workspace = true
 openmls = { git = "https://github.com/erskingardner/openmls", rev = "df17af38cbf881de46ab3d783215183c9feb6ffb", default-features = false }
 openmls_basic_credential = { git = "https://github.com/erskingardner/openmls", rev = "df17af38cbf881de46ab3d783215183c9feb6ffb", default-features = false }
 openmls_rust_crypto = { git = "https://github.com/erskingardner/openmls", rev = "df17af38cbf881de46ab3d783215183c9feb6ffb", default-features = false }
@@ -26,8 +26,8 @@ tls_codec = "0.4"
 tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
-nostr-mls-memory-storage = { workspace = true }
-nostr-mls-sqlite-storage = { workspace = true }
+nostr-mls-memory-storage.workspace = true
+nostr-mls-sqlite-storage.workspace = true
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread"] }
 tempfile = "3.8"
 

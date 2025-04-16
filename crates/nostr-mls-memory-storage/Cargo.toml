@@ -12,9 +12,7 @@ rust-version.workspace = true
 keywords = ["nostr", "mls", "openmls", "memory"]
 
 [dependencies]
-nostr-mls-storage = { workspace = true }
-nostr = { workspace = true, features = ["std", "parser"] }
-openmls_traits = { git = "https://github.com/erskingardner/openmls", rev = "df17af38cbf881de46ab3d783215183c9feb6ffb", default-features = false }
+lru.workspace = true
+nostr = { workspace = true, features = ["std"] }
+nostr-mls-storage.workspace = true
 openmls_memory_storage = { git = "https://github.com/erskingardner/openmls", rev = "df17af38cbf881de46ab3d783215183c9feb6ffb", default-features = false }
-tracing = { workspace = true, features = ["std"] }
-lru = "0.10"

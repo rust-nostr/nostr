@@ -12,7 +12,6 @@ rust-version.workspace = true
 keywords = ["nostr", "mls", "openmls"]
 
 [dependencies]
-openmls_traits = { git = "https://github.com/erskingardner/openmls", rev = "df17af38cbf881de46ab3d783215183c9feb6ffb", default-features = false }
 nostr = { workspace = true, features = ["std", "parser"] }
-tracing = { workspace = true, features = ["std"] }
+openmls_traits = { git = "https://github.com/erskingardner/openmls", rev = "df17af38cbf881de46ab3d783215183c9feb6ffb", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
