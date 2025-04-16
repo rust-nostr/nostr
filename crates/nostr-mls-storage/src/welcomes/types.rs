@@ -1,6 +1,8 @@
 use nostr::{EventId, PublicKey, Timestamp, UnsignedEvent};
 use serde::{Deserialize, Serialize};
 
+use super::error::WelcomeError;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessedWelcome {
     /// The event id of the processed welcome
@@ -47,6 +49,21 @@ pub struct Welcome {
 pub enum ProcessedWelcomeState {
     Processed,
     Failed,
+    Unknown(String),
+}
+
+impl ProcessedWelcomeState {
+    /// Safely converts a string to a ProcessedWelcomeState, returning an error for invalid values
+    pub fn try_from_string(s: &str) -> Result<Self, WelcomeError> {
+        match s.to_lowercase().as_str() {
+            "processed" => Ok(Self::Processed),
+            "failed" => Ok(Self::Failed),
+            _ => Err(WelcomeError::InvalidParameters(format!(
+                "Invalid processed welcome state: {}",
+                s
+            ))),
+        }
+    }
 }
 
 impl From<String> for ProcessedWelcomeState {
@@ -54,7 +71,7 @@ impl From<String> for ProcessedWelcomeState {
         match s.to_lowercase().as_str() {
             "processed" => Self::Processed,
             "failed" => Self::Failed,
-            _ => panic!("Invalid processed welcome state: {}", s),
+            _ => Self::Unknown(s),
         }
     }
 }
@@ -64,6 +81,7 @@ impl From<ProcessedWelcomeState> for String {
         match state {
             ProcessedWelcomeState::Processed => "processed".to_string(),
             ProcessedWelcomeState::Failed => "failed".to_string(),
+            ProcessedWelcomeState::Unknown(s) => s,
         }
     }
 }
@@ -74,6 +92,23 @@ pub enum WelcomeState {
     Accepted,
     Declined,
     Ignored,
+    Unknown(String),
+}
+
+impl WelcomeState {
+    /// Safely converts a string to a WelcomeState, returning an error for invalid values
+    pub fn try_from_string(s: &str) -> Result<Self, WelcomeError> {
+        match s.to_lowercase().as_str() {
+            "pending" => Ok(Self::Pending),
+            "accepted" => Ok(Self::Accepted),
+            "declined" => Ok(Self::Declined),
+            "ignored" => Ok(Self::Ignored),
+            _ => Err(WelcomeError::InvalidParameters(format!(
+                "Invalid welcome state: {}",
+                s
+            ))),
+        }
+    }
 }
 
 impl From<String> for WelcomeState {
@@ -83,7 +118,7 @@ impl From<String> for WelcomeState {
             "accepted" => Self::Accepted,
             "declined" => Self::Declined,
             "ignored" => Self::Ignored,
-            _ => panic!("Invalid welcome state: {}", s),
+            _ => Self::Unknown(s),
         }
     }
 }
@@ -95,6 +130,7 @@ impl From<WelcomeState> for String {
             WelcomeState::Accepted => "accepted".to_string(),
             WelcomeState::Declined => "declined".to_string(),
             WelcomeState::Ignored => "ignored".to_string(),
+            WelcomeState::Unknown(s) => s,
         }
     }
 }

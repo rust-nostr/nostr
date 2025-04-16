@@ -2,6 +2,7 @@ use nostr::event::Kind;
 use nostr::{EventId, PublicKey, Tags, Timestamp, UnsignedEvent};
 use serde::{Deserialize, Serialize};
 
+use super::error::MessageError;
 use super::parser::SerializableToken;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,6 +49,21 @@ pub struct Message {
 pub enum ProcessedMessageState {
     Processed,
     Failed,
+    Unknown(String),
+}
+
+impl ProcessedMessageState {
+    /// Safely converts a string to a ProcessedMessageState, returning an error for invalid values
+    pub fn try_from_string(s: &str) -> Result<Self, MessageError> {
+        match s.to_lowercase().as_str() {
+            "processed" => Ok(Self::Processed),
+            "failed" => Ok(Self::Failed),
+            _ => Err(MessageError::InvalidParameters(format!(
+                "Invalid processed message state: {}",
+                s
+            ))),
+        }
+    }
 }
 
 impl From<String> for ProcessedMessageState {
@@ -55,7 +71,7 @@ impl From<String> for ProcessedMessageState {
         match s.to_lowercase().as_str() {
             "processed" => Self::Processed,
             "failed" => Self::Failed,
-            _ => panic!("Invalid processed message state: {}", s),
+            _ => Self::Unknown(s),
         }
     }
 }
@@ -65,6 +81,7 @@ impl From<ProcessedMessageState> for String {
         match state {
             ProcessedMessageState::Processed => "processed".to_string(),
             ProcessedMessageState::Failed => "failed".to_string(),
+            ProcessedMessageState::Unknown(s) => s,
         }
     }
 }

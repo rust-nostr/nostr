@@ -1,12 +1,30 @@
 use nostr::{EventId, PublicKey, RelayUrl, Timestamp};
 use serde::{Deserialize, Serialize};
 
+use super::error::GroupError;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum GroupType {
     /// A group with only two members
     DirectMessage,
     /// A group with more than two members
     Group,
+    /// For handling unknown values
+    Unknown(String),
+}
+
+impl GroupType {
+    /// Safely converts a string to a GroupType, returning an error for invalid values
+    pub fn try_from_string(s: &str) -> Result<Self, GroupError> {
+        match s {
+            "DirectMessage" => Ok(Self::DirectMessage),
+            "Group" => Ok(Self::Group),
+            _ => Err(GroupError::InvalidParameters(format!(
+                "Invalid group type: {}",
+                s
+            ))),
+        }
+    }
 }
 
 impl From<String> for GroupType {
@@ -14,8 +32,7 @@ impl From<String> for GroupType {
         match s.as_str() {
             "DirectMessage" => Self::DirectMessage,
             "Group" => Self::Group,
-            // TODO: remove this panic
-            _ => panic!("Invalid group type: {}", s),
+            _ => Self::Unknown(s),
         }
     }
 }
@@ -25,6 +42,7 @@ impl From<GroupType> for String {
         match group_type {
             GroupType::DirectMessage => "DirectMessage".to_string(),
             GroupType::Group => "Group".to_string(),
+            GroupType::Unknown(s) => s,
         }
     }
 }
@@ -33,6 +51,22 @@ impl From<GroupType> for String {
 pub enum GroupState {
     Active,
     Inactive,
+    /// For handling unknown values
+    Unknown(String),
+}
+
+impl GroupState {
+    /// Safely converts a string to a GroupState, returning an error for invalid values
+    pub fn try_from_string(s: &str) -> Result<Self, GroupError> {
+        match s {
+            "Active" => Ok(Self::Active),
+            "Inactive" => Ok(Self::Inactive),
+            _ => Err(GroupError::InvalidParameters(format!(
+                "Invalid group state: {}",
+                s
+            ))),
+        }
+    }
 }
 
 impl From<String> for GroupState {
@@ -40,7 +74,7 @@ impl From<String> for GroupState {
         match s.as_str() {
             "Active" => Self::Active,
             "Inactive" => Self::Inactive,
-            _ => panic!("Invalid group state: {}", s),
+            _ => Self::Unknown(s),
         }
     }
 }
@@ -50,6 +84,7 @@ impl From<GroupState> for String {
         match state {
             GroupState::Active => "Active".to_string(),
             GroupState::Inactive => "Inactive".to_string(),
+            GroupState::Unknown(s) => s,
         }
     }
 }
