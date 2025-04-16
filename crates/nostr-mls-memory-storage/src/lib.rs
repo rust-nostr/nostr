@@ -1,10 +1,11 @@
-/// Memory-based storage implementation for Nostr MLS.
-///
-/// This module provides a memory-based storage implementation for the Nostr MLS (Messaging Layer Security)
-/// crate. It implements the [`NostrMlsStorageProvider`] trait, allowing it to be used within the Nostr MLS context.
-///
-/// Memory-based storage is non-persistent and will be cleared when the application terminates.
-/// It's useful for testing or ephemeral applications where persistence isn't required.
+//! Memory-based storage implementation for Nostr MLS.
+//!
+//! This module provides a memory-based storage implementation for the Nostr MLS (Messaging Layer Security)
+//! crate. It implements the [`NostrMlsStorageProvider`] trait, allowing it to be used within the Nostr MLS context.
+//!
+//! Memory-based storage is non-persistent and will be cleared when the application terminates.
+//! It's useful for testing or ephemeral applications where persistence isn't required.
+
 use std::num::NonZeroUsize;
 use std::sync::{Arc, RwLock};
 

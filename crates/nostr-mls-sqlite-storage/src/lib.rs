@@ -1,10 +1,11 @@
-/// SQLite-based storage implementation for Nostr MLS.
-///
-/// This module provides a SQLite-based storage implementation for the Nostr MLS (Messaging Layer Security)
-/// crate. It implements the [`NostrMlsStorageProvider`] trait, allowing it to be used within the Nostr MLS context.
-///
-/// SQLite-based storage is persistent and will be saved to a file. It's useful for production applications
-/// where data persistence is required.
+//! SQLite-based storage implementation for Nostr MLS.
+//!
+//! This module provides a SQLite-based storage implementation for the Nostr MLS (Messaging Layer Security)
+//! crate. It implements the [`NostrMlsStorageProvider`] trait, allowing it to be used within the Nostr MLS context.
+//!
+//! SQLite-based storage is persistent and will be saved to a file. It's useful for production applications
+//! where data persistence is required.
+
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
