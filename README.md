@@ -11,6 +11,7 @@ The project is split up into several crates in the `crates/` directory:
         * [**nostr-lmdb**](./crates/nostr-lmdb): LMDB storage backend
         * [**nostr-ndb**](./crates/nostr-ndb): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
         * [**nostr-indexeddb**](./crates/nostr-indexeddb): IndexedDB storage backend
+    * [**nostr-mls-storage**](./crates/nostr-mls-storage): Storage traits for using MLS messaging
     * [**nostr-keyring**](./crates/nostr-keyring): Nostr Keyring
     * [**nostr-relay-pool**](./crates/nostr-relay-pool): Nostr Relay Pool
     * [**nostr-sdk**](./crates/nostr-sdk): High level client library
@@ -20,7 +21,7 @@ The project is split up into several crates in the `crates/` directory:
 
 ### Embedded
 
-**nostr** crate can be used in [`no_std`](https://docs.rust-embedded.org/book/intro/no-std.html) environments. 
+**nostr** crate can be used in [`no_std`](https://docs.rust-embedded.org/book/intro/no-std.html) environments.
 Check the example in the [`embedded/`](./crates/nostr/examples/embedded) directory.
 
 ## Book
