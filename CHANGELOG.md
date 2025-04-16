@@ -30,6 +30,7 @@
 ### Added
 
 - nostr-mls-storage: add new crate with traits and types for mls storage implementations. ([JeffG])
+- nostr-mls-memory-storage: add new crate that implements nostr-mls-storage with in-memory storage ([JeffG])
 
 ## v0.41.0 - 2025/04/15
 
