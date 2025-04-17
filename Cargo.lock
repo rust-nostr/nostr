@@ -2798,6 +2798,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-mls-memory-storage"
+version = "0.41.0"
+dependencies = [
+ "lru",
+ "nostr",
+ "nostr-mls-storage",
+ "openmls_memory_storage",
+ "parking_lot",
+]
+
+[[package]]
 name = "nostr-mls-storage"
 version = "0.41.0"
 dependencies = [
@@ -3087,6 +3098,19 @@ name = "opaque-debug"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
+
+[[package]]
+name = "openmls_memory_storage"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea9cc9eb04ed97262fa96382d7dbf0adfebd5ecde7dbafc7070f9231dd9cf08b"
+dependencies = [
+ "log",
+ "openmls_traits",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.64",
+]
 
 [[package]]
 name = "openmls_traits"
