@@ -1,3 +1,5 @@
+//! Implements data structures specific to BUD-02
+
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::{Timestamp, Url};
 use serde::{Deserialize, Serialize};

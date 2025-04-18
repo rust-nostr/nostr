@@ -1,3 +1,5 @@
+//! Implements data structures specific to BUD-01
+
 use std::fmt;
 
 use nostr::hashes::sha256::Hash as Sha256Hash;

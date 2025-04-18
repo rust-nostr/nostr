@@ -1,3 +1,5 @@
+//! Implements a Blossom client for interacting with Blossom servers
+
 use std::error::Error;
 use std::time::Duration;
 

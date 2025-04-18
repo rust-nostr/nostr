@@ -14,9 +14,6 @@
 #![warn(rustdoc::bare_urls)]
 #![warn(clippy::large_futures)]
 
-/// Implements data structures specific to BUD-01
 pub mod bud01;
-/// Implements data structures specific to BUD-02
 pub mod bud02;
-/// Implements a Blossom client for interacting with Blossom servers
 pub mod client;
