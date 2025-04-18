@@ -14,7 +14,7 @@ use nostr::util::BoxedFuture;
 use nostr_database::*;
 use postgres::{build_filter_query, with_limit};
 pub use postgres::{postgres_connection_pool, NostrPostgres};
-use schema::nostr::events;
+use schema::events;
 
 impl NostrDatabase for NostrPostgres {
     fn backend(&self) -> Backend {

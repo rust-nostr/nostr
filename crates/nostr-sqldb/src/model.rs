@@ -2,7 +2,7 @@ use diesel::prelude::*;
 use nostr::event::Event;
 use nostr_database::{DatabaseError, FlatBufferBuilder, FlatBufferEncode};
 
-use crate::schema::nostr::{event_tags, events};
+use crate::schema::{event_tags, events};
 
 /// DB representation of [`Event`]
 #[derive(Queryable, Selectable, Insertable, AsChangeset, Debug, Clone)]

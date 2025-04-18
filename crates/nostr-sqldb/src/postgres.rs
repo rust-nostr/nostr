@@ -12,7 +12,7 @@ use nostr::filter::Filter;
 use nostr_database::*;
 
 use super::model::{EventDataDb, EventDb};
-use super::schema::nostr::{event_tags, events};
+use super::schema::{event_tags, events};
 
 /// Shorthand for a database connection pool type
 pub type PostgresConnectionPool = Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
