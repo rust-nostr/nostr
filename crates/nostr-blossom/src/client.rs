@@ -1,23 +1,24 @@
 //! Implements a Blossom client for interacting with Blossom servers
 
-use std::error::Error;
 use std::time::Duration;
 
+use base64::engine::general_purpose;
 use base64::Engine;
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::hashes::Hash;
 use nostr::signer::NostrSigner;
-use nostr::{EventBuilder, PublicKey, Timestamp};
+use nostr::{Event, EventBuilder, PublicKey, Timestamp};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, RANGE};
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::redirect::Policy;
-use reqwest::StatusCode;
+use reqwest::{Response, StatusCode};
 
 use crate::bud01::{
     BlossomAuthorization, BlossomAuthorizationScope, BlossomAuthorizationVerb,
     BlossomBuilderExtension,
 };
 use crate::bud02::BlobDescriptor;
+use crate::error::Error;
 
 /// A client for interacting with a Blossom server
 ///
@@ -57,7 +58,7 @@ impl BlossomClient {
         content_type: Option<String>,
         authorization_options: Option<BlossomAuthorizationOptions>,
         signer: Option<&T>,
-    ) -> Result<BlobDescriptor, Box<dyn Error>>
+    ) -> Result<BlobDescriptor, Error>
     where
         T: NostrSigner,
     {
@@ -70,8 +71,9 @@ impl BlossomClient {
         let mut headers = HeaderMap::new();
 
         if let Some(ct) = content_type {
-            headers.insert(CONTENT_TYPE, ct.parse()?);
+            headers.insert(CONTENT_TYPE, HeaderValue::from_str(&ct)?);
         }
+
         if let Some(signer) = signer {
             let default_auth = self.default_auth(
                 BlossomAuthorizationVerb::Upload,
@@ -87,14 +89,14 @@ impl BlossomClient {
 
         request = request.headers(headers);
 
-        let response = request.send().await?;
+        let response: Response = request.send().await?;
 
         match response.status() {
             StatusCode::OK => {
                 let descriptor: BlobDescriptor = response.json().await?;
                 Ok(descriptor)
             }
-            _ => Err(Self::extract_error("Failed to upload blob", &response)),
+            _ => Err(Error::response("Failed to upload blob", response)),
         }
     }
 
@@ -108,7 +110,7 @@ impl BlossomClient {
         until: Option<Timestamp>,
         authorization_options: Option<BlossomAuthorizationOptions>,
         signer: Option<&T>,
-    ) -> Result<Vec<BlobDescriptor>, Box<dyn Error>>
+    ) -> Result<Vec<BlobDescriptor>, Error>
     where
         T: NostrSigner,
     {
@@ -146,14 +148,14 @@ impl BlossomClient {
 
         request = request.headers(headers);
 
-        let response = request.send().await?;
+        let response: Response = request.send().await?;
 
         match response.status() {
             StatusCode::OK => {
                 let descriptors: Vec<BlobDescriptor> = response.json().await?;
                 Ok(descriptors)
             }
-            _ => Err(Self::extract_error("Failed to list blobs", &response)),
+            _ => Err(Error::response("Failed to list blobs", response)),
         }
     }
 
@@ -166,7 +168,7 @@ impl BlossomClient {
         range: Option<String>,
         authorization_options: Option<BlossomAuthorizationOptions>,
         signer: Option<&T>,
-    ) -> Result<Vec<u8>, Box<dyn Error>>
+    ) -> Result<Vec<u8>, Error>
     where
         T: NostrSigner,
     {
@@ -193,23 +195,23 @@ impl BlossomClient {
 
         request = request.headers(headers);
 
-        let response = request.send().await?;
+        let response: Response = request.send().await?;
 
         if response.status().is_redirection() {
             match response.headers().get("Location") {
                 Some(location) => {
-                    let location_str = location.to_str()?;
+                    let location_str: &str = location.to_str()?;
                     if !location_str.contains(&sha256.to_string()) {
-                        return Err("Redirect URL does not contain sha256 hash".into());
+                        return Err(Error::RedirectUrlDoesNotContainSha256);
                     }
                 }
-                None => return Err("Redirect response missing Location header".into()),
+                None => return Err(Error::RedirectResponseMissingLocationHeader),
             }
         }
 
         match response.status() {
             StatusCode::OK | StatusCode::PARTIAL_CONTENT => Ok(response.bytes().await?.to_vec()),
-            _ => Err(Self::extract_error("Failed to get blob", &response)),
+            _ => Err(Error::response("Failed to get blob", response)),
         }
     }
 
@@ -221,7 +223,7 @@ impl BlossomClient {
         sha256: Sha256Hash,
         authorization_options: Option<BlossomAuthorizationOptions>,
         signer: Option<&T>,
-    ) -> Result<bool, Box<dyn Error>>
+    ) -> Result<bool, Error>
     where
         T: NostrSigner,
     {
@@ -247,15 +249,12 @@ impl BlossomClient {
             request = request.headers(headers);
         }
 
-        let response = request.send().await?;
+        let response: Response = request.send().await?;
 
         match response.status() {
-            reqwest::StatusCode::OK => Ok(true),
-            reqwest::StatusCode::NOT_FOUND => Ok(false),
-            _ => Err(Self::extract_error(
-                "Unexpected HTTP status code",
-                &response,
-            )),
+            StatusCode::OK => Ok(true),
+            StatusCode::NOT_FOUND => Ok(false),
+            _ => Err(Error::response("Unexpected HTTP status code", response)),
         }
     }
 
@@ -267,7 +266,7 @@ impl BlossomClient {
         sha256: Sha256Hash,
         authorization_options: Option<BlossomAuthorizationOptions>,
         signer: &T,
-    ) -> Result<(), Box<dyn Error>>
+    ) -> Result<(), Error>
     where
         T: NostrSigner,
     {
@@ -287,12 +286,12 @@ impl BlossomClient {
         let auth_header = Self::build_auth_header(signer, &final_auth).await?;
         headers.insert(AUTHORIZATION, auth_header);
 
-        let response = self.client.delete(&url).headers(headers).send().await?;
+        let response: Response = self.client.delete(&url).headers(headers).send().await?;
 
         if response.status().is_success() {
             Ok(())
         } else {
-            Err(Self::extract_error("Failed to delete blob", &response))
+            Err(Error::response("Failed to delete blob", response))
         }
     }
 
@@ -334,29 +333,17 @@ impl BlossomClient {
     async fn build_auth_header<T>(
         signer: &T,
         authz: &BlossomAuthorization,
-    ) -> Result<HeaderValue, Box<dyn Error>>
+    ) -> Result<HeaderValue, Error>
     where
         T: NostrSigner,
     {
-        let pubkey = signer.get_public_key().await?;
-        let auth_event = EventBuilder::blossom_auth(authz.clone())
-            .build(pubkey)
+        let auth_event: Event = EventBuilder::blossom_auth(authz.clone())
             .sign(signer)
             .await?;
-        let auth_bytes = serde_json::to_vec(&auth_event)?;
-        let encoded_auth = base64::engine::general_purpose::STANDARD.encode(auth_bytes);
-        HeaderValue::from_str(&format!("Nostr {}", encoded_auth)).map_err(From::from)
-    }
-
-    /// Helper function to extract error message from a response.
-    fn extract_error(prefix: &str, response: &reqwest::Response) -> Box<dyn Error> {
-        let reason = response
-            .headers()
-            .get("X-Reason")
-            .map(|h| h.to_str().unwrap_or("Unknown reason").to_string())
-            .unwrap_or_else(|| "No reason provided".to_string());
-        let message = format!("{}: {} - {}", prefix, response.status(), reason);
-        message.into()
+        // TODO: use directly event.as_json
+        let auth_bytes = serde_json::to_vec(&auth_event).unwrap();
+        let encoded_auth = general_purpose::STANDARD.encode(auth_bytes);
+        Ok(HeaderValue::from_str(&format!("Nostr {}", encoded_auth))?)
     }
 }
 
@@ -366,7 +353,7 @@ pub struct BlossomAuthorizationOptions {
     /// A human readable string explaining to the user what the events intended use is
     pub content: Option<String>,
     /// A UNIX timestamp (in seconds) indicating when the authorization should be expired
-    pub expiration: Option<nostr::Timestamp>,
+    pub expiration: Option<Timestamp>,
     /// The type of action authorized by the user
     pub action: Option<BlossomAuthorizationVerb>,
     /// The scope of the authorization
