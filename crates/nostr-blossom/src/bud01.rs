@@ -3,7 +3,7 @@
 use std::fmt;
 
 use nostr::hashes::sha256::Hash as Sha256Hash;
-use nostr::{EventBuilder, Kind, Tag, TagStandard, Timestamp};
+use nostr::{EventBuilder, Kind, Tag, TagStandard, Timestamp, Url};
 
 /// Represents the authorization data for accessing a Blossom server.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -45,7 +45,7 @@ pub enum BlossomAuthorizationScope {
     /// Authorizes access to blobs with the given SHA256 hashes.
     BlobSha256Hashes(Vec<Sha256Hash>),
     /// Authorizes access to the given server URL.
-    ServerUrl(String),
+    ServerUrl(Url),
 }
 
 /// Represents the possible actions that can be authorized by a Blossom authorization event.

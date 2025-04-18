@@ -7,7 +7,7 @@ use base64::Engine;
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::hashes::Hash;
 use nostr::signer::NostrSigner;
-use nostr::{Event, EventBuilder, JsonUtil, PublicKey, Timestamp};
+use nostr::{Event, EventBuilder, JsonUtil, PublicKey, Timestamp, Url};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, RANGE};
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::redirect::Policy;
@@ -134,10 +134,12 @@ impl BlossomClient {
         let mut headers = HeaderMap::new();
 
         if let Some(signer) = signer {
+            // TODO: change self.base_url type to Url
+            let url = Url::parse(&self.base_url).unwrap();
             let default_auth = self.default_auth(
                 BlossomAuthorizationVerb::List,
                 "Blossom list authorization",
-                BlossomAuthorizationScope::ServerUrl(self.base_url.clone()),
+                BlossomAuthorizationScope::ServerUrl(url),
             );
             let final_auth = authorization_options
                 .map(|opts| Self::update_authorization_fixture(&default_auth, opts))
