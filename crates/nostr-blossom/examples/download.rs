@@ -10,7 +10,7 @@ use nostr_blossom::prelude::*;
 struct Args {
     /// The server URL to connect to
     #[arg(long)]
-    server: String,
+    server: Url,
 
     /// SHA256 hash of the blob to download
     #[arg(long)]
@@ -26,7 +26,7 @@ async fn main() -> Result<()> {
     let args = Args::parse();
 
     // Initialize the client.
-    let client = BlossomClient::new(&args.server);
+    let client = BlossomClient::new(args.server);
 
     // Parse the private key.
     let keypair = Keys::new(args.private_key);

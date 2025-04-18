@@ -8,7 +8,7 @@ use nostr_blossom::prelude::*;
 struct Args {
     /// The server URL to connect to
     #[arg(long)]
-    server: String,
+    server: Url,
 
     /// The SHA256 hash of the blob to delete (in hex)
     #[arg(long)]
@@ -23,7 +23,7 @@ struct Args {
 async fn main() -> Result<()> {
     let args = Args::parse();
 
-    let client = BlossomClient::new(&args.server);
+    let client = BlossomClient::new(args.server);
 
     // Create signer keys using the given private key
     let keys = Keys::new(args.private_key);

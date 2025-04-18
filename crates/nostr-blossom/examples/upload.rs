@@ -10,7 +10,7 @@ use nostr_blossom::prelude::*;
 struct Args {
     /// The server URL to connect to
     #[arg(long)]
-    server: String,
+    server: Url,
 
     /// Path to the file to upload
     #[arg(long)]
@@ -29,7 +29,7 @@ struct Args {
 async fn main() -> Result<()> {
     let args = Args::parse();
 
-    let client = BlossomClient::new(&args.server);
+    let client = BlossomClient::new(args.server);
 
     // Read file data from the specified file path.
     let data = fs::read(&args.file)?;

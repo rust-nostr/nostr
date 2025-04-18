@@ -25,18 +25,15 @@ use crate::error::Error;
 /// <https://github.com/hzrd149/blossom>
 #[derive(Debug, Clone)]
 pub struct BlossomClient {
-    base_url: String,
+    base_url: Url,
     client: reqwest::Client,
 }
 
 impl BlossomClient {
     /// Creates a new `BlossomClient` with the given base URL.
-    pub fn new<T>(base_url: T) -> Self
-    where
-        T: Into<String>,
-    {
+    pub fn new(base_url: Url) -> Self {
         Self {
-            base_url: base_url.into(),
+            base_url,
             client: Self::build_client().unwrap(),
         }
     }
@@ -67,7 +64,7 @@ impl BlossomClient {
         let hash: Sha256Hash = Sha256Hash::hash(&data);
         let file_hashes: Vec<Sha256Hash> = vec![hash];
 
-        let mut request = self.client.put(&url).body(data);
+        let mut request = self.client.put(url).body(data);
         let mut headers = HeaderMap::new();
 
         if let Some(ct) = content_type {
@@ -130,16 +127,14 @@ impl BlossomClient {
             url.push_str(&format!("?{}", query_params.join("&")));
         }
 
-        let mut request = self.client.get(&url);
+        let mut request = self.client.get(url);
         let mut headers = HeaderMap::new();
 
         if let Some(signer) = signer {
-            // TODO: change self.base_url type to Url
-            let url = Url::parse(&self.base_url).unwrap();
             let default_auth = self.default_auth(
                 BlossomAuthorizationVerb::List,
                 "Blossom list authorization",
-                BlossomAuthorizationScope::ServerUrl(url),
+                BlossomAuthorizationScope::ServerUrl(self.base_url.clone()),
             );
             let final_auth = authorization_options
                 .map(|opts| Self::update_authorization_fixture(&default_auth, opts))
@@ -175,7 +170,7 @@ impl BlossomClient {
         T: NostrSigner,
     {
         let url = format!("{}/{}", self.base_url, sha256);
-        let mut request = self.client.get(&url);
+        let mut request = self.client.get(url);
         let mut headers = HeaderMap::new();
 
         if let Some(range_value) = range {
@@ -231,7 +226,7 @@ impl BlossomClient {
     {
         let url = format!("{}/{}", self.base_url, sha256);
 
-        let mut request = self.client.head(&url);
+        let mut request = self.client.head(url);
 
         if let Some(signer) = signer {
             let default_auth = self.default_auth(
@@ -288,7 +283,7 @@ impl BlossomClient {
         let auth_header = Self::build_auth_header(signer, &final_auth).await?;
         headers.insert(AUTHORIZATION, auth_header);
 
-        let response: Response = self.client.delete(&url).headers(headers).send().await?;
+        let response: Response = self.client.delete(url).headers(headers).send().await?;
 
         if response.status().is_success() {
             Ok(())

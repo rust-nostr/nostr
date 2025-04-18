@@ -4,9 +4,8 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use nostr::hashes::{sha256, Hash};
-use nostr::key::SecretKey;
-use nostr::Keys;
-use nostr_blossom::client::BlossomClient;
+use nostr::prelude::*;
+use nostr_blossom::prelude::*;
 
 /// Integration test for various Blossom operations: upload, check (HEAD), list, download, and delete.
 #[derive(Parser, Debug)]
@@ -14,7 +13,7 @@ use nostr_blossom::client::BlossomClient;
 struct Args {
     /// The Blossom server URL
     #[arg(long)]
-    server: String,
+    server: Url,
 
     /// Optional file path to a blob to upload. If omitted, a small test blob is used.
     #[arg(long)]
@@ -31,7 +30,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
     // Create the Blossom client.
-    let client = BlossomClient::new(&args.server);
+    let client = BlossomClient::new(args.server);
     // Create signer keys from the provided private key.
     let keys = Keys::new(args.private_key);
 

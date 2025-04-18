@@ -7,7 +7,7 @@ use nostr_blossom::prelude::*;
 struct Args {
     /// The server URL to connect to
     #[arg(long)]
-    server: String,
+    server: Url,
 
     /// The public key to list blobs for
     #[arg(long)]
@@ -21,7 +21,7 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    let client = BlossomClient::new(&args.server);
+    let client = BlossomClient::new(args.server);
 
     // Check if a private key was provided and branch accordingly
     if let Some(private_key) = args.private_key {
