@@ -17,3 +17,4 @@
 pub mod bud01;
 pub mod bud02;
 pub mod client;
+pub mod prelude;
