@@ -1,10 +1,9 @@
-use std::error::Error;
 use std::fs;
+use std::path::PathBuf;
 
 use clap::Parser;
-use nostr::key::SecretKey;
-use nostr::Keys;
-use nostr_blossom::client::BlossomClient;
+use nostr::prelude::*;
+use nostr_blossom::prelude::*;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Upload a blob to a Blossom server", long_about = None)]
@@ -15,19 +14,19 @@ struct Args {
 
     /// Path to the file to upload
     #[arg(long)]
-    file: String,
+    file: PathBuf,
 
     /// Optional content type (e.g., "application/octet-stream")
     #[arg(long)]
     content_type: Option<String>,
 
-    /// Optional private key for signing the upload (in hex)
+    /// Optional private key for signing the upload
     #[arg(long)]
-    private_key: Option<String>,
+    private_key: Option<SecretKey>,
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<()> {
     let args = Args::parse();
 
     let client = BlossomClient::new(&args.server);
@@ -44,16 +43,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Create signer keys.
     // If a private key is provided, try to use it; otherwise generate a new key.
     let keys = match args.private_key {
-        Some(private_key) => match SecretKey::from_hex(private_key.as_str()) {
-            Ok(secret_key) => Keys::new(secret_key),
-            Err(e) => {
-                eprintln!(
-                    "Failed to parse private key: {}. Using generated key instead.",
-                    e
-                );
-                Keys::generate()
-            }
-        },
+        Some(private_key) => Keys::new(private_key),
         None => Keys::generate(),
     };
 
@@ -64,8 +54,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Ok(descriptor) => {
             println!("Successfully uploaded blob: {:?}", descriptor);
         }
-        Err(err) => {
-            eprintln!("Failed to upload blob: {}", err);
+        Err(e) => {
+            eprintln!("{e}");
         }
     }
 

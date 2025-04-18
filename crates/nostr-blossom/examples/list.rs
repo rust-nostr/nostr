@@ -1,10 +1,6 @@
-use std::error::Error;
-use std::str::FromStr;
-
 use clap::Parser;
-use nostr::key::SecretKey;
-use nostr::{Keys, PublicKey};
-use nostr_blossom::client::BlossomClient;
+use nostr::prelude::*;
+use nostr_blossom::prelude::*;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "List blob on a Blossom server", long_about = None)]
@@ -13,30 +9,27 @@ struct Args {
     #[arg(long)]
     server: String,
 
-    /// The public key to list blobs for (in hex format)
+    /// The public key to list blobs for
     #[arg(long)]
-    pubkey: String,
+    pubkey: PublicKey,
 
     /// Optional private key for authorization (in hex)
     #[arg(long)]
-    private_key: Option<String>,
+    private_key: Option<SecretKey>,
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<()> {
     let args = Args::parse();
     let client = BlossomClient::new(&args.server);
 
-    let pubkey = PublicKey::from_str(&args.pubkey)?;
-
     // Check if a private key was provided and branch accordingly
-    if let Some(private_key_str) = args.private_key {
+    if let Some(private_key) = args.private_key {
         // Attempt to create the secret key, propagating error if parsing fails
-        let secret_key = SecretKey::from_hex(&private_key_str)?;
-        let keys = Keys::new(secret_key);
+        let keys = Keys::new(private_key);
 
         let descriptors = client
-            .list_blobs(&pubkey, None, None, None, Some(&keys))
+            .list_blobs(&args.pubkey, None, None, None, Some(&keys))
             .await?;
 
         println!("Successfully listed blobs (with auth):");
@@ -45,7 +38,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     } else {
         let descriptors = client
-            .list_blobs(&pubkey, None, None, None, None::<&Keys>)
+            .list_blobs(&args.pubkey, None, None, None, None::<&Keys>)
             .await?;
 
         println!("Successfully listed blobs (without auth):");

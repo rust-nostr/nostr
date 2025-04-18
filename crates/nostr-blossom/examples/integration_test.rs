@@ -20,9 +20,9 @@ struct Args {
     #[arg(long)]
     file: Option<PathBuf>,
 
-    /// Private key to use for signing (in hex)
+    /// Private key to use for signing
     #[arg(long, value_name = "PRIVATE_KEY")]
-    private_key: String,
+    private_key: SecretKey,
 }
 
 #[tokio::main]
@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Create the Blossom client.
     let client = BlossomClient::new(&args.server);
     // Create signer keys from the provided private key.
-    let keys = Keys::new(SecretKey::from_hex(args.private_key.as_str())?);
+    let keys = Keys::new(args.private_key);
 
     // Read the blob data from a file if provided, otherwise use default test data.
     let data = if let Some(file_path) = args.file {

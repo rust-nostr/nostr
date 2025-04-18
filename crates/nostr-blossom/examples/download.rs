@@ -1,10 +1,9 @@
-use std::error::Error;
 use std::fs;
-use std::str::FromStr;
 
 use clap::Parser;
-use nostr::hashes::sha256;
-use nostr_blossom::client::BlossomClient;
+use nostr::hashes::sha256::Hash as Sha256Hash;
+use nostr::prelude::*;
+use nostr_blossom::prelude::*;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Download a blob from a Blossom server", long_about = None)]
@@ -15,36 +14,36 @@ struct Args {
 
     /// SHA256 hash of the blob to download
     #[arg(long)]
-    sha256: String,
+    sha256: Sha256Hash,
 
-    /// Private key to use for authorization (in hex)
+    /// Private key to use for authorization
     #[arg(long)]
-    private_key: String,
+    private_key: SecretKey,
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<()> {
     let args = Args::parse();
 
     // Initialize the client.
     let client = BlossomClient::new(&args.server);
 
-    // Convert the provided SHA256 string into a hash.
-    let blob_sha = sha256::Hash::from_str(&args.sha256)?;
-
     // Parse the private key.
-    let keypair = nostr::Keys::parse(&args.private_key)?;
+    let keypair = Keys::new(args.private_key);
 
     // Download the blob with optional authorization.
-    match client.get_blob(blob_sha, None, None, Some(&keypair)).await {
+    match client
+        .get_blob(args.sha256, None, None, Some(&keypair))
+        .await
+    {
         Ok(blob) => {
             println!("Successfully downloaded blob with {} bytes", blob.len());
-            let file_name = format!("{}", blob_sha);
+            let file_name = format!("{}", args.sha256);
             fs::write(&file_name, &blob)?;
             println!("Blob saved as {}", file_name);
         }
-        Err(err) => {
-            eprintln!("Failed to download blob: {}", err);
+        Err(e) => {
+            eprintln!("{e}");
         }
     }
 
