@@ -29,8 +29,8 @@
 
 ### Added
 
-* blossom: add new crate with Blossom support ([Daniel D’Aquino])
-* mls-storage: add new crate with traits and types for mls storage implementations ([JeffG])
+* blossom: add new crate with Blossom support ([Daniel D’Aquino] at https://github.com/rust-nostr/nostr/pull/838)
+* mls-storage: add new crate with traits and types for mls storage implementations ([JeffG] at https://github.com/rust-nostr/nostr/pull/836)
 
 ## v0.41.0 - 2025/04/15
 
