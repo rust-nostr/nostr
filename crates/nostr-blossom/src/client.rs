@@ -7,7 +7,7 @@ use base64::Engine;
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::hashes::Hash;
 use nostr::signer::NostrSigner;
-use nostr::{Event, EventBuilder, PublicKey, Timestamp};
+use nostr::{Event, EventBuilder, JsonUtil, PublicKey, Timestamp};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, RANGE};
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::redirect::Policy;
@@ -340,10 +340,9 @@ impl BlossomClient {
         let auth_event: Event = EventBuilder::blossom_auth(authz.clone())
             .sign(signer)
             .await?;
-        // TODO: use directly event.as_json
-        let auth_bytes = serde_json::to_vec(&auth_event).unwrap();
-        let encoded_auth = general_purpose::STANDARD.encode(auth_bytes);
-        Ok(HeaderValue::from_str(&format!("Nostr {}", encoded_auth))?)
+        let encoded_auth: String = general_purpose::STANDARD.encode(auth_event.as_json());
+        let value: String = format!("Nostr {}", encoded_auth);
+        Ok(HeaderValue::try_from(value)?)
     }
 }
 
