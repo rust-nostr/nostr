@@ -18,10 +18,11 @@ use self::types::*;
 /// Storage traits for the welcomes module
 pub trait WelcomeStorage {
     /// Save a welcome
-    fn save_welcome(&self, welcome: Welcome) -> Result<Welcome, WelcomeError>;
+    fn save_welcome(&self, welcome: Welcome) -> Result<(), WelcomeError>;
 
     /// Find a welcome by event ID
-    fn find_welcome_by_event_id(&self, event_id: EventId) -> Result<Welcome, WelcomeError>;
+    fn find_welcome_by_event_id(&self, event_id: &EventId)
+        -> Result<Option<Welcome>, WelcomeError>;
 
     /// Get all pending welcomes
     fn pending_welcomes(&self) -> Result<Vec<Welcome>, WelcomeError>;
@@ -30,11 +31,11 @@ pub trait WelcomeStorage {
     fn save_processed_welcome(
         &self,
         processed_welcome: ProcessedWelcome,
-    ) -> Result<ProcessedWelcome, WelcomeError>;
+    ) -> Result<(), WelcomeError>;
 
     /// Find a processed welcome by event ID
     fn find_processed_welcome_by_event_id(
         &self,
-        event_id: EventId,
-    ) -> Result<ProcessedWelcome, WelcomeError>;
+        event_id: &EventId,
+    ) -> Result<Option<ProcessedWelcome>, WelcomeError>;
 }

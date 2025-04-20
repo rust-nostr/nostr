@@ -8,13 +8,11 @@ use nostr_mls_storage::welcomes::WelcomeStorage;
 use crate::NostrMlsMemoryStorage;
 
 impl WelcomeStorage for NostrMlsMemoryStorage {
-    fn save_welcome(&self, welcome: Welcome) -> Result<Welcome, WelcomeError> {
-        {
-            let mut cache = self.welcomes_cache.write();
-            cache.put(welcome.id, welcome.clone());
-        }
+    fn save_welcome(&self, welcome: Welcome) -> Result<(), WelcomeError> {
+        let mut cache = self.welcomes_cache.write();
+        cache.put(welcome.id, welcome);
 
-        Ok(welcome)
+        Ok(())
     }
 
     fn pending_welcomes(&self) -> Result<Vec<Welcome>, WelcomeError> {
@@ -28,39 +26,29 @@ impl WelcomeStorage for NostrMlsMemoryStorage {
         Ok(welcomes)
     }
 
-    fn find_welcome_by_event_id(&self, event_id: EventId) -> Result<Welcome, WelcomeError> {
-        let cache = self.welcomes_cache.read();
-        if let Some(welcome) = cache.peek(&event_id) {
-            return Ok(welcome.clone());
-        }
-
-        Err(WelcomeError::NotFound)
-    }
-
-    fn find_processed_welcome_by_event_id(
+    fn find_welcome_by_event_id(
         &self,
-        event_id: EventId,
-    ) -> Result<ProcessedWelcome, WelcomeError> {
-        let cache = self.processed_welcomes_cache.read();
-        if let Some(processed_welcome) = cache.peek(&event_id) {
-            return Ok(processed_welcome.clone());
-        }
-
-        Err(WelcomeError::NotFound)
+        event_id: &EventId,
+    ) -> Result<Option<Welcome>, WelcomeError> {
+        let cache = self.welcomes_cache.read();
+        Ok(cache.peek(event_id).cloned())
     }
 
     fn save_processed_welcome(
         &self,
         processed_welcome: ProcessedWelcome,
-    ) -> Result<ProcessedWelcome, WelcomeError> {
-        {
-            let mut cache = self.processed_welcomes_cache.write();
-            cache.put(
-                processed_welcome.wrapper_event_id,
-                processed_welcome.clone(),
-            );
-        }
+    ) -> Result<(), WelcomeError> {
+        let mut cache = self.processed_welcomes_cache.write();
+        cache.put(processed_welcome.wrapper_event_id, processed_welcome);
 
-        Ok(processed_welcome)
+        Ok(())
+    }
+
+    fn find_processed_welcome_by_event_id(
+        &self,
+        event_id: &EventId,
+    ) -> Result<Option<ProcessedWelcome>, WelcomeError> {
+        let cache = self.processed_welcomes_cache.read();
+        Ok(cache.peek(event_id).cloned())
     }
 }
