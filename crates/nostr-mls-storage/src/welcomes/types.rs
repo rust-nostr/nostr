@@ -9,7 +9,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use super::error::WelcomeError;
 
 /// A processed welcome, this stores data about whether we have processed a welcome or not
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ProcessedWelcome {
     /// The event id of the processed welcome
     pub wrapper_event_id: EventId,
@@ -24,7 +24,7 @@ pub struct ProcessedWelcome {
 }
 
 /// A welcome message
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Welcome {
     /// The event id of the kind 444 welcome
     pub id: EventId,

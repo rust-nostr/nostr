@@ -129,7 +129,7 @@ impl<'de> Deserialize<'de> for GroupState {
 /// A Nostr MLS group
 ///
 /// Stores metadata about the group
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Group {
     /// This is the MLS group ID, this will serve as the PK in the DB and doesn't change
     pub mls_group_id: Vec<u8>,
@@ -156,7 +156,7 @@ pub struct Group {
 /// A Nostr MLS group relay
 ///
 /// Stores a relay URL and the MLS group ID it belongs to
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct GroupRelay {
     /// The relay URL
     pub relay_url: RelayUrl,

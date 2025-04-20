@@ -10,7 +10,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use super::error::MessageError;
 
 /// A processed message, this stores data about whether we have processed a message or not
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ProcessedMessage {
     /// The event id of the processed message
     pub wrapper_event_id: EventId,
@@ -26,7 +26,7 @@ pub struct ProcessedMessage {
 
 /// This is the processed rumor message that represents a message in a group
 /// We store the deconstructed messages but also the UnsignedEvent.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Message {
     /// The event id of the message
     pub id: EventId,
