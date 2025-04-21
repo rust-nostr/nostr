@@ -1,0 +1,25 @@
+[package]
+name = "nostr-mls-sqlite-storage"
+version = "0.41.0"
+edition = "2021"
+description = "Sqlite database for nostr-mls that implements the NostrMlsStorageProvider Trait"
+authors = ["Jeff Gardner <j@jeffg.me>", "Yuki Kishimoto <yukikishimoto@protonmail.com>", "Rust Nostr Developers"]
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version = "1.74.0"
+keywords = ["nostr", "mls", "openmls", "sqlite"]
+
+[dependencies]
+nostr = { workspace = true, features = ["std"] }
+nostr-mls-storage.workspace = true
+openmls_sqlite_storage = { git = "https://github.com/erskingardner/openmls", rev = "88309e1bc79c129628f35c55e838be2d7277c335", default-features = false }
+refinery = { version = "0.8", features = ["rusqlite"] } # MSRV is 1.75.0
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tracing = { workspace = true, features = ["std"] }
+
+[dev-dependencies]
+tempfile = "3.19.1"

@@ -13,6 +13,6 @@ keywords = ["nostr", "mls", "openmls"]
 
 [dependencies]
 nostr = { workspace = true, features = ["std"] }
-openmls_traits = { version = "0.3", default-features = false }
+openmls_traits = { git = "https://github.com/erskingardner/openmls", rev = "88309e1bc79c129628f35c55e838be2d7277c335", default-features = false }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["std"] }
