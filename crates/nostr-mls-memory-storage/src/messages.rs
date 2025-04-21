@@ -8,40 +8,40 @@ use nostr_mls_storage::messages::MessageStorage;
 use crate::NostrMlsMemoryStorage;
 
 impl MessageStorage for NostrMlsMemoryStorage {
-    fn save_message(&self, message: Message) -> Result<Message, MessageError> {
+    fn save_message(&self, message: Message) -> Result<(), MessageError> {
         {
             let mut cache = self.messages_cache.write();
             cache.put(message.id, message.clone());
         }
 
-        Ok(message)
+        Ok(())
     }
 
-    fn find_message_by_event_id(&self, event_id: EventId) -> Result<Message, MessageError> {
+    fn find_message_by_event_id(&self, event_id: EventId) -> Result<Option<Message>, MessageError> {
         let cache = self.messages_cache.read();
         if let Some(message) = cache.peek(&event_id) {
-            return Ok(message.clone());
+            return Ok(Some(message.clone()));
         }
 
-        Err(MessageError::NotFound)
+        Ok(None)
     }
 
     fn find_processed_message_by_event_id(
         &self,
         event_id: EventId,
-    ) -> Result<ProcessedMessage, MessageError> {
+    ) -> Result<Option<ProcessedMessage>, MessageError> {
         let cache = self.processed_messages_cache.read();
         if let Some(processed_message) = cache.peek(&event_id) {
-            return Ok(processed_message.clone());
+            return Ok(Some(processed_message.clone()));
         }
 
-        Err(MessageError::NotFound)
+        Ok(None)
     }
 
     fn save_processed_message(
         &self,
         processed_message: ProcessedMessage,
-    ) -> Result<ProcessedMessage, MessageError> {
+    ) -> Result<(), MessageError> {
         {
             let mut cache = self.processed_messages_cache.write();
             cache.put(
@@ -50,6 +50,6 @@ impl MessageStorage for NostrMlsMemoryStorage {
             );
         }
 
-        Ok(processed_message)
+        Ok(())
     }
 }

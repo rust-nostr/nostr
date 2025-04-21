@@ -245,7 +245,7 @@ mod tests {
         // Find the group by MLS group ID
         let found_group = nostr_storage.find_group_by_mls_group_id(&mls_group_id);
         assert!(found_group.is_ok());
-        let found_group = found_group.unwrap();
+        let found_group = found_group.unwrap().unwrap();
         assert_eq!(found_group.mls_group_id, mls_group_id);
         assert_eq!(found_group.nostr_group_id, "test_group_123");
 
@@ -373,7 +373,7 @@ mod tests {
         // Find the welcome by event ID
         let found_welcome = nostr_storage.find_welcome_by_event_id(event_id);
         assert!(found_welcome.is_ok());
-        let found_welcome = found_welcome.unwrap();
+        let found_welcome = found_welcome.unwrap().unwrap();
         assert_eq!(found_welcome.id, event_id);
         assert_eq!(found_welcome.mls_group_id, vec![9, 10, 11, 12]);
 
@@ -399,7 +399,7 @@ mod tests {
         // Find the processed welcome by event ID
         let found_processed_welcome = nostr_storage.find_processed_welcome_by_event_id(wrapper_id);
         assert!(found_processed_welcome.is_ok());
-        let found_processed_welcome = found_processed_welcome.unwrap();
+        let found_processed_welcome = found_processed_welcome.unwrap().unwrap();
         assert_eq!(found_processed_welcome.wrapper_event_id, wrapper_id);
         assert_eq!(found_processed_welcome.welcome_event_id, Some(event_id));
 
@@ -468,7 +468,7 @@ mod tests {
         // Find the message by event ID
         let found_message = nostr_storage.find_message_by_event_id(event_id);
         assert!(found_message.is_ok());
-        let found_message = found_message.unwrap();
+        let found_message = found_message.unwrap().unwrap();
         assert_eq!(found_message.id, event_id);
         assert_eq!(found_message.mls_group_id, mls_group_id);
 
@@ -507,7 +507,7 @@ mod tests {
         // Find the processed message by event ID
         let found_processed_message = nostr_storage.find_processed_message_by_event_id(wrapper_id);
         assert!(found_processed_message.is_ok());
-        let found_processed_message = found_processed_message.unwrap();
+        let found_processed_message = found_processed_message.unwrap().unwrap();
         assert_eq!(found_processed_message.wrapper_event_id, wrapper_id);
         assert_eq!(found_processed_message.message_event_id, Some(event_id));
 
@@ -545,7 +545,7 @@ mod tests {
         // Find the group by MLS group ID
         let found_group = nostr_storage.find_group_by_mls_group_id(&mls_group_id);
         assert!(found_group.is_ok());
-        let found_group = found_group.unwrap();
+        let found_group = found_group.unwrap().unwrap();
         assert_eq!(found_group.mls_group_id, mls_group_id);
     }
 
@@ -574,7 +574,7 @@ mod tests {
         // Find the group by MLS group ID
         let found_group = nostr_storage.find_group_by_mls_group_id(&mls_group_id);
         assert!(found_group.is_ok());
-        let found_group = found_group.unwrap();
+        let found_group = found_group.unwrap().unwrap();
         assert_eq!(found_group.mls_group_id, mls_group_id);
     }
 }

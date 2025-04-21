@@ -8,13 +8,13 @@ use nostr_mls_storage::welcomes::WelcomeStorage;
 use crate::NostrMlsMemoryStorage;
 
 impl WelcomeStorage for NostrMlsMemoryStorage {
-    fn save_welcome(&self, welcome: Welcome) -> Result<Welcome, WelcomeError> {
+    fn save_welcome(&self, welcome: Welcome) -> Result<(), WelcomeError> {
         {
             let mut cache = self.welcomes_cache.write();
             cache.put(welcome.id, welcome.clone());
         }
 
-        Ok(welcome)
+        Ok(())
     }
 
     fn pending_welcomes(&self) -> Result<Vec<Welcome>, WelcomeError> {
@@ -28,31 +28,31 @@ impl WelcomeStorage for NostrMlsMemoryStorage {
         Ok(welcomes)
     }
 
-    fn find_welcome_by_event_id(&self, event_id: EventId) -> Result<Welcome, WelcomeError> {
+    fn find_welcome_by_event_id(&self, event_id: EventId) -> Result<Option<Welcome>, WelcomeError> {
         let cache = self.welcomes_cache.read();
         if let Some(welcome) = cache.peek(&event_id) {
-            return Ok(welcome.clone());
+            return Ok(Some(welcome.clone()));
         }
 
-        Err(WelcomeError::NotFound)
+        Ok(None)
     }
 
     fn find_processed_welcome_by_event_id(
         &self,
         event_id: EventId,
-    ) -> Result<ProcessedWelcome, WelcomeError> {
+    ) -> Result<Option<ProcessedWelcome>, WelcomeError> {
         let cache = self.processed_welcomes_cache.read();
         if let Some(processed_welcome) = cache.peek(&event_id) {
-            return Ok(processed_welcome.clone());
+            return Ok(Some(processed_welcome.clone()));
         }
 
-        Err(WelcomeError::NotFound)
+        Ok(None)
     }
 
     fn save_processed_welcome(
         &self,
         processed_welcome: ProcessedWelcome,
-    ) -> Result<ProcessedWelcome, WelcomeError> {
+    ) -> Result<(), WelcomeError> {
         {
             let mut cache = self.processed_welcomes_cache.write();
             cache.put(
@@ -61,6 +61,6 @@ impl WelcomeStorage for NostrMlsMemoryStorage {
             );
         }
 
-        Ok(processed_welcome)
+        Ok(())
     }
 }

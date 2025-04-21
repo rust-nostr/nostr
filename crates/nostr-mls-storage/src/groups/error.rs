@@ -9,8 +9,8 @@ pub enum GroupError {
     InvalidParameters(String),
     /// Database error
     DatabaseError(String),
-    /// Group not found
-    NotFound,
+    /// Invalid state
+    InvalidState(String),
 }
 
 impl std::error::Error for GroupError {}
@@ -20,7 +20,7 @@ impl fmt::Display for GroupError {
         match self {
             Self::InvalidParameters(message) => write!(f, "Invalid parameters: {}", message),
             Self::DatabaseError(message) => write!(f, "Database error: {}", message),
-            Self::NotFound => write!(f, "Group not found"),
+            Self::InvalidState(message) => write!(f, "Invalid state: {}", message),
         }
     }
 }

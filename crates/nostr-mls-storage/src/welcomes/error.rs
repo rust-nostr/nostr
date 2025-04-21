@@ -9,8 +9,6 @@ pub enum WelcomeError {
     InvalidParameters(String),
     /// Database error
     DatabaseError(String),
-    /// Welcome not found
-    NotFound,
 }
 
 impl std::error::Error for WelcomeError {}
@@ -20,7 +18,6 @@ impl fmt::Display for WelcomeError {
         match self {
             Self::InvalidParameters(message) => write!(f, "Invalid parameters: {}", message),
             Self::DatabaseError(message) => write!(f, "Database error: {}", message),
-            Self::NotFound => write!(f, "Welcome not found"),
         }
     }
 }

@@ -22,13 +22,16 @@ pub trait GroupStorage {
     fn all_groups(&self) -> Result<Vec<Group>, GroupError>;
 
     /// Find a group by MLS group ID
-    fn find_group_by_mls_group_id(&self, mls_group_id: &[u8]) -> Result<Group, GroupError>;
+    fn find_group_by_mls_group_id(&self, mls_group_id: &[u8]) -> Result<Option<Group>, GroupError>;
 
     /// Find a group by Nostr group ID
-    fn find_group_by_nostr_group_id(&self, nostr_group_id: &str) -> Result<Group, GroupError>;
+    fn find_group_by_nostr_group_id(
+        &self,
+        nostr_group_id: &str,
+    ) -> Result<Option<Group>, GroupError>;
 
     /// Save a group
-    fn save_group(&self, group: Group) -> Result<Group, GroupError>;
+    fn save_group(&self, group: Group) -> Result<(), GroupError>;
 
     /// Get all messages for a group
     fn messages(&self, mls_group_id: &[u8]) -> Result<Vec<Message>, GroupError>;
@@ -40,5 +43,5 @@ pub trait GroupStorage {
     fn group_relays(&self, mls_group_id: &[u8]) -> Result<Vec<GroupRelay>, GroupError>;
 
     /// Save a group relay
-    fn save_group_relay(&self, group_relay: GroupRelay) -> Result<GroupRelay, GroupError>;
+    fn save_group_relay(&self, group_relay: GroupRelay) -> Result<(), GroupError>;
 }

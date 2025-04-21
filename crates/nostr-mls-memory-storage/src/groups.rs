@@ -9,7 +9,7 @@ use nostr_mls_storage::messages::types::Message;
 use crate::NostrMlsMemoryStorage;
 
 impl GroupStorage for NostrMlsMemoryStorage {
-    fn save_group(&self, group: Group) -> Result<Group, GroupError> {
+    fn save_group(&self, group: Group) -> Result<(), GroupError> {
         // Store in the MLS group ID cache
         {
             let mut cache = self.groups_cache.write();
@@ -22,7 +22,7 @@ impl GroupStorage for NostrMlsMemoryStorage {
             cache.put(group.nostr_group_id.clone(), group.clone());
         }
 
-        Ok(group)
+        Ok(())
     }
 
     fn all_groups(&self) -> Result<Vec<Group>, GroupError> {
@@ -32,24 +32,27 @@ impl GroupStorage for NostrMlsMemoryStorage {
         Ok(groups)
     }
 
-    fn find_group_by_mls_group_id(&self, mls_group_id: &[u8]) -> Result<Group, GroupError> {
+    fn find_group_by_mls_group_id(&self, mls_group_id: &[u8]) -> Result<Option<Group>, GroupError> {
         let cache = self.groups_cache.read();
         if let Some(group) = cache.peek(mls_group_id) {
             // Return a clone of the found group
-            return Ok(group.clone());
+            return Ok(Some(group.clone()));
         }
 
-        Err(GroupError::NotFound)
+        Ok(None)
     }
 
-    fn find_group_by_nostr_group_id(&self, nostr_group_id: &str) -> Result<Group, GroupError> {
+    fn find_group_by_nostr_group_id(
+        &self,
+        nostr_group_id: &str,
+    ) -> Result<Option<Group>, GroupError> {
         let cache = self.groups_by_nostr_id_cache.read();
         if let Some(group) = cache.peek(nostr_group_id) {
             // Return a clone of the found group
-            return Ok(group.clone());
+            return Ok(Some(group.clone()));
         }
 
-        Err(GroupError::NotFound)
+        Ok(None)
     }
 
     fn messages(&self, mls_group_id: &[u8]) -> Result<Vec<Message>, GroupError> {
@@ -67,12 +70,12 @@ impl GroupStorage for NostrMlsMemoryStorage {
 
     fn admins(&self, mls_group_id: &[u8]) -> Result<Vec<PublicKey>, GroupError> {
         // Find the group first
-        if let Ok(group) = self.find_group_by_mls_group_id(mls_group_id) {
+        if let Ok(Some(group)) = self.find_group_by_mls_group_id(mls_group_id) {
             // Return the admin pubkeys from the group
             return Ok(group.admin_pubkeys);
         }
 
-        Err(GroupError::NotFound)
+        Err(GroupError::InvalidState("Group has no admins".to_string()))
     }
 
     fn group_relays(&self, mls_group_id: &[u8]) -> Result<Vec<GroupRelay>, GroupError> {
@@ -84,11 +87,10 @@ impl GroupStorage for NostrMlsMemoryStorage {
             return Ok(relays.clone());
         }
 
-        // If not in cache but group exists, return empty vector
-        Ok(Vec::new())
+        Err(GroupError::InvalidState("Group has no relays".to_string()))
     }
 
-    fn save_group_relay(&self, group_relay: GroupRelay) -> Result<GroupRelay, GroupError> {
+    fn save_group_relay(&self, group_relay: GroupRelay) -> Result<(), GroupError> {
         let mls_group_id = group_relay.mls_group_id.clone();
 
         // Check if the group exists first
@@ -118,6 +120,6 @@ impl GroupStorage for NostrMlsMemoryStorage {
             cache.put(mls_group_id, relays);
         }
 
-        Ok(group_relay)
+        Ok(())
     }
 }
