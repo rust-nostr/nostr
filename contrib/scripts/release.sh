@@ -9,6 +9,7 @@ args=(
     "-p nostr-mls-storage"
     "-p nostr-mls-memory-storage"
     "-p nostr-mls-sqlite-storage"
+    "-p nostr-mls"
     "-p nostr-ndb"
     "-p nostr-indexeddb"
     "-p nostr-keyring"
