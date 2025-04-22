@@ -2,10 +2,10 @@ mod migrations;
 mod model;
 mod postgres;
 mod schema;
+mod types;
 
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
-pub use migrations::run_migrations;
 use model::{EventDataDb, EventDb};
 use nostr::event::*;
 use nostr::filter::Filter;
@@ -13,8 +13,15 @@ use nostr::types::Timestamp;
 use nostr::util::BoxedFuture;
 use nostr_database::*;
 use postgres::{build_filter_query, with_limit};
+
+#[cfg(feature = "postgres")]
 pub use postgres::{postgres_connection_pool, NostrPostgres};
-use schema::events;
+
+#[cfg(feature = "postgres")]
+pub use migrations::postgres::run_migrations;
+
+#[cfg(feature = "postgres")]
+use schema::postgres::{event_tags, events};
 
 impl NostrDatabase for NostrPostgres {
     fn backend(&self) -> Backend {

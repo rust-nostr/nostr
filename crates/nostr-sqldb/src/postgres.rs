@@ -12,7 +12,7 @@ use nostr::filter::Filter;
 use nostr_database::*;
 
 use super::model::{EventDataDb, EventDb};
-use super::schema::{event_tags, events};
+use super::schema::postgres::{event_tags, events};
 
 /// Shorthand for a database connection pool type
 pub type PostgresConnectionPool = Pool<AsyncDieselConnectionManager<AsyncPgConnection>>;
@@ -137,7 +137,7 @@ type QuerySetJoinType<'a> = IntoBoxed<
 
 pub fn build_filter_query<'a>(filter: Filter) -> QuerySetJoinType<'a> {
     let mut query = events::table
-        .distinct_on(events::id)
+        .distinct()
         .inner_join(event_tags::table)
         .filter(events::deleted.eq(false))
         .into_boxed();

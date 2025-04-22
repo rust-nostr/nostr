@@ -15,10 +15,26 @@ keywords = ["nostr", "database", "postgres"]
 nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
 tracing.workspace = true
-diesel = { version = "2", features = ["postgres", "serde_json"] }
-diesel-async = { version = "0.5", features = ["postgres", "deadpool"] }
-diesel_migrations = { version = "2", features = ["postgres"] }
+diesel = { version = "2", features = ["serde_json"] }
+diesel-async = { version = "0.5", features = ["deadpool"] }
+diesel_migrations = { version = "2" }
 deadpool = { version = "0.12", features = ["managed", "rt_tokio_1"] }
+
+[features]
+default = ["postgres"]
+postgres = [
+  "diesel/postgres",
+  "diesel-async/postgres",
+  "diesel_migrations/postgres",
+]
+
+mysql = ["diesel/mysql", "diesel-async/mysql", "diesel_migrations/mysql"]
+sqlite = [
+  "diesel/sqlite",
+  "diesel-async/sqlite",
+  "diesel_migrations/sqlite",
+  "diesel/returning_clauses_for_sqlite_3_35",
+]
 
 [dev-dependencies]
 tokio.workspace = true
