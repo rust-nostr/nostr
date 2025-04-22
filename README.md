@@ -21,6 +21,10 @@ The project is split up into several crates in the `crates/` directory:
 * Binaries (tools):
     * [**nostr-cli**](./crates/nostr-cli): Nostr CLI
 
+> Note: this repository contains the Rust codebase.
+> There are several other projects (i.e., bindings)
+> which are maintained in other repositories <https://rust-nostr.org/projects>.
+
 ### Embedded
 
 **nostr** crate can be used in [`no_std`](https://docs.rust-embedded.org/book/intro/no-std.html) environments.
