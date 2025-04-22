@@ -21,6 +21,8 @@ The project is split up into several crates in the `crates/` directory:
 * Binaries (tools):
     * [**nostr-cli**](./crates/nostr-cli): Nostr CLI
 
+> Note: FFI bindings (Kotlin/Android, JVM, Python, Swift) are maintained in a separate repository at https://github.com/rust-nostr/nostr-sdk-ffi
+
 ### Embedded
 
 **nostr** crate can be used in [`no_std`](https://docs.rust-embedded.org/book/intro/no-std.html) environments.

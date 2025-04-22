@@ -1,5 +1,7 @@
 # Release Checks
 
+> Note: FFI bindings (Kotlin/Android, JVM, Python, Swift) are maintained in a separate repository at https://github.com/rust-nostr/nostr-sdk-ffi
+
 * Run `just check` to verify that everything compile
 
 * Try to compile `kotlin` bindings (`nostr-sdk-ffi`) since compilation could fail during gradlew due to enumerations names.
