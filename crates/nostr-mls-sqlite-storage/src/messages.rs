@@ -1,6 +1,6 @@
 //! Implementation of MessageStorage trait for SQLite storage.
 
-use nostr::EventId;
+use nostr::{EventId, JsonUtil};
 use nostr_mls_storage::messages::error::MessageError;
 use nostr_mls_storage::messages::types::{Message, ProcessedMessage};
 use nostr_mls_storage::messages::MessageStorage;
@@ -15,12 +15,8 @@ impl MessageStorage for NostrMlsSqliteStorage {
         })?;
 
         // Serialize complex types to JSON
-        let tags_json = serde_json::to_string(&message.tags)
+        let tags_json: String = serde_json::to_string(&message.tags)
             .map_err(|e| MessageError::DatabaseError(format!("Failed to serialize tags: {}", e)))?;
-
-        let event_json = serde_json::to_string(&message.event).map_err(|e| {
-            MessageError::DatabaseError(format!("Failed to serialize event: {}", e))
-        })?;
 
         conn_guard
             .execute(
@@ -35,7 +31,7 @@ impl MessageStorage for NostrMlsSqliteStorage {
                     &message.created_at.as_u64(),
                     &message.content,
                     &tags_json,
-                    &event_json,
+                    &message.event.as_json(),
                     &message.wrapper_event_id.to_bytes(),
                 ],
             )
@@ -56,30 +52,7 @@ impl MessageStorage for NostrMlsSqliteStorage {
             .prepare("SELECT * FROM messages WHERE id = ?")
             .map_err(|e| MessageError::DatabaseError(e.to_string()))?;
 
-        let result = stmt.query_row(params![event_id.to_bytes()], db::row_to_message);
-
-        match result {
-            Ok(message) => Ok(Some(message)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(MessageError::DatabaseError(e.to_string())),
-        }
-    }
-
-    fn find_processed_message_by_event_id(
-        &self,
-        event_id: &EventId,
-    ) -> Result<Option<ProcessedMessage>, MessageError> {
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            MessageError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
-
-        let mut stmt = conn_guard
-            .prepare("SELECT * FROM processed_messages WHERE wrapper_event_id = ?")
-            .map_err(|e| MessageError::DatabaseError(e.to_string()))?;
-
-        let result = stmt.query_row(params![event_id.to_bytes()], db::row_to_processed_message);
-
-        match result {
+        match stmt.query_row(params![event_id.to_bytes()], db::row_to_message) {
             Ok(message) => Ok(Some(message)),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
             Err(e) => Err(MessageError::DatabaseError(e.to_string())),
@@ -100,8 +73,6 @@ impl MessageStorage for NostrMlsSqliteStorage {
             .as_ref()
             .map(|id| id.to_bytes());
 
-        let state_str: String = processed_message.state.to_string();
-
         conn_guard
             .execute(
                 "INSERT OR REPLACE INTO processed_messages
@@ -111,13 +82,32 @@ impl MessageStorage for NostrMlsSqliteStorage {
                     &processed_message.wrapper_event_id.to_bytes(),
                     &message_event_id,
                     &processed_message.processed_at.as_u64(),
-                    &state_str,
+                    &processed_message.state.to_string(),
                     &processed_message.failure_reason
                 ],
             )
             .map_err(|e| MessageError::DatabaseError(e.to_string()))?;
 
         Ok(())
+    }
+
+    fn find_processed_message_by_event_id(
+        &self,
+        event_id: &EventId,
+    ) -> Result<Option<ProcessedMessage>, MessageError> {
+        let conn_guard = self.db_connection.lock().map_err(|_| {
+            MessageError::DatabaseError("Failed to acquire database lock".to_string())
+        })?;
+
+        let mut stmt = conn_guard
+            .prepare("SELECT * FROM processed_messages WHERE wrapper_event_id = ?")
+            .map_err(|e| MessageError::DatabaseError(e.to_string()))?;
+
+        match stmt.query_row(params![event_id.to_bytes()], db::row_to_processed_message) {
+            Ok(message) => Ok(Some(message)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(MessageError::DatabaseError(e.to_string())),
+        }
     }
 }
 
@@ -132,7 +122,7 @@ mod tests {
 
     #[test]
     fn test_save_and_find_message() {
-        let storage = crate::NostrMlsSqliteStorage::new_in_memory().unwrap();
+        let storage = NostrMlsSqliteStorage::new_in_memory().unwrap();
 
         // First create a group (messages require a valid group foreign key)
         let mls_group_id = vec![1, 2, 3, 4];
@@ -198,7 +188,7 @@ mod tests {
 
     #[test]
     fn test_processed_message() {
-        let storage = crate::NostrMlsSqliteStorage::new_in_memory().unwrap();
+        let storage = NostrMlsSqliteStorage::new_in_memory().unwrap();
 
         // Create a test processed message
         let wrapper_event_id =

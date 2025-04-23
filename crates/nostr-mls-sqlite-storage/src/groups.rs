@@ -48,9 +48,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
             .prepare("SELECT * FROM groups WHERE mls_group_id = ?")
             .map_err(|e| GroupError::DatabaseError(e.to_string()))?;
 
-        let result = stmt.query_row(params![mls_group_id], db::row_to_group);
-
-        match result {
+        match stmt.query_row([mls_group_id], db::row_to_group) {
             Ok(group) => Ok(Some(group)),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
             Err(e) => Err(GroupError::DatabaseError(e.to_string())),
@@ -69,9 +67,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
             .prepare("SELECT * FROM groups WHERE nostr_group_id = ?")
             .map_err(|e| GroupError::DatabaseError(e.to_string()))?;
 
-        let result = stmt.query_row(params![nostr_group_id], db::row_to_group);
-
-        match result {
+        match stmt.query_row(params![nostr_group_id], db::row_to_group) {
             Ok(group) => Ok(Some(group)),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
             Err(e) => Err(GroupError::DatabaseError(e.to_string())),
@@ -83,16 +79,10 @@ impl GroupStorage for NostrMlsSqliteStorage {
             GroupError::DatabaseError("Failed to acquire database lock".to_string())
         })?;
 
-        let admin_pubkeys_json = serde_json::to_string(
-            &group
-                .admin_pubkeys
-                .iter()
-                .map(|pk| pk.to_string())
-                .collect::<Vec<String>>(),
-        )
-        .map_err(|e| {
-            GroupError::DatabaseError(format!("Failed to serialize admin pubkeys: {}", e))
-        })?;
+        let admin_pubkeys_json: String =
+            serde_json::to_string(&group.admin_pubkeys).map_err(|e| {
+                GroupError::DatabaseError(format!("Failed to serialize admin pubkeys: {}", e))
+            })?;
 
         let last_message_id = group.last_message_id.as_ref().map(|id| id.to_bytes());
         let last_message_at = group.last_message_at.as_ref().map(|ts| ts.as_u64());
@@ -125,8 +115,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
 
     fn messages(&self, mls_group_id: &[u8]) -> Result<Vec<Message>, GroupError> {
         // First verify the group exists
-        let group = self.find_group_by_mls_group_id(mls_group_id)?;
-        if group.is_none() {
+        if self.find_group_by_mls_group_id(mls_group_id)?.is_none() {
             return Err(GroupError::InvalidParameters(format!(
                 "Group with MLS ID {:?} not found",
                 mls_group_id
@@ -163,9 +152,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
 
     fn admins(&self, mls_group_id: &[u8]) -> Result<Vec<PublicKey>, GroupError> {
         // Get the group which contains the admin_pubkeys
-        let group = self.find_group_by_mls_group_id(mls_group_id)?;
-
-        match group {
+        match self.find_group_by_mls_group_id(mls_group_id)? {
             Some(group) => Ok(group.admin_pubkeys),
             None => Err(GroupError::InvalidParameters(format!(
                 "Group with MLS ID {:?} not found",
@@ -176,8 +163,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
 
     fn group_relays(&self, mls_group_id: &[u8]) -> Result<Vec<GroupRelay>, GroupError> {
         // First verify the group exists
-        let group = self.find_group_by_mls_group_id(mls_group_id)?;
-        if group.is_none() {
+        if self.find_group_by_mls_group_id(mls_group_id)?.is_none() {
             return Err(GroupError::InvalidParameters(format!(
                 "Group with MLS ID {:?} not found",
                 mls_group_id
@@ -214,8 +200,10 @@ impl GroupStorage for NostrMlsSqliteStorage {
 
     fn save_group_relay(&self, group_relay: GroupRelay) -> Result<(), GroupError> {
         // First verify the group exists
-        let group = self.find_group_by_mls_group_id(&group_relay.mls_group_id)?;
-        if group.is_none() {
+        if self
+            .find_group_by_mls_group_id(&group_relay.mls_group_id)?
+            .is_none()
+        {
             return Err(GroupError::InvalidParameters(format!(
                 "Group with MLS ID {:?} not found",
                 group_relay.mls_group_id
@@ -249,7 +237,7 @@ mod tests {
 
     #[test]
     fn test_save_and_find_group() {
-        let storage = crate::NostrMlsSqliteStorage::new_in_memory().unwrap();
+        let storage = NostrMlsSqliteStorage::new_in_memory().unwrap();
 
         // Create a test group
         let mls_group_id = vec![1, 2, 3, 4];
@@ -291,7 +279,7 @@ mod tests {
 
     #[test]
     fn test_group_relay() {
-        let storage = crate::NostrMlsSqliteStorage::new_in_memory().unwrap();
+        let storage = NostrMlsSqliteStorage::new_in_memory().unwrap();
 
         // Create a test group
         let mls_group_id = vec![1, 2, 3, 4];

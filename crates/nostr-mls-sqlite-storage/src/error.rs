@@ -7,13 +7,10 @@ use std::fmt;
 pub enum Error {
     /// SQLite database error
     Database(String),
-
     /// Error from rusqlite
     Rusqlite(rusqlite::Error),
-
     /// Error during database migration
-    Migration(String),
-
+    Refinery(refinery::Error),
     /// Error from OpenMLS
     OpenMls(String),
 }
@@ -25,21 +22,21 @@ impl fmt::Display for Error {
         match self {
             Self::Database(msg) => write!(f, "Database error: {}", msg),
             Self::Rusqlite(err) => write!(f, "SQLite error: {}", err),
-            Self::Migration(msg) => write!(f, "Migration error: {}", msg),
+            Self::Refinery(msg) => write!(f, "Migration error: {}", msg),
             Self::OpenMls(msg) => write!(f, "OpenMLS error: {}", msg),
         }
     }
 }
 
 impl From<rusqlite::Error> for Error {
-    fn from(err: rusqlite::Error) -> Self {
-        Self::Rusqlite(err)
+    fn from(e: rusqlite::Error) -> Self {
+        Self::Rusqlite(e)
     }
 }
 
 impl From<refinery::Error> for Error {
-    fn from(err: refinery::Error) -> Self {
-        Self::Migration(err.to_string())
+    fn from(e: refinery::Error) -> Self {
+        Self::Refinery(e)
     }
 }
 

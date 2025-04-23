@@ -1,5 +1,7 @@
 use rusqlite::Connection;
 
+use crate::error::Error;
+
 // Embed the SQL migrations
 refinery::embed_migrations!("migrations");
 
@@ -13,7 +15,7 @@ refinery::embed_migrations!("migrations");
 /// # Returns
 ///
 /// Result indicating success or failure of the migration process.
-pub fn run_migrations(conn: &mut Connection) -> Result<(), crate::error::Error> {
+pub fn run_migrations(conn: &mut Connection) -> Result<(), Error> {
     // Run the migrations
     let report = migrations::runner()
         .set_migration_table_name("_refinery_schema_history_nostr_mls")

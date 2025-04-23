@@ -1,16 +1,21 @@
+//! Database utilities for SQLite storage.
+
+use std::io::{Error as IoError, ErrorKind};
 use std::str::FromStr;
 
-/// Database utilities for SQLite storage.
 use nostr::{EventId, Kind, PublicKey, RelayUrl, Tags, Timestamp, UnsignedEvent};
 use nostr_mls_storage::groups::types::{Group, GroupRelay, GroupState, GroupType};
 use nostr_mls_storage::messages::types::{Message, ProcessedMessage, ProcessedMessageState};
 use nostr_mls_storage::welcomes::types::{
     ProcessedWelcome, ProcessedWelcomeState, Welcome, WelcomeState,
 };
-use rusqlite::{Result as SqliteResult, Row};
+use rusqlite::types::Type;
+use rusqlite::{Error, Result as SqliteResult, Row};
 
 /// Convert a row to a Group struct
 pub fn row_to_group(row: &Row) -> SqliteResult<Group> {
+    // TODO: use Row::get_ref
+
     let mls_group_id: Vec<u8> = row.get("mls_group_id")?;
     let nostr_group_id: String = row.get("nostr_group_id")?;
     let name: String = row.get("name")?;
@@ -18,15 +23,8 @@ pub fn row_to_group(row: &Row) -> SqliteResult<Group> {
 
     // Parse admin pubkeys from JSON
     let admin_pubkeys_json: String = row.get("admin_pubkeys")?;
-    let admin_pubkeys: Vec<String> = serde_json::from_str(&admin_pubkeys_json).map_err(|e| {
-        rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
-    })?;
-
-    // Convert string pubkeys to PublicKey type
-    let admin_pubkeys: Vec<PublicKey> = admin_pubkeys
-        .iter()
-        .filter_map(|pk| PublicKey::parse(pk).ok())
-        .collect();
+    let admin_pubkeys: Vec<PublicKey> = serde_json::from_str(&admin_pubkeys_json)
+        .map_err(|e| Error::FromSqlConversionFailure(0, Type::Text, Box::new(e)))?;
 
     let last_message_id: Option<Vec<u8>> = row.get("last_message_id")?;
     let last_message_at: Option<i64> = row.get("last_message_at")?;
@@ -34,34 +32,27 @@ pub fn row_to_group(row: &Row) -> SqliteResult<Group> {
     let epoch: u64 = row.get::<_, i64>("epoch")? as u64;
     let state: String = row.get("state")?;
 
-    let last_message_id = match last_message_id {
-        Some(id) => EventId::from_slice(&id).ok(),
-        None => None,
-    };
-
-    let last_message_at = last_message_at.map(|ts| Timestamp::from(ts as u64));
+    // Parse last_message_id and last_message_at
+    let last_message_id: Option<EventId> =
+        last_message_id.and_then(|id| EventId::from_slice(&id).ok());
+    let last_message_at: Option<Timestamp> = last_message_at.map(|ts| Timestamp::from(ts as u64));
 
     // Convert group_type and state to GroupType and GroupState
-    let group_type = GroupType::from_str(&group_type).map_err(|_| {
-        rusqlite::Error::FromSqlConversionFailure(
+    let group_type: GroupType = GroupType::from_str(&group_type).map_err(|_| {
+        Error::FromSqlConversionFailure(
             0,
-            rusqlite::types::Type::Text,
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Invalid group type",
-            )),
+            Type::Text,
+            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid group type")),
         )
     })?;
-    let state = GroupState::from_str(&state).map_err(|_| {
-        rusqlite::Error::FromSqlConversionFailure(
+    let state: GroupState = GroupState::from_str(&state).map_err(|_| {
+        Error::FromSqlConversionFailure(
             0,
-            rusqlite::types::Type::Text,
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Invalid group state",
-            )),
+            Type::Text,
+            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid group state")),
         )
     })?;
+
     Ok(Group {
         mls_group_id,
         nostr_group_id,
@@ -82,14 +73,11 @@ pub fn row_to_group_relay(row: &Row) -> SqliteResult<GroupRelay> {
     let relay_url: String = row.get("relay_url")?;
 
     // Parse relay URL
-    let relay_url = RelayUrl::from_str(&relay_url).map_err(|_| {
-        rusqlite::Error::FromSqlConversionFailure(
+    let relay_url: RelayUrl = RelayUrl::from_str(&relay_url).map_err(|_| {
+        Error::FromSqlConversionFailure(
             0,
-            rusqlite::types::Type::Text,
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Invalid relay URL",
-            )),
+            Type::Text,
+            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid relay URL")),
         )
     })?;
 
@@ -113,44 +101,36 @@ pub fn row_to_message(row: &Row) -> SqliteResult<Message> {
 
     // Parse values
     let id = EventId::from_slice(&id_blob).map_err(|_| {
-        rusqlite::Error::FromSqlConversionFailure(
+        Error::FromSqlConversionFailure(
             0,
-            rusqlite::types::Type::Blob,
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Invalid event ID",
-            )),
+            Type::Blob,
+            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid event ID")),
         )
     })?;
 
     let pubkey = PublicKey::from_slice(&pubkey_blob).map_err(|_| {
-        rusqlite::Error::FromSqlConversionFailure(
+        Error::FromSqlConversionFailure(
             0,
-            rusqlite::types::Type::Blob,
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Invalid public key",
-            )),
+            Type::Blob,
+            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid public key")),
         )
     })?;
 
-    let kind = Kind::from(kind_value);
-    let created_at = Timestamp::from(created_at_value);
+    let kind: Kind = Kind::from(kind_value);
+    let created_at: Timestamp = Timestamp::from(created_at_value);
 
-    let tags: Tags = serde_json::from_str(&tags_json).map_err(|e| {
-        rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
-    })?;
+    let tags: Tags = serde_json::from_str(&tags_json)
+        .map_err(|e| Error::FromSqlConversionFailure(0, Type::Text, Box::new(e)))?;
 
-    let event: UnsignedEvent = serde_json::from_str(&event_json).map_err(|e| {
-        rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
-    })?;
+    let event: UnsignedEvent = serde_json::from_str(&event_json)
+        .map_err(|e| Error::FromSqlConversionFailure(0, Type::Text, Box::new(e)))?;
 
     let wrapper_event_id = EventId::from_slice(&wrapper_event_id_blob).map_err(|_| {
-        rusqlite::Error::FromSqlConversionFailure(
+        Error::FromSqlConversionFailure(
             0,
-            rusqlite::types::Type::Blob,
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            Type::Blob,
+            Box::new(IoError::new(
+                ErrorKind::InvalidData,
                 "Invalid wrapper event ID",
             )),
         )
@@ -178,24 +158,24 @@ pub fn row_to_processed_message(row: &Row) -> SqliteResult<ProcessedMessage> {
     let failure_reason: String = row.get("failure_reason")?;
 
     // Parse values
-    let wrapper_event_id = EventId::from_slice(&wrapper_event_id_blob).map_err(|_| {
-        rusqlite::Error::FromSqlConversionFailure(
+    let wrapper_event_id: EventId = EventId::from_slice(&wrapper_event_id_blob).map_err(|_| {
+        Error::FromSqlConversionFailure(
             0,
-            rusqlite::types::Type::Blob,
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            Type::Blob,
+            Box::new(IoError::new(
+                ErrorKind::InvalidData,
                 "Invalid wrapper event ID",
             )),
         )
     })?;
 
-    let message_event_id = match message_event_id_blob {
+    let message_event_id: Option<EventId> = match message_event_id_blob {
         Some(id_blob) => Some(EventId::from_slice(&id_blob).map_err(|_| {
-            rusqlite::Error::FromSqlConversionFailure(
+            Error::FromSqlConversionFailure(
                 0,
-                rusqlite::types::Type::Blob,
-                Box::new(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
+                Type::Blob,
+                Box::new(IoError::new(
+                    ErrorKind::InvalidData,
                     "Invalid message event ID",
                 )),
             )
@@ -203,15 +183,12 @@ pub fn row_to_processed_message(row: &Row) -> SqliteResult<ProcessedMessage> {
         None => None,
     };
 
-    let processed_at = Timestamp::from(processed_at_value as u64);
+    let processed_at: Timestamp = Timestamp::from(processed_at_value as u64);
     let state = ProcessedMessageState::from_str(&state_str).map_err(|_| {
-        rusqlite::Error::FromSqlConversionFailure(
+        Error::FromSqlConversionFailure(
             0,
-            rusqlite::types::Type::Text,
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Invalid state",
-            )),
+            Type::Text,
+            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid state")),
         )
     })?;
 
@@ -240,60 +217,50 @@ pub fn row_to_welcome(row: &Row) -> SqliteResult<Welcome> {
     let wrapper_event_id_blob: Vec<u8> = row.get("wrapper_event_id")?;
 
     // Parse values
-    let id = EventId::from_slice(&id_blob).map_err(|_| {
-        rusqlite::Error::FromSqlConversionFailure(
+    let id: EventId = EventId::from_slice(&id_blob).map_err(|_| {
+        Error::FromSqlConversionFailure(
             0,
-            rusqlite::types::Type::Blob,
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Invalid event ID",
-            )),
+            Type::Blob,
+            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid event ID")),
         )
     })?;
 
-    let event: UnsignedEvent = serde_json::from_str(&event_json).map_err(|e| {
-        rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
-    })?;
+    let event: UnsignedEvent = serde_json::from_str(&event_json)
+        .map_err(|e| Error::FromSqlConversionFailure(0, Type::Text, Box::new(e)))?;
 
     let group_admin_pubkeys: Vec<String> = serde_json::from_str(&group_admin_pubkeys_json)
-        .map_err(|e| {
-            rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
-        })?;
+        .map_err(|e| Error::FromSqlConversionFailure(0, Type::Text, Box::new(e)))?;
 
-    let group_relays: Vec<String> = serde_json::from_str(&group_relays_json).map_err(|e| {
-        rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
-    })?;
+    let group_relays: Vec<String> = serde_json::from_str(&group_relays_json)
+        .map_err(|e| Error::FromSqlConversionFailure(0, Type::Text, Box::new(e)))?;
 
     let welcomer = PublicKey::from_slice(&welcomer_blob).map_err(|_| {
-        rusqlite::Error::FromSqlConversionFailure(
+        Error::FromSqlConversionFailure(
             0,
-            rusqlite::types::Type::Blob,
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            Type::Blob,
+            Box::new(IoError::new(
+                ErrorKind::InvalidData,
                 "Invalid welcomer public key",
             )),
         )
     })?;
 
     let wrapper_event_id = EventId::from_slice(&wrapper_event_id_blob).map_err(|_| {
-        rusqlite::Error::FromSqlConversionFailure(
+        Error::FromSqlConversionFailure(
             0,
-            rusqlite::types::Type::Blob,
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            Type::Blob,
+            Box::new(IoError::new(
+                ErrorKind::InvalidData,
                 "Invalid wrapper event ID",
             )),
         )
     })?;
 
     let state = WelcomeState::from_str(&state_str).map_err(|_| {
-        rusqlite::Error::FromSqlConversionFailure(
+        Error::FromSqlConversionFailure(
             0,
-            rusqlite::types::Type::Text,
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Invalid state",
-            )),
+            Type::Text,
+            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid state")),
         )
     })?;
 
@@ -322,24 +289,24 @@ pub fn row_to_processed_welcome(row: &Row) -> SqliteResult<ProcessedWelcome> {
     let failure_reason: String = row.get("failure_reason")?;
 
     // Parse values
-    let wrapper_event_id = EventId::from_slice(&wrapper_event_id_blob).map_err(|_| {
-        rusqlite::Error::FromSqlConversionFailure(
+    let wrapper_event_id: EventId = EventId::from_slice(&wrapper_event_id_blob).map_err(|_| {
+        Error::FromSqlConversionFailure(
             0,
-            rusqlite::types::Type::Blob,
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
+            Type::Blob,
+            Box::new(IoError::new(
+                ErrorKind::InvalidData,
                 "Invalid wrapper event ID",
             )),
         )
     })?;
 
-    let welcome_event_id = match welcome_event_id_blob {
+    let welcome_event_id: Option<EventId> = match welcome_event_id_blob {
         Some(id_blob) => Some(EventId::from_slice(&id_blob).map_err(|_| {
-            rusqlite::Error::FromSqlConversionFailure(
+            Error::FromSqlConversionFailure(
                 0,
-                rusqlite::types::Type::Blob,
-                Box::new(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
+                Type::Blob,
+                Box::new(IoError::new(
+                    ErrorKind::InvalidData,
                     "Invalid welcome event ID",
                 )),
             )
@@ -347,15 +314,12 @@ pub fn row_to_processed_welcome(row: &Row) -> SqliteResult<ProcessedWelcome> {
         None => None,
     };
 
-    let processed_at = Timestamp::from(processed_at_value as u64);
+    let processed_at: Timestamp = Timestamp::from(processed_at_value as u64);
     let state = ProcessedWelcomeState::from_str(&state_str).map_err(|_| {
-        rusqlite::Error::FromSqlConversionFailure(
+        Error::FromSqlConversionFailure(
             0,
-            rusqlite::types::Type::Text,
-            Box::new(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Invalid state",
-            )),
+            Type::Text,
+            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid state")),
         )
     })?;
 

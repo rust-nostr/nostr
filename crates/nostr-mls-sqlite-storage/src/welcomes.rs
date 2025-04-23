@@ -1,6 +1,6 @@
 //! Implementation of WelcomeStorage trait for SQLite storage.
 
-use nostr::EventId;
+use nostr::{EventId, JsonUtil};
 use nostr_mls_storage::welcomes::error::WelcomeError;
 use nostr_mls_storage::welcomes::types::{ProcessedWelcome, Welcome};
 use nostr_mls_storage::welcomes::WelcomeStorage;
@@ -15,20 +15,15 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
         })?;
 
         // Serialize complex types to JSON
-        let event_json = serde_json::to_string(&welcome.event).map_err(|e| {
-            WelcomeError::DatabaseError(format!("Failed to serialize event: {}", e))
-        })?;
-
-        let group_admin_pubkeys_json = serde_json::to_string(&welcome.group_admin_pubkeys)
+        let group_admin_pubkeys_json: String = serde_json::to_string(&welcome.group_admin_pubkeys)
             .map_err(|e| {
                 WelcomeError::DatabaseError(format!("Failed to serialize admin pubkeys: {}", e))
             })?;
 
-        let group_relays_json = serde_json::to_string(&welcome.group_relays).map_err(|e| {
-            WelcomeError::DatabaseError(format!("Failed to serialize group relays: {}", e))
-        })?;
-
-        let state_str: String = welcome.state.to_string();
+        let group_relays_json: String =
+            serde_json::to_string(&welcome.group_relays).map_err(|e| {
+                WelcomeError::DatabaseError(format!("Failed to serialize group relays: {}", e))
+            })?;
 
         conn_guard
             .execute(
@@ -38,7 +33,7 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
                     &welcome.id.to_bytes(),
-                    &event_json,
+                    &welcome.event.as_json(),
                     &welcome.mls_group_id,
                     &welcome.nostr_group_id,
                     &welcome.group_name,
@@ -47,7 +42,7 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
                     &group_relays_json,
                     &welcome.welcomer.to_bytes(),
                     &(welcome.member_count as i64),
-                    &state_str,
+                    &welcome.state.to_string(),
                     &welcome.wrapper_event_id.to_bytes()
                 ],
             )
@@ -169,7 +164,7 @@ mod tests {
 
     #[test]
     fn test_save_and_find_welcome() {
-        let storage = crate::NostrMlsSqliteStorage::new_in_memory().unwrap();
+        let storage = NostrMlsSqliteStorage::new_in_memory().unwrap();
 
         // First create a group (welcomes require a valid group foreign key)
         let mls_group_id = vec![1, 2, 3, 4];
@@ -245,7 +240,7 @@ mod tests {
 
     #[test]
     fn test_processed_welcome() {
-        let storage = crate::NostrMlsSqliteStorage::new_in_memory().unwrap();
+        let storage = NostrMlsSqliteStorage::new_in_memory().unwrap();
 
         // Create a test processed welcome
         let wrapper_event_id =

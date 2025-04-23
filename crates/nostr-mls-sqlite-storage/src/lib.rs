@@ -14,8 +14,9 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use nostr_mls_storage::{Backend, NostrMlsStorageProvider};
-use openmls_sqlite_storage::Codec;
+use openmls_sqlite_storage::{Codec, SqliteStorageProvider};
 use rusqlite::Connection;
+use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 mod db;
@@ -25,6 +26,12 @@ mod messages;
 mod migrations;
 mod welcomes;
 
+use self::error::Error;
+
+// Define a type alias for the specific SqliteStorageProvider we're using
+type MlsStorage = SqliteStorageProvider<JsonCodec, Connection>;
+
+// TODO: make this private?
 /// A codec for JSON serialization and deserialization.
 #[derive(Default)]
 pub struct JsonCodec;
@@ -32,17 +39,19 @@ pub struct JsonCodec;
 impl Codec for JsonCodec {
     type Error = serde_json::Error;
 
+    #[inline]
     fn to_vec<T: Serialize>(value: &T) -> Result<Vec<u8>, Self::Error> {
         serde_json::to_vec(value)
     }
 
-    fn from_slice<T: serde::de::DeserializeOwned>(slice: &[u8]) -> Result<T, Self::Error> {
+    #[inline]
+    fn from_slice<T>(slice: &[u8]) -> Result<T, Self::Error>
+    where
+        T: DeserializeOwned,
+    {
         serde_json::from_slice(slice)
     }
 }
-
-// Define a type alias for the specific SqliteStorageProvider we're using
-type MlsStorage = openmls_sqlite_storage::SqliteStorageProvider<JsonCodec, rusqlite::Connection>;
 
 /// A SQLite-based storage implementation for Nostr MLS.
 ///
@@ -65,23 +74,21 @@ impl NostrMlsSqliteStorage {
     /// # Returns
     ///
     /// A Result containing a new instance of [`NostrMlsSqliteStorage`] or an error.
-    pub fn new<P: AsRef<Path>>(file_path: P) -> Result<Self, error::Error> {
+    pub fn new<P>(file_path: P) -> Result<Self, Error>
+    where
+        P: AsRef<Path>,
+    {
         // Create or open the SQLite database
-        let mls_connection = Connection::open(&file_path)?;
+        let mls_connection: Connection = Connection::open(&file_path)?;
 
         // Enable foreign keys
         mls_connection.execute_batch("PRAGMA foreign_keys = ON;")?;
 
         // Create OpenMLS storage
-        let mut openmls_storage = openmls_sqlite_storage::SqliteStorageProvider::<
-            JsonCodec,
-            Connection,
-        >::new(mls_connection);
+        let mut openmls_storage: MlsStorage = SqliteStorageProvider::new(mls_connection);
 
         // Initialize the OpenMLS storage
-        if let Err(e) = openmls_storage.initialize() {
-            return Err(error::Error::OpenMls(e.to_string()));
-        }
+        openmls_storage.initialize()?;
 
         // Create a new connection for the Nostr MLS storage
         let mut nostr_mls_connection = Connection::open(&file_path)?;
@@ -104,7 +111,7 @@ impl NostrMlsSqliteStorage {
     ///
     /// A Result containing a new in-memory instance of [`NostrMlsSqliteStorage`] or an error.
     #[cfg(test)]
-    pub fn new_in_memory() -> Result<Self, error::Error> {
+    pub fn new_in_memory() -> Result<Self, Error> {
         // Create an in-memory SQLite database
         let mls_connection = Connection::open_in_memory()?;
 
@@ -112,20 +119,15 @@ impl NostrMlsSqliteStorage {
         mls_connection.execute_batch("PRAGMA foreign_keys = ON;")?;
 
         // Create OpenMLS storage
-        let mut openmls_storage = openmls_sqlite_storage::SqliteStorageProvider::<
-            JsonCodec,
-            Connection,
-        >::new(mls_connection);
+        let mut openmls_storage: MlsStorage = SqliteStorageProvider::new(mls_connection);
 
         // Initialize the OpenMLS storage
-        if let Err(e) = openmls_storage.initialize() {
-            return Err(error::Error::OpenMls(e.to_string()));
-        }
+        openmls_storage.initialize()?;
 
         // For in-memory databases, we need to share the connection
         // to keep the database alive, so we will clone the connection
         // and let OpenMLS use a new handle
-        let mut nostr_mls_connection = Connection::open_in_memory()?;
+        let mut nostr_mls_connection: Connection = Connection::open_in_memory()?;
 
         // Enable foreign keys
         nostr_mls_connection.execute_batch("PRAGMA foreign_keys = ON;")?;
@@ -229,7 +231,7 @@ mod tests {
 
         if let Err(err) = storage {
             match err {
-                error::Error::Rusqlite(_) => {} // Expected error type
+                Error::Rusqlite(_) => {} // Expected error type
                 _ => panic!("Expected Rusqlite error, got {:?}", err),
             }
         }
