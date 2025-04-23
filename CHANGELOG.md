@@ -30,6 +30,7 @@
 ### Changed 
 
 * nostr: impl `Any` for `NostrSigner` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/845)
+* database: impl `Any` for `NostrEventsDatabase` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/845)
 
 ### Added
 

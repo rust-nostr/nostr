@@ -2,8 +2,9 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::any::Any;
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::fmt;
+use std::fmt::Debug;
 use std::sync::Arc;
 
 use nostr::prelude::*;
@@ -94,7 +95,7 @@ where
 /// Nostr Events Database
 ///
 /// Store for the nostr events.
-pub trait NostrEventsDatabase: fmt::Debug + Send + Sync {
+pub trait NostrEventsDatabase: Any + Debug + Send + Sync {
     /// Save [`Event`] into store
     ///
     /// **This method assumes that [`Event`] was already verified**
