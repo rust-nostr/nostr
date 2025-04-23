@@ -4,8 +4,8 @@
 use std::time::Duration;
 
 use nostr_database::prelude::*;
-use nostr_postgresdb::NostrPostgres;
 use nostr_relay_builder::prelude::*;
+use nostr_sqldb::NostrPostgres;
 
 // Your database URL
 const DB_URL: &str = "postgres://postgres:password@localhost:5432";
@@ -14,14 +14,8 @@ const DB_URL: &str = "postgres://postgres:password@localhost:5432";
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    // This will programatically run pending db migrations
-    nostr_postgresdb::run_migrations(DB_URL)?;
-
-    // Create a conncetion pool
-    let pool = nostr_postgresdb::postgres_connection_pool(DB_URL).await?;
-
-    // Create a nostr db instance
-    let db: NostrPostgres = pool.into();
+    // Create a nostr db instance and run pending db migrations if any
+    let db = NostrPostgres::new(DB_URL).await?;
 
     // Add db to builder
     let builder = RelayBuilder::default().database(db);

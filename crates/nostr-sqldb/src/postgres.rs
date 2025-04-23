@@ -30,6 +30,7 @@ impl NostrPostgres {
     where
         C: AsRef<str>,
     {
+        crate::migrations::postgres::run_migrations(connection_string.as_ref())?;
         let pool = postgres_connection_pool(connection_string).await?;
         Ok(Self { pool })
     }
