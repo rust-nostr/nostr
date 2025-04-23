@@ -4,15 +4,21 @@ use nostr::{EventId, JsonUtil};
 use nostr_mls_storage::messages::error::MessageError;
 use nostr_mls_storage::messages::types::{Message, ProcessedMessage};
 use nostr_mls_storage::messages::MessageStorage;
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
 
 use crate::{db, NostrMlsSqliteStorage};
 
+#[inline]
+fn into_message_err<T>(e: T) -> MessageError
+where
+    T: std::error::Error,
+{
+    MessageError::DatabaseError(e.to_string())
+}
+
 impl MessageStorage for NostrMlsSqliteStorage {
     fn save_message(&self, message: Message) -> Result<(), MessageError> {
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            MessageError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
+        let conn_guard = self.db_connection.lock().map_err(into_message_err)?;
 
         // Serialize complex types to JSON
         let tags_json: String = serde_json::to_string(&message.tags)
@@ -35,7 +41,7 @@ impl MessageStorage for NostrMlsSqliteStorage {
                     &message.wrapper_event_id.to_bytes(),
                 ],
             )
-            .map_err(|e| MessageError::DatabaseError(e.to_string()))?;
+            .map_err(into_message_err)?;
 
         Ok(())
     }
@@ -44,28 +50,22 @@ impl MessageStorage for NostrMlsSqliteStorage {
         &self,
         event_id: &EventId,
     ) -> Result<Option<Message>, MessageError> {
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            MessageError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
+        let conn_guard = self.db_connection.lock().map_err(into_message_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM messages WHERE id = ?")
-            .map_err(|e| MessageError::DatabaseError(e.to_string()))?;
+            .map_err(into_message_err)?;
 
-        match stmt.query_row(params![event_id.to_bytes()], db::row_to_message) {
-            Ok(message) => Ok(Some(message)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(MessageError::DatabaseError(e.to_string())),
-        }
+        stmt.query_row(params![event_id.to_bytes()], db::row_to_message)
+            .optional()
+            .map_err(into_message_err)
     }
 
     fn save_processed_message(
         &self,
         processed_message: ProcessedMessage,
     ) -> Result<(), MessageError> {
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            MessageError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
+        let conn_guard = self.db_connection.lock().map_err(into_message_err)?;
 
         // Convert message_event_id to string if it exists
         let message_event_id = processed_message
@@ -86,7 +86,7 @@ impl MessageStorage for NostrMlsSqliteStorage {
                     &processed_message.failure_reason
                 ],
             )
-            .map_err(|e| MessageError::DatabaseError(e.to_string()))?;
+            .map_err(into_message_err)?;
 
         Ok(())
     }
@@ -95,19 +95,15 @@ impl MessageStorage for NostrMlsSqliteStorage {
         &self,
         event_id: &EventId,
     ) -> Result<Option<ProcessedMessage>, MessageError> {
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            MessageError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
+        let conn_guard = self.db_connection.lock().map_err(into_message_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM processed_messages WHERE wrapper_event_id = ?")
-            .map_err(|e| MessageError::DatabaseError(e.to_string()))?;
+            .map_err(into_message_err)?;
 
-        match stmt.query_row(params![event_id.to_bytes()], db::row_to_processed_message) {
-            Ok(message) => Ok(Some(message)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(MessageError::DatabaseError(e.to_string())),
-        }
+        stmt.query_row(params![event_id.to_bytes()], db::row_to_processed_message)
+            .optional()
+            .map_err(into_message_err)
     }
 }
 

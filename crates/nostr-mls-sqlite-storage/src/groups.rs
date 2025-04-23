@@ -5,79 +5,70 @@ use nostr_mls_storage::groups::error::GroupError;
 use nostr_mls_storage::groups::types::{Group, GroupRelay};
 use nostr_mls_storage::groups::GroupStorage;
 use nostr_mls_storage::messages::types::Message;
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
 
 use crate::{db, NostrMlsSqliteStorage};
 
+#[inline]
+fn into_group_err<T>(e: T) -> GroupError
+where
+    T: std::error::Error,
+{
+    GroupError::DatabaseError(e.to_string())
+}
+
 impl GroupStorage for NostrMlsSqliteStorage {
     fn all_groups(&self) -> Result<Vec<Group>, GroupError> {
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            GroupError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
+        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM groups")
-            .map_err(|e| GroupError::DatabaseError(e.to_string()))?;
+            .map_err(into_group_err)?;
 
         let groups_iter = stmt
             .query_map([], db::row_to_group)
-            .map_err(|e| GroupError::DatabaseError(e.to_string()))?;
+            .map_err(into_group_err)?;
 
-        let mut groups = Vec::new();
+        let mut groups: Vec<Group> = Vec::new();
+
         for group_result in groups_iter {
-            match group_result {
-                Ok(group) => groups.push(group),
-                Err(e) => {
-                    return Err(GroupError::DatabaseError(format!(
-                        "Error parsing group: {}",
-                        e
-                    )))
-                }
-            }
+            // TODO: simply skip parsing errors? Or log them? Instead of block the whole request
+            let group: Group = group_result.map_err(into_group_err)?;
+            groups.push(group);
         }
 
         Ok(groups)
     }
 
     fn find_group_by_mls_group_id(&self, mls_group_id: &[u8]) -> Result<Option<Group>, GroupError> {
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            GroupError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
+        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM groups WHERE mls_group_id = ?")
-            .map_err(|e| GroupError::DatabaseError(e.to_string()))?;
+            .map_err(into_group_err)?;
 
-        match stmt.query_row([mls_group_id], db::row_to_group) {
-            Ok(group) => Ok(Some(group)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(GroupError::DatabaseError(e.to_string())),
-        }
+        stmt.query_row([mls_group_id], db::row_to_group)
+            .optional()
+            .map_err(into_group_err)
     }
 
     fn find_group_by_nostr_group_id(
         &self,
         nostr_group_id: &str,
     ) -> Result<Option<Group>, GroupError> {
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            GroupError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
+        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM groups WHERE nostr_group_id = ?")
-            .map_err(|e| GroupError::DatabaseError(e.to_string()))?;
+            .map_err(into_group_err)?;
 
-        match stmt.query_row(params![nostr_group_id], db::row_to_group) {
-            Ok(group) => Ok(Some(group)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(GroupError::DatabaseError(e.to_string())),
-        }
+        stmt.query_row(params![nostr_group_id], db::row_to_group)
+            .optional()
+            .map_err(into_group_err)
     }
 
     fn save_group(&self, group: Group) -> Result<(), GroupError> {
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            GroupError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
+        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
 
         let admin_pubkeys_json: String =
             serde_json::to_string(&group.admin_pubkeys).map_err(|e| {
@@ -108,7 +99,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
                     &state_str
                 ],
             )
-            .map_err(|e| GroupError::DatabaseError(e.to_string()))?;
+            .map_err(into_group_err)?;
 
         Ok(())
     }
@@ -122,29 +113,21 @@ impl GroupStorage for NostrMlsSqliteStorage {
             )));
         }
 
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            GroupError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
+        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM messages WHERE mls_group_id = ? ORDER BY created_at DESC")
-            .map_err(|e| GroupError::DatabaseError(e.to_string()))?;
+            .map_err(into_group_err)?;
 
         let messages_iter = stmt
             .query_map(params![mls_group_id], db::row_to_message)
-            .map_err(|e| GroupError::DatabaseError(e.to_string()))?;
+            .map_err(into_group_err)?;
 
-        let mut messages = Vec::new();
+        let mut messages: Vec<Message> = Vec::new();
+
         for message_result in messages_iter {
-            match message_result {
-                Ok(message) => messages.push(message),
-                Err(e) => {
-                    return Err(GroupError::DatabaseError(format!(
-                        "Error parsing message: {}",
-                        e
-                    )))
-                }
-            }
+            let message: Message = message_result.map_err(into_group_err)?;
+            messages.push(message);
         }
 
         Ok(messages)
@@ -170,29 +153,21 @@ impl GroupStorage for NostrMlsSqliteStorage {
             )));
         }
 
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            GroupError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
+        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM group_relays WHERE mls_group_id = ?")
-            .map_err(|e| GroupError::DatabaseError(e.to_string()))?;
+            .map_err(into_group_err)?;
 
         let relays_iter = stmt
             .query_map(params![mls_group_id], db::row_to_group_relay)
-            .map_err(|e| GroupError::DatabaseError(e.to_string()))?;
+            .map_err(into_group_err)?;
 
-        let mut relays = Vec::new();
+        let mut relays: Vec<GroupRelay> = Vec::new();
+
         for relay_result in relays_iter {
-            match relay_result {
-                Ok(relay) => relays.push(relay),
-                Err(e) => {
-                    return Err(GroupError::DatabaseError(format!(
-                        "Error parsing group relay: {}",
-                        e
-                    )))
-                }
-            }
+            let relay: GroupRelay = relay_result.map_err(into_group_err)?;
+            relays.push(relay);
         }
 
         Ok(relays)
@@ -210,9 +185,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
             )));
         }
 
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            GroupError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
+        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
 
         conn_guard
             .execute(
@@ -222,7 +195,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
                     &group_relay.relay_url.to_string()
                 ],
             )
-            .map_err(|e| GroupError::DatabaseError(e.to_string()))?;
+            .map_err(into_group_err)?;
 
         Ok(())
     }

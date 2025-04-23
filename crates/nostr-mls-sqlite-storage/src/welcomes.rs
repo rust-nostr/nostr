@@ -4,15 +4,21 @@ use nostr::{EventId, JsonUtil};
 use nostr_mls_storage::welcomes::error::WelcomeError;
 use nostr_mls_storage::welcomes::types::{ProcessedWelcome, Welcome};
 use nostr_mls_storage::welcomes::WelcomeStorage;
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
 
 use crate::{db, NostrMlsSqliteStorage};
 
+#[inline]
+fn into_welcome_err<T>(e: T) -> WelcomeError
+where
+    T: std::error::Error,
+{
+    WelcomeError::DatabaseError(e.to_string())
+}
+
 impl WelcomeStorage for NostrMlsSqliteStorage {
     fn save_welcome(&self, welcome: Welcome) -> Result<(), WelcomeError> {
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            WelcomeError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
+        let conn_guard = self.db_connection.lock().map_err(into_welcome_err)?;
 
         // Serialize complex types to JSON
         let group_admin_pubkeys_json: String = serde_json::to_string(&welcome.group_admin_pubkeys)
@@ -46,7 +52,7 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
                     &welcome.wrapper_event_id.to_bytes()
                 ],
             )
-            .map_err(|e| WelcomeError::DatabaseError(e.to_string()))?;
+            .map_err(into_welcome_err)?;
 
         Ok(())
     }
@@ -55,45 +61,33 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
         &self,
         event_id: &EventId,
     ) -> Result<Option<Welcome>, WelcomeError> {
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            WelcomeError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
+        let conn_guard = self.db_connection.lock().map_err(into_welcome_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM welcomes WHERE id = ?")
-            .map_err(|e| WelcomeError::DatabaseError(e.to_string()))?;
+            .map_err(into_welcome_err)?;
 
-        match stmt.query_row(params![event_id.to_bytes()], db::row_to_welcome) {
-            Ok(welcome) => Ok(Some(welcome)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(WelcomeError::DatabaseError(e.to_string())),
-        }
+        stmt.query_row(params![event_id.to_bytes()], db::row_to_welcome)
+            .optional()
+            .map_err(into_welcome_err)
     }
 
     fn pending_welcomes(&self) -> Result<Vec<Welcome>, WelcomeError> {
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            WelcomeError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
+        let conn_guard = self.db_connection.lock().map_err(into_welcome_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM welcomes WHERE state = 'pending'")
-            .map_err(|e| WelcomeError::DatabaseError(e.to_string()))?;
+            .map_err(into_welcome_err)?;
 
         let welcomes_iter = stmt
             .query_map([], db::row_to_welcome)
-            .map_err(|e| WelcomeError::DatabaseError(e.to_string()))?;
+            .map_err(into_welcome_err)?;
 
-        let mut welcomes = Vec::new();
+        let mut welcomes: Vec<Welcome> = Vec::new();
+
         for welcome_result in welcomes_iter {
-            match welcome_result {
-                Ok(welcome) => welcomes.push(welcome),
-                Err(e) => {
-                    return Err(WelcomeError::DatabaseError(format!(
-                        "Error parsing welcome: {}",
-                        e
-                    )))
-                }
-            }
+            let welcome: Welcome = welcome_result.map_err(into_welcome_err)?;
+            welcomes.push(welcome);
         }
 
         Ok(welcomes)
@@ -103,9 +97,7 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
         &self,
         processed_welcome: ProcessedWelcome,
     ) -> Result<(), WelcomeError> {
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            WelcomeError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
+        let conn_guard = self.db_connection.lock().map_err(into_welcome_err)?;
 
         // Convert welcome_event_id to string if it exists
         let welcome_event_id = processed_welcome
@@ -128,7 +120,7 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
                     &processed_welcome.failure_reason
                 ],
             )
-            .map_err(|e| WelcomeError::DatabaseError(e.to_string()))?;
+            .map_err(into_welcome_err)?;
 
         Ok(())
     }
@@ -137,19 +129,15 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
         &self,
         event_id: &EventId,
     ) -> Result<Option<ProcessedWelcome>, WelcomeError> {
-        let conn_guard = self.db_connection.lock().map_err(|_| {
-            WelcomeError::DatabaseError("Failed to acquire database lock".to_string())
-        })?;
+        let conn_guard = self.db_connection.lock().map_err(into_welcome_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM processed_welcomes WHERE wrapper_event_id = ?")
-            .map_err(|e| WelcomeError::DatabaseError(e.to_string()))?;
+            .map_err(into_welcome_err)?;
 
-        match stmt.query_row(params![event_id.to_bytes()], db::row_to_processed_welcome) {
-            Ok(welcome) => Ok(Some(welcome)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(WelcomeError::DatabaseError(e.to_string())),
-        }
+        stmt.query_row(params![event_id.to_bytes()], db::row_to_processed_welcome)
+            .optional()
+            .map_err(into_welcome_err)
     }
 }
 
