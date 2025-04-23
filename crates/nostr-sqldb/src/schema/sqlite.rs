@@ -22,7 +22,4 @@ diesel::table! {
 
 diesel::joinable!(event_tags -> events (event_id));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    event_tags,
-    events,
-);
+diesel::allow_tables_to_appear_in_same_query!(event_tags, events,);

@@ -5,12 +5,6 @@ use nostr_database::{DatabaseError, FlatBufferBuilder, FlatBufferEncode};
 #[cfg(feature = "postgres")]
 use crate::schema::postgres::{event_tags, events};
 
-#[cfg(feature = "mysql")]
-use crate::schema::mysql::{event_tags, events};
-
-#[cfg(feature = "sqlite")]
-use crate::schema::sqlite::{event_tags, events};
-
 /// DB representation of [`Event`]
 #[derive(Queryable, Selectable, Insertable, AsChangeset, Debug, Clone)]
 #[diesel(table_name = events)]
