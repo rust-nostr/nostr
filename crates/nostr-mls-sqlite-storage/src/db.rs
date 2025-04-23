@@ -3,7 +3,7 @@
 use std::io::{Error as IoError, ErrorKind};
 use std::str::FromStr;
 
-use nostr::{EventId, Kind, PublicKey, RelayUrl, Tags, Timestamp, UnsignedEvent};
+use nostr::{EventId, JsonUtil, Kind, PublicKey, RelayUrl, Tags, Timestamp, UnsignedEvent};
 use nostr_mls_storage::groups::types::{Group, GroupRelay, GroupState, GroupType};
 use nostr_mls_storage::messages::types::{Message, ProcessedMessage, ProcessedMessageState};
 use nostr_mls_storage::welcomes::types::{
@@ -12,46 +12,60 @@ use nostr_mls_storage::welcomes::types::{
 use rusqlite::types::Type;
 use rusqlite::{Error, Result as SqliteResult, Row};
 
+#[inline]
+fn map_to_text_boxed_error<T>(e: T) -> Error
+where
+    T: std::error::Error + Send + Sync + 'static,
+{
+    Error::FromSqlConversionFailure(0, Type::Text, Box::new(e))
+}
+
+#[inline]
+fn map_invalid_text_data(msg: &str) -> Error {
+    Error::FromSqlConversionFailure(
+        0,
+        Type::Text,
+        Box::new(IoError::new(ErrorKind::InvalidData, msg)),
+    )
+}
+
+#[inline]
+fn map_invalid_blob_data(msg: &str) -> Error {
+    Error::FromSqlConversionFailure(
+        0,
+        Type::Blob,
+        Box::new(IoError::new(ErrorKind::InvalidData, msg)),
+    )
+}
+
 /// Convert a row to a Group struct
 pub fn row_to_group(row: &Row) -> SqliteResult<Group> {
-    // TODO: use Row::get_ref
-
     let mls_group_id: Vec<u8> = row.get("mls_group_id")?;
     let nostr_group_id: String = row.get("nostr_group_id")?;
     let name: String = row.get("name")?;
     let description: String = row.get("description")?;
 
     // Parse admin pubkeys from JSON
-    let admin_pubkeys_json: String = row.get("admin_pubkeys")?;
-    let admin_pubkeys: Vec<PublicKey> = serde_json::from_str(&admin_pubkeys_json)
-        .map_err(|e| Error::FromSqlConversionFailure(0, Type::Text, Box::new(e)))?;
+    let admin_pubkeys_json: &str = row.get_ref("admin_pubkeys")?.as_str()?;
+    let admin_pubkeys: Vec<PublicKey> =
+        serde_json::from_str(admin_pubkeys_json).map_err(map_to_text_boxed_error)?;
 
-    let last_message_id: Option<Vec<u8>> = row.get("last_message_id")?;
-    let last_message_at: Option<i64> = row.get("last_message_at")?;
-    let group_type: String = row.get("group_type")?;
-    let epoch: u64 = row.get::<_, i64>("epoch")? as u64;
-    let state: String = row.get("state")?;
-
-    // Parse last_message_id and last_message_at
+    let last_message_id: Option<&[u8]> = row.get_ref("last_message_id")?.as_blob_or_null()?;
+    let last_message_at: Option<u64> = row.get("last_message_at")?;
     let last_message_id: Option<EventId> =
-        last_message_id.and_then(|id| EventId::from_slice(&id).ok());
-    let last_message_at: Option<Timestamp> = last_message_at.map(|ts| Timestamp::from(ts as u64));
+        last_message_id.and_then(|id| EventId::from_slice(id).ok());
+    let last_message_at: Option<Timestamp> = last_message_at.map(Timestamp::from_secs);
+
+    let group_type: &str = row.get_ref("group_type")?.as_str()?;
+    let group_type: GroupType =
+        GroupType::from_str(group_type).map_err(|_| map_invalid_text_data("Invalid group type"))?;
 
     // Convert group_type and state to GroupType and GroupState
-    let group_type: GroupType = GroupType::from_str(&group_type).map_err(|_| {
-        Error::FromSqlConversionFailure(
-            0,
-            Type::Text,
-            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid group type")),
-        )
-    })?;
-    let state: GroupState = GroupState::from_str(&state).map_err(|_| {
-        Error::FromSqlConversionFailure(
-            0,
-            Type::Text,
-            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid group state")),
-        )
-    })?;
+    let state: &str = row.get_ref("state")?.as_str()?;
+    let state: GroupState =
+        GroupState::from_str(state).map_err(|_| map_invalid_text_data("Invalid group state"))?;
+
+    let epoch: u64 = row.get("epoch")?;
 
     Ok(Group {
         mls_group_id,
@@ -70,16 +84,11 @@ pub fn row_to_group(row: &Row) -> SqliteResult<Group> {
 /// Convert a row to a GroupRelay struct
 pub fn row_to_group_relay(row: &Row) -> SqliteResult<GroupRelay> {
     let mls_group_id: Vec<u8> = row.get("mls_group_id")?;
-    let relay_url: String = row.get("relay_url")?;
+    let relay_url: &str = row.get_ref("relay_url")?.as_str()?;
 
     // Parse relay URL
-    let relay_url: RelayUrl = RelayUrl::from_str(&relay_url).map_err(|_| {
-        Error::FromSqlConversionFailure(
-            0,
-            Type::Text,
-            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid relay URL")),
-        )
-    })?;
+    let relay_url: RelayUrl =
+        RelayUrl::parse(relay_url).map_err(|_| map_invalid_text_data("Invalid relay URL"))?;
 
     Ok(GroupRelay {
         mls_group_id,
@@ -89,52 +98,33 @@ pub fn row_to_group_relay(row: &Row) -> SqliteResult<GroupRelay> {
 
 /// Convert a row to a Message struct
 pub fn row_to_message(row: &Row) -> SqliteResult<Message> {
-    let id_blob: Vec<u8> = row.get("id")?;
-    let pubkey_blob: Vec<u8> = row.get("pubkey")?;
+    let id_blob: &[u8] = row.get_ref("id")?.as_blob()?;
+    let pubkey_blob: &[u8] = row.get_ref("pubkey")?.as_blob()?;
     let kind_value: u16 = row.get("kind")?;
     let mls_group_id: Vec<u8> = row.get("mls_group_id")?;
     let created_at_value: u64 = row.get("created_at")?;
     let content: String = row.get("content")?;
-    let tags_json: String = row.get("tags")?;
-    let event_json: String = row.get("event")?;
-    let wrapper_event_id_blob: Vec<u8> = row.get("wrapper_event_id")?;
+    let tags_json: &str = row.get_ref("tags")?.as_str()?;
+    let event_json: &str = row.get_ref("event")?.as_str()?;
+    let wrapper_event_id_blob: &[u8] = row.get_ref("wrapper_event_id")?.as_blob()?;
 
     // Parse values
-    let id = EventId::from_slice(&id_blob).map_err(|_| {
-        Error::FromSqlConversionFailure(
-            0,
-            Type::Blob,
-            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid event ID")),
-        )
-    })?;
+    let id: EventId =
+        EventId::from_slice(id_blob).map_err(|_| map_invalid_blob_data("Invalid event ID"))?;
 
-    let pubkey = PublicKey::from_slice(&pubkey_blob).map_err(|_| {
-        Error::FromSqlConversionFailure(
-            0,
-            Type::Blob,
-            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid public key")),
-        )
-    })?;
+    let pubkey: PublicKey = PublicKey::from_slice(pubkey_blob)
+        .map_err(|_| map_invalid_blob_data("Invalid public key"))?;
 
     let kind: Kind = Kind::from(kind_value);
     let created_at: Timestamp = Timestamp::from(created_at_value);
 
-    let tags: Tags = serde_json::from_str(&tags_json)
-        .map_err(|e| Error::FromSqlConversionFailure(0, Type::Text, Box::new(e)))?;
+    let tags: Tags = serde_json::from_str(tags_json).map_err(map_to_text_boxed_error)?;
 
-    let event: UnsignedEvent = serde_json::from_str(&event_json)
-        .map_err(|e| Error::FromSqlConversionFailure(0, Type::Text, Box::new(e)))?;
+    let event: UnsignedEvent =
+        UnsignedEvent::from_json(event_json).map_err(map_to_text_boxed_error)?;
 
-    let wrapper_event_id = EventId::from_slice(&wrapper_event_id_blob).map_err(|_| {
-        Error::FromSqlConversionFailure(
-            0,
-            Type::Blob,
-            Box::new(IoError::new(
-                ErrorKind::InvalidData,
-                "Invalid wrapper event ID",
-            )),
-        )
-    })?;
+    let wrapper_event_id: EventId = EventId::from_slice(wrapper_event_id_blob)
+        .map_err(|_| map_invalid_blob_data("Invalid wrapper event ID"))?;
 
     Ok(Message {
         id,
@@ -151,46 +141,28 @@ pub fn row_to_message(row: &Row) -> SqliteResult<Message> {
 
 /// Convert a row to a ProcessedMessage struct
 pub fn row_to_processed_message(row: &Row) -> SqliteResult<ProcessedMessage> {
-    let wrapper_event_id_blob: Vec<u8> = row.get("wrapper_event_id")?;
-    let message_event_id_blob: Option<Vec<u8>> = row.get("message_event_id")?;
-    let processed_at_value: i64 = row.get("processed_at")?;
-    let state_str: String = row.get("state")?;
+    let wrapper_event_id_blob: &[u8] = row.get_ref("wrapper_event_id")?.as_blob()?;
+    let message_event_id_blob: Option<&[u8]> =
+        row.get_ref("message_event_id")?.as_blob_or_null()?;
+    let processed_at_value: u64 = row.get("processed_at")?;
+    let state_str: &str = row.get_ref("state")?.as_str()?;
     let failure_reason: String = row.get("failure_reason")?;
 
     // Parse values
-    let wrapper_event_id: EventId = EventId::from_slice(&wrapper_event_id_blob).map_err(|_| {
-        Error::FromSqlConversionFailure(
-            0,
-            Type::Blob,
-            Box::new(IoError::new(
-                ErrorKind::InvalidData,
-                "Invalid wrapper event ID",
-            )),
-        )
-    })?;
+    let wrapper_event_id: EventId = EventId::from_slice(wrapper_event_id_blob)
+        .map_err(|_| map_invalid_blob_data("Invalid wrapper event ID"))?;
 
     let message_event_id: Option<EventId> = match message_event_id_blob {
-        Some(id_blob) => Some(EventId::from_slice(&id_blob).map_err(|_| {
-            Error::FromSqlConversionFailure(
-                0,
-                Type::Blob,
-                Box::new(IoError::new(
-                    ErrorKind::InvalidData,
-                    "Invalid message event ID",
-                )),
-            )
-        })?),
+        Some(id_blob) => Some(
+            EventId::from_slice(id_blob)
+                .map_err(|_| map_invalid_blob_data("Invalid message event ID"))?,
+        ),
         None => None,
     };
 
-    let processed_at: Timestamp = Timestamp::from(processed_at_value as u64);
-    let state = ProcessedMessageState::from_str(&state_str).map_err(|_| {
-        Error::FromSqlConversionFailure(
-            0,
-            Type::Text,
-            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid state")),
-        )
-    })?;
+    let processed_at: Timestamp = Timestamp::from_secs(processed_at_value);
+    let state: ProcessedMessageState = ProcessedMessageState::from_str(state_str)
+        .map_err(|_| map_invalid_text_data("Invalid state"))?;
 
     Ok(ProcessedMessage {
         wrapper_event_id,
@@ -203,66 +175,40 @@ pub fn row_to_processed_message(row: &Row) -> SqliteResult<ProcessedMessage> {
 
 /// Convert a row to a Welcome struct
 pub fn row_to_welcome(row: &Row) -> SqliteResult<Welcome> {
-    let id_blob: Vec<u8> = row.get("id")?;
-    let event_json: String = row.get("event")?;
+    let id_blob: &[u8] = row.get_ref("id")?.as_blob()?;
+    let event_json: &str = row.get_ref("event")?.as_str()?;
     let mls_group_id: Vec<u8> = row.get("mls_group_id")?;
     let nostr_group_id: String = row.get("nostr_group_id")?;
     let group_name: String = row.get("group_name")?;
     let group_description: String = row.get("group_description")?;
-    let group_admin_pubkeys_json: String = row.get("group_admin_pubkeys")?;
-    let group_relays_json: String = row.get("group_relays")?;
-    let welcomer_blob: Vec<u8> = row.get("welcomer")?;
-    let member_count: i64 = row.get("member_count")?;
-    let state_str: String = row.get("state")?;
-    let wrapper_event_id_blob: Vec<u8> = row.get("wrapper_event_id")?;
+    let group_admin_pubkeys_json: &str = row.get_ref("group_admin_pubkeys")?.as_str()?;
+    let group_relays_json: &str = row.get_ref("group_relays")?.as_str()?;
+    let welcomer_blob: &[u8] = row.get_ref("welcomer")?.as_blob()?;
+    let member_count: u64 = row.get("member_count")?;
+    let state_str: &str = row.get_ref("state")?.as_str()?;
+    let wrapper_event_id_blob: &[u8] = row.get_ref("wrapper_event_id")?.as_blob()?;
 
     // Parse values
-    let id: EventId = EventId::from_slice(&id_blob).map_err(|_| {
-        Error::FromSqlConversionFailure(
-            0,
-            Type::Blob,
-            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid event ID")),
-        )
-    })?;
+    let id: EventId =
+        EventId::from_slice(id_blob).map_err(|_| map_invalid_blob_data("Invalid event ID"))?;
 
-    let event: UnsignedEvent = serde_json::from_str(&event_json)
-        .map_err(|e| Error::FromSqlConversionFailure(0, Type::Text, Box::new(e)))?;
+    let event: UnsignedEvent =
+        UnsignedEvent::from_json(event_json).map_err(map_to_text_boxed_error)?;
 
-    let group_admin_pubkeys: Vec<String> = serde_json::from_str(&group_admin_pubkeys_json)
-        .map_err(|e| Error::FromSqlConversionFailure(0, Type::Text, Box::new(e)))?;
+    let group_admin_pubkeys: Vec<String> =
+        serde_json::from_str(group_admin_pubkeys_json).map_err(map_to_text_boxed_error)?;
 
-    let group_relays: Vec<String> = serde_json::from_str(&group_relays_json)
-        .map_err(|e| Error::FromSqlConversionFailure(0, Type::Text, Box::new(e)))?;
+    let group_relays: Vec<String> =
+        serde_json::from_str(group_relays_json).map_err(map_to_text_boxed_error)?;
 
-    let welcomer = PublicKey::from_slice(&welcomer_blob).map_err(|_| {
-        Error::FromSqlConversionFailure(
-            0,
-            Type::Blob,
-            Box::new(IoError::new(
-                ErrorKind::InvalidData,
-                "Invalid welcomer public key",
-            )),
-        )
-    })?;
+    let welcomer: PublicKey = PublicKey::from_slice(welcomer_blob)
+        .map_err(|_| map_invalid_blob_data("Invalid welcomer public key"))?;
 
-    let wrapper_event_id = EventId::from_slice(&wrapper_event_id_blob).map_err(|_| {
-        Error::FromSqlConversionFailure(
-            0,
-            Type::Blob,
-            Box::new(IoError::new(
-                ErrorKind::InvalidData,
-                "Invalid wrapper event ID",
-            )),
-        )
-    })?;
+    let wrapper_event_id: EventId = EventId::from_slice(wrapper_event_id_blob)
+        .map_err(|_| map_invalid_blob_data("Invalid wrapper event ID"))?;
 
-    let state = WelcomeState::from_str(&state_str).map_err(|_| {
-        Error::FromSqlConversionFailure(
-            0,
-            Type::Text,
-            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid state")),
-        )
-    })?;
+    let state: WelcomeState =
+        WelcomeState::from_str(state_str).map_err(|_| map_invalid_text_data("Invalid state"))?;
 
     Ok(Welcome {
         id,
@@ -282,46 +228,28 @@ pub fn row_to_welcome(row: &Row) -> SqliteResult<Welcome> {
 
 /// Convert a row to a ProcessedWelcome struct
 pub fn row_to_processed_welcome(row: &Row) -> SqliteResult<ProcessedWelcome> {
-    let wrapper_event_id_blob: Vec<u8> = row.get("wrapper_event_id")?;
-    let welcome_event_id_blob: Option<Vec<u8>> = row.get("welcome_event_id")?;
-    let processed_at_value: i64 = row.get("processed_at")?;
-    let state_str: String = row.get("state")?;
+    let wrapper_event_id_blob: &[u8] = row.get_ref("wrapper_event_id")?.as_blob()?;
+    let welcome_event_id_blob: Option<&[u8]> =
+        row.get_ref("welcome_event_id")?.as_blob_or_null()?;
+    let processed_at_value: u64 = row.get("processed_at")?;
+    let state_str: &str = row.get_ref("state")?.as_str()?;
     let failure_reason: String = row.get("failure_reason")?;
 
     // Parse values
-    let wrapper_event_id: EventId = EventId::from_slice(&wrapper_event_id_blob).map_err(|_| {
-        Error::FromSqlConversionFailure(
-            0,
-            Type::Blob,
-            Box::new(IoError::new(
-                ErrorKind::InvalidData,
-                "Invalid wrapper event ID",
-            )),
-        )
-    })?;
+    let wrapper_event_id: EventId = EventId::from_slice(wrapper_event_id_blob)
+        .map_err(|_| map_invalid_blob_data("Invalid wrapper event ID"))?;
 
     let welcome_event_id: Option<EventId> = match welcome_event_id_blob {
-        Some(id_blob) => Some(EventId::from_slice(&id_blob).map_err(|_| {
-            Error::FromSqlConversionFailure(
-                0,
-                Type::Blob,
-                Box::new(IoError::new(
-                    ErrorKind::InvalidData,
-                    "Invalid welcome event ID",
-                )),
-            )
-        })?),
+        Some(id_blob) => Some(
+            EventId::from_slice(id_blob)
+                .map_err(|_| map_invalid_blob_data("Invalid welcome event ID"))?,
+        ),
         None => None,
     };
 
-    let processed_at: Timestamp = Timestamp::from(processed_at_value as u64);
-    let state = ProcessedWelcomeState::from_str(&state_str).map_err(|_| {
-        Error::FromSqlConversionFailure(
-            0,
-            Type::Text,
-            Box::new(IoError::new(ErrorKind::InvalidData, "Invalid state")),
-        )
-    })?;
+    let processed_at: Timestamp = Timestamp::from_secs(processed_at_value);
+    let state: ProcessedWelcomeState = ProcessedWelcomeState::from_str(state_str)
+        .map_err(|_| map_invalid_text_data("Invalid state"))?;
 
     Ok(ProcessedWelcome {
         wrapper_event_id,
