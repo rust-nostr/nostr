@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use nostr::PublicKey;
 use nostr_mls_storage::groups::error::GroupError;
-use nostr_mls_storage::groups::types::{Group, GroupRelay};
+use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupRelay};
 use nostr_mls_storage::groups::GroupStorage;
 use nostr_mls_storage::messages::types::Message;
 use rusqlite::{params, OptionalExtension};
@@ -197,6 +197,58 @@ impl GroupStorage for NostrMlsSqliteStorage {
 
         Ok(())
     }
+
+    fn get_group_exporter_secret(
+        &self,
+        mls_group_id: &[u8],
+        epoch: u64,
+    ) -> Result<Option<GroupExporterSecret>, GroupError> {
+        // First verify the group exists
+        if self.find_group_by_mls_group_id(mls_group_id)?.is_none() {
+            return Err(GroupError::InvalidParameters(format!(
+                "Group with MLS ID {:?} not found",
+                mls_group_id
+            )));
+        }
+
+        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
+
+        let mut stmt = conn_guard
+            .prepare("SELECT * FROM group_exporter_secrets WHERE mls_group_id = ? AND epoch = ?")
+            .map_err(into_group_err)?;
+
+        stmt.query_row(
+            params![mls_group_id, epoch],
+            db::row_to_group_exporter_secret,
+        )
+        .optional()
+        .map_err(into_group_err)
+    }
+
+    fn save_group_exporter_secret(
+        &self,
+        group_exporter_secret: GroupExporterSecret,
+    ) -> Result<(), GroupError> {
+        if self
+            .find_group_by_mls_group_id(&group_exporter_secret.mls_group_id)?
+            .is_none()
+        {
+            return Err(GroupError::InvalidParameters(format!(
+                "Group with MLS ID {:?} not found",
+                group_exporter_secret.mls_group_id
+            )));
+        }
+
+        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
+
+        conn_guard.execute(
+            "INSERT OR REPLACE INTO group_exporter_secrets (mls_group_id, epoch, secret) VALUES (?, ?, ?)",
+            params![&group_exporter_secret.mls_group_id, &group_exporter_secret.epoch, &group_exporter_secret.secret],
+        )
+        .map_err(into_group_err)?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -289,5 +341,84 @@ mod tests {
             relays.first().unwrap().relay_url.to_string(),
             "wss://relay.example.com"
         );
+    }
+
+    #[test]
+    fn test_group_exporter_secret() {
+        let storage = NostrMlsSqliteStorage::new_in_memory().unwrap();
+
+        // Create a test group
+        let mls_group_id = vec![1, 2, 3, 4];
+        let group = Group {
+            mls_group_id: mls_group_id.clone(),
+            nostr_group_id: "test_group_123".to_string(),
+            name: "Test Group".to_string(),
+            description: "A test group".to_string(),
+            admin_pubkeys: BTreeSet::new(),
+            last_message_id: None,
+            last_message_at: None,
+            group_type: GroupType::Group,
+            epoch: 0,
+            state: GroupState::Active,
+        };
+
+        // Save the group
+        storage.save_group(group.clone()).unwrap();
+
+        // Create a group exporter secret
+        let secret1 = GroupExporterSecret {
+            mls_group_id: mls_group_id.clone(),
+            epoch: 1,
+            secret: vec![5, 6, 7, 8],
+        };
+
+        // Save the secret
+        storage.save_group_exporter_secret(secret1.clone()).unwrap();
+
+        // Get the secret and verify it was saved correctly
+        let retrieved_secret = storage
+            .get_group_exporter_secret(&mls_group_id, 1)
+            .unwrap()
+            .unwrap();
+        assert_eq!(retrieved_secret.secret, vec![5, 6, 7, 8]);
+
+        // Create a second secret with same group_id and epoch but different secret value
+        let secret2 = GroupExporterSecret {
+            mls_group_id: mls_group_id.clone(),
+            epoch: 1,
+            secret: vec![9, 10, 11, 12],
+        };
+
+        // Save the second secret - this should replace the first one due to the "OR REPLACE" in the SQL
+        storage.save_group_exporter_secret(secret2.clone()).unwrap();
+
+        // Get the secret again and verify it was updated
+        let retrieved_secret = storage
+            .get_group_exporter_secret(&mls_group_id, 1)
+            .unwrap()
+            .unwrap();
+        assert_eq!(retrieved_secret.secret, vec![9, 10, 11, 12]);
+
+        // Verify we can still save a different epoch
+        let secret3 = GroupExporterSecret {
+            mls_group_id: mls_group_id.clone(),
+            epoch: 2,
+            secret: vec![13, 14, 15, 16],
+        };
+
+        storage.save_group_exporter_secret(secret3.clone()).unwrap();
+
+        // Verify both epochs exist
+        let retrieved_secret1 = storage
+            .get_group_exporter_secret(&mls_group_id, 1)
+            .unwrap()
+            .unwrap();
+        let retrieved_secret2 = storage
+            .get_group_exporter_secret(&mls_group_id, 2)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(retrieved_secret1.secret, vec![9, 10, 11, 12]);
+        assert_eq!(retrieved_secret2.secret, vec![13, 14, 15, 16]);
     }
 }

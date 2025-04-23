@@ -182,6 +182,8 @@ impl NostrMlsStorageProvider for NostrMlsSqliteStorage {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use tempfile::tempdir;
 
     use super::*;
@@ -278,10 +280,106 @@ mod tests {
             assert!(table_names.contains(&"processed_messages".to_string()));
             assert!(table_names.contains(&"processed_welcomes".to_string()));
             assert!(table_names.contains(&"group_relays".to_string()));
+            assert!(table_names.contains(&"group_exporter_secrets".to_string()));
         } // conn_guard is dropped here when it goes out of scope
 
         // Drop explicitly to release all resources
         drop(storage);
         temp_dir.close().unwrap();
+    }
+
+    #[test]
+    fn test_group_exporter_secrets() {
+        use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupState, GroupType};
+        use nostr_mls_storage::groups::GroupStorage;
+
+        // Create an in-memory SQLite database
+        let storage = NostrMlsSqliteStorage::new_in_memory().unwrap();
+
+        // Create a test group
+        let mls_group_id = vec![1, 2, 3, 4];
+        let group = Group {
+            mls_group_id: mls_group_id.clone(),
+            nostr_group_id: "test_group_123".to_string(),
+            name: "Test Group".to_string(),
+            description: "A test group for exporter secrets".to_string(),
+            admin_pubkeys: BTreeSet::new(),
+            last_message_id: None,
+            last_message_at: None,
+            group_type: GroupType::Group,
+            epoch: 0,
+            state: GroupState::Active,
+        };
+
+        // Save the group
+        storage.save_group(group.clone()).unwrap();
+
+        // Create test group exporter secrets for different epochs
+        let secret_epoch_0 = GroupExporterSecret {
+            mls_group_id: mls_group_id.clone(),
+            epoch: 0,
+            secret: vec![1, 2, 3, 4],
+        };
+
+        let secret_epoch_1 = GroupExporterSecret {
+            mls_group_id: mls_group_id.clone(),
+            epoch: 1,
+            secret: vec![5, 6, 7, 8],
+        };
+
+        // Save the exporter secrets
+        storage
+            .save_group_exporter_secret(secret_epoch_0.clone())
+            .unwrap();
+        storage
+            .save_group_exporter_secret(secret_epoch_1.clone())
+            .unwrap();
+
+        // Test retrieving exporter secrets
+        let retrieved_secret_0 = storage.get_group_exporter_secret(&mls_group_id, 0).unwrap();
+        assert!(retrieved_secret_0.is_some());
+        let retrieved_secret_0 = retrieved_secret_0.unwrap();
+        assert_eq!(retrieved_secret_0, secret_epoch_0);
+
+        let retrieved_secret_1 = storage.get_group_exporter_secret(&mls_group_id, 1).unwrap();
+        assert!(retrieved_secret_1.is_some());
+        let retrieved_secret_1 = retrieved_secret_1.unwrap();
+        assert_eq!(retrieved_secret_1, secret_epoch_1);
+
+        // Test non-existent epoch
+        let non_existent_epoch = storage
+            .get_group_exporter_secret(&mls_group_id, 999)
+            .unwrap();
+        assert!(non_existent_epoch.is_none());
+
+        // Test non-existent group
+        let non_existent_group_id = vec![9, 9, 9, 9];
+        let result = storage.get_group_exporter_secret(&non_existent_group_id, 0);
+        assert!(result.is_err());
+
+        // Test overwriting an existing secret
+        let updated_secret_0 = GroupExporterSecret {
+            mls_group_id: mls_group_id.clone(),
+            epoch: 0,
+            secret: vec![9, 10, 11, 12],
+        };
+        storage
+            .save_group_exporter_secret(updated_secret_0.clone())
+            .unwrap();
+
+        let retrieved_updated_secret = storage
+            .get_group_exporter_secret(&mls_group_id, 0)
+            .unwrap()
+            .unwrap();
+        assert_eq!(retrieved_updated_secret, updated_secret_0);
+
+        // Test trying to save a secret for a non-existent group
+        let invalid_secret = GroupExporterSecret {
+            mls_group_id: non_existent_group_id.clone(),
+            epoch: 0,
+            secret: vec![1, 2, 3, 4],
+        };
+        let result = storage.save_group_exporter_secret(invalid_secret);
+        assert!(result.is_err());
     }
 }

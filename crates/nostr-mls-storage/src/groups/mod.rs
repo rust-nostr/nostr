@@ -46,4 +46,17 @@ pub trait GroupStorage {
 
     /// Save a group relay
     fn save_group_relay(&self, group_relay: GroupRelay) -> Result<(), GroupError>;
+
+    /// Get an exporter secret for a group and epoch
+    fn get_group_exporter_secret(
+        &self,
+        mls_group_id: &[u8],
+        epoch: u64,
+    ) -> Result<Option<GroupExporterSecret>, GroupError>;
+
+    /// Save an exporter secret for a group and epoch
+    fn save_group_exporter_secret(
+        &self,
+        group_exporter_secret: GroupExporterSecret,
+    ) -> Result<(), GroupError>;
 }

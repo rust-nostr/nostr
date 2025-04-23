@@ -15,7 +15,7 @@ use std::num::NonZeroUsize;
 
 use lru::LruCache;
 use nostr::EventId;
-use nostr_mls_storage::groups::types::{Group, GroupRelay};
+use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupRelay};
 use nostr_mls_storage::messages::types::{Message, ProcessedMessage};
 use nostr_mls_storage::welcomes::types::{ProcessedWelcome, Welcome};
 use nostr_mls_storage::{Backend, NostrMlsStorageProvider};
@@ -70,6 +70,8 @@ pub struct NostrMlsMemoryStorage {
     messages_by_group_cache: RwLock<LruCache<Vec<u8>, Vec<Message>>>,
     /// LRU Cache for ProcessedMessage objects, keyed by Event ID
     processed_messages_cache: RwLock<LruCache<EventId, ProcessedMessage>>,
+    /// LRU Cache for GroupExporterSecret objects, keyed by a compound key of MLS group ID and epoch
+    group_exporter_secrets_cache: RwLock<LruCache<Vec<u8>, GroupExporterSecret>>,
 }
 
 impl Default for NostrMlsMemoryStorage {
@@ -121,6 +123,7 @@ impl NostrMlsMemoryStorage {
             messages_cache: RwLock::new(LruCache::new(cache_size)),
             messages_by_group_cache: RwLock::new(LruCache::new(cache_size)),
             processed_messages_cache: RwLock::new(LruCache::new(cache_size)),
+            group_exporter_secrets_cache: RwLock::new(LruCache::new(cache_size)),
         }
     }
 }
@@ -168,7 +171,7 @@ mod tests {
     use std::collections::BTreeSet;
 
     use nostr::{EventId, Kind, PublicKey, RelayUrl, Tags, Timestamp, UnsignedEvent};
-    use nostr_mls_storage::groups::types::{Group, GroupState, GroupType};
+    use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupState, GroupType};
     use nostr_mls_storage::groups::GroupStorage;
     use nostr_mls_storage::messages::types::{Message, ProcessedMessageState};
     use nostr_mls_storage::messages::MessageStorage;
@@ -331,6 +334,74 @@ mod tests {
             .unwrap();
         let found_relays = nostr_storage.group_relays(&mls_group_id).unwrap();
         assert_eq!(found_relays.len(), 2);
+    }
+
+    #[test]
+    fn test_group_exporter_secret_cache() {
+        let storage = MemoryStorage::default();
+        let nostr_storage = NostrMlsMemoryStorage::new(storage);
+
+        // Create a test group
+        let mls_group_id = vec![1, 2, 3, 4];
+        let group = Group {
+            mls_group_id: mls_group_id.clone(),
+            nostr_group_id: "test_group_123".to_string(),
+            name: "Test Group".to_string(),
+            description: "A test group".to_string(),
+            admin_pubkeys: BTreeSet::new(),
+            last_message_id: None,
+            last_message_at: None,
+            group_type: GroupType::Group,
+            epoch: 0,
+            state: GroupState::Active,
+        };
+
+        // Save the group
+        nostr_storage.save_group(group.clone()).unwrap();
+
+        // Create a test group exporter secret for epoch 0
+        let group_exporter_secret_0 = GroupExporterSecret {
+            mls_group_id: mls_group_id.clone(),
+            epoch: 0,
+            secret: vec![1, 2, 3, 4],
+        };
+
+        // Create a test group exporter secret for epoch 1
+        let group_exporter_secret_1 = GroupExporterSecret {
+            mls_group_id: mls_group_id.clone(),
+            epoch: 1,
+            secret: vec![5, 6, 7, 8],
+        };
+
+        // Save the group exporter secrets
+        nostr_storage
+            .save_group_exporter_secret(group_exporter_secret_0.clone())
+            .unwrap();
+        nostr_storage
+            .save_group_exporter_secret(group_exporter_secret_1.clone())
+            .unwrap();
+
+        // Get the group exporter secret for epoch 0
+        let found_group_exporter_secret_0 = nostr_storage
+            .get_group_exporter_secret(&mls_group_id, 0)
+            .unwrap();
+        assert!(found_group_exporter_secret_0.is_some());
+        let found_group_exporter_secret_0 = found_group_exporter_secret_0.unwrap();
+        assert_eq!(found_group_exporter_secret_0, group_exporter_secret_0);
+
+        // Get the group exporter secret for epoch 1
+        let found_group_exporter_secret_1 = nostr_storage
+            .get_group_exporter_secret(&mls_group_id, 1)
+            .unwrap();
+        assert!(found_group_exporter_secret_1.is_some());
+        let found_group_exporter_secret_1 = found_group_exporter_secret_1.unwrap();
+        assert_eq!(found_group_exporter_secret_1, group_exporter_secret_1);
+
+        // Verify we can't find an exporter secret for a non-existing epoch
+        let non_existent_secret = nostr_storage
+            .get_group_exporter_secret(&mls_group_id, 999)
+            .unwrap();
+        assert!(non_existent_secret.is_none());
     }
 
     #[test]

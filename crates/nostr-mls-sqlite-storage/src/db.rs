@@ -5,7 +5,9 @@ use std::io::{Error as IoError, ErrorKind};
 use std::str::FromStr;
 
 use nostr::{EventId, JsonUtil, Kind, PublicKey, RelayUrl, Tags, Timestamp, UnsignedEvent};
-use nostr_mls_storage::groups::types::{Group, GroupRelay, GroupState, GroupType};
+use nostr_mls_storage::groups::types::{
+    Group, GroupExporterSecret, GroupRelay, GroupState, GroupType,
+};
 use nostr_mls_storage::messages::types::{Message, ProcessedMessage, ProcessedMessageState};
 use nostr_mls_storage::welcomes::types::{
     ProcessedWelcome, ProcessedWelcomeState, Welcome, WelcomeState,
@@ -94,6 +96,19 @@ pub fn row_to_group_relay(row: &Row) -> SqliteResult<GroupRelay> {
     Ok(GroupRelay {
         mls_group_id,
         relay_url,
+    })
+}
+
+/// Convert a row to a GroupExporterSecret struct
+pub fn row_to_group_exporter_secret(row: &Row) -> SqliteResult<GroupExporterSecret> {
+    let mls_group_id: Vec<u8> = row.get("mls_group_id")?;
+    let epoch: u64 = row.get("epoch")?;
+    let secret: Vec<u8> = row.get("secret")?;
+
+    Ok(GroupExporterSecret {
+        mls_group_id,
+        epoch,
+        secret,
     })
 }
 

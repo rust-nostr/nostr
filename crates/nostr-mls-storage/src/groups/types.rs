@@ -165,6 +165,17 @@ pub struct GroupRelay {
     pub mls_group_id: Vec<u8>,
 }
 
+/// Exporter secrets for each epoch of a group
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct GroupExporterSecret {
+    /// The MLS group ID
+    pub mls_group_id: Vec<u8>,
+    /// The epoch
+    pub epoch: u64,
+    /// The secret
+    pub secret: Vec<u8>,
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;

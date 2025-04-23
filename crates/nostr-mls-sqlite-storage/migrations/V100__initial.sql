@@ -29,6 +29,17 @@ CREATE TABLE IF NOT EXISTS group_relays (
 -- Create index on mls_group_id for faster lookups
 CREATE INDEX IF NOT EXISTS idx_group_relays_mls_group_id ON group_relays(mls_group_id);
 
+-- Group Exporter Secrets table
+CREATE TABLE IF NOT EXISTS group_exporter_secrets (
+    mls_group_id BLOB NOT NULL,
+    epoch INTEGER NOT NULL,
+    secret BLOB NOT NULL,
+    PRIMARY KEY (mls_group_id, epoch)
+);
+
+-- Create index on mls_group_id for faster lookups
+CREATE INDEX IF NOT EXISTS idx_group_exporter_secrets_mls_group_id ON group_exporter_secrets(mls_group_id);
+
 -- Messages table
 CREATE TABLE IF NOT EXISTS messages (
     id BLOB PRIMARY KEY,  -- Event ID as byte array
