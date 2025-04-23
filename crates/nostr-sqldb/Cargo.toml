@@ -1,15 +1,15 @@
 [package]
-name = "nostr-postgresdb"
+name = "nostr-sqldb"
 version = "0.41.0"
 edition = "2021"
-description = "Postgres storage backend for Nostr apps"
+description = "SQL storage backend for Nostr apps"
 authors.workspace = true
 homepage.workspace = true
 repository.workspace = true
 license.workspace = true
 readme = "README.md"
 rust-version.workspace = true
-keywords = ["nostr", "database", "postgres"]
+keywords = ["nostr", "database", "postgres", "mysql", "sqlite"]
 
 [dependencies]
 nostr = { workspace = true, features = ["std"] }

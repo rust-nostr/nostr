@@ -3125,22 +3125,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nostr-postgresdb"
-version = "0.41.0"
-dependencies = [
- "deadpool",
- "diesel",
- "diesel-async",
- "diesel_migrations",
- "nostr",
- "nostr-database",
- "nostr-relay-builder",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "nostr-relay-builder"
 version = "0.41.0"
 dependencies = [
@@ -3188,6 +3172,22 @@ dependencies = [
  "nostr-lmdb",
  "nostr-ndb",
  "nostr-relay-pool",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "nostr-sqldb"
+version = "0.41.0"
+dependencies = [
+ "deadpool",
+ "diesel",
+ "diesel-async",
+ "diesel_migrations",
+ "nostr",
+ "nostr-database",
+ "nostr-relay-builder",
  "tokio",
  "tracing",
  "tracing-subscriber",
