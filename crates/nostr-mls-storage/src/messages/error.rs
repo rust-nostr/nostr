@@ -9,8 +9,6 @@ pub enum MessageError {
     InvalidParameters(String),
     /// Database error
     DatabaseError(String),
-    /// Message not found
-    NotFound,
 }
 
 impl std::error::Error for MessageError {}
@@ -20,7 +18,6 @@ impl fmt::Display for MessageError {
         match self {
             Self::InvalidParameters(message) => write!(f, "Invalid parameters: {}", message),
             Self::DatabaseError(message) => write!(f, "Database error: {}", message),
-            Self::NotFound => write!(f, "Message not found"),
         }
     }
 }
