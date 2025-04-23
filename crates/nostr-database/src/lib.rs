@@ -9,6 +9,7 @@
 #![warn(clippy::large_futures)]
 #![allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive for `BTreeSet<Event>`
 
+use std::any::Any;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -140,7 +141,7 @@ where
 }
 
 /// Nostr (Events) Database
-pub trait NostrDatabase: Debug + Send + Sync {
+pub trait NostrDatabase: Any + Debug + Send + Sync {
     /// Name of the backend database used
     fn backend(&self) -> Backend;
 
