@@ -30,15 +30,15 @@ impl MessageStorage for NostrMlsSqliteStorage {
              (id, pubkey, kind, mls_group_id, created_at, content, tags, event, wrapper_event_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
-                    &message.id.to_bytes(),
-                    &message.pubkey.to_bytes(),
-                    &message.kind.as_u16(),
-                    &message.mls_group_id,
-                    &message.created_at.as_u64(),
-                    &message.content,
-                    &tags_json,
-                    &message.event.as_json(),
-                    &message.wrapper_event_id.to_bytes(),
+                    message.id.as_bytes(),
+                    message.pubkey.as_bytes(),
+                    message.kind.as_u16(),
+                    message.mls_group_id,
+                    message.created_at.as_u64(),
+                    message.content,
+                    tags_json,
+                    message.event.as_json(),
+                    message.wrapper_event_id.as_bytes(),
                 ],
             )
             .map_err(into_message_err)?;

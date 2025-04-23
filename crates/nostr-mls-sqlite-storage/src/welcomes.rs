@@ -38,18 +38,18 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
               group_admin_pubkeys, group_relays, welcomer, member_count, state, wrapper_event_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
-                    &welcome.id.to_bytes(),
-                    &welcome.event.as_json(),
-                    &welcome.mls_group_id,
-                    &welcome.nostr_group_id,
-                    &welcome.group_name,
-                    &welcome.group_description,
-                    &group_admin_pubkeys_json,
-                    &group_relays_json,
-                    &welcome.welcomer.to_bytes(),
-                    &(welcome.member_count as i64),
-                    &welcome.state.to_string(),
-                    &welcome.wrapper_event_id.to_bytes()
+                    welcome.id.as_bytes(),
+                    welcome.event.as_json(),
+                    welcome.mls_group_id,
+                    welcome.nostr_group_id,
+                    welcome.group_name,
+                    welcome.group_description,
+                    group_admin_pubkeys_json,
+                    group_relays_json,
+                    welcome.welcomer.as_bytes(),
+                    welcome.member_count as u64,
+                    welcome.state.as_str(),
+                    welcome.wrapper_event_id.as_bytes(),
                 ],
             )
             .map_err(into_welcome_err)?;
@@ -67,7 +67,7 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
             .prepare("SELECT * FROM welcomes WHERE id = ?")
             .map_err(into_welcome_err)?;
 
-        stmt.query_row(params![event_id.to_bytes()], db::row_to_welcome)
+        stmt.query_row(params![event_id.as_bytes()], db::row_to_welcome)
             .optional()
             .map_err(into_welcome_err)
     }
@@ -100,12 +100,10 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
         let conn_guard = self.db_connection.lock().map_err(into_welcome_err)?;
 
         // Convert welcome_event_id to string if it exists
-        let welcome_event_id = processed_welcome
+        let welcome_event_id: Option<&[u8; 32]> = processed_welcome
             .welcome_event_id
             .as_ref()
-            .map(|id| id.to_bytes());
-
-        let state_str: String = processed_welcome.state.to_string();
+            .map(|id| id.as_bytes());
 
         conn_guard
             .execute(
@@ -113,11 +111,11 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
              (wrapper_event_id, welcome_event_id, processed_at, state, failure_reason)
              VALUES (?, ?, ?, ?, ?)",
                 params![
-                    &processed_welcome.wrapper_event_id.to_bytes(),
-                    &welcome_event_id,
-                    &processed_welcome.processed_at.as_u64(),
-                    &state_str,
-                    &processed_welcome.failure_reason
+                    processed_welcome.wrapper_event_id.as_bytes(),
+                    welcome_event_id,
+                    processed_welcome.processed_at.as_u64(),
+                    processed_welcome.state.as_str(),
+                    processed_welcome.failure_reason
                 ],
             )
             .map_err(into_welcome_err)?;
@@ -135,7 +133,7 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
             .prepare("SELECT * FROM processed_welcomes WHERE wrapper_event_id = ?")
             .map_err(into_welcome_err)?;
 
-        stmt.query_row(params![event_id.to_bytes()], db::row_to_processed_welcome)
+        stmt.query_row(params![event_id.as_bytes()], db::row_to_processed_welcome)
             .optional()
             .map_err(into_welcome_err)
     }

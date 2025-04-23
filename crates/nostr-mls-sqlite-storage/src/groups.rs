@@ -75,10 +75,9 @@ impl GroupStorage for NostrMlsSqliteStorage {
                 GroupError::DatabaseError(format!("Failed to serialize admin pubkeys: {}", e))
             })?;
 
-        let last_message_id = group.last_message_id.as_ref().map(|id| id.to_bytes());
-        let last_message_at = group.last_message_at.as_ref().map(|ts| ts.as_u64());
-        let group_type_str: String = group.group_type.to_string();
-        let state_str: String = group.state.to_string();
+        let last_message_id: Option<&[u8; 32]> =
+            group.last_message_id.as_ref().map(|id| id.as_bytes());
+        let last_message_at: Option<u64> = group.last_message_at.as_ref().map(|ts| ts.as_u64());
 
         conn_guard
             .execute(
@@ -92,11 +91,11 @@ impl GroupStorage for NostrMlsSqliteStorage {
                     &group.name,
                     &group.description,
                     &admin_pubkeys_json,
-                    &last_message_id,
+                    last_message_id,
                     &last_message_at,
-                    &group_type_str,
+                    group.group_type.as_str(),
                     &(group.epoch as i64),
-                    &state_str
+                    group.state.as_str()
                 ],
             )
             .map_err(into_group_err)?;
@@ -190,10 +189,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
         conn_guard
             .execute(
                 "INSERT OR REPLACE INTO group_relays (mls_group_id, relay_url) VALUES (?, ?)",
-                params![
-                    &group_relay.mls_group_id,
-                    &group_relay.relay_url.to_string()
-                ],
+                params![group_relay.mls_group_id, group_relay.relay_url.as_str()],
             )
             .map_err(into_group_err)?;
 
