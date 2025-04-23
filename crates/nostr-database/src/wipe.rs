@@ -4,6 +4,8 @@
 
 //! Wipe trait
 
+use std::sync::Arc;
+
 use nostr::util::BoxedFuture;
 
 use crate::error::DatabaseError;
@@ -12,4 +14,13 @@ use crate::error::DatabaseError;
 pub trait NostrDatabaseWipe {
     /// Wipe all data
     fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>>;
+}
+
+impl<T> NostrDatabaseWipe for Arc<T>
+where
+    T: NostrDatabaseWipe,
+{
+    fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
+        self.as_ref().wipe()
+    }
 }

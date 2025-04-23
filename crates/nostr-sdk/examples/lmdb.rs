@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::any::Any;
+use std::sync::Arc;
 use nostr_sdk::prelude::*;
 
 #[tokio::main]
@@ -21,6 +23,10 @@ async fn main() -> Result<()> {
     client.add_relay("wss://nostr.oxtr.dev").await?;
 
     client.connect().await;
+    
+    let database = client.database();
+    let lmdb = NostrLMDB::downcast(database).unwrap();
+    
 
     // Publish a text note
     let builder = EventBuilder::text_note("Hello world");

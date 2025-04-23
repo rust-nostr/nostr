@@ -63,35 +63,6 @@ impl SaveEventStatus {
     }
 }
 
-#[doc(hidden)]
-pub trait IntoNostrEventsDatabase {
-    fn into_database(self) -> Arc<dyn NostrEventsDatabase>;
-}
-
-impl IntoNostrEventsDatabase for Arc<dyn NostrEventsDatabase> {
-    fn into_database(self) -> Arc<dyn NostrEventsDatabase> {
-        self
-    }
-}
-
-impl<T> IntoNostrEventsDatabase for T
-where
-    T: NostrEventsDatabase + Sized + 'static,
-{
-    fn into_database(self) -> Arc<dyn NostrEventsDatabase> {
-        Arc::new(self)
-    }
-}
-
-impl<T> IntoNostrEventsDatabase for Arc<T>
-where
-    T: NostrEventsDatabase + 'static,
-{
-    fn into_database(self) -> Arc<dyn NostrEventsDatabase> {
-        self
-    }
-}
-
 /// Nostr Events Database
 ///
 /// Store for the nostr events.
@@ -147,6 +118,67 @@ pub trait NostrEventsDatabase: Any + Debug + Send + Sync {
 
     /// Delete all events that match the [Filter]
     fn delete(&self, filter: Filter) -> BoxedFuture<Result<(), DatabaseError>>;
+}
+
+impl<T> NostrEventsDatabase for Arc<T> 
+where
+    T: NostrEventsDatabase
+{
+    #[inline]
+    fn save_event<'a>(
+        &'a self,
+        event: &'a Event,
+    ) -> BoxedFuture<'a, Result<SaveEventStatus, DatabaseError>> {
+        self.as_ref().save_event(event)
+    }
+    
+    #[inline]
+    fn check_id<'a>(
+        &'a self,
+        event_id: &'a EventId,
+    ) -> BoxedFuture<'a, Result<DatabaseEventStatus, DatabaseError>> {
+        self.as_ref().check_id(event_id)
+    }
+    
+    #[inline]
+    fn has_coordinate_been_deleted<'a>(
+        &'a self,
+        coordinate: &'a CoordinateBorrow<'a>,
+        timestamp: &'a Timestamp,
+    ) -> BoxedFuture<'a, Result<bool, DatabaseError>> {
+        self.as_ref().has_coordinate_been_deleted(coordinate, timestamp)
+    }
+    
+    #[inline]
+    fn event_by_id<'a>(
+        &'a self,
+        event_id: &'a EventId,
+    ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>> {
+        self.as_ref().event_by_id(event_id)
+    }
+    
+    #[inline]
+    fn count(&self, filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>> {
+        self.as_ref().count(filter)
+    }
+    
+    #[inline]
+    fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>> {
+        self.as_ref().query(filter)
+    }
+
+    #[inline]
+    fn negentropy_items(
+        &self,
+        filter: Filter,
+    ) -> BoxedFuture<Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
+        self.as_ref().negentropy_items(filter)
+    }
+
+    #[inline]
+    fn delete(&self, filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
+        self.as_ref().delete(filter)
+    }
 }
 
 /// Nostr Event Store Extension

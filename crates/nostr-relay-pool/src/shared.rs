@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use lru::LruCache;
 use nostr::prelude::IntoNostrSigner;
 use nostr::{EventId, NostrSigner};
-use nostr_database::{IntoNostrDatabase, MemoryDatabase, NostrDatabase};
+use nostr_database::{MemoryDatabase, NostrDatabase};
 use tokio::sync::RwLock;
 
 use crate::policy::AdmitPolicy;
@@ -52,7 +52,7 @@ pub struct SharedState {
 impl Default for SharedState {
     fn default() -> Self {
         Self::new(
-            MemoryDatabase::new().into_nostr_database(),
+            Arc::new(MemoryDatabase::new()),
             Arc::new(DefaultWebsocketTransport),
             None,
             None,
