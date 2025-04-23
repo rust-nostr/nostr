@@ -7,7 +7,8 @@
 use alloc::borrow::Cow;
 use alloc::string::String;
 use alloc::sync::Arc;
-use core::fmt;
+use core::any::Any;
+use core::fmt::{self, Debug};
 
 use crate::util::BoxedFuture;
 use crate::{Event, PublicKey, UnsignedEvent};
@@ -88,7 +89,7 @@ pub enum SignerBackend<'a> {
 }
 
 /// Nostr signer abstraction
-pub trait NostrSigner: fmt::Debug + Send + Sync {
+pub trait NostrSigner: Any + Debug + Send + Sync {
     /// Signer backend
     fn backend(&self) -> SignerBackend;
 

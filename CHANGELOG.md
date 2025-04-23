@@ -27,6 +27,10 @@
 
 ## Unreleased
 
+### Changed 
+
+* nostr: impl `Any` for `NostrSigner` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/845)
+
 ### Added
 
 * blossom: add new crate with Blossom support ([Daniel D’Aquino] at https://github.com/rust-nostr/nostr/pull/838)
