@@ -20,7 +20,7 @@ use self::error::Error;
 use self::ingester::{Ingester, IngesterItem};
 use self::lmdb::Lmdb;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Store {
     db: Lmdb,
     ingester: Sender<IngesterItem>,

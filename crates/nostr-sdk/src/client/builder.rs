@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use nostr::signer::{IntoNostrSigner, NostrSigner};
 use nostr_database::memory::MemoryDatabase;
-use nostr_database::{IntoNostrDatabase, NostrDatabase};
+use nostr_database::NostrDatabase;
 use nostr_relay_pool::policy::AdmitPolicy;
 use nostr_relay_pool::transport::websocket::{
     DefaultWebsocketTransport, IntoWebSocketTransport, WebSocketTransport,
@@ -95,9 +95,9 @@ impl ClientBuilder {
     #[inline]
     pub fn database<D>(mut self, database: D) -> Self
     where
-        D: IntoNostrDatabase,
+        D: NostrDatabase,
     {
-        self.database = database.into_nostr_database();
+        self.database = Arc::new(database);
         self
     }
 

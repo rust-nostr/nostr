@@ -236,9 +236,9 @@ impl RelayBuilder {
     #[inline]
     pub fn database<D>(mut self, database: D) -> Self
     where
-        D: IntoNostrEventsDatabase,
+        D: NostrEventsDatabase,
     {
-        self.database = database.into_database();
+        self.database = Arc::new(database);
         self
     }
 

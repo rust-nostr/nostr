@@ -27,7 +27,7 @@ pub use self::collections::events::Events;
 pub use self::error::DatabaseError;
 pub use self::events::helper::{DatabaseEventResult, DatabaseHelper};
 pub use self::events::{
-    DatabaseEventStatus, IntoNostrEventsDatabase, NostrEventsDatabase, NostrEventsDatabaseExt,
+    DatabaseEventStatus, NostrEventsDatabase, NostrEventsDatabaseExt,
     RejectedReason, SaveEventStatus,
 };
 #[cfg(feature = "flatbuf")]
@@ -62,39 +62,19 @@ impl Backend {
     }
 }
 
-#[doc(hidden)]
-pub trait IntoNostrDatabase {
-    fn into_nostr_database(self) -> Arc<dyn NostrDatabase>;
-}
-
-impl IntoNostrDatabase for Arc<dyn NostrDatabase> {
-    fn into_nostr_database(self) -> Arc<dyn NostrDatabase> {
-        self
-    }
-}
-
-impl<T> IntoNostrDatabase for T
-where
-    T: NostrDatabase + Sized + 'static,
-{
-    fn into_nostr_database(self) -> Arc<dyn NostrDatabase> {
-        Arc::new(self)
-    }
-}
-
-impl<T> IntoNostrDatabase for Arc<T>
-where
-    T: NostrDatabase + 'static,
-{
-    fn into_nostr_database(self) -> Arc<dyn NostrDatabase> {
-        self
-    }
-}
-
 /// Nostr Database
 pub trait NostrDatabase: NostrEventsDatabase + NostrDatabaseWipe {
     /// Name of the backend database used
     fn backend(&self) -> Backend;
+}
+
+impl<T> NostrDatabase for Arc<T> 
+where 
+    T: NostrDatabase + 'static
+{
+    fn backend(&self) -> Backend {
+        self.as_ref().backend()
+    }   
 }
 
 #[cfg(test)]

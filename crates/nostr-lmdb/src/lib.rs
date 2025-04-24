@@ -10,6 +10,7 @@
 #![warn(rustdoc::bare_urls)]
 #![allow(clippy::mutable_key_type)]
 
+use std::any::Any;
 use std::path::Path;
 
 use nostr_database::prelude::*;
@@ -19,7 +20,7 @@ mod store;
 use self::store::Store;
 
 /// LMDB Nostr Database
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NostrLMDB {
     db: Store,
 }
@@ -34,6 +35,15 @@ impl NostrLMDB {
         Ok(Self {
             db: Store::open(path).map_err(DatabaseError::backend)?,
         })
+    }
+    
+    /// Downcast [`NostrDatabase`] to [`NostrLMDB`]
+    pub fn downcast<T>(database: &T) -> Option<&Self> 
+    where
+        T: NostrDatabase,
+    {
+        let any: &dyn Any = database as &dyn Any;
+        any.downcast_ref()
     }
 }
 
