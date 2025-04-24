@@ -10,6 +10,7 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 
+use std::collections::BTreeSet;
 use std::num::NonZeroUsize;
 
 use lru::LruCache;
@@ -58,7 +59,7 @@ pub struct NostrMlsMemoryStorage {
     /// LRU Cache for Group objects, keyed by Nostr group ID (String)
     groups_by_nostr_id_cache: RwLock<LruCache<String, Group>>,
     /// LRU Cache for GroupRelay objects, keyed by MLS group ID (`Vec<u8>`)
-    group_relays_cache: RwLock<LruCache<Vec<u8>, Vec<GroupRelay>>>,
+    group_relays_cache: RwLock<LruCache<Vec<u8>, BTreeSet<GroupRelay>>>,
     /// LRU Cache for Welcome objects, keyed by Event ID
     welcomes_cache: RwLock<LruCache<EventId, Welcome>>,
     /// LRU Cache for ProcessedWelcome objects, keyed by Event ID
@@ -164,6 +165,8 @@ impl NostrMlsStorageProvider for NostrMlsMemoryStorage {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use nostr::{EventId, Kind, PublicKey, RelayUrl, Tags, Timestamp, UnsignedEvent};
     use nostr_mls_storage::groups::types::{Group, GroupState, GroupType};
     use nostr_mls_storage::groups::GroupStorage;
@@ -230,7 +233,7 @@ mod tests {
             nostr_group_id: "test_group_123".to_string(),
             name: "Test Group".to_string(),
             description: "A test group".to_string(),
-            admin_pubkeys: vec![],
+            admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
             group_type: GroupType::Group,
@@ -273,7 +276,7 @@ mod tests {
             nostr_group_id: "test_group_456".to_string(),
             name: "Another Test Group".to_string(),
             description: "Another test group".to_string(),
-            admin_pubkeys: vec![],
+            admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
             group_type: GroupType::Group,
@@ -358,8 +361,8 @@ mod tests {
             nostr_group_id: "test_welcome_group".to_string(),
             group_name: "Test Welcome Group".to_string(),
             group_description: "A test welcome group".to_string(),
-            group_admin_pubkeys: vec![pubkey.to_hex()],
-            group_relays: vec!["wss://relay.example.com".to_string()],
+            group_admin_pubkeys: BTreeSet::from([pubkey]),
+            group_relays: BTreeSet::from([RelayUrl::parse("wss://relay.example.com").unwrap()]),
             welcomer: pubkey,
             member_count: 2,
             state: WelcomeState::Pending,
@@ -422,7 +425,7 @@ mod tests {
             nostr_group_id: "message_test_group".to_string(),
             name: "Message Test Group".to_string(),
             description: "A group for testing messages".to_string(),
-            admin_pubkeys: vec![],
+            admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
             group_type: GroupType::Group,
@@ -531,7 +534,7 @@ mod tests {
             nostr_group_id: "custom_cache_group".to_string(),
             name: "Custom Cache Group".to_string(),
             description: "A group for testing custom cache size".to_string(),
-            admin_pubkeys: vec![],
+            admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
             group_type: GroupType::Group,
@@ -560,7 +563,7 @@ mod tests {
             nostr_group_id: "default_impl_group".to_string(),
             name: "Default Implementation Group".to_string(),
             description: "A group for testing default implementation".to_string(),
-            admin_pubkeys: vec![],
+            admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
             group_type: GroupType::Group,

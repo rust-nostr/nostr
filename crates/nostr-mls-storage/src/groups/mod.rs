@@ -7,6 +7,8 @@
 //!
 //! Here we also define the storage traits that are used to store and retrieve groups
 
+use std::collections::BTreeSet;
+
 use nostr::PublicKey;
 
 pub mod error;
@@ -37,10 +39,10 @@ pub trait GroupStorage {
     fn messages(&self, mls_group_id: &[u8]) -> Result<Vec<Message>, GroupError>;
 
     /// Get all admins for a group
-    fn admins(&self, mls_group_id: &[u8]) -> Result<Vec<PublicKey>, GroupError>;
+    fn admins(&self, mls_group_id: &[u8]) -> Result<BTreeSet<PublicKey>, GroupError>;
 
     /// Get all relays for a group
-    fn group_relays(&self, mls_group_id: &[u8]) -> Result<Vec<GroupRelay>, GroupError>;
+    fn group_relays(&self, mls_group_id: &[u8]) -> Result<BTreeSet<GroupRelay>, GroupError>;
 
     /// Save a group relay
     fn save_group_relay(&self, group_relay: GroupRelay) -> Result<(), GroupError>;

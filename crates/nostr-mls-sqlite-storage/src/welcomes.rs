@@ -141,7 +141,9 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
 
 #[cfg(test)]
 mod tests {
-    use nostr::{EventId, Kind, PublicKey, Timestamp, UnsignedEvent};
+    use std::collections::BTreeSet;
+
+    use nostr::{EventId, Kind, PublicKey, RelayUrl, Timestamp, UnsignedEvent};
     use nostr_mls_storage::groups::types::{Group, GroupState, GroupType};
     use nostr_mls_storage::groups::GroupStorage;
     use nostr_mls_storage::welcomes::types::{ProcessedWelcomeState, WelcomeState};
@@ -159,7 +161,7 @@ mod tests {
             nostr_group_id: "test_group_123".to_string(),
             name: "Test Group".to_string(),
             description: "A test group".to_string(),
-            admin_pubkeys: vec![],
+            admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
             group_type: GroupType::Group,
@@ -195,10 +197,8 @@ mod tests {
             nostr_group_id: "test_group_123".to_string(),
             group_name: "Test Group".to_string(),
             group_description: "A test group".to_string(),
-            group_admin_pubkeys: vec![
-                "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798".to_string(),
-            ],
-            group_relays: vec!["wss://relay.example.com".to_string()],
+            group_admin_pubkeys: BTreeSet::from([pubkey]),
+            group_relays: BTreeSet::from([RelayUrl::parse("wss://relay.example.com").unwrap()]),
             welcomer: pubkey,
             member_count: 3,
             state: WelcomeState::Pending,

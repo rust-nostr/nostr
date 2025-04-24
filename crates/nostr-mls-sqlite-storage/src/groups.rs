@@ -1,5 +1,7 @@
 //! Implementation of GroupStorage trait for SQLite storage.
 
+use std::collections::BTreeSet;
+
 use nostr::PublicKey;
 use nostr_mls_storage::groups::error::GroupError;
 use nostr_mls_storage::groups::types::{Group, GroupRelay};
@@ -132,7 +134,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
         Ok(messages)
     }
 
-    fn admins(&self, mls_group_id: &[u8]) -> Result<Vec<PublicKey>, GroupError> {
+    fn admins(&self, mls_group_id: &[u8]) -> Result<BTreeSet<PublicKey>, GroupError> {
         // Get the group which contains the admin_pubkeys
         match self.find_group_by_mls_group_id(mls_group_id)? {
             Some(group) => Ok(group.admin_pubkeys),
@@ -143,7 +145,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
         }
     }
 
-    fn group_relays(&self, mls_group_id: &[u8]) -> Result<Vec<GroupRelay>, GroupError> {
+    fn group_relays(&self, mls_group_id: &[u8]) -> Result<BTreeSet<GroupRelay>, GroupError> {
         // First verify the group exists
         if self.find_group_by_mls_group_id(mls_group_id)?.is_none() {
             return Err(GroupError::InvalidParameters(format!(
@@ -162,11 +164,11 @@ impl GroupStorage for NostrMlsSqliteStorage {
             .query_map(params![mls_group_id], db::row_to_group_relay)
             .map_err(into_group_err)?;
 
-        let mut relays: Vec<GroupRelay> = Vec::new();
+        let mut relays: BTreeSet<GroupRelay> = BTreeSet::new();
 
         for relay_result in relays_iter {
             let relay: GroupRelay = relay_result.map_err(into_group_err)?;
-            relays.push(relay);
+            relays.insert(relay);
         }
 
         Ok(relays)
@@ -215,7 +217,7 @@ mod tests {
             nostr_group_id: "test_group_123".to_string(),
             name: "Test Group".to_string(),
             description: "A test group".to_string(),
-            admin_pubkeys: vec![],
+            admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
             group_type: GroupType::Group,
@@ -257,7 +259,7 @@ mod tests {
             nostr_group_id: "test_group_123".to_string(),
             name: "Test Group".to_string(),
             description: "A test group".to_string(),
-            admin_pubkeys: vec![],
+            admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
             group_type: GroupType::Group,
@@ -283,6 +285,9 @@ mod tests {
         // Get group relays
         let relays = storage.group_relays(&mls_group_id).unwrap();
         assert_eq!(relays.len(), 1);
-        assert_eq!(relays[0].relay_url.to_string(), "wss://relay.example.com");
+        assert_eq!(
+            relays.first().unwrap().relay_url.to_string(),
+            "wss://relay.example.com"
+        );
     }
 }

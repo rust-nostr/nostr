@@ -1,5 +1,6 @@
 //! Database utilities for SQLite storage.
 
+use std::collections::BTreeSet;
 use std::io::{Error as IoError, ErrorKind};
 use std::str::FromStr;
 
@@ -47,7 +48,7 @@ pub fn row_to_group(row: &Row) -> SqliteResult<Group> {
 
     // Parse admin pubkeys from JSON
     let admin_pubkeys_json: &str = row.get_ref("admin_pubkeys")?.as_str()?;
-    let admin_pubkeys: Vec<PublicKey> =
+    let admin_pubkeys: BTreeSet<PublicKey> =
         serde_json::from_str(admin_pubkeys_json).map_err(map_to_text_boxed_error)?;
 
     let last_message_id: Option<&[u8]> = row.get_ref("last_message_id")?.as_blob_or_null()?;
@@ -195,10 +196,10 @@ pub fn row_to_welcome(row: &Row) -> SqliteResult<Welcome> {
     let event: UnsignedEvent =
         UnsignedEvent::from_json(event_json).map_err(map_to_text_boxed_error)?;
 
-    let group_admin_pubkeys: Vec<String> =
+    let group_admin_pubkeys: BTreeSet<PublicKey> =
         serde_json::from_str(group_admin_pubkeys_json).map_err(map_to_text_boxed_error)?;
 
-    let group_relays: Vec<String> =
+    let group_relays: BTreeSet<RelayUrl> =
         serde_json::from_str(group_relays_json).map_err(map_to_text_boxed_error)?;
 
     let welcomer: PublicKey = PublicKey::from_slice(welcomer_blob)

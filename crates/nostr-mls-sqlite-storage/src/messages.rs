@@ -109,6 +109,8 @@ impl MessageStorage for NostrMlsSqliteStorage {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use nostr::{EventId, Kind, PublicKey, Tags, Timestamp, UnsignedEvent};
     use nostr_mls_storage::groups::types::{Group, GroupState, GroupType};
     use nostr_mls_storage::groups::GroupStorage;
@@ -127,7 +129,7 @@ mod tests {
             nostr_group_id: "test_group_123".to_string(),
             name: "Test Group".to_string(),
             description: "A test group".to_string(),
-            admin_pubkeys: vec![],
+            admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
             group_type: GroupType::Group,

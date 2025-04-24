@@ -1,9 +1,10 @@
 //! Types for the welcomes module
 
+use std::collections::BTreeSet;
 use std::fmt;
 use std::str::FromStr;
 
-use nostr::{EventId, PublicKey, Timestamp, UnsignedEvent};
+use nostr::{EventId, PublicKey, RelayUrl, Timestamp, UnsignedEvent};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::error::WelcomeError;
@@ -39,9 +40,9 @@ pub struct Welcome {
     /// Group description (from NostrGroupDataExtension)
     pub group_description: String,
     /// Group admin pubkeys (from NostrGroupDataExtension)
-    pub group_admin_pubkeys: Vec<String>,
+    pub group_admin_pubkeys: BTreeSet<PublicKey>,
     /// Group relays (from NostrGroupDataExtension)
-    pub group_relays: Vec<String>,
+    pub group_relays: BTreeSet<RelayUrl>,
     /// Pubkey of the user that sent the welcome
     pub welcomer: PublicKey,
     /// Member count of the group

@@ -1,5 +1,7 @@
 //! Memory-based storage implementation of the NostrMlsStorageProvider trait for Nostr MLS groups
 
+use std::collections::BTreeSet;
+
 use nostr::PublicKey;
 use nostr_mls_storage::groups::error::{GroupError, InvalidGroupState};
 use nostr_mls_storage::groups::types::*;
@@ -57,14 +59,14 @@ impl GroupStorage for NostrMlsMemoryStorage {
         }
     }
 
-    fn admins(&self, mls_group_id: &[u8]) -> Result<Vec<PublicKey>, GroupError> {
+    fn admins(&self, mls_group_id: &[u8]) -> Result<BTreeSet<PublicKey>, GroupError> {
         match self.find_group_by_mls_group_id(mls_group_id)? {
             Some(group) => Ok(group.admin_pubkeys),
             None => Err(GroupError::InvalidState(InvalidGroupState::NoAdmins)),
         }
     }
 
-    fn group_relays(&self, mls_group_id: &[u8]) -> Result<Vec<GroupRelay>, GroupError> {
+    fn group_relays(&self, mls_group_id: &[u8]) -> Result<BTreeSet<GroupRelay>, GroupError> {
         // Check if the group exists first
         self.find_group_by_mls_group_id(mls_group_id)?;
 
@@ -85,17 +87,16 @@ impl GroupStorage for NostrMlsMemoryStorage {
         match cache.get_mut(&group_relay.mls_group_id) {
             // If the group exists, add the new relay to the vector
             Some(existing_relays) => {
-                // TODO: the time complexity here is O(n). The number of relays is likely to be small, but it's probably better to use a BTreeSet anyway.
-
                 // Add the new relay if it doesn't already exist
-                if !existing_relays.contains(&group_relay) {
-                    existing_relays.push(group_relay);
-                }
+                existing_relays.insert(group_relay);
             }
             // If the group doesn't exist, create a new vector with the new relay
             None => {
                 // Update the cache with the new vector
-                cache.put(group_relay.mls_group_id.clone(), vec![group_relay]);
+                cache.put(
+                    group_relay.mls_group_id.clone(),
+                    BTreeSet::from([group_relay]),
+                );
             }
         };
 

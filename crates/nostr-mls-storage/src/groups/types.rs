@@ -1,5 +1,6 @@
 //! Types for the groups module
 
+use std::collections::BTreeSet;
 use std::fmt;
 use std::str::FromStr;
 
@@ -140,7 +141,7 @@ pub struct Group {
     /// UTF-8 encoded (same value as the NostrGroupDataExtension)
     pub description: String,
     /// Hex encoded (same value as the NostrGroupDataExtension)
-    pub admin_pubkeys: Vec<PublicKey>,
+    pub admin_pubkeys: BTreeSet<PublicKey>,
     /// Hex encoded Nostr event ID of the last message in the group
     pub last_message_id: Option<EventId>,
     /// Timestamp of the last message in the group
@@ -268,7 +269,7 @@ mod tests {
             nostr_group_id: "test_id".to_string(),
             name: "Test Group".to_string(),
             description: "Test Description".to_string(),
-            admin_pubkeys: Vec::new(),
+            admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
             group_type: GroupType::Group,
