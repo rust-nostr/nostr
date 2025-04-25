@@ -300,7 +300,7 @@ where
     ///
     /// * `Ok(())` - If message processing succeeds
     /// * `Err(Error)` - If message processing fails
-    pub fn process_message(&self, mls_group_id: &GroupId, event: &Event) -> Result<(), Error> {
+    pub fn process_message(&self, event: &Event) -> Result<(), Error> {
         if event.kind != Kind::MlsGroupMessage {
             return Err(Error::UnexpectedEvent {
                 expected: Kind::MlsGroupMessage,
@@ -308,14 +308,30 @@ where
             });
         }
 
-        // Load group
-        let mut mls_group = self
-            .load_mls_group(mls_group_id)?
+        let nostr_group_id_tag = event
+            .tags
+            .iter()
+            .find(|tag| tag.kind() == TagKind::h())
+            .ok_or(Error::Message("Group ID Tag not found".to_string()))?;
+
+        let nostr_group_id: [u8; 32] = hex::decode(
+            nostr_group_id_tag
+                .content()
+                .ok_or(Error::Message("Group ID Tag content not found".to_string()))?,
+        )
+        .map_err(|e| Error::Message(e.to_string()))?
+        .try_into()
+        .map_err(|_e| Error::Message("Failed to convert nostr group id to [u8; 32]".to_string()))?;
+
+        let group = self
+            .storage()
+            .find_group_by_nostr_group_id(&nostr_group_id)
+            .map_err(|e| Error::Group(e.to_string()))?
             .ok_or(Error::GroupNotFound)?;
 
         // Load group exporter secret
         let secret: group_types::GroupExporterSecret = self
-            .exporter_secret(mls_group_id)
+            .exporter_secret(&group.mls_group_id)
             .map_err(|e| Error::Group(e.to_string()))?;
 
         // Convert that secret to nostr keys
@@ -328,6 +344,11 @@ where
             &export_nostr_keys.public_key,
             &event.content,
         )?;
+
+        let mut mls_group = self
+            .load_mls_group(&group.mls_group_id)
+            .map_err(|e| Error::Group(e.to_string()))?
+            .ok_or(Error::GroupNotFound)?;
 
         // The resulting serialized message is the MLS encrypted message that Bob sent
         // Now Bob can process the MLS message content and do what's needed with it
@@ -345,7 +366,7 @@ where
                     id: rumor.id.unwrap(),
                     pubkey: rumor.pubkey,
                     kind: rumor.kind,
-                    mls_group_id: mls_group_id.clone(),
+                    mls_group_id: group.mls_group_id.clone(),
                     created_at: rumor.created_at,
                     content: rumor.content.clone(),
                     tags: rumor.tags.clone(),
@@ -355,13 +376,15 @@ where
                 };
 
                 self.storage()
-                    .save_message(message)
+                    .save_message(message.clone())
                     .map_err(|e| Error::Message(e.to_string()))?;
 
                 self.storage()
-                    .save_processed_message(processed_message)
+                    .save_processed_message(processed_message.clone())
                     .map_err(|e| Error::Message(e.to_string()))?;
 
+                tracing::debug!(target: "nostr_mls::messages::process_message", "Processed message: {:?}", processed_message);
+                tracing::debug!(target: "nostr_mls::messages::process_message", "Message: {:?}", message);
                 Ok(())
             }
             Ok(None) => {

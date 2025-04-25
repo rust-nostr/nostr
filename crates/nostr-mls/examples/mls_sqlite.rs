@@ -145,7 +145,7 @@ async fn main() -> Result<()> {
 
     // The resulting serialized message is the MLS encrypted message that Bob sent
     // Now Bob can process the MLS message content and do what's needed with it
-    bob_nostr_mls.process_message(&bob_mls_group_id, &message_event)?;
+    bob_nostr_mls.process_message(&message_event)?;
 
     let messages = bob_nostr_mls.get_messages(&bob_mls_group_id).unwrap();
     let message = messages.first().unwrap();
@@ -197,10 +197,7 @@ async fn main() -> Result<()> {
     );
 
     tracing::info!("Alice about to process message");
-    alice_nostr_mls.process_message(
-        &GroupId::from_slice(alice_group.mls_group_id.as_slice()),
-        &message_event,
-    )?;
+    alice_nostr_mls.process_message(&message_event)?;
 
     let messages = alice_nostr_mls
         .get_messages(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))

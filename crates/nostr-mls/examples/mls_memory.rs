@@ -121,6 +121,35 @@ async fn main() -> Result<()> {
 
     tracing::info!("Bob joined group");
 
+    assert_eq!(
+        bob_nostr_mls
+            .get_groups()
+            .unwrap()
+            .first()
+            .unwrap()
+            .nostr_group_id,
+        alice_group.nostr_group_id,
+        "Bob's group should have the same Nostr group ID as Alice's group"
+    );
+
+    assert_eq!(
+        hex::encode(
+            bob_nostr_mls
+                .get_groups()
+                .unwrap()
+                .first()
+                .unwrap()
+                .nostr_group_id
+        ),
+        message_event
+            .tags
+            .iter()
+            .find(|tag| tag.kind() == TagKind::h())
+            .unwrap()
+            .content()
+            .unwrap(),
+        "Bob's group should have the same Nostr group ID as Alice's message wrapper event"
+    );
     // Bob and Alice now have synced state for the group.
     assert_eq!(
         bob_nostr_mls.get_members(&bob_mls_group_id).unwrap().len(),
@@ -139,9 +168,13 @@ async fn main() -> Result<()> {
 
     // The resulting serialized message is the MLS encrypted message that Bob sent
     // Now Bob can process the MLS message content and do what's needed with it
-    bob_nostr_mls.process_message(&bob_mls_group_id, &message_event)?;
+    bob_nostr_mls.process_message(&message_event)?;
 
-    let messages = bob_nostr_mls.get_messages(&bob_mls_group_id).unwrap();
+    tracing::info!("Bob processed message");
+    let messages = bob_nostr_mls
+        .get_messages(&bob_mls_group_id)
+        .map_err(|e| crate::error::Error::Message(e.to_string()))?;
+    tracing::info!("Bob got messages: {:?}", messages);
     let message = messages.first().unwrap();
     tracing::info!("Bob processed message: {:?}", message);
 
@@ -188,10 +221,7 @@ async fn main() -> Result<()> {
     );
 
     tracing::info!("Alice about to process message");
-    alice_nostr_mls.process_message(
-        &GroupId::from_slice(alice_group.mls_group_id.as_slice()),
-        &message_event,
-    )?;
+    alice_nostr_mls.process_message(&message_event)?;
 
     let messages = alice_nostr_mls
         .get_messages(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))
