@@ -130,8 +130,12 @@ where
             Some(group_exporter_secret) => Ok(group_exporter_secret),
             // If it's not already in the storage, export the secret and save it
             None => {
-                let export_secret: Vec<u8> =
-                    group.export_secret(&self.provider, "nostr", b"nostr", 32)?;
+                let export_secret: [u8; 32] = group
+                    .export_secret(&self.provider, "nostr", b"nostr", 32)?
+                    .try_into()
+                    .map_err(|_| {
+                        Error::Group("Failed to convert export secret to [u8; 32]".to_string())
+                    })?;
                 let group_exporter_secret = group_types::GroupExporterSecret {
                     mls_group_id: group_id.clone(),
                     epoch: group.epoch().as_u64(),

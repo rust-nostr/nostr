@@ -178,7 +178,7 @@ pub struct GroupExporterSecret {
     /// The epoch
     pub epoch: u64,
     /// The secret
-    pub secret: Vec<u8>,
+    pub secret: [u8; 32],
 }
 
 #[cfg(test)]
@@ -311,27 +311,33 @@ mod tests {
     #[test]
     fn test_group_exporter_secret_serialization() {
         let secret = GroupExporterSecret {
-            mls_group_id: GroupId::from_slice(vec![1, 2, 3].as_slice()),
+            mls_group_id: GroupId::from_slice(&[1, 2, 3]),
             epoch: 42,
-            secret: vec![4, 5, 6],
+            secret: [0u8; 32],
         };
 
         let serialized = serde_json::to_value(&secret).unwrap();
         assert_eq!(serialized["mls_group_id"]["value"]["vec"], json!([1, 2, 3]));
         assert_eq!(serialized["epoch"], json!(42));
-        assert_eq!(serialized["secret"], json!([4, 5, 6]));
+        assert_eq!(
+            serialized["secret"],
+            json!([
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0
+            ])
+        );
 
         // Test deserialization
         let deserialized: GroupExporterSecret = serde_json::from_value(serialized).unwrap();
         assert_eq!(deserialized.epoch, 42);
-        assert_eq!(deserialized.secret, vec![4, 5, 6]);
+        assert_eq!(deserialized.secret, [0u8; 32]);
     }
 
     #[test]
     fn test_group_relay_serialization() {
         let relay = GroupRelay {
             relay_url: RelayUrl::from_str("wss://relay.example.com").unwrap(),
-            mls_group_id: GroupId::from_slice(vec![1, 2, 3].as_slice()),
+            mls_group_id: GroupId::from_slice(&[1, 2, 3]),
         };
 
         let serialized = serde_json::to_value(&relay).unwrap();

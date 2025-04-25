@@ -385,7 +385,7 @@ mod tests {
         let secret1 = GroupExporterSecret {
             mls_group_id: mls_group_id.clone(),
             epoch: 1,
-            secret: vec![5, 6, 7, 8],
+            secret: [0u8; 32],
         };
 
         // Save the secret
@@ -396,13 +396,13 @@ mod tests {
             .get_group_exporter_secret(&mls_group_id, 1)
             .unwrap()
             .unwrap();
-        assert_eq!(retrieved_secret.secret, vec![5, 6, 7, 8]);
+        assert_eq!(retrieved_secret.secret, [0u8; 32]);
 
         // Create a second secret with same group_id and epoch but different secret value
         let secret2 = GroupExporterSecret {
             mls_group_id: mls_group_id.clone(),
             epoch: 1,
-            secret: vec![9, 10, 11, 12],
+            secret: [0u8; 32],
         };
 
         // Save the second secret - this should replace the first one due to the "OR REPLACE" in the SQL
@@ -413,13 +413,13 @@ mod tests {
             .get_group_exporter_secret(&mls_group_id, 1)
             .unwrap()
             .unwrap();
-        assert_eq!(retrieved_secret.secret, vec![9, 10, 11, 12]);
+        assert_eq!(retrieved_secret.secret, [0u8; 32]);
 
         // Verify we can still save a different epoch
         let secret3 = GroupExporterSecret {
             mls_group_id: mls_group_id.clone(),
             epoch: 2,
-            secret: vec![13, 14, 15, 16],
+            secret: [0u8; 32],
         };
 
         storage.save_group_exporter_secret(secret3).unwrap();
@@ -434,7 +434,7 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        assert_eq!(retrieved_secret1.secret, vec![9, 10, 11, 12]);
-        assert_eq!(retrieved_secret2.secret, vec![13, 14, 15, 16]);
+        assert_eq!(retrieved_secret1.secret, [0u8; 32]);
+        assert_eq!(retrieved_secret2.secret, [0u8; 32]);
     }
 }

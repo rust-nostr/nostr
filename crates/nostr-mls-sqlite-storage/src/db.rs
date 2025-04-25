@@ -106,7 +106,7 @@ pub fn row_to_group_relay(row: &Row) -> SqliteResult<GroupRelay> {
 pub fn row_to_group_exporter_secret(row: &Row) -> SqliteResult<GroupExporterSecret> {
     let mls_group_id: GroupId = GroupId::from_slice(row.get_ref("mls_group_id")?.as_blob()?);
     let epoch: u64 = row.get("epoch")?;
-    let secret: Vec<u8> = row.get("secret")?;
+    let secret: [u8; 32] = row.get("secret")?;
 
     Ok(GroupExporterSecret {
         mls_group_id,

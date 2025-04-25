@@ -350,12 +350,12 @@ mod tests {
         let group_exporter_secret_0 = GroupExporterSecret {
             mls_group_id: mls_group_id.clone(),
             epoch: 0,
-            secret: vec![1, 2, 3, 4],
+            secret: [0u8; 32],
         };
         let group_exporter_secret_1 = GroupExporterSecret {
             mls_group_id: mls_group_id.clone(),
             epoch: 1,
-            secret: vec![5, 6, 7, 8],
+            secret: [0u8; 32],
         };
         nostr_storage
             .save_group_exporter_secret(group_exporter_secret_0.clone())
