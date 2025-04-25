@@ -22,4 +22,4 @@ serde_json.workspace = true
 tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
-tempfile = "3.19.1"
+tempfile.workspace = true

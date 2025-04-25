@@ -26,5 +26,5 @@ heed = { version = "0.20", default-features = false, features = ["read-txn-no-tl
 heed = { version = "0.20", default-features = false, features = ["read-txn-no-tls", "posix-sem"] }
 
 [dev-dependencies]
-tempfile = "3"
+tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

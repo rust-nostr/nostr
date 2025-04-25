@@ -24,7 +24,7 @@ tracing = { workspace = true, features = ["std"] }
 [dev-dependencies]
 nostr-mls-memory-storage.workspace = true
 nostr-mls-sqlite-storage.workspace = true
-tempfile = "3.8"
+tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
