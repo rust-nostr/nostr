@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS messages (
     tags JSONB NOT NULL,
     event JSONB NOT NULL,
     wrapper_event_id BLOB NOT NULL, -- Wrapper event ID as byte array
+    state TEXT NOT NULL,
     FOREIGN KEY (mls_group_id) REFERENCES groups(mls_group_id) ON DELETE CASCADE
 );
 
@@ -60,6 +61,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_wrapper_event_id ON messages(wrapper_eve
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
 CREATE INDEX IF NOT EXISTS idx_messages_pubkey ON messages(pubkey);
 CREATE INDEX IF NOT EXISTS idx_messages_kind ON messages(kind);
+CREATE INDEX IF NOT EXISTS idx_messages_state ON messages(state);
 
 -- Processed Messages table
 CREATE TABLE IF NOT EXISTS processed_messages (

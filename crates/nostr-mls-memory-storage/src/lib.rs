@@ -173,7 +173,7 @@ mod tests {
     use nostr::{EventId, Kind, PublicKey, RelayUrl, Tags, Timestamp, UnsignedEvent};
     use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupState, GroupType};
     use nostr_mls_storage::groups::GroupStorage;
-    use nostr_mls_storage::messages::types::{Message, ProcessedMessageState};
+    use nostr_mls_storage::messages::types::{Message, MessageState, ProcessedMessageState};
     use nostr_mls_storage::messages::MessageStorage;
     use nostr_mls_storage::welcomes::types::{ProcessedWelcomeState, Welcome, WelcomeState};
     use nostr_mls_storage::welcomes::WelcomeStorage;
@@ -533,6 +533,7 @@ mod tests {
                 "Hello, world!".to_string(),
             ),
             wrapper_event_id: wrapper_id,
+            state: MessageState::Created,
         };
 
         // Save the message

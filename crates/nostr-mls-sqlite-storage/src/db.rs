@@ -8,7 +8,9 @@ use nostr::{EventId, JsonUtil, Kind, PublicKey, RelayUrl, Tags, Timestamp, Unsig
 use nostr_mls_storage::groups::types::{
     Group, GroupExporterSecret, GroupRelay, GroupState, GroupType,
 };
-use nostr_mls_storage::messages::types::{Message, ProcessedMessage, ProcessedMessageState};
+use nostr_mls_storage::messages::types::{
+    Message, MessageState, ProcessedMessage, ProcessedMessageState,
+};
 use nostr_mls_storage::welcomes::types::{
     ProcessedWelcome, ProcessedWelcomeState, Welcome, WelcomeState,
 };
@@ -123,6 +125,7 @@ pub fn row_to_message(row: &Row) -> SqliteResult<Message> {
     let tags_json: &str = row.get_ref("tags")?.as_str()?;
     let event_json: &str = row.get_ref("event")?.as_str()?;
     let wrapper_event_id_blob: &[u8] = row.get_ref("wrapper_event_id")?.as_blob()?;
+    let state_str: &str = row.get_ref("state")?.as_str()?;
 
     // Parse values
     let id: EventId =
@@ -142,6 +145,9 @@ pub fn row_to_message(row: &Row) -> SqliteResult<Message> {
     let wrapper_event_id: EventId = EventId::from_slice(wrapper_event_id_blob)
         .map_err(|_| map_invalid_blob_data("Invalid wrapper event ID"))?;
 
+    let state: MessageState =
+        MessageState::from_str(state_str).map_err(|_| map_invalid_text_data("Invalid state"))?;
+
     Ok(Message {
         id,
         pubkey,
@@ -152,6 +158,7 @@ pub fn row_to_message(row: &Row) -> SqliteResult<Message> {
         tags,
         event,
         wrapper_event_id,
+        state,
     })
 }
 

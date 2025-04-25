@@ -27,8 +27,8 @@ impl MessageStorage for NostrMlsSqliteStorage {
         conn_guard
             .execute(
                 "INSERT OR REPLACE INTO messages
-             (id, pubkey, kind, mls_group_id, created_at, content, tags, event, wrapper_event_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             (id, pubkey, kind, mls_group_id, created_at, content, tags, event, wrapper_event_id, state)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
                     message.id.as_bytes(),
                     message.pubkey.as_bytes(),
@@ -39,6 +39,7 @@ impl MessageStorage for NostrMlsSqliteStorage {
                     tags_json,
                     message.event.as_json(),
                     message.wrapper_event_id.as_bytes(),
+                    message.state.as_str(),
                 ],
             )
             .map_err(into_message_err)?;
@@ -114,7 +115,7 @@ mod tests {
     use nostr::{EventId, Kind, PublicKey, Tags, Timestamp, UnsignedEvent};
     use nostr_mls_storage::groups::types::{Group, GroupState, GroupType};
     use nostr_mls_storage::groups::GroupStorage;
-    use nostr_mls_storage::messages::types::ProcessedMessageState;
+    use nostr_mls_storage::messages::types::{MessageState, ProcessedMessageState};
 
     use super::*;
 
@@ -168,6 +169,7 @@ mod tests {
                 "content".to_string(),
             ),
             wrapper_event_id,
+            state: MessageState::Created,
         };
 
         // Save the message
