@@ -463,7 +463,7 @@ mod tests {
             welcome_event_id: Some(event_id),
             processed_at: Timestamp::now(),
             state: ProcessedWelcomeState::Processed,
-            failure_reason: "".to_string(),
+            failure_reason: None,
         };
 
         // Save the processed welcome
@@ -571,7 +571,7 @@ mod tests {
             message_event_id: Some(event_id),
             processed_at: Timestamp::now(),
             state: ProcessedMessageState::Processed,
-            failure_reason: "".to_string(),
+            failure_reason: None,
         };
 
         // Save the processed message

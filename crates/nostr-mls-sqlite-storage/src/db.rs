@@ -162,7 +162,7 @@ pub fn row_to_processed_message(row: &Row) -> SqliteResult<ProcessedMessage> {
         row.get_ref("message_event_id")?.as_blob_or_null()?;
     let processed_at_value: u64 = row.get("processed_at")?;
     let state_str: &str = row.get_ref("state")?.as_str()?;
-    let failure_reason: String = row.get("failure_reason")?;
+    let failure_reason: Option<String> = row.get("failure_reason")?;
 
     // Parse values
     let wrapper_event_id: EventId = EventId::from_slice(wrapper_event_id_blob)
@@ -249,7 +249,7 @@ pub fn row_to_processed_welcome(row: &Row) -> SqliteResult<ProcessedWelcome> {
         row.get_ref("welcome_event_id")?.as_blob_or_null()?;
     let processed_at_value: u64 = row.get("processed_at")?;
     let state_str: &str = row.get_ref("state")?.as_str()?;
-    let failure_reason: String = row.get("failure_reason")?;
+    let failure_reason: Option<String> = row.get("failure_reason")?;
 
     // Parse values
     let wrapper_event_id: EventId = EventId::from_slice(wrapper_event_id_blob)

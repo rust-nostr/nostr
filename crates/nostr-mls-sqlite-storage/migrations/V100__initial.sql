@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS processed_messages (
     message_event_id BLOB, -- Message event ID as byte array
     processed_at INTEGER NOT NULL,
     state TEXT NOT NULL,
-    failure_reason TEXT NOT NULL
+    failure_reason TEXT
 );
 
 -- Create index on message_event_id for faster lookups
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS processed_welcomes (
     welcome_event_id BLOB, -- Welcome event ID as byte array
     processed_at INTEGER NOT NULL,
     state TEXT NOT NULL,
-    failure_reason TEXT NOT NULL
+    failure_reason TEXT
 );
 
 -- Create index on welcome_event_id for faster lookups

@@ -21,7 +21,7 @@ pub struct ProcessedWelcome {
     /// The state of the welcome
     pub state: ProcessedWelcomeState,
     /// The reason the welcome failed to be processed
-    pub failure_reason: String,
+    pub failure_reason: Option<String>,
 }
 
 /// A welcome message
@@ -309,11 +309,11 @@ mod tests {
             welcome_event_id: None,
             processed_at: Timestamp::now(),
             state: ProcessedWelcomeState::Processed,
-            failure_reason: String::new(),
+            failure_reason: None,
         };
 
         let serialized = serde_json::to_value(&processed_welcome).unwrap();
         assert_eq!(serialized["state"], json!("processed"));
-        assert_eq!(serialized["failure_reason"], json!(""));
+        assert_eq!(serialized["failure_reason"], json!(null));
     }
 }

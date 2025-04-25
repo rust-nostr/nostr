@@ -201,7 +201,7 @@ mod tests {
             message_event_id: Some(message_event_id),
             processed_at: Timestamp::from(1_000_000_000u64),
             state: ProcessedMessageState::Processed,
-            failure_reason: "".to_string(),
+            failure_reason: None,
         };
 
         // Save the processed message

@@ -21,7 +21,7 @@ pub struct ProcessedMessage {
     /// The state of the message
     pub state: ProcessedMessageState,
     /// The reason the message failed to be processed
-    pub failure_reason: String,
+    pub failure_reason: Option<String>,
 }
 
 /// This is the processed rumor message that represents a message in a group
@@ -163,11 +163,11 @@ mod tests {
     fn test_processed_message_serialization() {
         // Create a processed message to test serialization
         let processed_message = ProcessedMessage {
-            wrapper_event_id: EventId::all_zeros(), // Using all_zeros for testing
+            wrapper_event_id: EventId::all_zeros(),
             message_event_id: None,
             processed_at: Timestamp::now(),
             state: ProcessedMessageState::Processed,
-            failure_reason: String::new(),
+            failure_reason: None,
         };
 
         let serialized = serde_json::to_value(&processed_message).unwrap();
