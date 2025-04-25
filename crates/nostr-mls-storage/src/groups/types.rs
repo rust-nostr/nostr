@@ -73,8 +73,10 @@ impl<'de> Deserialize<'de> for GroupType {
 pub enum GroupState {
     /// The group is active
     Active,
-    /// The group is inactive
+    /// The group is inactive, this is used for groups that users have left or for welcome messages that have been declined
     Inactive,
+    /// The group is pending, this is used for groups that users are invited to but haven't joined yet
+    Pending,
 }
 
 impl fmt::Display for GroupState {
@@ -89,6 +91,7 @@ impl GroupState {
         match self {
             Self::Active => "active",
             Self::Inactive => "inactive",
+            Self::Pending => "pending",
         }
     }
 }
@@ -100,6 +103,7 @@ impl FromStr for GroupState {
         match s {
             "active" => Ok(Self::Active),
             "inactive" => Ok(Self::Inactive),
+            "pending" => Ok(Self::Pending),
             _ => Err(GroupError::InvalidParameters(format!(
                 "Invalid group state: {}",
                 s
