@@ -78,6 +78,11 @@ impl NostrMlsSqliteStorage {
     where
         P: AsRef<Path>,
     {
+        // Ensure parent directory exists
+        if let Some(parent) = file_path.as_ref().parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
         // Create or open the SQLite database
         let mls_connection: Connection = Connection::open(&file_path)?;
 
@@ -224,20 +229,6 @@ mod tests {
         drop(storage);
         drop(storage2);
         temp_dir.close().unwrap();
-    }
-
-    #[test]
-    fn test_invalid_path() {
-        let invalid_path = "/nonexistent/directory/db.sqlite";
-        let storage = NostrMlsSqliteStorage::new(invalid_path);
-        assert!(storage.is_err());
-
-        if let Err(err) = storage {
-            match err {
-                Error::Rusqlite(_) => {} // Expected error type
-                _ => panic!("Expected Rusqlite error, got {:?}", err),
-            }
-        }
     }
 
     #[test]

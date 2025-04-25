@@ -40,6 +40,12 @@ impl From<refinery::Error> for Error {
     }
 }
 
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Self::Database(format!("IO error: {}", e))
+    }
+}
+
 impl From<Error> for rusqlite::Error {
     fn from(err: Error) -> Self {
         rusqlite::Error::FromSqlConversionFailure(
