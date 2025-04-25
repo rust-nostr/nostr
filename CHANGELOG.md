@@ -27,6 +27,10 @@
 
 ## Unreleased
 
+### Changed
+
+* Bump `lru` from 0.13.0 to 0.14.0 ([Yuki Kishimoto])
+
 ### Added
 
 * blossom: add new crate with Blossom support ([Daniel D’Aquino] at https://github.com/rust-nostr/nostr/pull/838)
