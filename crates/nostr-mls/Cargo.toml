@@ -11,10 +11,6 @@ readme = "README.md"
 rust-version = "1.74.0"
 keywords = ["nostr", "mls", "openmls"]
 
-[features]
-default = []
-test-utils = []
-
 [dependencies]
 nostr = { workspace = true, features = ["std", "nip44"] }
 nostr-mls-storage.workspace = true
