@@ -16,7 +16,6 @@ base64.workspace = true
 nostr = { workspace = true, features = ["std"] }
 reqwest = { workspace = true, default-features = false, features = ["json", "rustls-tls"] }
 serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
 
 [dev-dependencies]
 clap = { workspace = true, features = ["derive"] }
