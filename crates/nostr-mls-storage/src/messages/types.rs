@@ -5,6 +5,7 @@ use std::str::FromStr;
 
 use nostr::event::Kind;
 use nostr::{EventId, PublicKey, Tags, Timestamp, UnsignedEvent};
+use openmls::group::GroupId;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::error::MessageError;
@@ -35,7 +36,7 @@ pub struct Message {
     /// The kind of the message
     pub kind: Kind,
     /// The MLS group id of the message
-    pub mls_group_id: Vec<u8>,
+    pub mls_group_id: GroupId,
     /// The created at timestamp of the message
     pub created_at: Timestamp,
     /// The content of the message
@@ -254,9 +255,9 @@ mod tests {
                 .unwrap();
         let message = Message {
             id: EventId::all_zeros(),
-            pubkey: pubkey.clone(),
+            pubkey,
             kind: Kind::MlsGroupMessage,
-            mls_group_id: vec![1, 2, 3, 4],
+            mls_group_id: GroupId::from_slice(&[1, 2, 3, 4]),
             created_at: Timestamp::now(),
             content: "Test message".to_string(),
             tags: Tags::new(),

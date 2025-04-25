@@ -2913,6 +2913,7 @@ dependencies = [
  "lru",
  "nostr",
  "nostr-mls-storage",
+ "openmls",
  "openmls_memory_storage",
  "parking_lot",
 ]
@@ -2923,6 +2924,7 @@ version = "0.41.0"
 dependencies = [
  "nostr",
  "nostr-mls-storage",
+ "openmls",
  "openmls_sqlite_storage",
  "refinery",
  "rusqlite",
@@ -2937,6 +2939,7 @@ name = "nostr-mls-storage"
 version = "0.41.0"
 dependencies = [
  "nostr",
+ "openmls",
  "openmls_traits",
  "serde",
  "serde_json",

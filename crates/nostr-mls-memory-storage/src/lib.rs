@@ -19,6 +19,7 @@ use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupRelay};
 use nostr_mls_storage::messages::types::{Message, ProcessedMessage};
 use nostr_mls_storage::welcomes::types::{ProcessedWelcome, Welcome};
 use nostr_mls_storage::{Backend, NostrMlsStorageProvider};
+use openmls::group::GroupId;
 use openmls_memory_storage::MemoryStorage;
 use parking_lot::RwLock;
 
@@ -54,24 +55,24 @@ const DEFAULT_CACHE_SIZE: NonZeroUsize = NonZeroUsize::new(1000).unwrap();
 pub struct NostrMlsMemoryStorage {
     /// The underlying storage implementation that conforms to OpenMLS's `StorageProvider`
     openmls_storage: MemoryStorage,
-    /// LRU Cache for Group objects, keyed by MLS group ID (`Vec<u8>`)
-    groups_cache: RwLock<LruCache<Vec<u8>, Group>>,
-    /// LRU Cache for Group objects, keyed by Nostr group ID (String)
-    groups_by_nostr_id_cache: RwLock<LruCache<String, Group>>,
-    /// LRU Cache for GroupRelay objects, keyed by MLS group ID (`Vec<u8>`)
-    group_relays_cache: RwLock<LruCache<Vec<u8>, BTreeSet<GroupRelay>>>,
+    /// LRU Cache for Group objects, keyed by MLS group ID (GroupId)
+    groups_cache: RwLock<LruCache<GroupId, Group>>,
+    /// LRU Cache for Group objects, keyed by Nostr group ID ([u8; 32])
+    groups_by_nostr_id_cache: RwLock<LruCache<[u8; 32], Group>>,
+    /// LRU Cache for GroupRelay objects, keyed by MLS group ID (GroupId)
+    group_relays_cache: RwLock<LruCache<GroupId, BTreeSet<GroupRelay>>>,
     /// LRU Cache for Welcome objects, keyed by Event ID
     welcomes_cache: RwLock<LruCache<EventId, Welcome>>,
     /// LRU Cache for ProcessedWelcome objects, keyed by Event ID
     processed_welcomes_cache: RwLock<LruCache<EventId, ProcessedWelcome>>,
     /// LRU Cache for Message objects, keyed by Event ID
     messages_cache: RwLock<LruCache<EventId, Message>>,
-    /// LRU Cache for Messages by Group ID
-    messages_by_group_cache: RwLock<LruCache<Vec<u8>, Vec<Message>>>,
+    /// LRU Cache for Messages by Group ID (GroupId)
+    messages_by_group_cache: RwLock<LruCache<GroupId, Vec<Message>>>,
     /// LRU Cache for ProcessedMessage objects, keyed by Event ID
     processed_messages_cache: RwLock<LruCache<EventId, ProcessedMessage>>,
-    /// LRU Cache for GroupExporterSecret objects, keyed by a compound key of MLS group ID and epoch
-    group_exporter_secrets_cache: RwLock<LruCache<Vec<u8>, GroupExporterSecret>>,
+    /// LRU Cache for GroupExporterSecret objects, keyed by a tuple of (GroupId, epoch)
+    group_exporter_secrets_cache: RwLock<LruCache<(GroupId, u64), GroupExporterSecret>>,
 }
 
 impl Default for NostrMlsMemoryStorage {
@@ -177,9 +178,20 @@ mod tests {
     use nostr_mls_storage::messages::MessageStorage;
     use nostr_mls_storage::welcomes::types::{ProcessedWelcomeState, Welcome, WelcomeState};
     use nostr_mls_storage::welcomes::WelcomeStorage;
+    use openmls::group::GroupId;
     use openmls_memory_storage::MemoryStorage;
 
     use super::*;
+
+    fn create_test_group_id() -> GroupId {
+        GroupId::from_slice(&[1, 2, 3, 4])
+    }
+
+    fn create_test_nostr_group_id() -> [u8; 32] {
+        let mut id = [0u8; 32];
+        id[0..4].copy_from_slice(&[1, 2, 3, 4]);
+        id
+    }
 
     #[test]
     fn test_new_with_storage() {
@@ -228,12 +240,11 @@ mod tests {
     fn test_group_cache() {
         let storage = MemoryStorage::default();
         let nostr_storage = NostrMlsMemoryStorage::new(storage);
-
-        // Create a test group
-        let mls_group_id = vec![1, 2, 3, 4];
+        let mls_group_id = create_test_group_id();
+        let nostr_group_id = create_test_nostr_group_id();
         let group = Group {
             mls_group_id: mls_group_id.clone(),
-            nostr_group_id: "test_group_123".to_string(),
+            nostr_group_id,
             name: "Test Group".to_string(),
             description: "A test group".to_string(),
             admin_pubkeys: BTreeSet::new(),
@@ -243,27 +254,22 @@ mod tests {
             epoch: 0,
             state: GroupState::Active,
         };
-
-        // Save the group
-        let result = nostr_storage.save_group(group.clone());
-        assert!(result.is_ok());
-
-        // Find the group by MLS group ID
-        let found_group = nostr_storage.find_group_by_mls_group_id(&mls_group_id);
-        assert!(found_group.is_ok());
-        let found_group = found_group.unwrap().unwrap();
+        nostr_storage.save_group(group.clone()).unwrap();
+        let found_group = nostr_storage
+            .find_group_by_mls_group_id(&mls_group_id)
+            .unwrap()
+            .unwrap();
         assert_eq!(found_group.mls_group_id, mls_group_id);
-        assert_eq!(found_group.nostr_group_id, "test_group_123");
+        assert_eq!(found_group.nostr_group_id, nostr_group_id);
 
         // Verify the group is in the cache
         {
             let cache = nostr_storage.groups_cache.read();
             assert!(cache.contains(&mls_group_id));
         }
-
         {
             let cache = nostr_storage.groups_by_nostr_id_cache.read();
-            assert!(cache.contains("test_group_123"));
+            assert!(cache.contains(&nostr_group_id));
         }
     }
 
@@ -271,12 +277,11 @@ mod tests {
     fn test_group_relays() {
         let storage = MemoryStorage::default();
         let nostr_storage = NostrMlsMemoryStorage::new(storage);
-
-        // Create a test group
-        let mls_group_id = vec![5, 6, 7, 8];
+        let mls_group_id = create_test_group_id();
+        let nostr_group_id = create_test_nostr_group_id();
         let group = Group {
             mls_group_id: mls_group_id.clone(),
-            nostr_group_id: "test_group_456".to_string(),
+            nostr_group_id,
             name: "Another Test Group".to_string(),
             description: "Another test group".to_string(),
             admin_pubkeys: BTreeSet::new(),
@@ -286,34 +291,23 @@ mod tests {
             epoch: 0,
             state: GroupState::Active,
         };
-
-        // Save the group
-        let result = nostr_storage.save_group(group.clone());
-        assert!(result.is_ok());
-
-        // Create and save some group relays
+        nostr_storage.save_group(group.clone()).unwrap();
         let relay_url1 = RelayUrl::parse("wss://relay1.example.com").unwrap();
         let relay_url2 = RelayUrl::parse("wss://relay2.example.com").unwrap();
-
         let group_relay1 = GroupRelay {
             mls_group_id: mls_group_id.clone(),
             relay_url: relay_url1,
         };
-
         let group_relay2 = GroupRelay {
             mls_group_id: mls_group_id.clone(),
             relay_url: relay_url2,
         };
-
-        // Save the relays
         nostr_storage
             .save_group_relay(group_relay1.clone())
             .unwrap();
         nostr_storage
             .save_group_relay(group_relay2.clone())
             .unwrap();
-
-        // Get the relays for the group
         let found_relays = nostr_storage.group_relays(&mls_group_id).unwrap();
         assert_eq!(found_relays.len(), 2);
 
@@ -327,25 +321,22 @@ mod tests {
                 panic!("Group relays not found in cache");
             }
         }
-
-        // Try to add a duplicate relay - should not increase the count
         nostr_storage
             .save_group_relay(group_relay1.clone())
             .unwrap();
-        let found_relays = nostr_storage.group_relays(&mls_group_id).unwrap();
-        assert_eq!(found_relays.len(), 2);
+        let found_relays_after_duplicate = nostr_storage.group_relays(&mls_group_id).unwrap();
+        assert_eq!(found_relays_after_duplicate.len(), 2);
     }
 
     #[test]
     fn test_group_exporter_secret_cache() {
         let storage = MemoryStorage::default();
         let nostr_storage = NostrMlsMemoryStorage::new(storage);
-
-        // Create a test group
-        let mls_group_id = vec![1, 2, 3, 4];
+        let mls_group_id = create_test_group_id();
+        let nostr_group_id = create_test_nostr_group_id();
         let group = Group {
             mls_group_id: mls_group_id.clone(),
-            nostr_group_id: "test_group_123".to_string(),
+            nostr_group_id,
             name: "Test Group".to_string(),
             description: "A test group".to_string(),
             admin_pubkeys: BTreeSet::new(),
@@ -355,53 +346,45 @@ mod tests {
             epoch: 0,
             state: GroupState::Active,
         };
-
-        // Save the group
         nostr_storage.save_group(group.clone()).unwrap();
-
-        // Create a test group exporter secret for epoch 0
         let group_exporter_secret_0 = GroupExporterSecret {
             mls_group_id: mls_group_id.clone(),
             epoch: 0,
             secret: vec![1, 2, 3, 4],
         };
-
-        // Create a test group exporter secret for epoch 1
         let group_exporter_secret_1 = GroupExporterSecret {
             mls_group_id: mls_group_id.clone(),
             epoch: 1,
             secret: vec![5, 6, 7, 8],
         };
-
-        // Save the group exporter secrets
         nostr_storage
             .save_group_exporter_secret(group_exporter_secret_0.clone())
             .unwrap();
         nostr_storage
             .save_group_exporter_secret(group_exporter_secret_1.clone())
             .unwrap();
-
-        // Get the group exporter secret for epoch 0
-        let found_group_exporter_secret_0 = nostr_storage
+        let found_secret_0 = nostr_storage
             .get_group_exporter_secret(&mls_group_id, 0)
+            .unwrap()
             .unwrap();
-        assert!(found_group_exporter_secret_0.is_some());
-        let found_group_exporter_secret_0 = found_group_exporter_secret_0.unwrap();
-        assert_eq!(found_group_exporter_secret_0, group_exporter_secret_0);
-
-        // Get the group exporter secret for epoch 1
-        let found_group_exporter_secret_1 = nostr_storage
+        assert_eq!(found_secret_0, group_exporter_secret_0);
+        let found_secret_1 = nostr_storage
             .get_group_exporter_secret(&mls_group_id, 1)
+            .unwrap()
             .unwrap();
-        assert!(found_group_exporter_secret_1.is_some());
-        let found_group_exporter_secret_1 = found_group_exporter_secret_1.unwrap();
-        assert_eq!(found_group_exporter_secret_1, group_exporter_secret_1);
-
-        // Verify we can't find an exporter secret for a non-existing epoch
+        assert_eq!(found_secret_1, group_exporter_secret_1);
         let non_existent_secret = nostr_storage
             .get_group_exporter_secret(&mls_group_id, 999)
             .unwrap();
         assert!(non_existent_secret.is_none());
+
+        // Check cache
+        {
+            let cache = nostr_storage.group_exporter_secrets_cache.read();
+            assert!(cache.contains(&(mls_group_id.clone(), 0)));
+            assert!(cache.contains(&(mls_group_id.clone(), 1)));
+            assert!(!cache.contains(&(mls_group_id.clone(), 999)));
+        }
     }
 
     #[test]
@@ -419,6 +402,8 @@ mod tests {
                 .unwrap();
 
         // Create a test welcome
+        let mls_group_id = create_test_group_id();
+        let nostr_group_id = create_test_nostr_group_id();
         let welcome = Welcome {
             id: event_id,
             event: UnsignedEvent::new(
@@ -428,8 +413,8 @@ mod tests {
                 Tags::new(),
                 "test".to_string(),
             ),
-            mls_group_id: vec![9, 10, 11, 12],
-            nostr_group_id: "test_welcome_group".to_string(),
+            mls_group_id: mls_group_id.clone(),
+            nostr_group_id,
             group_name: "Test Welcome Group".to_string(),
             group_description: "A test welcome group".to_string(),
             group_admin_pubkeys: BTreeSet::from([pubkey]),
@@ -449,7 +434,7 @@ mod tests {
         assert!(found_welcome.is_ok());
         let found_welcome = found_welcome.unwrap().unwrap();
         assert_eq!(found_welcome.id, event_id);
-        assert_eq!(found_welcome.mls_group_id, vec![9, 10, 11, 12]);
+        assert_eq!(found_welcome.mls_group_id, mls_group_id);
 
         // Check that it's in the cache
         {
@@ -488,12 +473,11 @@ mod tests {
     fn test_message_cache() {
         let storage = MemoryStorage::default();
         let nostr_storage = NostrMlsMemoryStorage::new(storage);
-
-        // Create a test group
-        let mls_group_id = vec![19, 20, 21, 22];
+        let mls_group_id = create_test_group_id();
+        let nostr_group_id = create_test_nostr_group_id();
         let group = Group {
             mls_group_id: mls_group_id.clone(),
-            nostr_group_id: "message_test_group".to_string(),
+            nostr_group_id,
             name: "Message Test Group".to_string(),
             description: "A group for testing messages".to_string(),
             admin_pubkeys: BTreeSet::new(),
@@ -503,20 +487,12 @@ mod tests {
             epoch: 0,
             state: GroupState::Active,
         };
-
-        // Save the group
         nostr_storage.save_group(group.clone()).unwrap();
-
-        // Create a test event ID
         let event_id = EventId::all_zeros();
         let wrapper_id = EventId::all_zeros();
-
-        // Create a test pubkey
         let pubkey =
             PublicKey::from_hex("aabbccddeeffaabbccddeeffaabbccddeeffaabbccddeeffaabbccddeeffaabb")
                 .unwrap();
-
-        // Create a test message
         let message = Message {
             id: event_id,
             pubkey,
@@ -535,38 +511,33 @@ mod tests {
             wrapper_event_id: wrapper_id,
             state: MessageState::Created,
         };
-
-        // Save the message
-        let result = nostr_storage.save_message(message.clone());
-        assert!(result.is_ok());
-
-        // Find the message by event ID
-        let found_message = nostr_storage.find_message_by_event_id(&event_id);
-        assert!(found_message.is_ok());
-        let found_message = found_message.unwrap().unwrap();
+        nostr_storage.save_message(message.clone()).unwrap();
+        let found_message = nostr_storage
+            .find_message_by_event_id(&event_id)
+            .unwrap()
+            .unwrap();
         assert_eq!(found_message.id, event_id);
         assert_eq!(found_message.mls_group_id, mls_group_id);
 
-        // Check that it's in the cache
+        // Check caches
         {
             let cache = nostr_storage.messages_cache.read();
             assert!(cache.contains(&event_id));
         }
-
-        // We need to manually add the message to the messages_by_group_cache for testing
-        // since the implementation doesn't automatically do this
         {
             let mut cache = nostr_storage.messages_by_group_cache.write();
-            let messages = vec![message.clone()];
-            cache.put(mls_group_id.clone(), messages);
+            cache.put(mls_group_id.clone(), vec![message.clone()]); // Manual add for testing
         }
-
-        // Check that we can retrieve messages for the group
-        let group_messages = nostr_storage.messages(&mls_group_id).unwrap();
-        assert_eq!(group_messages.len(), 1);
-        assert_eq!(group_messages[0].id, event_id);
-
-        // Create a test processed message
+        {
+            let cache = nostr_storage.messages_by_group_cache.read();
+            assert!(cache.contains(&mls_group_id));
+            if let Some(msgs) = cache.peek(&mls_group_id) {
+                assert_eq!(msgs.len(), 1);
+                assert_eq!(msgs[0].id, event_id);
+            } else {
+                panic!("Messages not found in group cache");
+            }
+        }
         let processed_message = ProcessedMessage {
             wrapper_event_id: wrapper_id,
             message_event_id: Some(event_id),
@@ -574,19 +545,14 @@ mod tests {
             state: ProcessedMessageState::Processed,
             failure_reason: None,
         };
-
-        // Save the processed message
-        let result = nostr_storage.save_processed_message(processed_message.clone());
-        assert!(result.is_ok());
-
-        // Find the processed message by event ID
-        let found_processed_message = nostr_storage.find_processed_message_by_event_id(&wrapper_id);
-        assert!(found_processed_message.is_ok());
-        let found_processed_message = found_processed_message.unwrap().unwrap();
-        assert_eq!(found_processed_message.wrapper_event_id, wrapper_id);
-        assert_eq!(found_processed_message.message_event_id, Some(event_id));
-
-        // Check that it's in the cache
+        nostr_storage
+            .save_processed_message(processed_message.clone())
+            .unwrap();
+        let found_processed = nostr_storage
+            .find_processed_message_by_event_id(&wrapper_id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(found_processed.wrapper_event_id, wrapper_id);
         {
             let cache = nostr_storage.processed_messages_cache.read();
             assert!(cache.contains(&wrapper_id));
@@ -600,10 +566,11 @@ mod tests {
         let nostr_storage = NostrMlsMemoryStorage::with_cache_size(storage, custom_size);
 
         // Create a test group to verify the cache works
-        let mls_group_id = vec![29, 30, 31, 32];
+        let mls_group_id = create_test_group_id();
+        let nostr_group_id = create_test_nostr_group_id();
         let group = Group {
             mls_group_id: mls_group_id.clone(),
-            nostr_group_id: "custom_cache_group".to_string(),
+            nostr_group_id,
             name: "Custom Cache Group".to_string(),
             description: "A group for testing custom cache size".to_string(),
             admin_pubkeys: BTreeSet::new(),
@@ -629,10 +596,11 @@ mod tests {
         let nostr_storage = NostrMlsMemoryStorage::default();
 
         // Create a test group to verify the default implementation works
-        let mls_group_id = vec![33, 34, 35, 36];
+        let mls_group_id = create_test_group_id();
+        let nostr_group_id = create_test_nostr_group_id();
         let group = Group {
             mls_group_id: mls_group_id.clone(),
-            nostr_group_id: "default_impl_group".to_string(),
+            nostr_group_id,
             name: "Default Implementation Group".to_string(),
             description: "A group for testing default implementation".to_string(),
             admin_pubkeys: BTreeSet::new(),

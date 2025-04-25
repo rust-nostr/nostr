@@ -40,7 +40,7 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
                 params![
                     welcome.id.as_bytes(),
                     welcome.event.as_json(),
-                    welcome.mls_group_id,
+                    welcome.mls_group_id.as_slice(),
                     welcome.nostr_group_id,
                     welcome.group_name,
                     welcome.group_description,
@@ -147,6 +147,7 @@ mod tests {
     use nostr_mls_storage::groups::types::{Group, GroupState, GroupType};
     use nostr_mls_storage::groups::GroupStorage;
     use nostr_mls_storage::welcomes::types::{ProcessedWelcomeState, WelcomeState};
+    use openmls::group::GroupId;
 
     use super::*;
 
@@ -155,10 +156,13 @@ mod tests {
         let storage = NostrMlsSqliteStorage::new_in_memory().unwrap();
 
         // First create a group (welcomes require a valid group foreign key)
-        let mls_group_id = vec![1, 2, 3, 4];
+        let mls_group_id = GroupId::from_slice(&[1, 2, 3, 4]);
+        let mut nostr_group_id = [0u8; 32];
+        nostr_group_id[0..13].copy_from_slice(b"test_group_12");
+
         let group = Group {
             mls_group_id: mls_group_id.clone(),
-            nostr_group_id: "test_group_123".to_string(),
+            nostr_group_id,
             name: "Test Group".to_string(),
             description: "A test group".to_string(),
             admin_pubkeys: BTreeSet::new(),
@@ -184,6 +188,9 @@ mod tests {
             EventId::parse("3287abd422284bc3679812c373c52ed4aa0af4f7c57b9c63ec440f6c3ed6c3a2")
                 .unwrap();
 
+        let mut welcome_nostr_group_id = [0u8; 32];
+        welcome_nostr_group_id[0..13].copy_from_slice(b"test_group_12");
+
         let welcome = Welcome {
             id: event_id,
             event: UnsignedEvent::new(
@@ -194,7 +201,7 @@ mod tests {
                 "content".to_string(),
             ),
             mls_group_id: mls_group_id.clone(),
-            nostr_group_id: "test_group_123".to_string(),
+            nostr_group_id: welcome_nostr_group_id,
             group_name: "Test Group".to_string(),
             group_description: "A test group".to_string(),
             group_admin_pubkeys: BTreeSet::from([pubkey]),
@@ -215,7 +222,7 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(found_welcome.id, event_id);
-        assert_eq!(found_welcome.nostr_group_id, "test_group_123");
+        assert_eq!(&found_welcome.nostr_group_id[0..13], b"test_group_12");
         assert_eq!(found_welcome.state, WelcomeState::Pending);
 
         // Test pending welcomes

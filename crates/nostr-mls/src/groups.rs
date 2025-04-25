@@ -124,7 +124,7 @@ where
 
         match self
             .storage()
-            .get_group_exporter_secret(group_id.as_slice(), group.epoch().as_u64())
+            .get_group_exporter_secret(group_id, group.epoch().as_u64())
             .map_err(|e| Error::Group(e.to_string()))?
         {
             Some(group_exporter_secret) => Ok(group_exporter_secret),
@@ -133,7 +133,7 @@ where
                 let export_secret: Vec<u8> =
                     group.export_secret(&self.provider, "nostr", b"nostr", 32)?;
                 let group_exporter_secret = group_types::GroupExporterSecret {
-                    mls_group_id: group_id.to_vec(),
+                    mls_group_id: group_id.clone(),
                     epoch: group.epoch().as_u64(),
                     secret: export_secret,
                 };
@@ -151,16 +151,16 @@ where
     ///
     /// # Arguments
     ///
-    /// * `mls_group_id` - The MLS group ID to look up
+    /// * `group_id` - The MLS group ID to look up
     ///
     /// # Returns
     ///
     /// * `Ok(Some(Group))` - The group if found
     /// * `Ok(None)` - If no group exists with the given ID
     /// * `Err(Error)` - If there is an error accessing storage
-    pub fn get_group(&self, mls_group_id: &GroupId) -> Result<Option<group_types::Group>, Error> {
+    pub fn get_group(&self, group_id: &GroupId) -> Result<Option<group_types::Group>, Error> {
         self.storage()
-            .find_group_by_mls_group_id(mls_group_id.as_slice())
+            .find_group_by_mls_group_id(group_id)
             .map_err(|e| Error::Group(e.to_string()))
     }
 
@@ -180,16 +180,14 @@ where
     ///
     /// # Arguments
     ///
-    /// * `mls_group_id` - The MLS group ID
+    /// * `group_id` - The MLS group ID
     ///
     /// # Returns
     ///
     /// * `Ok(BTreeSet<PublicKey>)` - Set of member public keys
     /// * `Err(Error)` - If the group is not found or there is an error accessing member data
-    pub fn get_members(&self, mls_group_id: &GroupId) -> Result<BTreeSet<PublicKey>, Error> {
-        let group = self
-            .load_mls_group(mls_group_id)?
-            .ok_or(Error::GroupNotFound)?;
+    pub fn get_members(&self, group_id: &GroupId) -> Result<BTreeSet<PublicKey>, Error> {
+        let group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
 
         // Store members in a variable to extend its lifetime
         let mut members = group.members();
@@ -216,7 +214,7 @@ where
     pub fn get_relays(&self, mls_group_id: &GroupId) -> Result<BTreeSet<RelayUrl>, Error> {
         let relays = self
             .storage()
-            .group_relays(mls_group_id.as_slice())
+            .group_relays(mls_group_id)
             .map_err(|e| Error::Group(e.to_string()))?;
         Ok(relays.into_iter().map(|r| r.relay_url).collect())
     }
@@ -338,8 +336,8 @@ where
 
         // Save the NostrMLS Group
         let group = group_types::Group {
-            mls_group_id: mls_group.group_id().to_vec(),
-            nostr_group_id: group_data.clone().nostr_group_id(),
+            mls_group_id: mls_group.group_id().clone(),
+            nostr_group_id: group_data.clone().nostr_group_id,
             name: group_data.clone().name,
             description: group_data.clone().description,
             admin_pubkeys: group_data.clone().admins,
@@ -394,7 +392,7 @@ where
 
         let current_secret: group_types::GroupExporterSecret = self
             .storage()
-            .get_group_exporter_secret(group_id.as_slice(), group.epoch().as_u64())
+            .get_group_exporter_secret(group_id, group.epoch().as_u64())
             .map_err(|e| Error::Group(e.to_string()))?
             .ok_or(Error::GroupExporterSecretNotFound)?;
 

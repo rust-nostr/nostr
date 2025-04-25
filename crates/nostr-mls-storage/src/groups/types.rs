@@ -5,6 +5,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use nostr::{EventId, PublicKey, RelayUrl, Timestamp};
+use openmls::group::GroupId;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::error::GroupError;
@@ -137,9 +138,9 @@ impl<'de> Deserialize<'de> for GroupState {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Group {
     /// This is the MLS group ID, this will serve as the PK in the DB and doesn't change
-    pub mls_group_id: Vec<u8>,
-    /// Hex encoded (same value as the NostrGroupDataExtension) this is the group_id used in Nostr events
-    pub nostr_group_id: String,
+    pub mls_group_id: GroupId,
+    /// This is the group_id used in published Nostr events, it can change over time
+    pub nostr_group_id: [u8; 32],
     /// UTF-8 encoded (same value as the NostrGroupDataExtension)
     pub name: String,
     /// UTF-8 encoded (same value as the NostrGroupDataExtension)
@@ -166,14 +167,14 @@ pub struct GroupRelay {
     /// The relay URL
     pub relay_url: RelayUrl,
     /// The MLS group ID
-    pub mls_group_id: Vec<u8>,
+    pub mls_group_id: GroupId,
 }
 
 /// Exporter secrets for each epoch of a group
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct GroupExporterSecret {
     /// The MLS group ID
-    pub mls_group_id: Vec<u8>,
+    pub mls_group_id: GroupId,
     /// The epoch
     pub epoch: u64,
     /// The secret
@@ -280,8 +281,8 @@ mod tests {
     fn test_group_serialization() {
         // Simple test to ensure Group can be serialized
         let group = Group {
-            mls_group_id: vec![1, 2, 3],
-            nostr_group_id: "test_id".to_string(),
+            mls_group_id: GroupId::from_slice(&[1, 2, 3]),
+            nostr_group_id: [0u8; 32],
             name: "Test Group".to_string(),
             description: "Test Description".to_string(),
             admin_pubkeys: BTreeSet::new(),
@@ -293,11 +294,55 @@ mod tests {
         };
 
         let serialized = serde_json::to_value(&group).unwrap();
-        assert_eq!(serialized["mls_group_id"], json!([1, 2, 3]));
-        assert_eq!(serialized["nostr_group_id"], json!("test_id"));
+        assert_eq!(serialized["mls_group_id"]["value"]["vec"], json!([1, 2, 3]));
+        assert_eq!(
+            serialized["nostr_group_id"],
+            json!([
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0
+            ])
+        );
         assert_eq!(serialized["name"], json!("Test Group"));
         assert_eq!(serialized["description"], json!("Test Description"));
         assert_eq!(serialized["group_type"], json!("group"));
         assert_eq!(serialized["state"], json!("active"));
+    }
+
+    #[test]
+    fn test_group_exporter_secret_serialization() {
+        let secret = GroupExporterSecret {
+            mls_group_id: GroupId::from_slice(vec![1, 2, 3].as_slice()),
+            epoch: 42,
+            secret: vec![4, 5, 6],
+        };
+
+        let serialized = serde_json::to_value(&secret).unwrap();
+        assert_eq!(serialized["mls_group_id"]["value"]["vec"], json!([1, 2, 3]));
+        assert_eq!(serialized["epoch"], json!(42));
+        assert_eq!(serialized["secret"], json!([4, 5, 6]));
+
+        // Test deserialization
+        let deserialized: GroupExporterSecret = serde_json::from_value(serialized).unwrap();
+        assert_eq!(deserialized.epoch, 42);
+        assert_eq!(deserialized.secret, vec![4, 5, 6]);
+    }
+
+    #[test]
+    fn test_group_relay_serialization() {
+        let relay = GroupRelay {
+            relay_url: RelayUrl::from_str("wss://relay.example.com").unwrap(),
+            mls_group_id: GroupId::from_slice(vec![1, 2, 3].as_slice()),
+        };
+
+        let serialized = serde_json::to_value(&relay).unwrap();
+        assert_eq!(serialized["relay_url"], json!("wss://relay.example.com"));
+        assert_eq!(serialized["mls_group_id"]["value"]["vec"], json!([1, 2, 3]));
+
+        // Test deserialization
+        let deserialized: GroupRelay = serde_json::from_value(serialized).unwrap();
+        assert_eq!(
+            deserialized.relay_url.to_string(),
+            "wss://relay.example.com"
+        );
     }
 }

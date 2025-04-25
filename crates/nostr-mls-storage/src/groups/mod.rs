@@ -10,6 +10,7 @@
 use std::collections::BTreeSet;
 
 use nostr::PublicKey;
+use openmls::group::GroupId;
 
 pub mod error;
 pub mod types;
@@ -24,25 +25,25 @@ pub trait GroupStorage {
     fn all_groups(&self) -> Result<Vec<Group>, GroupError>;
 
     /// Find a group by MLS group ID
-    fn find_group_by_mls_group_id(&self, mls_group_id: &[u8]) -> Result<Option<Group>, GroupError>;
+    fn find_group_by_mls_group_id(&self, group_id: &GroupId) -> Result<Option<Group>, GroupError>;
 
     /// Find a group by Nostr group ID
     fn find_group_by_nostr_group_id(
         &self,
-        nostr_group_id: &str,
+        nostr_group_id: &[u8; 32],
     ) -> Result<Option<Group>, GroupError>;
 
     /// Save a group
     fn save_group(&self, group: Group) -> Result<(), GroupError>;
 
     /// Get all messages for a group
-    fn messages(&self, mls_group_id: &[u8]) -> Result<Vec<Message>, GroupError>;
+    fn messages(&self, group_id: &GroupId) -> Result<Vec<Message>, GroupError>;
 
     /// Get all admins for a group
-    fn admins(&self, mls_group_id: &[u8]) -> Result<BTreeSet<PublicKey>, GroupError>;
+    fn admins(&self, group_id: &GroupId) -> Result<BTreeSet<PublicKey>, GroupError>;
 
     /// Get all relays for a group
-    fn group_relays(&self, mls_group_id: &[u8]) -> Result<BTreeSet<GroupRelay>, GroupError>;
+    fn group_relays(&self, group_id: &GroupId) -> Result<BTreeSet<GroupRelay>, GroupError>;
 
     /// Save a group relay
     fn save_group_relay(&self, group_relay: GroupRelay) -> Result<(), GroupError>;
@@ -50,7 +51,7 @@ pub trait GroupStorage {
     /// Get an exporter secret for a group and epoch
     fn get_group_exporter_secret(
         &self,
-        mls_group_id: &[u8],
+        group_id: &GroupId,
         epoch: u64,
     ) -> Result<Option<GroupExporterSecret>, GroupError>;
 

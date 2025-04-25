@@ -184,6 +184,7 @@ impl NostrMlsStorageProvider for NostrMlsSqliteStorage {
 mod tests {
     use std::collections::BTreeSet;
 
+    use openmls::group::GroupId;
     use tempfile::tempdir;
 
     use super::*;
@@ -297,10 +298,10 @@ mod tests {
         let storage = NostrMlsSqliteStorage::new_in_memory().unwrap();
 
         // Create a test group
-        let mls_group_id = vec![1, 2, 3, 4];
+        let mls_group_id = GroupId::from_slice(vec![1, 2, 3, 4].as_slice());
         let group = Group {
             mls_group_id: mls_group_id.clone(),
-            nostr_group_id: "test_group_123".to_string(),
+            nostr_group_id: [0u8; 32],
             name: "Test Group".to_string(),
             description: "A test group for exporter secrets".to_string(),
             admin_pubkeys: BTreeSet::new(),
@@ -353,7 +354,7 @@ mod tests {
         assert!(non_existent_epoch.is_none());
 
         // Test non-existent group
-        let non_existent_group_id = vec![9, 9, 9, 9];
+        let non_existent_group_id = GroupId::from_slice(&[9, 9, 9, 9]);
         let result = storage.get_group_exporter_secret(&non_existent_group_id, 0);
         assert!(result.is_err());
 

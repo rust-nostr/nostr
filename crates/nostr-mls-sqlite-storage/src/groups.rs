@@ -7,6 +7,7 @@ use nostr_mls_storage::groups::error::GroupError;
 use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupRelay};
 use nostr_mls_storage::groups::GroupStorage;
 use nostr_mls_storage::messages::types::Message;
+use openmls::group::GroupId;
 use rusqlite::{params, OptionalExtension};
 
 use crate::{db, NostrMlsSqliteStorage};
@@ -42,21 +43,24 @@ impl GroupStorage for NostrMlsSqliteStorage {
         Ok(groups)
     }
 
-    fn find_group_by_mls_group_id(&self, mls_group_id: &[u8]) -> Result<Option<Group>, GroupError> {
+    fn find_group_by_mls_group_id(
+        &self,
+        mls_group_id: &GroupId,
+    ) -> Result<Option<Group>, GroupError> {
         let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM groups WHERE mls_group_id = ?")
             .map_err(into_group_err)?;
 
-        stmt.query_row([mls_group_id], db::row_to_group)
+        stmt.query_row([mls_group_id.as_slice()], db::row_to_group)
             .optional()
             .map_err(into_group_err)
     }
 
     fn find_group_by_nostr_group_id(
         &self,
-        nostr_group_id: &str,
+        nostr_group_id: &[u8; 32],
     ) -> Result<Option<Group>, GroupError> {
         let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
 
@@ -88,7 +92,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
               last_message_at, group_type, epoch, state)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
-                    &group.mls_group_id,
+                    &group.mls_group_id.as_slice(),
                     &group.nostr_group_id,
                     &group.name,
                     &group.description,
@@ -105,7 +109,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
         Ok(())
     }
 
-    fn messages(&self, mls_group_id: &[u8]) -> Result<Vec<Message>, GroupError> {
+    fn messages(&self, mls_group_id: &GroupId) -> Result<Vec<Message>, GroupError> {
         // First verify the group exists
         if self.find_group_by_mls_group_id(mls_group_id)?.is_none() {
             return Err(GroupError::InvalidParameters(format!(
@@ -121,7 +125,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
             .map_err(into_group_err)?;
 
         let messages_iter = stmt
-            .query_map(params![mls_group_id], db::row_to_message)
+            .query_map(params![mls_group_id.as_slice()], db::row_to_message)
             .map_err(into_group_err)?;
 
         let mut messages: Vec<Message> = Vec::new();
@@ -134,7 +138,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
         Ok(messages)
     }
 
-    fn admins(&self, mls_group_id: &[u8]) -> Result<BTreeSet<PublicKey>, GroupError> {
+    fn admins(&self, mls_group_id: &GroupId) -> Result<BTreeSet<PublicKey>, GroupError> {
         // Get the group which contains the admin_pubkeys
         match self.find_group_by_mls_group_id(mls_group_id)? {
             Some(group) => Ok(group.admin_pubkeys),
@@ -145,7 +149,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
         }
     }
 
-    fn group_relays(&self, mls_group_id: &[u8]) -> Result<BTreeSet<GroupRelay>, GroupError> {
+    fn group_relays(&self, mls_group_id: &GroupId) -> Result<BTreeSet<GroupRelay>, GroupError> {
         // First verify the group exists
         if self.find_group_by_mls_group_id(mls_group_id)?.is_none() {
             return Err(GroupError::InvalidParameters(format!(
@@ -161,7 +165,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
             .map_err(into_group_err)?;
 
         let relays_iter = stmt
-            .query_map(params![mls_group_id], db::row_to_group_relay)
+            .query_map(params![mls_group_id.as_slice()], db::row_to_group_relay)
             .map_err(into_group_err)?;
 
         let mut relays: BTreeSet<GroupRelay> = BTreeSet::new();
@@ -191,7 +195,10 @@ impl GroupStorage for NostrMlsSqliteStorage {
         conn_guard
             .execute(
                 "INSERT OR REPLACE INTO group_relays (mls_group_id, relay_url) VALUES (?, ?)",
-                params![group_relay.mls_group_id, group_relay.relay_url.as_str()],
+                params![
+                    group_relay.mls_group_id.as_slice(),
+                    group_relay.relay_url.as_str()
+                ],
             )
             .map_err(into_group_err)?;
 
@@ -200,7 +207,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
 
     fn get_group_exporter_secret(
         &self,
-        mls_group_id: &[u8],
+        mls_group_id: &GroupId,
         epoch: u64,
     ) -> Result<Option<GroupExporterSecret>, GroupError> {
         // First verify the group exists
@@ -218,7 +225,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
             .map_err(into_group_err)?;
 
         stmt.query_row(
-            params![mls_group_id, epoch],
+            params![mls_group_id.as_slice(), epoch],
             db::row_to_group_exporter_secret,
         )
         .optional()
@@ -243,7 +250,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
 
         conn_guard.execute(
             "INSERT OR REPLACE INTO group_exporter_secrets (mls_group_id, epoch, secret) VALUES (?, ?, ?)",
-            params![&group_exporter_secret.mls_group_id, &group_exporter_secret.epoch, &group_exporter_secret.secret],
+            params![&group_exporter_secret.mls_group_id.as_slice(), &group_exporter_secret.epoch, &group_exporter_secret.secret],
         )
         .map_err(into_group_err)?;
 
@@ -263,10 +270,13 @@ mod tests {
         let storage = NostrMlsSqliteStorage::new_in_memory().unwrap();
 
         // Create a test group
-        let mls_group_id = vec![1, 2, 3, 4];
+        let mls_group_id = GroupId::from_slice(&[1, 2, 3, 4]);
+        let mut nostr_group_id = [0u8; 32];
+        nostr_group_id[0..13].copy_from_slice(b"test_group_12");
+
         let group = Group {
             mls_group_id: mls_group_id.clone(),
-            nostr_group_id: "test_group_123".to_string(),
+            nostr_group_id,
             name: "Test Group".to_string(),
             description: "A test group".to_string(),
             admin_pubkeys: BTreeSet::new(),
@@ -278,7 +288,7 @@ mod tests {
         };
 
         // Save the group
-        let result = storage.save_group(group.clone());
+        let result = storage.save_group(group);
         assert!(result.is_ok());
 
         // Find by MLS group ID
@@ -286,11 +296,11 @@ mod tests {
             .find_group_by_mls_group_id(&mls_group_id)
             .unwrap()
             .unwrap();
-        assert_eq!(found_group.nostr_group_id, "test_group_123");
+        assert_eq!(found_group.nostr_group_id[0..13], b"test_group_12"[..]);
 
         // Find by Nostr group ID
         let found_group = storage
-            .find_group_by_nostr_group_id("test_group_123")
+            .find_group_by_nostr_group_id(&nostr_group_id)
             .unwrap()
             .unwrap();
         assert_eq!(found_group.mls_group_id, mls_group_id);
@@ -305,10 +315,13 @@ mod tests {
         let storage = NostrMlsSqliteStorage::new_in_memory().unwrap();
 
         // Create a test group
-        let mls_group_id = vec![1, 2, 3, 4];
+        let mls_group_id = GroupId::from_slice(&[1, 2, 3, 4]);
+        let mut nostr_group_id = [0u8; 32];
+        nostr_group_id[0..13].copy_from_slice(b"test_group_12");
+
         let group = Group {
             mls_group_id: mls_group_id.clone(),
-            nostr_group_id: "test_group_123".to_string(),
+            nostr_group_id,
             name: "Test Group".to_string(),
             description: "A test group".to_string(),
             admin_pubkeys: BTreeSet::new(),
@@ -320,7 +333,7 @@ mod tests {
         };
 
         // Save the group
-        let result = storage.save_group(group.clone());
+        let result = storage.save_group(group);
         assert!(result.is_ok());
 
         // Create a group relay
@@ -331,7 +344,7 @@ mod tests {
         };
 
         // Save the group relay
-        let result = storage.save_group_relay(group_relay.clone());
+        let result = storage.save_group_relay(group_relay);
         assert!(result.is_ok());
 
         // Get group relays
@@ -348,10 +361,13 @@ mod tests {
         let storage = NostrMlsSqliteStorage::new_in_memory().unwrap();
 
         // Create a test group
-        let mls_group_id = vec![1, 2, 3, 4];
+        let mls_group_id = GroupId::from_slice(&[1, 2, 3, 4]);
+        let mut nostr_group_id = [0u8; 32];
+        nostr_group_id[0..13].copy_from_slice(b"test_group_12");
+
         let group = Group {
             mls_group_id: mls_group_id.clone(),
-            nostr_group_id: "test_group_123".to_string(),
+            nostr_group_id,
             name: "Test Group".to_string(),
             description: "A test group".to_string(),
             admin_pubkeys: BTreeSet::new(),
@@ -363,7 +379,7 @@ mod tests {
         };
 
         // Save the group
-        storage.save_group(group.clone()).unwrap();
+        storage.save_group(group).unwrap();
 
         // Create a group exporter secret
         let secret1 = GroupExporterSecret {
@@ -373,7 +389,7 @@ mod tests {
         };
 
         // Save the secret
-        storage.save_group_exporter_secret(secret1.clone()).unwrap();
+        storage.save_group_exporter_secret(secret1).unwrap();
 
         // Get the secret and verify it was saved correctly
         let retrieved_secret = storage
@@ -390,7 +406,7 @@ mod tests {
         };
 
         // Save the second secret - this should replace the first one due to the "OR REPLACE" in the SQL
-        storage.save_group_exporter_secret(secret2.clone()).unwrap();
+        storage.save_group_exporter_secret(secret2).unwrap();
 
         // Get the secret again and verify it was updated
         let retrieved_secret = storage
@@ -406,7 +422,7 @@ mod tests {
             secret: vec![13, 14, 15, 16],
         };
 
-        storage.save_group_exporter_secret(secret3.clone()).unwrap();
+        storage.save_group_exporter_secret(secret3).unwrap();
 
         // Verify both epochs exist
         let retrieved_secret1 = storage

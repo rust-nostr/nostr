@@ -5,6 +5,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use nostr::{EventId, PublicKey, RelayUrl, Timestamp, UnsignedEvent};
+use openmls::group::GroupId;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::error::WelcomeError;
@@ -32,9 +33,9 @@ pub struct Welcome {
     /// The event that contains the welcome message
     pub event: UnsignedEvent,
     /// MLS group id
-    pub mls_group_id: Vec<u8>,
+    pub mls_group_id: GroupId,
     /// Nostr group id (from NostrGroupDataExtension)
-    pub nostr_group_id: String,
+    pub nostr_group_id: [u8; 32],
     /// Group name (from NostrGroupDataExtension)
     pub group_name: String,
     /// Group description (from NostrGroupDataExtension)

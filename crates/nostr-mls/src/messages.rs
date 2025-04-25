@@ -11,6 +11,7 @@
 //! The message content is encrypted using both MLS group keys and NIP-44 encryption.
 //! Message state is tracked to handle processing status and failure scenarios.
 
+use nostr::util::hex;
 use nostr::{EventId, UnsignedEvent};
 use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls::group::{GroupId, ValidationError};
@@ -63,7 +64,7 @@ where
         mls_group_id: &GroupId,
     ) -> Result<Vec<message_types::Message>, Error> {
         self.storage()
-            .messages(mls_group_id.as_slice())
+            .messages(mls_group_id)
             .map_err(|e| Error::Message(e.to_string()))
     }
 
@@ -159,7 +160,7 @@ where
         // Generate ephemeral key
         let ephemeral_nostr_keys: Keys = Keys::generate();
 
-        let tag: Tag = Tag::custom(TagKind::h(), [group.nostr_group_id]);
+        let tag: Tag = Tag::custom(TagKind::h(), [hex::encode(group.nostr_group_id)]);
         let event = EventBuilder::new(Kind::MlsGroupMessage, encrypted_content)
             .tag(tag)
             .sign_with_keys(&ephemeral_nostr_keys)?;
@@ -169,7 +170,7 @@ where
             id: rumor.id.unwrap(),
             pubkey: rumor.pubkey,
             kind: rumor.kind,
-            mls_group_id: mls_group_id.as_slice().to_vec(),
+            mls_group_id: mls_group_id.clone(),
             created_at: rumor.created_at,
             content: rumor.content.clone(),
             tags: rumor.tags.clone(),
@@ -344,7 +345,7 @@ where
                     id: rumor.id.unwrap(),
                     pubkey: rumor.pubkey,
                     kind: rumor.kind,
-                    mls_group_id: mls_group_id.as_slice().to_vec(),
+                    mls_group_id: mls_group_id.clone(),
                     created_at: rumor.created_at,
                     content: rumor.content.clone(),
                     tags: rumor.tags.clone(),

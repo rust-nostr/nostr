@@ -71,8 +71,8 @@ where
                 .staged_welcome
                 .group_context()
                 .group_id()
-                .to_vec(),
-            nostr_group_id: welcome_preview.nostr_group_data.nostr_group_id(),
+                .clone(),
+            nostr_group_id: welcome_preview.nostr_group_data.nostr_group_id,
             name: welcome_preview.nostr_group_data.name.clone(),
             description: welcome_preview.nostr_group_data.description.clone(),
             admin_pubkeys: welcome_preview.nostr_group_data.admins.clone(),
@@ -111,8 +111,8 @@ where
                 .staged_welcome
                 .group_context()
                 .group_id()
-                .to_vec(),
-            nostr_group_id: welcome_preview.nostr_group_data.nostr_group_id(),
+                .clone(),
+            nostr_group_id: welcome_preview.nostr_group_data.nostr_group_id,
             group_name: welcome_preview.nostr_group_data.name,
             group_description: welcome_preview.nostr_group_data.description,
             group_admin_pubkeys: welcome_preview.nostr_group_data.admins,

@@ -33,7 +33,7 @@ impl MessageStorage for NostrMlsSqliteStorage {
                     message.id.as_bytes(),
                     message.pubkey.as_bytes(),
                     message.kind.as_u16(),
-                    message.mls_group_id,
+                    message.mls_group_id.as_slice(),
                     message.created_at.as_u64(),
                     message.content,
                     tags_json,
@@ -116,6 +116,7 @@ mod tests {
     use nostr_mls_storage::groups::types::{Group, GroupState, GroupType};
     use nostr_mls_storage::groups::GroupStorage;
     use nostr_mls_storage::messages::types::{MessageState, ProcessedMessageState};
+    use openmls::group::GroupId;
 
     use super::*;
 
@@ -124,10 +125,13 @@ mod tests {
         let storage = NostrMlsSqliteStorage::new_in_memory().unwrap();
 
         // First create a group (messages require a valid group foreign key)
-        let mls_group_id = vec![1, 2, 3, 4];
+        let mls_group_id = GroupId::from_slice(&[1, 2, 3, 4]);
+        let mut nostr_group_id = [0u8; 32];
+        nostr_group_id[0..13].copy_from_slice(b"test_group_12");
+
         let group = Group {
             mls_group_id: mls_group_id.clone(),
-            nostr_group_id: "test_group_123".to_string(),
+            nostr_group_id,
             name: "Test Group".to_string(),
             description: "A test group".to_string(),
             admin_pubkeys: BTreeSet::new(),

@@ -14,6 +14,7 @@ use nostr_mls_storage::messages::types::{
 use nostr_mls_storage::welcomes::types::{
     ProcessedWelcome, ProcessedWelcomeState, Welcome, WelcomeState,
 };
+use openmls::group::GroupId;
 use rusqlite::types::Type;
 use rusqlite::{Error, Result as SqliteResult, Row};
 
@@ -45,8 +46,8 @@ fn map_invalid_blob_data(msg: &str) -> Error {
 
 /// Convert a row to a Group struct
 pub fn row_to_group(row: &Row) -> SqliteResult<Group> {
-    let mls_group_id: Vec<u8> = row.get("mls_group_id")?;
-    let nostr_group_id: String = row.get("nostr_group_id")?;
+    let mls_group_id: GroupId = GroupId::from_slice(row.get_ref("mls_group_id")?.as_blob()?);
+    let nostr_group_id: [u8; 32] = row.get("nostr_group_id")?;
     let name: String = row.get("name")?;
     let description: String = row.get("description")?;
 
@@ -88,7 +89,7 @@ pub fn row_to_group(row: &Row) -> SqliteResult<Group> {
 
 /// Convert a row to a GroupRelay struct
 pub fn row_to_group_relay(row: &Row) -> SqliteResult<GroupRelay> {
-    let mls_group_id: Vec<u8> = row.get("mls_group_id")?;
+    let mls_group_id: GroupId = GroupId::from_slice(row.get_ref("mls_group_id")?.as_blob()?);
     let relay_url: &str = row.get_ref("relay_url")?.as_str()?;
 
     // Parse relay URL
@@ -103,7 +104,7 @@ pub fn row_to_group_relay(row: &Row) -> SqliteResult<GroupRelay> {
 
 /// Convert a row to a GroupExporterSecret struct
 pub fn row_to_group_exporter_secret(row: &Row) -> SqliteResult<GroupExporterSecret> {
-    let mls_group_id: Vec<u8> = row.get("mls_group_id")?;
+    let mls_group_id: GroupId = GroupId::from_slice(row.get_ref("mls_group_id")?.as_blob()?);
     let epoch: u64 = row.get("epoch")?;
     let secret: Vec<u8> = row.get("secret")?;
 
@@ -119,7 +120,7 @@ pub fn row_to_message(row: &Row) -> SqliteResult<Message> {
     let id_blob: &[u8] = row.get_ref("id")?.as_blob()?;
     let pubkey_blob: &[u8] = row.get_ref("pubkey")?.as_blob()?;
     let kind_value: u16 = row.get("kind")?;
-    let mls_group_id: Vec<u8> = row.get("mls_group_id")?;
+    let mls_group_id: GroupId = GroupId::from_slice(row.get_ref("mls_group_id")?.as_blob()?);
     let created_at_value: u64 = row.get("created_at")?;
     let content: String = row.get("content")?;
     let tags_json: &str = row.get_ref("tags")?.as_str()?;
@@ -200,8 +201,8 @@ pub fn row_to_processed_message(row: &Row) -> SqliteResult<ProcessedMessage> {
 pub fn row_to_welcome(row: &Row) -> SqliteResult<Welcome> {
     let id_blob: &[u8] = row.get_ref("id")?.as_blob()?;
     let event_json: &str = row.get_ref("event")?.as_str()?;
-    let mls_group_id: Vec<u8> = row.get("mls_group_id")?;
-    let nostr_group_id: String = row.get("nostr_group_id")?;
+    let mls_group_id: GroupId = GroupId::from_slice(row.get_ref("mls_group_id")?.as_blob()?);
+    let nostr_group_id: [u8; 32] = row.get("nostr_group_id")?;
     let group_name: String = row.get("group_name")?;
     let group_description: String = row.get("group_description")?;
     let group_admin_pubkeys_json: &str = row.get_ref("group_admin_pubkeys")?.as_str()?;
