@@ -116,7 +116,7 @@ where
     ///
     /// * `Ok(GroupExporterSecret)` - The exported secret
     /// * `Err(Error)` - If the group is not found or there is an error exporting the secret
-    pub(crate) fn exporter_secret(
+    pub fn exporter_secret(
         &self,
         group_id: &GroupId,
     ) -> Result<group_types::GroupExporterSecret, Error> {
