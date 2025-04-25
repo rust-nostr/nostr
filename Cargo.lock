@@ -3123,7 +3123,7 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 [[package]]
 name = "openmls_memory_storage"
 version = "0.3.0"
-source = "git+https://github.com/erskingardner/openmls?rev=88309e1bc79c129628f35c55e838be2d7277c335#88309e1bc79c129628f35c55e838be2d7277c335"
+source = "git+https://github.com/openmls/openmls?rev=4cc0f594b11262083ad9827b3b2033052c6ef99f#4cc0f594b11262083ad9827b3b2033052c6ef99f"
 dependencies = [
  "log",
  "openmls_traits",
@@ -3135,7 +3135,7 @@ dependencies = [
 [[package]]
 name = "openmls_sqlite_storage"
 version = "0.1.0"
-source = "git+https://github.com/erskingardner/openmls?rev=88309e1bc79c129628f35c55e838be2d7277c335#88309e1bc79c129628f35c55e838be2d7277c335"
+source = "git+https://github.com/openmls/openmls?rev=4cc0f594b11262083ad9827b3b2033052c6ef99f#4cc0f594b11262083ad9827b3b2033052c6ef99f"
 dependencies = [
  "log",
  "openmls_traits",
@@ -3148,7 +3148,7 @@ dependencies = [
 [[package]]
 name = "openmls_traits"
 version = "0.3.0"
-source = "git+https://github.com/erskingardner/openmls?rev=88309e1bc79c129628f35c55e838be2d7277c335#88309e1bc79c129628f35c55e838be2d7277c335"
+source = "git+https://github.com/openmls/openmls?rev=4cc0f594b11262083ad9827b3b2033052c6ef99f#4cc0f594b11262083ad9827b3b2033052c6ef99f"
 dependencies = [
  "serde",
  "tls_codec",
