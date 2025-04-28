@@ -40,6 +40,10 @@
 * mls: add new crate for implementing MLS messaging ([JeffG] at https://github.com/rust-nostr/nostr/pull/843)
 * sdk: add `Options::pool` ([Yuki Kishimoto])
 
+### Deprecated
+
+* sdk: deprecate `Options::notification_channel_size` ([Yuki Kishimoto])
+
 ## v0.41.0 - 2025/04/15
 
 ### Breaking changes

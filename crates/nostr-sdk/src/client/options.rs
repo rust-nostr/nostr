@@ -96,7 +96,7 @@ impl Options {
     }
 
     /// Notification channel size (default: [`DEFAULT_NOTIFICATION_CHANNEL_SIZE`])
-    #[inline]
+    #[deprecated(since = "0.42.0", note = "Use `Options::pool` instead.")]
     pub fn notification_channel_size(mut self, size: usize) -> Self {
         self.pool = self.pool.notification_channel_size(size);
         self
