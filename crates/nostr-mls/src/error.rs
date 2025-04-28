@@ -75,6 +75,8 @@ pub enum Error {
     SelfUpdate(String),
     /// Welcome error
     Welcome(String),
+    /// We're missing a Welcome for an existing ProcessedWelcome
+    MissingWelcomeForProcessedWelcome,
     /// Provider error
     Provider(String),
     /// Group not found
@@ -128,6 +130,9 @@ impl fmt::Display for Error {
             Self::Message(e) => write!(f, "{e}"),
             Self::CannotDecryptOwnMessage => write!(f, "cannot decrypt own message"),
             Self::Welcome(e) => write!(f, "{e}"),
+            Self::MissingWelcomeForProcessedWelcome => {
+                write!(f, "missing welcome for processed welcome")
+            }
             Self::MergePendingCommit(e) => write!(f, "{e}"),
             Self::SelfUpdate(e) => write!(f, "{e}"),
             Self::Provider(e) => write!(f, "{e}"),

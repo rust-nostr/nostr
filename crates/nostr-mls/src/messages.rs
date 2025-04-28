@@ -300,7 +300,7 @@ where
     ///
     /// * `Ok(())` - If message processing succeeds
     /// * `Err(Error)` - If message processing fails
-    pub fn process_message(&self, event: &Event) -> Result<(), Error> {
+    pub fn process_message(&self, event: &Event) -> Result<Option<message_types::Message>, Error> {
         if event.kind != Kind::MlsGroupMessage {
             return Err(Error::UnexpectedEvent {
                 expected: Kind::MlsGroupMessage,
@@ -385,7 +385,7 @@ where
 
                 tracing::debug!(target: "nostr_mls::messages::process_message", "Processed message: {:?}", processed_message);
                 tracing::debug!(target: "nostr_mls::messages::process_message", "Message: {:?}", message);
-                Ok(())
+                Ok(Some(message))
             }
             Ok(None) => {
                 // This is what happens with proposals, commits, etc.
@@ -401,7 +401,7 @@ where
                     .save_processed_message(processed_message)
                     .map_err(|e| Error::Message(e.to_string()))?;
 
-                Ok(())
+                Ok(None)
             }
             Err(e) => {
                 match e {
@@ -429,7 +429,7 @@ where
                                 processed_message.state =
                                     message_types::ProcessedMessageState::Processed;
                                 self.storage()
-                                    .save_processed_message(processed_message)
+                                    .save_processed_message(processed_message.clone())
                                     .map_err(|e| Error::Message(e.to_string()))?;
 
                                 tracing::debug!(target: "nostr_mls::messages::process_message", "Updated state of own cached message");
@@ -441,7 +441,9 @@ where
                                 tracing::debug!(target: "nostr_mls::messages::process_message", "Message previously failed to process");
                             }
                         }
-                        return Ok(());
+                        let message =
+                            self.get_message(&processed_message.message_event_id.unwrap())?;
+                        return Ok(message);
                     }
                     _ => {
                         tracing::error!(target: "nostr_mls::messages::process_message", "Error processing message: {:?}", e);
@@ -457,7 +459,7 @@ where
                             .map_err(|e| Error::Message(e.to_string()))?;
                     }
                 }
-                Ok(())
+                Ok(None)
             }
         }
     }

@@ -58,9 +58,25 @@ where
         &self,
         wrapper_event_id: &EventId,
         rumor_event: &UnsignedEvent,
-    ) -> Result<(), Error> {
+    ) -> Result<welcome_types::Welcome, Error> {
         if self.is_welcome_processed(wrapper_event_id)? {
-            return Ok(());
+            let processed_welcome = self
+                .storage()
+                .find_processed_welcome_by_event_id(wrapper_event_id)
+                .map_err(|e| Error::Welcome(e.to_string()))?;
+            return match processed_welcome {
+                Some(processed_welcome) => {
+                    if let Some(welcome_event_id) = processed_welcome.welcome_event_id {
+                        self.storage()
+                            .find_welcome_by_event_id(&welcome_event_id)
+                            .map_err(|e| Error::Welcome(e.to_string()))?
+                            .ok_or(Error::MissingWelcomeForProcessedWelcome)
+                    } else {
+                        Err(Error::MissingWelcomeForProcessedWelcome)
+                    }
+                }
+                None => Err(Error::MissingWelcomeForProcessedWelcome),
+            };
         }
 
         let welcome_preview = self.preview_welcome(wrapper_event_id, rumor_event)?;
@@ -128,10 +144,10 @@ where
             .map_err(|e| Error::Welcome(e.to_string()))?;
 
         self.storage()
-            .save_welcome(welcome)
+            .save_welcome(welcome.clone())
             .map_err(|e| Error::Welcome(e.to_string()))?;
 
-        Ok(())
+        Ok(welcome)
     }
 
     /// Accepts a welcome
