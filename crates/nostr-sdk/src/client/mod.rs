@@ -83,6 +83,7 @@ impl Client {
         let pool_builder: RelayPoolBuilder = RelayPoolBuilder {
             websocket_transport: builder.websocket_transport,
             admit_policy: builder.admit_policy,
+            monitor: builder.monitor,
             opts: builder.opts.pool,
             __database: builder.database,
             __signer: builder.signer,
@@ -154,6 +155,12 @@ impl Client {
     #[inline]
     pub fn database(&self) -> &Arc<dyn NostrDatabase> {
         self.pool.database()
+    }
+
+    /// Get the relay monitor
+    #[inline]
+    pub fn monitor(&self) -> Option<&Monitor> {
+        self.pool.monitor()
     }
 
     /// Reset the client

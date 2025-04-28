@@ -224,6 +224,11 @@ impl InnerRelay {
 
         // Send notification
         self.send_notification(RelayNotification::RelayStatus { status }, false);
+
+        // If monitor is enabled, notify status change.
+        if let Some(monitor) = &self.state.monitor {
+            monitor.notify_status_change(self.url.clone(), status);
+        }
     }
 
     /// Perform health checks

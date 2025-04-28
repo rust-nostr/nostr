@@ -15,6 +15,7 @@ use nostr::{EventId, NostrSigner};
 use nostr_database::{IntoNostrDatabase, MemoryDatabase, NostrDatabase};
 use tokio::sync::RwLock;
 
+use crate::monitor::Monitor;
 use crate::policy::AdmitPolicy;
 use crate::transport::websocket::{DefaultWebsocketTransport, WebSocketTransport};
 
@@ -47,6 +48,7 @@ pub struct SharedState {
     nip42_auto_authentication: Arc<AtomicBool>,
     verification_cache: Arc<Mutex<LruCache<u64, ()>>>,
     pub(crate) admit_policy: Option<Arc<dyn AdmitPolicy>>,
+    pub(crate) monitor: Option<Monitor>,
 }
 
 impl Default for SharedState {
@@ -57,6 +59,7 @@ impl Default for SharedState {
             None,
             None,
             true,
+            None,
         )
     }
 }
@@ -68,6 +71,7 @@ impl SharedState {
         signer: Option<Arc<dyn NostrSigner>>,
         admit_policy: Option<Arc<dyn AdmitPolicy>>,
         nip42_auto_authentication: bool,
+        monitor: Option<Monitor>,
     ) -> Self {
         let max_verification_cache_size: NonZeroUsize =
             NonZeroUsize::new(MAX_VERIFICATION_CACHE_SIZE)
@@ -80,6 +84,7 @@ impl SharedState {
             nip42_auto_authentication: Arc::new(AtomicBool::new(nip42_auto_authentication)),
             verification_cache: Arc::new(Mutex::new(LruCache::new(max_verification_cache_size))),
             admit_policy,
+            monitor,
         }
     }
 

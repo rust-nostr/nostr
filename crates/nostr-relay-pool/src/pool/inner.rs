@@ -55,6 +55,7 @@ impl InnerRelayPool {
                 builder.__signer,
                 builder.admit_policy,
                 builder.opts.nip42_auto_authentication,
+                builder.monitor,
             ),
             atomic: Arc::new(AtomicPrivateData {
                 relays: RwLock::new(HashMap::new()),

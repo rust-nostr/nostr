@@ -11,6 +11,7 @@ use nostr_database::{MemoryDatabase, NostrDatabase};
 
 use super::options::RelayPoolOptions;
 use super::RelayPool;
+use crate::monitor::Monitor;
 use crate::policy::AdmitPolicy;
 use crate::transport::websocket::{DefaultWebsocketTransport, WebSocketTransport};
 
@@ -21,6 +22,8 @@ pub struct RelayPoolBuilder {
     pub websocket_transport: Arc<dyn WebSocketTransport>,
     /// Admission policy
     pub admit_policy: Option<Arc<dyn AdmitPolicy>>,
+    /// Relay monitor
+    pub monitor: Option<Monitor>,
     /// Relay pool options
     pub opts: RelayPoolOptions,
     // Private stuff
@@ -35,6 +38,7 @@ impl Default for RelayPoolBuilder {
         Self {
             websocket_transport: Arc::new(DefaultWebsocketTransport),
             admit_policy: None,
+            monitor: None,
             opts: RelayPoolOptions::default(),
             __database: Arc::new(MemoryDatabase::default()),
             __signer: None,
@@ -66,6 +70,13 @@ impl RelayPoolBuilder {
         T: AdmitPolicy + 'static,
     {
         self.admit_policy = Some(Arc::new(policy));
+        self
+    }
+
+    /// Set monitor
+    #[inline]
+    pub fn monitor(mut self, monitor: Monitor) -> Self {
+        self.monitor = Some(monitor);
         self
     }
 

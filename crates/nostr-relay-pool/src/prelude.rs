@@ -14,6 +14,7 @@ pub use nostr::prelude::*;
 pub use nostr_database::*;
 
 // Internal modules
+pub use crate::monitor::{self, *};
 pub use crate::policy::*;
 pub use crate::pool::builder::*;
 pub use crate::pool::constants::*;

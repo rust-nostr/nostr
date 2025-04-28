@@ -77,6 +77,9 @@ name = "gossip"
 required-features = ["all-nips"]
 
 [[example]]
+name = "monitor"
+
+[[example]]
 name = "nostr-connect"
 required-features = ["nip59"]
 

@@ -28,6 +28,7 @@ pub use self::error::Error;
 use self::inner::{InnerRelayPool, Relays};
 pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
+use crate::monitor::Monitor;
 use crate::relay::flags::FlagCheck;
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
 use crate::relay::Relay;
@@ -137,6 +138,13 @@ impl RelayPool {
     /// <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>
     pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
         self.inner.notification_sender.subscribe()
+    }
+
+    /// Returns the reference to the monitor, if any.
+    ///
+    /// Returns `None` if the monitor is not configured (see [`RelayPoolBuilder::monitor`] ).
+    pub fn monitor(&self) -> Option<&Monitor> {
+        self.inner.state.monitor.as_ref()
     }
 
     /// Get shared state
