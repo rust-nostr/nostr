@@ -101,6 +101,13 @@ impl Options {
         self.pool = self.pool.notification_channel_size(size);
         self
     }
+
+    /// Set relay pool options
+    #[inline]
+    pub fn pool(mut self, opts: RelayPoolOptions) -> Self {
+        self.pool = opts;
+        self
+    }
 }
 
 /// Connection target

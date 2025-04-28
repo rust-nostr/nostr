@@ -38,6 +38,7 @@
 * mls-memory-storage: add an in-memory implementation for MLS ([JeffG] at https://github.com/rust-nostr/nostr/pull/839)
 * mls-sqlite-storage: a sqlite implementation for MLS ([JeffG] at https://github.com/rust-nostr/nostr/pull/842)
 * mls: add new crate for implementing MLS messaging ([JeffG] at https://github.com/rust-nostr/nostr/pull/843)
+* sdk: add `Options::pool` ([Yuki Kishimoto])
 
 ## v0.41.0 - 2025/04/15
 
