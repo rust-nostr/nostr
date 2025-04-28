@@ -30,10 +30,14 @@ async fn main() -> Result<()> {
 
     // Create key package for Bob
     // This would be published to the Nostr network for other users to find
-    let bob_key_package_event: Event = bob_nostr_mls
-        .create_key_package(&bob_keys, [relay_url.clone()])
-        .await?;
+    let (bob_key_package_encoded, tags) =
+        bob_nostr_mls.create_key_package_for_event(&bob_keys.public_key(), [relay_url.clone()])?;
 
+    let bob_key_package_event = EventBuilder::new(Kind::MlsKeyPackage, bob_key_package_encoded)
+        .tags(tags)
+        .build(bob_keys.public_key())
+        .sign(&bob_keys)
+        .await?;
     // ================================
     // We're now acting as Alice
     // ================================

@@ -1,7 +1,7 @@
 //! Nostr MLS Key Packages
 
 use nostr::util::hex;
-use nostr::{Event, EventBuilder, Kind, NostrSigner, PublicKey, RelayUrl, Tag, TagKind};
+use nostr::{Event, Kind, PublicKey, RelayUrl, Tag, TagKind};
 use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls::key_packages::KeyPackage;
 use openmls::prelude::*;
@@ -18,12 +18,14 @@ where
 {
     /// Creates a key package for a Nostr event.
     ///
-    /// This function generates a key package that can be used in a Nostr event to join an MLS group.
+    /// This function generates a hex-encoded key package that is used as the content field of a kind:443 Nostr event.
     /// The key package contains the user's credential and capabilities required for MLS operations.
     ///
     /// # Returns
     ///
-    /// A hex-encoded string containing the serialized key package on success, or a KeyPackageError on failure.
+    /// A tuple containing:
+    /// * A hex-encoded string containing the serialized key package
+    /// * A tuple of tags for the Nostr event
     ///
     /// # Errors
     ///
@@ -31,7 +33,14 @@ where
     /// * It fails to generate the credential and signature keypair
     /// * It fails to build the key package
     /// * It fails to serialize the key package
-    fn create_key_package_for_event(&self, public_key: &PublicKey) -> Result<String, Error> {
+    pub fn create_key_package_for_event<I>(
+        &self,
+        public_key: &PublicKey,
+        relays: I,
+    ) -> Result<(String, [Tag; 5]), Error>
+    where
+        I: IntoIterator<Item = RelayUrl>,
+    {
         let (credential, signature_keypair) = self.generate_credential_with_key(public_key)?;
 
         let capabilities: Capabilities = self.capabilities();
@@ -46,37 +55,20 @@ where
                 credential,
             )?;
 
-        // serialize the key package, then encode it to hex and put it in the content field
         let key_package_serialized = key_package_bundle.key_package().tls_serialize_detached()?;
-
-        Ok(hex::encode(key_package_serialized))
-    }
-
-    /// Create key package [`Event`]
-    pub async fn create_key_package<T, I>(&self, signer: &T, relays: I) -> Result<Event, Error>
-    where
-        T: NostrSigner,
-        I: IntoIterator<Item = RelayUrl>,
-    {
-        let public_key: PublicKey = signer.get_public_key().await?;
-
-        let serialized_key_package: String = self.create_key_package_for_event(&public_key)?;
-
-        let ciphersuite: String = self.ciphersuite_value().to_string();
-        let extensions: String = self.extensions_value();
 
         let tags = [
             Tag::custom(TagKind::MlsProtocolVersion, ["1.0"]),
-            Tag::custom(TagKind::MlsCiphersuite, [ciphersuite]),
-            Tag::custom(TagKind::MlsExtensions, [extensions]),
+            Tag::custom(
+                TagKind::MlsCiphersuite,
+                [self.ciphersuite_value().to_string()],
+            ),
+            Tag::custom(TagKind::MlsExtensions, [self.extensions_value()]),
             Tag::relays(relays),
             Tag::protected(),
         ];
 
-        let builder: EventBuilder =
-            EventBuilder::new(Kind::MlsKeyPackage, serialized_key_package).tags(tags);
-
-        Ok(builder.sign(signer).await?)
+        Ok((hex::encode(key_package_serialized), tags))
     }
 
     /// Parses and validates a hex-encoded key package.
@@ -196,10 +188,11 @@ mod tests {
         let test_pubkey =
             PublicKey::from_hex("884704bd421671e01c13f854d2ce23ce2a5bfe9562f4f297ad2bc921ba30c3a6")
                 .unwrap();
+        let relays = vec![RelayUrl::parse("wss://relay.example.com").unwrap()];
 
         // Create key package
-        let key_package_hex = nostr_mls
-            .create_key_package_for_event(&test_pubkey)
+        let (key_package_hex, tags) = nostr_mls
+            .create_key_package_for_event(&test_pubkey, relays.clone())
             .expect("Failed to create key package");
 
         // Create new instance for parsing
@@ -212,6 +205,22 @@ mod tests {
 
         // Verify the key package has the expected properties
         assert_eq!(key_package.ciphersuite(), DEFAULT_CIPHERSUITE);
+
+        assert_eq!(tags.len(), 5);
+        assert_eq!(tags[0].kind(), TagKind::MlsProtocolVersion);
+        assert_eq!(tags[1].kind(), TagKind::MlsCiphersuite);
+        assert_eq!(tags[2].kind(), TagKind::MlsExtensions);
+        assert_eq!(tags[3].kind(), TagKind::Relays);
+        assert_eq!(tags[4].kind(), TagKind::Protected);
+
+        assert_eq!(
+            tags[3].content().unwrap(),
+            relays
+                .iter()
+                .map(|r| r.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        );
     }
 
     #[test]
@@ -221,9 +230,11 @@ mod tests {
             PublicKey::from_hex("884704bd421671e01c13f854d2ce23ce2a5bfe9562f4f297ad2bc921ba30c3a6")
                 .unwrap();
 
+        let relays = vec![RelayUrl::parse("wss://relay.example.com").unwrap()];
+
         // Create and parse key package
-        let key_package_hex = nostr_mls
-            .create_key_package_for_event(&test_pubkey)
+        let (key_package_hex, _) = nostr_mls
+            .create_key_package_for_event(&test_pubkey, relays.clone())
             .expect("Failed to create key package");
 
         // Create new instance for parsing and deletion
