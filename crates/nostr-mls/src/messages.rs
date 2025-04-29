@@ -134,7 +134,7 @@ where
             .ok_or(Error::GroupNotFound)?;
 
         // Load stored group
-        let group: group_types::Group = self
+        let mut group: group_types::Group = self
             .get_group(mls_group_id)
             .map_err(|e| Error::Group(e.to_string()))?
             .ok_or(Error::GroupNotFound)?;
@@ -190,13 +190,20 @@ where
 
         // Save message to storage
         self.storage()
-            .save_message(message)
+            .save_message(message.clone())
             .map_err(|e| Error::Message(e.to_string()))?;
 
         // Save processed message to storage
         self.storage()
             .save_processed_message(processed_message)
             .map_err(|e| Error::Message(e.to_string()))?;
+
+        // Update last_message_at and last_message_id
+        group.last_message_at = Some(rumor.created_at);
+        group.last_message_id = Some(message.id);
+        self.storage()
+            .save_group(group)
+            .map_err(|e| Error::Group(e.to_string()))?;
 
         Ok(event)
     }
@@ -323,7 +330,7 @@ where
         .try_into()
         .map_err(|_e| Error::Message("Failed to convert nostr group id to [u8; 32]".to_string()))?;
 
-        let group = self
+        let mut group = self
             .storage()
             .find_group_by_nostr_group_id(&nostr_group_id)
             .map_err(|e| Error::Group(e.to_string()))?
@@ -382,6 +389,13 @@ where
                 self.storage()
                     .save_processed_message(processed_message.clone())
                     .map_err(|e| Error::Message(e.to_string()))?;
+
+                // Update last_message_at and last_message_id
+                group.last_message_at = Some(rumor.created_at);
+                group.last_message_id = Some(message.id);
+                self.storage()
+                    .save_group(group)
+                    .map_err(|e| Error::Group(e.to_string()))?;
 
                 tracing::debug!(target: "nostr_mls::messages::process_message", "Processed message: {:?}", processed_message);
                 tracing::debug!(target: "nostr_mls::messages::process_message", "Message: {:?}", message);
