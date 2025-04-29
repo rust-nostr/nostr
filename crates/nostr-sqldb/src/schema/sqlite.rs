@@ -15,7 +15,6 @@ diesel::table! {
         created_at -> BigInt,
         kind -> BigInt,
         payload -> Binary,
-        signature -> Text,
         deleted -> Bool,
     }
 }

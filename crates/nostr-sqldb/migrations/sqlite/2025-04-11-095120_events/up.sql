@@ -5,7 +5,6 @@ CREATE TABLE events (
     created_at BIGINT NOT NULL,
     kind BIGINT NOT NULL,
     payload BLOB NOT NULL,
-    signature VARCHAR(128) NOT NULL,
     deleted BOOLEAN NOT NULL
 );
 

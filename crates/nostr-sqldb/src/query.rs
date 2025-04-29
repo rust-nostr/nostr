@@ -17,7 +17,7 @@ type QuerySetJoinTypeDb<'a, DB> = IntoBoxed<
     'a,
     DieselFilter<
         InnerJoin<events::table, event_tags::table>,
-        Eq<event_tags::event_id, diesel::expression::SqlLiteral<diesel::sql_types::VarChar>>,
+        Eq<event_tags::event_id, diesel::expression::SqlLiteral<diesel::sql_types::Bytea>>,
     >,
     DB,
 >;
@@ -53,12 +53,18 @@ pub fn build_filter_query<'a>(filter: Filter) -> QuerySetJoinType<'a> {
         return query;
     }
     if let Some(ids) = filter.ids.clone() {
-        let values = ids.iter().map(|id| id.to_hex()).collect::<Vec<_>>();
+        let values = ids
+            .iter()
+            .map(|id| id.as_bytes().to_vec())
+            .collect::<Vec<_>>();
         query = query.filter(events::id.eq_any(values));
     }
 
     if let Some(authors) = filter.authors.clone() {
-        let values = authors.iter().map(|a| a.to_hex()).collect::<Vec<_>>();
+        let values = authors
+            .iter()
+            .map(|a| a.as_bytes().to_vec())
+            .collect::<Vec<_>>();
         query = query.filter(events::pubkey.eq_any(values));
     }
 
@@ -98,7 +104,7 @@ pub fn with_limit(filter: Filter, default_limit: usize) -> Filter {
 }
 
 pub fn event_by_id<'a>(event_id: &EventId) -> BoxedEventQuery<'a> {
-    let event_id = event_id.to_hex();
+    let event_id = event_id.as_bytes().to_vec();
     events::table
         .select(EventDb::as_select())
         .filter(events::id.eq(event_id))

@@ -20,8 +20,6 @@ diesel::table! {
         created_at -> Bigint,
         kind -> Bigint,
         payload -> Blob,
-        #[max_length = 128]
-        signature -> Varchar,
         deleted -> Bool,
     }
 }

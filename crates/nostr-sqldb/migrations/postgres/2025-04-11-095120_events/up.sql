@@ -1,11 +1,10 @@
 -- The actual event data
 CREATE TABLE events (
-    id VARCHAR(64) PRIMARY KEY,
-    pubkey VARCHAR(64) NOT NULL,
+    id BYTEA PRIMARY KEY,
+    pubkey BYTEA NOT NULL,
     created_at BIGINT NOT NULL,
     kind BIGINT NOT NULL,
     payload BYTEA NOT NULL,
-    signature VARCHAR(128) NOT NULL,
     deleted BOOLEAN NOT NULL
 );
 
@@ -19,7 +18,7 @@ CREATE INDEX event_deleted ON events (deleted);
 CREATE TABLE event_tags (
     tag TEXT NOT NULL,
     tag_value TEXT NOT NULL,
-    event_id VARCHAR(64) NOT NULL
+    event_id BYTEA NOT NULL
     REFERENCES events (id)
     ON DELETE CASCADE
     ON UPDATE CASCADE,

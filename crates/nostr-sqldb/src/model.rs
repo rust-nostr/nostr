@@ -11,12 +11,11 @@ use crate::schema::postgres::{event_tags, events};
 #[derive(Queryable, Selectable, Insertable, AsChangeset, Debug, Clone)]
 #[diesel(table_name = events)]
 pub struct EventDb {
-    pub id: String,
-    pub pubkey: String,
+    pub id: Vec<u8>,
+    pub pubkey: Vec<u8>,
     pub created_at: i64,
     pub kind: i64,
     pub payload: Vec<u8>,
-    pub signature: String,
     pub deleted: bool,
 }
 
@@ -26,7 +25,7 @@ pub struct EventDb {
 pub struct EventTagDb {
     pub tag: String,
     pub tag_value: String,
-    pub event_id: String,
+    pub event_id: Vec<u8>,
 }
 
 /// A data container for extracting data from [`Event`] and its tags
@@ -41,12 +40,11 @@ impl TryFrom<&Event> for EventDataDb {
     fn try_from(value: &Event) -> Result<Self, Self::Error> {
         Ok(Self {
             event: EventDb {
-                id: value.id.to_string(),
-                pubkey: value.pubkey.to_string(),
+                id: value.id.as_bytes().to_vec(),
+                pubkey: value.pubkey.as_bytes().to_vec(),
                 created_at: value.created_at.as_u64() as i64,
                 kind: value.kind.as_u16() as i64,
                 payload: encode_payload(value),
-                signature: value.sig.to_string(),
                 deleted: false,
             },
             tags: extract_tags(value),
@@ -77,7 +75,7 @@ fn extract_tags(event: &Event) -> Vec<EventTagDb> {
                 Some(EventTagDb {
                     tag: kind.to_string(),
                     tag_value: content.to_string(),
-                    event_id: event.id.to_string(),
+                    event_id: event.id.as_bytes().to_vec(),
                 })
             } else {
                 None

@@ -1,6 +1,6 @@
-# Nostr Postgres database backend
+# Nostr SQL database backend
 
-Postgres storage backend for nostr apps
+SQL storage backend for nostr apps working with Postgres, SQLite and MySQL.
 
 ## State
 

@@ -4,22 +4,17 @@ diesel::table! {
     event_tags (tag, tag_value, event_id) {
         tag -> Text,
         tag_value -> Text,
-        #[max_length = 64]
-        event_id -> Varchar,
+        event_id -> Bytea,
     }
 }
 
 diesel::table! {
     events (id) {
-        #[max_length = 64]
-        id -> Varchar,
-        #[max_length = 64]
-        pubkey -> Varchar,
+        id -> Bytea,
+        pubkey -> Bytea,
         created_at -> Int8,
         kind -> Int8,
         payload -> Bytea,
-        #[max_length = 128]
-        signature -> Varchar,
         deleted -> Bool,
     }
 }
