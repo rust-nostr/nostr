@@ -75,7 +75,7 @@ where
                         Err(Error::MissingWelcomeForProcessedWelcome)
                     }
                 }
-                None => Err(Error::MissingWelcomeForProcessedWelcome),
+                None => Err(Error::ProcessedWelcomeNotFound),
             };
         }
 
