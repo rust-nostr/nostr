@@ -713,22 +713,9 @@ impl Relay {
 
         let mut output: Reconciliation = Reconciliation::default();
 
-        match self
-            .inner
-            .sync_new(&filter, items.clone(), opts, &mut output)
-            .await
-        {
-            Ok(..) => {}
-            Err(e) => match e {
-                Error::NegentropyNotSupported
-                | Error::Negentropy(negentropy::Error::UnsupportedProtocolVersion) => {
-                    self.inner
-                        .sync_deprecated(&filter, items, opts, &mut output)
-                        .await?;
-                }
-                e => return Err(e),
-            },
-        }
+        self.inner
+            .sync(&filter, items.clone(), opts, &mut output)
+            .await?;
 
         Ok(output)
     }

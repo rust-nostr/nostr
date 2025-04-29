@@ -1,0 +1,20 @@
+[package]
+name = "nostr-mls-memory-storage"
+version = "0.41.0"
+edition = "2021"
+description = "In-memory database for nostr-mls that implements the NostrMlsStorageProvider Trait"
+authors = ["Jeff Gardner <j@jeffg.me>", "Yuki Kishimoto <yukikishimoto@protonmail.com>", "Rust Nostr Developers"]
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version = "1.74.0"
+keywords = ["nostr", "mls", "openmls", "memory"]
+
+[dependencies]
+lru.workspace = true
+nostr = { workspace = true, features = ["std"] }
+nostr-mls-storage.workspace = true
+openmls = { git = "https://github.com/openmls/openmls", rev = "4cc0f594b11262083ad9827b3b2033052c6ef99f", default-features = false }
+openmls_memory_storage = { git = "https://github.com/openmls/openmls", rev = "4cc0f594b11262083ad9827b3b2033052c6ef99f", default-features = false }
+parking_lot = "0.12"

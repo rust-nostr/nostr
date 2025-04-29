@@ -25,6 +25,29 @@
 
 -->
 
+## Unreleased
+
+### Breaking changes
+
+* pool: drop support for deprecated negentropy protocol ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/853)
+
+### Changed
+
+* Bump `lru` from 0.13.0 to 0.14.0 ([Yuki Kishimoto])
+
+### Added
+
+* blossom: add new crate with Blossom support ([Daniel D’Aquino] at https://github.com/rust-nostr/nostr/pull/838)
+* mls-storage: add new crate with traits and types for mls storage implementations ([JeffG] at https://github.com/rust-nostr/nostr/pull/836)
+* mls-memory-storage: add an in-memory implementation for MLS ([JeffG] at https://github.com/rust-nostr/nostr/pull/839)
+* mls-sqlite-storage: a sqlite implementation for MLS ([JeffG] at https://github.com/rust-nostr/nostr/pull/842)
+* mls: add new crate for implementing MLS messaging ([JeffG] at https://github.com/rust-nostr/nostr/pull/843)
+* sdk: add `Options::pool` ([Yuki Kishimoto])
+
+### Deprecated
+
+* sdk: deprecate `Options::notification_channel_size` ([Yuki Kishimoto])
+
 ## v0.41.0 - 2025/04/15
 
 ### Breaking changes
@@ -38,7 +61,7 @@
 
 ### Changed
 
-* lmdb: enable POSIX semaphores for macOS and iOS targets ([Yuki Kishimoto])
+* lmdb: enable POSIX semaphores for macOS and iOS targets ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/commit/b58e0975f8ea53e794721a09d051b92c6a28212e)
 * ndb: bump nostrdb to 0.6.1 ([Yuki Kishimoto])
 * pool: extend unit tests ([Yuki Kishimoto])
 * pool: better handling of `CLOSED` message for REQs ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/778)
@@ -50,18 +73,18 @@
 * nostr: add `TagKind::u` constructor ([Yuki Kishimoto])
 * nostr: derive `Copy` for `HttpMethod` ([Yuki Kishimoto])
 * nostr: add `nip98::verify_auth_header` ([Yuki Kishimoto])
-* nostr: add `push`, `pop`, `insert` and `extend` methods to the `Tag` struct ([Yuki Kishimoto])
+* nostr: add `push`, `pop`, `insert` and `extend` methods to the `Tag` struct ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/817)
 * nostr: add `nip47::Notification` ([daywalker90])
 * nostr: add `MachineReadablePrefix::as_str` method ([Yuki Kishimoto])
 * nostr: derive `Hash` for `EventBuilder` and `Metadata` ([Yuki Kishimoto])
 * pool: add `Relay::ban` method ([Yuki Kishimoto])
-* pool: add `AdmitPolicy::admit_connection` method ([Yuki Kishimoto])
-* keyring: add `NostrKeyring` ([Yuki Kishimoto])
+* pool: add `AdmitPolicy::admit_connection` method ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/831)
+* keyring: add `NostrKeyring` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/818)
 
 ### Fixed
 
 * nostr: fix missing `transactions` object in serialization of nip47 ListTransactions ResponseResult ([daywalker90])
-* nostr: fix NIP32 implementation ([Yuki Kishimoto])
+* nostr: fix NIP32 implementation ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/commit/6979744839381ffa2b27f2d1efa5e13e522cdf24)
 
 ## v0.40.1 - 2025/03/24
 
@@ -73,8 +96,8 @@
 
 ### Summary
 
-Add NIP-38 and NIP-62 support, add nostr parser, to easily parse any text and extract nostr URIs, URLs and more, 
-extend `Tags` capabilities (i.e., add deduplication support), add admission policies, to selectively select which events to allow receiving and which to reject, 
+Add NIP-38 and NIP-62 support, add nostr parser, to easily parse any text and extract nostr URIs, URLs and more,
+extend `Tags` capabilities (i.e., add deduplication support), add admission policies, to selectively select which events to allow receiving and which to reject,
 add Mac Catalyst support for Swift package, many cleanups, refactoring and performance improvements and more!
 
 ### Breaking changes
@@ -82,7 +105,7 @@ add Mac Catalyst support for Swift package, many cleanups, refactoring and perfo
 * nostr: update `Nip19Event` relays field type from `Vec<String>` to `Vec<RelayUrl>` ([Yuki Kishimoto])
 * nostr: change the `Err` type of `ToBech32` to `Infallible` for `SecretKey`, `PublicKey` and `EventId` ([awiteb])
 * nostr: update `Tags::new` signature ([Yuki Kishimoto])
-* nostr: remove `WeakTag` ([Yuki Kishimoto])
+* nostr: remove `WeakTag` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/755)
 * nostr: change `TagStandard::Relays` variant inner value from `Vec<Url>` to `Vec<RelayUrl>` ([Yuki Kishimoto])
 * nostr: split `NostrURI` into `ToNostrUri` and `FromNostrUri` traits ([Yuki Kishimoto])
 * nostr: replace generic parameter `AsRef<str>` with `&str` in `Coordinate::parse` and `Coordinate::from_kpi_format` ([Yuki Kishimoto])
@@ -99,7 +122,7 @@ add Mac Catalyst support for Swift package, many cleanups, refactoring and perfo
 * pool: remove `Relay` constructors ([Yuki Kishimoto])
 * pool: change `RelayPool::new` signature ([Yuki Kishimoto])
 * pool: now can set the notification channel size of a single `Relay` using `RelayOptions` ([magine])
-* sdk: change `Client::fetch_metadata` output ([Yuki Kishimoto]) 
+* sdk: change `Client::fetch_metadata` output ([Yuki Kishimoto])
 * sdk: remove `Client::state` ([Yuki Kishimoto])
 
 ### Changed
@@ -111,13 +134,13 @@ add Mac Catalyst support for Swift package, many cleanups, refactoring and perfo
 * pool: use the relay ingester to perform actions ([Yuki Kishimoto])
 * pool: avoid spawning a task for every authentication request ([Yuki Kishimoto])
 * pool: use `std::sync::OnceLock` instead of `tokio::sync::OnceCell` ([Yuki Kishimoto])
-* lmdb: bump MSRV to 1.72.0 ([Yuki Kishimoto])
-* lmdb: implement event ingester ([Yuki Kishimoto])
-* lmdb: avoid spawning thread for read methods ([Yuki Kishimoto])
-* lmdb: avoid long-lived read txn when ingesting event ([Yuki Kishimoto])
+* lmdb: bump MSRV to 1.72.0 ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/753)
+* lmdb: implement event ingester ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/753)
+* lmdb: avoid spawning thread for read methods ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/753)
+* lmdb: avoid long-lived read txn when ingesting event ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/753)
 * ndb: return `None` in `NostrEventsDatabase::event_by_id` if event doesn't exist ([Yuki Kishimoto])
 * ndb: avoid event clone when calling `NostrEventsDatabase::save_event` ([Yuki Kishimoto])
-* pool: better handling of auto-closing subscription activity when fetching events ([Yuki Kishimoto])
+* pool: better handling of auto-closing subscription activity when fetching events ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/798)
 * pool: reduce `WAIT_FOR_OK_TIMEOUT` to 10 secs ([Yuki Kishimoto])
 * pool: handle CLOSED message when syncing ([Yuki Kishimoto])
 * sdk: auto-update the gossip data when sending an event ([Yuki Kishimoto])
@@ -128,43 +151,43 @@ add Mac Catalyst support for Swift package, many cleanups, refactoring and perfo
 
 ### Added
 
-* nostr: add NIP-38 support ([reyamir])
+* nostr: add NIP-38 support ([reyamir] at https://github.com/rust-nostr/nostr/pull/771)
 * nostr: add NIP-60 event kinds ([Yuki Kishimoto])
-* nostr: add NIP-62 support ([awiteb])
-* nostr: add `NostrParser` ([Yuki Kishimoto])
-* nostr: add `nip21::extract_from_text` function ([Yuki Kishimoto])
-* nostr: add `EventBuilder::allow_self_tagging` ([Yuki Kishimoto])
+* nostr: add NIP-62 support ([awiteb] at https://github.com/rust-nostr/nostr/pull/777)
+* nostr: add `NostrParser` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/781)
+* nostr: add `nip21::extract_from_text` function ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/754)
+* nostr: add `EventBuilder::allow_self_tagging` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/744)
 * nostr: add `Nip19Event::from_event` ([Yuki Kishimoto])
 * nostr: add `Tag::client` constructor ([Yuki Kishimoto])
-* nostr: add `Tag::len` method ([Yuki Kishimoto])
-* nostr: add `push`, `pop`, `insert`, `remove`, `extend` and `retain` methods to `Tags` struct ([Yuki Kishimoto])
-* nostr: add `with_capacity`, `from_list`, `from_text` and `parse` constructors to `Tags` struct ([Yuki Kishimoto])
-* nostr: add `Tags::dedup` method ([Yuki Kishimoto])
+* nostr: add `Tag::len` method ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/755)
+* nostr: add `push`, `pop`, `insert`, `remove`, `extend` and `retain` methods to `Tags` struct ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/755)
+* nostr: add `with_capacity`, `from_list`, `from_text` and `parse` constructors to `Tags` struct ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/755)
+* nostr: add `Tags::dedup` method ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/755)
 * nostr: add `EncryptedSecretKey::decrypt` method ([Yuki Kishimoto])
 * nostr: add `Nip19Coordinate` struct ([Yuki Kishimoto])
 * nostr: add `Coordinate::verify` method ([Yuki Kishimoto])
 * nostr: add `TagStandard::Client` variant ([Yuki Kishimoto])
-* nostr: add `EventBuilder::dedup_tags` method ([Yuki Kishimoto])
+* nostr: add `EventBuilder::dedup_tags` method ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/772)
 * nostr: impl `FromIterator<Tag>` for `Tags` ([Yuki Kishimoto])
 * nostr: add `EventDeletionRequest` struct ([Yuki Kishimoto])
 * nostr: add `notifications` field to NIP47 `GetInfoResponse` ([Yuki Kishimoto])
 * nostr: add `RelayMetadata::as_str` method ([Yuki Kishimoto])
-* nostr: add `nip42::is_valid_auth_event` function ([Yuki Kishimoto])
+* nostr: add `nip42::is_valid_auth_event` function ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/commit/e7a91ec69ab3b804cad0df8fccbcc53fd8dc7cc8)
 * nostr: add `Tag::relays` constructor ([Yuki Kishimoto])
 * database: add `Events::force_insert` ([Yuki Kishimoto])
-* pool: event verification cache ([Yuki Kishimoto])
-* pool: add `AdmitPolicy` trait ([Yuki Kishimoto])
-* pool: add `ReqExitPolicy::WaitForEvents` variant ([Yuki Kishimoto])
+* pool: event verification cache ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/746)
+* pool: add `AdmitPolicy` trait ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/774)
+* pool: add `ReqExitPolicy::WaitForEvents` variant ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/798)
 * pool: add `RelayPoolBuilder` ([Yuki Kishimoto])
 * pool: add `RelayPool::is_shutdown` method ([Yuki Kishimoto])
-* ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto])
+* ffi: add Mac Catalyst support in Swift package ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/749)
 * js: add `KindStandard` enum ([Yuki Kishimoto])
 
 ### Fixed
 
-* nostr: fix `EventBuilder::git_repository_announcement` constructor according to last NIP34 rev ([Yuki Kishimoto])
-* nostr: fix `EventBuilder::git_issue` constructor according to last NIP34 rev ([Yuki Kishimoto])
-* nostr: fix `EventBuilder::git_patch` constructor according to last NIP34 rev ([Yuki Kishimoto])
+* nostr: fix `EventBuilder::git_repository_announcement` constructor according to last NIP34 rev ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/764)
+* nostr: fix `EventBuilder::git_issue` constructor according to last NIP34 rev ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/764)
+* nostr: fix `EventBuilder::git_patch` constructor according to last NIP34 rev ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/764)
 * nostr: `Tag::hashtag` now lowercases the hashtag as per NIP-24 ([awiteb])
 
 ### Removed
@@ -183,7 +206,7 @@ add Mac Catalyst support for Swift package, many cleanups, refactoring and perfo
 ### Summary
 
 Add NIP96 support, add NIP22 helpers, NIP01 adjustments, add `try_connect` and `wait_for_connection` methods for better connection handling,
-support for custom WebSocket clients (both in Rust, Python, Kotlin and Swift), new JVM bindings, 
+support for custom WebSocket clients (both in Rust, Python, Kotlin and Swift), new JVM bindings,
 huge reduction of UniFFI bindings binaries size, many cleanups, refactoring and performance improvements and more!
 
 ### Breaking changes
@@ -345,7 +368,7 @@ NIP35 support, better logs and docs, performance improvements, bugs fix and more
 * nostr: include public key of root and parent author in `EventBuilder::comment` ([Yuki Kishimoto])
 * nostr: dedup tags in `EventBuilder::text_note_reply` and `EventBuilder::comment` ([Yuki Kishimoto])
 * nostr: don't use reply event as root `e` tag i no root is set in `EventBuilder::text_note_reply` ([Yuki Kishimoto])
-* database: add manual trait implementations for `BTreeCappedSet` ([Yuki Kishimoto]) 
+* database: add manual trait implementations for `BTreeCappedSet` ([Yuki Kishimoto])
 * database: replace LRU with custom memory cache for IDs tracking ([Yuki Kishimoto])
 * lmdb: use `async-utility` to spawn blocking tasks ([Yuki Kishimoto])
 * ndb: bump `nostr-ndb` to 0.5 ([Yuki Kishimoto])
@@ -362,7 +385,7 @@ NIP35 support, better logs and docs, performance improvements, bugs fix and more
 * sdk: refactor POW difficulty management ([Yuki Kishimoto])
 * connect: require `fmt::Debug`, `Send` and `Sync` for `AuthUrlHandler` ([Yuki Kishimoto])
 * connect: improve secret matching for `NostrConnectRemoteSigner` ([Yuki Kishimoto])
-* connect: support both NIP04 and NIP44 for message decryption ([erskingardner])
+* connect: support both NIP04 and NIP44 for message decryption ([JeffG])
 * zapper: bump `webln` to 0.4 ([Yuki Kishimoto])
 * zapper: require `fmt::Debug`, `Send` and `Sync` for `NostrZapper` ([Yuki Kishimoto])
 * bindings: refactor `SendEventOutput` and `SubscribeOutput` ([Yuki Kishimoto])
@@ -371,7 +394,7 @@ NIP35 support, better logs and docs, performance improvements, bugs fix and more
 
 * nostr: add `Tags::challenge` method ([Yuki Kishimoto])
 * nostr: add `RelayUrl::is_local_addr` ([Yuki Kishimoto])
-* nostr: add `TagKind::k` constructor ([Yuki Kishimoto]) 
+* nostr: add `TagKind::k` constructor ([Yuki Kishimoto])
 * nostr: impl `IntoIterator` for `Tag` ([Yuki Kishimoto])
 * nostr: add NIP35 support ([1wErt3r])
 * nostr: add `Kind::is_addressable` and `ADDRESSABLE_RANGE` ([Yuki Kishimoto])
@@ -425,7 +448,7 @@ NIP35 support, better logs and docs, performance improvements, bugs fix and more
 
 ### Summary
 
-Add support to NIP17 relay list in SDK (when `gossip` option is enabled), add NIP22 and NIP73 support, 
+Add support to NIP17 relay list in SDK (when `gossip` option is enabled), add NIP22 and NIP73 support,
 fix Swift Package, many performance improvements and bug fixes and more!
 
 From this release all the rust features are disabled by default (except `std` feature in `nostr` crate).
@@ -433,7 +456,7 @@ From this release all the rust features are disabled by default (except `std` fe
 ### Breaking changes
 
 * Use `RelayUrl` struct instead of `Url` for relay urls ([Yuki Kishimoto])
-* nostr: change `EventBuilder::gift_wrap` (and linked methods) args to take `extra_tags` instead of `expiration` ([erskingardner])
+* nostr: change `EventBuilder::gift_wrap` (and linked methods) args to take `extra_tags` instead of `expiration` ([JeffG])
 * nostr: change `EventBuilder::gift_wrap` (and linked methods) args to take an `EventBuilder` rumor instead of `UnsignedEvent` ([Yuki Kishimoto])
 * nostr: change `EventBuilder::private_msg_rumor` arg to take `extra_tags` instead of `reply_to` ([Yuki Kishimoto])
 * nostr: remove `tags` arg from `EventBuilder::new` ([Yuki Kishimoto])
@@ -467,7 +490,7 @@ From this release all the rust features are disabled by default (except `std` fe
 * pool: update retry interval calculation ([Yuki Kishimoto])
 * pool: try fetch relay information document only once every hour ([Yuki Kishimoto])
 * pool: not allow to add relays after `RelayPool` shutdown ([Yuki Kishimoto])
-* pool: rename `RelayOptions::retry_sec` to `RelayOptions::retry_interval` ([Yuki Kishimoto]) 
+* pool: rename `RelayOptions::retry_sec` to `RelayOptions::retry_interval` ([Yuki Kishimoto])
 * pool: rename `RelayOptions::adjust_retry_sec` to `RelayOptions::adjust_retry_interval` ([Yuki Kishimoto])
 * pool: request NIP11 document only after a successful WebSocket connection ([Yuki Kishimoto])
 * pool: immediately terminate relay connection on `Relay::disconnect` call ([Yuki Kishimoto])
@@ -485,7 +508,7 @@ From this release all the rust features are disabled by default (except `std` fe
 
 ### Added
 
-* nostr: add NIP104 tag and event kinds ([erskingardner])
+* nostr: add NIP104 tag and event kinds ([JeffG])
 * nostr: add `SingleLetterTag::as_str` and `TagKind::as_str` ([Yuki Kishimoto])
 * nostr: add `Kind::Comment` ([reyamir])
 * nostr: add `EventBuilder::comment` ([reyamir])
@@ -674,7 +697,7 @@ Note for devs who are using `nostr-protocol` (Python), `org.rust-nostr:nostr` (K
 
 ### Summary
 
-Add gossip model support, deprecate `SQLite` database in favor of `LMDB` 
+Add gossip model support, deprecate `SQLite` database in favor of `LMDB`
 (fork of [pocket](https://github.com/mikedilger/pocket) database),
 add support to negentropy v1 (old version is still supported!), add `MockRelay` (a local disposable relay for tests),
 allow usage of embedded tor client on mobile devices, many improvements, bugs fix and more!
@@ -811,7 +834,7 @@ allow usage of embedded tor client on mobile devices, many improvements, bugs fi
 Add embedded tor client support, allow to open databases with a limited capacity (automatically discard old events when max capacity is reached),
 add `Client::stream_events_of` as alternative method to `Client::get_events_of` (stream events instead of waiting for `EOSE` and collect into a list),
 add search capability (NIP50) support to `Filter::match_event` and databases, add NIP31 and NIP70 support,
-add option to autoconnect relay on `Client::add_relay` method call (currently disabled by default), rework the `get_events_of` methods behaviour for 
+add option to autoconnect relay on `Client::add_relay` method call (currently disabled by default), rework the `get_events_of` methods behaviour for
 better consistency (`RelayPool::get_events_of` and `Relay::get_events_of` get events only from remote relay/s while
 `Client::get_events_of` allow to choose the source of events: `database`, `relays` or `both`), bugs fix and more!
 
@@ -895,7 +918,7 @@ better consistency (`RelayPool::get_events_of` and `Relay::get_events_of` get ev
 
 Better outputs for send/batch/reconcile methods (ex. you can now easily know where a message/event is successfully published and where/why failed),
 allow to change NIP42 option after client initialization, increase max stack size for JS bindings to prevent "memory access out of bounds" error,
-expose more objects/methods for JS bindings, dry run option for negentropy reconciliation, get NIP46 relay from NIP05 profile, 
+expose more objects/methods for JS bindings, dry run option for negentropy reconciliation, get NIP46 relay from NIP05 profile,
 bug fixes (NIP-42 auth not works correctly, NIP-46 "ACK" message not handled, ...) and more!
 
 ### Changed
@@ -1214,7 +1237,7 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [w3irdrobot]: <https://github.com/w3irdrobot> (nostr:npub17q5n2z8naw0xl6vu9lvt560lg33pdpe29k0k09umlfxm3vc4tqrq466f2y)
 [nanikamado]: <https://github.com/nanikamado> (?)
 [rodant]: <https://github.com/rodant> (nostr:npub1w80jzxf36fhwgyfp622m6s7tcl3cy5z7xva4cy75q9kwm92zm8tsclzqjv)
-[erskingardner]: <https://github.com/erskingardner> (nostr:npub1zuuajd7u3sx8xu92yav9jwxpr839cs0kc3q6t56vd5u9q033xmhsk6c2uc)
+[JeffG]: <https://github.com/erskingardner> (nostr:npub1zuuajd7u3sx8xu92yav9jwxpr839cs0kc3q6t56vd5u9q033xmhsk6c2uc)
 [J. Azad EMERY]: <https://github.com/ethicnology> (?)
 [v0l]: <https://github.com/v0l> (nostr:npub1v0lxxxxutpvrelsksy8cdhgfux9l6a42hsj2qzquu2zk7vc9qnkszrqj49)
 [arkanoider]: <https://github.com/arkanoider> (nostr:npub1qqpn4ym6tc5ul6d2kjxnzx3sv9trekp53678ut9fe3wrxa6yvhjsnql2ng)
@@ -1230,3 +1253,4 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [awiteb]: https://git.4rs.nl (nostr:nprofile1qqsqqqqqq9g9uljgjfcyd6dm4fegk8em2yfz0c3qp3tc6mntkrrhawgpzfmhxue69uhkummnw3ezudrjwvhxumq3dg0ly)
 [magine]: https://github.com/ma233 (?)
 [daywalker90]: https://github.com/daywalker90 (nostr:npub1kuemsj7xryp0uje36dr53scn9mxxh8ema90hw9snu46633n9n2hqp3drjt)
+[Daniel D’Aquino]: https://github.com/danieldaquino (nostr:npub13v47pg9dxjq96an8jfev9znhm0k7ntwtlh9y335paj9kyjsjpznqzzl3l8)
