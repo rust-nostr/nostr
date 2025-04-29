@@ -107,10 +107,24 @@ where
             state: group_types::GroupState::Pending,
         };
 
+        let mls_group_id: GroupId = group.mls_group_id.clone();
+
         // Save the pending group
         self.storage()
             .save_group(group)
             .map_err(|e| Error::Group(e.to_string()))?;
+
+        // Save the group relays
+        for relay in welcome_preview.nostr_group_data.relays.iter() {
+            let group_relay = group_types::GroupRelay {
+                mls_group_id: mls_group_id.clone(),
+                relay_url: relay.clone(),
+            };
+
+            self.storage()
+                .save_group_relay(group_relay)
+                .map_err(|e| Error::Group(e.to_string()))?;
+        }
 
         let processed_welcome = welcome_types::ProcessedWelcome {
             wrapper_event_id: *wrapper_event_id,
@@ -164,10 +178,27 @@ where
 
         // Update the group to active
         if let Some(mut group) = self.get_group(mls_group.group_id())? {
+            let mls_group_id: GroupId = group.mls_group_id.clone();
+
+            // Update group state
             group.state = group_types::GroupState::Active;
+
+            // Save group
             self.storage().save_group(group).map_err(
                 |e: nostr_mls_storage::groups::error::GroupError| Error::Group(e.to_string()),
             )?;
+
+            // Always (re-)save the group relays after saving the group
+            for relay_url in welcome_preview.nostr_group_data.relays.into_iter() {
+                let group_relay = group_types::GroupRelay {
+                    mls_group_id: mls_group_id.clone(),
+                    relay_url,
+                };
+
+                self.storage()
+                    .save_group_relay(group_relay)
+                    .map_err(|e| Error::Group(e.to_string()))?;
+            }
         }
 
         Ok(())

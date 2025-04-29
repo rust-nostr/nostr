@@ -278,7 +278,8 @@ where
             credential
         );
 
-        let group_data = NostrGroupDataExtension::new(name, description, admins, group_relays);
+        let group_data =
+            NostrGroupDataExtension::new(name, description, admins, group_relays.clone());
 
         tracing::debug!(
             target: "nostr_mls::groups::create_mls_group",
@@ -355,6 +356,18 @@ where
         self.storage().save_group(group.clone()).map_err(
             |e: nostr_mls_storage::groups::error::GroupError| Error::Group(e.to_string()),
         )?;
+
+        // Always (re-)save the group relays after saving the group
+        for relay_url in group_relays.into_iter() {
+            let group_relay = group_types::GroupRelay {
+                mls_group_id: group.mls_group_id.clone(),
+                relay_url,
+            };
+
+            self.storage()
+                .save_group_relay(group_relay)
+                .map_err(|e| Error::Group(e.to_string()))?;
+        }
 
         Ok(CreateGroupResult {
             group,
