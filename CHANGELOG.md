@@ -27,6 +27,10 @@
 
 ## Unreleased
 
+### Breaking changes
+
+* pool: drop support for deprecated negentropy protocol ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/853)
+
 ### Changed
 
 * Bump `lru` from 0.13.0 to 0.14.0 ([Yuki Kishimoto])

@@ -33,8 +33,6 @@ pub enum Error {
     Hex(hex::Error),
     /// Negentropy error
     Negentropy(negentropy::Error),
-    /// Negentropy error
-    NegentropyDeprecated(negentropy_deprecated::Error),
     /// Database error
     Database(DatabaseError),
     /// Generic timeout
@@ -133,7 +131,6 @@ impl fmt::Display for Error {
             Self::EventBuilder(e) => write!(f, "{e}"),
             Self::Hex(e) => write!(f, "{e}"),
             Self::Negentropy(e) => write!(f, "{e}"),
-            Self::NegentropyDeprecated(e) => write!(f, "{e}"),
             Self::Database(e) => write!(f, "{e}"),
             Self::Timeout => write!(f, "timeout"),
             Self::NotRepliedToPing => write!(f, "not replied to ping"),
@@ -231,12 +228,6 @@ impl From<hex::Error> for Error {
 impl From<negentropy::Error> for Error {
     fn from(e: negentropy::Error) -> Self {
         Self::Negentropy(e)
-    }
-}
-
-impl From<negentropy_deprecated::Error> for Error {
-    fn from(e: negentropy_deprecated::Error) -> Self {
-        Self::NegentropyDeprecated(e)
     }
 }
 

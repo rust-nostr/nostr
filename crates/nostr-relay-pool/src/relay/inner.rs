@@ -16,7 +16,6 @@ use async_wsocket::futures_util::{self, SinkExt, StreamExt};
 use async_wsocket::{ConnectionMode, Message};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Id, Negentropy, NegentropyStorageVector};
-use negentropy_deprecated::{Bytes as BytesDeprecated, Negentropy as NegentropyDeprecated};
 use nostr::secp256k1::rand::{self, Rng};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
@@ -1780,7 +1779,7 @@ impl InnerRelay {
 
     /// New negentropy protocol
     #[inline(never)]
-    pub(super) async fn sync_new(
+    pub(super) async fn sync(
         &self,
         filter: &Filter,
         items: Vec<(EventId, Timestamp)>,
@@ -1932,163 +1931,6 @@ impl InnerRelay {
 
         Ok(())
     }
-
-    /// Deprecated negentropy protocol
-    #[inline(never)]
-    pub(super) async fn sync_deprecated(
-        &self,
-        filter: &Filter,
-        items: Vec<(EventId, Timestamp)>,
-        opts: &SyncOptions,
-        output: &mut Reconciliation,
-    ) -> Result<(), Error> {
-        // Compose negentropy struct, add items and seal
-        let mut negentropy = NegentropyDeprecated::new(32, Some(NEGENTROPY_FRAME_SIZE_LIMIT))?;
-        for (id, timestamp) in items.into_iter() {
-            let id = BytesDeprecated::from_slice(id.as_bytes());
-            negentropy.add_item(timestamp.as_u64(), id)?;
-        }
-        negentropy.seal()?;
-
-        // Initiate message
-        let initial_message = negentropy.initiate()?;
-
-        // Subscribe to notifications
-        let mut notifications = self.internal_notification_sender.subscribe();
-        let mut temp_notifications = self.internal_notification_sender.subscribe();
-
-        // Send the initial negentropy message
-        let sub_id = SubscriptionId::generate();
-        let open_msg: ClientMessage = ClientMessage::NegOpen {
-            subscription_id: Cow::Borrowed(&sub_id),
-            filter: Cow::Borrowed(filter),
-            id_size: Some(32),
-            initial_message: Cow::Owned(hex::encode(initial_message)),
-        };
-        self.send_msg(open_msg)?;
-
-        // Check if negentropy is supported
-        check_negentropy_support(&sub_id, opts, &mut temp_notifications).await?;
-
-        let mut in_flight_up: HashSet<EventId> = HashSet::new();
-        let mut in_flight_down: bool = false;
-        let mut sync_done: bool = false;
-        let mut have_ids: Vec<EventId> = Vec::new();
-        let mut need_ids: Vec<EventId> = Vec::new();
-        let down_sub_id: SubscriptionId = SubscriptionId::generate();
-
-        // Start reconciliation
-        while let Ok(notification) = notifications.recv().await {
-            match notification {
-                RelayNotification::Message { message } => {
-                    match message {
-                        RelayMessage::NegMsg {
-                            subscription_id,
-                            message,
-                        } => {
-                            if subscription_id.as_ref() == &sub_id {
-                                let mut curr_have_ids: Vec<BytesDeprecated> = Vec::new();
-                                let mut curr_need_ids: Vec<BytesDeprecated> = Vec::new();
-
-                                // Parse message
-                                let query: BytesDeprecated =
-                                    BytesDeprecated::from_hex(message.as_ref())?;
-
-                                // Reconcile
-                                let msg: Option<BytesDeprecated> = negentropy.reconcile_with_ids(
-                                    &query,
-                                    &mut curr_have_ids,
-                                    &mut curr_need_ids,
-                                )?;
-
-                                // Handle the message
-                                self.handle_neg_msg(
-                                    &subscription_id,
-                                    msg.map(|m| m.to_bytes()),
-                                    curr_have_ids.into_iter().filter_map(neg_depr_to_event_id),
-                                    curr_need_ids.into_iter().filter_map(neg_depr_to_event_id),
-                                    opts,
-                                    output,
-                                    &mut have_ids,
-                                    &mut need_ids,
-                                    &mut sync_done,
-                                )?;
-                            }
-                        }
-                        RelayMessage::NegErr {
-                            subscription_id,
-                            message,
-                        } => {
-                            if subscription_id.as_ref() == &sub_id {
-                                return Err(Error::RelayMessage(message.into_owned()));
-                            }
-                        }
-                        RelayMessage::Ok {
-                            event_id,
-                            status,
-                            message,
-                        } => {
-                            self.handle_neg_ok(
-                                &mut in_flight_up,
-                                event_id,
-                                status,
-                                message,
-                                output,
-                            );
-                        }
-                        RelayMessage::Event {
-                            subscription_id,
-                            event,
-                        } => {
-                            if subscription_id.as_ref() == &down_sub_id {
-                                output.received.insert(event.id);
-                            }
-                        }
-                        RelayMessage::EndOfStoredEvents(id) => {
-                            if id.as_ref() == &down_sub_id {
-                                in_flight_down = false;
-                            }
-                        }
-                        RelayMessage::Closed {
-                            subscription_id, ..
-                        } => {
-                            if subscription_id.as_ref() == &down_sub_id {
-                                in_flight_down = false;
-                            }
-                        }
-                        _ => (),
-                    }
-
-                    // Send events
-                    self.upload_neg_events(&mut have_ids, &mut in_flight_up, opts)
-                        .await?;
-
-                    // Get events
-                    self.req_neg_events(&mut need_ids, &mut in_flight_down, &down_sub_id, opts)?;
-                }
-                RelayNotification::RelayStatus { status } => {
-                    if status.is_disconnected() {
-                        return Err(Error::NotConnected);
-                    }
-                }
-                RelayNotification::Shutdown => return Err(Error::ReceivedShutdown),
-                _ => (),
-            };
-
-            if sync_done
-                && have_ids.is_empty()
-                && need_ids.is_empty()
-                && in_flight_up.is_empty()
-                && !in_flight_down
-            {
-                break;
-            }
-        }
-
-        tracing::info!(url = %self.url, "Deprecated negentropy reconciliation terminated.");
-
-        Ok(())
-    }
 }
 
 /// Send WebSocket messages with timeout set to [WEBSOCKET_TX_TIMEOUT].
@@ -2112,11 +1954,6 @@ async fn close_ws(tx: &mut BoxSink) -> Result<(), Error> {
 #[inline]
 fn neg_id_to_event_id(id: Id) -> EventId {
     EventId::from_byte_array(id.to_bytes())
-}
-
-#[inline]
-fn neg_depr_to_event_id(id: BytesDeprecated) -> Option<EventId> {
-    EventId::from_slice(id.as_bytes()).ok()
 }
 
 fn prepare_negentropy_storage(
