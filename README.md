@@ -11,6 +11,7 @@ The project is split up into several crates in the `crates/` directory:
     * [**nostr-database**](./crates/nostr-database): Database for Nostr apps
         * [**nostr-lmdb**](./crates/nostr-lmdb): LMDB storage backend
         * [**nostr-ndb**](./crates/nostr-ndb): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
+        * [**nostr-sqldb**](./crates/nostr-sqldb): SQL storage backends (PostgreSQL, MySQL and SQLite)
         * [**nostr-indexeddb**](./crates/nostr-indexeddb): IndexedDB storage backend
     * [**nostr-mls**](./crates/nostr-mls): A library for implmenting NIP-EE MLS messaging
     * [**nostr-mls-storage**](./crates/nostr-mls-storage): Storage traits for using MLS messaging

@@ -42,6 +42,7 @@
 * mls-memory-storage: add an in-memory implementation for MLS ([JeffG] at https://github.com/rust-nostr/nostr/pull/839)
 * mls-sqlite-storage: a sqlite implementation for MLS ([JeffG] at https://github.com/rust-nostr/nostr/pull/842)
 * mls: add new crate for implementing MLS messaging ([JeffG] at https://github.com/rust-nostr/nostr/pull/843)
+* sqldb: add `nostr-sqldb` crate ([Thomas Profelt] at https://github.com/rust-nostr/nostr/pull/835)
 * sdk: add `Options::pool` ([Yuki Kishimoto])
 
 ### Deprecated
@@ -1254,3 +1255,4 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [magine]: https://github.com/ma233 (?)
 [daywalker90]: https://github.com/daywalker90 (nostr:npub1kuemsj7xryp0uje36dr53scn9mxxh8ema90hw9snu46633n9n2hqp3drjt)
 [Daniel D’Aquino]: https://github.com/danieldaquino (nostr:npub13v47pg9dxjq96an8jfev9znhm0k7ntwtlh9y335paj9kyjsjpznqzzl3l8)
+[Thomas Profelt]: https://github.com/tompro (nostr:npub1rf0lc5dpyvpl6q3dfq0n0mtqc0maxa0kdehcj9nc5884fzufuzxqv67gj6)
