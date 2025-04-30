@@ -12,6 +12,7 @@ The project is split up into several crates:
 - [**nostr-database**](./database/nostr-database): Events database abstraction and in-memory implementation
     - [**nostr-lmdb**](./database/nostr-lmdb): LMDB storage backend
     - [**nostr-ndb**](./database/nostr-ndb): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
+    - [**nostr-sqldb**](./database/nostr-sqldb): SQL storage backends (PostgreSQL, MySQL and SQLite)
     - [**nostr-indexeddb**](./database/nostr-indexeddb): IndexedDB storage backend
 - [**nostr-gossip**](./gossip/nostr-gossip): Gossip traits
     - [**nostr-gossip-memory**](./gossip/nostr-gossip-memory): In-memory gossip database
