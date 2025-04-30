@@ -64,16 +64,19 @@ buildargs=(
 )
 
 skip_msrv=(
-    "-p nostr-lmdb"                       # MSRV: 1.72.0
-    "-p nostr-mls-storage"                # MSRV: 1.74.0
-    "-p nostr-mls-memory-storage"         # MSRV: 1.74.0
-    "-p nostr-mls-sqlite-storage"         # MSRV: 1.74.0
-    "-p nostr-mls"                        # MSRV: 1.74.0
-    "-p nostr-keyring"                    # MSRV: 1.75.0
-    "-p nostr-keyring --features async"   # MSRV: 1.75.0
-    "-p nostr-sdk --features tor"         # MSRV: 1.77.0
-    "-p nostr-sdk --all-features"         # MSRV: 1.77.0 (since uses lmdb and tor)
-    "-p nostr-cli"                        # MSRV: 1.74.0
+    "-p nostr-lmdb"                                               # MSRV: 1.72.0
+    "-p nostr-mls-storage"                                        # MSRV: 1.74.0
+    "-p nostr-mls-memory-storage"                                 # MSRV: 1.74.0
+    "-p nostr-mls-sqlite-storage"                                 # MSRV: 1.74.0
+    "-p nostr-mls"                                                # MSRV: 1.74.0
+    "-p nostr-sqldb --no-default-features --features postgres"    # MSRV: 1.82.0
+    "-p nostr-sqldb --no-default-features --features mysql"       # MSRV: 1.82.0
+    "-p nostr-sqldb --no-default-features --features sqlite"      # MSRV: 1.82.0
+    "-p nostr-keyring"                                            # MSRV: 1.75.0
+    "-p nostr-keyring --features async"                           # MSRV: 1.75.0
+    "-p nostr-sdk --features tor"                                 # MSRV: 1.77.0
+    "-p nostr-sdk --all-features"                                 # MSRV: 1.77.0 (since uses lmdb and tor)
+    "-p nostr-cli"                                                # MSRV: 1.74.0
 )
 
 for arg in "${buildargs[@]}";
