@@ -87,10 +87,20 @@ impl GroupStorage for NostrMlsSqliteStorage {
 
         conn_guard
             .execute(
-                "INSERT OR REPLACE INTO groups
+                "INSERT INTO groups
              (mls_group_id, nostr_group_id, name, description, admin_pubkeys, last_message_id,
               last_message_at, group_type, epoch, state)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(mls_group_id) DO UPDATE SET
+                nostr_group_id = excluded.nostr_group_id,
+                name = excluded.name,
+                description = excluded.description,
+                admin_pubkeys = excluded.admin_pubkeys,
+                last_message_id = excluded.last_message_id,
+                last_message_at = excluded.last_message_at,
+                group_type = excluded.group_type,
+                epoch = excluded.epoch,
+                state = excluded.state",
                 params![
                     &group.mls_group_id.as_slice(),
                     &group.nostr_group_id,
