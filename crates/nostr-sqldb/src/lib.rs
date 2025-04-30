@@ -1,3 +1,9 @@
+#![forbid(unsafe_code)]
+#![warn(missing_docs)]
+#![warn(rustdoc::bare_urls)]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![doc = include_str!("../README.md")]
+
 mod migrations;
 #[allow(dead_code)] // TODO: to remove when also SQLite and MySQL are implemented
 mod model;
