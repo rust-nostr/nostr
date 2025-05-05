@@ -15,7 +15,7 @@ use secp256k1::rand::{CryptoRng, Rng};
 use secp256k1::{Secp256k1, Signing, Verification};
 use serde_json::{json, Value};
 
-#[cfg(all(feature = "std", feature = "nip04", feature = "nip46"))]
+#[cfg(all(feature = "std", feature = "nip44", feature = "nip46"))]
 use crate::nips::nip46::Message as NostrConnectMessage;
 use crate::nips::nip62::VanishTarget;
 use crate::prelude::*;
@@ -876,7 +876,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
     #[inline]
-    #[cfg(all(feature = "std", feature = "nip04", feature = "nip46"))]
+    #[cfg(all(feature = "std", feature = "nip44", feature = "nip46"))]
     pub fn nostr_connect(
         sender_keys: &Keys,
         receiver_pubkey: PublicKey,
@@ -884,7 +884,12 @@ impl EventBuilder {
     ) -> Result<Self, Error> {
         Ok(Self::new(
             Kind::NostrConnect,
-            nip04::encrypt(sender_keys.secret_key(), &receiver_pubkey, msg.as_json())?,
+            nip44::encrypt(
+                sender_keys.secret_key(),
+                &receiver_pubkey,
+                msg.as_json(),
+                nip44::Version::default(),
+            )?,
         )
         .tag(Tag::public_key(receiver_pubkey)))
     }
