@@ -11,7 +11,6 @@ use nostr::nips::nip46::{Message, Request, ResponseResult};
 use nostr_relay_pool::prelude::*;
 
 use crate::error::Error;
-use crate::util;
 
 /// Nostr Connect Keys
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -176,7 +175,11 @@ impl NostrConnectRemoteSigner {
             .handle_notifications(|notification| async {
                 if let RelayPoolNotification::Event { event, .. } = notification {
                     if event.kind == Kind::NostrConnect {
-                        match util::decrypt(self.keys.signer.secret_key(), &event) {
+                        match nip44::decrypt(
+                            self.keys.signer.secret_key(),
+                            &event.pubkey,
+                            &event.content,
+                        ) {
                             Ok(msg) => {
                                 tracing::debug!("New Nostr Connect message received: {msg}");
 

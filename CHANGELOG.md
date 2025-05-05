@@ -31,6 +31,7 @@
 
 - pool: drop support for deprecated negentropy protocol ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/853)
 - connect: encrypt NIP-46 events with NIP-44 instead of NIP-04 ([reyamir] at https://github.com/rust-nostr/nostr/pull/862)
+- connect: drop support for NIP-46 event decryption with NIP-04 ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/864)
 
 ### Changed
 
