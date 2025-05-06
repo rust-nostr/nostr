@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::time;
-use nostr::nips::nip46::{Message, Request, ResponseResult};
+use nostr::nips::nip46::ResponseResult;
 use nostr_relay_pool::prelude::*;
 use tokio::sync::broadcast::Receiver;
 use tokio::sync::OnceCell;
@@ -224,7 +224,7 @@ impl NostrConnect {
     }
 
     #[inline]
-    async fn send_request(&self, req: Request) -> Result<ResponseResult, Error> {
+    async fn send_request(&self, req: NostrConnectRequest) -> Result<ResponseResult, Error> {
         // Get remote signer public key
         let remote_signer_public_key: PublicKey = *self.remote_signer_public_key().await?;
 
@@ -235,13 +235,13 @@ impl NostrConnect {
 
     async fn send_request_with_pk(
         &self,
-        req: Request,
+        req: NostrConnectRequest,
         remote_signer_public_key: PublicKey,
     ) -> Result<ResponseResult, Error> {
         let secret_key: &SecretKey = self.app_keys.secret_key();
 
         // Convert request to event
-        let msg = Message::request(req);
+        let msg = NostrConnectMessage::request(&req);
         tracing::debug!("Sending '{msg}' NIP46 message");
 
         let req_id = msg.id().to_string();
@@ -260,40 +260,40 @@ impl NostrConnect {
                     if event.kind == Kind::NostrConnect {
                         let msg: String =
                             nip44::decrypt(secret_key, &event.pubkey, event.content.as_str())?;
-                        let msg: Message = Message::from_json(msg)?;
+                        let msg: NostrConnectMessage = NostrConnectMessage::from_json(msg)?;
 
                         tracing::debug!("Received NIP46 message: '{msg}'");
 
-                        if let Message::Response { id, result, error } = &msg {
-                            if &req_id == id {
-                                if msg.is_auth_url() {
-                                    if let (Some(auth_url), Some(handler)) =
-                                        (error, &self.auth_url_handler)
-                                    {
-                                        match Url::parse(auth_url) {
-                                            Ok(url) => {
-                                                if let Err(e) = handler.on_auth_url(url).await {
-                                                    tracing::error!(
-                                                        "Impossible to handle `auth_url`: {e}"
-                                                    );
-                                                }
-                                            }
-                                            Err(e) => {
-                                                tracing::error!("Can't parse `auth_url`: {e}")
+                        if req_id == msg.id() && msg.is_response() {
+                            let response: NostrConnectResponse = msg.to_response(req.method())?;
+
+                            if response.is_auth_url() {
+                                if let (Some(auth_url), Some(handler)) =
+                                    (response.error, &self.auth_url_handler)
+                                {
+                                    match Url::parse(&auth_url) {
+                                        Ok(url) => {
+                                            if let Err(e) = handler.on_auth_url(url).await {
+                                                tracing::error!(
+                                                    "Impossible to handle `auth_url`: {e}"
+                                                );
                                             }
                                         }
+                                        Err(e) => {
+                                            tracing::error!("Can't parse `auth_url`: {e}")
+                                        }
                                     }
-                                } else {
-                                    if let Some(result) = result {
-                                        return Ok(result.clone());
-                                    }
-
-                                    if let Some(error) = error {
-                                        return Err(Error::Response(error.to_owned()));
-                                    }
-
-                                    break;
                                 }
+                            } else {
+                                if let Some(error) = response.error {
+                                    return Err(Error::Response(error));
+                                }
+
+                                if let Some(result) = response.result {
+                                    return Ok(result);
+                                }
+
+                                break;
                             }
                         }
                     }
@@ -308,19 +308,19 @@ impl NostrConnect {
 
     /// Connect msg
     async fn connect(&self, remote_signer_public_key: PublicKey) -> Result<(), Error> {
-        let req = Request::Connect {
+        let req = NostrConnectRequest::Connect {
             public_key: remote_signer_public_key,
             secret: self.secret.clone(),
         };
         let res = self
             .send_request_with_pk(req, remote_signer_public_key)
             .await?;
-        Ok(res.to_connect()?)
+        Ok(res.to_ack()?)
     }
 
     /// Sign an [UnsignedEvent]
     pub async fn get_relays(&self) -> Result<HashMap<RelayUrl, RelayPermissions>, Error> {
-        let req = Request::GetRelays;
+        let req = NostrConnectRequest::GetRelays;
         let res = self.send_request(req).await?;
         Ok(res.to_get_relays()?)
     }
@@ -328,7 +328,7 @@ impl NostrConnect {
     async fn _get_public_key(&self) -> Result<&PublicKey, Error> {
         self.user_public_key
             .get_or_try_init(|| async {
-                let res = self.send_request(Request::GetPublicKey).await?;
+                let res = self.send_request(NostrConnectRequest::GetPublicKey).await?;
                 Ok(res.to_get_public_key()?)
             })
             .await
@@ -336,7 +336,7 @@ impl NostrConnect {
 
     /// Sign an [UnsignedEvent]
     async fn _sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, Error> {
-        let req = Request::SignEvent(unsigned);
+        let req = NostrConnectRequest::SignEvent(unsigned);
         let res = self.send_request(req).await?;
         Ok(res.to_sign_event()?)
     }
@@ -346,12 +346,12 @@ impl NostrConnect {
         public_key: PublicKey,
         content: String,
     ) -> Result<String, Error> {
-        let req = Request::Nip04Encrypt {
+        let req = NostrConnectRequest::Nip04Encrypt {
             public_key,
             text: content,
         };
         let res = self.send_request(req).await?;
-        Ok(res.to_encrypt_decrypt()?)
+        Ok(res.to_nip04_encrypt()?)
     }
 
     async fn _nip04_decrypt(
@@ -359,12 +359,12 @@ impl NostrConnect {
         public_key: PublicKey,
         ciphertext: String,
     ) -> Result<String, Error> {
-        let req = Request::Nip04Decrypt {
+        let req = NostrConnectRequest::Nip04Decrypt {
             public_key,
             ciphertext,
         };
         let res = self.send_request(req).await?;
-        Ok(res.to_encrypt_decrypt()?)
+        Ok(res.to_nip04_decrypt()?)
     }
 
     async fn _nip44_encrypt(
@@ -372,12 +372,12 @@ impl NostrConnect {
         public_key: PublicKey,
         content: String,
     ) -> Result<String, Error> {
-        let req = Request::Nip44Encrypt {
+        let req = NostrConnectRequest::Nip44Encrypt {
             public_key,
             text: content,
         };
         let res = self.send_request(req).await?;
-        Ok(res.to_encrypt_decrypt()?)
+        Ok(res.to_nip44_encrypt()?)
     }
 
     async fn _nip44_decrypt(
@@ -385,12 +385,12 @@ impl NostrConnect {
         public_key: PublicKey,
         payload: String,
     ) -> Result<String, Error> {
-        let req = Request::Nip44Decrypt {
+        let req = NostrConnectRequest::Nip44Decrypt {
             public_key,
             ciphertext: payload,
         };
         let res = self.send_request(req).await?;
-        Ok(res.to_encrypt_decrypt()?)
+        Ok(res.to_nip44_decrypt()?)
     }
 
     /// Completely shutdown
@@ -423,25 +423,29 @@ async fn get_remote_signer_public_key(
                     tracing::debug!("Received Nostr Connect message: '{msg}'");
 
                     // Parse message
-                    let msg: Message = Message::from_json(msg)?;
+                    let msg: NostrConnectMessage = NostrConnectMessage::from_json(msg)?;
 
                     // Match message
-                    match msg {
-                        Message::Request {
-                            req: Request::Connect { public_key, .. },
-                            ..
-                        } => {
-                            return Ok(GetRemoteSignerPublicKey::WithUserPublicKey {
-                                remote: event.pubkey,
-                                user: public_key,
-                            });
+                    match &msg {
+                        NostrConnectMessage::Request { .. } => {
+                            if let Ok(NostrConnectRequest::Connect { public_key, .. }) =
+                                msg.to_request()
+                            {
+                                return Ok(GetRemoteSignerPublicKey::WithUserPublicKey {
+                                    remote: event.pubkey,
+                                    user: public_key,
+                                });
+                            }
                         }
-                        Message::Response {
-                            result: Some(ResponseResult::Connect),
-                            error: None,
-                            ..
-                        } => return Ok(GetRemoteSignerPublicKey::RemoteOnly(event.pubkey)),
-                        _ => {}
+                        NostrConnectMessage::Response { .. } => {
+                            if let Ok(NostrConnectResponse {
+                                result: Some(ResponseResult::Ack),
+                                error: None,
+                            }) = msg.to_response(NostrConnectMethod::Connect)
+                            {
+                                return Ok(GetRemoteSignerPublicKey::RemoteOnly(event.pubkey));
+                            }
+                        }
                     }
                 }
             }

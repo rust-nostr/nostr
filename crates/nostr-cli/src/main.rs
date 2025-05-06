@@ -361,7 +361,7 @@ async fn handle_command(command: ShellCommand, client: &Client) -> Result<()> {
 struct CustomActions;
 
 impl NostrConnectSignerActions for CustomActions {
-    fn approve(&self, public_key: &PublicKey, req: &nip46::Request) -> bool {
+    fn approve(&self, public_key: &PublicKey, req: &NostrConnectRequest) -> bool {
         println!("Public key: {public_key}");
         println!("{req:#?}\n");
         io::ask("Approve request?").unwrap_or_default()

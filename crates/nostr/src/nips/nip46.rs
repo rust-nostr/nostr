@@ -30,12 +30,12 @@ pub const NOSTR_CONNECT_URI_SCHEME: &str = "nostrconnect";
 pub const NOSTR_CONNECT_BUNKER_URI_SCHEME: &str = "bunker";
 
 /// NIP46 error
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Key error
     Key(key::Error),
     /// JSON error
-    Json(serde_json::Error),
+    Json(String),
     /// Relay Url parse error
     RelayUrl(url::Error),
     /// Url parse error
@@ -52,8 +52,10 @@ pub enum Error {
     InvalidURI,
     /// Invalid URI scheme
     InvalidURIScheme,
-    /// Not request
+    /// Not a request
     NotRequest,
+    /// Not a response
+    NotResponse,
     /// Unexpected result
     UnexpectedResult,
 }
@@ -75,6 +77,7 @@ impl fmt::Display for Error {
             Self::InvalidURI => write!(f, "Invalid uri"),
             Self::InvalidURIScheme => write!(f, "Invalid uri scheme"),
             Self::NotRequest => write!(f, "Not a request"),
+            Self::NotResponse => write!(f, "Not a response"),
             Self::UnexpectedResult => write!(f, "Unexpected result"),
         }
     }
@@ -88,7 +91,7 @@ impl From<key::Error> for Error {
 
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
-        Self::Json(e)
+        Self::Json(e.to_string())
     }
 }
 
@@ -111,8 +114,8 @@ impl From<event::Error> for Error {
 }
 
 /// NIP46 method
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Method {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum NostrConnectMethod {
     /// Connect
     Connect,
     /// Get public key
@@ -133,7 +136,7 @@ pub enum Method {
     Ping,
 }
 
-impl fmt::Display for Method {
+impl fmt::Display for NostrConnectMethod {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Connect => write!(f, "connect"),
@@ -149,7 +152,7 @@ impl fmt::Display for Method {
     }
 }
 
-impl FromStr for Method {
+impl FromStr for NostrConnectMethod {
     type Err = Error;
 
     fn from_str(method: &str) -> Result<Self, Self::Err> {
@@ -168,7 +171,7 @@ impl FromStr for Method {
     }
 }
 
-impl Serialize for Method {
+impl Serialize for NostrConnectMethod {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -177,7 +180,7 @@ impl Serialize for Method {
     }
 }
 
-impl<'de> Deserialize<'de> for Method {
+impl<'de> Deserialize<'de> for NostrConnectMethod {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -187,9 +190,9 @@ impl<'de> Deserialize<'de> for Method {
     }
 }
 
-/// Request
+/// Nostr Connect Request
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Request {
+pub enum NostrConnectRequest {
     /// Connect
     Connect {
         /// Remote public key
@@ -235,24 +238,24 @@ pub enum Request {
     Ping,
 }
 
-impl Request {
-    /// Compose [Request] from message details
-    pub fn from_message(method: Method, params: Vec<String>) -> Result<Self, Error> {
+impl NostrConnectRequest {
+    /// Compose [`NostrConnectRequest`] from message details
+    pub fn from_message(method: NostrConnectMethod, params: Vec<String>) -> Result<Self, Error> {
         match method {
-            Method::Connect => {
+            NostrConnectMethod::Connect => {
                 let public_key = params.first().ok_or(Error::InvalidRequest)?;
                 let public_key: PublicKey = PublicKey::from_hex(public_key)?;
                 let secret: Option<String> = params.get(1).cloned();
                 Ok(Self::Connect { public_key, secret })
             }
-            Method::GetPublicKey => Ok(Self::GetPublicKey),
-            Method::SignEvent => {
+            NostrConnectMethod::GetPublicKey => Ok(Self::GetPublicKey),
+            NostrConnectMethod::SignEvent => {
                 let unsigned: &String = params.first().ok_or(Error::InvalidRequest)?;
                 let unsigned_event: UnsignedEvent = UnsignedEvent::from_json(unsigned)?;
                 Ok(Self::SignEvent(unsigned_event))
             }
-            Method::GetRelays => Ok(Self::GetRelays),
-            Method::Nip04Encrypt => {
+            NostrConnectMethod::GetRelays => Ok(Self::GetRelays),
+            NostrConnectMethod::Nip04Encrypt => {
                 if params.len() != 2 {
                     return Err(Error::InvalidParamsLength);
                 }
@@ -262,7 +265,7 @@ impl Request {
                     text: params[1].to_owned(),
                 })
             }
-            Method::Nip04Decrypt => {
+            NostrConnectMethod::Nip04Decrypt => {
                 if params.len() != 2 {
                     return Err(Error::InvalidParamsLength);
                 }
@@ -272,7 +275,7 @@ impl Request {
                     ciphertext: params[1].to_owned(),
                 })
             }
-            Method::Nip44Encrypt => {
+            NostrConnectMethod::Nip44Encrypt => {
                 if params.len() != 2 {
                     return Err(Error::InvalidParamsLength);
                 }
@@ -282,7 +285,7 @@ impl Request {
                     text: params[1].to_owned(),
                 })
             }
-            Method::Nip44Decrypt => {
+            NostrConnectMethod::Nip44Decrypt => {
                 if params.len() != 2 {
                     return Err(Error::InvalidParamsLength);
                 }
@@ -292,22 +295,22 @@ impl Request {
                     ciphertext: params[1].to_owned(),
                 })
             }
-            Method::Ping => Ok(Self::Ping),
+            NostrConnectMethod::Ping => Ok(Self::Ping),
         }
     }
 
     /// Get req method
-    pub fn method(&self) -> Method {
+    pub fn method(&self) -> NostrConnectMethod {
         match self {
-            Self::Connect { .. } => Method::Connect,
-            Self::GetPublicKey => Method::GetPublicKey,
-            Self::SignEvent(_) => Method::SignEvent,
-            Self::GetRelays => Method::GetRelays,
-            Self::Nip04Encrypt { .. } => Method::Nip04Encrypt,
-            Self::Nip04Decrypt { .. } => Method::Nip04Decrypt,
-            Self::Nip44Encrypt { .. } => Method::Nip44Encrypt,
-            Self::Nip44Decrypt { .. } => Method::Nip44Decrypt,
-            Self::Ping => Method::Ping,
+            Self::Connect { .. } => NostrConnectMethod::Connect,
+            Self::GetPublicKey => NostrConnectMethod::GetPublicKey,
+            Self::SignEvent(_) => NostrConnectMethod::SignEvent,
+            Self::GetRelays => NostrConnectMethod::GetRelays,
+            Self::Nip04Encrypt { .. } => NostrConnectMethod::Nip04Encrypt,
+            Self::Nip04Decrypt { .. } => NostrConnectMethod::Nip04Decrypt,
+            Self::Nip44Encrypt { .. } => NostrConnectMethod::Nip44Encrypt,
+            Self::Nip44Decrypt { .. } => NostrConnectMethod::Nip44Decrypt,
+            Self::Ping => NostrConnectMethod::Ping,
         }
     }
 
@@ -353,15 +356,33 @@ pub struct RelayPermissions {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResponseResult {
     /// Connect ACK
-    Connect,
+    Ack,
     /// Get public key
     GetPublicKey(PublicKey),
     /// Sign event
     SignEvent(Box<Event>),
     /// Get relays
     GetRelays(HashMap<RelayUrl, RelayPermissions>),
-    /// NIP04/NIP44 encryption/decryption
-    EncryptionDecryption(String),
+    /// Encrypt text (NIP04)
+    Nip04Encrypt {
+        /// Cipher text
+        ciphertext: String,
+    },
+    /// Decrypt (NIP04)
+    Nip04Decrypt {
+        /// Plain text
+        plaintext: String,
+    },
+    /// Encrypt text (NIP44)
+    Nip44Encrypt {
+        /// Cipher text
+        ciphertext: String,
+    },
+    /// Decrypt (NIP44)
+    Nip44Decrypt {
+        /// Plain text
+        plaintext: String,
+    },
     /// Pong
     Pong,
     /// Auth Challenges
@@ -370,42 +391,141 @@ pub enum ResponseResult {
     Error,
 }
 
+/// Nostr Connect Response
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NostrConnectResponse {
+    /// Response result
+    pub result: Option<ResponseResult>,
+    /// Response error
+    pub error: Option<String>,
+}
+
+impl NostrConnectResponse {
+    /// New response
+    #[inline]
+    pub fn new(result: Option<ResponseResult>, error: Option<String>) -> Self {
+        Self { result, error }
+    }
+
+    /// New response with result
+    #[inline]
+    pub fn with_result(result: ResponseResult) -> Self {
+        Self {
+            result: Some(result),
+            error: None,
+        }
+    }
+
+    /// New response with error
+    #[inline]
+    pub fn with_error<S>(error: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            result: None,
+            error: Some(error.into()),
+        }
+    }
+
+    /// Parse response
+    pub fn parse(
+        method: NostrConnectMethod,
+        result: Option<String>,
+        error: Option<String>,
+    ) -> Result<Self, Error> {
+        Ok(Self {
+            result: match result {
+                Some(result) => Some(ResponseResult::parse(method, result)?),
+                None => None,
+            },
+            error,
+        })
+    }
+
+    /// Check if the response is an auth URL
+    #[inline]
+    pub fn is_auth_url(&self) -> bool {
+        match &self.result {
+            Some(res) => res.is_auth_url(),
+            None => false,
+        }
+    }
+}
+
 impl fmt::Display for ResponseResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Connect => write!(f, "ack"),
-            Self::Pong => write!(f, "pong"),
-            Self::AuthUrl => write!(f, "auth_url"),
-            Self::Error => write!(f, "error"),
+            Self::Ack => write!(f, "ack"),
             Self::GetPublicKey(public_key) => write!(f, "{public_key}"),
             Self::SignEvent(event) => write!(f, "{}", event.as_json()),
             Self::GetRelays(map) => write!(f, "{}", json!(map)),
-            Self::EncryptionDecryption(val) => write!(f, "{val}"),
+            Self::Nip04Encrypt { ciphertext } | Self::Nip44Encrypt { ciphertext } => {
+                write!(f, "{ciphertext}")
+            }
+            Self::Nip04Decrypt { plaintext } | Self::Nip44Decrypt { plaintext } => {
+                write!(f, "{plaintext}")
+            }
+            Self::Pong => write!(f, "pong"),
+            Self::AuthUrl => write!(f, "auth_url"),
+            Self::Error => write!(f, "error"),
         }
     }
 }
 
 #[allow(missing_docs)]
 impl ResponseResult {
-    pub fn parse(res: &str) -> Result<Self, Error> {
-        match res {
-            "ack" => Ok(Self::Connect),
-            "pong" => Ok(Self::Pong),
-            "auth_url" => Ok(Self::AuthUrl),
-            "error" => Ok(Self::Error),
-            other => {
-                if let Ok(public_key) = PublicKey::from_hex(other) {
-                    Ok(Self::GetPublicKey(public_key))
-                } else if let Ok(event) = Event::from_json(other) {
-                    Ok(Self::SignEvent(Box::new(event)))
-                } else if let Ok(map) = serde_json::from_str(other) {
-                    Ok(Self::GetRelays(map))
+    pub fn parse<S>(method: NostrConnectMethod, response: S) -> Result<Self, Error>
+    where
+        S: Into<String>,
+    {
+        let response: String = response.into();
+
+        // Check if the response is an Auth URL or an error
+        match response.as_str() {
+            "auth_url" => return Ok(Self::AuthUrl),
+            "error" => return Ok(Self::Error),
+            _ => {}
+        };
+
+        // Parse response depending on the request method
+        match method {
+            NostrConnectMethod::Connect => {
+                if response == "ack" {
+                    Ok(Self::Ack)
                 } else {
-                    Ok(Self::EncryptionDecryption(other.to_string()))
+                    Err(Error::UnexpectedResult)
+                }
+            }
+            NostrConnectMethod::GetPublicKey => {
+                Ok(Self::GetPublicKey(PublicKey::from_hex(&response)?))
+            }
+            NostrConnectMethod::SignEvent => {
+                Ok(Self::SignEvent(Box::new(Event::from_json(response)?)))
+            }
+            NostrConnectMethod::GetRelays => Ok(Self::GetRelays(serde_json::from_str(&response)?)),
+            NostrConnectMethod::Nip04Encrypt => Ok(Self::Nip04Encrypt {
+                ciphertext: response,
+            }),
+            NostrConnectMethod::Nip04Decrypt => Ok(Self::Nip04Decrypt {
+                plaintext: response,
+            }),
+            NostrConnectMethod::Nip44Encrypt => Ok(Self::Nip44Encrypt {
+                ciphertext: response,
+            }),
+            NostrConnectMethod::Nip44Decrypt => Ok(Self::Nip44Decrypt {
+                plaintext: response,
+            }),
+            NostrConnectMethod::Ping => {
+                if response == "pong" {
+                    Ok(Self::Pong)
+                } else {
+                    Err(Error::UnexpectedResult)
                 }
             }
         }
     }
+
     #[inline]
     pub fn is_auth_url(&self) -> bool {
         matches!(self, Self::AuthUrl)
@@ -417,8 +537,8 @@ impl ResponseResult {
     }
 
     #[inline]
-    pub fn to_connect(self) -> Result<(), Error> {
-        if let Self::Connect = self {
+    pub fn to_ack(self) -> Result<(), Error> {
+        if let Self::Ack = self {
             Ok(())
         } else {
             Err(Error::UnexpectedResult)
@@ -453,6 +573,42 @@ impl ResponseResult {
     }
 
     #[inline]
+    pub fn to_nip04_encrypt(self) -> Result<String, Error> {
+        if let Self::Nip04Encrypt { ciphertext } = self {
+            Ok(ciphertext)
+        } else {
+            Err(Error::UnexpectedResult)
+        }
+    }
+
+    #[inline]
+    pub fn to_nip04_decrypt(self) -> Result<String, Error> {
+        if let Self::Nip04Decrypt { plaintext } = self {
+            Ok(plaintext)
+        } else {
+            Err(Error::UnexpectedResult)
+        }
+    }
+
+    #[inline]
+    pub fn to_nip44_encrypt(self) -> Result<String, Error> {
+        if let Self::Nip44Encrypt { ciphertext } = self {
+            Ok(ciphertext)
+        } else {
+            Err(Error::UnexpectedResult)
+        }
+    }
+
+    #[inline]
+    pub fn to_nip44_decrypt(self) -> Result<String, Error> {
+        if let Self::Nip44Decrypt { plaintext } = self {
+            Ok(plaintext)
+        } else {
+            Err(Error::UnexpectedResult)
+        }
+    }
+
+    #[inline]
     pub fn to_pong(self) -> Result<(), Error> {
         if let Self::Pong = self {
             Ok(())
@@ -460,107 +616,71 @@ impl ResponseResult {
             Err(Error::UnexpectedResult)
         }
     }
-
-    #[inline]
-    pub fn to_encrypt_decrypt(self) -> Result<String, Error> {
-        if let Self::EncryptionDecryption(val) = self {
-            Ok(val)
-        } else {
-            Err(Error::UnexpectedResult)
-        }
-    }
 }
 
-#[derive(Serialize, Deserialize)]
+/// Nostr Connect Message
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/46.md>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
-enum MessageIntermediate {
-    Request {
-        id: String,
-        method: Method,
-        params: Vec<String>,
-    },
-    Response {
-        id: String,
-        result: Option<String>,
-        error: Option<String>,
-    },
-}
-
-/// Message
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Message {
+pub enum NostrConnectMessage {
     /// Request
     Request {
-        /// Request id
+        /// Request ID
         id: String,
-        /// Request
-        req: Request,
+        /// Request method
+        method: NostrConnectMethod,
+        /// Request params
+        params: Vec<String>,
     },
     /// Response
     Response {
         /// Request id
         id: String,
         /// Result
-        result: Option<ResponseResult>,
+        result: Option<String>,
         /// Reason, if failed
         error: Option<String>,
     },
 }
 
-impl fmt::Display for Message {
+impl fmt::Display for NostrConnectMessage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_json())
     }
 }
 
-impl Message {
-    /// Compose [`Request`] message
+impl NostrConnectMessage {
+    /// Compose [`NostrConnectMessage::Request`] from [`NostrConnectRequest`].
     #[inline]
     #[cfg(feature = "std")]
-    pub fn request(req: Request) -> Self {
+    pub fn request(req: &NostrConnectRequest) -> Self {
         Self::request_with_rng(&mut rand::thread_rng(), req)
     }
 
-    /// Compose [`Request`] message
+    /// Compose [`NostrConnectMessage::Request`] from [`NostrConnectRequest`].
     #[inline]
-    pub fn request_with_rng<R>(rng: &mut R, req: Request) -> Self
+    pub fn request_with_rng<R>(rng: &mut R, req: &NostrConnectRequest) -> Self
     where
         R: RngCore,
     {
         Self::Request {
             id: rng.next_u32().to_string(),
-            req,
+            method: req.method(),
+            params: req.params(),
         }
     }
 
-    /// Compose `Response` message
+    /// Compose [`NostrConnectMessage::Response`] from [`Response`].
     #[inline]
-    pub fn response<S>(req_id: S, result: Option<ResponseResult>, error: Option<S>) -> Self
+    pub fn response<S>(req_id: S, res: NostrConnectResponse) -> Self
     where
         S: Into<String>,
     {
         Self::Response {
             id: req_id.into(),
-            result,
-            error: error.map(|e| e.into()),
-        }
-    }
-
-    /// Check if current [`Message`] is a request
-    #[inline]
-    pub fn is_request(&self) -> bool {
-        match self {
-            Message::Request { .. } => true,
-            Message::Response { .. } => false,
-        }
-    }
-
-    /// Consume [Message] and return [Request]
-    #[inline]
-    pub fn to_request(self) -> Result<Request, Error> {
-        match self {
-            Self::Request { req, .. } => Ok(req),
-            _ => Err(Error::NotRequest),
+            result: res.result.map(|res| res.to_string()),
+            error: res.error,
         }
     }
 
@@ -573,87 +693,42 @@ impl Message {
         }
     }
 
-    /// Generate response error message for a request
-    pub fn generate_error_response<S>(&self, error: S) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
-        // Check if Message is a Request
-        if self.is_request() {
-            let error: &str = error.as_ref();
-            Ok(Self::response(self.id(), None, Some(error)))
-        } else {
-            Err(Error::NotRequest)
-        }
+    /// Check if the current [`Message`] is a request.
+    #[inline]
+    pub fn is_request(&self) -> bool {
+        matches!(self, Self::Request { .. })
     }
 
-    /// Check if result response is `auth_url`
-    pub fn is_auth_url(&self) -> bool {
+    /// Check if the current [`Message`] is a response.
+    #[inline]
+    pub fn is_response(&self) -> bool {
+        matches!(self, Self::Response { .. })
+    }
+
+    /// Convert [`NostrConnectMessage::Request`] to [`Request`].
+    #[inline]
+    pub fn to_request(self) -> Result<NostrConnectRequest, Error> {
         match self {
-            Self::Request { .. } => false,
-            Self::Response { result, .. } => match result {
-                Some(result) => result.is_auth_url(),
-                None => false,
-            },
-        }
-    }
-}
-
-impl Serialize for Message {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let intermediate: MessageIntermediate = match self {
-            Self::Request { id, req } => MessageIntermediate::Request {
-                id: id.to_owned(),
-                method: req.method(),
-                params: req.params(),
-            },
-            Self::Response { id, result, error } => MessageIntermediate::Response {
-                id: id.to_owned(),
-                result: result.as_ref().map(|res| res.to_string()),
-                error: error.clone(),
-            },
-        };
-        intermediate.serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for Message {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let intermediate: MessageIntermediate = MessageIntermediate::deserialize(deserializer)?;
-        match intermediate {
-            MessageIntermediate::Request { id, method, params } => Ok(Self::Request {
-                id,
-                req: Request::from_message(method, params).map_err(serde::de::Error::custom)?,
-            }),
-            MessageIntermediate::Response { id, result, error } => {
-                let result: Option<ResponseResult> = match result {
-                    Some(res) => {
-                        // Deserialize response
-                        let res: ResponseResult =
-                            ResponseResult::parse(&res).map_err(serde::de::Error::custom)?;
-
-                        // Check if is error
-                        if res.is_error() {
-                            None
-                        } else {
-                            Some(res)
-                        }
-                    }
-                    None => None,
-                };
-                Ok(Self::Response { id, result, error })
+            Self::Request { method, params, .. } => {
+                NostrConnectRequest::from_message(method, params)
             }
+            _ => Err(Error::NotRequest),
+        }
+    }
+
+    /// Convert [`NostrConnectMessage::Response`] to [`Response`].
+    #[inline]
+    pub fn to_response(self, method: NostrConnectMethod) -> Result<NostrConnectResponse, Error> {
+        match self {
+            Self::Response { result, error, .. } => {
+                NostrConnectResponse::parse(method, result, error)
+            }
+            _ => Err(Error::NotRequest),
         }
     }
 }
 
-impl JsonUtil for Message {
+impl JsonUtil for NostrConnectMessage {
     type Err = Error;
 }
 
@@ -1021,34 +1096,43 @@ mod test {
 
     #[test]
     fn test_parse_response_result() {
-        let res: ResponseResult = ResponseResult::parse("ack").unwrap();
-        assert_eq!(res, ResponseResult::Connect);
-
-        let pubkey =
+        let public_key =
             PublicKey::parse("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
                 .unwrap();
+
+        let res: ResponseResult =
+            ResponseResult::parse(NostrConnectMethod::Connect, "ack").unwrap();
+        assert_eq!(res, ResponseResult::Ack);
+
+        let res = ResponseResult::parse(NostrConnectMethod::Ping, "ack");
+        assert_eq!(res.unwrap_err(), Error::UnexpectedResult);
+
         let res: ResponseResult = ResponseResult::parse(
+            NostrConnectMethod::GetPublicKey,
             "b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4",
         )
         .unwrap();
-        assert_eq!(res, ResponseResult::GetPublicKey(pubkey));
+        assert_eq!(res, ResponseResult::GetPublicKey(public_key));
 
         let json = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
         let event = Event::from_json(json).unwrap();
-        let res: ResponseResult = ResponseResult::parse(json).unwrap();
+        let res: ResponseResult =
+            ResponseResult::parse(NostrConnectMethod::SignEvent, json).unwrap();
         assert_eq!(res, ResponseResult::SignEvent(Box::new(event)));
 
-        let res: ResponseResult = ResponseResult::parse("pong").unwrap();
+        let res: ResponseResult = ResponseResult::parse(NostrConnectMethod::Ping, "pong").unwrap();
         assert_eq!(res, ResponseResult::Pong);
     }
 
     #[test]
     fn test_message_serialization() {
         // Error
-        let message = Message::response(
+        let message = NostrConnectMessage::response(
             "2581081643",
-            Some(ResponseResult::Error),
-            Some("Empty response"),
+            NostrConnectResponse::new(
+                Some(ResponseResult::Error),
+                Some(String::from("Empty response")),
+            ),
         );
         let json = r#"{"id":"2581081643","result":"error","error":"Empty response"}"#;
         assert_eq!(message.as_json(), json);
@@ -1056,84 +1140,110 @@ mod test {
         // Sign event
         let unsigned = UnsignedEvent::from_json(r#"{"created_at":1710854115,"content":"Testing rust-nostr NIP46 signer [bunker]","tags":[],"kind":1,"pubkey":"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3","id":"236ad3390704e1bf435f40143fb3de163723aeaa8f25c3bf12a0ac4d9a4b56a7"}"#).unwrap();
         let json = r#"{"id":"3047714669","method":"sign_event","params":["{\"id\":\"236ad3390704e1bf435f40143fb3de163723aeaa8f25c3bf12a0ac4d9a4b56a7\",\"pubkey\":\"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3\",\"created_at\":1710854115,\"kind\":1,\"tags\":[],\"content\":\"Testing rust-nostr NIP46 signer [bunker]\"}"]}"#;
-        let message = Message::Request {
+        let message = NostrConnectMessage::Request {
             id: String::from("3047714669"),
-            req: Request::SignEvent(unsigned),
+            method: NostrConnectMethod::SignEvent,
+            params: vec![unsigned.as_json()],
         };
         assert_eq!(message.as_json(), json);
+
+        let req = message.to_request().unwrap();
+        assert_eq!(req, NostrConnectRequest::SignEvent(unsigned));
     }
 
     #[test]
     fn test_message_deserialization() {
         // Connect
         let json = r#"{"id":"2845841889","method":"connect","params":["79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3"]}"#;
-        let message = Message::from_json(json).unwrap();
+        let message = NostrConnectMessage::from_json(json).unwrap();
+        let expected_msg = NostrConnectMessage::Request {
+            id: String::from("2845841889"),
+            method: NostrConnectMethod::Connect,
+            params: vec![String::from(
+                "79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3",
+            )],
+        };
+        assert_eq!(message, expected_msg);
+        let req = message.to_request().unwrap();
         assert_eq!(
-            message,
-            Message::Request {
-                id: String::from("2845841889"),
-                req: Request::Connect {
-                    public_key: PublicKey::from_hex(
-                        "79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3"
-                    )
-                    .unwrap(),
-                    secret: None
-                }
+            req,
+            NostrConnectRequest::Connect {
+                public_key: PublicKey::from_hex(
+                    "79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3"
+                )
+                .unwrap(),
+                secret: None,
             }
         );
 
         // Connect ACK
         let json = r#"{"id":"2581081643","result":"ack","error":null}"#;
-        let message = Message::from_json(json).unwrap();
+        let message = NostrConnectMessage::from_json(json).unwrap();
         assert_eq!(
             message,
-            Message::response("2581081643", Some(ResponseResult::Connect), None)
+            NostrConnectMessage::response(
+                "2581081643",
+                NostrConnectResponse::new(Some(ResponseResult::Ack), None)
+            )
         );
 
         // Error
         let json = r#"{"id":"2581081643","result":"error","error":"Empty response"}"#;
-        let message = Message::from_json(json).unwrap();
+        let message = NostrConnectMessage::from_json(json).unwrap();
         assert_eq!(
             message,
-            Message::response("2581081643", None, Some("Empty response"))
+            NostrConnectMessage::response(
+                "2581081643",
+                NostrConnectResponse::new(
+                    Some(ResponseResult::Error),
+                    Some(String::from("Empty response"))
+                )
+            )
         );
 
         // Sign event
         let event = Event::from_json(r#"{"created_at":1710854115,"content":"Testing rust-nostr NIP46 signer [bunker]","tags":[],"kind":1,"pubkey":"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3","id":"236ad3390704e1bf435f40143fb3de163723aeaa8f25c3bf12a0ac4d9a4b56a7","sig":"509b8fe51c1e4c4cc55a0b2032b70bfb683f1da6c62e4e5b0da7175eab99b18c67862deaaea80cf31acedb9ad3022ebf54fd0cb6c9d1297a96541848d2035d92"}"#).unwrap();
-        let json = r#"{"id":"3047714669","result":"{\"created_at\":1710854115,\"content\":\"Testing rust-nostr NIP46 signer [bunker]\",\"tags\":[],\"kind\":1,\"pubkey\":\"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3\",\"id\":\"236ad3390704e1bf435f40143fb3de163723aeaa8f25c3bf12a0ac4d9a4b56a7\",\"sig\":\"509b8fe51c1e4c4cc55a0b2032b70bfb683f1da6c62e4e5b0da7175eab99b18c67862deaaea80cf31acedb9ad3022ebf54fd0cb6c9d1297a96541848d2035d92\"}","error":null}"#;
-        let message = Message::from_json(json).unwrap();
+        let json = r#"{"id":"3047714669","result":"{\"id\":\"236ad3390704e1bf435f40143fb3de163723aeaa8f25c3bf12a0ac4d9a4b56a7\",\"pubkey\":\"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3\",\"created_at\":1710854115,\"kind\":1,\"tags\":[],\"content\":\"Testing rust-nostr NIP46 signer [bunker]\",\"sig\":\"509b8fe51c1e4c4cc55a0b2032b70bfb683f1da6c62e4e5b0da7175eab99b18c67862deaaea80cf31acedb9ad3022ebf54fd0cb6c9d1297a96541848d2035d92\"}","error":null}"#;
+        let message = NostrConnectMessage::from_json(json).unwrap();
         assert_eq!(
             message,
-            Message::response(
+            NostrConnectMessage::response(
                 "3047714669",
-                Some(ResponseResult::SignEvent(Box::new(event))),
-                None
+                NostrConnectResponse::new(Some(ResponseResult::SignEvent(Box::new(event))), None),
             )
         );
 
         // Encryption
         let ciphertext = "ArY1I2xC2yDwIbuNHN/1ynXdGgzHLqdCrXUPMwELJPc7s7JqlCMJBAIIjfkpHReBPXeoMCyuClwgbT419jUWU1PwaNl4FEQYKCDKVJz+97Mp3K+Q2YGa77B6gpxB/lr1QgoqpDf7wDVrDmOqGoiPjWDqy8KzLueKDcm9BVP8xeTJIxs=";
         let json = r#"{"id":"3047714669","result":"ArY1I2xC2yDwIbuNHN/1ynXdGgzHLqdCrXUPMwELJPc7s7JqlCMJBAIIjfkpHReBPXeoMCyuClwgbT419jUWU1PwaNl4FEQYKCDKVJz+97Mp3K+Q2YGa77B6gpxB/lr1QgoqpDf7wDVrDmOqGoiPjWDqy8KzLueKDcm9BVP8xeTJIxs=","error":null}"#;
-        let message = Message::from_json(json).unwrap();
+        let message = NostrConnectMessage::from_json(json).unwrap();
         assert_eq!(
             message,
-            Message::response(
+            NostrConnectMessage::response(
                 "3047714669",
-                Some(ResponseResult::EncryptionDecryption(ciphertext.to_string())),
-                None
+                NostrConnectResponse::new(
+                    Some(ResponseResult::Nip44Encrypt {
+                        ciphertext: ciphertext.to_string()
+                    }),
+                    None
+                )
             )
         );
 
         // Decryption
         let plaintext = "Hello world!";
         let json = r#"{"id":"3047714669","result":"Hello world!","error":null}"#;
-        let message = Message::from_json(json).unwrap();
+        let message = NostrConnectMessage::from_json(json).unwrap();
         assert_eq!(
             message,
-            Message::response(
+            NostrConnectMessage::response(
                 "3047714669",
-                Some(ResponseResult::EncryptionDecryption(plaintext.to_string())),
-                None
+                NostrConnectResponse::new(
+                    Some(ResponseResult::Nip44Decrypt {
+                        plaintext: plaintext.to_string()
+                    }),
+                    None
+                )
             )
         );
     }

@@ -15,8 +15,6 @@ use secp256k1::rand::{CryptoRng, Rng};
 use secp256k1::{Secp256k1, Signing, Verification};
 use serde_json::{json, Value};
 
-#[cfg(all(feature = "std", feature = "nip44", feature = "nip46"))]
-use crate::nips::nip46::Message as NostrConnectMessage;
 use crate::nips::nip62::VanishTarget;
 use crate::prelude::*;
 

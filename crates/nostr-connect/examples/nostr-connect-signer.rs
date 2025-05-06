@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 use dialoguer::Confirm;
-use nostr::nips::nip46::Request;
 use nostr_connect::prelude::*;
 
 const SIGNER_SECRET_KEY: &str = "nsec12kcgs78l06p30jz7z7h3n2x2cy99nw2z6zspjdp7qc206887mwvs95lnkx";
@@ -38,7 +37,7 @@ async fn main() -> Result<()> {
 struct CustomActions;
 
 impl NostrConnectSignerActions for CustomActions {
-    fn approve(&self, public_key: &PublicKey, req: &Request) -> bool {
+    fn approve(&self, public_key: &PublicKey, req: &NostrConnectRequest) -> bool {
         println!("Public key: {public_key}");
         println!("{req:#?}\n");
         Confirm::new()
