@@ -514,6 +514,112 @@ where
         }
         Ok(true)
     }
+
+    /// Batch add members
+    pub fn add_members(
+        &self, group_id: &GroupId,
+        key_packages: &[KeyPackage],
+    ) -> Result<(Vec<u8>, Vec<u8>), Error> {
+        // Load group
+        let mut group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+
+        let signer: SignatureKeyPair = self.load_mls_signer(&group)?;
+
+        let (commit_message, welcome_message, _group_info) = group
+            .add_members(&self.provider, &signer, key_packages)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        group
+            .merge_pending_commit(&self.provider)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        let serialized_commit = commit_message
+            .tls_serialize_detached()
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        let serialized_welcome = welcome_message
+            .tls_serialize_detached()
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        Ok((serialized_commit, serialized_welcome))
+    }
+
+    /// Batch remove members
+    pub fn remove_members(
+        &self, group_id: &GroupId,
+        member_indices: &[u32],
+    ) -> Result<Vec<u8>, Error> {
+        // Load group
+        let mut group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+
+        let signer: SignatureKeyPair = self.load_mls_signer(&group)?;
+
+        let leaf_indices: Vec<LeafNodeIndex> = member_indices
+            .iter()
+            .map(|&idx| LeafNodeIndex::new(idx))
+            .collect();
+
+        let (commit_message, _welcome_option, _group_info) = group
+            .remove_members(&self.provider, &signer, &leaf_indices)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        group
+            .merge_pending_commit(&self.provider)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        let serialized_commit = commit_message
+            .tls_serialize_detached()
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        Ok(serialized_commit)
+    }
+
+    /// Commit proposal
+    pub fn commit_proposal(
+        &self, group_id: &GroupId,
+        proposal: Box<QueuedProposal>,
+    ) -> Result<(Vec<u8>, Option<Vec<u8>>), Error> {
+        // Load group
+        let mut group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+        // Load signer
+        let signer: SignatureKeyPair = self.load_mls_signer(&group)?;
+        // Store proposal
+        group.store_pending_proposal(self.provider.storage(), *proposal).unwrap();
+        // Commit pending proposals
+        let (commit_message, welcome_message, _) = group
+            .commit_to_pending_proposals(&self.provider, &signer)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        let commit_message = commit_message.tls_serialize_detached().map_err(|e| Error::Group(e.to_string()))?;
+        let welcome_message = match welcome_message {
+            Some(w) => Some(w.tls_serialize_detached().map_err(|e| Error::Group(e.to_string()))?),
+            None => None,
+        };
+
+        group.merge_pending_commit(&self.provider).map_err(|e| Error::Group(e.to_string()))?;
+
+        Ok((commit_message, welcome_message))
+    }
+
+    /// Leave the group
+    pub fn leave_group(
+        &self, group_id: &GroupId,
+    ) -> Result<Vec<u8>, Error> {
+        // Load group
+        let mut group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+
+        let signer: SignatureKeyPair = self.load_mls_signer(&group)?;
+
+        let leave_message = group
+            .leave_group(&self.provider, &signer)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        let serialized_leave = leave_message
+            .tls_serialize_detached()
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        Ok(serialized_leave)
+    }
 }
 
 #[cfg(test)]

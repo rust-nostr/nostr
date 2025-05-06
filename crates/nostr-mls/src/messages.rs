@@ -277,8 +277,11 @@ where
             }
             ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                 // This is a commit message
-                tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "Received commit message: {:?}", staged_commit);
-                // TODO: Handle commit message
+                tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Received commit message");
+                group
+                    .merge_staged_commit(&self.provider, *staged_commit)
+                    .map_err(|e| Error::Group(e.to_string()))?;
+                group.merge_pending_commit(&self.provider)?;
                 Ok(None)
             }
             ProcessedMessageContent::ExternalJoinProposalMessage(external_join_proposal) => {
