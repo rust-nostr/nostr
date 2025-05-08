@@ -40,6 +40,7 @@
 
 ### Added
 
+- nostr: add `UnsignedEvent::id` method ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/868)
 - blossom: add new crate with Blossom support ([Daniel D’Aquino] at https://github.com/rust-nostr/nostr/pull/838)
 - mls-storage: add new crate with traits and types for mls storage implementations ([JeffG] at https://github.com/rust-nostr/nostr/pull/836)
 - mls-memory-storage: add an in-memory implementation for MLS ([JeffG] at https://github.com/rust-nostr/nostr/pull/839)
