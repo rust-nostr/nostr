@@ -258,8 +258,8 @@ where
         name: S1,
         description: S2,
         creator_public_key: &PublicKey,
-        member_pubkeys: Vec<PublicKey>,
-        member_key_packages: Vec<KeyPackage>,
+        member_pubkeys: &[PublicKey],
+        member_key_packages: &[KeyPackage],
         admins: Vec<PublicKey>,
         group_relays: Vec<RelayUrl>,
     ) -> Result<CreateGroupResult, Error>
@@ -268,7 +268,7 @@ where
         S2: Into<String>,
     {
         // Validate group members
-        self.validate_group_members(creator_public_key, &member_pubkeys, &admins)?;
+        self.validate_group_members(creator_public_key, member_pubkeys, &admins)?;
 
         let (credential, signer) = self.generate_credential_with_key(creator_public_key)?;
 
@@ -325,7 +325,7 @@ where
 
         // Add members to the group
         let (_, welcome_out, _group_info) =
-            mls_group.add_members(&self.provider, &signer, member_key_packages.as_slice())?;
+            mls_group.add_members(&self.provider, &signer, member_key_packages)?;
 
         // Merge the pending commit adding the memebers
         mls_group.merge_pending_commit(&self.provider)?;

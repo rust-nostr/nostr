@@ -120,7 +120,7 @@ where
     /// # Arguments
     ///
     /// * `key_package` - The key package to delete
-    pub fn delete_key_package_from_storage(&self, key_package: KeyPackage) -> Result<(), Error> {
+    pub fn delete_key_package_from_storage(&self, key_package: &KeyPackage) -> Result<(), Error> {
         let hash_ref = key_package.hash_ref(self.provider.crypto())?;
 
         self.provider
@@ -245,7 +245,7 @@ mod tests {
 
         // Delete the key package
         deletion_mls
-            .delete_key_package_from_storage(key_package)
+            .delete_key_package_from_storage(&key_package)
             .expect("Failed to delete key package");
     }
 
