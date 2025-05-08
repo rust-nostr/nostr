@@ -88,13 +88,15 @@ where
     fn create_message_for_event(
         &self,
         group: &mut MlsGroup,
-        mut rumor: UnsignedEvent,
+        rumor: &mut UnsignedEvent,
     ) -> Result<Vec<u8>, Error> {
         // Load signer
         let signer: SignatureKeyPair = self.load_mls_signer(group)?;
 
-        // Ensure rumor ID and serialize as JSON
+        // Ensure rumor ID
         rumor.ensure_id();
+
+        // Serialize as JSON
         let json: String = rumor.as_json();
 
         // Create message
@@ -126,7 +128,7 @@ where
     pub fn create_message(
         &self,
         mls_group_id: &GroupId,
-        rumor: UnsignedEvent,
+        mut rumor: UnsignedEvent,
     ) -> Result<Event, Error> {
         // Load mls group
         let mut mls_group = self
@@ -140,7 +142,10 @@ where
             .ok_or(Error::GroupNotFound)?;
 
         // Create message
-        let message: Vec<u8> = self.create_message_for_event(&mut mls_group, rumor.clone())?;
+        let message: Vec<u8> = self.create_message_for_event(&mut mls_group, &mut rumor)?;
+
+        // Get the rumor ID
+        let rumor_id: EventId = rumor.id();
 
         // Export secret
         let secret: group_types::GroupExporterSecret = self.exporter_secret(mls_group_id)?;
@@ -167,7 +172,7 @@ where
 
         // Create message to save to storage
         let message: message_types::Message = message_types::Message {
-            id: rumor.id.unwrap(),
+            id: rumor_id,
             pubkey: rumor.pubkey,
             kind: rumor.kind,
             mls_group_id: mls_group_id.clone(),
@@ -182,7 +187,7 @@ where
         // Create processed_message to track state of message
         let processed_message: message_types::ProcessedMessage = message_types::ProcessedMessage {
             wrapper_event_id: event.id,
-            message_event_id: Some(rumor.id.unwrap()),
+            message_event_id: Some(rumor_id),
             processed_at: Timestamp::now(),
             state: message_types::ProcessedMessageState::Created,
             failure_reason: None,
@@ -360,17 +365,19 @@ where
         // The resulting serialized message is the MLS encrypted message that Bob sent
         // Now Bob can process the MLS message content and do what's needed with it
         match self.process_message_for_group(&mut mls_group, &message_bytes) {
-            Ok(Some(rumor)) => {
+            Ok(Some(mut rumor)) => {
+                let rumor_id: EventId = rumor.id();
+
                 let processed_message = message_types::ProcessedMessage {
                     wrapper_event_id: event.id,
-                    message_event_id: Some(rumor.id.unwrap()),
+                    message_event_id: Some(rumor_id),
                     processed_at: Timestamp::now(),
                     state: message_types::ProcessedMessageState::Processed,
                     failure_reason: None,
                 };
 
                 let message = message_types::Message {
-                    id: rumor.id.unwrap(),
+                    id: rumor_id,
                     pubkey: rumor.pubkey,
                     kind: rumor.kind,
                     mls_group_id: group.mls_group_id.clone(),
@@ -421,18 +428,23 @@ where
                 match e {
                     Error::CannotDecryptOwnMessage => {
                         tracing::debug!(target: "nostr_mls::messages::process_message", "Cannot decrypt own message, checking for cached message");
+
                         let mut processed_message = self
                             .storage()
                             .find_processed_message_by_event_id(&event.id)
                             .map_err(|e| Error::Message(e.to_string()))?
                             .ok_or(Error::Message("Processed message not found".to_string()))?;
 
+                        let message_event_id: EventId = processed_message
+                            .message_event_id
+                            .ok_or(Error::Message("Message event ID not found".to_string()))?;
+
                         // If the message is created, we need to update the state of the message and processed message
                         // If it's already processed, we don't need to do anything
                         match processed_message.state {
                             message_types::ProcessedMessageState::Created => {
                                 let mut message = self
-                                    .get_message(&processed_message.message_event_id.unwrap())?
+                                    .get_message(&message_event_id)?
                                     .ok_or(Error::Message("Message not found".to_string()))?;
 
                                 message.state = message_types::MessageState::Processed;
@@ -455,8 +467,7 @@ where
                                 tracing::debug!(target: "nostr_mls::messages::process_message", "Message previously failed to process");
                             }
                         }
-                        let message =
-                            self.get_message(&processed_message.message_event_id.unwrap())?;
+                        let message = self.get_message(&message_event_id)?;
                         return Ok(message);
                     }
                     _ => {
