@@ -8,7 +8,6 @@ use std::path::Path;
 use std::sync::mpsc::Sender;
 
 use async_utility::task;
-use heed::RoTxn;
 use nostr_database::prelude::*;
 
 mod error;
@@ -114,7 +113,7 @@ impl Store {
     pub fn query(&self, filter: Filter) -> Result<Events, Error> {
         let mut events: Events = Events::new(&filter);
 
-        let txn: RoTxn = self.db.read_txn()?;
+        let txn = self.db.read_txn()?;
         let output = self.db.query(&txn, filter)?;
         events.extend(output.into_iter().map(|e| e.into_owned()));
         txn.commit()?;

@@ -37,6 +37,7 @@
 ### Changed
 
 - Bump `lru` from 0.13.0 to 0.14.0 ([Yuki Kishimoto])
+- lmdb: bump `heed` from 0.20 to 0.22 ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/867)
 
 ### Added
 
