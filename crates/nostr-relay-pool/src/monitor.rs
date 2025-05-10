@@ -30,9 +30,7 @@ pub struct Monitor {
 impl Monitor {
     /// Create a new monitor with the given channel size
     ///
-    /// # Panics
-    ///
-    /// This will panic if the channel size is equal to `0` or larger than `usize::MAX / 2`;
+    /// For more details, check [`broadcast::channel`].
     pub fn new(channel_size: usize) -> Self {
         let (tx, ..) = broadcast::channel(channel_size);
 
