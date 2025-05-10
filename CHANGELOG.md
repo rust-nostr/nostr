@@ -50,6 +50,10 @@
 - pool: add relay monitor ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/851)
 - sdk: add `Options::pool` ([Yuki Kishimoto])
 
+### Fixed
+
+- nostr: handle `A` and `E` standard tags ([awiteb] at https://github.com/rust-nostr/nostr/pull/870)
+
 ### Deprecated
 
 - sdk: deprecate `Options::notification_channel_size` ([Yuki Kishimoto])
