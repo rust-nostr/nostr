@@ -407,22 +407,29 @@ impl Relay {
 
         // If auth required, wait for authentication adn resend it
         if let Some(MachineReadablePrefix::AuthRequired) = MachineReadablePrefix::parse(&message) {
-            // Check if NIP42 auth is enabled and signer is set
-            let has_signer: bool = self.inner.state.has_signer().await;
-            if self.inner.state.is_auto_authentication_enabled() && has_signer {
-                // Wait that relay authenticate
-                self.wait_for_authentication(&mut notifications, WAIT_FOR_AUTHENTICATION_TIMEOUT)
+            // Check if NIP42 auth is enabled and middleware is set
+            if let Some(middleware) = &self.inner.state.auth_middleware {
+                let is_enabled: bool = self.inner.state.is_auto_authentication_enabled();
+                let is_ready: bool = middleware.is_ready().await;
+
+                if is_enabled && is_ready {
+                    // Wait that relay authenticate
+                    self.wait_for_authentication(
+                        &mut notifications,
+                        WAIT_FOR_AUTHENTICATION_TIMEOUT,
+                    )
                     .await?;
 
-                // Try to resend event
-                let (status, message) = self._send_event(&mut notifications, event).await?;
+                    // Try to resend event
+                    let (status, message) = self._send_event(&mut notifications, event).await?;
 
-                // Check status
-                return if status {
-                    Ok(event.id)
-                } else {
-                    Err(Error::RelayMessage(message))
-                };
+                    // Check status
+                    return if status {
+                        Ok(event.id)
+                    } else {
+                        Err(Error::RelayMessage(message))
+                    };
+                }
             }
         }
 
@@ -746,9 +753,10 @@ mod tests {
 
     use async_utility::time;
     use nostr_relay_builder::prelude::*;
+    use tokio::sync::RwLock;
 
     use super::{Error, *};
-    use crate::policy::{AdmitPolicy, PolicyError};
+    use crate::policy::{AdmitPolicy, AuthenticationMiddleware, PolicyError};
 
     #[derive(Debug)]
     struct CustomTestPolicy {
@@ -770,8 +778,53 @@ mod tests {
         }
     }
 
+    #[derive(Debug, Default)]
+    struct AuthenticationPolicy {
+        signer: RwLock<Option<Arc<dyn NostrSigner>>>,
+    }
+
+    impl AuthenticationPolicy {
+        async fn set_signer(&self, signer: Option<Arc<dyn NostrSigner>>) {
+            let mut s = self.signer.write().await;
+            *s = signer;
+        }
+    }
+
+    impl AuthenticationMiddleware for AuthenticationPolicy {
+        fn is_ready(&self) -> BoxedFuture<'_, bool> {
+            Box::pin(async move { self.signer.read().await.is_some() })
+        }
+
+        fn authenticate<'a>(
+            &'a self,
+            _relay_url: &'a RelayUrl,
+            builder: EventBuilder,
+        ) -> BoxedFuture<'a, Result<Event, PolicyError>> {
+            Box::pin(async move {
+                let signer = self.signer.read().await;
+
+                match signer.as_ref() {
+                    Some(signer) => builder.sign(signer).await.map_err(PolicyError::backend),
+                    None => {
+                        return Err(PolicyError::backend(Error::AuthenticationFailed));
+                    }
+                }
+            })
+        }
+    }
+
     fn new_relay(url: RelayUrl, opts: RelayOptions) -> Relay {
         Relay::new(url, SharedState::default(), opts)
+    }
+
+    fn new_relay_with_auth_middleware(
+        url: RelayUrl,
+        middleware: Arc<dyn AuthenticationMiddleware>,
+        opts: RelayOptions,
+    ) -> Relay {
+        let mut state: SharedState = SharedState::default();
+        state.auth_middleware = Some(middleware);
+        Relay::new(url, state, opts)
     }
 
     /// Setup public (without NIP42 auth) relay with N events to test event fetching
@@ -1161,7 +1214,10 @@ mod tests {
         let mock = LocalRelay::run(builder).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let relay: Relay = new_relay(url, RelayOptions::default());
+        let middleware = Arc::new(AuthenticationPolicy::default());
+
+        let relay: Relay =
+            new_relay_with_auth_middleware(url, middleware.clone(), RelayOptions::default());
 
         relay.inner.state.automatic_authentication(true);
 
@@ -1185,7 +1241,7 @@ mod tests {
         }
 
         // Set a signer
-        relay.inner.state.set_signer(keys.clone()).await;
+        middleware.set_signer(Some(Arc::new(keys.clone()))).await;
 
         // Send as authenticated
         let event = EventBuilder::text_note("Test")
@@ -1204,7 +1260,10 @@ mod tests {
         let mock = LocalRelay::run(builder).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let relay: Relay = new_relay(url, RelayOptions::default());
+        let middleware = Arc::new(AuthenticationPolicy::default());
+
+        let relay: Relay =
+            new_relay_with_auth_middleware(url, middleware.clone(), RelayOptions::default());
 
         relay.connect();
 
@@ -1256,7 +1315,7 @@ mod tests {
         assert!(matches!(err, Error::AuthenticationFailed));
 
         // Set a signer
-        relay.inner.state.set_signer(keys).await;
+        middleware.set_signer(Some(Arc::new(keys))).await;
 
         // Authenticated fetch
         let res = relay

@@ -34,7 +34,7 @@ use super::{
     Error, Reconciliation, RelayNotification, RelayStatus, SubscriptionActivity,
     SubscriptionAutoClosedReason,
 };
-use crate::policy::AdmitStatus;
+use crate::policy::{AdmitStatus, AuthenticationMiddleware};
 use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
@@ -988,6 +988,7 @@ impl InnerRelay {
                         );
 
                         // Check if NIP42 auto authentication is enabled
+                        // TODO: check also if middleware is set?
                         if self.state.is_auto_authentication_enabled() {
                             // Forward action to ingester
                             let _ = ingester_tx.send(IngesterCommand::Authenticate {
@@ -1217,13 +1218,18 @@ impl InnerRelay {
     }
 
     async fn auth(&self, challenge: String) -> Result<(), Error> {
-        // Get signer
-        let signer = self.state.signer().await?;
+        // Get middleware
+        let middleware: &Arc<dyn AuthenticationMiddleware> = self
+            .state
+            .auth_middleware
+            .as_ref()
+            .ok_or(Error::AuthMiddlewareNotSet)?;
 
-        // Construct event
-        let event: Event = EventBuilder::auth(challenge, self.url.clone())
-            .sign(&signer)
-            .await?;
+        // Construct event builder
+        let builder: EventBuilder = EventBuilder::auth(challenge, self.url.clone());
+
+        // Create the authentication event
+        let event: Event = middleware.authenticate(&self.url, builder).await?;
 
         // Subscribe to notifications
         let mut notifications = self.internal_notification_sender.subscribe();

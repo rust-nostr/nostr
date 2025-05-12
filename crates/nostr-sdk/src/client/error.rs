@@ -36,6 +36,8 @@ pub enum Error {
     ImpossibleToZap(String),
     /// Broken down filters for gossip are empty
     GossipFiltersEmpty,
+    /// Signer not configured
+    SignerNotConfigured,
     /// Private message (NIP17) relays not found
     PrivateMsgRelaysNotFound,
 }
@@ -63,6 +65,7 @@ impl fmt::Display for Error {
             Self::GossipFiltersEmpty => {
                 write!(f, "gossip broken down filters are empty")
             }
+            Self::SignerNotConfigured => write!(f, "signer not configured"),
             Self::PrivateMsgRelaysNotFound => write!(f, "Private message relays not found. The user is not ready to receive private messages."),
         }
     }
