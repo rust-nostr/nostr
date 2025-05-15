@@ -10,7 +10,7 @@ use std::path::Path;
 
 use heed::byteorder::NativeEndian;
 use heed::types::{Bytes, Unit, U64};
-use heed::{Database, Env, EnvFlags, EnvOpenOptions, RoRange, RoTxn, RwTxn};
+use heed::{Database, Env, EnvOpenOptions, RoRange, RoTxn, RwTxn, WithoutTls};
 use nostr::prelude::*;
 use nostr_database::flatbuffers::FlatBufferDecodeBorrowed;
 use nostr_database::{FlatBufferBuilder, FlatBufferEncode};
@@ -34,7 +34,7 @@ const MAP_SIZE: usize = 0xFFFFF000; // 4GB (2^32-4096)
 #[derive(Debug, Clone)]
 pub(crate) struct Lmdb {
     /// LMDB env
-    env: Env,
+    env: Env<WithoutTls>,
     /// Events
     events: Database<Bytes, Bytes>, // Event ID, Event
     /// CreatedAt + ID index
@@ -61,9 +61,9 @@ impl Lmdb {
         P: AsRef<Path>,
     {
         // Construct LMDB env
-        let env: Env = unsafe {
+        let env: Env<WithoutTls> = unsafe {
             EnvOpenOptions::new()
-                .flags(EnvFlags::NO_TLS)
+                .read_txn_without_tls()
                 .max_dbs(9)
                 .map_size(MAP_SIZE)
                 .open(path)?
@@ -139,7 +139,7 @@ impl Lmdb {
     ///
     /// This should never block the current thread
     #[inline]
-    pub(crate) fn read_txn(&self) -> Result<RoTxn, Error> {
+    pub(crate) fn read_txn(&self) -> Result<RoTxn<WithoutTls>, Error> {
         Ok(self.env.read_txn()?)
     }
 
