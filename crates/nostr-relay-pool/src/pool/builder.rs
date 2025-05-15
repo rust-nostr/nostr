@@ -6,13 +6,12 @@
 
 use std::sync::Arc;
 
-use nostr::NostrSigner;
 use nostr_database::{MemoryDatabase, NostrDatabase};
 
 use super::options::RelayPoolOptions;
 use super::RelayPool;
 use crate::monitor::Monitor;
-use crate::policy::AdmitPolicy;
+use crate::policy::{AdmitPolicy, AuthenticationMiddleware};
 use crate::transport::websocket::{DefaultWebsocketTransport, WebSocketTransport};
 
 /// Relay Pool builder
@@ -22,6 +21,10 @@ pub struct RelayPoolBuilder {
     pub websocket_transport: Arc<dyn WebSocketTransport>,
     /// Admission policy
     pub admit_policy: Option<Arc<dyn AdmitPolicy>>,
+    /// Authentication middleware
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    pub auth_middleware: Option<Arc<dyn AuthenticationMiddleware>>,
     /// Relay monitor
     pub monitor: Option<Monitor>,
     /// Relay pool options
@@ -29,8 +32,6 @@ pub struct RelayPoolBuilder {
     // Private stuff
     #[doc(hidden)]
     pub __database: Arc<dyn NostrDatabase>,
-    #[doc(hidden)]
-    pub __signer: Option<Arc<dyn NostrSigner>>,
 }
 
 impl Default for RelayPoolBuilder {
@@ -38,10 +39,10 @@ impl Default for RelayPoolBuilder {
         Self {
             websocket_transport: Arc::new(DefaultWebsocketTransport),
             admit_policy: None,
+            auth_middleware: None,
             monitor: None,
             opts: RelayPoolOptions::default(),
             __database: Arc::new(MemoryDatabase::default()),
-            __signer: None,
         }
     }
 }

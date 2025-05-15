@@ -114,6 +114,8 @@ pub enum Error {
     },
     /// Auth failed
     AuthenticationFailed,
+    /// Authentication middleware not set
+    AuthMiddlewareNotSet,
     /// Premature exit
     PrematureExit,
 }
@@ -178,6 +180,7 @@ impl fmt::Display for Error {
                 current.as_millis()
             ),
             Self::AuthenticationFailed => write!(f, "authentication failed"),
+            Self::AuthMiddlewareNotSet => write!(f, "authentication middleware not set"),
             Self::PrematureExit => write!(f, "premature exit"),
         }
     }
