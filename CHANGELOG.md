@@ -49,6 +49,7 @@
 - mls: add new crate for implementing MLS messaging ([JeffG] at https://github.com/rust-nostr/nostr/pull/843)
 - pool: add relay monitor ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/851)
 - sdk: add `Options::pool` ([Yuki Kishimoto])
+- relay-builder: add support for NIP-70 protected events ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/875)
 
 ### Fixed
 

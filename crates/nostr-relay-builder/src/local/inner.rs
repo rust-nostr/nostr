@@ -334,34 +334,56 @@ impl InnerLocalRelay {
                     }
                 }
 
-                // Check NIP42
-                if let Some(nip42) = &self.nip42 {
-                    // TODO: check if public key allowed
+                // Check if it's configured to require NIP42 authentication for writing
+                let require_nip42_auth: bool = match &self.nip42 {
+                    Some(nip42) => nip42.mode.is_write(),
+                    None => false,
+                };
 
-                    // Check mode and if it's authenticated
-                    if nip42.mode.is_write() && !session.nip42.is_authenticated() {
-                        // Generate and send AUTH challenge
-                        send_msg(
-                            ws_tx,
-                            RelayMessage::Auth {
-                                challenge: Cow::Owned(session.nip42.generate_challenge()),
-                            },
-                        )
-                        .await?;
+                // Check if it's a protected event
+                let is_protected: bool = event.is_protected();
 
-                        // Return error
-                        return send_msg(
+                // Check if authentication is required
+                if (require_nip42_auth || is_protected) && !session.nip42.is_authenticated() {
+                    // Generate and send AUTH challenge
+                    send_msg(
+                        ws_tx,
+                        RelayMessage::Auth {
+                            challenge: Cow::Owned(session.nip42.generate_challenge()),
+                        },
+                    ).await?;
+
+                    // Return error
+                    return send_msg(
+                        ws_tx,
+                        RelayMessage::Ok {
+                            event_id: event.id,
+                            status: false,
+                            message: Cow::Owned(format!(
+                                "{}: you must auth",
+                                MachineReadablePrefix::AuthRequired
+                            )),
+                        },
+                    ).await;
+                }
+
+                if is_protected {
+                    if let Some(authenticated_public_key) = &session.nip42.public_key {
+                        // Block if the event author not matches the authenticated public key
+                        if event.pubkey != *authenticated_public_key {
+                            return send_msg(
                                 ws_tx,
                                 RelayMessage::Ok {
                                     event_id: event.id,
                                     status: false,
                                     message: Cow::Owned(format!(
-                                        "{}: you must auth",
-                                        MachineReadablePrefix::AuthRequired
+                                        "{}: this event may only be published by its author",
+                                        MachineReadablePrefix::Blocked
                                     )),
                                 },
                             )
-                            .await;
+                                .await;
+                        }
                     }
                 }
 
