@@ -46,6 +46,45 @@ pub struct SelfUpdateResult {
     pub new_secret: group_types::GroupExporterSecret,
 }
 
+/// Result of batch adding members to a group
+#[derive(Debug)]
+pub struct AddMembersResult {
+    /// Serialized commit message for adding members
+    pub commit_message: Vec<u8>,
+    /// Serialized welcome message for new members
+    pub welcome_message: Vec<u8>,
+}
+
+/// Result of committing proposals to a group
+#[derive(Debug)]
+pub struct CommitProposalResult {
+    /// Serialized commit message for the proposal
+    pub commit_message: Vec<u8>,
+    /// Optional serialized welcome message if new members are added
+    pub welcome_message: Option<Vec<u8>>,
+}
+
+/// Wrapper struct for serialized commit/leave messages
+#[derive(Debug, Clone)]
+pub struct NostrMlsCommitMessage {
+    /// Serialized message bytes
+    pub serialized: Vec<u8>,
+}
+
+impl NostrMlsCommitMessage {
+    /// Returns the serialized message as a byte slice.
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.serialized
+    }
+}
+
+impl NostrMlsCommitMessage {
+    /// Returns the serialized message as a Vec<u8>.
+    pub fn to_vec(self) -> Vec<u8> {
+        self.serialized
+    }
+}
+
 impl<Storage> NostrMls<Storage>
 where
     Storage: NostrMlsStorageProvider,
@@ -513,6 +552,136 @@ where
             }
         }
         Ok(true)
+    }
+
+    /// Batch add members
+    pub fn add_members(
+        &self,
+        group_id: &GroupId,
+        key_packages: &[KeyPackage],
+    ) -> Result<AddMembersResult, Error> {
+        // Load group
+        let mut group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+
+        let signer: SignatureKeyPair = self.load_mls_signer(&group)?;
+
+        let (commit_message, welcome_message, _group_info) = group
+            .add_members(&self.provider, &signer, key_packages)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        group
+            .merge_pending_commit(&self.provider)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        let serialized_commit = commit_message
+            .tls_serialize_detached()
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        let serialized_welcome = welcome_message
+            .tls_serialize_detached()
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        Ok(AddMembersResult {
+            commit_message: serialized_commit,
+            welcome_message: serialized_welcome,
+        })
+    }
+
+    /// Batch remove members
+    ///
+    /// Returns a NostrMlsCommitMessage containing the serialized commit message for removing members.
+    pub fn remove_members(
+        &self,
+        group_id: &GroupId,
+        member_indices: &[u32],
+    ) -> Result<NostrMlsCommitMessage, Error> {
+        // Load group
+        let mut group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+
+        let signer: SignatureKeyPair = self.load_mls_signer(&group)?;
+
+        let leaf_indices: Vec<LeafNodeIndex> = member_indices
+            .iter()
+            .map(|&idx| LeafNodeIndex::new(idx))
+            .collect();
+
+        let (commit_message, _welcome_option, _group_info) = group
+            .remove_members(&self.provider, &signer, &leaf_indices)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        group
+            .merge_pending_commit(&self.provider)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        let serialized_commit = commit_message
+            .tls_serialize_detached()
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        Ok(NostrMlsCommitMessage {
+            serialized: serialized_commit,
+        })
+    }
+
+    /// Commit proposal
+    pub fn commit_proposal(
+        &self,
+        group_id: &GroupId,
+        proposal: QueuedProposal,
+    ) -> Result<CommitProposalResult, Error> {
+        // Load group
+        let mut group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+        // Load signer
+        let signer: SignatureKeyPair = self.load_mls_signer(&group)?;
+        // Store proposal
+        group
+            .store_pending_proposal(self.provider.storage(), proposal)
+            .map_err(|e| Error::Group(e.to_string()))?;
+        // Commit pending proposals
+        let (commit_message, welcome_message, _) = group
+            .commit_to_pending_proposals(&self.provider, &signer)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        let commit_message = commit_message
+            .tls_serialize_detached()
+            .map_err(|e| Error::Group(e.to_string()))?;
+        let welcome_message = match welcome_message {
+            Some(w) => Some(
+                w.tls_serialize_detached()
+                    .map_err(|e| Error::Group(e.to_string()))?,
+            ),
+            None => None,
+        };
+
+        group
+            .merge_pending_commit(&self.provider)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        Ok(CommitProposalResult {
+            commit_message,
+            welcome_message,
+        })
+    }
+
+    /// Leave the group
+    ///
+    /// Returns a NostrMlsCommitMessage containing the serialized leave message.
+    pub fn leave_group(&self, group_id: &GroupId) -> Result<NostrMlsCommitMessage, Error> {
+        // Load group
+        let mut group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+
+        let signer: SignatureKeyPair = self.load_mls_signer(&group)?;
+
+        let leave_message = group
+            .leave_group(&self.provider, &signer)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        let serialized_leave = leave_message
+            .tls_serialize_detached()
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        Ok(NostrMlsCommitMessage {
+            serialized: serialized_leave,
+        })
     }
 }
 
