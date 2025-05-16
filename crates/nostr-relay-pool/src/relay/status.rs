@@ -35,7 +35,7 @@ impl AtomicRelayStatus {
         let val: u8 = self.value.load(Ordering::SeqCst);
         match val {
             0 => RelayStatus::Initialized,
-            1 => RelayStatus::Connecting,
+            1 => RelayStatus::Pending,
             2 => RelayStatus::Connecting,
             3 => RelayStatus::Connected,
             4 => RelayStatus::Disconnected,

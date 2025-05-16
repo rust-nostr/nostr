@@ -55,6 +55,7 @@
 
 - nostr: handle `A` and `E` standard tags ([awiteb] at https://github.com/rust-nostr/nostr/pull/870)
 - nostr: fix `nip22::extract_root` to handle uppercase tags when `is_root` is true ([awiteb] at https://github.com/rust-nostr/nostr/pull/876)
+- pool: fix wrong conversion from u8 to RelayStatus ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/878)
 
 ### Deprecated
 
