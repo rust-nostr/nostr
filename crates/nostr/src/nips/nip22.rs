@@ -8,7 +8,7 @@
 
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip73::ExternalContentId;
-use crate::{Event, EventId, Kind, PublicKey, RelayUrl, TagKind, TagStandard, Url};
+use crate::{Alphabet, Event, EventId, Kind, PublicKey, RelayUrl, TagKind, TagStandard, Url};
 
 /// Borrowed comment extracted data
 pub enum Comment<'a> {
@@ -98,7 +98,7 @@ fn check_return<T>(val: T, is_root: bool, uppercase: bool) -> Option<T> {
 fn extract_kind(event: &Event, is_root: bool) -> Option<&Kind> {
     event
         .tags
-        .filter_standardized(TagKind::k())
+        .filter_standardized(TagKind::single_letter(Alphabet::K, is_root))
         .find_map(|tag| match tag {
             TagStandard::Kind { kind, uppercase } => check_return(kind, is_root, *uppercase),
             _ => None,
@@ -116,7 +116,7 @@ fn extract_event(
 ) -> Option<(&EventId, Option<&RelayUrl>, Option<&PublicKey>)> {
     event
         .tags
-        .filter_standardized(TagKind::e())
+        .filter_standardized(TagKind::single_letter(Alphabet::E, is_root))
         .find_map(|tag| match tag {
             TagStandard::Event {
                 event_id,
@@ -141,7 +141,7 @@ fn extract_event(
 fn extract_coordinate(event: &Event, is_root: bool) -> Option<(&Coordinate, Option<&RelayUrl>)> {
     event
         .tags
-        .filter_standardized(TagKind::a())
+        .filter_standardized(TagKind::single_letter(Alphabet::A, is_root))
         .find_map(|tag| match tag {
             TagStandard::Coordinate {
                 coordinate,
@@ -161,7 +161,7 @@ fn extract_coordinate(event: &Event, is_root: bool) -> Option<(&Coordinate, Opti
 fn extract_external(event: &Event, is_root: bool) -> Option<(&ExternalContentId, Option<&Url>)> {
     event
         .tags
-        .filter_standardized(TagKind::i())
+        .filter_standardized(TagKind::single_letter(Alphabet::I, is_root))
         .find_map(|tag| match tag {
             TagStandard::ExternalContent {
                 content,

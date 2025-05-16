@@ -68,6 +68,17 @@ impl UnsignedEvent {
         }
     }
 
+    /// Get the unsigned event ID
+    ///
+    /// If the [`EventId`] is not set, will be computed and saved in the struct.
+    pub fn id(&mut self) -> EventId {
+        // Ensure that the ID is set
+        self.ensure_id();
+
+        // This can't fail, because we already ensured that the ID is set
+        self.id.unwrap()
+    }
+
     #[inline]
     fn compute_id(&self) -> EventId {
         EventId::new(
@@ -211,6 +222,18 @@ impl From<Event> for UnsignedEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_get_id() {
+        let json = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
+        let mut unsigned = UnsignedEvent::from_json(json).unwrap();
+        let expected_id: EventId =
+            EventId::from_hex("2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45")
+                .unwrap();
+
+        assert!(unsigned.id.is_none());
+        assert_eq!(unsigned.id(), expected_id);
+    }
 
     #[test]
     fn test_deserialize_unsigned_event_with_id() {

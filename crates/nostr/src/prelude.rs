@@ -47,6 +47,7 @@ pub use crate::nips::nip15::{self, *};
 pub use crate::nips::nip17::{self, *};
 pub use crate::nips::nip19::{self, *};
 pub use crate::nips::nip21::{self, *};
+pub use crate::nips::nip22::{self, *};
 pub use crate::nips::nip26::{self, *};
 pub use crate::nips::nip34::{self, *};
 pub use crate::nips::nip35::{self, *};
@@ -72,6 +73,7 @@ pub use crate::nips::nip58;
 pub use crate::nips::nip59::{self, *};
 pub use crate::nips::nip62::{self, *};
 pub use crate::nips::nip65::{self, *};
+pub use crate::nips::nip73::{self, *};
 pub use crate::nips::nip90::{self, *};
 pub use crate::nips::nip94::{self, *};
 #[cfg(all(feature = "std", feature = "nip96"))]

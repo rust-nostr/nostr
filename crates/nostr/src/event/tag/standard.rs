@@ -294,16 +294,16 @@ impl TagStandard {
                 // Parse `a` tag
                 SingleLetterTag {
                     character: Alphabet::A,
-                    uppercase: false,
+                    uppercase,
                 } => {
-                    return parse_a_tag(tag);
+                    return parse_a_tag(tag, uppercase);
                 }
                 // Parse `e` tag
                 SingleLetterTag {
                     character: Alphabet::E,
-                    uppercase: false,
+                    uppercase,
                 } => {
-                    return parse_e_tag(tag);
+                    return parse_e_tag(tag, uppercase);
                 }
                 // Parse `i` tag
                 SingleLetterTag {
@@ -1009,7 +1009,7 @@ impl From<TagStandard> for Vec<String> {
     }
 }
 
-fn parse_a_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
+fn parse_a_tag<S>(tag: &[S], uppercase: bool) -> Result<TagStandard, Error>
 where
     S: AsRef<str>,
 {
@@ -1020,14 +1020,14 @@ where
                 Some(url) if !url.is_empty() => Some(RelayUrl::parse(url)?),
                 _ => None,
             },
-            uppercase: false,
+            uppercase,
         })
     } else {
         Err(Error::UnknownStandardizedTag)
     }
 }
 
-fn parse_e_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
+fn parse_e_tag<S>(tag: &[S], uppercase: bool) -> Result<TagStandard, Error>
 where
     S: AsRef<str>,
 {
@@ -1044,8 +1044,12 @@ where
     // Check if it's a report
     if let Some(tag_2) = tag_2 {
         return match Report::from_str(tag_2) {
-            Ok(report) => Ok(TagStandard::EventReport(event_id, report)),
-            Err(_) => {
+            // Valid report
+            Ok(report) if !uppercase => Ok(TagStandard::EventReport(event_id, report)),
+            // Invalid report: uppercase "E" tag
+            Ok(..) if uppercase => Err(Error::UnknownStandardizedTag),
+            // Not a report
+            _ => {
                 // Check if 3rd arg is a marker or a public key
                 let (marker, public_key) = match (tag_3, tag_4) {
                     (Some(marker), Some(public_key)) => {
@@ -1086,13 +1090,19 @@ where
                     },
                     marker,
                     public_key,
-                    uppercase: false,
+                    uppercase,
                 })
             }
         };
     }
 
-    Ok(TagStandard::event(event_id))
+    Ok(TagStandard::Event {
+        event_id,
+        relay_url: None,
+        marker: None,
+        public_key: None,
+        uppercase,
+    })
 }
 
 fn parse_i_tag<S>(tag: &[S], uppercase: bool) -> Result<TagStandard, Error>
@@ -2103,6 +2113,23 @@ mod tests {
 
         assert_eq!(
             TagStandard::parse(&[
+                "E",
+                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+            ]),
+            Ok(TagStandard::Event {
+                event_id: EventId::from_hex(
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                )
+                .unwrap(),
+                relay_url: None,
+                marker: None,
+                public_key: None,
+                uppercase: true
+            })
+        );
+
+        assert_eq!(
+            TagStandard::parse(&[
                 "q",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
             ])
@@ -2426,6 +2453,27 @@ mod tests {
                 .identifier("ipsum"),
                 relay_url: Some(RelayUrl::parse("wss://relay.nostr.org").unwrap()),
                 uppercase: false,
+            }
+        );
+
+        assert_eq!(
+            TagStandard::parse(&[
+                "A",
+                "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum",
+                "wss://relay.nostr.org"
+            ])
+            .unwrap(),
+            TagStandard::Coordinate {
+                coordinate: Coordinate::new(
+                    Kind::LongFormTextNote,
+                    PublicKey::from_str(
+                        "a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919"
+                    )
+                    .unwrap()
+                )
+                .identifier("ipsum"),
+                relay_url: Some(RelayUrl::parse("wss://relay.nostr.org").unwrap()),
+                uppercase: true,
             }
         );
 

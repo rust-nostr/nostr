@@ -40,6 +40,8 @@
 
 ### Added
 
+- nostr: add `UnsignedEvent::id` method ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/868)
+- nostr: add `TagKind::single_letter` constructor ([awiteb] at https://github.com/rust-nostr/nostr/pull/871)
 - blossom: add new crate with Blossom support ([Daniel D’Aquino] at https://github.com/rust-nostr/nostr/pull/838)
 - mls-storage: add new crate with traits and types for mls storage implementations ([JeffG] at https://github.com/rust-nostr/nostr/pull/836)
 - mls-memory-storage: add an in-memory implementation for MLS ([JeffG] at https://github.com/rust-nostr/nostr/pull/839)
@@ -47,6 +49,12 @@
 - mls: add new crate for implementing MLS messaging ([JeffG] at https://github.com/rust-nostr/nostr/pull/843)
 - pool: add relay monitor ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/851)
 - sdk: add `Options::pool` ([Yuki Kishimoto])
+- relay-builder: add support for NIP-70 protected events ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/875)
+
+### Fixed
+
+- nostr: handle `A` and `E` standard tags ([awiteb] at https://github.com/rust-nostr/nostr/pull/870)
+- nostr: fix `nip22::extract_root` to handle uppercase tags when `is_root` is true ([awiteb] at https://github.com/rust-nostr/nostr/pull/876)
 
 ### Deprecated
 

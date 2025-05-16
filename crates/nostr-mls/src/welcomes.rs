@@ -253,10 +253,10 @@ where
     /// - The group data extension cannot be extracted
     fn parse_serialized_welcome(
         &self,
-        welcome_message: Vec<u8>,
+        mut welcome_message: &[u8],
     ) -> Result<(StagedWelcome, NostrGroupDataExtension), Error> {
         // Parse welcome message
-        let welcome_message_in = MlsMessageIn::tls_deserialize(&mut welcome_message.as_slice())?;
+        let welcome_message_in = MlsMessageIn::tls_deserialize(&mut welcome_message)?;
 
         let welcome: Welcome = match welcome_message_in.extract() {
             MlsMessageBodyIn::Welcome(welcome) => welcome,
@@ -324,7 +324,7 @@ where
             }
         };
 
-        let welcome_preview = match self.parse_serialized_welcome(hex_content) {
+        let welcome_preview = match self.parse_serialized_welcome(&hex_content) {
             Ok((staged_welcome, nostr_group_data)) => WelcomePreview {
                 staged_welcome,
                 nostr_group_data,

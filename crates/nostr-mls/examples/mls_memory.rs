@@ -50,8 +50,8 @@ async fn main() -> Result<()> {
         "Bob & Alice",
         "A secret chat between Bob and Alice",
         &alice_keys.public_key,
-        vec![bob_keys.public_key()],
-        vec![bob_key_package],
+        &[bob_keys.public_key()],
+        &[bob_key_package],
         vec![alice_keys.public_key()],
         vec![RelayUrl::parse("ws://localhost:8080").unwrap()],
     )?;

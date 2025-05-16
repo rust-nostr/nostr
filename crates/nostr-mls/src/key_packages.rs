@@ -37,7 +37,7 @@ where
         &self,
         public_key: &PublicKey,
         relays: I,
-    ) -> Result<(String, [Tag; 5]), Error>
+    ) -> Result<(String, [Tag; 4]), Error>
     where
         I: IntoIterator<Item = RelayUrl>,
     {
@@ -65,7 +65,6 @@ where
             ),
             Tag::custom(TagKind::MlsExtensions, [self.extensions_value()]),
             Tag::relays(relays),
-            Tag::protected(),
         ];
 
         Ok((hex::encode(key_package_serialized), tags))
@@ -120,7 +119,7 @@ where
     /// # Arguments
     ///
     /// * `key_package` - The key package to delete
-    pub fn delete_key_package_from_storage(&self, key_package: KeyPackage) -> Result<(), Error> {
+    pub fn delete_key_package_from_storage(&self, key_package: &KeyPackage) -> Result<(), Error> {
         let hash_ref = key_package.hash_ref(self.provider.crypto())?;
 
         self.provider
@@ -206,12 +205,11 @@ mod tests {
         // Verify the key package has the expected properties
         assert_eq!(key_package.ciphersuite(), DEFAULT_CIPHERSUITE);
 
-        assert_eq!(tags.len(), 5);
+        assert_eq!(tags.len(), 4);
         assert_eq!(tags[0].kind(), TagKind::MlsProtocolVersion);
         assert_eq!(tags[1].kind(), TagKind::MlsCiphersuite);
         assert_eq!(tags[2].kind(), TagKind::MlsExtensions);
         assert_eq!(tags[3].kind(), TagKind::Relays);
-        assert_eq!(tags[4].kind(), TagKind::Protected);
 
         assert_eq!(
             tags[3].content().unwrap(),
@@ -245,7 +243,7 @@ mod tests {
 
         // Delete the key package
         deletion_mls
-            .delete_key_package_from_storage(key_package)
+            .delete_key_package_from_storage(&key_package)
             .expect("Failed to delete key package");
     }
 
