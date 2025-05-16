@@ -42,6 +42,7 @@
 
 - nostr: add `UnsignedEvent::id` method ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/868)
 - nostr: add `TagKind::single_letter` constructor ([awiteb] at https://github.com/rust-nostr/nostr/pull/871)
+- nostr: add NIP-73 blockchain address and transaction ([Thomas Profelt] at https://github.com/rust-nostr/nostr/pull/879)
 - blossom: add new crate with Blossom support ([Daniel D’Aquino] at https://github.com/rust-nostr/nostr/pull/838)
 - mls-storage: add new crate with traits and types for mls storage implementations ([JeffG] at https://github.com/rust-nostr/nostr/pull/836)
 - mls-memory-storage: add an in-memory implementation for MLS ([JeffG] at https://github.com/rust-nostr/nostr/pull/839)
@@ -1267,3 +1268,4 @@ added `nostrdb` storage backend, added NIP32 and completed NIP51 support and mor
 [magine]: https://github.com/ma233 (?)
 [daywalker90]: https://github.com/daywalker90 (nostr:npub1kuemsj7xryp0uje36dr53scn9mxxh8ema90hw9snu46633n9n2hqp3drjt)
 [Daniel D’Aquino]: https://github.com/danieldaquino (nostr:npub13v47pg9dxjq96an8jfev9znhm0k7ntwtlh9y335paj9kyjsjpznqzzl3l8)
+[Thomas Profelt]: https://github.com/tompro (nostr:npub1rf0lc5dpyvpl6q3dfq0n0mtqc0maxa0kdehcj9nc5884fzufuzxqv67gj6)
