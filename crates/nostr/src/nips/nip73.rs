@@ -20,6 +20,8 @@ const PODCAST_EPISODE: &str = "podcast:item:guid:";
 const PODCAST_PUBLISHER: &str = "podcast:publisher:guid:";
 const MOVIE: &str = "isan:";
 const PAPER: &str = "doi:";
+const BLOCKCHAIN_TX: &str = ":tx:";
+const BLOCKCHAIN_ADDR: &str = ":address:";
 
 /// NIP73 error
 #[derive(Debug, PartialEq, Eq)]
@@ -60,6 +62,24 @@ pub enum ExternalContentId {
     Movie(String),
     /// Paper
     Paper(String),
+    /// Blockchain Transaction
+    BlockchainTransaction {
+        /// The blockchain name (e.g., "bitcoin", "ethereum")
+        chain: String,
+        /// A lower case hex transaction id
+        transaction_hash: String,
+        /// The chain id if one is required
+        chain_id: Option<String>,
+    },
+    /// Blockchain Address
+    BlockchainAddress {
+        /// The blockchain name (e.g., "bitcoin", "ethereum")
+        chain: String,
+        /// The on-chain address
+        address: String,
+        /// The chain id if one is required
+        chain_id: Option<String>,
+    },
 }
 
 impl fmt::Display for ExternalContentId {
@@ -74,6 +94,34 @@ impl fmt::Display for ExternalContentId {
             Self::PodcastPublisher(guid) => write!(f, "{PODCAST_PUBLISHER}{guid}"),
             Self::Movie(movie) => write!(f, "{MOVIE}{movie}"),
             Self::Paper(paper) => write!(f, "{PAPER}{paper}"),
+            Self::BlockchainTransaction {
+                chain,
+                transaction_hash,
+                chain_id,
+            } => {
+                write!(
+                    f,
+                    "{chain}{}{BLOCKCHAIN_TX}{transaction_hash}",
+                    chain_id
+                        .clone()
+                        .map(|id| format!(":{id}"))
+                        .unwrap_or_default()
+                )
+            }
+            Self::BlockchainAddress {
+                chain,
+                address,
+                chain_id,
+            } => {
+                write!(
+                    f,
+                    "{chain}{}{BLOCKCHAIN_ADDR}{address}",
+                    chain_id
+                        .clone()
+                        .map(|id| format!(":{id}"))
+                        .unwrap_or_default()
+                )
+            }
         }
     }
 }
@@ -114,11 +162,38 @@ impl FromStr for ExternalContentId {
             return Ok(Self::Paper(stripped.to_string()));
         }
 
+        if let Some((chain, hash)) = content.split_once(BLOCKCHAIN_TX) {
+            let (chain, chain_id) = extract_chain_id(chain);
+            return Ok(Self::BlockchainTransaction {
+                chain,
+                transaction_hash: hash.to_string(),
+                chain_id,
+            });
+        }
+
+        if let Some((chain, address)) = content.split_once(BLOCKCHAIN_ADDR) {
+            let (chain, chain_id) = extract_chain_id(chain);
+            return Ok(Self::BlockchainAddress {
+                chain,
+                address: address.to_string(),
+                chain_id,
+            });
+        }
+
         if let Ok(url) = Url::parse(content) {
             return Ok(Self::Url(url));
         }
 
         Err(Error::InvalidExternalContent)
+    }
+}
+
+/// Given a blockchain name returns the chain and the optional chain id if any.
+fn extract_chain_id(chain: &str) -> (String, Option<String>) {
+    match chain.split_once(':') {
+        None => (chain.to_string(), None),
+        Some((chain, "")) => (chain.to_string(), None),
+        Some((chain, chain_id)) => (chain.to_string(), Some(chain_id.to_string())),
     }
 }
 
@@ -164,6 +239,33 @@ mod tests {
             ExternalContentId::Paper("10.1000/182".to_string()).to_string(),
             "doi:10.1000/182"
         );
+        assert_eq!(
+            ExternalContentId::BlockchainTransaction {
+                chain: "bitcoin".to_string(),
+                transaction_hash: "txid".to_string(),
+                chain_id: None,
+            }
+            .to_string(),
+            "bitcoin:tx:txid"
+        );
+        assert_eq!(
+            ExternalContentId::BlockchainTransaction {
+                chain: "ethereum".to_string(),
+                transaction_hash: "txid".to_string(),
+                chain_id: Some("100".to_string()),
+            }
+            .to_string(),
+            "ethereum:100:tx:txid"
+        );
+        assert_eq!(
+            ExternalContentId::BlockchainAddress {
+                chain: "ethereum".to_string(),
+                address: "onchain_address".to_string(),
+                chain_id: Some("100".to_string()),
+            }
+            .to_string(),
+            "ethereum:100:address:onchain_address"
+        );
     }
 
     #[test]
@@ -203,6 +305,38 @@ mod tests {
         assert_eq!(
             ExternalContentId::from_str("doi:10.1000/182").unwrap(),
             ExternalContentId::Paper("10.1000/182".to_string())
+        );
+        assert_eq!(
+            ExternalContentId::from_str("bitcoin:tx:txid").unwrap(),
+            ExternalContentId::BlockchainTransaction {
+                chain: "bitcoin".to_string(),
+                transaction_hash: "txid".to_string(),
+                chain_id: None,
+            }
+        );
+        assert_eq!(
+            ExternalContentId::from_str("ethereum:100:tx:txid").unwrap(),
+            ExternalContentId::BlockchainTransaction {
+                chain: "ethereum".to_string(),
+                transaction_hash: "txid".to_string(),
+                chain_id: Some("100".to_string()),
+            }
+        );
+        assert_eq!(
+            ExternalContentId::from_str("bitcoin:address:onchain_address").unwrap(),
+            ExternalContentId::BlockchainAddress {
+                chain: "bitcoin".to_string(),
+                address: "onchain_address".to_string(),
+                chain_id: None,
+            }
+        );
+        assert_eq!(
+            ExternalContentId::from_str("ethereum:100:address:onchain_address").unwrap(),
+            ExternalContentId::BlockchainAddress {
+                chain: "ethereum".to_string(),
+                address: "onchain_address".to_string(),
+                chain_id: Some("100".to_string()),
+            }
         );
     }
 
