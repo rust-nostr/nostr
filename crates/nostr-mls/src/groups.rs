@@ -137,7 +137,7 @@ where
     /// * `Ok(Some(MlsGroup))` - The loaded group if found
     /// * `Ok(None)` - If no group exists with the given ID
     /// * `Err(Error)` - If there is an error loading the group
-    pub(crate) fn load_mls_group(&self, mls_group_id: &GroupId) -> Result<Option<MlsGroup>, Error> {
+    pub fn load_mls_group(&self, mls_group_id: &GroupId) -> Result<Option<MlsGroup>, Error> {
         MlsGroup::load(self.provider.storage(), mls_group_id)
             .map_err(|e| Error::Provider(e.to_string()))
     }
