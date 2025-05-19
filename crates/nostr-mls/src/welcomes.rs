@@ -297,7 +297,7 @@ where
     /// Returns a `WelcomeError` if:
     /// - The welcome message cannot be parsed
     /// - The welcome message is invalid
-    fn preview_welcome(
+    pub fn preview_welcome(
         &self,
         wrapper_event_id: &EventId,
         welcome_event: &UnsignedEvent,

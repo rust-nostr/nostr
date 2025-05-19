@@ -85,7 +85,7 @@ where
     ///
     /// * `Ok(Vec<u8>)` - The serialized encrypted MLS message
     /// * `Err(Error)` - If message creation or encryption fails
-    fn create_message_for_event(
+    pub fn create_message_for_event(
         &self,
         group: &mut MlsGroup,
         rumor: &mut UnsignedEvent,
@@ -231,7 +231,7 @@ where
     /// * `Ok(Some(UnsignedEvent))` - For application messages, the decrypted event
     /// * `Ok(None)` - For protocol messages (proposals, commits)
     /// * `Err(Error)` - If message processing fails
-    fn process_message_for_group(
+    pub fn process_message_for_group(
         &self,
         group: &mut MlsGroup,
         message_bytes: &[u8],

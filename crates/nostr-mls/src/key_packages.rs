@@ -89,7 +89,7 @@ where
     /// * The hex decoding fails
     /// * The TLS deserialization fails
     /// * The key package validation fails (invalid signature, ciphersuite, or extensions)
-    fn parse_serialized_key_package(&self, key_package_hex: &str) -> Result<KeyPackage, Error> {
+    pub fn parse_serialized_key_package(&self, key_package_hex: &str) -> Result<KeyPackage, Error> {
         let key_package_bytes = hex::decode(key_package_hex)?;
 
         let key_package_in = KeyPackageIn::tls_deserialize(&mut key_package_bytes.as_slice())?;
