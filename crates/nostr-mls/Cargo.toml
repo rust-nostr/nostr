@@ -1,6 +1,6 @@
 [package]
 name = "nostr-mls"
-version = "0.41.0"
+version = "0.42.0"
 edition = "2021"
 description = "A simplified interface to build secure messaging apps on nostr with MLS."
 authors = ["Jeff Gardner <j@jeffg.me>", "Yuki Kishimoto <yukikishimoto@protonmail.com>", "Rust Nostr Developers"]

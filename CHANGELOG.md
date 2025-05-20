@@ -25,7 +25,7 @@
 
 -->
 
-## Unreleased
+## v0.42.0 - 2025/05/20
 
 ### Breaking changes
 
