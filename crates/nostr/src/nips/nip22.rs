@@ -10,8 +10,12 @@ use crate::nips::nip01::Coordinate;
 use crate::nips::nip73::ExternalContentId;
 use crate::{Alphabet, Event, EventId, Kind, PublicKey, RelayUrl, TagKind, TagStandard, Url};
 
-/// Borrowed comment extracted data
-pub enum Comment<'a> {
+#[allow(missing_docs)]
+#[deprecated(since = "0.42.0", note = "Use `CommentTarget` instead")]
+pub type Comment<'a> = CommentTarget<'a>;
+
+/// Comment target
+pub enum CommentTarget<'a> {
     /// Event
     Event {
         /// Event ID
@@ -41,24 +45,24 @@ pub enum Comment<'a> {
     },
 }
 
-/// Extract NIP22 root data
-pub fn extract_root(event: &Event) -> Option<Comment> {
+/// Extract NIP22 root target
+pub fn extract_root(event: &Event) -> Option<CommentTarget> {
     extract_data(event, true)
 }
 
-/// Extract NIP22 parent data
-pub fn extract_parent(event: &Event) -> Option<Comment> {
+/// Extract NIP22 parent target
+pub fn extract_parent(event: &Event) -> Option<CommentTarget> {
     extract_data(event, false)
 }
 
-fn extract_data(event: &Event, is_root: bool) -> Option<Comment> {
+fn extract_data(event: &Event, is_root: bool) -> Option<CommentTarget> {
     if event.kind != Kind::Comment {
         return None;
     }
 
     // Try to extract event
     if let Some((event_id, relay_hint, public_key)) = extract_event(event, is_root) {
-        return Some(Comment::Event {
+        return Some(CommentTarget::Event {
             id: event_id,
             relay_hint,
             pubkey_hint: public_key,
@@ -68,7 +72,7 @@ fn extract_data(event: &Event, is_root: bool) -> Option<Comment> {
 
     // Try to extract coordinate
     if let Some((address, relay_hint)) = extract_coordinate(event, is_root) {
-        return Some(Comment::Coordinate {
+        return Some(CommentTarget::Coordinate {
             address,
             relay_hint,
             kind: extract_kind(event, is_root),
@@ -76,7 +80,7 @@ fn extract_data(event: &Event, is_root: bool) -> Option<Comment> {
     }
 
     if let Some((content, hint)) = extract_external(event, is_root) {
-        return Some(Comment::External { content, hint });
+        return Some(CommentTarget::External { content, hint });
     }
 
     None

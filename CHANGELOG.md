@@ -37,6 +37,7 @@
 ### Changed
 
 - Bump `lru` from 0.13.0 to 0.14.0 ([Yuki Kishimoto])
+- nostr: rename `nip22::Comment` to `nip22::CommentTarget` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/882)
 
 ### Added
 
