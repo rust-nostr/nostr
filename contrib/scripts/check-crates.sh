@@ -97,14 +97,12 @@ do
         echo  "Checking '$arg' [$version]"
     fi
 
-    cargo $version check $arg
-
     if [[ $arg != *"--target wasm32-unknown-unknown"* ]];
     then
+        cargo $version check $arg
         cargo $version test $arg
+        cargo $version clippy $arg -- -D warnings
     fi
-
-    cargo $version clippy $arg -- -D warnings
 
     # If CI, clean every time to avoid to go out of space (GitHub Actions issue)
     if [ "$is_ci" == true ]; then
