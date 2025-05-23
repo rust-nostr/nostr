@@ -136,7 +136,7 @@ where
             .ok_or(Error::GroupNotFound)?;
 
         // Load stored group
-        let group: group_types::Group = self
+        let mut group: group_types::Group = self
             .get_group(mls_group_id)
             .map_err(|e| Error::Group(e.to_string()))?
             .ok_or(Error::GroupNotFound)?;
