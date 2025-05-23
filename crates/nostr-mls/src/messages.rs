@@ -136,7 +136,7 @@ where
             .ok_or(Error::GroupNotFound)?;
 
         // Load stored group
-        let mut group: group_types::Group = self
+        let group: group_types::Group = self
             .get_group(mls_group_id)
             .map_err(|e| Error::Group(e.to_string()))?
             .ok_or(Error::GroupNotFound)?;
@@ -209,6 +209,70 @@ where
         self.storage()
             .save_group(group)
             .map_err(|e| Error::Group(e.to_string()))?;
+
+        Ok(event)
+    }
+
+    /// Creates an encrypted Nostr event for an MLS commit/proposal message
+    ///
+    /// This function handles the creation of commit and proposal messages for MLS groups.
+    /// Unlike regular application messages, these are protocol-level messages that manage
+    /// group membership and state changes.
+    ///
+    /// # Arguments
+    ///
+    /// * `mls_group_id` - The MLS group ID
+    /// * `commit_proposal_message` - The serialized commit or proposal message bytes
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Event)` - The signed Nostr event ready for relay publication
+    /// * `Err(Error)` - If message creation or encryption fails
+    pub fn create_commit_proposal_message(
+        &self,
+        mls_group_id: &GroupId,
+        commit_proposal_message: &[u8],
+    ) -> Result<Event, Error> {
+        // Load mls group
+        let mut mls_group = self
+            .load_mls_group(mls_group_id)?
+            .ok_or(Error::GroupNotFound)?;
+
+        // Load stored group
+        let group: group_types::Group = self
+            .get_group(mls_group_id)
+            .map_err(|e| Error::Group(e.to_string()))?
+            .ok_or(Error::GroupNotFound)?;
+
+        let signer: SignatureKeyPair = self.load_mls_signer(&mls_group)?;
+    
+        // Create message
+        let message_out = mls_group.create_message(&self.provider, &signer, commit_proposal_message)?;
+    
+        let message: Vec<u8> = message_out.tls_serialize_detached()?;
+
+        // Export secret
+        let secret: group_types::GroupExporterSecret = self.exporter_secret(mls_group_id)?;
+
+        // Convert that secret to nostr keys
+        let secret_key: SecretKey = SecretKey::from_slice(&secret.secret)?;
+        let export_nostr_keys: Keys = Keys::new(secret_key);
+
+        // Encrypt the message content
+        let encrypted_content: String = nip44::encrypt(
+            export_nostr_keys.secret_key(),
+            &export_nostr_keys.public_key,
+            &message,
+            nip44::Version::default(),
+        )?;
+
+        // Generate ephemeral key
+        let ephemeral_nostr_keys: Keys = Keys::generate();
+
+        let tag: Tag = Tag::custom(TagKind::h(), [hex::encode(group.nostr_group_id)]);
+        let event = EventBuilder::new(Kind::MlsGroupMessage, encrypted_content)
+            .tag(tag)
+            .sign_with_keys(&ephemeral_nostr_keys)?;
 
         Ok(event)
     }
