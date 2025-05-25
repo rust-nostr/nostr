@@ -55,7 +55,7 @@ impl Events {
         self.set.len()
     }
 
-    /// Returns the number of events in the collection.
+    /// Checks if there are no events.
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.set.is_empty()
