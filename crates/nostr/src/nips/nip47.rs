@@ -35,6 +35,13 @@ pub enum Error {
     EventBuilder(event::builder::Error),
     /// Error code
     ErrorCode(NIP47Error),
+    /// Can't deserialize NIP-47 response
+    CantDeserializeResponse {
+        /// NIP-47 response
+        response: String,
+        /// Deserialization error
+        error: String,
+    },
     /// Unexpected result
     UnexpectedResult,
     /// Invalid URI
@@ -52,6 +59,10 @@ impl fmt::Display for Error {
             #[cfg(feature = "std")]
             Self::EventBuilder(e) => write!(f, "{e}"),
             Self::ErrorCode(e) => write!(f, "{e}"),
+            Self::CantDeserializeResponse { response, error } => write!(
+                f,
+                "Can't deserialize response: response={response}, error={error}"
+            ),
             Self::UnexpectedResult => write!(f, "Unexpected result"),
             Self::InvalidURI => write!(f, "Invalid URI"),
         }
@@ -699,7 +710,10 @@ impl Response {
     #[inline]
     pub fn from_event(uri: &NostrWalletConnectURI, event: &Event) -> Result<Self, Error> {
         let decrypt_res: String = nip04::decrypt(&uri.secret, &event.pubkey, &event.content)?;
-        Self::from_json(decrypt_res)
+        Self::from_json(&decrypt_res).map_err(|e| Error::CantDeserializeResponse {
+            response: decrypt_res,
+            error: e.to_string(),
+        })
     }
 
     /// Deserialize from JSON string

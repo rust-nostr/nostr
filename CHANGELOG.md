@@ -25,6 +25,12 @@
 
 -->
 
+## Unreleased
+
+### Added
+
+- nostr: add detailed error handling for NIP-47 response deserialization ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/890)
+
 ## v0.42.0 - 2025/05/20
 
 ### Breaking changes
