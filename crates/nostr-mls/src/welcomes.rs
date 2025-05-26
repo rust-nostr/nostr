@@ -157,9 +157,7 @@ where
             .save_processed_welcome(processed_welcome)
             .map_err(|e| Error::Welcome(e.to_string()))?;
 
-        self.storage()
-            .save_welcome(welcome.clone())
-            .map_err(|e| Error::Welcome(e.to_string()))?;
+        self.accept_welcome(&welcome)?;
 
         Ok(welcome)
     }
