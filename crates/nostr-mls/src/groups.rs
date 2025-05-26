@@ -256,7 +256,8 @@ where
     /// * `Err(Error)` - If the user's leaf node is not found or there is an error extracting the public key
     pub(crate) fn get_current_user_pubkey(&self, group: &MlsGroup) -> Result<PublicKey, Error> {
         let own_leaf = self.get_own_leaf(group)?;
-        let credentials: BasicCredential = BasicCredential::try_from(own_leaf.credential().clone())?;
+        let credentials: BasicCredential =
+            BasicCredential::try_from(own_leaf.credential().clone())?;
         let hex_bytes: &[u8] = credentials.identity();
         let hex_str: &str = str::from_utf8(hex_bytes)?;
         let public_key = PublicKey::from_hex(hex_str)?;
@@ -619,22 +620,34 @@ where
 
         let signer: SignatureKeyPair = self.load_mls_signer(&group)?;
 
+        // Check if current user is an admin
+        let current_user_pubkey = self.get_current_user_pubkey(&group)?;
+        let stored_group = self.get_group(group_id)?.ok_or(Error::GroupNotFound)?;
+
+        if !stored_group.admin_pubkeys.contains(&current_user_pubkey) {
+            return Err(Error::Group(
+                "Only group admins can remove members".to_string(),
+            ));
+        }
+
         // Convert pubkeys_hex to leaf indices
         let mut leaf_indices = Vec::new();
         let members = group.members();
-        
+
         for (index, member) in members.enumerate() {
             let credentials: BasicCredential = BasicCredential::try_from(member.credential)?;
             let hex_bytes: &[u8] = credentials.identity();
             let hex_str: &str = str::from_utf8(hex_bytes)?;
-            
+
             if pubkeys_hex.contains(&hex_str.to_string()) {
                 leaf_indices.push(LeafNodeIndex::new(index as u32));
             }
         }
 
         if leaf_indices.is_empty() {
-            return Err(Error::Group("No matching members found to remove".to_string()));
+            return Err(Error::Group(
+                "No matching members found to remove".to_string(),
+            ));
         }
 
         let (commit_message, _welcome_option, _group_info) = group
@@ -669,9 +682,11 @@ where
         // Check if current user is an admin
         let current_user_pubkey = self.get_current_user_pubkey(&group)?;
         let stored_group = self.get_group(group_id)?.ok_or(Error::GroupNotFound)?;
-        
+
         if !stored_group.admin_pubkeys.contains(&current_user_pubkey) {
-            return Err(Error::Group("Only group admins can commit proposals".to_string()));
+            return Err(Error::Group(
+                "Only group admins can commit proposals".to_string(),
+            ));
         }
 
         // Store proposal
