@@ -99,6 +99,8 @@ impl NWC {
         // Bootstrap
         self.bootstrap().await?;
 
+        tracing::debug!("Sending request '{}'", req.as_json());
+
         // Convert request to event
         let event: Event = req.to_event(&self.uri)?;
 

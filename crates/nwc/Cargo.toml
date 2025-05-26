@@ -19,6 +19,7 @@ tor = ["nostr-relay-pool/tor"]
 async-utility.workspace = true
 nostr = { workspace = true, features = ["std", "nip47"] }
 nostr-relay-pool.workspace = true
+tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
