@@ -103,12 +103,7 @@ async fn main() -> Result<()> {
 
     // First Bob recieves the Gift-wrapped welcome message from Alice, decrypts it, and processes it.
     // The first param is the gift-wrap event id (which we set as all zeros for this example)
-    bob_nostr_mls.process_welcome(&EventId::all_zeros(), &welcome_rumor)?;
-    // Bob can now preview the welcome message to see what group he might be joining
-    let welcomes = bob_nostr_mls
-        .get_pending_welcomes()
-        .expect("Error getting pending welcomes");
-    let welcome = welcomes.first().unwrap();
+    let welcome = bob_nostr_mls.process_welcome(&EventId::all_zeros(), &welcome_rumor)?;
 
     tracing::debug!("Welcome for Bob: {:?}", welcome);
 
@@ -126,7 +121,6 @@ async fn main() -> Result<()> {
     );
 
     // Bob can now join the group
-    bob_nostr_mls.accept_welcome(welcome)?;
     let bobs_group = bob_nostr_mls.get_groups()?.first().unwrap().clone();
     let bob_mls_group_id = GroupId::from_slice(bobs_group.mls_group_id.as_slice());
 
@@ -150,7 +144,10 @@ async fn main() -> Result<()> {
 
     // The resulting serialized message is the MLS encrypted message that Bob sent
     // Now Bob can process the MLS message content and do what's needed with it
-    bob_nostr_mls.process_message(&message_event)?;
+    let bob_process_result = bob_nostr_mls.process_message(&message_event)?;
+    tracing::info!("Bob process_message result: {:?}", bob_process_result);
+    tracing::info!("Bob process_message - message: {:?}", bob_process_result.message);
+    tracing::info!("Bob process_message - member_changes: {:?}", bob_process_result.member_changes);
 
     let messages = bob_nostr_mls.get_messages(&bob_mls_group_id).unwrap();
     let message = messages.first().unwrap();
@@ -202,7 +199,10 @@ async fn main() -> Result<()> {
     );
 
     tracing::info!("Alice about to process message");
-    alice_nostr_mls.process_message(&message_event)?;
+    let alice_process_result = alice_nostr_mls.process_message(&message_event)?;
+    tracing::info!("Alice process_message result: {:?}", alice_process_result);
+    tracing::info!("Alice process_message - message: {:?}", alice_process_result.message);
+    tracing::info!("Alice process_message - member_changes: {:?}", alice_process_result.member_changes);
 
     let messages = alice_nostr_mls
         .get_messages(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))
@@ -267,13 +267,7 @@ async fn main() -> Result<()> {
     .build(alice_keys.public_key());
     
     // Charlie processes the welcome message
-    charlie_nostr_mls.process_welcome(&EventId::all_zeros(), &charlie_welcome_rumor)?;
-    
-    // Charlie gets pending welcome messages
-    let charlie_welcomes = charlie_nostr_mls
-        .get_pending_welcomes()
-        .expect("Error getting pending welcomes for Charlie");
-    let charlie_welcome = charlie_welcomes.first().unwrap();
+    let charlie_welcome = charlie_nostr_mls.process_welcome(&EventId::all_zeros(), &charlie_welcome_rumor)?;
     
     tracing::debug!("Charlie's Welcome message: {:?}", charlie_welcome);
     
@@ -288,7 +282,6 @@ async fn main() -> Result<()> {
     );
     
     // Charlie accepts welcome and joins the group
-    charlie_nostr_mls.accept_welcome(charlie_welcome)?;
     let charlie_groups = charlie_nostr_mls.get_groups()?;
     let charlie_group = charlie_groups.first().unwrap();
     let charlie_mls_group_id = GroupId::from_slice(charlie_group.mls_group_id.as_slice());
@@ -311,10 +304,10 @@ async fn main() -> Result<()> {
     )?;
         
     // Bob processes the commit message
-    // let mut bob_mls_group = bob_nostr_mls.load_mls_group(&bobs_group.mls_group_id)?.ok_or(nostr_mls::Error::GroupNotFound)?;
-    // bob_nostr_mls.process_message_for_group(&mut bob_mls_group, &add_members_result.commit_message)?;
-
-    bob_nostr_mls.process_message(&commit_event)?;
+    let bob_commit_process_result = bob_nostr_mls.process_message(&commit_event)?;
+    tracing::info!("Bob process_message (add commit) result: {:?}", bob_commit_process_result);
+    tracing::info!("Bob process_message (add commit) - message: {:?}", bob_commit_process_result.message);
+    tracing::info!("Bob process_message (add commit) - member_changes: {:?}", bob_commit_process_result.member_changes);
     
     // Verify Bob's group state has been updated
     let bob_members_updated = bob_nostr_mls.get_members(&bob_mls_group_id).unwrap();
@@ -368,7 +361,10 @@ async fn main() -> Result<()> {
     )?;
     
     // Bob processes the removal commit message
-    bob_nostr_mls.process_message(&remove_commit_event)?;
+    let bob_remove_process_result = bob_nostr_mls.process_message(&remove_commit_event)?;
+    tracing::info!("Bob process_message (remove commit) result: {:?}", bob_remove_process_result);
+    tracing::info!("Bob process_message (remove commit) - message: {:?}", bob_remove_process_result.message);
+    tracing::info!("Bob process_message (remove commit) - member_changes: {:?}", bob_remove_process_result.member_changes);
     
     // Verify Bob's group state has been updated
     let bob_members_after_remove = bob_nostr_mls.get_members(&bob_mls_group_id).unwrap();
@@ -420,7 +416,10 @@ async fn main() -> Result<()> {
     )?;
     
     // Alice processes Bob's leave commit message
-    alice_nostr_mls.process_message(&leave_commit_event)?;
+    let alice_leave_process_result = alice_nostr_mls.process_message(&leave_commit_event)?;
+    tracing::info!("Alice process_message (leave commit) result: {:?}", alice_leave_process_result);
+    tracing::info!("Alice process_message (leave commit) - message: {:?}", alice_leave_process_result.message);
+    tracing::info!("Alice process_message (leave commit) - member_changes: {:?}", alice_leave_process_result.member_changes);
     
     // Verify Alice's group state has been updated
     let alice_members_after_leave = alice_nostr_mls
