@@ -47,7 +47,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Json(e) => write!(f, "J{e}"),
+            Self::Json(e) => write!(f, "{e}"),
             Self::NIP04(e) => write!(f, "{e}"),
             #[cfg(feature = "std")]
             Self::EventBuilder(e) => write!(f, "{e}"),
