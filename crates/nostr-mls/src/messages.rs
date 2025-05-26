@@ -232,37 +232,22 @@ where
         &self,
         mls_group_id: &GroupId,
         commit_proposal_message: &[u8],
+        secret_key: &[u8; 32],
     ) -> Result<Event, Error> {
-        // Load mls group
-        let mut mls_group = self
-            .load_mls_group(mls_group_id)?
-            .ok_or(Error::GroupNotFound)?;
-
         // Load stored group
         let group: group_types::Group = self
             .get_group(mls_group_id)
             .map_err(|e| Error::Group(e.to_string()))?
             .ok_or(Error::GroupNotFound)?;
 
-        let signer: SignatureKeyPair = self.load_mls_signer(&mls_group)?;
-    
-        // Create message
-        let message_out = mls_group.create_message(&self.provider, &signer, commit_proposal_message)?;
-    
-        let message: Vec<u8> = message_out.tls_serialize_detached()?;
-
-        // Export secret
-        let secret: group_types::GroupExporterSecret = self.exporter_secret(mls_group_id)?;
-
         // Convert that secret to nostr keys
-        let secret_key: SecretKey = SecretKey::from_slice(&secret.secret)?;
+        let secret_key: SecretKey = SecretKey::from_slice(secret_key)?;
         let export_nostr_keys: Keys = Keys::new(secret_key);
-
         // Encrypt the message content
         let encrypted_content: String = nip44::encrypt(
             export_nostr_keys.secret_key(),
             &export_nostr_keys.public_key,
-            &message,
+            &commit_proposal_message,
             nip44::Version::default(),
         )?;
 
@@ -341,7 +326,22 @@ where
             ProcessedMessageContent::ProposalMessage(staged_proposal) => {
                 // This is a proposal message
                 tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "Received proposal message: {:?}", staged_proposal);
-                // TODO: Handle proposal message
+                // Check if this is a self-remove proposal
+                if let Proposal::Remove(remove_proposal) = staged_proposal.proposal() {
+                    if let Sender::Member(sender_leaf_index) = staged_proposal.sender().clone() {
+                        let removed_index = remove_proposal.removed();
+                        let is_self_remove = removed_index == sender_leaf_index;
+                        
+                        if is_self_remove {
+                            tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "This is a self-remove proposal");
+                            self.commit_proposal(group.group_id(), *staged_proposal)
+                                .map_err(|e| Error::Group(e.to_string()))?;
+                        } else {
+                            tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "This is a remove proposal for another member");
+                        }
+                    }
+                }
+                
                 Ok(None)
             }
             ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
@@ -416,13 +416,13 @@ where
         // Convert that secret to nostr keys
         let secret_key: SecretKey = SecretKey::from_slice(&secret.secret)?;
         let export_nostr_keys = Keys::new(secret_key);
-
         // Decrypt message
         let message_bytes: Vec<u8> = nip44::decrypt_to_bytes(
             export_nostr_keys.secret_key(),
             &export_nostr_keys.public_key,
             &event.content,
         )?;
+
 
         let mut mls_group = self
             .load_mls_group(&group.mls_group_id)

@@ -593,17 +593,30 @@ where
     pub fn remove_members(
         &self,
         group_id: &GroupId,
-        member_indices: &[u32],
+        pubkeys_hex: &[String],
     ) -> Result<NostrMlsCommitMessage, Error> {
         // Load group
         let mut group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
 
         let signer: SignatureKeyPair = self.load_mls_signer(&group)?;
 
-        let leaf_indices: Vec<LeafNodeIndex> = member_indices
-            .iter()
-            .map(|&idx| LeafNodeIndex::new(idx))
-            .collect();
+        // Convert pubkeys_hex to leaf indices
+        let mut leaf_indices = Vec::new();
+        let members = group.members();
+        
+        for (index, member) in members.enumerate() {
+            let credentials: BasicCredential = BasicCredential::try_from(member.credential)?;
+            let hex_bytes: &[u8] = credentials.identity();
+            let hex_str: &str = str::from_utf8(hex_bytes)?;
+            
+            if pubkeys_hex.contains(&hex_str.to_string()) {
+                leaf_indices.push(LeafNodeIndex::new(index as u32));
+            }
+        }
+
+        if leaf_indices.is_empty() {
+            return Err(Error::Group("No matching members found to remove".to_string()));
+        }
 
         let (commit_message, _welcome_option, _group_info) = group
             .remove_members(&self.provider, &signer, &leaf_indices)
