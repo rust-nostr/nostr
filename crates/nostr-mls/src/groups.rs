@@ -244,6 +244,25 @@ where
         })
     }
 
+    /// Gets the current user's public key from an MLS group
+    ///
+    /// # Arguments
+    ///
+    /// * `group` - Reference to the MLS group
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(PublicKey)` - The current user's public key
+    /// * `Err(Error)` - If the user's leaf node is not found or there is an error extracting the public key
+    pub(crate) fn get_current_user_pubkey(&self, group: &MlsGroup) -> Result<PublicKey, Error> {
+        let own_leaf = self.get_own_leaf(group)?;
+        let credentials: BasicCredential = BasicCredential::try_from(own_leaf.credential().clone())?;
+        let hex_bytes: &[u8] = credentials.identity();
+        let hex_str: &str = str::from_utf8(hex_bytes)?;
+        let public_key = PublicKey::from_hex(hex_str)?;
+        Ok(public_key)
+    }
+
     /// Retrieves the set of relay URLs associated with an MLS group
     ///
     /// # Arguments
@@ -643,8 +662,18 @@ where
     ) -> Result<CommitProposalResult, Error> {
         // Load group
         let mut group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+
         // Load signer
         let signer: SignatureKeyPair = self.load_mls_signer(&group)?;
+
+        // Check if current user is an admin
+        let current_user_pubkey = self.get_current_user_pubkey(&group)?;
+        let stored_group = self.get_group(group_id)?.ok_or(Error::GroupNotFound)?;
+        
+        if !stored_group.admin_pubkeys.contains(&current_user_pubkey) {
+            return Err(Error::Group("Only group admins can commit proposals".to_string()));
+        }
+
         // Store proposal
         group
             .store_pending_proposal(self.provider.storage(), proposal)
