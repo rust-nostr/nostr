@@ -31,6 +31,10 @@
 
 - nostr: add detailed error handling for NIP-47 response deserialization ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/890)
 
+### Fixed
+
+- nostr: fix NIP-47 request params serialization ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/891)
+
 ## v0.42.0 - 2025/05/20
 
 ### Breaking changes

@@ -12,7 +12,7 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
-use serde::ser::SerializeStruct;
+use serde::ser::{SerializeMap, SerializeStruct};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
@@ -241,8 +241,14 @@ impl Serialize for RequestParams {
             RequestParams::MakeInvoice(p) => p.serialize(serializer),
             RequestParams::LookupInvoice(p) => p.serialize(serializer),
             RequestParams::ListTransactions(p) => p.serialize(serializer),
-            RequestParams::GetBalance => serializer.serialize_none(),
-            RequestParams::GetInfo => serializer.serialize_none(),
+            RequestParams::GetBalance => {
+                let map = serializer.serialize_map(None)?;
+                map.end()
+            }
+            RequestParams::GetInfo => {
+                let map = serializer.serialize_map(None)?;
+                map.end()
+            }
         }
     }
 }
@@ -1241,7 +1247,35 @@ mod tests {
     }
 
     #[test]
-    fn serialize_request() {
+    fn test_get_info_request() {
+        let request = Request::get_info();
+
+        // Serialize
+        let json = request.as_json();
+
+        // Test if JSON string matches
+        assert_eq!(json, "{\"method\":\"get_info\",\"params\":{}}");
+
+        // Test parsing
+        assert_eq!(Request::from_json(json).unwrap(), request);
+    }
+
+    #[test]
+    fn test_get_balance_request() {
+        let request = Request::get_balance();
+
+        // Serialize
+        let json = request.as_json();
+
+        // Test if JSON string matches
+        assert_eq!(json, "{\"method\":\"get_balance\",\"params\":{}}");
+
+        // Test parsing
+        assert_eq!(Request::from_json(json).unwrap(), request);
+    }
+
+    #[test]
+    fn test_pay_invoice_request() {
         let request = Request {
             method: Method::PayInvoice,
             params: RequestParams::PayInvoice(PayInvoiceRequest { id: None, invoice: "lnbc210n1pj99rx0pp5ehevgz9nf7d97h05fgkdeqxzytm6yuxd7048axru03fpzxxvzt7shp5gv7ef0s26pw5gy5dpwvsh6qgc8se8x2lmz2ev90l9vjqzcns6u6scqzzsxqyz5vqsp".to_string(), amount: None }),
