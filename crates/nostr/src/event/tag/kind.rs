@@ -97,8 +97,14 @@ pub enum TagKind<'a> {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
     Nonce,
+    /// Option
+    Option,
     /// Payload
     Payload,
+    /// Poll type
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/88.md>
+    PollType,
     /// Preimage
     Preimage,
     /// Protected event
@@ -333,7 +339,9 @@ impl<'a> TagKind<'a> {
             Self::MlsExtensions => "mls_extensions",
             Self::Name => "name",
             Self::Nonce => "nonce",
+            Self::Option => "option",
             Self::Payload => "payload",
+            Self::PollType => "polltype",
             Self::Preimage => "preimage",
             Self::Protected => "-",
             Self::Proxy => "proxy",
@@ -407,7 +415,9 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "mls_extensions" => Self::MlsExtensions,
             "name" => Self::Name,
             "nonce" => Self::Nonce,
+            "option" => Self::Option,
             "payload" => Self::Payload,
+            "polltype" => Self::PollType,
             "preimage" => Self::Preimage,
             "proxy" => Self::Proxy,
             "published_at" => Self::PublishedAt,
@@ -497,6 +507,12 @@ mod tests {
 
         assert_eq!(TagKind::from("maintainers"), TagKind::Maintainers);
         assert_eq!(TagKind::Maintainers.as_str(), "maintainers");
+
+        assert_eq!(TagKind::from("option"), TagKind::Option);
+        assert_eq!(TagKind::Option.as_str(), "option");
+
+        assert_eq!(TagKind::from("polltype"), TagKind::PollType);
+        assert_eq!(TagKind::PollType.as_str(), "polltype");
 
         assert_eq!(TagKind::from("repo"), TagKind::Repository);
         assert_eq!(TagKind::Repository.as_str(), "repo");

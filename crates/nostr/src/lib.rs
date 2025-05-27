@@ -31,6 +31,7 @@ extern crate alloc;
 #[macro_use]
 extern crate serde;
 pub extern crate bitcoin_hashes as hashes;
+extern crate core;
 pub extern crate secp256k1;
 
 #[doc(hidden)]
