@@ -149,8 +149,7 @@ async fn main() -> Result<()> {
     tracing::info!("Bob process_message - message: {:?}", bob_process_result.message);
     tracing::info!("Bob process_message - member_changes: {:?}", bob_process_result.member_changes);
 
-    let messages = bob_nostr_mls.get_messages(&bob_mls_group_id).unwrap();
-    let message = messages.first().unwrap();
+    let message = bob_process_result.message.unwrap();
     tracing::info!("Bob processed message: {:?}", message);
 
     assert_eq!(
@@ -175,27 +174,9 @@ async fn main() -> Result<()> {
     );
 
     assert_eq!(
-        alice_nostr_mls
-            .get_messages(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))
-            .unwrap()
-            .len(),
-        1,
-        "Alice should have 1 message"
-    );
-
-    assert_eq!(
         bob_nostr_mls.get_groups().unwrap().len(),
         1,
         "Bob should have 1 group"
-    );
-
-    assert_eq!(
-        bob_nostr_mls
-            .get_messages(&GroupId::from_slice(bobs_group.mls_group_id.as_slice()))
-            .unwrap()
-            .len(),
-        1,
-        "Bob should have 1 message"
     );
 
     tracing::info!("Alice about to process message");
@@ -203,12 +184,6 @@ async fn main() -> Result<()> {
     tracing::info!("Alice process_message result: {:?}", alice_process_result);
     tracing::info!("Alice process_message - message: {:?}", alice_process_result.message);
     tracing::info!("Alice process_message - member_changes: {:?}", alice_process_result.member_changes);
-
-    let messages = alice_nostr_mls
-        .get_messages(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))
-        .unwrap();
-    let message = messages.first().unwrap();
-    tracing::info!("Alice processed message: {:?}", message);
 
     // ================================
     // Testing add_members functionality

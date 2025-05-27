@@ -163,16 +163,13 @@ where
             .ok_or(Error::GroupNotFound)?;
 
         // Load stored group
-        let mut group: group_types::Group = self
+        let group: group_types::Group = self
             .get_group(mls_group_id)
             .map_err(|e| Error::Group(e.to_string()))?
             .ok_or(Error::GroupNotFound)?;
 
         // Create message
         let message: Vec<u8> = self.create_message_for_event(&mut mls_group, &mut rumor)?;
-
-        // Get the rumor ID
-        let rumor_id: EventId = rumor.id();
 
         // Export secret
         let secret: group_types::GroupExporterSecret = self.exporter_secret(mls_group_id)?;
@@ -196,46 +193,6 @@ where
         let event = EventBuilder::new(Kind::MlsGroupMessage, encrypted_content)
             .tag(tag)
             .sign_with_keys(&ephemeral_nostr_keys)?;
-
-        // Create message to save to storage
-        let message: message_types::Message = message_types::Message {
-            id: rumor_id,
-            pubkey: rumor.pubkey,
-            kind: rumor.kind,
-            mls_group_id: mls_group_id.clone(),
-            created_at: rumor.created_at,
-            content: rumor.content.clone(),
-            tags: rumor.tags.clone(),
-            event: rumor.clone(),
-            wrapper_event_id: event.id,
-            state: message_types::MessageState::Created,
-        };
-
-        // Create processed_message to track state of message
-        let processed_message: message_types::ProcessedMessage = message_types::ProcessedMessage {
-            wrapper_event_id: event.id,
-            message_event_id: Some(rumor_id),
-            processed_at: Timestamp::now(),
-            state: message_types::ProcessedMessageState::Created,
-            failure_reason: None,
-        };
-
-        // Save message to storage
-        self.storage()
-            .save_message(message.clone())
-            .map_err(|e| Error::Message(e.to_string()))?;
-
-        // Save processed message to storage
-        self.storage()
-            .save_processed_message(processed_message)
-            .map_err(|e| Error::Message(e.to_string()))?;
-
-        // Update last_message_at and last_message_id
-        group.last_message_at = Some(rumor.created_at);
-        group.last_message_id = Some(message.id);
-        self.storage()
-            .save_group(group)
-            .map_err(|e| Error::Group(e.to_string()))?;
 
         Ok(event)
     }
@@ -512,7 +469,7 @@ where
         .try_into()
         .map_err(|_e| Error::Message("Failed to convert nostr group id to [u8; 32]".to_string()))?;
 
-        let mut group = self
+        let group = self
             .storage()
             .find_group_by_nostr_group_id(&nostr_group_id)
             .map_err(|e| Error::Group(e.to_string()))?
@@ -545,14 +502,6 @@ where
             Ok(ProcessMessageResult { message: Some(mut rumor), member_changes }) => {
                 let rumor_id: EventId = rumor.id();
 
-                let processed_message = message_types::ProcessedMessage {
-                    wrapper_event_id: event.id,
-                    message_event_id: Some(rumor_id),
-                    processed_at: Timestamp::now(),
-                    state: message_types::ProcessedMessageState::Processed,
-                    failure_reason: None,
-                };
-
                 let message = message_types::Message {
                     id: rumor_id,
                     pubkey: rumor.pubkey,
@@ -566,22 +515,6 @@ where
                     state: message_types::MessageState::Processed,
                 };
 
-                self.storage()
-                    .save_message(message.clone())
-                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                self.storage()
-                    .save_processed_message(processed_message.clone())
-                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                // Update last_message_at and last_message_id
-                group.last_message_at = Some(rumor.created_at);
-                group.last_message_id = Some(message.id);
-                self.storage()
-                    .save_group(group)
-                    .map_err(|e| Error::Group(e.to_string()))?;
-
-                tracing::debug!(target: "nostr_mls::messages::process_message", "Processed message: {:?}", processed_message);
                 tracing::debug!(target: "nostr_mls::messages::process_message", "Message: {:?}", message);
                 Ok(ProcessedEventResult {
                     message: Some(message),
@@ -590,18 +523,6 @@ where
             }
             Ok(ProcessMessageResult { message: None, member_changes }) => {
                 // This is what happens with proposals, commits, etc.
-                let processed_message = message_types::ProcessedMessage {
-                    wrapper_event_id: event.id,
-                    message_event_id: None,
-                    processed_at: Timestamp::now(),
-                    state: message_types::ProcessedMessageState::Processed,
-                    failure_reason: None,
-                };
-
-                self.storage()
-                    .save_processed_message(processed_message)
-                    .map_err(|e| Error::Message(e.to_string()))?;
-
                 Ok(ProcessedEventResult {
                     message: None,
                     member_changes,
@@ -611,63 +532,13 @@ where
                 match e {
                     Error::CannotDecryptOwnMessage => {
                         tracing::debug!(target: "nostr_mls::messages::process_message", "Cannot decrypt own message, checking for cached message");
-
-                        let mut processed_message = self
-                            .storage()
-                            .find_processed_message_by_event_id(&event.id)
-                            .map_err(|e| Error::Message(e.to_string()))?
-                            .ok_or(Error::Message("Processed message not found".to_string()))?;
-
-                        let message_event_id: EventId = processed_message
-                            .message_event_id
-                            .ok_or(Error::Message("Message event ID not found".to_string()))?;
-
-                        // If the message is created, we need to update the state of the message and processed message
-                        // If it's already processed, we don't need to do anything
-                        match processed_message.state {
-                            message_types::ProcessedMessageState::Created => {
-                                let mut message = self
-                                    .get_message(&message_event_id)?
-                                    .ok_or(Error::Message("Message not found".to_string()))?;
-
-                                message.state = message_types::MessageState::Processed;
-                                self.storage()
-                                    .save_message(message)
-                                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                                processed_message.state =
-                                    message_types::ProcessedMessageState::Processed;
-                                self.storage()
-                                    .save_processed_message(processed_message.clone())
-                                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                                tracing::debug!(target: "nostr_mls::messages::process_message", "Updated state of own cached message");
-                            }
-                            message_types::ProcessedMessageState::Processed => {
-                                tracing::debug!(target: "nostr_mls::messages::process_message", "Message already processed");
-                            }
-                            message_types::ProcessedMessageState::Failed => {
-                                tracing::debug!(target: "nostr_mls::messages::process_message", "Message previously failed to process");
-                            }
-                        }
-                        let message = self.get_message(&message_event_id)?;
                         return Ok(ProcessedEventResult {
-                            message,
+                            message: None,
                             member_changes: None,
                         });
                     }
                     _ => {
                         tracing::error!(target: "nostr_mls::messages::process_message", "Error processing message: {:?}", e);
-                        let processed_message = message_types::ProcessedMessage {
-                            wrapper_event_id: event.id,
-                            message_event_id: None,
-                            processed_at: Timestamp::now(),
-                            state: message_types::ProcessedMessageState::Failed,
-                            failure_reason: Some(e.to_string()),
-                        };
-                        self.storage()
-                            .save_processed_message(processed_message)
-                            .map_err(|e| Error::Message(e.to_string()))?;
                     }
                 }
                 Ok(ProcessedEventResult {
