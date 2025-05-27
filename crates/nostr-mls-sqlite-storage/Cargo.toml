@@ -17,7 +17,7 @@ nostr-mls-storage.workspace = true
 openmls = { git = "https://github.com/openmls/openmls", rev = "4cc0f594b11262083ad9827b3b2033052c6ef99f", default-features = false }
 openmls_sqlite_storage = { git = "https://github.com/openmls/openmls", rev = "4cc0f594b11262083ad9827b3b2033052c6ef99f", default-features = false }
 refinery = { version = "0.8", features = ["rusqlite"] } # MSRV is 1.75.0
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.32", features = ["bundled-sqlcipher"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 tracing = { workspace = true, features = ["std"] }
