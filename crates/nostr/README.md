@@ -137,6 +137,7 @@ The following crate feature flags are available:
 |     ✅     | [34 - `git` stuff](https://github.com/nostr-protocol/nips/blob/master/34.md)                                    |
 |     ✅     | [35 - Torrents](https://github.com/nostr-protocol/nips/blob/master/35.md)                                       |
 |     ✅     | [36 - Sensitive Content](https://github.com/nostr-protocol/nips/blob/master/36.md)                              |
+|     ❌     | [37 - Draft Events](https://github.com/nostr-protocol/nips/blob/master/37.md)                                   |
 |     ✅     | [38 - User Statuses](https://github.com/nostr-protocol/nips/blob/master/38.md)                                  |
 |     ✅     | [39 - External Identities in Profiles](https://github.com/nostr-protocol/nips/blob/master/39.md)                |
 |     ✅     | [40 - Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)                           |
@@ -157,14 +158,23 @@ The following crate feature flags are available:
 |     ✅     | [57 - Lightning Zaps](https://github.com/nostr-protocol/nips/blob/master/57.md)                                 |
 |     ✅     | [58 - Badges](https://github.com/nostr-protocol/nips/blob/master/58.md)                                         |
 |     ✅     | [59 - Gift Wrap](https://github.com/nostr-protocol/nips/blob/master/59.md)                                      |
+|     ❌     | [60 - Cashu Wallet](https://github.com/nostr-protocol/nips/blob/master/60.md)                                   |
+|     ❌     | [61 - Nutzaps](https://github.com/nostr-protocol/nips/blob/master/61.md)                                        |
 |     ✅     | [62 - Request to Vanish](https://github.com/nostr-protocol/nips/blob/master/62.md)                              |
 |     ✅     | [65 - Relay List Metadata](https://github.com/nostr-protocol/nips/blob/master/65.md)                            |
+|     ❌     | [66 - Relay Discovery and Liveness Monitoring](https://github.com/nostr-protocol/nips/blob/master/66.md)        |
+|     ❌     | [69 - P2P Order events](https://github.com/nostr-protocol/nips/blob/master/69.md)                               |
 |     ✅     | [70 - Protected Events](https://github.com/nostr-protocol/nips/blob/master/70.md)                               |
 |     ❌     | [71 - Video Events](https://github.com/nostr-protocol/nips/blob/master/71.md)                                   |
 |     ❌     | [72 - Moderated Communities](https://github.com/nostr-protocol/nips/blob/master/72.md)                          |
 |     ✅     | [73 - External Content IDs](https://github.com/nostr-protocol/nips/blob/master/73.md)                           |
 |     ❌     | [75 - Zap Goals](https://github.com/nostr-protocol/nips/blob/master/75.md)                                      |
+|     ✅     | [77 - Negentropy Syncing](https://github.com/nostr-protocol/nips/blob/master/77.md)                             |
 |     ✅     | [78 - Arbitrary custom app data](https://github.com/nostr-protocol/nips/blob/master/78.md)                      |
+|     ❌     | [7D - Threads](https://github.com/nostr-protocol/nips/blob/master/7D.md)                                        |
+|     ❌     | [84 - Highlights](https://github.com/nostr-protocol/nips/blob/master/84.md)                                     |
+|     ❌     | [86 - Relay Management API](https://github.com/nostr-protocol/nips/blob/master/86.md)                           |
+|     ❌     | [88 - Polls](https://github.com/nostr-protocol/nips/blob/master/88.md)                                          |
 |     ❌     | [89 - Recommended Application Handlers](https://github.com/nostr-protocol/nips/blob/master/89.md)               |
 |     ✅     | [90 - Data Vending Machine](https://github.com/nostr-protocol/nips/blob/master/90.md)                           |
 |     ❌     | [92 - Media Attachments](https://github.com/nostr-protocol/nips/blob/master/92.md)                              |
@@ -172,7 +182,10 @@ The following crate feature flags are available:
 |     ✅     | [96 - HTTP File Storage Integration](https://github.com/nostr-protocol/nips/blob/master/96.md)                  |
 |     ✅     | [98 - HTTP Auth](https://github.com/nostr-protocol/nips/blob/master/98.md)                                      |
 |     ❌     | [99 - Classified Listings](https://github.com/nostr-protocol/nips/blob/master/99.md)                            |
+|     ❌     | [B0 - Web Bookmarks](https://github.com/nostr-protocol/nips/blob/master/B0.md)                                  |
+|     ✅     | [B7 - Blossom](https://github.com/nostr-protocol/nips/blob/master/B7.md)                                        |
 |     ✅     | [C0 - Code Snippets](https://github.com/nostr-protocol/nips/blob/master/C0.md)                                  |
+|     ❌     | [C7 - Chats](https://github.com/nostr-protocol/nips/blob/master/C7.md)                                          |
 
 ## State
 
