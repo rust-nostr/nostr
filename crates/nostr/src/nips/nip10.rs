@@ -36,8 +36,6 @@ pub enum Marker {
     Root,
     /// Reply
     Reply,
-    /// Mention
-    Mention,
 }
 
 impl fmt::Display for Marker {
@@ -45,7 +43,6 @@ impl fmt::Display for Marker {
         match self {
             Self::Root => write!(f, "root"),
             Self::Reply => write!(f, "reply"),
-            Self::Mention => write!(f, "mention"),
         }
     }
 }
@@ -57,7 +54,6 @@ impl FromStr for Marker {
         match marker {
             "root" => Ok(Self::Root),
             "reply" => Ok(Self::Reply),
-            "mention" => Ok(Self::Mention),
             _ => Err(Error::InvalidMarker),
         }
     }

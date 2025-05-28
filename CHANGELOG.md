@@ -28,6 +28,7 @@
 ### Breaking changes
 
 - nostr: remove `NostrConnectMethod::GetRelays`, `NostrConnectRequest::GetRelays` and `ResponseResult::GetRelays` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/894)
+- nostr: remove `Market::Mention` (NIP-10) ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/895)
 - connect: remove `NostrConnect::get_relays` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/894)
 
 ### Changed
