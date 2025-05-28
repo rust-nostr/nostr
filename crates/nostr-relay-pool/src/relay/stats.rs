@@ -147,3 +147,33 @@ impl RelayConnectionStats {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_attempt_success() {
+        let stats = RelayConnectionStats::default();
+        stats.new_attempt();
+        stats.new_success();
+        assert_eq!(stats.attempts(), 1);
+        assert_eq!(stats.success(), 1);
+        assert_eq!(stats.success_rate(), 1.0);
+        assert!(stats.connected_at().as_u64() > 0);
+        assert!(stats.first_connection_timestamp().as_u64() > 0);
+    }
+
+    #[test]
+    fn test_add_bytes() {
+        let stats = RelayConnectionStats::default();
+        stats.add_bytes_sent(0);
+        assert_eq!(stats.bytes_sent(), 0);
+        stats.add_bytes_sent(50);
+        assert_eq!(stats.bytes_sent(), 50);
+        stats.add_bytes_received(0);
+        assert_eq!(stats.bytes_received(), 0);
+        stats.add_bytes_received(30);
+        assert_eq!(stats.bytes_received(), 30);
+    }
+}

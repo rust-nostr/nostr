@@ -68,3 +68,31 @@ impl PingTracker {
         self.replied.store(replied, Ordering::SeqCst);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_ping_tracker_sent() {
+        let tracker = PingTracker::default();
+        let before = tracker.sent_at().await;
+        tracker.just_sent().await;
+        let after = tracker.sent_at().await;
+        assert!(after >= before);
+    }
+
+    #[test]
+    fn test_ping_tracker_last_nonce() {
+        let tracker = PingTracker::default();
+        tracker.set_last_nonce(42);
+        assert_eq!(tracker.last_nonce(), 42);
+    }
+
+    #[test]
+    fn test_ping_tracker_replied() {
+        let tracker = PingTracker::default();
+        tracker.set_replied(true);
+        assert!(tracker.replied());
+    }
+}

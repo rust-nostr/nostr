@@ -96,3 +96,25 @@ pub trait AdmitPolicy: fmt::Debug + Send + Sync {
         Box::pin(async move { Ok(AdmitStatus::Success) })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_admit_status_success() {
+        let status = AdmitStatus::success();
+        assert_eq!(status, AdmitStatus::Success);
+    }
+
+    #[test]
+    fn test_admit_status_rejcted() {
+        let status = AdmitStatus::rejected("not admitted");
+        assert_eq!(
+            status,
+            AdmitStatus::Rejected {
+                reason: Some(String::from("not admitted"))
+            }
+        );
+    }
+}
