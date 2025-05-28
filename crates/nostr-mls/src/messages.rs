@@ -360,7 +360,7 @@ where
                             return Ok(ProcessMessageResult {
                                 message: None,
                                 member_changes,
-                                commit: Some(commit_result.commit_message),
+                                commit: commit_result.commit_message,
                                 welcome: commit_result.welcome_message,
                             });
                         } else {

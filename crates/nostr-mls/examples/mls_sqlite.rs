@@ -146,8 +146,14 @@ async fn main() -> Result<()> {
     // Now Bob can process the MLS message content and do what's needed with it
     let bob_process_result = bob_nostr_mls.process_message(&message_event)?;
     tracing::info!("Bob process_message result: {:?}", bob_process_result);
-    tracing::info!("Bob process_message - message: {:?}", bob_process_result.message);
-    tracing::info!("Bob process_message - member_changes: {:?}", bob_process_result.member_changes);
+    tracing::info!(
+        "Bob process_message - message: {:?}",
+        bob_process_result.message
+    );
+    tracing::info!(
+        "Bob process_message - member_changes: {:?}",
+        bob_process_result.member_changes
+    );
 
     let message = bob_process_result.message.unwrap();
     tracing::info!("Bob processed message: {:?}", message);
@@ -182,70 +188,86 @@ async fn main() -> Result<()> {
     tracing::info!("Alice about to process message");
     let alice_process_result = alice_nostr_mls.process_message(&message_event)?;
     tracing::info!("Alice process_message result: {:?}", alice_process_result);
-    tracing::info!("Alice process_message - message: {:?}", alice_process_result.message);
-    tracing::info!("Alice process_message - member_changes: {:?}", alice_process_result.member_changes);
+    tracing::info!(
+        "Alice process_message - message: {:?}",
+        alice_process_result.message
+    );
+    tracing::info!(
+        "Alice process_message - member_changes: {:?}",
+        alice_process_result.member_changes
+    );
 
     // ================================
     // Testing add_members functionality
     // ================================
-    
+
     tracing::info!("Starting add_members functionality test");
-    
+
     // Generate Charlie's identity as the third user
     let (charlie_keys, charlie_nostr_mls, charlie_temp_dir) = generate_identity();
     tracing::info!("Charlie identity generated");
-    
-    // Charlie creates key package
-    let (charlie_key_package_encoded, charlie_tags) =
-        charlie_nostr_mls.create_key_package_for_event(&charlie_keys.public_key(), [relay_url.clone()])?;
 
-    let charlie_key_package_event = EventBuilder::new(Kind::MlsKeyPackage, charlie_key_package_encoded)
-        .tags(charlie_tags)
-        .build(charlie_keys.public_key())
-        .sign(&charlie_keys)
-        .await?;
-    
+    // Charlie creates key package
+    let (charlie_key_package_encoded, charlie_tags) = charlie_nostr_mls
+        .create_key_package_for_event(&charlie_keys.public_key(), [relay_url.clone()])?;
+
+    let charlie_key_package_event =
+        EventBuilder::new(Kind::MlsKeyPackage, charlie_key_package_encoded)
+            .tags(charlie_tags)
+            .build(charlie_keys.public_key())
+            .sign(&charlie_keys)
+            .await?;
+
     // Alice parses Charlie's key package
-    let charlie_key_package: KeyPackage = alice_nostr_mls.parse_key_package(&charlie_key_package_event)?;
-    
+    let charlie_key_package: KeyPackage =
+        alice_nostr_mls.parse_key_package(&charlie_key_package_event)?;
+
     // Verify group state before adding members
     let members_before = alice_nostr_mls
         .get_members(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))
         .unwrap();
     tracing::info!("Group has {} members before adding", members_before.len());
-    assert_eq!(members_before.len(), 2, "Should have 2 members before adding");
+    assert_eq!(
+        members_before.len(),
+        2,
+        "Should have 2 members before adding"
+    );
 
-    let secret: group_types::GroupExporterSecret = alice_nostr_mls.exporter_secret(&alice_group.mls_group_id)?;
+    let secret: group_types::GroupExporterSecret =
+        alice_nostr_mls.exporter_secret(&alice_group.mls_group_id)?;
 
-    
     // Alice uses add_members to add Charlie to the group
     let add_members_result = alice_nostr_mls.add_members(
         &GroupId::from_slice(alice_group.mls_group_id.as_slice()),
         &[charlie_key_package],
     )?;
-    
+
     tracing::info!("Charlie has been added to the group");
-    
+
     // Verify group state after adding members
     let members_after = alice_nostr_mls
         .get_members(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))
         .unwrap();
     tracing::info!("Group has {} members after adding", members_after.len());
     assert_eq!(members_after.len(), 3, "Should have 3 members after adding");
-    assert!(members_after.contains(&charlie_keys.public_key()), "Group should contain Charlie's public key");
-    
+    assert!(
+        members_after.contains(&charlie_keys.public_key()),
+        "Group should contain Charlie's public key"
+    );
+
     // Create welcome rumor event for Charlie
     let charlie_welcome_rumor = EventBuilder::new(
-        Kind::MlsWelcome, 
-        hex::encode(&add_members_result.welcome_message)
+        Kind::MlsWelcome,
+        hex::encode(&add_members_result.welcome_message),
     )
     .build(alice_keys.public_key());
-    
+
     // Charlie processes the welcome message
-    let charlie_welcome = charlie_nostr_mls.process_welcome(&EventId::all_zeros(), &charlie_welcome_rumor)?;
-    
+    let charlie_welcome =
+        charlie_nostr_mls.process_welcome(&EventId::all_zeros(), &charlie_welcome_rumor)?;
+
     tracing::debug!("Charlie's Welcome message: {:?}", charlie_welcome);
-    
+
     // Verify welcome message content
     assert_eq!(
         charlie_welcome.member_count as usize, 3,
@@ -255,158 +277,248 @@ async fn main() -> Result<()> {
         charlie_welcome.group_name, "Bob & Alice",
         "Charlie's welcome message should show correct group name"
     );
-    
+
     // Charlie accepts welcome and joins the group
     let charlie_groups = charlie_nostr_mls.get_groups()?;
     let charlie_group = charlie_groups.first().unwrap();
     let charlie_mls_group_id = GroupId::from_slice(charlie_group.mls_group_id.as_slice());
-    
+
     tracing::info!("Charlie has successfully joined the group");
-    
+
     // Verify Charlie's group state
-    let charlie_members = charlie_nostr_mls.get_members(&charlie_mls_group_id).unwrap();
-    assert_eq!(charlie_members.len(), 3, "Charlie should see 3 members in the group");
-    assert!(charlie_members.contains(&alice_keys.public_key()), "Charlie should see Alice in the group");
-    assert!(charlie_members.contains(&bob_keys.public_key()), "Charlie should see Bob in the group");
-    assert!(charlie_members.contains(&charlie_keys.public_key()), "Charlie should see himself in the group");
-    
+    let charlie_members = charlie_nostr_mls
+        .get_members(&charlie_mls_group_id)
+        .unwrap();
+    assert_eq!(
+        charlie_members.len(),
+        3,
+        "Charlie should see 3 members in the group"
+    );
+    assert!(
+        charlie_members.contains(&alice_keys.public_key()),
+        "Charlie should see Alice in the group"
+    );
+    assert!(
+        charlie_members.contains(&bob_keys.public_key()),
+        "Charlie should see Bob in the group"
+    );
+    assert!(
+        charlie_members.contains(&charlie_keys.public_key()),
+        "Charlie should see himself in the group"
+    );
+
     // Bob also needs to process the commit message to update group state
     // Use create_commit_proposal_message to create commit event for Bob
     let commit_event = alice_nostr_mls.create_commit_proposal_message(
         &GroupId::from_slice(alice_group.mls_group_id.as_slice()),
         &add_members_result.commit_message,
-        &secret.secret
+        &secret.secret,
     )?;
-        
+
     // Bob processes the commit message
     let bob_commit_process_result = bob_nostr_mls.process_message(&commit_event)?;
-    tracing::info!("Bob process_message (add commit) result: {:?}", bob_commit_process_result);
-    tracing::info!("Bob process_message (add commit) - message: {:?}", bob_commit_process_result.message);
-    tracing::info!("Bob process_message (add commit) - member_changes: {:?}", bob_commit_process_result.member_changes);
-    
+    tracing::info!(
+        "Bob process_message (add commit) result: {:?}",
+        bob_commit_process_result
+    );
+    tracing::info!(
+        "Bob process_message (add commit) - message: {:?}",
+        bob_commit_process_result.message
+    );
+    tracing::info!(
+        "Bob process_message (add commit) - member_changes: {:?}",
+        bob_commit_process_result.member_changes
+    );
+
     // Verify Bob's group state has been updated
     let bob_members_updated = bob_nostr_mls.get_members(&bob_mls_group_id).unwrap();
-    assert_eq!(bob_members_updated.len(), 3, "Bob should see 3 members in the group");
-    assert!(bob_members_updated.contains(&charlie_keys.public_key()), "Bob should see Charlie in the group");
-    
+    assert_eq!(
+        bob_members_updated.len(),
+        3,
+        "Bob should see 3 members in the group"
+    );
+    assert!(
+        bob_members_updated.contains(&charlie_keys.public_key()),
+        "Bob should see Charlie in the group"
+    );
+
     tracing::info!("add_members functionality test completed!");
-    tracing::info!("Group now has {} members: Alice, Bob, Charlie", bob_members_updated.len());
-
-    // ================================
-    // Testing remove_members functionality
-    // ================================
-    
-    tracing::info!("Starting remove_members functionality test");
-    
-    // Verify group state before removing members
-    let members_before_remove = alice_nostr_mls
-        .get_members(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))
-        .unwrap();
-    tracing::info!("Group has {} members before removing", members_before_remove.len());
-    assert_eq!(members_before_remove.len(), 3, "Should have 3 members before removing");
-    assert!(members_before_remove.contains(&charlie_keys.public_key()), "Group should contain Charlie before removing");
-
-    // Get the current exporter secret before removal
-    let secret_before_remove: group_types::GroupExporterSecret = alice_nostr_mls.exporter_secret(&alice_group.mls_group_id)?;
-    
-    // Alice removes Charlie from the group using hex string format
-    let charlie_pubkey_hex = charlie_keys.public_key().to_hex();
-    let remove_result = alice_nostr_mls.remove_members(
-        &GroupId::from_slice(alice_group.mls_group_id.as_slice()),
-        &[charlie_pubkey_hex],
-    )?;
-    
-    tracing::info!("Charlie has been removed from the group");
-    
-    // Verify group state after removing members
-    let members_after_remove = alice_nostr_mls
-        .get_members(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))
-        .unwrap();
-    tracing::info!("Group has {} members after removing", members_after_remove.len());
-    assert_eq!(members_after_remove.len(), 2, "Should have 2 members after removing");
-    assert!(!members_after_remove.contains(&charlie_keys.public_key()), "Group should not contain Charlie after removing");
-    assert!(members_after_remove.contains(&alice_keys.public_key()), "Group should still contain Alice");
-    assert!(members_after_remove.contains(&bob_keys.public_key()), "Group should still contain Bob");
-    
-    // Create commit event for the removal
-    let remove_commit_event = alice_nostr_mls.create_commit_proposal_message(
-        &GroupId::from_slice(alice_group.mls_group_id.as_slice()),
-        &remove_result.serialized,
-        &secret_before_remove.secret
-    )?;
-    
-    // Bob processes the removal commit message
-    let bob_remove_process_result = bob_nostr_mls.process_message(&remove_commit_event)?;
-    tracing::info!("Bob process_message (remove commit) result: {:?}", bob_remove_process_result);
-    tracing::info!("Bob process_message (remove commit) - message: {:?}", bob_remove_process_result.message);
-    tracing::info!("Bob process_message (remove commit) - member_changes: {:?}", bob_remove_process_result.member_changes);
-    
-    // Verify Bob's group state has been updated
-    let bob_members_after_remove = bob_nostr_mls.get_members(&bob_mls_group_id).unwrap();
-    assert_eq!(bob_members_after_remove.len(), 2, "Bob should see 2 members in the group after removal");
-    assert!(!bob_members_after_remove.contains(&charlie_keys.public_key()), "Bob should not see Charlie in the group");
-    assert!(bob_members_after_remove.contains(&alice_keys.public_key()), "Bob should still see Alice in the group");
-    assert!(bob_members_after_remove.contains(&bob_keys.public_key()), "Bob should still see himself in the group");
-    
-    tracing::info!("remove_members functionality test completed!");
-    tracing::info!("Group now has {} members: Alice, Bob", bob_members_after_remove.len());
+    tracing::info!(
+        "Group now has {} members: Alice, Bob, Charlie",
+        bob_members_updated.len()
+    );
 
     // ================================
     // Testing leave_group functionality
     // ================================
-    
+
     tracing::info!("Starting leave_group functionality test");
-    
-    // Verify group state before Bob leaves
+
+    // Verify group state before Bob leaves (should have 3 members)
     let alice_members_before_leave = alice_nostr_mls
         .get_members(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))
         .unwrap();
     let bob_members_before_leave = bob_nostr_mls.get_members(&bob_mls_group_id).unwrap();
-    
-    tracing::info!("Alice sees {} members before Bob leaves", alice_members_before_leave.len());
-    tracing::info!("Bob sees {} members before leaving", bob_members_before_leave.len());
-    assert_eq!(alice_members_before_leave.len(), 2, "Alice should see 2 members before Bob leaves");
-    assert_eq!(bob_members_before_leave.len(), 2, "Bob should see 2 members before leaving");
-    assert!(alice_members_before_leave.contains(&bob_keys.public_key()), "Alice should see Bob in the group before he leaves");
-    assert!(bob_members_before_leave.contains(&bob_keys.public_key()), "Bob should see himself in the group before leaving");
+    let charlie_members_before_leave = charlie_nostr_mls
+        .get_members(&charlie_mls_group_id)
+        .unwrap();
+
+    tracing::info!(
+        "Alice sees {} members before Bob leaves",
+        alice_members_before_leave.len()
+    );
+    tracing::info!(
+        "Bob sees {} members before leaving",
+        bob_members_before_leave.len()
+    );
+    tracing::info!(
+        "Charlie sees {} members before Bob leaves",
+        charlie_members_before_leave.len()
+    );
+    assert_eq!(
+        alice_members_before_leave.len(),
+        3,
+        "Alice should see 3 members before Bob leaves"
+    );
+    assert_eq!(
+        bob_members_before_leave.len(),
+        3,
+        "Bob should see 3 members before leaving"
+    );
+    assert_eq!(
+        charlie_members_before_leave.len(),
+        3,
+        "Charlie should see 3 members before Bob leaves"
+    );
+    assert!(
+        alice_members_before_leave.contains(&bob_keys.public_key()),
+        "Alice should see Bob in the group before he leaves"
+    );
+    assert!(
+        bob_members_before_leave.contains(&bob_keys.public_key()),
+        "Bob should see himself in the group before leaving"
+    );
+    assert!(
+        charlie_members_before_leave.contains(&bob_keys.public_key()),
+        "Charlie should see Bob in the group before he leaves"
+    );
 
     // Get the current exporter secret before Bob leaves
-    let secret_before_leave: group_types::GroupExporterSecret = bob_nostr_mls.exporter_secret(&bobs_group.mls_group_id)?;
-    
+    let secret_before_leave: group_types::GroupExporterSecret =
+        bob_nostr_mls.exporter_secret(&bobs_group.mls_group_id)?;
+
     // Bob leaves the group
     let leave_result = bob_nostr_mls.leave_group(&bob_mls_group_id)?;
-    
+
     tracing::info!("Bob has left the group");
-    
-    // Verify Bob's local state after leaving
-    let bob_groups_after_leave = bob_nostr_mls.get_groups().unwrap();
-    tracing::info!("Bob has {} groups after leaving", bob_groups_after_leave.len());
-    // Note: The group might still exist locally but Bob should no longer be a member
-    
+
     // Create commit event for Bob's departure
     let leave_commit_event = bob_nostr_mls.create_commit_proposal_message(
         &bob_mls_group_id,
         &leave_result.serialized,
-        &secret_before_leave.secret
+        &secret_before_leave.secret,
     )?;
-    
+
+    let secret_before_process: group_types::GroupExporterSecret =
+        alice_nostr_mls.exporter_secret(&alice_group.mls_group_id)?;
+
     // Alice processes Bob's leave commit message
     let alice_leave_process_result = alice_nostr_mls.process_message(&leave_commit_event)?;
-    tracing::info!("Alice process_message (leave commit) result: {:?}", alice_leave_process_result);
-    tracing::info!("Alice process_message (leave commit) - message: {:?}", alice_leave_process_result.message);
-    tracing::info!("Alice process_message (leave commit) - member_changes: {:?}", alice_leave_process_result.member_changes);
-    
+    tracing::info!(
+        "Alice process_message (leave commit) result: {:?}",
+        alice_leave_process_result
+    );
+
+    let charlie_leave_process_result = charlie_nostr_mls.process_message(&leave_commit_event)?;
+    tracing::info!(
+        "Charlie process_message (leave commit) result: {:?}",
+        charlie_leave_process_result
+    );
+
+    // Create commit event for Bob's departure
+    let leave_commit_event_from_alice = alice_nostr_mls.create_commit_proposal_message(
+        &GroupId::from_slice(alice_group.mls_group_id.as_slice()),
+        &alice_leave_process_result.commit.as_ref().unwrap(),
+        &secret_before_process.secret,
+    )?;
+
+    tracing::info!("Alice create_commit_proposal_message");
+
     // Verify Alice's group state has been updated
     let alice_members_after_leave = alice_nostr_mls
         .get_members(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))
         .unwrap();
-    tracing::info!("Alice sees {} members after Bob leaves", alice_members_after_leave.len());
-    assert_eq!(alice_members_after_leave.len(), 1, "Alice should see 1 member in the group after Bob leaves");
-    assert!(!alice_members_after_leave.contains(&bob_keys.public_key()), "Alice should not see Bob in the group after he leaves");
-    assert!(alice_members_after_leave.contains(&alice_keys.public_key()), "Alice should still see herself in the group");
-    
+    tracing::info!(
+        "Alice sees {} members after Bob leaves",
+        alice_members_after_leave.len()
+    );
+    assert_eq!(
+        alice_members_after_leave.len(),
+        2,
+        "Alice should see 2 members in the group after Bob leaves"
+    );
+    assert!(
+        !alice_members_after_leave.contains(&bob_keys.public_key()),
+        "Alice should not see Bob in the group after he leaves"
+    );
+    assert!(
+        alice_members_after_leave.contains(&alice_keys.public_key()),
+        "Alice should still see herself in the group"
+    );
+    assert!(
+        alice_members_after_leave.contains(&charlie_keys.public_key()),
+        "Alice should still see Charlie in the group"
+    );
+
+    // Charlie also processes alice's leave commit message
+    let charlie_leave_process_result =
+        charlie_nostr_mls.process_message(&leave_commit_event_from_alice)?;
+    tracing::info!(
+        "Charlie process_message (leave commit) result: {:?}",
+        charlie_leave_process_result
+    );
+
+    // let mut charlie_mls_group = charlie_nostr_mls
+    //     .load_mls_group(&charlie_mls_group_id)?
+    //     .ok_or_else(|| nostr_mls::Error::GroupNotFound)?;
+
+    // println!("charlie_mls_group.epoch().as_u64(): {}", charlie_mls_group.epoch().as_u64());
+
+    // if let Some(commit_bytes) = alice_leave_process_result.commit.as_ref() {
+    //     charlie_nostr_mls.process_message_for_group(&mut charlie_mls_group, commit_bytes)?;
+    // }
+
+    // Verify Charlie's group state has been updated
+    let charlie_members_after_leave = charlie_nostr_mls
+        .get_members(&charlie_mls_group_id)
+        .unwrap();
+    tracing::info!(
+        "Charlie sees {} members after Bob leaves",
+        charlie_members_after_leave.len()
+    );
+    assert_eq!(
+        charlie_members_after_leave.len(),
+        2,
+        "Charlie should see 2 members in the group after Bob leaves"
+    );
+    assert!(
+        !charlie_members_after_leave.contains(&bob_keys.public_key()),
+        "Charlie should not see Bob in the group after he leaves"
+    );
+    assert!(
+        charlie_members_after_leave.contains(&alice_keys.public_key()),
+        "Charlie should still see Alice in the group"
+    );
+    assert!(
+        charlie_members_after_leave.contains(&charlie_keys.public_key()),
+        "Charlie should still see himself in the group"
+    );
+
     tracing::info!("leave_group functionality test completed!");
-    tracing::info!("Group now has {} member: Alice", alice_members_after_leave.len());
+    tracing::info!(
+        "Group now has {} members: Alice, Charlie",
+        alice_members_after_leave.len()
+    );
 
     cleanup(alice_temp_dir, bob_temp_dir);
     charlie_temp_dir

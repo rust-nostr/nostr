@@ -59,7 +59,7 @@ pub struct AddMembersResult {
 #[derive(Debug)]
 pub struct CommitProposalResult {
     /// Serialized commit message for the proposal
-    pub commit_message: Vec<u8>,
+    pub commit_message: Option<Vec<u8>>,
     /// Optional serialized welcome message if new members are added
     pub welcome_message: Option<Vec<u8>>,
 }
@@ -683,16 +683,17 @@ where
         let current_user_pubkey = self.get_current_user_pubkey(&group)?;
         let stored_group = self.get_group(group_id)?.ok_or(Error::GroupNotFound)?;
 
-        if !stored_group.admin_pubkeys.contains(&current_user_pubkey) {
-            return Err(Error::Group(
-                "Only group admins can commit proposals".to_string(),
-            ));
-        }
-
         // Store proposal
         group
             .store_pending_proposal(self.provider.storage(), proposal)
             .map_err(|e| Error::Group(e.to_string()))?;
+
+        if !stored_group.admin_pubkeys.contains(&current_user_pubkey) {
+            return Ok(CommitProposalResult {
+                commit_message: None,
+                welcome_message: None,
+            });
+        }
         // Commit pending proposals
         let (commit_message, welcome_message, _) = group
             .commit_to_pending_proposals(&self.provider, &signer)
@@ -714,7 +715,7 @@ where
             .map_err(|e| Error::Group(e.to_string()))?;
 
         Ok(CommitProposalResult {
-            commit_message,
+            commit_message: Some(commit_message),
             welcome_message,
         })
     }
