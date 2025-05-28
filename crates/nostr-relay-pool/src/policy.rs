@@ -7,7 +7,7 @@
 use std::fmt;
 
 use nostr::util::BoxedFuture;
-use nostr::{Event, RelayUrl, SubscriptionId};
+use nostr::{Event, EventBuilder, RelayUrl, SubscriptionId};
 
 /// Policy Error
 #[derive(Debug)]
@@ -95,4 +95,25 @@ pub trait AdmitPolicy: fmt::Debug + Send + Sync {
         let _ = (relay_url, subscription_id, event);
         Box::pin(async move { Ok(AdmitStatus::Success) })
     }
+}
+
+/// Authentication middleware
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+pub trait AuthenticationMiddleware: fmt::Debug + Send + Sync {
+    /// Check if the middleware is ready for authentication
+    ///
+    /// If the middleware doesn't have a signer yet, this will return `false`.
+    fn is_ready(&self) -> BoxedFuture<'_, bool>;
+
+    /// Build authentication [`Event`].
+    ///
+    /// Takes an [`EventBuilder`] and returns the signed [`Event`] for authenticating to the relay.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    fn authenticate<'a>(
+        &'a self,
+        relay_url: &'a RelayUrl,
+        builder: EventBuilder,
+    ) -> BoxedFuture<'a, Result<Event, PolicyError>>;
 }

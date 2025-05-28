@@ -52,8 +52,8 @@ impl InnerRelayPool {
             state: SharedState::new(
                 builder.__database,
                 builder.websocket_transport,
-                builder.__signer,
                 builder.admit_policy,
+                builder.auth_middleware,
                 builder.opts.nip42_auto_authentication,
                 builder.monitor,
             ),
