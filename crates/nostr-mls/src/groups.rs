@@ -679,15 +679,15 @@ where
         // Load signer
         let signer: SignatureKeyPair = self.load_mls_signer(&group)?;
 
-        // // Check if current user is an admin
-        // let current_user_pubkey = self.get_current_user_pubkey(&group)?;
-        // let stored_group = self.get_group(group_id)?.ok_or(Error::GroupNotFound)?;
+        // Check if current user is an admin
+        let current_user_pubkey = self.get_current_user_pubkey(&group)?;
+        let stored_group = self.get_group(group_id)?.ok_or(Error::GroupNotFound)?;
 
-        // if !stored_group.admin_pubkeys.contains(&current_user_pubkey) {
-        //     return Err(Error::Group(
-        //         "Only group admins can commit proposals".to_string(),
-        //     ));
-        // }
+        if !stored_group.admin_pubkeys.contains(&current_user_pubkey) {
+            return Err(Error::Group(
+                "Only group admins can commit proposals".to_string(),
+            ));
+        }
 
         // Store proposal
         group

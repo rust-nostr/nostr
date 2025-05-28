@@ -38,6 +38,10 @@ pub struct ProcessMessageResult {
     pub message: Option<UnsignedEvent>,
     /// Member changes (for commit messages)
     pub member_changes: Option<MemberChanges>,
+    /// Commit message bytes (for self-remove proposals that get committed)
+    pub commit: Option<Vec<u8>>,
+    /// Welcome message bytes (for self-remove proposals that get committed)
+    pub welcome: Option<Vec<u8>>,
 }
 
 /// Result of processing a Nostr event containing an MLS message
@@ -47,6 +51,10 @@ pub struct ProcessedEventResult {
     pub message: Option<message_types::Message>,
     /// Member changes (for commit messages)
     pub member_changes: Option<MemberChanges>,
+    /// Commit message bytes (for self-remove proposals that get committed)
+    pub commit: Option<Vec<u8>>,
+    /// Welcome message bytes (for self-remove proposals that get committed)
+    pub welcome: Option<Vec<u8>>,
 }
 
 impl<Storage> NostrMls<Storage>
@@ -307,6 +315,8 @@ where
                 Ok(ProcessMessageResult {
                     message: Some(rumor),
                     member_changes: None,
+                    commit: None,
+                    welcome: None,
                 })
             }
             ProcessedMessageContent::ProposalMessage(staged_proposal) => {
@@ -317,16 +327,19 @@ where
                     if let Sender::Member(sender_leaf_index) = staged_proposal.sender().clone() {
                         let removed_index = remove_proposal.removed();
                         let is_self_remove = removed_index == sender_leaf_index;
-                        
+
                         if is_self_remove {
                             tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "This is a self-remove proposal");
-                            self.commit_proposal(group.group_id(), *staged_proposal)
+                            let commit_result = self
+                                .commit_proposal(group.group_id(), *staged_proposal)
                                 .map_err(|e| Error::Group(e.to_string()))?;
-                            
+
                             // Get information about the removed member
                             let mut removed_members = Vec::new();
                             if let Some(member) = group.member_at(removed_index) {
-                                if let Ok(credential) = BasicCredential::try_from(member.credential.clone()) {
+                                if let Ok(credential) =
+                                    BasicCredential::try_from(member.credential.clone())
+                                {
                                     let identity_bytes = credential.identity();
                                     if let Ok(identity_str) = std::str::from_utf8(identity_bytes) {
                                         tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Self-removing member with identity: {}", identity_str);
@@ -334,7 +347,7 @@ where
                                     }
                                 }
                             }
-                            
+
                             let member_changes = if !removed_members.is_empty() {
                                 Some(MemberChanges {
                                     added_members: Vec::new(),
@@ -343,38 +356,44 @@ where
                             } else {
                                 None
                             };
-                            
+
                             return Ok(ProcessMessageResult {
                                 message: None,
                                 member_changes,
+                                commit: Some(commit_result.commit_message),
+                                welcome: commit_result.welcome_message,
                             });
                         } else {
                             tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "This is a remove proposal for another member");
                         }
                     }
                 }
-                
+
                 Ok(ProcessMessageResult {
                     message: None,
                     member_changes: None,
+                    commit: None,
+                    welcome: None,
                 })
             }
             ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                 // This is a commit message
                 tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Received commit message");
-                
+
                 // Check proposals in the proposal queue to understand member changes
                 let queued_proposals = staged_commit.queued_proposals();
                 let mut added_members = Vec::new();
                 let mut removed_members = Vec::new();
-                
+
                 for queued_proposal in queued_proposals {
                     match queued_proposal.proposal() {
                         Proposal::Add(add_proposal) => {
                             tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Commit contains Add proposal");
                             // Get information about the added member from add_proposal.key_package()
                             let key_package = add_proposal.key_package();
-                            if let Ok(credential) = BasicCredential::try_from(key_package.leaf_node().credential().clone()) {
+                            if let Ok(credential) = BasicCredential::try_from(
+                                key_package.leaf_node().credential().clone(),
+                            ) {
                                 let identity_bytes = credential.identity();
                                 if let Ok(identity_str) = std::str::from_utf8(identity_bytes) {
                                     tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Adding member with identity: {}", identity_str);
@@ -386,10 +405,12 @@ where
                             tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Commit contains Remove proposal");
                             let removed_index = remove_proposal.removed();
                             tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Removing member at leaf index: {:?}", removed_index);
-                            
+
                             // Get information about the removed member through leaf index from group
                             if let Some(member) = group.member_at(removed_index) {
-                                if let Ok(credential) = BasicCredential::try_from(member.credential.clone()) {
+                                if let Ok(credential) =
+                                    BasicCredential::try_from(member.credential.clone())
+                                {
                                     let identity_bytes = credential.identity();
                                     if let Ok(identity_str) = std::str::from_utf8(identity_bytes) {
                                         tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Removing member with identity: {}", identity_str);
@@ -424,12 +445,12 @@ where
                         }
                     }
                 }
-                
+
                 group
                     .merge_staged_commit(&self.provider, *staged_commit)
                     .map_err(|e| Error::Group(e.to_string()))?;
                 group.merge_pending_commit(&self.provider)?;
-                
+
                 let member_changes = if !added_members.is_empty() || !removed_members.is_empty() {
                     Some(MemberChanges {
                         added_members,
@@ -438,10 +459,12 @@ where
                 } else {
                     None
                 };
-                
+
                 Ok(ProcessMessageResult {
                     message: None,
                     member_changes,
+                    commit: None,
+                    welcome: None,
                 })
             }
             ProcessedMessageContent::ExternalJoinProposalMessage(external_join_proposal) => {
@@ -450,6 +473,8 @@ where
                 Ok(ProcessMessageResult {
                     message: None,
                     member_changes: None,
+                    commit: None,
+                    welcome: None,
                 })
             }
         }
@@ -516,7 +541,6 @@ where
             &event.content,
         )?;
 
-
         let mut mls_group = self
             .load_mls_group(&group.mls_group_id)
             .map_err(|e| Error::Group(e.to_string()))?
@@ -525,7 +549,12 @@ where
         // The resulting serialized message is the MLS encrypted message that Bob sent
         // Now Bob can process the MLS message content and do what's needed with it
         match self.process_message_for_group(&mut mls_group, &message_bytes) {
-            Ok(ProcessMessageResult { message: Some(mut rumor), member_changes }) => {
+            Ok(ProcessMessageResult {
+                message: Some(mut rumor),
+                member_changes,
+                commit,
+                welcome,
+            }) => {
                 let rumor_id: EventId = rumor.id();
 
                 let message = message_types::Message {
@@ -545,13 +574,22 @@ where
                 Ok(ProcessedEventResult {
                     message: Some(message),
                     member_changes,
+                    commit,
+                    welcome,
                 })
             }
-            Ok(ProcessMessageResult { message: None, member_changes }) => {
+            Ok(ProcessMessageResult {
+                message: None,
+                member_changes,
+                commit,
+                welcome,
+            }) => {
                 // This is what happens with proposals, commits, etc.
                 Ok(ProcessedEventResult {
                     message: None,
                     member_changes,
+                    commit,
+                    welcome,
                 })
             }
             Err(e) => {
@@ -561,6 +599,8 @@ where
                         return Ok(ProcessedEventResult {
                             message: None,
                             member_changes: None,
+                            commit: None,
+                            welcome: None,
                         });
                     }
                     _ => {
@@ -570,6 +610,8 @@ where
                 Ok(ProcessedEventResult {
                     message: None,
                     member_changes: None,
+                    commit: None,
+                    welcome: None,
                 })
             }
         }
