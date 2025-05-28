@@ -315,4 +315,58 @@ mod tests {
         let f = AtomicRelayServiceFlags::new(RelayServiceFlags::DISCOVERY);
         assert!(!f.can_write());
     }
+
+    #[test]
+    fn test_has_any_service_flags() {
+        let f = AtomicRelayServiceFlags::new(RelayServiceFlags::DISCOVERY);
+        assert!(f.has_any(RelayServiceFlags::READ | RelayServiceFlags::DISCOVERY));
+        assert!(!f.has_any(RelayServiceFlags::READ | RelayServiceFlags::WRITE));
+    }
+
+    #[test]
+    fn test_has_all_service_flags() {
+        let f = AtomicRelayServiceFlags::new(RelayServiceFlags::READ | RelayServiceFlags::GOSSIP);
+        assert!(f.has_all(RelayServiceFlags::READ | RelayServiceFlags::GOSSIP));
+        assert!(!f.has_all(RelayServiceFlags::READ | RelayServiceFlags::WRITE));
+    }
+
+    #[test]
+    fn test_has_read_service_flags() {
+        let f1 = AtomicRelayServiceFlags::new(RelayServiceFlags::READ);
+        assert!(f1.has_read());
+        let f2 = AtomicRelayServiceFlags::new(RelayServiceFlags::WRITE);
+        assert!(!f2.has_read());
+    }
+
+    #[test]
+    fn test_has_write_service_flags() {
+        let f1 = AtomicRelayServiceFlags::new(RelayServiceFlags::WRITE);
+        assert!(f1.has_write());
+        let f2 = AtomicRelayServiceFlags::new(RelayServiceFlags::READ);
+        assert!(!f2.has_write());
+    }
+
+    #[test]
+    fn test_has_ping_service_flags() {
+        let f1 = AtomicRelayServiceFlags::new(RelayServiceFlags::PING);
+        assert!(f1.has_ping());
+        let f2 = AtomicRelayServiceFlags::new(RelayServiceFlags::default());
+        assert!(f2.has_ping());
+    }
+
+    #[test]
+    fn test_has_gossip_flags() {
+        let f1 = AtomicRelayServiceFlags::new(RelayServiceFlags::GOSSIP);
+        assert!(f1.has_gossip());
+        let f2 = AtomicRelayServiceFlags::new(RelayServiceFlags::default());
+        assert!(!f2.has_gossip());
+    }
+
+    #[test]
+    fn test_has_discovery_flags() {
+        let f1 = AtomicRelayServiceFlags::new(RelayServiceFlags::DISCOVERY);
+        assert!(f1.has_discovery());
+        let f2 = AtomicRelayServiceFlags::new(RelayServiceFlags::default());
+        assert!(!f2.has_discovery());
+    }
 }

@@ -303,3 +303,64 @@ impl SyncOptions {
         !self.dry_run && matches!(self.direction, SyncDirection::Down | SyncDirection::Both)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_exit_policy() {
+        let policy = ReqExitPolicy::default();
+        let opts = SubscribeAutoCloseOptions::default().exit_policy(policy);
+        assert_eq!(std::mem::discriminant(&opts.exit_policy), std::mem::discriminant(&policy));
+    }
+
+    #[test]
+    fn test_timeout() {
+        let duration = Some(Duration::from_secs(10));
+        let opts = SubscribeAutoCloseOptions::default().timeout(duration);
+        assert_eq!(opts.timeout, duration);
+        let duration = Some(Duration::from_millis(500));
+        let opts = SubscribeAutoCloseOptions::default().idle_timeout(duration);
+        assert_eq!(opts.idle_timeout, duration);
+        let opt = SyncOptions::default().initial_timeout(Duration::from_secs(5));
+        assert_eq!(opt.initial_timeout, Duration::from_secs(5));
+    }
+
+    #[test]
+    fn test_close() {
+        let opts = SubscribeOptions::default();
+        assert_eq!(opts.is_auto_closing(), false);
+        let opts = SubscribeOptions::default().close_on(Some(SubscribeAutoCloseOptions::default()));
+        assert_eq!(opts.is_auto_closing(), true);
+    }
+
+    #[test]
+    fn test_sync_progress_percentage() {
+        let mut sp = SyncProgress::default();
+        sp.total = 5;
+        sp.current = 2;
+        assert_eq!(sp.percentage(), 2f64 / 5f64);
+        let sp_zero = SyncProgress::default();
+        assert_eq!(sp_zero.percentage(), 0.0);
+    }
+
+    #[test]
+    fn test_do_up() {
+        let opt = SyncOptions::default();
+        assert!(!opt.do_up());
+        let opt2 = SyncOptions::default().dry_run();
+        assert!(!opt2.do_up());
+        let opt3 = SyncOptions::default().direction(SyncDirection::Up);
+        assert!(opt3.do_up());
+    }
+
+    #[test]
+    fn test_do_down() {
+        let opt = SyncOptions::default();
+        assert!(opt.do_down());
+        let opt2 = SyncOptions::default().direction(SyncDirection::Down);
+        assert!(opt2.do_down());
+        let opt3 = SyncOptions::default().dry_run().direction(SyncDirection::Down);
+        assert!(!opt3.do_down());
+    }
+}

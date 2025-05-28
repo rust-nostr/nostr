@@ -29,9 +29,32 @@ impl TransportError {
     /// Shorthand for `Error::Backend(Box::new(error))`.
     #[inline]
     pub fn backend<E>(error: E) -> Self
-    where
-        E: std::error::Error + Send + Sync + 'static,
+        where
+            E: std::error::Error + Send + Sync + 'static,
     {
         Self::Backend(Box::new(error))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_not_found_transport_error() {
+        let err = std::io::Error::new(std::io::ErrorKind::NotFound, "not found");
+        let te = TransportError::backend(err);
+        if let TransportError::Backend(inner) = te {
+            assert_eq!(inner.to_string(), "not found");
+        }
+    }
+
+    #[test]
+    fn test_formatting_transport_error() {
+        let err = fmt::Error;
+        let te = TransportError::backend(err);
+        if let TransportError::Backend(inner) = te {
+            assert_eq!(inner.to_string(), "an error occurred when formatting an argument");
+        }
     }
 }

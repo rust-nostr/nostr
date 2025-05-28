@@ -112,3 +112,106 @@ impl RelayStatus {
         matches!(self, Self::Initialized | Self::Terminated)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_status_set() {
+        let relay = AtomicRelayStatus::default();
+        relay.set(RelayStatus::Connected);
+        assert_eq!(relay.load(), RelayStatus::Connected);
+    }
+
+    #[test]
+    fn test_status_initialized() {
+        let status = RelayStatus::Initialized;
+        assert!(status.is_initialized());
+        assert!(!status.is_connected());
+        assert!(!status.is_disconnected());
+        assert!(!status.is_terminated());
+        assert!(!status.is_banned());
+        assert!(status.can_connect());
+        let relay = AtomicRelayStatus::new(status);
+        assert_eq!(relay.load(), RelayStatus::Initialized);
+    }
+
+    #[test]
+    fn test_status_pending() {
+        let status = RelayStatus::Pending;
+        assert!(!status.is_initialized());
+        assert!(!status.is_connected());
+        assert!(!status.is_disconnected());
+        assert!(!status.is_terminated());
+        assert!(!status.is_banned());
+        assert!(!status.can_connect());
+        let relay = AtomicRelayStatus::new(status);
+        assert_eq!(relay.load(), RelayStatus::Pending);
+    }
+
+    #[test]
+    fn test_status_connecting() {
+        let status = RelayStatus::Connecting;
+        assert!(!status.is_initialized());
+        assert!(!status.is_connected());
+        assert!(!status.is_disconnected());
+        assert!(!status.is_terminated());
+        assert!(!status.is_banned());
+        assert!(!status.can_connect());
+        let relay = AtomicRelayStatus::new(status);
+        assert_eq!(relay.load(), RelayStatus::Connecting);
+    }
+
+    #[test]
+    fn test_status_connected() {
+        let status = RelayStatus::Connected;
+        assert!(!status.is_initialized());
+        assert!(status.is_connected());
+        assert!(!status.is_disconnected());
+        assert!(!status.is_terminated());
+        assert!(!status.is_banned());
+        assert!(!status.can_connect());
+        let relay = AtomicRelayStatus::new(status);
+        assert_eq!(relay.load(), RelayStatus::Connected);
+    }
+
+    #[test]
+    fn test_status_disconnected() {
+        let status = RelayStatus::Disconnected;
+        assert!(!status.is_initialized());
+        assert!(!status.is_connected());
+        assert!(status.is_disconnected());
+        assert!(!status.is_terminated());
+        assert!(!status.is_banned());
+        assert!(!status.can_connect());
+        let relay = AtomicRelayStatus::new(status);
+        assert_eq!(relay.load(), RelayStatus::Disconnected);
+    }
+
+    #[test]
+    fn test_status_terminated() {
+        let status = RelayStatus::Terminated;
+        assert!(!status.is_initialized());
+        assert!(!status.is_connected());
+        assert!(status.is_disconnected());
+        assert!(status.is_terminated());
+        assert!(!status.is_banned());
+        assert!(status.can_connect());
+        let relay = AtomicRelayStatus::new(status);
+        assert_eq!(relay.load(), RelayStatus::Terminated);
+    }
+
+    #[test]
+    fn test_status_banned() {
+        let status = RelayStatus::Banned;
+        assert!(!status.is_initialized());
+        assert!(!status.is_connected());
+        assert!(status.is_disconnected());
+        assert!(!status.is_terminated());
+        assert!(status.is_banned());
+        assert!(!status.can_connect());
+        let relay = AtomicRelayStatus::new(status);
+        assert_eq!(relay.load(), RelayStatus::Banned);
+    }
+}

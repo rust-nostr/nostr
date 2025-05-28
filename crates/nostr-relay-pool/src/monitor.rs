@@ -55,3 +55,20 @@ impl Monitor {
         self.notify(MonitorNotification::StatusChanged { relay_url, status });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[should_panic]
+    fn test_monitor_capacity_is_zero() {
+        Monitor::new(0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_monitor_capacity_overflows() {
+        let _ = Monitor::new(usize::MAX / 2);
+    }
+}

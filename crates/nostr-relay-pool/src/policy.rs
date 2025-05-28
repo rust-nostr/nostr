@@ -32,8 +32,8 @@ impl PolicyError {
     /// Shorthand for `Error::Backend(Box::new(error))`.
     #[inline]
     pub fn backend<E>(error: E) -> Self
-    where
-        E: std::error::Error + Send + Sync + 'static,
+        where
+            E: std::error::Error + Send + Sync + 'static,
     {
         Self::Backend(Box::new(error))
     }
@@ -61,8 +61,8 @@ impl AdmitStatus {
     /// Rejection with reason
     #[inline]
     pub fn rejected<S>(reason: S) -> Self
-    where
-        S: Into<String>,
+        where
+            S: Into<String>,
     {
         Self::Rejected {
             reason: Some(reason.into()),
@@ -94,5 +94,40 @@ pub trait AdmitPolicy: fmt::Debug + Send + Sync {
     ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
         let _ = (relay_url, subscription_id, event);
         Box::pin(async move { Ok(AdmitStatus::Success) })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_io_policy_error() {
+        let error = std::io::Error::new(std::io::ErrorKind::Other, "io error");
+        let policy_error = PolicyError::backend(error);
+        match policy_error {
+            PolicyError::Backend(err) => assert_eq!(err.to_string(), "io error"),
+        }
+    }
+
+    #[test]
+    fn test_invalid_digit_policy_error() {
+        let parse_err = "abc".parse::<i32>().unwrap_err();
+        let policy_error = PolicyError::backend(parse_err);
+        match policy_error {
+            PolicyError::Backend(err) => assert_eq!(err.to_string(), "invalid digit found in string"),
+        }
+    }
+
+    #[test]
+    fn test_admit_status_success() {
+        let status = AdmitStatus::success();
+        assert_eq!(status, AdmitStatus::Success);
+    }
+
+    #[test]
+    fn test_admit_status_rejcted() {
+        let status = AdmitStatus::rejected("not admitted");
+        assert_eq!(status, AdmitStatus::Rejected { reason: Some(String::from("not admitted")) });
     }
 }
