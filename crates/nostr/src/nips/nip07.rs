@@ -235,8 +235,6 @@ impl BrowserSigner {
         Ok(unsigned.add_signature(sig)?)
     }
 
-    // TODO: add `getRelays`
-
     async fn encryption_decryption(
         &self,
         namespace: &str,

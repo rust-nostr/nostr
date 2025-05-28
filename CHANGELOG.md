@@ -9,8 +9,6 @@
 
 ## Unreleased
 
-### Summary
-
 ### Breaking changes
 
 ### Changed
@@ -24,6 +22,23 @@
 ### Deprecated
 
 -->
+
+## Unreleased
+
+### Breaking changes
+
+- nostr: remove `NostrConnectMethod::GetRelays`, `NostrConnectRequest::GetRelays` and `ResponseResult::GetRelays` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/894)
+- connect: remove `NostrConnect::get_relays` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/894)
+
+### Changed
+
+### Added
+
+### Fixed
+
+### Removed
+
+### Deprecated
 
 ## v0.42.1 - 2025/05/26
 

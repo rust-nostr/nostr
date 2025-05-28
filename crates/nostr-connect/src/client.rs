@@ -318,13 +318,6 @@ impl NostrConnect {
         Ok(res.to_ack()?)
     }
 
-    /// Sign an [UnsignedEvent]
-    pub async fn get_relays(&self) -> Result<HashMap<RelayUrl, RelayPermissions>, Error> {
-        let req = NostrConnectRequest::GetRelays;
-        let res = self.send_request(req).await?;
-        Ok(res.to_get_relays()?)
-    }
-
     async fn _get_public_key(&self) -> Result<&PublicKey, Error> {
         self.user_public_key
             .get_or_try_init(|| async {

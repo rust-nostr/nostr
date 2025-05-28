@@ -212,11 +212,6 @@ impl NostrConnectRemoteSigner {
                                                     ),
                                                 )
                                             }
-                                            NostrConnectRequest::GetRelays => {
-                                                NostrConnectResponse::with_error(
-                                                    "Not supported yet",
-                                                )
-                                            }
                                             NostrConnectRequest::Nip04Encrypt {
                                                 public_key,
                                                 text,

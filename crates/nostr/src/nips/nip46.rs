@@ -12,13 +12,11 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
-use std::collections::HashMap;
 
 #[cfg(feature = "std")]
 use secp256k1::rand;
 use secp256k1::rand::RngCore;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::json;
 
 use crate::event::unsigned::UnsignedEvent;
 use crate::types::url::{self, ParseError, RelayUrl, Url};
@@ -122,8 +120,6 @@ pub enum NostrConnectMethod {
     GetPublicKey,
     /// Sign event
     SignEvent,
-    /// Get relays
-    GetRelays,
     /// Encrypt text (NIP04)
     Nip04Encrypt,
     /// Decrypt (NIP04)
@@ -142,7 +138,6 @@ impl fmt::Display for NostrConnectMethod {
             Self::Connect => write!(f, "connect"),
             Self::GetPublicKey => write!(f, "get_public_key"),
             Self::SignEvent => write!(f, "sign_event"),
-            Self::GetRelays => write!(f, "get_relays"),
             Self::Nip04Encrypt => write!(f, "nip04_encrypt"),
             Self::Nip04Decrypt => write!(f, "nip04_decrypt"),
             Self::Nip44Encrypt => write!(f, "nip44_encrypt"),
@@ -160,7 +155,6 @@ impl FromStr for NostrConnectMethod {
             "connect" => Ok(Self::Connect),
             "get_public_key" => Ok(Self::GetPublicKey),
             "sign_event" => Ok(Self::SignEvent),
-            "get_relays" => Ok(Self::GetRelays),
             "nip04_encrypt" => Ok(Self::Nip04Encrypt),
             "nip04_decrypt" => Ok(Self::Nip04Decrypt),
             "nip44_encrypt" => Ok(Self::Nip44Encrypt),
@@ -204,8 +198,6 @@ pub enum NostrConnectRequest {
     GetPublicKey,
     /// Sign [`UnsignedEvent`]
     SignEvent(UnsignedEvent),
-    /// Get relays
-    GetRelays,
     /// Encrypt text (NIP04)
     Nip04Encrypt {
         /// Pubkey
@@ -254,7 +246,6 @@ impl NostrConnectRequest {
                 let unsigned_event: UnsignedEvent = UnsignedEvent::from_json(unsigned)?;
                 Ok(Self::SignEvent(unsigned_event))
             }
-            NostrConnectMethod::GetRelays => Ok(Self::GetRelays),
             NostrConnectMethod::Nip04Encrypt => {
                 if params.len() != 2 {
                     return Err(Error::InvalidParamsLength);
@@ -305,7 +296,6 @@ impl NostrConnectRequest {
             Self::Connect { .. } => NostrConnectMethod::Connect,
             Self::GetPublicKey => NostrConnectMethod::GetPublicKey,
             Self::SignEvent(_) => NostrConnectMethod::SignEvent,
-            Self::GetRelays => NostrConnectMethod::GetRelays,
             Self::Nip04Encrypt { .. } => NostrConnectMethod::Nip04Encrypt,
             Self::Nip04Decrypt { .. } => NostrConnectMethod::Nip04Decrypt,
             Self::Nip44Encrypt { .. } => NostrConnectMethod::Nip44Encrypt,
@@ -326,7 +316,6 @@ impl NostrConnectRequest {
             }
             Self::GetPublicKey => Vec::new(),
             Self::SignEvent(event) => vec![event.as_json()],
-            Self::GetRelays => Vec::new(),
             Self::Nip04Encrypt { public_key, text } | Self::Nip44Encrypt { public_key, text } => {
                 vec![public_key.to_hex(), text.to_owned()]
             }
@@ -343,15 +332,6 @@ impl NostrConnectRequest {
     }
 }
 
-/// Relay permission
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RelayPermissions {
-    /// Read
-    pub read: bool,
-    /// Write
-    pub write: bool,
-}
-
 /// Response
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResponseResult {
@@ -361,8 +341,6 @@ pub enum ResponseResult {
     GetPublicKey(PublicKey),
     /// Sign event
     SignEvent(Box<Event>),
-    /// Get relays
-    GetRelays(HashMap<RelayUrl, RelayPermissions>),
     /// Encrypt text (NIP04)
     Nip04Encrypt {
         /// Cipher text
@@ -459,7 +437,6 @@ impl fmt::Display for ResponseResult {
             Self::Ack => write!(f, "ack"),
             Self::GetPublicKey(public_key) => write!(f, "{public_key}"),
             Self::SignEvent(event) => write!(f, "{}", event.as_json()),
-            Self::GetRelays(map) => write!(f, "{}", json!(map)),
             Self::Nip04Encrypt { ciphertext } | Self::Nip44Encrypt { ciphertext } => {
                 write!(f, "{ciphertext}")
             }
@@ -503,7 +480,6 @@ impl ResponseResult {
             NostrConnectMethod::SignEvent => {
                 Ok(Self::SignEvent(Box::new(Event::from_json(response)?)))
             }
-            NostrConnectMethod::GetRelays => Ok(Self::GetRelays(serde_json::from_str(&response)?)),
             NostrConnectMethod::Nip04Encrypt => Ok(Self::Nip04Encrypt {
                 ciphertext: response,
             }),
@@ -548,15 +524,6 @@ impl ResponseResult {
     #[inline]
     pub fn to_get_public_key(self) -> Result<PublicKey, Error> {
         if let Self::GetPublicKey(val) = self {
-            Ok(val)
-        } else {
-            Err(Error::UnexpectedResult)
-        }
-    }
-
-    #[inline]
-    pub fn to_get_relays(self) -> Result<HashMap<RelayUrl, RelayPermissions>, Error> {
-        if let Self::GetRelays(val) = self {
             Ok(val)
         } else {
             Err(Error::UnexpectedResult)
