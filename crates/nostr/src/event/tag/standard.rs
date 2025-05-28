@@ -24,6 +24,7 @@ use crate::nips::nip53::{LiveEventMarker, LiveEventStatus};
 use crate::nips::nip56::Report;
 use crate::nips::nip65::RelayMetadata;
 use crate::nips::nip73::ExternalContentId;
+use crate::nips::nip88::PollType;
 use crate::nips::nip90::DataVendingMachineStatus;
 #[cfg(feature = "nip98")]
 use crate::nips::nip98::HttpMethod;
@@ -141,6 +142,19 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
     AllRelays,
+    /// Poll Option
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/88.md>
+    PollOption {
+        /// Option ID
+        id: String,
+        /// Option label
+        text: String,
+    },
+    /// Poll Type
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/88.md>
+    PollType(PollType),
     /// Proof of Work
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
@@ -419,6 +433,7 @@ impl TagStandard {
                 TagKind::Expiration => Ok(Self::Expiration(Timestamp::from_str(tag_1)?)),
                 TagKind::Extension => Ok(Self::Extension(tag_1.to_string())),
                 TagKind::License => Ok(Self::License(tag_1.to_string())),
+                TagKind::PollType => Ok(Self::PollType(PollType::from_str(tag_1)?)),
                 TagKind::Runtime => Ok(Self::Runtime(tag_1.to_string())),
                 TagKind::Repository => Ok(Self::Repository(tag_1.to_string())),
                 TagKind::Subject => Ok(Self::Subject(tag_1.to_string())),
@@ -471,6 +486,10 @@ impl TagStandard {
             let tag_2: &str = tag[2].as_ref();
 
             return match tag_kind {
+                TagKind::Option => Ok(Self::PollOption {
+                    id: tag_1.to_string(),
+                    text: tag_2.to_string(),
+                }),
                 TagKind::Nonce => Ok(Self::POW {
                     nonce: tag_1.parse()?,
                     difficulty: tag_2.parse()?,
@@ -611,6 +630,8 @@ impl TagStandard {
                 uppercase: *uppercase,
             }),
             Self::Relay(..) | Self::AllRelays => TagKind::Relay,
+            Self::PollOption { .. } => TagKind::Option,
+            Self::PollType(..) => TagKind::PollType,
             Self::POW { .. } => TagKind::Nonce,
             Self::Client { .. } => TagKind::Client,
             Self::Delegation { .. } => TagKind::Delegation,
@@ -839,6 +860,8 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::Kind { kind, .. } => vec![tag_kind, kind.to_string()],
             TagStandard::Relay(url) => vec![tag_kind, url.to_string()],
             TagStandard::AllRelays => vec![tag_kind, ALL_RELAYS.to_string()],
+            TagStandard::PollOption { id, text } => vec![tag_kind, id, text],
+            TagStandard::PollType(t) => vec![tag_kind, t.to_string()],
             TagStandard::POW { nonce, difficulty } => {
                 vec![tag_kind, nonce.to_string(), difficulty.to_string()]
             }
@@ -1701,6 +1724,25 @@ mod tests {
         );
 
         assert_eq!(
+            vec!["option", "qj518h583", "Yay"],
+            TagStandard::PollOption {
+                id: String::from("qj518h583"),
+                text: String::from("Yay"),
+            }
+            .to_vec()
+        );
+
+        assert_eq!(
+            vec!["polltype", "singlechoice"],
+            TagStandard::PollType(PollType::SingleChoice).to_vec()
+        );
+
+        assert_eq!(
+            vec!["polltype", "multiplechoice"],
+            TagStandard::PollType(PollType::MultipleChoice).to_vec()
+        );
+
+        assert_eq!(
             vec!["client", "voyage"],
             TagStandard::Client {
                 name: String::from("voyage"),
@@ -2376,6 +2418,24 @@ mod tests {
                 nonce: 1,
                 difficulty: 20
             }
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["option", "qj518h583", "Yay"]).unwrap(),
+            TagStandard::PollOption {
+                id: String::from("qj518h583"),
+                text: String::from("Yay"),
+            }
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["polltype", "singlechoice"]).unwrap(),
+            TagStandard::PollType(PollType::SingleChoice)
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["polltype", "multiplechoice"]).unwrap(),
+            TagStandard::PollType(PollType::MultipleChoice)
         );
 
         assert_eq!(

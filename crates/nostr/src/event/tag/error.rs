@@ -9,7 +9,7 @@ use hashes::hex::HexToArrayError;
 
 #[cfg(feature = "nip98")]
 use crate::nips::nip98;
-use crate::nips::{nip01, nip10, nip26, nip39, nip53, nip65};
+use crate::nips::{nip01, nip10, nip26, nip39, nip53, nip65, nip88};
 use crate::types::image;
 use crate::types::url::{Error as RelayUrlError, ParseError};
 use crate::{key, secp256k1};
@@ -41,6 +41,8 @@ pub enum Error {
     NIP53(nip53::Error),
     /// NIP65 error
     NIP65(nip65::Error),
+    /// NIP88 error
+    NIP88(nip88::Error),
     /// NIP98 error
     #[cfg(feature = "nip98")]
     NIP98(nip98::Error),
@@ -74,6 +76,7 @@ impl fmt::Display for Error {
             Self::NIP39(e) => write!(f, "{e}"),
             Self::NIP53(e) => write!(f, "{e}"),
             Self::NIP65(e) => write!(f, "{e}"),
+            Self::NIP88(e) => write!(f, "{e}"),
             #[cfg(feature = "nip98")]
             Self::NIP98(e) => write!(f, "{e}"),
             Self::Event(e) => write!(f, "{e}"),
@@ -154,6 +157,12 @@ impl From<nip53::Error> for Error {
 impl From<nip65::Error> for Error {
     fn from(e: nip65::Error) -> Self {
         Self::NIP65(e)
+    }
+}
+
+impl From<nip88::Error> for Error {
+    fn from(e: nip88::Error) -> Self {
+        Self::NIP88(e)
     }
 }
 

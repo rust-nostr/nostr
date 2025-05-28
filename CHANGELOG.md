@@ -9,8 +9,6 @@
 
 ## Unreleased
 
-### Summary
-
 ### Breaking changes
 
 ### Changed
@@ -24,6 +22,22 @@
 ### Deprecated
 
 -->
+
+## Unreleased
+
+### Breaking changes
+
+### Changed
+
+### Added
+
+- nostr: add NIP-88 support ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/892)
+
+### Fixed
+
+### Removed
+
+### Deprecated
 
 ## v0.42.1 - 2025/05/26
 
