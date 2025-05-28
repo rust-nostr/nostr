@@ -146,7 +146,7 @@ impl From<nip49::Error> for Error {
 }
 
 /// To ensure total matching on prefixes when decoding a [`Nip19`] object
-pub(super) enum Nip19Prefix {
+pub(crate) enum Nip19Prefix {
     /// Secret Key
     NSec,
     /// Encrypted Secret Key

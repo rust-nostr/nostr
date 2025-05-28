@@ -36,8 +36,6 @@ buildargs=(
     "-p nostr --features all-nips"                                # std + all-nips
     "-p nostr --no-default-features --features alloc"             # Only alloc feature
     "-p nostr --no-default-features --features alloc,all-nips"    # alloc + all-nips
-    "-p nostr --features parser"                                  # std + parser
-    "-p nostr --no-default-features --features alloc,parser"      # alloc + parser
     "-p nostr --all-features"                                     # All features
     "-p nostr-database"
     "-p nostr-lmdb"
