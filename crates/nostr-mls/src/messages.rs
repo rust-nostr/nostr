@@ -322,6 +322,32 @@ where
                             tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "This is a self-remove proposal");
                             self.commit_proposal(group.group_id(), *staged_proposal)
                                 .map_err(|e| Error::Group(e.to_string()))?;
+                            
+                            // Get information about the removed member
+                            let mut removed_members = Vec::new();
+                            if let Some(member) = group.member_at(removed_index) {
+                                if let Ok(credential) = BasicCredential::try_from(member.credential.clone()) {
+                                    let identity_bytes = credential.identity();
+                                    if let Ok(identity_str) = std::str::from_utf8(identity_bytes) {
+                                        tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Self-removing member with identity: {}", identity_str);
+                                        removed_members.push(identity_str.to_string());
+                                    }
+                                }
+                            }
+                            
+                            let member_changes = if !removed_members.is_empty() {
+                                Some(MemberChanges {
+                                    added_members: Vec::new(),
+                                    removed_members,
+                                })
+                            } else {
+                                None
+                            };
+                            
+                            return Ok(ProcessMessageResult {
+                                message: None,
+                                member_changes,
+                            });
                         } else {
                             tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "This is a remove proposal for another member");
                         }
