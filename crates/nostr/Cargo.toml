@@ -73,7 +73,7 @@ cbc = { version = "0.1", optional = true }
 chacha20 = { version = "0.9", optional = true }
 chacha20poly1305 = { version = "0.10", default-features = false, features = ["getrandom"], optional = true }
 nostr-ots = { version = "0.2", optional = true }
-regex = { version = "1.11", default-features = false, features = ["perf", "unicode"], optional = true }
+regex = { version = "1.10.2", default-features = false, features = ["perf", "unicode"], optional = true }
 reqwest = { workspace = true, features = ["json", "rustls-tls", "socks"], optional = true }
 scrypt = { version = "0.11", default-features = false, optional = true }
 secp256k1 = { version = "0.29", default-features = false, features = ["rand", "serde"] }

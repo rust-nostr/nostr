@@ -157,9 +157,7 @@ where
             .save_processed_welcome(processed_welcome)
             .map_err(|e| Error::Welcome(e.to_string()))?;
 
-        self.storage()
-            .save_welcome(welcome.clone())
-            .map_err(|e| Error::Welcome(e.to_string()))?;
+        self.accept_welcome(&welcome)?;
 
         Ok(welcome)
     }
@@ -297,7 +295,7 @@ where
     /// Returns a `WelcomeError` if:
     /// - The welcome message cannot be parsed
     /// - The welcome message is invalid
-    fn preview_welcome(
+    pub fn preview_welcome(
         &self,
         wrapper_event_id: &EventId,
         welcome_event: &UnsignedEvent,

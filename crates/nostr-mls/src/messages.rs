@@ -22,6 +22,41 @@ use crate::error::Error;
 use crate::prelude::*;
 use crate::NostrMls;
 
+/// Information about member changes in a commit message
+#[derive(Debug, Clone)]
+pub struct MemberChanges {
+    /// Members that were added
+    pub added_members: Vec<String>,
+    /// Members that were removed
+    pub removed_members: Vec<String>,
+}
+
+/// Result of processing an MLS message
+#[derive(Debug)]
+pub struct ProcessMessageResult {
+    /// The decrypted message (for application messages)
+    pub message: Option<UnsignedEvent>,
+    /// Member changes (for commit messages)
+    pub member_changes: Option<MemberChanges>,
+    /// Commit message bytes (for self-remove proposals that get committed)
+    pub commit: Option<Vec<u8>>,
+    /// Welcome message bytes (for self-remove proposals that get committed)
+    pub welcome: Option<Vec<u8>>,
+}
+
+/// Result of processing a Nostr event containing an MLS message
+#[derive(Debug)]
+pub struct ProcessedEventResult {
+    /// The processed message (if any)
+    pub message: Option<message_types::Message>,
+    /// Member changes (for commit messages)
+    pub member_changes: Option<MemberChanges>,
+    /// Commit message bytes (for self-remove proposals that get committed)
+    pub commit: Option<Vec<u8>>,
+    /// Welcome message bytes (for self-remove proposals that get committed)
+    pub welcome: Option<Vec<u8>>,
+}
+
 impl<Storage> NostrMls<Storage>
 where
     Storage: NostrMlsStorageProvider,
@@ -85,7 +120,7 @@ where
     ///
     /// * `Ok(Vec<u8>)` - The serialized encrypted MLS message
     /// * `Err(Error)` - If message creation or encryption fails
-    fn create_message_for_event(
+    pub fn create_message_for_event(
         &self,
         group: &mut MlsGroup,
         rumor: &mut UnsignedEvent,
@@ -136,16 +171,13 @@ where
             .ok_or(Error::GroupNotFound)?;
 
         // Load stored group
-        let mut group: group_types::Group = self
+        let group: group_types::Group = self
             .get_group(mls_group_id)
             .map_err(|e| Error::Group(e.to_string()))?
             .ok_or(Error::GroupNotFound)?;
 
         // Create message
         let message: Vec<u8> = self.create_message_for_event(&mut mls_group, &mut rumor)?;
-
-        // Get the rumor ID
-        let rumor_id: EventId = rumor.id();
 
         // Export secret
         let secret: group_types::GroupExporterSecret = self.exporter_secret(mls_group_id)?;
@@ -170,45 +202,54 @@ where
             .tag(tag)
             .sign_with_keys(&ephemeral_nostr_keys)?;
 
-        // Create message to save to storage
-        let message: message_types::Message = message_types::Message {
-            id: rumor_id,
-            pubkey: rumor.pubkey,
-            kind: rumor.kind,
-            mls_group_id: mls_group_id.clone(),
-            created_at: rumor.created_at,
-            content: rumor.content.clone(),
-            tags: rumor.tags.clone(),
-            event: rumor.clone(),
-            wrapper_event_id: event.id,
-            state: message_types::MessageState::Created,
-        };
+        Ok(event)
+    }
 
-        // Create processed_message to track state of message
-        let processed_message: message_types::ProcessedMessage = message_types::ProcessedMessage {
-            wrapper_event_id: event.id,
-            message_event_id: Some(rumor_id),
-            processed_at: Timestamp::now(),
-            state: message_types::ProcessedMessageState::Created,
-            failure_reason: None,
-        };
+    /// Creates an encrypted Nostr event for an MLS commit/proposal message
+    ///
+    /// This function handles the creation of commit and proposal messages for MLS groups.
+    /// Unlike regular application messages, these are protocol-level messages that manage
+    /// group membership and state changes.
+    ///
+    /// # Arguments
+    ///
+    /// * `mls_group_id` - The MLS group ID
+    /// * `commit_proposal_message` - The serialized commit or proposal message bytes
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Event)` - The signed Nostr event ready for relay publication
+    /// * `Err(Error)` - If message creation or encryption fails
+    pub fn create_commit_proposal_message(
+        &self,
+        mls_group_id: &GroupId,
+        commit_proposal_message: &[u8],
+        secret_key: &[u8; 32],
+    ) -> Result<Event, Error> {
+        // Load stored group
+        let group: group_types::Group = self
+            .get_group(mls_group_id)
+            .map_err(|e| Error::Group(e.to_string()))?
+            .ok_or(Error::GroupNotFound)?;
 
-        // Save message to storage
-        self.storage()
-            .save_message(message.clone())
-            .map_err(|e| Error::Message(e.to_string()))?;
+        // Convert that secret to nostr keys
+        let secret_key: SecretKey = SecretKey::from_slice(secret_key)?;
+        let export_nostr_keys: Keys = Keys::new(secret_key);
+        // Encrypt the message content
+        let encrypted_content: String = nip44::encrypt(
+            export_nostr_keys.secret_key(),
+            &export_nostr_keys.public_key,
+            &commit_proposal_message,
+            nip44::Version::default(),
+        )?;
 
-        // Save processed message to storage
-        self.storage()
-            .save_processed_message(processed_message)
-            .map_err(|e| Error::Message(e.to_string()))?;
+        // Generate ephemeral key
+        let ephemeral_nostr_keys: Keys = Keys::generate();
 
-        // Update last_message_at and last_message_id
-        group.last_message_at = Some(rumor.created_at);
-        group.last_message_id = Some(message.id);
-        self.storage()
-            .save_group(group)
-            .map_err(|e| Error::Group(e.to_string()))?;
+        let tag: Tag = Tag::custom(TagKind::h(), [hex::encode(group.nostr_group_id)]);
+        let event = EventBuilder::new(Kind::MlsGroupMessage, encrypted_content)
+            .tag(tag)
+            .sign_with_keys(&ephemeral_nostr_keys)?;
 
         Ok(event)
     }
@@ -228,14 +269,13 @@ where
     ///
     /// # Returns
     ///
-    /// * `Ok(Some(UnsignedEvent))` - For application messages, the decrypted event
-    /// * `Ok(None)` - For protocol messages (proposals, commits)
+    /// * `Ok(ProcessMessageResult)` - Contains the decrypted message and/or member changes
     /// * `Err(Error)` - If message processing fails
-    fn process_message_for_group(
+    pub fn process_message_for_group(
         &self,
         group: &mut MlsGroup,
         message_bytes: &[u8],
-    ) -> Result<Option<UnsignedEvent>, Error> {
+    ) -> Result<ProcessMessageResult, Error> {
         let mls_message = MlsMessageIn::tls_deserialize_exact(message_bytes)?;
 
         tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "Received message: {:?}", mls_message);
@@ -272,24 +312,170 @@ where
                 // This is a message from a group member
                 let bytes = application_message.into_bytes();
                 let rumor: UnsignedEvent = UnsignedEvent::from_json(bytes)?;
-                Ok(Some(rumor))
+                Ok(ProcessMessageResult {
+                    message: Some(rumor),
+                    member_changes: None,
+                    commit: None,
+                    welcome: None,
+                })
             }
             ProcessedMessageContent::ProposalMessage(staged_proposal) => {
                 // This is a proposal message
                 tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "Received proposal message: {:?}", staged_proposal);
-                // TODO: Handle proposal message
-                Ok(None)
+                // Check if this is a self-remove proposal
+                if let Proposal::Remove(remove_proposal) = staged_proposal.proposal() {
+                    if let Sender::Member(sender_leaf_index) = staged_proposal.sender().clone() {
+                        let removed_index = remove_proposal.removed();
+                        let is_self_remove = removed_index == sender_leaf_index;
+
+                        if is_self_remove {
+                            tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "This is a self-remove proposal");
+                            let commit_result = self
+                                .commit_proposal(group.group_id(), *staged_proposal)
+                                .map_err(|e| Error::Group(e.to_string()))?;
+
+                            // Get information about the removed member
+                            let mut removed_members = Vec::new();
+                            if let Some(member) = group.member_at(removed_index) {
+                                if let Ok(credential) =
+                                    BasicCredential::try_from(member.credential.clone())
+                                {
+                                    let identity_bytes = credential.identity();
+                                    if let Ok(identity_str) = std::str::from_utf8(identity_bytes) {
+                                        tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Self-removing member with identity: {}", identity_str);
+                                        removed_members.push(identity_str.to_string());
+                                    }
+                                }
+                            }
+
+                            let member_changes = if !removed_members.is_empty() {
+                                Some(MemberChanges {
+                                    added_members: Vec::new(),
+                                    removed_members,
+                                })
+                            } else {
+                                None
+                            };
+
+                            return Ok(ProcessMessageResult {
+                                message: None,
+                                member_changes,
+                                commit: commit_result.commit_message,
+                                welcome: commit_result.welcome_message,
+                            });
+                        } else {
+                            tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "This is a remove proposal for another member");
+                        }
+                    }
+                }
+
+                Ok(ProcessMessageResult {
+                    message: None,
+                    member_changes: None,
+                    commit: None,
+                    welcome: None,
+                })
             }
             ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
                 // This is a commit message
-                tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "Received commit message: {:?}", staged_commit);
-                // TODO: Handle commit message
-                Ok(None)
+                tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Received commit message");
+
+                // Check proposals in the proposal queue to understand member changes
+                let queued_proposals = staged_commit.queued_proposals();
+                let mut added_members = Vec::new();
+                let mut removed_members = Vec::new();
+
+                for queued_proposal in queued_proposals {
+                    match queued_proposal.proposal() {
+                        Proposal::Add(add_proposal) => {
+                            tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Commit contains Add proposal");
+                            // Get information about the added member from add_proposal.key_package()
+                            let key_package = add_proposal.key_package();
+                            if let Ok(credential) = BasicCredential::try_from(
+                                key_package.leaf_node().credential().clone(),
+                            ) {
+                                let identity_bytes = credential.identity();
+                                if let Ok(identity_str) = std::str::from_utf8(identity_bytes) {
+                                    tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Adding member with identity: {}", identity_str);
+                                    added_members.push(identity_str.to_string());
+                                }
+                            }
+                        }
+                        Proposal::Remove(remove_proposal) => {
+                            tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Commit contains Remove proposal");
+                            let removed_index = remove_proposal.removed();
+                            tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Removing member at leaf index: {:?}", removed_index);
+
+                            // Get information about the removed member through leaf index from group
+                            if let Some(member) = group.member_at(removed_index) {
+                                if let Ok(credential) =
+                                    BasicCredential::try_from(member.credential.clone())
+                                {
+                                    let identity_bytes = credential.identity();
+                                    if let Ok(identity_str) = std::str::from_utf8(identity_bytes) {
+                                        tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Removing member with identity: {}", identity_str);
+                                        removed_members.push(identity_str.to_string());
+                                    }
+                                }
+                            }
+                        }
+                        Proposal::Update(_) => {
+                            tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Commit contains Update proposal");
+                        }
+                        Proposal::PreSharedKey(_) => {
+                            tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Commit contains PreSharedKey proposal");
+                        }
+                        Proposal::ReInit(_) => {
+                            tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Commit contains ReInit proposal");
+                        }
+                        Proposal::ExternalInit(_) => {
+                            tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Commit contains ExternalInit proposal");
+                        }
+                        Proposal::GroupContextExtensions(_) => {
+                            tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Commit contains GroupContextExtensions proposal");
+                        }
+                        Proposal::AppAck(_) => {
+                            tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Commit contains AppAck proposal");
+                        }
+                        Proposal::SelfRemove => {
+                            tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Commit contains SelfRemove proposal");
+                        }
+                        Proposal::Custom(_) => {
+                            tracing::info!(target: "nostr_mls::messages::process_message_for_group", "Commit contains Custom proposal");
+                        }
+                    }
+                }
+
+                group
+                    .merge_staged_commit(&self.provider, *staged_commit)
+                    .map_err(|e| Error::Group(e.to_string()))?;
+                group.merge_pending_commit(&self.provider)?;
+
+                let member_changes = if !added_members.is_empty() || !removed_members.is_empty() {
+                    Some(MemberChanges {
+                        added_members,
+                        removed_members,
+                    })
+                } else {
+                    None
+                };
+
+                Ok(ProcessMessageResult {
+                    message: None,
+                    member_changes,
+                    commit: None,
+                    welcome: None,
+                })
             }
             ProcessedMessageContent::ExternalJoinProposalMessage(external_join_proposal) => {
                 tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "Received external join proposal message: {:?}", external_join_proposal);
                 // TODO: Handle external join proposal
-                Ok(None)
+                Ok(ProcessMessageResult {
+                    message: None,
+                    member_changes: None,
+                    commit: None,
+                    welcome: None,
+                })
             }
         }
     }
@@ -305,14 +491,13 @@ where
     ///
     /// # Arguments
     ///
-    /// * `mls_group_id` - The MLS group ID
     /// * `event` - The received Nostr event
     ///
     /// # Returns
     ///
-    /// * `Ok(())` - If message processing succeeds
+    /// * `Ok(ProcessedEventResult)` - Contains the processed message and member changes
     /// * `Err(Error)` - If message processing fails
-    pub fn process_message(&self, event: &Event) -> Result<Option<message_types::Message>, Error> {
+    pub fn process_message(&self, event: &Event) -> Result<ProcessedEventResult, Error> {
         if event.kind != Kind::MlsGroupMessage {
             return Err(Error::UnexpectedEvent {
                 expected: Kind::MlsGroupMessage,
@@ -335,7 +520,7 @@ where
         .try_into()
         .map_err(|_e| Error::Message("Failed to convert nostr group id to [u8; 32]".to_string()))?;
 
-        let mut group = self
+        let group = self
             .storage()
             .find_group_by_nostr_group_id(&nostr_group_id)
             .map_err(|e| Error::Group(e.to_string()))?
@@ -349,7 +534,6 @@ where
         // Convert that secret to nostr keys
         let secret_key: SecretKey = SecretKey::from_slice(&secret.secret)?;
         let export_nostr_keys = Keys::new(secret_key);
-
         // Decrypt message
         let message_bytes: Vec<u8> = nip44::decrypt_to_bytes(
             export_nostr_keys.secret_key(),
@@ -365,16 +549,13 @@ where
         // The resulting serialized message is the MLS encrypted message that Bob sent
         // Now Bob can process the MLS message content and do what's needed with it
         match self.process_message_for_group(&mut mls_group, &message_bytes) {
-            Ok(Some(mut rumor)) => {
+            Ok(ProcessMessageResult {
+                message: Some(mut rumor),
+                member_changes,
+                commit,
+                welcome,
+            }) => {
                 let rumor_id: EventId = rumor.id();
-
-                let processed_message = message_types::ProcessedMessage {
-                    wrapper_event_id: event.id,
-                    message_event_id: Some(rumor_id),
-                    processed_at: Timestamp::now(),
-                    state: message_types::ProcessedMessageState::Processed,
-                    failure_reason: None,
-                };
 
                 let message = message_types::Message {
                     id: rumor_id,
@@ -389,102 +570,49 @@ where
                     state: message_types::MessageState::Processed,
                 };
 
-                self.storage()
-                    .save_message(message.clone())
-                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                self.storage()
-                    .save_processed_message(processed_message.clone())
-                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                // Update last_message_at and last_message_id
-                group.last_message_at = Some(rumor.created_at);
-                group.last_message_id = Some(message.id);
-                self.storage()
-                    .save_group(group)
-                    .map_err(|e| Error::Group(e.to_string()))?;
-
-                tracing::debug!(target: "nostr_mls::messages::process_message", "Processed message: {:?}", processed_message);
                 tracing::debug!(target: "nostr_mls::messages::process_message", "Message: {:?}", message);
-                Ok(Some(message))
+                Ok(ProcessedEventResult {
+                    message: Some(message),
+                    member_changes,
+                    commit,
+                    welcome,
+                })
             }
-            Ok(None) => {
+            Ok(ProcessMessageResult {
+                message: None,
+                member_changes,
+                commit,
+                welcome,
+            }) => {
                 // This is what happens with proposals, commits, etc.
-                let processed_message = message_types::ProcessedMessage {
-                    wrapper_event_id: event.id,
-                    message_event_id: None,
-                    processed_at: Timestamp::now(),
-                    state: message_types::ProcessedMessageState::Processed,
-                    failure_reason: None,
-                };
-
-                self.storage()
-                    .save_processed_message(processed_message)
-                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                Ok(None)
+                Ok(ProcessedEventResult {
+                    message: None,
+                    member_changes,
+                    commit,
+                    welcome,
+                })
             }
             Err(e) => {
                 match e {
                     Error::CannotDecryptOwnMessage => {
                         tracing::debug!(target: "nostr_mls::messages::process_message", "Cannot decrypt own message, checking for cached message");
-
-                        let mut processed_message = self
-                            .storage()
-                            .find_processed_message_by_event_id(&event.id)
-                            .map_err(|e| Error::Message(e.to_string()))?
-                            .ok_or(Error::Message("Processed message not found".to_string()))?;
-
-                        let message_event_id: EventId = processed_message
-                            .message_event_id
-                            .ok_or(Error::Message("Message event ID not found".to_string()))?;
-
-                        // If the message is created, we need to update the state of the message and processed message
-                        // If it's already processed, we don't need to do anything
-                        match processed_message.state {
-                            message_types::ProcessedMessageState::Created => {
-                                let mut message = self
-                                    .get_message(&message_event_id)?
-                                    .ok_or(Error::Message("Message not found".to_string()))?;
-
-                                message.state = message_types::MessageState::Processed;
-                                self.storage()
-                                    .save_message(message)
-                                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                                processed_message.state =
-                                    message_types::ProcessedMessageState::Processed;
-                                self.storage()
-                                    .save_processed_message(processed_message.clone())
-                                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                                tracing::debug!(target: "nostr_mls::messages::process_message", "Updated state of own cached message");
-                            }
-                            message_types::ProcessedMessageState::Processed => {
-                                tracing::debug!(target: "nostr_mls::messages::process_message", "Message already processed");
-                            }
-                            message_types::ProcessedMessageState::Failed => {
-                                tracing::debug!(target: "nostr_mls::messages::process_message", "Message previously failed to process");
-                            }
-                        }
-                        let message = self.get_message(&message_event_id)?;
-                        return Ok(message);
+                        return Ok(ProcessedEventResult {
+                            message: None,
+                            member_changes: None,
+                            commit: None,
+                            welcome: None,
+                        });
                     }
                     _ => {
                         tracing::error!(target: "nostr_mls::messages::process_message", "Error processing message: {:?}", e);
-                        let processed_message = message_types::ProcessedMessage {
-                            wrapper_event_id: event.id,
-                            message_event_id: None,
-                            processed_at: Timestamp::now(),
-                            state: message_types::ProcessedMessageState::Failed,
-                            failure_reason: Some(e.to_string()),
-                        };
-                        self.storage()
-                            .save_processed_message(processed_message)
-                            .map_err(|e| Error::Message(e.to_string()))?;
                     }
                 }
-                Ok(None)
+                Ok(ProcessedEventResult {
+                    message: None,
+                    member_changes: None,
+                    commit: None,
+                    welcome: None,
+                })
             }
         }
     }

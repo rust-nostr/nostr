@@ -78,6 +78,35 @@ impl NostrMlsSqliteStorage {
     where
         P: AsRef<Path>,
     {
+        Self::new_with_password(file_path, None)
+    }
+
+    /// Creates a new encrypted [`NostrMlsSqliteStorage`] with the provided file path and password.
+    ///
+    /// This method uses SQLCipher to encrypt the database with the provided password.
+    /// The password will be used to encrypt/decrypt the database file.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_path` - Path to the SQLite database file.
+    /// * `password` - Password for database encryption. If None, the database will not be encrypted.
+    ///
+    /// # Returns
+    ///
+    /// A Result containing a new instance of [`NostrMlsSqliteStorage`] or an error.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use nostr_mls_sqlite_storage::NostrMlsSqliteStorage;
+    ///
+    /// // Create an encrypted database
+    /// let storage = NostrMlsSqliteStorage::new_with_password("encrypted.db", Some("my_secret_password")).unwrap();
+    /// ```
+    pub fn new_with_password<P>(file_path: P, password: Option<&str>) -> Result<Self, Error>
+    where
+        P: AsRef<Path>,
+    {
         // Ensure parent directory exists
         if let Some(parent) = file_path.as_ref().parent() {
             std::fs::create_dir_all(parent)?;
@@ -85,6 +114,11 @@ impl NostrMlsSqliteStorage {
 
         // Create or open the SQLite database
         let mls_connection: Connection = Connection::open(&file_path)?;
+
+        // Set encryption key if password is provided
+        if let Some(pwd) = password {
+            mls_connection.execute_batch(&format!("PRAGMA key = '{}';", pwd))?;
+        }
 
         // Enable foreign keys
         mls_connection.execute_batch("PRAGMA foreign_keys = ON;")?;
@@ -98,6 +132,11 @@ impl NostrMlsSqliteStorage {
         // Create a new connection for the Nostr MLS storage
         let mut nostr_mls_connection = Connection::open(&file_path)?;
 
+        // Set encryption key for the second connection if password is provided
+        if let Some(pwd) = password {
+            nostr_mls_connection.execute_batch(&format!("PRAGMA key = '{}';", pwd))?;
+        }
+
         // Enable foreign keys
         nostr_mls_connection.execute_batch("PRAGMA foreign_keys = ON;")?;
 
@@ -108,6 +147,95 @@ impl NostrMlsSqliteStorage {
             openmls_storage,
             db_connection: Arc::new(Mutex::new(nostr_mls_connection)),
         })
+    }
+
+    /// Changes the password of an existing encrypted database.
+    ///
+    /// This method allows you to change the encryption password of an existing database.
+    /// The database must already be opened with the current password.
+    ///
+    /// # Arguments
+    ///
+    /// * `new_password` - The new password for the database. If None, encryption will be removed.
+    ///
+    /// # Returns
+    ///
+    /// A Result indicating success or failure of the password change operation.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use nostr_mls_sqlite_storage::NostrMlsSqliteStorage;
+    ///
+    /// // Open database with current password
+    /// let mut storage = NostrMlsSqliteStorage::new_with_password("encrypted.db", Some("old_password")).unwrap();
+    /// 
+    /// // Change to new password
+    /// storage.change_password(Some("new_password")).unwrap();
+    /// ```
+    pub fn change_password(&self, new_password: Option<&str>) -> Result<(), Error> {
+        let conn_guard = self.db_connection.lock().map_err(|e| {
+            Error::Database(format!("Failed to acquire database lock: {}", e))
+        })?;
+
+        match new_password {
+            Some(pwd) => {
+                // Change to new password
+                conn_guard.execute_batch(&format!("PRAGMA rekey = '{}';", pwd))?;
+            }
+            None => {
+                // Remove encryption - this is more complex and requires exporting to a new unencrypted database
+                // For now, we'll return an error indicating this operation is not supported
+                return Err(Error::Database(
+                    "Removing encryption is not currently supported. Use sqlcipher_export() manually.".to_string()
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Checks if the database is encrypted by attempting to read the schema.
+    ///
+    /// This method tries to read from the database without a password to determine
+    /// if it's encrypted. If the database is encrypted and no password was provided,
+    /// this will return an error.
+    ///
+    /// # Returns
+    ///
+    /// A Result indicating whether the database appears to be encrypted.
+    pub fn is_encrypted(&self) -> Result<bool, Error> {
+        let conn_guard = self.db_connection.lock().map_err(|e| {
+            Error::Database(format!("Failed to acquire database lock: {}", e))
+        })?;
+
+        // Try to read from sqlite_master table
+        let prepare_result = conn_guard.prepare("SELECT name FROM sqlite_master LIMIT 1");
+        
+        match prepare_result {
+            Ok(mut stmt) => {
+                let query_result = stmt.query_map([], |_| Ok(()));
+                match query_result {
+                    Ok(_) => Ok(false), // Successfully read, not encrypted or correct password
+                    Err(rusqlite::Error::SqliteFailure(err, _)) => {
+                        if err.code == rusqlite::ErrorCode::NotADatabase {
+                            Ok(true) // Database is encrypted
+                        } else {
+                            Err(Error::Rusqlite(rusqlite::Error::SqliteFailure(err, None)))
+                        }
+                    }
+                    Err(e) => Err(Error::Rusqlite(e)),
+                }
+            }
+            Err(rusqlite::Error::SqliteFailure(err, _)) => {
+                if err.code == rusqlite::ErrorCode::NotADatabase {
+                    Ok(true) // Database is encrypted
+                } else {
+                    Err(Error::Rusqlite(rusqlite::Error::SqliteFailure(err, None)))
+                }
+            }
+            Err(e) => Err(Error::Rusqlite(e)),
+        }
     }
 
     /// Creates a new in-memory [`NostrMlsSqliteStorage`] for testing purposes.
@@ -373,5 +501,126 @@ mod tests {
         };
         let result = storage.save_group_exporter_secret(invalid_secret);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_encrypted_database() {
+        let temp_dir = tempdir().unwrap();
+        let db_path = temp_dir.path().join("encrypted_test.db");
+
+        // Create an encrypted database
+        let password = "test_password_123";
+        let storage = NostrMlsSqliteStorage::new_with_password(&db_path, Some(password));
+        assert!(storage.is_ok());
+        let storage = storage.unwrap();
+
+        // Verify file exists
+        assert!(db_path.exists());
+
+        // Test that we can use the storage normally
+        assert_eq!(storage.backend(), Backend::SQLite);
+
+        // Drop the storage to close connections
+        drop(storage);
+
+        // Try to open the same database with the correct password
+        let storage2 = NostrMlsSqliteStorage::new_with_password(&db_path, Some(password));
+        assert!(storage2.is_ok());
+
+        // Try to open the same database without password (should fail)
+        let storage3 = NostrMlsSqliteStorage::new_with_password(&db_path, None);
+        assert!(storage3.is_err());
+
+        // Try to open with wrong password (should fail)
+        let storage4 = NostrMlsSqliteStorage::new_with_password(&db_path, Some("wrong_password"));
+        assert!(storage4.is_err());
+
+        // Clean up
+        drop(storage2);
+        temp_dir.close().unwrap();
+    }
+
+    #[test]
+    fn test_password_change() {
+        let temp_dir = tempdir().unwrap();
+        let db_path = temp_dir.path().join("password_change_test.db");
+
+        let original_password = "original_password";
+        let new_password = "new_password";
+
+        // Create an encrypted database
+        let storage = NostrMlsSqliteStorage::new_with_password(&db_path, Some(original_password)).unwrap();
+
+        // Change the password
+        let result = storage.change_password(Some(new_password));
+        assert!(result.is_ok());
+
+        // Drop the storage to close connections
+        drop(storage);
+
+        // Try to open with the new password
+        let storage2 = NostrMlsSqliteStorage::new_with_password(&db_path, Some(new_password));
+        assert!(storage2.is_ok());
+
+        // Try to open with the old password (should fail)
+        let storage3 = NostrMlsSqliteStorage::new_with_password(&db_path, Some(original_password));
+        assert!(storage3.is_err());
+
+        // Clean up
+        drop(storage2);
+        temp_dir.close().unwrap();
+    }
+
+    #[test]
+    fn test_remove_encryption_not_supported() {
+        let temp_dir = tempdir().unwrap();
+        let db_path = temp_dir.path().join("remove_encryption_test.db");
+
+        let password = "test_password";
+
+        // Create an encrypted database
+        let storage = NostrMlsSqliteStorage::new_with_password(&db_path, Some(password)).unwrap();
+
+        // Try to remove encryption (should fail with not supported error)
+        let result = storage.change_password(None);
+        assert!(result.is_err());
+        
+        if let Err(Error::Database(msg)) = result {
+            assert!(msg.contains("not currently supported"));
+        } else {
+            panic!("Expected Database error with 'not currently supported' message");
+        }
+
+        // Clean up
+        drop(storage);
+        temp_dir.close().unwrap();
+    }
+
+    #[test]
+    fn test_unencrypted_database() {
+        let temp_dir = tempdir().unwrap();
+        let db_path = temp_dir.path().join("unencrypted_test.db");
+
+        // Create an unencrypted database
+        let storage = NostrMlsSqliteStorage::new_with_password(&db_path, None);
+        assert!(storage.is_ok());
+        let storage = storage.unwrap();
+
+        // Verify file exists
+        assert!(db_path.exists());
+
+        // Test that we can use the storage normally
+        assert_eq!(storage.backend(), Backend::SQLite);
+
+        // Drop the storage to close connections
+        drop(storage);
+
+        // Try to open the same database without password (should work)
+        let storage2 = NostrMlsSqliteStorage::new_with_password(&db_path, None);
+        assert!(storage2.is_ok());
+
+        // Clean up
+        drop(storage2);
+        temp_dir.close().unwrap();
     }
 }
