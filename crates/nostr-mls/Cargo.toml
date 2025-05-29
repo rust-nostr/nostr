@@ -20,6 +20,7 @@ openmls_rust_crypto = { git = "https://github.com/openmls/openmls", rev = "4cc0f
 openmls_traits = { git = "https://github.com/openmls/openmls", rev = "4cc0f594b11262083ad9827b3b2033052c6ef99f", default-features = false }
 tls_codec = "0.4"
 tracing = { workspace = true, features = ["std"] }
+regex = "1.10.2"
 
 [dev-dependencies]
 nostr-mls-memory-storage.workspace = true
