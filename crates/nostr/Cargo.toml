@@ -26,7 +26,6 @@ std = [
     "cbc?/std",
     "chacha20?/std",
     "chacha20poly1305?/std",
-    "regex?/std",
     "scrypt?/std",
     "secp256k1/std",
     "secp256k1/rand-std",
@@ -46,7 +45,6 @@ alloc = [
     "serde/alloc",
     "serde_json/alloc",
 ]
-parser = ["dep:regex"]
 all-nips = ["nip04", "nip05", "nip06", "nip07", "nip11", "nip44", "nip46", "nip47", "nip49", "nip57", "nip59", "nip96", "nip98"]
 nip03 = ["dep:nostr-ots"]
 nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
@@ -73,7 +71,6 @@ cbc = { version = "0.1", optional = true }
 chacha20 = { version = "0.9", optional = true }
 chacha20poly1305 = { version = "0.10", default-features = false, features = ["getrandom"], optional = true }
 nostr-ots = { version = "0.2", optional = true }
-regex = { version = "1.11", default-features = false, features = ["perf", "unicode"], optional = true }
 reqwest = { workspace = true, features = ["json", "rustls-tls", "socks"], optional = true }
 scrypt = { version = "0.11", default-features = false, optional = true }
 secp256k1 = { version = "0.29", default-features = false, features = ["rand", "serde"] }
@@ -140,7 +137,7 @@ required-features = ["std", "nip98"]
 
 [[example]]
 name = "parser"
-required-features = ["std", "parser"]
+required-features = ["std"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bench)'] }
