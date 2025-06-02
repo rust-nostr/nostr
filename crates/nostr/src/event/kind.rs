@@ -156,7 +156,9 @@ kind_variants! {
     CashuWallet => 17375, "Cashu Wallet", "<https://github.com/nostr-protocol/nips/blob/master/60.md>",
     CashuWalletUnspentProof => 7375, "Cashu Wallet Unspent Proof", "<https://github.com/nostr-protocol/nips/blob/master/60.md>",
     CashuWalletSpendingHistory => 7376, "Cashu Wallet Spending History", "<https://github.com/nostr-protocol/nips/blob/master/60.md>",
-    CodeSnippet => 1337, "Code Snippets", "<https://github.com/nostr-protocol/nips/blob/master/C0.md>"
+    CodeSnippet => 1337, "Code Snippets", "<https://github.com/nostr-protocol/nips/blob/master/C0.md>",
+    Poll => 1068, "Poll", "<https://github.com/nostr-protocol/nips/blob/master/88.md>",
+    PollResponse => 1018, "Poll response", "<https://github.com/nostr-protocol/nips/blob/master/88.md>",
 }
 
 impl PartialEq for Kind {

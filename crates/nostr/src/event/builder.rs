@@ -1771,6 +1771,22 @@ impl EventBuilder {
     }
 
     // TODO: add `torrent_comment`
+
+    /// Create a poll
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/88.md>
+    #[inline]
+    pub fn poll(poll: Poll) -> Self {
+        poll.to_event_builder()
+    }
+
+    /// Create a poll response
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/88.md>
+    #[inline]
+    pub fn poll_response(response: PollResponse) -> Self {
+        response.to_event_builder()
+    }
 }
 
 #[cfg(test)]

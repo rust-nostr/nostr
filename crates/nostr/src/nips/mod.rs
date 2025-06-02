@@ -52,6 +52,7 @@ pub mod nip59;
 pub mod nip62;
 pub mod nip65;
 pub mod nip73;
+pub mod nip88;
 pub mod nip90;
 pub mod nip94;
 #[cfg(all(feature = "std", feature = "nip96"))]

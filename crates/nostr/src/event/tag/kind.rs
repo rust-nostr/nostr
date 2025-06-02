@@ -97,8 +97,14 @@ pub enum TagKind<'a> {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
     Nonce,
+    /// Option
+    Option,
     /// Payload
     Payload,
+    /// Poll type
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/88.md>
+    PollType,
     /// Preimage
     Preimage,
     /// Protected event
@@ -121,6 +127,8 @@ pub enum TagKind<'a> {
     Repository,
     /// Request
     Request,
+    /// Response
+    Response,
     /// Runtime or environment specification
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
@@ -333,7 +341,9 @@ impl<'a> TagKind<'a> {
             Self::MlsExtensions => "mls_extensions",
             Self::Name => "name",
             Self::Nonce => "nonce",
+            Self::Option => "option",
             Self::Payload => "payload",
+            Self::PollType => "polltype",
             Self::Preimage => "preimage",
             Self::Protected => "-",
             Self::Proxy => "proxy",
@@ -343,6 +353,7 @@ impl<'a> TagKind<'a> {
             Self::Relays => "relays",
             Self::Repository => "repo",
             Self::Request => "request",
+            Self::Response => "response",
             Self::Runtime => "runtime",
             Self::Server => "server",
             Self::Size => "size",
@@ -407,7 +418,9 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "mls_extensions" => Self::MlsExtensions,
             "name" => Self::Name,
             "nonce" => Self::Nonce,
+            "option" => Self::Option,
             "payload" => Self::Payload,
+            "polltype" => Self::PollType,
             "preimage" => Self::Preimage,
             "proxy" => Self::Proxy,
             "published_at" => Self::PublishedAt,
@@ -416,6 +429,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "relays" => Self::Relays,
             "repo" => Self::Repository,
             "request" => Self::Request,
+            "response" => Self::Response,
             "runtime" => Self::Runtime,
             "server" => Self::Server,
             "size" => Self::Size,
@@ -498,8 +512,17 @@ mod tests {
         assert_eq!(TagKind::from("maintainers"), TagKind::Maintainers);
         assert_eq!(TagKind::Maintainers.as_str(), "maintainers");
 
+        assert_eq!(TagKind::from("option"), TagKind::Option);
+        assert_eq!(TagKind::Option.as_str(), "option");
+
+        assert_eq!(TagKind::from("polltype"), TagKind::PollType);
+        assert_eq!(TagKind::PollType.as_str(), "polltype");
+
         assert_eq!(TagKind::from("repo"), TagKind::Repository);
         assert_eq!(TagKind::Repository.as_str(), "repo");
+
+        assert_eq!(TagKind::from("response"), TagKind::Response);
+        assert_eq!(TagKind::Response.as_str(), "response");
 
         assert_eq!(TagKind::from("runtime"), TagKind::Runtime);
         assert_eq!(TagKind::Runtime.as_str(), "runtime");

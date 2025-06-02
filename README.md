@@ -108,7 +108,7 @@ Learn more about `rust-nostr` at <https://rust-nostr.org>.
 |     ❌     | [7D - Threads](https://github.com/nostr-protocol/nips/blob/master/7D.md)                                        |
 |     ❌     | [84 - Highlights](https://github.com/nostr-protocol/nips/blob/master/84.md)                                     |
 |     ❌     | [86 - Relay Management API](https://github.com/nostr-protocol/nips/blob/master/86.md)                           |
-|     ❌     | [88 - Polls](https://github.com/nostr-protocol/nips/blob/master/88.md)                                          |
+|     ✅     | [88 - Polls](https://github.com/nostr-protocol/nips/blob/master/88.md)                                          |
 |     ❌     | [89 - Recommended Application Handlers](https://github.com/nostr-protocol/nips/blob/master/89.md)               |
 |     ✅     | [90 - Data Vending Machine](https://github.com/nostr-protocol/nips/blob/master/90.md)                           |
 |     ❌     | [92 - Media Attachments](https://github.com/nostr-protocol/nips/blob/master/92.md)                              |
