@@ -1093,6 +1093,7 @@ impl InnerRelay {
         }
 
         // Check if coordinate has been deleted
+        // TODO: remove this since it's checked also later?
         if let Some(coordinate) = event.coordinate() {
             if self
                 .state
@@ -1106,7 +1107,7 @@ impl InnerRelay {
 
         // TODO: check if filter match
 
-        // Check if event exists
+        // Check if the event exists
         if let DatabaseEventStatus::NotExistent = status {
             // Check if the event was already verified.
             //
@@ -1121,7 +1122,23 @@ impl InnerRelay {
             }
 
             // Save into the database
-            self.state.database().save_event(&event).await?;
+            let send_notification: bool = match self.state.database().save_event(&event).await? {
+                SaveEventStatus::Success => true,
+                SaveEventStatus::Rejected(reason) => match reason {
+                    RejectedReason::Ephemeral => true,
+                    RejectedReason::Duplicate => true,
+                    RejectedReason::Deleted => false,
+                    RejectedReason::Expired => false,
+                    RejectedReason::Replaced => false,
+                    RejectedReason::InvalidDelete => false,
+                    RejectedReason::Other => true,
+                },
+            };
+
+            // If the notification should NOT be sent, immediately return.
+            if !send_notification {
+                return Ok(None);
+            }
 
             // Send notification
             self.send_notification(
