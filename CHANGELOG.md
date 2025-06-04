@@ -30,6 +30,7 @@
 - nostr: remove `NostrConnectMethod::GetRelays`, `NostrConnectRequest::GetRelays` and `ResponseResult::GetRelays` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/894)
 - nostr: remove `Market::Mention` (NIP-10) ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/895)
 - nostr: remove `parser` feature ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/899)
+- nostr: update `Nip19Profile::new` and `Nip19Coordinate::new` signature ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/910)
 - connect: remove `NostrConnect::get_relays` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/894)
 
 ### Changed

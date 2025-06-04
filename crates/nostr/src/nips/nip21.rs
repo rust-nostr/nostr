@@ -273,6 +273,7 @@ fn take_valid_bech32(prefix: Nip19Prefix, full_input: &str) -> Option<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::RelayUrl;
 
     #[test]
     fn test_to_nostr_uri() {
@@ -317,8 +318,8 @@ mod tests {
                     "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
                 )
                 .unwrap(),
-                ["wss://relay.damus.io/"]
-            ).unwrap()),
+                [RelayUrl::parse("wss://relay.damus.io/").unwrap()]
+            )),
         );
     }
 

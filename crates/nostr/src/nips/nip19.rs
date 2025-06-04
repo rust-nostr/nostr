@@ -24,7 +24,7 @@ use super::nip05::Nip05Profile;
 #[cfg(feature = "nip49")]
 use super::nip49::{self, EncryptedSecretKey};
 use crate::event::id::EventId;
-use crate::types::url::{self, RelayUrl, TryIntoUrl};
+use crate::types::url::{self, RelayUrl};
 use crate::{event, key, Event, Kind, PublicKey, SecretKey};
 
 pub const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
@@ -559,19 +559,14 @@ pub struct Nip19Profile {
 }
 
 impl Nip19Profile {
-    pub fn new<I, U>(public_key: PublicKey, relays: I) -> Result<Self, Error>
+    pub fn new<I>(public_key: PublicKey, relays: I) -> Self
     where
-        I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        I: IntoIterator<Item = RelayUrl>,
     {
-        Ok(Self {
+        Self {
             public_key,
-            relays: relays
-                .into_iter()
-                .map(|u| u.try_into_url())
-                .collect::<Result<_, _>>()?,
-        })
+            relays: relays.into_iter().collect(),
+        }
     }
 
     fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
@@ -678,18 +673,13 @@ impl Deref for Nip19Coordinate {
 }
 
 impl Nip19Coordinate {
-    pub fn new<I, U>(coordinate: Coordinate, relays: I) -> Result<Self, Error>
+    pub fn new<I>(coordinate: Coordinate, relays: I) -> Result<Self, Error>
     where
-        I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        I: IntoIterator<Item = RelayUrl>,
     {
         Ok(Self {
             coordinate,
-            relays: relays
-                .into_iter()
-                .map(|u| u.try_into_url())
-                .collect::<Result<_, _>>()?,
+            relays: relays.into_iter().collect(),
         })
     }
 
@@ -861,13 +851,13 @@ mod tests {
                 .unwrap();
 
         assert_eq!(
-            Nip19::Profile(
-                Nip19Profile::new(
-                    expected_pubkey,
-                    ["wss://r.x.com/", "wss://djbas.sadkb.com/"]
-                )
-                .unwrap()
-            ),
+            Nip19::Profile(Nip19Profile::new(
+                expected_pubkey,
+                [
+                    RelayUrl::parse("wss://r.x.com/").unwrap(),
+                    RelayUrl::parse("wss://djbas.sadkb.com/").unwrap()
+                ],
+            )),
             nip19
         );
 
