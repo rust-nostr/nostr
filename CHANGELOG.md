@@ -39,6 +39,7 @@
 ### Changed
 
 - nostr: rework `NostrParser` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/899)
+- nostr: enhance `NostrParser` with flexible parsing options ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/912)
 - nostr: impl `Any` for `NostrSigner` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/918)
 - database: impl `Any` for `NostrDatabase` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/918)
 - pool: refine notification sending depending on event database saving status ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/911)
