@@ -92,10 +92,8 @@ enum MatchType {
 
 /// Nostr parser
 #[derive(Debug, Clone)]
-#[non_exhaustive] // Force to use the `new` constructor
-pub struct NostrParser {
-    // TODO: allow to specify what tokens to parse. Example: parse only hashtags and handle everything else as text.
-}
+#[non_exhaustive]
+pub struct NostrParser {}
 
 impl Default for NostrParser {
     fn default() -> Self {
@@ -133,6 +131,7 @@ impl NostrParser {
     /// ## Line breaks
     ///
     /// Pattern: `\n`
+    #[inline]
     pub const fn new() -> Self {
         Self {}
     }
@@ -144,11 +143,37 @@ impl NostrParser {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+struct ParserOptions {
+    /// Parse nostr URIs
+    nostr_uris: bool,
+    /// Parse URLs
+    urls: bool,
+    /// Parse hashtags
+    hashtags: bool,
+    /// Parse text, line breaks and whitespaces
+    text: bool,
+}
+
+impl ParserOptions {
+    fn new(enabled: bool) -> Self {
+        Self {
+            nostr_uris: enabled,
+            urls: enabled,
+            hashtags: enabled,
+            text: enabled,
+        }
+    }
+}
+
 struct FindMatches<'a> {
+    // Text and bytes to parse
     text: &'a str,
     bytes: &'a [u8],
     // Current position
     pos: usize,
+    // Options
+    opts: ParserOptions,
 }
 
 impl<'a> FindMatches<'a> {
@@ -158,6 +183,8 @@ impl<'a> FindMatches<'a> {
             text,
             bytes: text.as_bytes(),
             pos: 0,
+            // All options enabled by dfault
+            opts: ParserOptions::new(true),
         }
     }
 
@@ -408,28 +435,40 @@ impl Iterator for FindMatches<'_> {
             return None;
         }
 
-        // Check for line break
-        if let Some(mat) = self.try_parse_line_break() {
-            self.pos = mat.end;
-            return Some(mat);
+        // Check if text parsing is enabled
+        if self.opts.text {
+            // Check for line break
+            if let Some(mat) = self.try_parse_line_break() {
+                self.pos = mat.end;
+                return Some(mat);
+            }
         }
 
-        // Check for hashtag
-        if let Some(mat) = self.try_parse_hashtag() {
-            self.pos = mat.end;
-            return Some(mat);
+        // Check if hashtags parsing is enabled
+        if self.opts.hashtags {
+            // Check for hashtag
+            if let Some(mat) = self.try_parse_hashtag() {
+                self.pos = mat.end;
+                return Some(mat);
+            }
         }
 
-        // Check for nostr URI
-        if let Some(mat) = self.try_parse_nostr_uri() {
-            self.pos = mat.end;
-            return Some(mat);
+        // Check if nostr URIs parsing is enabled
+        if self.opts.nostr_uris {
+            // Check for nostr URI
+            if let Some(mat) = self.try_parse_nostr_uri() {
+                self.pos = mat.end;
+                return Some(mat);
+            }
         }
 
-        // Check for URL
-        if let Some(mat) = self.try_parse_url() {
-            self.pos = mat.end;
-            return Some(mat);
+        // Check if URLs parsing is enabled
+        if self.opts.urls {
+            // Check for URL
+            if let Some(mat) = self.try_parse_url() {
+                self.pos = mat.end;
+                return Some(mat);
+            }
         }
 
         // Move to the next character (handle UTF-8)
@@ -475,6 +514,43 @@ impl<'a> NostrParserIter<'a> {
             pending_token: None,
             last_match_end: 0,
         }
+    }
+
+    /// Disable all patterns
+    ///
+    /// If you don't enable at least one pattern, nothing will be parsed!
+    #[inline]
+    pub fn disable_all(mut self) -> Self {
+        self.matches.opts = ParserOptions::new(false);
+        self
+    }
+
+    /// Enable parsing of nostr URIs ([`Token::Nostr`]).
+    #[inline]
+    pub fn enable_nostr_uris(mut self) -> Self {
+        self.matches.opts.nostr_uris = true;
+        self
+    }
+
+    /// Enable parsing of URLs ([`Token::Url`]).
+    #[inline]
+    pub fn enable_urls(mut self) -> Self {
+        self.matches.opts.urls = true;
+        self
+    }
+
+    /// Enable parsing of hashtags ([`Token::Hashtag`]).
+    #[inline]
+    pub fn enable_hashtags(mut self) -> Self {
+        self.matches.opts.hashtags = true;
+        self
+    }
+
+    /// Include text and parse line breaks and whitespaces ([`Token::Text`], [`Token::LineBreak`] and [`Token::Whitespace`]).
+    #[inline]
+    pub fn enable_text(mut self) -> Self {
+        self.matches.opts.text = true;
+        self
     }
 
     fn handle_match(&mut self, mat: Match) -> Token<'a> {
@@ -567,7 +643,7 @@ impl<'a> Iterator for NostrParserIter<'a> {
                 dbg!(&mat, self.last_match_end);
 
                 // Capture text that appears before this match (if any)
-                if mat.start > self.last_match_end {
+                if self.matches.opts.text && mat.start > self.last_match_end {
                     // Update pending match
                     // This will be handled at next iteration, in `handle_match` method.
                     self.pending_match = Some(mat);
@@ -583,6 +659,11 @@ impl<'a> Iterator for NostrParserIter<'a> {
                 Some(self.handle_match(mat))
             }
             None => {
+                // Text disabled
+                if !self.matches.opts.text {
+                    return None;
+                }
+
                 // No text left
                 if self.last_match_end >= self.text.len() {
                     return None;
@@ -1218,6 +1299,88 @@ mod tests {
             let tokens = PARSER.parse(text).collect::<Vec<_>>();
             assert_eq!(tokens, expected);
         }
+    }
+
+    #[test]
+    fn test_parse_only_nostr_uris() {
+        let text = "I have never been very active in discussions but working on rust-nostr (at the time called nostr-rs-sdk) since September 2022 🦀 \n\nIf I remember correctly there were also nostr:nprofile1qqsqfyvdlsmvj0nakmxq6c8n0c2j9uwrddjd8a95ynzn9479jhlth3gpvemhxue69uhkv6tvw3jhytnwdaehgu3wwa5kuef0dec82c33w94xwcmdd3cxketedsux6ertwecrgues0pk8xdrew33h27pkd4unvvpkw3nkv7pe0p68gat58ycrw6ps0fenwdnvva48w0mzwfhkzerrv9ehg0t5wf6k2qgnwaehxw309ac82unsd3jhqct89ejhxtcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsh8njvk and nostr:nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40";
+
+        let tokens = PARSER
+            .parse(text)
+            .disable_all()
+            .enable_nostr_uris()
+            .collect::<Vec<_>>();
+        assert_eq!(tokens, vec![
+            Token::Nostr(Nip21::Profile(Nip19Profile::from_bech32("nprofile1qqsqfyvdlsmvj0nakmxq6c8n0c2j9uwrddjd8a95ynzn9479jhlth3gpvemhxue69uhkv6tvw3jhytnwdaehgu3wwa5kuef0dec82c33w94xwcmdd3cxketedsux6ertwecrgues0pk8xdrew33h27pkd4unvvpkw3nkv7pe0p68gat58ycrw6ps0fenwdnvva48w0mzwfhkzerrv9ehg0t5wf6k2qgnwaehxw309ac82unsd3jhqct89ejhxtcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsh8njvk").unwrap())),
+            Token::Nostr(Nip21::Profile(Nip19Profile::from_bech32("nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40").unwrap())),
+        ]);
+    }
+
+    #[test]
+    fn test_parse_only_nostr_uris_empty_result() {
+        // Text without nostr URIs
+        let text = "I follow #bitcoin hashtag and #lightning.\nWhat do you follow?";
+
+        // Enable only nostr URIs
+        let tokens = PARSER
+            .parse(text)
+            .disable_all()
+            .enable_nostr_uris()
+            .collect::<Vec<_>>();
+        assert!(tokens.is_empty());
+    }
+
+    #[test]
+    fn test_parse_only_urls() {
+        let text = "My relays are: wss://relay.damus.io, wss://nos.lol and wss://example.com";
+
+        let tokens = PARSER
+            .parse(text)
+            .disable_all()
+            .enable_urls()
+            .collect::<Vec<_>>();
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Url(Url::parse("wss://relay.damus.io").unwrap()),
+                Token::Url(Url::parse("wss://nos.lol").unwrap()),
+                Token::Url(Url::parse("wss://example.com").unwrap())
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_only_hashtags() {
+        let text = "I follow #bitcoin hashtag and #lightning.";
+
+        let tokens = PARSER
+            .parse(text)
+            .disable_all()
+            .enable_hashtags()
+            .collect::<Vec<_>>();
+        assert_eq!(
+            tokens,
+            vec![Token::Hashtag("bitcoin"), Token::Hashtag("lightning"),]
+        );
+    }
+
+    #[test]
+    fn test_parse_only_text() {
+        let text = "I follow #bitcoin hashtag and #lightning.\nWhat do you follow?";
+
+        let tokens = PARSER
+            .parse(text)
+            .disable_all()
+            .enable_text()
+            .collect::<Vec<_>>();
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Text("I follow #bitcoin hashtag and #lightning."),
+                Token::LineBreak,
+                Token::Text("What do you follow?"),
+            ]
+        );
     }
 }
 

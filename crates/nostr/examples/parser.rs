@@ -17,5 +17,13 @@ fn main() -> Result<()> {
         println!("{token:?}");
     }
 
+    for token in parser
+        .parse("Check this: https://example.com")
+        .disable_all()
+        .enable_urls()
+    {
+        println!("{token:?}");
+    }
+
     Ok(())
 }
