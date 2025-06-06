@@ -10,6 +10,8 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
+use core::time::Duration;
+#[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 
 use reqwest::Client;
@@ -51,6 +53,48 @@ impl fmt::Display for Error {
 impl From<reqwest::Error> for Error {
     fn from(e: reqwest::Error) -> Self {
         Self::Reqwest(e)
+    }
+}
+
+/// NIP11 get options
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Nip11GetOptions {
+    /// Proxy
+    #[cfg(not(target_arch = "wasm32"))]
+    pub proxy: Option<SocketAddr>,
+    /// Timeout
+    pub timeout: Duration,
+}
+
+impl Default for Nip11GetOptions {
+    fn default() -> Self {
+        Self {
+            proxy: None,
+            timeout: Duration::from_secs(60),
+        }
+    }
+}
+
+impl Nip11GetOptions {
+    /// New default options
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set proxy
+    #[inline]
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn proxy(mut self, proxy: SocketAddr) -> Self {
+        self.proxy = Some(proxy);
+        self
+    }
+
+    /// Set timeout
+    #[inline]
+    pub fn timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
     }
 }
 
@@ -181,27 +225,27 @@ pub struct FeeSchedule {
 }
 
 impl RelayInformationDocument {
-    /// Create new empty [`RelayInformationDocument`]
+    /// Create a new empty [`RelayInformationDocument`].
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Get Relay Information Document
-    ///
-    /// **Proxy is ignored for WASM targets!**
-    pub async fn get(mut url: Url, _proxy: Option<SocketAddr>) -> Result<Self, Error> {
-        #[cfg(not(target_arch = "wasm32"))]
-        let client: Client = {
-            let mut builder = Client::builder();
-            if let Some(proxy) = _proxy {
-                let proxy = format!("socks5h://{proxy}");
-                builder = builder.proxy(Proxy::all(proxy)?);
-            }
-            builder.build()?
-        };
+    pub async fn get(mut url: Url, opts: Nip11GetOptions) -> Result<Self, Error> {
+        let mut builder = Client::builder();
 
-        #[cfg(target_arch = "wasm32")]
-        let client: Client = Client::new();
+        // Set proxy
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(proxy) = opts.proxy {
+            let proxy = format!("socks5h://{proxy}");
+            builder = builder.proxy(Proxy::all(proxy)?);
+        }
+
+        // Set timeout
+        builder = builder.timeout(opts.timeout);
+
+        // Build client
+        let client: Client = builder.build()?;
 
         let url: &str = Self::with_http_scheme(&mut url)?;
         let req = client.get(url).header("Accept", "application/nostr+json");

@@ -8,7 +8,7 @@ use nostr::prelude::*;
 async fn main() -> Result<()> {
     let relay_url = Url::parse("wss://relay.damus.io")?;
 
-    let info = RelayInformationDocument::get(relay_url, None).await?;
+    let info = RelayInformationDocument::get(relay_url, Nip11GetOptions::default()).await?;
 
     println!("{:#?}", info);
 

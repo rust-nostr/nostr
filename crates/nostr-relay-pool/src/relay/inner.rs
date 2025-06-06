@@ -271,12 +271,20 @@ impl InnerRelay {
 
     #[cfg(feature = "nip11")]
     fn request_nip11_document(&self) {
-        let (allowed, proxy) = match self.opts.connection_mode {
-            ConnectionMode::Direct => (true, None),
+        #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
+        let mut opts: Nip11GetOptions =
+            Nip11GetOptions::default().timeout(DEFAULT_CONNECTION_TIMEOUT);
+
+        let allowed: bool = match self.opts.connection_mode {
+            ConnectionMode::Direct => true,
             #[cfg(not(target_arch = "wasm32"))]
-            ConnectionMode::Proxy(proxy) => (true, Some(proxy)),
+            ConnectionMode::Proxy(proxy) => {
+                // Update proxy
+                opts.proxy = Some(proxy);
+                true
+            }
             #[cfg(all(feature = "tor", not(target_arch = "wasm32")))]
-            ConnectionMode::Tor { .. } => (false, None),
+            ConnectionMode::Tor { .. } => false,
         };
 
         if allowed {
@@ -291,7 +299,7 @@ impl InnerRelay {
                 let url = self.url.clone();
                 let atomic = self.atomic.clone();
                 task::spawn(async move {
-                    match RelayInformationDocument::get(url.clone().into(), proxy).await {
+                    match RelayInformationDocument::get(url.clone().into(), opts).await {
                         Ok(document) => {
                             let mut d = atomic.document.write().await;
                             *d = document
