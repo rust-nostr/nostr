@@ -43,6 +43,7 @@
 
 - nostr: add NIP-88 support ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/892)
 - nostr: add `Nip11GetOptions` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/913)
+- nostr: add `RelayUrl::domain` method ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/914)
 
 ### Fixed
 

@@ -146,6 +146,26 @@ impl RelayUrl {
             .is_some_and(|host| host.ends_with(".onion"))
     }
 
+    /// If this URL has a host, and it is a domain name (not an IP address), return it.
+    /// Non-ASCII domains are punycode-encoded per IDNA if this is the host
+    /// of a special URL, or percent encoded for non-special URLs.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nostr::types::url::{Error, RelayUrl};
+    ///
+    /// let url = RelayUrl::parse("wss://127.0.0.1:7777").unwrap();
+    /// assert_eq!(url.domain(), None);
+    ///
+    /// let url = RelayUrl::parse("wss://relay.example.com").unwrap();
+    /// assert_eq!(url.domain(), Some("relay.example.com"));
+    /// ```
+    #[inline]
+    pub fn domain(&self) -> Option<&str> {
+        self.url.domain()
+    }
+
     /// Return the serialization of this relay URL without the trailing slash.
     ///
     /// This method will always remove the trailing slash.
@@ -386,5 +406,20 @@ mod tests {
         assert!(!non_onion_url.is_onion());
         let non_onion_url = RelayUrl::parse("ws://127.0.0.1:7777").unwrap();
         assert!(!non_onion_url.is_onion());
+    }
+
+    #[test]
+    fn test_domain() {
+        let url = RelayUrl::parse("wss://example.com").unwrap();
+        assert_eq!(url.domain(), Some("example.com"));
+
+        let url = RelayUrl::parse("wss://relay.example.com/").unwrap();
+        assert_eq!(url.domain(), Some("relay.example.com"));
+
+        let url = RelayUrl::parse("wss://example.com/path/to/resource").unwrap();
+        assert_eq!(url.domain(), Some("example.com"));
+
+        let url = RelayUrl::parse("wss://127.0.0.1:7777").unwrap();
+        assert_eq!(url.domain(), None);
     }
 }
