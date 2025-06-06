@@ -1,0 +1,45 @@
+[package]
+name = "nostr-sqldb"
+version = "0.41.0"
+edition = "2021"
+description = "SQL storage backend for Nostr apps"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "database", "postgres", "mysql", "sqlite"]
+
+[features]
+default = ["postgres"]
+postgres = [
+  "diesel/postgres",
+  "diesel-async/postgres",
+  "diesel_migrations/postgres",
+]
+mysql = ["diesel/mysql", "diesel-async/mysql", "diesel_migrations/mysql"]
+sqlite = [
+  "diesel/sqlite",
+  "diesel-async/sqlite",
+  "diesel_migrations/sqlite",
+  "diesel/returning_clauses_for_sqlite_3_35",
+]
+
+[dependencies]
+deadpool = { version = "0.12", features = ["managed", "rt_tokio_1"] }
+diesel = { version = "2.2", features = ["serde_json"] }
+diesel-async = { version = "0.5", features = ["deadpool"] }
+diesel_migrations = "2.2"
+nostr = { workspace = true, features = ["std"] }
+nostr-database = { workspace = true, features = ["flatbuf"] }
+tracing.workspace = true
+
+[dev-dependencies]
+nostr-relay-builder.workspace = true
+tokio.workspace = true
+tracing-subscriber.workspace = true
+
+[[example]]
+name = "postgres-relay"
+required-features = ["postgres"]

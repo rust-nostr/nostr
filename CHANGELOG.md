@@ -87,6 +87,7 @@
 - mls-memory-storage: add an in-memory implementation for MLS ([JeffG] at https://github.com/rust-nostr/nostr/pull/839)
 - mls-sqlite-storage: a sqlite implementation for MLS ([JeffG] at https://github.com/rust-nostr/nostr/pull/842)
 - mls: add new crate for implementing MLS messaging ([JeffG] at https://github.com/rust-nostr/nostr/pull/843)
+- sqldb: add `nostr-sqldb` crate ([Thomas Profelt] at https://github.com/rust-nostr/nostr/pull/835)
 - pool: add relay monitor ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/851)
 - sdk: add `Options::pool` ([Yuki Kishimoto])
 - relay-builder: add support for NIP-70 protected events ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/875)
