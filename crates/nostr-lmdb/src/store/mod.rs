@@ -91,17 +91,6 @@ impl Store {
         Ok(deleted)
     }
 
-    #[inline]
-    pub fn when_is_coordinate_deleted<'a>(
-        &self,
-        coordinate: &'a CoordinateBorrow<'a>,
-    ) -> Result<Option<Timestamp>, Error> {
-        let txn = self.db.read_txn()?;
-        let when = self.db.when_is_coordinate_deleted(&txn, coordinate)?;
-        txn.commit()?;
-        Ok(when)
-    }
-
     pub fn count(&self, filter: Filter) -> Result<usize, Error> {
         let txn = self.db.read_txn()?;
         let output = self.db.query(&txn, filter)?;

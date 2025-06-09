@@ -34,6 +34,7 @@
 - nostr: update `RelayInformationDocument::get` signature ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/913)
 - connect: remove `NostrConnect::get_relays` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/894)
 - database: merge traits into `NostrDatabase` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/916)
+- database: remove `NostrDatabase::has_coordinate_been_deleted` ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/917)
 
 ### Changed
 

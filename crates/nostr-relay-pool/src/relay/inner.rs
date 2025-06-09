@@ -1092,70 +1092,55 @@ impl InnerRelay {
             }
         }
 
-        // Check if event status
-        let status: DatabaseEventStatus = self.state.database().check_id(&event.id).await?;
+        // Check the event status
+        match self.state.database().check_id(&event.id).await? {
+            // Already saved, continue with code execution
+            DatabaseEventStatus::Saved => {}
+            // Deleted, immediately return
+            DatabaseEventStatus::Deleted => return Ok(None),
+            // Not existent, verify the event and try to save it to the database
+            DatabaseEventStatus::NotExistent => {
+                // Check if the event was already verified.
+                //
+                // This is useful if someone continues to send the same invalid event:
+                // since invalid events aren't stored in the database,
+                // skipping this check would result in the re-verification of the event.
+                // This may also be useful to avoid double verification if the event is received at the exact same time by many different Relay instances.
+                //
+                // This is important since event signature verification is a heavy job!
+                if !self.state.verified(&event.id)? {
+                    event.verify()?;
+                }
 
-        // Event deleted
-        if let DatabaseEventStatus::Deleted = status {
-            return Ok(None);
-        }
+                // Save into the database
+                let send_notification: bool = match self.state.database().save_event(&event).await?
+                {
+                    SaveEventStatus::Success => true,
+                    SaveEventStatus::Rejected(reason) => match reason {
+                        RejectedReason::Ephemeral => true,
+                        RejectedReason::Duplicate => true,
+                        RejectedReason::Deleted => false,
+                        RejectedReason::Expired => false,
+                        RejectedReason::Replaced => false,
+                        RejectedReason::InvalidDelete => false,
+                        RejectedReason::Other => true,
+                    },
+                };
 
-        // Check if coordinate has been deleted
-        // TODO: remove this since it's checked also later?
-        if let Some(coordinate) = event.coordinate() {
-            if self
-                .state
-                .database()
-                .has_coordinate_been_deleted(&coordinate, &event.created_at)
-                .await?
-            {
-                return Ok(None);
+                // If the notification should NOT be sent, immediately return.
+                if !send_notification {
+                    return Ok(None);
+                }
+
+                // Send notification
+                self.send_notification(
+                    RelayNotification::Event {
+                        subscription_id: subscription_id.clone(),
+                        event: Box::new(event.clone()),
+                    },
+                    true,
+                );
             }
-        }
-
-        // TODO: check if filter match
-
-        // Check if the event exists
-        if let DatabaseEventStatus::NotExistent = status {
-            // Check if the event was already verified.
-            //
-            // This is useful if someone continues to send the same invalid event:
-            // since invalid events aren't stored in the database,
-            // skipping this check would result in the re-verification of the event.
-            // This may also be useful to avoid double verification if the event is received at the exact same time by many different Relay instances.
-            //
-            // This is important since event signature verification is a heavy job!
-            if !self.state.verified(&event.id)? {
-                event.verify()?;
-            }
-
-            // Save into the database
-            let send_notification: bool = match self.state.database().save_event(&event).await? {
-                SaveEventStatus::Success => true,
-                SaveEventStatus::Rejected(reason) => match reason {
-                    RejectedReason::Ephemeral => true,
-                    RejectedReason::Duplicate => true,
-                    RejectedReason::Deleted => false,
-                    RejectedReason::Expired => false,
-                    RejectedReason::Replaced => false,
-                    RejectedReason::InvalidDelete => false,
-                    RejectedReason::Other => true,
-                },
-            };
-
-            // If the notification should NOT be sent, immediately return.
-            if !send_notification {
-                return Ok(None);
-            }
-
-            // Send notification
-            self.send_notification(
-                RelayNotification::Event {
-                    subscription_id: subscription_id.clone(),
-                    event: Box::new(event.clone()),
-                },
-                true,
-            );
         }
 
         Ok(Some(RelayMessage::Event {

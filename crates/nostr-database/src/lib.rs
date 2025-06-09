@@ -160,14 +160,6 @@ pub trait NostrDatabase: Debug + Send + Sync {
         event_id: &'a EventId,
     ) -> BoxedFuture<'a, Result<DatabaseEventStatus, DatabaseError>>;
 
-    // TODO: rename to `check_coordinate`?
-    /// Check if [`Coordinate`] has been deleted before a certain [`Timestamp`]
-    fn has_coordinate_been_deleted<'a>(
-        &'a self,
-        coordinate: &'a CoordinateBorrow<'a>,
-        timestamp: &'a Timestamp,
-    ) -> BoxedFuture<'a, Result<bool, DatabaseError>>;
-
     /// Get [`Event`] by [`EventId`]
     fn event_by_id<'a>(
         &'a self,
