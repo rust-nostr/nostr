@@ -42,9 +42,7 @@ impl NostrDatabase for NostrLMDB {
     fn backend(&self) -> Backend {
         Backend::LMDB
     }
-}
 
-impl NostrEventsDatabase for NostrLMDB {
     fn save_event<'a>(
         &'a self,
         event: &'a Event,
@@ -131,9 +129,7 @@ impl NostrEventsDatabase for NostrLMDB {
     fn delete(&self, filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
         Box::pin(async move { self.db.delete(filter).await.map_err(DatabaseError::backend) })
     }
-}
 
-impl NostrDatabaseWipe for NostrLMDB {
     #[inline]
     fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
         Box::pin(async move { self.db.wipe().await.map_err(DatabaseError::backend) })

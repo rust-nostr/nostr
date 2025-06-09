@@ -13,7 +13,7 @@ use tokio::sync::RwLock;
 
 use crate::{
     Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper, Events,
-    NostrDatabase, NostrDatabaseWipe, NostrEventsDatabase, SaveEventStatus,
+    NostrDatabase, SaveEventStatus,
 };
 
 const MAX_EVENTS: usize = 35_000;
@@ -107,9 +107,7 @@ impl NostrDatabase for MemoryDatabase {
     fn backend(&self) -> Backend {
         Backend::Memory
     }
-}
 
-impl NostrEventsDatabase for MemoryDatabase {
     fn save_event<'a>(
         &'a self,
         event: &'a Event,
@@ -227,9 +225,7 @@ impl NostrEventsDatabase for MemoryDatabase {
             }
         })
     }
-}
 
-impl NostrDatabaseWipe for MemoryDatabase {
     fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
         Box::pin(async move {
             match &self.inner {

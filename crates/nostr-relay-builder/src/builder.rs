@@ -172,7 +172,7 @@ pub struct RelayBuilder {
     /// Port
     pub(crate) port: Option<u16>,
     /// Database
-    pub(crate) database: Arc<dyn NostrEventsDatabase>,
+    pub(crate) database: Arc<dyn NostrDatabase>,
     /// Mode
     pub(crate) mode: RelayBuilderMode,
     /// Rate limit
@@ -236,9 +236,9 @@ impl RelayBuilder {
     #[inline]
     pub fn database<D>(mut self, database: D) -> Self
     where
-        D: IntoNostrEventsDatabase,
+        D: IntoNostrDatabase,
     {
-        self.database = database.into_database();
+        self.database = database.into_nostr_database();
         self
     }
 

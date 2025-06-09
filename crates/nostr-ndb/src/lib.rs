@@ -70,9 +70,7 @@ impl NostrDatabase for NdbDatabase {
     fn backend(&self) -> Backend {
         Backend::LMDB
     }
-}
 
-impl NostrEventsDatabase for NdbDatabase {
     fn save_event<'a>(
         &'a self,
         event: &'a Event,
@@ -169,9 +167,7 @@ impl NostrEventsDatabase for NdbDatabase {
     fn delete(&self, _filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
         Box::pin(async move { Err(DatabaseError::NotSupported) })
     }
-}
 
-impl NostrDatabaseWipe for NdbDatabase {
     #[inline]
     fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
         Box::pin(async move { Err(DatabaseError::NotSupported) })

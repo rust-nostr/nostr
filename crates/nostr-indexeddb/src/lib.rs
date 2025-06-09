@@ -307,9 +307,7 @@ impl NostrDatabase for WebDatabase {
     fn backend(&self) -> Backend {
         Backend::IndexedDB
     }
-}
 
-impl NostrEventsDatabase for WebDatabase {
     fn save_event<'a>(
         &'a self,
         event: &'a Event,
@@ -390,9 +388,7 @@ impl NostrEventsDatabase for WebDatabase {
     fn delete(&self, filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
         Box::pin(async move { self._delete(filter).await.map_err(DatabaseError::backend) })
     }
-}
 
-impl NostrDatabaseWipe for WebDatabase {
     fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
         Box::pin(async move { self._wipe().await.map_err(DatabaseError::backend) })
     }

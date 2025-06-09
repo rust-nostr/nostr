@@ -30,7 +30,7 @@ type WsTx<S> = SplitSink<WebSocketStream<S>, Message>;
 #[derive(Debug, Clone)]
 pub(super) struct InnerLocalRelay {
     addr: SocketAddr,
-    database: Arc<dyn NostrEventsDatabase>,
+    database: Arc<dyn NostrDatabase>,
     shutdown: Arc<Notify>,
     /// Channel to notify new event received
     ///

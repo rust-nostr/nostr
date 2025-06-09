@@ -1,6 +1,6 @@
-# Nostr Database
+# Nostr (Events) Database
 
-Database abstraction and in-memory implementation for nostr apps
+Events database abstraction and in-memory implementation for nostr apps.
 
 ## Nostr Database Trait
 

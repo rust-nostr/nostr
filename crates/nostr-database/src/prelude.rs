@@ -8,9 +8,8 @@
 #![allow(ambiguous_glob_reexports)]
 #![doc(hidden)]
 
-// External crates
 pub use nostr::prelude::*;
 
-// Internal modules
+pub use crate::ext::*;
 pub use crate::memory::{self, *};
 pub use crate::*;

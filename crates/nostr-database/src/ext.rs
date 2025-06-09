@@ -2,154 +2,16 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+//! Nostr database extension
+
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::fmt;
-use std::sync::Arc;
 
 use nostr::prelude::*;
 
-pub mod helper;
-
-use crate::{DatabaseError, Events, Profile};
-
-/// NIP65 relays map
-pub type RelaysMap = HashMap<RelayUrl, Option<RelayMetadata>>;
-
-/// Database event status
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum DatabaseEventStatus {
-    /// The event is saved into the database
-    Saved,
-    /// The event is marked as deleted
-    Deleted,
-    /// The event doesn't exist
-    NotExistent,
-}
-
-/// Reason why event wasn't stored into the database
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum RejectedReason {
-    /// Ephemeral events aren't expected to be stored
-    Ephemeral,
-    /// The event already exists
-    Duplicate,
-    /// The event was deleted
-    Deleted,
-    /// The event is expired
-    Expired,
-    /// The event was replaced
-    Replaced,
-    /// Attempt to delete a non-owned event
-    InvalidDelete,
-    /// Other reason
-    Other,
-}
-
-/// Save event status
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum SaveEventStatus {
-    /// The event has been successfully saved
-    Success,
-    /// The event has been rejected
-    Rejected(RejectedReason),
-}
-
-impl SaveEventStatus {
-    /// Check if event is successfully saved
-    #[inline]
-    pub fn is_success(&self) -> bool {
-        matches!(self, Self::Success)
-    }
-}
-
-#[doc(hidden)]
-pub trait IntoNostrEventsDatabase {
-    fn into_database(self) -> Arc<dyn NostrEventsDatabase>;
-}
-
-impl IntoNostrEventsDatabase for Arc<dyn NostrEventsDatabase> {
-    fn into_database(self) -> Arc<dyn NostrEventsDatabase> {
-        self
-    }
-}
-
-impl<T> IntoNostrEventsDatabase for T
-where
-    T: NostrEventsDatabase + Sized + 'static,
-{
-    fn into_database(self) -> Arc<dyn NostrEventsDatabase> {
-        Arc::new(self)
-    }
-}
-
-impl<T> IntoNostrEventsDatabase for Arc<T>
-where
-    T: NostrEventsDatabase + 'static,
-{
-    fn into_database(self) -> Arc<dyn NostrEventsDatabase> {
-        self
-    }
-}
-
-/// Nostr Events Database
-///
-/// Store for the nostr events.
-pub trait NostrEventsDatabase: fmt::Debug + Send + Sync {
-    /// Save [`Event`] into store
-    ///
-    /// **This method assumes that [`Event`] was already verified**
-    fn save_event<'a>(
-        &'a self,
-        event: &'a Event,
-    ) -> BoxedFuture<'a, Result<SaveEventStatus, DatabaseError>>;
-
-    /// Check event status by ID
-    ///
-    /// Check if the event is saved, deleted or not existent.
-    fn check_id<'a>(
-        &'a self,
-        event_id: &'a EventId,
-    ) -> BoxedFuture<'a, Result<DatabaseEventStatus, DatabaseError>>;
-
-    // TODO: rename to `check_coordinate`?
-    /// Check if [`Coordinate`] has been deleted before a certain [`Timestamp`]
-    fn has_coordinate_been_deleted<'a>(
-        &'a self,
-        coordinate: &'a CoordinateBorrow<'a>,
-        timestamp: &'a Timestamp,
-    ) -> BoxedFuture<'a, Result<bool, DatabaseError>>;
-
-    /// Get [`Event`] by [`EventId`]
-    fn event_by_id<'a>(
-        &'a self,
-        event_id: &'a EventId,
-    ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>>;
-
-    /// Count the number of events found with [`Filter`].
-    ///
-    /// Use `Filter::new()` or `Filter::default()` to count all events.
-    fn count(&self, filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>>;
-
-    /// Query stored events.
-    fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>>;
-
-    /// Get `negentropy` items
-    fn negentropy_items(
-        &self,
-        filter: Filter,
-    ) -> BoxedFuture<Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
-        Box::pin(async move {
-            let events: Events = self.query(filter).await?;
-            Ok(events.into_iter().map(|e| (e.id, e.created_at)).collect())
-        })
-    }
-
-    /// Delete all events that match the [Filter]
-    fn delete(&self, filter: Filter) -> BoxedFuture<Result<(), DatabaseError>>;
-}
+use crate::{DatabaseError, Events, NostrDatabase, Profile, RelaysMap};
 
 /// Nostr Event Store Extension
-pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
+pub trait NostrDatabaseExt: NostrDatabase {
     /// Get public key metadata
     fn metadata(
         &self,
@@ -275,4 +137,4 @@ pub trait NostrEventsDatabaseExt: NostrEventsDatabase {
     }
 }
 
-impl<T: NostrEventsDatabase + ?Sized> NostrEventsDatabaseExt for T {}
+impl<T: NostrDatabase + ?Sized> NostrDatabaseExt for T {}
