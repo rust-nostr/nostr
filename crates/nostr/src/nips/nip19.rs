@@ -673,14 +673,14 @@ impl Deref for Nip19Coordinate {
 }
 
 impl Nip19Coordinate {
-    pub fn new<I>(coordinate: Coordinate, relays: I) -> Result<Self, Error>
+    pub fn new<I>(coordinate: Coordinate, relays: I) -> Self
     where
         I: IntoIterator<Item = RelayUrl>,
     {
-        Ok(Self {
+        Self {
             coordinate,
             relays: relays.into_iter().collect(),
-        })
+        }
     }
 
     fn from_bech32_data(mut data: Vec<u8>) -> Result<Self, Error> {
