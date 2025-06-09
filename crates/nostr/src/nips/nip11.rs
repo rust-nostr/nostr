@@ -78,12 +78,14 @@ impl Default for Nip11GetOptions {
 impl Nip11GetOptions {
     /// New default options
     #[inline]
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Set proxy
     #[inline]
+    #[must_use]
     #[cfg(not(target_arch = "wasm32"))]
     pub fn proxy(mut self, proxy: SocketAddr) -> Self {
         self.proxy = Some(proxy);
@@ -92,6 +94,7 @@ impl Nip11GetOptions {
 
     /// Set timeout
     #[inline]
+    #[must_use]
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
