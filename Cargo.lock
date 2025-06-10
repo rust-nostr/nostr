@@ -2846,6 +2846,7 @@ dependencies = [
  "flatbuffers",
  "lru",
  "nostr",
+ "rustversion",
  "tokio",
 ]
 

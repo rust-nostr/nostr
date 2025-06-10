@@ -33,6 +33,7 @@ nostr-relay-builder = { version = "0.42", path = "./crates/nostr-relay-builder",
 nostr-relay-pool = { version = "0.42", path = "./crates/nostr-relay-pool", default-features = false }
 nostr-sdk = { version = "0.42", path = "./crates/nostr-sdk", default-features = false }
 reqwest = { version = "0.12", default-features = false }
+rustversion = "1.0"
 serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false }
 tempfile = "3.19"

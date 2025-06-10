@@ -19,6 +19,7 @@ flatbuf = ["dep:flatbuffers"]
 flatbuffers = { version = "23.5", optional = true }
 lru.workspace = true
 nostr = { workspace = true, features = ["std"] }
+rustversion.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
