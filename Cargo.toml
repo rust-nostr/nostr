@@ -1,5 +1,13 @@
 [workspace]
-members = ["crates/*"]
+members = [
+    "crates/*",
+
+    # Nostr MLS
+    "mls/nostr-mls",
+    "mls/nostr-mls-memory-storage",
+    "mls/nostr-mls-sqlite-storage",
+    "mls/nostr-mls-storage",
+]
 default-members = ["crates/*"]
 resolver = "2"
 
@@ -24,10 +32,10 @@ nostr-connect = { version = "0.42", path = "./crates/nostr-connect", default-fea
 nostr-database = { version = "0.42", path = "./crates/nostr-database", default-features = false }
 nostr-indexeddb = { version = "0.42", path = "./crates/nostr-indexeddb", default-features = false }
 nostr-lmdb = { version = "0.42", path = "./crates/nostr-lmdb", default-features = false }
-nostr-mls-memory-storage = { version = "0.42", path = "./crates/nostr-mls-memory-storage", default-features = false }
-nostr-mls-sqlite-storage = { version = "0.42", path = "./crates/nostr-mls-sqlite-storage", default-features = false }
-nostr-mls-storage = { version = "0.42", path = "./crates/nostr-mls-storage", default-features = false }
-nostr-mls = { version = "0.42", path = "./crates/nostr-mls", default-features = false }
+nostr-mls-memory-storage = { version = "0.42", path = "./mls/nostr-mls-memory-storage", default-features = false }
+nostr-mls-sqlite-storage = { version = "0.42", path = "./mls/nostr-mls-sqlite-storage", default-features = false }
+nostr-mls-storage = { version = "0.42", path = "./mls/nostr-mls-storage", default-features = false }
+nostr-mls = { version = "0.42", path = "./mls/nostr-mls", default-features = false }
 nostr-ndb = { version = "0.42", path = "./crates/nostr-ndb", default-features = false }
 nostr-relay-builder = { version = "0.42", path = "./crates/nostr-relay-builder", default-features = false }
 nostr-relay-pool = { version = "0.42", path = "./crates/nostr-relay-pool", default-features = false }
