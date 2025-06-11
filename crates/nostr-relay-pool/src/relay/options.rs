@@ -19,6 +19,8 @@ pub struct RelayOptions {
     pub(super) connection_mode: ConnectionMode,
     pub(super) flags: RelayServiceFlags,
     pub(super) reconnect: bool,
+    pub(super) sleep_when_idle: bool,
+    pub(super) idle_timeout: Duration,
     pub(super) retry_interval: Duration,
     pub(super) adjust_retry_interval: bool,
     pub(super) limits: RelayLimits,
@@ -32,6 +34,8 @@ impl Default for RelayOptions {
             connection_mode: ConnectionMode::default(),
             flags: RelayServiceFlags::default(),
             reconnect: true,
+            sleep_when_idle: false,
+            idle_timeout: Duration::from_secs(300),
             retry_interval: DEFAULT_RETRY_INTERVAL,
             adjust_retry_interval: true,
             limits: RelayLimits::default(),
@@ -128,6 +132,20 @@ impl RelayOptions {
     #[inline]
     pub fn notification_channel_size(mut self, size: usize) -> Self {
         self.notification_channel_size = size;
+        self
+    }
+
+    /// Sleep when idle (default: false)
+    #[inline]
+    pub fn sleep_when_idle(mut self, enable: bool) -> Self {
+        self.sleep_when_idle = enable;
+        self
+    }
+
+    /// Set idle timeout for on-demand connections (default: 5 minutes)
+    #[inline]
+    pub fn idle_timeout(mut self, timeout: Duration) -> Self {
+        self.idle_timeout = timeout;
         self
     }
 }

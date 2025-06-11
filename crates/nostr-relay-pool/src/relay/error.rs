@@ -57,6 +57,8 @@ pub enum Error {
     NotReady,
     /// Relay not connected
     NotConnected,
+    /// Relay is sleeping
+    Sleeping,
     /// Relay banned
     Banned,
     /// Connection rejected
@@ -144,6 +146,7 @@ impl fmt::Display for Error {
             }
             Self::NotReady => write!(f, "relay is initialized but not ready"),
             Self::NotConnected => write!(f, "relay not connected"),
+            Self::Sleeping => write!(f, "relay is sleeping"),
             Self::Banned => write!(f, "relay banned"),
             Self::ConnectionRejected { reason } => {
                 let reason: &str = reason.as_deref().unwrap_or("unknown");

@@ -49,6 +49,7 @@
 - nostr: add NIP-88 support (https://github.com/rust-nostr/nostr/pull/892)
 - nostr: add `Nip11GetOptions` (https://github.com/rust-nostr/nostr/pull/913)
 - nostr: add `RelayUrl::domain` method (https://github.com/rust-nostr/nostr/pull/914)
+- pool: allow putting relays to sleep when idle (https://github.com/rust-nostr/nostr/pull/926)
 
 ### Fixed
 

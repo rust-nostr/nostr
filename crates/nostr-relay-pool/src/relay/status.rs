@@ -41,6 +41,7 @@ impl AtomicRelayStatus {
             4 => RelayStatus::Disconnected,
             5 => RelayStatus::Terminated,
             6 => RelayStatus::Banned,
+            7 => RelayStatus::Sleeping,
             _ => unreachable!(),
         }
     }
@@ -63,6 +64,8 @@ pub enum RelayStatus {
     Terminated = 5,
     /// The relay has been banned.
     Banned = 6,
+    /// Relay is sleeping
+    Sleeping = 7,
 }
 
 impl fmt::Display for RelayStatus {
@@ -75,6 +78,7 @@ impl fmt::Display for RelayStatus {
             Self::Disconnected => write!(f, "Disconnected"),
             Self::Terminated => write!(f, "Terminated"),
             Self::Banned => write!(f, "Banned"),
+            Self::Sleeping => write!(f, "Sleeping"),
         }
     }
 }
@@ -106,10 +110,15 @@ impl RelayStatus {
         matches!(self, Self::Banned)
     }
 
+    /// Check if is [`RelayStatus::Sleeping`]
+    pub(crate) fn is_sleeping(&self) -> bool {
+        matches!(self, Self::Sleeping)
+    }
+
     /// Check if relay can start a connection (status is `initialized` or `terminated`)
     #[inline]
     pub(crate) fn can_connect(&self) -> bool {
-        matches!(self, Self::Initialized | Self::Terminated)
+        matches!(self, Self::Initialized | Self::Terminated | Self::Sleeping)
     }
 }
 
@@ -213,5 +222,17 @@ mod tests {
         assert!(!status.can_connect());
         let relay = AtomicRelayStatus::new(status);
         assert_eq!(relay.load(), RelayStatus::Banned);
+    }
+
+    #[test]
+    fn test_status_sleeping() {
+        let status = RelayStatus::Sleeping;
+        assert!(!status.is_initialized());
+        assert!(!status.is_connected());
+        assert!(!status.is_disconnected());
+        assert!(!status.is_terminated());
+        assert!(!status.is_banned());
+        assert!(status.is_sleeping());
+        assert!(status.can_connect());
     }
 }

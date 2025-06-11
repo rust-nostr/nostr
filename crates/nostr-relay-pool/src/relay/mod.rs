@@ -286,10 +286,11 @@ impl Relay {
                         | RelayStatus::Pending
                         | RelayStatus::Connecting
                         | RelayStatus::Disconnected => {}
-                        // Connected or terminated/banned
-                        RelayStatus::Connected | RelayStatus::Terminated | RelayStatus::Banned => {
-                            break
-                        }
+                        // Connected or terminated/banned/sleeping
+                        RelayStatus::Connected
+                        | RelayStatus::Terminated
+                        | RelayStatus::Banned
+                        | RelayStatus::Sleeping => break,
                     }
                 }
             }
@@ -568,9 +569,6 @@ impl Relay {
         policy: ReqExitPolicy,
         mut callback: impl FnMut(Event),
     ) -> Result<(), Error> {
-        // Perform health checks
-        self.inner.health_check()?;
-
         // Create channel
         let (tx, mut rx) = mpsc::channel(512);
 
@@ -703,8 +701,8 @@ impl Relay {
         items: Vec<(EventId, Timestamp)>,
         opts: &SyncOptions,
     ) -> Result<Reconciliation, Error> {
-        // Perform health checks
-        self.inner.health_check()?;
+        // Check if relay is operational
+        self.inner.ensure_operational()?;
 
         // Check if relay can read
         if !self.inner.flags.can_read() {
@@ -816,6 +814,12 @@ mod tests {
             .unwrap();
 
         (id, relay, mock)
+    }
+
+    fn check_relay_is_sleeping(relay: &Relay) {
+        assert_eq!(relay.status(), RelayStatus::Sleeping);
+        assert!(relay.status().can_connect());
+        assert!(!relay.inner.is_running());
     }
 
     #[tokio::test]
@@ -1123,7 +1127,7 @@ mod tests {
         assert_eq!(relay.status(), RelayStatus::Banned);
 
         // Health check
-        let res = relay.inner.health_check();
+        let res = relay.inner.ensure_operational();
         assert!(matches!(res.unwrap_err(), Error::Banned));
     }
 
@@ -1523,4 +1527,87 @@ mod tests {
     }
 
     // TODO: add negentropy reconciliation test
+
+    #[tokio::test]
+    async fn test_sleep_when_idle() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        // Relay
+        let opts = RelayOptions::default()
+            .sleep_when_idle(true)
+            .idle_timeout(Duration::from_secs(2));
+        let relay = new_relay(url, opts);
+
+        // Connect
+        relay.try_connect(Duration::from_secs(1)).await.unwrap();
+
+        // Check that is connected
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        // Wait to make sure the relay go in sleep mode (see SLEEP_INTERVAL const)
+        time::sleep(Duration::from_secs(3)).await;
+        check_relay_is_sleeping(&relay);
+
+        // Test wake up when sending an event
+        let event = EventBuilder::text_note("text wake-up")
+            .sign_with_keys(&Keys::generate())
+            .unwrap();
+        relay.send_event(&event).await.unwrap();
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        // Check if relay is sleeping
+        time::sleep(Duration::from_secs(3)).await;
+        check_relay_is_sleeping(&relay);
+
+        // Test wake up when fetch events
+        let filter = Filter::new().kind(Kind::TextNote);
+        let _ = relay
+            .fetch_events(filter, Duration::from_secs(10), ReqExitPolicy::ExitOnEOSE)
+            .await
+            .unwrap();
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        // Check if relay is sleeping
+        time::sleep(Duration::from_secs(3)).await;
+        check_relay_is_sleeping(&relay);
+
+        // Test wake up when sync
+        let filter = Filter::new().kind(Kind::TextNote);
+        let _ = relay.sync(filter, &SyncOptions::new()).await.unwrap();
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        // Check if relay is sleeping
+        time::sleep(Duration::from_secs(3)).await;
+        check_relay_is_sleeping(&relay);
+    }
+
+    #[tokio::test]
+    async fn test_sleep_when_idle_with_long_lived_subscription() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        // Relay
+        let opts = RelayOptions::default()
+            .sleep_when_idle(true)
+            .idle_timeout(Duration::from_secs(2));
+        let relay = new_relay(url, opts);
+
+        // Connect
+        relay.try_connect(Duration::from_secs(1)).await.unwrap();
+
+        // Check that is connected
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        let filter = Filter::new().kind(Kind::TextNote);
+        relay
+            .subscribe(filter, SubscribeOptions::default())
+            .await
+            .unwrap();
+
+        time::sleep(Duration::from_secs(5)).await;
+        assert_eq!(relay.status(), RelayStatus::Connected);
+    }
 }
