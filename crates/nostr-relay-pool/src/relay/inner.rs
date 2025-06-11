@@ -20,6 +20,7 @@ use nostr::secp256k1::rand::{self, Rng};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard};
+use tokio::time::interval;
 
 use super::constants::{
     DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE,
@@ -186,6 +187,73 @@ impl InnerRelay {
             external_notification_sender: None,
         }
     }
+    /// Check if relay should sleep (only when on-demand is on)
+    pub(super) fn should_sleep(&self) -> bool {
+        if !self.opts.enable_on_demand {
+            return false;
+        }
+        let status = self.status();
+        // Only sleep if connected currently
+        if !status.is_connected() {
+            return false;
+        }
+        // No sleep if there are active subscriptions
+        if self.stats.active_subscriptions() > 0 {
+            return false;
+        }
+        // See if enough time elapsed since last activity
+        let last_activity = self.stats.last_activity_at();
+        // If no activity has been recorded yet, use connection time
+        let reference_time = if last_activity == Timestamp::from(0) {
+            self.stats.connected_at()
+        } else {
+            last_activity
+        };
+        // If reference time is still 0, do not sleep, relat has just started
+        if reference_time == Timestamp::from(0) {
+            return false;
+        }
+
+        let idle_duration = Timestamp::now().as_u64() - reference_time.as_u64();
+        idle_duration >= self.opts.idle_timeout.as_secs()
+    }
+
+    /// Put relay to sleep (disconnect but allow wake-up)
+    #[inline]
+    pub(super) fn go_to_sleep(&self) {
+        if self.should_sleep() {
+            tracing::debug!(url = %self.url, "Putting relay to sleep (on-demand mode)");
+
+            // Set status to sleeping before you disconnect
+            self.set_status(RelayStatus::Sleeping, true);
+
+            // Terminate connection task (this closes WebSocket)
+            self.atomic.channels.terminate();
+        }
+    }
+
+    /// Wake up relay if it is sleeping
+    #[inline]
+    pub(super) async fn wake_up_if_sleeping(&self) -> Result<(), Error> {
+        if self.status().is_sleeping() {
+            tracing::debug!(url = %self.url, "Waking up sleeping relay");
+
+            // Update activity timestamp
+            self.stats.update_activity();
+
+            // Spawn new connection task
+            self.spawn_connection_task(None);
+        }
+
+        Ok(())
+    }
+    /// Modify existing send_event_related methods to wake up relays
+    #[inline]
+    pub(super) async fn ensure_awake_for_activity(&self) -> Result<(), Error> {
+        self.wake_up_if_sleeping().await?;
+        self.stats.update_activity();
+        Ok(())
+    }
 
     #[inline]
     pub fn connection_mode(&self) -> &ConnectionMode {
@@ -219,6 +287,7 @@ impl InnerRelay {
                     tracing::info!("Completely disconnected from '{}'", self.url)
                 }
                 RelayStatus::Banned => tracing::info!(url = %self.url, "Relay banned."),
+                RelayStatus::Sleeping => tracing::info!("Relay '{}' is sleeping", self.url),
             }
         }
 
@@ -243,6 +312,10 @@ impl InnerRelay {
         // The relay has been banned
         if status.is_banned() {
             return Err(Error::Banned);
+        }
+        // Sleeping relays should be treated as not connected
+        if status.is_sleeping() {
+            return Err(Error::NotConnected);
         }
 
         if !status.is_connected()
@@ -440,6 +513,35 @@ impl InnerRelay {
         // Spawn task
         let relay: InnerRelay = self.clone();
         task::spawn(relay.connection_task(stream));
+    }
+
+    /// Starts self monitoring for on-demand connections
+    pub(super) fn start_self_monitoring(&self) {
+        // Only start monitoring if on-demand is enabled
+        if !self.opts.enable_on_demand {
+            return;
+        }
+
+        tracing::debug!(url = %self.url, "Starting self-monitoring for on-demand connections");
+
+        let relay = self.clone();
+        task::spawn(async move {
+            let mut interval = interval(Duration::from_secs(60));
+
+            loop {
+                interval.tick().await;
+
+                // Check if relay needs to sleep
+                relay.go_to_sleep();
+
+                // Exit monitoring if relay is terminated or banned
+                let status = relay.status();
+                if status.is_terminated() || status.is_banned() {
+                    tracing::debug!(url = %relay.url, "Stopping self-monitoring (relay terminated/banned)");
+                    break;
+                }
+            }
+        });
     }
 
     async fn connection_task(self, mut stream: Option<(BoxSink, BoxStream)>) {
@@ -671,6 +773,9 @@ impl InnerRelay {
         // Request information document
         #[cfg(feature = "nip11")]
         self.request_nip11_document();
+
+        // Begin self-monitoring for on-demand connections
+        self.start_self_monitoring();
 
         // (Re)subscribe to relay
         if self.flags.can_read() {

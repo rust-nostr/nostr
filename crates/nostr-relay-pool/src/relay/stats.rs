@@ -4,7 +4,7 @@
 
 //! Relay Stats
 
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Duration;
@@ -32,6 +32,9 @@ struct InnerRelayConnectionStats {
     // TODO: keep track of msg/event sending attempts and success?
     connected_at: AtomicU64,
     first_connection_at: AtomicU64,
+    // Activity tracking for on-demand connections
+    last_activity_at: AtomicU64,
+    active_subscriptions: AtomicU32,
     #[cfg(not(target_arch = "wasm32"))]
     latency: AverageLatency,
 }
@@ -87,6 +90,40 @@ impl RelayConnectionStats {
     #[inline]
     pub fn first_connection_timestamp(&self) -> Timestamp {
         Timestamp::from(self.inner.first_connection_at.load(Ordering::SeqCst))
+    }
+    /// Get UNIX timestamp of last activity
+    #[inline]
+    pub fn last_activity_at(&self) -> Timestamp {
+        Timestamp::from(self.inner.last_activity_at.load(Ordering::SeqCst))
+    }
+
+    /// Get number of active subscriptions
+    #[inline]
+    pub fn active_subscriptions(&self) -> u32 {
+        self.inner.active_subscriptions.load(Ordering::SeqCst)
+    }
+
+    /// Update last activity timestamp
+    #[inline]
+    pub(super) fn update_activity(&self) {
+        let now = Timestamp::now().as_u64();
+        self.inner.last_activity_at.store(now, Ordering::SeqCst);
+    }
+
+    /// Increment active subscription count
+    #[inline]
+    pub(super) fn increment_subscriptions(&self) {
+        self.inner
+            .active_subscriptions
+            .fetch_add(1, Ordering::SeqCst);
+    }
+
+    /// Decrement active subscription count
+    #[inline]
+    pub(super) fn decrement_subscriptions(&self) {
+        self.inner
+            .active_subscriptions
+            .fetch_sub(1, Ordering::SeqCst);
     }
 
     /// Calculate latency

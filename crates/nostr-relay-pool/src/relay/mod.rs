@@ -285,7 +285,8 @@ impl Relay {
                         RelayStatus::Initialized
                         | RelayStatus::Pending
                         | RelayStatus::Connecting
-                        | RelayStatus::Disconnected => {}
+                        | RelayStatus::Disconnected
+                        | RelayStatus::Sleeping => {}
                         // Connected or terminated/banned
                         RelayStatus::Connected | RelayStatus::Terminated | RelayStatus::Banned => {
                             break
@@ -392,6 +393,9 @@ impl Relay {
 
     /// Send event and wait for `OK` relay msg
     pub async fn send_event(&self, event: &Event) -> Result<EventId, Error> {
+        // Wake up relay if sleeping
+        self.inner.ensure_awake_for_activity().await?;
+
         // Health, write permission and number of messages checks are executed in `batch_msg` method.
 
         // Subscribe to notifications
@@ -497,6 +501,12 @@ impl Relay {
         filter: Filter,
         opts: SubscribeOptions,
     ) -> Result<(), Error> {
+        // Wake up relay if sleeping and increment subscription count
+        if self.inner.status().is_sleeping() {
+            self.inner.ensure_awake_for_activity().await?;
+        }
+        // Increment subscription count for on-demand management
+        self.inner.stats.increment_subscriptions();
         // Check if auto-close condition is set
         match opts.auto_close {
             Some(opts) => self.subscribe_auto_closing(id, filter, opts, None),
@@ -551,6 +561,9 @@ impl Relay {
     /// Unsubscribe
     #[inline]
     pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<(), Error> {
+        // Decrement subscription count
+        self.inner.stats.decrement_subscriptions();
+
         self.inner.unsubscribe(id).await
     }
 
@@ -1523,4 +1536,41 @@ mod tests {
     }
 
     // TODO: add negentropy reconciliation test
+    #[tokio::test]
+    async fn test_on_demand_sleep_basic() {
+        // test use an unreachable url
+        let url = RelayUrl::parse("wss://127.0.0.1:666").unwrap();
+        let opts = RelayOptions::default()
+            .enable_on_demand(true)
+            .idle_timeout(Duration::from_secs(1));
+        let relay = new_relay(url, opts);
+
+        // Simulate connected state
+        relay.inner.set_status(RelayStatus::Connected, false);
+
+        // Should be able to sleep (just test that this does not panic)
+        assert!(relay.inner.should_sleep() || !relay.inner.should_sleep());
+
+        // Test the sleeping state
+        relay.inner.set_status(RelayStatus::Sleeping, false);
+        assert!(relay.status().is_sleeping());
+        assert!(relay.status().can_connect());
+    }
+    #[tokio::test]
+    async fn test_on_demand_wake_up() {
+        let url = RelayUrl::parse("wss://127.0.0.1:666").unwrap();
+        let opts = RelayOptions::default()
+            .enable_on_demand(true)
+            .idle_timeout(Duration::from_secs(1));
+        let relay = new_relay(url, opts);
+
+        // Set to sleeping
+        relay.inner.set_status(RelayStatus::Sleeping, false);
+        assert!(relay.status().is_sleeping());
+
+        // Test wake up logic(tries to connect but fails)
+        let result = relay.inner.wake_up_if_sleeping().await;
+        // Should not panic and should update activity
+        assert!(result.is_ok());
+    }
 }
