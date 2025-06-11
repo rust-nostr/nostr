@@ -10,14 +10,10 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::convert::Infallible;
 use core::fmt;
-use core::str::FromStr;
 
-use bech32::Fe32;
-
-use super::nip19::{
-    self, FromBech32, Nip19, Nip19Coordinate, Nip19Event, Nip19Prefix, Nip19Profile, ToBech32,
-};
+use super::nip19::{self, FromBech32, Nip19, Nip19Coordinate, Nip19Event, Nip19Profile, ToBech32};
 use crate::nips::nip01::Coordinate;
+use crate::parser::{NostrParser, NostrParserOptions, Token};
 use crate::{EventId, PublicKey};
 
 /// URI scheme
@@ -208,70 +204,26 @@ impl Nip21 {
 ///
 /// The result **is not deduplicated**, meaning that if a URI appears multiple times in the input,
 /// it will appear the same number of times in the output.
+#[deprecated(since = "0.43.0", note = "Use the NostrParser instead.")]
 pub fn extract_from_text(content: &str) -> Vec<Nip21> {
+    let parser: NostrParser = NostrParser::new();
+    let opts: NostrParserOptions = NostrParserOptions::disable_all().nostr_uris(true);
+
     let mut list: Vec<Nip21> = Vec::new();
 
-    // Split `nostr:` strings
-    let mut splitted = content.split(SCHEME_WITH_COLON);
-
-    // Remove the first value.
-    // The first value will never be a nostr URI.
-    splitted.next();
-
-    for val in splitted.filter(|v| !v.is_empty()) {
-        // Parse prefix from string
-        match Nip19Prefix::from_str(val) {
-            Ok(prefix) => {
-                // Now we have the following string:
-                // <bech32-prefix><bech32-data>[<non-bech32-data>]
-                // We need to take the valid bech32 string, so `<bech32-prefix>` + `<bech32-data>`.
-
-                // Take the valid bech32 string
-                if let Some(valid) = take_valid_bech32(prefix, val) {
-                    // Try to parse the valid bech32 string as NIP19
-                    if let Ok(val) = Nip19::from_bech32(valid) {
-                        // Try to convert NIP19 to NIP21
-                        if let Ok(item) = Nip21::try_from(val) {
-                            list.push(item);
-                        }
-                    }
-                }
-            }
-            Err(..) => continue,
+    for token in parser.parse(content).opts(opts) {
+        if let Token::Nostr(uri) = token {
+            list.push(uri);
         }
     }
 
     list
 }
 
-fn take_valid_bech32(prefix: Nip19Prefix, full_input: &str) -> Option<&str> {
-    // <prefix> + 1
-    // Example: npub1, nsec1, nevent1
-    let full_prefix_len: usize = prefix.len() + 1;
-
-    // Get input without prefix
-    let input: &str = full_input.get(full_prefix_len..)?;
-
-    // Keep track of valid len
-    let mut valid_len: usize = 0;
-
-    for c in input.chars() {
-        // Check if it's a valid bech32 char
-        match Fe32::from_char(c) {
-            Ok(..) => {
-                // The UTF8 len for bech32 chars will always be `1`
-                valid_len += 1;
-            }
-            Err(..) => break,
-        }
-    }
-
-    // Take full valid input
-    full_input.get(..full_prefix_len + valid_len)
-}
-
 #[cfg(test)]
 mod tests {
+    use core::str::FromStr;
+
     use super::*;
     use crate::types::RelayUrl;
 
@@ -330,57 +282,5 @@ mod tests {
                 .unwrap_err(),
             Error::UnsupportedVariant(UnsupportedVariant::SecretKey)
         );
-    }
-
-    #[test]
-    fn test_extract_nostr_uris_from_text() {
-        let pubkey = Nip21::Pubkey(
-            PublicKey::from_bech32(
-                "npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
-            )
-            .unwrap(),
-        );
-        let pubkey2 = Nip21::Pubkey(
-            PublicKey::from_bech32(
-                "npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c",
-            )
-            .unwrap(),
-        );
-        let event = Nip21::Event(Nip19Event::from_bech32("nevent1qqsz8xjlh82ykfr3swjk5fw0l3v33pcsaq4z6f7q0zy2dxrfm7x2yeqpz4mhxue69uhkummnw3ezummcw3ezuer9wchsygrgmqgktyvpqzma5slu9rmarlqj24zxdcg3tzrtneamxfhktmzzwgpsgqqqqqqsmxphku").unwrap());
-        let profile1 = Nip21::Profile(Nip19Profile::from_bech32("nprofile1qqsqfyvdlsmvj0nakmxq6c8n0c2j9uwrddjd8a95ynzn9479jhlth3gpvemhxue69uhkv6tvw3jhytnwdaehgu3wwa5kuef0dec82c33w94xwcmdd3cxketedsux6ertwecrgues0pk8xdrew33h27pkd4unvvpkw3nkv7pe0p68gat58ycrw6ps0fenwdnvva48w0mzwfhkzerrv9ehg0t5wf6k2qgnwaehxw309ac82unsd3jhqct89ejhxtcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsh8njvk").unwrap());
-        let profile2 = Nip21::Profile(Nip19Profile::from_bech32("nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40").unwrap());
-
-        let vector = vec![
-            ("#rustnostr #nostr #kotlin #jvm\n\nnostr:nevent1qqsz8xjlh82ykfr3swjk5fw0l3v33pcsaq4z6f7q0zy2dxrfm7x2yeqpz4mhxue69uhkummnw3ezummcw3ezuer9wchsygrgmqgktyvpqzma5slu9rmarlqj24zxdcg3tzrtneamxfhktmzzwgpsgqqqqqqsmxphku", vec![event]),
-            ("I have never been very active in discussions but working on rust-nostr (at the time called nostr-rs-sdk) since September 2022 🦀 \n\nIf I remember correctly there were also nostr:nprofile1qqsqfyvdlsmvj0nakmxq6c8n0c2j9uwrddjd8a95ynzn9479jhlth3gpvemhxue69uhkv6tvw3jhytnwdaehgu3wwa5kuef0dec82c33w94xwcmdd3cxketedsux6ertwecrgues0pk8xdrew33h27pkd4unvvpkw3nkv7pe0p68gat58ycrw6ps0fenwdnvva48w0mzwfhkzerrv9ehg0t5wf6k2qgnwaehxw309ac82unsd3jhqct89ejhxtcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsh8njvk and nostr:nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40", vec![profile1, profile2.clone()]),
-            ("Test ending with full stop: nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet.", vec![pubkey.clone()]),
-            ("nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet", vec![pubkey.clone()]),
-            ("Public key without prefix npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet", vec![]),
-            ("Public key `nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet+.", vec![pubkey.clone()]),
-            ("Duplicated npub: nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet, nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet", vec![pubkey.clone(), pubkey]),
-            ("Uppercase nostr:npub1DRVpZev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eSEET", vec![]),
-            ("Npub and nprofile that point to the same public key: nostr:npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c and nostr:nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40", vec![pubkey2, profile2]),
-            ("content without nostr URIs", vec![]),
-        ];
-
-        for (content, expected) in vector {
-            let objs = extract_from_text(content);
-            assert_eq!(objs, expected);
-        }
-    }
-}
-
-#[cfg(bench)]
-mod benches {
-    use test::{black_box, Bencher};
-
-    use super::*;
-
-    #[bench]
-    pub fn extract_nostr_uris_from_text(bh: &mut Bencher) {
-        let text: &str = "I have never been very active in discussions but working on rust-nostr (at the time called nostr-rs-sdk) since September 2022 🦀 \n\nIf I remember correctly there were also nostr:nprofile1qqsqfyvdlsmvj0nakmxq6c8n0c2j9uwrddjd8a95ynzn9479jhlth3gpvemhxue69uhkv6tvw3jhytnwdaehgu3wwa5kuef0dec82c33w94xwcmdd3cxketedsux6ertwecrgues0pk8xdrew33h27pkd4unvvpkw3nkv7pe0p68gat58ycrw6ps0fenwdnvva48w0mzwfhkzerrv9ehg0t5wf6k2qgnwaehxw309ac82unsd3jhqct89ejhxtcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsh8njvk and nostr:nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40";
-        bh.iter(|| {
-            black_box(extract_from_text(text));
-        });
     }
 }

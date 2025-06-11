@@ -120,6 +120,7 @@ impl Tags {
     ///
     /// This method deduplicates the tags.
     pub fn from_text(text: &str) -> Self {
+        #[allow(deprecated)]
         let list: Vec<Nip21> = nip21::extract_from_text(text);
 
         // The capacity here may be over-estimated since items in the `list` aren't deduplicated

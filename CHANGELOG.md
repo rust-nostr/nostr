@@ -58,6 +58,8 @@
 
 ### Deprecated
 
+- nostr: deprecate `nip21::extract_from_text` function ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/923)
+
 ## v0.42.1 - 2025/05/26
 
 ### Added
