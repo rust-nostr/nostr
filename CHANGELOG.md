@@ -59,6 +59,7 @@
 ### Deprecated
 
 - nostr: deprecate `nip21::extract_from_text` function ([Yuki Kishimoto] at https://github.com/rust-nostr/nostr/pull/923)
+- nostr: deprecate `Tags::from_text` constructor ([Yuki Kishimoto])
 
 ## v0.42.1 - 2025/05/26
 
