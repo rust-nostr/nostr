@@ -192,7 +192,7 @@ impl InnerRelay {
         &self.opts.connection_mode
     }
 
-    /// Is connection task running?
+    /// Check if the connection task is running
     #[inline]
     pub(super) fn is_running(&self) -> bool {
         self.atomic.running.load(Ordering::SeqCst)
@@ -432,27 +432,32 @@ impl InnerRelay {
     }
 
     pub(super) fn spawn_connection_task(&self, stream: Option<(BoxSink, BoxStream)>) {
+        // Check if the connection task is already running
+        // This is checked also later, but it's checked also here to avoid a full-clone if we know that is already running.
         if self.is_running() {
             tracing::warn!(url = %self.url, "Connection task is already running.");
             return;
         }
 
-        // Spawn task
+        // Full-clone
         let relay: InnerRelay = self.clone();
+
+        // Spawn task
         task::spawn(relay.connection_task(stream));
     }
 
+    /// This **MUST** be called only by the [`InnerRelay::spawn_connection_task`] method!
     async fn connection_task(self, mut stream: Option<(BoxSink, BoxStream)>) {
-        // Set connection task as running
+        // Set the connection task as running and get the previous value.
         let is_running: bool = self.atomic.running.swap(true, Ordering::SeqCst);
 
-        // Re-check if is already running.
-        // This must never happen.
-        assert!(
-            !is_running,
-            "Connection task for '{}' is already running.",
-            self.url
-        );
+        // Re-check if the connection task is already running.
+        // This is required because may happen that two tasks are spawned at the exact same moment.
+        // Not use the "assert" macro since will cause the task to panic.
+        if is_running {
+            tracing::warn!(url = %self.url, "Connection task is already running.");
+            return;
+        }
 
         // Lock receiver
         let mut rx_nostr = self.atomic.channels.rx_nostr().await;
@@ -495,7 +500,7 @@ impl InnerRelay {
 
             // Check if reconnection is enabled
             if self.opts.reconnect {
-                // Check if relay is marked as disconnected. If not, update status.
+                // Check if the relay is marked as disconnected. If not, update status.
                 // Check if disconnected to avoid a possible double log
                 if !status.is_disconnected() {
                     self.set_status(RelayStatus::Disconnected, true);
@@ -527,7 +532,7 @@ impl InnerRelay {
             }
         }
 
-        // Set that connection task is no longer running
+        // Mark the connection task as stopped.
         self.atomic.running.store(false, Ordering::SeqCst);
 
         tracing::debug!(url = %self.url, "Auto connect loop terminated.");
