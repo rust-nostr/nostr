@@ -538,6 +538,13 @@ impl Iterator for FindMatches<'_> {
     }
 }
 
+enum HandleMatch<'a> {
+    /// Found a valid token
+    Token(Token<'a>),
+    /// No valid token found, perform recursion.
+    Recursion,
+}
+
 /// Nostr parser iterator
 pub struct NostrParserIter<'a> {
     /// The original text
@@ -573,30 +580,51 @@ impl<'a> NostrParserIter<'a> {
         self
     }
 
-    fn handle_match(&mut self, mat: Match) -> Token<'a> {
+    fn handle_match(&mut self, mat: Match) -> HandleMatch<'a> {
         // Update last match end
         self.last_match_end = mat.end;
 
         // Extract the matched string
         let data: &str = &self.text[mat.start..mat.end];
 
+        // Handle match type
         match mat.r#type {
             MatchType::Url => match Url::parse(data) {
-                Ok(url) => Token::Url(url),
-                Err(_) => self.handle_str_as_text(data),
+                Ok(url) => HandleMatch::Token(Token::Url(url)),
+                // If the URL parsing is invalid, the fallback is to treat it as text.
+                // But may happen that the FindMatches failed to identify an invalid URL,
+                // so this additional check prevents pushing a `Token::Text` if the `text` options isn't enabled.
+                Err(_) => {
+                    if self.matches.opts.text {
+                        HandleMatch::Token(self.handle_str_as_text(data))
+                    } else {
+                        HandleMatch::Recursion
+                    }
+                }
             },
             MatchType::NostrUri => match Nip21::parse(data) {
-                Ok(uri) => Token::Nostr(uri),
-                Err(_) => self.handle_str_as_text(data),
+                Ok(uri) => HandleMatch::Token(Token::Nostr(uri)),
+                // If the nostr URI parsing is invalid, the fallback is to treat it as text.
+                // But may happen that the FindMatches failed to identify an invalid nostr URI,
+                // so this additional check prevents pushing a `Token::Text` if the `text` options isn't enabled.
+                Err(_) => {
+                    if self.matches.opts.text {
+                        HandleMatch::Token(self.handle_str_as_text(data))
+                    } else {
+                        HandleMatch::Recursion
+                    }
+                }
             },
             MatchType::Hashtag => {
                 if data.len() > 1 {
-                    Token::Hashtag(&data[1..])
+                    HandleMatch::Token(Token::Hashtag(&data[1..]))
+                } else if self.matches.opts.text {
+                    HandleMatch::Token(self.handle_str_as_text(data))
                 } else {
-                    self.handle_str_as_text(data)
+                    HandleMatch::Recursion
                 }
             }
-            MatchType::LineBreak => Token::LineBreak,
+            MatchType::LineBreak => HandleMatch::Token(Token::LineBreak),
         }
     }
 
@@ -654,7 +682,10 @@ impl<'a> Iterator for NostrParserIter<'a> {
             #[cfg(all(feature = "std", debug_assertions, test))]
             dbg!(&pending_match, self.last_match_end);
 
-            return Some(self.handle_match(pending_match));
+            return match self.handle_match(pending_match) {
+                HandleMatch::Token(token) => Some(token),
+                HandleMatch::Recursion => self.next(),
+            };
         }
 
         match self.matches.next() {
@@ -676,7 +707,10 @@ impl<'a> Iterator for NostrParserIter<'a> {
                 }
 
                 // Handle match
-                Some(self.handle_match(mat))
+                match self.handle_match(mat) {
+                    HandleMatch::Token(token) => Some(token),
+                    HandleMatch::Recursion => self.next(),
+                }
             }
             None => {
                 // Text disabled
