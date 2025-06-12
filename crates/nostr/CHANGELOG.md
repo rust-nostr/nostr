@@ -50,6 +50,7 @@
 - Add NIP-88 support (https://github.com/rust-nostr/nostr/pull/892)
 - Add `Nip11GetOptions` (https://github.com/rust-nostr/nostr/pull/913)
 - Add `RelayUrl::domain` method (https://github.com/rust-nostr/nostr/pull/914)
+- Add `fees_paid` to `nip47::PayInvoiceResponse` (https://github.com/rust-nostr/nostr/pull/971)
 
 ### Fixed
 
