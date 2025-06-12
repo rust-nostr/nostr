@@ -545,6 +545,7 @@ impl<'de> Deserialize<'de> for Request {
 pub struct PayInvoiceResponse {
     /// Response preimage
     pub preimage: String,
+    pub fees_paid: Option<u64>,
 }
 
 /// NIP47 Response Result
