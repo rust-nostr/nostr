@@ -193,6 +193,43 @@ pub trait NostrDatabase: Any + Debug + Send + Sync {
     fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>>;
 }
 
+#[rustversion::since(1.86)]
+impl dyn NostrDatabase {
+    /// Upcast to [`Any`].
+    #[inline]
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    /// Upcast to [`Any`].
+    #[inline]
+    fn as_any_arc(self: Arc<Self>) -> Arc<dyn Any + Send + Sync> {
+        self
+    }
+
+    /// Downcast [`NostrDatabase`] to a concrete type reference.
+    ///
+    /// **Requires rustc >= 1.86!**
+    #[inline]
+    pub fn downcast_ref<T>(&self) -> Option<&T>
+    where
+        T: NostrDatabase,
+    {
+        self.as_any().downcast_ref()
+    }
+
+    /// Downcast [`NostrDatabase`] to a concrete type.
+    ///
+    /// **Requires rustc >= 1.86!**
+    #[inline]
+    pub fn downcast<T>(self: Arc<Self>) -> Option<Arc<T>>
+    where
+        T: NostrDatabase,
+    {
+        self.as_any_arc().downcast().ok()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -35,5 +35,10 @@ async fn main() -> Result<()> {
     let events = client.database().query(filter).await?;
     println!("Events: {events:?}");
 
+    // Database downcasting to access to specific APIs
+    if let Some(ndb) = client.database().downcast_ref::<NdbDatabase>() {
+        println!("Subscription counts: {}", ndb.subscription_count());
+    }
+
     Ok(())
 }
