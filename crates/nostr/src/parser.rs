@@ -92,10 +92,8 @@ enum MatchType {
 
 /// Nostr parser
 #[derive(Debug, Clone)]
-#[non_exhaustive] // Force to use the `new` constructor
-pub struct NostrParser {
-    // TODO: allow to specify what tokens to parse. Example: parse only hashtags and handle everything else as text.
-}
+#[non_exhaustive]
+pub struct NostrParser {}
 
 impl Default for NostrParser {
     fn default() -> Self {
@@ -133,6 +131,7 @@ impl NostrParser {
     /// ## Line breaks
     ///
     /// Pattern: `\n`
+    #[inline]
     pub const fn new() -> Self {
         Self {}
     }
@@ -144,11 +143,88 @@ impl NostrParser {
     }
 }
 
+/// Parsing options
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct NostrParserOptions {
+    /// Parse nostr URIs
+    pub nostr_uris: bool,
+    /// Parse URLs
+    pub urls: bool,
+    /// Parse hashtags
+    pub hashtags: bool,
+    /// Parse text, line breaks and whitespaces
+    pub text: bool,
+}
+
+impl Default for NostrParserOptions {
+    /// By default, parsing of all supported tokens is enabled.
+    #[inline]
+    fn default() -> Self {
+        Self::enable_all()
+    }
+}
+
+impl NostrParserOptions {
+    const fn new(enabled: bool) -> Self {
+        Self {
+            nostr_uris: enabled,
+            urls: enabled,
+            hashtags: enabled,
+            text: enabled,
+        }
+    }
+
+    /// Enable parsing of all supported tokens
+    #[inline]
+    pub const fn enable_all() -> Self {
+        Self::new(true)
+    }
+
+    /// Disable parsing of all supported tokens
+    ///
+    /// If you don't enable at least one pattern, nothing will be parsed!
+    #[inline]
+    pub const fn disable_all() -> Self {
+        Self::new(false)
+    }
+
+    /// Enable parsing of nostr URIs ([`Token::Nostr`]).
+    #[inline]
+    pub const fn nostr_uris(mut self, enable: bool) -> Self {
+        self.nostr_uris = enable;
+        self
+    }
+
+    /// Enable parsing of URLs ([`Token::Url`]).
+    #[inline]
+    pub const fn urls(mut self, enable: bool) -> Self {
+        self.urls = enable;
+        self
+    }
+
+    /// Enable parsing of hashtags ([`Token::Hashtag`]).
+    #[inline]
+    pub const fn hashtags(mut self, enable: bool) -> Self {
+        self.hashtags = enable;
+        self
+    }
+
+    /// Include text and parse line breaks and whitespaces ([`Token::Text`], [`Token::LineBreak`] and [`Token::Whitespace`]).
+    #[inline]
+    pub const fn text(mut self, enable: bool) -> Self {
+        self.text = enable;
+        self
+    }
+}
+
 struct FindMatches<'a> {
+    // Text and bytes to parse
     text: &'a str,
     bytes: &'a [u8],
     // Current position
     pos: usize,
+    // Options
+    opts: NostrParserOptions,
 }
 
 impl<'a> FindMatches<'a> {
@@ -158,6 +234,7 @@ impl<'a> FindMatches<'a> {
             text,
             bytes: text.as_bytes(),
             pos: 0,
+            opts: NostrParserOptions::default(),
         }
     }
 
@@ -408,28 +485,40 @@ impl Iterator for FindMatches<'_> {
             return None;
         }
 
-        // Check for line break
-        if let Some(mat) = self.try_parse_line_break() {
-            self.pos = mat.end;
-            return Some(mat);
+        // Check if text parsing is enabled
+        if self.opts.text {
+            // Check for line break
+            if let Some(mat) = self.try_parse_line_break() {
+                self.pos = mat.end;
+                return Some(mat);
+            }
         }
 
-        // Check for hashtag
-        if let Some(mat) = self.try_parse_hashtag() {
-            self.pos = mat.end;
-            return Some(mat);
+        // Check if hashtags parsing is enabled
+        if self.opts.hashtags {
+            // Check for hashtag
+            if let Some(mat) = self.try_parse_hashtag() {
+                self.pos = mat.end;
+                return Some(mat);
+            }
         }
 
-        // Check for nostr URI
-        if let Some(mat) = self.try_parse_nostr_uri() {
-            self.pos = mat.end;
-            return Some(mat);
+        // Check if nostr URIs parsing is enabled
+        if self.opts.nostr_uris {
+            // Check for nostr URI
+            if let Some(mat) = self.try_parse_nostr_uri() {
+                self.pos = mat.end;
+                return Some(mat);
+            }
         }
 
-        // Check for URL
-        if let Some(mat) = self.try_parse_url() {
-            self.pos = mat.end;
-            return Some(mat);
+        // Check if URLs parsing is enabled
+        if self.opts.urls {
+            // Check for URL
+            if let Some(mat) = self.try_parse_url() {
+                self.pos = mat.end;
+                return Some(mat);
+            }
         }
 
         // Move to the next character (handle UTF-8)
@@ -447,6 +536,13 @@ impl Iterator for FindMatches<'_> {
         // Recursion
         self.next()
     }
+}
+
+enum HandleMatch<'a> {
+    /// Found a valid token
+    Token(Token<'a>),
+    /// No valid token found, perform recursion.
+    Recursion,
 }
 
 /// Nostr parser iterator
@@ -477,30 +573,58 @@ impl<'a> NostrParserIter<'a> {
         }
     }
 
-    fn handle_match(&mut self, mat: Match) -> Token<'a> {
+    /// Update parsing options
+    #[inline]
+    pub fn opts(mut self, opts: NostrParserOptions) -> Self {
+        self.matches.opts = opts;
+        self
+    }
+
+    fn handle_match(&mut self, mat: Match) -> HandleMatch<'a> {
         // Update last match end
         self.last_match_end = mat.end;
 
         // Extract the matched string
         let data: &str = &self.text[mat.start..mat.end];
 
+        // Handle match type
         match mat.r#type {
             MatchType::Url => match Url::parse(data) {
-                Ok(url) => Token::Url(url),
-                Err(_) => self.handle_str_as_text(data),
+                Ok(url) => HandleMatch::Token(Token::Url(url)),
+                // If the URL parsing is invalid, the fallback is to treat it as text.
+                // But may happen that the FindMatches failed to identify an invalid URL,
+                // so this additional check prevents pushing a `Token::Text` if the `text` options isn't enabled.
+                Err(_) => {
+                    if self.matches.opts.text {
+                        HandleMatch::Token(self.handle_str_as_text(data))
+                    } else {
+                        HandleMatch::Recursion
+                    }
+                }
             },
             MatchType::NostrUri => match Nip21::parse(data) {
-                Ok(uri) => Token::Nostr(uri),
-                Err(_) => self.handle_str_as_text(data),
+                Ok(uri) => HandleMatch::Token(Token::Nostr(uri)),
+                // If the nostr URI parsing is invalid, the fallback is to treat it as text.
+                // But may happen that the FindMatches failed to identify an invalid nostr URI,
+                // so this additional check prevents pushing a `Token::Text` if the `text` options isn't enabled.
+                Err(_) => {
+                    if self.matches.opts.text {
+                        HandleMatch::Token(self.handle_str_as_text(data))
+                    } else {
+                        HandleMatch::Recursion
+                    }
+                }
             },
             MatchType::Hashtag => {
                 if data.len() > 1 {
-                    Token::Hashtag(&data[1..])
+                    HandleMatch::Token(Token::Hashtag(&data[1..]))
+                } else if self.matches.opts.text {
+                    HandleMatch::Token(self.handle_str_as_text(data))
                 } else {
-                    self.handle_str_as_text(data)
+                    HandleMatch::Recursion
                 }
             }
-            MatchType::LineBreak => Token::LineBreak,
+            MatchType::LineBreak => HandleMatch::Token(Token::LineBreak),
         }
     }
 
@@ -558,7 +682,10 @@ impl<'a> Iterator for NostrParserIter<'a> {
             #[cfg(all(feature = "std", debug_assertions, test))]
             dbg!(&pending_match, self.last_match_end);
 
-            return Some(self.handle_match(pending_match));
+            return match self.handle_match(pending_match) {
+                HandleMatch::Token(token) => Some(token),
+                HandleMatch::Recursion => self.next(),
+            };
         }
 
         match self.matches.next() {
@@ -567,7 +694,7 @@ impl<'a> Iterator for NostrParserIter<'a> {
                 dbg!(&mat, self.last_match_end);
 
                 // Capture text that appears before this match (if any)
-                if mat.start > self.last_match_end {
+                if self.matches.opts.text && mat.start > self.last_match_end {
                     // Update pending match
                     // This will be handled at next iteration, in `handle_match` method.
                     self.pending_match = Some(mat);
@@ -580,9 +707,17 @@ impl<'a> Iterator for NostrParserIter<'a> {
                 }
 
                 // Handle match
-                Some(self.handle_match(mat))
+                match self.handle_match(mat) {
+                    HandleMatch::Token(token) => Some(token),
+                    HandleMatch::Recursion => self.next(),
+                }
             }
             None => {
+                // Text disabled
+                if !self.matches.opts.text {
+                    return None;
+                }
+
                 // No text left
                 if self.last_match_end >= self.text.len() {
                     return None;
@@ -687,7 +822,7 @@ mod tests {
     use alloc::vec::Vec;
 
     use super::*;
-    use crate::nips::nip19::{FromBech32, Nip19Profile};
+    use crate::nips::nip19::{FromBech32, Nip19Event, Nip19Profile};
     use crate::PublicKey;
 
     const PARSER: NostrParser = NostrParser::new();
@@ -1218,6 +1353,104 @@ mod tests {
             let tokens = PARSER.parse(text).collect::<Vec<_>>();
             assert_eq!(tokens, expected);
         }
+    }
+
+    #[test]
+    fn test_parse_only_nostr_uris() {
+        let pubkey = Nip21::Pubkey(
+            PublicKey::from_bech32(
+                "npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
+            )
+            .unwrap(),
+        );
+        let pubkey2 = Nip21::Pubkey(
+            PublicKey::from_bech32(
+                "npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c",
+            )
+            .unwrap(),
+        );
+        let event = Nip21::Event(Nip19Event::from_bech32("nevent1qqsz8xjlh82ykfr3swjk5fw0l3v33pcsaq4z6f7q0zy2dxrfm7x2yeqpz4mhxue69uhkummnw3ezummcw3ezuer9wchsygrgmqgktyvpqzma5slu9rmarlqj24zxdcg3tzrtneamxfhktmzzwgpsgqqqqqqsmxphku").unwrap());
+        let profile1 = Nip21::Profile(Nip19Profile::from_bech32("nprofile1qqsqfyvdlsmvj0nakmxq6c8n0c2j9uwrddjd8a95ynzn9479jhlth3gpvemhxue69uhkv6tvw3jhytnwdaehgu3wwa5kuef0dec82c33w94xwcmdd3cxketedsux6ertwecrgues0pk8xdrew33h27pkd4unvvpkw3nkv7pe0p68gat58ycrw6ps0fenwdnvva48w0mzwfhkzerrv9ehg0t5wf6k2qgnwaehxw309ac82unsd3jhqct89ejhxtcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsh8njvk").unwrap());
+        let profile2 = Nip21::Profile(Nip19Profile::from_bech32("nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40").unwrap());
+
+        let vector = vec![
+            ("#rustnostr #nostr #kotlin #jvm\n\nnostr:nevent1qqsz8xjlh82ykfr3swjk5fw0l3v33pcsaq4z6f7q0zy2dxrfm7x2yeqpz4mhxue69uhkummnw3ezummcw3ezuer9wchsygrgmqgktyvpqzma5slu9rmarlqj24zxdcg3tzrtneamxfhktmzzwgpsgqqqqqqsmxphku", vec![Token::Nostr(event)]),
+            ("I have never been very active in discussions but working on rust-nostr (at the time called nostr-rs-sdk) since September 2022 🦀 \n\nIf I remember correctly there were also nostr:nprofile1qqsqfyvdlsmvj0nakmxq6c8n0c2j9uwrddjd8a95ynzn9479jhlth3gpvemhxue69uhkv6tvw3jhytnwdaehgu3wwa5kuef0dec82c33w94xwcmdd3cxketedsux6ertwecrgues0pk8xdrew33h27pkd4unvvpkw3nkv7pe0p68gat58ycrw6ps0fenwdnvva48w0mzwfhkzerrv9ehg0t5wf6k2qgnwaehxw309ac82unsd3jhqct89ejhxtcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsh8njvk and nostr:nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40", vec![Token::Nostr(profile1), Token::Nostr(profile2.clone())]),
+            ("Test ending with full stop: nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet.", vec![Token::Nostr(pubkey.clone())]),
+            ("nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet", vec![Token::Nostr(pubkey.clone())]),
+            ("Public key without prefix npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet", vec![]),
+            ("Public key `nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet+.", vec![Token::Nostr(pubkey.clone())]),
+            ("Duplicated npub: nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet, nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet", vec![Token::Nostr(pubkey.clone()), Token::Nostr(pubkey)]),
+            ("Uppercase nostr:npub1DRVpZev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eSEET", vec![]),
+            ("Npub and nprofile that point to the same public key: nostr:npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c and nostr:nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40", vec![Token::Nostr(pubkey2), Token::Nostr(profile2)]),
+            ("content without nostr URIs", vec![]),
+        ];
+
+        let opts = NostrParserOptions::disable_all().nostr_uris(true);
+
+        for (content, expected) in vector {
+            let objs = PARSER.parse(content).opts(opts).collect::<Vec<_>>();
+            assert_eq!(objs, expected);
+        }
+    }
+
+    #[test]
+    fn test_parse_only_nostr_uris_empty_result() {
+        // Text without nostr URIs
+        let text = "I follow #bitcoin hashtag and #lightning.\nWhat do you follow?";
+
+        // Enable only nostr URIs
+        let opts = NostrParserOptions::disable_all().nostr_uris(true);
+
+        let tokens = PARSER.parse(text).opts(opts).collect::<Vec<_>>();
+        assert!(tokens.is_empty());
+    }
+
+    #[test]
+    fn test_parse_only_urls() {
+        let text = "My relays are: wss://relay.damus.io, wss://nos.lol and wss://example.com";
+
+        let opts = NostrParserOptions::disable_all().urls(true);
+
+        let tokens = PARSER.parse(text).opts(opts).collect::<Vec<_>>();
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Url(Url::parse("wss://relay.damus.io").unwrap()),
+                Token::Url(Url::parse("wss://nos.lol").unwrap()),
+                Token::Url(Url::parse("wss://example.com").unwrap())
+            ]
+        );
+    }
+
+    #[test]
+    fn test_parse_only_hashtags() {
+        let text = "I follow #bitcoin hashtag and #lightning.";
+
+        let opts = NostrParserOptions::disable_all().hashtags(true);
+
+        let tokens = PARSER.parse(text).opts(opts).collect::<Vec<_>>();
+        assert_eq!(
+            tokens,
+            vec![Token::Hashtag("bitcoin"), Token::Hashtag("lightning"),]
+        );
+    }
+
+    #[test]
+    fn test_parse_only_text() {
+        let text = "I follow #bitcoin hashtag and #lightning.\nWhat do you follow?";
+
+        let opts = NostrParserOptions::disable_all().text(true);
+
+        let tokens = PARSER.parse(text).opts(opts).collect::<Vec<_>>();
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Text("I follow #bitcoin hashtag and #lightning."),
+                Token::LineBreak,
+                Token::Text("What do you follow?"),
+            ]
+        );
     }
 }
 

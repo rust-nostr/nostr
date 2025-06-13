@@ -32,6 +32,10 @@ struct InnerRelayConnectionStats {
     // TODO: keep track of msg/event sending attempts and success?
     connected_at: AtomicU64,
     first_connection_at: AtomicU64,
+    // Activity tracking for on-demand connections
+    last_activity_at: AtomicU64,
+    /// When has waked up from sleep
+    woke_up_at: AtomicU64,
     #[cfg(not(target_arch = "wasm32"))]
     latency: AverageLatency,
 }
@@ -87,6 +91,32 @@ impl RelayConnectionStats {
     #[inline]
     pub fn first_connection_timestamp(&self) -> Timestamp {
         Timestamp::from(self.inner.first_connection_at.load(Ordering::SeqCst))
+    }
+
+    /// Get UNIX timestamp of the last activity
+    #[inline]
+    pub(super) fn last_activity_at(&self) -> Timestamp {
+        Timestamp::from(self.inner.last_activity_at.load(Ordering::SeqCst))
+    }
+
+    /// Update last activity timestamp
+    #[inline]
+    pub(super) fn update_activity(&self) {
+        let now: u64 = Timestamp::now().as_u64();
+        self.inner.last_activity_at.store(now, Ordering::SeqCst);
+    }
+
+    /// When has woke up from sleep
+    #[inline]
+    pub(super) fn woke_up_at(&self) -> Timestamp {
+        Timestamp::from(self.inner.woke_up_at.load(Ordering::SeqCst))
+    }
+
+    /// Update the wake-up timestamp
+    #[inline]
+    pub(super) fn just_woke_up(&self) {
+        let now: u64 = Timestamp::now().as_u64();
+        self.inner.woke_up_at.store(now, Ordering::SeqCst);
     }
 
     /// Calculate latency

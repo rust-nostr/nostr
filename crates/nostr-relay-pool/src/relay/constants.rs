@@ -37,6 +37,13 @@ pub(super) const MIN_SUCCESS_RATE: f64 = 0.90;
 
 pub(super) const PING_INTERVAL: Duration = Duration::from_secs(55); // Used also for latency calculation
 
+/// Sleep interval
+#[cfg(not(test))]
+pub(super) const SLEEP_INTERVAL: Duration = Duration::from_secs(60);
+/// Sleep interval for tests
+#[cfg(test)]
+pub(super) const SLEEP_INTERVAL: Duration = Duration::from_secs(1);
+
 pub(super) const WEBSOCKET_TX_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[cfg(not(target_arch = "wasm32"))]

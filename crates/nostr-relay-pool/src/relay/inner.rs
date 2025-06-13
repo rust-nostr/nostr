@@ -24,7 +24,8 @@ use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard
 use super::constants::{
     DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE,
     NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP,
-    NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, WAIT_FOR_OK_TIMEOUT, WEBSOCKET_TX_TIMEOUT,
+    NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, SLEEP_INTERVAL, WAIT_FOR_OK_TIMEOUT,
+    WEBSOCKET_TX_TIMEOUT,
 };
 use super::flags::AtomicRelayServiceFlags;
 use super::options::{RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, SyncOptions};
@@ -192,7 +193,7 @@ impl InnerRelay {
         &self.opts.connection_mode
     }
 
-    /// Is connection task running?
+    /// Check if the connection task is running
     #[inline]
     pub(super) fn is_running(&self) -> bool {
         self.atomic.running.load(Ordering::SeqCst)
@@ -219,6 +220,7 @@ impl InnerRelay {
                     tracing::info!("Completely disconnected from '{}'", self.url)
                 }
                 RelayStatus::Banned => tracing::info!(url = %self.url, "Relay banned."),
+                RelayStatus::Sleeping => tracing::info!("Relay '{}' went to sleep.", self.url),
             }
         }
 
@@ -231,8 +233,12 @@ impl InnerRelay {
         }
     }
 
-    /// Perform health checks
-    pub(super) fn health_check(&self) -> Result<(), Error> {
+    /// Perform checks to ensure that the relay is ready for use.
+    pub(super) fn ensure_operational(&self) -> Result<(), Error> {
+        // Ensures that the relay is awake.
+        self.ensure_awake_for_activity();
+
+        // Get current status
         let status: RelayStatus = self.status();
 
         // Relay is not ready (never called connect method)
@@ -245,9 +251,23 @@ impl InnerRelay {
             return Err(Error::Banned);
         }
 
+        // Sanity-check, to ensure that the relay is not sleeping.
+        if status.is_sleeping() {
+            return Err(Error::Sleeping);
+        }
+
+        // This is needed to allow giving the time to the relay to connect,
+        // instead of just checking the status.
+        //
+        // A relay is considered not connected if all the following conditions are met:
+        // - the status is different from `RelayStatus::Connected`
+        // - the relay has already exceeded the minimum number of attempts
+        // - the connection success rate is lower than the minimum success rate
+        // - the relay woke up from sleep from more than `DEFAULT_CONNECTION_TIMEOUT` (needed if the relay has just waked up!)
         if !status.is_connected()
             && self.stats.attempts() > MIN_ATTEMPTS
             && self.stats.success_rate() < MIN_SUCCESS_RATE
+            && self.stats.woke_up_at() + DEFAULT_CONNECTION_TIMEOUT < Timestamp::now()
         {
             return Err(Error::NotConnected);
         }
@@ -431,28 +451,97 @@ impl InnerRelay {
         }
     }
 
+    /// Check if relay should sleep
+    async fn should_sleep(&self) -> bool {
+        // Check if sleeping is disabled
+        if !self.opts.sleep_when_idle {
+            return false;
+        }
+
+        // Get current subscriptions
+        let subscriptions = self.atomic.subscriptions.read().await;
+
+        // No sleep if there are active subscriptions
+        if subscriptions.len() > 0 {
+            return false;
+        }
+
+        // See if enough time elapsed since the last activity
+        let last_activity: Timestamp = self.stats.last_activity_at();
+
+        // If no activity has been recorded yet, use connection time
+        let reference_time: Timestamp = if last_activity == Timestamp::zero() {
+            self.stats.connected_at()
+        } else {
+            last_activity
+        };
+
+        // If reference time is still 0, do not sleep; relay has just started.
+        if reference_time == Timestamp::zero() {
+            return false;
+        }
+
+        let idle_duration_secs: u64 = Timestamp::now().as_u64() - reference_time.as_u64();
+        let idle_duration: Duration = Duration::from_secs(idle_duration_secs);
+        idle_duration >= self.opts.idle_timeout
+    }
+
+    /// Wake up the relay if it's sleeping and update the last activity timestamp.
+    #[inline]
+    fn ensure_awake_for_activity(&self) {
+        // If the sleeping is disabled, immediately return.
+        if !self.opts.sleep_when_idle {
+            return;
+        }
+
+        // Update last activity timestamp
+        self.stats.update_activity();
+
+        // If it isn't sleeping, immediately return.
+        if !self.status().is_sleeping() {
+            return;
+        }
+
+        tracing::debug!(url = %self.url, "Waking up sleeping relay.");
+
+        // Update status to pending
+        // TODO: is this needed here?
+        self.set_status(RelayStatus::Pending, false);
+
+        // Spawn a new connection task
+        self.spawn_connection_task(None);
+
+        // Update the wake-up timestamp
+        self.stats.just_woke_up();
+    }
+
     pub(super) fn spawn_connection_task(&self, stream: Option<(BoxSink, BoxStream)>) {
+        // Check if the connection task is already running
+        // This is checked also later, but it's checked also here to avoid a full-clone if we know that is already running.
         if self.is_running() {
             tracing::warn!(url = %self.url, "Connection task is already running.");
             return;
         }
 
-        // Spawn task
+        // Full-clone
         let relay: InnerRelay = self.clone();
+
+        // Spawn task
         task::spawn(relay.connection_task(stream));
     }
 
+    /// This **MUST** be called only by the [`InnerRelay::spawn_connection_task`] method!
     async fn connection_task(self, mut stream: Option<(BoxSink, BoxStream)>) {
-        // Set connection task as running
+        // Set the connection task as running and get the previous value.
         let is_running: bool = self.atomic.running.swap(true, Ordering::SeqCst);
 
-        // Re-check if is already running.
-        // This must never happen.
-        assert!(
-            !is_running,
-            "Connection task for '{}' is already running.",
-            self.url
-        );
+        // Re-check if the connection task is already running.
+        // This is required because may happen that two tasks are spawned at the exact same moment.
+        // Not use the "assert" macro since will cause the task to panic.
+        if is_running {
+            tracing::warn!(url = %self.url, "Connection task is already running.");
+            return;
+        }
 
         // Lock receiver
         let mut rx_nostr = self.atomic.channels.rx_nostr().await;
@@ -488,14 +577,14 @@ impl InnerRelay {
             // Get status
             let status: RelayStatus = self.status();
 
-            // If the relay is terminated or banned, break the loop.
-            if status.is_terminated() || status.is_banned() {
+            // If the relay is terminated, banned or sleeping, break the loop.
+            if status.is_terminated() || status.is_banned() || status.is_sleeping() {
                 break;
             }
 
             // Check if reconnection is enabled
             if self.opts.reconnect {
-                // Check if relay is marked as disconnected. If not, update status.
+                // Check if the relay is marked as disconnected. If not, update status.
                 // Check if disconnected to avoid a possible double log
                 if !status.is_disconnected() {
                     self.set_status(RelayStatus::Disconnected, true);
@@ -527,7 +616,7 @@ impl InnerRelay {
             }
         }
 
-        // Set that connection task is no longer running
+        // Mark the connection task as stopped.
         self.atomic.running.store(false, Ordering::SeqCst);
 
         tracing::debug!(url = %self.url, "Auto connect loop terminated.");
@@ -701,6 +790,8 @@ impl InnerRelay {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay ingester exited."),
                 Err(e) => tracing::error!(url = %self.url, error = %e, "Relay ingester exited with error.")
             },
+            // Monitor when the relay can go to sleep
+            _ = self.sleep_when_idle_monitor() => {},
             // Termination handler
             _ = self.handle_terminate() => {},
             // Pinger
@@ -886,6 +977,23 @@ impl InnerRelay {
         }
 
         Ok(())
+    }
+
+    /// Monitor if it's time to put the relay in sleep mode.
+    async fn sleep_when_idle_monitor(&self) {
+        loop {
+            // Sleep
+            time::sleep(SLEEP_INTERVAL).await;
+
+            // Check if should go to sleep
+            if self.should_sleep().await {
+                // Update status
+                self.set_status(RelayStatus::Sleeping, true);
+
+                // Break the loop
+                break;
+            }
+        }
     }
 
     /// Send a signal every [`PING_INTERVAL`] to the other tasks, asking to ping the relay.
@@ -1191,8 +1299,8 @@ impl InnerRelay {
     }
 
     pub fn batch_msg(&self, msgs: Vec<ClientMessage<'_>>) -> Result<(), Error> {
-        // Perform health checks
-        self.health_check()?;
+        // Check if relay is operational
+        self.ensure_operational()?;
 
         // Check if the list is empty
         if msgs.is_empty() {

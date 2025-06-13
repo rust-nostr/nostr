@@ -17,5 +17,11 @@ fn main() -> Result<()> {
         println!("{token:?}");
     }
 
+    let opts = NostrParserOptions::disable_all().urls(true);
+
+    for token in parser.parse("Check this: https://example.com").opts(opts) {
+        println!("{token:?}");
+    }
+
     Ok(())
 }
