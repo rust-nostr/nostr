@@ -7,8 +7,6 @@ use core::num::ParseIntError;
 
 use hashes::hex::HexToArrayError;
 
-#[allow(deprecated)]
-use crate::nips::nip26;
 #[cfg(feature = "nip98")]
 use crate::nips::nip98;
 use crate::nips::{nip01, nip10, nip39, nip53, nip65, nip88};
@@ -36,8 +34,6 @@ pub enum Error {
     NIP01(nip01::Error),
     /// NIP10 error
     NIP10(nip10::Error),
-    /// NIP26 error
-    NIP26(nip26::Error),
     /// NIP39 error
     NIP39(nip39::Error),
     /// NIP53 error
@@ -75,7 +71,6 @@ impl fmt::Display for Error {
             Self::Url(e) => write!(f, "{e}"),
             Self::NIP01(e) => write!(f, "{e}"),
             Self::NIP10(e) => write!(f, "{e}"),
-            Self::NIP26(e) => write!(f, "{e}"),
             Self::NIP39(e) => write!(f, "{e}"),
             Self::NIP53(e) => write!(f, "{e}"),
             Self::NIP65(e) => write!(f, "{e}"),
@@ -136,13 +131,6 @@ impl From<nip01::Error> for Error {
 impl From<nip10::Error> for Error {
     fn from(e: nip10::Error) -> Self {
         Self::NIP10(e)
-    }
-}
-
-#[allow(deprecated)]
-impl From<nip26::Error> for Error {
-    fn from(e: nip26::Error) -> Self {
-        Self::NIP26(e)
     }
 }
 

@@ -17,8 +17,6 @@ use super::{Error, TagKind};
 use crate::event::id::EventId;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip10::Marker;
-#[allow(deprecated)]
-use crate::nips::nip26::Conditions;
 use crate::nips::nip34::EUC;
 use crate::nips::nip39::Identity;
 use crate::nips::nip48::Protocol;
@@ -176,14 +174,6 @@ pub enum TagStandard {
         name: String,
         /// Client address and optional hint
         address: Option<(Coordinate, Option<RelayUrl>)>,
-    },
-    #[deprecated(
-        note = "NIP-26 deprecated, for more info see <https://github.com/nostr-protocol/nips/blob/master/26.md>."
-    )]
-    Delegation {
-        delegator: PublicKey,
-        conditions: Conditions,
-        sig: Signature,
     },
     ContentWarning {
         reason: Option<String>,
@@ -388,7 +378,6 @@ impl TagStandard {
                     reason: extract_optional_string(tag, 1).map(|s| s.to_string()),
                 })
             }
-            TagKind::Delegation => return parse_delegation_tag(tag),
             TagKind::Encrypted => return Ok(Self::Encrypted),
             TagKind::Maintainers => {
                 let public_keys: Vec<PublicKey> = extract_public_keys(tag)?;
@@ -652,8 +641,6 @@ impl TagStandard {
             Self::PollType(..) => TagKind::PollType,
             Self::POW { .. } => TagKind::Nonce,
             Self::Client { .. } => TagKind::Client,
-            #[allow(deprecated)]
-            Self::Delegation { .. } => TagKind::Delegation,
             Self::ContentWarning { .. } => TagKind::ContentWarning,
             Self::Expiration(..) => TagKind::Expiration,
             Self::Subject(..) => TagKind::Subject,
@@ -903,17 +890,6 @@ impl From<TagStandard> for Vec<String> {
 
                 tag
             }
-            #[allow(deprecated)]
-            TagStandard::Delegation {
-                delegator,
-                conditions,
-                sig,
-            } => vec![
-                tag_kind,
-                delegator.to_string(),
-                conditions.to_string(),
-                sig.to_string(),
-            ],
             TagStandard::ContentWarning { reason } => {
                 let mut tag = vec![tag_kind];
                 if let Some(reason) = reason {
@@ -1425,26 +1401,6 @@ where
         name: tag_1.to_string(),
         address,
     })
-}
-
-#[allow(deprecated)]
-fn parse_delegation_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
-where
-    S: AsRef<str>,
-{
-    if tag.len() == 4 {
-        let tag_1: &str = tag[1].as_ref();
-        let tag_2: &str = tag[2].as_ref();
-        let tag_3: &str = tag[3].as_ref();
-
-        Ok(TagStandard::Delegation {
-            delegator: PublicKey::from_hex(tag_1)?,
-            conditions: Conditions::from_str(tag_2)?,
-            sig: Signature::from_str(tag_3)?,
-        })
-    } else {
-        Err(Error::UnknownStandardizedTag)
-    }
 }
 
 #[inline]

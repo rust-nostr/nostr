@@ -32,6 +32,7 @@
 - nostr: remove `parser` feature (https://github.com/rust-nostr/nostr/pull/899)
 - nostr: update `Nip19Profile::new` and `Nip19Coordinate::new` signature (https://github.com/rust-nostr/nostr/pull/910)
 - nostr: update `RelayInformationDocument::get` signature (https://github.com/rust-nostr/nostr/pull/913)
+- nostr: remove `TagStandard::Delegation` and `TagKind::Delegation` (https://github.com/rust-nostr/nostr/pull/929)
 - connect: remove `NostrConnect::get_relays` (https://github.com/rust-nostr/nostr/pull/894)
 - database: merge traits into `NostrDatabase` (https://github.com/rust-nostr/nostr/pull/916)
 - database: remove `NostrDatabase::has_coordinate_been_deleted` (https://github.com/rust-nostr/nostr/pull/917)

@@ -45,8 +45,6 @@ pub enum TagKind<'a> {
     ContentWarning,
     /// Current participants
     CurrentParticipants,
-    /// Delegation
-    Delegation,
     /// Required dependency
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
@@ -320,7 +318,6 @@ impl<'a> TagKind<'a> {
             Self::Commit => "commit",
             Self::ContentWarning => "content-warning",
             Self::CurrentParticipants => "current_participants",
-            Self::Delegation => "delegation",
             Self::Dependency => "dep",
             Self::Description => "description",
             Self::Dim => "dim",
@@ -397,7 +394,6 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "commit" => Self::Commit,
             "content-warning" => Self::ContentWarning,
             "current_participants" => Self::CurrentParticipants,
-            "delegation" => Self::Delegation,
             "dep" => Self::Dependency,
             "description" => Self::Description,
             "dim" => Self::Dim,
