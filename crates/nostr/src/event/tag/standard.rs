@@ -17,6 +17,7 @@ use super::{Error, TagKind};
 use crate::event::id::EventId;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip10::Marker;
+#[allow(deprecated)]
 use crate::nips::nip26::Conditions;
 use crate::nips::nip34::EUC;
 use crate::nips::nip39::Identity;
@@ -37,6 +38,7 @@ use crate::{
 const ALL_RELAYS: &str = "ALL_RELAYS";
 
 /// Standardized tag
+#[allow(deprecated)]
 #[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TagStandard {
@@ -175,6 +177,9 @@ pub enum TagStandard {
         /// Client address and optional hint
         address: Option<(Coordinate, Option<RelayUrl>)>,
     },
+    #[deprecated(
+        note = "NIP-26 deprecated, for more info see <https://github.com/nostr-protocol/nips/blob/master/26.md>."
+    )]
     Delegation {
         delegator: PublicKey,
         conditions: Conditions,
@@ -647,6 +652,7 @@ impl TagStandard {
             Self::PollType(..) => TagKind::PollType,
             Self::POW { .. } => TagKind::Nonce,
             Self::Client { .. } => TagKind::Client,
+            #[allow(deprecated)]
             Self::Delegation { .. } => TagKind::Delegation,
             Self::ContentWarning { .. } => TagKind::ContentWarning,
             Self::Expiration(..) => TagKind::Expiration,
@@ -897,6 +903,7 @@ impl From<TagStandard> for Vec<String> {
 
                 tag
             }
+            #[allow(deprecated)]
             TagStandard::Delegation {
                 delegator,
                 conditions,
@@ -1420,6 +1427,7 @@ where
     })
 }
 
+#[allow(deprecated)]
 fn parse_delegation_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
 where
     S: AsRef<str>,
@@ -2000,19 +2008,6 @@ mod tests {
         );
 
         assert_eq!(vec!["relay", "ALL_RELAYS"], TagStandard::AllRelays.to_vec());
-
-        assert_eq!(
-            vec![
-                "delegation",
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "kind=1",
-                "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
-            ],
-            TagStandard::Delegation {
-                delegator: PublicKey::from_str(
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-            ).unwrap(), conditions: Conditions::from_str("kind=1").unwrap(), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8").unwrap() }.to_vec()
-        );
 
         assert_eq!(
             vec!["lnurl", "lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp"],
@@ -2684,18 +2679,6 @@ mod tests {
                 ),
                 uppercase: false,
             }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&[
-                "delegation",
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "kind=1",
-                "fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
-            ]).unwrap(),
-            TagStandard::Delegation { delegator: PublicKey::from_str(
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-            ).unwrap(), conditions: Conditions::from_str("kind=1").unwrap(), sig: Signature::from_str("fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8").unwrap() }
         );
 
         assert_eq!(

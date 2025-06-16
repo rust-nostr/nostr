@@ -7,14 +7,17 @@ use core::num::ParseIntError;
 
 use hashes::hex::HexToArrayError;
 
+#[allow(deprecated)]
+use crate::nips::nip26;
 #[cfg(feature = "nip98")]
 use crate::nips::nip98;
-use crate::nips::{nip01, nip10, nip26, nip39, nip53, nip65, nip88};
+use crate::nips::{nip01, nip10, nip39, nip53, nip65, nip88};
 use crate::types::image;
 use crate::types::url::{Error as RelayUrlError, ParseError};
 use crate::{key, secp256k1};
 
 /// Tag error
+#[allow(deprecated)]
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Keys
@@ -136,6 +139,7 @@ impl From<nip10::Error> for Error {
     }
 }
 
+#[allow(deprecated)]
 impl From<nip26::Error> for Error {
     fn from(e: nip26::Error) -> Self {
         Self::NIP26(e)
