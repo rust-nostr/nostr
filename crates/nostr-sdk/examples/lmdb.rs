@@ -58,5 +58,10 @@ async fn main() -> Result<()> {
     let events = client.database().query(filter).await?;
     println!("Events: {events:?}");
 
+    // Database downcasting to access to specific APIs
+    if let Some(_lmdb) = client.database().downcast_ref::<NostrLMDB>() {
+        // Access specific APIs here
+    }
+
     Ok(())
 }
