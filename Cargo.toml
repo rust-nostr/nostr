@@ -2,6 +2,12 @@
 members = [
     "crates/*",
 
+    # Nostr Database
+    "database/nostr-database",
+    "database/nostr-indexeddb",
+    "database/nostr-lmdb",
+    "database/nostr-ndb",
+
     # Nostr MLS
     "mls/nostr-mls",
     "mls/nostr-mls-memory-storage",
@@ -29,14 +35,14 @@ lru = { version = "0.14", default-features = false }
 negentropy = { version = "0.5", default-features = false }
 nostr = { version = "0.42", path = "./crates/nostr", default-features = false }
 nostr-connect = { version = "0.42", path = "./crates/nostr-connect", default-features = false }
-nostr-database = { version = "0.42", path = "./crates/nostr-database", default-features = false }
-nostr-indexeddb = { version = "0.42", path = "./crates/nostr-indexeddb", default-features = false }
-nostr-lmdb = { version = "0.42", path = "./crates/nostr-lmdb", default-features = false }
+nostr-database = { version = "0.42", path = "./database/nostr-database", default-features = false }
+nostr-indexeddb = { version = "0.42", path = "./database/nostr-indexeddb", default-features = false }
+nostr-lmdb = { version = "0.42", path = "./database/nostr-lmdb", default-features = false }
 nostr-mls-memory-storage = { version = "0.42", path = "./mls/nostr-mls-memory-storage", default-features = false }
 nostr-mls-sqlite-storage = { version = "0.42", path = "./mls/nostr-mls-sqlite-storage", default-features = false }
 nostr-mls-storage = { version = "0.42", path = "./mls/nostr-mls-storage", default-features = false }
 nostr-mls = { version = "0.42", path = "./mls/nostr-mls", default-features = false }
-nostr-ndb = { version = "0.42", path = "./crates/nostr-ndb", default-features = false }
+nostr-ndb = { version = "0.42", path = "./database/nostr-ndb", default-features = false }
 nostr-relay-builder = { version = "0.42", path = "./crates/nostr-relay-builder", default-features = false }
 nostr-relay-pool = { version = "0.42", path = "./crates/nostr-relay-pool", default-features = false }
 nostr-sdk = { version = "0.42", path = "./crates/nostr-sdk", default-features = false }

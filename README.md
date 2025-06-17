@@ -8,10 +8,10 @@ The project is split up into several crates in the `crates/` directory:
     * [**nostr**](./crates/nostr): Rust implementation of Nostr protocol
     * [**nostr-blossom**](./crates/nostr-blossom): A library for interacting with the Blossom protocol
     * [**nostr-connect**](./crates/nostr-connect): Nostr Connect (NIP46)
-    * [**nostr-database**](./crates/nostr-database): Events database abstraction and in-memory implementation
-        * [**nostr-lmdb**](./crates/nostr-lmdb): LMDB storage backend
-        * [**nostr-ndb**](./crates/nostr-ndb): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
-        * [**nostr-indexeddb**](./crates/nostr-indexeddb): IndexedDB storage backend
+    * [**nostr-database**](./database/nostr-database): Events database abstraction and in-memory implementation
+        * [**nostr-lmdb**](./database/nostr-lmdb): LMDB storage backend
+        * [**nostr-ndb**](./database/nostr-ndb): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
+        * [**nostr-indexeddb**](./database/nostr-indexeddb): IndexedDB storage backend
     * [**nostr-mls**](./mls/nostr-mls): A library for implementing NIP-EE MLS messaging
     * [**nostr-mls-storage**](./mls/nostr-mls-storage): Storage traits for using MLS messaging
         * [**nostr-mls-memory-storage**](./mls/nostr-mls-memory-storage): In-memory storage for nostr-mls
