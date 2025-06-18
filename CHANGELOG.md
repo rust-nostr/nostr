@@ -47,6 +47,7 @@
 
 ### Added
 
+- nostr-mls: Add `add_memebers` method for adding members to an existing group (https://github.com/rust-nostr/nostr/pull/931)
 - nostr: add NIP-88 support (https://github.com/rust-nostr/nostr/pull/892)
 - nostr: add `Nip11GetOptions` (https://github.com/rust-nostr/nostr/pull/913)
 - nostr: add `RelayUrl::domain` method (https://github.com/rust-nostr/nostr/pull/914)
