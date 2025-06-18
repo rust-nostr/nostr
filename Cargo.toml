@@ -12,6 +12,7 @@ members = [
     "mls/nostr-mls",
     "mls/nostr-mls-memory-storage",
     "mls/nostr-mls-sqlite-storage",
+    "mls/nostr-mls-sqlcipher-storage",
     "mls/nostr-mls-storage",
 ]
 default-members = ["crates/*"]
@@ -40,6 +41,7 @@ nostr-indexeddb = { version = "0.42", path = "./database/nostr-indexeddb", defau
 nostr-lmdb = { version = "0.42", path = "./database/nostr-lmdb", default-features = false }
 nostr-mls-memory-storage = { version = "0.42", path = "./mls/nostr-mls-memory-storage", default-features = false }
 nostr-mls-sqlite-storage = { version = "0.42", path = "./mls/nostr-mls-sqlite-storage", default-features = false }
+nostr-mls-sqlcipher-storage = { version = "0.1", path = "./mls/nostr-mls-sqlcipher-storage", default-features = false }
 nostr-mls-storage = { version = "0.42", path = "./mls/nostr-mls-storage", default-features = false }
 nostr-mls = { version = "0.42", path = "./mls/nostr-mls", default-features = false }
 nostr-ndb = { version = "0.42", path = "./database/nostr-ndb", default-features = false }
