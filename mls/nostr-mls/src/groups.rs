@@ -46,6 +46,15 @@ pub struct SelfUpdateResult {
     pub new_secret: group_types::GroupExporterSecret,
 }
 
+/// Result of batch adding members to a group
+#[derive(Debug)]
+pub struct AddMembersResult {
+    /// Serialized commit message for adding members
+    pub commit_message: Vec<u8>,
+    /// Serialized welcome message for new members
+    pub welcome_message: Vec<u8>,
+}
+
 impl<Storage> NostrMls<Storage>
 where
     Storage: NostrMlsStorageProvider,
@@ -202,6 +211,49 @@ where
             let public_key = PublicKey::from_hex(hex_str)?;
             acc.insert(public_key);
             Ok(acc)
+        })
+    }
+
+    /// Add members to a group
+    ///
+    /// # Arguments
+    ///
+    /// * `group_id` - The MLS group ID
+    /// * `key_packages` - The key packages for the new members
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(AddMembersResult)` - The result of adding members
+    /// * `Err(Error)` - If there is an error adding members
+    pub fn add_members(
+        &self,
+        group_id: &GroupId,
+        key_packages: &[KeyPackage],
+    ) -> Result<AddMembersResult, Error> {
+        // Load group
+        let mut group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+
+        let signer: SignatureKeyPair = self.load_mls_signer(&group)?;
+
+        let (commit_message, welcome_message, _group_info) = group
+            .add_members(&self.provider, &signer, key_packages)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        group
+            .merge_pending_commit(&self.provider)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        let serialized_commit = commit_message
+            .tls_serialize_detached()
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        let serialized_welcome = welcome_message
+            .tls_serialize_detached()
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        Ok(AddMembersResult {
+            commit_message: serialized_commit,
+            welcome_message: serialized_welcome,
         })
     }
 
@@ -562,5 +614,317 @@ mod tests {
         assert!(nostr_mls
             .validate_group_members(&creator_pk, &members, &bad_admins)
             .is_err());
+    }
+
+    #[test]
+    fn test_add_members_success() {
+        use nostr::RelayUrl;
+        use openmls::prelude::KeyPackage;
+
+        let creator_nostr_mls = create_test_nostr_mls();
+        let (creator_pk, initial_members, admins) = create_test_group_members();
+
+        // Create key packages for initial members
+        let mut initial_key_packages = Vec::new();
+        for member_pk in &initial_members {
+            // Generate a credential and create a key package directly
+            let member_nostr_mls = create_test_nostr_mls();
+            let (credential, signature_keypair) = member_nostr_mls
+                .generate_credential_with_key(member_pk)
+                .expect("Failed to generate credential");
+
+            let capabilities = member_nostr_mls.capabilities();
+            let key_package_bundle = KeyPackage::builder()
+                .leaf_node_capabilities(capabilities)
+                .mark_as_last_resort()
+                .build(
+                    member_nostr_mls.ciphersuite,
+                    &member_nostr_mls.provider,
+                    &signature_keypair,
+                    credential,
+                )
+                .expect("Failed to build key package");
+
+            initial_key_packages.push(key_package_bundle.key_package().clone());
+        }
+
+        // Create the initial group
+        let create_result = creator_nostr_mls
+            .create_group(
+                "Test Group",
+                "A test group for add_members testing",
+                &creator_pk,
+                &initial_members,
+                &initial_key_packages,
+                admins,
+                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+            )
+            .expect("Failed to create group");
+
+        let group_id = &create_result.group.mls_group_id;
+
+        // Verify initial group state
+        let initial_member_count = creator_nostr_mls
+            .get_members(group_id)
+            .expect("Failed to get initial members")
+            .len();
+        assert_eq!(initial_member_count, 3); // creator + 2 initial members
+
+        // Now add new members
+        let new_member1 = Keys::generate();
+        let new_member2 = Keys::generate();
+        let new_member_pks = vec![new_member1.public_key(), new_member2.public_key()];
+
+        // Create key packages for new members
+        let mut new_key_packages = Vec::new();
+        for member_pk in &new_member_pks {
+            let member_nostr_mls = create_test_nostr_mls();
+            let (credential, signature_keypair) = member_nostr_mls
+                .generate_credential_with_key(member_pk)
+                .expect("Failed to generate credential");
+
+            let capabilities = member_nostr_mls.capabilities();
+            let key_package_bundle = KeyPackage::builder()
+                .leaf_node_capabilities(capabilities)
+                .mark_as_last_resort()
+                .build(
+                    member_nostr_mls.ciphersuite,
+                    &member_nostr_mls.provider,
+                    &signature_keypair,
+                    credential,
+                )
+                .expect("Failed to build key package");
+
+            new_key_packages.push(key_package_bundle.key_package().clone());
+        }
+
+        // Test add_members
+        let add_result = creator_nostr_mls
+            .add_members(group_id, &new_key_packages)
+            .expect("Failed to add members");
+
+        // Verify the result contains the expected data
+        assert!(
+            !add_result.commit_message.is_empty(),
+            "Commit message should not be empty"
+        );
+        assert!(
+            !add_result.welcome_message.is_empty(),
+            "Welcome message should not be empty"
+        );
+
+        // Verify the group state was updated correctly
+        let final_members = creator_nostr_mls
+            .get_members(group_id)
+            .expect("Failed to get final members");
+        assert_eq!(final_members.len(), 5); // creator + 2 initial + 2 new = 5 total
+
+        // Verify new members are in the group
+        for new_member_pk in &new_member_pks {
+            assert!(
+                final_members.contains(new_member_pk),
+                "New member should be in the group"
+            );
+        }
+
+        // Verify original members are still in the group
+        assert!(
+            final_members.contains(&creator_pk),
+            "Creator should still be in group"
+        );
+        for initial_member_pk in &initial_members {
+            assert!(
+                final_members.contains(initial_member_pk),
+                "Initial member should still be in group"
+            );
+        }
+    }
+
+    #[test]
+    fn test_add_members_group_not_found() {
+        use openmls::group::GroupId;
+
+        let nostr_mls = create_test_nostr_mls();
+        let non_existent_group_id = GroupId::from_slice(&[1, 2, 3, 4, 5]);
+
+        let result = nostr_mls.add_members(&non_existent_group_id, &[]);
+        assert!(
+            matches!(result, Err(crate::Error::GroupNotFound)),
+            "Should return GroupNotFound error for non-existent group"
+        );
+    }
+
+    #[test]
+    fn test_add_members_empty_key_packages() {
+        use nostr::RelayUrl;
+
+        let creator_nostr_mls = create_test_nostr_mls();
+        let (creator_pk, initial_members, admins) = create_test_group_members();
+
+        // Create key packages for initial members
+        let mut initial_key_packages = Vec::new();
+        for member_pk in &initial_members {
+            let member_nostr_mls = create_test_nostr_mls();
+            let (credential, signature_keypair) = member_nostr_mls
+                .generate_credential_with_key(member_pk)
+                .expect("Failed to generate credential");
+
+            let capabilities = member_nostr_mls.capabilities();
+            let key_package_bundle = openmls::prelude::KeyPackage::builder()
+                .leaf_node_capabilities(capabilities)
+                .mark_as_last_resort()
+                .build(
+                    member_nostr_mls.ciphersuite,
+                    &member_nostr_mls.provider,
+                    &signature_keypair,
+                    credential,
+                )
+                .expect("Failed to build key package");
+
+            initial_key_packages.push(key_package_bundle.key_package().clone());
+        }
+
+        // Create the initial group
+        let create_result = creator_nostr_mls
+            .create_group(
+                "Test Group",
+                "A test group for empty add_members testing",
+                &creator_pk,
+                &initial_members,
+                &initial_key_packages,
+                admins,
+                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+            )
+            .expect("Failed to create group");
+
+        let group_id = &create_result.group.mls_group_id;
+
+        // Get initial member count
+        let initial_member_count = creator_nostr_mls
+            .get_members(group_id)
+            .expect("Failed to get initial members")
+            .len();
+
+        // Test adding empty key packages (should be a no-op but not error)
+        let add_result = creator_nostr_mls.add_members(group_id, &[]);
+
+        // This might error or succeed depending on MLS implementation
+        // If it succeeds, verify no members were added
+        if let Ok(_result) = add_result {
+            let final_member_count = creator_nostr_mls
+                .get_members(group_id)
+                .expect("Failed to get final members")
+                .len();
+            assert_eq!(
+                initial_member_count, final_member_count,
+                "Member count should not change when adding empty key packages"
+            );
+        }
+        // If it errors, that's also acceptable behavior
+    }
+
+    #[test]
+    fn test_add_members_epoch_advancement() {
+        use nostr::RelayUrl;
+
+        let creator_nostr_mls = create_test_nostr_mls();
+        let (creator_pk, initial_members, admins) = create_test_group_members();
+
+        // Create key packages for initial members
+        let mut initial_key_packages = Vec::new();
+        for member_pk in &initial_members {
+            let member_nostr_mls = create_test_nostr_mls();
+            let (credential, signature_keypair) = member_nostr_mls
+                .generate_credential_with_key(member_pk)
+                .expect("Failed to generate credential");
+
+            let capabilities = member_nostr_mls.capabilities();
+            let key_package_bundle = openmls::prelude::KeyPackage::builder()
+                .leaf_node_capabilities(capabilities)
+                .mark_as_last_resort()
+                .build(
+                    member_nostr_mls.ciphersuite,
+                    &member_nostr_mls.provider,
+                    &signature_keypair,
+                    credential,
+                )
+                .expect("Failed to build key package");
+
+            initial_key_packages.push(key_package_bundle.key_package().clone());
+        }
+
+        // Create the initial group
+        let create_result = creator_nostr_mls
+            .create_group(
+                "Test Group",
+                "A test group for epoch advancement testing",
+                &creator_pk,
+                &initial_members,
+                &initial_key_packages,
+                admins,
+                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+            )
+            .expect("Failed to create group");
+
+        let group_id = &create_result.group.mls_group_id;
+
+        // Get initial epoch
+        let initial_group = creator_nostr_mls
+            .get_group(group_id)
+            .expect("Failed to get group")
+            .expect("Group should exist");
+        let initial_epoch = initial_group.epoch;
+
+        // Create key package for new member
+        let new_member = Keys::generate();
+        let new_member_nostr_mls = create_test_nostr_mls();
+        let (credential, signature_keypair) = new_member_nostr_mls
+            .generate_credential_with_key(&new_member.public_key())
+            .expect("Failed to generate credential");
+
+        let capabilities = new_member_nostr_mls.capabilities();
+        let key_package_bundle = openmls::prelude::KeyPackage::builder()
+            .leaf_node_capabilities(capabilities)
+            .mark_as_last_resort()
+            .build(
+                new_member_nostr_mls.ciphersuite,
+                &new_member_nostr_mls.provider,
+                &signature_keypair,
+                credential,
+            )
+            .expect("Failed to build key package");
+
+        // Add the new member
+        let _add_result = creator_nostr_mls
+            .add_members(group_id, &[key_package_bundle.key_package().clone()])
+            .expect("Failed to add member");
+
+        // Verify the MLS group epoch was advanced by checking the actual MLS group
+        let mls_group = creator_nostr_mls
+            .load_mls_group(group_id)
+            .expect("Failed to load MLS group")
+            .expect("MLS group should exist");
+        let final_mls_epoch = mls_group.epoch().as_u64();
+
+        assert!(
+            final_mls_epoch > initial_epoch,
+            "MLS group epoch should advance after adding members (initial: {}, final: {})",
+            initial_epoch,
+            final_mls_epoch
+        );
+
+        // Verify the new member was added
+        let final_members = creator_nostr_mls
+            .get_members(group_id)
+            .expect("Failed to get members");
+        assert!(
+            final_members.contains(&new_member.public_key()),
+            "New member should be in the group"
+        );
+        assert_eq!(
+            final_members.len(),
+            4, // creator + 2 initial + 1 new = 4 total
+            "Should have 4 total members"
+        );
     }
 }
