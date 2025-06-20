@@ -1,0 +1,31 @@
+[package]
+name = "nostr-mls-sqlcipher-storage"
+version = "0.1.0"
+edition = "2021"
+description = "SQLCipher-encrypted SQLite database for nostr-mls that implements the NostrMlsStorageProvider Trait"
+authors = ["Jeff Gardner <j@jeffg.me>", "Yuki Kishimoto <yukikishimoto@protonmail.com>", "Rust Nostr Developers"]
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version = "1.74.0"
+keywords = ["nostr", "mls", "openmls", "sqlite"]
+
+[dependencies]
+nostr = { workspace = true, features = ["std"] }
+nostr-mls-storage.workspace = true
+openmls = { git = "https://github.com/openmls/openmls", rev = "4cc0f594b11262083ad9827b3b2033052c6ef99f", default-features = false }
+openmls_sqlite_storage = { git = "https://github.com/openmls/openmls", rev = "4cc0f594b11262083ad9827b3b2033052c6ef99f", default-features = false }
+refinery = { version = "0.8", features = ["rusqlite"] } # MSRV is 1.75.0
+rusqlite = { version = "0.32", default-features = false }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tracing = { workspace = true, features = ["std"] }
+
+[features]
+default = ["bundled-sqlcipher-vendored-openssl"]
+bundled-sqlcipher = ["rusqlite/bundled-sqlcipher"]
+bundled-sqlcipher-vendored-openssl = ["rusqlite/bundled-sqlcipher-vendored-openssl"]
+
+[dev-dependencies]
+tempfile.workspace = true
