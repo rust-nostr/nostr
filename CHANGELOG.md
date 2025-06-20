@@ -36,6 +36,7 @@
 - connect: remove `NostrConnect::get_relays` (https://github.com/rust-nostr/nostr/pull/894)
 - database: merge traits into `NostrDatabase` (https://github.com/rust-nostr/nostr/pull/916)
 - database: remove `NostrDatabase::has_coordinate_been_deleted` (https://github.com/rust-nostr/nostr/pull/917)
+- mls: changed return type of `NostrMls::add_members` and `NostrMls::self_update` (https://github.com/rust-nostr/nostr/pull/934)
 
 ### Changed
 
@@ -52,6 +53,7 @@
 - nostr: add `RelayUrl::domain` method (https://github.com/rust-nostr/nostr/pull/914)
 - pool: allow putting relays to sleep when idle (https://github.com/rust-nostr/nostr/pull/926)
 - mls: add `NostrMls::add_members` method for adding members to an existing group (https://github.com/rust-nostr/nostr/pull/931)
+- mls: add `NostrMls::remove_members` method for removing members from an existing group (https://github.com/rust-nostr/nostr/pull/934)
 
 ### Fixed
 
