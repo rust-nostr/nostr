@@ -98,7 +98,9 @@ where
     /// * `Err(Error)` - If the current user's public key cannot be extracted or the group is not found
     pub(crate) fn is_admin(&self, group: &MlsGroup) -> Result<bool, Error> {
         let current_user_pubkey = self.get_own_pubkey(group)?;
-        let stored_group = self.get_group(group.group_id())?.ok_or(Error::GroupNotFound)?;
+        let stored_group = self
+            .get_group(group.group_id())?
+            .ok_or(Error::GroupNotFound)?;
         Ok(stored_group.admin_pubkeys.contains(&current_user_pubkey))
     }
 
@@ -283,7 +285,9 @@ where
 
         // Check if current user is an admin
         if !self.is_admin(&group)? {
-            return Err(Error::Group("Only group admins can add members".to_string()));
+            return Err(Error::Group(
+                "Only group admins can add members".to_string(),
+            ));
         }
 
         let (commit_message, welcome_message, group_info) = group
@@ -303,7 +307,10 @@ where
             .map_err(|e| Error::Group(e.to_string()))?;
 
         let serialized_group_info = group_info
-            .map(|g| g.tls_serialize_detached().map_err(|e| Error::Group(e.to_string())))
+            .map(|g| {
+                g.tls_serialize_detached()
+                    .map_err(|e| Error::Group(e.to_string()))
+            })
             .transpose()?;
 
         Ok(UpdateGroupResult {
@@ -336,7 +343,9 @@ where
 
         // Check if current user is an admin
         if !self.is_admin(&group)? {
-            return Err(Error::Group("Only group admins can remove members".to_string()));
+            return Err(Error::Group(
+                "Only group admins can remove members".to_string(),
+            ));
         }
 
         // Convert pubkeys to leaf indices
@@ -369,11 +378,17 @@ where
             .map_err(|e| Error::Group(e.to_string()))?;
 
         let serialized_welcome_message = welcome_option
-            .map(|w| w.tls_serialize_detached().map_err(|e| Error::Group(e.to_string())))
+            .map(|w| {
+                w.tls_serialize_detached()
+                    .map_err(|e| Error::Group(e.to_string()))
+            })
             .transpose()?;
 
         let serialized_group_info = group_info
-            .map(|g| g.tls_serialize_detached().map_err(|e| Error::Group(e.to_string())))
+            .map(|g| {
+                g.tls_serialize_detached()
+                    .map_err(|e| Error::Group(e.to_string()))
+            })
             .transpose()?;
 
         Ok(UpdateGroupResult {
@@ -641,12 +656,18 @@ where
 
         let serialized_welcome_message = commit_message_bundle
             .welcome()
-            .map(|w| w.tls_serialize_detached().map_err(|e| Error::Group(e.to_string())))
+            .map(|w| {
+                w.tls_serialize_detached()
+                    .map_err(|e| Error::Group(e.to_string()))
+            })
             .transpose()?;
 
         let serialized_group_info = commit_message_bundle
             .group_info()
-            .map(|g| g.tls_serialize_detached().map_err(|e| Error::Group(e.to_string())))
+            .map(|g| {
+                g.tls_serialize_detached()
+                    .map_err(|e| Error::Group(e.to_string()))
+            })
             .transpose()?;
 
         Ok(UpdateGroupResult {
@@ -1121,7 +1142,10 @@ mod tests {
             .get_own_pubkey(&mls_group)
             .expect("Failed to get own pubkey");
 
-        assert_eq!(own_pubkey, creator_pk, "Own pubkey should match creator pubkey");
+        assert_eq!(
+            own_pubkey, creator_pk,
+            "Own pubkey should match creator pubkey"
+        );
     }
 
     #[test]
@@ -1277,12 +1301,16 @@ mod tests {
             .expect("Failed to build key package");
 
         // Test that admin can add members (should work)
-        let add_result = admin_nostr_mls.add_members(group_id, &[new_key_package_bundle.key_package().clone()]);
+        let add_result =
+            admin_nostr_mls.add_members(group_id, &[new_key_package_bundle.key_package().clone()]);
         assert!(add_result.is_ok(), "Admin should be able to add members");
 
         // Test that admin can remove members (should work)
         let remove_result = admin_nostr_mls.remove_members(group_id, &[member1_pk]);
-        assert!(remove_result.is_ok(), "Admin should be able to remove members");
+        assert!(
+            remove_result.is_ok(),
+            "Admin should be able to remove members"
+        );
 
         // Note: Testing non-admin permissions would require the non-admin user to actually
         // be part of the MLS group, which would require processing the welcome message.
@@ -1352,7 +1380,10 @@ mod tests {
         }
 
         // Verify we found the expected public keys
-        assert!(found_pubkeys.contains(&creator_pk), "Should find creator pubkey");
+        assert!(
+            found_pubkeys.contains(&creator_pk),
+            "Should find creator pubkey"
+        );
         for member_pk in &initial_members {
             assert!(
                 found_pubkeys.contains(member_pk),
@@ -1439,7 +1470,10 @@ mod tests {
         );
 
         // Verify remaining members are still in the group
-        assert!(final_members.contains(&creator_pk), "Creator should still be in group");
+        assert!(
+            final_members.contains(&creator_pk),
+            "Creator should still be in group"
+        );
         assert!(
             final_members.contains(&initial_members[0]),
             "Remaining member should still be in group"
@@ -1693,7 +1727,10 @@ mod tests {
         );
 
         // Verify all original members are still in the group
-        assert!(final_members.contains(&creator_pk), "Creator should still be in group");
+        assert!(
+            final_members.contains(&creator_pk),
+            "Creator should still be in group"
+        );
         for initial_member_pk in &initial_members {
             assert!(
                 final_members.contains(initial_member_pk),
