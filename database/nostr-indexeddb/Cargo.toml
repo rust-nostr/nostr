@@ -15,4 +15,3 @@ keywords = ["nostr", "database", "indexeddb"]
 indexed_db_futures = "0.5"
 nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
-wasm-bindgen.workspace = true

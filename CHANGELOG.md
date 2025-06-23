@@ -27,6 +27,7 @@
 
 ### Breaking changes
 
+- Move NIP-07 from `nostr` to `nip07` crate (https://github.com/rust-nostr/nostr/pull/937)
 - nostr: remove `NostrConnectMethod::GetRelays`, `NostrConnectRequest::GetRelays` and `ResponseResult::GetRelays` (https://github.com/rust-nostr/nostr/pull/894)
 - nostr: remove `Market::Mention` (NIP-10) (https://github.com/rust-nostr/nostr/pull/895)
 - nostr: remove `parser` feature (https://github.com/rust-nostr/nostr/pull/899)

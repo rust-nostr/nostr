@@ -37,6 +37,7 @@ buildargs=(
     "-p nostr --no-default-features --features alloc"             # Only alloc feature
     "-p nostr --no-default-features --features alloc,all-nips"    # alloc + all-nips
     "-p nostr --all-features"                                     # All features
+    "-p nip07 --target wasm32-unknown-unknown"
     "-p nostr-database"
     "-p nostr-lmdb"
     "-p nostr-mls-storage"

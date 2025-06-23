@@ -19,12 +19,12 @@ use std::sync::{Arc, Mutex};
 pub extern crate nostr;
 pub extern crate nostr_database as database;
 
+use indexed_db_futures::js_sys::wasm_bindgen::{JsCast, JsValue};
 use indexed_db_futures::js_sys::JsString;
 use indexed_db_futures::request::{IdbOpenDbRequestLike, OpenDbRequest};
 use indexed_db_futures::web_sys::IdbTransactionMode;
 use indexed_db_futures::{IdbDatabase, IdbQuerySource, IdbVersionChangeEvent};
 use nostr_database::prelude::*;
-use wasm_bindgen::{JsCast, JsValue};
 
 mod error;
 

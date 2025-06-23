@@ -2744,6 +2744,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0efe882e02d206d8d279c20eb40e03baf7cb5136a1476dc084a324fbc3ec42d"
 
 [[package]]
+name = "nip07"
+version = "0.42.0"
+dependencies = [
+ "js-sys",
+ "nostr",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
 name = "nix"
 version = "0.30.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2779,7 +2790,6 @@ dependencies = [
  "chacha20poly1305",
  "getrandom 0.2.15",
  "instant",
- "js-sys",
  "nostr-ots",
  "reqwest",
  "scrypt",
@@ -2790,9 +2800,6 @@ dependencies = [
  "unicode-normalization",
  "url",
  "url-fork",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
 ]
 
 [[package]]
@@ -2856,7 +2863,6 @@ dependencies = [
  "indexed_db_futures",
  "nostr",
  "nostr-database",
- "wasm-bindgen",
 ]
 
 [[package]]

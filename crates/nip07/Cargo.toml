@@ -1,0 +1,23 @@
+[package]
+name = "nip07"
+version = "0.42.0"
+edition = "2021"
+description = "Nostr Browser signer implementation (NIP-07)."
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "nip07", "browser", "signer"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies]
+js-sys = { version = "0.3", default-features = false, features = ["std"] }
+nostr = { workspace = true, default-features = false, features = ["std"] }
+wasm-bindgen = { version = "0.2", default-features = false, features = ["std"] }
+wasm-bindgen-futures = { version = "0.4", default-features = false }
+web-sys = { version = "0.3", default-features = false, features = ["std", "Window"] }

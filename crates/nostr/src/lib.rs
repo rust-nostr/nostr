@@ -4,8 +4,7 @@
 
 //! Rust implementation of the Nostr protocol.
 
-#![cfg_attr(not(target_arch = "wasm32"), forbid(unsafe_code))]
-#![cfg_attr(target_arch = "wasm32", deny(unsafe_code))]
+#![forbid(unsafe_code)]
 #![cfg_attr(test, allow(missing_docs))]
 #![cfg_attr(not(test), warn(missing_docs))]
 #![warn(rustdoc::bare_urls)]

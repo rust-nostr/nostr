@@ -2,23 +2,31 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP07: `window.nostr` capability for web browsers
+//! Nostr Browser signer implementation (NIP-07).
+//!
+//! `window.nostr` capability for web browsers.
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/07.md>
 
-use alloc::string::{String, ToString};
-use core::fmt;
-use core::str::FromStr;
+#![cfg_attr(test, allow(missing_docs))]
+#![cfg_attr(not(test), warn(missing_docs))]
+#![warn(rustdoc::bare_urls)]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![doc = include_str!("../README.md")]
+// Crate available only for WASM
+#![cfg(target_family = "wasm")]
+
+use std::fmt;
+use std::str::FromStr;
 
 use js_sys::{Array, Function, JsString, Object, Promise, Reflect};
-use secp256k1::schnorr::Signature;
+use nostr::secp256k1::schnorr::Signature;
+use nostr::signer::{NostrSigner, SignerBackend, SignerError};
+use nostr::util::BoxedFuture;
+use nostr::{event, key, secp256k1, Event, PublicKey, UnsignedEvent};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::Window;
-
-use crate::signer::{NostrSigner, SignerBackend, SignerError};
-use crate::util::BoxedFuture;
-use crate::{event, key, Event, PublicKey, UnsignedEvent};
 
 const GET_PUBLIC_KEY: &str = "getPublicKey";
 const SIGN_EVENT: &str = "signEvent";
@@ -54,7 +62,6 @@ pub enum Error {
     TypeMismatch,
 }
 
-#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
@@ -96,10 +103,6 @@ impl From<JsValue> for Error {
     }
 }
 
-#[allow(missing_docs)]
-#[deprecated(since = "0.39.0", note = "BrowserSigner")]
-pub type Nip07Signer = BrowserSigner;
-
 /// Signer for interaction with browser extensions (ex. Alby)
 ///
 /// Browser extensions: <https://github.com/aljazceru/awesome-nostr#nip-07-browser-extensions>
@@ -111,10 +114,8 @@ pub struct BrowserSigner {
     nostr_obj: Object,
 }
 
-#[allow(unsafe_code)]
 unsafe impl Send for BrowserSigner {}
 
-#[allow(unsafe_code)]
 unsafe impl Sync for BrowserSigner {}
 
 impl BrowserSigner {
