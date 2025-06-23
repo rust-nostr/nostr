@@ -50,41 +50,30 @@ async fn main() -> Result<()> {
     // ================================
 
     // To create a group, Alice fetches Bob's key package from the Nostr network and parses it
-    let bob_key_package: KeyPackage = alice_nostr_mls.parse_key_package(&bob_key_package_event)?;
+    let _bob_key_package: KeyPackage = alice_nostr_mls.parse_key_package(&bob_key_package_event)?;
 
     // Alice creates the group, adding Bob.
     let group_create_result = alice_nostr_mls.create_group(
         "Bob & Alice",
         "A secret chat between Bob and Alice",
-        &alice_keys.public_key,
-        &[bob_keys.public_key()],
-        &[bob_key_package],
-        vec![alice_keys.public_key()],
+        &alice_keys.public_key(),
+        vec![bob_key_package_event.clone()],
+        vec![alice_keys.public_key(), bob_keys.public_key()], // Make Bob an admin too
         vec![RelayUrl::parse("ws://localhost:8080").unwrap()],
     )?;
 
     tracing::info!("Group created");
 
-    // The group is created, and the welcome message is serialized to send to Bob.
+    // The group is created, and the welcome messages are in welcome_rumors.
     // We also have the Nostr group data, which we can use to show info about the group.
     let alice_group = group_create_result.group;
-    let serialized_welcome_message = group_create_result.serialized_welcome_message;
+    let welcome_rumors = group_create_result.welcome_rumors;
 
     // Alice now creates a Kind: 444 event that is Gift-wrapped to just Bob with the welcome event in the rumor event.
-    // If you added multiple users to the group, you'd create a separate gift-wrapped welcome event (with the same serialized_welcome_message) for each user.
-    let welcome_rumor =
-        EventBuilder::new(Kind::MlsWelcome, hex::encode(&serialized_welcome_message))
-            .tags(vec![
-                // These relays are the group_relays where the user should look for group messages.
-                // Tag::from_standardized(TagStandard::Relays(
-                //     relay_urls
-                //         .iter()
-                //         .filter_map(|r| RelayUrl::parse(r).ok())
-                //         .collect(),
-                // )),
-                // Tag::event(member.event_id), // This is the event ID of the key_package event used when adding the member to the group
-            ])
-            .build(alice_keys.public_key());
+    // If you added multiple users to the group, you'd create a separate gift-wrapped welcome event for each user.
+    let welcome_rumor = welcome_rumors
+        .first()
+        .expect("Should have at least one welcome rumor");
 
     // Now, let's also try sending a message to the group (using an unsigned Kind: 9 event)
     // We don't have to wait for Bob to join the group before we send our first message.
@@ -103,7 +92,7 @@ async fn main() -> Result<()> {
 
     // First Bob recieves the Gift-wrapped welcome message from Alice, decrypts it, and processes it.
     // The first param is the gift-wrap event id (which we set as all zeros for this example)
-    bob_nostr_mls.process_welcome(&EventId::all_zeros(), &welcome_rumor)?;
+    bob_nostr_mls.process_welcome(&EventId::all_zeros(), welcome_rumor)?;
     // Bob can now preview the welcome message to see what group he might be joining
     let welcomes = bob_nostr_mls
         .get_pending_welcomes()
@@ -132,6 +121,35 @@ async fn main() -> Result<()> {
 
     tracing::info!("Bob joined group");
 
+    assert_eq!(
+        bob_nostr_mls
+            .get_groups()
+            .unwrap()
+            .first()
+            .unwrap()
+            .nostr_group_id,
+        alice_group.nostr_group_id,
+        "Bob's group should have the same Nostr group ID as Alice's group"
+    );
+
+    assert_eq!(
+        hex::encode(
+            bob_nostr_mls
+                .get_groups()
+                .unwrap()
+                .first()
+                .unwrap()
+                .nostr_group_id
+        ),
+        message_event
+            .tags
+            .iter()
+            .find(|tag| tag.kind() == TagKind::h())
+            .unwrap()
+            .content()
+            .unwrap(),
+        "Bob's group should have the same Nostr group ID as Alice's message wrapper event"
+    );
     // Bob and Alice now have synced state for the group.
     assert_eq!(
         bob_nostr_mls.get_members(&bob_mls_group_id).unwrap().len(),
@@ -152,7 +170,11 @@ async fn main() -> Result<()> {
     // Now Bob can process the MLS message content and do what's needed with it
     bob_nostr_mls.process_message(&message_event)?;
 
-    let messages = bob_nostr_mls.get_messages(&bob_mls_group_id).unwrap();
+    tracing::info!("Bob processed message");
+    let messages = bob_nostr_mls
+        .get_messages(&bob_mls_group_id)
+        .map_err(|e| crate::error::Error::Message(e.to_string()))?;
+    tracing::info!("Bob got messages: {:?}", messages);
     let message = messages.first().unwrap();
     tracing::info!("Bob processed message: {:?}", message);
 
@@ -210,16 +232,146 @@ async fn main() -> Result<()> {
     let message = messages.first().unwrap();
     tracing::info!("Alice processed message: {:?}", message);
 
-    cleanup(alice_temp_dir, bob_temp_dir);
+    // ================================
+    // Extended functionality: Adding Charlie
+    // ================================
+
+    let (charlie_keys, charlie_nostr_mls, charlie_temp_dir) = generate_identity();
+    tracing::info!("Charlie identity generated");
+
+    // Create key package for Charlie
+    let (charlie_key_package_encoded, charlie_tags) = charlie_nostr_mls
+        .create_key_package_for_event(&charlie_keys.public_key(), [relay_url.clone()])?;
+
+    let charlie_key_package_event =
+        EventBuilder::new(Kind::MlsKeyPackage, charlie_key_package_encoded)
+            .tags(charlie_tags)
+            .build(charlie_keys.public_key())
+            .sign(&charlie_keys)
+            .await?;
+
+    // Alice adds Charlie to the group
+    tracing::info!("Alice adding Charlie to the group");
+    let add_charlie_result = alice_nostr_mls.add_members(
+        &GroupId::from_slice(alice_group.mls_group_id.as_slice()),
+        &[charlie_key_package_event.clone()],
+    )?;
+
+    // Alice publishes the add commit message and Bob processes it
+    tracing::info!("Bob processing Charlie addition commit");
+    let add_commit_result = bob_nostr_mls.process_message(&add_charlie_result.evolution_event);
+    tracing::info!("Add commit processing result: {:?}", add_commit_result);
+
+    // Alice merges the pending commit for adding Charlie
+    alice_nostr_mls
+        .merge_pending_commit(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))?;
+
+    // Charlie processes the welcome message
+    if let Some(welcome_rumors) = add_charlie_result.welcome_rumors {
+        let charlie_welcome_rumor = welcome_rumors
+            .first()
+            .expect("Should have welcome rumor for Charlie");
+        charlie_nostr_mls.process_welcome(&EventId::all_zeros(), charlie_welcome_rumor)?;
+
+        let charlie_welcomes = charlie_nostr_mls
+            .get_pending_welcomes()
+            .expect("Error getting Charlie's pending welcomes");
+        let charlie_welcome = charlie_welcomes.first().unwrap();
+        charlie_nostr_mls.accept_welcome(charlie_welcome)?;
+
+        tracing::info!("Charlie joined the group");
+
+        // Verify Charlie is in the group
+        let group_members = alice_nostr_mls
+            .get_members(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))?;
+        assert_eq!(group_members.len(), 3, "Group should now have 3 members");
+        assert!(
+            group_members.contains(&charlie_keys.public_key()),
+            "Charlie should be in the group"
+        );
+    }
+
+    // ================================
+    // Removing Charlie from the group
+    // ================================
+
+    tracing::info!("Alice removing Charlie from the group");
+    let remove_charlie_result = alice_nostr_mls.remove_members(
+        &GroupId::from_slice(alice_group.mls_group_id.as_slice()),
+        &[charlie_keys.public_key()],
+    )?;
+
+    // Bob processes the remove commit message
+    tracing::info!("Bob processing Charlie removal commit");
+    let remove_commit_result =
+        bob_nostr_mls.process_message(&remove_charlie_result.evolution_event);
+    tracing::info!(
+        "Remove commit processing result: {:?}",
+        remove_commit_result
+    );
+
+    // Alice merges the pending commit for removing Charlie
+    alice_nostr_mls
+        .merge_pending_commit(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))?;
+
+    // Verify Charlie is no longer in the group
+    let group_members_after_removal =
+        alice_nostr_mls.get_members(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))?;
+    assert_eq!(
+        group_members_after_removal.len(),
+        2,
+        "Group should now have 2 members"
+    );
+    assert!(
+        !group_members_after_removal.contains(&charlie_keys.public_key()),
+        "Charlie should not be in the group"
+    );
+
+    // ================================
+    // Bob leaving the group
+    // ================================
+
+    tracing::info!("Bob leaving the group");
+    let bob_leave_result =
+        bob_nostr_mls.leave_group(&GroupId::from_slice(bobs_group.mls_group_id.as_slice()))?;
+
+    // Alice processes Bob's leave proposal
+    tracing::info!("Alice processing Bob's leave proposal");
+    let leave_proposal_result = alice_nostr_mls.process_message(&bob_leave_result.evolution_event);
+    tracing::info!(
+        "Leave proposal processing result: {:?}",
+        leave_proposal_result
+    );
+
+    // The leave creates a proposal that needs to be committed by an admin (Alice)
+    // Alice should create a commit to finalize Bob's removal
+    // Note: In a real application, Alice would need to detect the proposal and create a commit
+    // For now, we'll verify the proposal was processed correctly
+
+    match leave_proposal_result {
+        Ok(MessageProcessingResult::Proposal(_)) => {
+            tracing::info!("Bob's leave proposal was successfully processed by Alice");
+        }
+        _ => {
+            tracing::warn!("Unexpected result from processing Bob's leave proposal");
+        }
+    }
+
+    tracing::info!("MLS group operations completed successfully!");
+
+    cleanup(alice_temp_dir, bob_temp_dir, charlie_temp_dir);
 
     Ok(())
 }
 
-fn cleanup(alice_temp_dir: TempDir, bob_temp_dir: TempDir) {
+fn cleanup(alice_temp_dir: TempDir, bob_temp_dir: TempDir, charlie_temp_dir: TempDir) {
     alice_temp_dir
         .close()
         .expect("Failed to close temp directory");
     bob_temp_dir
+        .close()
+        .expect("Failed to close temp directory");
+    charlie_temp_dir
         .close()
         .expect("Failed to close temp directory");
 }

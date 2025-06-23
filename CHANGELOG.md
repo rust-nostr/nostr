@@ -40,6 +40,7 @@
 - database: merge traits into `NostrDatabase` (https://github.com/rust-nostr/nostr/pull/916)
 - database: remove `NostrDatabase::has_coordinate_been_deleted` (https://github.com/rust-nostr/nostr/pull/917)
 - mls: changed return type of `NostrMls::add_members` and `NostrMls::self_update` (https://github.com/rust-nostr/nostr/pull/934)
+- mls: changed return type of all group and message methods to return Events instead of serialized MLS objects. (https://github.com/rust-nostr/nostr/pull/940)
 
 ### Changed
 
@@ -57,6 +58,8 @@
 - pool: allow putting relays to sleep when idle (https://github.com/rust-nostr/nostr/pull/926)
 - mls: add `NostrMls::add_members` method for adding members to an existing group (https://github.com/rust-nostr/nostr/pull/931)
 - mls: add `NostrMls::remove_members` method for removing members from an existing group (https://github.com/rust-nostr/nostr/pull/934)
+- mls: add `NostrMls::leave_group` method for creating a proposal to leave the group (https://github.com/rust-nostr/nostr/pull/940)
+- mls: add processing of commit messages and basic processing of proposals. (https://github.com/rust-nostr/nostr/pull/940)
 
 ### Fixed
 

@@ -16,8 +16,8 @@ use openmls::error::LibraryError;
 use openmls::extensions::errors::InvalidExtensionError;
 use openmls::framing::errors::ProtocolMessageError;
 use openmls::group::{
-    AddMembersError, CreateMessageError, ExportSecretError, MergePendingCommitError, NewGroupError,
-    ProcessMessageError, SelfUpdateError, WelcomeError,
+    AddMembersError, CommitToPendingProposalsError, CreateMessageError, ExportSecretError,
+    MergePendingCommitError, NewGroupError, ProcessMessageError, SelfUpdateError, WelcomeError,
 };
 use openmls::key_packages::errors::{KeyPackageNewError, KeyPackageVerifyError};
 use openmls_traits::types::CryptoError;
@@ -71,6 +71,8 @@ pub enum Error {
     CannotDecryptOwnMessage,
     /// Merge pending commit error
     MergePendingCommit(String),
+    /// Commit to pending proposal
+    CommitToPendingProposalsError,
     /// Self update error
     SelfUpdate(String),
     /// Welcome error
@@ -102,6 +104,16 @@ pub enum Error {
     UnexpectedExtensionType,
     /// Nostr group data extension not found
     NostrGroupDataExtensionNotFound,
+    /// Message from a non-member of a group
+    MessageFromNonMember,
+    /// Code path is not yet implemented
+    NotImplemented(String),
+    /// Stored message not found
+    MessageNotFound,
+    /// Proposal message received from a non-admin
+    ProposalFromNonAdmin,
+    /// Commit message received from a non-admin
+    CommitFromNonAdmin,
 }
 
 impl std::error::Error for Error {}
@@ -137,6 +149,9 @@ impl fmt::Display for Error {
             }
             Self::ProcessedWelcomeNotFound => write!(f, "processed welcome not found"),
             Self::MergePendingCommit(e) => write!(f, "{e}"),
+            Self::CommitToPendingProposalsError => {
+                write!(f, "unable to commit to pending proposal")
+            }
             Self::SelfUpdate(e) => write!(f, "{e}"),
             Self::Provider(e) => write!(f, "{e}"),
             Self::GroupNotFound => write!(f, "group not found"),
@@ -157,6 +172,15 @@ impl fmt::Display for Error {
             Self::NostrGroupDataExtensionNotFound => {
                 write!(f, "Nostr group data extension not found")
             }
+            Self::MessageFromNonMember => {
+                write!(f, "Message recieved from non-member")
+            }
+            Self::NotImplemented(e) => {
+                write!(f, "{e}")
+            }
+            Self::MessageNotFound => write!(f, "stored message not found"),
+            Self::ProposalFromNonAdmin => write!(f, "not processing proposal from non-admin"),
+            Self::CommitFromNonAdmin => write!(f, "not processing commit from non-admin"),
         }
     }
 }
@@ -305,6 +329,15 @@ where
 {
     fn from(e: MergePendingCommitError<T>) -> Self {
         Self::MergePendingCommit(e.to_string())
+    }
+}
+
+impl<T> From<CommitToPendingProposalsError<T>> for Error
+where
+    T: fmt::Display,
+{
+    fn from(_e: CommitToPendingProposalsError<T>) -> Self {
+        Self::CommitToPendingProposalsError
     }
 }
 
