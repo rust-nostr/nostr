@@ -38,12 +38,10 @@ pub struct GroupResult {
 /// Result of updating a group
 #[derive(Debug)]
 pub struct UpdateGroupResult {
-    /// A Kind:445 Event containing the commit message. To be published to the group relays.
-    pub commit_event: Event,
+    /// A Kind:445 Event containing the proposal or commit message. To be published to the group relays.
+    pub evolution_event: Event,
     /// A vec of Kind:444 Welcome Events to be published for any members added as part of the update.
     pub welcome_rumors: Option<Vec<UnsignedEvent>>,
-    // Optional serialized group info for the group - since we use the ratchet_tree extension this should always be present
-    // pub serialized_group_info: Option<Vec<u8>>,
 }
 
 impl<Storage> NostrMls<Storage>
@@ -155,8 +153,8 @@ where
     /// * `Ok(Some(MlsGroup))` - The loaded group if found
     /// * `Ok(None)` - If no group exists with the given ID
     /// * `Err(Error)` - If there is an error loading the group
-    pub(crate) fn load_mls_group(&self, mls_group_id: &GroupId) -> Result<Option<MlsGroup>, Error> {
-        MlsGroup::load(self.provider.storage(), mls_group_id)
+    pub(crate) fn load_mls_group(&self, group_id: &GroupId) -> Result<Option<MlsGroup>, Error> {
+        MlsGroup::load(self.provider.storage(), group_id)
             .map_err(|e| Error::Provider(e.to_string()))
     }
 
@@ -271,14 +269,13 @@ where
     ///
     /// # Returns
     ///
-    /// * `Ok(AddMembersResult)` - The result of adding members
+    /// * `Ok(UpdateGroupResult)`
     /// * `Err(Error)` - If there is an error adding members
     pub fn add_members(
         &self,
         group_id: &GroupId,
         key_package_events: &[Event],
     ) -> Result<UpdateGroupResult, Error> {
-        // Load group
         let mut mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
         let mls_signer: SignatureKeyPair = self.load_mls_signer(&mls_group)?;
 
@@ -330,7 +327,7 @@ where
         //     .transpose()?;
 
         Ok(UpdateGroupResult {
-            commit_event,
+            evolution_event: commit_event,
             welcome_rumors, // serialized_group_info,
         })
     }
@@ -344,14 +341,13 @@ where
     ///
     /// # Returns
     ///
-    /// * `Ok(UpdateGroupResult)` - The result of removing members
+    /// * `Ok(UpdateGroupResult)`
     /// * `Err(Error)` - If there is an error removing members
     pub fn remove_members(
         &self,
         group_id: &GroupId,
         pubkeys: &[PublicKey],
     ) -> Result<UpdateGroupResult, Error> {
-        // Load group
         let mut mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
 
         let signer: SignatureKeyPair = self.load_mls_signer(&mls_group)?;
@@ -417,7 +413,7 @@ where
         //     .transpose()?;
 
         Ok(UpdateGroupResult {
-            commit_event,
+            evolution_event: commit_event,
             welcome_rumors: None, // serialized_group_info,
         })
     }
@@ -432,10 +428,10 @@ where
     ///
     /// * `Ok(BTreeSet<RelayUrl>)` - Set of relay URLs where group messages are published
     /// * `Err(Error)` - If there is an error accessing storage or the group is not found
-    pub fn get_relays(&self, mls_group_id: &GroupId) -> Result<BTreeSet<RelayUrl>, Error> {
+    pub fn get_relays(&self, group_id: &GroupId) -> Result<BTreeSet<RelayUrl>, Error> {
         let relays = self
             .storage()
-            .group_relays(mls_group_id)
+            .group_relays(group_id)
             .map_err(|e| Error::Group(e.to_string()))?;
         Ok(relays.into_iter().map(|r| r.relay_url).collect())
     }
@@ -460,8 +456,7 @@ where
     ///
     /// A `CreateGroupResult` containing:
     /// - The created MLS group
-    /// - A serialized welcome message for the initial members
-    /// - The Nostr-specific group data
+    /// - A Vec of UnsignedEvents representing the welcomes to be sent to new users
     ///
     /// # Errors
     ///
@@ -484,7 +479,8 @@ where
         S2: Into<String>,
     {
         // Get member pubkeys
-        let member_pubkeys = member_key_package_events.clone()
+        let member_pubkeys = member_key_package_events
+            .clone()
             .into_iter()
             .map(|e| e.pubkey)
             .collect::<Vec<PublicKey>>();
@@ -623,15 +619,11 @@ where
     ///
     /// # Arguments
     ///
-    /// * `nostr_mls` - The NostrMls instance containing MLS configuration and provider
     /// * `mls_group_id` - The ID of the MLS group as a byte vector
     ///
     /// # Returns
     ///
-    /// A Result containing a tuple of:
-    /// - MlsMessageOut: The self-update message to be sent to the group
-    /// - Option<MlsMessageOut>: Optional welcome message if new members are added
-    /// - Option<GroupInfo>: Optional updated group info
+    /// An UpdateGroupResult
     ///
     /// # Errors
     ///
@@ -641,7 +633,6 @@ where
     /// - Failed to generate or store signature keypair
     /// - Failed to perform self-update operation
     pub fn self_update(&self, group_id: &GroupId) -> Result<UpdateGroupResult, Error> {
-        // Load group
         let mut mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
 
         let current_secret: group_types::GroupExporterSecret = self
@@ -693,7 +684,8 @@ where
         // Serialize the message
         let serialized_commit_message = commit_message_bundle.commit().tls_serialize_detached()?;
 
-        let commit_event = self.build_encrypted_message_event(mls_group.group_id(), serialized_commit_message)?;
+        let commit_event =
+            self.build_encrypted_message_event(mls_group.group_id(), serialized_commit_message)?;
 
         let serialized_welcome_message = commit_message_bundle
             .welcome()
@@ -719,9 +711,38 @@ where
         //     .transpose()?;
 
         Ok(UpdateGroupResult {
-            commit_event,
+            evolution_event: commit_event,
+            welcome_rumors: None, // serialized_group_info,
+        })
+    }
+
+    /// Create a proposal to leave the group
+    /// It's not possible to unilaterally leave a group because you can't commit yourself out of the tree.
+    ///
+    /// # Arguments
+    ///
+    /// * `group_id` - The ID of the MLS group as a byte vector
+    ///
+    /// # Returns
+    /// * `Ok(UpdateGroupResult)`
+    pub fn leave_group(&self, group_id: &GroupId) -> Result<UpdateGroupResult, Error> {
+        let mut group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+
+        let signer: SignatureKeyPair = self.load_mls_signer(&group)?;
+
+        let leave_message = group
+            .leave_group(&self.provider, &signer)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        let serialized_message_out = leave_message
+            .tls_serialize_detached()
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        let evolution_event = self.build_encrypted_message_event(group.group_id(), serialized_message_out)?;
+
+        Ok(UpdateGroupResult {
+            evolution_event,
             welcome_rumors: None
-            // serialized_group_info,
         })
     }
 
@@ -1252,7 +1273,6 @@ mod tests {
 
         let group_id = &create_result.group.mls_group_id;
 
-        // Load the MLS group
         let mls_group = creator_nostr_mls
             .load_mls_group(group_id)
             .expect("Failed to load MLS group")
@@ -1314,7 +1334,6 @@ mod tests {
 
         let group_id = &create_result.group.mls_group_id;
 
-        // Load the MLS group
         let mls_group = creator_nostr_mls
             .load_mls_group(group_id)
             .expect("Failed to load MLS group")
@@ -1483,7 +1502,6 @@ mod tests {
 
         let group_id = &create_result.group.mls_group_id;
 
-        // Load the MLS group
         let mls_group = creator_nostr_mls
             .load_mls_group(group_id)
             .expect("Failed to load MLS group")
