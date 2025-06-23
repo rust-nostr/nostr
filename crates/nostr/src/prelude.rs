@@ -32,7 +32,6 @@ pub use crate::nips::nip01::{self, *};
 pub use crate::nips::nip02::{self, *};
 #[cfg(feature = "nip04")]
 pub use crate::nips::nip04;
-#[cfg(all(feature = "std", feature = "nip05"))]
 pub use crate::nips::nip05::{self, *};
 #[cfg(feature = "nip06")]
 pub use crate::nips::nip06::{self, *};

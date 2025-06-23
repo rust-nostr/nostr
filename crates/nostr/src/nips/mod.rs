@@ -10,7 +10,6 @@ pub mod nip01;
 pub mod nip02;
 #[cfg(feature = "nip04")]
 pub mod nip04;
-#[cfg(all(feature = "std", feature = "nip05"))]
 pub mod nip05;
 #[cfg(feature = "nip06")]
 pub mod nip06;

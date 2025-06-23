@@ -111,7 +111,6 @@ The following crate feature flags are available:
 | `all-nips`  |   No    | Enable all NIPs                                                                              |
 | `nip03`     |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                        |
 | `nip04`     |   No    | Enable NIP-04: Encrypted Direct Message                                                      |
-| `nip05`     |   No    | Enable NIP-05: Mapping Nostr keys to DNS-based internet identifiers                          |
 | `nip06`     |   No    | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                |
 | `nip11`     |   No    | Enable NIP-11: Relay Information Document                                                    |
 | `nip44`     |   No    | Enable NIP-44: Encrypted Payloads (Versioned)                                                |

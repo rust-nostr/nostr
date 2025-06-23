@@ -19,7 +19,6 @@ use core::str::FromStr;
 use bech32::{self, Bech32, Hrp};
 
 use super::nip01::Coordinate;
-#[cfg(all(feature = "std", feature = "nip05"))]
 use super::nip05::Nip05Profile;
 #[cfg(feature = "nip49")]
 use super::nip49::{self, EncryptedSecretKey};
@@ -537,7 +536,6 @@ impl ToBech32 for Nip19Event {
     }
 }
 
-#[cfg(all(feature = "std", feature = "nip05"))]
 impl ToBech32 for Nip05Profile {
     type Err = Error;
 
