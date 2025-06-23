@@ -14,7 +14,7 @@
 use std::collections::BTreeSet;
 use std::str;
 
-use nostr::{PublicKey, RelayUrl};
+use nostr::prelude::*;
 use nostr_mls_storage::groups::types as group_types;
 use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls::group::GroupId;
@@ -28,22 +28,22 @@ use crate::error::Error;
 
 /// Result of creating a new MLS group
 #[derive(Debug)]
-pub struct CreateGroupResult {
+pub struct GroupResult {
     /// The stored group
     pub group: group_types::Group,
-    /// Serialized welcome message for initial group members
-    pub serialized_welcome_message: Vec<u8>,
+    /// A vec of Kind:444 Welcome Events to be published for members added during creation.
+    pub welcome_rumors: Vec<UnsignedEvent>,
 }
 
 /// Result of updating a group
 #[derive(Debug)]
 pub struct UpdateGroupResult {
-    /// Serialized commit message to be fanned out to the group
-    pub serialized_commit_message: Vec<u8>,
-    /// Optional serialized welcome message for new members
-    pub serialized_welcome_message: Option<Vec<u8>>,
-    /// Optional serialized group info for the group - since we use the ratchet_tree extension this should always be present
-    pub serialized_group_info: Option<Vec<u8>>,
+    /// A Kind:445 Event containing the commit message. To be published to the group relays.
+    pub commit_event: Event,
+    /// A vec of Kind:444 Welcome Events to be published for any members added as part of the update.
+    pub welcome_rumors: Option<Vec<UnsignedEvent>>,
+    // Optional serialized group info for the group - since we use the ratchet_tree extension this should always be present
+    // pub serialized_group_info: Option<Vec<u8>>,
 }
 
 impl<Storage> NostrMls<Storage>
@@ -267,7 +267,7 @@ where
     /// # Arguments
     ///
     /// * `group_id` - The MLS group ID
-    /// * `key_packages` - The key packages for the new members
+    /// * `key_package_events` - The nostr key package events (Kind:443) for each new member to add
     ///
     /// # Returns
     ///
@@ -276,47 +276,62 @@ where
     pub fn add_members(
         &self,
         group_id: &GroupId,
-        key_packages: &[KeyPackage],
+        key_package_events: &[Event],
     ) -> Result<UpdateGroupResult, Error> {
         // Load group
-        let mut group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
-
-        let signer: SignatureKeyPair = self.load_mls_signer(&group)?;
+        let mut mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+        let mls_signer: SignatureKeyPair = self.load_mls_signer(&mls_group)?;
 
         // Check if current user is an admin
-        if !self.is_admin(&group)? {
+        if !self.is_admin(&mls_group)? {
             return Err(Error::Group(
                 "Only group admins can add members".to_string(),
             ));
         }
 
-        let (commit_message, welcome_message, group_info) = group
-            .add_members(&self.provider, &signer, key_packages)
+        let mut key_packages_vec: Vec<KeyPackage> = Vec::new();
+        for event in key_package_events {
+            // TODO: Error handling for failure here
+            let key_package: KeyPackage = self.parse_key_package(event)?;
+            key_packages_vec.push(key_package);
+        }
+
+        // TODO: Get a list of users to be added from proposals and create welcome events for them too
+
+        let (commit_message, welcome_message, _group_info) = mls_group
+            .add_members(&self.provider, &mls_signer, &key_packages_vec)
             .map_err(|e| Error::Group(e.to_string()))?;
 
-        group
-            .merge_pending_commit(&self.provider)
-            .map_err(|e| Error::Group(e.to_string()))?;
+        // Merge the pending commit adding the memebers
+        mls_group.merge_pending_commit(&self.provider)?;
 
         let serialized_commit_message = commit_message
             .tls_serialize_detached()
             .map_err(|e| Error::Group(e.to_string()))?;
 
+        let commit_event =
+            self.build_encrypted_message_event(mls_group.group_id(), serialized_commit_message)?;
+
         let serialized_welcome_message = welcome_message
             .tls_serialize_detached()
             .map_err(|e| Error::Group(e.to_string()))?;
 
-        let serialized_group_info = group_info
-            .map(|g| {
-                g.tls_serialize_detached()
-                    .map_err(|e| Error::Group(e.to_string()))
-            })
-            .transpose()?;
+        let welcome_rumors = self.build_welcome_rumors_for_key_packages(
+            &mls_group,
+            serialized_welcome_message,
+            key_package_events.to_vec(),
+        )?;
+
+        // let serialized_group_info = group_info
+        //     .map(|g| {
+        //         g.tls_serialize_detached()
+        //             .map_err(|e| Error::Group(e.to_string()))
+        //     })
+        //     .transpose()?;
 
         Ok(UpdateGroupResult {
-            serialized_commit_message,
-            serialized_welcome_message: Some(serialized_welcome_message),
-            serialized_group_info,
+            commit_event,
+            welcome_rumors, // serialized_group_info,
         })
     }
 
@@ -337,12 +352,12 @@ where
         pubkeys: &[PublicKey],
     ) -> Result<UpdateGroupResult, Error> {
         // Load group
-        let mut group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+        let mut mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
 
-        let signer: SignatureKeyPair = self.load_mls_signer(&group)?;
+        let signer: SignatureKeyPair = self.load_mls_signer(&mls_group)?;
 
         // Check if current user is an admin
-        if !self.is_admin(&group)? {
+        if !self.is_admin(&mls_group)? {
             return Err(Error::Group(
                 "Only group admins can remove members".to_string(),
             ));
@@ -350,7 +365,7 @@ where
 
         // Convert pubkeys to leaf indices
         let mut leaf_indices = Vec::new();
-        let members = group.members();
+        let members = mls_group.members();
 
         for (index, member) in members.enumerate() {
             let pubkey = self.pubkey_for_member(&member)?;
@@ -365,36 +380,45 @@ where
             ));
         }
 
-        let (commit_message, welcome_option, group_info) = group
+        // TODO: Get a list of users to be added from any proposals and create welcome events for them
+
+        let (commit_message, welcome_option, _group_info) = mls_group
             .remove_members(&self.provider, &signer, &leaf_indices)
             .map_err(|e| Error::Group(e.to_string()))?;
 
-        group
-            .merge_pending_commit(&self.provider)
-            .map_err(|e| Error::Group(e.to_string()))?;
+        // Merge the pending commit removing the memebers
+        mls_group.merge_pending_commit(&self.provider)?;
 
         let serialized_commit_message = commit_message
             .tls_serialize_detached()
             .map_err(|e| Error::Group(e.to_string()))?;
 
-        let serialized_welcome_message = welcome_option
-            .map(|w| {
-                w.tls_serialize_detached()
-                    .map_err(|e| Error::Group(e.to_string()))
-            })
-            .transpose()?;
+        let commit_event =
+            self.build_encrypted_message_event(mls_group.group_id(), serialized_commit_message)?;
 
-        let serialized_group_info = group_info
-            .map(|g| {
-                g.tls_serialize_detached()
-                    .map_err(|e| Error::Group(e.to_string()))
-            })
-            .transpose()?;
+        // For now, if we find welcomes, throw an error.
+        if welcome_option.is_some() {
+            return Err(Error::Group(
+                "Found welcomes when removing users".to_string(),
+            ));
+        }
+        // let serialized_welcome_message = welcome_option
+        //     .map(|w| {
+        //         w.tls_serialize_detached()
+        //             .map_err(|e| Error::Group(e.to_string()))
+        //     })
+        //     .transpose()?;
+
+        // let serialized_group_info = group_info
+        //     .map(|g| {
+        //         g.tls_serialize_detached()
+        //             .map_err(|e| Error::Group(e.to_string()))
+        //     })
+        //     .transpose()?;
 
         Ok(UpdateGroupResult {
-            serialized_commit_message,
-            serialized_welcome_message,
-            serialized_group_info,
+            commit_event,
+            welcome_rumors: None, // serialized_group_info,
         })
     }
 
@@ -451,17 +475,22 @@ where
         name: S1,
         description: S2,
         creator_public_key: &PublicKey,
-        member_pubkeys: &[PublicKey],
-        member_key_packages: &[KeyPackage],
+        member_key_package_events: Vec<Event>,
         admins: Vec<PublicKey>,
         group_relays: Vec<RelayUrl>,
-    ) -> Result<CreateGroupResult, Error>
+    ) -> Result<GroupResult, Error>
     where
         S1: Into<String>,
         S2: Into<String>,
     {
+        // Get member pubkeys
+        let member_pubkeys = member_key_package_events.clone()
+            .into_iter()
+            .map(|e| e.pubkey)
+            .collect::<Vec<PublicKey>>();
+
         // Validate group members
-        self.validate_group_members(creator_public_key, member_pubkeys, &admins)?;
+        self.validate_group_members(creator_public_key, &member_pubkeys, &admins)?;
 
         let (credential, signer) = self.generate_credential_with_key(creator_public_key)?;
 
@@ -516,15 +545,30 @@ where
         let mut mls_group =
             MlsGroup::new(&self.provider, &signer, &group_config, credential.clone())?;
 
+        let mut key_packages_vec: Vec<KeyPackage> = Vec::new();
+        for event in &member_key_package_events {
+            // TODO: Error handling for failure here
+            let key_package: KeyPackage = self.parse_key_package(event)?;
+            key_packages_vec.push(key_package);
+        }
+
         // Add members to the group
         let (_, welcome_out, _group_info) =
-            mls_group.add_members(&self.provider, &signer, member_key_packages)?;
+            mls_group.add_members(&self.provider, &signer, &key_packages_vec)?;
 
         // Merge the pending commit adding the memebers
         mls_group.merge_pending_commit(&self.provider)?;
 
         // Serialize the welcome message and send it to the members
         let serialized_welcome_message = welcome_out.tls_serialize_detached()?;
+
+        let welcome_rumors = self
+            .build_welcome_rumors_for_key_packages(
+                &mls_group,
+                serialized_welcome_message,
+                member_key_package_events,
+            )?
+            .ok_or(Error::Welcome("Error creating welcome rumors".to_string()))?;
 
         let group_type = if mls_group.members().count() > 2 {
             group_types::GroupType::Group
@@ -562,9 +606,9 @@ where
                 .map_err(|e| Error::Group(e.to_string()))?;
         }
 
-        Ok(CreateGroupResult {
+        Ok(GroupResult {
             group,
-            serialized_welcome_message,
+            welcome_rumors,
         })
     }
 
@@ -598,21 +642,21 @@ where
     /// - Failed to perform self-update operation
     pub fn self_update(&self, group_id: &GroupId) -> Result<UpdateGroupResult, Error> {
         // Load group
-        let mut group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+        let mut mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
 
         let current_secret: group_types::GroupExporterSecret = self
             .storage()
-            .get_group_exporter_secret(group_id, group.epoch().as_u64())
+            .get_group_exporter_secret(group_id, mls_group.epoch().as_u64())
             .map_err(|e| Error::Group(e.to_string()))?
             .ok_or(Error::GroupExporterSecretNotFound)?;
 
         tracing::debug!(target: "nostr_openmls::groups::self_update", "Current epoch: {:?}", current_secret.epoch);
 
         // Load current signer
-        let current_signer: SignatureKeyPair = self.load_mls_signer(&group)?;
+        let current_signer: SignatureKeyPair = self.load_mls_signer(&mls_group)?;
 
         // Get own leaf
-        let own_leaf = self.get_own_leaf(&group)?;
+        let own_leaf = self.get_own_leaf(&mls_group)?;
 
         let new_signature_keypair = SignatureKeyPair::new(self.ciphersuite.signature_algorithm())?;
 
@@ -636,7 +680,7 @@ where
             .with_extensions(own_leaf.extensions().clone())
             .build();
 
-        let commit_message_bundle = group.self_update_with_new_signer(
+        let commit_message_bundle = mls_group.self_update_with_new_signer(
             &self.provider,
             &current_signer,
             &new_signature_keypair,
@@ -644,15 +688,12 @@ where
         )?;
 
         // Merge the commit
-        group.merge_pending_commit(&self.provider)?;
-
-        // Export the new epoch's exporter secret
-        let new_secret = self.exporter_secret(group_id)?;
-
-        tracing::debug!(target: "nostr_openmls::groups::self_update", "New epoch: {:?}", new_secret.epoch);
+        mls_group.merge_pending_commit(&self.provider)?;
 
         // Serialize the message
         let serialized_commit_message = commit_message_bundle.commit().tls_serialize_detached()?;
+
+        let commit_event = self.build_encrypted_message_event(mls_group.group_id(), serialized_commit_message)?;
 
         let serialized_welcome_message = commit_message_bundle
             .welcome()
@@ -662,18 +703,25 @@ where
             })
             .transpose()?;
 
-        let serialized_group_info = commit_message_bundle
-            .group_info()
-            .map(|g| {
-                g.tls_serialize_detached()
-                    .map_err(|e| Error::Group(e.to_string()))
-            })
-            .transpose()?;
+        // For now, if we find welcomes, throw an error.
+        if serialized_welcome_message.is_some() {
+            return Err(Error::Group(
+                "Found welcomes when performing a self update".to_string(),
+            ));
+        }
+
+        // let serialized_group_info = commit_message_bundle
+        //     .group_info()
+        //     .map(|g| {
+        //         g.tls_serialize_detached()
+        //             .map_err(|e| Error::Group(e.to_string()))
+        //     })
+        //     .transpose()?;
 
         Ok(UpdateGroupResult {
-            serialized_commit_message,
-            serialized_welcome_message,
-            serialized_group_info,
+            commit_event,
+            welcome_rumors: None
+            // serialized_group_info,
         })
     }
 
@@ -722,6 +770,79 @@ where
             }
         }
         Ok(true)
+    }
+
+    /// Creates a NIP-44 encrypted message event Kind: 445 signing with an ephemeral keypair.
+    pub(crate) fn build_encrypted_message_event(
+        &self,
+        group_id: &GroupId,
+        serialized_content: Vec<u8>,
+    ) -> Result<Event, Error> {
+        let group = self.get_group(group_id)?.ok_or(Error::GroupNotFound)?;
+
+        // Export secret
+        let secret: group_types::GroupExporterSecret = self.exporter_secret(group_id)?;
+
+        // Convert that secret to nostr keys
+        let secret_key: SecretKey = SecretKey::from_slice(&secret.secret)?;
+        let export_nostr_keys: Keys = Keys::new(secret_key);
+
+        // Encrypt the message content
+        // At some group size this will become too large for NIP44 encryption or relay event size limits.
+        // We're not sure yet what size, but it's something to be aware of.
+        let encrypted_content: String = nip44::encrypt(
+            export_nostr_keys.secret_key(),
+            &export_nostr_keys.public_key,
+            &serialized_content,
+            nip44::Version::default(),
+        )?;
+
+        // Generate ephemeral key
+        let ephemeral_nostr_keys: Keys = Keys::generate();
+
+        let tag: Tag = Tag::custom(TagKind::h(), [hex::encode(group.nostr_group_id)]);
+
+        let event = EventBuilder::new(Kind::MlsGroupMessage, encrypted_content)
+            .tag(tag)
+            .sign_with_keys(&ephemeral_nostr_keys)?;
+
+        Ok(event)
+    }
+
+    pub(crate) fn build_welcome_rumors_for_key_packages(
+        &self,
+        group: &MlsGroup,
+        serialized_welcome: Vec<u8>,
+        key_package_events: Vec<Event>,
+    ) -> Result<Option<Vec<UnsignedEvent>>, Error> {
+        let committer_pubkey = self.get_own_pubkey(group)?;
+        let mut welcome_rumors_vec = Vec::new();
+
+        let group_relays = self
+            .get_relays(group.group_id())?
+            .into_iter()
+            .collect::<Vec<_>>();
+
+        for event in key_package_events {
+            // Build welcome event rumors for each new user
+            let welcome_rumor =
+                EventBuilder::new(Kind::MlsWelcome, hex::encode(&serialized_welcome))
+                    .tags(vec![
+                        Tag::from_standardized(TagStandard::Relays(group_relays.clone())),
+                        Tag::event(event.id),
+                    ])
+                    .build(committer_pubkey);
+
+            welcome_rumors_vec.push(welcome_rumor);
+        }
+
+        let welcome_rumors = if welcome_rumors_vec.is_empty() {
+            Some(welcome_rumors_vec)
+        } else {
+            None
+        };
+
+        Ok(welcome_rumors)
     }
 }
 
@@ -863,11 +984,11 @@ mod tests {
 
         // Verify the result contains the expected data
         assert!(
-            !add_result.serialized_commit_message.is_empty(),
+            !add_result.commit_event,
             "Commit message should not be empty"
         );
         assert!(
-            add_result.serialized_welcome_message.is_some(),
+            add_result.welcome_rumors.is_some(),
             "Welcome message should not be empty"
         );
 

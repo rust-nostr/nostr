@@ -147,28 +147,7 @@ where
         // Get the rumor ID
         let rumor_id: EventId = rumor.id();
 
-        // Export secret
-        let secret: group_types::GroupExporterSecret = self.exporter_secret(mls_group_id)?;
-
-        // Convert that secret to nostr keys
-        let secret_key: SecretKey = SecretKey::from_slice(&secret.secret)?;
-        let export_nostr_keys: Keys = Keys::new(secret_key);
-
-        // Encrypt the message content
-        let encrypted_content: String = nip44::encrypt(
-            export_nostr_keys.secret_key(),
-            &export_nostr_keys.public_key,
-            &message,
-            nip44::Version::default(),
-        )?;
-
-        // Generate ephemeral key
-        let ephemeral_nostr_keys: Keys = Keys::generate();
-
-        let tag: Tag = Tag::custom(TagKind::h(), [hex::encode(group.nostr_group_id)]);
-        let event = EventBuilder::new(Kind::MlsGroupMessage, encrypted_content)
-            .tag(tag)
-            .sign_with_keys(&ephemeral_nostr_keys)?;
+        let event = self.build_encrypted_message_event(mls_group.group_id(), message)?;
 
         // Create message to save to storage
         let message: message_types::Message = message_types::Message {
