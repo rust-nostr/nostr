@@ -7,22 +7,30 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/11.md>
 
-use crate::{Timestamp, Url};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
+use core::time::Duration;
+#[cfg(not(target_arch = "wasm32"))]
+use std::net::SocketAddr;
+
+use reqwest::Client;
+#[cfg(not(target_arch = "wasm32"))]
+use reqwest::Proxy;
+
+use crate::{Timestamp, Url};
 
 /// `NIP11` error
 #[derive(Debug)]
 pub enum Error {
+    /// Reqwest error
+    Reqwest(reqwest::Error),
     /// The relay information document is invalid
     InvalidInformationDocument,
     /// The relay information document is not accessible
     InaccessibleInformationDocument,
     /// Provided URL scheme is not valid
     InvalidScheme,
-    /// JSON parsing error
-    Json(serde_json::Error),
 }
 
 impl std::error::Error for Error {}
@@ -30,6 +38,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Reqwest(e) => write!(f, "{e}"),
             Self::InvalidInformationDocument => {
                 write!(f, "The relay information document is invalid")
             }
@@ -37,69 +46,59 @@ impl fmt::Display for Error {
                 write!(f, "The relay information document is not accessible")
             }
             Self::InvalidScheme => write!(f, "Provided URL scheme is not valid"),
-            Self::Json(e) => write!(f, "JSON error: {e}"),
         }
     }
 }
 
-// JSON error conversion
-impl From<serde_json::Error> for Error {
-    fn from(e: serde_json::Error) -> Self {
-        Self::Json(e)
+impl From<reqwest::Error> for Error {
+    fn from(e: reqwest::Error) -> Self {
+        Self::Reqwest(e)
     }
 }
 
-/// NIP11 request information
-///
-/// Contains the URL and headers needed for fetching relay information
-/// (allowing you to use your preferred https clients)
-///
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Nip11Request {
-    /// The URL to fetch (converted to HTTP/HTTPS if needed)
-    pub url: String,
-    /// Headers to include in the request
-    pub headers: Vec<(String, String)>,
+/// NIP11 get options
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Nip11GetOptions {
+    /// Proxy
+    #[cfg(not(target_arch = "wasm32"))]
+    pub proxy: Option<SocketAddr>,
+    /// Timeout
+    pub timeout: Duration,
 }
 
-impl Nip11Request {
-    /// Create a new NIP11 request from a relay URL
-    pub fn new(relay_url: Url) -> Result<Self, Error> {
-        let url = get_relay_info_url(relay_url)?;
-        let headers = vec![("Accept".to_string(), "application/nostr+json".to_string())];
-
-        Ok(Self { url, headers })
-    }
-
-    /// Get the URL to fetch
-    pub fn url(&self) -> &str {
-        &self.url
-    }
-
-    /// Get the headers for the request
-    pub fn headers(&self) -> &[(String, String)] {
-        &self.headers
+impl Default for Nip11GetOptions {
+    fn default() -> Self {
+        Self {
+            proxy: None,
+            timeout: Duration::from_secs(60),
+        }
     }
 }
 
-/// Get NIP11 for a given relay URL
-///
-/// Returns the HTTP(s) URL that should be fetched for relay information
-pub fn get_relay_info_url(relay_url: Url) -> Result<String, Error> {
-    let mut url = relay_url;
-    with_http_scheme(&mut url)?;
-    Ok(url.to_string())
-}
-
-/// Returns a new URL with scheme substituted to HTTP(S) if WS(S) was provided,
-/// other schemes leaves untouched.
-fn with_http_scheme(url: &mut Url) -> Result<(), Error> {
-    match url.scheme() {
-        "wss" => url.set_scheme("https").map_err(|_| Error::InvalidScheme)?,
-        "ws" => url.set_scheme("http").map_err(|_| Error::InvalidScheme)?,
-        _ => {}
+impl Nip11GetOptions {
+    /// New default options
+    #[inline]
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
     }
-    Ok(())
+
+    /// Set proxy
+    #[inline]
+    #[must_use]
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn proxy(mut self, proxy: SocketAddr) -> Self {
+        self.proxy = Some(proxy);
+        self
+    }
+
+    /// Set timeout
+    #[inline]
+    #[must_use]
+    pub fn timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
+    }
 }
 
 /// Relay information document
@@ -234,66 +233,52 @@ impl RelayInformationDocument {
         Self::default()
     }
 
-    /// Parse relay information document from JSON response
-    ///
-    /// Allows you to parse relay information without any HTTP dependencies.
-    /// Fetch the JSON data using your preferred HTTP client and pass it here.
-    ///
-    pub fn from_response(json_response: &str) -> Result<Self, Error> {
-        serde_json::from_str(json_response).map_err(|_| Error::InvalidInformationDocument)
+    /// Get Relay Information Document
+    pub async fn get(mut url: Url, opts: Nip11GetOptions) -> Result<Self, Error> {
+        let mut builder = Client::builder();
+
+        // Set proxy
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(proxy) = opts.proxy {
+            let proxy = format!("socks5h://{proxy}");
+            builder = builder.proxy(Proxy::all(proxy)?);
+        }
+
+        // Set timeout
+        builder = builder.timeout(opts.timeout);
+
+        // Build client
+        let client: Client = builder.build()?;
+
+        let url: &str = Self::with_http_scheme(&mut url)?;
+        let req = client.get(url).header("Accept", "application/nostr+json");
+        match req.send().await {
+            Ok(response) => {
+                let json: String = response.text().await?;
+                match serde_json::from_slice(json.as_bytes()) {
+                    Ok(json) => Ok(json),
+                    Err(_) => Err(Error::InvalidInformationDocument),
+                }
+            }
+            Err(_) => Err(Error::InaccessibleInformationDocument),
+        }
+    }
+
+    /// Returns new URL with scheme substituted to HTTP(S) if WS(S) was provided,
+    /// other schemes leaves untouched.
+    fn with_http_scheme(url: &mut Url) -> Result<&str, Error> {
+        match url.scheme() {
+            "wss" => url.set_scheme("https").map_err(|_| Error::InvalidScheme)?,
+            "ws" => url.set_scheme("http").map_err(|_| Error::InvalidScheme)?,
+            _ => {}
+        }
+        Ok(url.as_str())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_nip11_request() {
-        let relay_url = Url::parse("wss://relay.damus.io").unwrap();
-        let request = Nip11Request::new(relay_url).unwrap();
-
-        assert_eq!(request.url(), "https://relay.damus.io/");
-        assert_eq!(request.headers().len(), 1);
-        assert_eq!(request.headers()[0].0, "Accept");
-        assert_eq!(request.headers()[0].1, "application/nostr+json");
-    }
-
-    #[test]
-    fn test_get_relay_info_url() {
-        // Test WS to HTTP conversion
-        let relay_url = Url::parse("ws://relay.example.com").unwrap();
-        let info_url = get_relay_info_url(relay_url).unwrap();
-        assert_eq!(info_url, "http://relay.example.com/");
-
-        // Test WSS to HTTPS conversion
-        let relay_url = Url::parse("wss://relay.damus.io").unwrap();
-        let info_url = get_relay_info_url(relay_url).unwrap();
-        assert_eq!(info_url, "https://relay.damus.io/");
-
-        // Test HTTPS URL (should remain unchanged)
-        let relay_url = Url::parse("https://relay.example.com").unwrap();
-        let info_url = get_relay_info_url(relay_url).unwrap();
-        assert_eq!(info_url, "https://relay.example.com/");
-    }
-
-    #[test]
-    fn test_from_response() {
-        let json_response = r#"{
-            "name": "Test Relay",
-            "description": "A test relay",
-            "supported_nips": [1, 2, 11]
-        }"#;
-
-        let doc = RelayInformationDocument::from_response(json_response).unwrap();
-        assert_eq!(doc.name, Some("Test Relay".to_string()));
-        assert_eq!(doc.description, Some("A test relay".to_string()));
-        assert_eq!(doc.supported_nips, Some(vec![1, 2, 11]));
-
-        // Test invalid JSON
-        let invalid_json = "not json";
-        assert!(RelayInformationDocument::from_response(invalid_json).is_err());
-    }
 
     #[test]
     fn correctly_serializes_retention_kind() {
