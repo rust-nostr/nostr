@@ -50,41 +50,28 @@ async fn main() -> Result<()> {
     // ================================
 
     // To create a group, Alice fetches Bob's key package from the Nostr network and parses it
-    let bob_key_package: KeyPackage = alice_nostr_mls.parse_key_package(&bob_key_package_event)?;
+    let _bob_key_package: KeyPackage = alice_nostr_mls.parse_key_package(&bob_key_package_event)?;
 
     // Alice creates the group, adding Bob.
     let group_create_result = alice_nostr_mls.create_group(
         "Bob & Alice",
         "A secret chat between Bob and Alice",
-        &alice_keys.public_key,
-        &[bob_keys.public_key()],
-        &[bob_key_package],
+        &alice_keys.public_key(),
+        vec![bob_key_package_event.clone()],
         vec![alice_keys.public_key()],
         vec![RelayUrl::parse("ws://localhost:8080").unwrap()],
     )?;
 
     tracing::info!("Group created");
 
-    // The group is created, and the welcome message is serialized to send to Bob.
+    // The group is created, and the welcome messages are in welcome_rumors.
     // We also have the Nostr group data, which we can use to show info about the group.
     let alice_group = group_create_result.group;
-    let serialized_welcome_message = group_create_result.serialized_welcome_message;
+    let welcome_rumors = group_create_result.welcome_rumors;
 
     // Alice now creates a Kind: 444 event that is Gift-wrapped to just Bob with the welcome event in the rumor event.
-    // If you added multiple users to the group, you'd create a separate gift-wrapped welcome event (with the same serialized_welcome_message) for each user.
-    let welcome_rumor =
-        EventBuilder::new(Kind::MlsWelcome, hex::encode(&serialized_welcome_message))
-            .tags(vec![
-                // These relays are the group_relays where the user should look for group messages.
-                // Tag::from_standardized(TagStandard::Relays(
-                //     relay_urls
-                //         .iter()
-                //         .filter_map(|r| RelayUrl::parse(r).ok())
-                //         .collect(),
-                // )),
-                // Tag::event(member.event_id), // This is the event ID of the key_package event used when adding the member to the group
-            ])
-            .build(alice_keys.public_key());
+    // If you added multiple users to the group, you'd create a separate gift-wrapped welcome event for each user.
+    let welcome_rumor = welcome_rumors.first().expect("Should have at least one welcome rumor");
 
     // Now, let's also try sending a message to the group (using an unsigned Kind: 9 event)
     // We don't have to wait for Bob to join the group before we send our first message.
@@ -103,7 +90,7 @@ async fn main() -> Result<()> {
 
     // First Bob recieves the Gift-wrapped welcome message from Alice, decrypts it, and processes it.
     // The first param is the gift-wrap event id (which we set as all zeros for this example)
-    bob_nostr_mls.process_welcome(&EventId::all_zeros(), &welcome_rumor)?;
+    bob_nostr_mls.process_welcome(&EventId::all_zeros(), welcome_rumor)?;
     // Bob can now preview the welcome message to see what group he might be joining
     let welcomes = bob_nostr_mls
         .get_pending_welcomes()
@@ -132,6 +119,35 @@ async fn main() -> Result<()> {
 
     tracing::info!("Bob joined group");
 
+    assert_eq!(
+        bob_nostr_mls
+            .get_groups()
+            .unwrap()
+            .first()
+            .unwrap()
+            .nostr_group_id,
+        alice_group.nostr_group_id,
+        "Bob's group should have the same Nostr group ID as Alice's group"
+    );
+
+    assert_eq!(
+        hex::encode(
+            bob_nostr_mls
+                .get_groups()
+                .unwrap()
+                .first()
+                .unwrap()
+                .nostr_group_id
+        ),
+        message_event
+            .tags
+            .iter()
+            .find(|tag| tag.kind() == TagKind::h())
+            .unwrap()
+            .content()
+            .unwrap(),
+        "Bob's group should have the same Nostr group ID as Alice's message wrapper event"
+    );
     // Bob and Alice now have synced state for the group.
     assert_eq!(
         bob_nostr_mls.get_members(&bob_mls_group_id).unwrap().len(),
@@ -152,7 +168,11 @@ async fn main() -> Result<()> {
     // Now Bob can process the MLS message content and do what's needed with it
     bob_nostr_mls.process_message(&message_event)?;
 
-    let messages = bob_nostr_mls.get_messages(&bob_mls_group_id).unwrap();
+    tracing::info!("Bob processed message");
+    let messages = bob_nostr_mls
+        .get_messages(&bob_mls_group_id)
+        .map_err(|e| crate::error::Error::Message(e.to_string()))?;
+    tracing::info!("Bob got messages: {:?}", messages);
     let message = messages.first().unwrap();
     tracing::info!("Bob processed message: {:?}", message);
 

@@ -15,12 +15,28 @@ use nostr::util::hex;
 use nostr::{EventId, UnsignedEvent};
 use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls::group::{GroupId, ValidationError};
+use openmls::prelude::BasicCredential;
 use openmls_basic_credential::SignatureKeyPair;
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
 use crate::error::Error;
 use crate::prelude::*;
 use crate::NostrMls;
+
+/// MessageProcessingResult covers the full spectrum of responses that we can get back from attempting to process a message
+#[derive(Debug)]
+pub enum MessageProcessingResult {
+    /// An application message (this is usually a message in a chat)
+    ApplicationMessage(message_types::Message),
+    /// Proposal message
+    Proposal(UpdateGroupResult),
+    /// External Join Proposal
+    ExternalJoinProposal,
+    /// Commit message
+    Commit,
+    /// Unprocessable message
+    Unprocessable,
+}
 
 impl<Storage> NostrMls<Storage>
 where
@@ -207,14 +223,13 @@ where
     ///
     /// # Returns
     ///
-    /// * `Ok(Some(UnsignedEvent))` - For application messages, the decrypted event
-    /// * `Ok(None)` - For protocol messages (proposals, commits)
+    /// * `Ok(ProcessedMessageContent)` - The processed message content based on message type
     /// * `Err(Error)` - If message processing fails
     fn process_message_for_group(
         &self,
         group: &mut MlsGroup,
         message_bytes: &[u8],
-    ) -> Result<Option<UnsignedEvent>, Error> {
+    ) -> Result<ProcessedMessageContent, Error> {
         let mls_message = MlsMessageIn::tls_deserialize_exact(message_bytes)?;
 
         tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "Received message: {:?}", mls_message);
@@ -223,10 +238,6 @@ where
         // Return error if group ID doesn't match
         if protocol_message.group_id() != group.group_id() {
             return Err(Error::ProtocolGroupIdMismatch);
-        }
-
-        if protocol_message.content_type() == ContentType::Commit {
-            tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "ABOUT TO PROCESS COMMIT MESSAGE");
         }
 
         let processed_message = match group.process_message(&self.provider, protocol_message) {
@@ -245,53 +256,286 @@ where
             "Processed message: {:?}",
             processed_message
         );
-        // Handle the processed message based on its type
-        match processed_message.into_content() {
-            ProcessedMessageContent::ApplicationMessage(application_message) => {
-                // This is a message from a group member
-                let bytes = application_message.into_bytes();
-                let rumor: UnsignedEvent = UnsignedEvent::from_json(bytes)?;
-                Ok(Some(rumor))
+
+        Ok(processed_message.into_content())
+    }
+
+    /// Processes an application message from a group member
+    ///
+    /// This internal function handles application messages (chat messages) that have been
+    /// successfully decrypted. It:
+    /// 1. Deserializes the message content as a Nostr event
+    /// 2. Creates tracking records for the message and processing state
+    /// 3. Updates the group's last message metadata
+    /// 4. Stores all data in the storage provider
+    ///
+    /// # Arguments
+    ///
+    /// * `group` - The group metadata from storage
+    /// * `event` - The wrapper Nostr event containing the encrypted message
+    /// * `application_message` - The decrypted MLS application message
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Message)` - The processed and stored message
+    /// * `Err(Error)` - If message processing or storage fails
+    fn process_application_message_for_group(
+        &self,
+        mut group: group_types::Group,
+        event: &Event,
+        application_message: ApplicationMessage,
+    ) -> Result<message_types::Message, Error> {
+        // This is a message from a group member
+        let bytes = application_message.into_bytes();
+        let mut rumor: UnsignedEvent = UnsignedEvent::from_json(bytes)?;
+
+        let rumor_id: EventId = rumor.id();
+
+        let processed_message = message_types::ProcessedMessage {
+            wrapper_event_id: event.id,
+            message_event_id: Some(rumor_id),
+            processed_at: Timestamp::now(),
+            state: message_types::ProcessedMessageState::Processed,
+            failure_reason: None,
+        };
+
+        let message = message_types::Message {
+            id: rumor_id,
+            pubkey: rumor.pubkey,
+            kind: rumor.kind,
+            mls_group_id: group.mls_group_id.clone(),
+            created_at: rumor.created_at,
+            content: rumor.content.clone(),
+            tags: rumor.tags.clone(),
+            event: rumor.clone(),
+            wrapper_event_id: event.id,
+            state: message_types::MessageState::Processed,
+        };
+
+        self.storage()
+            .save_message(message.clone())
+            .map_err(|e| Error::Message(e.to_string()))?;
+
+        self.storage()
+            .save_processed_message(processed_message.clone())
+            .map_err(|e| Error::Message(e.to_string()))?;
+
+        // Update last_message_at and last_message_id
+        group.last_message_at = Some(rumor.created_at);
+        group.last_message_id = Some(message.id);
+        self.storage()
+            .save_group(group)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        tracing::debug!(target: "nostr_mls::messages::process_message", "Processed message: {:?}", processed_message);
+        tracing::debug!(target: "nostr_mls::messages::process_message", "Message: {:?}", message);
+        Ok(message)
+    }
+
+    /// Processes a proposal message from a group member
+    ///
+    /// This internal function handles MLS proposal messages (add/remove member proposals).
+    /// Only admin members are allowed to submit proposals. The function:
+    /// 1. Validates the sender is a group member and has admin privileges
+    /// 2. Stores the pending proposal in the MLS group state
+    /// 3. Automatically commits the proposal to the group
+    /// 4. Creates a new encrypted event for the commit message
+    /// 5. Updates processing state to prevent reprocessing
+    ///
+    /// # Arguments
+    ///
+    /// * `mls_group` - The MLS group to process the proposal for
+    /// * `event` - The wrapper Nostr event containing the encrypted proposal
+    /// * `staged_proposal` - The validated MLS proposal to process
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(UpdateGroupResult)` - Contains the commit event and any welcome messages
+    /// * `Err(Error)` - If proposal processing fails or sender lacks permissions
+    fn process_proposal_message_for_group(
+        &self,
+        mls_group: &mut MlsGroup,
+        event: &Event,
+        staged_proposal: QueuedProposal,
+    ) -> Result<UpdateGroupResult, Error> {
+        match staged_proposal.sender() {
+            Sender::Member(leaf_index) => {
+                let member = mls_group.member_at(*leaf_index);
+
+                match member {
+                    Some(member) => {
+                        // Only process commits from admins for now
+                        if self.is_member_admin(mls_group.group_id(), &member)? {
+                            mls_group
+                                .store_pending_proposal(self.provider.storage(), staged_proposal)
+                                .map_err(|e| Error::Message(e.to_string()))?;
+
+                            let mls_signer = self.load_mls_signer(&mls_group)?;
+
+                            let (commit_message, welcomes_option, _group_info) = mls_group
+                                .commit_to_pending_proposals(&self.provider, &mls_signer)?;
+
+                            let serialized_commit_message = commit_message
+                                .tls_serialize_detached()
+                                .map_err(|e| Error::Group(e.to_string()))?;
+
+                            let commit_event = self.build_encrypted_message_event(
+                                mls_group.group_id(),
+                                serialized_commit_message,
+                            )?;
+
+                            // TODO: welcomes
+                            // We need to get the list of added users covered by the proposal.
+                            // Then create unsigned rumors for each.
+
+                            // Save a processed message so we don't reprocess
+                            let processed_message = message_types::ProcessedMessage {
+                                wrapper_event_id: event.id,
+                                message_event_id: None,
+                                processed_at: Timestamp::now(),
+                                state: message_types::ProcessedMessageState::Processed,
+                                failure_reason: None,
+                            };
+
+                            self.storage()
+                                .save_processed_message(processed_message)
+                                .map_err(|e| Error::Message(e.to_string()))?;
+
+                            Ok(UpdateGroupResult {
+                                evolution_event: commit_event,
+                                welcome_rumors: Some(Vec::new()),
+                            })
+                        } else {
+                            Err(Error::ProposalFromNonAdmin)
+                        }
+                    }
+                    None => {
+                        tracing::warn!(target: "nostr_mls::messages::process_message_for_group", "Received proposal from non-member.");
+                        Err(Error::MessageFromNonMember)
+                    }
+                }
             }
-            ProcessedMessageContent::ProposalMessage(staged_proposal) => {
-                // This is a proposal message
-                tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "Received proposal message: {:?}", staged_proposal);
-                // TODO: Handle proposal message
-                Ok(None)
+            Sender::External(_) => {
+                // TODO: FUTURE Handle external proposals from external proposal extensions
+                Err(Error::NotImplemented("Processing external proposals from external proposal extensions is not supported".to_string()))
             }
-            ProcessedMessageContent::StagedCommitMessage(staged_commit) => {
-                // This is a commit message
-                tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "Received commit message: {:?}", staged_commit);
-                // TODO: Handle commit message
-                Ok(None)
+            Sender::NewMemberCommit => {
+                // TODO: FUTURE Handle new member from external member commits.
+                Err(Error::NotImplemented(
+                    "Processing external proposals for new member commits is not supported"
+                        .to_string(),
+                ))
             }
-            ProcessedMessageContent::ExternalJoinProposalMessage(external_join_proposal) => {
-                tracing::debug!(target: "nostr_mls::messages::process_message_for_group", "Received external join proposal message: {:?}", external_join_proposal);
-                // TODO: Handle external join proposal
-                Ok(None)
+            Sender::NewMemberProposal => {
+                // TODO: FUTURE Handle new member from external member proposals.
+                Err(Error::NotImplemented(
+                    "Processing external proposals for new member proposals is not supported"
+                        .to_string(),
+                ))
             }
         }
+    }
+
+        /// Extracts public keys of newly added members from a staged commit
+    ///
+    /// This helper method examines the proposals within a staged commit to identify
+    /// any Add proposals that would add new members to the group. For each new member,
+    /// it extracts their public key from their LeafNode.
+    ///
+    /// # Arguments
+    ///
+    /// * `staged_commit` - The staged commit to examine for new members
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<PublicKey>)` - List of public keys for newly added members
+    /// * `Err(Error)` - If there's an error extracting member information
+    pub(crate) fn extract_added_members_pubkeys(
+        &self,
+        staged_commit: &StagedCommit,
+    ) -> Result<Vec<PublicKey>, Error> {
+        let mut added_pubkeys = Vec::new();
+
+        // Get the queued proposals from the staged commit
+        for proposal in staged_commit.queued_proposals() {
+            if let Proposal::Add(add_proposal) = proposal.proposal() {
+                // Extract the public key from the LeafNode using the same pattern as groups.rs
+                let leaf_node = add_proposal.key_package().leaf_node();
+                let pubkey = self.pubkey_for_leaf_node(leaf_node)?;
+                added_pubkeys.push(pubkey);
+            }
+        }
+
+        Ok(added_pubkeys)
+    }
+
+    /// Processes a commit message from a group member
+    ///
+    /// This internal function handles MLS commit messages that finalize pending proposals.
+    /// The function:
+    /// 1. Merges the staged commit into the group state
+    /// 2. Updates the group to the new epoch with new cryptographic keys
+    /// 3. Saves the new exporter secret for NIP-44 encryption
+    /// 4. Updates processing state to prevent reprocessing
+    ///
+    /// # Arguments
+    ///
+    /// * `mls_group` - The MLS group to merge the commit into
+    /// * `event` - The wrapper Nostr event containing the encrypted commit
+    /// * `staged_commit` - The validated MLS commit to merge
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` - If commit processing succeeds
+    /// * `Err(Error)` - If commit merging or storage operations fail
+    fn process_commit_message_for_group(
+        &self,
+        mls_group: &mut MlsGroup,
+        event: &Event,
+        staged_commit: StagedCommit,
+    ) -> Result<(), Error> {
+        mls_group
+            .merge_staged_commit(&self.provider, staged_commit)
+            .map_err(|e| Error::Message(e.to_string()))?;
+
+        // Save exporter secret for the new epoch
+        self.exporter_secret(mls_group.group_id())?;
+
+        // Save a processed message so we don't reprocess
+        let processed_message = message_types::ProcessedMessage {
+            wrapper_event_id: event.id,
+            message_event_id: None,
+            processed_at: Timestamp::now(),
+            state: message_types::ProcessedMessageState::Processed,
+            failure_reason: None,
+        };
+
+        self.storage()
+            .save_processed_message(processed_message)
+            .map_err(|e| Error::Message(e.to_string()))?;
+        Ok(())
     }
 
     /// Processes an incoming encrypted Nostr event containing an MLS message
     ///
     /// This is the main entry point for processing received messages. The function:
-    /// 1. Validates the event kind
-    /// 2. Loads the MLS group and its secret
-    /// 3. Decrypts the NIP-44 encrypted content
-    /// 4. Processes the MLS message
-    /// 5. Updates message state in storage
+    /// 1. Validates the event kind (must be MlsGroupMessage)
+    /// 2. Extracts and validates the group ID from event tags
+    /// 3. Loads the MLS group and its cryptographic secrets
+    /// 4. Decrypts the NIP-44 encrypted content using group exporter secret
+    /// 5. Processes the MLS message according to its type
+    /// 6. Updates message state in storage
+    /// 7. Handles special cases like own messages and processing failures
     ///
     /// # Arguments
     ///
-    /// * `mls_group_id` - The MLS group ID
-    /// * `event` - The received Nostr event
+    /// * `event` - The received Nostr event containing the encrypted MLS message
     ///
     /// # Returns
     ///
-    /// * `Ok(())` - If message processing succeeds
+    /// * `Ok(MessageProcessingResult)` - Result indicating the type of message processed
     /// * `Err(Error)` - If message processing fails
-    pub fn process_message(&self, event: &Event) -> Result<Option<message_types::Message>, Error> {
+    pub fn process_message(&self, event: &Event) -> Result<MessageProcessingResult, Error> {
         if event.kind != Kind::MlsGroupMessage {
             return Err(Error::UnexpectedEvent {
                 expected: Kind::MlsGroupMessage,
@@ -314,7 +558,7 @@ where
         .try_into()
         .map_err(|_e| Error::Message("Failed to convert nostr group id to [u8; 32]".to_string()))?;
 
-        let mut group = self
+        let group = self
             .storage()
             .find_group_by_nostr_group_id(&nostr_group_id)
             .map_err(|e| Error::Group(e.to_string()))?
@@ -341,54 +585,25 @@ where
             .map_err(|e| Error::Group(e.to_string()))?
             .ok_or(Error::GroupNotFound)?;
 
-        // The resulting serialized message is the MLS encrypted message that Bob sent
-        // Now Bob can process the MLS message content and do what's needed with it
         match self.process_message_for_group(&mut mls_group, &message_bytes) {
-            Ok(Some(mut rumor)) => {
-                let rumor_id: EventId = rumor.id();
-
-                let processed_message = message_types::ProcessedMessage {
-                    wrapper_event_id: event.id,
-                    message_event_id: Some(rumor_id),
-                    processed_at: Timestamp::now(),
-                    state: message_types::ProcessedMessageState::Processed,
-                    failure_reason: None,
-                };
-
-                let message = message_types::Message {
-                    id: rumor_id,
-                    pubkey: rumor.pubkey,
-                    kind: rumor.kind,
-                    mls_group_id: group.mls_group_id.clone(),
-                    created_at: rumor.created_at,
-                    content: rumor.content.clone(),
-                    tags: rumor.tags.clone(),
-                    event: rumor.clone(),
-                    wrapper_event_id: event.id,
-                    state: message_types::MessageState::Processed,
-                };
-
-                self.storage()
-                    .save_message(message.clone())
-                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                self.storage()
-                    .save_processed_message(processed_message.clone())
-                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                // Update last_message_at and last_message_id
-                group.last_message_at = Some(rumor.created_at);
-                group.last_message_id = Some(message.id);
-                self.storage()
-                    .save_group(group)
-                    .map_err(|e| Error::Group(e.to_string()))?;
-
-                tracing::debug!(target: "nostr_mls::messages::process_message", "Processed message: {:?}", processed_message);
-                tracing::debug!(target: "nostr_mls::messages::process_message", "Message: {:?}", message);
-                Ok(Some(message))
+            Ok(ProcessedMessageContent::ApplicationMessage(application_message)) => {
+                Ok(MessageProcessingResult::ApplicationMessage(
+                    self.process_application_message_for_group(group, event, application_message)?,
+                ))
             }
-            Ok(None) => {
-                // This is what happens with proposals, commits, etc.
+            Ok(ProcessedMessageContent::ProposalMessage(staged_proposal)) => Ok(
+                MessageProcessingResult::Proposal(self.process_proposal_message_for_group(
+                    &mut mls_group,
+                    event,
+                    *staged_proposal,
+                )?),
+            ),
+            Ok(ProcessedMessageContent::StagedCommitMessage(staged_commit)) => {
+                self.process_commit_message_for_group(&mut mls_group, event, *staged_commit)?;
+                Ok(MessageProcessingResult::Commit)
+            }
+            Ok(ProcessedMessageContent::ExternalJoinProposalMessage(_external_join_proposal)) => {
+                // Save a processed message so we don't reprocess
                 let processed_message = message_types::ProcessedMessage {
                     wrapper_event_id: event.id,
                     message_event_id: None,
@@ -401,7 +616,7 @@ where
                     .save_processed_message(processed_message)
                     .map_err(|e| Error::Message(e.to_string()))?;
 
-                Ok(None)
+                Ok(MessageProcessingResult::ExternalJoinProposal)
             }
             Err(e) => {
                 match e {
@@ -446,8 +661,10 @@ where
                                 tracing::debug!(target: "nostr_mls::messages::process_message", "Message previously failed to process");
                             }
                         }
-                        let message = self.get_message(&message_event_id)?;
-                        return Ok(message);
+                        let message = self
+                            .get_message(&message_event_id)?
+                            .ok_or(Error::MessageNotFound)?;
+                        Ok(MessageProcessingResult::ApplicationMessage(message))
                     }
                     _ => {
                         tracing::error!(target: "nostr_mls::messages::process_message", "Error processing message: {:?}", e);
@@ -461,9 +678,10 @@ where
                         self.storage()
                             .save_processed_message(processed_message)
                             .map_err(|e| Error::Message(e.to_string()))?;
+
+                        Ok(MessageProcessingResult::Unprocessable)
                     }
                 }
-                Ok(None)
             }
         }
     }
