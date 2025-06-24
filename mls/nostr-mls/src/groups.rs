@@ -308,9 +308,7 @@ where
         group_id: &GroupId,
     ) -> Result<Vec<PublicKey>, Error> {
         // Load the MLS group
-        let mls_group = self
-            .load_mls_group(group_id)?
-            .ok_or(Error::GroupNotFound)?;
+        let mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
 
         let mut added_pubkeys = Vec::new();
 
@@ -958,10 +956,10 @@ where
 #[cfg(test)]
 mod tests {
 
-    use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl};
-    use openmls::prelude::BasicCredential;
-    use openmls::group::GroupId;
     use crate::error::Error;
+    use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl};
+    use openmls::group::GroupId;
+    use openmls::prelude::BasicCredential;
 
     use crate::tests::create_test_nostr_mls;
     use nostr_mls_memory_storage::NostrMlsMemoryStorage;
@@ -978,13 +976,18 @@ mod tests {
         (creator, members, admins)
     }
 
-
-
-    fn create_key_package_event(nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>, member_keys: &Keys) -> Event {
+    fn create_key_package_event(
+        nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
+        member_keys: &Keys,
+    ) -> Event {
         create_key_package_event_with_key(nostr_mls, &member_keys.public_key(), member_keys)
     }
 
-    fn create_key_package_event_with_key(nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>, pubkey: &PublicKey, keys: &Keys) -> Event {
+    fn create_key_package_event_with_key(
+        nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
+        pubkey: &PublicKey,
+        keys: &Keys,
+    ) -> Event {
         let relays = vec![RelayUrl::parse("wss://test.relay").unwrap()];
         let (key_package_hex, tags) = nostr_mls
             .create_key_package_for_event(pubkey, relays)

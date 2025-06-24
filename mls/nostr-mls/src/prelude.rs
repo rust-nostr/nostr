@@ -17,6 +17,6 @@ pub use openmls::prelude::*;
 
 pub use crate::extension::*;
 pub use crate::groups::*;
-pub use crate::welcomes::*;
 pub use crate::messages::*;
+pub use crate::welcomes::*;
 pub use crate::*;

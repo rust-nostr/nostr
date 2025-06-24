@@ -369,7 +369,8 @@ where
                                 .store_pending_proposal(self.provider.storage(), staged_proposal)
                                 .map_err(|e| Error::Message(e.to_string()))?;
 
-                            let _added_members = self.pending_added_members_pubkeys(mls_group.group_id())?;
+                            let _added_members =
+                                self.pending_added_members_pubkeys(mls_group.group_id())?;
 
                             let mls_signer = self.load_mls_signer(mls_group)?;
 
@@ -390,7 +391,10 @@ where
                             // include in the welcome rumor to allow users to clean up those key packages on relays
                             let welcome_rumors: Option<Vec<UnsignedEvent>> = None;
                             if welcomes_option.is_some() {
-                                return Err(Error::NotImplemented("Processing welcome rumors from proposals is not supported".to_string()));
+                                return Err(Error::NotImplemented(
+                                    "Processing welcome rumors from proposals is not supported"
+                                        .to_string(),
+                                ));
                             }
 
                             // Save a processed message so we don't reprocess
@@ -735,8 +739,7 @@ mod tests {
 
     /// Helper function to create a test message rumor
     fn create_test_rumor(sender_keys: &Keys, content: &str) -> UnsignedEvent {
-        EventBuilder::new(Kind::TextNote, content)
-            .build(sender_keys.public_key())
+        EventBuilder::new(Kind::TextNote, content).build(sender_keys.public_key())
     }
 
     #[test]
@@ -755,7 +758,9 @@ mod tests {
         let (creator, members, admins) = create_test_group_members();
         let group_id = create_test_group(&nostr_mls, &creator, &members, &admins);
 
-        let messages = nostr_mls.get_messages(&group_id).expect("Failed to get messages");
+        let messages = nostr_mls
+            .get_messages(&group_id)
+            .expect("Failed to get messages");
         assert!(messages.is_empty());
     }
 
@@ -844,10 +849,7 @@ mod tests {
 
         let result = nostr_mls.process_message(&event);
         assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            Error::UnexpectedEvent { .. }
-        ));
+        assert!(matches!(result.unwrap_err(), Error::UnexpectedEvent { .. }));
     }
 
     #[test]
@@ -970,10 +972,12 @@ mod tests {
             created_at: Timestamp::now(),
             content: "Test".to_string(),
             tags: Tags::new(),
-            event: EventBuilder::new(Kind::TextNote, "Test")
-                .build(PublicKey::from_hex(
+            event: EventBuilder::new(Kind::TextNote, "Test").build(
+                PublicKey::from_hex(
                     "8a9de562cbbed225b6ea0118dd3997a02df92c0bffd2224f71081a7450c3e549",
-                ).unwrap()),
+                )
+                .unwrap(),
+            ),
             wrapper_event_id: EventId::all_zeros(),
             state: message_types::MessageState::Processed,
         };
@@ -985,22 +989,22 @@ mod tests {
 
         // Test that we can match on variants
         match app_result {
-            MessageProcessingResult::ApplicationMessage(_) => {},
+            MessageProcessingResult::ApplicationMessage(_) => {}
             _ => panic!("Expected ApplicationMessage variant"),
         }
 
         match commit_result {
-            MessageProcessingResult::Commit => {},
+            MessageProcessingResult::Commit => {}
             _ => panic!("Expected Commit variant"),
         }
 
         match external_join_result {
-            MessageProcessingResult::ExternalJoinProposal => {},
+            MessageProcessingResult::ExternalJoinProposal => {}
             _ => panic!("Expected ExternalJoinProposal variant"),
         }
 
         match unprocessable_result {
-            MessageProcessingResult::Unprocessable => {},
+            MessageProcessingResult::Unprocessable => {}
             _ => panic!("Expected Unprocessable variant"),
         }
     }
