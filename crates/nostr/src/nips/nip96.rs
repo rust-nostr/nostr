@@ -6,7 +6,7 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/96.md>
 
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use crate::nips::nip98;
 use crate::nips::nip98::{HttpData, HttpMethod};
 use crate::types::Url;
-use crate::{NostrSigner, TagKind, TagStandard, Tags};
+use crate::{JsonUtil, NostrSigner, TagKind, TagStandard, Tags};
 
 /// NIP96 error
 #[derive(Debug)]
@@ -62,7 +62,7 @@ impl From<serde_json::Error> for Error {
 }
 
 /// The structure contained in the nip96.json file on nip96 servers
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ServerConfig {
     /// API URL
     pub api_url: Url,
@@ -72,6 +72,10 @@ pub struct ServerConfig {
     pub delegated_to_url: Option<Url>,
     /// Allowed content types
     pub content_types: Option<Vec<String>>,
+}
+
+impl JsonUtil for ServerConfig {
+    type Err = serde_json::Error;
 }
 
 /// NIP-94 event
@@ -104,48 +108,47 @@ pub struct UploadResponse {
     pub nip94_event: Option<Nip94Event>,
 }
 
-/// NIP96 server config request information
-///
-/// Contains the URL needed to fetch server configuration
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ServerConfigRequest {
-    /// The URL to fetch
-    pub url: String,
+/// Methods and JsonUtil implementation for UploadResponse
+impl UploadResponse {
+    /// Extract the download URL from the upload response
+    ///
+    /// Returns an error if the upload was unsuccessful or if the URL cannot be found
+    pub fn download_url(&self) -> Result<&Url, Error> {
+        if self.status == UploadResponseStatus::Error {
+            return Err(Error::UploadError(self.message.clone()));
+        }
+
+        let nip94_event: &Nip94Event = self
+            .nip94_event
+            .as_ref()
+            .ok_or(Error::ResponseDecodeError)?;
+        match nip94_event.tags.find_standardized(TagKind::Url) {
+            Some(TagStandard::Url(url)) => Ok(url),
+            _ => Err(Error::ResponseDecodeError),
+        }
+    }
 }
 
-impl ServerConfigRequest {
-    /// Create a new server config request
-    pub fn new(server_url: Url) -> Result<Self, Error> {
-        let config_url = get_server_config_url(&server_url)?;
-        Ok(Self { url: config_url })
-    }
-
-    /// Get the URL to fetch
-    pub fn url(&self) -> &str {
-        &self.url
-    }
+impl JsonUtil for UploadResponse {
+    type Err = serde_json::Error;
 }
 
 /// NIP96 upload request information
-///
 /// Contains all data needed to make a file upload request
 #[derive(Debug, Clone)]
 pub struct UploadRequest {
     /// The URL to POST to
-    pub url: String,
+    pub url: Url,
     /// The Authorization header value (NIP98)
     pub authorization: String,
 }
 
 impl UploadRequest {
     /// Prepare upload request data
-    ///
     /// This function prepares the authorization header and returns all the data
     /// needed to make an upload request with the HTTP client.
-    ///
     /// Note: please create the multipart form data yourself using your
     /// preferred HTTP client's multipart impl.
-    ///
     pub async fn new<T>(signer: &T, config: &ServerConfig, file_data: &[u8]) -> Result<Self, Error>
     where
         T: NostrSigner,
@@ -156,13 +159,13 @@ impl UploadRequest {
         let authorization: String = data.to_authorization(signer).await?;
 
         Ok(Self {
-            url: config.api_url.to_string(),
+            url: config.api_url.clone(),
             authorization,
         })
     }
 
     /// Get the URL to POST to
-    pub fn url(&self) -> &str {
+    pub fn url(&self) -> &Url {
         &self.url
     }
 
@@ -173,40 +176,12 @@ impl UploadRequest {
 }
 
 /// Get the NIP96 server config URL for a given server
-///
 /// Returns the URL that should be fetched for configuration of the server
-pub fn get_server_config_url(server_url: &Url) -> Result<String, Error> {
+pub fn get_server_config_url(server_url: &Url) -> Result<Url, Error> {
     let json_url = server_url
         .join("/.well-known/nostr/nip96.json")
         .map_err(|_| Error::InvalidURL)?;
-    Ok(json_url.to_string())
-}
-
-/// Parse the server config from JSON data
-///
-/// This function would allows you to parse server config without any HTTP dependencies.
-/// Fetch the JSON data using your preferred HTTP client and pass it here.
-///
-pub fn server_config_from_response(json_response: &str) -> Result<ServerConfig, Error> {
-    let config: ServerConfig = serde_json::from_str(json_response)?;
-    Ok(config)
-}
-
-/// Parse upload response and extract download URL
-///
-/// This function would extracts the download URL from a NIP96 upload response
-/// Use this after you've made the upload request with your HTTP client.
-///
-pub fn upload_response_to_url(json_response: &str) -> Result<Url, Error> {
-    let res: UploadResponse = serde_json::from_str(json_response)?;
-    if res.status == UploadResponseStatus::Error {
-        return Err(Error::UploadError(res.message));
-    }
-    let nip94_event: Nip94Event = res.nip94_event.ok_or(Error::ResponseDecodeError)?;
-    match nip94_event.tags.find_standardized(TagKind::Url) {
-        Some(TagStandard::Url(url)) => Ok(url.clone()),
-        _ => Err(Error::ResponseDecodeError),
-    }
+    Ok(json_url)
 }
 
 #[cfg(test)]
@@ -214,34 +189,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_server_config_request() {
-        let server_url = Url::parse("https://nostr.media").unwrap();
-        let request = ServerConfigRequest::new(server_url).unwrap();
-
-        assert_eq!(
-            request.url(),
-            "https://nostr.media/.well-known/nostr/nip96.json"
-        );
-    }
-
-    #[test]
     fn test_get_server_config_url() {
         let server_url = Url::parse("https://nostr.media").unwrap();
         let config_url = get_server_config_url(&server_url).unwrap();
         assert_eq!(
-            config_url,
+            config_url.to_string(),
             "https://nostr.media/.well-known/nostr/nip96.json"
         );
     }
 
     #[test]
-    fn test_server_config_from_response() {
+    fn test_server_config_from_json() {
         let json_response = r#"{
             "api_url": "https://nostr.media/api/v1/nip96/upload",
             "download_url": "https://nostr.media"
         }"#;
 
-        let config = server_config_from_response(json_response).unwrap();
+        let config = ServerConfig::from_json(json_response).unwrap();
         assert_eq!(
             config.api_url.to_string(),
             "https://nostr.media/api/v1/nip96/upload"
@@ -250,7 +214,7 @@ mod tests {
     }
 
     #[test]
-    fn test_upload_response_to_url() {
+    fn test_upload_response_download_url() {
         let success_response = r#"{
             "status": "success",
             "message": "Upload successful",
@@ -259,7 +223,8 @@ mod tests {
             }
         }"#;
 
-        let url = upload_response_to_url(success_response).unwrap();
+        let response = UploadResponse::from_json(success_response).unwrap();
+        let url = response.download_url().unwrap();
         assert_eq!(url.to_string(), "https://nostr.media/file123.png");
 
         let error_response = r#"{
@@ -267,7 +232,8 @@ mod tests {
             "message": "File too large"
         }"#;
 
-        let result = upload_response_to_url(error_response);
+        let response = UploadResponse::from_json(error_response).unwrap();
+        let result = response.download_url();
         assert!(result.is_err());
         if let Err(Error::UploadError(msg)) = result {
             assert_eq!(msg, "File too large");
