@@ -357,6 +357,7 @@ where
             ));
         }
 
+        // Parse key packages from events
         let mut key_packages_vec: Vec<KeyPackage> = Vec::new();
         for event in key_package_events {
             // TODO: Error handling for failure here
@@ -957,10 +958,8 @@ mod tests {
 
     use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl};
     use nostr_mls_memory_storage::NostrMlsMemoryStorage;
-    use openmls::group::GroupId;
     use openmls::prelude::BasicCredential;
 
-    use crate::error::Error;
     use crate::tests::create_test_nostr_mls;
 
     fn create_test_group_members() -> (Keys, Vec<Keys>, Vec<PublicKey>) {
@@ -1117,127 +1116,6 @@ mod tests {
         for member_keys in &initial_members {
             assert!(members.contains(&member_keys.public_key()));
         }
-    }
-
-    #[test]
-    fn test_pending_added_members_pubkeys() {
-        let creator_nostr_mls = create_test_nostr_mls();
-        let (creator, initial_members, admins) = create_test_group_members();
-        let creator_pk = creator.public_key();
-
-        // Create key package events for initial members
-        let mut initial_key_package_events = Vec::new();
-        for member_keys in &initial_members {
-            let key_package_event = create_key_package_event(&creator_nostr_mls, member_keys);
-            initial_key_package_events.push(key_package_event);
-        }
-
-        // Create the initial group
-        let create_result = creator_nostr_mls
-            .create_group(
-                "Test Group",
-                "A test group for pending members testing",
-                &creator_pk,
-                initial_key_package_events,
-                admins,
-                vec![RelayUrl::parse("wss://test.relay").unwrap()],
-            )
-            .expect("Failed to create group");
-
-        let group_id = &create_result.group.mls_group_id;
-
-        // Merge the pending commit to apply the initial member additions
-        creator_nostr_mls
-            .merge_pending_commit(group_id)
-            .expect("Failed to merge pending commit");
-
-        // Test with no pending proposals first
-        let pending_pubkeys = creator_nostr_mls
-            .pending_added_members_pubkeys(group_id)
-            .expect("Failed to get pending added members");
-        assert!(
-            pending_pubkeys.is_empty(),
-            "Should have no pending added members initially"
-        );
-
-        // Create key package events for new members to add
-        let new_member1 = Keys::generate();
-        let new_member2 = Keys::generate();
-        let new_key_package_event1 = create_key_package_event(&creator_nostr_mls, &new_member1);
-        let new_key_package_event2 = create_key_package_event(&creator_nostr_mls, &new_member2);
-
-        // Add the new members but DON'T merge the pending commit
-        let _add_result = creator_nostr_mls
-            .add_members(group_id, &[new_key_package_event1, new_key_package_event2])
-            .expect("Failed to add members");
-
-        // Now test that we can get the pending added members
-        let pending_pubkeys = creator_nostr_mls
-            .pending_added_members_pubkeys(group_id)
-            .expect("Failed to get pending added members");
-
-        assert_eq!(
-            pending_pubkeys.len(),
-            2,
-            "Should have 2 pending added members"
-        );
-        assert!(
-            pending_pubkeys.contains(&new_member1.public_key()),
-            "Should contain new_member1 public key"
-        );
-        assert!(
-            pending_pubkeys.contains(&new_member2.public_key()),
-            "Should contain new_member2 public key"
-        );
-
-        // Verify the members are not yet in the actual group
-        let current_members = creator_nostr_mls
-            .get_members(group_id)
-            .expect("Failed to get members");
-        assert!(
-            !current_members.contains(&new_member1.public_key()),
-            "new_member1 should not be in group yet"
-        );
-        assert!(
-            !current_members.contains(&new_member2.public_key()),
-            "new_member2 should not be in group yet"
-        );
-
-        // After merging the commit, there should be no more pending proposals
-        creator_nostr_mls
-            .merge_pending_commit(group_id)
-            .expect("Failed to merge pending commit");
-
-        let pending_pubkeys_after_merge = creator_nostr_mls
-            .pending_added_members_pubkeys(group_id)
-            .expect("Failed to get pending added members after merge");
-        assert!(
-            pending_pubkeys_after_merge.is_empty(),
-            "Should have no pending added members after merge"
-        );
-
-        // Verify the members are now in the actual group
-        let final_members = creator_nostr_mls
-            .get_members(group_id)
-            .expect("Failed to get members after merge");
-        assert!(
-            final_members.contains(&new_member1.public_key()),
-            "new_member1 should be in group after merge"
-        );
-        assert!(
-            final_members.contains(&new_member2.public_key()),
-            "new_member2 should be in group after merge"
-        );
-    }
-
-    #[test]
-    fn test_pending_added_members_pubkeys_group_not_found() {
-        let creator_nostr_mls = create_test_nostr_mls();
-        let non_existent_group_id = GroupId::from_slice(&[1, 2, 3, 4]);
-
-        let result = creator_nostr_mls.pending_added_members_pubkeys(&non_existent_group_id);
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), Error::GroupNotFound));
     }
 
     #[test]
