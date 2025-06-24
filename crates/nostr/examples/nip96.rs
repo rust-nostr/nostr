@@ -15,16 +15,45 @@ const FILE: &[u8] = &[
 #[tokio::main]
 async fn main() -> Result<()> {
     let keys = Keys::parse("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")?;
+    let server_url: Url = Url::parse("https://nostr.media")?;
 
-    let server_url: Url = Url::parse("https://NostrMedia.com")?;
+    // Step 1: Get server configuration URL
+    let config_url = nip96::get_server_config_url(&server_url)?;
+    println!("Config URL: {}", config_url);
 
-    let config: ServerConfig = nip96::get_server_config(server_url, None).await?;
+    // Mock server config response
+    let config_json = r#"{
+        "api_url": "https://nostr.media/api/v1/nip96/upload",
+        "download_url": "https://nostr.media"
+    }"#;
 
-    let file_data: Vec<u8> = FILE.to_vec();
+    let config = nip96::ServerConfig::from_json(config_json)?;
+    println!("Upload endpoint: {}", config.api_url);
 
-    // Upload
-    let url: Url = nip96::upload_data(&keys, &config, file_data, None, None).await?;
-    println!("File uploaded: {url}");
+    // Step 2: Prepare upload request
+    let upload_request = nip96::UploadRequest::new(&keys, &config, FILE).await?;
+    println!("Upload URL: {}", upload_request.url());
+    println!("Authorization: {}", upload_request.authorization());
+
+    // Step 3: Mock upload response
+    let upload_response_json = r#"{
+        "status": "success",
+        "message": "Upload successful",
+        "nip94_event": {
+            "tags": [["url", "https://nostr.media/file123.png"]]
+        }
+    }"#;
+
+    // Parse response and extract URL
+    let upload_response = nip96::UploadResponse::from_json(upload_response_json)?;
+    match upload_response.download_url() {
+        Ok(url) => println!("File would be available at: {url}"),
+        Err(e) => println!("Upload simulation failed: {e}"),
+    }
+
+    println!("\n--- I/O-free NIP96 Demo Complete ---");
+    println!("This example shows how to use NIP96 without any specific HTTP client.");
+    println!("Users can now choose reqwest, ureq, curl, or any HTTP implementation!");
 
     Ok(())
 }

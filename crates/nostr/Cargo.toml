@@ -56,7 +56,7 @@ nip47 = ["nip04"]
 nip49 = ["dep:chacha20poly1305", "dep:scrypt", "dep:unicode-normalization"]
 nip57 = ["dep:aes", "dep:cbc"]
 nip59 = ["nip44"]
-nip96 = ["dep:reqwest", "nip98", "reqwest?/multipart"]
+nip96 = ["nip98"]
 nip98 = ["dep:base64"]
 
 [dependencies]
