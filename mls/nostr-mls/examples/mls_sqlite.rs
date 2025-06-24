@@ -71,7 +71,9 @@ async fn main() -> Result<()> {
 
     // Alice now creates a Kind: 444 event that is Gift-wrapped to just Bob with the welcome event in the rumor event.
     // If you added multiple users to the group, you'd create a separate gift-wrapped welcome event for each user.
-    let welcome_rumor = welcome_rumors.first().expect("Should have at least one welcome rumor");
+    let welcome_rumor = welcome_rumors
+        .first()
+        .expect("Should have at least one welcome rumor");
 
     // Now, let's also try sending a message to the group (using an unsigned Kind: 9 event)
     // We don't have to wait for Bob to join the group before we send our first message.
@@ -238,14 +240,15 @@ async fn main() -> Result<()> {
     tracing::info!("Charlie identity generated");
 
     // Create key package for Charlie
-    let (charlie_key_package_encoded, charlie_tags) =
-        charlie_nostr_mls.create_key_package_for_event(&charlie_keys.public_key(), [relay_url.clone()])?;
+    let (charlie_key_package_encoded, charlie_tags) = charlie_nostr_mls
+        .create_key_package_for_event(&charlie_keys.public_key(), [relay_url.clone()])?;
 
-    let charlie_key_package_event = EventBuilder::new(Kind::MlsKeyPackage, charlie_key_package_encoded)
-        .tags(charlie_tags)
-        .build(charlie_keys.public_key())
-        .sign(&charlie_keys)
-        .await?;
+    let charlie_key_package_event =
+        EventBuilder::new(Kind::MlsKeyPackage, charlie_key_package_encoded)
+            .tags(charlie_tags)
+            .build(charlie_keys.public_key())
+            .sign(&charlie_keys)
+            .await?;
 
     // Alice adds Charlie to the group
     tracing::info!("Alice adding Charlie to the group");
@@ -260,23 +263,32 @@ async fn main() -> Result<()> {
     tracing::info!("Add commit processing result: {:?}", add_commit_result);
 
     // Alice merges the pending commit for adding Charlie
-    alice_nostr_mls.merge_pending_commit(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))?;
+    alice_nostr_mls
+        .merge_pending_commit(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))?;
 
     // Charlie processes the welcome message
     if let Some(welcome_rumors) = add_charlie_result.welcome_rumors {
-        let charlie_welcome_rumor = welcome_rumors.first().expect("Should have welcome rumor for Charlie");
+        let charlie_welcome_rumor = welcome_rumors
+            .first()
+            .expect("Should have welcome rumor for Charlie");
         charlie_nostr_mls.process_welcome(&EventId::all_zeros(), charlie_welcome_rumor)?;
 
-        let charlie_welcomes = charlie_nostr_mls.get_pending_welcomes().expect("Error getting Charlie's pending welcomes");
+        let charlie_welcomes = charlie_nostr_mls
+            .get_pending_welcomes()
+            .expect("Error getting Charlie's pending welcomes");
         let charlie_welcome = charlie_welcomes.first().unwrap();
         charlie_nostr_mls.accept_welcome(charlie_welcome)?;
 
         tracing::info!("Charlie joined the group");
 
         // Verify Charlie is in the group
-        let group_members = alice_nostr_mls.get_members(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))?;
+        let group_members = alice_nostr_mls
+            .get_members(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))?;
         assert_eq!(group_members.len(), 3, "Group should now have 3 members");
-        assert!(group_members.contains(&charlie_keys.public_key()), "Charlie should be in the group");
+        assert!(
+            group_members.contains(&charlie_keys.public_key()),
+            "Charlie should be in the group"
+        );
     }
 
     // ================================
@@ -291,28 +303,45 @@ async fn main() -> Result<()> {
 
     // Bob processes the remove commit message
     tracing::info!("Bob processing Charlie removal commit");
-    let remove_commit_result = bob_nostr_mls.process_message(&remove_charlie_result.evolution_event);
-    tracing::info!("Remove commit processing result: {:?}", remove_commit_result);
+    let remove_commit_result =
+        bob_nostr_mls.process_message(&remove_charlie_result.evolution_event);
+    tracing::info!(
+        "Remove commit processing result: {:?}",
+        remove_commit_result
+    );
 
     // Alice merges the pending commit for removing Charlie
-    alice_nostr_mls.merge_pending_commit(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))?;
+    alice_nostr_mls
+        .merge_pending_commit(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))?;
 
     // Verify Charlie is no longer in the group
-    let group_members_after_removal = alice_nostr_mls.get_members(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))?;
-    assert_eq!(group_members_after_removal.len(), 2, "Group should now have 2 members");
-    assert!(!group_members_after_removal.contains(&charlie_keys.public_key()), "Charlie should not be in the group");
+    let group_members_after_removal =
+        alice_nostr_mls.get_members(&GroupId::from_slice(alice_group.mls_group_id.as_slice()))?;
+    assert_eq!(
+        group_members_after_removal.len(),
+        2,
+        "Group should now have 2 members"
+    );
+    assert!(
+        !group_members_after_removal.contains(&charlie_keys.public_key()),
+        "Charlie should not be in the group"
+    );
 
     // ================================
     // Bob leaving the group
     // ================================
 
     tracing::info!("Bob leaving the group");
-    let bob_leave_result = bob_nostr_mls.leave_group(&GroupId::from_slice(bobs_group.mls_group_id.as_slice()))?;
+    let bob_leave_result =
+        bob_nostr_mls.leave_group(&GroupId::from_slice(bobs_group.mls_group_id.as_slice()))?;
 
     // Alice processes Bob's leave proposal
     tracing::info!("Alice processing Bob's leave proposal");
     let leave_proposal_result = alice_nostr_mls.process_message(&bob_leave_result.evolution_event);
-    tracing::info!("Leave proposal processing result: {:?}", leave_proposal_result);
+    tracing::info!(
+        "Leave proposal processing result: {:?}",
+        leave_proposal_result
+    );
 
     // The leave creates a proposal that needs to be committed by an admin (Alice)
     // Alice should create a commit to finalize Bob's removal

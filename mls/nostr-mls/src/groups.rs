@@ -830,7 +830,6 @@ where
     /// Returns
     /// * `Ok(())` - if the commits were merged successfully
     /// * Err(GroupError) - if something goes wrong
-    ///
     pub fn merge_pending_commit(&self, group_id: &GroupId) -> Result<(), Error> {
         let mut mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
         Ok(mls_group.merge_pending_commit(&self.provider)?)
@@ -956,13 +955,13 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::error::Error;
     use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl};
+    use nostr_mls_memory_storage::NostrMlsMemoryStorage;
     use openmls::group::GroupId;
     use openmls::prelude::BasicCredential;
 
+    use crate::error::Error;
     use crate::tests::create_test_nostr_mls;
-    use nostr_mls_memory_storage::NostrMlsMemoryStorage;
 
     fn create_test_group_members() -> (Keys, Vec<Keys>, Vec<PublicKey>) {
         let creator = Keys::generate();

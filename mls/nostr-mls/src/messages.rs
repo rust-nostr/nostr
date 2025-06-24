@@ -665,10 +665,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::tests::create_test_nostr_mls;
     use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl, Tag, TagKind};
     use nostr_mls_memory_storage::NostrMlsMemoryStorage;
+
+    use super::*;
+    use crate::tests::create_test_nostr_mls;
 
     /// Helper function to create test group members
     fn create_test_group_members() -> (Keys, Vec<Keys>, Vec<PublicKey>) {
