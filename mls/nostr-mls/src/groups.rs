@@ -200,7 +200,7 @@ where
     ///
     /// * `Ok(GroupExporterSecret)` - The exported secret
     /// * `Err(Error)` - If the group is not found or there is an error exporting the secret
-    pub fn exporter_secret(
+    pub(crate) fn exporter_secret(
         &self,
         group_id: &GroupId,
     ) -> Result<group_types::GroupExporterSecret, Error> {
@@ -289,6 +289,47 @@ where
         })
     }
 
+    /// Gets the public keys of members that will be added from pending proposals in an MLS group
+    ///
+    /// This helper method loads an MLS group and examines its pending proposals to identify
+    /// any Add proposals that would add new members to the group. For each new member,
+    /// it extracts their public key from their LeafNode.
+    ///
+    /// # Arguments
+    ///
+    /// * `group_id` - The MLS group ID to examine for pending proposals
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<PublicKey>)` - List of public keys for newly added members in pending proposals
+    /// * `Err(Error)` - If there's an error loading the group or extracting member information
+    pub(crate) fn pending_added_members_pubkeys(
+        &self,
+        group_id: &GroupId,
+    ) -> Result<Vec<PublicKey>, Error> {
+        // Load the MLS group
+        let mls_group = self
+            .load_mls_group(group_id)?
+            .ok_or(Error::GroupNotFound)?;
+
+        let mut added_pubkeys = Vec::new();
+
+        // Get pending proposals from the group
+        let pending_proposals = mls_group.pending_proposals();
+
+        // Extract public keys from Add proposals
+        for proposal in pending_proposals {
+            if let Proposal::Add(add_proposal) = proposal.proposal() {
+                // Extract the public key from the LeafNode using the same pattern as other methods
+                let leaf_node = add_proposal.key_package().leaf_node();
+                let pubkey = self.pubkey_for_leaf_node(leaf_node)?;
+                added_pubkeys.push(pubkey);
+            }
+        }
+
+        Ok(added_pubkeys)
+    }
+
     /// Add members to a group
     ///
     /// NOTE: This function doesn't merge the pending commit. Clients must call this function manually only after successful publish of the commit message to relays.
@@ -324,8 +365,6 @@ where
             let key_package: KeyPackage = self.parse_key_package(event)?;
             key_packages_vec.push(key_package);
         }
-
-        // TODO: Get a list of users to be added from proposals and create welcome events for them too
 
         let (commit_message, welcome_message, _group_info) = mls_group
             .add_members(&self.provider, &mls_signer, &key_packages_vec)
@@ -588,6 +627,9 @@ where
         // Add members to the group
         let (_, welcome_out, _group_info) =
             mls_group.add_members(&self.provider, &signer, &key_packages_vec)?;
+
+        // Merge the pending commit to finalize the group state - we do this during creation because we don't have a commit event to fan out to the group relays
+        mls_group.merge_pending_commit(&self.provider)?;
 
         // Serialize the welcome message and send it to the members
         let serialized_welcome_message = welcome_out.tls_serialize_detached()?;
@@ -918,6 +960,8 @@ mod tests {
 
     use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl};
     use openmls::prelude::BasicCredential;
+    use openmls::group::GroupId;
+    use crate::error::Error;
 
     use crate::tests::create_test_nostr_mls;
     use nostr_mls_memory_storage::NostrMlsMemoryStorage;
@@ -1071,6 +1115,127 @@ mod tests {
         for member_keys in &initial_members {
             assert!(members.contains(&member_keys.public_key()));
         }
+    }
+
+    #[test]
+    fn test_pending_added_members_pubkeys() {
+        let creator_nostr_mls = create_test_nostr_mls();
+        let (creator, initial_members, admins) = create_test_group_members();
+        let creator_pk = creator.public_key();
+
+        // Create key package events for initial members
+        let mut initial_key_package_events = Vec::new();
+        for member_keys in &initial_members {
+            let key_package_event = create_key_package_event(&creator_nostr_mls, member_keys);
+            initial_key_package_events.push(key_package_event);
+        }
+
+        // Create the initial group
+        let create_result = creator_nostr_mls
+            .create_group(
+                "Test Group",
+                "A test group for pending members testing",
+                &creator_pk,
+                initial_key_package_events,
+                admins,
+                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+            )
+            .expect("Failed to create group");
+
+        let group_id = &create_result.group.mls_group_id;
+
+        // Merge the pending commit to apply the initial member additions
+        creator_nostr_mls
+            .merge_pending_commit(group_id)
+            .expect("Failed to merge pending commit");
+
+        // Test with no pending proposals first
+        let pending_pubkeys = creator_nostr_mls
+            .pending_added_members_pubkeys(group_id)
+            .expect("Failed to get pending added members");
+        assert!(
+            pending_pubkeys.is_empty(),
+            "Should have no pending added members initially"
+        );
+
+        // Create key package events for new members to add
+        let new_member1 = Keys::generate();
+        let new_member2 = Keys::generate();
+        let new_key_package_event1 = create_key_package_event(&creator_nostr_mls, &new_member1);
+        let new_key_package_event2 = create_key_package_event(&creator_nostr_mls, &new_member2);
+
+        // Add the new members but DON'T merge the pending commit
+        let _add_result = creator_nostr_mls
+            .add_members(group_id, &[new_key_package_event1, new_key_package_event2])
+            .expect("Failed to add members");
+
+        // Now test that we can get the pending added members
+        let pending_pubkeys = creator_nostr_mls
+            .pending_added_members_pubkeys(group_id)
+            .expect("Failed to get pending added members");
+
+        assert_eq!(
+            pending_pubkeys.len(),
+            2,
+            "Should have 2 pending added members"
+        );
+        assert!(
+            pending_pubkeys.contains(&new_member1.public_key()),
+            "Should contain new_member1 public key"
+        );
+        assert!(
+            pending_pubkeys.contains(&new_member2.public_key()),
+            "Should contain new_member2 public key"
+        );
+
+        // Verify the members are not yet in the actual group
+        let current_members = creator_nostr_mls
+            .get_members(group_id)
+            .expect("Failed to get members");
+        assert!(
+            !current_members.contains(&new_member1.public_key()),
+            "new_member1 should not be in group yet"
+        );
+        assert!(
+            !current_members.contains(&new_member2.public_key()),
+            "new_member2 should not be in group yet"
+        );
+
+        // After merging the commit, there should be no more pending proposals
+        creator_nostr_mls
+            .merge_pending_commit(group_id)
+            .expect("Failed to merge pending commit");
+
+        let pending_pubkeys_after_merge = creator_nostr_mls
+            .pending_added_members_pubkeys(group_id)
+            .expect("Failed to get pending added members after merge");
+        assert!(
+            pending_pubkeys_after_merge.is_empty(),
+            "Should have no pending added members after merge"
+        );
+
+        // Verify the members are now in the actual group
+        let final_members = creator_nostr_mls
+            .get_members(group_id)
+            .expect("Failed to get members after merge");
+        assert!(
+            final_members.contains(&new_member1.public_key()),
+            "new_member1 should be in group after merge"
+        );
+        assert!(
+            final_members.contains(&new_member2.public_key()),
+            "new_member2 should be in group after merge"
+        );
+    }
+
+    #[test]
+    fn test_pending_added_members_pubkeys_group_not_found() {
+        let creator_nostr_mls = create_test_nostr_mls();
+        let non_existent_group_id = GroupId::from_slice(&[1, 2, 3, 4]);
+
+        let result = creator_nostr_mls.pending_added_members_pubkeys(&non_existent_group_id);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), Error::GroupNotFound));
     }
 
     #[test]
@@ -1587,7 +1752,7 @@ mod tests {
 
         // Verify the result contains the expected data
         assert!(
-            update_result.evolution_event.content.len() > 0,
+            !update_result.evolution_event.content.is_empty(),
             "Evolution event should not be empty"
         );
         // Note: self_update typically doesn't produce a welcome message unless there are special circumstances

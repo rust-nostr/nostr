@@ -363,13 +363,15 @@ where
 
                 match member {
                     Some(member) => {
-                        // Only process commits from admins for now
+                        // Only process proposals from admins for now
                         if self.is_member_admin(mls_group.group_id(), &member)? {
                             mls_group
                                 .store_pending_proposal(self.provider.storage(), staged_proposal)
                                 .map_err(|e| Error::Message(e.to_string()))?;
 
-                            let mls_signer = self.load_mls_signer(&mls_group)?;
+                            let _added_members = self.pending_added_members_pubkeys(mls_group.group_id())?;
+
+                            let mls_signer = self.load_mls_signer(mls_group)?;
 
                             let (commit_message, welcomes_option, _group_info) = mls_group
                                 .commit_to_pending_proposals(&self.provider, &mls_signer)?;
@@ -383,9 +385,13 @@ where
                                 serialized_commit_message,
                             )?;
 
-                            // TODO: welcomes
-                            // We need to get the list of added users covered by the proposal.
-                            // Then create unsigned rumors for each.
+                            // TODO: FUTURE Handle welcome rumors from proposals
+                            // The issue is that we don't have the key_package events to get the event id to
+                            // include in the welcome rumor to allow users to clean up those key packages on relays
+                            let welcome_rumors: Option<Vec<UnsignedEvent>> = None;
+                            if welcomes_option.is_some() {
+                                return Err(Error::NotImplemented("Processing welcome rumors from proposals is not supported".to_string()));
+                            }
 
                             // Save a processed message so we don't reprocess
                             let processed_message = message_types::ProcessedMessage {
@@ -402,7 +408,7 @@ where
 
                             Ok(UpdateGroupResult {
                                 evolution_event: commit_event,
-                                welcome_rumors: Some(Vec::new()),
+                                welcome_rumors,
                             })
                         } else {
                             Err(Error::ProposalFromNonAdmin)
@@ -433,39 +439,6 @@ where
                 ))
             }
         }
-    }
-
-        /// Extracts public keys of newly added members from a staged commit
-    ///
-    /// This helper method examines the proposals within a staged commit to identify
-    /// any Add proposals that would add new members to the group. For each new member,
-    /// it extracts their public key from their LeafNode.
-    ///
-    /// # Arguments
-    ///
-    /// * `staged_commit` - The staged commit to examine for new members
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(Vec<PublicKey>)` - List of public keys for newly added members
-    /// * `Err(Error)` - If there's an error extracting member information
-    pub(crate) fn extract_added_members_pubkeys(
-        &self,
-        staged_commit: &StagedCommit,
-    ) -> Result<Vec<PublicKey>, Error> {
-        let mut added_pubkeys = Vec::new();
-
-        // Get the queued proposals from the staged commit
-        for proposal in staged_commit.queued_proposals() {
-            if let Proposal::Add(add_proposal) = proposal.proposal() {
-                // Extract the public key from the LeafNode using the same pattern as groups.rs
-                let leaf_node = add_proposal.key_package().leaf_node();
-                let pubkey = self.pubkey_for_leaf_node(leaf_node)?;
-                added_pubkeys.push(pubkey);
-            }
-        }
-
-        Ok(added_pubkeys)
     }
 
     /// Processes a commit message from a group member
@@ -1012,22 +985,22 @@ mod tests {
 
         // Test that we can match on variants
         match app_result {
-            MessageProcessingResult::ApplicationMessage(_) => assert!(true),
+            MessageProcessingResult::ApplicationMessage(_) => {},
             _ => panic!("Expected ApplicationMessage variant"),
         }
 
         match commit_result {
-            MessageProcessingResult::Commit => assert!(true),
+            MessageProcessingResult::Commit => {},
             _ => panic!("Expected Commit variant"),
         }
 
         match external_join_result {
-            MessageProcessingResult::ExternalJoinProposal => assert!(true),
+            MessageProcessingResult::ExternalJoinProposal => {},
             _ => panic!("Expected ExternalJoinProposal variant"),
         }
 
         match unprocessable_result {
-            MessageProcessingResult::Unprocessable => assert!(true),
+            MessageProcessingResult::Unprocessable => {},
             _ => panic!("Expected Unprocessable variant"),
         }
     }

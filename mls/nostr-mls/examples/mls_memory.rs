@@ -58,9 +58,6 @@ async fn main() -> Result<()> {
 
     tracing::info!("Group created");
 
-    // Merge the pending commit for group creation to finalize the group state
-    alice_nostr_mls.merge_pending_commit(&GroupId::from_slice(group_create_result.group.mls_group_id.as_slice()))?;
-
     // The group is created, and the welcome messages are in welcome_rumors.
     // We also have the Nostr group data, which we can use to show info about the group.
     let alice_group = group_create_result.group;
