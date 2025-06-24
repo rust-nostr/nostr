@@ -15,7 +15,6 @@ use nostr::util::hex;
 use nostr::{EventId, UnsignedEvent};
 use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls::group::{GroupId, ValidationError};
-use openmls::prelude::BasicCredential;
 use openmls_basic_credential::SignatureKeyPair;
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
@@ -684,5 +683,407 @@ where
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tests::create_test_nostr_mls;
+    use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl, Tag, TagKind};
+    use nostr_mls_memory_storage::NostrMlsMemoryStorage;
+
+    /// Helper function to create test group members
+    fn create_test_group_members() -> (Keys, Vec<Keys>, Vec<PublicKey>) {
+        let creator = Keys::generate();
+        let member1 = Keys::generate();
+        let member2 = Keys::generate();
+
+        let creator_pk = creator.public_key();
+        let members = vec![member1, member2];
+        let admins = vec![creator_pk, members[0].public_key()];
+
+        (creator, members, admins)
+    }
+
+    /// Helper function to create a key package event
+    fn create_key_package_event(
+        nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
+        member_keys: &Keys,
+    ) -> Event {
+        let relays = vec![RelayUrl::parse("wss://test.relay").unwrap()];
+        let (key_package_hex, tags) = nostr_mls
+            .create_key_package_for_event(&member_keys.public_key(), relays)
+            .expect("Failed to create key package");
+
+        EventBuilder::new(Kind::MlsKeyPackage, key_package_hex)
+            .tags(tags.to_vec())
+            .sign_with_keys(member_keys)
+            .expect("Failed to sign event")
+    }
+
+    /// Helper function to create a test group and return the group ID
+    fn create_test_group(
+        nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
+        creator: &Keys,
+        members: &[Keys],
+        admins: &[PublicKey],
+    ) -> GroupId {
+        let creator_pk = creator.public_key();
+
+        // Create key package events for initial members
+        let mut initial_key_package_events = Vec::new();
+        for member_keys in members {
+            let key_package_event = create_key_package_event(nostr_mls, member_keys);
+            initial_key_package_events.push(key_package_event);
+        }
+
+        // Create the group
+        let create_result = nostr_mls
+            .create_group(
+                "Test Group",
+                "A test group for message testing",
+                &creator_pk,
+                initial_key_package_events,
+                admins.to_vec(),
+                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+            )
+            .expect("Failed to create group");
+
+        let group_id = create_result.group.mls_group_id.clone();
+
+        // Merge the pending commit to apply the member additions
+        nostr_mls
+            .merge_pending_commit(&group_id)
+            .expect("Failed to merge pending commit");
+
+        group_id
+    }
+
+    /// Helper function to create a test message rumor
+    fn create_test_rumor(sender_keys: &Keys, content: &str) -> UnsignedEvent {
+        EventBuilder::new(Kind::TextNote, content)
+            .build(sender_keys.public_key())
+    }
+
+    #[test]
+    fn test_get_message_not_found() {
+        let nostr_mls = create_test_nostr_mls();
+        let non_existent_event_id = EventId::all_zeros();
+
+        let result = nostr_mls.get_message(&non_existent_event_id);
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_none());
+    }
+
+    #[test]
+    fn test_get_messages_empty_group() {
+        let nostr_mls = create_test_nostr_mls();
+        let (creator, members, admins) = create_test_group_members();
+        let group_id = create_test_group(&nostr_mls, &creator, &members, &admins);
+
+        let messages = nostr_mls.get_messages(&group_id).expect("Failed to get messages");
+        assert!(messages.is_empty());
+    }
+
+    #[test]
+    fn test_create_message_success() {
+        let nostr_mls = create_test_nostr_mls();
+        let (creator, members, admins) = create_test_group_members();
+        let group_id = create_test_group(&nostr_mls, &creator, &members, &admins);
+
+        // Create a test message
+        let mut rumor = create_test_rumor(&creator, "Hello, world!");
+        let rumor_id = rumor.id();
+
+        let result = nostr_mls.create_message(&group_id, rumor);
+        assert!(result.is_ok());
+
+        let event = result.unwrap();
+        assert_eq!(event.kind, Kind::MlsGroupMessage);
+
+        // Verify the message was stored
+        let stored_message = nostr_mls
+            .get_message(&rumor_id)
+            .expect("Failed to get message")
+            .expect("Message should exist");
+
+        assert_eq!(stored_message.id, rumor_id);
+        assert_eq!(stored_message.content, "Hello, world!");
+        assert_eq!(stored_message.state, message_types::MessageState::Created);
+        assert_eq!(stored_message.wrapper_event_id, event.id);
+    }
+
+    #[test]
+    fn test_create_message_group_not_found() {
+        let nostr_mls = create_test_nostr_mls();
+        let creator = Keys::generate();
+        let rumor = create_test_rumor(&creator, "Hello, world!");
+        let non_existent_group_id = GroupId::from_slice(&[1, 2, 3, 4]);
+
+        let result = nostr_mls.create_message(&non_existent_group_id, rumor);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), Error::GroupNotFound));
+    }
+
+    #[test]
+    fn test_create_message_updates_group_metadata() {
+        let nostr_mls = create_test_nostr_mls();
+        let (creator, members, admins) = create_test_group_members();
+        let group_id = create_test_group(&nostr_mls, &creator, &members, &admins);
+
+        // Get initial group state
+        let initial_group = nostr_mls
+            .get_group(&group_id)
+            .expect("Failed to get group")
+            .expect("Group should exist");
+        assert!(initial_group.last_message_at.is_none());
+        assert!(initial_group.last_message_id.is_none());
+
+        // Create a message
+        let mut rumor = create_test_rumor(&creator, "Hello, world!");
+        let rumor_id = rumor.id();
+        let rumor_timestamp = rumor.created_at;
+
+        let _event = nostr_mls
+            .create_message(&group_id, rumor)
+            .expect("Failed to create message");
+
+        // Verify group metadata was updated
+        let updated_group = nostr_mls
+            .get_group(&group_id)
+            .expect("Failed to get group")
+            .expect("Group should exist");
+
+        assert_eq!(updated_group.last_message_at, Some(rumor_timestamp));
+        assert_eq!(updated_group.last_message_id, Some(rumor_id));
+    }
+
+    #[test]
+    fn test_process_message_invalid_kind() {
+        let nostr_mls = create_test_nostr_mls();
+        let creator = Keys::generate();
+
+        // Create an event with wrong kind
+        let event = EventBuilder::new(Kind::TextNote, "test content")
+            .sign_with_keys(&creator)
+            .expect("Failed to sign event");
+
+        let result = nostr_mls.process_message(&event);
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            Error::UnexpectedEvent { .. }
+        ));
+    }
+
+    #[test]
+    fn test_process_message_missing_group_id_tag() {
+        let nostr_mls = create_test_nostr_mls();
+        let creator = Keys::generate();
+
+        // Create an event without group ID tag
+        let event = EventBuilder::new(Kind::MlsGroupMessage, "test content")
+            .sign_with_keys(&creator)
+            .expect("Failed to sign event");
+
+        let result = nostr_mls.process_message(&event);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), Error::Message(_)));
+    }
+
+    #[test]
+    fn test_process_message_group_not_found() {
+        let nostr_mls = create_test_nostr_mls();
+        let creator = Keys::generate();
+
+        // Create a valid MLS group message event with non-existent group ID
+        let fake_group_id = hex::encode([1u8; 32]);
+        let tag = Tag::custom(TagKind::h(), [fake_group_id]);
+
+        let event = EventBuilder::new(Kind::MlsGroupMessage, "encrypted_content")
+            .tag(tag)
+            .sign_with_keys(&creator)
+            .expect("Failed to sign event");
+
+        let result = nostr_mls.process_message(&event);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), Error::GroupNotFound));
+    }
+
+    #[test]
+    fn test_message_state_tracking() {
+        let nostr_mls = create_test_nostr_mls();
+        let (creator, members, admins) = create_test_group_members();
+        let group_id = create_test_group(&nostr_mls, &creator, &members, &admins);
+
+        // Create a message
+        let mut rumor = create_test_rumor(&creator, "Test message state");
+        let rumor_id = rumor.id();
+
+        let event = nostr_mls
+            .create_message(&group_id, rumor)
+            .expect("Failed to create message");
+
+        // Verify initial state
+        let message = nostr_mls
+            .get_message(&rumor_id)
+            .expect("Failed to get message")
+            .expect("Message should exist");
+
+        assert_eq!(message.state, message_types::MessageState::Created);
+
+        // Verify processed message state
+        let processed_message = nostr_mls
+            .storage()
+            .find_processed_message_by_event_id(&event.id)
+            .expect("Failed to get processed message")
+            .expect("Processed message should exist");
+
+        assert_eq!(
+            processed_message.state,
+            message_types::ProcessedMessageState::Created
+        );
+        assert_eq!(processed_message.message_event_id, Some(rumor_id));
+        assert_eq!(processed_message.wrapper_event_id, event.id);
+    }
+
+    #[test]
+    fn test_get_messages_for_group() {
+        let nostr_mls = create_test_nostr_mls();
+        let (creator, members, admins) = create_test_group_members();
+        let group_id = create_test_group(&nostr_mls, &creator, &members, &admins);
+
+        // Create multiple messages
+        let rumor1 = create_test_rumor(&creator, "First message");
+        let rumor2 = create_test_rumor(&creator, "Second message");
+
+        let _event1 = nostr_mls
+            .create_message(&group_id, rumor1)
+            .expect("Failed to create first message");
+        let _event2 = nostr_mls
+            .create_message(&group_id, rumor2)
+            .expect("Failed to create second message");
+
+        // Get all messages for the group
+        let messages = nostr_mls
+            .get_messages(&group_id)
+            .expect("Failed to get messages");
+
+        assert_eq!(messages.len(), 2);
+
+        // Verify message contents
+        let contents: Vec<&str> = messages.iter().map(|m| m.content.as_str()).collect();
+        assert!(contents.contains(&"First message"));
+        assert!(contents.contains(&"Second message"));
+
+        // Verify all messages belong to the correct group
+        for message in &messages {
+            assert_eq!(message.mls_group_id, group_id);
+        }
+    }
+
+    #[test]
+    fn test_message_processing_result_variants() {
+        // Test that MessageProcessingResult variants can be created and matched
+        let dummy_message = message_types::Message {
+            id: EventId::all_zeros(),
+            pubkey: PublicKey::from_hex(
+                "8a9de562cbbed225b6ea0118dd3997a02df92c0bffd2224f71081a7450c3e549",
+            )
+            .unwrap(),
+            kind: Kind::TextNote,
+            mls_group_id: GroupId::from_slice(&[1, 2, 3, 4]),
+            created_at: Timestamp::now(),
+            content: "Test".to_string(),
+            tags: Tags::new(),
+            event: EventBuilder::new(Kind::TextNote, "Test")
+                .build(PublicKey::from_hex(
+                    "8a9de562cbbed225b6ea0118dd3997a02df92c0bffd2224f71081a7450c3e549",
+                ).unwrap()),
+            wrapper_event_id: EventId::all_zeros(),
+            state: message_types::MessageState::Processed,
+        };
+
+        let app_result = MessageProcessingResult::ApplicationMessage(dummy_message);
+        let commit_result = MessageProcessingResult::Commit;
+        let external_join_result = MessageProcessingResult::ExternalJoinProposal;
+        let unprocessable_result = MessageProcessingResult::Unprocessable;
+
+        // Test that we can match on variants
+        match app_result {
+            MessageProcessingResult::ApplicationMessage(_) => assert!(true),
+            _ => panic!("Expected ApplicationMessage variant"),
+        }
+
+        match commit_result {
+            MessageProcessingResult::Commit => assert!(true),
+            _ => panic!("Expected Commit variant"),
+        }
+
+        match external_join_result {
+            MessageProcessingResult::ExternalJoinProposal => assert!(true),
+            _ => panic!("Expected ExternalJoinProposal variant"),
+        }
+
+        match unprocessable_result {
+            MessageProcessingResult::Unprocessable => assert!(true),
+            _ => panic!("Expected Unprocessable variant"),
+        }
+    }
+
+    #[test]
+    fn test_message_content_preservation() {
+        let nostr_mls = create_test_nostr_mls();
+        let (creator, members, admins) = create_test_group_members();
+        let group_id = create_test_group(&nostr_mls, &creator, &members, &admins);
+
+        // Test with various content types
+        let test_cases = vec![
+            "Simple text message",
+            "Message with emojis 🚀 🎉 ✨",
+            "Message with\nmultiple\nlines",
+            "Message with special chars: !@#$%^&*()",
+            "Minimal content",
+        ];
+
+        for content in test_cases {
+            let mut rumor = create_test_rumor(&creator, content);
+            let rumor_id = rumor.id();
+
+            let _event = nostr_mls
+                .create_message(&group_id, rumor)
+                .expect("Failed to create message");
+
+            let stored_message = nostr_mls
+                .get_message(&rumor_id)
+                .expect("Failed to get message")
+                .expect("Message should exist");
+
+            assert_eq!(stored_message.content, content);
+            assert_eq!(stored_message.pubkey, creator.public_key());
+        }
+    }
+
+    #[test]
+    fn test_create_message_ensures_rumor_id() {
+        let nostr_mls = create_test_nostr_mls();
+        let (creator, members, admins) = create_test_group_members();
+        let group_id = create_test_group(&nostr_mls, &creator, &members, &admins);
+
+        // Create a rumor - EventBuilder.build() ensures the ID is set
+        let rumor = create_test_rumor(&creator, "Test message");
+
+        let result = nostr_mls.create_message(&group_id, rumor);
+        assert!(result.is_ok());
+
+        // The message should have been stored with a valid ID
+        let event = result.unwrap();
+        let messages = nostr_mls
+            .get_messages(&group_id)
+            .expect("Failed to get messages");
+
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].wrapper_event_id, event.id);
     }
 }
