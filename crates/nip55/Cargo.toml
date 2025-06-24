@@ -1,0 +1,18 @@
+[package]
+name = "nip55"
+version = "0.42.0"
+edition = "2021"
+description = "Nostr Android signer implementation (NIP-55)."
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "nip55", "android", "signer"]
+
+[dependencies]
+jni = "0.21"
+jvm-getter = "0.1"
+nostr = { workspace = true, features = ["std"] }
+once_cell.workspace = true

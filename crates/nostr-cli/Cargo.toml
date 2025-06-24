@@ -18,7 +18,7 @@ indicatif = "0.17"
 nostr-connect.workspace = true
 nostr-relay-builder.workspace = true
 nostr-sdk = { workspace = true, features = ["all-nips", "lmdb", "tor"] }
-once_cell = { version = "1.21", default-features = false }
+once_cell.workspace = true
 prettytable-rs = "0.10"
 regex = "1.11.1"
 rustyline = { version = "16.0", default-features = false, features = ["with-file-history"] }
