@@ -18,7 +18,7 @@ async = ["dep:async-utility"]
 
 [dependencies]
 async-utility = { workspace = true, optional = true }
-keyring = { version = "3.6", features = ["apple-native", "linux-native", "windows-native"] } # MSRV: 1.75.0
+keyring = { version = "3.6", features = ["apple-native", "linux-native", "linux-native-sync-persistent", "windows-native"] } # MSRV: 1.75.0
 nostr = { workspace = true, features = ["std"] }
 
 [dev-dependencies]

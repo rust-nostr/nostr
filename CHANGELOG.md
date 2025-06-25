@@ -63,6 +63,8 @@
 
 ### Fixed
 
+- keyring: fix keys persistence between OS restarts on Linux (https://github.com/rust-nostr/nostr/pull/942)
+
 ### Removed
 
 - nostr: remove regex dep (https://github.com/rust-nostr/nostr/pull/899)
