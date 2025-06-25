@@ -6,7 +6,6 @@ The project is split up into several crates in the `crates/` directory:
 
 * Libraries:
     * [**nostr**](./crates/nostr): Rust implementation of Nostr protocol
-    * [**nostr-blossom**](./crates/nostr-blossom): A library for interacting with the Blossom protocol
     * [**nostr-connect**](./crates/nostr-connect): Nostr Connect (NIP46)
     * [**nostr-database**](./database/nostr-database): Events database abstraction and in-memory implementation
         * [**nostr-lmdb**](./database/nostr-lmdb): LMDB storage backend
@@ -16,6 +15,8 @@ The project is split up into several crates in the `crates/` directory:
     * [**nostr-mls-storage**](./mls/nostr-mls-storage): Storage traits for using MLS messaging
         * [**nostr-mls-memory-storage**](./mls/nostr-mls-memory-storage): In-memory storage for nostr-mls
         * [**nostr-mls-sqlite-storage**](./mls/nostr-mls-sqlite-storage): Sqlite storage for nostr-mls
+    * Remote File Storage implementations:
+        * [**nostr-blossom**](./crates/nostr-blossom): A library for interacting with the Blossom protocol
     * [**nostr-keyring**](./crates/nostr-keyring): Nostr Keyring
     * [**nostr-relay-pool**](./crates/nostr-relay-pool): Nostr Relay Pool
     * [**nostr-sdk**](./crates/nostr-sdk): High level client library

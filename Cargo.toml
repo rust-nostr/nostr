@@ -13,6 +13,9 @@ members = [
     "mls/nostr-mls-memory-storage",
     "mls/nostr-mls-sqlite-storage",
     "mls/nostr-mls-storage",
+
+    # Remote File Storage implementations
+    "rfs/nostr-blossom",
 ]
 default-members = ["crates/*"]
 resolver = "2"
