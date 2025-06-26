@@ -480,61 +480,59 @@ impl Iterator for FindMatches<'_> {
     type Item = Match;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // Iterator ended
-        if self.pos >= self.bytes.len() {
-            return None;
-        }
-
-        // Check if text parsing is enabled
-        if self.opts.text {
-            // Check for line break
-            if let Some(mat) = self.try_parse_line_break() {
-                self.pos = mat.end;
-                return Some(mat);
+        // Loop through the texts till a match is found
+        while self.pos < self.bytes.len() {
+            // Check if text parsing is enabled
+            if self.opts.text {
+                // Check for line break
+                if let Some(mat) = self.try_parse_line_break() {
+                    self.pos = mat.end;
+                    return Some(mat);
+                }
             }
-        }
 
-        // Check if hashtags parsing is enabled
-        if self.opts.hashtags {
-            // Check for hashtag
-            if let Some(mat) = self.try_parse_hashtag() {
-                self.pos = mat.end;
-                return Some(mat);
+            // Check if hashtags parsing is enabled
+            if self.opts.hashtags {
+                // Check for hashtag
+                if let Some(mat) = self.try_parse_hashtag() {
+                    self.pos = mat.end;
+                    return Some(mat);
+                }
             }
-        }
 
-        // Check if nostr URIs parsing is enabled
-        if self.opts.nostr_uris {
-            // Check for nostr URI
-            if let Some(mat) = self.try_parse_nostr_uri() {
-                self.pos = mat.end;
-                return Some(mat);
+            // Check if nostr URIs parsing is enabled
+            if self.opts.nostr_uris {
+                // Check for nostr URI
+                if let Some(mat) = self.try_parse_nostr_uri() {
+                    self.pos = mat.end;
+                    return Some(mat);
+                }
             }
-        }
 
-        // Check if URLs parsing is enabled
-        if self.opts.urls {
-            // Check for URL
-            if let Some(mat) = self.try_parse_url() {
-                self.pos = mat.end;
-                return Some(mat);
+            // Check if URLs parsing is enabled
+            if self.opts.urls {
+                // Check for URL
+                if let Some(mat) = self.try_parse_url() {
+                    self.pos = mat.end;
+                    return Some(mat);
+                }
             }
+
+            // Move to the next character (handle UTF-8)
+            self.pos += if self.bytes[self.pos].is_ascii() {
+                1
+            } else {
+                // For non-ASCII, we need to skip the full UTF-8 sequence
+                self.text[self.pos..]
+                    .chars()
+                    .next()
+                    .map(|c| c.len_utf8())
+                    .unwrap_or(1)
+            };
         }
 
-        // Move to the next character (handle UTF-8)
-        self.pos += if self.bytes[self.pos].is_ascii() {
-            1
-        } else {
-            // For non-ASCII, we need to skip the full UTF-8 sequence
-            self.text[self.pos..]
-                .chars()
-                .next()
-                .map(|c| c.len_utf8())
-                .unwrap_or(1)
-        };
-
-        // Recursion
-        self.next()
+        // No match is found
+        None
     }
 }
 
