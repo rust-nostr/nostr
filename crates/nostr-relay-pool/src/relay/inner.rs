@@ -1019,40 +1019,10 @@ impl InnerRelay {
         match self.handle_raw_relay_message(msg).await {
             Ok(Some(message)) => {
                 match &message {
-                    RelayMessage::Notice(message) => {
-                        tracing::warn!(url = %self.url, msg = %message, "Received NOTICE.")
-                    }
-                    RelayMessage::Ok {
-                        event_id,
-                        status,
-                        message,
-                    } => {
-                        tracing::debug!(
-                            url = %self.url,
-                            id = %event_id,
-                            status = %status,
-                            msg = %message,
-                            "Received OK."
-                        );
-                    }
-                    RelayMessage::EndOfStoredEvents(id) => {
-                        tracing::debug!(
-                            url = %self.url,
-                            id = %id,
-                            "Received EOSE."
-                        );
-                    }
                     RelayMessage::Closed {
                         subscription_id,
                         message,
                     } => {
-                        tracing::debug!(
-                            url = %self.url,
-                            id = %subscription_id,
-                            msg = %message,
-                            "Subscription closed by relay."
-                        );
-
                         // Check machine-readable prefix
                         let res: HandleClosedMsg = match MachineReadablePrefix::parse(message) {
                             Some(MachineReadablePrefix::Duplicate) => HandleClosedMsg::Remove,
@@ -1097,12 +1067,6 @@ impl InnerRelay {
                         }
                     }
                     RelayMessage::Auth { challenge } => {
-                        tracing::debug!(
-                            url = %self.url,
-                            challenge = %challenge,
-                            "Received auth challenge."
-                        );
-
                         // Check if NIP42 auto authentication is enabled
                         if self.state.is_auto_authentication_enabled() {
                             // Forward action to ingester
@@ -1133,7 +1097,7 @@ impl InnerRelay {
     ) -> Result<Option<RelayMessage<'static>>, Error> {
         let size: usize = msg.len();
 
-        tracing::trace!(url = %self.url, size = %size, msg = %msg, "Received new relay message.");
+        tracing::debug!("Received '{msg}' from '{}' (size: {size} bytes)", self.url);
 
         // Update bytes received
         self.stats.add_bytes_received(size);

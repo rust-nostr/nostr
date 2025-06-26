@@ -49,6 +49,7 @@
 - nostr: impl `Any` for `NostrSigner` (https://github.com/rust-nostr/nostr/pull/918)
 - database: impl `Any` for `NostrDatabase` (https://github.com/rust-nostr/nostr/pull/918)
 - pool: refine notification sending depending on event database saving status (https://github.com/rust-nostr/nostr/pull/911)
+- pool: simplify received message logging (https://github.com/rust-nostr/nostr/pull/945)
 
 ### Added
 
