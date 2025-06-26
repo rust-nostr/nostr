@@ -1095,6 +1095,10 @@ impl InnerRelay {
         &self,
         msg: &str,
     ) -> Result<Option<RelayMessage<'static>>, Error> {
+        // Trim the message (removes leading and trailing whitespaces and line breaks).
+        let msg: &str = msg.trim();
+
+        // Get message size
         let size: usize = msg.len();
 
         tracing::debug!("Received '{msg}' from '{}' (size: {size} bytes)", self.url);
