@@ -6,11 +6,19 @@ use nostr::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let relay_url = Url::parse("wss://relay.damus.io")?;
+    let url = Url::parse("https://relay.damus.io")?;
 
-    let info = RelayInformationDocument::get(relay_url, Nip11GetOptions::default()).await?;
+    let client = reqwest::Client::new();
+    let response = client
+        .get(url)
+        .header("Accept", "application/nostr+json")
+        .send()
+        .await?;
+    let json: String = response.text().await?;
 
-    println!("{:#?}", info);
+    let info = RelayInformationDocument::from_json(&json)?;
+
+    println!("{info:#?}");
 
     Ok(())
 }

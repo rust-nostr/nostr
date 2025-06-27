@@ -14,7 +14,6 @@ keywords = ["nostr", "relay", "pool"]
 [features]
 default = []
 tor = ["async-wsocket/tor"]
-nip11 = ["nostr/nip11"]
 
 [dependencies]
 async-utility.workspace = true

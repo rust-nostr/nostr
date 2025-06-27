@@ -45,11 +45,10 @@ alloc = [
     "serde/alloc",
     "serde_json/alloc",
 ]
-all-nips = ["nip04", "nip06", "nip11", "nip44", "nip46", "nip47", "nip49", "nip57", "nip59", "nip96", "nip98"]
+all-nips = ["nip04", "nip06", "nip44", "nip46", "nip47", "nip49", "nip57", "nip59", "nip96", "nip98"]
 nip03 = ["dep:nostr-ots"]
 nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
 nip06 = ["dep:bip39"]
-nip11 = ["dep:reqwest"]
 nip44 = ["dep:base64", "dep:chacha20"]
 nip46 = ["nip04", "nip44"]
 nip47 = ["nip04"]
@@ -69,7 +68,6 @@ cbc = { version = "0.1", optional = true }
 chacha20 = { version = "0.9", optional = true }
 chacha20poly1305 = { version = "0.10", default-features = false, features = ["getrandom"], optional = true }
 nostr-ots = { version = "0.2", optional = true }
-reqwest = { workspace = true, features = ["json", "rustls-tls", "socks"], optional = true }
 scrypt = { version = "0.11", default-features = false, optional = true }
 secp256k1 = { version = "0.29", default-features = false, features = ["rand", "serde"] }
 serde = { workspace = true, default-features = false, features = ["derive"] }
@@ -83,6 +81,7 @@ getrandom = { version = "0.2", features = ["js"] }
 instant = { version = "0.1", features = ["wasm-bindgen", "inaccurate"] }
 
 [dev-dependencies]
+reqwest = { workspace = true, features = ["rustls-tls"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [[example]]
@@ -103,7 +102,7 @@ required-features = ["std"]
 
 [[example]]
 name = "nip11"
-required-features = ["std", "nip11"]
+required-features = ["std"]
 
 [[example]]
 name = "nip13"

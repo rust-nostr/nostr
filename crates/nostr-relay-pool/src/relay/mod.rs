@@ -186,14 +186,6 @@ impl Relay {
         &self.inner.flags
     }
 
-    /// Get [`RelayInformationDocument`]
-    #[inline]
-    #[cfg(feature = "nip11")]
-    pub async fn document(&self) -> RelayInformationDocument {
-        let document = self.inner.atomic.document.read().await;
-        document.clone()
-    }
-
     /// Get subscriptions
     #[inline]
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {

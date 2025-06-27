@@ -4034,7 +4034,6 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
- "tokio-socks",
  "tower-service",
  "url",
  "wasm-bindgen",

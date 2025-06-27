@@ -7,7 +7,6 @@ The following crate feature flags are available:
 | Feature | Default | Description                               |
 |---------|:-------:|-------------------------------------------|
 | `tor`   |   No    | Enable support for embedded tor client    |
-| `nip11` |   No    | Enable NIP-11: Relay Information Document |
 
 ## State
 

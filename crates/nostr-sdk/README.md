@@ -112,7 +112,6 @@ The following crate feature flags are available:
 | `nip03`     |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                                        |
 | `nip04`     |   No    | Enable NIP-04: Encrypted Direct Message                                                      |
 | `nip06`     |   No    | Enable NIP-06: Basic key derivation from mnemonic seed phrase                                |
-| `nip11`     |   No    | Enable NIP-11: Relay Information Document                                                    |
 | `nip44`     |   No    | Enable NIP-44: Encrypted Payloads (Versioned)                                                |
 | `nip47`     |   No    | Enable NIP-47: Nostr Wallet Connect                                                          |
 | `nip49`     |   No    | Enable NIP-49: Private Key Encryption                                                        |

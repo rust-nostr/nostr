@@ -5,8 +5,6 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
-#[cfg(feature = "nip11")]
-use std::sync::atomic::AtomicU64;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -135,10 +133,6 @@ impl Default for SubscriptionData {
 #[derive(Debug)]
 pub(super) struct AtomicPrivateData {
     status: AtomicRelayStatus,
-    #[cfg(feature = "nip11")]
-    pub(super) document: RwLock<RelayInformationDocument>,
-    #[cfg(feature = "nip11")]
-    last_document_fetch: AtomicU64,
     channels: RelayChannels,
     subscriptions: RwLock<HashMap<SubscriptionId, SubscriptionData>>,
     running: AtomicBool,
@@ -171,10 +165,6 @@ impl InnerRelay {
             url,
             atomic: Arc::new(AtomicPrivateData {
                 status: AtomicRelayStatus::default(),
-                #[cfg(feature = "nip11")]
-                document: RwLock::new(RelayInformationDocument::new()),
-                #[cfg(feature = "nip11")]
-                last_document_fetch: AtomicU64::new(0),
                 channels: RelayChannels::new(),
                 subscriptions: RwLock::new(HashMap::new()),
                 running: AtomicBool::new(false),
@@ -287,50 +277,6 @@ impl InnerRelay {
         }
 
         Ok(())
-    }
-
-    #[cfg(feature = "nip11")]
-    fn request_nip11_document(&self) {
-        #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
-        let mut opts: Nip11GetOptions =
-            Nip11GetOptions::default().timeout(DEFAULT_CONNECTION_TIMEOUT);
-
-        let allowed: bool = match self.opts.connection_mode {
-            ConnectionMode::Direct => true,
-            #[cfg(not(target_arch = "wasm32"))]
-            ConnectionMode::Proxy(proxy) => {
-                // Update proxy
-                opts.proxy = Some(proxy);
-                true
-            }
-            #[cfg(all(feature = "tor", not(target_arch = "wasm32")))]
-            ConnectionMode::Tor { .. } => false,
-        };
-
-        if allowed {
-            let now: u64 = Timestamp::now().as_u64();
-
-            // Check last fetch
-            if self.atomic.last_document_fetch.load(Ordering::SeqCst) + 3600 < now {
-                // Update last fetch
-                self.atomic.last_document_fetch.store(now, Ordering::SeqCst);
-
-                // Fetch
-                let url = self.url.clone();
-                let atomic = self.atomic.clone();
-                task::spawn(async move {
-                    match RelayInformationDocument::get(url.clone().into(), opts).await {
-                        Ok(document) => {
-                            let mut d = atomic.document.write().await;
-                            *d = document
-                        }
-                        Err(e) => {
-                            tracing::warn!(url = %url, error = %e, "Can't get information document.")
-                        }
-                    };
-                });
-            }
-        }
     }
 
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
@@ -757,10 +703,6 @@ impl InnerRelay {
         ws_rx: BoxStream,
         rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
     ) {
-        // Request information document
-        #[cfg(feature = "nip11")]
-        self.request_nip11_document();
-
         // (Re)subscribe to relay
         if self.flags.can_read() {
             if let Err(e) = self.resubscribe().await {

@@ -9,97 +9,8 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
-use core::fmt;
-use core::time::Duration;
-#[cfg(not(target_arch = "wasm32"))]
-use std::net::SocketAddr;
 
-use reqwest::Client;
-#[cfg(not(target_arch = "wasm32"))]
-use reqwest::Proxy;
-
-use crate::{Timestamp, Url};
-
-/// `NIP11` error
-#[derive(Debug)]
-pub enum Error {
-    /// Reqwest error
-    Reqwest(reqwest::Error),
-    /// The relay information document is invalid
-    InvalidInformationDocument,
-    /// The relay information document is not accessible
-    InaccessibleInformationDocument,
-    /// Provided URL scheme is not valid
-    InvalidScheme,
-}
-
-impl std::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Reqwest(e) => write!(f, "{e}"),
-            Self::InvalidInformationDocument => {
-                write!(f, "The relay information document is invalid")
-            }
-            Self::InaccessibleInformationDocument => {
-                write!(f, "The relay information document is not accessible")
-            }
-            Self::InvalidScheme => write!(f, "Provided URL scheme is not valid"),
-        }
-    }
-}
-
-impl From<reqwest::Error> for Error {
-    fn from(e: reqwest::Error) -> Self {
-        Self::Reqwest(e)
-    }
-}
-
-/// NIP11 get options
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Nip11GetOptions {
-    /// Proxy
-    #[cfg(not(target_arch = "wasm32"))]
-    pub proxy: Option<SocketAddr>,
-    /// Timeout
-    pub timeout: Duration,
-}
-
-impl Default for Nip11GetOptions {
-    fn default() -> Self {
-        Self {
-            proxy: None,
-            timeout: Duration::from_secs(60),
-        }
-    }
-}
-
-impl Nip11GetOptions {
-    /// New default options
-    #[inline]
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Set proxy
-    #[inline]
-    #[must_use]
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn proxy(mut self, proxy: SocketAddr) -> Self {
-        self.proxy = Some(proxy);
-        self
-    }
-
-    /// Set timeout
-    #[inline]
-    #[must_use]
-    pub fn timeout(mut self, timeout: Duration) -> Self {
-        self.timeout = timeout;
-        self
-    }
-}
+use crate::{JsonUtil, Timestamp};
 
 /// Relay information document
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -144,6 +55,18 @@ pub struct RelayInformationDocument {
     pub fees: Option<FeeSchedules>,
     /// URL pointing to an image to be used as an icon for the relay
     pub icon: Option<String>,
+}
+
+impl RelayInformationDocument {
+    /// Create a new empty [`RelayInformationDocument`].
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl JsonUtil for RelayInformationDocument {
+    type Err = serde_json::Error;
 }
 
 /// These are limitations imposed by the relay on clients. Your client should
@@ -227,55 +150,6 @@ pub struct FeeSchedule {
     pub kinds: Option<Vec<String>>,
 }
 
-impl RelayInformationDocument {
-    /// Create a new empty [`RelayInformationDocument`].
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Get Relay Information Document
-    pub async fn get(mut url: Url, opts: Nip11GetOptions) -> Result<Self, Error> {
-        let mut builder = Client::builder();
-
-        // Set proxy
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(proxy) = opts.proxy {
-            let proxy = format!("socks5h://{proxy}");
-            builder = builder.proxy(Proxy::all(proxy)?);
-        }
-
-        // Set timeout
-        builder = builder.timeout(opts.timeout);
-
-        // Build client
-        let client: Client = builder.build()?;
-
-        let url: &str = Self::with_http_scheme(&mut url)?;
-        let req = client.get(url).header("Accept", "application/nostr+json");
-        match req.send().await {
-            Ok(response) => {
-                let json: String = response.text().await?;
-                match serde_json::from_slice(json.as_bytes()) {
-                    Ok(json) => Ok(json),
-                    Err(_) => Err(Error::InvalidInformationDocument),
-                }
-            }
-            Err(_) => Err(Error::InaccessibleInformationDocument),
-        }
-    }
-
-    /// Returns new URL with scheme substituted to HTTP(S) if WS(S) was provided,
-    /// other schemes leaves untouched.
-    fn with_http_scheme(url: &mut Url) -> Result<&str, Error> {
-        match url.scheme() {
-            "wss" => url.set_scheme("https").map_err(|_| Error::InvalidScheme)?,
-            "ws" => url.set_scheme("http").map_err(|_| Error::InvalidScheme)?,
-            _ => {}
-        }
-        Ok(url.as_str())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -289,7 +163,7 @@ mod tests {
             RetentionKind::Range(40, 49),
         ];
         let got = serde_json::to_string(&kinds).unwrap();
-        let expected = "[0,1,[5,7],[40,49]]".to_string();
+        let expected = "[0,1,[5,7],[40,49]]";
 
         assert_eq!(got, expected, "got: {}, expected: {}", got, expected);
     }
@@ -306,5 +180,51 @@ mod tests {
         ];
 
         assert_eq!(got, expected, "got: {:?}, expected: {:?}", got, expected);
+    }
+
+    #[test]
+    fn correctly_parses_relay_information_document() {
+        let json = r#"{
+            "name": "Test Relay",
+            "description": "A test relay for unit testing",
+            "pubkey": "bf2bee5281149c7c350f5d12ae32f514c7864ff10805182f4178538c2c421007",
+            "contact": "test@example.com",
+            "supported_nips": [1, 9, 11],
+            "software": "https://github.com/example/relay",
+            "version": "1.0.0",
+            "limitation": {
+                "max_message_length": 16384,
+                "max_subscriptions": 300,
+                "auth_required": false,
+                "payment_required": true
+            }
+        }"#;
+
+        let doc = RelayInformationDocument::from_json(json).unwrap();
+
+        assert_eq!(doc.name, Some(String::from("Test Relay")));
+        assert_eq!(
+            doc.description,
+            Some(String::from("A test relay for unit testing"))
+        );
+    }
+
+    #[test]
+    fn serialization_round_trip() {
+        let mut doc = RelayInformationDocument::new();
+        doc.name = Some(String::from("Round Trip Test"));
+        doc.supported_nips = Some(vec![1, 9, 11]);
+
+        let json = doc.as_json();
+        let parsed_doc = RelayInformationDocument::from_json(&json).unwrap();
+
+        assert_eq!(doc, parsed_doc);
+    }
+
+    #[test]
+    fn handles_invalid_json() {
+        let invalid_json = r#"{"name": "Invalid", "supported_nips": [1, 2, "invalid"]}"#;
+        let result = RelayInformationDocument::from_json(invalid_json);
+        assert!(result.is_err());
     }
 }
