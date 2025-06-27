@@ -381,7 +381,7 @@ impl Tags {
         }
 
         // Build a new list, placing the best duplicate at the earliest index
-        let mut new_list: Vec<Option<Tag>> = vec![None; map.len()];
+        let mut new_list: Vec<Option<Tag>> = vec![None; self.list.len()];
         for DedupVal {
             first_idx,
             best_idx,
@@ -708,6 +708,17 @@ mod tests {
         ];
 
         assert_eq!(tags.to_vec(), expected);
+    }
+
+    // Unit test for issue https://github.com/rust-nostr/nostr/issues/948
+    #[test]
+    fn test_hashtags_dedup() {
+        let mut tags = Tags::new();
+
+        tags.push(Tag::hashtag("a1"));
+        tags.push(Tag::hashtag("a1"));
+        tags.push(Tag::hashtag("a2"));
+        tags.dedup();
     }
 }
 
