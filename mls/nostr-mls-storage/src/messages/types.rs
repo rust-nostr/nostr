@@ -123,6 +123,8 @@ pub enum ProcessedMessageState {
     Created,
     /// The message was successfully processed and stored in the database
     Processed,
+    /// The message was a commit message and we have already processed it. We can't decrypt messages from ourselves in MLS groups so we need to skip this processing.
+    ProcessedCommit,
     /// The message failed to be processed and stored in the database
     Failed,
 }
@@ -139,6 +141,7 @@ impl ProcessedMessageState {
         match self {
             Self::Created => "created",
             Self::Processed => "processed",
+            Self::ProcessedCommit => "processed_commit",
             Self::Failed => "failed",
         }
     }
@@ -151,6 +154,7 @@ impl FromStr for ProcessedMessageState {
         match s {
             "created" => Ok(Self::Created),
             "processed" => Ok(Self::Processed),
+            "processed_commit" => Ok(Self::ProcessedCommit),
             "failed" => Ok(Self::Failed),
             _ => Err(MessageError::InvalidParameters(format!(
                 "Invalid processed message state: {}",
@@ -288,6 +292,10 @@ mod tests {
             ProcessedMessageState::Processed
         );
         assert_eq!(
+            ProcessedMessageState::from_str("processed_commit").unwrap(),
+            ProcessedMessageState::ProcessedCommit
+        );
+        assert_eq!(
             ProcessedMessageState::from_str("failed").unwrap(),
             ProcessedMessageState::Failed
         );
@@ -305,6 +313,10 @@ mod tests {
     fn test_processed_message_state_to_string() {
         assert_eq!(ProcessedMessageState::Created.to_string(), "created");
         assert_eq!(ProcessedMessageState::Processed.to_string(), "processed");
+        assert_eq!(
+            ProcessedMessageState::ProcessedCommit.to_string(),
+            "processed_commit"
+        );
         assert_eq!(ProcessedMessageState::Failed.to_string(), "failed");
     }
 
@@ -318,6 +330,10 @@ mod tests {
         let serialized = serde_json::to_string(&processed).unwrap();
         assert_eq!(serialized, r#""processed""#);
 
+        let processed_commit = ProcessedMessageState::ProcessedCommit;
+        let serialized = serde_json::to_string(&processed_commit).unwrap();
+        assert_eq!(serialized, r#""processed_commit""#);
+
         let failed = ProcessedMessageState::Failed;
         let serialized = serde_json::to_string(&failed).unwrap();
         assert_eq!(serialized, r#""failed""#);
@@ -330,6 +346,10 @@ mod tests {
 
         let processed: ProcessedMessageState = serde_json::from_str(r#""processed""#).unwrap();
         assert_eq!(processed, ProcessedMessageState::Processed);
+
+        let processed_commit: ProcessedMessageState =
+            serde_json::from_str(r#""processed_commit""#).unwrap();
+        assert_eq!(processed_commit, ProcessedMessageState::ProcessedCommit);
 
         let failed: ProcessedMessageState = serde_json::from_str(r#""failed""#).unwrap();
         assert_eq!(failed, ProcessedMessageState::Failed);
