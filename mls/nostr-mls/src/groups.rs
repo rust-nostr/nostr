@@ -16,6 +16,7 @@ use std::str;
 
 use nostr::prelude::*;
 use nostr_mls_storage::groups::types as group_types;
+use nostr_mls_storage::messages::types as message_types;
 use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls::group::GroupId;
 use openmls::prelude::*;
@@ -376,6 +377,19 @@ where
         let commit_event =
             self.build_encrypted_message_event(mls_group.group_id(), serialized_commit_message)?;
 
+        // Create processed_message to track state of message
+        let processed_message: message_types::ProcessedMessage = message_types::ProcessedMessage {
+            wrapper_event_id: commit_event.id,
+            message_event_id: None,
+            processed_at: Timestamp::now(),
+            state: message_types::ProcessedMessageState::ProcessedCommit,
+            failure_reason: None,
+        };
+
+        self.storage()
+            .save_processed_message(processed_message)
+            .map_err(|e| Error::Message(e.to_string()))?;
+
         let serialized_welcome_message = welcome_message
             .tls_serialize_detached()
             .map_err(|e| Error::Group(e.to_string()))?;
@@ -465,6 +479,19 @@ where
 
         let commit_event =
             self.build_encrypted_message_event(mls_group.group_id(), serialized_commit_message)?;
+
+        // Create processed_message to track state of message
+        let processed_message: message_types::ProcessedMessage = message_types::ProcessedMessage {
+            wrapper_event_id: commit_event.id,
+            message_event_id: None,
+            processed_at: Timestamp::now(),
+            state: message_types::ProcessedMessageState::ProcessedCommit,
+            failure_reason: None,
+        };
+
+        self.storage()
+            .save_processed_message(processed_message)
+            .map_err(|e| Error::Message(e.to_string()))?;
 
         // For now, if we find welcomes, throw an error.
         if welcome_option.is_some() {
@@ -762,6 +789,19 @@ where
         let commit_event =
             self.build_encrypted_message_event(mls_group.group_id(), serialized_commit_message)?;
 
+        // Create processed_message to track state of message
+        let processed_message: message_types::ProcessedMessage = message_types::ProcessedMessage {
+            wrapper_event_id: commit_event.id,
+            message_event_id: None,
+            processed_at: Timestamp::now(),
+            state: message_types::ProcessedMessageState::ProcessedCommit,
+            failure_reason: None,
+        };
+
+        self.storage()
+            .save_processed_message(processed_message)
+            .map_err(|e| Error::Message(e.to_string()))?;
+
         let serialized_welcome_message = commit_message_bundle
             .welcome()
             .map(|w| {
@@ -815,6 +855,19 @@ where
 
         let evolution_event =
             self.build_encrypted_message_event(group.group_id(), serialized_message_out)?;
+
+        // Create processed_message to track state of message
+        let processed_message: message_types::ProcessedMessage = message_types::ProcessedMessage {
+            wrapper_event_id: evolution_event.id,
+            message_event_id: None,
+            processed_at: Timestamp::now(),
+            state: message_types::ProcessedMessageState::ProcessedCommit,
+            failure_reason: None,
+        };
+
+        self.storage()
+            .save_processed_message(processed_message)
+            .map_err(|e| Error::Message(e.to_string()))?;
 
         Ok(UpdateGroupResult {
             evolution_event,

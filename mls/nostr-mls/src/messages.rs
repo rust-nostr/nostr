@@ -22,6 +22,9 @@ use crate::error::Error;
 use crate::prelude::*;
 use crate::NostrMls;
 
+/// Default number of epochs to look back when trying to decrypt messages with older exporter secrets
+const DEFAULT_EPOCH_LOOKBACK: u64 = 5;
+
 /// MessageProcessingResult covers the full spectrum of responses that we can get back from attempting to process a message
 #[derive(Debug)]
 pub enum MessageProcessingResult {
@@ -238,7 +241,6 @@ where
         if protocol_message.group_id() != group.group_id() {
             return Err(Error::ProtocolGroupIdMismatch);
         }
-
         let processed_message = match group.process_message(&self.provider, protocol_message) {
             Ok(processed_message) => processed_message,
             Err(ProcessMessageError::ValidationError(ValidationError::CannotDecryptOwnMessage)) => {
@@ -492,6 +494,95 @@ where
         Ok(())
     }
 
+    /// Tries to decrypt a message using exporter secrets from multiple recent epochs
+    ///
+    /// This helper method attempts to decrypt a message by trying exporter secrets from
+    /// the most recent epoch backwards for a configurable number of epochs. This handles
+    /// the case where a message was encrypted with an older epoch's secret due to timing
+    /// issues or delayed message processing.
+    ///
+    /// # Arguments
+    ///
+    /// * `group_id` - The MLS group ID
+    /// * `current_epoch` - The current epoch of the group
+    /// * `encrypted_content` - The NIP-44 encrypted message content
+    /// * `max_epoch_lookback` - Maximum number of epochs to search backwards (default: 5)
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<u8>)` - The decrypted message bytes
+    /// * `Err(Error)` - If decryption fails with all available exporter secrets
+    fn try_decrypt_with_recent_epochs(
+        &self,
+        group_id: &GroupId,
+        current_epoch: u64,
+        encrypted_content: &str,
+        max_epoch_lookback: u64,
+    ) -> Result<Vec<u8>, Error> {
+        // Start from current epoch and go backwards
+        let start_epoch = current_epoch;
+        let end_epoch = current_epoch.saturating_sub(max_epoch_lookback);
+
+        for epoch in (end_epoch..=start_epoch).rev() {
+            tracing::debug!(
+                target: "nostr_mls::messages::try_decrypt_with_recent_epochs",
+                "Trying to decrypt with epoch {} for group {:?}",
+                epoch,
+                group_id
+            );
+
+            // Try to get the exporter secret for this epoch
+            if let Ok(Some(secret)) = self
+                .storage()
+                .get_group_exporter_secret(group_id, epoch)
+                .map_err(|e| Error::Group(e.to_string()))
+            {
+                // Convert secret to nostr keys
+                if let Ok(secret_key) = SecretKey::from_slice(&secret.secret) {
+                    let export_nostr_keys = Keys::new(secret_key);
+
+                    // Try to decrypt with this epoch's secret
+                    match nip44::decrypt_to_bytes(
+                        export_nostr_keys.secret_key(),
+                        &export_nostr_keys.public_key,
+                        encrypted_content,
+                    ) {
+                        Ok(decrypted_bytes) => {
+                            tracing::debug!(
+                                target: "nostr_mls::messages::try_decrypt_with_recent_epochs",
+                                "Successfully decrypted message with epoch {} for group {:?}",
+                                epoch,
+                                group_id
+                            );
+                            return Ok(decrypted_bytes);
+                        }
+                        Err(e) => {
+                            tracing::trace!(
+                                target: "nostr_mls::messages::try_decrypt_with_recent_epochs",
+                                "Failed to decrypt with epoch {}: {:?}",
+                                epoch,
+                                e
+                            );
+                            // Continue to next epoch
+                        }
+                    }
+                }
+            } else {
+                tracing::trace!(
+                    target: "nostr_mls::messages::try_decrypt_with_recent_epochs",
+                    "No exporter secret found for epoch {} in group {:?}",
+                    epoch,
+                    group_id
+                );
+            }
+        }
+
+        Err(Error::Message(format!(
+            "Failed to decrypt message with any exporter secret from epochs {} to {} for group {:?}",
+            end_epoch, start_epoch, group_id
+        )))
+    }
+
     /// Processes an incoming encrypted Nostr event containing an MLS message
     ///
     /// This is the main entry point for processing received messages. The function:
@@ -540,26 +631,23 @@ where
             .map_err(|e| Error::Group(e.to_string()))?
             .ok_or(Error::GroupNotFound)?;
 
-        // Load group exporter secret
-        let secret: group_types::GroupExporterSecret = self
-            .exporter_secret(&group.mls_group_id)
-            .map_err(|e| Error::Group(e.to_string()))?;
-
-        // Convert that secret to nostr keys
-        let secret_key: SecretKey = SecretKey::from_slice(&secret.secret)?;
-        let export_nostr_keys = Keys::new(secret_key);
-
-        // Decrypt message
-        let message_bytes: Vec<u8> = nip44::decrypt_to_bytes(
-            export_nostr_keys.secret_key(),
-            &export_nostr_keys.public_key,
-            &event.content,
-        )?;
-
-        let mut mls_group = self
+        // Load the MLS group to get the current epoch
+        let mls_group = self
             .load_mls_group(&group.mls_group_id)
             .map_err(|e| Error::Group(e.to_string()))?
             .ok_or(Error::GroupNotFound)?;
+
+        let current_epoch = mls_group.epoch().as_u64();
+
+        // Try to decrypt message with recent exporter secrets (fallback across epochs)
+        let message_bytes: Vec<u8> = self.try_decrypt_with_recent_epochs(
+            &group.mls_group_id,
+            current_epoch,
+            &event.content,
+            DEFAULT_EPOCH_LOOKBACK,
+        )?;
+
+        let mut mls_group = mls_group;
 
         match self.process_message_for_group(&mut mls_group, &message_bytes) {
             Ok(ProcessedMessageContent::ApplicationMessage(application_message)) => {
@@ -605,14 +693,15 @@ where
                             .map_err(|e| Error::Message(e.to_string()))?
                             .ok_or(Error::Message("Processed message not found".to_string()))?;
 
-                        let message_event_id: EventId = processed_message
-                            .message_event_id
-                            .ok_or(Error::Message("Message event ID not found".to_string()))?;
-
                         // If the message is created, we need to update the state of the message and processed message
                         // If it's already processed, we don't need to do anything
                         match processed_message.state {
                             message_types::ProcessedMessageState::Created => {
+                                let message_event_id: EventId =
+                                    processed_message.message_event_id.ok_or(Error::Message(
+                                        "Message event ID not found".to_string(),
+                                    ))?;
+
                                 let mut message = self
                                     .get_message(&message_event_id)?
                                     .ok_or(Error::Message("Message not found".to_string()))?;
@@ -629,18 +718,21 @@ where
                                     .map_err(|e| Error::Message(e.to_string()))?;
 
                                 tracing::debug!(target: "nostr_mls::messages::process_message", "Updated state of own cached message");
+                                let message = self
+                                    .get_message(&message_event_id)?
+                                    .ok_or(Error::MessageNotFound)?;
+                                Ok(MessageProcessingResult::ApplicationMessage(message))
                             }
-                            message_types::ProcessedMessageState::Processed => {
-                                tracing::debug!(target: "nostr_mls::messages::process_message", "Message already processed");
+                            message_types::ProcessedMessageState::ProcessedCommit => {
+                                tracing::debug!(target: "nostr_mls::messages::process_message", "Message already processed as a commit");
+                                Ok(MessageProcessingResult::Commit)
                             }
-                            message_types::ProcessedMessageState::Failed => {
-                                tracing::debug!(target: "nostr_mls::messages::process_message", "Message previously failed to process");
+                            message_types::ProcessedMessageState::Processed
+                            | message_types::ProcessedMessageState::Failed => {
+                                tracing::debug!(target: "nostr_mls::messages::process_message", "Message cannot be processed (already processed or failed)");
+                                Ok(MessageProcessingResult::Unprocessable)
                             }
                         }
-                        let message = self
-                            .get_message(&message_event_id)?
-                            .ok_or(Error::MessageNotFound)?;
-                        Ok(MessageProcessingResult::ApplicationMessage(message))
                     }
                     _ => {
                         tracing::error!(target: "nostr_mls::messages::process_message", "Error processing message: {:?}", e);
