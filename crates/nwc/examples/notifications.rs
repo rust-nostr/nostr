@@ -13,7 +13,7 @@ use nwc::prelude::*;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let log_level = env::var("RUST_LOG")
         .unwrap_or_else(|_| "info,nwc=debug,nostr_relay_pool=debug".to_string());
-    
+
     tracing_subscriber::fmt()
         .with_env_filter(log_level)
         .with_target(true)
@@ -26,9 +26,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok_or("Please provide NWC URI as argument or set NWC_URI environment variable")?;
 
     println!("🔗 Connecting to wallet service...");
-    
-    let uri = NostrWalletConnectURI::from_str(&uri_str)
-        .map_err(|e| format!("Invalid NWC URI: {}", e))?;
+
+    let uri =
+        NostrWalletConnectURI::from_str(&uri_str).map_err(|e| format!("Invalid NWC URI: {}", e))?;
 
     println!("📡 Relay: {:?}", uri.relays);
     println!("🔑 Wallet pubkey: {}", uri.public_key);
@@ -51,7 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("\n👋 Shutting down...");
                 break;
             }
-            
+
             result = nwc.handle_notifications(|notification| {
                 match notification.notification_type {
                     NotificationType::PaymentReceived => {
@@ -83,9 +83,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-    
+
     nwc.unsubscribe_from_notifications().await?;
-    
+
     nwc.shutdown().await;
 
     Ok(())

@@ -249,14 +249,21 @@ impl NWC {
                 tracing::trace!("Received relay pool notification: {:?}", notification);
                 
                 if let RelayPoolNotification::Event { event, .. } = notification {
-                    tracing::debug!("Received event: kind={}, author={}, id={}", 
-                        event.kind, event.pubkey, event.id);
-                    
+                    tracing::debug!(
+                        "Received event: kind={}, author={}, id={}",
+                        event.kind,
+                        event.pubkey,
+                        event.id
+                    );
+
                     if event.kind == Kind::WalletConnectNotification {
                         tracing::info!("Processing wallet notification event");
                         match Notification::from_event(&self.uri, &event) {
                             Ok(nip47_notification) => {
-                                tracing::info!("Successfully parsed notification: {:?}", nip47_notification.notification_type);
+                                tracing::info!(
+                                    "Successfully parsed notification: {:?}",
+                                    nip47_notification.notification_type
+                                );
                                 handler(nip47_notification);
                                 return Ok(true);
                             }
@@ -276,9 +283,7 @@ impl NWC {
                 tracing::error!("Error receiving notification: {}", e);
                 Err(Error::PrematureExit)
             }
-            None => {
-                Ok(false)
-            }
+            None => Ok(false),
         }
     }
 
