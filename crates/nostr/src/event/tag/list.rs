@@ -381,7 +381,7 @@ impl Tags {
         }
 
         // Build a new list, placing the best duplicate at the earliest index
-        let mut new_list: Vec<Option<Tag>> = vec![None; map.len()];
+        let mut new_list: Vec<Option<Tag>> = vec![None; self.list.len()];
         for DedupVal {
             first_idx,
             best_idx,
