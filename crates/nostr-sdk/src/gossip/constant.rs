@@ -4,7 +4,11 @@
 
 use std::time::Duration;
 
-/// Max number of relays allowed in NIP17/NIP65 lists
-pub const MAX_RELAYS_LIST: usize = 5;
+/// Take at max N relays per NIP-65 marker.
+pub(super) const MAX_RELAYS_PER_NIP65_MARKER: usize = 3;
+pub(super) const MAX_NIP17_RELAYS: usize = 3;
+/// Used as a kind of protection if someone inserts too many relays in the NIP65 list.
+/// Only the first 10 relays are extracted from the NIP65 list and then handled.
+pub(super) const MAX_RELAYS_ALLOWED_IN_NIP65: usize = 10;
 pub const PUBKEY_METADATA_OUTDATED_AFTER: Duration = Duration::from_secs(60 * 60); // 60 min
 pub const CHECK_OUTDATED_INTERVAL: Duration = Duration::from_secs(60 * 5); // 5 min

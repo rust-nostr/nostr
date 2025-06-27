@@ -2,6 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::collections::hash_map::Entry as HashMapEntry;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 
@@ -10,7 +11,10 @@ use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 pub mod constant;
 
-use self::constant::{CHECK_OUTDATED_INTERVAL, MAX_RELAYS_LIST, PUBKEY_METADATA_OUTDATED_AFTER};
+use self::constant::{
+    CHECK_OUTDATED_INTERVAL, MAX_NIP17_RELAYS, MAX_RELAYS_ALLOWED_IN_NIP65,
+    MAX_RELAYS_PER_NIP65_MARKER, PUBKEY_METADATA_OUTDATED_AFTER,
+};
 
 const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
 
@@ -93,10 +97,10 @@ impl Gossip {
                     // Update only if new metadata has more recent timestamp
                     if event.created_at >= lists.nip65.event_created_at {
                         lists.nip65 = RelayList {
-                            collection: nip65::extract_relay_list(event)
-                                .take(MAX_RELAYS_LIST)
-                                .map(|(u, m)| (u.clone(), *m))
-                                .collect(),
+                            collection: extract_nip65_relay_list(
+                                event,
+                                MAX_RELAYS_PER_NIP65_MARKER,
+                            ),
                             event_created_at: event.created_at,
                             last_update: Timestamp::now(),
                         };
@@ -104,10 +108,7 @@ impl Gossip {
                 })
                 .or_insert_with(|| RelayLists {
                     nip65: RelayList {
-                        collection: nip65::extract_relay_list(event)
-                            .take(MAX_RELAYS_LIST)
-                            .map(|(u, m)| (u.clone(), *m))
-                            .collect(),
+                        collection: extract_nip65_relay_list(event, MAX_RELAYS_PER_NIP65_MARKER),
                         event_created_at: event.created_at,
                         last_update: Timestamp::now(),
                     },
@@ -121,7 +122,7 @@ impl Gossip {
                     if event.created_at >= lists.nip17.event_created_at {
                         lists.nip17 = RelayList {
                             collection: nip17::extract_relay_list(event)
-                                .take(MAX_RELAYS_LIST)
+                                .take(MAX_NIP17_RELAYS)
                                 .cloned()
                                 .collect(),
                             event_created_at: event.created_at,
@@ -132,7 +133,7 @@ impl Gossip {
                 .or_insert_with(|| RelayLists {
                     nip17: RelayList {
                         collection: nip17::extract_relay_list(event)
-                            .take(MAX_RELAYS_LIST)
+                            .take(MAX_NIP17_RELAYS)
                             .cloned()
                             .collect(),
                         event_created_at: event.created_at,
@@ -467,6 +468,99 @@ impl Gossip {
     }
 }
 
+/// Extract at max `limit_per_marker` relays per NIP65 marker.
+///
+/// The output will be:
+/// - `limit_per_marker` relays for `write`/`outbox`
+/// - `limit_per_marker` relays for `read`/`inbox`
+///
+/// Some relays can be in common, reducing the number of the total max allowed relays.
+///
+/// Policy: give priority to relays that are used both for outbox and inbox.
+fn extract_nip65_relay_list(
+    event: &Event,
+    limit_per_marker: usize,
+) -> HashMap<RelayUrl, Option<RelayMetadata>> {
+    // Use a vec to keep the relays in the same order of the event
+    let mut both: Vec<RelayUrl> = Vec::new();
+    let mut only_write: Vec<RelayUrl> = Vec::new();
+    let mut only_read: Vec<RelayUrl> = Vec::new();
+
+    for (url, meta) in nip65::extract_relay_list(event).take(MAX_RELAYS_ALLOWED_IN_NIP65) {
+        match meta {
+            Some(RelayMetadata::Write) => {
+                only_write.push(url.clone());
+            }
+            Some(RelayMetadata::Read) => {
+                only_read.push(url.clone());
+            }
+            None => {
+                both.push(url.clone());
+            }
+        }
+    }
+
+    // Construct the map using the relays that cover both the read and write relays
+    let mut map: HashMap<RelayUrl, Option<RelayMetadata>> = both
+        .into_iter()
+        .take(limit_per_marker)
+        .map(|url| (url, None))
+        .collect();
+
+    let mut write_count: usize = map.len();
+    let mut read_count: usize = map.len();
+
+    // Check if there aren't enough write relays
+    if write_count < limit_per_marker {
+        for url in only_write.into_iter() {
+            // Check if the limit is reached
+            if write_count >= limit_per_marker {
+                break;
+            }
+
+            // If the url doesn't exist, insert it
+            if let HashMapEntry::Vacant(entry) = map.entry(url) {
+                entry.insert(Some(RelayMetadata::Write));
+                write_count += 1;
+            }
+        }
+    }
+
+    // Check if there aren't enough read relays
+    if read_count < limit_per_marker {
+        for url in only_read.into_iter() {
+            // Check if the limit is reached
+            if read_count >= limit_per_marker {
+                break;
+            }
+
+            // Try to get relay
+            match map.entry(url) {
+                HashMapEntry::Occupied(mut entry) => {
+                    // Check the metadata of the current entry
+                    match entry.get() {
+                        // The current entry already cover the write relay, upgrade it to cover both read and write.
+                        Some(RelayMetadata::Write) => {
+                            entry.insert(None);
+                            read_count += 1;
+                        }
+                        // Duplicated entry, skip it
+                        Some(RelayMetadata::Read) => continue,
+                        // The current entry already cover the read relay, skip it
+                        None => continue,
+                    }
+                }
+                HashMapEntry::Vacant(entry) => {
+                    entry.insert(Some(RelayMetadata::Read));
+                    read_count += 1;
+                }
+            }
+        }
+    }
+
+    map
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -512,6 +606,117 @@ mod tests {
         graph.update(events).await;
 
         graph
+    }
+
+    fn count_extracted_nip65_relays(
+        result: &HashMap<RelayUrl, Option<RelayMetadata>>,
+    ) -> (usize, usize) {
+        // Count final markers
+        let mut write_count = 0;
+        let mut read_count = 0;
+
+        for metadata in result.values() {
+            match metadata {
+                Some(RelayMetadata::Write) => write_count += 1,
+                Some(RelayMetadata::Read) => read_count += 1,
+                None => {
+                    write_count += 1;
+                    read_count += 1;
+                }
+            }
+        }
+
+        (write_count, read_count)
+    }
+
+    #[test]
+    fn test_extract_nip65_relay_list_priority() {
+        let relays = vec![
+            ("wss://relay1.com", None), // Both read and write
+            ("wss://relay2.com", Some(RelayMetadata::Write)),
+            ("wss://relay3.com", Some(RelayMetadata::Read)),
+            ("wss://relay4.com", Some(RelayMetadata::Write)),
+            ("wss://relay5.com", None), // Both read and write
+            ("wss://relay6.com", Some(RelayMetadata::Read)),
+            ("wss://relay7.com", Some(RelayMetadata::Read)),
+            ("wss://relay8.com", None), // Both read and write
+        ];
+
+        let event = build_relay_list_event(SECRET_KEY_A, relays);
+        let result = extract_nip65_relay_list(&event, 3);
+
+        // Count final markers
+        let (write_count, read_count) = count_extracted_nip65_relays(&result);
+
+        assert_eq!(write_count, 3);
+        assert_eq!(read_count, 3);
+
+        // Extract only the relays with metadata set to None, following the priority policy
+        let relay1_url = RelayUrl::parse("wss://relay1.com").unwrap();
+        assert!(result.contains_key(&relay1_url));
+        let relay5_url = RelayUrl::parse("wss://relay5.com").unwrap();
+        assert!(result.contains_key(&relay5_url));
+        let relay8_url = RelayUrl::parse("wss://relay8.com").unwrap();
+        assert!(result.contains_key(&relay8_url));
+    }
+
+    #[test]
+    fn test_extract_nip65_relay_list_priority_2() {
+        let relays = vec![
+            ("wss://relay1.com", None), // Both read and write
+            ("wss://relay2.com", Some(RelayMetadata::Write)),
+            ("wss://relay3.com", Some(RelayMetadata::Read)),
+            ("wss://relay4.com", Some(RelayMetadata::Write)),
+            ("wss://relay6.com", Some(RelayMetadata::Read)),
+            ("wss://relay7.com", Some(RelayMetadata::Read)), // 4th read relay, must not be included
+            ("wss://relay8.com", Some(RelayMetadata::Write)), // 4th write relay, must not be included
+        ];
+
+        let event = build_relay_list_event(SECRET_KEY_A, relays);
+        let result = extract_nip65_relay_list(&event, 3);
+
+        // Count final markers
+        let (write_count, read_count) = count_extracted_nip65_relays(&result);
+
+        assert_eq!(write_count, 3);
+        assert_eq!(read_count, 3);
+        assert_eq!(result.len(), 5); // 1 that cover both + 2 write only + 2 read only
+
+        let relay1_url = RelayUrl::parse("wss://relay1.com").unwrap();
+        assert_eq!(result.get(&relay1_url), Some(&None));
+
+        let relay2_url = RelayUrl::parse("wss://relay2.com").unwrap();
+        assert_eq!(result.get(&relay2_url), Some(&Some(RelayMetadata::Write)));
+
+        let relay3_url = RelayUrl::parse("wss://relay3.com").unwrap();
+        assert_eq!(result.get(&relay3_url), Some(&Some(RelayMetadata::Read)));
+
+        let relay4_url = RelayUrl::parse("wss://relay4.com").unwrap();
+        assert_eq!(result.get(&relay4_url), Some(&Some(RelayMetadata::Write)));
+
+        let relay6_url = RelayUrl::parse("wss://relay6.com").unwrap();
+        assert_eq!(result.get(&relay6_url), Some(&Some(RelayMetadata::Read)));
+    }
+
+    #[test]
+    fn test_extract_nip65_relay_list_merging() {
+        let relays = vec![
+            ("wss://relay1.com", Some(RelayMetadata::Write)),
+            ("wss://relay1.com", Some(RelayMetadata::Read)),
+        ];
+
+        let event = build_relay_list_event(SECRET_KEY_A, relays);
+        let result = extract_nip65_relay_list(&event, 3);
+
+        // Count final markers
+        let (write_count, read_count) = count_extracted_nip65_relays(&result);
+
+        assert_eq!(write_count, 1);
+        assert_eq!(read_count, 1);
+        assert_eq!(result.len(), 1); // 1 that cover both
+
+        let relay1_url = RelayUrl::parse("wss://relay1.com").unwrap();
+        assert_eq!(result.get(&relay1_url), Some(&None));
     }
 
     #[tokio::test]
