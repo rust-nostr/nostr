@@ -60,6 +60,7 @@
 - nostr: add `Nip11GetOptions` (https://github.com/rust-nostr/nostr/pull/913)
 - nostr: add `RelayUrl::domain` method (https://github.com/rust-nostr/nostr/pull/914)
 - pool: allow putting relays to sleep when idle (https://github.com/rust-nostr/nostr/pull/926)
+- nwc: add NIP-47 notification support for real-time payment updates (https://github.com/rust-nostr/nostr/pull/953)
 - mls: add `NostrMls::add_members` method for adding members to an existing group (https://github.com/rust-nostr/nostr/pull/931)
 - mls: add `NostrMls::remove_members` method for removing members from an existing group (https://github.com/rust-nostr/nostr/pull/934)
 - mls: add `NostrMls::leave_group` method for creating a proposal to leave the group (https://github.com/rust-nostr/nostr/pull/940)
