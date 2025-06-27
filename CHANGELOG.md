@@ -52,7 +52,6 @@
 - pool: refine notification sending depending on event database saving status (https://github.com/rust-nostr/nostr/pull/911)
 - pool: simplify received message logging (https://github.com/rust-nostr/nostr/pull/945)
 - pool: trim incoming relay messages before processing
-- sdk: take only the first 3 relays from NIP65 list for gossip
 
 ### Added
 
