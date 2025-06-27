@@ -64,6 +64,8 @@
 - mls: add `NostrMls::remove_members` method for removing members from an existing group (https://github.com/rust-nostr/nostr/pull/934)
 - mls: add `NostrMls::leave_group` method for creating a proposal to leave the group (https://github.com/rust-nostr/nostr/pull/940)
 - mls: add processing of commit messages and basic processing of proposals. (https://github.com/rust-nostr/nostr/pull/940)
+- mls: add `ProcessedMessageState` for processed commits
+- mls: add method to check previous exporter_secrets when NIP-44 decrypting kind: 445 messages.
 
 ### Fixed
 
