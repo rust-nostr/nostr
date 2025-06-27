@@ -33,6 +33,7 @@ pub use self::options::NostrWalletConnectOptions;
 const ID: &str = "nwc";
 const NOTIFICATIONS_ID: &str = "nwc-notifications";
 
+/// Notification handler type for NWC notifications
 pub type NotificationHandler = Box<dyn Fn(Notification) + Send + Sync>;
 
 /// Nostr Wallet Connect client
@@ -196,6 +197,7 @@ impl NWC {
         Ok(res.to_get_info()?)
     }
 
+    /// Subscribe to wallet notifications
     pub async fn subscribe_to_notifications(&self) -> Result<(), Error> {
         if self.notifications_subscribed.load(Ordering::SeqCst) {
             tracing::debug!("Already subscribed to notifications");
@@ -234,12 +236,13 @@ impl NWC {
         Ok(())
     }
 
+    /// Handle incoming notifications with a callback function
     pub async fn handle_notifications<F>(&self, handler: F) -> Result<bool, Error>
     where
         F: Fn(Notification),
     {
         let mut notifications = self.pool.notifications();
-        
+
         match time::timeout(Some(std::time::Duration::from_millis(50)), async {
             notifications.recv().await
         })
@@ -247,7 +250,7 @@ impl NWC {
         {
             Some(Ok(notification)) => {
                 tracing::trace!("Received relay pool notification: {:?}", notification);
-                
+
                 if let RelayPoolNotification::Event { event, .. } = notification {
                     tracing::debug!(
                         "Received event: kind={}, author={}, id={}",
@@ -287,6 +290,7 @@ impl NWC {
         }
     }
 
+    /// Unsubscribe from notifications
     pub async fn unsubscribe_from_notifications(&self) -> Result<(), Error> {
         self.pool
             .unsubscribe(&SubscriptionId::new(NOTIFICATIONS_ID))
