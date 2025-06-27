@@ -18,7 +18,7 @@ use std::sync::Arc;
 pub extern crate nostr;
 
 use async_utility::time;
-use nostr::nips::nip47::{Request, Response};
+use nostr::nips::nip47::{Notification, Request, Response};
 use nostr_relay_pool::prelude::*;
 
 pub mod error;
@@ -31,14 +31,18 @@ pub use self::error::Error;
 pub use self::options::NostrWalletConnectOptions;
 
 const ID: &str = "nwc";
+const NOTIFICATIONS_ID: &str = "nwc-notifications";
+
+pub type NotificationHandler = Box<dyn Fn(Notification) + Send + Sync>;
 
 /// Nostr Wallet Connect client
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct NWC {
     uri: NostrWalletConnectURI,
     pool: RelayPool,
     opts: NostrWalletConnectOptions,
     bootstrapped: Arc<AtomicBool>,
+    notifications_subscribed: Arc<AtomicBool>,
 }
 
 impl NWC {
@@ -55,6 +59,7 @@ impl NWC {
             pool: RelayPool::default(),
             opts,
             bootstrapped: Arc::new(AtomicBool::new(false)),
+            notifications_subscribed: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -189,6 +194,100 @@ impl NWC {
         let req = Request::get_info();
         let res: Response = self.send_request(req).await?;
         Ok(res.to_get_info()?)
+    }
+
+    pub async fn subscribe_to_notifications(&self) -> Result<(), Error> {
+        if self.notifications_subscribed.load(Ordering::SeqCst) {
+            tracing::debug!("Already subscribed to notifications");
+            return Ok(());
+        }
+
+        tracing::info!("Subscribing to wallet notifications...");
+
+        self.bootstrap().await?;
+
+        let client_keys = Keys::new(self.uri.secret.clone());
+        let client_pubkey = client_keys.public_key();
+
+        tracing::debug!("Client pubkey: {}", client_pubkey);
+        tracing::debug!("Wallet service pubkey: {}", self.uri.public_key);
+
+        let notification_filter = Filter::new()
+            .author(self.uri.public_key)
+            .pubkey(client_pubkey)
+            .kind(Kind::WalletConnectNotification)
+            .since(Timestamp::now());
+
+        tracing::debug!("Notification filter: {:?}", notification_filter);
+
+        self.pool
+            .subscribe_with_id(
+                SubscriptionId::new(NOTIFICATIONS_ID),
+                notification_filter,
+                SubscribeOptions::default(),
+            )
+            .await?;
+
+        self.notifications_subscribed.store(true, Ordering::SeqCst);
+
+        tracing::info!("Successfully subscribed to notifications");
+        Ok(())
+    }
+
+    pub async fn handle_notifications<F>(&self, handler: F) -> Result<bool, Error>
+    where
+        F: Fn(Notification),
+    {
+        let mut notifications = self.pool.notifications();
+        
+        match time::timeout(Some(std::time::Duration::from_millis(50)), async {
+            notifications.recv().await
+        })
+        .await
+        {
+            Some(Ok(notification)) => {
+                tracing::trace!("Received relay pool notification: {:?}", notification);
+                
+                if let RelayPoolNotification::Event { event, .. } = notification {
+                    tracing::debug!("Received event: kind={}, author={}, id={}", 
+                        event.kind, event.pubkey, event.id);
+                    
+                    if event.kind == Kind::WalletConnectNotification {
+                        tracing::info!("Processing wallet notification event");
+                        match Notification::from_event(&self.uri, &event) {
+                            Ok(nip47_notification) => {
+                                tracing::info!("Successfully parsed notification: {:?}", nip47_notification.notification_type);
+                                handler(nip47_notification);
+                                return Ok(true);
+                            }
+                            Err(e) => {
+                                tracing::error!("Failed to parse notification: {}", e);
+                                tracing::debug!("Event content: {}", event.content);
+                                return Err(Error::from(e));
+                            }
+                        }
+                    } else {
+                        tracing::trace!("Ignoring event with kind: {}", event.kind);
+                    }
+                }
+                Ok(false)
+            }
+            Some(Err(e)) => {
+                tracing::error!("Error receiving notification: {}", e);
+                Err(Error::PrematureExit)
+            }
+            None => {
+                Ok(false)
+            }
+        }
+    }
+
+    pub async fn unsubscribe_from_notifications(&self) -> Result<(), Error> {
+        self.pool
+            .unsubscribe(&SubscriptionId::new(NOTIFICATIONS_ID))
+            .await;
+        self.notifications_subscribed.store(false, Ordering::SeqCst);
+        Ok(())
     }
 
     /// Completely shutdown [NWC] client
