@@ -4,6 +4,13 @@
 
 NWC client and zapper backend for Nostr apps
 
+## Notifications Support
+
+NWC supports real-time payment notifications as specified in NIP-47.
+
+This allows applications to receive instant updates when payments are sent or received.
+See [`examples/notifications.rs`](examples/notifications.rs) for a simple example of how to use this feature.
+
 ## Changelog
 
 All notable changes to this library are documented in the [CHANGELOG.md](CHANGELOG.md).

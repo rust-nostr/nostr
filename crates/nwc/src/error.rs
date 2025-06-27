@@ -20,6 +20,8 @@ pub enum Error {
     PrematureExit,
     /// Request timeout
     Timeout,
+    /// Handler error
+    Handler(String),
 }
 
 impl std::error::Error for Error {}
@@ -31,6 +33,7 @@ impl fmt::Display for Error {
             Self::Pool(e) => write!(f, "{e}"),
             Self::PrematureExit => write!(f, "premature exit"),
             Self::Timeout => write!(f, "timeout"),
+            Self::Handler(e) => write!(f, "handler error: {e}"),
         }
     }
 }

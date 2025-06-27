@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Added
+
+- Add notification support for real-time payment updates (https://github.com/rust-nostr/nostr/pull/953)
+
 ## v0.42.0 - 2025/05/20
 
 No notable changes in this release.

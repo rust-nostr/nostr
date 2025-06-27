@@ -123,6 +123,7 @@ kind_variants! {
     Authentication => 22242, "Client Authentication", "<https://github.com/nostr-protocol/nips/blob/master/42.md>",
     WalletConnectRequest => 23194, "Wallet Connect Request", "<https://github.com/nostr-protocol/nips/blob/master/47.md>",
     WalletConnectResponse => 23195, "Wallet Connect Response", "<https://github.com/nostr-protocol/nips/blob/master/47.md>",
+    WalletConnectNotification => 23196, "Wallet Connect Notification", "<https://github.com/nostr-protocol/nips/blob/master/47.md>",
     NostrConnect => 24133, "Nostr Connect", "<https://github.com/nostr-protocol/nips/blob/master/47.md>",
     LiveEvent => 30311, "Live Event", "<https://github.com/nostr-protocol/nips/blob/master/53.md>",
     LiveEventMessage => 1311, "Live Event Message", "<https://github.com/nostr-protocol/nips/blob/master/53.md>",
