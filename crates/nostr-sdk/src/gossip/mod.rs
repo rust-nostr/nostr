@@ -583,7 +583,7 @@ mod tests {
             BrokenDownFilters::Filters(map) => {
                 assert_eq!(map.get(&damus_url).unwrap(), &p_tag_filter);
                 assert_eq!(map.get(&nostr_bg_url).unwrap(), &p_tag_filter);
-                //assert_eq!(map.get(&nostr_mom_url).unwrap(), &p_tag_filter);
+                assert_eq!(map.get(&nostr_mom_url).unwrap(), &p_tag_filter);
                 assert!(!map.contains_key(&nos_lol_url));
                 assert!(!map.contains_key(&nostr_info_url));
                 assert!(!map.contains_key(&relay_rip_url));
@@ -601,10 +601,10 @@ mod tests {
                 assert_eq!(map.get(&damus_url).unwrap(), &filter);
                 assert_eq!(map.get(&nostr_bg_url).unwrap(), &filter);
                 assert_eq!(map.get(&nos_lol_url).unwrap(), &filter);
-                //assert_eq!(map.get(&nostr_mom_url).unwrap(), &filter);
+                assert_eq!(map.get(&nostr_mom_url).unwrap(), &filter);
                 assert_eq!(map.get(&nostr_info_url).unwrap(), &filter);
                 assert_eq!(map.get(&relay_rip_url).unwrap(), &filter);
-                //assert_eq!(map.get(&snort_url).unwrap(), &filter);
+                assert_eq!(map.get(&snort_url).unwrap(), &filter);
             }
             _ => panic!("Expected filters"),
         }
