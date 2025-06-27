@@ -68,6 +68,7 @@
 ### Fixed
 
 - keyring: fix keys persistence between OS restarts on Linux (https://github.com/rust-nostr/nostr/pull/942)
+- nostr: index out of bounds in `Tags::dedup()`. (https://github.com/rust-nostr/nostr/pull/949)
 
 ### Removed
 
