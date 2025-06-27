@@ -10,27 +10,18 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
-use core::time::Duration;
-#[cfg(not(target_arch = "wasm32"))]
-use std::net::SocketAddr;
-
-use reqwest::Client;
-#[cfg(not(target_arch = "wasm32"))]
-use reqwest::Proxy;
 
 use crate::{Timestamp, Url};
 
 /// `NIP11` error
 #[derive(Debug)]
 pub enum Error {
-    /// Reqwest error
-    Reqwest(reqwest::Error),
     /// The relay information document is invalid
     InvalidInformationDocument,
-    /// The relay information document is not accessible
-    InaccessibleInformationDocument,
     /// Provided URL scheme is not valid
     InvalidScheme,
+    /// JSON parsing error
+    JsonParseError(serde_json::Error),
 }
 
 impl std::error::Error for Error {}
@@ -38,69 +29,20 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Reqwest(e) => write!(f, "{e}"),
             Self::InvalidInformationDocument => {
                 write!(f, "The relay information document is invalid")
             }
-            Self::InaccessibleInformationDocument => {
-                write!(f, "The relay information document is not accessible")
-            }
             Self::InvalidScheme => write!(f, "Provided URL scheme is not valid"),
+            Self::JsonParseError(e) => write!(f, "JSON parsing error: {e}"),
         }
     }
 }
 
-impl From<reqwest::Error> for Error {
-    fn from(e: reqwest::Error) -> Self {
-        Self::Reqwest(e)
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Self::JsonParseError(e)
     }
 }
-
-/// NIP11 get options
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Nip11GetOptions {
-    /// Proxy
-    #[cfg(not(target_arch = "wasm32"))]
-    pub proxy: Option<SocketAddr>,
-    /// Timeout
-    pub timeout: Duration,
-}
-
-impl Default for Nip11GetOptions {
-    fn default() -> Self {
-        Self {
-            proxy: None,
-            timeout: Duration::from_secs(60),
-        }
-    }
-}
-
-impl Nip11GetOptions {
-    /// New default options
-    #[inline]
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Set proxy
-    #[inline]
-    #[must_use]
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn proxy(mut self, proxy: SocketAddr) -> Self {
-        self.proxy = Some(proxy);
-        self
-    }
-
-    /// Set timeout
-    #[inline]
-    #[must_use]
-    pub fn timeout(mut self, timeout: Duration) -> Self {
-        self.timeout = timeout;
-        self
-    }
-}
-
 /// Relay information document
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct RelayInformationDocument {
@@ -174,6 +116,10 @@ pub struct Limitation {
     pub created_at_lower_limit: Option<Timestamp>,
     /// 'created_at' upper limit
     pub created_at_upper_limit: Option<Timestamp>,
+    /// Relay requires some kind of condition to be fulfilled to accept events
+    pub restricted_writes: Option<bool>,
+    /// Maximum returned events if you send a filter with the limit set to 0
+    pub default_limit: Option<i32>,
 }
 
 /// A retention schedule for the relay
@@ -233,46 +179,93 @@ impl RelayInformationDocument {
         Self::default()
     }
 
-    /// Get Relay Information Document
-    pub async fn get(mut url: Url, opts: Nip11GetOptions) -> Result<Self, Error> {
-        let mut builder = Client::builder();
+    /// Parse amethod to parse JSON string into a [`RelayInformationDocument`]
+    /// This method replaces the previous `get` method, allowing users to fetch
+    /// the JSON data using their preferred HTTP client and then parse it here.
+    pub fn parse(json: &str) -> Result<Self, Error> {
+        serde_json::from_str(json).map_err(Error::from)
+    }
 
-        // Set proxy
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(proxy) = opts.proxy {
-            let proxy = format!("socks5h://{proxy}");
-            builder = builder.proxy(Proxy::all(proxy)?);
-        }
+    /// Parse method for bytes to handle different input formats
+    /// Parse JSON bytes into a [`RelayInformationDocument`]
+    /// Useful when working with HTTP responses that return bytes directly.
+    pub fn parse_bytes(json: &[u8]) -> Result<Self, Error> {
+        serde_json::from_slice(json).map_err(Error::from)
+    }
 
-        // Set timeout
-        builder = builder.timeout(opts.timeout);
+    /// Serialize method for converting back to JSON
+    /// Serializes the [`RelayInformationDocument`] to a JSON string
+    pub fn to_json(&self) -> Result<String, Error> {
+        serde_json::to_string(self).map_err(Error::from)
+    }
 
-        // Build client
-        let client: Client = builder.build()?;
-
-        let url: &str = Self::with_http_scheme(&mut url)?;
-        let req = client.get(url).header("Accept", "application/nostr+json");
-        match req.send().await {
-            Ok(response) => {
-                let json: String = response.text().await?;
-                match serde_json::from_slice(json.as_bytes()) {
-                    Ok(json) => Ok(json),
-                    Err(_) => Err(Error::InvalidInformationDocument),
-                }
-            }
-            Err(_) => Err(Error::InaccessibleInformationDocument),
-        }
+    /// Pretty serialize method for human-readable JSON
+    /// Serializes the [`RelayInformationDocument`] to a pretty-printed JSON string
+    pub fn to_json_pretty(&self) -> Result<String, Error> {
+        serde_json::to_string_pretty(self).map_err(Error::from)
     }
 
     /// Returns new URL with scheme substituted to HTTP(S) if WS(S) was provided,
     /// other schemes leaves untouched.
-    fn with_http_scheme(url: &mut Url) -> Result<&str, Error> {
+    pub fn with_http_scheme(url: &mut Url) -> Result<&str, Error> {
         match url.scheme() {
             "wss" => url.set_scheme("https").map_err(|_| Error::InvalidScheme)?,
             "ws" => url.set_scheme("http").map_err(|_| Error::InvalidScheme)?,
             _ => {}
         }
         Ok(url.as_str())
+    }
+
+    // A utility method that gets HTTP URL from a WebSocket URL without mutation
+    /// Convert a WebSocket URL to HTTP URL for fetching the relay information
+    /// Returns a new URL string with the scheme converted from ws/wss to http/https.
+    /// Other schemes are returned as-is.
+    pub fn get_http_url_from_ws(url: &Url) -> Result<String, Error> {
+        let mut url_copy = url.clone();
+        Self::with_http_scheme(&mut url_copy).map(|s| s.to_string())
+    }
+
+    /// This validation methods helps verify the document structure
+    /// and check if the relay supports a specific NIP
+    pub fn supports_nip(&self, nip: u16) -> bool {
+        self.supported_nips
+            .as_ref()
+            .map(|nips| nips.contains(&nip))
+            .unwrap_or(false)
+    }
+
+    /// Check if the relay needs authentication
+    pub fn requires_auth(&self) -> bool {
+        self.limitation
+            .as_ref()
+            .and_then(|l| l.auth_required)
+            .unwrap_or(false)
+    }
+
+    /// Check if the relay needs payment
+    pub fn requires_payment(&self) -> bool {
+        self.limitation
+            .as_ref()
+            .and_then(|l| l.payment_required)
+            .unwrap_or(false)
+    }
+
+    /// Check if the relay has restricted writes
+    pub fn has_restricted_writes(&self) -> bool {
+        self.limitation
+            .as_ref()
+            .and_then(|l| l.restricted_writes)
+            .unwrap_or(false)
+    }
+
+    /// Get the maximum message length allowed by the relay
+    pub fn max_message_length(&self) -> Option<i32> {
+        self.limitation.as_ref().and_then(|l| l.max_message_length)
+    }
+
+    /// Get the maximum number of subscriptions allowed
+    pub fn max_subscriptions(&self) -> Option<i32> {
+        self.limitation.as_ref().and_then(|l| l.max_subscriptions)
     }
 }
 
@@ -306,5 +299,78 @@ mod tests {
         ];
 
         assert_eq!(got, expected, "got: {:?}, expected: {:?}", got, expected);
+    }
+    #[test]
+    fn correctly_parses_relay_information_document() {
+        let json = r#"{
+            "name": "Test Relay",
+            "description": "A test relay for unit testing",
+            "pubkey": "bf2bee5281149c7c350f5d12ae32f514c7864ff10805182f4178538c2c421007",
+            "contact": "test@example.com",
+            "supported_nips": [1, 9, 11],
+            "software": "https://github.com/example/relay",
+            "version": "1.0.0",
+            "limitation": {
+                "max_message_length": 16384,
+                "max_subscriptions": 300,
+                "auth_required": false,
+                "payment_required": true
+            }
+        }"#;
+
+        let doc = RelayInformationDocument::parse(json).unwrap();
+
+        assert_eq!(doc.name, Some("Test Relay".to_string()));
+        assert_eq!(
+            doc.description,
+            Some("A test relay for unit testing".to_string())
+        );
+        assert!(doc.supports_nip(1));
+        assert!(doc.supports_nip(9));
+        assert!(doc.supports_nip(11));
+        assert!(!doc.supports_nip(42));
+        assert!(!doc.requires_auth());
+        assert!(doc.requires_payment());
+        assert_eq!(doc.max_message_length(), Some(16384));
+        assert_eq!(doc.max_subscriptions(), Some(300));
+    }
+
+    #[test]
+    fn correctly_converts_websocket_to_http_url() {
+        let ws_url = Url::parse("ws://example.com/relay").unwrap();
+        let http_url = RelayInformationDocument::get_http_url_from_ws(&ws_url).unwrap();
+        assert_eq!(http_url, "http://example.com/relay");
+
+        let wss_url = Url::parse("wss://example.com/relay").unwrap();
+        let https_url = RelayInformationDocument::get_http_url_from_ws(&wss_url).unwrap();
+        assert_eq!(https_url, "https://example.com/relay");
+
+        let http_url = Url::parse("http://example.com/relay").unwrap();
+        let unchanged_url = RelayInformationDocument::get_http_url_from_ws(&http_url).unwrap();
+        assert_eq!(unchanged_url, "http://example.com/relay");
+    }
+
+    #[test]
+    fn serialization_round_trip() {
+        let mut doc = RelayInformationDocument::new();
+        doc.name = Some("Round Trip Test".to_string());
+        doc.supported_nips = Some(vec![1, 9, 11]);
+
+        let json = doc.to_json().unwrap();
+        let parsed_doc = RelayInformationDocument::parse(&json).unwrap();
+
+        assert_eq!(doc, parsed_doc);
+    }
+
+    #[test]
+    fn handles_invalid_json() {
+        let invalid_json = r#"{"name": "Invalid", "supported_nips": [1, 2, "invalid"]}"#;
+        let result = RelayInformationDocument::parse(invalid_json);
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            Error::JsonParseError(_) => {} // Expected
+            _ => panic!("Expected JsonParseError"),
+        }
     }
 }
