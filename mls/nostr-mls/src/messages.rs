@@ -241,7 +241,7 @@ where
         if protocol_message.group_id() != group.group_id() {
             return Err(Error::ProtocolGroupIdMismatch);
         }
-        
+
         let processed_message = match group.process_message(&self.provider, protocol_message) {
             Ok(processed_message) => processed_message,
             Err(ProcessMessageError::ValidationError(ValidationError::CannotDecryptOwnMessage)) => {
