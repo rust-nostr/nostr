@@ -8,6 +8,7 @@ use std::fmt;
 
 use nostr::event::builder;
 use nostr::signer::SignerError;
+use nostr::types::ParseError;
 use reqwest::header::{InvalidHeaderValue, ToStrError};
 use reqwest::Response;
 
@@ -22,6 +23,8 @@ pub enum Error {
     Reqwest(reqwest::Error),
     /// Invalid header value
     InvalidHeaderValue(InvalidHeaderValue),
+    /// Url parse error
+    Url(ParseError),
     /// To string error
     ToStr(ToStrError),
     /// Response error
@@ -59,6 +62,7 @@ impl fmt::Display for Error {
             Self::EventBuilder(e) => write!(f, "{e}"),
             Self::Reqwest(e) => write!(f, "{e}"),
             Self::InvalidHeaderValue(e) => write!(f, "{e}"),
+            Self::Url(e) => write!(f, "{e}"),
             Self::ToStr(e) => write!(f, "{e}"),
             Self::Response { prefix, res } => {
                 let reason: &str = res
@@ -99,6 +103,12 @@ impl From<reqwest::Error> for Error {
 impl From<InvalidHeaderValue> for Error {
     fn from(e: InvalidHeaderValue) -> Self {
         Self::InvalidHeaderValue(e)
+    }
+}
+
+impl From<ParseError> for Error {
+    fn from(e: ParseError) -> Self {
+        Self::Url(e)
     }
 }
 
