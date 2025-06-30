@@ -59,7 +59,7 @@ impl BlossomClient {
     where
         T: NostrSigner,
     {
-        let url = format!("{}/upload", self.base_url);
+        let url = format!("{}upload", self.base_url);
 
         let hash: Sha256Hash = Sha256Hash::hash(&data);
         let file_hashes: Vec<Sha256Hash> = vec![hash];
@@ -111,7 +111,7 @@ impl BlossomClient {
     where
         T: NostrSigner,
     {
-        let mut url = format!("{}/list/{}", self.base_url, pubkey.to_hex());
+        let mut url = format!("{}list/{}", self.base_url, pubkey.to_hex());
 
         let mut query_params = Vec::new();
 
@@ -169,7 +169,7 @@ impl BlossomClient {
     where
         T: NostrSigner,
     {
-        let url = format!("{}/{}", self.base_url, sha256);
+        let url = format!("{}{}", self.base_url, sha256);
         let mut request = self.client.get(url);
         let mut headers = HeaderMap::new();
 
@@ -224,7 +224,7 @@ impl BlossomClient {
     where
         T: NostrSigner,
     {
-        let url = format!("{}/{}", self.base_url, sha256);
+        let url = format!("{}{}", self.base_url, sha256);
 
         let mut request = self.client.head(url);
 
@@ -267,7 +267,7 @@ impl BlossomClient {
     where
         T: NostrSigner,
     {
-        let url = format!("{}/{}", self.base_url, sha256);
+        let url = format!("{}{}", self.base_url, sha256);
 
         let mut headers = HeaderMap::new();
         let default_auth = self.default_auth(
