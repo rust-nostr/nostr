@@ -4,6 +4,7 @@ set -euo pipefail
 
 args=(
     "-p nostr"
+    "-p nip07"
     "-p nostr-database"
     "-p nostr-lmdb"
     "-p nostr-mls-storage"
@@ -18,6 +19,8 @@ args=(
     "-p nwc"
     "-p nostr-connect"
     "-p nostr-sdk"
+    "-p nostr-blossom"
+    "-p nostr-http-file-storage"
     "-p nostr-cli"
 )
 
