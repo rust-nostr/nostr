@@ -59,7 +59,7 @@ impl BlossomClient {
     where
         T: NostrSigner,
     {
-        let url = format!("{}/upload", self.base_url);
+        let url: Url = self.base_url.join("upload")?;
 
         let hash: Sha256Hash = Sha256Hash::hash(&data);
         let file_hashes: Vec<Sha256Hash> = vec![hash];
@@ -111,20 +111,16 @@ impl BlossomClient {
     where
         T: NostrSigner,
     {
-        let mut url = format!("{}/list/{}", self.base_url, pubkey.to_hex());
-
-        let mut query_params = Vec::new();
+        let mut url: Url = self.base_url.join("list")?.join(&pubkey.to_hex())?;
 
         if let Some(since) = since {
-            query_params.push(format!("since=\"{}\"", since));
+            url.query_pairs_mut()
+                .append_pair("since", since.to_string().as_str());
         }
 
         if let Some(until) = until {
-            query_params.push(format!("until=\"{}\"", until));
-        }
-
-        if !query_params.is_empty() {
-            url.push_str(&format!("?{}", query_params.join("&")));
+            url.query_pairs_mut()
+                .append_pair("until", until.to_string().as_str());
         }
 
         let mut request = self.client.get(url);
@@ -169,7 +165,8 @@ impl BlossomClient {
     where
         T: NostrSigner,
     {
-        let url = format!("{}/{}", self.base_url, sha256);
+        let url: Url = self.base_url.join(sha256.to_string().as_str())?;
+
         let mut request = self.client.get(url);
         let mut headers = HeaderMap::new();
 
@@ -224,7 +221,7 @@ impl BlossomClient {
     where
         T: NostrSigner,
     {
-        let url = format!("{}/{}", self.base_url, sha256);
+        let url: Url = self.base_url.join(sha256.to_string().as_str())?;
 
         let mut request = self.client.head(url);
 
@@ -267,7 +264,7 @@ impl BlossomClient {
     where
         T: NostrSigner,
     {
-        let url = format!("{}/{}", self.base_url, sha256);
+        let url: Url = self.base_url.join(sha256.to_string().as_str())?;
 
         let mut headers = HeaderMap::new();
         let default_auth = self.default_auth(

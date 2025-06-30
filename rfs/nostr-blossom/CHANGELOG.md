@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Fixed
+
+- blossom: fix url serialization (https://github.com/rust-nostr/nostr/pull/956)
+
 ## v0.42.0 - 2025/05/20
 
 First release.
