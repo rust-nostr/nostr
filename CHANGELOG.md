@@ -71,6 +71,7 @@
 
 - keyring: fix keys persistence between OS restarts on Linux (https://github.com/rust-nostr/nostr/pull/942)
 - nostr: fix index out of bounds in `Tags::dedup` (https://github.com/rust-nostr/nostr/pull/949)
+- nostr: fix support for NIP-44 on no_std env (https://github.com/rust-nostr/nostr/pull/955)
 
 ### Removed
 

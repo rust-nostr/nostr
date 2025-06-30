@@ -339,8 +339,8 @@ fn log2_round_down(x: usize) -> u32 {
     if x == 0 {
         0
     } else {
-        let x: f64 = x as f64;
-        x.log2().floor() as u32
+        // This is equivalent to floor(log2(x))
+        (usize::BITS - 1) - x.leading_zeros()
     }
 }
 
@@ -388,6 +388,27 @@ mod tests {
         }
 
         bytes
+    }
+
+    // Check if out manual implementation work in the same way as the std one.
+    #[test]
+    fn test_log2_round_down() {
+        let f = |x: usize| -> u32 {
+            let x: f64 = x as f64;
+            x.log2().floor() as u32
+        };
+
+        assert_eq!(log2_round_down(0), f(0));
+        assert_eq!(log2_round_down(1), f(1));
+        assert_eq!(log2_round_down(2), f(2));
+        assert_eq!(log2_round_down(3), f(3));
+        assert_eq!(log2_round_down(4), f(4));
+        assert_eq!(log2_round_down(5), f(5));
+        assert_eq!(log2_round_down(6), f(6));
+        assert_eq!(log2_round_down(7), f(7));
+        assert_eq!(log2_round_down(8), f(8));
+        assert_eq!(log2_round_down(9), f(9));
+        assert_eq!(log2_round_down(10), f(10));
     }
 
     #[test]
