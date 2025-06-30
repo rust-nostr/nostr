@@ -22,5 +22,5 @@ nostr-relay-pool.workspace = true
 tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-tracing-subscriber.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
