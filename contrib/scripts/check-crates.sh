@@ -56,6 +56,7 @@ buildargs=(
     "-p nostr-sdk --features all-nips"                            # Only NIPs features
     "-p nostr-sdk --features tor"                                 # Embedded tor client
     "-p nostr-sdk --all-features"                                 # All features
+    "-p nostr-http-file-storage"
     "-p nostr-cli"
 )
 
