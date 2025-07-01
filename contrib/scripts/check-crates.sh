@@ -38,6 +38,8 @@ buildargs=(
     "-p nostr --no-default-features --features alloc,all-nips"    # alloc + all-nips
     "-p nostr --all-features"                                     # All features
     "-p nip07 --target wasm32-unknown-unknown"
+    "-p nostr-blossom"
+    "-p nostr-http-file-storage"
     "-p nostr-database"
     "-p nostr-lmdb"
     "-p nostr-mls-storage"
@@ -56,7 +58,6 @@ buildargs=(
     "-p nostr-sdk --features all-nips"                            # Only NIPs features
     "-p nostr-sdk --features tor"                                 # Embedded tor client
     "-p nostr-sdk --all-features"                                 # All features
-    "-p nostr-http-file-storage"
     "-p nostr-cli"
 )
 
