@@ -55,7 +55,7 @@ async fn run() -> Result<()> {
                 .embedded_tor();
 
             // Build client
-            let opts: Options = Options::new().connection(connection);
+            let opts: Options = ClientOptions::new().connection(connection);
             let client: Client = Client::builder().database(db).opts(opts).build();
 
             // Add relays

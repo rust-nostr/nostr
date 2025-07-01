@@ -15,7 +15,8 @@ use nostr_relay_pool::transport::websocket::{
     DefaultWebsocketTransport, IntoWebSocketTransport, WebSocketTransport,
 };
 
-use crate::{Client, Options};
+use crate::client::options::ClientOptions;
+use crate::client::Client;
 
 /// Client builder
 #[derive(Debug, Clone)]
@@ -31,7 +32,7 @@ pub struct ClientBuilder {
     /// Relay monitor
     pub monitor: Option<Monitor>,
     /// Client options
-    pub opts: Options,
+    pub opts: ClientOptions,
 }
 
 impl Default for ClientBuilder {
@@ -42,7 +43,7 @@ impl Default for ClientBuilder {
             admit_policy: None,
             database: Arc::new(MemoryDatabase::default()),
             monitor: None,
-            opts: Options::default(),
+            opts: ClientOptions::default(),
         }
     }
 }
@@ -114,7 +115,7 @@ impl ClientBuilder {
 
     /// Set opts
     #[inline]
-    pub fn opts(mut self, opts: Options) -> Self {
+    pub fn opts(mut self, opts: ClientOptions) -> Self {
         self.opts = opts;
         self
     }

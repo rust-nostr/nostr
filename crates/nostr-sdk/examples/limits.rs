@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
     let limits = RelayLimits::disable();
 
     // Compose options and limits
-    let opts = Options::new().relay_limits(limits);
+    let opts = ClientOptions::new().relay_limits(limits);
     let client = Client::builder().opts(opts).build();
 
     // Add relays and connect

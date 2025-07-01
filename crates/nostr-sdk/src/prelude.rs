@@ -13,6 +13,8 @@ pub use nostr::prelude::*;
 pub use nostr_database::prelude::*;
 pub use nostr_relay_pool::prelude::*;
 
+pub use crate::client::builder::*;
+pub use crate::client::options::*;
 // Internal modules
 pub use crate::client::*;
 pub use crate::*;

@@ -38,4 +38,4 @@ pub mod client;
 mod gossip;
 pub mod prelude;
 
-pub use self::client::{Client, ClientBuilder, Options};
+pub use self::client::{Client, ClientBuilder, ClientOptions};

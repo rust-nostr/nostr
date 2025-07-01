@@ -12,9 +12,13 @@ use std::time::Duration;
 
 use nostr_relay_pool::prelude::*;
 
+#[allow(missing_docs)]
+#[deprecated(since = "0.43.0", note = "Use `ClientOptions` instead.")]
+pub type Options = ClientOptions;
+
 /// Options
 #[derive(Debug, Clone, Default)]
-pub struct Options {
+pub struct ClientOptions {
     pub(super) autoconnect: bool,
     pub(super) gossip: bool,
     #[cfg(not(target_arch = "wasm32"))]
@@ -24,8 +28,8 @@ pub struct Options {
     pub(super) pool: RelayPoolOptions,
 }
 
-impl Options {
-    /// Create new (default) [`Options`]
+impl ClientOptions {
+    /// Create new default options
     #[inline]
     pub fn new() -> Self {
         Self::default()

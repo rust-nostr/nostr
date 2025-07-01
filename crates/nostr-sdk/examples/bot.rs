@@ -11,7 +11,7 @@ async fn main() -> Result<()> {
     let keys = Keys::parse("nsec12kcgs78l06p30jz7z7h3n2x2cy99nw2z6zspjdp7qc206887mwvs95lnkx")?;
     let client = Client::builder()
         .signer(keys.clone())
-        .opts(Options::new().gossip(true))
+        .opts(ClientOptions::new().gossip(true))
         .build();
 
     println!("Bot public key: {}", keys.public_key().to_bech32()?);

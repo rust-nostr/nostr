@@ -21,7 +21,7 @@ pub mod options;
 
 pub use self::builder::ClientBuilder;
 pub use self::error::Error;
-pub use self::options::Options;
+pub use self::options::ClientOptions;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Connection, ConnectionTarget};
 use crate::gossip::{BrokenDownFilters, Gossip};
@@ -31,7 +31,7 @@ use crate::gossip::{BrokenDownFilters, Gossip};
 pub struct Client {
     pool: RelayPool,
     gossip: Gossip,
-    opts: Options,
+    opts: ClientOptions,
 }
 
 impl Default for Client {
@@ -70,7 +70,7 @@ impl Client {
     /// use nostr_sdk::prelude::*;
     ///
     /// let signer = Keys::generate();
-    /// let opts = Options::default().gossip(true);
+    /// let opts = ClientOptions::default().gossip(true);
     /// let client: Client = Client::builder().signer(signer).opts(opts).build();
     /// ```
     #[inline]

@@ -11,7 +11,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
-    let opts = Options::new().gossip(true);
+    let opts = ClientOptions::new().gossip(true);
     let client = Client::builder().signer(keys).opts(opts).build();
 
     client.add_discovery_relay("wss://relay.damus.io").await?;

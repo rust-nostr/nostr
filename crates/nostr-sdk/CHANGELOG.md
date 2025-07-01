@@ -25,11 +25,13 @@
 
 ## Unreleased
 
-### Breaking changes
-
 ### Changed
 
 - Extract at max 3 relays per NIP65 marker (https://github.com/rust-nostr/nostr/pull/951)
+
+### Deprecated
+
+- Deprecate `Options` in favor of `ClientOptions` (https://github.com/rust-nostr/nostr/pull/958)
 
 ## v0.42.0 - 2025/05/20
 
