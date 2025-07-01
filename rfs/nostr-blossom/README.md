@@ -1,16 +1,22 @@
 # Blossom
 
+## Description
+
 A library for interacting with the [Blossom protocol](https://github.com/hzrd149/blossom).
-
-## State
-
-**This library is in an ALPHA state**, things that are implemented generally work but the API will change in breaking ways.
 
 ## Implemented BUDs
 
 - **Basic data structures:** [BUD-01](https://github.com/hzrd149/blossom/blob/master/buds/01.md), [BUD-02](https://github.com/hzrd149/blossom/blob/master/buds/02.md)
 - **Client:** [BUD-01](https://github.com/hzrd149/blossom/blob/master/buds/01.md), [BUD-02](https://github.com/hzrd149/blossom/blob/master/buds/02.md)
 - **Server:** Not implemented
+
+## Changelog
+
+All notable changes to this library are documented in the [CHANGELOG.md](CHANGELOG.md).
+
+## State
+
+**This library is in an ALPHA state**, things that are implemented generally work but the API will change in breaking ways.
 
 ## Donations
 

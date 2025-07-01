@@ -4,6 +4,10 @@
 
 Nostr Browser signer implementation ([NIP-07](https://github.com/nostr-protocol/nips/blob/master/07.md)).
 
+## Changelog
+
+All notable changes to this library are documented in the [CHANGELOG.md](CHANGELOG.md).
+
 ## State
 
 **This library is in an ALPHA state**, things that are implemented generally work but the API will change in breaking ways.

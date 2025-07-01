@@ -118,9 +118,9 @@ The following crate feature flags are available:
 | `nip57`     |   No    | Enable NIP-57: Zaps                                                                          |
 | `nip59`     |   No    | Enable NIP-59: Gift Wrap                                                                     |
 
-## Supported NIPs
+## Changelog
 
-Look at <https://github.com/rust-nostr/nostr/tree/master/crates/nostr#supported-nips>
+All notable changes to this library are documented in the [CHANGELOG.md](CHANGELOG.md).
 
 ## State
 

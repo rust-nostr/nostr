@@ -1,6 +1,12 @@
 # NWC
 
+## Description
+
 NWC client and zapper backend for Nostr apps
+
+## Changelog
+
+All notable changes to this library are documented in the [CHANGELOG.md](CHANGELOG.md).
 
 ## State
 

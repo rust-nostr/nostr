@@ -21,6 +21,10 @@ The following crate feature flags are available:
 |-----------|:-------:|--------------------------------------------------------|
 | `flatbuf` |   No    | Enable `flatbuffers` de/serialization for nostr events |
 
+## Changelog
+
+All notable changes to this library are documented in the [CHANGELOG.md](CHANGELOG.md).
+
 ## State
 
 **This library is in an ALPHA state**, things that are implemented generally work but the API will change in breaking ways.
