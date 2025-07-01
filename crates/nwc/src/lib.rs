@@ -237,57 +237,52 @@ impl NWC {
     }
 
     /// Handle incoming notifications with a callback function
-    pub async fn handle_notifications<F>(&self, handler: F) -> Result<bool, Error>
+    pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
     where
-        F: Fn(Notification),
+        F: Fn(Notification) -> Fut,
+        Fut: std::future::Future<Output = Result<bool, Box<dyn std::error::Error>>>,
     {
         let mut notifications = self.pool.notifications();
 
-        match time::timeout(Some(std::time::Duration::from_millis(50)), async {
-            notifications.recv().await
-        })
-        .await
-        {
-            Some(Ok(notification)) => {
-                tracing::trace!("Received relay pool notification: {:?}", notification);
+        while let Ok(notification) = notifications.recv().await {
+            tracing::trace!("Received relay pool notification: {:?}", notification);
 
-                if let RelayPoolNotification::Event { event, .. } = notification {
-                    tracing::debug!(
-                        "Received event: kind={}, author={}, id={}",
-                        event.kind,
-                        event.pubkey,
-                        event.id
-                    );
+            if let RelayPoolNotification::Event { event, .. } = notification {
+                tracing::debug!(
+                    "Received event: kind={}, author={}, id={}",
+                    event.kind,
+                    event.pubkey,
+                    event.id
+                );
 
-                    if event.kind == Kind::WalletConnectNotification {
-                        tracing::info!("Processing wallet notification event");
-                        match Notification::from_event(&self.uri, &event) {
-                            Ok(nip47_notification) => {
-                                tracing::info!(
-                                    "Successfully parsed notification: {:?}",
-                                    nip47_notification.notification_type
-                                );
-                                handler(nip47_notification);
-                                return Ok(true);
-                            }
-                            Err(e) => {
-                                tracing::error!("Failed to parse notification: {}", e);
-                                tracing::debug!("Event content: {}", event.content);
-                                return Err(Error::from(e));
+                if event.kind == Kind::WalletConnectNotification {
+                    tracing::info!("Processing wallet notification event");
+                    match Notification::from_event(&self.uri, &event) {
+                        Ok(nip47_notification) => {
+                            tracing::info!(
+                                "Successfully parsed notification: {:?}",
+                                nip47_notification.notification_type
+                            );
+                            let exit: bool = func(nip47_notification)
+                                .await
+                                .map_err(|e| Error::Handler(e.to_string()))?;
+                            if exit {
+                                break;
                             }
                         }
-                    } else {
-                        tracing::trace!("Ignoring event with kind: {}", event.kind);
+                        Err(e) => {
+                            tracing::error!("Failed to parse notification: {}", e);
+                            tracing::debug!("Event content: {}", event.content);
+                            return Err(Error::from(e));
+                        }
                     }
+                } else {
+                    tracing::trace!("Ignoring event with kind: {}", event.kind);
                 }
-                Ok(false)
             }
-            Some(Err(e)) => {
-                tracing::error!("Error receiving notification: {}", e);
-                Err(Error::PrematureExit)
-            }
-            None => Ok(false),
         }
+
+        Ok(())
     }
 
     /// Unsubscribe from notifications

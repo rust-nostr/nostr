@@ -4,7 +4,6 @@
 
 use std::env;
 use std::str::FromStr;
-use std::time::Duration;
 
 use nostr::nips::nip47::{NotificationType, PaymentNotification};
 use nwc::prelude::*;
@@ -45,41 +44,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let shutdown = tokio::signal::ctrl_c();
     tokio::pin!(shutdown);
 
-    loop {
-        tokio::select! {
-            _ = &mut shutdown => {
-                println!("\n👋 Shutting down...");
-                break;
-            }
+    tokio::select! {
+        _ = shutdown => {
+            println!("\n👋 Shutting down...");
+        }
 
-            result = nwc.handle_notifications(|notification| {
-                match notification.notification_type {
-                    NotificationType::PaymentReceived => {
-                        if let Ok(payment) = notification.to_pay_notification() {
-                            println!("🟢 Payment Received!");
-                            print_payment_details(&payment);
-                        }
-                    }
-                    NotificationType::PaymentSent => {
-                        if let Ok(payment) = notification.to_pay_notification() {
-                            println!("🔴 Payment Sent!");
-                            print_payment_details(&payment);
-                        }
+        result = nwc.handle_notifications(|notification| async move {
+            match notification.notification_type {
+                NotificationType::PaymentReceived => {
+                    if let Ok(payment) = notification.to_pay_notification() {
+                        println!("🟢 Payment Received!");
+                        print_payment_details(&payment);
                     }
                 }
-            }) => {
-                match result {
-                    Ok(true) => {
-                        continue;
-                    }
-                    Ok(false) => {
-                        tokio::time::sleep(Duration::from_millis(10)).await;
-                    }
-                    Err(e) => {
-                        eprintln!("Error handling notification: {}", e);
-                        tokio::time::sleep(Duration::from_secs(1)).await;
+                NotificationType::PaymentSent => {
+                    if let Ok(payment) = notification.to_pay_notification() {
+                        println!("🔴 Payment Sent!");
+                        print_payment_details(&payment);
                     }
                 }
+            }
+            Ok::<bool, Box<dyn std::error::Error>>(false) // Continue processing
+        }) => {
+            if let Err(e) = result {
+                eprintln!("Error handling notifications: {}", e);
             }
         }
     }
