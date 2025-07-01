@@ -2831,7 +2831,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-blossom"
-version = "0.42.0"
+version = "0.42.1"
 dependencies = [
  "base64 0.22.1",
  "clap",
