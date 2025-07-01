@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Changed
+
+- Bump `nostrdb` from 0.6 to 0.7 (https://github.com/rust-nostr/nostr/pull/957)
+
 ## v0.42.0 - 2025/05/20
 
 No notable changes in this release.
