@@ -21,7 +21,7 @@ pub mod options;
 
 pub use self::builder::ClientBuilder;
 pub use self::error::Error;
-pub use self::options::ClientOptions;
+pub use self::options::{ClientOptions, SleepWhenIdle};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Connection, ConnectionTarget};
 use crate::gossip::{BrokenDownFilters, Gossip};
@@ -243,6 +243,14 @@ impl Client {
                     }
                 }
             },
+        };
+
+        // Set sleep when idle
+        let opts: RelayOptions = match self.opts.sleep_when_idle {
+            // Do nothing
+            SleepWhenIdle::Disabled => opts,
+            // Enable: update relay options
+            SleepWhenIdle::Enabled { timeout } => opts.sleep_when_idle(true).idle_timeout(timeout),
         };
 
         // Set limits

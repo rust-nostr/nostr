@@ -29,6 +29,10 @@
 
 - Extract at max 3 relays per NIP65 marker (https://github.com/rust-nostr/nostr/pull/951)
 
+### Added
+
+- Add `ClientOptions::sleep_when_idle` (https://github.com/rust-nostr/nostr/pull/959)
+
 ### Deprecated
 
 - Deprecate `Options` in favor of `ClientOptions` (https://github.com/rust-nostr/nostr/pull/958)

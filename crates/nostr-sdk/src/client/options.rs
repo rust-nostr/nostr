@@ -25,6 +25,7 @@ pub struct ClientOptions {
     pub(super) connection: Connection,
     pub(super) relay_limits: RelayLimits,
     pub(super) max_avg_latency: Option<Duration>,
+    pub(super) sleep_when_idle: SleepWhenIdle,
     pub(super) pool: RelayPoolOptions,
 }
 
@@ -99,6 +100,13 @@ impl ClientOptions {
         self
     }
 
+    /// Set sleep when idle config
+    #[inline]
+    pub fn sleep_when_idle(mut self, config: SleepWhenIdle) -> Self {
+        self.sleep_when_idle = config;
+        self
+    }
+
     /// Notification channel size (default: [`DEFAULT_NOTIFICATION_CHANNEL_SIZE`])
     #[deprecated(since = "0.42.0", note = "Use `Options::pool` instead.")]
     pub fn notification_channel_size(mut self, size: usize) -> Self {
@@ -112,6 +120,21 @@ impl ClientOptions {
         self.pool = opts;
         self
     }
+}
+
+/// Put relays to sleep when idle.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum SleepWhenIdle {
+    /// Disabled
+    #[default]
+    Disabled,
+    /// Enabled for all relays
+    Enabled {
+        /// Idle timeout
+        ///
+        /// After how much time of inactivity put the relay to sleep.
+        timeout: Duration,
+    },
 }
 
 /// Connection target
