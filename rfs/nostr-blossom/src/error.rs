@@ -8,6 +8,7 @@ use std::fmt;
 
 use nostr::event::builder;
 use nostr::signer::SignerError;
+use nostr::types::ParseError;
 use reqwest::header::{InvalidHeaderValue, ToStrError};
 use reqwest::Response;
 
@@ -35,6 +36,8 @@ pub enum Error {
     RedirectUrlDoesNotContainSha256,
     /// Returned when a redirect response is missing the Location header
     RedirectResponseMissingLocationHeader,
+    /// Url parse error
+    UrlParseError(ParseError),
 }
 
 impl Error {
@@ -74,6 +77,7 @@ impl fmt::Display for Error {
             Self::RedirectResponseMissingLocationHeader => {
                 write!(f, "Redirect response missing 'Location' header")
             }
+            Self::UrlParseError(e) => write!(f, "{e}"),
         }
     }
 }
@@ -105,5 +109,11 @@ impl From<InvalidHeaderValue> for Error {
 impl From<ToStrError> for Error {
     fn from(e: ToStrError) -> Self {
         Self::ToStr(e)
+    }
+}
+
+impl From<ParseError> for Error {
+    fn from(e: ParseError) -> Self {
+        Self::UrlParseError(e)
     }
 }
