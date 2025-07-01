@@ -1670,6 +1670,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "flatbuffers"
+version = "25.2.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1045398c1bfd89168b5fd3f1fc11f6e70b34f6f66300c87d44d3de849463abf1"
+dependencies = [
+ "bitflags 2.9.0",
+ "rustc_version",
+]
+
+[[package]]
 name = "flate2"
 version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2884,7 +2894,7 @@ dependencies = [
 name = "nostr-database"
 version = "0.42.0"
 dependencies = [
- "flatbuffers",
+ "flatbuffers 25.2.10",
  "lru",
  "nostr",
  "tokio",
@@ -3071,7 +3081,7 @@ checksum = "df9b01d00781031ad2d6837a178e0e6ec343ff4ffc36a4510a583ed6cc67e159"
 dependencies = [
  "bindgen",
  "cc",
- "flatbuffers",
+ "flatbuffers 23.5.26",
  "futures",
  "libc",
  "thiserror 2.0.8",

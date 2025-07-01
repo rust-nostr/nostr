@@ -16,7 +16,7 @@ default = []
 flatbuf = ["dep:flatbuffers"]
 
 [dependencies]
-flatbuffers = { version = "23.5", optional = true }
+flatbuffers = { version = "25.2", optional = true }
 lru.workspace = true
 nostr = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = ["sync"] }
