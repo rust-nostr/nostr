@@ -47,11 +47,11 @@ pub struct UpdateGroupResult {
 
 /// Configuration data for the Group
 pub struct NostrGroupConfigData {
-    name: String,
-    description: String,
-    image_url: Option<String>,
-    image_key: Option<Vec<u8>>,
-    relays: Vec<RelayUrl>,
+    pub name: String,
+    pub description: String,
+    pub image_url: Option<String>,
+    pub image_key: Option<Vec<u8>>,
+    pub relays: Vec<RelayUrl>,
 }
 
 impl NostrGroupConfigData {
