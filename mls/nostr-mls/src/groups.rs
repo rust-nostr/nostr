@@ -47,10 +47,15 @@ pub struct UpdateGroupResult {
 
 /// Configuration data for the Group
 pub struct NostrGroupConfigData {
+    /// Group name
     pub name: String,
+    /// Group description
     pub description: String,
+    /// URL to encrypted group image
     pub image_url: Option<String>,
+    /// Key to decrypt the image
     pub image_key: Option<Vec<u8>>,
+    /// Relays used by the group
     pub relays: Vec<RelayUrl>,
 }
 
