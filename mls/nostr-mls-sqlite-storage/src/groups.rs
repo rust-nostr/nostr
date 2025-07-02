@@ -88,13 +88,15 @@ impl GroupStorage for NostrMlsSqliteStorage {
         conn_guard
             .execute(
                 "INSERT INTO groups
-             (mls_group_id, nostr_group_id, name, description, admin_pubkeys, last_message_id,
+             (mls_group_id, nostr_group_id, name, description, image_url, image_key, admin_pubkeys, last_message_id,
               last_message_at, group_type, epoch, state)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(mls_group_id) DO UPDATE SET
                 nostr_group_id = excluded.nostr_group_id,
                 name = excluded.name,
                 description = excluded.description,
+                image_url = excluded.image_url,
+                image_key = excluded.image_key,
                 admin_pubkeys = excluded.admin_pubkeys,
                 last_message_id = excluded.last_message_id,
                 last_message_at = excluded.last_message_at,
@@ -106,6 +108,8 @@ impl GroupStorage for NostrMlsSqliteStorage {
                     &group.nostr_group_id,
                     &group.name,
                     &group.description,
+                    &group.image_url,
+                    &group.image_key,
                     &admin_pubkeys_json,
                     last_message_id,
                     &last_message_at,
@@ -270,10 +274,16 @@ impl GroupStorage for NostrMlsSqliteStorage {
 
 #[cfg(test)]
 mod tests {
+    use aes_gcm::aead::OsRng;
+    use aes_gcm::{Aes128Gcm, KeyInit};
     use nostr::RelayUrl;
     use nostr_mls_storage::groups::types::{GroupState, GroupType};
 
     use super::*;
+
+    pub fn generate_encryption_key() -> Vec<u8> {
+        Aes128Gcm::generate_key(OsRng).to_vec()
+    }
 
     #[test]
     fn test_save_and_find_group() {
@@ -283,6 +293,8 @@ mod tests {
         let mls_group_id = GroupId::from_slice(&[1, 2, 3, 4]);
         let mut nostr_group_id = [0u8; 32];
         nostr_group_id[0..13].copy_from_slice(b"test_group_12");
+        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
+        let image_key = Some(generate_encryption_key());
 
         let group = Group {
             mls_group_id: mls_group_id.clone(),
@@ -295,6 +307,8 @@ mod tests {
             group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
+            image_url,
+            image_key,
         };
 
         // Save the group
@@ -340,6 +354,8 @@ mod tests {
             group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
+            image_url: None,
+            image_key: None,
         };
 
         // Save the group
@@ -386,6 +402,8 @@ mod tests {
             group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
+            image_url: None,
+            image_key: None,
         };
 
         // Save the group

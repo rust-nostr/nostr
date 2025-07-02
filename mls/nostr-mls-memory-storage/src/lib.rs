@@ -171,6 +171,8 @@ impl NostrMlsStorageProvider for NostrMlsMemoryStorage {
 mod tests {
     use std::collections::BTreeSet;
 
+    use aes_gcm::aead::OsRng;
+    use aes_gcm::{Aes128Gcm, KeyInit};
     use nostr::{EventId, Kind, PublicKey, RelayUrl, Tags, Timestamp, UnsignedEvent};
     use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupState, GroupType};
     use nostr_mls_storage::groups::GroupStorage;
@@ -182,6 +184,10 @@ mod tests {
     use openmls_memory_storage::MemoryStorage;
 
     use super::*;
+
+    pub fn generate_encryption_key() -> Vec<u8> {
+        Aes128Gcm::generate_key(OsRng).to_vec()
+    }
 
     fn create_test_group_id() -> GroupId {
         GroupId::from_slice(&[1, 2, 3, 4])
@@ -242,6 +248,8 @@ mod tests {
         let nostr_storage = NostrMlsMemoryStorage::new(storage);
         let mls_group_id = create_test_group_id();
         let nostr_group_id = create_test_nostr_group_id();
+        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
+        let image_key = Some(generate_encryption_key());
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -253,6 +261,8 @@ mod tests {
             group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
+            image_url,
+            image_key,
         };
         nostr_storage.save_group(group.clone()).unwrap();
         let found_group = nostr_storage
@@ -279,6 +289,8 @@ mod tests {
         let nostr_storage = NostrMlsMemoryStorage::new(storage);
         let mls_group_id = create_test_group_id();
         let nostr_group_id = create_test_nostr_group_id();
+        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
+        let image_key = Some(generate_encryption_key());
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -290,6 +302,8 @@ mod tests {
             group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
+            image_url,
+            image_key,
         };
         nostr_storage.save_group(group.clone()).unwrap();
         let relay_url1 = RelayUrl::parse("wss://relay1.example.com").unwrap();
@@ -334,6 +348,8 @@ mod tests {
         let nostr_storage = NostrMlsMemoryStorage::new(storage);
         let mls_group_id = create_test_group_id();
         let nostr_group_id = create_test_nostr_group_id();
+        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
+        let image_key = Some(generate_encryption_key());
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -345,6 +361,8 @@ mod tests {
             group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
+            image_url,
+            image_key,
         };
         nostr_storage.save_group(group.clone()).unwrap();
         let group_exporter_secret_0 = GroupExporterSecret {
@@ -417,6 +435,8 @@ mod tests {
             nostr_group_id,
             group_name: "Test Welcome Group".to_string(),
             group_description: "A test welcome group".to_string(),
+            group_image_key: None,
+            group_image_url: None,
             group_admin_pubkeys: BTreeSet::from([pubkey]),
             group_relays: BTreeSet::from([RelayUrl::parse("wss://relay.example.com").unwrap()]),
             welcomer: pubkey,
@@ -475,6 +495,8 @@ mod tests {
         let nostr_storage = NostrMlsMemoryStorage::new(storage);
         let mls_group_id = create_test_group_id();
         let nostr_group_id = create_test_nostr_group_id();
+        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
+        let image_key = Some(generate_encryption_key());
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -486,6 +508,8 @@ mod tests {
             group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
+            image_url,
+            image_key,
         };
         nostr_storage.save_group(group.clone()).unwrap();
         let event_id = EventId::all_zeros();
@@ -568,6 +592,8 @@ mod tests {
         // Create a test group to verify the cache works
         let mls_group_id = create_test_group_id();
         let nostr_group_id = create_test_nostr_group_id();
+        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
+        let image_key = Some(generate_encryption_key());
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -579,6 +605,8 @@ mod tests {
             group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
+            image_url,
+            image_key,
         };
 
         // Save the group
@@ -598,6 +626,8 @@ mod tests {
         // Create a test group to verify the default implementation works
         let mls_group_id = create_test_group_id();
         let nostr_group_id = create_test_nostr_group_id();
+        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
+        let image_key = Some(generate_encryption_key());
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -609,6 +639,8 @@ mod tests {
             group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
+            image_url,
+            image_key,
         };
 
         // Save the group

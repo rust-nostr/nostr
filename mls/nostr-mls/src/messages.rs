@@ -791,6 +791,15 @@ mod tests {
             .expect("Failed to sign event")
     }
 
+    fn create_nostr_group_config_data() -> NostrGroupConfigData {
+        let relays = vec![RelayUrl::parse("wss://test.relay").unwrap()];
+        let image_url = "https://example.com/test.png".to_string();
+        let image_key = SecretKey::generate().as_secret_bytes().to_owned();
+        let name = "Test Group".to_owned();
+        let description = "A test group for basic testing".to_owned();
+        NostrGroupConfigData::new(name, description, Some(image_url), Some(image_key), relays)
+    }
+
     /// Helper function to create a test group and return the group ID
     fn create_test_group(
         nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
@@ -810,12 +819,10 @@ mod tests {
         // Create the group
         let create_result = nostr_mls
             .create_group(
-                "Test Group",
-                "A test group for message testing",
                 &creator_pk,
                 initial_key_package_events,
                 admins.to_vec(),
-                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+                create_nostr_group_config_data(),
             )
             .expect("Failed to create group");
 

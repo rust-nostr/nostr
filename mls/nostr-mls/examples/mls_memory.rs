@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use aes_gcm::aead::OsRng;
+use aes_gcm::{Aes128Gcm, KeyInit};
 use nostr::event::builder::EventBuilder;
 use nostr_mls::messages::MessageProcessingResult;
 use nostr_mls::prelude::*;
@@ -13,6 +15,10 @@ fn generate_identity() -> (Keys, NostrMls<NostrMlsMemoryStorage>) {
     let keys = Keys::generate();
     let nostr_mls = NostrMls::new(NostrMlsMemoryStorage::default());
     (keys, nostr_mls)
+}
+
+pub fn generate_encryption_key() -> Vec<u8> {
+    Aes128Gcm::generate_key(OsRng).to_vec()
 }
 
 #[tokio::main]
@@ -47,13 +53,24 @@ async fn main() -> Result<()> {
 
     // To create a group, Alice fetches Bob's key package event from the Nostr network.
     // Alice creates the group, adding Bob.
+    let image_url = "http://blossom_server:4531/fake_img.png".to_owned();
+    let image_key = generate_encryption_key();
+    let name = "Bob & Alice".to_owned();
+    let description = "A secret chat between Bob and Alice".to_owned();
+
+    let config = NostrGroupConfigData::new(
+        name,
+        description,
+        Some(image_url),
+        Some(image_key),
+        vec![relay_url.clone()],
+    );
+
     let group_create_result = alice_nostr_mls.create_group(
-        "Bob & Alice",
-        "A secret chat between Bob and Alice",
         &alice_keys.public_key(),
         vec![bob_key_package_event.clone()],
         vec![alice_keys.public_key(), bob_keys.public_key()], // Make Bob an admin too
-        vec![relay_url.clone()],
+        config,
     )?;
 
     tracing::info!("Group created");

@@ -45,6 +45,39 @@ pub struct UpdateGroupResult {
     pub welcome_rumors: Option<Vec<UnsignedEvent>>,
 }
 
+/// Configuration data for the Group
+pub struct NostrGroupConfigData {
+    /// Group name
+    pub name: String,
+    /// Group description
+    pub description: String,
+    /// URL to encrypted group image
+    pub image_url: Option<String>,
+    /// Key to decrypt the image
+    pub image_key: Option<Vec<u8>>,
+    /// Relays used by the group
+    pub relays: Vec<RelayUrl>,
+}
+
+impl NostrGroupConfigData {
+    /// Creates NostrGroupConfigData
+    pub fn new(
+        name: String,
+        description: String,
+        image_url: Option<String>,
+        image_key: Option<Vec<u8>>,
+        relays: Vec<RelayUrl>,
+    ) -> Self {
+        Self {
+            name,
+            description,
+            image_url,
+            image_key,
+            relays,
+        }
+    }
+}
+
 impl<Storage> NostrMls<Storage>
 where
     Storage: NostrMlsStorageProvider,
@@ -567,19 +600,13 @@ where
     /// - Group creation fails
     /// - Adding members fails
     /// - Message serialization fails
-    pub fn create_group<S1, S2>(
+    pub fn create_group(
         &self,
-        name: S1,
-        description: S2,
         creator_public_key: &PublicKey,
         member_key_package_events: Vec<Event>,
         admins: Vec<PublicKey>,
-        group_relays: Vec<RelayUrl>,
-    ) -> Result<GroupResult, Error>
-    where
-        S1: Into<String>,
-        S2: Into<String>,
-    {
+        config: NostrGroupConfigData,
+    ) -> Result<GroupResult, Error> {
         // Get member pubkeys
         let member_pubkeys = member_key_package_events
             .clone()
@@ -598,8 +625,14 @@ where
             credential
         );
 
-        let group_data =
-            NostrGroupDataExtension::new(name, description, admins, group_relays.clone());
+        let group_data = NostrGroupDataExtension::new(
+            config.name,
+            config.description,
+            admins,
+            config.relays.clone(),
+            config.image_url.clone(),
+            config.image_key.clone(),
+        );
 
         tracing::debug!(
             target: "nostr_mls::groups::create_mls_group",
@@ -665,7 +698,7 @@ where
                 &mls_group,
                 serialized_welcome_message,
                 member_key_package_events,
-                &group_relays,
+                &config.relays,
             )?
             .ok_or(Error::Welcome("Error creating welcome rumors".to_string()))?;
 
@@ -687,6 +720,8 @@ where
             group_type,
             epoch: mls_group.epoch().as_u64(),
             state: group_types::GroupState::Active,
+            image_url: config.image_url,
+            image_key: config.image_key,
         };
 
         self.storage().save_group(group.clone()).map_err(
@@ -694,7 +729,7 @@ where
         )?;
 
         // Always (re-)save the group relays after saving the group
-        for relay_url in group_relays.into_iter() {
+        for relay_url in config.relays.into_iter() {
             let group_relay = group_types::GroupRelay {
                 mls_group_id: group.mls_group_id.clone(),
                 relay_url,
@@ -1008,11 +1043,12 @@ where
 
 #[cfg(test)]
 mod tests {
-
+    use nostr::key::SecretKey;
     use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl};
     use nostr_mls_memory_storage::NostrMlsMemoryStorage;
     use openmls::prelude::BasicCredential;
 
+    use crate::groups::NostrGroupConfigData;
     use crate::tests::create_test_nostr_mls;
 
     fn create_test_group_members() -> (Keys, Vec<Keys>, Vec<PublicKey>) {
@@ -1049,6 +1085,15 @@ mod tests {
             .tags(tags.to_vec())
             .sign_with_keys(keys)
             .expect("Failed to sign event")
+    }
+
+    fn create_nostr_group_config_data() -> NostrGroupConfigData {
+        let relays = vec![RelayUrl::parse("wss://test.relay").unwrap()];
+        let image_url = "https://example.com/test.png".to_string();
+        let image_key = SecretKey::generate().as_secret_bytes().to_owned();
+        let name = "Test Group".to_owned();
+        let description = "A test group for basic testing".to_owned();
+        NostrGroupConfigData::new(name, description, Some(image_url), Some(image_key), relays)
     }
 
     #[test]
@@ -1099,12 +1144,10 @@ mod tests {
         // Create the group
         let create_result = creator_nostr_mls
             .create_group(
-                "Test Group",
-                "A test group for basic testing",
                 &creator_pk,
                 initial_key_package_events,
                 admins,
-                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+                create_nostr_group_config_data(),
             )
             .expect("Failed to create group");
 
@@ -1143,12 +1186,10 @@ mod tests {
         // Create the group
         let create_result = creator_nostr_mls
             .create_group(
-                "Test Group",
-                "A test group for member testing",
                 &creator_pk,
                 initial_key_package_events,
                 admins,
-                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+                create_nostr_group_config_data(),
             )
             .expect("Failed to create group");
 
@@ -1187,12 +1228,10 @@ mod tests {
         // Create the initial group
         let create_result = creator_nostr_mls
             .create_group(
-                "Test Group",
-                "A test group for epoch advancement testing",
                 &creator_pk,
                 initial_key_package_events,
                 admins,
-                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+                create_nostr_group_config_data(),
             )
             .expect("Failed to create group");
 
@@ -1269,12 +1308,10 @@ mod tests {
         // Create the group
         let create_result = creator_nostr_mls
             .create_group(
-                "Test Group",
-                "A test group for get_own_pubkey testing",
                 &creator_pk,
                 initial_key_package_events,
                 admins,
-                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+                create_nostr_group_config_data(),
             )
             .expect("Failed to create group");
 
@@ -1317,12 +1354,10 @@ mod tests {
         // Create the group
         let create_result = creator_nostr_mls
             .create_group(
-                "Test Group",
-                "A test group for admin checking",
                 &creator_pk,
                 initial_key_package_events,
                 admins.clone(),
-                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+                create_nostr_group_config_data(),
             )
             .expect("Failed to create group");
 
@@ -1347,8 +1382,6 @@ mod tests {
 
     #[test]
     fn test_admin_permission_checks() {
-        use nostr::RelayUrl;
-
         let admin_nostr_mls = create_test_nostr_mls();
         let non_admin_nostr_mls = create_test_nostr_mls();
 
@@ -1369,12 +1402,10 @@ mod tests {
         // Only admin is an admin
         let create_result = admin_nostr_mls
             .create_group(
-                "Admin Test Group",
-                "A test group for admin permission testing",
                 &admin_pk,
                 vec![non_admin_event.clone(), member1_event.clone()],
                 vec![admin_pk], // Only admin is an admin
-                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+                create_nostr_group_config_data(),
             )
             .expect("Failed to create group");
 
@@ -1413,8 +1444,6 @@ mod tests {
 
     #[test]
     fn test_pubkey_for_member() {
-        use nostr::RelayUrl;
-
         let creator_nostr_mls = create_test_nostr_mls();
         let (creator, initial_members, admins) = create_test_group_members();
         let creator_pk = creator.public_key();
@@ -1429,12 +1458,10 @@ mod tests {
         // Create the group
         let create_result = creator_nostr_mls
             .create_group(
-                "Test Group",
-                "A test group for pubkey_for_member testing",
                 &creator_pk,
                 initial_key_package_events,
                 admins,
-                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+                create_nostr_group_config_data(),
             )
             .expect("Failed to create group");
 
@@ -1495,8 +1522,6 @@ mod tests {
 
     #[test]
     fn test_remove_members_no_matching_members() {
-        use nostr::RelayUrl;
-
         let creator_nostr_mls = create_test_nostr_mls();
         let (creator, initial_members, admins) = create_test_group_members();
         let creator_pk = creator.public_key();
@@ -1511,12 +1536,10 @@ mod tests {
         // Create the group
         let create_result = creator_nostr_mls
             .create_group(
-                "Test Group",
-                "A test group for remove_members no matching testing",
                 &creator_pk,
                 initial_key_package_events,
                 admins,
-                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+                create_nostr_group_config_data(),
             )
             .expect("Failed to create group");
 
@@ -1542,8 +1565,6 @@ mod tests {
 
     #[test]
     fn test_remove_members_epoch_advancement() {
-        use nostr::RelayUrl;
-
         let creator_nostr_mls = create_test_nostr_mls();
         let (creator, initial_members, admins) = create_test_group_members();
         let creator_pk = creator.public_key();
@@ -1558,12 +1579,10 @@ mod tests {
         // Create the group
         let create_result = creator_nostr_mls
             .create_group(
-                "Test Group",
-                "A test group for remove_members epoch testing",
                 &creator_pk,
                 initial_key_package_events,
                 admins,
-                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+                create_nostr_group_config_data(),
             )
             .expect("Failed to create group");
 
@@ -1623,8 +1642,6 @@ mod tests {
 
     #[test]
     fn test_self_update_success() {
-        use nostr::RelayUrl;
-
         let creator_nostr_mls = create_test_nostr_mls();
         let (creator, initial_members, admins) = create_test_group_members();
         let creator_pk = creator.public_key();
@@ -1639,12 +1656,10 @@ mod tests {
         // Create the group
         let create_result = creator_nostr_mls
             .create_group(
-                "Test Group",
-                "A test group for self_update testing",
                 &creator_pk,
                 initial_key_package_events,
                 admins,
-                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+                create_nostr_group_config_data(),
             )
             .expect("Failed to create group");
 
@@ -1744,8 +1759,6 @@ mod tests {
 
     #[test]
     fn test_self_update_key_rotation() {
-        use nostr::RelayUrl;
-
         let creator_nostr_mls = create_test_nostr_mls();
         let (creator, initial_members, admins) = create_test_group_members();
         let creator_pk = creator.public_key();
@@ -1760,12 +1773,10 @@ mod tests {
         // Create the group
         let create_result = creator_nostr_mls
             .create_group(
-                "Test Group",
-                "A test group for self_update key rotation testing",
                 &creator_pk,
                 initial_key_package_events,
                 admins,
-                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+                create_nostr_group_config_data(),
             )
             .expect("Failed to create group");
 
@@ -1832,8 +1843,6 @@ mod tests {
 
     #[test]
     fn test_self_update_exporter_secret_rotation() {
-        use nostr::RelayUrl;
-
         let creator_nostr_mls = create_test_nostr_mls();
         let (creator, initial_members, admins) = create_test_group_members();
         let creator_pk = creator.public_key();
@@ -1848,12 +1857,10 @@ mod tests {
         // Create the group
         let create_result = creator_nostr_mls
             .create_group(
-                "Test Group",
-                "A test group for self_update exporter secret testing",
                 &creator_pk,
                 initial_key_package_events,
                 admins,
-                vec![RelayUrl::parse("wss://test.relay").unwrap()],
+                create_nostr_group_config_data(),
             )
             .expect("Failed to create group");
 
