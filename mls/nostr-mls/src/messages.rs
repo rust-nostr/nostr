@@ -812,6 +812,8 @@ mod tests {
             .create_group(
                 "Test Group",
                 "A test group for message testing",
+                Option::<String>::None,
+                Option::<SecretKey>::None,
                 &creator_pk,
                 initial_key_package_events,
                 admins.to_vec(),

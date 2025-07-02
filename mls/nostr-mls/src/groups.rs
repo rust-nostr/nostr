@@ -567,10 +567,12 @@ where
     /// - Group creation fails
     /// - Adding members fails
     /// - Message serialization fails
-    pub fn create_group<S1, S2>(
+    pub fn create_group<S1, S2, S3, S4>(
         &self,
         name: S1,
         description: S2,
+        image: Option<S3>,
+        image_key: Option<S4>,
         creator_public_key: &PublicKey,
         member_key_package_events: Vec<Event>,
         admins: Vec<PublicKey>,
@@ -579,6 +581,8 @@ where
     where
         S1: Into<String>,
         S2: Into<String>,
+        S3: Into<String>,
+        S4: Into<SecretKey>,
     {
         // Get member pubkeys
         let member_pubkeys = member_key_package_events
@@ -598,8 +602,14 @@ where
             credential
         );
 
-        let group_data =
-            NostrGroupDataExtension::new(name, description, admins, group_relays.clone());
+        let group_data = NostrGroupDataExtension::new(
+            name,
+            description,
+            admins,
+            group_relays.clone(),
+            image,
+            image_key,
+        );
 
         tracing::debug!(
             target: "nostr_mls::groups::create_mls_group",
@@ -1009,6 +1019,7 @@ where
 #[cfg(test)]
 mod tests {
 
+    use nostr::key::SecretKey;
     use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl};
     use nostr_mls_memory_storage::NostrMlsMemoryStorage;
     use openmls::prelude::BasicCredential;
@@ -1101,6 +1112,8 @@ mod tests {
             .create_group(
                 "Test Group",
                 "A test group for basic testing",
+                Option::<String>::None,
+                Option::<SecretKey>::None,
                 &creator_pk,
                 initial_key_package_events,
                 admins,
@@ -1145,6 +1158,8 @@ mod tests {
             .create_group(
                 "Test Group",
                 "A test group for member testing",
+                Option::<String>::None,
+                Option::<SecretKey>::None,
                 &creator_pk,
                 initial_key_package_events,
                 admins,
@@ -1189,6 +1204,8 @@ mod tests {
             .create_group(
                 "Test Group",
                 "A test group for epoch advancement testing",
+                Option::<String>::None,
+                Option::<SecretKey>::None,
                 &creator_pk,
                 initial_key_package_events,
                 admins,
@@ -1271,6 +1288,8 @@ mod tests {
             .create_group(
                 "Test Group",
                 "A test group for get_own_pubkey testing",
+                Option::<String>::None,
+                Option::<SecretKey>::None,
                 &creator_pk,
                 initial_key_package_events,
                 admins,
@@ -1319,6 +1338,8 @@ mod tests {
             .create_group(
                 "Test Group",
                 "A test group for admin checking",
+                Option::<String>::None,
+                Option::<SecretKey>::None,
                 &creator_pk,
                 initial_key_package_events,
                 admins.clone(),
@@ -1371,6 +1392,8 @@ mod tests {
             .create_group(
                 "Admin Test Group",
                 "A test group for admin permission testing",
+                Option::<String>::None,
+                Option::<SecretKey>::None,
                 &admin_pk,
                 vec![non_admin_event.clone(), member1_event.clone()],
                 vec![admin_pk], // Only admin is an admin
@@ -1431,6 +1454,8 @@ mod tests {
             .create_group(
                 "Test Group",
                 "A test group for pubkey_for_member testing",
+                Option::<String>::None,
+                Option::<SecretKey>::None,
                 &creator_pk,
                 initial_key_package_events,
                 admins,
@@ -1513,6 +1538,8 @@ mod tests {
             .create_group(
                 "Test Group",
                 "A test group for remove_members no matching testing",
+                Option::<String>::None,
+                Option::<SecretKey>::None,
                 &creator_pk,
                 initial_key_package_events,
                 admins,
@@ -1560,6 +1587,8 @@ mod tests {
             .create_group(
                 "Test Group",
                 "A test group for remove_members epoch testing",
+                Option::<String>::None,
+                Option::<SecretKey>::None,
                 &creator_pk,
                 initial_key_package_events,
                 admins,
@@ -1641,6 +1670,8 @@ mod tests {
             .create_group(
                 "Test Group",
                 "A test group for self_update testing",
+                Option::<String>::None,
+                Option::<SecretKey>::None,
                 &creator_pk,
                 initial_key_package_events,
                 admins,
@@ -1762,6 +1793,8 @@ mod tests {
             .create_group(
                 "Test Group",
                 "A test group for self_update key rotation testing",
+                Option::<String>::None,
+                Option::<SecretKey>::None,
                 &creator_pk,
                 initial_key_package_events,
                 admins,
@@ -1850,6 +1883,8 @@ mod tests {
             .create_group(
                 "Test Group",
                 "A test group for self_update exporter secret testing",
+                Option::<String>::None,
+                Option::<SecretKey>::None,
                 &creator_pk,
                 initial_key_package_events,
                 admins,
