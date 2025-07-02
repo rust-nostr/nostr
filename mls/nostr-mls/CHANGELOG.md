@@ -29,6 +29,7 @@
 
 - Changed return type of `NostrMls::add_members` and `NostrMls::self_update` (https://github.com/rust-nostr/nostr/pull/934)
 - Changed return type of all group and message methods to return Events instead of serialized MLS objects. (https://github.com/rust-nostr/nostr/pull/940)
+- Changed the input params of `NostrMls::create_group`, and additional fields for `NostrGroupDataExtension`. (https://github.com/rust-nostr/nostr/pull/965)
 
 ### Added
 

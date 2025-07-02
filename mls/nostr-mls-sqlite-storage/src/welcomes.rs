@@ -34,9 +34,9 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
         conn_guard
             .execute(
                 "INSERT OR REPLACE INTO welcomes
-             (id, event, mls_group_id, nostr_group_id, group_name, group_description,
+             (id, event, mls_group_id, nostr_group_id, group_name, group_description, group_image_url, group_image_key,
               group_admin_pubkeys, group_relays, welcomer, member_count, state, wrapper_event_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
                     welcome.id.as_bytes(),
                     welcome.event.as_json(),
@@ -44,6 +44,8 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
                     welcome.nostr_group_id,
                     welcome.group_name,
                     welcome.group_description,
+                    welcome.group_image_url,
+                    welcome.group_image_key,
                     group_admin_pubkeys_json,
                     group_relays_json,
                     welcome.welcomer.as_bytes(),
@@ -143,6 +145,8 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
 mod tests {
     use std::collections::BTreeSet;
 
+    use aes_gcm::aead::OsRng;
+    use aes_gcm::{Aes128Gcm, KeyInit};
     use nostr::{EventId, Kind, PublicKey, RelayUrl, Timestamp, UnsignedEvent};
     use nostr_mls_storage::groups::types::{Group, GroupState, GroupType};
     use nostr_mls_storage::groups::GroupStorage;
@@ -150,6 +154,10 @@ mod tests {
     use openmls::group::GroupId;
 
     use super::*;
+
+    pub fn generate_encryption_key() -> Vec<u8> {
+        Aes128Gcm::generate_key(OsRng).to_vec()
+    }
 
     #[test]
     fn test_save_and_find_welcome() {
@@ -159,6 +167,8 @@ mod tests {
         let mls_group_id = GroupId::from_slice(&[1, 2, 3, 4]);
         let mut nostr_group_id = [0u8; 32];
         nostr_group_id[0..13].copy_from_slice(b"test_group_12");
+        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
+        let image_key = Some(generate_encryption_key());
 
         let group = Group {
             mls_group_id: mls_group_id.clone(),
@@ -171,11 +181,13 @@ mod tests {
             group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
+            image_url: image_url.clone(),
+            image_key: image_key.clone(),
         };
 
         // Save the group
         let result = storage.save_group(group);
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "{:?}", result);
 
         // Create a test welcome
         let event_id =
@@ -204,6 +216,8 @@ mod tests {
             nostr_group_id: welcome_nostr_group_id,
             group_name: "Test Group".to_string(),
             group_description: "A test group".to_string(),
+            group_image_url: image_url,
+            group_image_key: image_key,
             group_admin_pubkeys: BTreeSet::from([pubkey]),
             group_relays: BTreeSet::from([RelayUrl::parse("wss://relay.example.com").unwrap()]),
             welcomer: pubkey,
@@ -214,7 +228,7 @@ mod tests {
 
         // Save the welcome
         let result = storage.save_welcome(welcome.clone());
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "{:?}", result);
 
         // Find by event ID
         let found_welcome = storage

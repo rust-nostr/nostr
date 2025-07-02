@@ -301,6 +301,8 @@ mod tests {
             group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
+            image_url: None,
+            image_key: None,
         };
 
         // Save the group

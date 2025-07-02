@@ -11,7 +11,7 @@ use std::str;
 use nostr::secp256k1::rand::rngs::OsRng;
 use nostr::secp256k1::rand::Rng;
 use nostr::util::hex;
-use nostr::{PublicKey, RelayUrl, SecretKey};
+use nostr::{PublicKey, RelayUrl};
 use openmls::extensions::{Extension, ExtensionType};
 use openmls::group::{GroupContext, MlsGroup};
 use tls_codec::{
@@ -38,7 +38,7 @@ pub(crate) struct RawNostrGroupDataExtension {
     pub description: Vec<u8>,
     pub admin_pubkeys: Vec<Vec<u8>>,
     pub relays: Vec<Vec<u8>>,
-    pub image: Vec<u8>,
+    pub image_url: Vec<u8>,
     pub image_key: Vec<u8>,
 }
 
@@ -57,9 +57,9 @@ pub struct NostrGroupDataExtension {
     /// Relays
     pub relays: BTreeSet<RelayUrl>,
     /// Group image URL (optional)
-    pub image: Option<String>,
+    pub image_url: Option<String>,
     /// Private key to decrypt group image (encrypted when stored)
-    pub image_key: Option<SecretKey>,
+    pub image_key: Option<Vec<u8>>,
 }
 
 impl NostrGroupDataExtension {
@@ -80,19 +80,18 @@ impl NostrGroupDataExtension {
     /// A new NostrGroupDataExtension instance with a randomly generated group ID and
     /// the provided parameters converted to bytes. This group ID value is what's used when publishing
     /// events to Nostr relays for the group.
-    pub fn new<T1, T2, T3, T4, IA, IR>(
+    pub fn new<T1, T2, T3, IA, IR>(
         name: T1,
         description: T2,
         admins: IA,
         relays: IR,
-        image: Option<T3>,
-        image_key: Option<T4>,
+        image_url: Option<T3>,
+        image_key: Option<Vec<u8>>,
     ) -> Self
     where
         T1: Into<String>,
         T2: Into<String>,
         T3: Into<String>,
-        T4: Into<SecretKey>,
         IA: IntoIterator<Item = PublicKey>,
         IR: IntoIterator<Item = RelayUrl>,
     {
@@ -106,8 +105,8 @@ impl NostrGroupDataExtension {
             description: description.into(),
             admins: admins.into_iter().collect(),
             relays: relays.into_iter().collect(),
-            image: image.map(Into::into),
-            image_key: image_key.map(Into::into),
+            image_url: image_url.map(Into::into),
+            image_key,
         }
     }
 
@@ -126,16 +125,16 @@ impl NostrGroupDataExtension {
             relays.insert(url);
         }
 
-        let image = if raw.image.is_empty() {
+        let image_url = if raw.image_url.is_empty() {
             None
         } else {
-            Some(String::from_utf8(raw.image)?)
+            Some(String::from_utf8(raw.image_url)?)
         };
 
         let image_key = if raw.image_key.is_empty() {
             None
         } else {
-            Some(SecretKey::from_slice(&raw.image_key)?)
+            Some(raw.image_key)
         };
 
         Ok(Self {
@@ -144,7 +143,7 @@ impl NostrGroupDataExtension {
             description: String::from_utf8(raw.description)?,
             admins,
             relays,
-            image,
+            image_url,
             image_key,
         })
     }
@@ -263,8 +262,8 @@ impl NostrGroupDataExtension {
     }
 
     /// Returns the group image URL.
-    pub fn image(&self) -> Option<&str> {
-        self.image.as_deref()
+    pub fn image_url(&self) -> Option<&str> {
+        self.image_url.as_deref()
     }
 
     /// Sets the group image URL.
@@ -272,12 +271,12 @@ impl NostrGroupDataExtension {
     /// # Arguments
     ///
     /// * `image` - The new image URL (optional)
-    pub fn set_image(&mut self, image: Option<String>) {
-        self.image = image;
+    pub fn set_image_url(&mut self, image_url: Option<String>) {
+        self.image_url = image_url;
     }
 
     /// Returns the group image key.
-    pub fn image_key(&self) -> Option<&SecretKey> {
+    pub fn image_key(&self) -> Option<&Vec<u8>> {
         self.image_key.as_ref()
     }
 
@@ -286,7 +285,7 @@ impl NostrGroupDataExtension {
     /// # Arguments
     ///
     /// * `image_key` - The new image encryption key (optional)
-    pub fn set_image_key(&mut self, image_key: Option<SecretKey>) {
+    pub fn set_image_key(&mut self, image_key: Option<Vec<u8>>) {
         self.image_key = image_key;
     }
 
@@ -305,21 +304,25 @@ impl NostrGroupDataExtension {
                 .iter()
                 .map(|url| url.to_string().into_bytes())
                 .collect(),
-            image: self
-                .image
+            image_url: self
+                .image_url
                 .as_ref()
                 .map_or_else(Vec::new, |img| img.as_bytes().to_vec()),
-            image_key: self
-                .image_key
-                .as_ref()
-                .map_or_else(Vec::new, |key| key.secret_bytes().to_vec()),
+            image_key: self.image_key.clone().unwrap_or_default(),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use aes_gcm::aead::OsRng;
+    use aes_gcm::{Aes128Gcm, KeyInit};
+
     use super::*;
+
+    pub fn generate_encryption_key() -> Vec<u8> {
+        Aes128Gcm::generate_key(OsRng).to_vec()
+    }
 
     const ADMIN_1: &str = "npub1a6awmmklxfmspwdv52qq58sk5c07kghwc4v2eaudjx2ju079cdqs2452ys";
     const ADMIN_2: &str = "npub1t5sdrgt7md8a8lf77ka02deta4vj35p3ktfskd5yz68pzmt9334qy6qks0";
@@ -333,7 +336,7 @@ mod tests {
         let relay1 = RelayUrl::parse(RELAY_1).unwrap();
         let relay2 = RelayUrl::parse(RELAY_2).unwrap();
 
-        let key = SecretKey::generate();
+        let key = generate_encryption_key();
         let image = "http://blossom_test:4443/fake_img.png";
 
         NostrGroupDataExtension::new(
@@ -449,18 +452,18 @@ mod tests {
 
         // Test setting image URL
         let image_url = Some("https://example.com/image.png".to_string());
-        extension.set_image(image_url.clone());
-        assert_eq!(extension.image(), image_url.as_deref());
+        extension.set_image_url(image_url.clone());
+        assert_eq!(extension.image_url(), image_url.as_deref());
 
         // Test setting image key
-        let image_key = Some(SecretKey::generate());
-        extension.set_image_key(image_key);
+        let image_key = generate_encryption_key();
+        extension.set_image_key(Some(image_key));
         assert!(extension.image_key().is_some());
 
         // Test clearing image
-        extension.set_image(None);
+        extension.set_image_url(None);
         extension.set_image_key(None);
-        assert!(extension.image().is_none());
+        assert!(extension.image_url().is_none());
         assert!(extension.image_key().is_none());
     }
 
@@ -470,24 +473,20 @@ mod tests {
 
         // Set some image data
         let image_url = "https://example.com/test.png".to_string();
-        let image_key = SecretKey::generate();
-        let image_key_bytes = image_key.secret_bytes().to_vec();
+        let image_key = generate_encryption_key();
 
-        extension.set_image(Some(image_url.clone()));
-        extension.set_image_key(Some(image_key));
+        extension.set_image_url(Some(image_url.clone()));
+        extension.set_image_key(Some(image_key.clone()));
 
         // Convert to raw and back
         let raw = extension.as_raw();
         let reconstructed = NostrGroupDataExtension::from_raw(raw).unwrap();
 
-        assert_eq!(reconstructed.image(), Some(image_url.as_str()));
+        assert_eq!(reconstructed.image_url(), Some(image_url.as_str()));
         assert!(reconstructed.image_key().is_some());
         // We can't directly compare SecretKeys due to how they're implemented,
         // but we can verify the bytes are the same
-        assert_eq!(
-            reconstructed.image_key().unwrap().secret_bytes(),
-            &image_key_bytes[..]
-        );
+        assert_eq!(reconstructed.image_key().unwrap(), &image_key[..]);
     }
 
     // TODO: from_group_context and from_group methods would need more complex setup

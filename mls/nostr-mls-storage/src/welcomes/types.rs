@@ -40,6 +40,10 @@ pub struct Welcome {
     pub group_name: String,
     /// Group description (from NostrGroupDataExtension)
     pub group_description: String,
+    /// Group image url (from NostrGroupDataExtension)
+    pub group_image_url: Option<String>,
+    /// Group image key (from NostrGroupDataExtension)
+    pub group_image_key: Option<Vec<u8>>,
     /// Group admin pubkeys (from NostrGroupDataExtension)
     pub group_admin_pubkeys: BTreeSet<PublicKey>,
     /// Group relays (from NostrGroupDataExtension)

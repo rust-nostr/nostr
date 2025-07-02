@@ -145,6 +145,10 @@ pub struct Group {
     pub name: String,
     /// UTF-8 encoded (same value as the NostrGroupDataExtension)
     pub description: String,
+    /// UTF-8 encoded (same value as the NostrGroupDataExtension)
+    pub image_url: Option<String>,
+    /// Secret key of the image
+    pub image_key: Option<Vec<u8>>,
     /// Hex encoded (same value as the NostrGroupDataExtension)
     pub admin_pubkeys: BTreeSet<PublicKey>,
     /// Hex encoded Nostr event ID of the last message in the group
@@ -285,6 +289,8 @@ mod tests {
             nostr_group_id: [0u8; 32],
             name: "Test Group".to_string(),
             description: "Test Description".to_string(),
+            image_url: None,
+            image_key: None,
             admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
