@@ -20,7 +20,7 @@ use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
 use crate::error::Error;
 use crate::prelude::*;
-use crate::NostrMls;
+use crate::{util, NostrMls};
 
 /// Default number of epochs to look back when trying to decrypt messages with older exporter secrets
 const DEFAULT_EPOCH_LOOKBACK: u64 = 5;
@@ -495,7 +495,7 @@ where
         Ok(())
     }
 
-    /// Tries to decrypt a message using exporter secrets from multiple recent epochs
+    /// Tries to decrypt a message using exporter secrets from multiple recent epochs excluding the current one
     ///
     /// This helper method attempts to decrypt a message by trying exporter secrets from
     /// the most recent epoch backwards for a configurable number of epochs. This handles
@@ -504,8 +504,7 @@ where
     ///
     /// # Arguments
     ///
-    /// * `group_id` - The MLS group ID
-    /// * `current_epoch` - The current epoch of the group
+    /// * `mls_group` - The MLS group
     /// * `encrypted_content` - The NIP-44 encrypted message content
     /// * `max_epoch_lookback` - Maximum number of epochs to search backwards (default: 5)
     ///
@@ -513,16 +512,18 @@ where
     ///
     /// * `Ok(Vec<u8>)` - The decrypted message bytes
     /// * `Err(Error)` - If decryption fails with all available exporter secrets
-    fn try_decrypt_with_recent_epochs(
+    fn try_decrypt_with_past_epochs(
         &self,
-        group_id: &GroupId,
-        current_epoch: u64,
+        mls_group: &MlsGroup,
         encrypted_content: &str,
         max_epoch_lookback: u64,
     ) -> Result<Vec<u8>, Error> {
+        let group_id = mls_group.group_id();
+        let current_epoch: u64 = mls_group.epoch().as_u64();
+
         // Start from current epoch and go backwards
-        let start_epoch = current_epoch;
-        let end_epoch = current_epoch.saturating_sub(max_epoch_lookback);
+        let start_epoch: u64 = current_epoch.saturating_sub(1);
+        let end_epoch: u64 = start_epoch.saturating_sub(max_epoch_lookback);
 
         for epoch in (end_epoch..=start_epoch).rev() {
             tracing::debug!(
@@ -538,34 +539,25 @@ where
                 .get_group_exporter_secret(group_id, epoch)
                 .map_err(|e| Error::Group(e.to_string()))
             {
-                // Convert secret to nostr keys
-                if let Ok(secret_key) = SecretKey::from_slice(&secret.secret) {
-                    let export_nostr_keys = Keys::new(secret_key);
-
-                    // Try to decrypt with this epoch's secret
-                    match nip44::decrypt_to_bytes(
-                        export_nostr_keys.secret_key(),
-                        &export_nostr_keys.public_key,
-                        encrypted_content,
-                    ) {
-                        Ok(decrypted_bytes) => {
-                            tracing::debug!(
-                                target: "nostr_mls::messages::try_decrypt_with_recent_epochs",
-                                "Successfully decrypted message with epoch {} for group {:?}",
-                                epoch,
-                                group_id
-                            );
-                            return Ok(decrypted_bytes);
-                        }
-                        Err(e) => {
-                            tracing::trace!(
-                                target: "nostr_mls::messages::try_decrypt_with_recent_epochs",
-                                "Failed to decrypt with epoch {}: {:?}",
-                                epoch,
-                                e
-                            );
-                            // Continue to next epoch
-                        }
+                // Try to decrypt with this epoch's secret
+                match util::decrypt_with_exporter_secret(&secret, encrypted_content) {
+                    Ok(decrypted_bytes) => {
+                        tracing::debug!(
+                            target: "nostr_mls::messages::try_decrypt_with_recent_epochs",
+                            "Successfully decrypted message with epoch {} for group {:?}",
+                            epoch,
+                            group_id
+                        );
+                        return Ok(decrypted_bytes);
+                    }
+                    Err(e) => {
+                        tracing::trace!(
+                            target: "nostr_mls::messages::try_decrypt_with_recent_epochs",
+                            "Failed to decrypt with epoch {}: {:?}",
+                            epoch,
+                            e
+                        );
+                        // Continue to next epoch
                     }
                 }
             } else {
@@ -582,6 +574,38 @@ where
             "Failed to decrypt message with any exporter secret from epochs {} to {} for group {:?}",
             end_epoch, start_epoch, group_id
         )))
+    }
+
+    /// Try to decrypt using the current exporter secret and if fails try with the past ones until a max loopback of [`DEFAULT_EPOCH_LOOKBACK`].
+    fn try_decrypt_with_recent_epochs(
+        &self,
+        mls_group: &MlsGroup,
+        encrypted_content: &str,
+    ) -> Result<Vec<u8>, Error> {
+        // Get exporter secret for current epoch
+        let secret = self.exporter_secret(mls_group.group_id())?;
+
+        // Try to decrypt it for the current epoch
+        match util::decrypt_with_exporter_secret(&secret, encrypted_content) {
+            Ok(decrypted_bytes) => {
+                tracing::debug!(
+                    "Successfully decrypted message with current exporter secret for group {:?}",
+                    mls_group.group_id()
+                );
+                Ok(decrypted_bytes)
+            }
+            // Decryption failed using the current epoch exporter secret
+            Err(_) => {
+                tracing::debug!("Failed to decrypt message with current exporter secret. Trying with past ones.");
+
+                // Try with past exporter secrets
+                self.try_decrypt_with_past_epochs(
+                    mls_group,
+                    encrypted_content,
+                    DEFAULT_EPOCH_LOOKBACK,
+                )
+            }
+        }
     }
 
     /// Processes an incoming encrypted Nostr event containing an MLS message
@@ -638,15 +662,9 @@ where
             .map_err(|e| Error::Group(e.to_string()))?
             .ok_or(Error::GroupNotFound)?;
 
-        let current_epoch = mls_group.epoch().as_u64();
-
         // Try to decrypt message with recent exporter secrets (fallback across epochs)
-        let message_bytes: Vec<u8> = self.try_decrypt_with_recent_epochs(
-            &group.mls_group_id,
-            current_epoch,
-            &event.content,
-            DEFAULT_EPOCH_LOOKBACK,
-        )?;
+        let message_bytes: Vec<u8> =
+            self.try_decrypt_with_recent_epochs(&mls_group, &event.content)?;
 
         match self.process_message_for_group(&mut mls_group, &message_bytes) {
             Ok(ProcessedMessageContent::ApplicationMessage(application_message)) => {

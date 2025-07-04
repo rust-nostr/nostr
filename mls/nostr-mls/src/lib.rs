@@ -21,6 +21,7 @@ pub mod groups;
 pub mod key_packages;
 pub mod messages;
 pub mod prelude;
+mod util;
 pub mod welcomes;
 
 use self::constant::{DEFAULT_CIPHERSUITE, REQUIRED_EXTENSIONS};
