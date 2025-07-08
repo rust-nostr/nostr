@@ -2,6 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::time::Duration;
 use nostr_sdk::prelude::*;
 
 #[tokio::main]
@@ -11,9 +12,7 @@ async fn main() -> Result<()> {
     let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
     let client = Client::new(keys);
 
-    client.add_relay("wss://relay.damus.io").await?;
-    client.add_relay("wss://nostr.wine").await?;
-    client.add_relay("wss://relay.rip").await?;
+    client.add_relay("ws://127.0.0.1:17445").await?;
 
     client.connect().await;
 
@@ -23,16 +22,14 @@ async fn main() -> Result<()> {
     println!("Event ID: {}", output.id().to_bech32()?);
     println!("Sent to: {:?}", output.success);
     println!("Not sent to: {:?}", output.failed);
-
-    // Create a text note POW event to relays
-    let builder = EventBuilder::text_note("POW text note from rust-nostr").pow(20);
-    client.send_event_builder(builder).await?;
-
-    // Send a text note POW event to specific relays
-    let builder = EventBuilder::text_note("POW text note from rust-nostr 16").pow(16);
-    client
-        .send_event_builder_to(["wss://relay.damus.io", "wss://relay.rip"], builder)
+    
+    let events = client
+        .fetch_events(Filter::new().kind(Kind::TextNote), Duration::from_secs(10))
         .await?;
 
+    for event in events {
+        println!("{}", event.as_json())
+    }
+    
     Ok(())
 }

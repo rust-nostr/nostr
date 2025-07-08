@@ -1,23 +1,20 @@
+// Copyright (c) 2022-2023 Yuki Kishimoto
+// Copyright (c) 2023-2025 Rust Nostr Developers
+// Distributed under the MIT software license
+
+//! Nostr SQL database
+
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![doc = include_str!("../README.md")]
 
-mod migrations;
-#[allow(dead_code)] // TODO: to remove when also SQLite and MySQL are implemented
-mod model;
-#[cfg(feature = "postgres")]
-mod postgres;
-#[allow(dead_code)] // TODO: to remove when also SQLite and MySQL are implemented
-mod query;
-mod schema;
+#[cfg(not(any(feature = "sqlite", feature = "postgres", feature = "mysql")))]
+compile_error!("At least one database backend must be enabled");
 
-#[cfg(feature = "mysql")]
-pub use migrations::mysql::run_migrations;
-#[cfg(feature = "postgres")]
-pub use migrations::postgres::run_migrations;
-#[cfg(feature = "sqlite")]
-pub use migrations::sqlite::run_migrations;
-#[cfg(feature = "postgres")]
-pub use postgres::{postgres_connection_pool, NostrPostgres};
+mod model;
+pub mod error;
+pub mod db;
+
+pub use self::db::{NostrSql, NostrSqlBackend};

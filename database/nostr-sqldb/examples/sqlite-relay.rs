@@ -13,14 +13,8 @@ use nostr_sqldb::{NostrSql, NostrSqlBackend};
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let backend = NostrSqlBackend::Postgres {
-        host: String::from("localhost"),
-        port: 5432,
-        username: Some(String::from("postgres")),
-        password: Some(String::from("password")),
-        database: String::from("nostr"),
-    };
-    
+    let backend = NostrSqlBackend::sqlite("nostr.db");
+
     // Create a nostr db instance and run pending db migrations if any
     let db = NostrSql::new(backend).await?;
 
