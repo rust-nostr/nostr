@@ -2,9 +2,6 @@
 
 // @generated
 
-use core::cmp::Ordering;
-use core::mem;
-
 extern crate flatbuffers;
 use self::flatbuffers::{EndianScalar, Follow};
 
@@ -37,7 +34,6 @@ pub mod event_fbs {
     impl flatbuffers::SimpleToVerifyInSlice for Fixed32Bytes {}
     impl<'a> flatbuffers::Follow<'a> for Fixed32Bytes {
         type Inner = &'a Fixed32Bytes;
-
         #[inline]
         unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
             <&'a Fixed32Bytes>::follow(buf, loc)
@@ -45,7 +41,6 @@ pub mod event_fbs {
     }
     impl<'a> flatbuffers::Follow<'a> for &'a Fixed32Bytes {
         type Inner = &'a Fixed32Bytes;
-
         #[inline]
         unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
             flatbuffers::follow_cast_ref::<Fixed32Bytes>(buf, loc)
@@ -53,14 +48,17 @@ pub mod event_fbs {
     }
     impl<'b> flatbuffers::Push for Fixed32Bytes {
         type Output = Fixed32Bytes;
-
         #[inline]
         unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
             let src = ::core::slice::from_raw_parts(
                 self as *const Fixed32Bytes as *const u8,
-                Self::size(),
+                <Self as flatbuffers::Push>::size(),
             );
             dst.copy_from_slice(src);
+        }
+        #[inline]
+        fn alignment() -> flatbuffers::PushAlignment {
+            flatbuffers::PushAlignment::new(1)
         }
     }
 
@@ -118,7 +116,6 @@ pub mod event_fbs {
     impl flatbuffers::SimpleToVerifyInSlice for Fixed64Bytes {}
     impl<'a> flatbuffers::Follow<'a> for Fixed64Bytes {
         type Inner = &'a Fixed64Bytes;
-
         #[inline]
         unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
             <&'a Fixed64Bytes>::follow(buf, loc)
@@ -126,7 +123,6 @@ pub mod event_fbs {
     }
     impl<'a> flatbuffers::Follow<'a> for &'a Fixed64Bytes {
         type Inner = &'a Fixed64Bytes;
-
         #[inline]
         unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
             flatbuffers::follow_cast_ref::<Fixed64Bytes>(buf, loc)
@@ -134,14 +130,17 @@ pub mod event_fbs {
     }
     impl<'b> flatbuffers::Push for Fixed64Bytes {
         type Output = Fixed64Bytes;
-
         #[inline]
         unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
             let src = ::core::slice::from_raw_parts(
                 self as *const Fixed64Bytes as *const u8,
-                Self::size(),
+                <Self as flatbuffers::Push>::size(),
             );
             dst.copy_from_slice(src);
+        }
+        #[inline]
+        fn alignment() -> flatbuffers::PushAlignment {
+            flatbuffers::PushAlignment::new(1)
         }
     }
 
@@ -188,7 +187,6 @@ pub mod event_fbs {
 
     impl<'a> flatbuffers::Follow<'a> for StringVector<'a> {
         type Inner = StringVector<'a>;
-
         #[inline]
         unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
             Self {
@@ -204,10 +202,14 @@ pub mod event_fbs {
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
             StringVector { _tab: table }
         }
-
         #[allow(unused_mut)]
-        pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
-            _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        pub fn create<
+            'bldr: 'args,
+            'args: 'mut_bldr,
+            'mut_bldr,
+            A: flatbuffers::Allocator + 'bldr,
+        >(
+            _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
             args: &'args StringVectorArgs<'args>,
         ) -> flatbuffers::WIPOffset<StringVector<'bldr>> {
             let mut builder = StringVectorBuilder::new(_fbb);
@@ -259,11 +261,11 @@ pub mod event_fbs {
         }
     }
 
-    pub struct StringVectorBuilder<'a: 'b, 'b> {
-        fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    pub struct StringVectorBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+        fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
         start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
     }
-    impl<'a: 'b, 'b> StringVectorBuilder<'a, 'b> {
+    impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> StringVectorBuilder<'a, 'b, A> {
         #[inline]
         pub fn add_data(
             &mut self,
@@ -274,18 +276,16 @@ pub mod event_fbs {
             self.fbb_
                 .push_slot_always::<flatbuffers::WIPOffset<_>>(StringVector::VT_DATA, data);
         }
-
         #[inline]
         pub fn new(
-            _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-        ) -> StringVectorBuilder<'a, 'b> {
+            _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+        ) -> StringVectorBuilder<'a, 'b, A> {
             let start = _fbb.start_table();
             StringVectorBuilder {
                 fbb_: _fbb,
                 start_: start,
             }
         }
-
         #[inline]
         pub fn finish(self) -> flatbuffers::WIPOffset<StringVector<'a>> {
             let o = self.fbb_.end_table(self.start_);
@@ -309,7 +309,6 @@ pub mod event_fbs {
 
     impl<'a> flatbuffers::Follow<'a> for Event<'a> {
         type Inner = Event<'a>;
-
         #[inline]
         unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
             Self {
@@ -319,22 +318,26 @@ pub mod event_fbs {
     }
 
     impl<'a> Event<'a> {
-        pub const VT_CONTENT: flatbuffers::VOffsetT = 14;
-        pub const VT_CREATED_AT: flatbuffers::VOffsetT = 8;
         pub const VT_ID: flatbuffers::VOffsetT = 4;
-        pub const VT_KIND: flatbuffers::VOffsetT = 10;
         pub const VT_PUBKEY: flatbuffers::VOffsetT = 6;
-        pub const VT_SIG: flatbuffers::VOffsetT = 16;
+        pub const VT_CREATED_AT: flatbuffers::VOffsetT = 8;
+        pub const VT_KIND: flatbuffers::VOffsetT = 10;
         pub const VT_TAGS: flatbuffers::VOffsetT = 12;
+        pub const VT_CONTENT: flatbuffers::VOffsetT = 14;
+        pub const VT_SIG: flatbuffers::VOffsetT = 16;
 
         #[inline]
         pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
             Event { _tab: table }
         }
-
         #[allow(unused_mut)]
-        pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
-            _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        pub fn create<
+            'bldr: 'args,
+            'args: 'mut_bldr,
+            'mut_bldr,
+            A: flatbuffers::Allocator + 'bldr,
+        >(
+            _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
             args: &'args EventArgs<'args>,
         ) -> flatbuffers::WIPOffset<Event<'bldr>> {
             let mut builder = EventBuilder::new(_fbb);
@@ -365,7 +368,6 @@ pub mod event_fbs {
             // which contains a valid value in this slot
             unsafe { self._tab.get::<Fixed32Bytes>(Event::VT_ID, None) }
         }
-
         #[inline]
         pub fn pubkey(&self) -> Option<&'a Fixed32Bytes> {
             // Safety:
@@ -373,7 +375,6 @@ pub mod event_fbs {
             // which contains a valid value in this slot
             unsafe { self._tab.get::<Fixed32Bytes>(Event::VT_PUBKEY, None) }
         }
-
         #[inline]
         pub fn created_at(&self) -> u64 {
             // Safety:
@@ -381,7 +382,6 @@ pub mod event_fbs {
             // which contains a valid value in this slot
             unsafe { self._tab.get::<u64>(Event::VT_CREATED_AT, Some(0)).unwrap() }
         }
-
         #[inline]
         pub fn kind(&self) -> u64 {
             // Safety:
@@ -389,7 +389,6 @@ pub mod event_fbs {
             // which contains a valid value in this slot
             unsafe { self._tab.get::<u64>(Event::VT_KIND, Some(0)).unwrap() }
         }
-
         #[inline]
         pub fn tags(
             &self,
@@ -404,7 +403,6 @@ pub mod event_fbs {
                 >>(Event::VT_TAGS, None)
             }
         }
-
         #[inline]
         pub fn content(&self) -> Option<&'a str> {
             // Safety:
@@ -415,7 +413,6 @@ pub mod event_fbs {
                     .get::<flatbuffers::ForwardsUOffset<&str>>(Event::VT_CONTENT, None)
             }
         }
-
         #[inline]
         pub fn sig(&self) -> Option<&'a Fixed64Bytes> {
             // Safety:
@@ -478,34 +475,30 @@ pub mod event_fbs {
         }
     }
 
-    pub struct EventBuilder<'a: 'b, 'b> {
-        fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    pub struct EventBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+        fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
         start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
     }
-    impl<'a: 'b, 'b> EventBuilder<'a, 'b> {
+    impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> EventBuilder<'a, 'b, A> {
         #[inline]
         pub fn add_id(&mut self, id: &Fixed32Bytes) {
             self.fbb_
                 .push_slot_always::<&Fixed32Bytes>(Event::VT_ID, id);
         }
-
         #[inline]
         pub fn add_pubkey(&mut self, pubkey: &Fixed32Bytes) {
             self.fbb_
                 .push_slot_always::<&Fixed32Bytes>(Event::VT_PUBKEY, pubkey);
         }
-
         #[inline]
         pub fn add_created_at(&mut self, created_at: u64) {
             self.fbb_
                 .push_slot::<u64>(Event::VT_CREATED_AT, created_at, 0);
         }
-
         #[inline]
         pub fn add_kind(&mut self, kind: u64) {
             self.fbb_.push_slot::<u64>(Event::VT_KIND, kind, 0);
         }
-
         #[inline]
         pub fn add_tags(
             &mut self,
@@ -516,28 +509,24 @@ pub mod event_fbs {
             self.fbb_
                 .push_slot_always::<flatbuffers::WIPOffset<_>>(Event::VT_TAGS, tags);
         }
-
         #[inline]
         pub fn add_content(&mut self, content: flatbuffers::WIPOffset<&'b str>) {
             self.fbb_
                 .push_slot_always::<flatbuffers::WIPOffset<_>>(Event::VT_CONTENT, content);
         }
-
         #[inline]
         pub fn add_sig(&mut self, sig: &Fixed64Bytes) {
             self.fbb_
                 .push_slot_always::<&Fixed64Bytes>(Event::VT_SIG, sig);
         }
-
         #[inline]
-        pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> EventBuilder<'a, 'b> {
+        pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> EventBuilder<'a, 'b, A> {
             let start = _fbb.start_table();
             EventBuilder {
                 fbb_: _fbb,
                 start_: start,
             }
         }
-
         #[inline]
         pub fn finish(self) -> flatbuffers::WIPOffset<Event<'a>> {
             let o = self.fbb_.end_table(self.start_);
@@ -621,16 +610,16 @@ pub mod event_fbs {
         flatbuffers::size_prefixed_root_unchecked::<Event>(buf)
     }
     #[inline]
-    pub fn finish_event_buffer<'a, 'b>(
-        fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    pub fn finish_event_buffer<'a, 'b, A: flatbuffers::Allocator + 'a>(
+        fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
         root: flatbuffers::WIPOffset<Event<'a>>,
     ) {
         fbb.finish(root, None);
     }
 
     #[inline]
-    pub fn finish_size_prefixed_event_buffer<'a, 'b>(
-        fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    pub fn finish_size_prefixed_event_buffer<'a, 'b, A: flatbuffers::Allocator + 'a>(
+        fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
         root: flatbuffers::WIPOffset<Event<'a>>,
     ) {
         fbb.finish_size_prefixed(root, None);
