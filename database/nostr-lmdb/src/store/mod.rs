@@ -27,7 +27,7 @@ pub struct Store {
 }
 
 impl Store {
-    pub fn open<P>(path: P) -> Result<Store, Error>
+    pub(super) fn open<P>(path: P, map_size: usize) -> Result<Store, Error>
     where
         P: AsRef<Path>,
     {
@@ -36,7 +36,7 @@ impl Store {
         // Create the directory if it doesn't exist
         fs::create_dir_all(path)?;
 
-        let db: Lmdb = Lmdb::new(path)?;
+        let db: Lmdb = Lmdb::new(path, map_size)?;
         let ingester: Sender<IngesterItem> = Ingester::run(db.clone());
 
         Ok(Self { db, ingester })

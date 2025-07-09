@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Added
+
+- Add NostrLmdbBuilder and allow setting a custom map size (https://github.com/rust-nostr/nostr/pull/970)
+
 ## v0.42.0 - 2025/05/20
 
 No notable changes in this release.

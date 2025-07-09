@@ -10,13 +10,64 @@
 #![warn(rustdoc::bare_urls)]
 #![allow(clippy::mutable_key_type)]
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use nostr_database::prelude::*;
 
 mod store;
 
 use self::store::Store;
+
+// 64-bit
+#[cfg(target_pointer_width = "64")]
+const MAP_SIZE: usize = 1024 * 1024 * 1024 * 32; // 32GB
+
+// 32-bit
+#[cfg(target_pointer_width = "32")]
+const MAP_SIZE: usize = 0xFFFFF000; // 4GB (2^32-4096)
+
+/// Nostr LMDB database builder
+#[derive(Debug, Clone)]
+pub struct NostrLmdbBuilder {
+    /// Database path
+    pub path: PathBuf,
+    /// Custom map size
+    ///
+    /// By default, the following map size is used:
+    /// - 32GB for 64-bit arch
+    /// - 4GB for 32-bit arch
+    pub map_size: Option<usize>,
+}
+
+impl NostrLmdbBuilder {
+    /// New LMDb builder
+    pub fn new<P>(path: P) -> Self
+    where
+        P: AsRef<Path>,
+    {
+        Self {
+            path: path.as_ref().to_path_buf(),
+            map_size: None,
+        }
+    }
+
+    /// Map size
+    ///
+    /// By default, the following map size is used:
+    /// - 32GB for 64-bit arch
+    /// - 4GB for 32-bit arch
+    pub fn map_size(mut self, map_size: usize) -> Self {
+        self.map_size = Some(map_size);
+        self
+    }
+
+    /// Build
+    pub fn build(self) -> Result<NostrLMDB, DatabaseError> {
+        let map_size: usize = self.map_size.unwrap_or(MAP_SIZE);
+        let db: Store = Store::open(self.path, map_size).map_err(DatabaseError::backend)?;
+        Ok(NostrLMDB { db })
+    }
+}
 
 /// LMDB Nostr Database
 #[derive(Debug)]
@@ -31,9 +82,16 @@ impl NostrLMDB {
     where
         P: AsRef<Path>,
     {
-        Ok(Self {
-            db: Store::open(path).map_err(DatabaseError::backend)?,
-        })
+        Self::builder(path).build()
+    }
+
+    /// Get a new builder
+    #[inline]
+    pub fn builder<P>(path: P) -> NostrLmdbBuilder
+    where
+        P: AsRef<Path>,
+    {
+        NostrLmdbBuilder::new(path)
     }
 }
 
