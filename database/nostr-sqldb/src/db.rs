@@ -10,9 +10,12 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 #[cfg(feature = "sqlite")]
-use sqlx::sqlite::Sqlite;
-use sqlx::{AnyPool, Any, Transaction, QueryBuilder};
-use sqlx::migrate::MigrateDatabase;
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
+#[cfg(feature = "postgres")]
+use sqlx::postgres::{PgConnectOptions, PgPool};
+#[cfg(feature = "mysql")]
+use sqlx::mysql::{MySql, MySqlPool};
+use sqlx::{Transaction, QueryBuilder};
 use nostr_database::prelude::*;
 use tokio::sync::Mutex;
 
@@ -66,21 +69,20 @@ impl NostrSqlBackend {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum PoolKind {
+#[derive(Debug, Clone)]
+enum Db {
     #[cfg(feature = "sqlite")]
-    Sqlite,
+    Sqlite(SqlitePool),
     #[cfg(feature = "postgres")]
-    Postgres,
+    Postgres(PgPool),
     #[cfg(feature = "mysql")]
-    MySql,
+    MySql(MySqlPool),
 }
 
 /// Nostr SQL database
 #[derive(Clone)]
 pub struct NostrSql {
-    pool: AnyPool,
-    kind: PoolKind,
+    pool: Db,
     fbb: Arc<Mutex<FlatBufferBuilder<'static>>>,
 }
 
@@ -88,7 +90,6 @@ impl fmt::Debug for NostrSql {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("NostrSql")
             .field("pool", &self.pool)
-            .field("kind", &self.kind)
             .finish()
     }
 }
@@ -96,45 +97,45 @@ impl fmt::Debug for NostrSql {
 impl NostrSql {
     /// Connect to a SQL database
     pub async fn new(backend: NostrSqlBackend) -> Result<Self, Error> {
-        // Install drivers
-        sqlx::any::install_default_drivers();
-
-        let (pool, kind) = match backend {
+        let pool = match backend {
             #[cfg(feature = "sqlite")]
             NostrSqlBackend::Sqlite {path} => {
-                let uri: Cow<str> = match path {
-                    Some(path) => Cow::Owned(format!("sqlite://{}", path.display())),
-                    None => Cow::Borrowed("sqlite:memory:"),
+                let mut opts: SqliteConnectOptions = SqliteConnectOptions::new().create_if_missing(true);
+                
+                match path {
+                    Some(path) => opts = opts.filename(path),
+                    None => opts = opts.in_memory(true),
                 };
-
-                if !Sqlite::database_exists(&uri).await? {
-                    Sqlite::create_database(&uri).await?;
-                }
-
-                let pool: AnyPool = AnyPool::connect(&uri).await?;
+                
+                
+                let pool: SqlitePool = SqlitePool::connect_with(opts).await?;
 
                 sqlx::migrate!("migrations/sqlite").run(&pool).await?;
 
-                (pool, PoolKind::Sqlite)
+                Db::Sqlite(pool)
             }
             #[cfg(feature = "postgres")]
             NostrSqlBackend::Postgres {host, port, username, password, database } => {
-                let uri: String = match (username, password) {
-                    (Some(username), Some(password)) => format!("postgres://{username}:{password}@{host}:{port}/{database}"),
-                    _ => format!("postgres://{host}:{port}/{database}")
-                };
+                let mut opts: PgConnectOptions = PgConnectOptions::new_without_pgpass().host(&host).port(port).database(&database);
+                
+                if let Some(username) = username {
+                    opts = opts.username(&username);
+                }
 
-                let pool: AnyPool = AnyPool::connect(&uri).await?;
+                if let Some(password) = password {
+                    opts = opts.password(&password);
+                }
+
+                let pool: PgPool = PgPool::connect_with(opts).await?;
 
                 sqlx::migrate!("migrations/postgres").run(&pool).await?;
 
-                (pool, PoolKind::Postgres)
+                Db::Postgres(pool)
             }
         };
 
         Ok(Self {
             pool,
-            kind,
             fbb: Arc::new(Mutex::new(FlatBufferBuilder::new())),
         })
     }

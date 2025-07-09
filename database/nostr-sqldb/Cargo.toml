@@ -27,7 +27,7 @@ mysql = ["sqlx/mysql", "sqlx/tls-rustls-ring-webpki"]
 [dependencies]
 nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
-sqlx = { version = "0.8", features = ["any", "migrate", "runtime-tokio"] }
+sqlx = { version = "0.8", features = ["migrate", "runtime-tokio"] }
 tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
