@@ -8,11 +8,11 @@ homepage.workspace = true
 repository.workspace = true
 license.workspace = true
 readme = "README.md"
-rust-version.workspace = true
+rust-version = "1.73.0"
 keywords = ["nostr", "nip55", "android", "signer"]
 
 [dependencies]
 jni = "0.21"
-jvm-getter = "0.1"
+jvm-getter = "0.1" # MSRV: 1.73.0
 nostr = { workspace = true, features = ["std"] }
 once_cell.workspace = true
