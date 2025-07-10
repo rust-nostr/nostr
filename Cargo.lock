@@ -2831,6 +2831,8 @@ dependencies = [
  "jvm-getter",
  "nostr",
  "once_cell",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

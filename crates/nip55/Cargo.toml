@@ -16,3 +16,5 @@ jni = "0.21"
 jvm-getter = "0.1" # MSRV: 1.73.0
 nostr = { workspace = true, features = ["std"] }
 once_cell.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true, features = ["std"] }
