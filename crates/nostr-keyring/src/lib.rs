@@ -15,7 +15,7 @@ use std::fmt;
 
 #[cfg(feature = "async")]
 use async_utility::{task, tokio};
-use keyring::Entry;
+pub use keyring::{Entry, Error as KeyringError};
 use nostr::{key, Keys, SecretKey};
 
 pub mod prelude;
@@ -27,7 +27,7 @@ pub enum Error {
     #[cfg(feature = "async")]
     Join(tokio::task::JoinError),
     /// Keyring error
-    Keyring(keyring::Error),
+    Keyring(KeyringError),
     /// Nostr keys error
     Keys(key::Error),
 }
@@ -52,8 +52,8 @@ impl From<tokio::task::JoinError> for Error {
     }
 }
 
-impl From<keyring::Error> for Error {
-    fn from(e: keyring::Error) -> Self {
+impl From<KeyringError> for Error {
+    fn from(e: KeyringError) -> Self {
         Self::Keyring(e)
     }
 }
