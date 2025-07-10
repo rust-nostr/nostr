@@ -62,6 +62,7 @@ buildargs=(
 )
 
 skip_msrv=(
+    "-p nip55"                            # MSRV: 1.73.0
     "-p nostr-lmdb"                       # MSRV: 1.72.0
     "-p nostr-mls-storage"                # MSRV: 1.74.0
     "-p nostr-mls-memory-storage"         # MSRV: 1.74.0
