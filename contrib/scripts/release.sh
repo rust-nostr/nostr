@@ -5,6 +5,7 @@ set -euo pipefail
 args=(
     "-p nostr"
     "-p nip07"
+    "-p nip55"
     "-p nostr-database"
     "-p nostr-lmdb"
     "-p nostr-mls-storage"
