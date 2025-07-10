@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Changed
+
+- Re-export `keyring::Entry` and `keyring::Error` (https://github.com/rust-nostr/nostr/pull/974)
+
 ## v0.42.1 - 2025/06/28
 
 - Fix keys persistence between OS restarts on Linux (https://github.com/rust-nostr/nostr/pull/942)
