@@ -265,7 +265,7 @@ impl InnerLocalRelay {
                     if let Ok(event) = event {
                          // Iter subscriptions
                         for (subscription_id, filter) in session.subscriptions.iter() {
-                            if filter.match_event(&event) {
+                            if filter.match_event(&event, MatchEventOptions::new()) {
                                 send_msg(&mut tx, RelayMessage::Event{
                                     subscription_id: Cow::Borrowed(subscription_id),
                                     event: Cow::Borrowed(&event)
