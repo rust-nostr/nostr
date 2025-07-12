@@ -11,6 +11,7 @@ use std::iter;
 use std::ops::Deref;
 use std::sync::Arc;
 
+use nostr::filter::MatchEventOptions;
 use nostr::nips::nip01::{Coordinate, CoordinateBorrow};
 use nostr::{Alphabet, Event, EventId, Filter, Kind, PublicKey, SingleLetterTag, Timestamp};
 use tokio::sync::{OwnedRwLockReadGuard, RwLock};
@@ -537,9 +538,10 @@ impl InternalDatabaseHelper {
     /// Generic query
     #[inline]
     fn internal_generic_query(&self, filter: Filter) -> impl Iterator<Item = &DatabaseEvent> {
-        self.events
-            .iter()
-            .filter(move |event| !self.deleted_ids.contains(&event.id) && filter.match_event(event))
+        self.events.iter().filter(move |event| {
+            !self.deleted_ids.contains(&event.id)
+                && filter.match_event(event, MatchEventOptions::new())
+        })
     }
 
     fn internal_query(&self, filter: Filter) -> InternalQueryResult {
