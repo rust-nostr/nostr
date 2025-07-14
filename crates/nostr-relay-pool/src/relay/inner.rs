@@ -113,6 +113,7 @@ impl RelayChannels {
 struct SubscriptionData {
     pub filter: Filter,
     pub subscribed_at: Timestamp,
+    pub is_auto_closing: bool,
     /// Subscription closed by relay
     pub closed: bool,
 }
@@ -123,6 +124,7 @@ impl Default for SubscriptionData {
             // TODO: use `Option<Filter>`?
             filter: Filter::new(),
             subscribed_at: Timestamp::zero(),
+            is_auto_closing: false,
             closed: false,
         }
     }
@@ -279,17 +281,35 @@ impl InnerRelay {
         Ok(())
     }
 
+    /// Returns all non-auto-closing subscriptions
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
         let subscription = self.atomic.subscriptions.read().await;
         subscription
             .iter()
-            .map(|(k, v)| (k.clone(), v.filter.clone()))
+            .filter_map(|(k, v)| (!v.is_auto_closing).then_some((k.clone(), v.filter.clone())))
             .collect()
     }
 
     pub async fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
         let subscription = self.atomic.subscriptions.read().await;
         subscription.get(id).map(|d| d.filter.clone())
+    }
+
+    async fn remove_subscription(&self, id: &SubscriptionId) {
+        let mut subscriptions = self.atomic.subscriptions.write().await;
+        subscriptions.remove(id);
+    }
+
+    async fn subscription_exists(&self, id: &SubscriptionId) -> bool {
+        let subscriptions = self.atomic.subscriptions.read().await;
+        subscriptions.contains_key(id)
+    }
+
+    pub(crate) async fn add_auto_close(&self, id: SubscriptionId, filter: Filter) {
+        let mut subscriptions = self.atomic.subscriptions.write().await;
+        let data: &mut SubscriptionData = subscriptions.entry(id).or_default();
+        data.filter = filter;
+        data.is_auto_closing = true;
     }
 
     pub(crate) async fn update_subscription(
@@ -1074,6 +1094,16 @@ impl InnerRelay {
         subscription_id: SubscriptionId,
         event: Event,
     ) -> Result<Option<RelayMessage<'static>>, Error> {
+        // Check if the subscription id is exist
+        if !self.subscription_exists(&subscription_id).await {
+            return Err(Error::SubscriptionNotFound);
+        }
+
+        // Check if the event is expired
+        if event.is_expired() {
+            return Err(Error::EventExpired);
+        }
+
         // Check event size
         if let Some(max_size) = self.opts.limits.events.get_max_size(&event.kind) {
             let size: usize = event.as_json().len();
@@ -1093,11 +1123,6 @@ impl InnerRelay {
                     max_size: max_num_tags,
                 });
             }
-        }
-
-        // Check if the event is expired
-        if event.is_expired() {
-            return Err(Error::EventExpired);
         }
 
         // Check event admission policy
@@ -1338,6 +1363,8 @@ impl InnerRelay {
     ) {
         let relay = self.clone(); // <-- FULL RELAY CLONE HERE
         task::spawn(async move {
+            relay.add_auto_close(id.clone(), filter.clone()).await;
+
             // Check if CLOSE needed
             let to_close: bool = match relay
                 .handle_auto_closing(&id, &filter, opts, notifications, &activity)
@@ -1365,12 +1392,15 @@ impl InnerRelay {
             drop(activity);
 
             // Close subscription
-            if to_close {
+            let send_result = if to_close {
                 tracing::debug!(id = %id, "Auto-closing subscription.");
-                relay.send_msg(ClientMessage::Close(Cow::Owned(id)))?;
-            }
+                relay.send_msg(ClientMessage::Close(Cow::Borrowed(&id)))
+            } else {
+                Ok(())
+            };
 
-            Ok::<(), Error>(())
+            relay.remove_subscription(&id).await;
+            send_result
         });
     }
 
@@ -1607,14 +1637,25 @@ impl InnerRelay {
 
     pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<(), Error> {
         let mut subscriptions = self.atomic.subscriptions.write().await;
+
+        if let Some(data) = subscriptions.get(id) {
+            if data.is_auto_closing {
+                return Ok(());
+            }
+        }
+
         self._unsubscribe(&mut subscriptions, id)
     }
 
     pub async fn unsubscribe_all(&self) -> Result<(), Error> {
         let mut subscriptions = self.atomic.subscriptions.write().await;
 
-        // All IDs
-        let ids: Vec<SubscriptionId> = subscriptions.keys().cloned().collect();
+        // All non-auto-closing IDs
+        let ids: Vec<SubscriptionId> = subscriptions
+            .iter()
+            .filter_map(|(s, data)| (!data.is_auto_closing).then_some(s))
+            .cloned()
+            .collect();
 
         // Unsubscribe
         for id in ids.into_iter() {
@@ -1839,6 +1880,8 @@ impl InnerRelay {
             id_size: None,
             initial_message: Cow::Owned(hex::encode(initial_message)),
         };
+        self.add_auto_close(sub_id.clone(), filter.clone()).await;
+
         self.send_msg(open_msg)?;
 
         // Check if negentropy is supported
@@ -1959,6 +2002,7 @@ impl InnerRelay {
                 break;
             }
         }
+        self.remove_subscription(&sub_id).await;
 
         tracing::info!(url = %self.url, "Negentropy reconciliation terminated.");
 

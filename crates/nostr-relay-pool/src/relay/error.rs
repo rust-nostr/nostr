@@ -59,6 +59,8 @@ pub enum Error {
     NotConnected,
     /// Relay is sleeping
     Sleeping,
+    /// Relay subscription id not exist
+    SubscriptionNotFound,
     /// Relay banned
     Banned,
     /// Connection rejected
@@ -146,6 +148,7 @@ impl fmt::Display for Error {
             }
             Self::NotReady => write!(f, "relay is initialized but not ready"),
             Self::NotConnected => write!(f, "relay not connected"),
+            Self::SubscriptionNotFound => write!(f, "relay subscription id not exist"),
             Self::Sleeping => write!(f, "relay is sleeping"),
             Self::Banned => write!(f, "relay banned"),
             Self::ConnectionRejected { reason } => {
