@@ -99,3 +99,15 @@ and send a follow-up to remove it as part of the next release cycle.
 Install https://github.com/casey/just and use `just precommit` or `just check` 
 to format and check the code before committing.
 This is also enforced by the CI.
+
+### Terminology
+
+Concept ACK - Agree with the idea and overall direction, but haven't reviewed the code changes or tested them.
+
+utACK (untested ACK) - Reviewed and agree with the code changes but haven't actually tested them.
+
+tACK (tested ACK) - Reviewed the code changes and have verified the functionality or bug fix.
+
+ACK - A loose ACK can be confusing. It's best to avoid them unless it's a documentation/comment only change in which case there is nothing to test/verify; therefore the tested/untested distinction is not there.
+
+NACK - Disagree with the code changes/concept. Should be accompanied by an explanation.
