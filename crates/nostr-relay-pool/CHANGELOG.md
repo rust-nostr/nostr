@@ -35,6 +35,7 @@
 - Refine notification sending depending on event database saving status (https://github.com/rust-nostr/nostr/pull/911)
 - Simplify received message logging (https://github.com/rust-nostr/nostr/pull/945)
 - Trim incoming relay messages before processing
+- Verify that the received events belong to a subscription (https://github.com/rust-nostr/nostr/pull/979)
 
 ### Added
 

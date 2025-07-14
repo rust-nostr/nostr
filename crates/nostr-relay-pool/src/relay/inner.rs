@@ -113,6 +113,7 @@ impl RelayChannels {
 struct SubscriptionData {
     pub filter: Filter,
     pub subscribed_at: Timestamp,
+    pub is_auto_closing: bool,
     /// Subscription closed by relay
     pub closed: bool,
 }
@@ -123,6 +124,7 @@ impl Default for SubscriptionData {
             // TODO: use `Option<Filter>`?
             filter: Filter::new(),
             subscribed_at: Timestamp::zero(),
+            is_auto_closing: false,
             closed: false,
         }
     }
@@ -279,17 +281,36 @@ impl InnerRelay {
         Ok(())
     }
 
+    /// Returns all long-lived (non-auto-closing) subscriptions
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
         let subscription = self.atomic.subscriptions.read().await;
         subscription
             .iter()
-            .map(|(k, v)| (k.clone(), v.filter.clone()))
+            .filter_map(|(k, v)| (!v.is_auto_closing).then_some((k.clone(), v.filter.clone())))
             .collect()
     }
 
     pub async fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
         let subscription = self.atomic.subscriptions.read().await;
         subscription.get(id).map(|d| d.filter.clone())
+    }
+
+    async fn remove_subscription(&self, id: &SubscriptionId) {
+        let mut subscriptions = self.atomic.subscriptions.write().await;
+        subscriptions.remove(id);
+    }
+
+    async fn subscription_exists(&self, id: &SubscriptionId) -> bool {
+        let subscriptions = self.atomic.subscriptions.read().await;
+        subscriptions.contains_key(id)
+    }
+
+    /// Register an auto-closing subscription
+    pub(crate) async fn add_auto_closing_subscription(&self, id: SubscriptionId, filter: Filter) {
+        let mut subscriptions = self.atomic.subscriptions.write().await;
+        let data: &mut SubscriptionData = subscriptions.entry(id).or_default();
+        data.filter = filter;
+        data.is_auto_closing = true;
     }
 
     pub(crate) async fn update_subscription(
@@ -1003,8 +1024,7 @@ impl InnerRelay {
                                     "Removing subscription."
                                 );
 
-                                let mut subscriptions = self.atomic.subscriptions.write().await;
-                                subscriptions.remove(subscription_id);
+                                self.remove_subscription(subscription_id).await;
                             }
                         }
                     }
@@ -1093,6 +1113,11 @@ impl InnerRelay {
                     max_size: max_num_tags,
                 });
             }
+        }
+
+        // Check if the subscription id is exist
+        if !self.subscription_exists(&subscription_id).await {
+            return Err(Error::SubscriptionNotFound);
         }
 
         // Check if the event is expired
@@ -1338,6 +1363,10 @@ impl InnerRelay {
     ) {
         let relay = self.clone(); // <-- FULL RELAY CLONE HERE
         task::spawn(async move {
+            relay
+                .add_auto_closing_subscription(id.clone(), filter.clone())
+                .await;
+
             // Check if CLOSE needed
             let to_close: bool = match relay
                 .handle_auto_closing(&id, &filter, opts, notifications, &activity)
@@ -1365,12 +1394,17 @@ impl InnerRelay {
             drop(activity);
 
             // Close subscription
-            if to_close {
+            let send_result = if to_close {
                 tracing::debug!(id = %id, "Auto-closing subscription.");
-                relay.send_msg(ClientMessage::Close(Cow::Owned(id)))?;
-            }
+                relay.send_msg(ClientMessage::Close(Cow::Borrowed(&id)))
+            } else {
+                Ok(())
+            };
 
-            Ok::<(), Error>(())
+            // Remove subscription
+            relay.remove_subscription(&id).await;
+
+            send_result
         });
     }
 
@@ -1593,21 +1627,27 @@ impl InnerRelay {
         .await?
     }
 
-    fn _unsubscribe(
+    fn _unsubscribe_long_lived_subscription(
         &self,
         subscriptions: &mut RwLockWriteGuard<HashMap<SubscriptionId, SubscriptionData>>,
-        id: &SubscriptionId,
+        id: Cow<SubscriptionId>,
     ) -> Result<(), Error> {
         // Remove the subscription from the map
-        subscriptions.remove(id);
+        if let Some(sub) = subscriptions.remove(&id) {
+            // Re-insert if auto-closing
+            if sub.is_auto_closing {
+                subscriptions.insert(id.into_owned(), sub);
+                return Ok(());
+            }
+        }
 
         // Send CLOSE message
-        self.send_msg(ClientMessage::Close(Cow::Borrowed(id)))
+        self.send_msg(ClientMessage::Close(id))
     }
 
     pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<(), Error> {
         let mut subscriptions = self.atomic.subscriptions.write().await;
-        self._unsubscribe(&mut subscriptions, id)
+        self._unsubscribe_long_lived_subscription(&mut subscriptions, Cow::Borrowed(id))
     }
 
     pub async fn unsubscribe_all(&self) -> Result<(), Error> {
@@ -1618,7 +1658,7 @@ impl InnerRelay {
 
         // Unsubscribe
         for id in ids.into_iter() {
-            self._unsubscribe(&mut subscriptions, &id)?;
+            self._unsubscribe_long_lived_subscription(&mut subscriptions, Cow::Owned(id))?;
         }
 
         Ok(())
@@ -1732,7 +1772,7 @@ impl InnerRelay {
     }
 
     #[inline(never)]
-    fn req_neg_events(
+    async fn req_neg_events(
         &self,
         need_ids: &mut Vec<EventId>,
         in_flight_down: &mut bool,
@@ -1770,8 +1810,12 @@ impl InnerRelay {
         let filter = Filter::new().ids(ids);
         self.send_msg(ClientMessage::Req {
             subscription_id: Cow::Borrowed(down_sub_id),
-            filter: Cow::Owned(filter),
+            filter: Cow::Borrowed(&filter),
         })?;
+
+        // Register an auto-closing subscription
+        self.add_auto_closing_subscription(down_sub_id.clone(), filter)
+            .await;
 
         *in_flight_down = true;
 
@@ -1921,6 +1965,9 @@ impl InnerRelay {
                             if id.as_ref() == &down_sub_id {
                                 in_flight_down = false;
 
+                                // Remove subscription
+                                self.remove_subscription(&down_sub_id).await;
+
                                 // Close subscription
                                 self.send_msg(ClientMessage::Close(Cow::Borrowed(&down_sub_id)))?;
                             }
@@ -1930,6 +1977,9 @@ impl InnerRelay {
                         } => {
                             if subscription_id.as_ref() == &down_sub_id {
                                 in_flight_down = false;
+
+                                // NOTE: the subscription is removed in the `InnerRelay::handle_relay_message` method,
+                                // so there is no need to try to remove it also here.
                             }
                         }
                         _ => (),
@@ -1940,7 +1990,8 @@ impl InnerRelay {
                         .await?;
 
                     // Get events
-                    self.req_neg_events(&mut need_ids, &mut in_flight_down, &down_sub_id, opts)?;
+                    self.req_neg_events(&mut need_ids, &mut in_flight_down, &down_sub_id, opts)
+                        .await?;
                 }
                 RelayNotification::RelayStatus { status } => {
                     if status.is_disconnected() {
