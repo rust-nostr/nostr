@@ -110,7 +110,7 @@ impl NostrGroupDataExtension {
         }
     }
 
-    fn from_raw(raw: RawNostrGroupDataExtension) -> Result<Self, Error> {
+    pub(crate) fn from_raw(raw: RawNostrGroupDataExtension) -> Result<Self, Error> {
         let mut admins = BTreeSet::new();
         for admin in raw.admin_pubkeys {
             let bytes = hex::decode(&admin)?;
