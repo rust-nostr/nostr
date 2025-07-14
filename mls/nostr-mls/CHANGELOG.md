@@ -39,6 +39,7 @@
 - Add processing of commit messages and basic processing of proposals. (https://github.com/rust-nostr/nostr/pull/940)
 - Add `ProcessedMessageState` for processed commits (https://github.com/rust-nostr/nostr/pull/954)
 - Add method to check previous exporter_secrets when NIP-44 decrypting kind 445 messages (https://github.com/rust-nostr/nostr/pull/954)
+- Add methods to update group name, description and image (https://github.com/rust-nostr/nostr/pull/978)
 
 ## v0.42.0 - 2025/05/20
 
