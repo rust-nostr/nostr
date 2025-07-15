@@ -25,6 +25,10 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Update `Client::subscriptions` and `Client::subscription` outputs (https://github.com/rust-nostr/nostr/pull/980)
+
 ### Changed
 
 - Extract at max 3 relays per NIP65 marker (https://github.com/rust-nostr/nostr/pull/951)

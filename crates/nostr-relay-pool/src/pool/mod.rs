@@ -301,9 +301,12 @@ impl RelayPool {
 
         // If relay has `READ` flag, inherit pool subscriptions
         if relay.flags().has_read() {
-            let subscriptions = self.subscriptions().await;
-            for (id, filters) in subscriptions.into_iter() {
-                relay.inner.update_subscription(id, filters, false).await;
+            let subscriptions = self.inner.atomic.inherit_subscriptions.read().await;
+            for (id, filter) in subscriptions.iter() {
+                relay
+                    .inner
+                    .update_subscription(id.clone(), filter.clone(), false)
+                    .await;
             }
         }
 
@@ -575,34 +578,64 @@ impl RelayPool {
 
     /// Get subscriptions
     #[inline]
-    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
-        self.inner.atomic.subscriptions.read().await.clone()
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, HashMap<RelayUrl, Filter>> {
+        // Lock with read shared access
+        let relays = self.inner.atomic.relays.read().await;
+
+        let mut subscriptions: HashMap<SubscriptionId, HashMap<RelayUrl, Filter>> = HashMap::new();
+
+        for (url, relay) in relays.iter() {
+            // Get relay subscriptions
+            let relay_subscriptions = relay.subscriptions().await;
+
+            // Iterate relay subscriptions and populate the general subscriptions map
+            for (id, filter) in relay_subscriptions.into_iter() {
+                subscriptions
+                    .entry(id)
+                    .or_default()
+                    .insert(url.clone(), filter);
+            }
+        }
+
+        subscriptions
     }
 
     /// Get a subscription
     #[inline]
-    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
-        let subscriptions = self.inner.atomic.subscriptions.read().await;
-        subscriptions.get(id).cloned()
+    pub async fn subscription(&self, id: &SubscriptionId) -> HashMap<RelayUrl, Filter> {
+        // Lock with read shared access
+        let relays = self.inner.atomic.relays.read().await;
+
+        let mut filters: HashMap<RelayUrl, Filter> = HashMap::new();
+
+        // Iterate relays and populate filters
+        for (url, relay) in relays.iter() {
+            // try to get subscription by ID from the relay
+            if let Some(filter) = relay.subscription(id).await {
+                filters.insert(url.clone(), filter);
+            }
+        }
+
+        filters
     }
 
-    /// Register subscription in the [RelayPool]
+    /// Register subscription in the [`RelayPool`].
     ///
-    /// When a new relay will be added, saved subscriptions will be automatically used for it.
+    /// When a new relay is added, saved subscriptions will be automatically used for it.
     #[inline]
     pub async fn save_subscription(&self, id: SubscriptionId, filter: Filter) {
-        let mut subscriptions = self.inner.atomic.subscriptions.write().await;
+        let mut subscriptions = self.inner.atomic.inherit_subscriptions.write().await;
         let current: &mut Filter = subscriptions.entry(id).or_default();
         *current = filter;
     }
 
     async fn remove_subscription(&self, id: &SubscriptionId) {
-        let mut subscriptions = self.inner.atomic.subscriptions.write().await;
+        let mut subscriptions = self.inner.atomic.inherit_subscriptions.write().await;
         subscriptions.remove(id);
     }
 
     async fn remove_all_subscriptions(&self) {
-        let mut subscriptions = self.inner.atomic.subscriptions.write().await;
+        let mut subscriptions = self.inner.atomic.inherit_subscriptions.write().await;
         subscriptions.clear();
     }
 

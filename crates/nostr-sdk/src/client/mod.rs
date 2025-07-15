@@ -507,22 +507,22 @@ impl Client {
         self.pool.disconnect().await
     }
 
-    /// Get pool subscriptions
+    /// Get subscriptions
     #[inline]
-    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, HashMap<RelayUrl, Filter>> {
         self.pool.subscriptions().await
     }
 
-    /// Get pool subscription
+    /// Get subscription
     #[inline]
-    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
+    pub async fn subscription(&self, id: &SubscriptionId) -> HashMap<RelayUrl, Filter> {
         self.pool.subscription(id).await
     }
 
     /// Subscribe to filters
     ///
     /// This method create a new subscription. None of the previous subscriptions will be edited/closed when you call this!
-    /// So remember to unsubscribe when you no longer need it. You can get all your active **pool** (non-auto-closing) subscriptions
+    /// So remember to unsubscribe when you no longer need it. You can get all your active (non-auto-closing) subscriptions
     /// by calling `client.subscriptions().await`.
     ///
     /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
@@ -530,7 +530,7 @@ impl Client {
     ///
     /// # Auto-closing subscription
     ///
-    /// It's possible to automatically close a subscription by configuring the [SubscribeAutoCloseOptions].
+    /// It's possible to automatically close a subscription by configuring the [`SubscribeAutoCloseOptions`].
     ///
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
     ///

@@ -25,7 +25,8 @@ pub(super) type Relays = HashMap<RelayUrl, Relay>;
 #[derive(Debug)]
 pub(super) struct AtomicPrivateData {
     pub(super) relays: RwLock<Relays>,
-    pub(super) subscriptions: RwLock<HashMap<SubscriptionId, Filter>>,
+    /// Map of subscriptions that will be inherited by new added relays.
+    pub(super) inherit_subscriptions: RwLock<HashMap<SubscriptionId, Filter>>,
     pub(super) shutdown: AtomicBool,
 }
 
@@ -59,7 +60,7 @@ impl InnerRelayPool {
             ),
             atomic: Arc::new(AtomicPrivateData {
                 relays: RwLock::new(HashMap::new()),
-                subscriptions: RwLock::new(HashMap::new()),
+                inherit_subscriptions: RwLock::new(HashMap::new()),
                 shutdown: AtomicBool::new(false),
             }),
             notification_sender,

@@ -28,6 +28,7 @@
 ### Breaking changes
 
 - Drop NIP-11 support (https://github.com/rust-nostr/nostr/pull/950)
+- Update `RelayPool::subscriptions` and `RelayPool::subscription` outputs (https://github.com/rust-nostr/nostr/pull/980)
 
 ### Changed
 
