@@ -38,6 +38,7 @@
 - Convert `nip05` module to be I/O-free (https://github.com/rust-nostr/nostr/pull/936)
 - Convert `nip11` module to be I/O-free (https://github.com/rust-nostr/nostr/pull/950)
 - Convert `nip96` module to be I/O-free (https://github.com/rust-nostr/nostr/pull/935)
+- Add `MatchEventOptions` as a parameter to `Filter::match_event` function (https://github.com/rust-nostr/nostr/pull/976)
 
 ### Changed
 

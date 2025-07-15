@@ -364,6 +364,100 @@ pub struct Filter {
     pub generic_tags: GenericTags,
 }
 
+/// Specifies which event fields to compare with a filter.
+#[derive(
+    Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
+pub struct MatchEventOptions {
+    /// Compare the event id with the filter.
+    pub id: bool,
+    /// Compare the event author with the filter.
+    pub author: bool,
+    /// Compare the event kind with the filter.
+    pub kind: bool,
+    /// Compare the event tags with the filter.
+    pub tags: bool,
+    /// Check if event timestamp is after filter's `since`.
+    pub since: bool,
+    /// Check if event timestamp is before filter's `until`.
+    pub until: bool,
+    /// Check if event content contains filter's search terms
+    /// (basic NIP-50 implementation without extensions).
+    pub nip50: bool,
+}
+
+impl MatchEventOptions {
+    /// Creates a new [`MatchEventOptions`] that matches all event fields by default.
+    #[inline]
+    pub fn new() -> Self {
+        Self {
+            id: true,
+            author: true,
+            kind: true,
+            tags: true,
+            since: true,
+            until: true,
+            nip50: true,
+        }
+    }
+
+    /// Returns a new [`MatchEventOptions`] that won't match any event.
+    #[inline]
+    pub fn unmatch() -> Self {
+        Self::default()
+    }
+
+    /// Compare the event id with the filter.
+    #[inline]
+    pub fn id(mut self, enable: bool) -> Self {
+        self.id = enable;
+        self
+    }
+
+    /// Compare the event author with the filter.
+    #[inline]
+    pub fn author(mut self, enable: bool) -> Self {
+        self.author = enable;
+        self
+    }
+
+    /// Compare the event kind with the filter.
+    #[inline]
+    pub fn kind(mut self, enable: bool) -> Self {
+        self.kind = enable;
+        self
+    }
+
+    /// Compare the event tags with the filter.
+    #[inline]
+    pub fn tags(mut self, enable: bool) -> Self {
+        self.tags = enable;
+        self
+    }
+
+    /// Check if event timestamp is after filter's `since`.
+    #[inline]
+    pub fn since(mut self, enable: bool) -> Self {
+        self.since = enable;
+        self
+    }
+
+    /// Check if event timestamp is before filter's `until`.
+    #[inline]
+    pub fn until(mut self, enable: bool) -> Self {
+        self.until = enable;
+        self
+    }
+
+    /// Check if event content contains filter's search terms
+    /// (basic NIP-50 implementation without extensions).
+    #[inline]
+    pub fn nip50(mut self, enable: bool) -> Self {
+        self.nip50 = enable;
+        self
+    }
+}
+
 impl Filter {
     /// Create new empty [`Filter`]
     #[inline]
@@ -824,14 +918,14 @@ impl Filter {
 
     /// Determine if [Filter] match given [Event].
     #[inline]
-    pub fn match_event(&self, event: &Event) -> bool {
-        self.ids_match(event)
-            && self.authors_match(event)
-            && self.kind_match(event)
-            && self.since.map_or(true, |t| event.created_at >= t)
-            && self.until.map_or(true, |t| event.created_at <= t)
-            && self.tag_match(event)
-            && self.search_match(event)
+    pub fn match_event(&self, event: &Event, opts: MatchEventOptions) -> bool {
+        (!opts.id || self.ids_match(event))
+            && (!opts.author || self.authors_match(event))
+            && (!opts.kind || self.kind_match(event))
+            && (!opts.since || self.since.map_or(true, |t| event.created_at >= t))
+            && (!opts.until || self.until.map_or(true, |t| event.created_at <= t))
+            && (!opts.tags || self.tag_match(event))
+            && (!opts.nip50 || self.search_match(event))
     }
 }
 
@@ -1118,25 +1212,25 @@ mod tests {
 
         // ID match
         let filter: Filter = Filter::new().id(event_id);
-        assert!(filter.match_event(&event));
+        assert!(filter.match_event(&event, MatchEventOptions::new()));
 
         // Not match (kind)
         let filter: Filter = Filter::new().id(event_id).kind(Kind::Metadata);
-        assert!(!filter.match_event(&event));
+        assert!(!filter.match_event(&event, MatchEventOptions::new()));
 
         // Match (author, kind and since)
         let filter: Filter = Filter::new()
             .author(pubkey)
             .kind(Kind::TextNote)
             .since(Timestamp::from(1612808000));
-        assert!(filter.match_event(&event));
+        assert!(filter.match_event(&event, MatchEventOptions::new()));
 
         // Not match (since)
         let filter: Filter = Filter::new()
             .author(pubkey)
             .kind(Kind::TextNote)
             .since(Timestamp::from(1700000000));
-        assert!(!filter.match_event(&event));
+        assert!(!filter.match_event(&event, MatchEventOptions::new()));
 
         // Match (#p tag and kind)
         let filter: Filter = Filter::new()
@@ -1147,7 +1241,7 @@ mod tests {
                 .unwrap(),
             )
             .kind(Kind::TextNote);
-        assert!(filter.match_event(&event));
+        assert!(filter.match_event(&event, MatchEventOptions::new()));
 
         // Match (tags)
         let filter: Filter = Filter::new()
@@ -1163,7 +1257,7 @@ mod tests {
                 )
                 .unwrap(),
             );
-        assert!(filter.match_event(&event));
+        assert!(filter.match_event(&event, MatchEventOptions::new()));
 
         // Match (tags)
         let filter: Filter = Filter::new().events(vec![
@@ -1172,23 +1266,23 @@ mod tests {
             EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
                 .unwrap(),
         ]);
-        assert!(filter.match_event(&event));
+        assert!(filter.match_event(&event, MatchEventOptions::new()));
 
         // Not match (tags)
         let filter: Filter = Filter::new().events(vec![EventId::from_hex(
             "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5",
         )
         .unwrap()]);
-        assert!(!filter.match_event(&event));
+        assert!(!filter.match_event(&event, MatchEventOptions::new()));
 
         // Not match (tags filter for events with empty tags)
         let filter: Filter = Filter::new().hashtag("this-should-not-match");
-        assert!(!filter.match_event(&event));
-        assert!(!filter.match_event(&event_with_empty_tags));
+        assert!(!filter.match_event(&event, MatchEventOptions::new()));
+        assert!(!filter.match_event(&event_with_empty_tags, MatchEventOptions::new()));
 
         // Test match search
         let filter: Filter = Filter::new().search("test");
-        assert!(filter.match_event(&event));
+        assert!(filter.match_event(&event, MatchEventOptions::new()));
     }
 
     #[test]
@@ -1216,10 +1310,10 @@ mod tests {
         let event = Event::from_json(json).unwrap();
 
         let filter = Filter::new().search("Yuki kishi");
-        assert!(filter.match_event(&event));
+        assert!(filter.match_event(&event, MatchEventOptions::new()));
 
         let filter = Filter::new().search("yuki kishimoto");
-        assert!(filter.match_event(&event));
+        assert!(filter.match_event(&event, MatchEventOptions::new()));
     }
 }
 
@@ -1264,7 +1358,7 @@ mod benches {
             .kind(Kind::TextNote);
 
         bh.iter(|| {
-            black_box(filter.match_event(&event));
+            black_box(filter.match_event(&event, MatchEventOptions::new()));
         });
     }
 }
