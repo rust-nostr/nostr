@@ -365,9 +365,7 @@ pub struct Filter {
 }
 
 /// Specifies which event fields to compare with a filter.
-#[derive(
-    Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct MatchEventOptions {
     /// Compare the event id with the filter.
     pub id: bool,
@@ -386,10 +384,16 @@ pub struct MatchEventOptions {
     pub nip50: bool,
 }
 
+impl Default for MatchEventOptions {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MatchEventOptions {
-    /// Creates a new [`MatchEventOptions`] that matches all event fields by default.
+    /// Creates a new [`MatchEventOptions`] that **matches all event** fields by default.
     #[inline]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             id: true,
             author: true,
@@ -401,50 +405,58 @@ impl MatchEventOptions {
         }
     }
 
-    /// Returns a new [`MatchEventOptions`] that won't match any event.
+    /// Returns a new [`MatchEventOptions`] that **won't match any event**.
     #[inline]
-    pub fn unmatch() -> Self {
-        Self::default()
+    pub const fn unmatch() -> Self {
+        Self {
+            id: false,
+            author: false,
+            kind: false,
+            tags: false,
+            since: false,
+            until: false,
+            nip50: false,
+        }
     }
 
     /// Compare the event id with the filter.
     #[inline]
-    pub fn id(mut self, enable: bool) -> Self {
+    pub const fn id(mut self, enable: bool) -> Self {
         self.id = enable;
         self
     }
 
     /// Compare the event author with the filter.
     #[inline]
-    pub fn author(mut self, enable: bool) -> Self {
+    pub const fn author(mut self, enable: bool) -> Self {
         self.author = enable;
         self
     }
 
     /// Compare the event kind with the filter.
     #[inline]
-    pub fn kind(mut self, enable: bool) -> Self {
+    pub const fn kind(mut self, enable: bool) -> Self {
         self.kind = enable;
         self
     }
 
     /// Compare the event tags with the filter.
     #[inline]
-    pub fn tags(mut self, enable: bool) -> Self {
+    pub const fn tags(mut self, enable: bool) -> Self {
         self.tags = enable;
         self
     }
 
     /// Check if event timestamp is after filter's `since`.
     #[inline]
-    pub fn since(mut self, enable: bool) -> Self {
+    pub const fn since(mut self, enable: bool) -> Self {
         self.since = enable;
         self
     }
 
     /// Check if event timestamp is before filter's `until`.
     #[inline]
-    pub fn until(mut self, enable: bool) -> Self {
+    pub const fn until(mut self, enable: bool) -> Self {
         self.until = enable;
         self
     }
@@ -452,7 +464,7 @@ impl MatchEventOptions {
     /// Check if event content contains filter's search terms
     /// (basic NIP-50 implementation without extensions).
     #[inline]
-    pub fn nip50(mut self, enable: bool) -> Self {
+    pub const fn nip50(mut self, enable: bool) -> Self {
         self.nip50 = enable;
         self
     }
