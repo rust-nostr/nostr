@@ -99,7 +99,7 @@ pub enum RelayNotification {
 // }
 
 /// Reconciliation output
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Reconciliation {
     /// Events that were stored locally (missing on relay)
     pub local: HashSet<EventId>,
@@ -762,6 +762,16 @@ mod tests {
 
     fn new_relay(url: RelayUrl, opts: RelayOptions) -> Relay {
         Relay::new(url, SharedState::default(), opts)
+    }
+
+    fn new_relay_with_database(
+        url: RelayUrl,
+        database: Arc<dyn NostrDatabase>,
+        opts: RelayOptions,
+    ) -> Relay {
+        let mut state = SharedState::default();
+        state.database = database;
+        Relay::new(url, state, opts)
     }
 
     /// Setup public (without NIP42 auth) relay with N events to test event fetching
@@ -1518,7 +1528,80 @@ mod tests {
         assert!(!relay.inner.is_running());
     }
 
-    // TODO: add negentropy reconciliation test
+    #[tokio::test]
+    async fn test_negentropy_sync() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        // Database
+        let database = MemoryDatabase::with_opts(MemoryDatabaseOptions {
+            events: true,
+            max_events: None,
+        });
+
+        // Build events to store in the local database
+        let local_events = vec![
+            EventBuilder::text_note("Local 1")
+                .sign_with_keys(&Keys::generate())
+                .unwrap(),
+            EventBuilder::text_note("Local 2")
+                .sign_with_keys(&Keys::generate())
+                .unwrap(),
+            EventBuilder::new(Kind::Custom(123), "Local 123")
+                .sign_with_keys(&Keys::generate())
+                .unwrap(),
+        ];
+
+        // Save an event to the local database
+        for event in local_events.iter() {
+            database.save_event(event).await.unwrap();
+        }
+        assert_eq!(database.count(Filter::new()).await.unwrap(), 3);
+
+        // Relay
+        let relay =
+            new_relay_with_database(url, Arc::new(database.clone()), RelayOptions::default());
+
+        // Connect
+        relay.try_connect(Duration::from_secs(2)).await.unwrap();
+
+        // Build events to send to the relay
+        let relays_events = vec![
+            // Event in common with the local database
+            local_events[0].clone(),
+            EventBuilder::text_note("Test 2")
+                .sign_with_keys(&Keys::generate())
+                .unwrap(),
+            EventBuilder::text_note("Test 3")
+                .sign_with_keys(&Keys::generate())
+                .unwrap(),
+            EventBuilder::new(Kind::Custom(123), "Test 4")
+                .sign_with_keys(&Keys::generate())
+                .unwrap(),
+        ];
+
+        // Send events to the relays
+        for event in relays_events.iter() {
+            relay.send_event(event).await.unwrap();
+        }
+
+        // Sync
+        let filter = Filter::new().kind(Kind::TextNote);
+        let opts = SyncOptions::default().direction(SyncDirection::Both);
+        let output = relay.sync(filter, &opts).await.unwrap();
+
+        assert_eq!(
+            output,
+            Reconciliation {
+                local: HashSet::from([local_events[1].id]),
+                remote: HashSet::from([relays_events[1].id, relays_events[2].id]),
+                sent: HashSet::from([local_events[1].id]),
+                received: HashSet::from([relays_events[1].id, relays_events[2].id]),
+                send_failures: HashMap::new(),
+            }
+        );
+    }
 
     #[tokio::test]
     async fn test_sleep_when_idle() {
