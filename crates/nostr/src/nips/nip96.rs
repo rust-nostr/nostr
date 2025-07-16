@@ -86,6 +86,14 @@ pub enum UploadResponseStatus {
     Error,
 }
 
+impl UploadResponseStatus {
+    /// Check if is success
+    #[inline]
+    pub fn is_success(&self) -> bool {
+        matches!(self, Self::Success)
+    }
+}
+
 /// Response to a NIP-96 upload request
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct UploadResponse {
@@ -105,7 +113,7 @@ impl UploadResponse {
     ///
     /// Returns an error if the upload was unsuccessful or if the URL cannot be found
     pub fn download_url(&self) -> Result<&Url, Error> {
-        if self.status == UploadResponseStatus::Error {
+        if !self.status.is_success() {
             return Err(Error::UploadError(self.message.clone()));
         }
 

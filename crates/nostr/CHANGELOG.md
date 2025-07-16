@@ -52,6 +52,7 @@
 - Add `Nip11GetOptions` (https://github.com/rust-nostr/nostr/pull/913)
 - Add `RelayUrl::domain` method (https://github.com/rust-nostr/nostr/pull/914)
 - Add `fees_paid` to `nip47::PayInvoiceResponse` (https://github.com/rust-nostr/nostr/pull/971)
+- Add `nip96::UploadResponseStatus::is_success` method
 
 ### Fixed
 
