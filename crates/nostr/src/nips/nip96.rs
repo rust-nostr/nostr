@@ -70,14 +70,14 @@ impl JsonUtil for ServerConfig {
 }
 
 /// NIP-94 event
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Nip94Event {
     /// Tags
     pub tags: Tags,
 }
 
 /// Response status to NIP-96 request
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum UploadResponseStatus {
     /// Success
@@ -87,7 +87,7 @@ pub enum UploadResponseStatus {
 }
 
 /// Response to a NIP-96 upload request
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct UploadResponse {
     /// Status
     pub status: UploadResponseStatus,
@@ -126,7 +126,7 @@ impl JsonUtil for UploadResponse {
 
 /// NIP96 upload request information
 /// Contains all data needed to make a file upload request
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UploadRequest {
     /// The URL to POST to
     pub url: Url,
