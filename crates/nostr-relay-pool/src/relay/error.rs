@@ -61,6 +61,8 @@ pub enum Error {
     Sleeping,
     /// Relay subscription id not exist
     SubscriptionNotFound,
+    /// Relay event does not match the subscription filter
+    FilterMismatch,
     /// Relay banned
     Banned,
     /// Connection rejected
@@ -149,6 +151,7 @@ impl fmt::Display for Error {
             Self::NotReady => write!(f, "relay is initialized but not ready"),
             Self::NotConnected => write!(f, "relay not connected"),
             Self::SubscriptionNotFound => write!(f, "subscription not found"),
+            Self::FilterMismatch => write!(f, "relay event does not match the subscription filter"),
             Self::Sleeping => write!(f, "relay is sleeping"),
             Self::Banned => write!(f, "relay banned"),
             Self::ConnectionRejected { reason } => {

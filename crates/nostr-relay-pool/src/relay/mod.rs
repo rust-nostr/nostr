@@ -1162,6 +1162,70 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_fetch_events_ban_relay() {
+        // Mock relay
+        let opts = RelayTestOptions {
+            unresponsive_connection: None,
+            send_random_events: true,
+        };
+        let mock = MockRelay::run_with_opts(opts).await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let relay: Relay = new_relay(url, RelayOptions::default().ban_relay_on_mismatch(true));
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.try_connect(Duration::from_secs(3)).await.unwrap();
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        let filter = Filter::new().kind(Kind::Metadata);
+        relay
+            .fetch_events(filter, Duration::from_secs(3), ReqExitPolicy::ExitOnEOSE)
+            .await
+            .unwrap();
+
+        assert_eq!(relay.status(), RelayStatus::Banned);
+
+        assert!(!relay.inner.is_running());
+    }
+
+    #[tokio::test]
+    async fn test_subscribe_ban_relay() {
+        // Mock relay
+        let opts = RelayTestOptions {
+            unresponsive_connection: None,
+            send_random_events: true,
+        };
+        let mock = MockRelay::run_with_opts(opts).await.unwrap();
+        let url = RelayUrl::parse(&mock.url()).unwrap();
+
+        let relay = new_relay(url, RelayOptions::default().ban_relay_on_mismatch(true));
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.try_connect(Duration::from_secs(3)).await.unwrap();
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        let filter = Filter::new().kind(Kind::Metadata).limit(3);
+        relay
+            .subscribe(filter, SubscribeOptions::default())
+            .await
+            .unwrap();
+
+        // Keep up the test
+        relay
+            .handle_notifications(|_| async { Ok(false) })
+            .await
+            .unwrap();
+
+        assert_eq!(relay.status(), RelayStatus::Banned);
+
+        assert!(!relay.inner.is_running());
+    }
+
+    #[tokio::test]
     async fn test_nip42_send_event() {
         // Mock relay
         let opts = RelayBuilderNip42 {

@@ -40,6 +40,7 @@
 ### Added
 
 - Allow putting relays to sleep when idle (https://github.com/rust-nostr/nostr/pull/926)
+- An option to ban relays that send events which don't match the subscription filter (https://github.com/rust-nostr/nostr/pull/981)
 
 ## v0.42.0 - 2025/05/20
 
