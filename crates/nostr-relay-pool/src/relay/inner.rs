@@ -1920,6 +1920,9 @@ impl InnerRelay {
                         RelayMessage::EndOfStoredEvents(id) => {
                             if id.as_ref() == &down_sub_id {
                                 in_flight_down = false;
+
+                                // Close subscription
+                                self.send_msg(ClientMessage::Close(Cow::Borrowed(&down_sub_id)))?;
                             }
                         }
                         RelayMessage::Closed {
