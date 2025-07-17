@@ -1,5 +1,5 @@
 [package]
-name = "nip07"
+name = "nostr-browser-signer"
 version = "0.42.0"
 edition = "2021"
 description = "Nostr Browser signer implementation (NIP-07)."

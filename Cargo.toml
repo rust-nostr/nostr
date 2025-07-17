@@ -17,6 +17,9 @@ members = [
     # Remote File Storage implementations
     "rfs/nostr-blossom",
     "rfs/nostr-http-file-storage",
+
+    # Signers
+    "signer/nostr-browser-signer",
 ]
 default-members = ["crates/*"]
 resolver = "2"
