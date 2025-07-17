@@ -612,7 +612,20 @@ impl InnerLocalRelay {
                 let ids_len: Option<usize> = filter.ids.as_ref().map(|ids| ids.len());
 
                 // Query database
-                let events: Events = self.database.query(filter.clone()).await?;
+                let events: Events = if self.test.send_random_events {
+                    let mut events: Events = Events::default();
+
+                    let keys = Keys::generate();
+
+                    for _ in 0..500 {
+                        events.insert(EventBuilder::text_note("Test").sign_with_keys(&keys)?);
+                    }
+
+                    events
+                } else {
+                    self.database.query(filter.clone()).await?
+                };
+
                 let events_len: usize = events.len();
 
                 tracing::debug!(

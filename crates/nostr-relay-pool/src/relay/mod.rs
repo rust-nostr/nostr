@@ -1015,6 +1015,7 @@ mod tests {
         // Mock relay
         let opts = RelayTestOptions {
             unresponsive_connection: Some(Duration::from_secs(2)),
+            ..Default::default()
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
@@ -1047,6 +1048,7 @@ mod tests {
         // Mock relay
         let opts = RelayTestOptions {
             unresponsive_connection: Some(Duration::from_secs(10)),
+            ..Default::default()
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
@@ -1075,6 +1077,7 @@ mod tests {
         // Mock relay
         let opts = RelayTestOptions {
             unresponsive_connection: Some(Duration::from_secs(10)),
+            ..Default::default()
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
@@ -1138,6 +1141,7 @@ mod tests {
         // Mock relay
         let opts = RelayTestOptions {
             unresponsive_connection: Some(Duration::from_secs(2)),
+            ..Default::default()
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
