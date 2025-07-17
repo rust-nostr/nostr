@@ -34,6 +34,7 @@
 
 - Impl `Any` for `NostrDatabase` (https://github.com/rust-nostr/nostr/pull/918)
 - Impl `Default` for `Events` struct
+- impl `FromIterator<Event>` for `Events` struct
 
 ## v0.42.0 - 2025/05/20
 

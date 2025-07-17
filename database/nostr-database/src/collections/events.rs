@@ -176,6 +176,17 @@ impl IntoIterator for Events {
     }
 }
 
+impl FromIterator<Event> for Events {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = Event>,
+    {
+        let mut events: Self = Self::default();
+        events.extend(iter);
+        events
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use nostr::{JsonUtil, Kind};
