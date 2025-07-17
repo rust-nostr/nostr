@@ -49,6 +49,7 @@ buildargs=(
     "-p nostr-ndb"
     "-p nostr-keyring"
     "-p nostr-keyring --features async"
+    "-p nostr-relay-pool-sansio"
     "-p nostr-relay-pool"
     "-p nostr-relay-builder"
     "-p nostr-connect"

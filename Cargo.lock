@@ -3073,6 +3073,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-relay-pool-sansio"
+version = "0.42.0"
+
+[[package]]
 name = "nostr-sdk"
 version = "0.42.0"
 dependencies = [

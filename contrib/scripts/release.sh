@@ -15,6 +15,7 @@ args=(
     "-p nostr-indexeddb"
     "-p nostr-keyring"
     "-p nostr-relay-builder"
+    "-p nostr-relay-pool-sansio"
     "-p nostr-relay-pool"
     "-p nwc"
     "-p nostr-connect"
