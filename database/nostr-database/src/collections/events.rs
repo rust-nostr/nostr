@@ -21,6 +21,16 @@ pub struct Events {
     prev_not_match: bool,
 }
 
+impl Default for Events {
+    fn default() -> Self {
+        Self {
+            set: BTreeCappedSet::unbounded(),
+            hash: 0,
+            prev_not_match: false,
+        }
+    }
+}
+
 impl PartialEq for Events {
     fn eq(&self, other: &Self) -> bool {
         self.set == other.set

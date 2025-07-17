@@ -33,6 +33,7 @@
 ### Changed
 
 - Impl `Any` for `NostrDatabase` (https://github.com/rust-nostr/nostr/pull/918)
+- Impl `Default` for `Events` struct
 
 ## v0.42.0 - 2025/05/20
 
