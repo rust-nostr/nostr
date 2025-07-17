@@ -20,6 +20,7 @@ members = [
 
     # Signers
     "signer/nostr-browser-signer",
+    "signer/nostr-connect",
 ]
 default-members = ["crates/*"]
 resolver = "2"
@@ -40,7 +41,7 @@ clap = "=4.4.18"
 lru = { version = "0.14", default-features = false }
 negentropy = { version = "0.5", default-features = false }
 nostr = { version = "0.42", path = "./crates/nostr", default-features = false }
-nostr-connect = { version = "0.42", path = "./crates/nostr-connect", default-features = false }
+nostr-connect = { version = "0.42", path = "./signer/nostr-connect", default-features = false }
 nostr-database = { version = "0.42", path = "./database/nostr-database", default-features = false }
 nostr-indexeddb = { version = "0.42", path = "./database/nostr-indexeddb", default-features = false }
 nostr-lmdb = { version = "0.42", path = "./database/nostr-lmdb", default-features = false }
