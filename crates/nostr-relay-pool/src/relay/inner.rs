@@ -343,6 +343,7 @@ impl InnerRelay {
             Some(SubscriptionData {
                 subscribed_at,
                 closed,
+                is_auto_closing: false,
                 ..
             }) => {
                 // Never subscribed -> SHOULD subscribe
@@ -355,7 +356,12 @@ impl InnerRelay {
                 // Many connections and subscription NOT done in current websocket session -> SHOULD re-subscribe
                 self.stats.connected_at() > *subscribed_at && self.stats.success() > 1
             }
-            None => false,
+            // NOT subscribe if auto-closing subscription or subscription not found
+            Some(SubscriptionData {
+                is_auto_closing: true,
+                ..
+            })
+            | None => false,
         }
     }
 
