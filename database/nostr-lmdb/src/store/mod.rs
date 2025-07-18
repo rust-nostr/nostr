@@ -5,18 +5,17 @@
 
 use std::fs;
 use std::path::Path;
-use std::sync::mpsc::Sender;
 
-use async_utility::task;
-use heed::RoTxn;
+use flume::Sender;
 use nostr_database::prelude::*;
+use nostr_database::SaveEventStatus;
 
 mod error;
 mod ingester;
 mod lmdb;
 mod types;
 
-use self::error::Error;
+pub use self::error::Error;
 use self::ingester::{Ingester, IngesterItem};
 use self::lmdb::Lmdb;
 
@@ -26,8 +25,22 @@ pub struct Store {
     ingester: Sender<IngesterItem>,
 }
 
+impl Clone for Store {
+    fn clone(&self) -> Self {
+        Self {
+            db: self.db.clone(),
+            ingester: self.ingester.clone(),
+        }
+    }
+}
+
 impl Store {
-    pub(super) fn open<P>(path: P, map_size: usize) -> Result<Store, Error>
+    pub(super) fn open<P>(
+        path: P,
+        map_size: usize,
+        max_readers: u32,
+        max_dbs: u32,
+    ) -> Result<Store, Error>
     where
         P: AsRef<Path>,
     {
@@ -36,28 +49,17 @@ impl Store {
         // Create the directory if it doesn't exist
         fs::create_dir_all(path)?;
 
-        let db: Lmdb = Lmdb::new(path, map_size)?;
-        let ingester: Sender<IngesterItem> = Ingester::run(db.clone());
+        let db: Lmdb = Lmdb::new(path, map_size, max_readers, max_dbs)?;
+        let ingester = Ingester::run(db.clone());
 
         Ok(Self { db, ingester })
     }
 
-    #[inline]
-    async fn interact<F, R>(&self, f: F) -> Result<R, Error>
-    where
-        F: FnOnce(Lmdb) -> R + Send + 'static,
-        R: Send + 'static,
-    {
-        let db = self.db.clone();
-        Ok(task::spawn_blocking(move || f(db)).await?)
-    }
-
     /// Store an event.
     pub async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, Error> {
-        let (item, rx) = IngesterItem::with_feedback(event.clone());
+        let (item, rx) = IngesterItem::save_event_with_feedback(event);
 
         // Send to the ingester
-        // This will never block the current thread according to `std::sync::mpsc::Sender` docs
         self.ingester.send(item).map_err(|_| Error::MpscSend)?;
 
         // Wait for a reply
@@ -67,12 +69,12 @@ impl Store {
     /// Get an event by ID
     pub fn get_event_by_id(&self, id: &EventId) -> Result<Option<Event>, Error> {
         let txn = self.db.read_txn()?;
-        let event: Option<Event> = self
+        let result = self
             .db
             .get_event_by_id(&txn, id.as_bytes())?
-            .map(|e| e.into_owned());
+            .map(|event_borrow| event_borrow.into_owned());
         txn.commit()?;
-        Ok(event)
+        Ok(result)
     }
 
     /// Do we have an event
@@ -86,64 +88,54 @@ impl Store {
     /// Is the event deleted
     pub fn event_is_deleted(&self, id: &EventId) -> Result<bool, Error> {
         let txn = self.db.read_txn()?;
-        let deleted: bool = self.db.is_deleted(&txn, id)?;
+        let deleted: bool = self.db.is_deleted(&txn, id.as_bytes())?;
         txn.commit()?;
         Ok(deleted)
     }
 
     pub fn count(&self, filter: Filter) -> Result<usize, Error> {
         let txn = self.db.read_txn()?;
-        let output = self.db.query(&txn, filter)?;
-        let len: usize = output.count();
+        let iter = self.db.query(&txn, filter)?;
+        let count = iter.count();
         txn.commit()?;
-        Ok(len)
+        Ok(count)
     }
 
     // Lookup ID: EVENT_ORD_IMPL
     pub fn query(&self, filter: Filter) -> Result<Events, Error> {
-        let mut events: Events = Events::new(&filter);
-
-        let txn: RoTxn = self.db.read_txn()?;
-        let output = self.db.query(&txn, filter)?;
-        events.extend(output.into_iter().map(|e| e.into_owned()));
+        let txn = self.db.read_txn()?;
+        let mut events_wrapper = Events::new(&filter);
+        events_wrapper.extend(self.db.query(&txn, filter)?.map(|e| e.into_owned()));
         txn.commit()?;
-
-        Ok(events)
+        Ok(events_wrapper)
     }
 
     pub fn negentropy_items(&self, filter: Filter) -> Result<Vec<(EventId, Timestamp)>, Error> {
         let txn = self.db.read_txn()?;
-        let events = self.db.query(&txn, filter)?;
-        let items = events
-            .into_iter()
-            .map(|e| (EventId::from_byte_array(*e.id), e.created_at))
+        let items = self
+            .db
+            .query(&txn, filter)?
+            .map(|e| (EventId::from_slice(e.id).unwrap(), e.created_at))
             .collect();
         txn.commit()?;
         Ok(items)
     }
 
     pub async fn delete(&self, filter: Filter) -> Result<(), Error> {
-        self.interact(move |db| {
-            let read_txn = db.read_txn()?;
-            let mut txn = db.write_txn()?;
+        let (item, rx) = IngesterItem::delete_with_feedback(filter);
 
-            db.delete(&read_txn, &mut txn, filter)?;
+        // Send to the ingester
+        self.ingester.send(item).map_err(|_| Error::MpscSend)?;
 
-            read_txn.commit()?;
-            txn.commit()?;
-
-            Ok(())
-        })
-        .await?
+        // Wait for a reply
+        rx.await?
     }
 
-    pub async fn wipe(&self) -> Result<(), Error> {
-        self.interact(move |db| {
-            let mut txn = db.write_txn()?;
-            db.wipe(&mut txn)?;
-            txn.commit()?;
-            Ok(())
-        })
-        .await?
+    pub fn wipe(&self) -> Result<(), Error> {
+        let mut txn = self.db.write_txn()?;
+        self.db.wipe(&mut txn)?;
+        txn.commit()?;
+
+        Ok(())
     }
 }
