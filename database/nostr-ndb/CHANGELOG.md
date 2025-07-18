@@ -27,7 +27,7 @@
 
 ### Changed
 
-- Bump `nostrdb` from 0.6 to 0.7 (https://github.com/rust-nostr/nostr/pull/957)
+- Bump `nostrdb` from 0.6 to 0.8
 
 ## v0.42.0 - 2025/05/20
 
