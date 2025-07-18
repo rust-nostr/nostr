@@ -45,6 +45,7 @@
 - Rework `NostrParser` (https://github.com/rust-nostr/nostr/pull/899)
 - Enhance `NostrParser` with flexible parsing options (https://github.com/rust-nostr/nostr/pull/912)
 - Impl `Any` for `NostrSigner` (https://github.com/rust-nostr/nostr/pull/918)
+- Make `TagKind` helper constructors `const`
 
 ### Added
 

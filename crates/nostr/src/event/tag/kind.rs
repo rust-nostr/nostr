@@ -197,7 +197,7 @@ impl Hash for TagKind<'_> {
 impl<'a> TagKind<'a> {
     /// Construct a single letter tag
     #[inline]
-    pub fn single_letter(character: Alphabet, uppercase: bool) -> Self {
+    pub const fn single_letter(character: Alphabet, uppercase: bool) -> Self {
         Self::SingleLetter(SingleLetterTag {
             character,
             uppercase,
@@ -208,7 +208,7 @@ impl<'a> TagKind<'a> {
     ///
     /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::A))`.
     #[inline]
-    pub fn a() -> Self {
+    pub const fn a() -> Self {
         Self::single_letter(Alphabet::A, false)
     }
 
@@ -216,7 +216,7 @@ impl<'a> TagKind<'a> {
     ///
     /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::D))`.
     #[inline]
-    pub fn d() -> Self {
+    pub const fn d() -> Self {
         Self::single_letter(Alphabet::D, false)
     }
 
@@ -224,7 +224,7 @@ impl<'a> TagKind<'a> {
     ///
     /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E))`.
     #[inline]
-    pub fn e() -> Self {
+    pub const fn e() -> Self {
         Self::single_letter(Alphabet::E, false)
     }
 
@@ -232,7 +232,7 @@ impl<'a> TagKind<'a> {
     ///
     /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::H))`.
     #[inline]
-    pub fn h() -> Self {
+    pub const fn h() -> Self {
         Self::single_letter(Alphabet::H, false)
     }
 
@@ -240,7 +240,7 @@ impl<'a> TagKind<'a> {
     ///
     /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::I))`.
     #[inline]
-    pub fn i() -> Self {
+    pub const fn i() -> Self {
         Self::single_letter(Alphabet::I, false)
     }
 
@@ -248,7 +248,7 @@ impl<'a> TagKind<'a> {
     ///
     /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::K))`.
     #[inline]
-    pub fn k() -> Self {
+    pub const fn k() -> Self {
         Self::single_letter(Alphabet::K, false)
     }
 
@@ -256,7 +256,7 @@ impl<'a> TagKind<'a> {
     ///
     /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::P))`.
     #[inline]
-    pub fn p() -> Self {
+    pub const fn p() -> Self {
         Self::single_letter(Alphabet::P, false)
     }
 
@@ -264,7 +264,7 @@ impl<'a> TagKind<'a> {
     ///
     /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::T))`.
     #[inline]
-    pub fn t() -> Self {
+    pub const fn t() -> Self {
         Self::single_letter(Alphabet::T, false)
     }
 
@@ -272,7 +272,7 @@ impl<'a> TagKind<'a> {
     ///
     /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::U))`.
     #[inline]
-    pub fn u() -> Self {
+    pub const fn u() -> Self {
         Self::single_letter(Alphabet::U, false)
     }
 
@@ -280,7 +280,7 @@ impl<'a> TagKind<'a> {
     ///
     /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::Q))`.
     #[inline]
-    pub fn q() -> Self {
+    pub const fn q() -> Self {
         Self::single_letter(Alphabet::Q, false)
     }
 
@@ -288,7 +288,7 @@ impl<'a> TagKind<'a> {
     ///
     /// Shorthand for `TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::X))`.
     #[inline]
-    pub fn x() -> Self {
+    pub const fn x() -> Self {
         Self::single_letter(Alphabet::X, false)
     }
 
