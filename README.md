@@ -6,7 +6,9 @@ The project is split up into several crates in the `crates/` directory:
 
 * Libraries:
     * [**nostr**](./crates/nostr): Rust implementation of Nostr protocol
-    * [**nostr-connect**](./crates/nostr-connect): Nostr Connect (NIP-46)
+    * Signers
+        * [**nostr-browser-signer**](./signer/nostr-browser-signer): Nostr Browser signer implementation (NIP-07)
+        * [**nostr-connect**](./signer/nostr-connect): Nostr Connect (NIP-46) 
     * [**nostr-database**](./database/nostr-database): Events database abstraction and in-memory implementation
         * [**nostr-lmdb**](./database/nostr-lmdb): LMDB storage backend
         * [**nostr-ndb**](./database/nostr-ndb): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
