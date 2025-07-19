@@ -1116,21 +1116,23 @@ impl InnerRelay {
             }
         }
 
-        // Check if the subscription id is exist and verify the event matches the
-        // subscription filter.
+        // Check if the subscription id exist and verify if the event matches the subscription filter.
         match self.subscription(&subscription_id).await {
-            // Skip NIP-50 extensions since they're unsupported
-            Some(filter)
-                if self.opts.ban_relay_on_mismatch
-                    && !filter.match_event(&event, MatchEventOptions::new().nip50(false)) =>
-            {
-                self.ban();
-                return Err(Error::FilterMismatch);
+            Some(filter) => {
+                // Skip NIP-50 extensions since they're unsupported
+                const MATCH_EVENT_OPTS: MatchEventOptions = MatchEventOptions::new().nip50(false);
+
+                // If the "ban relay on mismatch" option is enabled, check if the filter matches the event.
+                if self.opts.ban_relay_on_mismatch && !filter.match_event(&event, MATCH_EVENT_OPTS)
+                {
+                    // Filter doesn't match the event, ban the relay.
+                    self.ban();
+                    return Err(Error::FilterMismatch);
+                }
             }
             None => {
                 return Err(Error::SubscriptionNotFound);
             }
-            _ => {}
         }
 
         // Check if the event is expired
