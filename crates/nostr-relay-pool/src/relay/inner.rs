@@ -295,7 +295,7 @@ impl InnerRelay {
         subscription.get(id).map(|d| d.filter.clone())
     }
 
-    async fn remove_subscription(&self, id: &SubscriptionId) {
+    pub(super) async fn remove_subscription(&self, id: &SubscriptionId) {
         let mut subscriptions = self.atomic.subscriptions.write().await;
         subscriptions.remove(id);
     }
@@ -1378,10 +1378,6 @@ impl InnerRelay {
     ) {
         let relay = self.clone(); // <-- FULL RELAY CLONE HERE
         task::spawn(async move {
-            relay
-                .add_auto_closing_subscription(id.clone(), filter.clone())
-                .await;
-
             // Check if CLOSE needed
             let to_close: bool = match relay
                 .handle_auto_closing(&id, &filter, opts, notifications, &activity)
@@ -1823,14 +1819,23 @@ impl InnerRelay {
         }
 
         let filter = Filter::new().ids(ids);
-        self.send_msg(ClientMessage::Req {
+        let msg: ClientMessage = ClientMessage::Req {
             subscription_id: Cow::Borrowed(down_sub_id),
             filter: Cow::Borrowed(&filter),
-        })?;
+        };
 
         // Register an auto-closing subscription
-        self.add_auto_closing_subscription(down_sub_id.clone(), filter)
+        self.add_auto_closing_subscription(down_sub_id.clone(), filter.clone())
             .await;
+
+        // Send msg
+        if let Err(e) = self.send_msg(msg) {
+            // Remove previously added subscription
+            self.remove_subscription(down_sub_id).await;
+
+            // Propagate error
+            return Err(e);
+        }
 
         *in_flight_down = true;
 

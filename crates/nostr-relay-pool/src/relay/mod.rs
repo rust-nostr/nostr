@@ -490,14 +490,14 @@ impl Relay {
         filter: Filter,
         opts: SubscribeOptions,
     ) -> Result<(), Error> {
-        // Check if auto-close condition is set
+        // Check if the auto-close condition is set
         match opts.auto_close {
-            Some(opts) => self.subscribe_auto_closing(id, filter, opts, None),
+            Some(opts) => self.subscribe_auto_closing(id, filter, opts, None).await,
             None => self.subscribe_long_lived(id, filter).await,
         }
     }
 
-    fn subscribe_auto_closing(
+    async fn subscribe_auto_closing(
         &self,
         id: SubscriptionId,
         filter: Filter,
@@ -513,8 +513,19 @@ impl Relay {
         // Subscribe to notifications
         let notifications = self.inner.internal_notification_sender.subscribe();
 
+        // Register the auto-closing subscription
+        self.inner
+            .add_auto_closing_subscription(id.clone(), filter.clone())
+            .await;
+
         // Send REQ message
-        self.inner.send_msg(msg)?;
+        if let Err(e) = self.inner.send_msg(msg) {
+            // Remove previously added subscription
+            self.inner.remove_subscription(&id).await;
+
+            // Propagate error
+            return Err(e);
+        }
 
         // Spawn auto-closing handler
         self.inner
@@ -571,7 +582,8 @@ impl Relay {
 
         // Subscribe
         let id: SubscriptionId = SubscriptionId::generate();
-        self.subscribe_auto_closing(id, filter, opts, Some(tx))?;
+        self.subscribe_auto_closing(id, filter, opts, Some(tx))
+            .await?;
 
         // Handle subscription activity
         while let Some(activity) = rx.recv().await {
