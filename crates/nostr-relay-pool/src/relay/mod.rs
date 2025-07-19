@@ -1215,10 +1215,13 @@ mod tests {
             .unwrap();
 
         // Keep up the test
-        relay
-            .handle_notifications(|_| async { Ok(false) })
-            .await
-            .unwrap();
+        time::timeout(
+            Some(Duration::from_secs(10)),
+            relay.handle_notifications(|_| async { Ok(false) }),
+        )
+        .await
+        .unwrap()
+        .unwrap();
 
         assert_eq!(relay.status(), RelayStatus::Banned);
 
