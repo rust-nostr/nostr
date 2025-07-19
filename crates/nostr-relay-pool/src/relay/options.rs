@@ -23,6 +23,7 @@ pub struct RelayOptions {
     pub(super) idle_timeout: Duration,
     pub(super) retry_interval: Duration,
     pub(super) adjust_retry_interval: bool,
+    pub(super) ban_relay_on_mismatch: bool,
     pub(super) limits: RelayLimits,
     pub(super) max_avg_latency: Option<Duration>,
     pub(super) notification_channel_size: usize,
@@ -38,6 +39,7 @@ impl Default for RelayOptions {
             idle_timeout: Duration::from_secs(300),
             retry_interval: DEFAULT_RETRY_INTERVAL,
             adjust_retry_interval: true,
+            ban_relay_on_mismatch: false,
             limits: RelayLimits::default(),
             max_avg_latency: None,
             notification_channel_size: DEFAULT_NOTIFICATION_CHANNEL_SIZE,
@@ -110,6 +112,12 @@ impl RelayOptions {
     /// Automatically adjust retry interval based on success/attempts (default: true)
     pub fn adjust_retry_interval(mut self, adjust_retry_interval: bool) -> Self {
         self.adjust_retry_interval = adjust_retry_interval;
+        self
+    }
+
+    /// If true, ban a relay when it sends an event that doesn't match the subscription filter.
+    pub fn ban_relay_on_mismatch(mut self, ban_relay: bool) -> Self {
+        self.ban_relay_on_mismatch = ban_relay;
         self
     }
 

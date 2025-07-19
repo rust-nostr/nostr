@@ -300,11 +300,6 @@ impl InnerRelay {
         subscriptions.remove(id);
     }
 
-    async fn subscription_exists(&self, id: &SubscriptionId) -> bool {
-        let subscriptions = self.atomic.subscriptions.read().await;
-        subscriptions.contains_key(id)
-    }
-
     /// Register an auto-closing subscription
     pub(crate) async fn add_auto_closing_subscription(&self, id: SubscriptionId, filter: Filter) {
         let mut subscriptions = self.atomic.subscriptions.write().await;
@@ -1121,9 +1116,21 @@ impl InnerRelay {
             }
         }
 
-        // Check if the subscription id is exist
-        if !self.subscription_exists(&subscription_id).await {
-            return Err(Error::SubscriptionNotFound);
+        // Check if the subscription id is exist and verify the event matches the
+        // subscription filter.
+        match self.subscription(&subscription_id).await {
+            // Skip NIP-50 extensions since they're unsupported
+            Some(filter)
+                if self.opts.ban_relay_on_mismatch
+                    && !filter.match_event(&event, MatchEventOptions::new().nip50(false)) =>
+            {
+                self.ban();
+                return Err(Error::FilterMismatch);
+            }
+            None => {
+                return Err(Error::SubscriptionNotFound);
+            }
+            _ => {}
         }
 
         // Check if the event is expired
