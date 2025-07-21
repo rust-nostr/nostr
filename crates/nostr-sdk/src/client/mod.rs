@@ -173,7 +173,7 @@ impl Client {
     /// * unset the signer
     ///
     /// This method will NOT:
-    /// * reset [`Options`]
+    /// * reset [`ClientOptions`]
     /// * remove the database
     /// * clear the gossip graph
     pub async fn reset(&self) {
@@ -305,7 +305,7 @@ impl Client {
     /// If are set pool subscriptions, the new added relay will inherit them. Use [`Client::subscribe_to`] method instead of [`Client::subscribe`],
     /// to avoid to set pool subscriptions.
     ///
-    /// This method use previously set or default [`Options`] to configure the [`Relay`] (ex. set proxy, set min POW, set relay limits, ...).
+    /// This method use previously set or default [`ClientOptions`] to configure the [`Relay`] (ex. set proxy, set min POW, set relay limits, ...).
     /// To use custom [`RelayOptions`] use [`RelayPool::add_relay`].
     ///
     /// Connection is **NOT** automatically started with relay, remember to call [`Client::connect`]!
@@ -525,7 +525,7 @@ impl Client {
     /// So remember to unsubscribe when you no longer need it. You can get all your active (non-auto-closing) subscriptions
     /// by calling `client.subscriptions().await`.
     ///
-    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
+    /// If `gossip` is enabled (see [`ClientOptions::gossip`]) the events will be requested also to
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// # Auto-closing subscription
@@ -575,7 +575,7 @@ impl Client {
 
     /// Subscribe to filters with custom [SubscriptionId]
     ///
-    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
+    /// If `gossip` is enabled (see [`ClientOptions::gossip`]) the events will be requested also to
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// # Auto-closing subscription
@@ -679,7 +679,7 @@ impl Client {
 
     /// Sync events with relays (negentropy reconciliation)
     ///
-    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be reconciled also from
+    /// If `gossip` is enabled (see [`ClientOptions::gossip`]) the events will be reconciled also from
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// <https://github.com/hoytech/negentropy>
@@ -723,7 +723,7 @@ impl Client {
     ///
     /// # Gossip
     ///
-    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
+    /// If `gossip` is enabled (see [`ClientOptions::gossip`]) the events will be requested also to
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// # Example
@@ -791,7 +791,7 @@ impl Client {
     ///
     /// # Gossip
     ///
-    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be requested also to
+    /// If `gossip` is enabled (see [`ClientOptions::gossip`]) the events will be requested also to
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// # Notes and alternative example
@@ -799,7 +799,7 @@ impl Client {
     /// This method will be deprecated in the future!
     /// This is a temporary solution for who still want to query events both from database and relays and merge the result.
     /// The optimal solution is to execute a [`Client::sync`] to reconcile missing events, [`Client::subscribe`] to get all
-    /// new future events, [`NostrEventsDatabase::query`] to query stored events and [`Client::handle_notifications`] to listen-for/handle new events (i.e. to know when update the UI).
+    /// new future events, [`NostrDatabase::query`] to query stored events and [`Client::handle_notifications`] to listen-for/handle new events (i.e. to know when update the UI).
     /// This will allow very fast queries, low bandwidth usage (depending on how many events the client have to reconcile) and a lower load on the relays.
     ///
     /// You can obtain the same result with:
@@ -851,7 +851,7 @@ impl Client {
     ///
     /// # Gossip
     ///
-    /// If `gossip` is enabled (see [`Options::gossip`]) the events will be streamed also from
+    /// If `gossip` is enabled (see [`ClientOptions::gossip`]) the events will be streamed also from
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     pub async fn stream_events(
         &self,
@@ -951,7 +951,7 @@ impl Client {
     ///
     /// # Gossip
     ///
-    /// If `gossip` is enabled (see [`Options::gossip`]):
+    /// If `gossip` is enabled (see [`ClientOptions::gossip`]):
     /// - the [`Event`] will be sent also to NIP65 relays (automatically discovered);
     /// - the gossip data will be updated, if the [`Event`] is a NIP17/NIP65 relay list.
     #[inline]
@@ -972,7 +972,7 @@ impl Client {
     ///
     /// # Gossip
     ///
-    /// If `gossip` is enabled (see [`Options::gossip`]) and the [`Event`] is a NIP17/NIP65 relay list,
+    /// If `gossip` is enabled (see [`ClientOptions::gossip`]) and the [`Event`] is a NIP17/NIP65 relay list,
     /// the gossip data will be updated.
     #[inline]
     pub async fn send_event_to<I, U>(
@@ -1178,7 +1178,7 @@ impl Client {
 
     /// Send a private direct message
     ///
-    /// If `gossip` is enabled (see [`Options::gossip`]) the message will be sent to the NIP17 relays (automatically discovered).
+    /// If `gossip` is enabled (see [`ClientOptions::gossip`]) the message will be sent to the NIP17 relays (automatically discovered).
     /// If gossip is not enabled will be sent to all relays with [`RelayServiceFlags::WRITE`] flag.
     ///
     /// This method requires a [`NostrSigner`].

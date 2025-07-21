@@ -638,7 +638,7 @@ impl NostrConnectMessage {
         }
     }
 
-    /// Compose [`NostrConnectMessage::Response`] from [`Response`].
+    /// Compose [`NostrConnectMessage::Response`] from [`NostrConnectResponse`].
     #[inline]
     pub fn response<S>(req_id: S, res: NostrConnectResponse) -> Self
     where
@@ -651,7 +651,7 @@ impl NostrConnectMessage {
         }
     }
 
-    /// Get [`Message`] id
+    /// Get [`NostrConnectMessage`] id
     #[inline]
     pub fn id(&self) -> &str {
         match self {
@@ -660,19 +660,19 @@ impl NostrConnectMessage {
         }
     }
 
-    /// Check if the current [`Message`] is a request.
+    /// Check if the current [`NostrConnectMessage`] is a request.
     #[inline]
     pub fn is_request(&self) -> bool {
         matches!(self, Self::Request { .. })
     }
 
-    /// Check if the current [`Message`] is a response.
+    /// Check if the current [`NostrConnectMessage`] is a response.
     #[inline]
     pub fn is_response(&self) -> bool {
         matches!(self, Self::Response { .. })
     }
 
-    /// Convert [`NostrConnectMessage::Request`] to [`Request`].
+    /// Convert [`NostrConnectMessage::Request`] to [`NostrConnectRequest`].
     #[inline]
     pub fn to_request(self) -> Result<NostrConnectRequest, Error> {
         match self {
@@ -683,7 +683,7 @@ impl NostrConnectMessage {
         }
     }
 
-    /// Convert [`NostrConnectMessage::Response`] to [`Response`].
+    /// Convert [`NostrConnectMessage::Response`] to [`NostrConnectResponse`].
     #[inline]
     pub fn to_response(self, method: NostrConnectMethod) -> Result<NostrConnectResponse, Error> {
         match self {

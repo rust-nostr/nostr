@@ -462,6 +462,9 @@ impl RelayPool {
     /// regardless of whether the initial connection succeeds.
     ///
     /// For further details, see the documentation of [`Relay::try_connect`].
+    ///
+    /// [`RelayStatus::Initialized`]: crate::relay::RelayStatus::Initialized
+    /// [`RelayStatus::Terminated`]: crate::relay::RelayStatus::Terminated
     pub async fn try_connect(&self, timeout: Duration) -> Output<()> {
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
