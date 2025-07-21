@@ -53,9 +53,14 @@ impl NWC {
 
     /// New `NWC` client with custom [`NostrWalletConnectOptions`].
     pub fn with_opts(uri: NostrWalletConnectURI, opts: NostrWalletConnectOptions) -> Self {
+        let pool = match opts.monitor.as_ref() {
+            Some(monitor) => RelayPool::builder().monitor(monitor.clone()).build(),
+            None => RelayPool::default(),
+        };
+
         Self {
             uri,
-            pool: RelayPool::default(),
+            pool,
             opts,
             bootstrapped: Arc::new(AtomicBool::new(false)),
             notifications_subscribed: Arc::new(AtomicBool::new(false)),

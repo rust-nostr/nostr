@@ -20,7 +20,18 @@ async fn main() -> Result<()> {
     // Parse URI and compose NWC client
     let uri: NostrWalletConnectURI =
         NostrWalletConnectURI::from_str(&nwc_uri_string).expect("Failed to parse NWC URI");
-    let nwc: NWC = NWC::new(uri);
+
+    // Create monitor and subscribe to it
+    let monitor = Monitor::new(100);
+    let mut monitor_sub = monitor.subscribe();
+    tokio::spawn(async move {
+        while let Ok(notification) = monitor_sub.recv().await {
+            println!("Notification: {notification:?}");
+        }
+    });
+
+    // Create NWC client with monitor
+    let nwc: NWC = NWC::with_opts(uri, NostrWalletConnectOptions::default().monitor(monitor));
 
     // Get balance
     let balance = nwc.get_balance().await?;
