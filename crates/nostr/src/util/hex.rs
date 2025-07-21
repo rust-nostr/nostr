@@ -31,7 +31,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidHexCharacter { c, index } => {
-                write!(f, "Invalid character {} at position {}", c, index)
+                write!(f, "Invalid character {c} at position {index}")
             }
             Self::OddLength => write!(f, "Odd number of digits"),
             Self::InvalidLength => write!(f, "Invalid length"),

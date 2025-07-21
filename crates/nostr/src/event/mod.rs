@@ -339,7 +339,7 @@ struct EventIntermediate<'a> {
     pub created_at: Cow<'a, Timestamp>,
     pub kind: Cow<'a, Kind>,
     pub tags: Cow<'a, Tags>,
-    pub content: Cow<'a, String>,
+    pub content: Cow<'a, str>,
     pub sig: Cow<'a, Signature>,
 }
 

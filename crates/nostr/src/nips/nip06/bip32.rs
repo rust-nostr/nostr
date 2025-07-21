@@ -27,11 +27,9 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Secp256k1(ref e) => write!(f, "{e}"),
-            Self::InvalidChildNumber(ref n) => write!(
-                f,
-                "child number {} is invalid (not within [0, 2^31 - 1])",
-                n
-            ),
+            Self::InvalidChildNumber(ref n) => {
+                write!(f, "child number {n} is invalid (not within [0, 2^31 - 1])")
+            }
         }
     }
 }
