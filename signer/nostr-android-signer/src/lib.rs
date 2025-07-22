@@ -159,10 +159,7 @@ impl AndroidSigner {
         // Get the Activity context for launching the intent
         let activity = get_current_activity_context(&mut env)?;
 
-        tracing::debug!("getting next request code");
-        let request_code: i32 = self.next_request_code() as i32;
-
-        launch_get_public_key_intent(&mut env, activity.as_obj(), request_code, permissions)?;
+        let intent = launch_get_public_key_intent(&mut env, activity.as_obj(), permissions)?;
 
         // Poll for the result
         let start_time = Instant::now();
@@ -170,8 +167,7 @@ impl AndroidSigner {
         tracing::debug!("waiting for public key result");
         while start_time.elapsed() < RESOLVER_TIMEOUT {
             // Check if we have a result
-            if let Some(result) = check_activity_result(&mut env, activity.as_obj(), request_code)?
-            {
+            if let Some(result) = check_intent_result(&mut env, &intent)? {
                 tracing::info!("Got result: {:?}", result);
                 return Ok(());
             }
@@ -184,12 +180,11 @@ impl AndroidSigner {
     }
 }
 
-fn launch_get_public_key_intent(
-    env: &mut JNIEnv,
+fn launch_get_public_key_intent<'a>(
+    env: &mut JNIEnv<'a>,
     activity: &JObject,
-    request_code: i32,
     permissions: Option<Vec<Permission>>,
-) -> Result<(), Error> {
+) -> Result<JObject<'a>, Error> {
     tracing::debug!("launching get public key intent");
 
     // Create Intent
@@ -217,9 +212,10 @@ fn launch_get_public_key_intent(
     add_intent_flags(env, &intent, FLAG_ACTIVITY_NEW_TASK)?;
 
     // Start activity
-    start_activity_for_result(env, activity, &intent, request_code)?;
+    start_activity(env, activity, &intent)?;
+    //start_activity_for_result(env, activity, &intent, request_code)?;
 
-    Ok(())
+    Ok(intent)
 }
 
 /// Get JVM
@@ -454,81 +450,143 @@ fn parse_uri<'a>(env: &mut JNIEnv<'a>, uri: &str) -> Result<JValueOwned<'a>, Err
     )?)
 }
 
-// fn start_activity(env: &mut JNIEnv, context: &JObject, intent: &JObject) -> Result<(), Error> {
-//     env.call_method(
-//         context,
-//         "startActivity",
-//         "(Landroid/content/Intent;)V",
-//         &[JValue::Object(intent)],
-//     )?;
-//     Ok(())
-// }
-
-fn start_activity_for_result(
-    env: &mut JNIEnv,
-    context: &JObject,
-    intent: &JObject,
-    request_code: i32,
-) -> Result<(), Error> {
-    tracing::debug!("starting activity for result (request code: {request_code})");
+fn start_activity(env: &mut JNIEnv, context: &JObject, intent: &JObject) -> Result<(), Error> {
+    tracing::debug!("starting activity");
     env.call_method(
         context,
-        "startActivityForResult",
-        "(Landroid/content/Intent;I)V",
-        &[JValue::Object(intent), JValue::Int(request_code)],
+        "startActivity",
+        "(Landroid/content/Intent;)V",
+        &[JValue::Object(intent)],
     )?;
-
-    tracing::debug!("started activity for result (request code: {request_code})");
-
+    tracing::debug!("started activity");
     Ok(())
 }
 
-fn check_activity_result<'a>(
-    env: &mut JNIEnv<'a>,
-    activity: &JObject,
-    request_code: i32,
-) -> Result<Option<ActivityResult<'a>>, Error> {
-    tracing::debug!("checking activity result (request code: {request_code})");
+// fn start_activity_for_result(
+//     env: &mut JNIEnv,
+//     context: &JObject,
+//     intent: &JObject,
+//     request_code: i32,
+// ) -> Result<(), Error> {
+//     tracing::debug!("starting activity for result (request code: {request_code})");
+//     env.call_method(
+//         context,
+//         "startActivityForResult",
+//         "(Landroid/content/Intent;I)V",
+//         &[JValue::Object(intent), JValue::Int(request_code)],
+//     )?;
+//
+//     tracing::debug!("started activity for result (request code: {request_code})");
+//
+//     Ok(())
+// }
 
-    // Get the Activity class
-    let activity_class = env.get_object_class(&activity)?;
+// fn check_activity_result<'a>(
+//     env: &mut JNIEnv<'a>,
+//     activity: &JObject,
+//     request_code: i32,
+// ) -> Result<Option<ActivityResult<'a>>, Error> {
+//     tracing::debug!("checking activity result (request code: {request_code})");
+//
+//     // Get the Activity class
+//     tracing::debug!("getting activity class");
+//     let activity_class = env.get_object_class(&activity)?;
+//     tracing::debug!("got activity class");
+//
+//     // Try to access mActivityResult field (this is internal Android implementation)
+//     // Note: This might not work on all Android versions due to internal changes
+//     let activity_result_field = env.get_field_id(activity_class, "mActivityResult", "Landroid/app/ActivityResult;")?;
+//     tracing::debug!("found mActivityResult field");
+//
+//     // Try to get the field value with exception handling
+//     let activity_result = env.get_field_unchecked(&activity, activity_result_field, ReturnType::Object)?;
+//     let result_obj = activity_result.l()?;
+//
+//     if !result_obj.is_null() {
+//         // Get the result code and request code from ActivityResult
+//         let result_code = get_activity_result_code(env, &result_obj)?;
+//         let result_request_code = get_activity_result_request_code(env, &result_obj)?;
+//
+//         if result_request_code == request_code {
+//             // We found the result
+//             let result_data = get_activity_result_data(env, &result_obj)?;
+//
+//             // Clear the result so we don't process it again
+//             clear_activity_result(env, &activity)?;
+//
+//             return Ok(Some(ActivityResult {
+//                 request_code,
+//                 result_code,
+//                 data: result_data,
+//             }));
+//         } else {
+//             tracing::debug!("result request code doesn't match: {result_request_code} != {request_code}");
+//         }
+//     } else {
+//         tracing::debug!("mActivityResult is null");
+//     }
+//
+//     Ok(None)
+// }
 
-    // Try to access mActivityResult field (this is internal Android implementation)
-    // Note: This might not work on all Android versions due to internal changes
-    let activity_result_field = match env.get_field_id(
-        activity_class,
-        "mActivityResult",
-        "Landroid/app/ActivityResult;",
-    ) {
-        Ok(field) => field,
-        Err(_) => return Ok(None), // Field doesn't exist or isn't accessible
-    };
+fn check_intent_result(env: &mut JNIEnv, intent: &JObject) -> Result<Option<String>, Error> {
+    tracing::debug!("checking intent for result data");
 
-    let activity_result =
-        env.get_field_unchecked(&activity, activity_result_field, ReturnType::Object)?;
-    let result_obj = activity_result.l()?;
+    // Check if the intent now has result data
+    let intent_data = env.call_method(intent, "getData", "()Landroid/net/Uri;", &[])?;
 
-    if !result_obj.is_null() {
-        // Get the result code and request code from ActivityResult
-        let result_code = get_activity_result_code(env, &result_obj)?;
-        let result_request_code = get_activity_result_request_code(env, &result_obj)?;
+    tracing::debug!("Checking uri object");
 
-        if result_request_code == request_code {
-            // We found the result
-            let result_data = get_activity_result_data(env, &result_obj)?;
-
-            // Clear the result so we don't process it again
-            clear_activity_result(env, &activity)?;
-
-            return Ok(Some(ActivityResult {
-                request_code,
-                result_code,
-                data: result_data,
-            }));
-        }
+    let uri_obj = intent_data.l()?;
+    if uri_obj.is_null() {
+        tracing::debug!("intent data is still null");
+        return Ok(None);
     }
 
-    Ok(None)
+    tracing::debug!("extracting result from object");
+
+    let result_param = get_query_parameter(env, &uri_obj, "result")?;
+
+    let result_obj = result_param.l()?;
+    if result_obj.is_null() {
+        tracing::debug!("result parameter is null");
+        return Ok(None);
+    }
+
+    tracing::debug!("getting result string from object");
+
+    let result_string: String = env.get_string(&result_obj.into())?.into();
+    tracing::info!("Found result in stored intent: {}", result_string);
+
+    Ok(Some(result_string))
+}
+
+fn get_query_parameter<'a>(
+    env: &mut JNIEnv<'a>,
+    uri: &JObject,
+    key: &str,
+) -> Result<JValueOwned<'a>, Error> {
+    let val = env.new_string(key)?;
+    Ok(env.call_method(
+        uri,
+        "getQueryParameter",
+        "(Ljava/lang/String;)Ljava/lang/String;",
+        &[JValue::Object(&val)],
+    )?)
+}
+
+fn get_string_extra<'a>(
+    env: &mut JNIEnv<'a>,
+    uri: &JObject,
+    key: &str,
+) -> Result<JValueOwned<'a>, Error> {
+    let key = env.new_string(key)?;
+    Ok(env.call_method(
+        uri,
+        "getStringExtra",
+        "(Ljava/lang/String;)Ljava/lang/String;",
+        &[JValue::Object(&key)],
+    )?)
 }
 
 fn get_activity_result_code(env: &mut JNIEnv, result_obj: &JObject) -> Result<i32, Error> {
