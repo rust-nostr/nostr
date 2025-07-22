@@ -18,3 +18,4 @@ nostr = { workspace = true, features = ["std"] }
 once_cell.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["std"] }
+tracing = { workspace = true, features = ["std"] }

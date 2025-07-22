@@ -5,7 +5,7 @@ set -euo pipefail
 args=(
     "-p nostr"
     "-p nostr-browser-signer"
-    "-p nip55"
+    "-p nostr-android-signer"
     "-p nostr-database"
     "-p nostr-lmdb"
     "-p nostr-mls-storage"
