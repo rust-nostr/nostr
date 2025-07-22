@@ -8,6 +8,7 @@ The project is split up into several crates in the `crates/` directory:
     * [**nostr**](./crates/nostr): Rust implementation of Nostr protocol
     * Signers
         * [**nostr-browser-signer**](./signer/nostr-browser-signer): Nostr Browser signer implementation (NIP-07)
+        * [**nostr-browser-signer-proxy**](./signer/nostr-browser-signer-proxy): Proxy for using the Nostr Browser signer (NIP-07) in native applications
         * [**nostr-connect**](./signer/nostr-connect): Nostr Connect (NIP-46) 
     * [**nostr-database**](./database/nostr-database): Events database abstraction and in-memory implementation
         * [**nostr-lmdb**](./database/nostr-lmdb): LMDB storage backend

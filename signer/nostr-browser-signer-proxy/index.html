@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>NIP-07 Proxy</title>
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div class="container">
+            <h1>NIP-07 Proxy</h1>
+            <p>This page acts as a proxy between your native application and the NIP-07 browser extension.</p>
+            <div class="status-box">
+                <strong>Status:</strong> <span id="status">Checking...</span>
+            </div>
+            <p><small>Keep this tab open while using your application. The page will automatically poll for requests from your native app.</small></p>
+
+            <h3>Debug Info</h3>
+            <p><small>Check the browser console (F12) for detailed logs.</small></p>
+        </div>
+
+        <script src="proxy.js"></script>
+    </body>
+</html>

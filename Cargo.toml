@@ -20,6 +20,7 @@ members = [
 
     # Signers
     "signer/nostr-browser-signer",
+    "signer/nostr-browser-signer-proxy",
     "signer/nostr-connect",
 ]
 default-members = ["crates/*"]

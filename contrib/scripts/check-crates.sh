@@ -37,6 +37,7 @@ buildargs=(
     "-p nostr --no-default-features --features alloc"             # Only alloc feature
     "-p nostr --no-default-features --features alloc,all-nips"    # alloc + all-nips
     "-p nostr-browser-signer --target wasm32-unknown-unknown"
+    "-p nostr-browser-signer-proxy"
     "-p nostr-blossom"
     "-p nostr-http-file-storage"
     "-p nostr-database"

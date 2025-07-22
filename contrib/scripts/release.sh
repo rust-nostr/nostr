@@ -5,6 +5,7 @@ set -euo pipefail
 args=(
     "-p nostr"
     "-p nostr-browser-signer"
+    "-p nostr-browser-signer-proxy"
     "-p nostr-database"
     "-p nostr-lmdb"
     "-p nostr-mls-storage"
