@@ -164,7 +164,7 @@ impl AndroidSigner {
     fn launch_get_public_key_intent(
         &self,
         permissions: Option<Vec<Permission>>,
-    ) -> Result<(), Error> {
+    ) -> Result<usize, Error> {
         let mut env: JNIEnv = self.ctx.get_env()?;
 
         let context: &JObject = self.ctx.get_context()?;
@@ -194,56 +194,74 @@ impl AndroidSigner {
         add_intent_flags(&mut env, &intent, FLAG_ACTIVITY_NEW_TASK)?;
 
         // Start activity
-        start_activity(&mut env, context, &intent)?;
-        //let request_code = self.next_request_code();
-        //start_activity_for_result(&mut env, context, &intent, request_code as i32)?;
+        //start_activity(&mut env, context, &intent)?;
+        let request_code = self.next_request_code();
+        start_activity_for_result(&mut env, context, &intent, request_code as i32)?;
 
-        Ok(())
+        Ok(request_code)
     }
 
     /// Get public key from signer using Content Resolver
     pub fn public_key(&self, permissions: Option<Vec<Permission>>) -> Result<(), Error> {
-        let package_name = self.package_name.get().ok_or(Error::PackageNameNotSet)?;
+        let mut env = self.ctx.get_env()?;
+
+        // Get the current activity
+        let activity = get_current_activity_context(&mut env)?;
 
         //let (tx, rx) = mpsc::channel();
 
-        self.launch_get_public_key_intent(permissions)?;
+        let request_code = self.launch_get_public_key_intent(permissions)?;
 
         // // Wait for response
         // match rx.recv_timeout(Duration::from_secs(60)) {
         //     Ok(res) => println!("Got response: {:?}", res),
         //     Err(e) => panic!("Error: {:?}", e),
         // }
-        let res = self.wait_for_response(package_name, Request::GetPublicKey)?;
-        println!("Got response: {:?}", res);
+        // let res = self.wait_for_response(package_name, Request::GetPublicKey)?;
+        // println!("Got response: {:?}", res);
 
-        Ok(())
-    }
-
-    /// Wait for response from signer using Content Resolver
-    fn wait_for_response(&self, package_name: &str, req: Request) -> Result<String, Error> {
-        let mut env: JNIEnv = self.ctx.get_env()?;
-        let context: &JObject = self.ctx.get_context()?;
-    
+        // Poll for the result
         let start_time = Instant::now();
-    
-        loop {
-            // Check if timeout exceeded
-            if start_time.elapsed() > CONTENT_RESOLVER_TIMEOUT {
-                return Err(Error::Timeout);
+        let timeout = Duration::from_secs(30);
+
+        while start_time.elapsed() < timeout {
+            // Check if we have a result
+            if let Some(result) = check_activity_result(&mut env, &activity, request_code as i32)? {
+                println!("Got result: {:?}", result);
+                return Ok(());
             }
-    
-            // Try to get response from content resolver
-            if let Ok(response) = query_content_resolver(&mut env, context, package_name, req) {
-                if !response.is_empty() {
-                    return Ok(response);
-                }
-            }
-    
-            // Wait before next poll
+
+            // Wait a bit before checking again
             std::thread::sleep(POLLING_INTERVAL);
         }
+
+        Err(Error::Timeout)
     }
+
+    // /// Wait for response from signer using Content Resolver
+    // fn wait_for_response(&self, package_name: &str, req: Request) -> Result<String, Error> {
+    //     let mut env: JNIEnv = self.ctx.get_env()?;
+    //     let context: &JObject = self.ctx.get_context()?;
+    //
+    //     let start_time = Instant::now();
+    //
+    //     loop {
+    //         // Check if timeout exceeded
+    //         if start_time.elapsed() > CONTENT_RESOLVER_TIMEOUT {
+    //             return Err(Error::Timeout);
+    //         }
+    //
+    //         // Try to get response from content resolver
+    //         if let Ok(response) = query_content_resolver(&mut env, context, package_name, req) {
+    //             if !response.is_empty() {
+    //                 return Ok(response);
+    //             }
+    //         }
+    //
+    //         // Wait before next poll
+    //         std::thread::sleep(POLLING_INTERVAL);
+    //     }
+    // }
 }
 
 /// Get JVM
@@ -492,6 +510,99 @@ fn start_activity_for_result(
     Ok(())
 }
 
+fn check_activity_result<'a>(
+    env: &mut JNIEnv<'a>,
+    activity: &JObject,
+    request_code: i32,
+) -> Result<Option<JObject<'a>>, Error> {
+    // Get the Activity class
+    let activity_class = env.get_object_class(&activity)?;
+
+    // Try to access mActivityResult field (this is internal Android implementation)
+    // Note: This might not work on all Android versions due to internal changes
+    let activity_result_field = match env.get_field_id(
+        activity_class,
+        "mActivityResult",
+        "Landroid/app/ActivityResult;",
+    ) {
+        Ok(field) => field,
+        Err(_) => return Ok(None), // Field doesn't exist or isn't accessible
+    };
+
+    let activity_result =
+        env.get_field_unchecked(&activity, activity_result_field, ReturnType::Object)?;
+    let result_obj = activity_result.l()?;
+
+    if !result_obj.is_null() {
+        // Get the result code and request code from ActivityResult
+        let result_code = get_activity_result_code(env, &result_obj)?;
+        let result_request_code = get_activity_result_request_code(env, &result_obj)?;
+
+        if result_request_code == request_code {
+            // We found the result
+            let result_data = get_activity_result_data(env, &result_obj)?;
+
+            // Clear the result so we don't process it again
+            clear_activity_result(env, &activity)?;
+
+            return Ok(Some(result_data));
+        }
+    }
+
+    Ok(None)
+}
+
+fn get_activity_result_code(
+    env: &mut JNIEnv,
+    result_obj: &JObject,
+) -> Result<i32, jni::errors::Error> {
+    let result_class = env.get_object_class(result_obj)?;
+    let field_id = env.get_field_id(result_class, "mResultCode", "I")?;
+    env.get_field_unchecked(result_obj, field_id, ReturnType::Primitive(Primitive::Int))?
+        .i()
+}
+
+fn get_activity_result_request_code(
+    env: &mut JNIEnv,
+    result_obj: &JObject,
+) -> Result<i32, jni::errors::Error> {
+    let result_class = env.get_object_class(result_obj)?;
+    let field_id = env.get_field_id(result_class, "mRequestCode", "I")?;
+    env.get_field_unchecked(result_obj, field_id, ReturnType::Primitive(Primitive::Int))?
+        .i()
+}
+
+fn get_activity_result_data<'a>(
+    env: &mut JNIEnv<'a>,
+    result_obj: &JObject,
+) -> Result<JObject<'a>, jni::errors::Error> {
+    let result_class = env.get_object_class(result_obj)?;
+    let field_id = env.get_field_id(result_class, "mData", "Landroid/content/Intent;")?;
+    env.get_field_unchecked(result_obj, field_id, ReturnType::Object)?
+        .l()
+}
+
+fn clear_activity_result(env: &mut JNIEnv, activity: &JObject) -> Result<(), jni::errors::Error> {
+    let activity_class = env.get_object_class(activity)?;
+
+    // Try to clear the mActivityResult field by setting it to null
+    match env.get_field_id(
+        activity_class,
+        "mActivityResult",
+        "Landroid/app/ActivityResult;",
+    ) {
+        Ok(field_id) => {
+            // Set the field to null to clear the result
+            env.set_field_unchecked(activity, field_id, JValue::Object(&JObject::null()))?;
+            Ok(())
+        }
+        Err(_) => {
+            // Field doesn't exist or isn't accessible, that's okay
+            Ok(())
+        }
+    }
+}
+
 /// Create a string array for JNI
 fn create_string_array<'a>(env: &mut JNIEnv<'a>, strings: &[&str]) -> Result<JObject<'a>, Error> {
     let string_class = env.find_class("java/lang/String")?;
@@ -505,7 +616,11 @@ fn create_string_array<'a>(env: &mut JNIEnv<'a>, strings: &[&str]) -> Result<JOb
     Ok(array.into())
 }
 
-fn get_column_index<'a>(env: &mut JNIEnv<'a>, cursor: &JObject, column: &str) -> Result<JValueOwned<'a>, Error> {
+fn get_column_index<'a>(
+    env: &mut JNIEnv<'a>,
+    cursor: &JObject,
+    column: &str,
+) -> Result<JValueOwned<'a>, Error> {
     let obj = string_to_jobject(env, column)?;
     Ok(env.call_method(
         cursor,
