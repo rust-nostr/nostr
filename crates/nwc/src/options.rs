@@ -6,6 +6,7 @@
 
 use std::time::Duration;
 
+use nostr_relay_pool::monitor::Monitor;
 use nostr_relay_pool::{ConnectionMode, RelayOptions};
 
 /// Default timeout
@@ -16,6 +17,7 @@ pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 pub struct NostrWalletConnectOptions {
     pub(super) relay: RelayOptions,
     pub(super) timeout: Duration,
+    pub(super) monitor: Option<Monitor>,
 }
 
 impl Default for NostrWalletConnectOptions {
@@ -23,6 +25,7 @@ impl Default for NostrWalletConnectOptions {
         Self {
             relay: RelayOptions::default(),
             timeout: DEFAULT_TIMEOUT,
+            monitor: None,
         }
     }
 }
@@ -46,6 +49,13 @@ impl NostrWalletConnectOptions {
     #[inline]
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
+        self
+    }
+
+    /// Set Relay Pool monitor
+    #[inline]
+    pub fn monitor(mut self, monitor: Monitor) -> Self {
+        self.monitor = Some(monitor);
         self
     }
 }

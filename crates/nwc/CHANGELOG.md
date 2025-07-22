@@ -28,6 +28,7 @@
 ### Added
 
 - Add notification support for real-time payment updates (https://github.com/rust-nostr/nostr/pull/953)
+- Add Monitor to NostrWalletConnectOptions (https://github.com/rust-nostr/nostr/pull/989)
 
 ## v0.42.0 - 2025/05/20
 
