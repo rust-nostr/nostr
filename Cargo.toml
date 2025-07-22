@@ -19,6 +19,7 @@ members = [
     "rfs/nostr-http-file-storage",
 
     # Signers
+    "signer/nostr-android-signer",
     "signer/nostr-browser-signer",
     "signer/nostr-connect",
 ]

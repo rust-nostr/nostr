@@ -2824,18 +2824,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0efe882e02d206d8d279c20eb40e03baf7cb5136a1476dc084a324fbc3ec42d"
 
 [[package]]
-name = "nip55"
-version = "0.42.0"
-dependencies = [
- "jni",
- "jvm-getter",
- "nostr",
- "once_cell",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "nix"
 version = "0.30.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2881,6 +2869,18 @@ dependencies = [
  "unicode-normalization",
  "url",
  "url-fork",
+]
+
+[[package]]
+name = "nostr-android-signer"
+version = "0.42.0"
+dependencies = [
+ "jni",
+ "jvm-getter",
+ "nostr",
+ "once_cell",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -15,8 +15,8 @@
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::mem::MaybeUninit;
-use std::sync::{Arc, Mutex, mpsc};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use jni::objects::{JClass, JMethodID, JObject, JStaticMethodID, JString, JValue, JValueOwned};
@@ -24,7 +24,7 @@ use jni::signature::{Primitive, ReturnType};
 use jni::sys::{jint, jmethodID, jobject, JavaVM as RawJavaVM, JNI_OK};
 use jni::{JNIEnv, JavaVM};
 use jvm_getter::JNI_GetCreatedJavaVMs;
-use once_cell::sync::{OnceCell, Lazy};
+use once_cell::sync::{Lazy, OnceCell};
 
 pub mod error;
 pub mod types;
@@ -89,12 +89,12 @@ impl AndroidContext {
     fn get_context(&self) -> Result<&JObject<'static>, Error> {
         self.ctx.get_or_try_init(|| {
             let mut env: JNIEnv = self.get_env()?;
-            
+
             let ctx = get_global_android_context(&mut env)?;
 
             let activity = get_current_activity_context(&mut env)?;
             setup_activity_result_callback(&mut env, &activity)?;
-            
+
             Ok(ctx)
         })
     }
@@ -124,7 +124,7 @@ impl AndroidSigner {
     fn next_request_code(&self) -> usize {
         self.request_code.fetch_add(1, Ordering::SeqCst)
     }
-    
+
     #[inline]
     pub fn set_package_name(&self, package_name: &str) -> Result<(), Error> {
         self.package_name
@@ -178,7 +178,7 @@ impl AndroidSigner {
         sender: mpsc::Sender<ActivityResult>,
     ) -> Result<(), Error> {
         let mut env: JNIEnv = self.ctx.get_env()?;
-        
+
         let context: &JObject = self.ctx.get_context()?;
 
         // Create Intent
@@ -209,7 +209,7 @@ impl AndroidSigner {
         //start_activity(&mut env, context, &intent)?;
         let request_code = self.next_request_code();
         start_activity_for_result(&mut env, context, &intent, request_code as i32)?;
-        
+
         register_activity_result_callback(request_code as i32, sender);
 
         Ok(())
@@ -218,9 +218,9 @@ impl AndroidSigner {
     /// Get public key from signer using Content Resolver
     pub fn public_key(&self, permissions: Option<Vec<Permission>>) -> Result<(), Error> {
         // let package_name = self.package_name.get().ok_or(Error::PackageNameNotSet)?;
-        
+
         let (tx, rx) = mpsc::channel();
-        
+
         self.launch_get_public_key_intent(permissions, tx)?;
 
         // Wait for response
@@ -236,22 +236,22 @@ impl AndroidSigner {
     // fn wait_for_response(&self, package_name: &str, req: Request) -> Result<String, Error> {
     //     let mut env: JNIEnv = self.ctx.get_env()?;
     //     let context: &JObject = self.ctx.get_context()?;
-    // 
+    //
     //     let start_time = Instant::now();
-    // 
+    //
     //     loop {
     //         // Check if timeout exceeded
     //         if start_time.elapsed() > CONTENT_RESOLVER_TIMEOUT {
     //             return Err(Error::Timeout);
     //         }
-    // 
+    //
     //         // Try to get response from content resolver
     //         if let Ok(response) = query_content_resolver(&mut env, context, package_name, req) {
     //             if !response.is_empty() {
     //                 return Ok(response);
     //             }
     //         }
-    // 
+    //
     //         // Wait before next poll
     //         std::thread::sleep(POLLING_INTERVAL);
     //     }
@@ -350,8 +350,13 @@ fn get_current_activity_context(env: &mut JNIEnv) -> Result<JObject<'static>, Er
     let activity_thread = activity_thread_obj.l()?;
 
     // Get mActivities field (ArrayMap of activities)
-    let activities_field = env.get_field_id(&activity_thread_class, "mActivities", "Landroid/util/ArrayMap;")?;
-    let activities_map = env.get_field_unchecked(activity_thread, activities_field, ReturnType::Object)?;
+    let activities_field = env.get_field_id(
+        &activity_thread_class,
+        "mActivities",
+        "Landroid/util/ArrayMap;",
+    )?;
+    let activities_map =
+        env.get_field_unchecked(activity_thread, activities_field, ReturnType::Object)?;
 
     // Get the first activity from the map
     let array_map = activities_map.l()?;
@@ -366,13 +371,19 @@ fn get_current_activity_context(env: &mut JNIEnv) -> Result<JObject<'static>, Er
     }
 
     // Get first activity record
-    let activity_record = env.call_method(array_map, "valueAt", "(I)Ljava/lang/Object;", &[JValue::Int(0)])?;
+    let activity_record = env.call_method(
+        array_map,
+        "valueAt",
+        "(I)Ljava/lang/Object;",
+        &[JValue::Int(0)],
+    )?;
     let activity_record_obj = activity_record.l()?;
 
     // Get the activity from the record (ActivityClientRecord.activity)
     let record_class = env.get_object_class(&activity_record_obj)?;
     let activity_field = env.get_field_id(&record_class, "activity", "Landroid/app/Activity;")?;
-    let activity = env.get_field_unchecked(activity_record_obj, activity_field, ReturnType::Object)?;
+    let activity =
+        env.get_field_unchecked(activity_record_obj, activity_field, ReturnType::Object)?;
 
     let activity_obj = activity.l()?;
     if activity_obj.is_null() {
@@ -407,7 +418,8 @@ extern "C" fn native_on_activity_result(
                 request_code,
                 result_code,
                 data: data_obj,
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -437,10 +449,7 @@ extern "C" fn native_on_activity_result(
     }
 }
 
-fn setup_activity_result_callback(
-    env: &mut JNIEnv,
-    activity: &JObject,
-) -> Result<(), Error> {
+fn setup_activity_result_callback(env: &mut JNIEnv, activity: &JObject) -> Result<(), Error> {
     // Get activity class
     let activity_class = env.get_object_class(activity)?;
 
@@ -448,36 +457,31 @@ fn setup_activity_result_callback(
     let method_id = env.get_method_id(
         &activity_class,
         "onActivityResult",
-        "(IILandroid/content/Intent;)V"
+        "(IILandroid/content/Intent;)V",
     )?;
 
     // Store original method
     *ORIGINAL_METHOD.lock().unwrap() = Some(method_id);
 
     // Create native method replacement
-    let native_methods = [
-        jni::NativeMethod {
-            name: "onActivityResult".into(),
-            sig: "(IILandroid/content/Intent;)V".into(),
-            fn_ptr: native_on_activity_result as *mut c_void,
-        },
-    ];
+    let native_methods = [jni::NativeMethod {
+        name: "onActivityResult".into(),
+        sig: "(IILandroid/content/Intent;)V".into(),
+        fn_ptr: native_on_activity_result as *mut c_void,
+    }];
 
     // Register the native method (this replaces the existing onActivityResult method)
-    env.register_native_methods(activity_class, &native_methods).expect("Failed to register native method");
+    env.register_native_methods(activity_class, &native_methods)
+        .expect("Failed to register native method");
 
     Ok(())
 }
 
-fn register_activity_result_callback(
-    request_code: i32,
-    sender: mpsc::Sender<ActivityResult>,
-) {
+fn register_activity_result_callback(request_code: i32, sender: mpsc::Sender<ActivityResult>) {
     if let Ok(mut callbacks) = RESULT_CALLBACKS.lock() {
         callbacks.insert(request_code, sender);
     }
 }
-
 
 fn create_intent<'a>(env: &mut JNIEnv<'a>) -> Result<JObject<'a>, Error> {
     let intent_class = env.find_class("android/content/Intent")?;
@@ -583,12 +587,11 @@ pub fn start_activity_for_result(
         context,
         "startActivityForResult",
         "(Landroid/content/Intent;I)V",
-        &[JValue::Object(intent), JValue::Int(request_code)]
+        &[JValue::Object(intent), JValue::Int(request_code)],
     )?;
 
     Ok(())
 }
-
 
 /// Create a string array for JNI
 fn create_string_array<'a>(env: &mut JNIEnv<'a>, strings: &[&str]) -> Result<JObject<'a>, Error> {
@@ -617,18 +620,18 @@ fn create_string_array<'a>(env: &mut JNIEnv<'a>, strings: &[&str]) -> Result<JOb
 //         "()Landroid/content/ContentResolver;",
 //         &[],
 //     )?;
-// 
+//
 //     // Build URI for the content provider
 //     let uri_string = format!(
 //         "content://{package_name}/{}",
 //         req.as_str_for_content_resolver()
 //     );
-// 
+//
 //     let uri = parse_uri(env, &uri_string)?;
-// 
+//
 //     // Define projection (columns to query)
 //     let projection = create_string_array(env, &["login"])?;
-// 
+//
 //     // Query the content provider
 //     let cursor = env.call_method(
 //         content_resolver.l()?,
@@ -642,14 +645,14 @@ fn create_string_array<'a>(env: &mut JNIEnv<'a>, strings: &[&str]) -> Result<JOb
 //             JValue::Object(&JObject::null()),
 //         ],
 //     )?;
-// 
+//
 //     let cursor_obj = cursor.l()?;
-// 
+//
 //     // Check if cursor is null
 //     if cursor_obj.is_null() {
 //         return Err(Error::ContentResolver("Cursor is null".to_string()));
 //     }
-// 
+//
 //     // Check if request was rejected
 //     let rejected_obj = string_to_jobject(env, "rejected")?;
 //     let rejected_index = env.call_method(
@@ -658,21 +661,21 @@ fn create_string_array<'a>(env: &mut JNIEnv<'a>, strings: &[&str]) -> Result<JOb
 //         "(Ljava/lang/String;)I",
 //         &[JValue::Object(&rejected_obj)],
 //     )?;
-// 
+//
 //     if rejected_index.i()? > -1 {
 //         env.call_method(&cursor_obj, "close", "()V", &[])?;
 //         return Err(Error::RequestRejected);
 //     }
-// 
+//
 //     // Move to first row
 //     let has_data = env.call_method(&cursor_obj, "moveToFirst", "()Z", &[])?;
-// 
+//
 //     if !has_data.z()? {
 //         // Close cursor
 //         env.call_method(&cursor_obj, "close", "()V", &[])?;
 //         return Err(Error::ContentResolver("No data found".to_string()));
 //     }
-// 
+//
 //     // Get result column index
 //     let result_obj = string_to_jobject(env, "result")?;
 //     let result_index = env.call_method(
@@ -682,14 +685,14 @@ fn create_string_array<'a>(env: &mut JNIEnv<'a>, strings: &[&str]) -> Result<JOb
 //         &[JValue::Object(&result_obj)],
 //     )?;
 //     let result_index: jint = result_index.i()?;
-// 
+//
 //     if result_index < 0 {
 //         env.call_method(cursor_obj, "close", "()V", &[])?;
 //         return Err(Error::ContentResolver(
 //             "Result column not found".to_string(),
 //         ));
 //     }
-// 
+//
 //     // Get public key
 //     let pubkey_result = env.call_method(
 //         &cursor_obj,
@@ -698,7 +701,7 @@ fn create_string_array<'a>(env: &mut JNIEnv<'a>, strings: &[&str]) -> Result<JOb
 //         &[JValue::Int(result_index)],
 //     )?;
 //     let pubkey_result = pubkey_result.l()?;
-// 
+//
 //     let result = if !pubkey_result.is_null() {
 //         let pubkey_jstring: JString = pubkey_result.into();
 //         let pubkey_str: String = env.get_string(&pubkey_jstring)?.into();
@@ -706,9 +709,9 @@ fn create_string_array<'a>(env: &mut JNIEnv<'a>, strings: &[&str]) -> Result<JOb
 //     } else {
 //         String::new()
 //     };
-// 
+//
 //     // Close cursor
 //     env.call_method(cursor_obj, "close", "()V", &[])?;
-// 
+//
 //     Ok(result)
 // }
