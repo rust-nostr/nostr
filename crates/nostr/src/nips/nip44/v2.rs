@@ -384,7 +384,7 @@ mod tests {
         for i in (0..len).step_by(2) {
             let high = val(hex[i], i);
             let low = val(hex[i + 1], i + 1);
-            bytes.push(high << 4 | low);
+            bytes.push((high << 4) | low);
         }
 
         bytes

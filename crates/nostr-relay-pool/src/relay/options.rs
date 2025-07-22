@@ -359,16 +359,17 @@ mod tests {
     #[test]
     fn test_close() {
         let opts = SubscribeOptions::default();
-        assert_eq!(opts.is_auto_closing(), false);
+        assert!(!opts.is_auto_closing());
         let opts = SubscribeOptions::default().close_on(Some(SubscribeAutoCloseOptions::default()));
-        assert_eq!(opts.is_auto_closing(), true);
+        assert!(opts.is_auto_closing());
     }
 
     #[test]
     fn test_sync_progress_percentage() {
-        let mut sp = SyncProgress::default();
-        sp.total = 5;
-        sp.current = 2;
+        let sp = SyncProgress {
+            total: 5,
+            current: 2,
+        };
         assert_eq!(sp.percentage(), 2f64 / 5f64);
         let sp_zero = SyncProgress::default();
         assert_eq!(sp_zero.percentage(), 0.0);

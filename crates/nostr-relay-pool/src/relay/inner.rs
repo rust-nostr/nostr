@@ -430,7 +430,7 @@ impl InnerRelay {
         let subscriptions = self.atomic.subscriptions.read().await;
 
         // No sleep if there are active subscriptions
-        if subscriptions.len() > 0 {
+        if !subscriptions.is_empty() {
             return false;
         }
 
