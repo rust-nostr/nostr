@@ -25,6 +25,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Set MSRV to 1.70.0 (https://github.com/rust-nostr/nostr/pull/993)
+
 ### Added
 
 - Add NostrLmdbBuilder and allow setting a custom map size (https://github.com/rust-nostr/nostr/pull/970)
