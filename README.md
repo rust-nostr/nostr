@@ -7,6 +7,7 @@ The project is split up into several crates in the `crates/` directory:
 * Libraries:
     * [**nostr**](./crates/nostr): Rust implementation of Nostr protocol
     * Signers
+        * [**nostr-android-signer**](./signer/nostr-android-signer): Nostr Android signer implementation (NIP-55)
         * [**nostr-browser-signer**](./signer/nostr-browser-signer): Nostr Browser signer implementation (NIP-07)
         * [**nostr-connect**](./signer/nostr-connect): Nostr Connect (NIP-46) 
     * [**nostr-database**](./database/nostr-database): Events database abstraction and in-memory implementation
