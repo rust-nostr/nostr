@@ -38,6 +38,10 @@ impl NostrWalletConnectOptions {
     }
 
     /// Set connection mode
+    #[deprecated(
+        since = "0.43.0",
+        note = "Use `NostrWalletConnectOptions::relay` instead"
+    )]
     pub fn connection_mode(self, mode: ConnectionMode) -> Self {
         Self {
             relay: self.relay.connection_mode(mode),
@@ -57,5 +61,13 @@ impl NostrWalletConnectOptions {
     pub fn monitor(mut self, monitor: Monitor) -> Self {
         self.monitor = Some(monitor);
         self
+    }
+
+    /// Set relay options
+    pub fn relay(self, opts: RelayOptions) -> Self {
+        Self {
+            relay: opts,
+            ..self
+        }
     }
 }
