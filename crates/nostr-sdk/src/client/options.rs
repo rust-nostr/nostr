@@ -26,6 +26,8 @@ pub struct ClientOptions {
     pub(super) relay_limits: RelayLimits,
     pub(super) max_avg_latency: Option<Duration>,
     pub(super) sleep_when_idle: SleepWhenIdle,
+    pub(super) verify_subscriptions: bool,
+    pub(super) ban_relay_on_mismatch: bool,
     pub(super) pool: RelayPoolOptions,
 }
 
@@ -111,6 +113,18 @@ impl ClientOptions {
     #[deprecated(since = "0.42.0", note = "Use `Options::pool` instead.")]
     pub fn notification_channel_size(mut self, size: usize) -> Self {
         self.pool = self.pool.notification_channel_size(size);
+        self
+    }
+
+    /// Verify that received events belong to a subscription and match the filter.
+    pub fn verify_subscriptions(mut self, enable: bool) -> Self {
+        self.verify_subscriptions = enable;
+        self
+    }
+
+    /// If true, ban a relay when it sends an event that doesn't match the subscription filter.
+    pub fn ban_relay_on_mismatch(mut self, ban_relay: bool) -> Self {
+        self.ban_relay_on_mismatch = ban_relay;
         self
     }
 

@@ -36,6 +36,7 @@
 ### Added
 
 - Add `ClientOptions::sleep_when_idle` (https://github.com/rust-nostr/nostr/pull/959)
+- add `verify_subscriptions` and `ban_relay_on_mismatch` to `ClientOptions` (https://github.com/rust-nostr/nostr/pull/998)
 
 ### Deprecated
 

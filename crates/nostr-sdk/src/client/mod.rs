@@ -256,6 +256,8 @@ impl Client {
         // Set limits
         opts.limits(self.opts.relay_limits.clone())
             .max_avg_latency(self.opts.max_avg_latency)
+            .verify_subscriptions(self.opts.verify_subscriptions)
+            .ban_relay_on_mismatch(self.opts.ban_relay_on_mismatch)
     }
 
     /// If return `false` means that already existed
