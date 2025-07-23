@@ -16,10 +16,6 @@ pub const DEFAULT_NOTIFICATION_CHANNEL_SIZE: usize = 2048;
 
 /// Max relay size
 pub const MAX_MESSAGE_SIZE: u32 = 5 * 1024 * 1024; // 5 MB
-/// Max event size
-pub const MAX_EVENT_SIZE: u32 = 70 * 1024; // 70 kB
-/// Max event size for contact list kind
-pub const MAX_CONTACT_LIST_EVENT_SIZE: u32 = 840 * 1024; // 840 kB
 
 pub(super) const DEFAULT_RETRY_INTERVAL: Duration = Duration::from_secs(10);
 // Not increase the max retry interval too much.

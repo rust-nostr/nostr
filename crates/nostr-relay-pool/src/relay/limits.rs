@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use nostr::Kind;
 
-use super::constants::{MAX_CONTACT_LIST_EVENT_SIZE, MAX_EVENT_SIZE, MAX_MESSAGE_SIZE};
+use super::constants::MAX_MESSAGE_SIZE;
 
 /// Relay limits
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -55,7 +55,7 @@ impl RelayMessageLimits {
 /// Events limits
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RelayEventLimits {
-    /// Maximum size of normalised JSON, in bytes (default: [`MAX_EVENT_SIZE`])
+    /// Maximum size of the normalized JSON, in bytes (default: None)
     pub max_size: Option<u32>,
     /// Maximum size of normalized JSON per [Kind], in bytes.
     pub max_size_per_kind: HashMap<Kind, Option<u32>>,
@@ -67,15 +67,12 @@ pub struct RelayEventLimits {
 
 impl Default for RelayEventLimits {
     fn default() -> Self {
-        let mut max_size_per_kind: HashMap<Kind, Option<u32>> = HashMap::with_capacity(1);
-        max_size_per_kind.insert(Kind::ContactList, Some(MAX_CONTACT_LIST_EVENT_SIZE));
-
         let mut max_num_tags_per_kind: HashMap<Kind, Option<u16>> = HashMap::with_capacity(1);
         max_num_tags_per_kind.insert(Kind::ContactList, Some(10_000));
 
         Self {
-            max_size: Some(MAX_EVENT_SIZE),
-            max_size_per_kind,
+            max_size: None,
+            max_size_per_kind: HashMap::new(),
             max_num_tags: Some(2_000),
             max_num_tags_per_kind,
         }
@@ -134,13 +131,7 @@ mod tests {
     fn test_event_limits_get_max_size() {
         let limits = RelayLimits::default();
 
-        assert_eq!(
-            limits.events.get_max_size(&Kind::TextNote),
-            Some(MAX_EVENT_SIZE)
-        );
-        assert_eq!(
-            limits.events.get_max_size(&Kind::ContactList),
-            Some(MAX_CONTACT_LIST_EVENT_SIZE)
-        );
+        assert_eq!(limits.events.get_max_size(&Kind::TextNote), None,);
+        assert_eq!(limits.events.get_max_size(&Kind::ContactList), None,);
     }
 }
