@@ -36,7 +36,7 @@
 - Simplify received message logging (https://github.com/rust-nostr/nostr/pull/945)
 - Trim incoming relay messages before processing
 - Verify that the received events belong to a subscription (https://github.com/rust-nostr/nostr/pull/979)
-- Disable the default event max size limit (TBD)
+- Disable the default event max size limit (https://github.com/rust-nostr/nostr/pull/996)
 
 ### Added
 
