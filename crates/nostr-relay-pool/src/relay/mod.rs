@@ -1183,7 +1183,12 @@ mod tests {
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let relay: Relay = new_relay(url, RelayOptions::default().ban_relay_on_mismatch(true));
+        let relay: Relay = new_relay(
+            url,
+            RelayOptions::default()
+                .verify_subscriptions(true)
+                .ban_relay_on_mismatch(true),
+        );
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
@@ -1212,7 +1217,12 @@ mod tests {
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
         let url = RelayUrl::parse(&mock.url()).unwrap();
 
-        let relay = new_relay(url, RelayOptions::default().ban_relay_on_mismatch(true));
+        let relay = new_relay(
+            url,
+            RelayOptions::default()
+                .verify_subscriptions(true)
+                .ban_relay_on_mismatch(true),
+        );
 
         assert_eq!(relay.status(), RelayStatus::Initialized);
 

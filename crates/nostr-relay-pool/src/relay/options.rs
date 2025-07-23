@@ -23,6 +23,7 @@ pub struct RelayOptions {
     pub(super) idle_timeout: Duration,
     pub(super) retry_interval: Duration,
     pub(super) adjust_retry_interval: bool,
+    pub(super) verify_subscriptions: bool,
     pub(super) ban_relay_on_mismatch: bool,
     pub(super) limits: RelayLimits,
     pub(super) max_avg_latency: Option<Duration>,
@@ -39,6 +40,7 @@ impl Default for RelayOptions {
             idle_timeout: Duration::from_secs(300),
             retry_interval: DEFAULT_RETRY_INTERVAL,
             adjust_retry_interval: true,
+            verify_subscriptions: false,
             ban_relay_on_mismatch: false,
             limits: RelayLimits::default(),
             max_avg_latency: None,
@@ -112,6 +114,12 @@ impl RelayOptions {
     /// Automatically adjust retry interval based on success/attempts (default: true)
     pub fn adjust_retry_interval(mut self, adjust_retry_interval: bool) -> Self {
         self.adjust_retry_interval = adjust_retry_interval;
+        self
+    }
+
+    /// Verify that received events belong to a subscription and match the filter.
+    pub fn verify_subscriptions(mut self, enable: bool) -> Self {
+        self.verify_subscriptions = enable;
         self
     }
 

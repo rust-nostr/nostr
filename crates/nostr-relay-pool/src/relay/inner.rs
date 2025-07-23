@@ -1116,22 +1116,36 @@ impl InnerRelay {
             }
         }
 
-        // Check if the subscription id exist and verify if the event matches the subscription filter.
-        match self.subscription(&subscription_id).await {
-            Some(filter) => {
-                // Skip NIP-50 extensions since they're unsupported
-                const MATCH_EVENT_OPTS: MatchEventOptions = MatchEventOptions::new().nip50(false);
+        // Check if subscription must be verified
+        if self.opts.verify_subscriptions {
+            // NOTE: here we don't use the `self.subscription(id)` to avoid an unnecessary clone of the filter!
 
-                // If the "ban relay on mismatch" option is enabled, check if the filter matches the event.
-                if self.opts.ban_relay_on_mismatch && !filter.match_event(&event, MATCH_EVENT_OPTS)
-                {
-                    // Filter doesn't match the event, ban the relay.
-                    self.ban();
-                    return Err(Error::FilterMismatch);
+            // Acquire read lock
+            let subscriptions = self.atomic.subscriptions.read().await;
+
+            // Check if the subscription id exist and verify if the event matches the subscription filter.
+            match subscriptions.get(&subscription_id) {
+                Some(SubscriptionData { filter, .. }) => {
+                    // Skip NIP-50 matches since they may create issues and ban non-malicious relays.
+                    const MATCH_EVENT_OPTS: MatchEventOptions =
+                        MatchEventOptions::new().nip50(false);
+
+                    // Check if the filter matches the event
+                    if !filter.match_event(&event, MATCH_EVENT_OPTS) {
+                        // Ban the relay
+                        if self.opts.ban_relay_on_mismatch {
+                            self.ban();
+                        }
+
+                        return Err(Error::FilterMismatch);
+                    }
+
+                    // TODO: check filter limit: if eose is not received and the filter has a limit, check how many events have been received.
+                    // TODO: use atomics (AtomicBool and AtomicUsize) for this, to avoid acquiring the RwLock as write.
                 }
-            }
-            None => {
-                return Err(Error::SubscriptionNotFound);
+                None => {
+                    return Err(Error::SubscriptionNotFound);
+                }
             }
         }
 
