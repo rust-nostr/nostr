@@ -12,6 +12,7 @@ rust-version.workspace = true
 keywords = ["nostr", "nip07", "browser", "signer", "proxy"]
 
 [dependencies]
+atomic-destructor.workspace = true
 bytes = "1.10"
 http-body-util = "0.1"
 hyper = { version = "1.6", features = ["server", "http1"] }
@@ -19,7 +20,14 @@ hyper-util = { version = "0.1", features = ["tokio"] }
 nostr = { workspace = true, features = ["std"] }
 serde = { workspace = true, features = ["std", "derive"] }
 serde_json = { workspace = true, features = ["std"] }
-tokio = { workspace = true, features = ["macros", "net", "rt", "rt-multi-thread", "sync", "time"] }
+tokio = { workspace = true, features = [
+  "macros",
+  "net",
+  "rt",
+  "rt-multi-thread",
+  "sync",
+  "time",
+] }
 tracing = { workspace = true, features = ["std"] }
 uuid = { version = "1.17", features = ["serde", "v4"] }
 

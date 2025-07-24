@@ -16,6 +16,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 
+use atomic_destructor::AtomicDestroyer;
 use bytes::Bytes;
 use http_body_util::combinators::BoxBody;
 use http_body_util::{BodyExt, Full};
@@ -169,7 +170,19 @@ pub struct BrowserSignerProxy {
     shutdown: Arc<Notify>,
 }
 
-// TODO: use atomic-destructor to automatically shutdown this when all instances are dropped
+impl Drop for BrowserSignerProxy {
+    fn drop(&mut self) {
+        self.shutdown.notify_one();
+        self.shutdown.notify_waiters();
+    }
+}
+
+impl AtomicDestroyer for BrowserSignerProxy {
+    fn on_destroy(&self) {
+        self.shutdown.notify_one();
+        self.shutdown.notify_waiters();
+    }
+}
 
 impl BrowserSignerProxy {
     // TODO: use a builder instead, to allow to config IP, port, timeout and so on.
@@ -219,19 +232,21 @@ impl BrowserSignerProxy {
                                     }
                                 };
 
+                                let shutdown = shutdown.clone();
                                 let io: TokioIo<TcpStream> = TokioIo::new(stream);
                                 let state: Arc<ProxyState> = state.clone();
+                                let service = service_fn(move |req| {
+                                    handle_request(req, state.clone())
+                                });
 
                                 tokio::spawn(async move {
-                                    let service = service_fn(move |req| {
-                                        handle_request(req, state.clone())
-                                    });
-
-                                    if let Err(e) = http1::Builder::new()
-                                        .serve_connection(io, service)
-                                        .await
-                                    {
-                                        tracing::error!("Error serving connection: {e}");
+                                    tokio::select!{
+                                         Err(err) = http1::Builder::new().serve_connection(io, service) => {
+                                            tracing::error!("Error serving connection: {err}");
+                                        }
+                                        _ = shutdown.notified() => {
+                                            tracing::trace!("Shutdown signal received, closing the connection");
+                                        }
                                     }
                                 });
                             },
