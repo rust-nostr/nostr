@@ -12,7 +12,7 @@
 #![warn(rustdoc::bare_urls)]
 
 use std::collections::HashMap;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -44,8 +44,6 @@ pub use self::error::Error;
 const HTML: &str = include_str!("../index.html");
 const JS: &str = include_str!("../proxy.js");
 const CSS: &str = include_str!("../style.css");
-const IP_ADDR: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
-const TIMEOUT: Duration = Duration::from_secs(30);
 
 type PendingResponseMap = HashMap<Uuid, Sender<Result<Value, String>>>;
 
@@ -158,30 +156,72 @@ struct ProxyState {
     pub pending_responses: Mutex<PendingResponseMap>,
 }
 
+/// Configuration options for [`BrowserSignerProxy`].
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BrowserSignerProxyOptions {
+    /// Request timeout for the signer extension. Default is 30 seconds.
+    pub timeout: Duration,
+    /// Proxy server IP address and port. Default is `127.0.0.1:7400`.
+    pub addr: SocketAddr,
+}
+
 /// Nostr Browser Signer Proxy
 ///
 /// Proxy to use Nostr Browser signer (NIP-07) in native applications.
 #[derive(Debug, Clone)]
 pub struct BrowserSignerProxy {
-    port: u16,
+    /// Configuration options for the proxy
+    options: BrowserSignerProxyOptions,
+    /// Internal state of the proxy including request queues
     state: Arc<ProxyState>,
+    /// Handle to the running proxy server (initialized on demand)
     handle: OnceCell<Arc<JoinHandle<()>>>,
+    /// Notification trigger for graceful shutdown
     shutdown: Arc<Notify>,
+}
+
+impl Default for BrowserSignerProxyOptions {
+    fn default() -> Self {
+        Self {
+            timeout: Duration::from_secs(30),
+            // 7 for NIP-07 and 400 because the NIP title is 40 bytes :)
+            addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 7400)),
+        }
+    }
+}
+
+impl BrowserSignerProxyOptions {
+    /// Sets the timeout duration.
+    pub const fn timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
+    }
+
+    /// Sets the IP address.
+    pub const fn ip_addr(mut self, new_ip: IpAddr) -> Self {
+        self.addr = SocketAddr::new(new_ip, self.addr.port());
+        self
+    }
+
+    /// Sets the port number.
+    pub const fn port(mut self, new_port: u16) -> Self {
+        self.addr = SocketAddr::new(self.addr.ip(), new_port);
+        self
+    }
 }
 
 // TODO: use atomic-destructor to automatically shutdown this when all instances are dropped
 
 impl BrowserSignerProxy {
-    // TODO: use a builder instead, to allow to config IP, port, timeout and so on.
     /// Construct a new browser signer proxy
-    pub fn new(port: u16) -> Self {
+    pub fn new(options: BrowserSignerProxyOptions) -> Self {
         let state = ProxyState {
             outgoing_requests: Mutex::new(Vec::new()),
             pending_responses: Mutex::new(HashMap::new()),
         };
 
         Self {
-            port,
+            options,
             state: Arc::new(state),
             handle: OnceCell::new(),
             shutdown: Arc::new(Notify::new()),
@@ -191,7 +231,7 @@ impl BrowserSignerProxy {
     /// Get the signer proxy webpage URL
     #[inline]
     pub fn url(&self) -> String {
-        format!("http://{IP_ADDR}:{}", self.port)
+        format!("http://{}", self.options.addr)
     }
 
     /// Start the proxy
@@ -201,8 +241,7 @@ impl BrowserSignerProxy {
         let _handle: &Arc<JoinHandle<()>> = self
             .handle
             .get_or_try_init(|| async {
-                let addr: SocketAddr = SocketAddr::new(IP_ADDR, self.port);
-                let listener = TcpListener::bind(addr).await?;
+                let listener = TcpListener::bind(self.options.addr).await?;
 
                 let state = self.state.clone();
                 let shutdown = self.shutdown.clone();
@@ -281,7 +320,7 @@ impl BrowserSignerProxy {
         self.store_outgoing_request(request).await;
 
         // Wait for response
-        match time::timeout(TIMEOUT, rx)
+        match time::timeout(self.options.timeout, rx)
             .await
             .map_err(|_| Error::Timeout)??
         {
