@@ -410,7 +410,7 @@ mod tests {
             .await;
 
         // Clear database
-        store.wipe().expect("Failed to wipe");
+        store.wipe().await.expect("Failed to wipe");
 
         // Test 2: Saves using ingester (automatic batching)
         let batched_duration =

@@ -7,8 +7,10 @@ use std::fs;
 use std::path::Path;
 
 use flume::Sender;
+use heed::RoTxn;
 use nostr_database::prelude::*;
 use nostr_database::SaveEventStatus;
+use tokio::task;
 
 mod error;
 mod ingester;
@@ -25,21 +27,12 @@ pub struct Store {
     ingester: Sender<IngesterItem>,
 }
 
-impl Clone for Store {
-    fn clone(&self) -> Self {
-        Self {
-            db: self.db.clone(),
-            ingester: self.ingester.clone(),
-        }
-    }
-}
-
 impl Store {
     pub(super) fn open<P>(
         path: P,
         map_size: usize,
         max_readers: u32,
-        max_dbs: u32,
+        additional_dbs: u32,
     ) -> Result<Store, Error>
     where
         P: AsRef<Path>,
@@ -49,10 +42,20 @@ impl Store {
         // Create the directory if it doesn't exist
         fs::create_dir_all(path)?;
 
-        let db: Lmdb = Lmdb::new(path, map_size, max_readers, max_dbs)?;
+        let db: Lmdb = Lmdb::new(path, map_size, max_readers, additional_dbs)?;
         let ingester = Ingester::run(db.clone());
 
         Ok(Self { db, ingester })
+    }
+
+    #[inline]
+    async fn interact<F, R>(&self, f: F) -> Result<R, Error>
+    where
+        F: FnOnce(Lmdb) -> R + Send + 'static,
+        R: Send + 'static,
+    {
+        let db = self.db.clone();
+        Ok(task::spawn_blocking(move || f(db)).await?)
     }
 
     /// Store an event.
@@ -95,27 +98,30 @@ impl Store {
 
     pub fn count(&self, filter: Filter) -> Result<usize, Error> {
         let txn = self.db.read_txn()?;
-        let iter = self.db.query(&txn, filter)?;
-        let count = iter.count();
+        let output = self.db.query(&txn, filter)?;
+        let len: usize = output.count();
         txn.commit()?;
-        Ok(count)
+        Ok(len)
     }
 
     // Lookup ID: EVENT_ORD_IMPL
     pub fn query(&self, filter: Filter) -> Result<Events, Error> {
-        let txn = self.db.read_txn()?;
-        let mut events_wrapper = Events::new(&filter);
-        events_wrapper.extend(self.db.query(&txn, filter)?.map(|e| e.into_owned()));
+        let mut events: Events = Events::new(&filter);
+
+        let txn: RoTxn = self.db.read_txn()?;
+        let output = self.db.query(&txn, filter)?;
+        events.extend(output.into_iter().map(|e| e.into_owned()));
         txn.commit()?;
-        Ok(events_wrapper)
+
+        Ok(events)
     }
 
     pub fn negentropy_items(&self, filter: Filter) -> Result<Vec<(EventId, Timestamp)>, Error> {
         let txn = self.db.read_txn()?;
-        let items = self
-            .db
-            .query(&txn, filter)?
-            .map(|e| (EventId::from_slice(e.id).unwrap(), e.created_at))
+        let events = self.db.query(&txn, filter)?;
+        let items = events
+            .into_iter()
+            .map(|e| (EventId::from_byte_array(*e.id), e.created_at))
             .collect();
         txn.commit()?;
         Ok(items)
@@ -131,11 +137,13 @@ impl Store {
         rx.await?
     }
 
-    pub fn wipe(&self) -> Result<(), Error> {
-        let mut txn = self.db.write_txn()?;
-        self.db.wipe(&mut txn)?;
-        txn.commit()?;
-
-        Ok(())
+    pub async fn wipe(&self) -> Result<(), Error> {
+        self.interact(move |db| {
+            let mut txn = db.write_txn()?;
+            db.wipe(&mut txn)?;
+            txn.commit()?;
+            Ok(())
+        })
+        .await?
     }
 }

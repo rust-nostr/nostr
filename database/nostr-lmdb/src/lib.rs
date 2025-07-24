@@ -45,8 +45,8 @@ pub struct NostrLmdbBuilder {
     pub map_size: Option<usize>,
     /// Maximum number of readers
     pub max_readers: Option<u32>,
-    /// Maximum number of named databases
-    pub max_dbs: Option<u32>,
+    /// Additional named databases (on top of the 9 internal ones)
+    pub additional_dbs: Option<u32>,
 }
 
 impl NostrLmdbBuilder {
@@ -59,7 +59,7 @@ impl NostrLmdbBuilder {
             path: path.as_ref().to_path_buf(),
             map_size: None,
             max_readers: None,
-            max_dbs: None,
+            additional_dbs: None,
         }
     }
 
@@ -75,9 +75,9 @@ impl NostrLmdbBuilder {
         self
     }
 
-    /// Maximum number of named databases
-    pub fn max_dbs(mut self, dbs: u32) -> Self {
-        self.max_dbs = Some(dbs);
+    /// Additional named databases (on top of the 9 internal ones)
+    pub fn additional_dbs(mut self, dbs: u32) -> Self {
+        self.additional_dbs = Some(dbs);
         self
     }
 
@@ -85,11 +85,11 @@ impl NostrLmdbBuilder {
     pub fn build(self) -> Result<NostrLMDB, DatabaseError> {
         let map_size: usize = self.map_size.unwrap_or(MAP_SIZE);
         // LMDB defaults: max_readers=126, max_dbs=0
-        // We use 126 readers (LMDB default) and 20 dbs (reasonable for our use case)
+        // We use 126 readers (LMDB default) and 10 additional dbs (on top of the 9 internal ones)
         let max_readers: u32 = self.max_readers.unwrap_or(126);
-        let max_dbs: u32 = self.max_dbs.unwrap_or(10);
+        let additional_dbs: u32 = self.additional_dbs.unwrap_or(10);
 
-        let db: Store = Store::open(self.path, map_size, max_readers, max_dbs)
+        let db: Store = Store::open(self.path, map_size, max_readers, additional_dbs)
             .map_err(DatabaseError::backend)?;
 
         Ok(NostrLMDB { db })
@@ -199,7 +199,7 @@ impl NostrDatabase for NostrLMDB {
     }
 
     fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
-        Box::pin(async move { self.db.wipe().map_err(DatabaseError::backend) })
+        Box::pin(async move { self.db.wipe().await.map_err(DatabaseError::backend) })
     }
 }
 
