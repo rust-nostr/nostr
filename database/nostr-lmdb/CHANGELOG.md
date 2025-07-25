@@ -32,6 +32,7 @@
 ### Added
 
 - Add NostrLmdbBuilder and allow setting a custom map size (https://github.com/rust-nostr/nostr/pull/970)
+- Add transaction-aware `save_event_with_txn` method for batch operations
 
 ## v0.42.0 - 2025/05/20
 

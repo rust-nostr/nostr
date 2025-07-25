@@ -11,9 +11,10 @@ use std::path::Path;
 use heed::byteorder::NativeEndian;
 use heed::types::{Bytes, Unit, U64};
 use heed::{Database, Env, EnvFlags, EnvOpenOptions, RoRange, RoTxn, RwTxn};
+use nostr::nips::nip01::Coordinate;
 use nostr::prelude::*;
 use nostr_database::flatbuffers::FlatBufferDecodeBorrowed;
-use nostr_database::{FlatBufferBuilder, FlatBufferEncode};
+use nostr_database::{FlatBufferBuilder, FlatBufferEncode, RejectedReason, SaveEventStatus};
 
 mod index;
 
@@ -276,6 +277,73 @@ impl Lmdb {
     #[inline]
     pub(crate) fn has_event(&self, txn: &RoTxn, event_id: &[u8; 32]) -> Result<bool, Error> {
         Ok(self.get_event_by_id(txn, event_id)?.is_some())
+    }
+
+    /// Save event with transaction support
+    pub(crate) fn save_event_with_txn(
+        &self,
+        read_txn: &RoTxn,
+        txn: &mut RwTxn,
+        fbb: &mut FlatBufferBuilder,
+        event: &Event,
+    ) -> Result<SaveEventStatus, Error> {
+        if event.kind.is_ephemeral() {
+            return Ok(SaveEventStatus::Rejected(RejectedReason::Ephemeral));
+        }
+
+        if self.has_event(read_txn, event.id.as_bytes())? {
+            return Ok(SaveEventStatus::Rejected(RejectedReason::Duplicate));
+        }
+
+        if self.is_deleted(read_txn, &event.id)? {
+            return Ok(SaveEventStatus::Rejected(RejectedReason::Deleted));
+        }
+
+        if let Some(coordinate) = event.coordinate() {
+            if let Some(time) = self.when_is_coordinate_deleted(read_txn, &coordinate)? {
+                if event.created_at <= time {
+                    return Ok(SaveEventStatus::Rejected(RejectedReason::Deleted));
+                }
+            }
+        }
+
+        if event.kind.is_replaceable() {
+            if let Some(stored) =
+                self.find_replaceable_event(read_txn, &event.pubkey, event.kind)?
+            {
+                if stored.created_at > event.created_at {
+                    return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
+                }
+
+                let coordinate = Coordinate::new(event.kind, event.pubkey);
+                self.remove_replaceable(read_txn, txn, &coordinate, event.created_at)?;
+            }
+        }
+
+        if event.kind.is_addressable() {
+            if let Some(identifier) = event.tags.identifier() {
+                let coordinate = Coordinate::new(event.kind, event.pubkey).identifier(identifier);
+
+                if let Some(stored) = self.find_addressable_event(read_txn, &coordinate)? {
+                    if stored.created_at > event.created_at {
+                        return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
+                    }
+
+                    self.remove_addressable(read_txn, txn, &coordinate, Timestamp::max())?;
+                }
+            }
+        }
+
+        if event.kind == Kind::EventDeletion {
+            let invalid = self.handle_deletion_event(read_txn, txn, event)?;
+            if invalid {
+                return Ok(SaveEventStatus::Rejected(RejectedReason::InvalidDelete));
+            }
+        }
+
+        self.store(txn, fbb, event)?;
+
+        Ok(SaveEventStatus::Success)
     }
 
     #[inline]
@@ -795,6 +863,42 @@ impl Lmdb {
             Bound::Excluded(end_prefix.as_slice()),
         );
         Ok(self.atc_index.range(txn, &range)?)
+    }
+
+    fn handle_deletion_event(
+        &self,
+        read_txn: &RoTxn,
+        txn: &mut RwTxn,
+        event: &Event,
+    ) -> Result<bool, Error> {
+        for id in event.tags.event_ids() {
+            if let Some(target) = self.get_event_by_id(read_txn, id.as_bytes())? {
+                // Author must match
+                if target.pubkey != event.pubkey.as_bytes() {
+                    return Ok(true);
+                }
+
+                self.mark_deleted(txn, id)?;
+                self.remove(txn, &target)?;
+            }
+        }
+
+        for coordinate in event.tags.coordinates() {
+            // Author must match
+            if coordinate.public_key != event.pubkey {
+                return Ok(true);
+            }
+
+            self.mark_coordinate_deleted(txn, &coordinate.borrow(), event.created_at)?;
+
+            if coordinate.kind.is_replaceable() {
+                self.remove_replaceable(read_txn, txn, coordinate, event.created_at)?;
+            } else if coordinate.kind.is_addressable() {
+                self.remove_addressable(read_txn, txn, coordinate, event.created_at)?;
+            }
+        }
+
+        Ok(false)
     }
 
     pub(crate) fn ktc_iter<'a>(

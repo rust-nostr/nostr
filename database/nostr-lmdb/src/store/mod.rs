@@ -8,8 +8,9 @@ use std::path::Path;
 use std::sync::mpsc::Sender;
 
 use async_utility::task;
-use heed::RoTxn;
+use heed::{RoTxn, RwTxn};
 use nostr_database::prelude::*;
+use nostr_database::FlatBufferBuilder;
 
 mod error;
 mod ingester;
@@ -145,5 +146,29 @@ impl Store {
             Ok(())
         })
         .await?
+    }
+
+    /// Get a read transaction
+    #[allow(dead_code)]
+    pub fn read_txn(&self) -> Result<RoTxn, Error> {
+        self.db.read_txn()
+    }
+
+    /// Get a write transaction
+    #[allow(dead_code)]
+    pub fn write_txn(&self) -> Result<RwTxn, Error> {
+        self.db.write_txn()
+    }
+
+    /// Save event using provided transactions
+    #[allow(dead_code)]
+    pub fn save_event_with_txn(
+        &self,
+        read_txn: &RoTxn,
+        write_txn: &mut RwTxn,
+        fbb: &mut FlatBufferBuilder,
+        event: &Event,
+    ) -> Result<SaveEventStatus, Error> {
+        self.db.save_event_with_txn(read_txn, write_txn, fbb, event)
     }
 }
