@@ -33,8 +33,7 @@ use serde::{Deserialize, Serialize, Serializer};
 use serde_json::{json, Value};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::oneshot::Sender;
-use tokio::sync::{oneshot, Mutex, Notify, OnceCell};
-use tokio::task::JoinHandle;
+use tokio::sync::{oneshot, Mutex, Notify};
 use tokio::time;
 use uuid::Uuid;
 
@@ -173,12 +172,12 @@ struct InnerBrowserSignerProxy {
     options: BrowserSignerProxyOptions,
     /// Internal state of the proxy including request queues
     state: Arc<ProxyState>,
-    /// Handle to the running proxy server (initialized on demand)
-    handle: OnceCell<Arc<JoinHandle<()>>>,
     /// Notification trigger for graceful shutdown
     shutdown: Arc<Notify>,
     /// Flag to indicate if the server is shutdown
     is_shutdown: Arc<AtomicBool>,
+    /// Flat indicating if the server is started
+    is_started: Arc<AtomicBool>,
 }
 
 impl AtomicDestroyer for InnerBrowserSignerProxy {
@@ -253,9 +252,9 @@ impl BrowserSignerProxy {
             inner: AtomicDestructor::new(InnerBrowserSignerProxy {
                 options,
                 state: Arc::new(state),
-                handle: OnceCell::new(),
                 shutdown: Arc::new(Notify::new()),
                 is_shutdown: Arc::new(AtomicBool::new(false)),
+                is_started: Arc::new(AtomicBool::new(false)),
             }),
         }
     }
@@ -270,57 +269,78 @@ impl BrowserSignerProxy {
     ///
     /// If this is not called, will be automatically started on the first interaction with the signer.
     pub async fn start(&self) -> Result<(), Error> {
-        let _handle: &Arc<JoinHandle<()>> = self
-            .inner
-            .handle
-            .get_or_try_init(|| async {
-                let listener = TcpListener::bind(self.inner.options.addr).await?;
+        // Ensure is not shutdown
+        if self.inner.is_shutdown() {
+            return Err(Error::Shutdown);
+        }
 
-                tracing::info!("Starting proxy server on {}", self.inner.options.addr);
+        // Mark the proxy as started and check if was already started
+        let is_started: bool = self.inner.is_started.swap(true, Ordering::SeqCst);
 
-                let state = self.inner.state.clone();
-                let shutdown = self.inner.shutdown.clone();
+        // Immediately return if already started
+        if is_started {
+            return Ok(());
+        }
 
-                let handle: JoinHandle<()> = tokio::spawn(async move {
-                    loop {
-                        tokio::select! {
-                            res = listener.accept() => {
-                                let stream: TcpStream = match res {
-                                    Ok((stream, ..)) => stream,
-                                    Err(e) => {
-                                        tracing::error!("Failed to accept connection: {}", e);
-                                        continue;
-                                    }
-                                };
+        let listener: TcpListener = match TcpListener::bind(self.inner.options.addr).await {
+            Ok(listener) => listener,
+            Err(e) => {
+                // Undo the started flag if binding fails
+                self.inner.is_started.store(false, Ordering::SeqCst);
 
-                                let io: TokioIo<TcpStream> = TokioIo::new(stream);
-                                let state: Arc<ProxyState> = state.clone();
+                // Propagate error
+                return Err(Error::from(e));
+            }
+        };
 
-                                tokio::spawn(async move {
-                                    let service = service_fn(move |req| {
-                                        handle_request(req, state.clone())
-                                    });
+        let addr: SocketAddr = self.inner.options.addr;
+        let state: Arc<ProxyState> = self.inner.state.clone();
+        let shutdown: Arc<Notify> = self.inner.shutdown.clone();
 
-                                    if let Err(e) = http1::Builder::new()
-                                        .serve_connection(io, service)
-                                        .await
-                                    {
+        tokio::spawn(async move {
+            tracing::info!("Starting proxy server on {addr}");
+
+            loop {
+                tokio::select! {
+                    res = listener.accept() => {
+                        let stream: TcpStream = match res {
+                            Ok((stream, ..)) => stream,
+                            Err(e) => {
+                                tracing::error!("Failed to accept connection: {}", e);
+                                continue;
+                            }
+                        };
+
+                        let io: TokioIo<TcpStream> = TokioIo::new(stream);
+                        let state: Arc<ProxyState> = state.clone();
+                        let shutdown: Arc<Notify> = shutdown.clone();
+
+                        tokio::spawn(async move {
+                            let service = service_fn(move |req| {
+                                handle_request(req, state.clone())
+                            });
+
+                            tokio::select! {
+                                res = http1::Builder::new().serve_connection(io, service) => {
+                                    if let Err(e) = res {
                                         tracing::error!("Error serving connection: {e}");
                                     }
-                                });
-                            },
-                            _ = shutdown.notified() => {
-                                break;
-                            }
-                        }
+                                }
+                                _ = shutdown.notified() => {
+                                        tracing::debug!("Closing connection, proxy server is shutting down.");
+                                    }
+                                }
+                        });
+                    },
+                    _ = shutdown.notified() => {
+                        break;
                     }
+                }
+            }
 
-                    tracing::info!("Shutting down proxy server.");
-                });
+            tracing::info!("Shutting down proxy server.");
+        });
 
-                Ok::<_, Error>(Arc::new(handle))
-            })
-            .await?;
         Ok(())
     }
 
@@ -340,11 +360,6 @@ impl BrowserSignerProxy {
     where
         T: DeserializeOwned,
     {
-        // Ensure is not shutdown
-        if self.inner.is_shutdown() {
-            return Err(Error::Shutdown);
-        }
-
         // Start the proxy if not already started
         self.start().await?;
 
