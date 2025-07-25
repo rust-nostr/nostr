@@ -243,6 +243,8 @@ impl BrowserSignerProxy {
             .get_or_try_init(|| async {
                 let listener = TcpListener::bind(self.options.addr).await?;
 
+                tracing::info!("Starting proxy server on {}", self.options.addr);
+
                 let state = self.state.clone();
                 let shutdown = self.shutdown.clone();
 
