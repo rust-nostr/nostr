@@ -26,3 +26,4 @@ uuid = { version = "1.17", features = ["serde", "v4"] }
 [dev-dependencies]
 nostr = { workspace = true, features = ["nip59"] }
 tokio = { workspace = true, features = ["signal"] }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }

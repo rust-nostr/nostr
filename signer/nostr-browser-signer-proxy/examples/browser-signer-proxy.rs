@@ -9,6 +9,8 @@ use tokio::{signal, time};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
+
     let proxy = BrowserSignerProxy::new(BrowserSignerProxyOptions::default());
 
     proxy.start().await?;
