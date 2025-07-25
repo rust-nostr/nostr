@@ -37,6 +37,14 @@ pub struct NostrLmdbBuilder {
     /// - 32GB for 64-bit arch
     /// - 4GB for 32-bit arch
     pub map_size: Option<usize>,
+    /// Maximum number of reader threads
+    ///
+    /// Defaults to 126 if not set
+    pub max_readers: Option<u32>,
+    /// Number of additional databases to allocate beyond the 9 internal ones
+    ///
+    /// Defaults to 0 if not set
+    pub additional_dbs: Option<u32>,
 }
 
 impl NostrLmdbBuilder {
@@ -48,6 +56,8 @@ impl NostrLmdbBuilder {
         Self {
             path: path.as_ref().to_path_buf(),
             map_size: None,
+            max_readers: None,
+            additional_dbs: None,
         }
     }
 
@@ -61,10 +71,29 @@ impl NostrLmdbBuilder {
         self
     }
 
+    /// Maximum number of reader threads
+    ///
+    /// Defaults to 126 if not set
+    pub fn max_readers(mut self, max_readers: u32) -> Self {
+        self.max_readers = Some(max_readers);
+        self
+    }
+
+    /// Number of additional databases to allocate beyond the 9 internal ones
+    ///
+    /// Defaults to 0 if not set
+    pub fn additional_dbs(mut self, additional_dbs: u32) -> Self {
+        self.additional_dbs = Some(additional_dbs);
+        self
+    }
+
     /// Build
     pub fn build(self) -> Result<NostrLMDB, DatabaseError> {
         let map_size: usize = self.map_size.unwrap_or(MAP_SIZE);
-        let db: Store = Store::open(self.path, map_size).map_err(DatabaseError::backend)?;
+        let max_readers: u32 = self.max_readers.unwrap_or(126);
+        let additional_dbs: u32 = self.additional_dbs.unwrap_or(0);
+        let db: Store = Store::open(self.path, map_size, max_readers, additional_dbs)
+            .map_err(DatabaseError::backend)?;
         Ok(NostrLMDB { db })
     }
 }

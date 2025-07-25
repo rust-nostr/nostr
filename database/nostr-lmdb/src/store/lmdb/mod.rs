@@ -48,7 +48,12 @@ pub(crate) struct Lmdb {
 }
 
 impl Lmdb {
-    pub(super) fn new<P>(path: P, map_size: usize) -> Result<Self, Error>
+    pub(super) fn new<P>(
+        path: P,
+        map_size: usize,
+        max_readers: u32,
+        additional_dbs: u32,
+    ) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
@@ -56,7 +61,8 @@ impl Lmdb {
         let env: Env = unsafe {
             EnvOpenOptions::new()
                 .flags(EnvFlags::NO_TLS)
-                .max_dbs(9)
+                .max_dbs(9 + additional_dbs)
+                .max_readers(max_readers)
                 .map_size(map_size)
                 .open(path)?
         };
