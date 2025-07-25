@@ -94,8 +94,8 @@ impl WebSocketTransport for DefaultWebsocketTransport {
 
             // Split sink and stream
             let (tx, rx) = socket.split();
-            let sink: BoxSink = Box::new(tx.sink_map_err(TransportError::backend)) as BoxSink;
-            let stream: BoxStream = Box::new(rx.map_err(TransportError::backend)) as BoxStream;
+            let sink: BoxSink = Box::new(tx.sink_map_err(TransportError::sink)) as BoxSink;
+            let stream: BoxStream = Box::new(rx.map_err(TransportError::stream)) as BoxStream;
             Ok((sink, stream))
         })
     }

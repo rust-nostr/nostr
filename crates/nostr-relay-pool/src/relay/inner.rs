@@ -37,6 +37,7 @@ use crate::policy::AdmitStatus;
 use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
+use crate::transport::error::TransportError;
 use crate::transport::websocket::{BoxSink, BoxStream};
 
 type ClientMessageJson = String;
@@ -742,7 +743,15 @@ impl InnerRelay {
             // Message sender handler
             res = self.sender_message_handler(&mut ws_tx, rx_nostr, &ping) => match res {
                 Ok(()) => tracing::trace!(url = %self.url, "Relay sender exited."),
-                Err(e) => tracing::error!(url = %self.url, error = %e, "Relay sender exited with error.")
+                // Sink error!
+                Err(Error::Transport(TransportError::Sink(e))) => {
+                    tracing::error!(url = %self.url, error = %e, "Relay sender exited with sink error.");
+
+                    // The sink returned an error, so an additional call on the sink (like closing the sink) will cause a panic.
+                    // Issue: https://github.com/rust-nostr/nostr/issues/984
+                    return;
+                },
+                Err(e) => tracing::error!(url = %self.url, error = %e, "Relay sender exited with error."),
             },
             // Message receiver handler
             res = self.receiver_message_handler(ws_rx, &ping, ingester_tx) => match res {
