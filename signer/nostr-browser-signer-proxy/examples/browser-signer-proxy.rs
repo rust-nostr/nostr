@@ -9,7 +9,7 @@ use tokio::{signal, time};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let proxy = BrowserSignerProxy::new(8080);
+    let proxy = BrowserSignerProxy::new(BrowserSignerProxyOptions::default());
 
     proxy.start().await?;
 
