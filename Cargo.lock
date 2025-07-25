@@ -2886,6 +2886,7 @@ dependencies = [
 name = "nostr-browser-signer-proxy"
 version = "0.1.0"
 dependencies = [
+ "atomic-destructor",
  "bytes",
  "http-body-util",
  "hyper",

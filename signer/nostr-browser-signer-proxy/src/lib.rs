@@ -13,9 +13,11 @@
 
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
+use atomic_destructor::{AtomicDestroyer, AtomicDestructor};
 use bytes::Bytes;
 use http_body_util::combinators::BoxBody;
 use http_body_util::{BodyExt, Full};
@@ -165,11 +167,8 @@ pub struct BrowserSignerProxyOptions {
     pub addr: SocketAddr,
 }
 
-/// Nostr Browser Signer Proxy
-///
-/// Proxy to use Nostr Browser signer (NIP-07) in native applications.
 #[derive(Debug, Clone)]
-pub struct BrowserSignerProxy {
+struct InnerBrowserSignerProxy {
     /// Configuration options for the proxy
     options: BrowserSignerProxyOptions,
     /// Internal state of the proxy including request queues
@@ -178,6 +177,38 @@ pub struct BrowserSignerProxy {
     handle: OnceCell<Arc<JoinHandle<()>>>,
     /// Notification trigger for graceful shutdown
     shutdown: Arc<Notify>,
+    /// Flag to indicate if the server is shutdown
+    is_shutdown: Arc<AtomicBool>,
+}
+
+impl AtomicDestroyer for InnerBrowserSignerProxy {
+    fn on_destroy(&self) {
+        self.shutdown();
+    }
+}
+
+impl InnerBrowserSignerProxy {
+    #[inline]
+    fn is_shutdown(&self) -> bool {
+        self.is_shutdown.load(Ordering::SeqCst)
+    }
+
+    fn shutdown(&self) {
+        // Mark the server as shutdown
+        self.is_shutdown.store(true, Ordering::SeqCst);
+
+        // Notify all waiters that the proxy is shutting down
+        self.shutdown.notify_one();
+        self.shutdown.notify_waiters();
+    }
+}
+
+/// Nostr Browser Signer Proxy
+///
+/// Proxy to use Nostr Browser signer (NIP-07) in native applications.
+#[derive(Debug, Clone)]
+pub struct BrowserSignerProxy {
+    inner: AtomicDestructor<InnerBrowserSignerProxy>,
 }
 
 impl Default for BrowserSignerProxyOptions {
@@ -210,8 +241,6 @@ impl BrowserSignerProxyOptions {
     }
 }
 
-// TODO: use atomic-destructor to automatically shutdown this when all instances are dropped
-
 impl BrowserSignerProxy {
     /// Construct a new browser signer proxy
     pub fn new(options: BrowserSignerProxyOptions) -> Self {
@@ -221,17 +250,20 @@ impl BrowserSignerProxy {
         };
 
         Self {
-            options,
-            state: Arc::new(state),
-            handle: OnceCell::new(),
-            shutdown: Arc::new(Notify::new()),
+            inner: AtomicDestructor::new(InnerBrowserSignerProxy {
+                options,
+                state: Arc::new(state),
+                handle: OnceCell::new(),
+                shutdown: Arc::new(Notify::new()),
+                is_shutdown: Arc::new(AtomicBool::new(false)),
+            }),
         }
     }
 
     /// Get the signer proxy webpage URL
     #[inline]
     pub fn url(&self) -> String {
-        format!("http://{}", self.options.addr)
+        format!("http://{}", self.inner.options.addr)
     }
 
     /// Start the proxy
@@ -239,14 +271,15 @@ impl BrowserSignerProxy {
     /// If this is not called, will be automatically started on the first interaction with the signer.
     pub async fn start(&self) -> Result<(), Error> {
         let _handle: &Arc<JoinHandle<()>> = self
+            .inner
             .handle
             .get_or_try_init(|| async {
-                let listener = TcpListener::bind(self.options.addr).await?;
+                let listener = TcpListener::bind(self.inner.options.addr).await?;
 
-                tracing::info!("Starting proxy server on {}", self.options.addr);
+                tracing::info!("Starting proxy server on {}", self.inner.options.addr);
 
-                let state = self.state.clone();
-                let shutdown = self.shutdown.clone();
+                let state = self.inner.state.clone();
+                let shutdown = self.inner.shutdown.clone();
 
                 let handle: JoinHandle<()> = tokio::spawn(async move {
                     loop {
@@ -293,13 +326,13 @@ impl BrowserSignerProxy {
 
     #[inline]
     async fn store_pending_response(&self, id: Uuid, tx: Sender<Result<Value, String>>) {
-        let mut pending_responses = self.state.pending_responses.lock().await;
+        let mut pending_responses = self.inner.state.pending_responses.lock().await;
         pending_responses.insert(id, tx);
     }
 
     #[inline]
     async fn store_outgoing_request(&self, request: RequestData) {
-        let mut outgoing_requests = self.state.outgoing_requests.lock().await;
+        let mut outgoing_requests = self.inner.state.outgoing_requests.lock().await;
         outgoing_requests.push(request);
     }
 
@@ -307,6 +340,12 @@ impl BrowserSignerProxy {
     where
         T: DeserializeOwned,
     {
+        // Ensure is not shutdown
+        if self.inner.is_shutdown() {
+            return Err(Error::Shutdown);
+        }
+
+        // Start the proxy if not already started
         self.start().await?;
 
         // Construct the request
@@ -322,7 +361,7 @@ impl BrowserSignerProxy {
         self.store_outgoing_request(request).await;
 
         // Wait for response
-        match time::timeout(self.options.timeout, rx)
+        match time::timeout(self.inner.options.timeout, rx)
             .await
             .map_err(|_| Error::Timeout)??
         {

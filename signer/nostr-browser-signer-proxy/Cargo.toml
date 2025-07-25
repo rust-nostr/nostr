@@ -12,6 +12,7 @@ rust-version.workspace = true
 keywords = ["nostr", "nip07", "browser", "signer", "proxy"]
 
 [dependencies]
+atomic-destructor.workspace = true
 bytes = "1.10"
 http-body-util = "0.1"
 hyper = { version = "1.6", features = ["server", "http1"] }

@@ -27,6 +27,8 @@ pub enum Error {
     Generic(String),
     /// Timeout
     Timeout,
+    /// The server is shutdown
+    Shutdown,
 }
 
 impl std::error::Error for Error {}
@@ -41,6 +43,7 @@ impl fmt::Display for Error {
             Self::OneShotRecv(e) => write!(f, "{e}"),
             Self::Generic(e) => write!(f, "{e}"),
             Self::Timeout => write!(f, "timeout"),
+            Self::Shutdown => write!(f, "server is shutdown"),
         }
     }
 }
