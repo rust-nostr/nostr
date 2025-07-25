@@ -32,7 +32,7 @@
 ### Added
 
 - Add NostrLmdbBuilder and allow setting a custom map size (https://github.com/rust-nostr/nostr/pull/970)
-- Add `max_readers` and `additional_dbs` fields to `NostrLmdbBuilder`
+- Add `max_readers` and `additional_dbs` fields to `NostrLmdbBuilder` (https://github.com/rust-nostr/nostr/pull/1003)
 
 ## v0.42.0 - 2025/05/20
 
