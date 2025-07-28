@@ -44,6 +44,10 @@
 - An option to ban relays that send events which don't match the subscription filter (https://github.com/rust-nostr/nostr/pull/981)
 - Add `RelayOptions::verify_subscriptions` option (https://github.com/rust-nostr/nostr/pull/997)
 
+### Fixed
+
+- Fix panic after a broken pipe error in the relay connection (https://github.com/rust-nostr/nostr/pull/1007)
+
 ## v0.42.0 - 2025/05/20
 
 ### Breaking changes
