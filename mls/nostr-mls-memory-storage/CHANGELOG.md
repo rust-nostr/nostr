@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Changed
+
+- Bump lru from 0.14 to 0.16
+
 ## v0.42.0 - 2025/05/20
 
 - First release (https://github.com/rust-nostr/nostr/pull/839)

@@ -37,6 +37,7 @@
 - Trim incoming relay messages before processing
 - Verify that the received events belong to a subscription (https://github.com/rust-nostr/nostr/pull/979)
 - Disable the default event max size limit (https://github.com/rust-nostr/nostr/pull/996)
+- Bump lru from 0.14 to 0.16
 
 ### Added
 

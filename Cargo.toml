@@ -39,7 +39,7 @@ async-wsocket = "0.13"
 atomic-destructor = { version = "0.3", default-features = false }
 base64 = { version = "0.22", default-features = false }
 clap = "=4.4.18"
-lru = { version = "0.14", default-features = false }
+lru = { version = "0.16", default-features = false }
 negentropy = { version = "0.5", default-features = false }
 nostr = { version = "0.42", path = "./crates/nostr", default-features = false }
 nostr-connect = { version = "0.42", path = "./signer/nostr-connect", default-features = false }

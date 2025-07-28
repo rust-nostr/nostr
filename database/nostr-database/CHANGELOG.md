@@ -35,6 +35,7 @@
 - Impl `Any` for `NostrDatabase` (https://github.com/rust-nostr/nostr/pull/918)
 - Impl `Default` for `Events` struct
 - impl `FromIterator<Event>` for `Events` struct
+- Bump lru from 0.14 to 0.16
 
 ## v0.42.0 - 2025/05/20
 
