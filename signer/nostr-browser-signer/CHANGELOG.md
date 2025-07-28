@@ -23,6 +23,6 @@
 
 -->
 
-## Unreleased
+## v0.43.0 - 2025/07/28
 
 First release.

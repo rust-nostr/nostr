@@ -1,6 +1,6 @@
 [package]
 name = "nostr-http-file-storage"
-version = "0.42.0"
+version = "0.43.0"
 edition = "2021"
 description = "Nostr HTTP File Storage client (NIP-96)."
 authors.workspace = true

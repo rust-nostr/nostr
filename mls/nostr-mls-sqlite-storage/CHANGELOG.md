@@ -23,6 +23,10 @@
 
 -->
 
+## v0.43.0 - 2025/07/28
+
+No notable changes in this release.
+
 ## v0.42.0 - 2025/05/20
 
 First release (https://github.com/rust-nostr/nostr/pull/842)

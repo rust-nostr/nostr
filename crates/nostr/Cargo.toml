@@ -1,6 +1,6 @@
 [package]
 name = "nostr"
-version = "0.42.1"
+version = "0.43.0"
 edition = "2021"
 description = "Rust implementation of the Nostr protocol."
 authors.workspace = true

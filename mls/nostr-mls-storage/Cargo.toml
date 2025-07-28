@@ -1,6 +1,6 @@
 [package]
 name = "nostr-mls-storage"
-version = "0.42.0"
+version = "0.43.0"
 edition = "2021"
 description = "Storage abstraction for nostr-mls that wraps OpenMLS storage backends"
 authors = ["Jeff Gardner <j@jeffg.me>", "Yuki Kishimoto <yukikishimoto@protonmail.com>", "Rust Nostr Developers"]
