@@ -580,6 +580,7 @@ impl Lmdb {
         } else if !filter.authors.is_empty() && !filter.kinds.is_empty() {
             // We may bring since forward if we hit the limit without going back that
             // far, so we use a mutable since:
+            let mut since = since;
 
             for author in filter.authors.iter() {
                 for kind in filter.kinds.iter() {
@@ -601,6 +602,8 @@ impl Lmdb {
 
                         // check against the rest of the filter
                         if filter.match_event(&event) {
+                            let created_at = event.created_at;
+
                             // Accept the event
                             output.insert(event);
                             paircount += 1;
@@ -608,7 +611,11 @@ impl Lmdb {
                             // Stop this pair if limited
                             if let Some(limit) = limit {
                                 if paircount >= limit {
-                                    // Since we found the limit just among this pair
+                                    // Since we found the limit just among this pair,
+                                    // potentially move since forward
+                                    if created_at > since {
+                                        since = created_at;
+                                    }
                                     break 'per_event;
                                 }
                             }
@@ -628,6 +635,7 @@ impl Lmdb {
         } else if !filter.authors.is_empty() && !filter.generic_tags.is_empty() {
             // We may bring since forward if we hit the limit without going back that
             // far, so we use a mutable since:
+            let mut since = since;
 
             for author in filter.authors.iter() {
                 for (tagname, set) in filter.generic_tags.iter() {
@@ -638,7 +646,7 @@ impl Lmdb {
                             txn,
                             &filter,
                             iter,
-                            &since,
+                            &mut since,
                             limit,
                             &mut output,
                         )?;
@@ -648,6 +656,7 @@ impl Lmdb {
         } else if !filter.kinds.is_empty() && !filter.generic_tags.is_empty() {
             // We may bring since forward if we hit the limit without going back that
             // far, so we use a mutable since:
+            let mut since = since;
 
             for kind in filter.kinds.iter() {
                 for (tag_name, set) in filter.generic_tags.iter() {
@@ -658,7 +667,7 @@ impl Lmdb {
                             txn,
                             &filter,
                             iter,
-                            &since,
+                            &mut since,
                             limit,
                             &mut output,
                         )?;
@@ -668,6 +677,7 @@ impl Lmdb {
         } else if !filter.generic_tags.is_empty() {
             // We may bring since forward if we hit the limit without going back that
             // far, so we use a mutable since:
+            let mut since = since;
 
             for (tag_name, set) in filter.generic_tags.iter() {
                 for tag_value in set.iter() {
@@ -676,7 +686,7 @@ impl Lmdb {
                         txn,
                         &filter,
                         iter,
-                        &since,
+                        &mut since,
                         limit,
                         &mut output,
                     )?;
@@ -685,10 +695,18 @@ impl Lmdb {
         } else if !filter.authors.is_empty() {
             // We may bring since forward if we hit the limit without going back that
             // far, so we use a mutable since:
+            let mut since = since;
 
             for author in filter.authors.iter() {
                 let iter = self.ac_iter(txn, author, since, until)?;
-                self.iterate_filter_until_limit(txn, &filter, iter, &since, limit, &mut output)?;
+                self.iterate_filter_until_limit(
+                    txn,
+                    &filter,
+                    iter,
+                    &mut since,
+                    limit,
+                    &mut output,
+                )?;
             }
         } else {
             // SCRAPE
@@ -725,7 +743,7 @@ impl Lmdb {
         txn: &'a RoTxn,
         filter: &DatabaseFilter,
         iter: RoRange<Bytes, Bytes>,
-        since: &Timestamp,
+        since: &mut Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
     ) -> Result<(), Error> {
@@ -743,14 +761,19 @@ impl Lmdb {
 
             // check against the rest of the filter
             if filter.match_event(&event) {
+                let created_at = event.created_at;
+
                 // Accept the event
                 output.insert(event);
                 count += 1;
 
                 // Check if limit is set
                 if let Some(limit) = limit {
-                    // Stop this limited
+                    // Stop if limited
                     if count >= limit {
+                        if created_at > *since {
+                            *since = created_at;
+                        }
                         break;
                     }
                 }
