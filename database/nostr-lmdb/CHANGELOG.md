@@ -13,6 +13,8 @@
 
 ### Changed
 
+- Add automatic batching in ingester, write performance improvement
+
 ### Added
 
 ### Fixed

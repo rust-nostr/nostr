@@ -5,18 +5,19 @@
 
 use std::fs;
 use std::path::Path;
-use std::sync::mpsc::Sender;
 
 use async_utility::task;
+use flume::Sender;
 use heed::RoTxn;
 use nostr_database::prelude::*;
+use nostr_database::SaveEventStatus;
 
 mod error;
 mod ingester;
 mod lmdb;
 mod types;
 
-use self::error::Error;
+pub use self::error::Error;
 use self::ingester::{Ingester, IngesterItem};
 use self::lmdb::Lmdb;
 
@@ -59,13 +60,8 @@ impl Store {
 
     /// Store an event.
     pub async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, Error> {
-        let (item, rx) = IngesterItem::with_feedback(event.clone());
-
-        // Send to the ingester
-        // This will never block the current thread according to `std::sync::mpsc::Sender` docs
+        let (item, rx) = IngesterItem::save_event_with_feedback(event);
         self.ingester.send(item).map_err(|_| Error::MpscSend)?;
-
-        // Wait for a reply
         rx.await?
     }
 
@@ -128,18 +124,9 @@ impl Store {
     }
 
     pub async fn delete(&self, filter: Filter) -> Result<(), Error> {
-        self.interact(move |db| {
-            let read_txn = db.read_txn()?;
-            let mut txn = db.write_txn()?;
-
-            db.delete(&read_txn, &mut txn, filter)?;
-
-            read_txn.commit()?;
-            txn.commit()?;
-
-            Ok(())
-        })
-        .await?
+        let (item, rx) = IngesterItem::delete_with_feedback(filter);
+        self.ingester.send(item).map_err(|_| Error::MpscSend)?;
+        rx.await?
     }
 
     pub async fn wipe(&self) -> Result<(), Error> {
