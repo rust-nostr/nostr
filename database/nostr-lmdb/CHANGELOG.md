@@ -28,6 +28,7 @@
 ### Changed
 
 - Consolidate deletion logic and improve transactional consistency (https://github.com/rust-nostr/nostr/pull/1010)
+- Add automatic event batching for better write performance (https://github.com/rust-nostr/nostr/pull/1010)
 
 ## v0.43.0 - 2025/07/28
 

@@ -5,9 +5,9 @@
 
 use std::fs;
 use std::path::Path;
-use std::sync::mpsc::Sender;
 
 use async_utility::task;
+use flume::Sender;
 use heed::RoTxn;
 use nostr_database::prelude::*;
 
@@ -59,13 +59,8 @@ impl Store {
 
     /// Store an event.
     pub async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, Error> {
-        let (item, rx) = IngesterItem::with_feedback(event.clone());
-
-        // Send to the ingester
-        // This will never block the current thread according to `std::sync::mpsc::Sender` docs
-        self.ingester.send(item).map_err(|_| Error::MpscSend)?;
-
-        // Wait for a reply
+        let (item, rx) = IngesterItem::save_event_with_feedback(event.clone());
+        self.ingester.send(item).map_err(|_| Error::FlumeSend)?;
         rx.await?
     }
 
@@ -128,16 +123,9 @@ impl Store {
     }
 
     pub async fn delete(&self, filter: Filter) -> Result<(), Error> {
-        self.interact(move |db| {
-            let mut txn = db.write_txn()?;
-
-            db.delete(&mut txn, filter)?;
-
-            txn.commit()?;
-
-            Ok(())
-        })
-        .await?
+        let (item, rx) = IngesterItem::delete_with_feedback(filter);
+        self.ingester.send(item).map_err(|_| Error::FlumeSend)?;
+        rx.await?
     }
 
     pub async fn wipe(&self) -> Result<(), Error> {
