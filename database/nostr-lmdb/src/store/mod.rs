@@ -129,12 +129,10 @@ impl Store {
 
     pub async fn delete(&self, filter: Filter) -> Result<(), Error> {
         self.interact(move |db| {
-            let read_txn = db.read_txn()?;
             let mut txn = db.write_txn()?;
 
-            db.delete(&read_txn, &mut txn, filter)?;
+            db.delete(&mut txn, filter)?;
 
-            read_txn.commit()?;
             txn.commit()?;
 
             Ok(())

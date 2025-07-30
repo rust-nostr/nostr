@@ -94,23 +94,14 @@ impl Ingester {
         &self,
         event: Event,
         fbb: &mut FlatBufferBuilder,
-    ) -> nostr::Result<SaveEventStatus, Error> {
-        let read_txn = self.db.read_txn()?;
+    ) -> Result<SaveEventStatus, Error> {
         let mut write_txn = self.db.write_txn()?;
 
-        let status: SaveEventStatus =
-            self.db
-                .save_event_with_txn(&read_txn, &mut write_txn, fbb, &event)?;
+        let status: SaveEventStatus = self.db.save_event_with_txn(&mut write_txn, fbb, &event)?;
 
         match &status {
-            SaveEventStatus::Success => {
-                write_txn.commit()?;
-                read_txn.commit()?;
-            }
-            SaveEventStatus::Rejected(_) => {
-                write_txn.abort();
-                read_txn.commit()?;
-            }
+            SaveEventStatus::Success => write_txn.commit()?,
+            SaveEventStatus::Rejected(_) => write_txn.abort(),
         }
 
         Ok(status)
