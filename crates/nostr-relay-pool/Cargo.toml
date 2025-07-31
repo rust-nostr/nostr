@@ -1,6 +1,6 @@
 [package]
 name = "nostr-relay-pool"
-version = "0.42.0"
+version = "0.42.1"
 edition = "2021"
 description = "Nostr Relay Pool"
 authors.workspace = true
