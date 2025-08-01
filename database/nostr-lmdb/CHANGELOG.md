@@ -30,6 +30,10 @@
 - Consolidate deletion logic and improve transactional consistency (https://github.com/rust-nostr/nostr/pull/1010)
 - Add automatic event batching for better write performance (https://github.com/rust-nostr/nostr/pull/1010)
 
+### Fixed
+
+- Fix NIP-01 compliance for replaceable events with identical timestamps (https://github.com/rust-nostr/nostr/pull/1017)
+
 ## v0.43.0 - 2025/07/28
 
 ### Changed
