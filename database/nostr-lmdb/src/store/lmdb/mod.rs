@@ -408,8 +408,22 @@ impl Lmdb {
         // Remove replaceable events being replaced
         if event.kind.is_replaceable() {
             if let Some(stored) = self.find_replaceable_event(txn, &event.pubkey, event.kind)? {
-                if stored.created_at > event.created_at {
-                    return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
+                match stored.created_at.cmp(&event.created_at) {
+                    std::cmp::Ordering::Greater => {
+                        return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
+                    }
+                    std::cmp::Ordering::Equal => {
+                        // NIP-01: When timestamps are identical, keep the event with the lowest ID
+                        let stored_id = EventId::from_byte_array(*stored.id);
+                        if stored_id < event.id {
+                            // Stored event has smaller ID, reject new event
+                            return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
+                        }
+                        // New event has smaller ID, continue to replace stored event
+                    }
+                    std::cmp::Ordering::Less => {
+                        // Continue to replace stored event with newer one
+                    }
                 }
 
                 let coordinate = Coordinate::new(event.kind, event.pubkey);
@@ -423,8 +437,22 @@ impl Lmdb {
                 let coordinate = Coordinate::new(event.kind, event.pubkey).identifier(identifier);
 
                 if let Some(stored) = self.find_addressable_event(txn, &coordinate)? {
-                    if stored.created_at > event.created_at {
-                        return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
+                    match stored.created_at.cmp(&event.created_at) {
+                        std::cmp::Ordering::Greater => {
+                            return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
+                        }
+                        std::cmp::Ordering::Equal => {
+                            // NIP-01: When timestamps are identical, keep the event with the lowest ID
+                            let stored_id = EventId::from_byte_array(*stored.id);
+                            if stored_id < event.id {
+                                // Stored event has smaller ID, reject new event
+                                return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
+                            }
+                            // New event has smaller ID, continue to replace stored event
+                        }
+                        std::cmp::Ordering::Less => {
+                            // Continue to replace stored event with newer one
+                        }
                     }
 
                     self.remove_addressable(txn, &coordinate, Timestamp::max())?;
