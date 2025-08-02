@@ -23,6 +23,14 @@
 
 -->
 
+## Unreleased
+
+### Added
+- Add ``nip47`` ``state`` field for transactions
+
+### Changed
+- ``nip47`` fields synchronized with current spec
+
 ## v0.43.0 - 2025/07/28
 
 ### Breaking changes
