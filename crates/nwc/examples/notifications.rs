@@ -63,6 +63,12 @@ async fn main() -> Result<()> {
                         print_payment_details(&payment);
                     }
                 }
+                NotificationType::HoldInvoiceAccepted => {
+                    if let Ok(hold_accepted) = notification.to_holdinvoice_accepted_notification() {
+                        println!("🟡 Hold Invoice Accepted!");
+                        print_holdinvoice_details(&hold_accepted);
+                    }
+                }
             }
             Ok(false) // Continue processing
         }) => {
@@ -89,5 +95,18 @@ fn print_payment_details(payment: &PaymentNotification) {
     if payment.fees_paid > 0 {
         println!("  💸 Fees: {} msat", payment.fees_paid);
     }
+    println!();
+}
+
+fn print_holdinvoice_details(hold_accepted: &HoldInvoiceAcceptedNotification) {
+    println!("  💰 Amount: {} msat", hold_accepted.amount);
+    if let Some(description) = &hold_accepted.description {
+        println!("  📝 Description: {}", description);
+    }
+    println!("  🔗 Payment Hash: {}", hold_accepted.payment_hash);
+    println!(
+        "  📅 Settle until blockheight: {}",
+        hold_accepted.settle_deadline
+    );
     println!();
 }
