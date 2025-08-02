@@ -312,6 +312,24 @@ impl NWC {
         Ok(())
     }
 
+    /// Manually reconnect to a specific relay
+    ///
+    /// This function can be used to force a reconnection to a relay when automatic reconnection
+    /// is disabled via [`RelayOptions::reconnect`].
+    ///
+    /// If the client is not bootstrapped, it will do nothing.
+    pub async fn reconnect_relay<U>(&self, url: U) -> Result<(), Error>
+    where
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        if !self.bootstrapped.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+
+        Ok(self.pool.connect_relay(url).await?)
+    }
+
     /// Completely shutdown [NWC] client
     #[inline]
     pub async fn shutdown(self) {
