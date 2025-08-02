@@ -23,6 +23,10 @@
 
 -->
 
+## Unreleased
+
+- Upgrade openmls to v0.7.0
+
 ## v0.43.0 - 2025/07/28
 
 ### Changed

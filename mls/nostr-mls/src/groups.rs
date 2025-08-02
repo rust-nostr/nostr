@@ -250,7 +250,7 @@ where
             // If it's not already in the storage, export the secret and save it
             None => {
                 let export_secret: [u8; 32] = group
-                    .export_secret(&self.provider, "nostr", b"nostr", 32)?
+                    .export_secret(self.provider.crypto(), "nostr", b"nostr", 32)?
                     .try_into()
                     .map_err(|_| {
                         Error::Group("Failed to convert export secret to [u8; 32]".to_string())
@@ -676,15 +676,20 @@ where
         };
 
         let leaf_node_params = LeafNodeParameters::builder()
-            .with_credential_with_key(new_credential_with_key)
+            .with_credential_with_key(new_credential_with_key.clone())
             .with_capabilities(own_leaf.capabilities().clone())
             .with_extensions(Self::get_extensions_from_group_data(group_data)?)
             .build();
 
+        let new_signer_bundle = NewSignerBundle {
+            signer: &new_signature_keypair,
+            credential_with_key: new_credential_with_key,
+        };
+
         let commit_message_bundle = mls_group.self_update_with_new_signer(
             &self.provider,
             &current_signer,
-            &new_signature_keypair,
+            new_signer_bundle,
             leaf_node_params,
         )?;
 
