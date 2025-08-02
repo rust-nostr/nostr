@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Added
+
+- Add `NWC::reconnect_relay` (https://github.com/rust-nostr/nostr/pull/1020)
+
 ## v0.43.0 - 2025/07/28
 
 ### Added

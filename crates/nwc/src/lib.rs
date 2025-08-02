@@ -317,4 +317,14 @@ impl NWC {
     pub async fn shutdown(self) {
         self.pool.disconnect().await
     }
+
+    /// Manually reconnect to a specific relay
+    ///
+    /// This function can be used to force a reconnection to a relay when automatic reconnection
+    /// is disabled via [`RelayOptions::reconnect`].
+    pub async fn reconnect_relay(&self, url: RelayUrl) -> Result<(), Error> {
+        let relay = self.pool.relay(url).await?;
+        relay.connect();
+        Ok(())
+    }
 }
