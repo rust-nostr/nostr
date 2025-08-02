@@ -15,10 +15,10 @@ keywords = ["nostr", "mls", "openmls"]
 aes-gcm = "0.10.3"
 nostr = { workspace = true, features = ["std", "nip44"] }
 nostr-mls-storage.workspace = true
-openmls = { git = "https://github.com/openmls/openmls", rev = "4cc0f594b11262083ad9827b3b2033052c6ef99f", default-features = false }
-openmls_basic_credential = { git = "https://github.com/openmls/openmls", rev = "4cc0f594b11262083ad9827b3b2033052c6ef99f", default-features = false }
-openmls_rust_crypto = { git = "https://github.com/openmls/openmls", rev = "4cc0f594b11262083ad9827b3b2033052c6ef99f", default-features = false }
-openmls_traits = { git = "https://github.com/openmls/openmls", rev = "4cc0f594b11262083ad9827b3b2033052c6ef99f", default-features = false }
+openmls = { version = "0.7.0", default-features = false }
+openmls_basic_credential = { version = "0.4.0", default-features = false }
+openmls_rust_crypto = { version = "0.4.0", default-features = false }
+openmls_traits = { version = "0.4.0", default-features = false }
 tls_codec = "0.4"
 tracing = { workspace = true, features = ["std"] }
 
