@@ -26,7 +26,13 @@
 ## Unreleased
 
 ### Added
-- Add nip47 holdinvoice methods and notification
+
+- Add nip47 holdinvoice methods and notification (https://github.com/rust-nostr/nostr/pull/1019)
+- Add NIP-47 `state` field for transactions (https://github.com/rust-nostr/nostr/pull/1021)
+
+### Changed
+
+- NIP-47 fields synchronized with current specs (https://github.com/rust-nostr/nostr/pull/1021)
 
 ## v0.43.0 - 2025/07/28
 
