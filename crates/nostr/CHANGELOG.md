@@ -29,6 +29,7 @@
 
 - Add nip47 holdinvoice methods and notification (https://github.com/rust-nostr/nostr/pull/1019)
 - Add NIP-47 `state` field for transactions (https://github.com/rust-nostr/nostr/pull/1021)
+- Add `nip47::Method::as_str` method
 
 ### Changed
 

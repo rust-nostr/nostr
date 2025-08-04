@@ -44,6 +44,8 @@ pub enum Error {
     },
     /// Unexpected result
     UnexpectedResult,
+    /// Unknown method
+    UnknownMethod,
     /// Invalid URI
     InvalidURI,
 }
@@ -64,6 +66,7 @@ impl fmt::Display for Error {
                 "Can't deserialize response: response={response}, error={error}"
             ),
             Self::UnexpectedResult => write!(f, "Unexpected result"),
+            Self::UnknownMethod => write!(f, "Unknown method"),
             Self::InvalidURI => write!(f, "Invalid URI"),
         }
     }
@@ -123,47 +126,6 @@ pub enum ErrorCode {
     Other,
 }
 
-impl fmt::Display for Method {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Method::PayInvoice => write!(f, "pay_invoice"),
-            Method::MultiPayInvoice => write!(f, "multi_pay_invoice"),
-            Method::PayKeysend => write!(f, "pay_keysend"),
-            Method::MultiPayKeysend => write!(f, "multi_pay_keysend"),
-            Method::MakeInvoice => write!(f, "make_invoice"),
-            Method::LookupInvoice => write!(f, "lookup_invoice"),
-            Method::ListTransactions => write!(f, "list_transactions"),
-            Method::GetBalance => write!(f, "get_balance"),
-            Method::GetInfo => write!(f, "get_info"),
-            Method::MakeHoldInvoice => write!(f, "make_hold_invoice"),
-            Method::CancelHoldInvoice => write!(f, "cancel_hold_invoice"),
-            Method::SettleHoldInvoice => write!(f, "settle_hold_invoice"),
-        }
-    }
-}
-
-impl FromStr for Method {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "pay_invoice" => Ok(Method::PayInvoice),
-            "multi_pay_invoice" => Ok(Method::MultiPayInvoice),
-            "pay_keysend" => Ok(Method::PayKeysend),
-            "multi_pay_keysend" => Ok(Method::MultiPayKeysend),
-            "make_invoice" => Ok(Method::MakeInvoice),
-            "lookup_invoice" => Ok(Method::LookupInvoice),
-            "list_transactions" => Ok(Method::ListTransactions),
-            "get_balance" => Ok(Method::GetBalance),
-            "get_info" => Ok(Method::GetInfo),
-            "make_hold_invoice" => Ok(Method::MakeHoldInvoice),
-            "cancel_hold_invoice" => Ok(Method::CancelHoldInvoice),
-            "settle_hold_invoice" => Ok(Method::SettleHoldInvoice),
-            _ => Err(Error::InvalidURI),
-        }
-    }
-}
-
 /// NIP47 Error message
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct NIP47Error {
@@ -180,44 +142,99 @@ impl fmt::Display for NIP47Error {
 }
 
 /// Method
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Method {
     /// Pay Invoice
-    #[serde(rename = "pay_invoice")]
     PayInvoice,
     /// Multi Pay Invoice
-    #[serde(rename = "multi_pay_invoice")]
     MultiPayInvoice,
     /// Pay Keysend
-    #[serde(rename = "pay_keysend")]
     PayKeysend,
     /// Multi Pay Keysend
-    #[serde(rename = "multi_pay_keysend")]
     MultiPayKeysend,
     /// Make Invoice
-    #[serde(rename = "make_invoice")]
     MakeInvoice,
     /// Lookup Invoice
-    #[serde(rename = "lookup_invoice")]
     LookupInvoice,
     /// List transactions
-    #[serde(rename = "list_transactions")]
     ListTransactions,
     /// Get Balance
-    #[serde(rename = "get_balance")]
     GetBalance,
     /// Get Info
-    #[serde(rename = "get_info")]
     GetInfo,
     /// Make Hold Invoice
-    #[serde(rename = "make_hold_invoice")]
     MakeHoldInvoice,
     /// Cancel Hold Invoice
-    #[serde(rename = "cancel_hold_invoice")]
     CancelHoldInvoice,
     /// Settle Hold Invoice
-    #[serde(rename = "settle_hold_invoice")]
     SettleHoldInvoice,
+}
+
+impl fmt::Display for Method {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl Method {
+    /// Serialize as `&str`
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::PayInvoice => "pay_invoice",
+            Self::MultiPayInvoice => "multi_pay_invoice",
+            Self::PayKeysend => "pay_keysend",
+            Self::MultiPayKeysend => "multi_pay_keysend",
+            Self::MakeInvoice => "make_invoice",
+            Self::LookupInvoice => "lookup_invoice",
+            Self::ListTransactions => "list_transactions",
+            Self::GetBalance => "get_balance",
+            Self::GetInfo => "get_info",
+            Self::MakeHoldInvoice => "make_hold_invoice",
+            Self::CancelHoldInvoice => "cancel_hold_invoice",
+            Self::SettleHoldInvoice => "settle_hold_invoice",
+        }
+    }
+}
+
+impl FromStr for Method {
+    type Err = Error;
+
+    fn from_str(method: &str) -> Result<Self, Self::Err> {
+        match method {
+            "pay_invoice" => Ok(Self::PayInvoice),
+            "multi_pay_invoice" => Ok(Self::MultiPayInvoice),
+            "pay_keysend" => Ok(Self::PayKeysend),
+            "multi_pay_keysend" => Ok(Self::MultiPayKeysend),
+            "make_invoice" => Ok(Self::MakeInvoice),
+            "lookup_invoice" => Ok(Self::LookupInvoice),
+            "list_transactions" => Ok(Self::ListTransactions),
+            "get_balance" => Ok(Self::GetBalance),
+            "get_info" => Ok(Self::GetInfo),
+            "make_hold_invoice" => Ok(Self::MakeHoldInvoice),
+            "cancel_hold_invoice" => Ok(Self::CancelHoldInvoice),
+            "settle_hold_invoice" => Ok(Self::SettleHoldInvoice),
+            _ => Err(Error::UnknownMethod),
+        }
+    }
+}
+
+impl Serialize for Method {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for Method {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let method: String = Deserialize::deserialize(deserializer)?;
+        Self::from_str(&method).map_err(serde::de::Error::custom)
+    }
 }
 
 /// Nostr Wallet Connect Request
