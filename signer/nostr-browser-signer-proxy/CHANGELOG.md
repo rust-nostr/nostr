@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Added
+
+- `BrowserSignerProxy::is_started` function to know if the server currently running or not (https://github.com/rust-nostr/nostr/pull/1025)
+
 ## v0.43.0 - 2025/07/28
 
 First release.
