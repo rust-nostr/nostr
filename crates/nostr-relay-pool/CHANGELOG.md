@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Fixed
+
+- `ban_relay_on_mismatch` no longer requires `verify_subscriptions` to be enabled.
+
 ## v0.43.0 - 2025/07/28
 
 ### Breaking changes
