@@ -5,7 +5,7 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -40,6 +40,9 @@ use crate::shared::SharedState;
 use crate::transport::websocket::{BoxSink, BoxStream};
 
 type ClientMessageJson = String;
+
+// Skip NIP-50 matches since they may create issues and ban non-malicious relays.
+const MATCH_EVENT_OPTS: MatchEventOptions = MatchEventOptions::new().nip50(false);
 
 enum IngesterCommand {
     Authenticate { challenge: String },
@@ -109,11 +112,15 @@ impl RelayChannels {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct SubscriptionData {
     pub filter: Filter,
     pub subscribed_at: Timestamp,
     pub is_auto_closing: bool,
+    /// Received EOSE msg
+    pub received_eose: bool,
+    /// Number of received events
+    pub received_events: AtomicUsize,
     /// Subscription closed by relay
     pub closed: bool,
 }
@@ -125,6 +132,8 @@ impl Default for SubscriptionData {
             filter: Filter::new(),
             subscribed_at: Timestamp::zero(),
             is_auto_closing: false,
+            received_eose: false,
+            received_events: AtomicUsize::new(0),
             closed: false,
         }
     }
@@ -328,6 +337,14 @@ impl InnerRelay {
         let mut subscriptions = self.atomic.subscriptions.write().await;
         if let Some(data) = subscriptions.get_mut(id) {
             data.closed = true;
+        }
+    }
+
+    /// Received eose for subscription
+    async fn received_eose(&self, id: &SubscriptionId) {
+        let mut subscriptions = self.atomic.subscriptions.write().await;
+        if let Some(data) = subscriptions.get_mut(id) {
+            data.received_eose = true;
         }
     }
 
@@ -1014,6 +1031,8 @@ impl InnerRelay {
                             }
                         };
 
+                        // TODO: if auto-closing subscription, just remove it.
+
                         match res {
                             HandleClosedMsg::MarkAsClosed => {
                                 self.subscription_closed(subscription_id).await;
@@ -1028,6 +1047,9 @@ impl InnerRelay {
                                 self.remove_subscription(subscription_id).await;
                             }
                         }
+                    }
+                    RelayMessage::EndOfStoredEvents(id) => {
+                        self.received_eose(id).await;
                     }
                     RelayMessage::Auth { challenge } => {
                         // Check if NIP42 auto authentication is enabled
@@ -1124,28 +1146,43 @@ impl InnerRelay {
             let subscriptions = self.atomic.subscriptions.read().await;
 
             // Check if the subscription id exist and verify if the event matches the subscription filter.
-            match subscriptions.get(&subscription_id) {
-                Some(SubscriptionData { filter, .. }) => {
-                    // Skip NIP-50 matches since they may create issues and ban non-malicious relays.
-                    const MATCH_EVENT_OPTS: MatchEventOptions =
-                        MatchEventOptions::new().nip50(false);
+            let SubscriptionData {
+                filter,
+                received_eose,
+                received_events,
+                ..
+            } = subscriptions
+                .get(&subscription_id)
+                .ok_or(Error::SubscriptionNotFound)?;
 
-                    // Check if the filter matches the event
-                    if !filter.match_event(&event, MATCH_EVENT_OPTS) {
+            // EOSE received, not check anymore the limit
+            if !received_eose {
+                // Check if `filters` has a limit
+                if let Some(limit) = filter.limit {
+                    // Update number of received events
+                    let prev: usize = received_events.fetch_add(1, Ordering::SeqCst);
+                    let received_events: usize = prev.saturating_add(1);
+
+                    // Check if received more that requested
+                    if received_events > limit {
                         // Ban the relay
                         if self.opts.ban_relay_on_mismatch {
                             self.ban();
                         }
 
-                        return Err(Error::FilterMismatch);
+                        return Err(Error::TooManyEvents);
                     }
+                }
+            }
 
-                    // TODO: check filter limit: if eose is not received and the filter has a limit, check how many events have been received.
-                    // TODO: use atomics (AtomicBool and AtomicUsize) for this, to avoid acquiring the RwLock as write.
+            // Check if the filter matches the event
+            if !filter.match_event(&event, MATCH_EVENT_OPTS) {
+                // Ban the relay
+                if self.opts.ban_relay_on_mismatch {
+                    self.ban();
                 }
-                None => {
-                    return Err(Error::SubscriptionNotFound);
-                }
+
+                return Err(Error::EventNotMatchFilter);
             }
         }
 
