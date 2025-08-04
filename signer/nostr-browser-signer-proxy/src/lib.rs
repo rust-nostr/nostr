@@ -13,9 +13,9 @@
 
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use atomic_destructor::{AtomicDestroyer, AtomicDestructor};
 use bytes::Bytes;
@@ -151,10 +151,12 @@ impl<'a> CryptoParams<'a> {
 
 #[derive(Debug)]
 struct ProxyState {
-    // Requests waiting to be picked up by browser
+    /// Requests waiting to be picked up by browser
     pub outgoing_requests: Mutex<Vec<RequestData>>,
-    // Map of request ID to response sender
+    /// Map of request ID to response sender
     pub pending_responses: Mutex<PendingResponseMap>,
+    /// Last time the client ask for the pending requests
+    pub last_pending_request: Arc<AtomicU64>,
 }
 
 /// Configuration options for [`BrowserSignerProxy`].
@@ -246,6 +248,7 @@ impl BrowserSignerProxy {
         let state = ProxyState {
             outgoing_requests: Mutex::new(Vec::new()),
             pending_responses: Mutex::new(HashMap::new()),
+            last_pending_request: Arc::new(AtomicU64::new(0)),
         };
 
         Self {
@@ -263,6 +266,13 @@ impl BrowserSignerProxy {
     #[inline]
     pub fn is_started(&self) -> bool {
         self.inner.is_started.load(Ordering::SeqCst)
+    }
+
+    /// Checks if there is an open browser tap ready to respond to requests by
+    /// verifying the time since the last pending request.
+    #[inline]
+    pub fn is_session_active(&self) -> bool {
+        current_time() - self.inner.state.last_pending_request.load(Ordering::SeqCst) < 2
     }
 
     /// Get the signer proxy webpage URL
@@ -525,6 +535,10 @@ async fn handle_request(
             .body(full(JS))?),
         // Browser polls this endpoint to get pending requests
         (&Method::GET, "/api/pending") => {
+            state
+                .last_pending_request
+                .store(current_time(), Ordering::SeqCst);
+
             let mut outgoing = state.outgoing_requests.lock().await;
 
             let requests: Requests<'_> = Requests::new(&outgoing);
@@ -607,4 +621,14 @@ fn full<T: Into<Bytes>>(chunk: T) -> BoxBody<Bytes, Error> {
     Full::new(chunk.into())
         .map_err(|never| match never {})
         .boxed()
+}
+
+/// Gets the current time in seconds since the Unix epoch (1970-01-01). If the
+/// time is before the epoch, returns 0.
+#[inline]
+fn current_time() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or_default()
 }
