@@ -1117,7 +1117,7 @@ impl InnerRelay {
         }
 
         // Check if subscription must be verified
-        if self.opts.verify_subscriptions {
+        if self.opts.verify_subscriptions || self.opts.ban_relay_on_mismatch {
             // NOTE: here we don't use the `self.subscription(id)` to avoid an unnecessary clone of the filter!
 
             // Acquire read lock
