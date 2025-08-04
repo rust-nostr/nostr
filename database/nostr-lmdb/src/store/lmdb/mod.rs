@@ -3,6 +3,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::iter;
 use std::ops::Bound;
@@ -408,7 +409,7 @@ impl Lmdb {
         // Remove replaceable events being replaced
         if event.kind.is_replaceable() {
             if let Some(stored) = self.find_replaceable_event(txn, &event.pubkey, event.kind)? {
-                if stored.created_at > event.created_at {
+                if has_event_been_replaced(&stored, event) {
                     return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
                 }
 
@@ -423,7 +424,7 @@ impl Lmdb {
                 let coordinate = Coordinate::new(event.kind, event.pubkey).identifier(identifier);
 
                 if let Some(stored) = self.find_addressable_event(txn, &coordinate)? {
-                    if stored.created_at > event.created_at {
+                    if has_event_been_replaced(&stored, event) {
                         return Ok(SaveEventStatus::Rejected(RejectedReason::Replaced));
                     }
 
@@ -1054,5 +1055,18 @@ impl Lmdb {
             Bound::Excluded(end_prefix.as_slice()),
         );
         Ok(self.ktc_index.range(txn, &range)?)
+    }
+}
+
+/// Check if the new event should replace the stored one.
+fn has_event_been_replaced(stored: &EventBorrow, event: &Event) -> bool {
+    match stored.created_at.cmp(&event.created_at) {
+        Ordering::Greater => true,
+        Ordering::Equal => {
+            // NIP-01: When timestamps are identical, keep the event with the lowest ID
+            stored.id < event.id.as_bytes()
+        }
+        // Stored event is older than the new event, so it is not replaced yet.
+        Ordering::Less => false,
     }
 }
