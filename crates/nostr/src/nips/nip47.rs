@@ -135,6 +135,9 @@ impl fmt::Display for Method {
             Method::ListTransactions => write!(f, "list_transactions"),
             Method::GetBalance => write!(f, "get_balance"),
             Method::GetInfo => write!(f, "get_info"),
+            Method::MakeHoldInvoice => write!(f, "make_hold_invoice"),
+            Method::CancelHoldInvoice => write!(f, "cancel_hold_invoice"),
+            Method::SettleHoldInvoice => write!(f, "settle_hold_invoice"),
         }
     }
 }
@@ -153,6 +156,9 @@ impl FromStr for Method {
             "list_transactions" => Ok(Method::ListTransactions),
             "get_balance" => Ok(Method::GetBalance),
             "get_info" => Ok(Method::GetInfo),
+            "make_hold_invoice" => Ok(Method::MakeHoldInvoice),
+            "cancel_hold_invoice" => Ok(Method::CancelHoldInvoice),
+            "settle_hold_invoice" => Ok(Method::SettleHoldInvoice),
             _ => Err(Error::InvalidURI),
         }
     }
@@ -203,6 +209,15 @@ pub enum Method {
     /// Get Info
     #[serde(rename = "get_info")]
     GetInfo,
+    /// Make Hold Invoice
+    #[serde(rename = "make_hold_invoice")]
+    MakeHoldInvoice,
+    /// Cancel Hold Invoice
+    #[serde(rename = "cancel_hold_invoice")]
+    CancelHoldInvoice,
+    /// Settle Hold Invoice
+    #[serde(rename = "settle_hold_invoice")]
+    SettleHoldInvoice,
 }
 
 /// Nostr Wallet Connect Request
@@ -226,6 +241,12 @@ pub enum RequestParams {
     GetBalance,
     /// Get Info
     GetInfo,
+    /// Make Hold Invoice
+    MakeHoldInvoice(MakeHoldInvoiceRequest),
+    /// Cancel Hold Invoice
+    CancelHoldInvoice(CancelHoldInvoiceRequest),
+    /// Settle Hold Invoice
+    SettleHoldInvoice(SettleHoldInvoiceRequest),
 }
 
 impl Serialize for RequestParams {
@@ -249,6 +270,9 @@ impl Serialize for RequestParams {
                 let map = serializer.serialize_map(None)?;
                 map.end()
             }
+            RequestParams::MakeHoldInvoice(p) => p.serialize(serializer),
+            RequestParams::CancelHoldInvoice(p) => p.serialize(serializer),
+            RequestParams::SettleHoldInvoice(p) => p.serialize(serializer),
         }
     }
 }
@@ -381,6 +405,41 @@ pub struct ListTransactionsRequest {
     pub transaction_type: Option<TransactionType>,
 }
 
+/// Make Hold Invoice Request
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct MakeHoldInvoiceRequest {
+    /// Amount in millisatoshis
+    pub amount: u64,
+    /// Invoice description
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Invoice description hash
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description_hash: Option<String>,
+    /// Invoice expiry in seconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expiry: Option<u64>,
+    /// payment_hash
+    pub payment_hash: String,
+    /// The minimum CLTV delta to use for the final hop
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cltv_expiry_delta: Option<u32>,
+}
+
+/// Cancel Hold Invoice Request
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct CancelHoldInvoiceRequest {
+    /// payment_hash
+    pub payment_hash: String,
+}
+
+/// Settle Hold Invoice Request
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct SettleHoldInvoiceRequest {
+    /// preimage
+    pub preimage: String,
+}
+
 /// NIP47 Request
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct Request {
@@ -507,6 +566,18 @@ impl Request {
             }
             Method::GetBalance => RequestParams::GetBalance,
             Method::GetInfo => RequestParams::GetInfo,
+            Method::MakeHoldInvoice => {
+                let params: MakeHoldInvoiceRequest = serde_json::from_value(template.params)?;
+                RequestParams::MakeHoldInvoice(params)
+            }
+            Method::SettleHoldInvoice => {
+                let params: SettleHoldInvoiceRequest = serde_json::from_value(template.params)?;
+                RequestParams::SettleHoldInvoice(params)
+            }
+            Method::CancelHoldInvoice => {
+                let params: CancelHoldInvoiceRequest = serde_json::from_value(template.params)?;
+                RequestParams::CancelHoldInvoice(params)
+            }
         };
 
         Ok(Self {
@@ -645,6 +716,42 @@ pub struct GetInfoResponse {
     pub notifications: Vec<String>,
 }
 
+/// Make Hold Invoice Response
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct MakeHoldInvoiceResponse {
+    /// Transaction type
+    #[serde(rename = "type")]
+    pub transaction_type: TransactionType,
+    /// Bolt11 invoice
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub invoice: Option<String>,
+    /// Description
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Description hash
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description_hash: Option<String>,
+    /// Payment hash
+    pub payment_hash: String,
+    /// Amount in millisatoshis
+    pub amount: u64,
+    /// Creation timestamp
+    pub created_at: Timestamp,
+    /// Expiration timestamp
+    pub expires_at: Timestamp,
+    /// Metadata
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Value>,
+}
+
+/// Cancel Hold Invoice Response
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct CancelHoldInvoiceResponse {}
+
+/// Settle Hold Invoice Response
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct SettleHoldInvoiceResponse {}
+
 /// NIP47 Response Result
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResponseResult {
@@ -666,6 +773,12 @@ pub enum ResponseResult {
     GetBalance(GetBalanceResponse),
     /// Get Info
     GetInfo(GetInfoResponse),
+    /// Make Hold Invoice
+    MakeHoldInvoice(MakeHoldInvoiceResponse),
+    /// Cancel Hold Invoice
+    CancelHoldInvoice(CancelHoldInvoiceResponse),
+    /// Settle Hold Invoice
+    SettleHoldInvoice(SettleHoldInvoiceResponse),
 }
 
 impl Serialize for ResponseResult {
@@ -687,6 +800,9 @@ impl Serialize for ResponseResult {
             }
             ResponseResult::GetBalance(p) => p.serialize(serializer),
             ResponseResult::GetInfo(p) => p.serialize(serializer),
+            ResponseResult::MakeHoldInvoice(p) => p.serialize(serializer),
+            ResponseResult::CancelHoldInvoice(p) => p.serialize(serializer),
+            ResponseResult::SettleHoldInvoice(p) => p.serialize(serializer),
         }
     }
 }
@@ -769,6 +885,18 @@ impl Response {
                 Method::GetInfo => {
                     let result: GetInfoResponse = serde_json::from_value(result)?;
                     ResponseResult::GetInfo(result)
+                }
+                Method::MakeHoldInvoice => {
+                    let result: MakeHoldInvoiceResponse = serde_json::from_value(result)?;
+                    ResponseResult::MakeHoldInvoice(result)
+                }
+                Method::CancelHoldInvoice => {
+                    let result: CancelHoldInvoiceResponse = serde_json::from_value(result)?;
+                    ResponseResult::CancelHoldInvoice(result)
+                }
+                Method::SettleHoldInvoice => {
+                    let result: SettleHoldInvoiceResponse = serde_json::from_value(result)?;
+                    ResponseResult::SettleHoldInvoice(result)
                 }
             };
 
@@ -1044,6 +1172,9 @@ pub enum NotificationType {
     /// A payment was successfully sent by the wallet
     #[serde(rename = "payment_sent")]
     PaymentSent,
+    /// A hold invoice has enough funds locked
+    #[serde(rename = "hold_invoice_accepted")]
+    HoldInvoiceAccepted,
 }
 
 impl fmt::Display for NotificationType {
@@ -1051,6 +1182,7 @@ impl fmt::Display for NotificationType {
         match self {
             NotificationType::PaymentReceived => write!(f, "payment_received"),
             NotificationType::PaymentSent => write!(f, "payment_sent"),
+            NotificationType::HoldInvoiceAccepted => write!(f, "hold_invoice_accepted"),
         }
     }
 }
@@ -1062,6 +1194,7 @@ impl FromStr for NotificationType {
         match s {
             "payment_received" => Ok(NotificationType::PaymentReceived),
             "payment_sent" => Ok(NotificationType::PaymentSent),
+            "hold_invoice_accepted" => Ok(NotificationType::HoldInvoiceAccepted),
             _ => Err(Error::InvalidURI),
         }
     }
@@ -1107,6 +1240,10 @@ impl Notification {
                 let result: PaymentNotification = serde_json::from_value(result)?;
                 NotificationResult::PaymentSent(result)
             }
+            NotificationType::HoldInvoiceAccepted => {
+                let result: HoldInvoiceAcceptedNotification = serde_json::from_value(result)?;
+                NotificationResult::HoldInvoiceAccepted(result)
+            }
         };
 
         Ok(Self {
@@ -1121,6 +1258,17 @@ impl Notification {
             return Ok(result);
         }
         if let NotificationResult::PaymentSent(result) = self.notification {
+            return Ok(result);
+        }
+
+        Err(Error::UnexpectedResult)
+    }
+
+    /// Convert [Notification] to [HoldInvoiceAcceptedNotification]
+    pub fn to_holdinvoice_accepted_notification(
+        self,
+    ) -> Result<HoldInvoiceAcceptedNotification, Error> {
+        if let NotificationResult::HoldInvoiceAccepted(result) = self.notification {
             return Ok(result);
         }
 
@@ -1149,6 +1297,8 @@ pub enum NotificationResult {
     PaymentReceived(PaymentNotification),
     /// Payment sent
     PaymentSent(PaymentNotification),
+    /// Hold invoice accepted (locked in)
+    HoldInvoiceAccepted(HoldInvoiceAcceptedNotification),
 }
 
 impl Serialize for NotificationResult {
@@ -1159,6 +1309,7 @@ impl Serialize for NotificationResult {
         match self {
             NotificationResult::PaymentReceived(p) => p.serialize(serializer),
             NotificationResult::PaymentSent(p) => p.serialize(serializer),
+            NotificationResult::HoldInvoiceAccepted(p) => p.serialize(serializer),
         }
     }
 }
@@ -1193,6 +1344,35 @@ pub struct PaymentNotification {
     pub expires_at: Option<Timestamp>,
     /// Settled timestamp in seconds since epoch
     pub settled_at: Timestamp,
+    /// Optional metadata about the payment
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<Value>,
+}
+
+/// Hold Invoice accepted notification
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct HoldInvoiceAcceptedNotification {
+    /// Transaction type
+    #[serde(rename = "type")]
+    pub transaction_type: TransactionType,
+    /// Bolt11 invoice
+    pub invoice: String,
+    /// Description
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Description hash
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description_hash: Option<String>,
+    /// Payment hash
+    pub payment_hash: String,
+    /// Amount in millisatoshis
+    pub amount: u64,
+    /// Creation timestamp
+    pub created_at: Timestamp,
+    /// Expiration timestamp
+    pub expires_at: Timestamp,
+    /// Settled deadline in blockheight
+    pub settle_deadline: u32,
     /// Optional metadata about the payment
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<Value>,
