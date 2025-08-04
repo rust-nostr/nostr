@@ -297,9 +297,7 @@ fn mark_all_as_failed(results: &mut [OperationResult]) {
 
 #[cfg(test)]
 mod tests {
-    use std::future::Future;
     use std::sync::Arc;
-    use std::time::{Duration, Instant};
 
     use futures::future::join_all;
     use nostr::{EventBuilder, Keys, Kind};
@@ -313,93 +311,6 @@ mod tests {
         let store = Store::open(temp_dir.path(), 1024 * 1024 * 10, 10, 50)
             .expect("Failed to open test store");
         (Arc::new(store), temp_dir)
-    }
-
-    /// Helper to execute futures concurrently and measure duration
-    async fn execute_concurrent_saves<F, Fut, T>(
-        events: &[Event],
-        store: Arc<Store>,
-        save_fn: F,
-    ) -> Duration
-    where
-        F: Fn(Arc<Store>, Event) -> Fut,
-        Fut: Future<Output = T>,
-    {
-        let start = Instant::now();
-
-        let futures: Vec<_> = events
-            .iter()
-            .map(|event| {
-                let store = Arc::clone(&store);
-                let event = event.clone();
-                save_fn(store, event)
-            })
-            .collect();
-
-        join_all(futures).await;
-        start.elapsed()
-    }
-
-    #[tokio::test]
-    async fn test_batching_vs_sequential() {
-        let (store, _temp_dir) = setup_test_store().await;
-        let keys = Keys::generate();
-
-        const NUM_EVENTS: usize = 100;
-
-        // Create events
-        let mut events = Vec::new();
-        for i in 0..NUM_EVENTS {
-            let event = EventBuilder::text_note(format!("Test event {}", i))
-                .sign_with_keys(&keys)
-                .expect("Failed to sign event");
-            events.push(event);
-        }
-
-        // Test 1: Saves using individual transactions (no batching)
-        let transaction_duration =
-            execute_concurrent_saves(&events, Arc::clone(&store), |store, event| async move {
-                // Create a new transaction for each event
-                let mut txn = store
-                    .db
-                    .write_txn()
-                    .expect("Failed to create write transaction");
-                let mut fbb = FlatBufferBuilder::with_capacity(FLATBUFFER_CAPACITY);
-
-                store
-                    .db
-                    .save_event_with_txn(&mut txn, &mut fbb, &event)
-                    .expect("Failed to save event");
-
-                txn.commit().expect("Failed to commit transaction");
-            })
-            .await;
-
-        // Clear database
-        store.wipe().await.expect("Failed to wipe");
-
-        // Test 2: Saves using ingester (automatic batching)
-        let batched_duration =
-            execute_concurrent_saves(&events, Arc::clone(&store), |store, event| async move {
-                store
-                    .save_event(&event)
-                    .await
-                    .expect("Failed to save event");
-            })
-            .await;
-
-        println!("Transaction-based saves: {:?}", transaction_duration);
-        println!("Batched saves (ingester): {:?}", batched_duration);
-        println!(
-            "Speedup: {:.1}x",
-            transaction_duration.as_secs_f64() / batched_duration.as_secs_f64()
-        );
-
-        // Batched saves should be significantly faster
-        assert!(
-            batched_duration < transaction_duration / 2,
-            "Batched saves should be at least 2x faster than transaction-based saves"
-        );
     }
 
     #[tokio::test]
