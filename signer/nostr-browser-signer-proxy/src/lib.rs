@@ -259,6 +259,12 @@ impl BrowserSignerProxy {
         }
     }
 
+    /// Indicates whether the server is currently running.
+    #[inline]
+    pub fn is_started(&self) -> bool {
+        self.inner.is_started.load(Ordering::SeqCst)
+    }
+
     /// Get the signer proxy webpage URL
     #[inline]
     pub fn url(&self) -> String {
