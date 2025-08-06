@@ -145,6 +145,17 @@ impl Client {
         self.pool.state().unset_signer().await;
     }
 
+    /// Retrieves the client's public key
+    ///
+    /// # Errors
+    ///
+    /// - If the signer isn't set.
+    /// - Error by the signer.
+    #[inline]
+    pub async fn public_key(&self) -> Result<PublicKey, Error> {
+        Ok(self.signer().await?.get_public_key().await?)
+    }
+
     /// Get [`RelayPool`]
     #[inline]
     pub fn pool(&self) -> &RelayPool {
