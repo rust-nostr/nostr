@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Added
+
+- `Client::public_key` function to retrieve the public key (https://github.com/rust-nostr/nostr/pull/1028)
+
 ## v0.43.0 - 2025/07/28
 
 ### Breaking changes
