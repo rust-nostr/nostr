@@ -17,8 +17,13 @@ async fn main() -> Result<()> {
 
     println!("Url: {}", proxy.url());
 
-    // Give time to open the webpage
-    time::sleep(Duration::from_secs(10)).await;
+    // Waits until the proxy session becomes active, checking every second.
+    loop {
+        if proxy.is_session_active() {
+            break;
+        }
+        time::sleep(Duration::from_secs(1)).await;
+    }
 
     // Get public key
     let public_key = proxy.get_public_key().await?;

@@ -28,6 +28,7 @@
 ### Added
 
 - `BrowserSignerProxy::is_started` function to know if the server currently running or not (https://github.com/rust-nostr/nostr/pull/1025)
+- `BrowserSignerProxy::is_session_active` returns whether there is an active session with the browser (https://github.com/rust-nostr/nostr/pull/1026)
 
 ## v0.43.0 - 2025/07/28
 
