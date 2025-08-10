@@ -741,6 +741,33 @@ impl EventBuilder {
         Ok(builder)
     }
 
+    /// Voice Message
+    ///
+    /// Note: This will not add `imeta` tag ([NIP-92])
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/A0.md>
+    ///
+    /// [NIP-92]: https://github.com/nostr-protocol/nips/blob/master/92.md
+    #[inline]
+    pub fn voice_message(voice_url: impl Into<Url>) -> Self {
+        EventBuilder::new(Kind::VoiceMessage, voice_url.into().as_str())
+    }
+
+    /// Voice Message Reply
+    ///
+    /// Note: This will not add `imeta` tag ([NIP-92])
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/A0.md>
+    ///
+    /// [NIP-92]: https://github.com/nostr-protocol/nips/blob/master/92.md
+    #[inline]
+    pub fn voice_message_reply(_voice_url: impl Into<Url>, _root: &Event, _parent: &Event) -> Self {
+        // EventBuilder::new(Kind::VoiceMessageReply, voice_url.into().as_str())
+        //     .tags(CommentTarget::from(root).as_vec(true))
+        //     .tags(CommentTarget::from(parent).as_vec(false))
+        todo!()
+    }
+
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
