@@ -43,8 +43,8 @@ Learn more about `rust-nostr` at <https://rust-nostr.org>.
 
 ## Supported NIPs
 
-| Supported | NIP                                                                                                             |
-|:---------:|-----------------------------------------------------------------------------------------------------------------|
+| Supported | NIP                                                                                                              |
+|:---------:|------------------------------------------------------------------------------------------------------------------|
 |     ✅     | [01 - Basic protocol flow description](https://github.com/nostr-protocol/nips/blob/master/01.md)                |
 |     ✅     | [02 - Follow List](https://github.com/nostr-protocol/nips/blob/master/02.md)                                    |
 |     ✅     | [03 - OpenTimestamps Attestations for Events](https://github.com/nostr-protocol/nips/blob/master/03.md)         |
@@ -92,7 +92,7 @@ Learn more about `rust-nostr` at <https://rust-nostr.org>.
 |     ❌     | [52 - Calendar Events](https://github.com/nostr-protocol/nips/blob/master/52.md)                                |
 |     ✅     | [53 - Live Activities](https://github.com/nostr-protocol/nips/blob/master/53.md)                                |
 |     ❌     | [54 - Wiki](https://github.com/nostr-protocol/nips/blob/master/54.md)                                           |
-|     -     | [55 - Android Signer Application](https://github.com/nostr-protocol/nips/blob/master/55.md)                     |
+|     -      | [55 - Android Signer Application](https://github.com/nostr-protocol/nips/blob/master/55.md)                     |
 |     ✅     | [56 - Reporting](https://github.com/nostr-protocol/nips/blob/master/56.md)                                      |
 |     ✅     | [57 - Lightning Zaps](https://github.com/nostr-protocol/nips/blob/master/57.md)                                 |
 |     ✅     | [58 - Badges](https://github.com/nostr-protocol/nips/blob/master/58.md)                                         |
@@ -121,6 +121,7 @@ Learn more about `rust-nostr` at <https://rust-nostr.org>.
 |     ✅     | [96 - HTTP File Storage Integration](https://github.com/nostr-protocol/nips/blob/master/96.md)                  |
 |     ✅     | [98 - HTTP Auth](https://github.com/nostr-protocol/nips/blob/master/98.md)                                      |
 |     ❌     | [99 - Classified Listings](https://github.com/nostr-protocol/nips/blob/master/99.md)                            |
+|     ✅     | [A0 - Voice Messages](https://github.com/nostr-protocol/nips/blob/master/A0.md)                                 |
 |     ❌     | [B0 - Web Bookmarks](https://github.com/nostr-protocol/nips/blob/master/B0.md)                                  |
 |     ✅     | [B7 - Blossom](https://github.com/nostr-protocol/nips/blob/master/B7.md)                                        |
 |     ✅     | [C0 - Code Snippets](https://github.com/nostr-protocol/nips/blob/master/C0.md)                                  |
