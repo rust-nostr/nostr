@@ -6,7 +6,7 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/22.md>
 
-use crate::nips::nip01::Coordinate;
+use crate::nips::nip01::CoordinateBorrow;
 use crate::nips::nip73::ExternalContentId;
 use crate::{Alphabet, Event, EventId, Kind, PublicKey, RelayUrl, TagKind, TagStandard, Url};
 
@@ -30,7 +30,7 @@ pub enum CommentTarget<'a> {
     /// Coordinate
     Coordinate {
         /// Coordinate
-        address: &'a Coordinate,
+        address: CoordinateBorrow<'a>,
         /// Relay hint
         relay_hint: Option<&'a RelayUrl>,
         /// Kind
@@ -44,6 +44,76 @@ pub enum CommentTarget<'a> {
         /// Web hint
         hint: Option<&'a Url>,
     },
+}
+
+impl<'a> CommentTarget<'a> {
+    /// Creates a new [`CommentTarget`] pointing to a specific event.
+    #[inline]
+    pub fn event(
+        event_id: &'a EventId,
+        kind: &'a Kind,
+        author: Option<&'a PublicKey>,
+        relay_hint: Option<&'a RelayUrl>,
+    ) -> Self {
+        Self::Event {
+            relay_hint,
+            id: event_id,
+            pubkey_hint: author,
+            kind: Some(kind),
+        }
+    }
+
+    /// Create a new [`CommentTarget`] pointing to a specific coordinate.
+    #[inline]
+    pub fn coordinate(coordinate: CoordinateBorrow<'a>, relay_hint: Option<&'a RelayUrl>) -> Self {
+        Self::Coordinate {
+            address: coordinate,
+            relay_hint,
+            #[allow(deprecated)]
+            kind: Some(coordinate.kind),
+        }
+    }
+
+    /// Create a new [`CommentTarget`] pointing to a specific external content.
+    #[inline]
+    pub fn external(content: &'a ExternalContentId, hint: Option<&'a Url>) -> Self {
+        Self::External { content, hint }
+    }
+
+    /// Sets the relay hint for the event or coordinate.
+    #[inline]
+    pub fn relay_hint(self, relay_hint: &'a RelayUrl) -> Self {
+        match self {
+            Self::Event {
+                id,
+                pubkey_hint,
+                kind,
+                ..
+            } => Self::Event {
+                id,
+                pubkey_hint,
+                kind,
+                relay_hint: Some(relay_hint),
+            },
+            #[allow(deprecated)]
+            Self::Coordinate { address, kind, .. } => Self::Coordinate {
+                address,
+                kind,
+                relay_hint: Some(relay_hint),
+            },
+            _ => self,
+        }
+    }
+}
+
+impl<'a> From<&'a Event> for CommentTarget<'a> {
+    fn from(event: &'a Event) -> Self {
+        if let Some(coordinate) = event.coordinate() {
+            CommentTarget::coordinate(coordinate, None)
+        } else {
+            CommentTarget::event(&event.id, &event.kind, Some(&event.pubkey), None)
+        }
+    }
 }
 
 /// Extract NIP22 root target
@@ -79,7 +149,7 @@ fn extract_data(event: &Event, is_root: bool) -> Option<CommentTarget> {
 
         // Check if matches the address kind
         if let Some(kind) = kind {
-            if kind != &address.kind {
+            if kind != address.kind {
                 return None;
             }
         }
@@ -155,7 +225,10 @@ fn extract_event(
 /// # Example:
 /// * is_root = true -> returns first `A` tag
 /// * is_root = false -> returns first `a` tag
-fn extract_coordinate(event: &Event, is_root: bool) -> Option<(&Coordinate, Option<&RelayUrl>)> {
+fn extract_coordinate(
+    event: &Event,
+    is_root: bool,
+) -> Option<(CoordinateBorrow<'_>, Option<&RelayUrl>)> {
     event
         .tags
         .filter_standardized(TagKind::single_letter(Alphabet::A, is_root))
@@ -165,7 +238,11 @@ fn extract_coordinate(event: &Event, is_root: bool) -> Option<(&Coordinate, Opti
                 relay_url,
                 uppercase,
                 ..
-            } => check_return((coordinate, relay_url.as_ref()), is_root, *uppercase),
+            } => check_return(
+                (coordinate.borrow(), relay_url.as_ref()),
+                is_root,
+                *uppercase,
+            ),
             _ => None,
         })
 }

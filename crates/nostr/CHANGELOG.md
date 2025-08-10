@@ -30,6 +30,7 @@
 - Add nip47 holdinvoice methods and notification (https://github.com/rust-nostr/nostr/pull/1019)
 - Add NIP-47 `state` field for transactions (https://github.com/rust-nostr/nostr/pull/1021)
 - Add `nip47::Method::as_str` method
+- Add `CommentTarget::{event, coordinate, external}` to point to a specific thing (https://github.com/rust-nostr/nostr/pull/1034)
 
 ### Changed
 
@@ -39,6 +40,10 @@
 ### Deprecated
 
 - Deprecate `kind` field in `CommentTarget::Coordinate` variant (https://github.com/rust-nostr/nostr/pull/1035)
+
+### Breaking changes
+
+- Change the `address` field type in `CommentTarget::Coordinate` to `CoordinateBorrow` (https://github.com/rust-nostr/nostr/pull/1034)
 
 ## v0.43.0 - 2025/07/28
 
