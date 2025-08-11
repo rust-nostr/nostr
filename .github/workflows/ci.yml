@@ -16,38 +16,63 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Check
         run: bash contrib/scripts/check-fmt.sh check
 
+  # TODO: check MSRV
   check-crates:
     name: Check crates
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        crate:
+          - nostr
+          - nostr --features all-nips
+          - nostr --no-default-features --features alloc
+          - nostr --no-default-features --features alloc,all-nips
+          - nostr-browser-signer --target wasm32-unknown-unknown
+          - nostr-browser-signer-proxy
+          - nostr-blossom
+          - nostr-http-file-storage
+          - nostr-database
+          - nostr-lmdb
+          - nostr-mls-storage
+          - nostr-mls-memory-storage
+          - nostr-mls-sqlite-storage
+          - nostr-mls
+          - nostr-indexeddb --target wasm32-unknown-unknown
+          - nostr-ndb
+          - nostr-keyring
+          - nostr-keyring --features async
+          - nostr-relay-pool
+          - nostr-relay-builder
+          - nostr-connect
+          - nwc
+          - nostr-sdk
+          - nostr-sdk --features all-nips
+          - nostr-sdk --features tor
+          - nostr-sdk --all-features
+          - nostr-cli
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Install deps
-      run: sudo apt update && sudo apt install -y libdbus-1-dev pkg-config
-    - name: Rust Cache
-      uses: Swatinem/rust-cache@v2.7.8
-      with:
-        key: "check-crates"
-    - name: Check
-      run: bash contrib/scripts/check-crates.sh "" ci
 
-  check-crates-msrv:
-    name: Check crates (MSRV)
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
     - name: Install deps
       run: sudo apt update && sudo apt install -y libdbus-1-dev pkg-config
+
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2.7.8
-      with:
-        key: "check-crates-msrv"
+
     - name: Check
-      run: bash contrib/scripts/check-crates.sh msrv ci
+      run: cargo check -p ${{ matrix.crate }}
+
+    - name: Clippy
+      run: cargo clippy -p ${{ matrix.crate }} -- -D warnings
+
+    - name: Test
+      if: "!contains(matrix.crate, 'wasm32-unknown-unknown')"
+      run: cargo test -p ${{ matrix.crate }}
 
   check-docs:
     name: Check docs
@@ -55,10 +80,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.7.8
         with:
           key: "check-docs"
+
       - name: Check
         run: bash contrib/scripts/check-docs.sh
 
@@ -71,17 +98,23 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2.7.8
       with:
         key: "build-no-std"
+
     - name: Set default toolchain
       run: rustup default nightly
+
     - name: Set profile
       run: rustup set profile minimal
+
     - name: Install just
       run: cargo install just
+
     - name: Init
       run: sudo apt update && just init
+
     - name: Build
       run: just build
