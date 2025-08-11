@@ -34,6 +34,7 @@
 - Add `nips::nip73::Nip73Kind` and `TagStandard::Nip73Kind` (https://github.com/rust-nostr/nostr/pull/1039)
 - Add repository state announcements kind `Kind::RepoState` (30618) (https://github.com/rust-nostr/nostr/pull/1041)
 - Add `HEAD` tag kind (https://github.com/rust-nostr/nostr/pull/1043)
+- Add `CommentTarget::as_vec` to convert the comment target into a vector of tags (https://github.com/rust-nostr/nostr/pull/1038)
 
 ### Changed
 
