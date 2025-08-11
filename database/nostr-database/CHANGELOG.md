@@ -29,7 +29,7 @@
 
 - Merge traits into `NostrDatabase` (https://github.com/rust-nostr/nostr/pull/916)
 - Remove `NostrDatabase::has_coordinate_been_deleted` (https://github.com/rust-nostr/nostr/pull/917)
-- 
+
 ### Changed
 
 - Impl `Any` for `NostrDatabase` (https://github.com/rust-nostr/nostr/pull/918)
