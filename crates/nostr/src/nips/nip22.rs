@@ -34,6 +34,7 @@ pub enum CommentTarget<'a> {
         /// Relay hint
         relay_hint: Option<&'a RelayUrl>,
         /// Kind
+        #[deprecated(since = "0.44.0", note = "Use `address.kind` instead")]
         kind: Option<&'a Kind>,
     },
     /// External content
@@ -72,10 +73,22 @@ fn extract_data(event: &Event, is_root: bool) -> Option<CommentTarget> {
 
     // Try to extract coordinate
     if let Some((address, relay_hint)) = extract_coordinate(event, is_root) {
+        // Extract kind
+        // TODO: for now we allow optional `k`/`K` tag, but according to NIP-22, it should be mandatory.
+        let kind: Option<&Kind> = extract_kind(event, is_root);
+
+        // Check if matches the address kind
+        if let Some(kind) = kind {
+            if kind != &address.kind {
+                return None;
+            }
+        }
+
         return Some(CommentTarget::Coordinate {
             address,
             relay_hint,
-            kind: extract_kind(event, is_root),
+            #[allow(deprecated)]
+            kind,
         });
     }
 

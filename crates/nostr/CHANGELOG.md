@@ -34,6 +34,11 @@
 ### Changed
 
 - NIP-47 fields synchronized with current specs (https://github.com/rust-nostr/nostr/pull/1021)
+- Check that `a`/`A` and `k`/`K` tags have the same event kind in NIP-22 events (https://github.com/rust-nostr/nostr/pull/1035)
+
+### Deprecated
+
+- Deprecate `kind` field in `CommentTarget::Coordinate` variant (https://github.com/rust-nostr/nostr/pull/1035)
 
 ## v0.43.0 - 2025/07/28
 
