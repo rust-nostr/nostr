@@ -5,7 +5,6 @@ set -euo pipefail
 # MSRV
 msrv="1.70.0"
 
-is_ci=false
 is_msrv=false
 version=""
 
@@ -13,11 +12,6 @@ version=""
 if [[ "$#" -gt 0 && "$1" == "msrv" ]]; then
     is_msrv=true
     version="+$msrv"
-fi
-
-# Check if "ci" is passed as an argument
-if [[ "$#" -gt 0 && "$2" == "ci" ]]; then
-    is_ci=true
 fi
 
 # Check if MSRV
@@ -28,7 +22,6 @@ if [ "$is_msrv" == true ]; then
     rustup target add wasm32-unknown-unknown --toolchain $msrv
 fi
 
-echo "CI: $is_ci"
 echo "MSRV: $is_msrv"
 
 buildargs=(
@@ -106,11 +99,6 @@ do
     fi
 
     cargo $version clippy $arg -- -D warnings
-
-    # If CI, clean every time to avoid to go out of space (GitHub Actions issue)
-    if [ "$is_ci" == true ]; then
-        cargo $version clean
-    fi
 
     echo
 done
