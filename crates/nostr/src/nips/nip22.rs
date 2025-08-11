@@ -6,9 +6,11 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/22.md>
 
+use alloc::vec::Vec;
+
 use crate::nips::nip01::CoordinateBorrow;
 use crate::nips::nip73::ExternalContentId;
-use crate::{Alphabet, Event, EventId, Kind, PublicKey, RelayUrl, TagKind, TagStandard, Url};
+use crate::{Alphabet, Event, EventId, Kind, PublicKey, RelayUrl, Tag, TagKind, TagStandard, Url};
 
 #[allow(missing_docs)]
 #[deprecated(since = "0.42.0", note = "Use `CommentTarget` instead")]
@@ -103,6 +105,105 @@ impl<'a> CommentTarget<'a> {
             },
             _ => self,
         }
+    }
+
+    /// Converts the comment target into a vector of tags
+    ///
+    /// ## Example
+    ///
+    /// If the target is `event` and `is_root` is true will return
+    ///
+    /// ```json
+    /// [
+    ///   ["E", "<event-id>", "<relay-hint>", "<public-key>"],
+    ///   ["P", "<public-key>"],
+    ///   ["K", "<event-kind>"]
+    /// ]
+    /// ```
+    pub fn as_vec(&self, is_root: bool) -> Vec<Tag> {
+        let mut tags = Vec::new();
+
+        match self {
+            Self::Event {
+                id,
+                relay_hint,
+                pubkey_hint,
+                kind,
+            } => {
+                tags.reserve_exact(
+                    1 + usize::from(pubkey_hint.is_some()) + usize::from(kind.is_some()),
+                );
+                tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
+                    event_id: **id,
+                    relay_url: relay_hint.cloned(),
+                    marker: None,
+                    public_key: pubkey_hint.copied(),
+                    uppercase: is_root,
+                }));
+
+                if let Some(pubkey) = pubkey_hint {
+                    tags.push(Tag::from_standardized_without_cell(
+                        TagStandard::PublicKey {
+                            public_key: **pubkey,
+                            relay_url: relay_hint.cloned(),
+                            alias: None,
+                            uppercase: is_root,
+                        },
+                    ));
+                }
+
+                if let Some(kind) = kind {
+                    tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
+                        kind: **kind,
+                        uppercase: is_root,
+                    }));
+                }
+            }
+            Self::Coordinate {
+                address,
+                relay_hint,
+                ..
+            } => {
+                tags.reserve_exact(3);
+                tags.push(Tag::from_standardized_without_cell(
+                    TagStandard::Coordinate {
+                        coordinate: address.into_owned(),
+                        relay_url: relay_hint.cloned(),
+                        uppercase: is_root,
+                    },
+                ));
+                tags.push(Tag::from_standardized_without_cell(
+                    TagStandard::PublicKey {
+                        public_key: *address.public_key,
+                        relay_url: relay_hint.cloned(),
+                        alias: None,
+                        uppercase: is_root,
+                    },
+                ));
+                tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
+                    kind: *address.kind,
+                    uppercase: is_root,
+                }));
+            }
+            Self::External { content, hint } => {
+                tags.reserve_exact(2);
+                tags.push(Tag::from_standardized_without_cell(
+                    TagStandard::ExternalContent {
+                        content: ExternalContentId::clone(content),
+                        hint: hint.cloned(),
+                        uppercase: is_root,
+                    },
+                ));
+                tags.push(Tag::from_standardized_without_cell(
+                    TagStandard::Nip73Kind {
+                        kind: content.kind(),
+                        uppercase: is_root,
+                    },
+                ))
+            }
+        }
+
+        tags
     }
 }
 
@@ -264,4 +365,137 @@ fn extract_external(event: &Event, is_root: bool) -> Option<(&ExternalContentId,
             } => check_return((content, hint.as_ref()), is_root, *uppercase),
             _ => None,
         })
+}
+
+#[cfg(test)]
+#[cfg(feature = "std")]
+mod tests {
+    use super::*;
+    use crate::prelude::*;
+
+    fn check_kind(tags: &[Tag], kind: Kind, uppercase: bool) {
+        assert!(
+            tags.contains(&Tag::from_standardized_without_cell(TagStandard::Kind {
+                kind,
+                uppercase
+            }))
+        );
+    }
+
+    fn check_nip73_kind(tags: &[Tag], kind: Nip73Kind, uppercase: bool) {
+        assert!(tags.contains(&Tag::from_standardized_without_cell(
+            TagStandard::Nip73Kind { kind, uppercase }
+        )));
+    }
+
+    fn check_pubkey(tags: &[Tag], public_key: PublicKey, uppercase: bool) {
+        assert!(tags.contains(&Tag::from_standardized_without_cell(
+            TagStandard::PublicKey {
+                public_key,
+                relay_url: None,
+                alias: None,
+                uppercase
+            }
+        )));
+    }
+
+    #[test]
+    fn test_event() {
+        let keys = Keys::generate();
+        let kind = Kind::GitPatch;
+        let event_id = EventId::new(
+            &keys.public_key(),
+            &Timestamp::from_secs(1),
+            &kind,
+            &Tags::new(),
+            "",
+        );
+
+        let comment_target = CommentTarget::event(&event_id, &kind, Some(&keys.public_key), None);
+
+        // Root
+        let root_vec = comment_target.as_vec(true);
+        assert!(
+            root_vec.contains(&Tag::from_standardized_without_cell(TagStandard::Event {
+                event_id,
+                relay_url: None,
+                marker: None,
+                public_key: Some(keys.public_key()),
+                uppercase: true
+            }))
+        );
+        check_pubkey(&root_vec, keys.public_key(), true);
+        check_kind(&root_vec, kind, true);
+
+        // Parent
+        let parent_vec = comment_target.as_vec(false);
+        assert!(
+            parent_vec.contains(&Tag::from_standardized_without_cell(TagStandard::Event {
+                event_id,
+                relay_url: None,
+                marker: None,
+                public_key: Some(keys.public_key()),
+                uppercase: false
+            }))
+        );
+        check_pubkey(&parent_vec, keys.public_key(), false);
+        check_kind(&parent_vec, kind, false);
+    }
+
+    #[test]
+    fn test_coordinate() {
+        let keys = Keys::generate();
+        let kind = Kind::ContactList;
+        let coordinate = Coordinate::new(kind, keys.public_key());
+
+        let comment_target = CommentTarget::coordinate(coordinate.borrow(), None);
+
+        // Root
+        let root_vec = comment_target.as_vec(true);
+        assert!(root_vec.contains(&Tag::from_standardized_without_cell(
+            TagStandard::Coordinate {
+                coordinate: coordinate.clone(),
+                relay_url: None,
+                uppercase: true
+            }
+        )));
+        check_pubkey(&root_vec, keys.public_key(), true);
+        check_kind(&root_vec, kind, true);
+
+        // Parent
+        let parent_vec = comment_target.as_vec(false);
+        assert!(parent_vec.contains(&Tag::coordinate(coordinate, None)));
+        check_pubkey(&parent_vec, keys.public_key(), false);
+        check_kind(&parent_vec, kind, false);
+    }
+
+    #[test]
+    fn test_external_content() {
+        let external_content = ExternalContentId::Url("https://rust-nostr.org".parse().unwrap());
+        let kind = external_content.kind();
+
+        let comment_target = CommentTarget::external(&external_content, None);
+
+        // Root
+        let root_vec = comment_target.as_vec(true);
+        assert!(root_vec.contains(&Tag::from_standardized_without_cell(
+            TagStandard::ExternalContent {
+                content: external_content.clone(),
+                hint: None,
+                uppercase: true
+            }
+        )));
+        check_nip73_kind(&root_vec, kind.clone(), true);
+
+        // Parent
+        let parent_vec = comment_target.as_vec(false);
+        assert!(parent_vec.contains(&Tag::from_standardized_without_cell(
+            TagStandard::ExternalContent {
+                content: external_content.clone(),
+                hint: None,
+                uppercase: false
+            }
+        )));
+        check_nip73_kind(&parent_vec, kind, false);
+    }
 }
