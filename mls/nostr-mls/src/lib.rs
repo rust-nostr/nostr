@@ -113,6 +113,16 @@ where
         )
     }
 
+    /// Get nostr mls group's required capabilities extension
+    #[inline]
+    pub(crate) fn required_capabilitie_extension(&self) -> Extension {
+        Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
+            &self.extensions,
+            &[],
+            &[],
+        ))
+    }
+
     /// Get the ciphersuite value
     pub(crate) fn ciphersuite_value(&self) -> u16 {
         self.ciphersuite.into()
