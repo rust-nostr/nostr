@@ -561,14 +561,13 @@ where
         let extension = Self::get_unknown_extension_from_group_data(group_data)?;
         let mut extensions = mls_group.extensions().clone();
         extensions.add_or_replace(extension);
-        let new_signature_keypair = SignatureKeyPair::new(self.ciphersuite.signature_algorithm())?;
 
-        new_signature_keypair
-            .store(self.provider.storage())
-            .map_err(|e| Error::Provider(e.to_string()))?;
-        let (message_out, _, _) = mls_group
-            .update_group_context_extensions(&self.provider, extensions, &new_signature_keypair)
-            .unwrap();
+        let signature_keypair = self.load_mls_signer(mls_group)?;
+        let (message_out, _, _) = mls_group.update_group_context_extensions(
+            &self.provider,
+            extensions,
+            &signature_keypair,
+        )?;
         let commit_event = self.build_encrypted_message_event(
             mls_group.group_id(),
             message_out.tls_serialize_detached()?,
@@ -747,7 +746,7 @@ where
         );
 
         let extension = Self::get_unknown_extension_from_group_data(&group_data)?;
-        let required_capabilities_extension = self.required_capabilitie_extension();
+        let required_capabilities_extension = self.required_capabilities_extension();
         let extensions = Extensions::from_vec(vec![extension, required_capabilities_extension])?;
 
         tracing::debug!(
@@ -948,14 +947,6 @@ where
             ));
         }
 
-        // let serialized_group_info = commit_message_bundle
-        //     .group_info()
-        //     .map(|g| {
-        //         g.tls_serialize_detached()
-        //             .map_err(|e| Error::Group(e.to_string()))
-        //     })
-        //     .transpose()?;
-
         Ok(UpdateGroupResult {
             evolution_event: commit_event,
             welcome_rumors: None, // serialized_group_info,
@@ -1142,10 +1133,11 @@ mod tests {
     use nostr::key::SecretKey;
     use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl};
     use nostr_mls_memory_storage::NostrMlsMemoryStorage;
-    use openmls::group::GroupId;
-    use openmls::prelude::BasicCredential;
+    use openmls::group::{GroupId, MlsGroup};
+    use openmls::prelude::{BasicCredential, ExtensionType};
 
     use super::NostrGroupDataExtension;
+    use crate::constant::NOSTR_GROUP_DATA_EXTENSION_TYPE;
     use crate::groups::NostrGroupConfigData;
     use crate::tests::create_test_nostr_mls;
 
@@ -2051,7 +2043,6 @@ mod tests {
         nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
         group_id: &GroupId,
     ) {
-        // Get initial group state
         let initial_mls_group = nostr_mls
             .load_mls_group(group_id)
             .expect("Failed to load MLS group")
@@ -2064,7 +2055,6 @@ mod tests {
             .update_group_name(group_id, new_name.clone())
             .expect("Failed to update group name");
 
-        // Verify the evolution event was created
         assert!(
             !update_result.evolution_event.content.is_empty(),
             "Evolution event should not be empty"
@@ -2104,39 +2094,43 @@ mod tests {
             final_group_data.name, new_name,
             "Group name should be updated in the extension"
         );
+
+        // Make sure that other fields are not changed
+        let initial_group_data = NostrGroupDataExtension::from_group(&initial_mls_group).unwrap();
+        assert_eq!(initial_group_data.description, final_group_data.description);
+        assert_eq!(initial_group_data.image_url, final_group_data.image_url);
+        assert_eq!(initial_group_data.image_key, final_group_data.image_key);
+        test_preserving_known_extensions(&initial_mls_group, &final_mls_group);
     }
 
     fn test_update_group_description(
         nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
         group_id: &GroupId,
     ) {
-        // Get initial group state
         let initial_mls_group = nostr_mls
             .load_mls_group(group_id)
             .expect("Failed to load MLS group")
             .expect("MLS group should exist");
         let initial_epoch = initial_mls_group.epoch().as_u64();
 
-        // Test updating the group name
         let new_description = "Updated test group description 0123".to_string();
         let update_result = nostr_mls
             .update_group_description(group_id, new_description.clone())
-            .expect("Failed to update group name");
+            .expect("Failed to update group description");
 
-        // Verify the evolution event was created
         assert!(
             !update_result.evolution_event.content.is_empty(),
             "Evolution event should not be empty"
         );
         assert!(
             update_result.welcome_rumors.is_none(),
-            "No welcome rumors should be generated for name update"
+            "No welcome rumors should be generated for description update"
         );
 
-        // Merge the pending commit to apply the name change
+        // Merge the pending commit to apply the description change
         nostr_mls
             .merge_pending_commit(group_id)
-            .expect("Failed to merge pending commit for name update");
+            .expect("Failed to merge pending commit for description update");
 
         // Verify the MLS group epoch was advanced
         let final_mls_group = nostr_mls
@@ -2147,12 +2141,12 @@ mod tests {
 
         assert!(
             final_epoch > initial_epoch,
-            "MLS group epoch should advance after name update (initial: {}, final: {})",
+            "MLS group epoch should advance after description update (initial: {}, final: {})",
             initial_epoch,
             final_epoch
         );
 
-        // Verify the group extension was updated with the new name
+        // Verify the group extension was updated with the new description
         let final_mls_group = nostr_mls
             .load_mls_group(group_id)
             .expect("Failed to load MLS group")
@@ -2163,40 +2157,44 @@ mod tests {
             final_group_data.description, new_description,
             "Group description should be updated in the extension"
         );
+
+        // Make sure that other fields are not changed
+        let initial_group_data = NostrGroupDataExtension::from_group(&initial_mls_group).unwrap();
+        assert_eq!(initial_group_data.name, final_group_data.name);
+        assert_eq!(initial_group_data.image_url, final_group_data.image_url);
+        assert_eq!(initial_group_data.image_key, final_group_data.image_key);
+        test_preserving_known_extensions(&initial_mls_group, &final_mls_group);
     }
 
     fn test_update_group_image(
         nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
         group_id: &GroupId,
     ) {
-        // Get initial group state
         let initial_mls_group = nostr_mls
             .load_mls_group(group_id)
             .expect("Failed to load MLS group")
             .expect("MLS group should exist");
         let initial_epoch = initial_mls_group.epoch().as_u64();
 
-        // Test updating the group name
         let new_image_url = "null".to_string();
         let new_image_key = vec![0u8];
         let update_result = nostr_mls
             .update_group_image(group_id, new_image_url.clone(), new_image_key.clone())
-            .expect("Failed to update group name");
+            .expect("Failed to update group description");
 
-        // Verify the evolution event was created
         assert!(
             !update_result.evolution_event.content.is_empty(),
             "Evolution event should not be empty"
         );
         assert!(
             update_result.welcome_rumors.is_none(),
-            "No welcome rumors should be generated for name update"
+            "No welcome rumors should be generated for image update"
         );
 
         // Merge the pending commit to apply the name change
         nostr_mls
             .merge_pending_commit(group_id)
-            .expect("Failed to merge pending commit for name update");
+            .expect("Failed to merge pending commit for image update");
 
         // Verify the MLS group epoch was advanced
         let final_mls_group = nostr_mls
@@ -2207,12 +2205,12 @@ mod tests {
 
         assert!(
             final_epoch > initial_epoch,
-            "MLS group epoch should advance after name update (initial: {}, final: {})",
+            "MLS group epoch should advance after image update (initial: {}, final: {})",
             initial_epoch,
             final_epoch
         );
 
-        // Verify the group extension was updated with the new name
+        // Verify the group extension was updated with the new image
         let final_mls_group = nostr_mls
             .load_mls_group(group_id)
             .expect("Failed to load MLS group")
@@ -2229,5 +2227,32 @@ mod tests {
             Some(new_image_key),
             "Group image key should be updated in the extension"
         );
+
+        // Make sure that other fields are not changed
+        let initial_group_data = NostrGroupDataExtension::from_group(&initial_mls_group).unwrap();
+        assert_eq!(initial_group_data.description, final_group_data.description);
+        assert_eq!(initial_group_data.name, final_group_data.name);
+        test_preserving_known_extensions(&initial_mls_group, &final_mls_group);
+    }
+
+    fn test_preserving_known_extensions(initial_mls_group: &MlsGroup, final_mls_group: &MlsGroup) {
+        // Make sure the other extensions are untouched
+        let initial_extensions = initial_mls_group.extensions();
+        let final_extensions = final_mls_group.extensions();
+
+        for ie in initial_extensions.iter() {
+            if ie.extension_type() == ExtensionType::Unknown(NOSTR_GROUP_DATA_EXTENSION_TYPE) {
+                // Already checked above
+                continue;
+            }
+
+            let mut present_in_final_extensions = false;
+            for fe in final_extensions.iter() {
+                if ie == fe {
+                    present_in_final_extensions = true;
+                }
+            }
+            assert!(present_in_final_extensions, "Known extensions are mutated")
+        }
     }
 }

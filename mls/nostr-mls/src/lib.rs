@@ -115,7 +115,7 @@ where
 
     /// Get nostr mls group's required capabilities extension
     #[inline]
-    pub(crate) fn required_capabilitie_extension(&self) -> Extension {
+    pub(crate) fn required_capabilities_extension(&self) -> Extension {
         Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
             &self.extensions,
             &[],
