@@ -21,12 +21,11 @@ use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls::group::GroupId;
 use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
-use tls_codec::{Deserialize, Serialize as TlsSerialize};
+use tls_codec::Serialize as TlsSerialize;
 
 use super::extension::NostrGroupDataExtension;
 use super::NostrMls;
 use crate::error::Error;
-use crate::prelude::RawNostrGroupDataExtension;
 
 /// Result of creating a new MLS group
 #[derive(Debug)]
@@ -556,8 +555,17 @@ where
     fn update_group_data_extension(
         &self,
         mls_group: &mut MlsGroup,
+        group_id: &GroupId,
         group_data: &NostrGroupDataExtension,
     ) -> Result<UpdateGroupResult, Error> {
+        // Check if current user is an admin
+        let own_leaf = mls_group.own_leaf().ok_or(Error::OwnLeafNotFound)?;
+        if !self.is_leaf_node_admin(group_id, own_leaf)? {
+            return Err(Error::Group(
+                "Only group admins can update group context extensions".to_string(),
+            ));
+        }
+
         let extension = Self::get_unknown_extension_from_group_data(group_data)?;
         let mut extensions = mls_group.extensions().clone();
         extensions.add_or_replace(extension);
@@ -589,7 +597,7 @@ where
         let mut group_data = NostrGroupDataExtension::from_group(&mls_group)?;
         group_data.name = name;
 
-        self.update_group_data_extension(&mut mls_group, &group_data)
+        self.update_group_data_extension(&mut mls_group, group_id, &group_data)
     }
 
     /// Updates group description
@@ -603,7 +611,7 @@ where
         let mut group_data = NostrGroupDataExtension::from_group(&mls_group)?;
         group_data.description = description;
 
-        self.update_group_data_extension(&mut mls_group, &group_data)
+        self.update_group_data_extension(&mut mls_group, group_id, &group_data)
     }
 
     /// Updates group description
@@ -614,36 +622,12 @@ where
         image_key: Vec<u8>,
     ) -> Result<UpdateGroupResult, Error> {
         let mut mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
-        // Check if current user is an admin
-        let own_leaf = mls_group.own_leaf().ok_or(Error::OwnLeafNotFound)?;
-        if !self.is_leaf_node_admin(group_id, own_leaf)? {
-            return Err(Error::Group(
-                "Only group admins can update group image".to_string(),
-            ));
-        }
 
-        // Try to get group data from leaf node extensions first, fall back to group context
-        let mut group_data = Self::get_group_data_from_leaf_node(own_leaf)
-            .or_else(|_| NostrGroupDataExtension::from_group(&mls_group))?;
-
+        let mut group_data = NostrGroupDataExtension::from_group(&mls_group)?;
         group_data.image_url = Some(image_url);
         group_data.image_key = Some(image_key);
 
-        self.update_group_data_extension(&mut mls_group, &group_data)
-    }
-
-    fn get_group_data_from_leaf_node(
-        own_leaf: &LeafNode,
-    ) -> Result<NostrGroupDataExtension, Error> {
-        let extensions = own_leaf.extensions().clone();
-        let extension = extensions
-            .unknown(NostrGroupDataExtension::EXTENSION_TYPE)
-            .ok_or(Error::NostrGroupDataExtensionNotFound)?;
-
-        let mut extension_bytes: &[u8] = &extension.0;
-        let raw_group_data_extension: RawNostrGroupDataExtension =
-            RawNostrGroupDataExtension::tls_deserialize(&mut extension_bytes)?;
-        NostrGroupDataExtension::from_raw(raw_group_data_extension)
+        self.update_group_data_extension(&mut mls_group, group_id, &group_data)
     }
 
     /// Retrieves the set of relay URLs associated with an MLS group
