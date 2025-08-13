@@ -41,6 +41,10 @@ pub enum TagKind<'a> {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     Commit,
+    /// HEAD
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    Head,
     /// Content warning
     ContentWarning,
     /// Current participants
@@ -327,6 +331,7 @@ impl<'a> TagKind<'a> {
             Self::Expiration => "expiration",
             Self::Extension => "extension",
             Self::File => "file",
+            Self::Head => "HEAD",
             Self::Image => "image",
             Self::License => "license",
             Self::Lnurl => "lnurl",
@@ -501,6 +506,9 @@ mod tests {
 
         assert_eq!(TagKind::from("file"), TagKind::File);
         assert_eq!(TagKind::File.as_str(), "file");
+
+        assert_eq!(TagKind::from("HEAD"), TagKind::Head);
+        assert_eq!(TagKind::Head.as_str(), "HEAD");
 
         assert_eq!(TagKind::from("license"), TagKind::License);
         assert_eq!(TagKind::License.as_str(), "license");

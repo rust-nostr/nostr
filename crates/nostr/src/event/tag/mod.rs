@@ -405,6 +405,19 @@ impl Tag {
         Self::from_standardized_without_cell(TagStandard::AllRelays)
     }
 
+    /// Repository head
+    ///
+    /// JSON: `["HEAD", "<branch-name>"]`
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    #[inline]
+    pub fn head<S>(branch_name: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::from_standardized_without_cell(TagStandard::GitHead(branch_name.into()))
+    }
+
     /// Compose `["t", "<hashtag>"]` tag
     ///
     /// This will convert the hashtag to lowercase.
