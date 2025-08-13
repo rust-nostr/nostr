@@ -94,6 +94,7 @@ kind_variants! {
     MlsKeyPackage => 443, "MLS Key Package", "<https://github.com/nostr-protocol/nips/blob/master/104.md>",
     MlsWelcome => 444, "MLS Welcome", "<https://github.com/nostr-protocol/nips/blob/master/104.md>",
     MlsGroupMessage => 445, "MLS Group Message", "<https://github.com/nostr-protocol/nips/blob/master/104.md>",
+    RepoState => 30618, "Repository state announcements", "<https://github.com/nostr-protocol/nips/blob/master/34.md>",
     GitPatch => 1617, "Git Patch", "<https://github.com/nostr-protocol/nips/blob/master/34.md>",
     GitIssue => 1621, "Git Issue", "<https://github.com/nostr-protocol/nips/blob/master/34.md>",
     GitReply => 1622, "Git Reply", "<https://github.com/nostr-protocol/nips/blob/master/34.md>",
