@@ -31,6 +31,7 @@
 - Add NIP-47 `state` field for transactions (https://github.com/rust-nostr/nostr/pull/1021)
 - Add `nip47::Method::as_str` method
 - Add `CommentTarget::{event, coordinate, external}` to point to a specific thing (https://github.com/rust-nostr/nostr/pull/1034)
+- Add `nips::nip73::Nip73Kind` and `TagStandard::Nip73Kind` (https://github.com/rust-nostr/nostr/pull/1039)
 
 ### Changed
 

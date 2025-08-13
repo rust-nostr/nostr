@@ -28,6 +28,8 @@ const BLOCKCHAIN_ADDR: &str = ":address:";
 pub enum Error {
     /// Invalid external content
     InvalidExternalContent,
+    /// Invalid NIP-73 kind
+    InvalidNip73Kind,
 }
 
 #[cfg(feature = "std")]
@@ -37,6 +39,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidExternalContent => write!(f, "invalid external content ID"),
+            Self::InvalidNip73Kind => write!(f, "Invalid NIP-73 kind"),
         }
     }
 }
@@ -82,6 +85,51 @@ pub enum ExternalContentId {
     },
 }
 
+/// NIP-73 kinds
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Nip73Kind {
+    /// URLs kind "web"
+    Url,
+    /// Books kind "isbn"
+    Book,
+    /// Geohashes kind "geo"
+    Geohashe,
+    /// Movies kind "isan"
+    Movie,
+    /// Papers kind "doi"
+    Paper,
+    /// Hashtags kind "#"
+    Hashtag,
+    /// Podcast feeds kind "podcast:guid"
+    PodcastFeed,
+    /// Podcast episodes kind "podcast:item:guid"
+    PodcastEpisode,
+    /// Podcast publishers kind "podcast:publisher:guid"
+    PodcastPublisher,
+    /// Blockchain transaction kind "<blockchain>:tx"
+    BlockchainTransaction(String),
+    /// Blockchain address kind "<blockchain>:address"
+    BlockchainAddress(String),
+}
+
+impl fmt::Display for Nip73Kind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Url => write!(f, "web"),
+            Self::Book => write!(f, "isbn"),
+            Self::Geohashe => write!(f, "geo"),
+            Self::Movie => write!(f, "isan"),
+            Self::Paper => write!(f, "doi"),
+            Self::Hashtag => write!(f, "{HASHTAG}"),
+            Self::PodcastFeed => write!(f, "podcast:guid"),
+            Self::PodcastEpisode => write!(f, "podcast:item:guid"),
+            Self::PodcastPublisher => write!(f, "podcast:publisher:guid"),
+            Self::BlockchainTransaction(blockchain) => write!(f, "{blockchain}:tx"),
+            Self::BlockchainAddress(blockchain) => write!(f, "{blockchain}:address"),
+        }
+    }
+}
+
 impl fmt::Display for ExternalContentId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -122,6 +170,41 @@ impl fmt::Display for ExternalContentId {
                         .unwrap_or_default()
                 )
             }
+        }
+    }
+}
+
+impl FromStr for Nip73Kind {
+    type Err = Error;
+
+    fn from_str(nip73_kind: &str) -> Result<Self, Self::Err> {
+        match nip73_kind {
+            "web" => Ok(Self::Url),
+            "isbn" => Ok(Self::Book),
+            "geo" => Ok(Self::Geohashe),
+            "isan" => Ok(Self::Movie),
+            "doi" => Ok(Self::Paper),
+            HASHTAG => Ok(Self::Hashtag),
+            "podcast:guid" => Ok(Self::PodcastFeed),
+            "podcast:item:guid" => Ok(Self::PodcastEpisode),
+            "podcast:publisher:guid" => Ok(Self::PodcastPublisher),
+            blockchain_tx
+                if blockchain_tx.ends_with(":tx")
+                    && blockchain_tx.chars().filter(|c| *c == ':').count() == 1 =>
+            {
+                Ok(Self::BlockchainTransaction(
+                    blockchain_tx.trim().replace(":tx", ""),
+                ))
+            }
+            blockchain_addr
+                if blockchain_addr.ends_with(":address")
+                    && blockchain_addr.chars().filter(|c| *c == ':').count() == 1 =>
+            {
+                Ok(Self::BlockchainAddress(
+                    blockchain_addr.trim().replace(":address", ""),
+                ))
+            }
+            _ => Err(Error::InvalidNip73Kind),
         }
     }
 }

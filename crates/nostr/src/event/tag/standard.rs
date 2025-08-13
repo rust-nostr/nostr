@@ -23,7 +23,7 @@ use crate::nips::nip48::Protocol;
 use crate::nips::nip53::{LiveEventMarker, LiveEventStatus};
 use crate::nips::nip56::Report;
 use crate::nips::nip65::RelayMetadata;
-use crate::nips::nip73::ExternalContentId;
+use crate::nips::nip73::{ExternalContentId, Nip73Kind};
 use crate::nips::nip88::{self, PollOption, PollType};
 use crate::nips::nip90::DataVendingMachineStatus;
 #[cfg(feature = "nip98")]
@@ -141,6 +141,11 @@ pub enum TagStandard {
     },
     Kind {
         kind: Kind,
+        /// Whether the tag is an uppercase or not
+        uppercase: bool,
+    },
+    Nip73Kind {
+        kind: Nip73Kind,
         /// Whether the tag is an uppercase or not
         uppercase: bool,
     },
@@ -367,6 +372,13 @@ impl TagStandard {
                     uppercase: false,
                 } => {
                     return parse_t_tag(tag);
+                }
+                // Parse `k` tag
+                SingleLetterTag {
+                    character: Alphabet::K,
+                    uppercase,
+                } => {
+                    return parse_k_tag(tag, uppercase);
                 }
                 _ => (), // Covered later
             },
@@ -639,10 +651,12 @@ impl TagStandard {
                 character: Alphabet::A,
                 uppercase: *uppercase,
             }),
-            Self::Kind { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
-                character: Alphabet::K,
-                uppercase: *uppercase,
-            }),
+            Self::Kind { uppercase, .. } | Self::Nip73Kind { uppercase, .. } => {
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::K,
+                    uppercase: *uppercase,
+                })
+            }
             Self::Relay(..) | Self::AllRelays => TagKind::Relay,
             Self::PollEndsAt(..) => nip88::ENDS_AT_TAG_KIND,
             Self::PollOption { .. } => TagKind::Option,
@@ -883,6 +897,7 @@ impl From<TagStandard> for Vec<String> {
                 vec![tag_kind, identity.tag_platform_identity(), identity.proof]
             }
             TagStandard::Kind { kind, .. } => vec![tag_kind, kind.to_string()],
+            TagStandard::Nip73Kind { kind, .. } => vec![tag_kind, kind.to_string()],
             TagStandard::Relay(url) => vec![tag_kind, url.to_string()],
             TagStandard::AllRelays => vec![tag_kind, ALL_RELAYS.to_string()],
             TagStandard::PollEndsAt(ends_at) => vec![tag_kind, ends_at.to_string()],
@@ -1385,6 +1400,27 @@ where
     Ok(TagStandard::Hashtag(hashtag.to_string()))
 }
 
+fn parse_k_tag<S>(tag: &[S], uppercase: bool) -> Result<TagStandard, Error>
+where
+    S: AsRef<str>,
+{
+    // ["k", "<kind>"]
+
+    let kind: &str = tag.get(1).ok_or(Error::UnknownStandardizedTag)?.as_ref();
+
+    if let Ok(kind_number) = u16::from_str(kind) {
+        Ok(TagStandard::Kind {
+            kind: Kind::from_u16(kind_number),
+            uppercase,
+        })
+    } else {
+        Ok(TagStandard::Nip73Kind {
+            kind: Nip73Kind::from_str(kind).map_err(|_| Error::UnknownStandardizedTag)?,
+            uppercase,
+        })
+    }
+}
+
 fn parse_client_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
 where
     S: AsRef<str>,
@@ -1479,6 +1515,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use alloc::borrow::ToOwned;
+
     use super::*;
     use crate::nips::nip39::ExternalIdentity;
 
@@ -1510,6 +1548,65 @@ mod tests {
             uppercase: false,
         };
         assert!(!tag.is_reply());
+    }
+
+    #[test]
+    fn test_nip73_kind() {
+        let tag = TagStandard::Nip73Kind {
+            kind: Nip73Kind::Url,
+            uppercase: true,
+        };
+        assert_eq!(tag.to_vec(), vec!["K", "web"]);
+
+        let tag = TagStandard::Nip73Kind {
+            kind: Nip73Kind::PodcastEpisode,
+            uppercase: false,
+        };
+        assert_eq!(tag.to_vec(), vec!["k", "podcast:item:guid"]);
+
+        let tag = TagStandard::Nip73Kind {
+            kind: Nip73Kind::BlockchainTransaction("monero".to_owned()),
+            uppercase: false,
+        };
+        assert_eq!(tag.to_vec(), vec!["k", "monero:tx"]);
+
+        let tag = TagStandard::Nip73Kind {
+            kind: Nip73Kind::BlockchainAddress("monero".to_owned()),
+            uppercase: true,
+        };
+        assert_eq!(tag.to_vec(), vec!["K", "monero:address"]);
+
+        assert_eq!(
+            TagStandard::parse(&["k", "isbn"]).unwrap(),
+            TagStandard::Nip73Kind {
+                kind: Nip73Kind::Book,
+                uppercase: false
+            }
+        );
+        assert_eq!(
+            TagStandard::parse(&["K", "monero:address"]).unwrap(),
+            TagStandard::Nip73Kind {
+                kind: Nip73Kind::BlockchainAddress("monero".to_owned()),
+                uppercase: true
+            }
+        );
+    }
+
+    #[test]
+    fn test_kind() {
+        let tag = TagStandard::Kind {
+            kind: Kind::Comment,
+            uppercase: false,
+        };
+        assert_eq!(tag.to_vec(), vec!["k", "1111"]);
+
+        assert_eq!(
+            TagStandard::parse(&["K", "1617"]).unwrap(),
+            TagStandard::Kind {
+                kind: Kind::GitPatch,
+                uppercase: true
+            }
+        );
     }
 
     #[test]
