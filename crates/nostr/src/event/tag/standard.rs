@@ -34,6 +34,7 @@ use crate::{
 };
 
 const ALL_RELAYS: &str = "ALL_RELAYS";
+const GIT_REFS_HEADS: &str = "ref: refs/heads/";
 
 /// Standardized tag
 #[allow(deprecated)]
@@ -72,6 +73,10 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
     EventReport(EventId, Report),
+    /// Git head ([`TagKind::Head`] tag)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitHead(String),
     /// Git clone ([`TagKind::Clone`] tag)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
@@ -458,6 +463,7 @@ impl TagStandard {
                 TagKind::Repository => Ok(Self::Repository(tag_1.to_string())),
                 TagKind::Subject => Ok(Self::Subject(tag_1.to_string())),
                 TagKind::Challenge => Ok(Self::Challenge(tag_1.to_string())),
+                TagKind::Head => Ok(Self::GitHead(tag_1.to_string())),
                 TagKind::Commit => Ok(Self::GitCommit(Sha1Hash::from_str(tag_1)?)),
                 TagKind::Title => Ok(Self::Title(tag_1.to_string())),
                 TagKind::Image => Ok(Self::Image(Url::parse(tag_1)?, None)),
@@ -605,6 +611,7 @@ impl TagStandard {
                 })
             }
             Self::EventReport(..) => TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E)),
+            Self::GitHead(..) => TagKind::Head,
             Self::GitClone(..) => TagKind::Clone,
             Self::GitCommit(..) => TagKind::Commit,
             Self::GitEarliestUniqueCommitId(..) => {
@@ -820,6 +827,9 @@ impl From<TagStandard> for Vec<String> {
             }
             TagStandard::EventReport(id, report) => {
                 vec![tag_kind, id.to_hex(), report.to_string()]
+            }
+            TagStandard::GitHead(branch) => {
+                vec![tag_kind, format!("{GIT_REFS_HEADS}{branch}")]
             }
             TagStandard::GitClone(urls) => {
                 let mut tag: Vec<String> = Vec::with_capacity(1 + urls.len());
