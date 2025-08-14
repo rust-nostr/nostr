@@ -271,6 +271,27 @@ impl FromStr for ExternalContentId {
     }
 }
 
+impl ExternalContentId {
+    /// Returns the kind of the content
+    pub fn kind(&self) -> Nip73Kind {
+        match self {
+            Self::Url(_) => Nip73Kind::Url,
+            Self::Hashtag(_) => Nip73Kind::Hashtag,
+            Self::Geohash(_) => Nip73Kind::Geohashe,
+            Self::Book(_) => Nip73Kind::Book,
+            Self::PodcastFeed(_) => Nip73Kind::PodcastFeed,
+            Self::PodcastEpisode(_) => Nip73Kind::PodcastEpisode,
+            Self::PodcastPublisher(_) => Nip73Kind::PodcastPublisher,
+            Self::Movie(_) => Nip73Kind::Movie,
+            Self::Paper(_) => Nip73Kind::Paper,
+            Self::BlockchainTransaction { chain, .. } => {
+                Nip73Kind::BlockchainTransaction(chain.clone())
+            }
+            Self::BlockchainAddress { chain, .. } => Nip73Kind::BlockchainAddress(chain.clone()),
+        }
+    }
+}
+
 /// Given a blockchain name returns the chain and the optional chain id if any.
 fn extract_chain_id(chain: &str) -> (String, Option<String>) {
     match chain.split_once(':') {
