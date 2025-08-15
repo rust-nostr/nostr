@@ -665,6 +665,9 @@ pub struct PayInvoiceResponse {
 pub struct PayKeysendResponse {
     /// Response preimage
     pub preimage: String,
+    /// Fees paid
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fees_paid: Option<u64>,
 }
 
 /// Make Invoice Response
