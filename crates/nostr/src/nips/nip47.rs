@@ -371,10 +371,13 @@ pub struct MakeInvoiceRequest {
     /// Amount in millisatoshis
     pub amount: u64,
     /// Invoice description
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// Invoice description hash
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description_hash: Option<String>,
     /// Invoice expiry in seconds
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub expiry: Option<u64>,
 }
 
@@ -382,8 +385,10 @@ pub struct MakeInvoiceRequest {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct LookupInvoiceRequest {
     /// Payment hash of invoice
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub payment_hash: Option<String>,
     /// Bolt11 invoice
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub invoice: Option<String>,
 }
 
@@ -651,6 +656,7 @@ pub struct PayInvoiceResponse {
     /// Response preimage
     pub preimage: String,
     /// Fees paid
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub fees_paid: Option<u64>,
 }
 
@@ -871,8 +877,10 @@ pub struct Response {
     /// Request Method
     pub result_type: Method,
     /// NIP47 Error
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<NIP47Error>,
     /// NIP47 Result
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<ResponseResult>,
 }
 
