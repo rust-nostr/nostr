@@ -662,12 +662,33 @@ pub struct PayKeysendResponse {
 }
 
 /// Make Invoice Response
+//
+// NOTE: don't add `type`, `state` or `fees_paid`, as they don't make sense here.
+//
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct MakeInvoiceResponse {
     /// Bolt 11 invoice
     pub invoice: String,
     /// Invoice's payment hash
     pub payment_hash: String,
+    /// Invoice's description
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Invoice's description hash
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description_hash: Option<String>,
+    /// Payment preimage
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preimage: Option<String>,
+    /// Amount in msats.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub amount: Option<u64>,
+    /// Creation timestamp in seconds since epoch
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<Timestamp>,
+    /// Expiration timestamp in seconds since epoch
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<Timestamp>,
 }
 
 /// Lookup Invoice Response
