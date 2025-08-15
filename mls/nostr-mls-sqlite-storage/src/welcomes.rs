@@ -148,7 +148,7 @@ mod tests {
     use aes_gcm::aead::OsRng;
     use aes_gcm::{Aes128Gcm, KeyInit};
     use nostr::{EventId, Kind, PublicKey, RelayUrl, Timestamp, UnsignedEvent};
-    use nostr_mls_storage::groups::types::{Group, GroupState, GroupType};
+    use nostr_mls_storage::groups::types::{Group, GroupState};
     use nostr_mls_storage::groups::GroupStorage;
     use nostr_mls_storage::welcomes::types::{ProcessedWelcomeState, WelcomeState};
     use openmls::group::GroupId;
@@ -178,7 +178,6 @@ mod tests {
             admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
-            group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
             image_url: image_url.clone(),

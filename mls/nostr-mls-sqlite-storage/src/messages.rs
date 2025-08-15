@@ -113,7 +113,7 @@ mod tests {
     use std::collections::BTreeSet;
 
     use nostr::{EventId, Kind, PublicKey, Tags, Timestamp, UnsignedEvent};
-    use nostr_mls_storage::groups::types::{Group, GroupState, GroupType};
+    use nostr_mls_storage::groups::types::{Group, GroupState};
     use nostr_mls_storage::groups::GroupStorage;
     use nostr_mls_storage::messages::types::{MessageState, ProcessedMessageState};
     use openmls::group::GroupId;
@@ -137,7 +137,6 @@ mod tests {
             admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
-            group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
             image_url: None,
