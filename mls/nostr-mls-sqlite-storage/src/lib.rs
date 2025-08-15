@@ -282,7 +282,7 @@ mod tests {
 
     #[test]
     fn test_group_exporter_secrets() {
-        use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupState, GroupType};
+        use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupState};
         use nostr_mls_storage::groups::GroupStorage;
 
         // Create an in-memory SQLite database
@@ -298,7 +298,6 @@ mod tests {
             admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
-            group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
             image_url: None,

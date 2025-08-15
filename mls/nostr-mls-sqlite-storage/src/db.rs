@@ -5,9 +5,7 @@ use std::io::{Error as IoError, ErrorKind};
 use std::str::FromStr;
 
 use nostr::{EventId, JsonUtil, Kind, PublicKey, RelayUrl, Tags, Timestamp, UnsignedEvent};
-use nostr_mls_storage::groups::types::{
-    Group, GroupExporterSecret, GroupRelay, GroupState, GroupType,
-};
+use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupRelay, GroupState};
 use nostr_mls_storage::messages::types::{
     Message, MessageState, ProcessedMessage, ProcessedMessageState,
 };
@@ -64,11 +62,6 @@ pub fn row_to_group(row: &Row) -> SqliteResult<Group> {
         last_message_id.and_then(|id| EventId::from_slice(id).ok());
     let last_message_at: Option<Timestamp> = last_message_at.map(Timestamp::from_secs);
 
-    let group_type: &str = row.get_ref("group_type")?.as_str()?;
-    let group_type: GroupType =
-        GroupType::from_str(group_type).map_err(|_| map_invalid_text_data("Invalid group type"))?;
-
-    // Convert group_type and state to GroupType and GroupState
     let state: &str = row.get_ref("state")?.as_str()?;
     let state: GroupState =
         GroupState::from_str(state).map_err(|_| map_invalid_text_data("Invalid group state"))?;
@@ -83,7 +76,6 @@ pub fn row_to_group(row: &Row) -> SqliteResult<Group> {
         admin_pubkeys,
         last_message_id,
         last_message_at,
-        group_type,
         epoch,
         state,
         image_url,

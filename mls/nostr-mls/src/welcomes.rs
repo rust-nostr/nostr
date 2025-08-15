@@ -96,11 +96,6 @@ where
             admin_pubkeys: welcome_preview.nostr_group_data.admins.clone(),
             last_message_id: None,
             last_message_at: None,
-            group_type: if welcome_preview.staged_welcome.members().count() > 2 {
-                group_types::GroupType::Group
-            } else {
-                group_types::GroupType::DirectMessage
-            },
             epoch: welcome_preview
                 .staged_welcome
                 .group_context()

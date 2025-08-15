@@ -89,8 +89,8 @@ impl GroupStorage for NostrMlsSqliteStorage {
             .execute(
                 "INSERT INTO groups
              (mls_group_id, nostr_group_id, name, description, image_url, image_key, admin_pubkeys, last_message_id,
-              last_message_at, group_type, epoch, state)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              last_message_at, epoch, state)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(mls_group_id) DO UPDATE SET
                 nostr_group_id = excluded.nostr_group_id,
                 name = excluded.name,
@@ -100,7 +100,6 @@ impl GroupStorage for NostrMlsSqliteStorage {
                 admin_pubkeys = excluded.admin_pubkeys,
                 last_message_id = excluded.last_message_id,
                 last_message_at = excluded.last_message_at,
-                group_type = excluded.group_type,
                 epoch = excluded.epoch,
                 state = excluded.state",
                 params![
@@ -113,7 +112,6 @@ impl GroupStorage for NostrMlsSqliteStorage {
                     &admin_pubkeys_json,
                     last_message_id,
                     &last_message_at,
-                    group.group_type.as_str(),
                     &(group.epoch as i64),
                     group.state.as_str()
                 ],
@@ -277,7 +275,7 @@ mod tests {
     use aes_gcm::aead::OsRng;
     use aes_gcm::{Aes128Gcm, KeyInit};
     use nostr::RelayUrl;
-    use nostr_mls_storage::groups::types::{GroupState, GroupType};
+    use nostr_mls_storage::groups::types::GroupState;
 
     use super::*;
 
@@ -304,7 +302,6 @@ mod tests {
             admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
-            group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
             image_url,
@@ -351,7 +348,6 @@ mod tests {
             admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
-            group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
             image_url: None,
@@ -399,7 +395,6 @@ mod tests {
             admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
-            group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
             image_url: None,

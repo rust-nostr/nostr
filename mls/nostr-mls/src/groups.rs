@@ -896,12 +896,6 @@ where
             )?
             .ok_or(Error::Welcome("Error creating welcome rumors".to_string()))?;
 
-        let group_type = if mls_group.members().count() > 2 {
-            group_types::GroupType::Group
-        } else {
-            group_types::GroupType::DirectMessage
-        };
-
         // Save the NostrMLS Group
         let group = group_types::Group {
             mls_group_id: mls_group.group_id().clone(),
@@ -911,7 +905,6 @@ where
             admin_pubkeys: group_data.clone().admins,
             last_message_id: None,
             last_message_at: None,
-            group_type,
             epoch: mls_group.epoch().as_u64(),
             state: group_types::GroupState::Active,
             image_url: config.image_url,

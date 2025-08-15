@@ -10,65 +10,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::error::GroupError;
 
-/// The type of Nostr MLS group
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum GroupType {
-    /// A group with only two members
-    DirectMessage,
-    /// A group with more than two members
-    Group,
-}
-
-impl fmt::Display for GroupType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-impl GroupType {
-    /// Get as `&str`
-    pub fn as_str(&self) -> &str {
-        match self {
-            Self::DirectMessage => "direct_message",
-            Self::Group => "group",
-        }
-    }
-}
-
-impl FromStr for GroupType {
-    type Err = GroupError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "direct_message" => Ok(Self::DirectMessage),
-            "group" => Ok(Self::Group),
-            _ => Err(GroupError::InvalidParameters(format!(
-                "Invalid group type: {}",
-                s
-            ))),
-        }
-    }
-}
-
-impl Serialize for GroupType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(self.as_str())
-    }
-}
-
-impl<'de> Deserialize<'de> for GroupType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s: String = String::deserialize(deserializer)?;
-        Self::from_str(&s).map_err(serde::de::Error::custom)
-    }
-}
-
 /// The state of the group, this matches the MLS group state
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum GroupState {
@@ -155,8 +96,6 @@ pub struct Group {
     pub last_message_id: Option<EventId>,
     /// Timestamp of the last message in the group
     pub last_message_at: Option<Timestamp>,
-    /// Type of Nostr MLS group
-    pub group_type: GroupType,
     /// Epoch of the group
     pub epoch: u64,
     /// The state of the group
@@ -190,53 +129,6 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-
-    #[test]
-    fn test_group_type_from_str() {
-        assert_eq!(
-            GroupType::from_str("direct_message").unwrap(),
-            GroupType::DirectMessage
-        );
-        assert_eq!(GroupType::from_str("group").unwrap(), GroupType::Group);
-
-        let err = GroupType::from_str("invalid").unwrap_err();
-        match err {
-            GroupError::InvalidParameters(msg) => {
-                assert!(msg.contains("Invalid group type: invalid"));
-            }
-            _ => panic!("Expected InvalidParameters error"),
-        }
-    }
-
-    #[test]
-    fn test_group_type_to_string() {
-        assert_eq!(GroupType::DirectMessage.to_string(), "direct_message");
-        assert_eq!(GroupType::Group.to_string(), "group");
-    }
-
-    #[test]
-    fn test_group_type_serialization() {
-        let direct_message = GroupType::DirectMessage;
-        let serialized = serde_json::to_string(&direct_message).unwrap();
-        assert_eq!(serialized, r#""direct_message""#);
-
-        let group = GroupType::Group;
-        let serialized = serde_json::to_string(&group).unwrap();
-        assert_eq!(serialized, r#""group""#);
-    }
-
-    #[test]
-    fn test_group_type_deserialization() {
-        let direct_message: GroupType = serde_json::from_str(r#""direct_message""#).unwrap();
-        assert_eq!(direct_message, GroupType::DirectMessage);
-
-        let group: GroupType = serde_json::from_str(r#""group""#).unwrap();
-        assert_eq!(group, GroupType::Group);
-
-        // Test snake_case works
-        let direct_message: GroupType = serde_json::from_str(r#""direct_message""#).unwrap();
-        assert_eq!(direct_message, GroupType::DirectMessage);
-    }
 
     #[test]
     fn test_group_state_from_str() {
@@ -294,7 +186,6 @@ mod tests {
             admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
-            group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
         };
@@ -310,7 +201,6 @@ mod tests {
         );
         assert_eq!(serialized["name"], json!("Test Group"));
         assert_eq!(serialized["description"], json!("Test Description"));
-        assert_eq!(serialized["group_type"], json!("group"));
         assert_eq!(serialized["state"], json!("active"));
     }
 
