@@ -398,23 +398,6 @@ pub enum TransactionType {
     Outgoing,
 }
 
-/// Transaction State
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum TransactionState {
-    /// Pending
-    #[serde(rename = "pending")]
-    Pending,
-    /// Settled
-    #[serde(rename = "settled")]
-    Settled,
-    /// Expired (for invoices)
-    #[serde(rename = "expired")]
-    Expired,
-    /// Failed (for payments)
-    #[serde(rename = "failed")]
-    Failed,
-}
-
 /// List Transactions Request
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ListTransactionsRequest {
@@ -651,7 +634,6 @@ pub struct PayInvoiceResponse {
     /// Response preimage
     pub preimage: String,
     /// Fees paid
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub fees_paid: Option<u64>,
 }
 
@@ -660,45 +642,15 @@ pub struct PayInvoiceResponse {
 pub struct PayKeysendResponse {
     /// Response preimage
     pub preimage: String,
-    /// Fees paid
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fees_paid: Option<u64>,
 }
 
 /// Make Invoice Response
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct MakeInvoiceResponse {
-    /// Transaction type
-    #[serde(rename = "type")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub transaction_type: Option<TransactionType>,
-    /// Transaction state
-    pub state: TransactionState,
-    /// Bolt11 invoice
+    /// Bolt 11 invoice
     pub invoice: String,
-    /// Invoice's description
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    /// Invoice's description hash
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description_hash: Option<String>,
-    /// Payment preimage
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub preimage: Option<String>,
     /// Invoice's payment hash
     pub payment_hash: String,
-    /// Amount in millisatoshis
-    pub amount: u64,
-    /// Fees paid in millisatoshis
-    pub fees_paid: u64,
-    /// Creation timestamp in seconds since epoch
-    pub created_at: Timestamp,
-    /// Expiration timestamp in seconds since epoch
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub expires_at: Option<Timestamp>,
-    /// Optional metadata about the payment
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<Value>,
 }
 
 /// Lookup Invoice Response
@@ -708,8 +660,6 @@ pub struct LookupInvoiceResponse {
     #[serde(rename = "type")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transaction_type: Option<TransactionType>,
-    /// Transaction state
-    pub state: TransactionState,
     /// Bolt11 invoice
     #[serde(skip_serializing_if = "Option::is_none")]
     pub invoice: Option<String>,
@@ -1388,8 +1338,6 @@ pub struct PaymentNotification {
     #[serde(rename = "type")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transaction_type: Option<TransactionType>,
-    /// Transaction state
-    pub state: TransactionState,
     /// Bolt11 invoice
     pub invoice: String,
     /// Invoice's description
@@ -1558,7 +1506,6 @@ mod tests {
             result: Some(ResponseResult::ListTransactions(vec![
                 LookupInvoiceResponse {
                     transaction_type: Some(TransactionType::Incoming),
-                    state: TransactionState::Expired,
                     invoice: Some(String::from("abcd")),
                     description: Some(String::from("string")),
                     amount: 123,
@@ -1589,7 +1536,6 @@ mod tests {
                 "transactions": [
                     {
                        "type": "incoming",
-                       "state": "expired",
                        "invoice": "abcd",
                        "description": "string",
                        "payment_hash": "",
@@ -1609,7 +1555,6 @@ mod tests {
             Some(ResponseResult::ListTransactions(vec![
                 LookupInvoiceResponse {
                     transaction_type: Some(TransactionType::Incoming),
-                    state: TransactionState::Expired,
                     invoice: Some(String::from("abcd")),
                     description: Some(String::from("string")),
                     amount: 123,
@@ -1632,7 +1577,6 @@ mod tests {
             "notification_type": "payment_received",
             "notification": {
                 "type": "incoming",
-                "state": "settled",
                 "invoice": "abcd",
                 "description": "string1",
                 "description_hash": "string2",
@@ -1653,7 +1597,6 @@ mod tests {
         );
         let notification_result = NotificationResult::PaymentReceived(PaymentNotification {
             transaction_type: Some(TransactionType::Incoming),
-            state: TransactionState::Settled,
             invoice: String::from("abcd"),
             description: Some(String::from("string1")),
             description_hash: Some(String::from("string2")),
