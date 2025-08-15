@@ -398,6 +398,23 @@ pub enum TransactionType {
     Outgoing,
 }
 
+/// Transaction State
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum TransactionState {
+    /// Pending
+    #[serde(rename = "pending")]
+    Pending,
+    /// Settled
+    #[serde(rename = "settled")]
+    Settled,
+    /// Expired (for invoices)
+    #[serde(rename = "expired")]
+    Expired,
+    /// Failed (for payments)
+    #[serde(rename = "failed")]
+    Failed,
+}
+
 /// List Transactions Request
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ListTransactionsRequest {
@@ -660,6 +677,9 @@ pub struct LookupInvoiceResponse {
     #[serde(rename = "type")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transaction_type: Option<TransactionType>,
+    /// Transaction state
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state: Option<TransactionState>,
     /// Bolt11 invoice
     #[serde(skip_serializing_if = "Option::is_none")]
     pub invoice: Option<String>,
@@ -1506,6 +1526,7 @@ mod tests {
             result: Some(ResponseResult::ListTransactions(vec![
                 LookupInvoiceResponse {
                     transaction_type: Some(TransactionType::Incoming),
+                    state: Some(TransactionState::Expired),
                     invoice: Some(String::from("abcd")),
                     description: Some(String::from("string")),
                     amount: 123,
@@ -1536,6 +1557,7 @@ mod tests {
                 "transactions": [
                     {
                        "type": "incoming",
+                       "state": "expired",
                        "invoice": "abcd",
                        "description": "string",
                        "payment_hash": "",
@@ -1555,6 +1577,7 @@ mod tests {
             Some(ResponseResult::ListTransactions(vec![
                 LookupInvoiceResponse {
                     transaction_type: Some(TransactionType::Incoming),
+                    state: Some(TransactionState::Expired),
                     invoice: Some(String::from("abcd")),
                     description: Some(String::from("string")),
                     amount: 123,
