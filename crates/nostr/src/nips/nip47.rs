@@ -679,7 +679,8 @@ pub struct MakeInvoiceResponse {
     /// Bolt 11 invoice
     pub invoice: String,
     /// Invoice's payment hash
-    pub payment_hash: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payment_hash: Option<String>,
     /// Invoice's description
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,

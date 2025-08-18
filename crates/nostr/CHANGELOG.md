@@ -25,6 +25,10 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Set `payment_hash` as optional in `MakeInvoiceResponse` (https://github.com/rust-nostr/nostr/pull/1045)
+
 ### Added
 
 - Add nip47 holdinvoice methods and notification (https://github.com/rust-nostr/nostr/pull/1019)
