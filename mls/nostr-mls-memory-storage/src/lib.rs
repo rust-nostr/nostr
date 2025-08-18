@@ -174,7 +174,7 @@ mod tests {
     use aes_gcm::aead::OsRng;
     use aes_gcm::{Aes128Gcm, KeyInit};
     use nostr::{EventId, Kind, PublicKey, RelayUrl, Tags, Timestamp, UnsignedEvent};
-    use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupState, GroupType};
+    use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupState};
     use nostr_mls_storage::groups::GroupStorage;
     use nostr_mls_storage::messages::types::{Message, MessageState, ProcessedMessageState};
     use nostr_mls_storage::messages::MessageStorage;
@@ -258,7 +258,6 @@ mod tests {
             admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
-            group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
             image_url,
@@ -299,7 +298,6 @@ mod tests {
             admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
-            group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
             image_url,
@@ -358,7 +356,6 @@ mod tests {
             admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
-            group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
             image_url,
@@ -505,7 +502,6 @@ mod tests {
             admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
-            group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
             image_url,
@@ -602,7 +598,6 @@ mod tests {
             admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
-            group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
             image_url,
@@ -636,7 +631,6 @@ mod tests {
             admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,
-            group_type: GroupType::Group,
             epoch: 0,
             state: GroupState::Active,
             image_url,
