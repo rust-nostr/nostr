@@ -32,7 +32,7 @@
 ### Added
 
 - Add nip47 holdinvoice methods and notification (https://github.com/rust-nostr/nostr/pull/1019)
-- Add `TransactionState` to `LookupInvoiceResponse` (https://github.com/rust-nostr/nostr/pull/1045)
+- Add `TransactionState` to `LookupInvoiceResponse` and `PaymentNotification` (https://github.com/rust-nostr/nostr/pull/1045)
 - Add `description`, `description_hash`, `preimage`, `amount`, `created_at` and `expires_at` optional fields to `MakeInvoiceResponse` (https://github.com/rust-nostr/nostr/pull/1045)
 - Add `fees_paid` field to `PayKeysendResponse` (https://github.com/rust-nostr/nostr/pull/1045)
 - Add `nip47::Method::as_str` method

@@ -1391,6 +1391,9 @@ pub struct PaymentNotification {
     #[serde(rename = "type")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transaction_type: Option<TransactionType>,
+    /// Transaction state
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state: Option<TransactionState>,
     /// Bolt11 invoice
     pub invoice: String,
     /// Invoice's description
@@ -1633,6 +1636,7 @@ mod tests {
             "notification_type": "payment_received",
             "notification": {
                 "type": "incoming",
+                "state": "settled",
                 "invoice": "abcd",
                 "description": "string1",
                 "description_hash": "string2",
@@ -1653,6 +1657,7 @@ mod tests {
         );
         let notification_result = NotificationResult::PaymentReceived(PaymentNotification {
             transaction_type: Some(TransactionType::Incoming),
+            state: Some(TransactionState::Settled),
             invoice: String::from("abcd"),
             description: Some(String::from("string1")),
             description_hash: Some(String::from("string2")),
