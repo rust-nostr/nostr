@@ -48,6 +48,7 @@
 ### Breaking changes
 
 - Change the `address` field type in `CommentTarget::Coordinate` to `CoordinateBorrow` (https://github.com/rust-nostr/nostr/pull/1034)
+- Change the `EventBuilder::comment` function `root` and `comment_to` parameters types from `&Event` to `CommentTarget<'_>` (https://github.com/rust-nostr/nostr/pull/1047)
 
 ## v0.43.0 - 2025/07/28
 

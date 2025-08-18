@@ -493,108 +493,18 @@ impl EventBuilder {
 
     /// Comment
     ///
-    /// This adds only that most significant tags, like:
-    /// - `p` tag with the author of the `comment_to` event;
-    /// - the `a`/`e` and `k` tags of the `comment_to` event;
-    /// - `P` tag with the author of the `root` event;
-    /// - the `A`/`E` and `K` tags of the `root` event.
-    ///
-    /// Any additional necessary tag can be added with [`EventBuilder::tag`] or [`EventBuilder::tags`].
-    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/22.md>
     pub fn comment<S>(
         content: S,
-        comment_to: &Event,
-        root: Option<&Event>,
-        relay_url: Option<RelayUrl>,
+        comment_to: CommentTarget<'_>,
+        root: Option<CommentTarget<'_>>,
     ) -> Self
     where
         S: Into<String>,
     {
-        // Not use `comment_to` as root if no root is set.
-        // It's better to have no tags than wrong tags.
-        // Issue: https://github.com/rust-nostr/nostr/issues/655
-
-        // The added tags will be at least 3
-        let mut tags: Vec<Tag> = Vec::with_capacity(3);
-
-        // Tag the author of the event you are replying to.
-        // This is the most significant public key since it's the one you are replying to, so put it first.
-        tags.push(Tag::public_key(comment_to.pubkey));
-
-        // Add `k` tag of event kind
-        tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
-            kind: comment_to.kind,
-            uppercase: false,
-        }));
-
-        // If event has coordinate, add `a` tag otherwise push `e` tag
-        match comment_to.coordinate() {
-            Some(coordinate) => {
-                tags.push(Tag::from_standardized_without_cell(
-                    TagStandard::Coordinate {
-                        coordinate: coordinate.into_owned(),
-                        relay_url: relay_url.clone(),
-                        uppercase: false, // <--- Same as root event but lowercase
-                    },
-                ));
-            }
-            None => {
-                // Add `e` tag of event author
-                tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
-                    event_id: comment_to.id,
-                    relay_url: relay_url.clone(),
-                    marker: None,
-                    public_key: Some(comment_to.pubkey),
-                    uppercase: false,
-                }));
-            }
-        }
-
-        // Add `A`, `E` and `K` tag of **root** event
-        if let Some(root) = root {
-            // If event has coordinate, add it to tags otherwise push the event ID
-            match root.coordinate() {
-                Some(coordinate) => {
-                    tags.push(Tag::from_standardized_without_cell(
-                        TagStandard::Coordinate {
-                            coordinate: coordinate.into_owned(),
-                            relay_url,
-                            uppercase: true,
-                        },
-                    ));
-                }
-                None => {
-                    // ID and author
-                    tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
-                        event_id: root.id,
-                        relay_url,
-                        marker: None,
-                        public_key: Some(root.pubkey),
-                        uppercase: true,
-                    }));
-                }
-            }
-
-            // Add `P` tag of the root event
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::PublicKey {
-                    public_key: root.pubkey,
-                    relay_url: None,
-                    alias: None,
-                    uppercase: true,
-                },
-            ));
-
-            // Add `K` tag of the root event
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
-                kind: root.kind,
-                uppercase: true,
-            }));
-        }
-
-        // Compose event
-        Self::new(Kind::Comment, content).tags(tags)
+        Self::new(Kind::Comment, content)
+            .tags(root.map(|c| c.as_vec(true)).unwrap_or_default())
+            .tags(comment_to.as_vec(false))
     }
 
     /// Long-form text note (generally referred to as "articles" or "blog posts").
