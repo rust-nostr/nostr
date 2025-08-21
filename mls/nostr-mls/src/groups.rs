@@ -21,12 +21,11 @@ use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls::group::GroupId;
 use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
-use tls_codec::{Deserialize, Serialize as TlsSerialize};
+use tls_codec::Serialize as TlsSerialize;
 
 use super::extension::NostrGroupDataExtension;
 use super::NostrMls;
 use crate::error::Error;
-use crate::prelude::RawNostrGroupDataExtension;
 
 /// Result of creating a new MLS group
 #[derive(Debug)]
@@ -553,6 +552,40 @@ where
         })
     }
 
+    fn update_group_data_extension(
+        &self,
+        mls_group: &mut MlsGroup,
+        group_id: &GroupId,
+        group_data: &NostrGroupDataExtension,
+    ) -> Result<UpdateGroupResult, Error> {
+        // Check if current user is an admin
+        let own_leaf = mls_group.own_leaf().ok_or(Error::OwnLeafNotFound)?;
+        if !self.is_leaf_node_admin(group_id, own_leaf)? {
+            return Err(Error::Group(
+                "Only group admins can update group context extensions".to_string(),
+            ));
+        }
+
+        let extension = Self::get_unknown_extension_from_group_data(group_data)?;
+        let mut extensions = mls_group.extensions().clone();
+        extensions.add_or_replace(extension);
+
+        let signature_keypair = self.load_mls_signer(mls_group)?;
+        let (message_out, _, _) = mls_group.update_group_context_extensions(
+            &self.provider,
+            extensions,
+            &signature_keypair,
+        )?;
+        let commit_event = self.build_encrypted_message_event(
+            mls_group.group_id(),
+            message_out.tls_serialize_detached()?,
+        )?;
+        Ok(UpdateGroupResult {
+            evolution_event: commit_event,
+            welcome_rumors: None,
+        })
+    }
+
     /// Updates group name
     pub fn update_group_name(
         &self,
@@ -560,21 +593,11 @@ where
         name: String,
     ) -> Result<UpdateGroupResult, Error> {
         let mut mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
-        // Check if current user is an admin
-        let own_leaf = mls_group.own_leaf().ok_or(Error::OwnLeafNotFound)?;
-        if !self.is_leaf_node_admin(group_id, own_leaf)? {
-            return Err(Error::Group(
-                "Only group admins can update group name".to_string(),
-            ));
-        }
 
-        // Try to get group data from leaf node extensions first, fall back to group context
-        let mut group_data = Self::get_group_data_from_leaf_node(own_leaf)
-            .or_else(|_| NostrGroupDataExtension::from_group(&mls_group))?;
-
+        let mut group_data = NostrGroupDataExtension::from_group(&mls_group)?;
         group_data.name = name;
 
-        self.update(group_id, &mut mls_group, &group_data)
+        self.update_group_data_extension(&mut mls_group, group_id, &group_data)
     }
 
     /// Updates group description
@@ -584,21 +607,11 @@ where
         description: String,
     ) -> Result<UpdateGroupResult, Error> {
         let mut mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
-        // Check if current user is an admin
-        let own_leaf = mls_group.own_leaf().ok_or(Error::OwnLeafNotFound)?;
-        if !self.is_leaf_node_admin(group_id, own_leaf)? {
-            return Err(Error::Group(
-                "Only group admins can update group description".to_string(),
-            ));
-        }
 
-        // Try to get group data from leaf node extensions first, fall back to group context
-        let mut group_data = Self::get_group_data_from_leaf_node(own_leaf)
-            .or_else(|_| NostrGroupDataExtension::from_group(&mls_group))?;
-
+        let mut group_data = NostrGroupDataExtension::from_group(&mls_group)?;
         group_data.description = description;
 
-        self.update(group_id, &mut mls_group, &group_data)
+        self.update_group_data_extension(&mut mls_group, group_id, &group_data)
     }
 
     /// Updates group description
@@ -609,136 +622,12 @@ where
         image_key: Vec<u8>,
     ) -> Result<UpdateGroupResult, Error> {
         let mut mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
-        // Check if current user is an admin
-        let own_leaf = mls_group.own_leaf().ok_or(Error::OwnLeafNotFound)?;
-        if !self.is_leaf_node_admin(group_id, own_leaf)? {
-            return Err(Error::Group(
-                "Only group admins can update group image".to_string(),
-            ));
-        }
 
-        // Try to get group data from leaf node extensions first, fall back to group context
-        let mut group_data = Self::get_group_data_from_leaf_node(own_leaf)
-            .or_else(|_| NostrGroupDataExtension::from_group(&mls_group))?;
-
+        let mut group_data = NostrGroupDataExtension::from_group(&mls_group)?;
         group_data.image_url = Some(image_url);
         group_data.image_key = Some(image_key);
 
-        self.update(group_id, &mut mls_group, &group_data)
-    }
-
-    fn get_group_data_from_leaf_node(
-        own_leaf: &LeafNode,
-    ) -> Result<NostrGroupDataExtension, Error> {
-        let extensions = own_leaf.extensions().clone();
-        let extension = extensions
-            .unknown(NostrGroupDataExtension::EXTENSION_TYPE)
-            .ok_or(Error::NostrGroupDataExtensionNotFound)?;
-
-        let mut extension_bytes: &[u8] = &extension.0;
-        let raw_group_data_extension: RawNostrGroupDataExtension =
-            RawNostrGroupDataExtension::tls_deserialize(&mut extension_bytes)?;
-        NostrGroupDataExtension::from_raw(raw_group_data_extension)
-    }
-
-    fn update(
-        &self,
-        group_id: &GroupId,
-        mls_group: &mut MlsGroup,
-        group_data: &NostrGroupDataExtension,
-    ) -> Result<UpdateGroupResult, Error> {
-        let own_leaf = mls_group.own_leaf().ok_or(Error::OwnLeafNotFound)?;
-        let current_secret: group_types::GroupExporterSecret = self
-            .storage()
-            .get_group_exporter_secret(group_id, mls_group.epoch().as_u64())
-            .map_err(|e| Error::Group(e.to_string()))?
-            .ok_or(Error::GroupExporterSecretNotFound)?;
-
-        tracing::debug!(target: "nostr_openmls::groups::self_update", "Current epoch: {:?}", current_secret.epoch);
-
-        // Load current signer
-        let current_signer: SignatureKeyPair = self.load_mls_signer(mls_group)?;
-
-        let new_signature_keypair = SignatureKeyPair::new(self.ciphersuite.signature_algorithm())?;
-
-        new_signature_keypair
-            .store(self.provider.storage())
-            .map_err(|e| Error::Provider(e.to_string()))?;
-
-        let pubkey = BasicCredential::try_from(own_leaf.credential().clone())?
-            .identity()
-            .to_vec();
-
-        let new_credential: BasicCredential = BasicCredential::new(pubkey);
-        let new_credential_with_key = CredentialWithKey {
-            credential: new_credential.into(),
-            signature_key: new_signature_keypair.public().into(),
-        };
-
-        let leaf_node_params = LeafNodeParameters::builder()
-            .with_credential_with_key(new_credential_with_key.clone())
-            .with_capabilities(own_leaf.capabilities().clone())
-            .with_extensions(Self::get_extensions_from_group_data(group_data)?)
-            .build();
-
-        let new_signer_bundle = NewSignerBundle {
-            signer: &new_signature_keypair,
-            credential_with_key: new_credential_with_key,
-        };
-
-        let commit_message_bundle = mls_group.self_update_with_new_signer(
-            &self.provider,
-            &current_signer,
-            new_signer_bundle,
-            leaf_node_params,
-        )?;
-
-        // Serialize the message
-        let serialized_commit_message = commit_message_bundle.commit().tls_serialize_detached()?;
-
-        let commit_event =
-            self.build_encrypted_message_event(mls_group.group_id(), serialized_commit_message)?;
-
-        // Create processed_message to track state of message
-        let processed_message: message_types::ProcessedMessage = message_types::ProcessedMessage {
-            wrapper_event_id: commit_event.id,
-            message_event_id: None,
-            processed_at: Timestamp::now(),
-            state: message_types::ProcessedMessageState::ProcessedCommit,
-            failure_reason: None,
-        };
-
-        self.storage()
-            .save_processed_message(processed_message)
-            .map_err(|e| Error::Message(e.to_string()))?;
-
-        let serialized_welcome_message = commit_message_bundle
-            .welcome()
-            .map(|w| {
-                w.tls_serialize_detached()
-                    .map_err(|e| Error::Group(e.to_string()))
-            })
-            .transpose()?;
-
-        // For now, if we find welcomes, throw an error.
-        if serialized_welcome_message.is_some() {
-            return Err(Error::Group(
-                "Found welcomes when performing a self update".to_string(),
-            ));
-        }
-
-        // let serialized_group_info = commit_message_bundle
-        //     .group_info()
-        //     .map(|g| {
-        //         g.tls_serialize_detached()
-        //             .map_err(|e| Error::Group(e.to_string()))
-        //     })
-        //     .transpose()?;
-
-        Ok(UpdateGroupResult {
-            evolution_event: commit_event,
-            welcome_rumors: None, // serialized_group_info,
-        })
+        self.update_group_data_extension(&mut mls_group, group_id, &group_data)
     }
 
     /// Retrieves the set of relay URLs associated with an MLS group
@@ -759,19 +648,15 @@ where
         Ok(relays.into_iter().map(|r| r.relay_url).collect())
     }
 
-    fn get_extensions_from_group_data(
+    fn get_unknown_extension_from_group_data(
         group_data: &NostrGroupDataExtension,
-    ) -> Result<Extensions, Error> {
-        let serialized_group_data = group_data
-            .as_raw()
-            .tls_serialize_detached()
-            .expect("Failed to serialize group data");
+    ) -> Result<Extension, Error> {
+        let serialized_group_data = group_data.as_raw().tls_serialize_detached()?;
 
-        let extensions = vec![Extension::Unknown(
+        Ok(Extension::Unknown(
             group_data.extension_type(),
             UnknownExtension(serialized_group_data),
-        )];
-        Ok(Extensions::from_vec(extensions).expect("Couldn't convert extensions vec to Object"))
+        ))
     }
 
     /// Creates a new MLS group with the specified members and settings.
@@ -844,7 +729,9 @@ where
             group_data
         );
 
-        let extensions = Self::get_extensions_from_group_data(&group_data)?;
+        let extension = Self::get_unknown_extension_from_group_data(&group_data)?;
+        let required_capabilities_extension = self.required_capabilities_extension();
+        let extensions = Extensions::from_vec(vec![extension, required_capabilities_extension])?;
 
         tracing::debug!(
             target: "nostr_mls::groups::create_mls_group",
@@ -962,12 +849,92 @@ where
     pub fn self_update(&self, group_id: &GroupId) -> Result<UpdateGroupResult, Error> {
         let mut mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
 
-        // Get own leaf node and try to get group data from it first, fall back to group context
-        let own_leaf = mls_group.own_leaf().ok_or(Error::OwnLeafNotFound)?;
-        let group_data = Self::get_group_data_from_leaf_node(own_leaf)
-            .or_else(|_| NostrGroupDataExtension::from_group(&mls_group))?;
+        let current_secret: group_types::GroupExporterSecret = self
+            .storage()
+            .get_group_exporter_secret(group_id, mls_group.epoch().as_u64())
+            .map_err(|e| Error::Group(e.to_string()))?
+            .ok_or(Error::GroupExporterSecretNotFound)?;
 
-        self.update(group_id, &mut mls_group, &group_data)
+        tracing::debug!(target: "nostr_openmls::groups::self_update", "Current epoch: {:?}", current_secret.epoch);
+
+        // Load current signer
+        let current_signer: SignatureKeyPair = self.load_mls_signer(&mls_group)?;
+
+        // Get own leaf
+        let own_leaf = mls_group.own_leaf().ok_or(Error::OwnLeafNotFound)?;
+
+        let new_signature_keypair = SignatureKeyPair::new(self.ciphersuite.signature_algorithm())?;
+
+        new_signature_keypair
+            .store(self.provider.storage())
+            .map_err(|e| Error::Provider(e.to_string()))?;
+
+        let pubkey = BasicCredential::try_from(own_leaf.credential().clone())?
+            .identity()
+            .to_vec();
+
+        let new_credential: BasicCredential = BasicCredential::new(pubkey);
+        let new_credential_with_key = CredentialWithKey {
+            credential: new_credential.into(),
+            signature_key: new_signature_keypair.public().into(),
+        };
+
+        let new_signer_bundle = NewSignerBundle {
+            signer: &new_signature_keypair,
+            credential_with_key: new_credential_with_key.clone(),
+        };
+
+        let leaf_node_params = LeafNodeParameters::builder()
+            .with_credential_with_key(new_credential_with_key)
+            .with_capabilities(own_leaf.capabilities().clone())
+            .with_extensions(own_leaf.extensions().clone())
+            .build();
+
+        let commit_message_bundle = mls_group.self_update_with_new_signer(
+            &self.provider,
+            &current_signer,
+            new_signer_bundle,
+            leaf_node_params,
+        )?;
+
+        // Serialize the message
+        let serialized_commit_message = commit_message_bundle.commit().tls_serialize_detached()?;
+
+        let commit_event =
+            self.build_encrypted_message_event(mls_group.group_id(), serialized_commit_message)?;
+
+        // Create processed_message to track state of message
+        let processed_message: message_types::ProcessedMessage = message_types::ProcessedMessage {
+            wrapper_event_id: commit_event.id,
+            message_event_id: None,
+            processed_at: Timestamp::now(),
+            state: message_types::ProcessedMessageState::ProcessedCommit,
+            failure_reason: None,
+        };
+
+        self.storage()
+            .save_processed_message(processed_message)
+            .map_err(|e| Error::Message(e.to_string()))?;
+
+        let serialized_welcome_message = commit_message_bundle
+            .welcome()
+            .map(|w| {
+                w.tls_serialize_detached()
+                    .map_err(|e| Error::Group(e.to_string()))
+            })
+            .transpose()?;
+
+        // For now, if we find welcomes, throw an error.
+        if serialized_welcome_message.is_some() {
+            return Err(Error::Group(
+                "Found welcomes when performing a self update".to_string(),
+            ));
+        }
+
+        Ok(UpdateGroupResult {
+            evolution_event: commit_event,
+            welcome_rumors: None, // serialized_group_info,
+        })
     }
 
     /// Create a proposal to leave the group
@@ -1150,9 +1117,11 @@ mod tests {
     use nostr::key::SecretKey;
     use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl};
     use nostr_mls_memory_storage::NostrMlsMemoryStorage;
-    use openmls::prelude::BasicCredential;
+    use openmls::group::{GroupId, MlsGroup};
+    use openmls::prelude::{BasicCredential, ExtensionType};
 
     use super::NostrGroupDataExtension;
+    use crate::constant::NOSTR_GROUP_DATA_EXTENSION_TYPE;
     use crate::groups::NostrGroupConfigData;
     use crate::tests::create_test_nostr_mls;
 
@@ -2018,7 +1987,7 @@ mod tests {
     }
 
     #[test]
-    fn test_update_group_name_success() {
+    fn test_update_group_data_context() {
         let creator_nostr_mls = create_test_nostr_mls();
         let (creator, initial_members, admins) = create_test_group_members();
         let creator_pk = creator.public_key();
@@ -2047,25 +2016,29 @@ mod tests {
             .merge_pending_commit(group_id)
             .expect("Failed to merge pending commit");
 
-        // Get initial group state
-        let initial_mls_group = creator_nostr_mls
+        test_update_group_name(&creator_nostr_mls, group_id);
+
+        test_update_group_description(&creator_nostr_mls, group_id);
+
+        test_update_group_image(&creator_nostr_mls, group_id);
+    }
+
+    fn test_update_group_name(
+        nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
+        group_id: &GroupId,
+    ) {
+        let initial_mls_group = nostr_mls
             .load_mls_group(group_id)
             .expect("Failed to load MLS group")
             .expect("MLS group should exist");
         let initial_epoch = initial_mls_group.epoch().as_u64();
 
-        // Ensure the exporter secret exists before update
-        let _initial_secret = creator_nostr_mls
-            .exporter_secret(group_id)
-            .expect("Failed to get initial exporter secret");
-
         // Test updating the group name
         let new_name = "Updated Test Group Name".to_string();
-        let update_result = creator_nostr_mls
+        let update_result = nostr_mls
             .update_group_name(group_id, new_name.clone())
             .expect("Failed to update group name");
 
-        // Verify the evolution event was created
         assert!(
             !update_result.evolution_event.content.is_empty(),
             "Evolution event should not be empty"
@@ -2076,12 +2049,12 @@ mod tests {
         );
 
         // Merge the pending commit to apply the name change
-        creator_nostr_mls
+        nostr_mls
             .merge_pending_commit(group_id)
             .expect("Failed to merge pending commit for name update");
 
         // Verify the MLS group epoch was advanced
-        let final_mls_group = creator_nostr_mls
+        let final_mls_group = nostr_mls
             .load_mls_group(group_id)
             .expect("Failed to load MLS group")
             .expect("MLS group should exist");
@@ -2095,144 +2068,175 @@ mod tests {
         );
 
         // Verify the group extension was updated with the new name
-        let final_mls_group = creator_nostr_mls
+        let final_mls_group = nostr_mls
             .load_mls_group(group_id)
             .expect("Failed to load MLS group")
             .expect("MLS group should exist");
-        let final_own_leaf = final_mls_group
-            .own_leaf()
-            .expect("Failed to get final own leaf");
-        let final_group_data =
-            crate::NostrMls::<nostr_mls_memory_storage::NostrMlsMemoryStorage>::get_group_data_from_leaf_node(final_own_leaf)
-                .expect("Failed to get group data extension");
+        let final_group_data = NostrGroupDataExtension::from_group(&final_mls_group).unwrap();
 
         assert_eq!(
             final_group_data.name, new_name,
             "Group name should be updated in the extension"
         );
 
-        // Verify other group properties remain unchanged
-        let final_members = creator_nostr_mls
-            .get_members(group_id)
-            .expect("Failed to get final members");
-        assert_eq!(
-            final_members.len(),
-            3,
-            "Member count should remain the same after name update"
-        );
+        // Make sure that other fields are not changed
+        let initial_group_data = NostrGroupDataExtension::from_group(&initial_mls_group).unwrap();
+        assert_eq!(initial_group_data.description, final_group_data.description);
+        assert_eq!(initial_group_data.image_url, final_group_data.image_url);
+        assert_eq!(initial_group_data.image_key, final_group_data.image_key);
+        test_preserving_known_extensions(&initial_mls_group, &final_mls_group);
     }
 
-    #[test]
-    fn test_update_group_name_preserves_other_extension_data() {
-        let creator_nostr_mls = create_test_nostr_mls();
-        let (creator, initial_members, admins) = create_test_group_members();
-        let creator_pk = creator.public_key();
-
-        // Create key package events for initial members
-        let mut initial_key_package_events = Vec::new();
-        for member_keys in &initial_members {
-            let key_package_event = create_key_package_event(&creator_nostr_mls, member_keys);
-            initial_key_package_events.push(key_package_event);
-        }
-
-        // Create the group with specific config data
-        let initial_config = create_nostr_group_config_data();
-        let initial_description = initial_config.description.clone();
-        let initial_relays = initial_config.relays.clone();
-        let initial_image_url = initial_config.image_url.clone();
-
-        let create_result = creator_nostr_mls
-            .create_group(
-                &creator_pk,
-                initial_key_package_events,
-                admins.clone(),
-                initial_config,
-            )
-            .expect("Failed to create group");
-
-        let group_id = &create_result.group.mls_group_id;
-
-        // Merge the pending commit to apply the member additions
-        creator_nostr_mls
-            .merge_pending_commit(group_id)
-            .expect("Failed to merge pending commit");
-
-        // Get initial group data extension
-        let initial_mls_group = creator_nostr_mls
+    fn test_update_group_description(
+        nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
+        group_id: &GroupId,
+    ) {
+        let initial_mls_group = nostr_mls
             .load_mls_group(group_id)
             .expect("Failed to load MLS group")
             .expect("MLS group should exist");
+        let initial_epoch = initial_mls_group.epoch().as_u64();
 
-        // Try to get from own leaf first, fall back to group context
-        let initial_own_leaf = initial_mls_group
-            .own_leaf()
-            .expect("Failed to get initial own leaf");
-        let initial_group_data =
-            crate::NostrMls::<nostr_mls_memory_storage::NostrMlsMemoryStorage>::get_group_data_from_leaf_node(initial_own_leaf)
-                .or_else(|_| NostrGroupDataExtension::from_group(&initial_mls_group))
-                .expect("Failed to get initial group data extension");
+        let new_description = "Updated test group description 0123".to_string();
+        let update_result = nostr_mls
+            .update_group_description(group_id, new_description.clone())
+            .expect("Failed to update group description");
 
-        // Store initial values for comparison
-        let initial_nostr_group_id = initial_group_data.nostr_group_id;
-        let initial_admin_list = initial_group_data.admins.clone();
+        assert!(
+            !update_result.evolution_event.content.is_empty(),
+            "Evolution event should not be empty"
+        );
+        assert!(
+            update_result.welcome_rumors.is_none(),
+            "No welcome rumors should be generated for description update"
+        );
 
-        // Ensure the exporter secret exists before update
-        let _initial_secret = creator_nostr_mls
-            .exporter_secret(group_id)
-            .expect("Failed to get initial exporter secret");
+        // Merge the pending commit to apply the description change
+        nostr_mls
+            .merge_pending_commit(group_id)
+            .expect("Failed to merge pending commit for description update");
 
-        // Update the group name
-        let new_name = "Updated Name for Preservation Test".to_string();
-        let _update_result = creator_nostr_mls
-            .update_group_name(group_id, new_name.clone())
-            .expect("Failed to update group name");
+        // Verify the MLS group epoch was advanced
+        let final_mls_group = nostr_mls
+            .load_mls_group(group_id)
+            .expect("Failed to load MLS group")
+            .expect("MLS group should exist");
+        let final_epoch = final_mls_group.epoch().as_u64();
+
+        assert!(
+            final_epoch > initial_epoch,
+            "MLS group epoch should advance after description update (initial: {}, final: {})",
+            initial_epoch,
+            final_epoch
+        );
+
+        // Verify the group extension was updated with the new description
+        let final_mls_group = nostr_mls
+            .load_mls_group(group_id)
+            .expect("Failed to load MLS group")
+            .expect("MLS group should exist");
+        let final_group_data = NostrGroupDataExtension::from_group(&final_mls_group).unwrap();
+
+        assert_eq!(
+            final_group_data.description, new_description,
+            "Group description should be updated in the extension"
+        );
+
+        // Make sure that other fields are not changed
+        let initial_group_data = NostrGroupDataExtension::from_group(&initial_mls_group).unwrap();
+        assert_eq!(initial_group_data.name, final_group_data.name);
+        assert_eq!(initial_group_data.image_url, final_group_data.image_url);
+        assert_eq!(initial_group_data.image_key, final_group_data.image_key);
+        test_preserving_known_extensions(&initial_mls_group, &final_mls_group);
+    }
+
+    fn test_update_group_image(
+        nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
+        group_id: &GroupId,
+    ) {
+        let initial_mls_group = nostr_mls
+            .load_mls_group(group_id)
+            .expect("Failed to load MLS group")
+            .expect("MLS group should exist");
+        let initial_epoch = initial_mls_group.epoch().as_u64();
+
+        let new_image_url = "null".to_string();
+        let new_image_key = vec![0u8];
+        let update_result = nostr_mls
+            .update_group_image(group_id, new_image_url.clone(), new_image_key.clone())
+            .expect("Failed to update group description");
+
+        assert!(
+            !update_result.evolution_event.content.is_empty(),
+            "Evolution event should not be empty"
+        );
+        assert!(
+            update_result.welcome_rumors.is_none(),
+            "No welcome rumors should be generated for image update"
+        );
 
         // Merge the pending commit to apply the name change
-        creator_nostr_mls
+        nostr_mls
             .merge_pending_commit(group_id)
-            .expect("Failed to merge pending commit for name update");
+            .expect("Failed to merge pending commit for image update");
 
-        // Get final group data extension
-        let final_mls_group = creator_nostr_mls
+        // Verify the MLS group epoch was advanced
+        let final_mls_group = nostr_mls
             .load_mls_group(group_id)
             .expect("Failed to load MLS group")
             .expect("MLS group should exist");
-        let final_own_leaf = final_mls_group
-            .own_leaf()
-            .expect("Failed to get final own leaf");
-        let final_group_data =
-            crate::NostrMls::<nostr_mls_memory_storage::NostrMlsMemoryStorage>::get_group_data_from_leaf_node(final_own_leaf)
-                .expect("Failed to get final group data extension");
+        let final_epoch = final_mls_group.epoch().as_u64();
 
-        // Verify the name was updated
-        assert_eq!(
-            final_group_data.name, new_name,
-            "Group name should be updated"
+        assert!(
+            final_epoch > initial_epoch,
+            "MLS group epoch should advance after image update (initial: {}, final: {})",
+            initial_epoch,
+            final_epoch
         );
 
-        // Verify other extension data was preserved
+        // Verify the group extension was updated with the new image
+        let final_mls_group = nostr_mls
+            .load_mls_group(group_id)
+            .expect("Failed to load MLS group")
+            .expect("MLS group should exist");
+        let final_group_data = NostrGroupDataExtension::from_group(&final_mls_group).unwrap();
+
         assert_eq!(
-            final_group_data.nostr_group_id, initial_nostr_group_id,
-            "Nostr group ID should be preserved"
+            final_group_data.image_url,
+            Some(new_image_url),
+            "Group image url should be updated in the extension"
         );
         assert_eq!(
-            final_group_data.description, initial_description,
-            "Group description should be preserved"
+            final_group_data.image_key,
+            Some(new_image_key),
+            "Group image key should be updated in the extension"
         );
-        assert_eq!(
-            final_group_data.admins, initial_admin_list,
-            "Admin list should be preserved"
-        );
-        assert_eq!(
-            final_group_data.relays,
-            initial_relays
-                .into_iter()
-                .collect::<std::collections::BTreeSet<_>>(),
-            "Relay list should be preserved"
-        );
-        assert_eq!(
-            final_group_data.image_url, initial_image_url,
-            "Image URL should be preserved"
-        );
+
+        // Make sure that other fields are not changed
+        let initial_group_data = NostrGroupDataExtension::from_group(&initial_mls_group).unwrap();
+        assert_eq!(initial_group_data.description, final_group_data.description);
+        assert_eq!(initial_group_data.name, final_group_data.name);
+        test_preserving_known_extensions(&initial_mls_group, &final_mls_group);
+    }
+
+    fn test_preserving_known_extensions(initial_mls_group: &MlsGroup, final_mls_group: &MlsGroup) {
+        // Make sure the other extensions are untouched
+        let initial_extensions = initial_mls_group.extensions();
+        let final_extensions = final_mls_group.extensions();
+
+        for ie in initial_extensions.iter() {
+            if ie.extension_type() == ExtensionType::Unknown(NOSTR_GROUP_DATA_EXTENSION_TYPE) {
+                // Already checked above
+                continue;
+            }
+
+            let mut present_in_final_extensions = false;
+            for fe in final_extensions.iter() {
+                if ie == fe {
+                    present_in_final_extensions = true;
+                }
+            }
+            assert!(present_in_final_extensions, "Known extensions are mutated")
+        }
     }
 }

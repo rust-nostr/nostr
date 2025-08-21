@@ -16,8 +16,9 @@ use openmls::error::LibraryError;
 use openmls::extensions::errors::InvalidExtensionError;
 use openmls::framing::errors::ProtocolMessageError;
 use openmls::group::{
-    AddMembersError, CommitToPendingProposalsError, CreateMessageError, ExportSecretError,
-    MergePendingCommitError, NewGroupError, ProcessMessageError, SelfUpdateError, WelcomeError,
+    AddMembersError, CommitToPendingProposalsError, CreateGroupContextExtProposalError,
+    CreateMessageError, ExportSecretError, MergePendingCommitError, NewGroupError,
+    ProcessMessageError, SelfUpdateError, WelcomeError,
 };
 use openmls::key_packages::errors::{KeyPackageNewError, KeyPackageVerifyError};
 use openmls_traits::types::CryptoError;
@@ -114,6 +115,8 @@ pub enum Error {
     ProposalFromNonAdmin,
     /// Commit message received from a non-admin
     CommitFromNonAdmin,
+    /// Error when updating group context extensions
+    UpdateGroupContextExts(String),
 }
 
 impl std::error::Error for Error {}
@@ -181,6 +184,9 @@ impl fmt::Display for Error {
             Self::MessageNotFound => write!(f, "stored message not found"),
             Self::ProposalFromNonAdmin => write!(f, "not processing proposal from non-admin"),
             Self::CommitFromNonAdmin => write!(f, "not processing commit from non-admin"),
+            Self::UpdateGroupContextExts(e) => {
+                write!(f, "Error when updating group context extensions {e}")
+            }
         }
     }
 }
@@ -356,5 +362,14 @@ where
 {
     fn from(e: WelcomeError<T>) -> Self {
         Self::Welcome(e.to_string())
+    }
+}
+
+impl<T> From<CreateGroupContextExtProposalError<T>> for Error
+where
+    T: fmt::Display,
+{
+    fn from(e: CreateGroupContextExtProposalError<T>) -> Self {
+        Self::UpdateGroupContextExts(e.to_string())
     }
 }
