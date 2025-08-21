@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Fixed
+
+- Support `Nip05Address` parsing without local part
+
 ## v0.43.0 - 2025/07/28
 
 ### Breaking changes

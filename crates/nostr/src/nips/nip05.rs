@@ -75,19 +75,25 @@ impl Nip05Address {
         // Split the address into parts
         let mut split: Split<char> = address.split('@');
 
-        if let (Some(name), Some(domain)) = (split.next(), split.next()) {
-            // Compose and parse the URLS
-            let url: String = format!("https://{domain}/.well-known/nostr.json?name={name}");
-            let url: Url = Url::parse(&url)?;
+        // Get first and second parts
+        let (name, domain): (&str, &str) = match (split.next(), split.next()) {
+            // First and second parts found
+            (Some(name), Some(domain)) => (name, domain),
+            // Found only a part, meaning that `@` is missing
+            (Some(address), None) => ("_", address),
+            // Invalid format
+            _ => return Err(Error::InvalidFormat),
+        };
 
-            return Ok(Self {
-                name: name.to_string(),
-                domain: domain.to_string(),
-                url,
-            });
-        }
+        // Compose and parse the URLS
+        let url: String = format!("https://{domain}/.well-known/nostr.json?name={name}");
+        let url: Url = Url::parse(&url)?;
 
-        Err(Error::InvalidFormat)
+        Ok(Self {
+            name: name.to_string(),
+            domain: domain.to_string(),
+            url,
+        })
     }
 
     /// Get the name value
@@ -219,6 +225,35 @@ mod tests {
         let json: Value = serde_json::from_str(json).unwrap();
 
         let address = Nip05Address::parse("_@yukikishimoto.com").unwrap();
+        assert_eq!(
+            address.url().to_string(),
+            "https://yukikishimoto.com/.well-known/nostr.json?name=_"
+        );
+        assert_eq!(address.name(), "_");
+
+        let public_key =
+            PublicKey::from_hex("68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272")
+                .unwrap();
+        assert!(verify_from_json(&public_key, &address, &json));
+
+        let public_key =
+            PublicKey::from_hex("b2d670de53b27691c0c3400225b65c35a26d06093bcc41f48ffc71e0907f9d4a")
+                .unwrap();
+        assert!(!verify_from_json(&public_key, &address, &json));
+    }
+
+    #[test]
+    fn test_verify_nip05_without_local() {
+        // nostr.json
+        let json: &str = r#"{
+            "names": {
+              "yuki": "68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272",
+              "_": "68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272"
+            }
+          }"#;
+        let json: Value = serde_json::from_str(json).unwrap();
+
+        let address = Nip05Address::parse("yukikishimoto.com").unwrap();
         assert_eq!(
             address.url().to_string(),
             "https://yukikishimoto.com/.well-known/nostr.json?name=_"
