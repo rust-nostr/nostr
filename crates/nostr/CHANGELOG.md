@@ -55,6 +55,12 @@
 
 - Change the `address` field type in `CommentTarget::Coordinate` to `CoordinateBorrow` (https://github.com/rust-nostr/nostr/pull/1034)
 
+## v0.43.1 - 2025/08/21
+
+### Fixed
+
+- Support `Nip05Address` parsing without local part
+
 ## v0.43.0 - 2025/07/28
 
 ### Breaking changes
