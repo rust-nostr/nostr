@@ -11,6 +11,7 @@ use nostr::nips::nip44;
 use nostr::types::url;
 use nostr::util::hex;
 use nostr::{event, key, Kind, SignerError};
+use nostr_mls_storage::groups::error::GroupError;
 use openmls::credentials::errors::BasicCredentialError;
 use openmls::error::LibraryError;
 use openmls::extensions::errors::InvalidExtensionError;
@@ -117,6 +118,8 @@ pub enum Error {
     CommitFromNonAdmin,
     /// Error when updating group context extensions
     UpdateGroupContextExts(String),
+    /// Nostr Mls Group Error
+    NostrGroup(String),
 }
 
 impl std::error::Error for Error {}
@@ -186,6 +189,9 @@ impl fmt::Display for Error {
             Self::CommitFromNonAdmin => write!(f, "not processing commit from non-admin"),
             Self::UpdateGroupContextExts(e) => {
                 write!(f, "Error when updating group context extensions {e}")
+            }
+            Self::NostrGroup(e) => {
+                write!(f, "Error when working with nostr groups {e}")
             }
         }
     }
@@ -371,5 +377,11 @@ where
 {
     fn from(e: CreateGroupContextExtProposalError<T>) -> Self {
         Self::UpdateGroupContextExts(e.to_string())
+    }
+}
+
+impl From<GroupError> for Error {
+    fn from(e: GroupError) -> Self {
+        Self::NostrGroup(e.to_string())
     }
 }

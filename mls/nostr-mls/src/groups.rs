@@ -556,7 +556,7 @@ where
         &self,
         mls_group: &mut MlsGroup,
         group_id: &GroupId,
-        group_data: &NostrGroupDataExtension,
+        group_data: NostrGroupDataExtension,
     ) -> Result<UpdateGroupResult, Error> {
         // Check if current user is an admin
         let own_leaf = mls_group.own_leaf().ok_or(Error::OwnLeafNotFound)?;
@@ -566,7 +566,7 @@ where
             ));
         }
 
-        let extension = Self::get_unknown_extension_from_group_data(group_data)?;
+        let extension = Self::get_unknown_extension_from_group_data(&group_data)?;
         let mut extensions = mls_group.extensions().clone();
         extensions.add_or_replace(extension);
 
@@ -576,6 +576,20 @@ where
             extensions,
             &signature_keypair,
         )?;
+
+        // Update the nostr-mls groups table entry
+        let mut group =
+            self.storage()
+                .find_group_by_mls_group_id(group_id)?
+                .ok_or(Error::NostrGroup(format!(
+                    "Entry not found in groups table for id {group_id:?}"
+                )))?;
+        group.name = group_data.name;
+        group.description = group_data.description;
+        group.image_url = group_data.image_url;
+        group.image_key = group_data.image_key;
+        self.storage().save_group(group)?;
+
         let commit_event = self.build_encrypted_message_event(
             mls_group.group_id(),
             message_out.tls_serialize_detached()?,
@@ -597,7 +611,7 @@ where
         let mut group_data = NostrGroupDataExtension::from_group(&mls_group)?;
         group_data.name = name;
 
-        self.update_group_data_extension(&mut mls_group, group_id, &group_data)
+        self.update_group_data_extension(&mut mls_group, group_id, group_data)
     }
 
     /// Updates group description
@@ -611,7 +625,7 @@ where
         let mut group_data = NostrGroupDataExtension::from_group(&mls_group)?;
         group_data.description = description;
 
-        self.update_group_data_extension(&mut mls_group, group_id, &group_data)
+        self.update_group_data_extension(&mut mls_group, group_id, group_data)
     }
 
     /// Updates group description
@@ -627,7 +641,7 @@ where
         group_data.image_url = Some(image_url);
         group_data.image_key = Some(image_key);
 
-        self.update_group_data_extension(&mut mls_group, group_id, &group_data)
+        self.update_group_data_extension(&mut mls_group, group_id, group_data)
     }
 
     /// Retrieves the set of relay URLs associated with an MLS group
@@ -1117,6 +1131,7 @@ mod tests {
     use nostr::key::SecretKey;
     use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl};
     use nostr_mls_memory_storage::NostrMlsMemoryStorage;
+    use nostr_mls_storage::groups::GroupStorage;
     use openmls::group::{GroupId, MlsGroup};
     use openmls::prelude::{BasicCredential, ExtensionType};
 
@@ -2078,12 +2093,24 @@ mod tests {
             final_group_data.name, new_name,
             "Group name should be updated in the extension"
         );
+        let nostr_group = nostr_mls
+            .storage()
+            .find_group_by_mls_group_id(final_mls_group.group_id())
+            .unwrap()
+            .expect("There should be an entry");
+        assert_eq!(
+            nostr_group.name, new_name,
+            "Group name should be updated in groups table"
+        );
 
         // Make sure that other fields are not changed
         let initial_group_data = NostrGroupDataExtension::from_group(&initial_mls_group).unwrap();
         assert_eq!(initial_group_data.description, final_group_data.description);
         assert_eq!(initial_group_data.image_url, final_group_data.image_url);
         assert_eq!(initial_group_data.image_key, final_group_data.image_key);
+        assert_eq!(initial_group_data.description, nostr_group.description);
+        assert_eq!(initial_group_data.image_url, nostr_group.image_url);
+        assert_eq!(initial_group_data.image_key, nostr_group.image_key);
         test_preserving_known_extensions(&initial_mls_group, &final_mls_group);
     }
 
@@ -2141,12 +2168,24 @@ mod tests {
             final_group_data.description, new_description,
             "Group description should be updated in the extension"
         );
+        let nostr_group = nostr_mls
+            .storage()
+            .find_group_by_mls_group_id(final_mls_group.group_id())
+            .unwrap()
+            .expect("There should be an entry");
+        assert_eq!(
+            nostr_group.description, new_description,
+            "Group description should be updated in groups table"
+        );
 
         // Make sure that other fields are not changed
         let initial_group_data = NostrGroupDataExtension::from_group(&initial_mls_group).unwrap();
         assert_eq!(initial_group_data.name, final_group_data.name);
         assert_eq!(initial_group_data.image_url, final_group_data.image_url);
         assert_eq!(initial_group_data.image_key, final_group_data.image_key);
+        assert_eq!(initial_group_data.name, nostr_group.name);
+        assert_eq!(initial_group_data.image_url, nostr_group.image_url);
+        assert_eq!(initial_group_data.image_key, nostr_group.image_key);
         test_preserving_known_extensions(&initial_mls_group, &final_mls_group);
     }
 
@@ -2203,19 +2242,36 @@ mod tests {
 
         assert_eq!(
             final_group_data.image_url,
-            Some(new_image_url),
+            Some(new_image_url.clone()),
             "Group image url should be updated in the extension"
         );
         assert_eq!(
             final_group_data.image_key,
-            Some(new_image_key),
+            Some(new_image_key.clone()),
             "Group image key should be updated in the extension"
+        );
+        let nostr_group = nostr_mls
+            .storage()
+            .find_group_by_mls_group_id(final_mls_group.group_id())
+            .unwrap()
+            .expect("There should be an entry");
+        assert_eq!(
+            nostr_group.image_url,
+            Some(new_image_url),
+            "Group image_url should be updated in groups table"
+        );
+        assert_eq!(
+            nostr_group.image_key,
+            Some(new_image_key),
+            "Group image_key should be updated in groups table"
         );
 
         // Make sure that other fields are not changed
         let initial_group_data = NostrGroupDataExtension::from_group(&initial_mls_group).unwrap();
         assert_eq!(initial_group_data.description, final_group_data.description);
         assert_eq!(initial_group_data.name, final_group_data.name);
+        assert_eq!(initial_group_data.description, nostr_group.description);
+        assert_eq!(initial_group_data.name, nostr_group.name);
         test_preserving_known_extensions(&initial_mls_group, &final_mls_group);
     }
 
