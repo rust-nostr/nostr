@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
         .await?;
 
     let comment_to = events.first().unwrap();
-    let builder = EventBuilder::comment("This is a reply", comment_to, None, None);
+    let builder = EventBuilder::comment("This is a reply", CommentTarget::from(comment_to), None);
 
     let output = client.send_event_builder(builder).await?;
     println!("Output: {:?}", output);
