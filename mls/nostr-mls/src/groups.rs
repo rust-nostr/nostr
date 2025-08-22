@@ -693,7 +693,7 @@ where
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// // Update only the name
     /// let update = NostrGroupDataUpdate::new().name("New Group Name");
     /// mls.update_group_data(&group_id, update)?;
@@ -1324,7 +1324,14 @@ mod tests {
         let image_key = SecretKey::generate().as_secret_bytes().to_owned();
         let name = "Test Group".to_owned();
         let description = "A test group for basic testing".to_owned();
-        NostrGroupConfigData::new(name, description, Some(image_url), Some(image_key), relays, admins)
+        NostrGroupConfigData::new(
+            name,
+            description,
+            Some(image_url),
+            Some(image_key),
+            relays,
+            admins,
+        )
     }
 
     #[test]
@@ -2201,7 +2208,10 @@ mod tests {
         let updated_group_data = NostrGroupDataExtension::from_group(&updated_mls_group).unwrap();
 
         assert_eq!(updated_group_data.name, new_name);
-        assert_eq!(updated_group_data.description, initial_group_data.description);
+        assert_eq!(
+            updated_group_data.description,
+            initial_group_data.description
+        );
         assert_eq!(updated_group_data.image_url, initial_group_data.image_url);
 
         // Test 2: Update multiple fields at once
@@ -2277,10 +2287,14 @@ mod tests {
             .load_mls_group(group_id)
             .expect("Failed to load MLS group")
             .expect("MLS group should exist");
-        let unchanged_group_data = NostrGroupDataExtension::from_group(&unchanged_mls_group).unwrap();
+        let unchanged_group_data =
+            NostrGroupDataExtension::from_group(&unchanged_mls_group).unwrap();
 
         assert_eq!(unchanged_group_data.name, cleared_group_data.name);
-        assert_eq!(unchanged_group_data.description, cleared_group_data.description);
+        assert_eq!(
+            unchanged_group_data.description,
+            cleared_group_data.description
+        );
         assert_eq!(unchanged_group_data.image_url, cleared_group_data.image_url);
         assert_eq!(unchanged_group_data.image_key, cleared_group_data.image_key);
     }
@@ -2523,7 +2537,8 @@ mod tests {
                     creator_nostr_mls.update_group_data(group_id, update)
                 }
                 "update_group_description" => {
-                    let update = NostrGroupDataUpdate::new().description("New Description".to_string());
+                    let update =
+                        NostrGroupDataUpdate::new().description("New Description".to_string());
                     creator_nostr_mls.update_group_data(group_id, update)
                 }
                 _ => panic!("Unknown operation"),

@@ -64,6 +64,7 @@ async fn main() -> Result<()> {
         Some(image_url),
         Some(image_key),
         vec![relay_url.clone()],
+        vec![alice_keys.public_key(), bob_keys.public_key()],
     );
 
     let group_create_result = alice_nostr_mls.create_group(

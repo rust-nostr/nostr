@@ -14,7 +14,7 @@
 use nostr::util::hex;
 use nostr::{EventId, UnsignedEvent};
 use nostr_mls_storage::NostrMlsStorageProvider;
-use openmls::group::{GroupId, ValidationError};
+use openmls::group::{GroupId, MlsGroupStateError, ProcessMessageError, ValidationError};
 use openmls_basic_credential::SignatureKeyPair;
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
@@ -249,7 +249,7 @@ where
             }
             Err(e) => {
                 tracing::error!(target: "nostr_mls::messages::process_message_for_group", "Error processing message: {:?}", e);
-                return Err(Error::Message(e.to_string()));
+                return Err(Error::ProcessMessage(e));
             }
         };
 
@@ -767,8 +767,10 @@ where
                             }
                         }
                     }
-                    _ => {
-                        // For other errors (like epoch mismatch), check if this is our own commit
+                    Error::ProcessMessage(ProcessMessageError::ValidationError(ValidationError::WrongEpoch)) => {
+                        // Epoch mismatch - check if this is our own commit that we've already processed
+                        tracing::debug!(target: "nostr_mls::messages::process_message", "Epoch mismatch error, checking if this is our own commit");
+
                         if let Ok(Some(processed_message)) = self
                             .storage()
                             .find_processed_message_by_event_id(&event.id)
@@ -777,7 +779,7 @@ where
                             if processed_message.state
                                 == message_types::ProcessedMessageState::ProcessedCommit
                             {
-                                tracing::debug!(target: "nostr_mls::messages::process_message", "Found own commit with processing error, syncing group metadata");
+                                tracing::debug!(target: "nostr_mls::messages::process_message", "Found own commit with epoch mismatch, syncing group metadata");
 
                                 // Sync the stored group metadata even though processing failed
                                 self.sync_group_metadata_from_mls(&group.mls_group_id)
@@ -792,7 +794,53 @@ where
                             }
                         }
 
-                        tracing::error!(target: "nostr_mls::messages::process_message", "Error processing message: {:?}", e);
+                        // Not our own commit - this is a genuine error
+                        tracing::error!(target: "nostr_mls::messages::process_message", "Epoch mismatch for message that is not our own commit: {:?}", e);
+                        let processed_message = message_types::ProcessedMessage {
+                            wrapper_event_id: event.id,
+                            message_event_id: None,
+                            processed_at: Timestamp::now(),
+                            state: message_types::ProcessedMessageState::Failed,
+                            failure_reason: Some("Epoch mismatch".to_string()),
+                        };
+                        self.storage()
+                            .save_processed_message(processed_message)
+                            .map_err(|e| Error::Message(e.to_string()))?;
+
+                        Ok(MessageProcessingResult::Unprocessable)
+                    }
+                    Error::ProcessMessage(ProcessMessageError::ValidationError(ValidationError::WrongGroupId)) => {
+                        tracing::error!(target: "nostr_mls::messages::process_message", "Group ID mismatch: {:?}", e);
+                        let processed_message = message_types::ProcessedMessage {
+                            wrapper_event_id: event.id,
+                            message_event_id: None,
+                            processed_at: Timestamp::now(),
+                            state: message_types::ProcessedMessageState::Failed,
+                            failure_reason: Some("Group ID mismatch".to_string()),
+                        };
+                        self.storage()
+                            .save_processed_message(processed_message)
+                            .map_err(|e| Error::Message(e.to_string()))?;
+
+                        Ok(MessageProcessingResult::Unprocessable)
+                    }
+                    Error::ProcessMessage(ProcessMessageError::GroupStateError(MlsGroupStateError::UseAfterEviction)) => {
+                        tracing::error!(target: "nostr_mls::messages::process_message", "Attempted to use group after eviction: {:?}", e);
+                        let processed_message = message_types::ProcessedMessage {
+                            wrapper_event_id: event.id,
+                            message_event_id: None,
+                            processed_at: Timestamp::now(),
+                            state: message_types::ProcessedMessageState::Failed,
+                            failure_reason: Some("Use after eviction".to_string()),
+                        };
+                        self.storage()
+                            .save_processed_message(processed_message)
+                            .map_err(|e| Error::Message(e.to_string()))?;
+
+                        Ok(MessageProcessingResult::Unprocessable)
+                    }
+                    _ => {
+                        tracing::error!(target: "nostr_mls::messages::process_message", "Unexpected error processing message: {:?}", e);
                         let processed_message = message_types::ProcessedMessage {
                             wrapper_event_id: event.id,
                             message_event_id: None,
@@ -856,7 +904,14 @@ mod tests {
         let image_key = SecretKey::generate().as_secret_bytes().to_owned();
         let name = "Test Group".to_owned();
         let description = "A test group for basic testing".to_owned();
-        NostrGroupConfigData::new(name, description, Some(image_url), Some(image_key), relays, admins)
+        NostrGroupConfigData::new(
+            name,
+            description,
+            Some(image_url),
+            Some(image_key),
+            relays,
+            admins,
+        )
     }
 
     /// Helper function to create a test group and return the group ID
