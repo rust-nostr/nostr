@@ -580,6 +580,20 @@ where
             mls_group.group_id(),
             message_out.tls_serialize_detached()?,
         )?;
+
+        // Create processed_message to track state of message
+        let processed_message: message_types::ProcessedMessage = message_types::ProcessedMessage {
+            wrapper_event_id: commit_event.id,
+            message_event_id: None,
+            processed_at: Timestamp::now(),
+            state: message_types::ProcessedMessageState::ProcessedCommit,
+            failure_reason: None,
+        };
+
+        self.storage()
+            .save_processed_message(processed_message)
+            .map_err(|e| Error::Message(e.to_string()))?;
+
         Ok(UpdateGroupResult {
             evolution_event: commit_event,
             welcome_rumors: None,
@@ -992,7 +1006,48 @@ where
     /// * Err(GroupError) - if something goes wrong
     pub fn merge_pending_commit(&self, group_id: &GroupId) -> Result<(), Error> {
         let mut mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
-        Ok(mls_group.merge_pending_commit(&self.provider)?)
+        mls_group.merge_pending_commit(&self.provider)?;
+
+        // Sync the stored group metadata with the updated MLS group state
+        self.sync_group_metadata_from_mls(group_id)?;
+
+        Ok(())
+    }
+
+    /// Synchronizes the stored group metadata with the current MLS group state
+    ///
+    /// This helper method ensures that all fields in the stored `group_types::Group`
+    /// remain consistent with the MLS group state and extensions after operations.
+    /// It should be called after any operation that changes the group state or extensions.
+    ///
+    /// # Arguments
+    /// * `group_id` - The MLS group ID to synchronize
+    ///
+    /// # Returns
+    /// * `Ok(())` - if synchronization succeeds
+    /// * `Err(Error)` - if the group is not found or synchronization fails
+    pub fn sync_group_metadata_from_mls(&self, group_id: &GroupId) -> Result<(), Error> {
+        let mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+        let mut stored_group = self.get_group(group_id)?.ok_or(Error::GroupNotFound)?;
+
+        // Update epoch from MLS group
+        stored_group.epoch = mls_group.epoch().as_u64();
+
+        // Update extension data from NostrGroupDataExtension
+        if let Ok(group_data) = NostrGroupDataExtension::from_group(&mls_group) {
+            stored_group.name = group_data.name;
+            stored_group.description = group_data.description;
+            stored_group.image_url = group_data.image_url;
+            stored_group.image_key = group_data.image_key;
+            stored_group.admin_pubkeys = group_data.admins;
+            stored_group.nostr_group_id = group_data.nostr_group_id;
+        }
+
+        self.storage()
+            .save_group(stored_group)
+            .map_err(|e| Error::Group(e.to_string()))?;
+
+        Ok(())
     }
 
     /// Validates the members and admins of a group during creation
@@ -1117,6 +1172,8 @@ mod tests {
     use nostr::key::SecretKey;
     use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl};
     use nostr_mls_memory_storage::NostrMlsMemoryStorage;
+    use nostr_mls_storage::messages::types as message_types;
+    use nostr_mls_storage::messages::MessageStorage;
     use openmls::group::{GroupId, MlsGroup};
     use openmls::prelude::{BasicCredential, ExtensionType};
 
@@ -2238,5 +2295,259 @@ mod tests {
             }
             assert!(present_in_final_extensions, "Known extensions are mutated")
         }
+    }
+
+    #[test]
+    fn test_sync_group_metadata_from_mls() {
+        let creator_nostr_mls = create_test_nostr_mls();
+        let (creator, initial_members, admins) = create_test_group_members();
+        let creator_pk = creator.public_key();
+
+        // Create key package events for initial members
+        let mut initial_key_package_events = Vec::new();
+        for member_keys in &initial_members {
+            let key_package_event = create_key_package_event(&creator_nostr_mls, member_keys);
+            initial_key_package_events.push(key_package_event);
+        }
+
+        // Create the group
+        let create_result = creator_nostr_mls
+            .create_group(
+                &creator_pk,
+                initial_key_package_events,
+                admins.clone(),
+                create_nostr_group_config_data(),
+            )
+            .expect("Failed to create group");
+
+        let group_id = &create_result.group.mls_group_id;
+
+        // Merge the pending commit to apply the member additions
+        creator_nostr_mls
+            .merge_pending_commit(group_id)
+            .expect("Failed to merge pending commit");
+
+        // Get initial stored group state
+        let initial_stored_group = creator_nostr_mls
+            .get_group(group_id)
+            .expect("Failed to get initial stored group")
+            .expect("Stored group should exist");
+
+        // Modify the MLS group directly (simulating state change without sync)
+        let mut mls_group = creator_nostr_mls
+            .load_mls_group(group_id)
+            .expect("Failed to load MLS group")
+            .expect("MLS group should exist");
+
+        // Create a new group data extension with different values
+        let mut new_group_data = NostrGroupDataExtension::from_group(&mls_group).unwrap();
+        new_group_data.name = "Synchronized Name".to_string();
+        new_group_data.description = "Synchronized Description".to_string();
+
+        // Apply the extension update to MLS group (but not to stored group)
+        let extension = super::NostrMls::<NostrMlsMemoryStorage>::get_unknown_extension_from_group_data(&new_group_data).unwrap();
+        let mut extensions = mls_group.extensions().clone();
+        extensions.add_or_replace(extension);
+
+        let signature_keypair = creator_nostr_mls.load_mls_signer(&mls_group).unwrap();
+        let (_message_out, _, _) = mls_group.update_group_context_extensions(
+            &creator_nostr_mls.provider,
+            extensions,
+            &signature_keypair,
+        ).unwrap();
+
+        // Merge the pending commit to advance epoch
+        mls_group.merge_pending_commit(&creator_nostr_mls.provider).unwrap();
+
+        // At this point, MLS group has changed but stored group is stale
+        let stale_stored_group = creator_nostr_mls
+            .get_group(group_id)
+            .expect("Failed to get stale stored group")
+            .expect("Stored group should exist");
+
+        // Verify stored group is stale
+        assert_eq!(stale_stored_group.name, initial_stored_group.name);
+        assert_eq!(stale_stored_group.description, initial_stored_group.description);
+        assert_eq!(stale_stored_group.epoch, initial_stored_group.epoch);
+
+        // Now test our sync function
+        creator_nostr_mls
+            .sync_group_metadata_from_mls(group_id)
+            .expect("Failed to sync group metadata");
+
+        // Verify stored group is now synchronized
+        let synced_stored_group = creator_nostr_mls
+            .get_group(group_id)
+            .expect("Failed to get synced stored group")
+            .expect("Stored group should exist");
+
+        assert_eq!(synced_stored_group.name, "Synchronized Name");
+        assert_eq!(synced_stored_group.description, "Synchronized Description");
+        assert!(synced_stored_group.epoch > initial_stored_group.epoch);
+        assert_eq!(synced_stored_group.admin_pubkeys, admins.into_iter().collect());
+
+        // Verify other fields remain unchanged
+        assert_eq!(synced_stored_group.mls_group_id, initial_stored_group.mls_group_id);
+        assert_eq!(synced_stored_group.last_message_id, initial_stored_group.last_message_id);
+        assert_eq!(synced_stored_group.last_message_at, initial_stored_group.last_message_at);
+        assert_eq!(synced_stored_group.state, initial_stored_group.state);
+    }
+
+    #[test]
+    fn test_extension_updates_create_processed_messages() {
+        let creator_nostr_mls = create_test_nostr_mls();
+        let (creator, initial_members, admins) = create_test_group_members();
+        let creator_pk = creator.public_key();
+
+        // Create key package events for initial members
+        let mut initial_key_package_events = Vec::new();
+        for member_keys in &initial_members {
+            let key_package_event = create_key_package_event(&creator_nostr_mls, member_keys);
+            initial_key_package_events.push(key_package_event);
+        }
+
+        // Create the group
+        let create_result = creator_nostr_mls
+            .create_group(
+                &creator_pk,
+                initial_key_package_events,
+                admins,
+                create_nostr_group_config_data(),
+            )
+            .expect("Failed to create group");
+
+        let group_id = &create_result.group.mls_group_id;
+
+        // Merge the pending commit to apply the member additions
+        creator_nostr_mls
+            .merge_pending_commit(group_id)
+            .expect("Failed to merge pending commit");
+
+        // Test that each extension update creates a ProcessedMessage
+        let test_cases = vec![
+            ("update_group_name", "New Name"),
+            ("update_group_description", "New Description"),
+        ];
+
+        for (operation, _value) in test_cases {
+            let update_result = match operation {
+                "update_group_name" => creator_nostr_mls.update_group_name(group_id, "New Name".to_string()),
+                "update_group_description" => creator_nostr_mls.update_group_description(group_id, "New Description".to_string()),
+                _ => panic!("Unknown operation"),
+            };
+
+            let update_result = update_result.unwrap_or_else(|_| panic!("Failed to {}", operation));
+            let commit_event_id = update_result.evolution_event.id;
+
+            // Verify ProcessedMessage was created with correct state
+            let processed_message = creator_nostr_mls
+                .storage()
+                .find_processed_message_by_event_id(&commit_event_id)
+                .expect("Failed to query processed message")
+                .expect("ProcessedMessage should exist");
+
+            assert_eq!(processed_message.wrapper_event_id, commit_event_id);
+            assert_eq!(processed_message.message_event_id, None);
+            assert_eq!(processed_message.state, message_types::ProcessedMessageState::ProcessedCommit);
+            assert_eq!(processed_message.failure_reason, None);
+
+            // Clean up by merging the commit
+            creator_nostr_mls
+                .merge_pending_commit(group_id)
+                .unwrap_or_else(|_| panic!("Failed to merge pending commit for {}", operation));
+        }
+    }
+
+    #[test]
+    fn test_stored_group_sync_after_all_operations() {
+        let creator_nostr_mls = create_test_nostr_mls();
+        let (creator, initial_members, admins) = create_test_group_members();
+        let creator_pk = creator.public_key();
+
+        // Create key package events for initial members
+        let mut initial_key_package_events = Vec::new();
+        for member_keys in &initial_members {
+            let key_package_event = create_key_package_event(&creator_nostr_mls, member_keys);
+            initial_key_package_events.push(key_package_event);
+        }
+
+        // Create the group
+        let create_result = creator_nostr_mls
+            .create_group(
+                &creator_pk,
+                initial_key_package_events,
+                admins,
+                create_nostr_group_config_data(),
+            )
+            .expect("Failed to create group");
+
+        let group_id = &create_result.group.mls_group_id;
+
+        // Helper function to verify stored group epoch matches MLS group epoch
+        let verify_epoch_sync = || {
+            let mls_group = creator_nostr_mls.load_mls_group(group_id).unwrap().unwrap();
+            let stored_group = creator_nostr_mls.get_group(group_id).unwrap().unwrap();
+            assert_eq!(stored_group.epoch, mls_group.epoch().as_u64(), "Stored group epoch should match MLS group epoch");
+        };
+
+        // Test 1: After group creation (should already be synced)
+        verify_epoch_sync();
+
+        // Test 2: After adding members
+        let new_member = Keys::generate();
+        let new_key_package_event = create_key_package_event(&creator_nostr_mls, &new_member);
+        let _add_result = creator_nostr_mls
+            .add_members(group_id, &[new_key_package_event])
+            .expect("Failed to add member");
+
+        creator_nostr_mls
+            .merge_pending_commit(group_id)
+            .expect("Failed to merge pending commit for add member");
+        verify_epoch_sync();
+
+        // Test 3: After self update
+        // Ensure the exporter secret exists before self update (this creates it if it doesn't exist)
+        let _initial_secret = creator_nostr_mls
+            .exporter_secret(group_id)
+            .expect("Failed to get initial exporter secret");
+
+        let _self_update_result = creator_nostr_mls
+            .self_update(group_id)
+            .expect("Failed to perform self update");
+
+        creator_nostr_mls
+            .merge_pending_commit(group_id)
+            .expect("Failed to merge pending commit for self update");
+        verify_epoch_sync();
+
+        // Test 4: After extension updates
+        let _name_result = creator_nostr_mls
+            .update_group_name(group_id, "Final Name".to_string())
+            .expect("Failed to update group name");
+
+        creator_nostr_mls
+            .merge_pending_commit(group_id)
+            .expect("Failed to merge pending commit for name update");
+        verify_epoch_sync();
+
+        // Test 5: Verify stored group metadata matches extension data
+        let final_mls_group = creator_nostr_mls.load_mls_group(group_id).unwrap().unwrap();
+        let final_stored_group = creator_nostr_mls.get_group(group_id).unwrap().unwrap();
+        let final_group_data = NostrGroupDataExtension::from_group(&final_mls_group).unwrap();
+
+        assert_eq!(final_stored_group.name, final_group_data.name);
+        assert_eq!(final_stored_group.description, final_group_data.description);
+        assert_eq!(final_stored_group.admin_pubkeys, final_group_data.admins);
+        assert_eq!(final_stored_group.nostr_group_id, final_group_data.nostr_group_id);
+    }
+
+    #[test]
+    fn test_sync_group_metadata_error_cases() {
+        let creator_nostr_mls = create_test_nostr_mls();
+
+        // Test with non-existent group
+        let non_existent_group_id = GroupId::from_slice(&[1, 2, 3, 4, 5]);
+        let result = creator_nostr_mls.sync_group_metadata_from_mls(&non_existent_group_id);
+        assert!(matches!(result, Err(crate::Error::GroupNotFound)));
     }
 }
