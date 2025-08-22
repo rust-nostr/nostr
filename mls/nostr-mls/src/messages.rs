@@ -751,7 +751,12 @@ where
                                 // sync the stored group metadata with the current MLS group state in case
                                 // the group has been updated since the commit was created
                                 self.sync_group_metadata_from_mls(&group.mls_group_id)
-                                    .map_err(|e| Error::Message(format!("Failed to sync group metadata: {}", e)))?;
+                                    .map_err(|e| {
+                                        Error::Message(format!(
+                                            "Failed to sync group metadata: {}",
+                                            e
+                                        ))
+                                    })?;
 
                                 Ok(MessageProcessingResult::Commit)
                             }
@@ -767,14 +772,21 @@ where
                         if let Ok(Some(processed_message)) = self
                             .storage()
                             .find_processed_message_by_event_id(&event.id)
-                            .map_err(|e| Error::Message(e.to_string())) {
-
-                            if processed_message.state == message_types::ProcessedMessageState::ProcessedCommit {
+                            .map_err(|e| Error::Message(e.to_string()))
+                        {
+                            if processed_message.state
+                                == message_types::ProcessedMessageState::ProcessedCommit
+                            {
                                 tracing::debug!(target: "nostr_mls::messages::process_message", "Found own commit with processing error, syncing group metadata");
 
                                 // Sync the stored group metadata even though processing failed
                                 self.sync_group_metadata_from_mls(&group.mls_group_id)
-                                    .map_err(|e| Error::Message(format!("Failed to sync group metadata: {}", e)))?;
+                                    .map_err(|e| {
+                                        Error::Message(format!(
+                                            "Failed to sync group metadata: {}",
+                                            e
+                                        ))
+                                    })?;
 
                                 return Ok(MessageProcessingResult::Commit);
                             }
@@ -1248,8 +1260,14 @@ mod tests {
             .expect("Failed to get pre-merge group")
             .expect("Pre-merge group should exist");
 
-        assert_eq!(pre_merge_group.name, initial_name, "Stored group name should still be old before merge");
-        assert_eq!(pre_merge_group.epoch, initial_epoch, "Stored group epoch should still be old before merge");
+        assert_eq!(
+            pre_merge_group.name, initial_name,
+            "Stored group name should still be old before merge"
+        );
+        assert_eq!(
+            pre_merge_group.epoch, initial_epoch,
+            "Stored group epoch should still be old before merge"
+        );
 
         // Get MLS group state before merge (epoch shouldn't advance until merge)
         let pre_merge_mls_group = nostr_mls
@@ -1258,7 +1276,10 @@ mod tests {
             .expect("Pre-merge MLS group should exist");
 
         let pre_merge_mls_epoch = pre_merge_mls_group.epoch().as_u64();
-        assert_eq!(pre_merge_mls_epoch, initial_epoch, "MLS group epoch should not advance until commit is merged");
+        assert_eq!(
+            pre_merge_mls_epoch, initial_epoch,
+            "MLS group epoch should not advance until commit is merged"
+        );
 
         // This is the key test: merge_pending_commit should sync the stored group metadata
         nostr_mls
@@ -1272,7 +1293,10 @@ mod tests {
             .expect("Post-merge group should exist");
 
         // Verify epoch is synchronized
-        assert!(post_merge_group.epoch > initial_epoch, "Stored group epoch should advance after merge");
+        assert!(
+            post_merge_group.epoch > initial_epoch,
+            "Stored group epoch should advance after merge"
+        );
 
         // Verify extension data is synchronized
         let post_merge_mls_group = nostr_mls
@@ -1280,19 +1304,35 @@ mod tests {
             .expect("Failed to load post-merge MLS group")
             .expect("Post-merge MLS group should exist");
 
-        let group_data = super::extension::NostrGroupDataExtension::from_group(&post_merge_mls_group)
-            .expect("Failed to get group data extension");
+        let group_data =
+            super::extension::NostrGroupDataExtension::from_group(&post_merge_mls_group)
+                .expect("Failed to get group data extension");
 
-        assert_eq!(post_merge_group.name, group_data.name, "Stored group name should match extension after merge");
-        assert_eq!(post_merge_group.name, new_name, "Stored group name should be updated after merge");
-        assert_eq!(post_merge_group.description, group_data.description, "Stored group description should match extension");
-        assert_eq!(post_merge_group.admin_pubkeys, group_data.admins, "Stored group admins should match extension");
+        assert_eq!(
+            post_merge_group.name, group_data.name,
+            "Stored group name should match extension after merge"
+        );
+        assert_eq!(
+            post_merge_group.name, new_name,
+            "Stored group name should be updated after merge"
+        );
+        assert_eq!(
+            post_merge_group.description, group_data.description,
+            "Stored group description should match extension"
+        );
+        assert_eq!(
+            post_merge_group.admin_pubkeys, group_data.admins,
+            "Stored group admins should match extension"
+        );
 
         // Test that the sync function itself works correctly by manually de-syncing and re-syncing
         let mut manually_desync_group = post_merge_group.clone();
         manually_desync_group.name = "Manually Corrupted Name".to_string();
         manually_desync_group.epoch = initial_epoch;
-        nostr_mls.storage().save_group(manually_desync_group).expect("Failed to save corrupted group");
+        nostr_mls
+            .storage()
+            .save_group(manually_desync_group)
+            .expect("Failed to save corrupted group");
 
         // Verify it's out of sync
         let corrupted_group = nostr_mls
@@ -1300,8 +1340,14 @@ mod tests {
             .expect("Failed to get corrupted group")
             .expect("Corrupted group should exist");
 
-        assert_eq!(corrupted_group.name, "Manually Corrupted Name", "Group should be manually corrupted");
-        assert_eq!(corrupted_group.epoch, initial_epoch, "Group epoch should be manually corrupted");
+        assert_eq!(
+            corrupted_group.name, "Manually Corrupted Name",
+            "Group should be manually corrupted"
+        );
+        assert_eq!(
+            corrupted_group.epoch, initial_epoch,
+            "Group epoch should be manually corrupted"
+        );
 
         // Call sync function directly
         nostr_mls
@@ -1314,9 +1360,18 @@ mod tests {
             .expect("Failed to get re-synced group")
             .expect("Re-synced group should exist");
 
-        assert_eq!(re_synced_group.name, new_name, "Group name should be re-synced");
-        assert!(re_synced_group.epoch > initial_epoch, "Group epoch should be re-synced");
-        assert_eq!(re_synced_group.admin_pubkeys, group_data.admins, "Group admins should be re-synced");
+        assert_eq!(
+            re_synced_group.name, new_name,
+            "Group name should be re-synced"
+        );
+        assert!(
+            re_synced_group.epoch > initial_epoch,
+            "Group epoch should be re-synced"
+        );
+        assert_eq!(
+            re_synced_group.admin_pubkeys, group_data.admins,
+            "Group admins should be re-synced"
+        );
     }
 
     #[test]
@@ -1362,13 +1417,19 @@ mod tests {
             .expect("Failed to find processed message")
             .expect("Processed message should exist");
 
-        assert_eq!(processed_message.state, message_types::ProcessedMessageState::ProcessedCommit);
+        assert_eq!(
+            processed_message.state,
+            message_types::ProcessedMessageState::ProcessedCommit
+        );
 
         // Manually corrupt the stored group to simulate desync
         let mut corrupted_group = initial_group.clone();
         corrupted_group.name = "Corrupted Name".to_string();
         corrupted_group.epoch = initial_epoch;
-        nostr_mls.storage().save_group(corrupted_group).expect("Failed to save corrupted group");
+        nostr_mls
+            .storage()
+            .save_group(corrupted_group)
+            .expect("Failed to save corrupted group");
 
         // Verify it's out of sync
         let out_of_sync_group = nostr_mls
@@ -1393,8 +1454,14 @@ mod tests {
             .expect("Failed to get synced group")
             .expect("Synced group should exist");
 
-        assert_eq!(synced_group.name, new_name, "Processing own commit should sync group name");
-        assert!(synced_group.epoch > initial_epoch, "Processing own commit should sync group epoch");
+        assert_eq!(
+            synced_group.name, new_name,
+            "Processing own commit should sync group name"
+        );
+        assert!(
+            synced_group.epoch > initial_epoch,
+            "Processing own commit should sync group epoch"
+        );
 
         // Verify the stored group matches the MLS group state
         let mls_group = nostr_mls
@@ -1402,12 +1469,22 @@ mod tests {
             .expect("Failed to load MLS group")
             .expect("MLS group should exist");
 
-        assert_eq!(synced_group.epoch, mls_group.epoch().as_u64(), "Stored and MLS group epochs should match");
+        assert_eq!(
+            synced_group.epoch,
+            mls_group.epoch().as_u64(),
+            "Stored and MLS group epochs should match"
+        );
 
         let group_data = super::extension::NostrGroupDataExtension::from_group(&mls_group)
             .expect("Failed to get group data extension");
 
-        assert_eq!(synced_group.name, group_data.name, "Stored group name should match extension");
-        assert_eq!(synced_group.admin_pubkeys, group_data.admins, "Stored group admins should match extension");
+        assert_eq!(
+            synced_group.name, group_data.name,
+            "Stored group name should match extension"
+        );
+        assert_eq!(
+            synced_group.admin_pubkeys, group_data.admins,
+            "Stored group admins should match extension"
+        );
     }
 }

@@ -1172,8 +1172,7 @@ mod tests {
     use nostr::key::SecretKey;
     use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl};
     use nostr_mls_memory_storage::NostrMlsMemoryStorage;
-    use nostr_mls_storage::messages::types as message_types;
-    use nostr_mls_storage::messages::MessageStorage;
+    use nostr_mls_storage::messages::{types as message_types, MessageStorage};
     use openmls::group::{GroupId, MlsGroup};
     use openmls::prelude::{BasicCredential, ExtensionType};
 
@@ -2345,19 +2344,27 @@ mod tests {
         new_group_data.description = "Synchronized Description".to_string();
 
         // Apply the extension update to MLS group (but not to stored group)
-        let extension = super::NostrMls::<NostrMlsMemoryStorage>::get_unknown_extension_from_group_data(&new_group_data).unwrap();
+        let extension =
+            super::NostrMls::<NostrMlsMemoryStorage>::get_unknown_extension_from_group_data(
+                &new_group_data,
+            )
+            .unwrap();
         let mut extensions = mls_group.extensions().clone();
         extensions.add_or_replace(extension);
 
         let signature_keypair = creator_nostr_mls.load_mls_signer(&mls_group).unwrap();
-        let (_message_out, _, _) = mls_group.update_group_context_extensions(
-            &creator_nostr_mls.provider,
-            extensions,
-            &signature_keypair,
-        ).unwrap();
+        let (_message_out, _, _) = mls_group
+            .update_group_context_extensions(
+                &creator_nostr_mls.provider,
+                extensions,
+                &signature_keypair,
+            )
+            .unwrap();
 
         // Merge the pending commit to advance epoch
-        mls_group.merge_pending_commit(&creator_nostr_mls.provider).unwrap();
+        mls_group
+            .merge_pending_commit(&creator_nostr_mls.provider)
+            .unwrap();
 
         // At this point, MLS group has changed but stored group is stale
         let stale_stored_group = creator_nostr_mls
@@ -2367,7 +2374,10 @@ mod tests {
 
         // Verify stored group is stale
         assert_eq!(stale_stored_group.name, initial_stored_group.name);
-        assert_eq!(stale_stored_group.description, initial_stored_group.description);
+        assert_eq!(
+            stale_stored_group.description,
+            initial_stored_group.description
+        );
         assert_eq!(stale_stored_group.epoch, initial_stored_group.epoch);
 
         // Now test our sync function
@@ -2384,12 +2394,24 @@ mod tests {
         assert_eq!(synced_stored_group.name, "Synchronized Name");
         assert_eq!(synced_stored_group.description, "Synchronized Description");
         assert!(synced_stored_group.epoch > initial_stored_group.epoch);
-        assert_eq!(synced_stored_group.admin_pubkeys, admins.into_iter().collect());
+        assert_eq!(
+            synced_stored_group.admin_pubkeys,
+            admins.into_iter().collect()
+        );
 
         // Verify other fields remain unchanged
-        assert_eq!(synced_stored_group.mls_group_id, initial_stored_group.mls_group_id);
-        assert_eq!(synced_stored_group.last_message_id, initial_stored_group.last_message_id);
-        assert_eq!(synced_stored_group.last_message_at, initial_stored_group.last_message_at);
+        assert_eq!(
+            synced_stored_group.mls_group_id,
+            initial_stored_group.mls_group_id
+        );
+        assert_eq!(
+            synced_stored_group.last_message_id,
+            initial_stored_group.last_message_id
+        );
+        assert_eq!(
+            synced_stored_group.last_message_at,
+            initial_stored_group.last_message_at
+        );
         assert_eq!(synced_stored_group.state, initial_stored_group.state);
     }
 
@@ -2431,8 +2453,11 @@ mod tests {
 
         for (operation, _value) in test_cases {
             let update_result = match operation {
-                "update_group_name" => creator_nostr_mls.update_group_name(group_id, "New Name".to_string()),
-                "update_group_description" => creator_nostr_mls.update_group_description(group_id, "New Description".to_string()),
+                "update_group_name" => {
+                    creator_nostr_mls.update_group_name(group_id, "New Name".to_string())
+                }
+                "update_group_description" => creator_nostr_mls
+                    .update_group_description(group_id, "New Description".to_string()),
                 _ => panic!("Unknown operation"),
             };
 
@@ -2448,7 +2473,10 @@ mod tests {
 
             assert_eq!(processed_message.wrapper_event_id, commit_event_id);
             assert_eq!(processed_message.message_event_id, None);
-            assert_eq!(processed_message.state, message_types::ProcessedMessageState::ProcessedCommit);
+            assert_eq!(
+                processed_message.state,
+                message_types::ProcessedMessageState::ProcessedCommit
+            );
             assert_eq!(processed_message.failure_reason, None);
 
             // Clean up by merging the commit
@@ -2487,7 +2515,11 @@ mod tests {
         let verify_epoch_sync = || {
             let mls_group = creator_nostr_mls.load_mls_group(group_id).unwrap().unwrap();
             let stored_group = creator_nostr_mls.get_group(group_id).unwrap().unwrap();
-            assert_eq!(stored_group.epoch, mls_group.epoch().as_u64(), "Stored group epoch should match MLS group epoch");
+            assert_eq!(
+                stored_group.epoch,
+                mls_group.epoch().as_u64(),
+                "Stored group epoch should match MLS group epoch"
+            );
         };
 
         // Test 1: After group creation (should already be synced)
@@ -2538,7 +2570,10 @@ mod tests {
         assert_eq!(final_stored_group.name, final_group_data.name);
         assert_eq!(final_stored_group.description, final_group_data.description);
         assert_eq!(final_stored_group.admin_pubkeys, final_group_data.admins);
-        assert_eq!(final_stored_group.nostr_group_id, final_group_data.nostr_group_id);
+        assert_eq!(
+            final_stored_group.nostr_group_id,
+            final_group_data.nostr_group_id
+        );
     }
 
     #[test]
