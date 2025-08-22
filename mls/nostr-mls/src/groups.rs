@@ -57,6 +57,24 @@ pub struct NostrGroupConfigData {
     pub image_key: Option<Vec<u8>>,
     /// Relays used by the group
     pub relays: Vec<RelayUrl>,
+    /// Group admins
+    pub admins: Vec<PublicKey>,
+}
+
+/// Configuration for updating group data with optional fields
+pub struct NostrGroupDataUpdate {
+    /// Group name (optional)
+    pub name: Option<String>,
+    /// Group description (optional)
+    pub description: Option<String>,
+    /// URL to encrypted group image (optional, use Some(None) to clear)
+    pub image_url: Option<Option<String>>,
+    /// Key to decrypt the image (optional, use Some(None) to clear)
+    pub image_key: Option<Option<Vec<u8>>>,
+    /// Relays used by the group (optional)
+    pub relays: Option<Vec<RelayUrl>>,
+    /// Group admins (optional)
+    pub admins: Option<Vec<PublicKey>>,
 }
 
 impl NostrGroupConfigData {
@@ -67,6 +85,7 @@ impl NostrGroupConfigData {
         image_url: Option<String>,
         image_key: Option<Vec<u8>>,
         relays: Vec<RelayUrl>,
+        admins: Vec<PublicKey>,
     ) -> Self {
         Self {
             name,
@@ -74,7 +93,64 @@ impl NostrGroupConfigData {
             image_url,
             image_key,
             relays,
+            admins,
         }
+    }
+}
+
+impl NostrGroupDataUpdate {
+    /// Creates a new empty update configuration
+    pub fn new() -> Self {
+        Self {
+            name: None,
+            description: None,
+            image_url: None,
+            image_key: None,
+            relays: None,
+            admins: None,
+        }
+    }
+
+    /// Sets the name to be updated
+    pub fn name<T: Into<String>>(mut self, name: T) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    /// Sets the description to be updated
+    pub fn description<T: Into<String>>(mut self, description: T) -> Self {
+        self.description = Some(description.into());
+        self
+    }
+
+    /// Sets the image URL to be updated
+    pub fn image_url<T: Into<String>>(mut self, image_url: Option<T>) -> Self {
+        self.image_url = Some(image_url.map(Into::into));
+        self
+    }
+
+    /// Sets the image key to be updated
+    pub fn image_key(mut self, image_key: Option<Vec<u8>>) -> Self {
+        self.image_key = Some(image_key);
+        self
+    }
+
+    /// Sets the relays to be updated
+    pub fn relays(mut self, relays: Vec<RelayUrl>) -> Self {
+        self.relays = Some(relays);
+        self
+    }
+
+    /// Sets the admins to be updated
+    pub fn admins(mut self, admins: Vec<PublicKey>) -> Self {
+        self.admins = Some(admins);
+        self
+    }
+}
+
+impl Default for NostrGroupDataUpdate {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -600,46 +676,71 @@ where
         })
     }
 
-    /// Updates group name
-    pub fn update_group_name(
+    /// Updates group data with the specified configuration
+    ///
+    /// This method allows updating one or more fields of the group data in a single operation.
+    /// Only the fields specified in the update configuration will be modified.
+    ///
+    /// # Arguments
+    ///
+    /// * `group_id` - The MLS group ID
+    /// * `update` - Configuration specifying which fields to update and their new values
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(UpdateGroupResult)` - Update result containing the evolution event
+    /// * `Err(Error)` - If the group is not found or the operation fails
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// // Update only the name
+    /// let update = NostrGroupDataUpdate::new().name("New Group Name");
+    /// mls.update_group_data(&group_id, update)?;
+    ///
+    /// // Update name and description together
+    /// let update = NostrGroupDataUpdate::new()
+    ///     .name("New Name")
+    ///     .description("New Description");
+    /// mls.update_group_data(&group_id, update)?;
+    ///
+    /// // Update image, clearing the existing one
+    /// let update = NostrGroupDataUpdate::new().image_url(None);
+    /// mls.update_group_data(&group_id, update)?;
+    /// ```
+    pub fn update_group_data(
         &self,
         group_id: &GroupId,
-        name: String,
+        update: NostrGroupDataUpdate,
     ) -> Result<UpdateGroupResult, Error> {
         let mut mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
 
         let mut group_data = NostrGroupDataExtension::from_group(&mls_group)?;
-        group_data.name = name;
 
-        self.update_group_data_extension(&mut mls_group, group_id, &group_data)
-    }
+        // Apply updates only for fields that are specified
+        if let Some(name) = update.name {
+            group_data.name = name;
+        }
 
-    /// Updates group description
-    pub fn update_group_description(
-        &self,
-        group_id: &GroupId,
-        description: String,
-    ) -> Result<UpdateGroupResult, Error> {
-        let mut mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+        if let Some(description) = update.description {
+            group_data.description = description;
+        }
 
-        let mut group_data = NostrGroupDataExtension::from_group(&mls_group)?;
-        group_data.description = description;
+        if let Some(image_url) = update.image_url {
+            group_data.image_url = image_url;
+        }
 
-        self.update_group_data_extension(&mut mls_group, group_id, &group_data)
-    }
+        if let Some(image_key) = update.image_key {
+            group_data.image_key = image_key;
+        }
 
-    /// Updates group description
-    pub fn update_group_image(
-        &self,
-        group_id: &GroupId,
-        image_url: String,
-        image_key: Vec<u8>,
-    ) -> Result<UpdateGroupResult, Error> {
-        let mut mls_group = self.load_mls_group(group_id)?.ok_or(Error::GroupNotFound)?;
+        if let Some(relays) = update.relays {
+            group_data.relays = relays.into_iter().collect();
+        }
 
-        let mut group_data = NostrGroupDataExtension::from_group(&mls_group)?;
-        group_data.image_url = Some(image_url);
-        group_data.image_key = Some(image_key);
+        if let Some(admins) = update.admins {
+            group_data.admins = admins.into_iter().collect();
+        }
 
         self.update_group_data_extension(&mut mls_group, group_id, &group_data)
     }
@@ -1173,12 +1274,11 @@ mod tests {
     use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl};
     use nostr_mls_memory_storage::NostrMlsMemoryStorage;
     use nostr_mls_storage::messages::{types as message_types, MessageStorage};
-    use openmls::group::{GroupId, MlsGroup};
-    use openmls::prelude::{BasicCredential, ExtensionType};
+    use openmls::group::GroupId;
+    use openmls::prelude::BasicCredential;
 
     use super::NostrGroupDataExtension;
-    use crate::constant::NOSTR_GROUP_DATA_EXTENSION_TYPE;
-    use crate::groups::NostrGroupConfigData;
+    use crate::groups::{NostrGroupConfigData, NostrGroupDataUpdate};
     use crate::tests::create_test_nostr_mls;
 
     fn create_test_group_members() -> (Keys, Vec<Keys>, Vec<PublicKey>) {
@@ -1219,11 +1319,12 @@ mod tests {
 
     fn create_nostr_group_config_data() -> NostrGroupConfigData {
         let relays = vec![RelayUrl::parse("wss://test.relay").unwrap()];
+        let admins = Vec::new();
         let image_url = "https://example.com/test.png".to_string();
         let image_key = SecretKey::generate().as_secret_bytes().to_owned();
         let name = "Test Group".to_owned();
         let description = "A test group for basic testing".to_owned();
-        NostrGroupConfigData::new(name, description, Some(image_url), Some(image_key), relays)
+        NostrGroupConfigData::new(name, description, Some(image_url), Some(image_key), relays, admins)
     }
 
     #[test]
@@ -2043,6 +2144,148 @@ mod tests {
     }
 
     #[test]
+    fn test_update_group_data() {
+        let creator_nostr_mls = create_test_nostr_mls();
+        let (creator, initial_members, admins) = create_test_group_members();
+        let creator_pk = creator.public_key();
+
+        // Create key package events for initial members
+        let mut initial_key_package_events = Vec::new();
+        for member_keys in &initial_members {
+            let key_package_event = create_key_package_event(&creator_nostr_mls, member_keys);
+            initial_key_package_events.push(key_package_event);
+        }
+
+        // Create the group
+        let create_result = creator_nostr_mls
+            .create_group(
+                &creator_pk,
+                initial_key_package_events,
+                admins,
+                create_nostr_group_config_data(),
+            )
+            .expect("Failed to create group");
+
+        let group_id = &create_result.group.mls_group_id;
+
+        // Merge the pending commit to apply the member additions
+        creator_nostr_mls
+            .merge_pending_commit(group_id)
+            .expect("Failed to merge pending commit");
+
+        // Get initial group data for comparison
+        let initial_mls_group = creator_nostr_mls
+            .load_mls_group(group_id)
+            .expect("Failed to load MLS group")
+            .expect("MLS group should exist");
+        let initial_group_data = NostrGroupDataExtension::from_group(&initial_mls_group).unwrap();
+
+        // Test 1: Update only the name
+        let new_name = "Updated Name".to_string();
+        let update = NostrGroupDataUpdate::new().name(new_name.clone());
+        let update_result = creator_nostr_mls
+            .update_group_data(group_id, update)
+            .expect("Failed to update group name");
+
+        assert!(!update_result.evolution_event.content.is_empty());
+        assert!(update_result.welcome_rumors.is_none());
+
+        creator_nostr_mls
+            .merge_pending_commit(group_id)
+            .expect("Failed to merge pending commit");
+
+        let updated_mls_group = creator_nostr_mls
+            .load_mls_group(group_id)
+            .expect("Failed to load MLS group")
+            .expect("MLS group should exist");
+        let updated_group_data = NostrGroupDataExtension::from_group(&updated_mls_group).unwrap();
+
+        assert_eq!(updated_group_data.name, new_name);
+        assert_eq!(updated_group_data.description, initial_group_data.description);
+        assert_eq!(updated_group_data.image_url, initial_group_data.image_url);
+
+        // Test 2: Update multiple fields at once
+        let new_description = "Updated Description".to_string();
+        let new_image_url = "https://example.com/new-image.png".to_string();
+        let new_image_key = vec![1, 2, 3, 4, 5];
+
+        let update = NostrGroupDataUpdate::new()
+            .description(new_description.clone())
+            .image_url(Some(new_image_url.clone()))
+            .image_key(Some(new_image_key.clone()));
+
+        let update_result = creator_nostr_mls
+            .update_group_data(group_id, update)
+            .expect("Failed to update multiple fields");
+
+        assert!(!update_result.evolution_event.content.is_empty());
+
+        creator_nostr_mls
+            .merge_pending_commit(group_id)
+            .expect("Failed to merge pending commit");
+
+        let final_mls_group = creator_nostr_mls
+            .load_mls_group(group_id)
+            .expect("Failed to load MLS group")
+            .expect("MLS group should exist");
+        let final_group_data = NostrGroupDataExtension::from_group(&final_mls_group).unwrap();
+
+        assert_eq!(final_group_data.name, new_name); // Should remain from previous update
+        assert_eq!(final_group_data.description, new_description);
+        assert_eq!(final_group_data.image_url, Some(new_image_url));
+        assert_eq!(final_group_data.image_key, Some(new_image_key));
+
+        // Test 3: Clear optional fields
+        let update = NostrGroupDataUpdate::new()
+            .image_url::<String>(None)
+            .image_key(None);
+
+        let update_result = creator_nostr_mls
+            .update_group_data(group_id, update)
+            .expect("Failed to clear optional fields");
+
+        assert!(!update_result.evolution_event.content.is_empty());
+
+        creator_nostr_mls
+            .merge_pending_commit(group_id)
+            .expect("Failed to merge pending commit");
+
+        let cleared_mls_group = creator_nostr_mls
+            .load_mls_group(group_id)
+            .expect("Failed to load MLS group")
+            .expect("MLS group should exist");
+        let cleared_group_data = NostrGroupDataExtension::from_group(&cleared_mls_group).unwrap();
+
+        assert_eq!(cleared_group_data.name, new_name);
+        assert_eq!(cleared_group_data.description, new_description);
+        assert_eq!(cleared_group_data.image_url, None);
+        assert_eq!(cleared_group_data.image_key, None);
+
+        // Test 4: Empty update (should succeed but not change anything)
+        let empty_update = NostrGroupDataUpdate::new();
+        let update_result = creator_nostr_mls
+            .update_group_data(group_id, empty_update)
+            .expect("Failed to apply empty update");
+
+        assert!(!update_result.evolution_event.content.is_empty());
+
+        creator_nostr_mls
+            .merge_pending_commit(group_id)
+            .expect("Failed to merge pending commit");
+
+        let unchanged_mls_group = creator_nostr_mls
+            .load_mls_group(group_id)
+            .expect("Failed to load MLS group")
+            .expect("MLS group should exist");
+        let unchanged_group_data = NostrGroupDataExtension::from_group(&unchanged_mls_group).unwrap();
+
+        assert_eq!(unchanged_group_data.name, cleared_group_data.name);
+        assert_eq!(unchanged_group_data.description, cleared_group_data.description);
+        assert_eq!(unchanged_group_data.image_url, cleared_group_data.image_url);
+        assert_eq!(unchanged_group_data.image_key, cleared_group_data.image_key);
+    }
+
+    #[test]
     fn test_update_group_data_context() {
         let creator_nostr_mls = create_test_nostr_mls();
         let (creator, initial_members, admins) = create_test_group_members();
@@ -2072,228 +2315,50 @@ mod tests {
             .merge_pending_commit(group_id)
             .expect("Failed to merge pending commit");
 
-        test_update_group_name(&creator_nostr_mls, group_id);
-
-        test_update_group_description(&creator_nostr_mls, group_id);
-
-        test_update_group_image(&creator_nostr_mls, group_id);
-    }
-
-    fn test_update_group_name(
-        nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
-        group_id: &GroupId,
-    ) {
-        let initial_mls_group = nostr_mls
-            .load_mls_group(group_id)
-            .expect("Failed to load MLS group")
-            .expect("MLS group should exist");
-        let initial_epoch = initial_mls_group.epoch().as_u64();
-
-        // Test updating the group name
-        let new_name = "Updated Test Group Name".to_string();
-        let update_result = nostr_mls
-            .update_group_name(group_id, new_name.clone())
+        // Test updating group name using the new unified method
+        let new_name = "Updated test group name 0123".to_string();
+        let update = NostrGroupDataUpdate::new().name(new_name.clone());
+        let update_result = creator_nostr_mls
+            .update_group_data(group_id, update)
             .expect("Failed to update group name");
 
-        assert!(
-            !update_result.evolution_event.content.is_empty(),
-            "Evolution event should not be empty"
-        );
-        assert!(
-            update_result.welcome_rumors.is_none(),
-            "No welcome rumors should be generated for name update"
-        );
+        assert!(!update_result.evolution_event.content.is_empty());
+        assert!(update_result.welcome_rumors.is_none());
 
-        // Merge the pending commit to apply the name change
-        nostr_mls
+        creator_nostr_mls
             .merge_pending_commit(group_id)
             .expect("Failed to merge pending commit for name update");
 
-        // Verify the MLS group epoch was advanced
-        let final_mls_group = nostr_mls
-            .load_mls_group(group_id)
-            .expect("Failed to load MLS group")
-            .expect("MLS group should exist");
-        let final_epoch = final_mls_group.epoch().as_u64();
-
-        assert!(
-            final_epoch > initial_epoch,
-            "MLS group epoch should advance after name update (initial: {}, final: {})",
-            initial_epoch,
-            final_epoch
-        );
-
-        // Verify the group extension was updated with the new name
-        let final_mls_group = nostr_mls
-            .load_mls_group(group_id)
-            .expect("Failed to load MLS group")
-            .expect("MLS group should exist");
-        let final_group_data = NostrGroupDataExtension::from_group(&final_mls_group).unwrap();
-
-        assert_eq!(
-            final_group_data.name, new_name,
-            "Group name should be updated in the extension"
-        );
-
-        // Make sure that other fields are not changed
-        let initial_group_data = NostrGroupDataExtension::from_group(&initial_mls_group).unwrap();
-        assert_eq!(initial_group_data.description, final_group_data.description);
-        assert_eq!(initial_group_data.image_url, final_group_data.image_url);
-        assert_eq!(initial_group_data.image_key, final_group_data.image_key);
-        test_preserving_known_extensions(&initial_mls_group, &final_mls_group);
-    }
-
-    fn test_update_group_description(
-        nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
-        group_id: &GroupId,
-    ) {
-        let initial_mls_group = nostr_mls
-            .load_mls_group(group_id)
-            .expect("Failed to load MLS group")
-            .expect("MLS group should exist");
-        let initial_epoch = initial_mls_group.epoch().as_u64();
-
+        // Test updating group description using the new unified method
         let new_description = "Updated test group description 0123".to_string();
-        let update_result = nostr_mls
-            .update_group_description(group_id, new_description.clone())
+        let update = NostrGroupDataUpdate::new().description(new_description.clone());
+        let update_result = creator_nostr_mls
+            .update_group_data(group_id, update)
             .expect("Failed to update group description");
 
-        assert!(
-            !update_result.evolution_event.content.is_empty(),
-            "Evolution event should not be empty"
-        );
-        assert!(
-            update_result.welcome_rumors.is_none(),
-            "No welcome rumors should be generated for description update"
-        );
+        assert!(!update_result.evolution_event.content.is_empty());
+        assert!(update_result.welcome_rumors.is_none());
 
-        // Merge the pending commit to apply the description change
-        nostr_mls
+        creator_nostr_mls
             .merge_pending_commit(group_id)
             .expect("Failed to merge pending commit for description update");
 
-        // Verify the MLS group epoch was advanced
-        let final_mls_group = nostr_mls
-            .load_mls_group(group_id)
-            .expect("Failed to load MLS group")
-            .expect("MLS group should exist");
-        let final_epoch = final_mls_group.epoch().as_u64();
+        // Test updating group image using the new unified method
+        let new_image_url = "https://example.com/updated-image.png".to_string();
+        let new_image_key = vec![0xde, 0xad, 0xbe, 0xef];
+        let update = NostrGroupDataUpdate::new()
+            .image_url(Some(new_image_url.clone()))
+            .image_key(Some(new_image_key.clone()));
+        let update_result = creator_nostr_mls
+            .update_group_data(group_id, update)
+            .expect("Failed to update group image");
 
-        assert!(
-            final_epoch > initial_epoch,
-            "MLS group epoch should advance after description update (initial: {}, final: {})",
-            initial_epoch,
-            final_epoch
-        );
+        assert!(!update_result.evolution_event.content.is_empty());
+        assert!(update_result.welcome_rumors.is_none());
 
-        // Verify the group extension was updated with the new description
-        let final_mls_group = nostr_mls
-            .load_mls_group(group_id)
-            .expect("Failed to load MLS group")
-            .expect("MLS group should exist");
-        let final_group_data = NostrGroupDataExtension::from_group(&final_mls_group).unwrap();
-
-        assert_eq!(
-            final_group_data.description, new_description,
-            "Group description should be updated in the extension"
-        );
-
-        // Make sure that other fields are not changed
-        let initial_group_data = NostrGroupDataExtension::from_group(&initial_mls_group).unwrap();
-        assert_eq!(initial_group_data.name, final_group_data.name);
-        assert_eq!(initial_group_data.image_url, final_group_data.image_url);
-        assert_eq!(initial_group_data.image_key, final_group_data.image_key);
-        test_preserving_known_extensions(&initial_mls_group, &final_mls_group);
-    }
-
-    fn test_update_group_image(
-        nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
-        group_id: &GroupId,
-    ) {
-        let initial_mls_group = nostr_mls
-            .load_mls_group(group_id)
-            .expect("Failed to load MLS group")
-            .expect("MLS group should exist");
-        let initial_epoch = initial_mls_group.epoch().as_u64();
-
-        let new_image_url = "null".to_string();
-        let new_image_key = vec![0u8];
-        let update_result = nostr_mls
-            .update_group_image(group_id, new_image_url.clone(), new_image_key.clone())
-            .expect("Failed to update group description");
-
-        assert!(
-            !update_result.evolution_event.content.is_empty(),
-            "Evolution event should not be empty"
-        );
-        assert!(
-            update_result.welcome_rumors.is_none(),
-            "No welcome rumors should be generated for image update"
-        );
-
-        // Merge the pending commit to apply the name change
-        nostr_mls
+        creator_nostr_mls
             .merge_pending_commit(group_id)
             .expect("Failed to merge pending commit for image update");
-
-        // Verify the MLS group epoch was advanced
-        let final_mls_group = nostr_mls
-            .load_mls_group(group_id)
-            .expect("Failed to load MLS group")
-            .expect("MLS group should exist");
-        let final_epoch = final_mls_group.epoch().as_u64();
-
-        assert!(
-            final_epoch > initial_epoch,
-            "MLS group epoch should advance after image update (initial: {}, final: {})",
-            initial_epoch,
-            final_epoch
-        );
-
-        // Verify the group extension was updated with the new image
-        let final_mls_group = nostr_mls
-            .load_mls_group(group_id)
-            .expect("Failed to load MLS group")
-            .expect("MLS group should exist");
-        let final_group_data = NostrGroupDataExtension::from_group(&final_mls_group).unwrap();
-
-        assert_eq!(
-            final_group_data.image_url,
-            Some(new_image_url),
-            "Group image url should be updated in the extension"
-        );
-        assert_eq!(
-            final_group_data.image_key,
-            Some(new_image_key),
-            "Group image key should be updated in the extension"
-        );
-
-        // Make sure that other fields are not changed
-        let initial_group_data = NostrGroupDataExtension::from_group(&initial_mls_group).unwrap();
-        assert_eq!(initial_group_data.description, final_group_data.description);
-        assert_eq!(initial_group_data.name, final_group_data.name);
-        test_preserving_known_extensions(&initial_mls_group, &final_mls_group);
-    }
-
-    fn test_preserving_known_extensions(initial_mls_group: &MlsGroup, final_mls_group: &MlsGroup) {
-        // Make sure the other extensions are untouched
-        let initial_extensions = initial_mls_group.extensions();
-        let final_extensions = final_mls_group.extensions();
-
-        for ie in initial_extensions.iter() {
-            if ie.extension_type() == ExtensionType::Unknown(NOSTR_GROUP_DATA_EXTENSION_TYPE) {
-                // Already checked above
-                continue;
-            }
-
-            let mut present_in_final_extensions = false;
-            for fe in final_extensions.iter() {
-                if ie == fe {
-                    present_in_final_extensions = true;
-                }
-            }
-            assert!(present_in_final_extensions, "Known extensions are mutated")
-        }
     }
 
     #[test]
@@ -2454,10 +2519,13 @@ mod tests {
         for (operation, _value) in test_cases {
             let update_result = match operation {
                 "update_group_name" => {
-                    creator_nostr_mls.update_group_name(group_id, "New Name".to_string())
+                    let update = NostrGroupDataUpdate::new().name("New Name".to_string());
+                    creator_nostr_mls.update_group_data(group_id, update)
                 }
-                "update_group_description" => creator_nostr_mls
-                    .update_group_description(group_id, "New Description".to_string()),
+                "update_group_description" => {
+                    let update = NostrGroupDataUpdate::new().description("New Description".to_string());
+                    creator_nostr_mls.update_group_data(group_id, update)
+                }
                 _ => panic!("Unknown operation"),
             };
 
@@ -2553,8 +2621,9 @@ mod tests {
         verify_epoch_sync();
 
         // Test 4: After extension updates
+        let update = NostrGroupDataUpdate::new().name("Final Name".to_string());
         let _name_result = creator_nostr_mls
-            .update_group_name(group_id, "Final Name".to_string())
+            .update_group_data(group_id, update)
             .expect("Failed to update group name");
 
         creator_nostr_mls

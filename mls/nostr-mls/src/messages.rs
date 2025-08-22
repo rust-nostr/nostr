@@ -851,11 +851,12 @@ mod tests {
 
     fn create_nostr_group_config_data() -> NostrGroupConfigData {
         let relays = vec![RelayUrl::parse("wss://test.relay").unwrap()];
+        let admins = Vec::new();
         let image_url = "https://example.com/test.png".to_string();
         let image_key = SecretKey::generate().as_secret_bytes().to_owned();
         let name = "Test Group".to_owned();
         let description = "A test group for basic testing".to_owned();
-        NostrGroupConfigData::new(name, description, Some(image_url), Some(image_key), relays)
+        NostrGroupConfigData::new(name, description, Some(image_url), Some(image_key), relays, admins)
     }
 
     /// Helper function to create a test group and return the group ID
@@ -1250,8 +1251,9 @@ mod tests {
 
         // Create a commit by updating the group name
         let new_name = "Updated Group Name via MLS Commit".to_string();
+        let update = crate::groups::NostrGroupDataUpdate::new().name(new_name.clone());
         let _update_result = nostr_mls
-            .update_group_name(&group_id, new_name.clone())
+            .update_group_data(&group_id, update)
             .expect("Failed to update group name");
 
         // Before merging commit - verify stored group still has old data
@@ -1401,8 +1403,9 @@ mod tests {
 
         // Create and merge a commit to update group name
         let new_name = "Updated Name for Own Commit Test".to_string();
+        let update = crate::groups::NostrGroupDataUpdate::new().name(new_name.clone());
         let update_result = nostr_mls
-            .update_group_name(&group_id, new_name.clone())
+            .update_group_data(&group_id, update)
             .expect("Failed to update group name");
 
         nostr_mls
