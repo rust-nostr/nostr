@@ -499,6 +499,315 @@ where
         Ok(())
     }
 
+    /// Validates the incoming event and extracts the group ID
+    ///
+    /// This private method validates that the event has the correct kind and extracts
+    /// the group ID from the event tags.
+    ///
+    /// # Arguments
+    ///
+    /// * `event` - The Nostr event to validate
+    ///
+    /// # Returns
+    ///
+    /// * `Ok([u8; 32])` - The extracted Nostr group ID
+    /// * `Err(Error)` - If validation fails or group ID cannot be extracted
+    fn validate_event_and_extract_group_id(&self, event: &Event) -> Result<[u8; 32], Error> {
+        if event.kind != Kind::MlsGroupMessage {
+            return Err(Error::UnexpectedEvent {
+                expected: Kind::MlsGroupMessage,
+                received: event.kind,
+            });
+        }
+
+        let nostr_group_id_tag = event
+            .tags
+            .iter()
+            .find(|tag| tag.kind() == TagKind::h())
+            .ok_or(Error::Message("Group ID Tag not found".to_string()))?;
+
+        let nostr_group_id: [u8; 32] = hex::decode(
+            nostr_group_id_tag
+                .content()
+                .ok_or(Error::Message("Group ID Tag content not found".to_string()))?,
+        )
+        .map_err(|e| Error::Message(e.to_string()))?
+        .try_into()
+        .map_err(|_e| Error::Message("Failed to convert nostr group id to [u8; 32]".to_string()))?;
+
+        Ok(nostr_group_id)
+    }
+
+    /// Loads the group and decrypts the message content
+    ///
+    /// This private method loads the group from storage using the Nostr group ID,
+    /// loads the corresponding MLS group, and decrypts the message content using
+    /// the group's exporter secrets.
+    ///
+    /// # Arguments
+    ///
+    /// * `nostr_group_id` - The Nostr group ID extracted from the event
+    /// * `event` - The Nostr event containing the encrypted message
+    ///
+    /// # Returns
+    ///
+    /// * `Ok((group_types::Group, MlsGroup, Vec<u8>))` - The loaded group, MLS group, and decrypted message bytes
+    /// * `Err(Error)` - If group loading or message decryption fails
+    fn load_group_and_decrypt_message(
+        &self,
+        nostr_group_id: [u8; 32],
+        event: &Event,
+    ) -> Result<(group_types::Group, MlsGroup, Vec<u8>), Error> {
+        let group = self
+            .storage()
+            .find_group_by_nostr_group_id(&nostr_group_id)
+            .map_err(|e| Error::Group(e.to_string()))?
+            .ok_or(Error::GroupNotFound)?;
+
+        // Load the MLS group to get the current epoch
+        let mls_group: MlsGroup = self
+            .load_mls_group(&group.mls_group_id)
+            .map_err(|e| Error::Group(e.to_string()))?
+            .ok_or(Error::GroupNotFound)?;
+
+        // Try to decrypt message with recent exporter secrets (fallback across epochs)
+        let message_bytes: Vec<u8> =
+            self.try_decrypt_with_recent_epochs(&mls_group, &event.content)?;
+
+        Ok((group, mls_group, message_bytes))
+    }
+
+    /// Processes the decrypted message content based on its type
+    ///
+    /// This private method processes the decrypted MLS message and handles the
+    /// different message types (application messages, proposals, commits, etc.).
+    ///
+    /// # Arguments
+    ///
+    /// * `group` - The group metadata from storage
+    /// * `mls_group` - The MLS group instance (mutable for potential state changes)
+    /// * `message_bytes` - The decrypted message bytes
+    /// * `event` - The wrapper Nostr event
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(MessageProcessingResult)` - The result based on message type
+    /// * `Err(Error)` - If message processing fails
+    fn process_decrypted_message(
+        &self,
+        group: group_types::Group,
+        mls_group: &mut MlsGroup,
+        message_bytes: &[u8],
+        event: &Event,
+    ) -> Result<MessageProcessingResult, Error> {
+        match self.process_message_for_group(mls_group, message_bytes) {
+            Ok(ProcessedMessageContent::ApplicationMessage(application_message)) => {
+                Ok(MessageProcessingResult::ApplicationMessage(
+                    self.process_application_message_for_group(group, event, application_message)?,
+                ))
+            }
+            Ok(ProcessedMessageContent::ProposalMessage(staged_proposal)) => {
+                Ok(MessageProcessingResult::Proposal(
+                    self.process_proposal_message_for_group(mls_group, event, *staged_proposal)?,
+                ))
+            }
+            Ok(ProcessedMessageContent::StagedCommitMessage(staged_commit)) => {
+                self.process_commit_message_for_group(mls_group, event, *staged_commit)?;
+                Ok(MessageProcessingResult::Commit)
+            }
+            Ok(ProcessedMessageContent::ExternalJoinProposalMessage(_external_join_proposal)) => {
+                // Save a processed message so we don't reprocess
+                let processed_message = message_types::ProcessedMessage {
+                    wrapper_event_id: event.id,
+                    message_event_id: None,
+                    processed_at: Timestamp::now(),
+                    state: message_types::ProcessedMessageState::Processed,
+                    failure_reason: None,
+                };
+
+                self.storage()
+                    .save_processed_message(processed_message)
+                    .map_err(|e| Error::Message(e.to_string()))?;
+
+                Ok(MessageProcessingResult::ExternalJoinProposal)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Handles message processing errors with specific error recovery logic
+    ///
+    /// This private method handles complex error scenarios when message processing fails,
+    /// including special cases like processing own messages, epoch mismatches, and
+    /// other MLS-specific validation errors.
+    ///
+    /// # Arguments
+    ///
+    /// * `error` - The error that occurred during message processing
+    /// * `event` - The wrapper Nostr event that caused the error
+    /// * `group` - The group metadata from storage
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(MessageProcessingResult)` - Recovery result or unprocessable status
+    /// * `Err(Error)` - If error handling itself fails
+    fn handle_message_processing_error(
+        &self,
+        error: Error,
+        event: &Event,
+        group: &group_types::Group,
+    ) -> Result<MessageProcessingResult, Error> {
+        match error {
+            Error::CannotDecryptOwnMessage => {
+                tracing::debug!(target: "nostr_mls::messages::process_message", "Cannot decrypt own message, checking for cached message");
+
+                let mut processed_message = self
+                    .storage()
+                    .find_processed_message_by_event_id(&event.id)
+                    .map_err(|e| Error::Message(e.to_string()))?
+                    .ok_or(Error::Message("Processed message not found".to_string()))?;
+
+                // If the message is created, we need to update the state of the message and processed message
+                // If it's already processed, we don't need to do anything
+                match processed_message.state {
+                    message_types::ProcessedMessageState::Created => {
+                        let message_event_id: EventId = processed_message
+                            .message_event_id
+                            .ok_or(Error::Message("Message event ID not found".to_string()))?;
+
+                        let mut message = self
+                            .get_message(&message_event_id)?
+                            .ok_or(Error::Message("Message not found".to_string()))?;
+
+                        message.state = message_types::MessageState::Processed;
+                        self.storage()
+                            .save_message(message)
+                            .map_err(|e| Error::Message(e.to_string()))?;
+
+                        processed_message.state = message_types::ProcessedMessageState::Processed;
+                        self.storage()
+                            .save_processed_message(processed_message.clone())
+                            .map_err(|e| Error::Message(e.to_string()))?;
+
+                        tracing::debug!(target: "nostr_mls::messages::process_message", "Updated state of own cached message");
+                        let message = self
+                            .get_message(&message_event_id)?
+                            .ok_or(Error::MessageNotFound)?;
+                        Ok(MessageProcessingResult::ApplicationMessage(message))
+                    }
+                    message_types::ProcessedMessageState::ProcessedCommit => {
+                        tracing::debug!(target: "nostr_mls::messages::process_message", "Message already processed as a commit");
+
+                        // Even though this is our own commit that we can't decrypt, we still need to
+                        // sync the stored group metadata with the current MLS group state in case
+                        // the group has been updated since the commit was created
+                        self.sync_group_metadata_from_mls(&group.mls_group_id)
+                            .map_err(|e| {
+                                Error::Message(format!("Failed to sync group metadata: {}", e))
+                            })?;
+
+                        Ok(MessageProcessingResult::Commit)
+                    }
+                    message_types::ProcessedMessageState::Processed
+                    | message_types::ProcessedMessageState::Failed => {
+                        tracing::debug!(target: "nostr_mls::messages::process_message", "Message cannot be processed (already processed or failed)");
+                        Ok(MessageProcessingResult::Unprocessable)
+                    }
+                }
+            }
+            Error::ProcessMessage(ProcessMessageError::ValidationError(
+                ValidationError::WrongEpoch,
+            )) => {
+                // Epoch mismatch - check if this is our own commit that we've already processed
+                tracing::debug!(target: "nostr_mls::messages::process_message", "Epoch mismatch error, checking if this is our own commit");
+
+                if let Ok(Some(processed_message)) = self
+                    .storage()
+                    .find_processed_message_by_event_id(&event.id)
+                    .map_err(|e| Error::Message(e.to_string()))
+                {
+                    if processed_message.state
+                        == message_types::ProcessedMessageState::ProcessedCommit
+                    {
+                        tracing::debug!(target: "nostr_mls::messages::process_message", "Found own commit with epoch mismatch, syncing group metadata");
+
+                        // Sync the stored group metadata even though processing failed
+                        self.sync_group_metadata_from_mls(&group.mls_group_id)
+                            .map_err(|e| {
+                                Error::Message(format!("Failed to sync group metadata: {}", e))
+                            })?;
+
+                        return Ok(MessageProcessingResult::Commit);
+                    }
+                }
+
+                // Not our own commit - this is a genuine error
+                tracing::error!(target: "nostr_mls::messages::process_message", "Epoch mismatch for message that is not our own commit: {:?}", error);
+                let processed_message = message_types::ProcessedMessage {
+                    wrapper_event_id: event.id,
+                    message_event_id: None,
+                    processed_at: Timestamp::now(),
+                    state: message_types::ProcessedMessageState::Failed,
+                    failure_reason: Some("Epoch mismatch".to_string()),
+                };
+                self.storage()
+                    .save_processed_message(processed_message)
+                    .map_err(|e| Error::Message(e.to_string()))?;
+
+                Ok(MessageProcessingResult::Unprocessable)
+            }
+            Error::ProcessMessage(ProcessMessageError::ValidationError(
+                ValidationError::WrongGroupId,
+            )) => {
+                tracing::error!(target: "nostr_mls::messages::process_message", "Group ID mismatch: {:?}", error);
+                let processed_message = message_types::ProcessedMessage {
+                    wrapper_event_id: event.id,
+                    message_event_id: None,
+                    processed_at: Timestamp::now(),
+                    state: message_types::ProcessedMessageState::Failed,
+                    failure_reason: Some("Group ID mismatch".to_string()),
+                };
+                self.storage()
+                    .save_processed_message(processed_message)
+                    .map_err(|e| Error::Message(e.to_string()))?;
+
+                Ok(MessageProcessingResult::Unprocessable)
+            }
+            Error::ProcessMessage(ProcessMessageError::GroupStateError(
+                MlsGroupStateError::UseAfterEviction,
+            )) => {
+                tracing::error!(target: "nostr_mls::messages::process_message", "Attempted to use group after eviction: {:?}", error);
+                let processed_message = message_types::ProcessedMessage {
+                    wrapper_event_id: event.id,
+                    message_event_id: None,
+                    processed_at: Timestamp::now(),
+                    state: message_types::ProcessedMessageState::Failed,
+                    failure_reason: Some("Use after eviction".to_string()),
+                };
+                self.storage()
+                    .save_processed_message(processed_message)
+                    .map_err(|e| Error::Message(e.to_string()))?;
+
+                Ok(MessageProcessingResult::Unprocessable)
+            }
+            _ => {
+                tracing::error!(target: "nostr_mls::messages::process_message", "Unexpected error processing message: {:?}", error);
+                let processed_message = message_types::ProcessedMessage {
+                    wrapper_event_id: event.id,
+                    message_event_id: None,
+                    processed_at: Timestamp::now(),
+                    state: message_types::ProcessedMessageState::Failed,
+                    failure_reason: Some(error.to_string()),
+                };
+                self.storage()
+                    .save_processed_message(processed_message)
+                    .map_err(|e| Error::Message(e.to_string()))?;
+
+                Ok(MessageProcessingResult::Unprocessable)
+            }
+        }
+    }
+
     /// Tries to decrypt a message using exporter secrets from multiple recent epochs excluding the current one
     ///
     /// This helper method attempts to decrypt a message by trying exporter secrets from
@@ -614,14 +923,12 @@ where
 
     /// Processes an incoming encrypted Nostr event containing an MLS message
     ///
-    /// This is the main entry point for processing received messages. The function:
-    /// 1. Validates the event kind (must be MlsGroupMessage)
-    /// 2. Extracts and validates the group ID from event tags
-    /// 3. Loads the MLS group and its cryptographic secrets
-    /// 4. Decrypts the NIP-44 encrypted content using group exporter secret
-    /// 5. Processes the MLS message according to its type
-    /// 6. Updates message state in storage
-    /// 7. Handles special cases like own messages and processing failures
+    /// This is the main entry point for processing received messages. The function orchestrates
+    /// the message processing workflow by delegating to specialized private methods:
+    /// 1. Validates the event and extracts group ID
+    /// 2. Loads the group and decrypts the message content
+    /// 3. Processes the decrypted message based on its type
+    /// 4. Handles errors with specialized recovery logic
     ///
     /// # Arguments
     ///
@@ -632,229 +939,19 @@ where
     /// * `Ok(MessageProcessingResult)` - Result indicating the type of message processed
     /// * `Err(Error)` - If message processing fails
     pub fn process_message(&self, event: &Event) -> Result<MessageProcessingResult, Error> {
-        if event.kind != Kind::MlsGroupMessage {
-            return Err(Error::UnexpectedEvent {
-                expected: Kind::MlsGroupMessage,
-                received: event.kind,
-            });
-        }
+        // Step 1: Validate event and extract group ID
+        let nostr_group_id = self.validate_event_and_extract_group_id(event)?;
 
-        let nostr_group_id_tag = event
-            .tags
-            .iter()
-            .find(|tag| tag.kind() == TagKind::h())
-            .ok_or(Error::Message("Group ID Tag not found".to_string()))?;
+        // Step 2: Load group and decrypt message
+        let (group, mut mls_group, message_bytes) =
+            self.load_group_and_decrypt_message(nostr_group_id, event)?;
 
-        let nostr_group_id: [u8; 32] = hex::decode(
-            nostr_group_id_tag
-                .content()
-                .ok_or(Error::Message("Group ID Tag content not found".to_string()))?,
-        )
-        .map_err(|e| Error::Message(e.to_string()))?
-        .try_into()
-        .map_err(|_e| Error::Message("Failed to convert nostr group id to [u8; 32]".to_string()))?;
-
-        let group = self
-            .storage()
-            .find_group_by_nostr_group_id(&nostr_group_id)
-            .map_err(|e| Error::Group(e.to_string()))?
-            .ok_or(Error::GroupNotFound)?;
-
-        // Load the MLS group to get the current epoch
-        let mut mls_group: MlsGroup = self
-            .load_mls_group(&group.mls_group_id)
-            .map_err(|e| Error::Group(e.to_string()))?
-            .ok_or(Error::GroupNotFound)?;
-
-        // Try to decrypt message with recent exporter secrets (fallback across epochs)
-        let message_bytes: Vec<u8> =
-            self.try_decrypt_with_recent_epochs(&mls_group, &event.content)?;
-
-        match self.process_message_for_group(&mut mls_group, &message_bytes) {
-            Ok(ProcessedMessageContent::ApplicationMessage(application_message)) => {
-                Ok(MessageProcessingResult::ApplicationMessage(
-                    self.process_application_message_for_group(group, event, application_message)?,
-                ))
-            }
-            Ok(ProcessedMessageContent::ProposalMessage(staged_proposal)) => Ok(
-                MessageProcessingResult::Proposal(self.process_proposal_message_for_group(
-                    &mut mls_group,
-                    event,
-                    *staged_proposal,
-                )?),
-            ),
-            Ok(ProcessedMessageContent::StagedCommitMessage(staged_commit)) => {
-                self.process_commit_message_for_group(&mut mls_group, event, *staged_commit)?;
-                Ok(MessageProcessingResult::Commit)
-            }
-            Ok(ProcessedMessageContent::ExternalJoinProposalMessage(_external_join_proposal)) => {
-                // Save a processed message so we don't reprocess
-                let processed_message = message_types::ProcessedMessage {
-                    wrapper_event_id: event.id,
-                    message_event_id: None,
-                    processed_at: Timestamp::now(),
-                    state: message_types::ProcessedMessageState::Processed,
-                    failure_reason: None,
-                };
-
-                self.storage()
-                    .save_processed_message(processed_message)
-                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                Ok(MessageProcessingResult::ExternalJoinProposal)
-            }
-            Err(e) => {
-                match e {
-                    Error::CannotDecryptOwnMessage => {
-                        tracing::debug!(target: "nostr_mls::messages::process_message", "Cannot decrypt own message, checking for cached message");
-
-                        let mut processed_message = self
-                            .storage()
-                            .find_processed_message_by_event_id(&event.id)
-                            .map_err(|e| Error::Message(e.to_string()))?
-                            .ok_or(Error::Message("Processed message not found".to_string()))?;
-
-                        // If the message is created, we need to update the state of the message and processed message
-                        // If it's already processed, we don't need to do anything
-                        match processed_message.state {
-                            message_types::ProcessedMessageState::Created => {
-                                let message_event_id: EventId =
-                                    processed_message.message_event_id.ok_or(Error::Message(
-                                        "Message event ID not found".to_string(),
-                                    ))?;
-
-                                let mut message = self
-                                    .get_message(&message_event_id)?
-                                    .ok_or(Error::Message("Message not found".to_string()))?;
-
-                                message.state = message_types::MessageState::Processed;
-                                self.storage()
-                                    .save_message(message)
-                                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                                processed_message.state =
-                                    message_types::ProcessedMessageState::Processed;
-                                self.storage()
-                                    .save_processed_message(processed_message.clone())
-                                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                                tracing::debug!(target: "nostr_mls::messages::process_message", "Updated state of own cached message");
-                                let message = self
-                                    .get_message(&message_event_id)?
-                                    .ok_or(Error::MessageNotFound)?;
-                                Ok(MessageProcessingResult::ApplicationMessage(message))
-                            }
-                            message_types::ProcessedMessageState::ProcessedCommit => {
-                                tracing::debug!(target: "nostr_mls::messages::process_message", "Message already processed as a commit");
-
-                                // Even though this is our own commit that we can't decrypt, we still need to
-                                // sync the stored group metadata with the current MLS group state in case
-                                // the group has been updated since the commit was created
-                                self.sync_group_metadata_from_mls(&group.mls_group_id)
-                                    .map_err(|e| {
-                                        Error::Message(format!(
-                                            "Failed to sync group metadata: {}",
-                                            e
-                                        ))
-                                    })?;
-
-                                Ok(MessageProcessingResult::Commit)
-                            }
-                            message_types::ProcessedMessageState::Processed
-                            | message_types::ProcessedMessageState::Failed => {
-                                tracing::debug!(target: "nostr_mls::messages::process_message", "Message cannot be processed (already processed or failed)");
-                                Ok(MessageProcessingResult::Unprocessable)
-                            }
-                        }
-                    }
-                    Error::ProcessMessage(ProcessMessageError::ValidationError(ValidationError::WrongEpoch)) => {
-                        // Epoch mismatch - check if this is our own commit that we've already processed
-                        tracing::debug!(target: "nostr_mls::messages::process_message", "Epoch mismatch error, checking if this is our own commit");
-
-                        if let Ok(Some(processed_message)) = self
-                            .storage()
-                            .find_processed_message_by_event_id(&event.id)
-                            .map_err(|e| Error::Message(e.to_string()))
-                        {
-                            if processed_message.state
-                                == message_types::ProcessedMessageState::ProcessedCommit
-                            {
-                                tracing::debug!(target: "nostr_mls::messages::process_message", "Found own commit with epoch mismatch, syncing group metadata");
-
-                                // Sync the stored group metadata even though processing failed
-                                self.sync_group_metadata_from_mls(&group.mls_group_id)
-                                    .map_err(|e| {
-                                        Error::Message(format!(
-                                            "Failed to sync group metadata: {}",
-                                            e
-                                        ))
-                                    })?;
-
-                                return Ok(MessageProcessingResult::Commit);
-                            }
-                        }
-
-                        // Not our own commit - this is a genuine error
-                        tracing::error!(target: "nostr_mls::messages::process_message", "Epoch mismatch for message that is not our own commit: {:?}", e);
-                        let processed_message = message_types::ProcessedMessage {
-                            wrapper_event_id: event.id,
-                            message_event_id: None,
-                            processed_at: Timestamp::now(),
-                            state: message_types::ProcessedMessageState::Failed,
-                            failure_reason: Some("Epoch mismatch".to_string()),
-                        };
-                        self.storage()
-                            .save_processed_message(processed_message)
-                            .map_err(|e| Error::Message(e.to_string()))?;
-
-                        Ok(MessageProcessingResult::Unprocessable)
-                    }
-                    Error::ProcessMessage(ProcessMessageError::ValidationError(ValidationError::WrongGroupId)) => {
-                        tracing::error!(target: "nostr_mls::messages::process_message", "Group ID mismatch: {:?}", e);
-                        let processed_message = message_types::ProcessedMessage {
-                            wrapper_event_id: event.id,
-                            message_event_id: None,
-                            processed_at: Timestamp::now(),
-                            state: message_types::ProcessedMessageState::Failed,
-                            failure_reason: Some("Group ID mismatch".to_string()),
-                        };
-                        self.storage()
-                            .save_processed_message(processed_message)
-                            .map_err(|e| Error::Message(e.to_string()))?;
-
-                        Ok(MessageProcessingResult::Unprocessable)
-                    }
-                    Error::ProcessMessage(ProcessMessageError::GroupStateError(MlsGroupStateError::UseAfterEviction)) => {
-                        tracing::error!(target: "nostr_mls::messages::process_message", "Attempted to use group after eviction: {:?}", e);
-                        let processed_message = message_types::ProcessedMessage {
-                            wrapper_event_id: event.id,
-                            message_event_id: None,
-                            processed_at: Timestamp::now(),
-                            state: message_types::ProcessedMessageState::Failed,
-                            failure_reason: Some("Use after eviction".to_string()),
-                        };
-                        self.storage()
-                            .save_processed_message(processed_message)
-                            .map_err(|e| Error::Message(e.to_string()))?;
-
-                        Ok(MessageProcessingResult::Unprocessable)
-                    }
-                    _ => {
-                        tracing::error!(target: "nostr_mls::messages::process_message", "Unexpected error processing message: {:?}", e);
-                        let processed_message = message_types::ProcessedMessage {
-                            wrapper_event_id: event.id,
-                            message_event_id: None,
-                            processed_at: Timestamp::now(),
-                            state: message_types::ProcessedMessageState::Failed,
-                            failure_reason: Some(e.to_string()),
-                        };
-                        self.storage()
-                            .save_processed_message(processed_message)
-                            .map_err(|e| Error::Message(e.to_string()))?;
-
-                        Ok(MessageProcessingResult::Unprocessable)
-                    }
-                }
+        // Step 3: Process the decrypted message
+        match self.process_decrypted_message(group.clone(), &mut mls_group, &message_bytes, event) {
+            Ok(result) => Ok(result),
+            Err(error) => {
+                // Step 4: Handle errors with specialized recovery logic
+                self.handle_message_processing_error(error, event, &group)
             }
         }
     }
