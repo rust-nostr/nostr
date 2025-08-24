@@ -14,7 +14,7 @@
 use nostr::util::hex;
 use nostr::{EventId, UnsignedEvent};
 use nostr_mls_storage::NostrMlsStorageProvider;
-use openmls::group::{GroupId, ValidationError};
+use openmls::group::{GroupId, MlsGroupStateError, ProcessMessageError, ValidationError};
 use openmls_basic_credential::SignatureKeyPair;
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
@@ -249,7 +249,7 @@ where
             }
             Err(e) => {
                 tracing::error!(target: "nostr_mls::messages::process_message_for_group", "Error processing message: {:?}", e);
-                return Err(Error::Message(e.to_string()));
+                return Err(Error::ProcessMessage(e));
             }
         };
 
@@ -480,6 +480,10 @@ where
         // Save exporter secret for the new epoch
         self.exporter_secret(mls_group.group_id())?;
 
+        // Sync the stored group metadata with the updated MLS group state
+        // This ensures any group context extension changes are reflected in storage
+        self.sync_group_metadata_from_mls(mls_group.group_id())?;
+
         // Save a processed message so we don't reprocess
         let processed_message = message_types::ProcessedMessage {
             wrapper_event_id: event.id,
@@ -493,6 +497,315 @@ where
             .save_processed_message(processed_message)
             .map_err(|e| Error::Message(e.to_string()))?;
         Ok(())
+    }
+
+    /// Validates the incoming event and extracts the group ID
+    ///
+    /// This private method validates that the event has the correct kind and extracts
+    /// the group ID from the event tags.
+    ///
+    /// # Arguments
+    ///
+    /// * `event` - The Nostr event to validate
+    ///
+    /// # Returns
+    ///
+    /// * `Ok([u8; 32])` - The extracted Nostr group ID
+    /// * `Err(Error)` - If validation fails or group ID cannot be extracted
+    fn validate_event_and_extract_group_id(&self, event: &Event) -> Result<[u8; 32], Error> {
+        if event.kind != Kind::MlsGroupMessage {
+            return Err(Error::UnexpectedEvent {
+                expected: Kind::MlsGroupMessage,
+                received: event.kind,
+            });
+        }
+
+        let nostr_group_id_tag = event
+            .tags
+            .iter()
+            .find(|tag| tag.kind() == TagKind::h())
+            .ok_or(Error::Message("Group ID Tag not found".to_string()))?;
+
+        let nostr_group_id: [u8; 32] = hex::decode(
+            nostr_group_id_tag
+                .content()
+                .ok_or(Error::Message("Group ID Tag content not found".to_string()))?,
+        )
+        .map_err(|e| Error::Message(e.to_string()))?
+        .try_into()
+        .map_err(|_e| Error::Message("Failed to convert nostr group id to [u8; 32]".to_string()))?;
+
+        Ok(nostr_group_id)
+    }
+
+    /// Loads the group and decrypts the message content
+    ///
+    /// This private method loads the group from storage using the Nostr group ID,
+    /// loads the corresponding MLS group, and decrypts the message content using
+    /// the group's exporter secrets.
+    ///
+    /// # Arguments
+    ///
+    /// * `nostr_group_id` - The Nostr group ID extracted from the event
+    /// * `event` - The Nostr event containing the encrypted message
+    ///
+    /// # Returns
+    ///
+    /// * `Ok((group_types::Group, MlsGroup, Vec<u8>))` - The loaded group, MLS group, and decrypted message bytes
+    /// * `Err(Error)` - If group loading or message decryption fails
+    fn load_group_and_decrypt_message(
+        &self,
+        nostr_group_id: [u8; 32],
+        event: &Event,
+    ) -> Result<(group_types::Group, MlsGroup, Vec<u8>), Error> {
+        let group = self
+            .storage()
+            .find_group_by_nostr_group_id(&nostr_group_id)
+            .map_err(|e| Error::Group(e.to_string()))?
+            .ok_or(Error::GroupNotFound)?;
+
+        // Load the MLS group to get the current epoch
+        let mls_group: MlsGroup = self
+            .load_mls_group(&group.mls_group_id)
+            .map_err(|e| Error::Group(e.to_string()))?
+            .ok_or(Error::GroupNotFound)?;
+
+        // Try to decrypt message with recent exporter secrets (fallback across epochs)
+        let message_bytes: Vec<u8> =
+            self.try_decrypt_with_recent_epochs(&mls_group, &event.content)?;
+
+        Ok((group, mls_group, message_bytes))
+    }
+
+    /// Processes the decrypted message content based on its type
+    ///
+    /// This private method processes the decrypted MLS message and handles the
+    /// different message types (application messages, proposals, commits, etc.).
+    ///
+    /// # Arguments
+    ///
+    /// * `group` - The group metadata from storage
+    /// * `mls_group` - The MLS group instance (mutable for potential state changes)
+    /// * `message_bytes` - The decrypted message bytes
+    /// * `event` - The wrapper Nostr event
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(MessageProcessingResult)` - The result based on message type
+    /// * `Err(Error)` - If message processing fails
+    fn process_decrypted_message(
+        &self,
+        group: group_types::Group,
+        mls_group: &mut MlsGroup,
+        message_bytes: &[u8],
+        event: &Event,
+    ) -> Result<MessageProcessingResult, Error> {
+        match self.process_message_for_group(mls_group, message_bytes) {
+            Ok(ProcessedMessageContent::ApplicationMessage(application_message)) => {
+                Ok(MessageProcessingResult::ApplicationMessage(
+                    self.process_application_message_for_group(group, event, application_message)?,
+                ))
+            }
+            Ok(ProcessedMessageContent::ProposalMessage(staged_proposal)) => {
+                Ok(MessageProcessingResult::Proposal(
+                    self.process_proposal_message_for_group(mls_group, event, *staged_proposal)?,
+                ))
+            }
+            Ok(ProcessedMessageContent::StagedCommitMessage(staged_commit)) => {
+                self.process_commit_message_for_group(mls_group, event, *staged_commit)?;
+                Ok(MessageProcessingResult::Commit)
+            }
+            Ok(ProcessedMessageContent::ExternalJoinProposalMessage(_external_join_proposal)) => {
+                // Save a processed message so we don't reprocess
+                let processed_message = message_types::ProcessedMessage {
+                    wrapper_event_id: event.id,
+                    message_event_id: None,
+                    processed_at: Timestamp::now(),
+                    state: message_types::ProcessedMessageState::Processed,
+                    failure_reason: None,
+                };
+
+                self.storage()
+                    .save_processed_message(processed_message)
+                    .map_err(|e| Error::Message(e.to_string()))?;
+
+                Ok(MessageProcessingResult::ExternalJoinProposal)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Handles message processing errors with specific error recovery logic
+    ///
+    /// This private method handles complex error scenarios when message processing fails,
+    /// including special cases like processing own messages, epoch mismatches, and
+    /// other MLS-specific validation errors.
+    ///
+    /// # Arguments
+    ///
+    /// * `error` - The error that occurred during message processing
+    /// * `event` - The wrapper Nostr event that caused the error
+    /// * `group` - The group metadata from storage
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(MessageProcessingResult)` - Recovery result or unprocessable status
+    /// * `Err(Error)` - If error handling itself fails
+    fn handle_message_processing_error(
+        &self,
+        error: Error,
+        event: &Event,
+        group: &group_types::Group,
+    ) -> Result<MessageProcessingResult, Error> {
+        match error {
+            Error::CannotDecryptOwnMessage => {
+                tracing::debug!(target: "nostr_mls::messages::process_message", "Cannot decrypt own message, checking for cached message");
+
+                let mut processed_message = self
+                    .storage()
+                    .find_processed_message_by_event_id(&event.id)
+                    .map_err(|e| Error::Message(e.to_string()))?
+                    .ok_or(Error::Message("Processed message not found".to_string()))?;
+
+                // If the message is created, we need to update the state of the message and processed message
+                // If it's already processed, we don't need to do anything
+                match processed_message.state {
+                    message_types::ProcessedMessageState::Created => {
+                        let message_event_id: EventId = processed_message
+                            .message_event_id
+                            .ok_or(Error::Message("Message event ID not found".to_string()))?;
+
+                        let mut message = self
+                            .get_message(&message_event_id)?
+                            .ok_or(Error::Message("Message not found".to_string()))?;
+
+                        message.state = message_types::MessageState::Processed;
+                        self.storage()
+                            .save_message(message)
+                            .map_err(|e| Error::Message(e.to_string()))?;
+
+                        processed_message.state = message_types::ProcessedMessageState::Processed;
+                        self.storage()
+                            .save_processed_message(processed_message.clone())
+                            .map_err(|e| Error::Message(e.to_string()))?;
+
+                        tracing::debug!(target: "nostr_mls::messages::process_message", "Updated state of own cached message");
+                        let message = self
+                            .get_message(&message_event_id)?
+                            .ok_or(Error::MessageNotFound)?;
+                        Ok(MessageProcessingResult::ApplicationMessage(message))
+                    }
+                    message_types::ProcessedMessageState::ProcessedCommit => {
+                        tracing::debug!(target: "nostr_mls::messages::process_message", "Message already processed as a commit");
+
+                        // Even though this is our own commit that we can't decrypt, we still need to
+                        // sync the stored group metadata with the current MLS group state in case
+                        // the group has been updated since the commit was created
+                        self.sync_group_metadata_from_mls(&group.mls_group_id)
+                            .map_err(|e| {
+                                Error::Message(format!("Failed to sync group metadata: {}", e))
+                            })?;
+
+                        Ok(MessageProcessingResult::Commit)
+                    }
+                    message_types::ProcessedMessageState::Processed
+                    | message_types::ProcessedMessageState::Failed => {
+                        tracing::debug!(target: "nostr_mls::messages::process_message", "Message cannot be processed (already processed or failed)");
+                        Ok(MessageProcessingResult::Unprocessable)
+                    }
+                }
+            }
+            Error::ProcessMessage(ProcessMessageError::ValidationError(
+                ValidationError::WrongEpoch,
+            )) => {
+                // Epoch mismatch - check if this is our own commit that we've already processed
+                tracing::debug!(target: "nostr_mls::messages::process_message", "Epoch mismatch error, checking if this is our own commit");
+
+                if let Ok(Some(processed_message)) = self
+                    .storage()
+                    .find_processed_message_by_event_id(&event.id)
+                    .map_err(|e| Error::Message(e.to_string()))
+                {
+                    if processed_message.state
+                        == message_types::ProcessedMessageState::ProcessedCommit
+                    {
+                        tracing::debug!(target: "nostr_mls::messages::process_message", "Found own commit with epoch mismatch, syncing group metadata");
+
+                        // Sync the stored group metadata even though processing failed
+                        self.sync_group_metadata_from_mls(&group.mls_group_id)
+                            .map_err(|e| {
+                                Error::Message(format!("Failed to sync group metadata: {}", e))
+                            })?;
+
+                        return Ok(MessageProcessingResult::Commit);
+                    }
+                }
+
+                // Not our own commit - this is a genuine error
+                tracing::error!(target: "nostr_mls::messages::process_message", "Epoch mismatch for message that is not our own commit: {:?}", error);
+                let processed_message = message_types::ProcessedMessage {
+                    wrapper_event_id: event.id,
+                    message_event_id: None,
+                    processed_at: Timestamp::now(),
+                    state: message_types::ProcessedMessageState::Failed,
+                    failure_reason: Some("Epoch mismatch".to_string()),
+                };
+                self.storage()
+                    .save_processed_message(processed_message)
+                    .map_err(|e| Error::Message(e.to_string()))?;
+
+                Ok(MessageProcessingResult::Unprocessable)
+            }
+            Error::ProcessMessage(ProcessMessageError::ValidationError(
+                ValidationError::WrongGroupId,
+            )) => {
+                tracing::error!(target: "nostr_mls::messages::process_message", "Group ID mismatch: {:?}", error);
+                let processed_message = message_types::ProcessedMessage {
+                    wrapper_event_id: event.id,
+                    message_event_id: None,
+                    processed_at: Timestamp::now(),
+                    state: message_types::ProcessedMessageState::Failed,
+                    failure_reason: Some("Group ID mismatch".to_string()),
+                };
+                self.storage()
+                    .save_processed_message(processed_message)
+                    .map_err(|e| Error::Message(e.to_string()))?;
+
+                Ok(MessageProcessingResult::Unprocessable)
+            }
+            Error::ProcessMessage(ProcessMessageError::GroupStateError(
+                MlsGroupStateError::UseAfterEviction,
+            )) => {
+                tracing::error!(target: "nostr_mls::messages::process_message", "Attempted to use group after eviction: {:?}", error);
+                let processed_message = message_types::ProcessedMessage {
+                    wrapper_event_id: event.id,
+                    message_event_id: None,
+                    processed_at: Timestamp::now(),
+                    state: message_types::ProcessedMessageState::Failed,
+                    failure_reason: Some("Use after eviction".to_string()),
+                };
+                self.storage()
+                    .save_processed_message(processed_message)
+                    .map_err(|e| Error::Message(e.to_string()))?;
+
+                Ok(MessageProcessingResult::Unprocessable)
+            }
+            _ => {
+                tracing::error!(target: "nostr_mls::messages::process_message", "Unexpected error processing message: {:?}", error);
+                let processed_message = message_types::ProcessedMessage {
+                    wrapper_event_id: event.id,
+                    message_event_id: None,
+                    processed_at: Timestamp::now(),
+                    state: message_types::ProcessedMessageState::Failed,
+                    failure_reason: Some(error.to_string()),
+                };
+                self.storage()
+                    .save_processed_message(processed_message)
+                    .map_err(|e| Error::Message(e.to_string()))?;
+
+                Ok(MessageProcessingResult::Unprocessable)
+            }
+        }
     }
 
     /// Tries to decrypt a message using exporter secrets from multiple recent epochs excluding the current one
@@ -610,14 +923,12 @@ where
 
     /// Processes an incoming encrypted Nostr event containing an MLS message
     ///
-    /// This is the main entry point for processing received messages. The function:
-    /// 1. Validates the event kind (must be MlsGroupMessage)
-    /// 2. Extracts and validates the group ID from event tags
-    /// 3. Loads the MLS group and its cryptographic secrets
-    /// 4. Decrypts the NIP-44 encrypted content using group exporter secret
-    /// 5. Processes the MLS message according to its type
-    /// 6. Updates message state in storage
-    /// 7. Handles special cases like own messages and processing failures
+    /// This is the main entry point for processing received messages. The function orchestrates
+    /// the message processing workflow by delegating to specialized private methods:
+    /// 1. Validates the event and extracts group ID
+    /// 2. Loads the group and decrypts the message content
+    /// 3. Processes the decrypted message based on its type
+    /// 4. Handles errors with specialized recovery logic
     ///
     /// # Arguments
     ///
@@ -628,145 +939,19 @@ where
     /// * `Ok(MessageProcessingResult)` - Result indicating the type of message processed
     /// * `Err(Error)` - If message processing fails
     pub fn process_message(&self, event: &Event) -> Result<MessageProcessingResult, Error> {
-        if event.kind != Kind::MlsGroupMessage {
-            return Err(Error::UnexpectedEvent {
-                expected: Kind::MlsGroupMessage,
-                received: event.kind,
-            });
-        }
+        // Step 1: Validate event and extract group ID
+        let nostr_group_id = self.validate_event_and_extract_group_id(event)?;
 
-        let nostr_group_id_tag = event
-            .tags
-            .iter()
-            .find(|tag| tag.kind() == TagKind::h())
-            .ok_or(Error::Message("Group ID Tag not found".to_string()))?;
+        // Step 2: Load group and decrypt message
+        let (group, mut mls_group, message_bytes) =
+            self.load_group_and_decrypt_message(nostr_group_id, event)?;
 
-        let nostr_group_id: [u8; 32] = hex::decode(
-            nostr_group_id_tag
-                .content()
-                .ok_or(Error::Message("Group ID Tag content not found".to_string()))?,
-        )
-        .map_err(|e| Error::Message(e.to_string()))?
-        .try_into()
-        .map_err(|_e| Error::Message("Failed to convert nostr group id to [u8; 32]".to_string()))?;
-
-        let group = self
-            .storage()
-            .find_group_by_nostr_group_id(&nostr_group_id)
-            .map_err(|e| Error::Group(e.to_string()))?
-            .ok_or(Error::GroupNotFound)?;
-
-        // Load the MLS group to get the current epoch
-        let mut mls_group: MlsGroup = self
-            .load_mls_group(&group.mls_group_id)
-            .map_err(|e| Error::Group(e.to_string()))?
-            .ok_or(Error::GroupNotFound)?;
-
-        // Try to decrypt message with recent exporter secrets (fallback across epochs)
-        let message_bytes: Vec<u8> =
-            self.try_decrypt_with_recent_epochs(&mls_group, &event.content)?;
-
-        match self.process_message_for_group(&mut mls_group, &message_bytes) {
-            Ok(ProcessedMessageContent::ApplicationMessage(application_message)) => {
-                Ok(MessageProcessingResult::ApplicationMessage(
-                    self.process_application_message_for_group(group, event, application_message)?,
-                ))
-            }
-            Ok(ProcessedMessageContent::ProposalMessage(staged_proposal)) => Ok(
-                MessageProcessingResult::Proposal(self.process_proposal_message_for_group(
-                    &mut mls_group,
-                    event,
-                    *staged_proposal,
-                )?),
-            ),
-            Ok(ProcessedMessageContent::StagedCommitMessage(staged_commit)) => {
-                self.process_commit_message_for_group(&mut mls_group, event, *staged_commit)?;
-                Ok(MessageProcessingResult::Commit)
-            }
-            Ok(ProcessedMessageContent::ExternalJoinProposalMessage(_external_join_proposal)) => {
-                // Save a processed message so we don't reprocess
-                let processed_message = message_types::ProcessedMessage {
-                    wrapper_event_id: event.id,
-                    message_event_id: None,
-                    processed_at: Timestamp::now(),
-                    state: message_types::ProcessedMessageState::Processed,
-                    failure_reason: None,
-                };
-
-                self.storage()
-                    .save_processed_message(processed_message)
-                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                Ok(MessageProcessingResult::ExternalJoinProposal)
-            }
-            Err(e) => {
-                match e {
-                    Error::CannotDecryptOwnMessage => {
-                        tracing::debug!(target: "nostr_mls::messages::process_message", "Cannot decrypt own message, checking for cached message");
-
-                        let mut processed_message = self
-                            .storage()
-                            .find_processed_message_by_event_id(&event.id)
-                            .map_err(|e| Error::Message(e.to_string()))?
-                            .ok_or(Error::Message("Processed message not found".to_string()))?;
-
-                        // If the message is created, we need to update the state of the message and processed message
-                        // If it's already processed, we don't need to do anything
-                        match processed_message.state {
-                            message_types::ProcessedMessageState::Created => {
-                                let message_event_id: EventId =
-                                    processed_message.message_event_id.ok_or(Error::Message(
-                                        "Message event ID not found".to_string(),
-                                    ))?;
-
-                                let mut message = self
-                                    .get_message(&message_event_id)?
-                                    .ok_or(Error::Message("Message not found".to_string()))?;
-
-                                message.state = message_types::MessageState::Processed;
-                                self.storage()
-                                    .save_message(message)
-                                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                                processed_message.state =
-                                    message_types::ProcessedMessageState::Processed;
-                                self.storage()
-                                    .save_processed_message(processed_message.clone())
-                                    .map_err(|e| Error::Message(e.to_string()))?;
-
-                                tracing::debug!(target: "nostr_mls::messages::process_message", "Updated state of own cached message");
-                                let message = self
-                                    .get_message(&message_event_id)?
-                                    .ok_or(Error::MessageNotFound)?;
-                                Ok(MessageProcessingResult::ApplicationMessage(message))
-                            }
-                            message_types::ProcessedMessageState::ProcessedCommit => {
-                                tracing::debug!(target: "nostr_mls::messages::process_message", "Message already processed as a commit");
-                                Ok(MessageProcessingResult::Commit)
-                            }
-                            message_types::ProcessedMessageState::Processed
-                            | message_types::ProcessedMessageState::Failed => {
-                                tracing::debug!(target: "nostr_mls::messages::process_message", "Message cannot be processed (already processed or failed)");
-                                Ok(MessageProcessingResult::Unprocessable)
-                            }
-                        }
-                    }
-                    _ => {
-                        tracing::error!(target: "nostr_mls::messages::process_message", "Error processing message: {:?}", e);
-                        let processed_message = message_types::ProcessedMessage {
-                            wrapper_event_id: event.id,
-                            message_event_id: None,
-                            processed_at: Timestamp::now(),
-                            state: message_types::ProcessedMessageState::Failed,
-                            failure_reason: Some(e.to_string()),
-                        };
-                        self.storage()
-                            .save_processed_message(processed_message)
-                            .map_err(|e| Error::Message(e.to_string()))?;
-
-                        Ok(MessageProcessingResult::Unprocessable)
-                    }
-                }
+        // Step 3: Process the decrypted message
+        match self.process_decrypted_message(group.clone(), &mut mls_group, &message_bytes, event) {
+            Ok(result) => Ok(result),
+            Err(error) => {
+                // Step 4: Handle errors with specialized recovery logic
+                self.handle_message_processing_error(error, event, &group)
             }
         }
     }
@@ -774,90 +959,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl, Tag, TagKind};
-    use nostr_mls_memory_storage::NostrMlsMemoryStorage;
+    use nostr::{EventBuilder, Keys, Kind, PublicKey, Tag, TagKind};
 
     use super::*;
+    use crate::test_util::*;
     use crate::tests::create_test_nostr_mls;
-
-    /// Helper function to create test group members
-    fn create_test_group_members() -> (Keys, Vec<Keys>, Vec<PublicKey>) {
-        let creator = Keys::generate();
-        let member1 = Keys::generate();
-        let member2 = Keys::generate();
-
-        let creator_pk = creator.public_key();
-        let members = vec![member1, member2];
-        let admins = vec![creator_pk, members[0].public_key()];
-
-        (creator, members, admins)
-    }
-
-    /// Helper function to create a key package event
-    fn create_key_package_event(
-        nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
-        member_keys: &Keys,
-    ) -> Event {
-        let relays = vec![RelayUrl::parse("wss://test.relay").unwrap()];
-        let (key_package_hex, tags) = nostr_mls
-            .create_key_package_for_event(&member_keys.public_key(), relays)
-            .expect("Failed to create key package");
-
-        EventBuilder::new(Kind::MlsKeyPackage, key_package_hex)
-            .tags(tags.to_vec())
-            .sign_with_keys(member_keys)
-            .expect("Failed to sign event")
-    }
-
-    fn create_nostr_group_config_data() -> NostrGroupConfigData {
-        let relays = vec![RelayUrl::parse("wss://test.relay").unwrap()];
-        let image_url = "https://example.com/test.png".to_string();
-        let image_key = SecretKey::generate().as_secret_bytes().to_owned();
-        let name = "Test Group".to_owned();
-        let description = "A test group for basic testing".to_owned();
-        NostrGroupConfigData::new(name, description, Some(image_url), Some(image_key), relays)
-    }
-
-    /// Helper function to create a test group and return the group ID
-    fn create_test_group(
-        nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
-        creator: &Keys,
-        members: &[Keys],
-        admins: &[PublicKey],
-    ) -> GroupId {
-        let creator_pk = creator.public_key();
-
-        // Create key package events for initial members
-        let mut initial_key_package_events = Vec::new();
-        for member_keys in members {
-            let key_package_event = create_key_package_event(nostr_mls, member_keys);
-            initial_key_package_events.push(key_package_event);
-        }
-
-        // Create the group
-        let create_result = nostr_mls
-            .create_group(
-                &creator_pk,
-                initial_key_package_events,
-                admins.to_vec(),
-                create_nostr_group_config_data(),
-            )
-            .expect("Failed to create group");
-
-        let group_id = create_result.group.mls_group_id.clone();
-
-        // Merge the pending commit to apply the member additions
-        nostr_mls
-            .merge_pending_commit(&group_id)
-            .expect("Failed to merge pending commit");
-
-        group_id
-    }
-
-    /// Helper function to create a test message rumor
-    fn create_test_rumor(sender_keys: &Keys, content: &str) -> UnsignedEvent {
-        EventBuilder::new(Kind::TextNote, content).build(sender_keys.public_key())
-    }
 
     #[test]
     fn test_get_message_not_found() {
@@ -1179,5 +1285,274 @@ mod tests {
 
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].wrapper_event_id, event.id);
+    }
+
+    #[test]
+    fn test_merge_pending_commit_syncs_group_metadata() {
+        let nostr_mls = create_test_nostr_mls();
+
+        // Create test group members
+        let creator_keys = Keys::generate();
+        let member1_keys = Keys::generate();
+        let member2_keys = Keys::generate();
+
+        let creator_pk = creator_keys.public_key();
+        let member1_pk = member1_keys.public_key();
+
+        let members = vec![member1_keys.clone(), member2_keys.clone()];
+        let admins = vec![creator_pk, member1_pk]; // Creator and member1 are admins
+
+        // Create group
+        let group_id = create_test_group(&nostr_mls, &creator_keys, &members, &admins);
+
+        // Get initial stored group state
+        let initial_group = nostr_mls
+            .get_group(&group_id)
+            .expect("Failed to get initial group")
+            .expect("Initial group should exist");
+
+        let initial_epoch = initial_group.epoch;
+        let initial_name = initial_group.name.clone();
+
+        // Create a commit by updating the group name
+        let new_name = "Updated Group Name via MLS Commit".to_string();
+        let update = crate::groups::NostrGroupDataUpdate::new().name(new_name.clone());
+        let _update_result = nostr_mls
+            .update_group_data(&group_id, update)
+            .expect("Failed to update group name");
+
+        // Before merging commit - verify stored group still has old data
+        let pre_merge_group = nostr_mls
+            .get_group(&group_id)
+            .expect("Failed to get pre-merge group")
+            .expect("Pre-merge group should exist");
+
+        assert_eq!(
+            pre_merge_group.name, initial_name,
+            "Stored group name should still be old before merge"
+        );
+        assert_eq!(
+            pre_merge_group.epoch, initial_epoch,
+            "Stored group epoch should still be old before merge"
+        );
+
+        // Get MLS group state before merge (epoch shouldn't advance until merge)
+        let pre_merge_mls_group = nostr_mls
+            .load_mls_group(&group_id)
+            .expect("Failed to load pre-merge MLS group")
+            .expect("Pre-merge MLS group should exist");
+
+        let pre_merge_mls_epoch = pre_merge_mls_group.epoch().as_u64();
+        assert_eq!(
+            pre_merge_mls_epoch, initial_epoch,
+            "MLS group epoch should not advance until commit is merged"
+        );
+
+        // This is the key test: merge_pending_commit should sync the stored group metadata
+        nostr_mls
+            .merge_pending_commit(&group_id)
+            .expect("Failed to merge pending commit");
+
+        // Verify stored group is now synchronized after merge
+        let post_merge_group = nostr_mls
+            .get_group(&group_id)
+            .expect("Failed to get post-merge group")
+            .expect("Post-merge group should exist");
+
+        // Verify epoch is synchronized
+        assert!(
+            post_merge_group.epoch > initial_epoch,
+            "Stored group epoch should advance after merge"
+        );
+
+        // Verify extension data is synchronized
+        let post_merge_mls_group = nostr_mls
+            .load_mls_group(&group_id)
+            .expect("Failed to load post-merge MLS group")
+            .expect("Post-merge MLS group should exist");
+
+        let group_data =
+            super::extension::NostrGroupDataExtension::from_group(&post_merge_mls_group)
+                .expect("Failed to get group data extension");
+
+        assert_eq!(
+            post_merge_group.name, group_data.name,
+            "Stored group name should match extension after merge"
+        );
+        assert_eq!(
+            post_merge_group.name, new_name,
+            "Stored group name should be updated after merge"
+        );
+        assert_eq!(
+            post_merge_group.description, group_data.description,
+            "Stored group description should match extension"
+        );
+        assert_eq!(
+            post_merge_group.admin_pubkeys, group_data.admins,
+            "Stored group admins should match extension"
+        );
+
+        // Test that the sync function itself works correctly by manually de-syncing and re-syncing
+        let mut manually_desync_group = post_merge_group.clone();
+        manually_desync_group.name = "Manually Corrupted Name".to_string();
+        manually_desync_group.epoch = initial_epoch;
+        nostr_mls
+            .storage()
+            .save_group(manually_desync_group)
+            .expect("Failed to save corrupted group");
+
+        // Verify it's out of sync
+        let corrupted_group = nostr_mls
+            .get_group(&group_id)
+            .expect("Failed to get corrupted group")
+            .expect("Corrupted group should exist");
+
+        assert_eq!(
+            corrupted_group.name, "Manually Corrupted Name",
+            "Group should be manually corrupted"
+        );
+        assert_eq!(
+            corrupted_group.epoch, initial_epoch,
+            "Group epoch should be manually corrupted"
+        );
+
+        // Call sync function directly
+        nostr_mls
+            .sync_group_metadata_from_mls(&group_id)
+            .expect("Failed to sync group metadata");
+
+        // Verify it's back in sync
+        let re_synced_group = nostr_mls
+            .get_group(&group_id)
+            .expect("Failed to get re-synced group")
+            .expect("Re-synced group should exist");
+
+        assert_eq!(
+            re_synced_group.name, new_name,
+            "Group name should be re-synced"
+        );
+        assert!(
+            re_synced_group.epoch > initial_epoch,
+            "Group epoch should be re-synced"
+        );
+        assert_eq!(
+            re_synced_group.admin_pubkeys, group_data.admins,
+            "Group admins should be re-synced"
+        );
+    }
+
+    #[test]
+    fn test_processing_own_commit_syncs_group_metadata() {
+        let nostr_mls = create_test_nostr_mls();
+
+        // Create test group
+        let creator_keys = Keys::generate();
+        let member1_keys = Keys::generate();
+        let member2_keys = Keys::generate();
+
+        let creator_pk = creator_keys.public_key();
+        let member1_pk = member1_keys.public_key();
+
+        let members = vec![member1_keys.clone(), member2_keys.clone()];
+        let admins = vec![creator_pk, member1_pk];
+
+        let group_id = create_test_group(&nostr_mls, &creator_keys, &members, &admins);
+
+        // Get initial state
+        let initial_group = nostr_mls
+            .get_group(&group_id)
+            .expect("Failed to get initial group")
+            .expect("Initial group should exist");
+
+        let initial_epoch = initial_group.epoch;
+
+        // Create and merge a commit to update group name
+        let new_name = "Updated Name for Own Commit Test".to_string();
+        let update = crate::groups::NostrGroupDataUpdate::new().name(new_name.clone());
+        let update_result = nostr_mls
+            .update_group_data(&group_id, update)
+            .expect("Failed to update group name");
+
+        nostr_mls
+            .merge_pending_commit(&group_id)
+            .expect("Failed to merge pending commit");
+
+        // Verify the commit event is marked as ProcessedCommit
+        let commit_event_id = update_result.evolution_event.id;
+        let processed_message = nostr_mls
+            .storage()
+            .find_processed_message_by_event_id(&commit_event_id)
+            .expect("Failed to find processed message")
+            .expect("Processed message should exist");
+
+        assert_eq!(
+            processed_message.state,
+            message_types::ProcessedMessageState::ProcessedCommit
+        );
+
+        // Manually corrupt the stored group to simulate desync
+        let mut corrupted_group = initial_group.clone();
+        corrupted_group.name = "Corrupted Name".to_string();
+        corrupted_group.epoch = initial_epoch;
+        nostr_mls
+            .storage()
+            .save_group(corrupted_group)
+            .expect("Failed to save corrupted group");
+
+        // Verify it's out of sync
+        let out_of_sync_group = nostr_mls
+            .get_group(&group_id)
+            .expect("Failed to get out of sync group")
+            .expect("Out of sync group should exist");
+
+        assert_eq!(out_of_sync_group.name, "Corrupted Name");
+        assert_eq!(out_of_sync_group.epoch, initial_epoch);
+
+        // Process our own commit message - this should trigger sync even though it's marked as ProcessedCommit
+        let message_result = nostr_mls
+            .process_message(&update_result.evolution_event)
+            .expect("Failed to process own commit message");
+
+        // Verify it returns Commit result (our fix should handle epoch mismatch errors)
+        assert!(matches!(message_result, MessageProcessingResult::Commit));
+
+        // Most importantly: verify that processing our own commit synchronized the stored group metadata
+        let synced_group = nostr_mls
+            .get_group(&group_id)
+            .expect("Failed to get synced group")
+            .expect("Synced group should exist");
+
+        assert_eq!(
+            synced_group.name, new_name,
+            "Processing own commit should sync group name"
+        );
+        assert!(
+            synced_group.epoch > initial_epoch,
+            "Processing own commit should sync group epoch"
+        );
+
+        // Verify the stored group matches the MLS group state
+        let mls_group = nostr_mls
+            .load_mls_group(&group_id)
+            .expect("Failed to load MLS group")
+            .expect("MLS group should exist");
+
+        assert_eq!(
+            synced_group.epoch,
+            mls_group.epoch().as_u64(),
+            "Stored and MLS group epochs should match"
+        );
+
+        let group_data = super::extension::NostrGroupDataExtension::from_group(&mls_group)
+            .expect("Failed to get group data extension");
+
+        assert_eq!(
+            synced_group.name, group_data.name,
+            "Stored group name should match extension"
+        );
+        assert_eq!(
+            synced_group.admin_pubkeys, group_data.admins,
+            "Stored group admins should match extension"
+        );
     }
 }

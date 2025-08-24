@@ -27,11 +27,20 @@
 
 ### Breaking changes
 
-- Remove group type from groups
+- Remove group type from groups (https://github.com/rust-nostr/nostr/commit/1deb718cf0a70c110537b505bdbad881d43d15cf)
+- Removed `NostrMls::update_group_name`, `NostrMls::update_group_description`, `NostrMls::update_group_image` in favor of a single method for updating all group data.
+- Added `admins` member to the `NostrGroupConfigData` (https://github.com/rust-nostr/nostr/pull/1050)
+- Changed method signature of `NostrMls::create_group`. Removed the admins param. Admins are specified in the `NostrGroupConfigData`. (https://github.com/rust-nostr/nostr/pull/1050)
 
 ### Changed
 
-- Upgrade openmls to v0.7.0
+- Upgrade openmls to v0.7.0 (https://github.com/rust-nostr/nostr/commit/b0616f4dca544b4076678255062b1133510f2813)
+- Add `NostrMls::update_group_name`, `NostrMls::update_group_description`, `NostrMls::update_group_image` for updating the group data in the `NostrGroupDataExtension` (https://github.com/rust-nostr/nostr/commit/35d934d8ac8122f05e637bd9055e9e4a6167724a)
+
+### Added
+
+- Improved synchronization between MLSGroup and stored Group state on all commits. (https://github.com/rust-nostr/nostr/pull/1050)
+- Added `NostrMls::update_group_data` method to handle updates of any of the fields of the `NostrGroupDataExtension` (https://github.com/rust-nostr/nostr/pull/1050)
 
 ## v0.43.0 - 2025/07/28
 
