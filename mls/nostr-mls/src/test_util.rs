@@ -30,10 +30,7 @@ pub fn create_test_group_members() -> (Keys, Vec<Keys>, Vec<PublicKey>) {
 ///
 /// This helper creates a properly signed key package event that can be used
 /// in group creation or member addition operations.
-pub fn create_key_package_event<Storage>(
-    nostr_mls: &NostrMls<Storage>,
-    member_keys: &Keys,
-) -> Event
+pub fn create_key_package_event<Storage>(nostr_mls: &NostrMls<Storage>, member_keys: &Keys) -> Event
 where
     Storage: NostrMlsStorageProvider,
 {

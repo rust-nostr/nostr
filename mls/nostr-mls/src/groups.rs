@@ -1542,7 +1542,7 @@ mod tests {
             .create_group(
                 &creator_pk,
                 initial_key_package_events,
-    create_nostr_group_config_data(admins),
+                create_nostr_group_config_data(admins),
             )
             .expect("Failed to create group");
 
