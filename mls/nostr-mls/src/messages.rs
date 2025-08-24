@@ -959,98 +959,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl, Tag, TagKind};
-    use nostr_mls_memory_storage::NostrMlsMemoryStorage;
+    use nostr::{EventBuilder, Keys, Kind, PublicKey, Tag, TagKind};
 
     use super::*;
+    use crate::test_util::*;
     use crate::tests::create_test_nostr_mls;
-
-    /// Helper function to create test group members
-    fn create_test_group_members() -> (Keys, Vec<Keys>, Vec<PublicKey>) {
-        let creator = Keys::generate();
-        let member1 = Keys::generate();
-        let member2 = Keys::generate();
-
-        let creator_pk = creator.public_key();
-        let members = vec![member1, member2];
-        let admins = vec![creator_pk, members[0].public_key()];
-
-        (creator, members, admins)
-    }
-
-    /// Helper function to create a key package event
-    fn create_key_package_event(
-        nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
-        member_keys: &Keys,
-    ) -> Event {
-        let relays = vec![RelayUrl::parse("wss://test.relay").unwrap()];
-        let (key_package_hex, tags) = nostr_mls
-            .create_key_package_for_event(&member_keys.public_key(), relays)
-            .expect("Failed to create key package");
-
-        EventBuilder::new(Kind::MlsKeyPackage, key_package_hex)
-            .tags(tags.to_vec())
-            .sign_with_keys(member_keys)
-            .expect("Failed to sign event")
-    }
-
-    fn create_nostr_group_config_data() -> NostrGroupConfigData {
-        let relays = vec![RelayUrl::parse("wss://test.relay").unwrap()];
-        let admins = Vec::new();
-        let image_url = "https://example.com/test.png".to_string();
-        let image_key = SecretKey::generate().as_secret_bytes().to_owned();
-        let name = "Test Group".to_owned();
-        let description = "A test group for basic testing".to_owned();
-        NostrGroupConfigData::new(
-            name,
-            description,
-            Some(image_url),
-            Some(image_key),
-            relays,
-            admins,
-        )
-    }
-
-    /// Helper function to create a test group and return the group ID
-    fn create_test_group(
-        nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
-        creator: &Keys,
-        members: &[Keys],
-        admins: &[PublicKey],
-    ) -> GroupId {
-        let creator_pk = creator.public_key();
-
-        // Create key package events for initial members
-        let mut initial_key_package_events = Vec::new();
-        for member_keys in members {
-            let key_package_event = create_key_package_event(nostr_mls, member_keys);
-            initial_key_package_events.push(key_package_event);
-        }
-
-        // Create the group
-        let create_result = nostr_mls
-            .create_group(
-                &creator_pk,
-                initial_key_package_events,
-                admins.to_vec(),
-                create_nostr_group_config_data(),
-            )
-            .expect("Failed to create group");
-
-        let group_id = create_result.group.mls_group_id.clone();
-
-        // Merge the pending commit to apply the member additions
-        nostr_mls
-            .merge_pending_commit(&group_id)
-            .expect("Failed to merge pending commit");
-
-        group_id
-    }
-
-    /// Helper function to create a test message rumor
-    fn create_test_rumor(sender_keys: &Keys, content: &str) -> UnsignedEvent {
-        EventBuilder::new(Kind::TextNote, content).build(sender_keys.public_key())
-    }
 
     #[test]
     fn test_get_message_not_found() {

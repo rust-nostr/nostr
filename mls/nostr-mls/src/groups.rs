@@ -46,6 +46,7 @@ pub struct UpdateGroupResult {
 }
 
 /// Configuration data for the Group
+#[derive(Debug, Clone)]
 pub struct NostrGroupConfigData {
     /// Group name
     pub name: String,
@@ -62,6 +63,7 @@ pub struct NostrGroupConfigData {
 }
 
 /// Configuration for updating group data with optional fields
+#[derive(Debug, Clone)]
 pub struct NostrGroupDataUpdate {
     /// Group name (optional)
     pub name: Option<String>,
@@ -808,7 +810,6 @@ where
         &self,
         creator_public_key: &PublicKey,
         member_key_package_events: Vec<Event>,
-        admins: Vec<PublicKey>,
         config: NostrGroupConfigData,
     ) -> Result<GroupResult, Error> {
         // Get member pubkeys
@@ -817,6 +818,8 @@ where
             .into_iter()
             .map(|e| e.pubkey)
             .collect::<Vec<PublicKey>>();
+
+        let admins = config.admins.clone();
 
         // Validate group members
         self.validate_group_members(creator_public_key, &member_pubkeys, &admins)?;
@@ -1270,69 +1273,18 @@ where
 
 #[cfg(test)]
 mod tests {
-    use nostr::key::SecretKey;
-    use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl};
+    use std::collections::BTreeSet;
+
+    use nostr::{Keys, PublicKey};
     use nostr_mls_memory_storage::NostrMlsMemoryStorage;
     use nostr_mls_storage::messages::{types as message_types, MessageStorage};
     use openmls::group::GroupId;
     use openmls::prelude::BasicCredential;
 
     use super::NostrGroupDataExtension;
-    use crate::groups::{NostrGroupConfigData, NostrGroupDataUpdate};
+    use crate::groups::NostrGroupDataUpdate;
+    use crate::test_util::*;
     use crate::tests::create_test_nostr_mls;
-
-    fn create_test_group_members() -> (Keys, Vec<Keys>, Vec<PublicKey>) {
-        let creator = Keys::generate();
-        let member1 = Keys::generate();
-        let member2 = Keys::generate();
-
-        let creator_pk = creator.public_key();
-        let members = vec![member1, member2];
-        let admins = vec![creator_pk, members[0].public_key()];
-
-        (creator, members, admins)
-    }
-
-    fn create_key_package_event(
-        nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
-        member_keys: &Keys,
-    ) -> Event {
-        create_key_package_event_with_key(nostr_mls, &member_keys.public_key(), member_keys)
-    }
-
-    fn create_key_package_event_with_key(
-        nostr_mls: &crate::NostrMls<NostrMlsMemoryStorage>,
-        pubkey: &PublicKey,
-        keys: &Keys,
-    ) -> Event {
-        let relays = vec![RelayUrl::parse("wss://test.relay").unwrap()];
-        let (key_package_hex, tags) = nostr_mls
-            .create_key_package_for_event(pubkey, relays)
-            .expect("Failed to create key package");
-
-        // Sign the event with the provided keys
-        EventBuilder::new(Kind::MlsKeyPackage, key_package_hex)
-            .tags(tags.to_vec())
-            .sign_with_keys(keys)
-            .expect("Failed to sign event")
-    }
-
-    fn create_nostr_group_config_data() -> NostrGroupConfigData {
-        let relays = vec![RelayUrl::parse("wss://test.relay").unwrap()];
-        let admins = Vec::new();
-        let image_url = "https://example.com/test.png".to_string();
-        let image_key = SecretKey::generate().as_secret_bytes().to_owned();
-        let name = "Test Group".to_owned();
-        let description = "A test group for basic testing".to_owned();
-        NostrGroupConfigData::new(
-            name,
-            description,
-            Some(image_url),
-            Some(image_key),
-            relays,
-            admins,
-        )
-    }
 
     #[test]
     fn test_validate_group_members() {
@@ -1384,8 +1336,7 @@ mod tests {
             .create_group(
                 &creator_pk,
                 initial_key_package_events,
-                admins,
-                create_nostr_group_config_data(),
+                create_nostr_group_config_data(admins),
             )
             .expect("Failed to create group");
 
@@ -1426,8 +1377,7 @@ mod tests {
             .create_group(
                 &creator_pk,
                 initial_key_package_events,
-                admins,
-                create_nostr_group_config_data(),
+                create_nostr_group_config_data(admins),
             )
             .expect("Failed to create group");
 
@@ -1468,8 +1418,7 @@ mod tests {
             .create_group(
                 &creator_pk,
                 initial_key_package_events,
-                admins,
-                create_nostr_group_config_data(),
+                create_nostr_group_config_data(admins),
             )
             .expect("Failed to create group");
 
@@ -1548,8 +1497,7 @@ mod tests {
             .create_group(
                 &creator_pk,
                 initial_key_package_events,
-                admins,
-                create_nostr_group_config_data(),
+                create_nostr_group_config_data(admins),
             )
             .expect("Failed to create group");
 
@@ -1594,8 +1542,7 @@ mod tests {
             .create_group(
                 &creator_pk,
                 initial_key_package_events,
-                admins.clone(),
-                create_nostr_group_config_data(),
+    create_nostr_group_config_data(admins),
             )
             .expect("Failed to create group");
 
@@ -1642,8 +1589,7 @@ mod tests {
             .create_group(
                 &admin_pk,
                 vec![non_admin_event.clone(), member1_event.clone()],
-                vec![admin_pk], // Only admin is an admin
-                create_nostr_group_config_data(),
+                create_nostr_group_config_data(vec![admin_pk]), // Only admin is an admin
             )
             .expect("Failed to create group");
 
@@ -1698,8 +1644,7 @@ mod tests {
             .create_group(
                 &creator_pk,
                 initial_key_package_events,
-                admins,
-                create_nostr_group_config_data(),
+                create_nostr_group_config_data(admins),
             )
             .expect("Failed to create group");
 
@@ -1776,8 +1721,7 @@ mod tests {
             .create_group(
                 &creator_pk,
                 initial_key_package_events,
-                admins,
-                create_nostr_group_config_data(),
+                create_nostr_group_config_data(admins),
             )
             .expect("Failed to create group");
 
@@ -1819,8 +1763,7 @@ mod tests {
             .create_group(
                 &creator_pk,
                 initial_key_package_events,
-                admins,
-                create_nostr_group_config_data(),
+                create_nostr_group_config_data(admins),
             )
             .expect("Failed to create group");
 
@@ -1896,8 +1839,7 @@ mod tests {
             .create_group(
                 &creator_pk,
                 initial_key_package_events,
-                admins,
-                create_nostr_group_config_data(),
+                create_nostr_group_config_data(admins),
             )
             .expect("Failed to create group");
 
@@ -2013,8 +1955,7 @@ mod tests {
             .create_group(
                 &creator_pk,
                 initial_key_package_events,
-                admins,
-                create_nostr_group_config_data(),
+                create_nostr_group_config_data(admins),
             )
             .expect("Failed to create group");
 
@@ -2097,8 +2038,7 @@ mod tests {
             .create_group(
                 &creator_pk,
                 initial_key_package_events,
-                admins,
-                create_nostr_group_config_data(),
+                create_nostr_group_config_data(admins),
             )
             .expect("Failed to create group");
 
@@ -2168,8 +2108,7 @@ mod tests {
             .create_group(
                 &creator_pk,
                 initial_key_package_events,
-                admins,
-                create_nostr_group_config_data(),
+                create_nostr_group_config_data(admins),
             )
             .expect("Failed to create group");
 
@@ -2317,8 +2256,7 @@ mod tests {
             .create_group(
                 &creator_pk,
                 initial_key_package_events,
-                admins.clone(),
-                create_nostr_group_config_data(),
+                create_nostr_group_config_data(admins.clone()),
             )
             .expect("Failed to create group");
 
@@ -2399,7 +2337,7 @@ mod tests {
         assert!(synced_stored_group.epoch > initial_stored_group.epoch);
         assert_eq!(
             synced_stored_group.admin_pubkeys,
-            admins.into_iter().collect()
+            admins.into_iter().collect::<BTreeSet<_>>()
         );
 
         // Verify other fields remain unchanged
@@ -2436,8 +2374,7 @@ mod tests {
             .create_group(
                 &creator_pk,
                 initial_key_package_events,
-                admins,
-                create_nostr_group_config_data(),
+                create_nostr_group_config_data(admins),
             )
             .expect("Failed to create group");
 
@@ -2511,8 +2448,7 @@ mod tests {
             .create_group(
                 &creator_pk,
                 initial_key_package_events,
-                admins,
-                create_nostr_group_config_data(),
+                create_nostr_group_config_data(admins),
             )
             .expect("Failed to create group");
 

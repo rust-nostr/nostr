@@ -30,6 +30,7 @@
 - Remove group type from groups (https://github.com/rust-nostr/nostr/commit/1deb718cf0a70c110537b505bdbad881d43d15cf)
 - Removed `NostrMls::update_group_name`, `NostrMls::update_group_description`, `NostrMls::update_group_image` in favor of a single method for updating all group data.
 - Added `admins` member to the `NostrGroupConfigData` (https://github.com/rust-nostr/nostr/pull/1050)
+- Changed method signature of `NostrMls::create_group`. Removed the admins param. Admins are specified in the `NostrGroupConfigData`. (https://github.com/rust-nostr/nostr/pull/1050)
 
 ### Changed
 

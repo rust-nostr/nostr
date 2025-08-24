@@ -21,6 +21,8 @@ pub mod groups;
 pub mod key_packages;
 pub mod messages;
 pub mod prelude;
+#[cfg(test)]
+pub mod test_util;
 mod util;
 pub mod welcomes;
 

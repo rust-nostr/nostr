@@ -70,7 +70,6 @@ async fn main() -> Result<()> {
     let group_create_result = alice_nostr_mls.create_group(
         &alice_keys.public_key(),
         vec![bob_key_package_event.clone()],
-        vec![alice_keys.public_key(), bob_keys.public_key()], // Make Bob an admin too
         config,
     )?;
 
