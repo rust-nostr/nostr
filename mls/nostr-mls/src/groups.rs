@@ -63,7 +63,7 @@ pub struct NostrGroupConfigData {
 }
 
 /// Configuration for updating group data with optional fields
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct NostrGroupDataUpdate {
     /// Group name (optional)
     pub name: Option<String>,
@@ -103,30 +103,32 @@ impl NostrGroupConfigData {
 impl NostrGroupDataUpdate {
     /// Creates a new empty update configuration
     pub fn new() -> Self {
-        Self {
-            name: None,
-            description: None,
-            image_url: None,
-            image_key: None,
-            relays: None,
-            admins: None,
-        }
+        Self::default()
     }
 
     /// Sets the name to be updated
-    pub fn name<T: Into<String>>(mut self, name: T) -> Self {
+    pub fn name<T>(mut self, name: T) -> Self
+    where
+        T: Into<String>,
+    {
         self.name = Some(name.into());
         self
     }
 
     /// Sets the description to be updated
-    pub fn description<T: Into<String>>(mut self, description: T) -> Self {
+    pub fn description<T>(mut self, description: T) -> Self
+    where
+        T: Into<String>,
+    {
         self.description = Some(description.into());
         self
     }
 
     /// Sets the image URL to be updated
-    pub fn image_url<T: Into<String>>(mut self, image_url: Option<T>) -> Self {
+    pub fn image_url<T>(mut self, image_url: Option<T>) -> Self
+    where
+        T: Into<String>,
+    {
         self.image_url = Some(image_url.map(Into::into));
         self
     }
@@ -147,12 +149,6 @@ impl NostrGroupDataUpdate {
     pub fn admins(mut self, admins: Vec<PublicKey>) -> Self {
         self.admins = Some(admins);
         self
-    }
-}
-
-impl Default for NostrGroupDataUpdate {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
