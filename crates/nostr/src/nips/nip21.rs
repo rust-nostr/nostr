@@ -7,13 +7,11 @@
 //! <https://github.com/nostr-protocol/nips/blob/master/21.md>
 
 use alloc::string::String;
-use alloc::vec::Vec;
 use core::convert::Infallible;
 use core::fmt;
 
 use super::nip19::{self, FromBech32, Nip19, Nip19Coordinate, Nip19Event, Nip19Profile, ToBech32};
 use crate::nips::nip01::Coordinate;
-use crate::parser::{NostrParser, NostrParserOptions, Token};
 use crate::{EventId, PublicKey};
 
 /// URI scheme
@@ -196,28 +194,6 @@ impl Nip21 {
             _ => None,
         }
     }
-}
-
-/// Extract `nostr:` URIs from a text
-///
-/// The returned vector maintains the same order as their occurrences in the input.
-///
-/// The result **is not deduplicated**, meaning that if a URI appears multiple times in the input,
-/// it will appear the same number of times in the output.
-#[deprecated(since = "0.43.0", note = "Use the NostrParser instead.")]
-pub fn extract_from_text(content: &str) -> Vec<Nip21> {
-    let parser: NostrParser = NostrParser::new();
-    let opts: NostrParserOptions = NostrParserOptions::disable_all().nostr_uris(true);
-
-    let mut list: Vec<Nip21> = Vec::new();
-
-    for token in parser.parse(content).opts(opts) {
-        if let Token::Nostr(uri) = token {
-            list.push(uri);
-        }
-    }
-
-    list
 }
 
 #[cfg(test)]

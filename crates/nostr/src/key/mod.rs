@@ -23,8 +23,6 @@ use secp256k1::{self, Keypair, Message, Secp256k1, Signing, XOnlyPublicKey};
 
 pub mod public_key;
 pub mod secret_key;
-#[cfg(feature = "std")]
-pub mod vanity;
 
 pub use self::public_key::PublicKey;
 pub use self::secret_key::SecretKey;

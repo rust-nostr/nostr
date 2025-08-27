@@ -12,10 +12,6 @@ use crate::nips::nip01::CoordinateBorrow;
 use crate::nips::nip73::ExternalContentId;
 use crate::{Alphabet, Event, EventId, Kind, PublicKey, RelayUrl, Tag, TagKind, TagStandard, Url};
 
-#[allow(missing_docs)]
-#[deprecated(since = "0.42.0", note = "Use `CommentTarget` instead")]
-pub type Comment<'a> = CommentTarget<'a>;
-
 /// Comment target
 pub enum CommentTarget<'a> {
     /// Event

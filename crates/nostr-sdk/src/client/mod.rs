@@ -97,15 +97,6 @@ impl Client {
         }
     }
 
-    /// Update minimum POW difficulty for received events
-    ///
-    /// Events with a POW lower than the current value will be ignored to prevent resources exhaustion.
-    #[deprecated(
-        since = "0.40.0",
-        note = "This no longer works, please use `AdmitPolicy` instead."
-    )]
-    pub fn update_min_pow_difficulty(&self, _difficulty: u8) {}
-
     /// Auto authenticate to relays (default: true)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
@@ -500,18 +491,6 @@ impl Client {
     #[inline]
     pub async fn try_connect(&self, timeout: Duration) -> Output<()> {
         self.pool.try_connect(timeout).await
-    }
-
-    /// Connect to all added relays
-    ///
-    /// Try to connect to the relays and wait for them to be connected at most for the specified `timeout`.
-    /// The code continues if the `timeout` is reached or if all relays connect.
-    #[deprecated(
-        since = "0.39.0",
-        note = "Use `connect` + `wait_for_connection` instead."
-    )]
-    pub async fn connect_with_timeout(&self, timeout: Duration) {
-        self.pool.try_connect(timeout).await;
     }
 
     /// Disconnect from all relays

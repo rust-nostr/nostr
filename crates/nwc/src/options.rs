@@ -7,7 +7,7 @@
 use std::time::Duration;
 
 use nostr_relay_pool::monitor::Monitor;
-use nostr_relay_pool::{ConnectionMode, RelayOptions};
+use nostr_relay_pool::RelayOptions;
 
 /// Default timeout
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
@@ -35,18 +35,6 @@ impl NostrWalletConnectOptions {
     #[inline]
     pub fn new() -> Self {
         Self::default()
-    }
-
-    /// Set connection mode
-    #[deprecated(
-        since = "0.43.0",
-        note = "Use `NostrWalletConnectOptions::relay` instead"
-    )]
-    pub fn connection_mode(self, mode: ConnectionMode) -> Self {
-        Self {
-            relay: self.relay.connection_mode(mode),
-            ..self
-        }
     }
 
     /// Set NWC requests timeout (default: [`DEFAULT_TIMEOUT`])

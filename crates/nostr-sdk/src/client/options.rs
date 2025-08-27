@@ -12,10 +12,6 @@ use std::time::Duration;
 
 use nostr_relay_pool::prelude::*;
 
-#[allow(missing_docs)]
-#[deprecated(since = "0.43.0", note = "Use `ClientOptions` instead.")]
-pub type Options = ClientOptions;
-
 /// Options
 #[derive(Debug, Clone, Default)]
 pub struct ClientOptions {
@@ -44,21 +40,6 @@ impl ClientOptions {
     #[inline]
     pub fn autoconnect(mut self, val: bool) -> Self {
         self.autoconnect = val;
-        self
-    }
-
-    /// Minimum POW difficulty for received events (default: 0)
-    #[deprecated(
-        since = "0.40.0",
-        note = "This no longer works, please use `AdmitPolicy` instead."
-    )]
-    pub fn min_pow(self, _difficulty: u8) -> Self {
-        self
-    }
-
-    /// REQ filters chunk size (default: 10)
-    #[deprecated(since = "0.39.0")]
-    pub fn req_filters_chunk_size(self, _size: u8) -> Self {
         self
     }
 
@@ -106,13 +87,6 @@ impl ClientOptions {
     #[inline]
     pub fn sleep_when_idle(mut self, config: SleepWhenIdle) -> Self {
         self.sleep_when_idle = config;
-        self
-    }
-
-    /// Notification channel size (default: [`DEFAULT_NOTIFICATION_CHANNEL_SIZE`])
-    #[deprecated(since = "0.42.0", note = "Use `Options::pool` instead.")]
-    pub fn notification_channel_size(mut self, size: usize) -> Self {
-        self.pool = self.pool.notification_channel_size(size);
         self
     }
 

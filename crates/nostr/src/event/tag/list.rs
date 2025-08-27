@@ -25,7 +25,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::{Error, Tag};
 use crate::nips::nip01::Coordinate;
-use crate::nips::nip21::{self, Nip21};
 use crate::{EventId, PublicKey, SingleLetterTag, TagKind, TagStandard, Timestamp};
 
 /// Tags Indexes
@@ -114,63 +113,6 @@ impl Tags {
             list,
             indexes: OnceCell::new(),
         }
-    }
-
-    /// Extract `nostr:` URIs from a text and construct tags.
-    ///
-    /// This method deduplicates the tags.
-    #[deprecated(since = "0.43.0")]
-    pub fn from_text(text: &str) -> Self {
-        #[allow(deprecated)]
-        let list: Vec<Nip21> = nip21::extract_from_text(text);
-
-        // The capacity here may be over-estimated since items in the `list` aren't deduplicated
-        let mut tags: Self = Self::with_capacity(list.len());
-
-        for item in list.into_iter() {
-            match item {
-                Nip21::Pubkey(pk) => tags.push(Tag::public_key(pk)),
-                Nip21::Profile(profile) => {
-                    let standard: TagStandard = TagStandard::PublicKey {
-                        public_key: profile.public_key,
-                        relay_url: profile.relays.into_iter().next(),
-                        alias: None,
-                        uppercase: false,
-                    };
-                    tags.push(Tag::from_standardized_without_cell(standard));
-                }
-                Nip21::EventId(id) => {
-                    let standard: TagStandard = TagStandard::Quote {
-                        event_id: id,
-                        relay_url: None,
-                        public_key: None,
-                    };
-                    tags.push(Tag::from_standardized_without_cell(standard));
-                }
-                Nip21::Event(event) => {
-                    let standard: TagStandard = TagStandard::Quote {
-                        event_id: event.event_id,
-                        relay_url: event.relays.into_iter().next(),
-                        public_key: event.author,
-                    };
-                    tags.push(Tag::from_standardized_without_cell(standard));
-                }
-                Nip21::Coordinate(addr) => {
-                    let standard: TagStandard = TagStandard::Coordinate {
-                        relay_url: addr.relays.first().cloned(),
-                        coordinate: addr.coordinate,
-                        uppercase: false,
-                    };
-                    tags.push(Tag::from_standardized_without_cell(standard));
-                }
-            }
-        }
-
-        // Dedup
-        tags.dedup();
-
-        // Return
-        tags
     }
 
     /// Parse tags

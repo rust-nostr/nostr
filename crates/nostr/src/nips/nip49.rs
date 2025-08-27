@@ -322,15 +322,6 @@ impl EncryptedSecretKey {
     }
 
     /// Decrypt secret key
-    #[deprecated(since = "0.40.0", note = "Use `decrypt` instead")]
-    pub fn to_secret_key<S>(self, password: S) -> Result<SecretKey, Error>
-    where
-        S: AsRef<str>,
-    {
-        self.decrypt(password.as_ref())
-    }
-
-    /// Decrypt secret key
     pub fn decrypt(&self, password: &str) -> Result<SecretKey, Error> {
         // Derive key
         let key: [u8; KEY_SIZE] = derive_key(password, &self.salt, self.log_n)?;

@@ -22,10 +22,6 @@ pub mod nip17;
 pub mod nip19;
 pub mod nip21;
 pub mod nip22;
-#[deprecated(
-    note = "NIP-26 is deprecated, for more info see <https://github.com/nostr-protocol/nips/blob/master/26.md>."
-)]
-pub mod nip26;
 pub mod nip34;
 pub mod nip35;
 pub mod nip38;

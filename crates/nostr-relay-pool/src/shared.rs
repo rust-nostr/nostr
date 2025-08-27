@@ -102,17 +102,6 @@ impl SharedState {
             .store(enable, Ordering::SeqCst);
     }
 
-    /// Minimum POW difficulty for received events
-    ///
-    /// All received events must have a difficulty equal or greater than the set one.
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
-    #[deprecated(
-        since = "0.40.0",
-        note = "This no longer works, please use `AdmitPolicy` instead."
-    )]
-    pub fn set_pow(&self, _difficulty: u8) {}
-
     /// Get database
     #[inline]
     pub fn database(&self) -> &Arc<dyn NostrDatabase> {
