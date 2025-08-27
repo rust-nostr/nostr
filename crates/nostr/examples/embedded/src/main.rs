@@ -10,15 +10,14 @@
 extern crate alloc;
 extern crate nostr;
 
+use alloc::sync::Arc;
 use core::panic::PanicInfo;
 
 use alloc_cortex_m::CortexMHeap;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::{debug, hprintln};
-use nostr::secp256k1::rand::{self, RngCore};
 use nostr::secp256k1::Secp256k1;
-use nostr::{FromBech32, Keys, ToBech32, SecretKey};
-use nostr::nips::nip06::FromMnemonic;
+use nostr::prelude::*;
 
 // this is the allocator the application will use
 #[global_allocator]
@@ -26,26 +25,21 @@ static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
 
 const HEAP_SIZE: usize = 1024 * 256; // 256 KB
 
+struct FakeTime;
+
+impl TimeProvider for FakeTime {
+    fn now(&self) -> Timestamp {
+        Timestamp::from_secs(16777216)
+    }
+}
+
 struct FakeRng;
 
-impl RngCore for FakeRng {
-    fn next_u32(&mut self) -> u32 {
-        57
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        57
-    }
-
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
+impl SecureRandom for FakeRng {
+    fn fill(&self, dest: &mut [u8]) {
         for i in dest {
             *i = 57;
         }
-        Ok(())
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        self.try_fill_bytes(dest).unwrap();
     }
 }
 
@@ -57,22 +51,25 @@ fn main() -> ! {
 
     let secp = Secp256k1::new();
 
-    // Restore from bech32 secret key
-    let secret_key =
-        SecretKey::from_bech32("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")
-            .unwrap();
-    let keys = Keys::new_with_ctx(&secp, secret_key);
+    NostrProvider {
+        secp,
+        time: Arc::new(FakeTime),
+        rng: Arc::new(FakeRng),
+    }.install();
+
+    // Parse secret key
+    let keys = Keys::parse("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99").unwrap();
     hprintln!("Restored keys from bech32:").unwrap();
     print_keys(&keys);
 
     // Restore from menmonic
     let mnemonic: &str = "equal dragon fabric refuse stable cherry smoke allow alley easy never medal attend together lumber movie what sad siege weather matrix buffalo state shoot";
-    let keys = Keys::from_mnemonic_with_ctx(&secp, mnemonic, None, None, None, None).unwrap();
+    let keys = Keys::from_mnemonic(mnemonic, None).unwrap();
     hprintln!("\nRestore keys from mnemonic:").unwrap();
     print_keys(&keys);
 
     // Generate new random keys
-    let keys = Keys::generate_with_ctx(&secp, &mut FakeRng);
+    let keys = Keys::generate();
     hprintln!("\nRandom keys (using FakeRng):").unwrap();
     print_keys(&keys);
 

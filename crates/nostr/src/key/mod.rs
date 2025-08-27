@@ -5,19 +5,17 @@
 
 //! Keys
 
-#[cfg(not(feature = "std"))]
-use core::cell::OnceCell;
+use alloc::boxed::Box;
+use alloc::string::String;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-#[cfg(feature = "std")]
 use core::str::FromStr;
-#[cfg(feature = "std")]
-use std::sync::OnceLock as OnceCell;
 
+#[cfg(not(feature = "std"))]
+use once_cell::race::OnceBox as OnceCell;
 #[cfg(feature = "std")]
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::{CryptoRng, Rng};
+use once_cell::sync::OnceCell;
 use secp256k1::schnorr::Signature;
 use secp256k1::{self, Keypair, Message, Secp256k1, Signing, XOnlyPublicKey};
 
@@ -26,12 +24,10 @@ pub mod secret_key;
 
 pub use self::public_key::PublicKey;
 pub use self::secret_key::SecretKey;
-#[cfg(feature = "std")]
+use crate::provider::NostrProvider;
 use crate::signer::{NostrSigner, SignerBackend, SignerError};
-#[cfg(feature = "std")]
 use crate::util::BoxedFuture;
-#[cfg(feature = "std")]
-use crate::{Event, UnsignedEvent, SECP256K1};
+use crate::{Event, UnsignedEvent};
 
 /// [`Keys`] error
 #[derive(Debug, PartialEq)]
@@ -119,26 +115,18 @@ impl Keys {
     /// Construct from a secret key.
     ///
     /// This method internally constructs the [`Keypair`] and derives the [`PublicKey`].
-    #[inline]
-    #[cfg(feature = "std")]
     pub fn new(secret_key: SecretKey) -> Self {
-        Self::new_with_ctx(SECP256K1, secret_key)
-    }
-
-    /// Construct from a secret key.
-    ///
-    /// This method internally constructs the [`Keypair`] and derives the [`PublicKey`].
-    pub fn new_with_ctx<C>(secp: &Secp256k1<C>, secret_key: SecretKey) -> Self
-    where
-        C: Signing,
-    {
-        let key_pair: Keypair = Keypair::from_secret_key(secp, &secret_key);
+        let provider = NostrProvider::get();
+        let key_pair: Keypair = Keypair::from_secret_key(&provider.secp, &secret_key);
         let public_key: XOnlyPublicKey = XOnlyPublicKey::from_keypair(&key_pair).0;
 
         Self {
             public_key: PublicKey::from(public_key),
             secret_key,
-            key_pair: OnceCell::from(key_pair),
+            #[cfg(feature = "std")]
+            key_pair: OnceCell::with_value(key_pair),
+            #[cfg(not(feature = "std"))]
+            key_pair: OnceCell::with_value(Box::new(key_pair)),
         }
     }
 
@@ -146,46 +134,9 @@ impl Keys {
     ///
     /// Check [`SecretKey::parse`] to learn more about secret key parsing.
     #[inline]
-    #[cfg(feature = "std")]
     pub fn parse(secret_key: &str) -> Result<Self, Error> {
-        Self::parse_with_ctx(SECP256K1, secret_key)
-    }
-
-    /// Parse secret key and construct keys.
-    ///
-    /// Check [`SecretKey::parse`] to learn more about secret key parsing.
-    #[inline]
-    pub fn parse_with_ctx<C>(secp: &Secp256k1<C>, secret_key: &str) -> Result<Self, Error>
-    where
-        C: Signing,
-    {
         let secret_key: SecretKey = SecretKey::parse(secret_key)?;
-        Ok(Self::new_with_ctx(secp, secret_key))
-    }
-
-    /// Generate random keys
-    ///
-    /// This constructor uses a random number generator that retrieves randomness from the operating system (see [`OsRng`]).
-    ///
-    /// Use [`Keys::generate_with_rng`] to specify a custom random source.
-    ///
-    /// Check [`Keys::generate_with_ctx`] to learn more about how this constructor works internally.
-    #[inline]
-    #[cfg(feature = "std")]
-    pub fn generate() -> Self {
-        Self::generate_with_rng(&mut OsRng)
-    }
-
-    /// Generate random keys using a custom random source
-    ///
-    /// Check [`Keys::generate_with_ctx`] to learn more about how this constructor works internally.
-    #[inline]
-    #[cfg(feature = "std")]
-    pub fn generate_with_rng<R>(rng: &mut R) -> Self
-    where
-        R: Rng + ?Sized,
-    {
-        Self::generate_with_ctx(SECP256K1, rng)
+        Ok(Self::new(secret_key))
     }
 
     /// Generate random keys
@@ -194,13 +145,11 @@ impl Keys {
     /// This allows faster keys generation (i.e., for vanity pubkey mining).
     /// The [`Keypair`] will be automatically created when needed and stored in a cell.
     #[inline]
-    pub fn generate_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
-    where
-        C: Signing,
-        R: Rng + ?Sized,
-    {
-        let (secret_key, public_key) = secp.generate_keypair(rng);
-        let (public_key, _) = public_key.x_only_public_key();
+    pub fn generate() -> Self {
+        let provider = NostrProvider::get();
+        let secret_key: SecretKey = SecretKey::generate();
+        let (public_key, _) = secret_key.x_only_public_key(&provider.secp);
+
         Self {
             public_key: PublicKey::from(public_key),
             secret_key: SecretKey::from(secret_key),
@@ -226,36 +175,33 @@ impl Keys {
     where
         C: Signing,
     {
+        #[cfg(feature = "std")]
+        {
+            self.key_pair
+                .get_or_init(|| Keypair::from_secret_key(secp, &self.secret_key))
+        }
+
+        #[cfg(not(feature = "std"))]
         self.key_pair
-            .get_or_init(|| Keypair::from_secret_key(secp, &self.secret_key))
+            .get_or_init(|| Box::new(Keypair::from_secret_key(secp, &self.secret_key)))
     }
 
     /// Creates a schnorr signature of the [`Message`].
-    ///
-    /// This method uses a random number generator that retrieves randomness from the operating system (see [`OsRng`]).
     #[inline]
-    #[cfg(feature = "std")]
     pub fn sign_schnorr(&self, message: &Message) -> Signature {
-        self.sign_schnorr_with_ctx(SECP256K1, message, &mut OsRng)
-    }
+        let provider = NostrProvider::get();
+        let keypair: &Keypair = self.key_pair(&provider.secp);
 
-    /// Creates a schnorr signature of the [`Message`] using a custom random number generation source.
-    pub fn sign_schnorr_with_ctx<C, R>(
-        &self,
-        secp: &Secp256k1<C>,
-        message: &Message,
-        rng: &mut R,
-    ) -> Signature
-    where
-        C: Signing,
-        R: Rng + CryptoRng,
-    {
-        let keypair: &Keypair = self.key_pair(secp);
-        secp.sign_schnorr_with_rng(message, keypair, rng)
+        // Random aux data
+        let mut aux = [0u8; 32];
+        provider.rng.fill(&mut aux);
+
+        provider
+            .secp
+            .sign_schnorr_with_aux_rand(message, keypair, &aux)
     }
 }
 
-#[cfg(feature = "std")]
 impl FromStr for Keys {
     type Err = Error;
 
@@ -266,7 +212,6 @@ impl FromStr for Keys {
     }
 }
 
-#[cfg(feature = "std")]
 impl NostrSigner for Keys {
     fn backend(&self) -> SignerBackend {
         SignerBackend::Keys

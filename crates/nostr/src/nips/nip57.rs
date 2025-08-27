@@ -17,19 +17,11 @@ use bech32::{Bech32, Hrp};
 use cbc::{Decryptor, Encryptor};
 use hashes::sha256::Hash as Sha256Hash;
 use hashes::Hash;
-#[cfg(feature = "std")]
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::{CryptoRng, RngCore};
-use secp256k1::{self, Secp256k1, Signing, Verification};
 
 use super::nip01::Coordinate;
 use crate::event::builder::Error as BuilderError;
 use crate::key::Error as KeyError;
-#[cfg(feature = "std")]
-use crate::types::time::Instant;
-use crate::types::time::TimeSupplier;
-#[cfg(feature = "std")]
-use crate::SECP256K1;
+use crate::provider::NostrProvider;
 use crate::{
     event, util, Event, EventBuilder, EventId, JsonUtil, Keys, Kind, PublicKey, RelayUrl,
     SecretKey, Tag, TagStandard, Timestamp,
@@ -262,26 +254,8 @@ pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
 }
 
 /// Create **private** zap request
-#[inline]
-#[cfg(feature = "std")]
 pub fn private_zap_request(data: ZapRequestData, keys: &Keys) -> Result<Event, Error> {
-    private_zap_request_with_ctx(SECP256K1, &mut OsRng, &Instant::now(), data, keys)
-}
-
-/// Create **private** zap request
-pub fn private_zap_request_with_ctx<C, R, T>(
-    secp: &Secp256k1<C>,
-    rng: &mut R,
-    supplier: &T,
-    data: ZapRequestData,
-    keys: &Keys,
-) -> Result<Event, Error>
-where
-    C: Signing + Verification,
-    R: RngCore + CryptoRng,
-    T: TimeSupplier,
-{
-    let created_at: Timestamp = Timestamp::now_with_supplier(supplier);
+    let created_at: Timestamp = Timestamp::now();
 
     // Create encryption key
     let secret_key: SecretKey =
@@ -294,20 +268,20 @@ where
     }
     let msg: String = EventBuilder::new(Kind::ZapPrivateMessage, &data.message)
         .tags(tags)
-        .sign_with_ctx(secp, rng, supplier, keys)?
+        .sign_with_keys(keys)?
         .as_json();
-    let msg: String = encrypt_private_zap_message(rng, &secret_key, &data.public_key, msg)?;
+    let msg: String = encrypt_private_zap_message(&secret_key, &data.public_key, msg)?;
 
     // Compose event
     let mut tags: Vec<Tag> = data.into();
     tags.push(Tag::from_standardized_without_cell(TagStandard::Anon {
         msg: Some(msg),
     }));
-    let private_zap_keys: Keys = Keys::new_with_ctx(secp, secret_key);
+    let private_zap_keys: Keys = Keys::new(secret_key);
     Ok(EventBuilder::new(Kind::ZapRequest, "")
         .tags(tags)
         .custom_created_at(created_at)
-        .sign_with_ctx(secp, rng, supplier, &private_zap_keys)?)
+        .sign_with_keys(&private_zap_keys)?)
 }
 
 /// Create NIP57 encryption key for **private** zap
@@ -324,19 +298,19 @@ pub fn create_encryption_key(
 }
 
 /// Encrypt a private zap message using the given keys
-pub fn encrypt_private_zap_message<R, T>(
-    rng: &mut R,
+pub fn encrypt_private_zap_message<T>(
     secret_key: &SecretKey,
     public_key: &PublicKey,
     msg: T,
 ) -> Result<String, Error>
 where
-    R: RngCore,
     T: AsRef<[u8]>,
 {
+    let provider = NostrProvider::get();
+
     let key: [u8; 32] = util::generate_shared_key(secret_key, public_key)?;
     let mut iv: [u8; 16] = [0u8; 16];
-    rng.fill_bytes(&mut iv);
+    provider.rng.fill(&mut iv);
 
     let cipher = Aes256CbcEnc::new(&key.into(), &iv.into());
     let msg: Vec<u8> = cipher.encrypt_padded_vec_mut::<Pkcs7>(msg.as_ref());

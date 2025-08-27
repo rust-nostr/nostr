@@ -30,6 +30,7 @@ extern crate alloc;
 #[macro_use]
 extern crate serde;
 pub extern crate bitcoin_hashes as hashes;
+extern crate core;
 pub extern crate secp256k1;
 
 #[doc(hidden)]
@@ -48,6 +49,7 @@ pub mod message;
 pub mod nips;
 pub mod parser;
 pub mod prelude;
+pub mod provider;
 pub mod signer;
 pub mod types;
 pub mod util;
@@ -72,9 +74,6 @@ pub use self::signer::{NostrSigner, SignerError};
 pub use self::types::{ImageDimensions, RelayUrl, Timestamp, TryIntoUrl, Url};
 #[doc(hidden)]
 pub use self::util::JsonUtil;
-#[doc(hidden)]
-#[cfg(feature = "std")]
-pub use self::util::SECP256K1;
 
 /// Result
 #[doc(hidden)]

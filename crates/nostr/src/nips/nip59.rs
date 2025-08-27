@@ -10,14 +10,10 @@ use alloc::string::String;
 use core::fmt;
 use core::ops::Range;
 
-use secp256k1::{Secp256k1, Verification};
-
 use crate::event::unsigned::UnsignedEvent;
 use crate::event::{self, Event};
 use crate::signer::SignerError;
-#[cfg(feature = "std")]
-use crate::{EventBuilder, Timestamp, SECP256K1};
-use crate::{JsonUtil, Kind, NostrSigner, PublicKey};
+use crate::{EventBuilder, JsonUtil, Kind, NostrSigner, PublicKey, Timestamp};
 
 /// Range for random timestamp tweak (up to 2 days)
 pub const RANGE_RANDOM_TIMESTAMP_TWEAK: Range<u64> = 0..172800; // From 0 secs to 2 days
@@ -71,25 +67,8 @@ impl UnwrappedGift {
     /// Unwrap Gift Wrap event
     ///
     /// Internally verify the `seal` event
-    #[inline]
-    #[cfg(feature = "std")]
     pub async fn from_gift_wrap<T>(signer: &T, gift_wrap: &Event) -> Result<Self, Error>
     where
-        T: NostrSigner,
-    {
-        Self::from_gift_wrap_with_ctx(SECP256K1, signer, gift_wrap).await
-    }
-
-    /// Unwrap Gift Wrap event
-    ///
-    /// Internally verify the `seal` event
-    pub async fn from_gift_wrap_with_ctx<C, T>(
-        secp: &Secp256k1<C>,
-        signer: &T,
-        gift_wrap: &Event,
-    ) -> Result<Self, Error>
-    where
-        C: Verification,
         T: NostrSigner,
     {
         // Check event kind
@@ -102,7 +81,7 @@ impl UnwrappedGift {
             .nip44_decrypt(&gift_wrap.pubkey, &gift_wrap.content)
             .await?;
         let seal: Event = Event::from_json(seal)?;
-        seal.verify_with_ctx(secp)?;
+        seal.verify()?;
 
         // Decrypt rumor
         let rumor: String = signer.nip44_decrypt(&seal.pubkey, &seal.content).await?;
@@ -116,7 +95,6 @@ impl UnwrappedGift {
 
 /// Extract `rumor` from Gift Wrap event
 #[inline]
-#[cfg(feature = "std")]
 pub async fn extract_rumor<T>(signer: &T, gift_wrap: &Event) -> Result<UnwrappedGift, Error>
 where
     T: NostrSigner,
@@ -127,7 +105,6 @@ where
 /// Make a seal
 ///
 /// The `rumor` can be an [`EventBuilder`] or an [`UnsignedEvent`].
-#[cfg(feature = "std")]
 pub async fn make_seal<T>(
     signer: &T,
     receiver_pubkey: &PublicKey,

@@ -5,7 +5,7 @@
 //! Nostr Signer
 
 use alloc::borrow::Cow;
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use alloc::sync::Arc;
 use core::any::Any;
 use core::fmt::{self, Debug};
@@ -42,9 +42,9 @@ impl SignerError {
     #[cfg(not(feature = "std"))]
     pub fn backend<E>(error: E) -> Self
     where
-        E: Into<String>,
+        E: fmt::Display,
     {
-        Self(error.into())
+        Self(error.to_string())
     }
 }
 

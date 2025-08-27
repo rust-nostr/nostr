@@ -8,11 +8,15 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant;
 
 use async_utility::{task, time};
 use async_wsocket::futures_util::{self, SinkExt, StreamExt};
 use async_wsocket::{ConnectionMode, Message};
 use atomic_destructor::AtomicDestroyer;
+#[cfg(target_arch = "wasm32")]
+use instant::Instant;
 use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use nostr::secp256k1::rand::{self, Rng};
 use nostr_database::prelude::*;

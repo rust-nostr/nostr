@@ -6,16 +6,11 @@
 
 use alloc::string::String;
 
-#[cfg(feature = "std")]
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::{CryptoRng, Rng};
 use secp256k1::schnorr::Signature;
-use secp256k1::{Message, Secp256k1, Signing, Verification};
+use secp256k1::Message;
 
 use super::error::Error;
-use crate::{Event, EventId, JsonUtil, Keys, Kind, PublicKey, Tag, Tags, Timestamp};
-#[cfg(feature = "std")]
-use crate::{NostrSigner, SECP256K1};
+use crate::{Event, EventId, JsonUtil, Keys, Kind, NostrSigner, PublicKey, Tag, Tags, Timestamp};
 
 /// Unsigned event
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -104,7 +99,6 @@ impl UnsignedEvent {
 
     /// Sign an unsigned event
     #[inline]
-    #[cfg(feature = "std")]
     pub async fn sign<T>(self, signer: &T) -> Result<Event, Error>
     where
         T: NostrSigner,
@@ -116,68 +110,31 @@ impl UnsignedEvent {
     ///
     /// Internally: calculate [EventId] (if not set), sign it, compose and verify [Event].
     #[inline]
-    #[cfg(feature = "std")]
     pub fn sign_with_keys(self, keys: &Keys) -> Result<Event, Error> {
-        self.sign_with_ctx(SECP256K1, &mut OsRng, keys)
-    }
-
-    /// Sign an unsigned event with [`Keys`] signer
-    ///
-    /// Internally: calculate [EventId] (if not set), sign it, compose and verify [Event].
-    pub fn sign_with_ctx<C, R>(
-        self,
-        secp: &Secp256k1<C>,
-        rng: &mut R,
-        keys: &Keys,
-    ) -> Result<Event, Error>
-    where
-        C: Signing + Verification,
-        R: Rng + CryptoRng,
-    {
         let verify_id: bool = self.id.is_some();
         let id: EventId = self.id.unwrap_or_else(|| self.compute_id());
         let message: Message = Message::from_digest(id.to_bytes());
-        let sig: Signature = keys.sign_schnorr_with_ctx(secp, &message, rng);
-        self.internal_add_signature(secp, id, sig, verify_id, false)
+        let sig: Signature = keys.sign_schnorr(&message);
+        self.internal_add_signature(id, sig, verify_id, false)
     }
 
     /// Add signature to unsigned event
     ///
     /// Internally verify the [Event].
     #[inline]
-    #[cfg(feature = "std")]
     pub fn add_signature(self, sig: Signature) -> Result<Event, Error> {
-        self.add_signature_with_ctx(SECP256K1, sig)
-    }
-
-    /// Add signature to unsigned event
-    ///
-    /// Internally verify the [Event].
-    #[inline]
-    pub fn add_signature_with_ctx<C>(
-        self,
-        secp: &Secp256k1<C>,
-        sig: Signature,
-    ) -> Result<Event, Error>
-    where
-        C: Verification,
-    {
         let verify_id: bool = self.id.is_some();
         let id: EventId = self.id.unwrap_or_else(|| self.compute_id());
-        self.internal_add_signature(secp, id, sig, verify_id, true)
+        self.internal_add_signature(id, sig, verify_id, true)
     }
 
-    fn internal_add_signature<C>(
+    fn internal_add_signature(
         self,
-        secp: &Secp256k1<C>,
         id: EventId,
         sig: Signature,
         verify_id: bool,
         verify_sig: bool,
-    ) -> Result<Event, Error>
-    where
-        C: Verification,
-    {
+    ) -> Result<Event, Error> {
         let event: Event = Event::new(
             id,
             self.pubkey,
@@ -194,7 +151,7 @@ impl UnsignedEvent {
         }
 
         // Verify event signature
-        if verify_sig && !event.verify_signature_with_ctx(secp) {
+        if verify_sig && !event.verify_signature() {
             return Err(Error::InvalidSignature);
         }
 

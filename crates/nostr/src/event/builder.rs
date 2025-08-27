@@ -9,10 +9,6 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::ops::Range;
 
-#[cfg(feature = "std")]
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::{CryptoRng, Rng};
-use secp256k1::{Secp256k1, Signing, Verification};
 use serde_json::{json, Value};
 
 use crate::nips::nip62::VanishTarget;
@@ -243,10 +239,7 @@ impl EventBuilder {
     ///
     /// By default, this method removes any `p` tags that match the author's public key.
     /// To allow self-tagging, call [`EventBuilder::allow_self_tagging`] first.
-    pub fn build_with_ctx<T>(mut self, supplier: &T, public_key: PublicKey) -> UnsignedEvent
-    where
-        T: TimeSupplier,
-    {
+    pub fn build(mut self, public_key: PublicKey) -> UnsignedEvent {
         // If self-tagging isn't allowed, discard all `p` tags that match the event author.
         if !self.allow_self_tagging {
             let public_key_hex: String = public_key.to_hex();
@@ -278,9 +271,8 @@ impl EventBuilder {
 
                     self.tags.push(Tag::pow(nonce, difficulty));
 
-                    let created_at: Timestamp = self
-                        .custom_created_at
-                        .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
+                    let created_at: Timestamp =
+                        self.custom_created_at.unwrap_or_else(|| Timestamp::now());
                     let id: EventId = EventId::new(
                         &public_key,
                         &created_at,
@@ -308,9 +300,7 @@ impl EventBuilder {
                 let mut unsigned: UnsignedEvent = UnsignedEvent {
                     id: None,
                     pubkey: public_key,
-                    created_at: self
-                        .custom_created_at
-                        .unwrap_or_else(|| Timestamp::now_with_supplier(supplier)),
+                    created_at: self.custom_created_at.unwrap_or_else(|| Timestamp::now()),
                     kind: self.kind,
                     tags: self.tags,
                     content: self.content,
@@ -321,23 +311,12 @@ impl EventBuilder {
         }
     }
 
-    /// Build an unsigned event
-    ///
-    /// By default, this method removes any `p` tags that match the author's public key.
-    /// To allow self-tagging, call [`EventBuilder::allow_self_tagging`] first.
-    #[inline]
-    #[cfg(feature = "std")]
-    pub fn build(self, pubkey: PublicKey) -> UnsignedEvent {
-        self.build_with_ctx(&Instant::now(), pubkey)
-    }
-
     /// Build, sign and return [`Event`]
     ///
     /// Shortcut for `builder.build(public_key).sign(signer)`.
     ///
     /// Check [`EventBuilder::build`] to learn more.
     #[inline]
-    #[cfg(feature = "std")]
     pub async fn sign<T>(self, signer: &T) -> Result<Event, Error>
     where
         T: NostrSigner,
@@ -348,32 +327,10 @@ impl EventBuilder {
 
     /// Build, sign and return [`Event`] using [`Keys`] signer
     ///
-    /// Check [`EventBuilder::sign_with_ctx`] to learn more.
-    #[inline]
-    #[cfg(feature = "std")]
+    /// Check [`EventBuilder::build`] to learn more.
     pub fn sign_with_keys(self, keys: &Keys) -> Result<Event, Error> {
-        self.sign_with_ctx(SECP256K1, &mut OsRng, &Instant::now(), keys)
-    }
-
-    /// Build, sign and return [`Event`] using [`Keys`] signer
-    ///
-    /// Check [`EventBuilder::build_with_ctx`] to learn more.
-    pub fn sign_with_ctx<C, R, T>(
-        self,
-        secp: &Secp256k1<C>,
-        rng: &mut R,
-        supplier: &T,
-        keys: &Keys,
-    ) -> Result<Event, Error>
-    where
-        C: Signing + Verification,
-        R: Rng + CryptoRng,
-        T: TimeSupplier,
-    {
         let pubkey: PublicKey = keys.public_key();
-        Ok(self
-            .build_with_ctx(supplier, pubkey)
-            .sign_with_ctx(secp, rng, keys)?)
+        Ok(self.build(pubkey).sign_with_keys(keys)?)
     }
 
     /// Profile metadata

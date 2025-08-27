@@ -10,8 +10,6 @@ use core::fmt::Debug;
 use core::future::Future;
 use core::pin::Pin;
 
-#[cfg(feature = "std")]
-use secp256k1::global::GlobalContext;
 use secp256k1::{ecdh, Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -45,10 +43,6 @@ pub fn generate_shared_key(
     shared_key.copy_from_slice(&ssp[..32]);
     Ok(shared_key)
 }
-
-/// Secp256k1 global context
-#[cfg(feature = "std")]
-pub static SECP256K1: &GlobalContext = secp256k1::global::SECP256K1;
 
 /// JSON util
 pub trait JsonUtil: Sized + Serialize + DeserializeOwned

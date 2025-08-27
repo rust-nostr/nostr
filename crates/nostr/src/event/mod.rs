@@ -13,7 +13,7 @@ use core::hash::{Hash, Hasher};
 use core::str::FromStr;
 
 use secp256k1::schnorr::Signature;
-use secp256k1::{Message, Secp256k1, Verification};
+use secp256k1::Message;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 pub mod borrow;
@@ -31,11 +31,7 @@ pub use self::kind::Kind;
 pub use self::tag::{Tag, TagKind, TagStandard, Tags};
 pub use self::unsigned::UnsignedEvent;
 use crate::nips::nip01::CoordinateBorrow;
-#[cfg(feature = "std")]
-use crate::types::time::Instant;
-use crate::types::time::TimeSupplier;
-#[cfg(feature = "std")]
-use crate::SECP256K1;
+use crate::provider::NostrProvider;
 use crate::{JsonUtil, Metadata, PublicKey, Timestamp};
 
 const ID: &str = "id";
@@ -153,24 +149,14 @@ impl Event {
     }
 
     /// Verify both [`EventId`] and [`Signature`]
-    #[inline]
-    #[cfg(feature = "std")]
     pub fn verify(&self) -> Result<(), Error> {
-        self.verify_with_ctx(SECP256K1)
-    }
-
-    /// Verify both [`EventId`] and [`Signature`]
-    pub fn verify_with_ctx<C>(&self, secp: &Secp256k1<C>) -> Result<(), Error>
-    where
-        C: Verification,
-    {
         // Verify ID
         if !self.verify_id() {
             return Err(Error::InvalidId);
         }
 
         // Verify signature
-        if !self.verify_signature_with_ctx(secp) {
+        if !self.verify_signature() {
             return Err(Error::InvalidSignature);
         }
 
@@ -189,22 +175,14 @@ impl Event {
         id == self.id
     }
 
-    /// Verify only event [`Signature`]
-    #[inline]
-    #[cfg(feature = "std")]
-    pub fn verify_signature(&self) -> bool {
-        self.verify_signature_with_ctx(SECP256K1)
-    }
-
     /// Verify event signature
     #[inline]
-    pub fn verify_signature_with_ctx<C>(&self, secp: &Secp256k1<C>) -> bool
-    where
-        C: Verification,
-    {
+    pub fn verify_signature(&self) -> bool {
+        let provider = NostrProvider::get();
         let message: Message = Message::from_digest(self.id.to_bytes());
         match self.pubkey.xonly() {
-            Ok(public_key) => secp
+            Ok(public_key) => provider
+                .secp
                 .verify_schnorr(&self.sig, &message, &public_key)
                 .is_ok(),
             Err(..) => false, // TODO: return error?
@@ -224,22 +202,8 @@ impl Event {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
     #[inline]
-    #[cfg(feature = "std")]
     pub fn is_expired(&self) -> bool {
-        let now: Instant = Instant::now();
-        self.is_expired_with_supplier(&now)
-    }
-
-    /// Returns `true` if the event has an expiration tag that is expired.
-    /// If an event has no expiration tag, then it will return `false`.
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
-    #[inline]
-    pub fn is_expired_with_supplier<T>(&self, supplier: &T) -> bool
-    where
-        T: TimeSupplier,
-    {
-        let now: Timestamp = Timestamp::now_with_supplier(supplier);
+        let now: Timestamp = Timestamp::now();
         self.is_expired_at(&now)
     }
 

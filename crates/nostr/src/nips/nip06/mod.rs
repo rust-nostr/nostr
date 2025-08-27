@@ -16,8 +16,7 @@ use secp256k1::{Secp256k1, Signing};
 mod bip32;
 
 use self::bip32::{ChildNumber, Xpriv};
-#[cfg(feature = "std")]
-use crate::SECP256K1;
+use crate::provider::NostrProvider;
 use crate::{Keys, SecretKey};
 
 const PURPOSE: u32 = 44;
@@ -67,7 +66,6 @@ pub trait FromMnemonic: Sized {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/06.md>
     #[inline]
-    #[cfg(feature = "std")]
     fn from_mnemonic<S>(mnemonic: S, passphrase: Option<S>) -> Result<Self, Self::Err>
     where
         S: AsRef<str>,
@@ -79,7 +77,6 @@ pub trait FromMnemonic: Sized {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/06.md>
     #[inline]
-    #[cfg(feature = "std")]
     fn from_mnemonic_with_account<S>(
         mnemonic: S,
         passphrase: Option<S>,
@@ -95,7 +92,6 @@ pub trait FromMnemonic: Sized {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/06.md>
     #[inline]
-    #[cfg(feature = "std")]
     fn from_mnemonic_advanced<S>(
         mnemonic: S,
         passphrase: Option<S>,
@@ -106,7 +102,8 @@ pub trait FromMnemonic: Sized {
     where
         S: AsRef<str>,
     {
-        Self::from_mnemonic_with_ctx(SECP256K1, mnemonic, passphrase, account, r#type, index)
+        let provider = NostrProvider::get();
+        Self::from_mnemonic_with_ctx(&provider.secp, mnemonic, passphrase, account, r#type, index)
     }
 
     /// Derive from BIP-39 mnemonics with **custom account** (ENGLISH wordlist).
@@ -171,11 +168,12 @@ impl FromMnemonic for Keys {
         let secret_key = SecretKey::from(child_xprv.private_key);
 
         // Compose keys
-        Ok(Self::new_with_ctx(secp, secret_key))
+        Ok(Self::new(secret_key))
     }
 }
 
 #[cfg(test)]
+#[cfg(feature = "std")]
 mod tests {
     use core::str::FromStr;
 

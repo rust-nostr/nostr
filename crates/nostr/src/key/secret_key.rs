@@ -8,18 +8,13 @@ use alloc::string::String;
 use core::ops::{Deref, DerefMut};
 use core::str::FromStr;
 
-#[cfg(feature = "std")]
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::Rng;
-use secp256k1::{Secp256k1, Signing};
 use serde::{Deserialize, Deserializer};
 
 use super::Error;
 use crate::nips::nip19::FromBech32;
 #[cfg(all(feature = "std", feature = "nip49"))]
 use crate::nips::nip49::{self, EncryptedSecretKey, KeySecurity};
-#[cfg(feature = "std")]
-use crate::SECP256K1;
+use crate::provider::NostrProvider;
 
 /// Secret key
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,32 +77,21 @@ impl SecretKey {
         })
     }
 
-    /// Generate new random secret key
+    /// Generate random secret key
     #[inline]
-    #[cfg(feature = "std")]
     pub fn generate() -> Self {
-        Self::generate_with_rng(&mut OsRng)
-    }
+        let provider = NostrProvider::get();
 
-    /// Generate random a secret key with a custom [`Rng`]
-    #[inline]
-    #[cfg(feature = "std")]
-    pub fn generate_with_rng<R>(rng: &mut R) -> Self
-    where
-        R: Rng + ?Sized,
-    {
-        Self::generate_with_ctx(SECP256K1, rng)
-    }
+        let mut data: [u8; 32] = random_32_bytes(&provider);
 
-    /// Generate random secret key with custom `secp256k1` context and [`Rng`]
-    #[inline]
-    pub fn generate_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
-    where
-        C: Signing,
-        R: Rng + ?Sized,
-    {
-        let (secret_key, _) = secp.generate_keypair(rng);
-        Self { inner: secret_key }
+        loop {
+            match Self::from_slice(&data) {
+                Ok(secret_key) => return secret_key,
+                Err(_) => {
+                    data = random_32_bytes(&provider);
+                }
+            }
+        }
     }
 
     /// Get secret key as `hex` string
@@ -163,4 +147,10 @@ impl Drop for SecretKey {
     fn drop(&mut self) {
         self.inner.non_secure_erase();
     }
+}
+
+fn random_32_bytes(provider: &NostrProvider) -> [u8; 32] {
+    let mut ret: [u8; 32] = [0u8; 32];
+    provider.rng.fill(&mut ret);
+    ret
 }

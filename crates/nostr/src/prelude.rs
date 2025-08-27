@@ -78,8 +78,9 @@ pub use crate::nips::nip96::{self, *};
 pub use crate::nips::nip98::{self, *};
 pub use crate::nips::nipc0::{self, *};
 pub use crate::parser::{self, *};
+pub use crate::provider::{self, *};
 pub use crate::signer::{self, *};
 pub use crate::types::*;
 pub use crate::util::{self, *};
 #[cfg(feature = "std")]
-pub use crate::{Result, SECP256K1};
+pub use crate::Result;
