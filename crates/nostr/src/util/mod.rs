@@ -16,7 +16,6 @@ use secp256k1::{ecdh, Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-pub mod hex;
 #[cfg(feature = "nip44")]
 pub mod hkdf;
 

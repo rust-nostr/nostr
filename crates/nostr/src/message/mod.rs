@@ -20,7 +20,6 @@ pub mod relay;
 pub use self::client::ClientMessage;
 pub use self::relay::{MachineReadablePrefix, RelayMessage};
 use crate::event;
-use crate::util::hex;
 
 /// Messages error
 #[derive(Debug)]

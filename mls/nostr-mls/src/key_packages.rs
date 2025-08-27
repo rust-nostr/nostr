@@ -1,6 +1,5 @@
 //! Nostr MLS Key Packages
 
-use nostr::util::hex;
 use nostr::{Event, Kind, PublicKey, RelayUrl, Tag, TagKind};
 use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls::key_packages::KeyPackage;

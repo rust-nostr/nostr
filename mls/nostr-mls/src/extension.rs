@@ -10,7 +10,6 @@ use std::str;
 
 use nostr::secp256k1::rand::rngs::OsRng;
 use nostr::secp256k1::rand::Rng;
-use nostr::util::hex;
 use nostr::{PublicKey, RelayUrl};
 use openmls::extensions::{Extension, ExtensionType};
 use openmls::group::{GroupContext, MlsGroup};

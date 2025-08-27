@@ -20,7 +20,7 @@ use crate::types::Url;
 use crate::{JsonUtil, NostrSigner, TagKind, TagStandard, Tags};
 
 /// NIP96 error
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     /// NIP98 error
     NIP98(nip98::Error),

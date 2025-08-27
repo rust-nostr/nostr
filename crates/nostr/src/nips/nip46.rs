@@ -28,7 +28,7 @@ pub const NOSTR_CONNECT_URI_SCHEME: &str = "nostrconnect";
 pub const NOSTR_CONNECT_BUNKER_URI_SCHEME: &str = "bunker";
 
 /// NIP46 error
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     /// Key error
     Key(key::Error),

@@ -19,6 +19,7 @@ tor = ["async-wsocket/tor"]
 async-utility.workspace = true
 async-wsocket = { workspace = true, features = ["socks"] }
 atomic-destructor.workspace = true
+hex = { workspace = true, features = ["std"] }
 lru.workspace = true
 negentropy = { workspace = true, features = ["std"] }
 nostr = { workspace = true, features = ["std"] }

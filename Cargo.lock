@@ -3126,6 +3126,7 @@ dependencies = [
  "chacha20",
  "chacha20poly1305",
  "getrandom 0.2.15",
+ "hex",
  "instant",
  "nostr-ots",
  "reqwest",
@@ -3235,6 +3236,7 @@ dependencies = [
 name = "nostr-indexeddb"
 version = "0.43.0"
 dependencies = [
+ "hex",
  "indexed_db_futures",
  "nostr",
  "nostr-database",
@@ -3270,6 +3272,7 @@ name = "nostr-mls"
 version = "0.43.0"
 dependencies = [
  "aes-gcm",
+ "hex",
  "nostr",
  "nostr-mls-memory-storage",
  "nostr-mls-sqlite-storage",
@@ -3330,6 +3333,7 @@ dependencies = [
 name = "nostr-ndb"
 version = "0.43.0"
 dependencies = [
+ "hex",
  "nostr",
  "nostr-database",
  "nostrdb",
@@ -3356,6 +3360,7 @@ dependencies = [
  "async-wsocket",
  "atomic-destructor",
  "base64 0.22.1",
+ "hex",
  "hyper",
  "hyper-util",
  "negentropy",
@@ -3373,6 +3378,7 @@ dependencies = [
  "async-utility",
  "async-wsocket",
  "atomic-destructor",
+ "hex",
  "lru",
  "negentropy",
  "nostr",

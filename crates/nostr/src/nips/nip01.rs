@@ -23,7 +23,7 @@ use crate::types::Url;
 use crate::{event, key, Filter, JsonUtil, Kind, PublicKey, Tag};
 
 /// Raw Event error
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     /// Keys error
     Keys(key::Error),

@@ -37,7 +37,7 @@ impl fmt::Display for WrongKindError {
 }
 
 /// Event builder error
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     /// Unsigned event error
     Event(super::Error),

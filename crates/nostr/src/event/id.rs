@@ -18,7 +18,6 @@ use super::{Kind, Tag, Tags};
 use crate::nips::nip13;
 use crate::nips::nip19::FromBech32;
 use crate::nips::nip21::FromNostrUri;
-use crate::util::hex;
 use crate::{PublicKey, Timestamp};
 
 /// Event ID

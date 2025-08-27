@@ -30,7 +30,7 @@ const CIPHERTEXT_SIZE: usize = 48;
 const KEY_SIZE: usize = 32;
 
 /// NIP49 error
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     /// ChaCha20Poly1305 error
     ChaCha20Poly1305(chacha20poly1305::Error),

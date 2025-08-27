@@ -7,7 +7,6 @@ use std::time::Duration;
 
 use nostr::event::{self, builder};
 use nostr::message::MessageHandleError;
-use nostr::util::hex;
 use nostr_database::DatabaseError;
 
 use crate::policy::PolicyError;
@@ -30,7 +29,7 @@ pub enum Error {
     /// Event Builder error
     EventBuilder(builder::Error),
     /// Hex error
-    Hex(hex::Error),
+    Hex(hex::FromHexError),
     /// Negentropy error
     Negentropy(negentropy::Error),
     /// Database error
@@ -231,8 +230,8 @@ impl From<builder::Error> for Error {
     }
 }
 
-impl From<hex::Error> for Error {
-    fn from(e: hex::Error) -> Self {
+impl From<hex::FromHexError> for Error {
+    fn from(e: hex::FromHexError) -> Self {
         Self::Hex(e)
     }
 }

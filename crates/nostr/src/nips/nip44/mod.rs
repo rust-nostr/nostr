@@ -21,7 +21,7 @@ use self::v2::ConversationKey;
 use crate::{key, PublicKey, SecretKey};
 
 /// Error
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     /// Key error
     Key(key::Error),

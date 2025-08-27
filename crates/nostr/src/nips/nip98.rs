@@ -54,7 +54,7 @@ impl fmt::Display for RequiredTags {
 }
 
 /// NIP98 error
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     /// Base64 error
     #[cfg(feature = "std")]

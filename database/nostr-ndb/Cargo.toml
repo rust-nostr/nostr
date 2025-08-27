@@ -12,6 +12,7 @@ rust-version.workspace = true
 keywords = ["nostr", "database", "ndb", "nostrdb"]
 
 [dependencies]
+hex = { workspace = true, features = ["std"] }
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
 nostrdb = "0.8"

@@ -16,7 +16,6 @@ use serde::{Deserialize, Deserializer, Serialize};
 use super::Error;
 use crate::nips::nip19::FromBech32;
 use crate::nips::nip21::FromNostrUri;
-use crate::util::hex;
 
 /// Public Key
 #[derive(Clone, Copy)]

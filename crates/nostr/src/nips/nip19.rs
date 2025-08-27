@@ -55,7 +55,7 @@ const FIXED_1_1_32_BYTES_TVL: usize = 1 + 1 + 32;
 const FIXED_KIND_BYTES_TVL: usize = 1 + 1 + 4;
 
 /// `NIP19` error
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     /// Relay Url parse error
     RelayUrl(url::Error),

@@ -33,7 +33,7 @@ use crate::SECP256K1;
 const DELEGATION_KEYWORD: &str = "delegation";
 
 /// `NIP26` error
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     /// Key error
     Key(key::Error),

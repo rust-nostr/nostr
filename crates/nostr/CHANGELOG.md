@@ -28,6 +28,7 @@
 ### Breaking changes
 
 - Set `payment_hash` as optional in `MakeInvoiceResponse` (https://github.com/rust-nostr/nostr/pull/1045)
+- Remove `hex` module (https://github.com/rust-nostr/nostr/pull/1051)
 
 ### Added
 
@@ -42,6 +43,7 @@
 - Add `HEAD` tag kind (https://github.com/rust-nostr/nostr/pull/1043)
 - Add `CommentTarget::as_vec` to convert the comment target into a vector of tags (https://github.com/rust-nostr/nostr/pull/1038)
 - Support NIP-A0 (Voice Messages) (https://github.com/rust-nostr/nostr/pull/1032)
+- Add `hex` dependency (https://github.com/rust-nostr/nostr/pull/1051)
 
 ### Changed
 

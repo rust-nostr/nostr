@@ -37,7 +37,7 @@ impl fmt::Display for UnsupportedVariant {
 }
 
 /// NIP21 error
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     /// NIP19 error
     NIP19(nip19::Error),

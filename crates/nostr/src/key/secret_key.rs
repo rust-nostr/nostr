@@ -18,7 +18,6 @@ use super::Error;
 use crate::nips::nip19::FromBech32;
 #[cfg(all(feature = "std", feature = "nip49"))]
 use crate::nips::nip49::{self, EncryptedSecretKey, KeySecurity};
-use crate::util::hex;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 

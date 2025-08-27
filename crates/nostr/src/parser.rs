@@ -22,7 +22,7 @@ const LINE_BREAK: &str = "\n";
 const WHITESPACE: &str = " ";
 
 /// Parser error
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     /// NIP21 error
     NIP21(nip21::Error),

@@ -9,7 +9,6 @@ use std::{fmt, str};
 
 use nostr::nips::nip44;
 use nostr::types::url;
-use nostr::util::hex;
 use nostr::{event, key, Kind, SignerError};
 use openmls::credentials::errors::BasicCredentialError;
 use openmls::error::LibraryError;
@@ -27,7 +26,7 @@ use openmls_traits::types::CryptoError;
 #[derive(Debug, PartialEq)]
 pub enum Error {
     /// Hex error
-    Hex(hex::Error),
+    Hex(hex::FromHexError),
     /// Keys error
     Keys(key::Error),
     /// Event error
@@ -191,8 +190,8 @@ impl fmt::Display for Error {
     }
 }
 
-impl From<hex::Error> for Error {
-    fn from(e: hex::Error) -> Self {
+impl From<hex::FromHexError> for Error {
+    fn from(e: hex::FromHexError) -> Self {
         Self::Hex(e)
     }
 }

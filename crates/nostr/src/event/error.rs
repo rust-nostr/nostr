@@ -6,17 +6,16 @@ use alloc::string::{String, ToString};
 use core::fmt;
 
 use crate::signer::SignerError;
-use crate::util::hex;
 
 /// Event error
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     /// Error serializing or deserializing JSON data
     Json(String),
     /// Signer error
     Signer(String),
     /// Hex decode error
-    Hex(hex::Error),
+    Hex(hex::FromHexError),
     /// Unknown JSON event key
     UnknownKey(String),
     /// Invalid event ID
@@ -53,8 +52,8 @@ impl From<SignerError> for Error {
     }
 }
 
-impl From<hex::Error> for Error {
-    fn from(e: hex::Error) -> Self {
+impl From<hex::FromHexError> for Error {
+    fn from(e: hex::FromHexError) -> Self {
         Self::Hex(e)
     }
 }

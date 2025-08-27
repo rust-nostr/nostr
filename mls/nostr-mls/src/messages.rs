@@ -11,7 +11,6 @@
 //! The message content is encrypted using both MLS group keys and NIP-44 encryption.
 //! Message state is tracked to handle processing status and failure scenarios.
 
-use nostr::util::hex;
 use nostr::{EventId, UnsignedEvent};
 use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls::group::{GroupId, MlsGroupStateError, ProcessMessageError, ValidationError};

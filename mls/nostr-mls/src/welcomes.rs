@@ -1,6 +1,5 @@
 //! Nostr MLS Welcomes
 
-use nostr::util::hex;
 use nostr::{EventId, Timestamp, UnsignedEvent};
 use nostr_mls_storage::groups::types as group_types;
 use nostr_mls_storage::welcomes::types as welcome_types;

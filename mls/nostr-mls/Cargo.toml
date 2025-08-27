@@ -13,6 +13,7 @@ keywords = ["nostr", "mls", "openmls"]
 
 [dependencies]
 aes-gcm = "0.10.3"
+hex = { workspace = true, features = ["std"] }
 nostr = { workspace = true, features = ["std", "nip44"] }
 nostr-mls-storage.workspace = true
 openmls = { version = "0.7.0", default-features = false }

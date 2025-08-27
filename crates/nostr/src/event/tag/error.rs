@@ -16,7 +16,7 @@ use crate::{key, secp256k1};
 
 /// Tag error
 #[allow(deprecated)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum Error {
     /// Keys
     Keys(key::Error),
