@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use nostr::PublicKey;
+use nostr::{PublicKey, RelayUrl};
 use nostr_mls_storage::groups::error::{GroupError, InvalidGroupState};
 use nostr_mls_storage::groups::types::*;
 use nostr_mls_storage::groups::GroupStorage;
@@ -72,37 +72,47 @@ impl GroupStorage for NostrMlsMemoryStorage {
 
     fn group_relays(&self, mls_group_id: &GroupId) -> Result<BTreeSet<GroupRelay>, GroupError> {
         // Check if the group exists first
-        self.find_group_by_mls_group_id(mls_group_id)?;
+        if self.find_group_by_mls_group_id(mls_group_id)?.is_none() {
+            return Err(GroupError::InvalidParameters(format!(
+                "Group with MLS ID {:?} not found",
+                mls_group_id
+            )));
+        }
 
         let cache = self.group_relays_cache.read();
         match cache.peek(mls_group_id).cloned() {
             Some(relays) => Ok(relays),
-            None => Err(GroupError::InvalidState(InvalidGroupState::NoRelays)),
+            // If not in cache but group exists, return empty set
+            None => Ok(BTreeSet::new()),
         }
     }
 
-    fn save_group_relay(&self, group_relay: GroupRelay) -> Result<(), GroupError> {
+    fn replace_group_relays(
+        &self,
+        group_id: &GroupId,
+        relays: BTreeSet<RelayUrl>,
+    ) -> Result<(), GroupError> {
         // Check if the group exists first
-        self.find_group_by_mls_group_id(&group_relay.mls_group_id)?;
+        if self.find_group_by_mls_group_id(group_id)?.is_none() {
+            return Err(GroupError::InvalidParameters(format!(
+                "Group with MLS ID {:?} not found",
+                group_id
+            )));
+        }
 
         let mut cache = self.group_relays_cache.write();
 
-        // Try to get the existing relays for the group
-        match cache.get_mut(&group_relay.mls_group_id) {
-            // If the group exists, add the new relay to the vector
-            Some(existing_relays) => {
-                // Add the new relay if it doesn't already exist
-                existing_relays.insert(group_relay);
-            }
-            // If the group doesn't exist, create a new vector with the new relay
-            None => {
-                // Update the cache with the new vector
-                cache.put(
-                    group_relay.mls_group_id.clone(),
-                    BTreeSet::from([group_relay]),
-                );
-            }
-        };
+        // Convert RelayUrl set to GroupRelay set
+        let group_relays: BTreeSet<GroupRelay> = relays
+            .into_iter()
+            .map(|relay_url| GroupRelay {
+                mls_group_id: group_id.clone(),
+                relay_url,
+            })
+            .collect();
+
+        // Replace the entire relay set for this group
+        cache.put(group_id.clone(), group_relays);
 
         Ok(())
     }

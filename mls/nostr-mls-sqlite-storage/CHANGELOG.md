@@ -27,7 +27,7 @@
 
 ### Breaking changes
 
-- Remove group type from groups
+- Replaced `save_group_relay` with `replace_group_relays` trait method
 
 ### Changed
 

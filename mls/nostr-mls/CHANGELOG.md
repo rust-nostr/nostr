@@ -42,6 +42,10 @@
 - Improved synchronization between MLSGroup and stored Group state on all commits. (https://github.com/rust-nostr/nostr/pull/1050)
 - Added `NostrMls::update_group_data` method to handle updates of any of the fields of the `NostrGroupDataExtension` (https://github.com/rust-nostr/nostr/pull/1050)
 
+### Fixed
+
+- Bug where group relays weren't being persisted properly on change in NostrGroupDataExtension
+
 ## v0.43.0 - 2025/07/28
 
 ### Breaking changes

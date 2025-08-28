@@ -9,7 +9,7 @@
 
 use std::collections::BTreeSet;
 
-use nostr::PublicKey;
+use nostr::{PublicKey, RelayUrl};
 use openmls::group::GroupId;
 
 pub mod error;
@@ -45,8 +45,13 @@ pub trait GroupStorage {
     /// Get all relays for a group
     fn group_relays(&self, group_id: &GroupId) -> Result<BTreeSet<GroupRelay>, GroupError>;
 
-    /// Save a group relay
-    fn save_group_relay(&self, group_relay: GroupRelay) -> Result<(), GroupError>;
+    /// Replace all relays for a group with the provided set
+    /// This operation is atomic - either all relays are replaced or none are changed
+    fn replace_group_relays(
+        &self,
+        group_id: &GroupId,
+        relays: BTreeSet<RelayUrl>,
+    ) -> Result<(), GroupError>;
 
     /// Get an exporter secret for a group and epoch
     fn get_group_exporter_secret(
