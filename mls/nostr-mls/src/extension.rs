@@ -291,7 +291,7 @@ impl NostrGroupDataExtension {
         self.image_key.as_ref()
     }
 
-    /// Returns the group nonce
+    /// Returns the group image nonce
     pub fn image_nonce(&self) -> Option<&Vec<u8>> {
         self.image_nonce.as_ref()
     }
