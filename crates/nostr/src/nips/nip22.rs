@@ -6,9 +6,10 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/22.md>
 
+use alloc::borrow::Cow;
 use alloc::vec::Vec;
 
-use crate::nips::nip01::CoordinateBorrow;
+use crate::nips::nip01::Coordinate;
 use crate::nips::nip73::ExternalContentId;
 use crate::{Alphabet, Event, EventId, Kind, PublicKey, RelayUrl, Tag, TagKind, TagStandard, Url};
 
@@ -17,30 +18,30 @@ pub enum CommentTarget<'a> {
     /// Event
     Event {
         /// Event ID
-        id: &'a EventId,
+        id: EventId,
         /// Relay hint
-        relay_hint: Option<&'a RelayUrl>,
+        relay_hint: Option<Cow<'a, RelayUrl>>,
         /// Public key hint
-        pubkey_hint: Option<&'a PublicKey>,
+        pubkey_hint: Option<PublicKey>,
         /// Kind
-        kind: Option<&'a Kind>,
+        kind: Option<Kind>,
     },
     /// Coordinate
     Coordinate {
         /// Coordinate
-        address: CoordinateBorrow<'a>,
+        address: Cow<'a, Coordinate>,
         /// Relay hint
-        relay_hint: Option<&'a RelayUrl>,
+        relay_hint: Option<Cow<'a, RelayUrl>>,
         /// Kind
         #[deprecated(since = "0.44.0", note = "Use `address.kind` instead")]
-        kind: Option<&'a Kind>,
+        kind: Option<Kind>,
     },
     /// External content
     External {
         /// Content
-        content: &'a ExternalContentId,
+        content: Cow<'a, ExternalContentId>,
         /// Web hint
-        hint: Option<&'a Url>,
+        hint: Option<Cow<'a, Url>>,
     },
 }
 
@@ -48,39 +49,42 @@ impl<'a> CommentTarget<'a> {
     /// Creates a new [`CommentTarget`] pointing to a specific event.
     #[inline]
     pub fn event(
-        event_id: &'a EventId,
-        kind: &'a Kind,
-        author: Option<&'a PublicKey>,
-        relay_hint: Option<&'a RelayUrl>,
+        id: EventId,
+        kind: Kind,
+        author: Option<PublicKey>,
+        relay_hint: Option<Cow<'a, RelayUrl>>,
     ) -> Self {
         Self::Event {
-            relay_hint,
-            id: event_id,
+            id,
             pubkey_hint: author,
             kind: Some(kind),
+            relay_hint,
         }
     }
 
     /// Create a new [`CommentTarget`] pointing to a specific coordinate.
     #[inline]
-    pub fn coordinate(coordinate: CoordinateBorrow<'a>, relay_hint: Option<&'a RelayUrl>) -> Self {
+    pub fn coordinate(
+        coordinate: Cow<'a, Coordinate>,
+        relay_hint: Option<Cow<'a, RelayUrl>>,
+    ) -> Self {
         Self::Coordinate {
             address: coordinate,
             relay_hint,
             #[allow(deprecated)]
-            kind: Some(coordinate.kind),
+            kind: None,
         }
     }
 
     /// Create a new [`CommentTarget`] pointing to a specific external content.
     #[inline]
-    pub fn external(content: &'a ExternalContentId, hint: Option<&'a Url>) -> Self {
+    pub fn external(content: Cow<'a, ExternalContentId>, hint: Option<Cow<'a, Url>>) -> Self {
         Self::External { content, hint }
     }
 
     /// Sets the relay hint for the event or coordinate.
     #[inline]
-    pub fn relay_hint(self, relay_hint: &'a RelayUrl) -> Self {
+    pub fn relay_hint(self, relay_hint: Cow<'a, RelayUrl>) -> Self {
         match self {
             Self::Event {
                 id,
@@ -130,18 +134,18 @@ impl<'a> CommentTarget<'a> {
                     1 + usize::from(pubkey_hint.is_some()) + usize::from(kind.is_some()),
                 );
                 tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
-                    event_id: **id,
-                    relay_url: relay_hint.cloned(),
+                    event_id: *id,
+                    relay_url: relay_hint.clone().map(|r| r.into_owned()),
                     marker: None,
-                    public_key: pubkey_hint.copied(),
+                    public_key: pubkey_hint.as_ref().copied(),
                     uppercase: is_root,
                 }));
 
                 if let Some(pubkey) = pubkey_hint {
                     tags.push(Tag::from_standardized_without_cell(
                         TagStandard::PublicKey {
-                            public_key: **pubkey,
-                            relay_url: relay_hint.cloned(),
+                            public_key: *pubkey,
+                            relay_url: relay_hint.clone().map(|r| r.into_owned()),
                             alias: None,
                             uppercase: is_root,
                         },
@@ -150,7 +154,7 @@ impl<'a> CommentTarget<'a> {
 
                 if let Some(kind) = kind {
                     tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
-                        kind: **kind,
+                        kind: *kind,
                         uppercase: is_root,
                     }));
                 }
@@ -160,24 +164,27 @@ impl<'a> CommentTarget<'a> {
                 relay_hint,
                 ..
             } => {
+                let public_key: PublicKey = address.public_key;
+                let kind: Kind = address.kind;
+
                 tags.reserve_exact(3);
                 tags.push(Tag::from_standardized_without_cell(
                     TagStandard::Coordinate {
-                        coordinate: address.into_owned(),
-                        relay_url: relay_hint.cloned(),
+                        coordinate: address.clone().into_owned(),
+                        relay_url: relay_hint.clone().map(|r| r.into_owned()),
                         uppercase: is_root,
                     },
                 ));
                 tags.push(Tag::from_standardized_without_cell(
                     TagStandard::PublicKey {
-                        public_key: *address.public_key,
-                        relay_url: relay_hint.cloned(),
+                        public_key,
+                        relay_url: relay_hint.clone().map(|r| r.into_owned()),
                         alias: None,
                         uppercase: is_root,
                     },
                 ));
                 tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
-                    kind: *address.kind,
+                    kind,
                     uppercase: is_root,
                 }));
             }
@@ -186,7 +193,7 @@ impl<'a> CommentTarget<'a> {
                 tags.push(Tag::from_standardized_without_cell(
                     TagStandard::ExternalContent {
                         content: ExternalContentId::clone(content),
-                        hint: hint.cloned(),
+                        hint: hint.clone().map(|r| r.into_owned()),
                         uppercase: is_root,
                     },
                 ));
@@ -203,12 +210,12 @@ impl<'a> CommentTarget<'a> {
     }
 }
 
-impl<'a> From<&'a Event> for CommentTarget<'a> {
-    fn from(event: &'a Event) -> Self {
+impl<'e> From<&'e Event> for CommentTarget<'_> {
+    fn from(event: &'e Event) -> Self {
         if let Some(coordinate) = event.coordinate() {
-            CommentTarget::coordinate(coordinate, None)
+            CommentTarget::coordinate(Cow::Owned(coordinate.into_owned()), None)
         } else {
-            CommentTarget::event(&event.id, &event.kind, Some(&event.pubkey), None)
+            CommentTarget::event(event.id, event.kind, Some(event.pubkey), None)
         }
     }
 }
@@ -231,10 +238,10 @@ fn extract_data(event: &Event, is_root: bool) -> Option<CommentTarget> {
     // Try to extract event
     if let Some((event_id, relay_hint, public_key)) = extract_event(event, is_root) {
         return Some(CommentTarget::Event {
-            id: event_id,
-            relay_hint,
-            pubkey_hint: public_key,
-            kind: extract_kind(event, is_root),
+            id: *event_id,
+            relay_hint: relay_hint.map(Cow::Borrowed),
+            pubkey_hint: public_key.copied(),
+            kind: extract_kind(event, is_root).copied(),
         });
     }
 
@@ -242,7 +249,7 @@ fn extract_data(event: &Event, is_root: bool) -> Option<CommentTarget> {
     if let Some((address, relay_hint)) = extract_coordinate(event, is_root) {
         // Extract kind
         // TODO: for now we allow optional `k`/`K` tag, but according to NIP-22, it should be mandatory.
-        let kind: Option<&Kind> = extract_kind(event, is_root);
+        let kind: Option<Kind> = extract_kind(event, is_root).copied();
 
         // Check if matches the address kind
         if let Some(kind) = kind {
@@ -252,15 +259,18 @@ fn extract_data(event: &Event, is_root: bool) -> Option<CommentTarget> {
         }
 
         return Some(CommentTarget::Coordinate {
-            address,
-            relay_hint,
+            address: Cow::Borrowed(address),
+            relay_hint: relay_hint.map(Cow::Borrowed),
             #[allow(deprecated)]
             kind,
         });
     }
 
     if let Some((content, hint)) = extract_external(event, is_root) {
-        return Some(CommentTarget::External { content, hint });
+        return Some(CommentTarget::External {
+            content: Cow::Borrowed(content),
+            hint: hint.map(Cow::Borrowed),
+        });
     }
 
     None
@@ -322,10 +332,7 @@ fn extract_event(
 /// # Example:
 /// * is_root = true -> returns first `A` tag
 /// * is_root = false -> returns first `a` tag
-fn extract_coordinate(
-    event: &Event,
-    is_root: bool,
-) -> Option<(CoordinateBorrow<'_>, Option<&RelayUrl>)> {
+fn extract_coordinate(event: &Event, is_root: bool) -> Option<(&Coordinate, Option<&RelayUrl>)> {
     event
         .tags
         .filter_standardized(TagKind::single_letter(Alphabet::A, is_root))
@@ -335,11 +342,7 @@ fn extract_coordinate(
                 relay_url,
                 uppercase,
                 ..
-            } => check_return(
-                (coordinate.borrow(), relay_url.as_ref()),
-                is_root,
-                *uppercase,
-            ),
+            } => check_return((coordinate, relay_url.as_ref()), is_root, *uppercase),
             _ => None,
         })
 }
@@ -407,7 +410,7 @@ mod tests {
             "",
         );
 
-        let comment_target = CommentTarget::event(&event_id, &kind, Some(&keys.public_key), None);
+        let comment_target = CommentTarget::event(event_id, kind, Some(keys.public_key), None);
 
         // Root
         let root_vec = comment_target.as_vec(true);
@@ -444,7 +447,7 @@ mod tests {
         let kind = Kind::ContactList;
         let coordinate = Coordinate::new(kind, keys.public_key());
 
-        let comment_target = CommentTarget::coordinate(coordinate.borrow(), None);
+        let comment_target = CommentTarget::coordinate(Cow::Borrowed(&coordinate), None);
 
         // Root
         let root_vec = comment_target.as_vec(true);
@@ -470,7 +473,7 @@ mod tests {
         let external_content = ExternalContentId::Url("https://rust-nostr.org".parse().unwrap());
         let kind = external_content.kind();
 
-        let comment_target = CommentTarget::external(&external_content, None);
+        let comment_target = CommentTarget::external(Cow::Borrowed(&external_content), None);
 
         // Root
         let root_vec = comment_target.as_vec(true);

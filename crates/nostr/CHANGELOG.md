@@ -29,6 +29,7 @@
 
 - Set `payment_hash` as optional in `MakeInvoiceResponse` (https://github.com/rust-nostr/nostr/pull/1045)
 - Remove `hex` module (https://github.com/rust-nostr/nostr/pull/1051)
+- Use `Cow` for non-copy fields in `nip22::CommentTarget` enum (https://github.com/rust-nostr/nostr/pull/1053)
 
 ### Added
 
