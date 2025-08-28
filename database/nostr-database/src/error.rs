@@ -20,8 +20,8 @@ impl std::error::Error for DatabaseError {}
 impl fmt::Display for DatabaseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Backend(e) => write!(f, "{e}"),
-            Self::NotSupported => write!(f, "not supported"),
+            Self::Backend(e) => e.fmt(f),
+            Self::NotSupported => f.write_str("not supported"),
         }
     }
 }
