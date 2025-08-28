@@ -34,9 +34,9 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
         conn_guard
             .execute(
                 "INSERT OR REPLACE INTO welcomes
-             (id, event, mls_group_id, nostr_group_id, group_name, group_description, group_image_url, group_image_key,
+             (id, event, mls_group_id, nostr_group_id, group_name, group_description, group_image_url, group_image_key, group_image_nonce,
               group_admin_pubkeys, group_relays, welcomer, member_count, state, wrapper_event_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
                     welcome.id.as_bytes(),
                     welcome.event.as_json(),
@@ -46,6 +46,7 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
                     welcome.group_description,
                     welcome.group_image_url,
                     welcome.group_image_key,
+                    welcome.group_image_nonce,
                     group_admin_pubkeys_json,
                     group_relays_json,
                     welcome.welcomer.as_bytes(),
@@ -169,6 +170,7 @@ mod tests {
         nostr_group_id[0..13].copy_from_slice(b"test_group_12");
         let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
         let image_key = Some(generate_encryption_key());
+        let image_nonce = Some(vec![5u8; 12]);
 
         let group = Group {
             mls_group_id: mls_group_id.clone(),
@@ -182,6 +184,7 @@ mod tests {
             state: GroupState::Active,
             image_url: image_url.clone(),
             image_key: image_key.clone(),
+            image_nonce: image_nonce.clone(),
         };
 
         // Save the group
@@ -217,6 +220,7 @@ mod tests {
             group_description: "A test group".to_string(),
             group_image_url: image_url,
             group_image_key: image_key,
+            group_image_nonce: image_nonce,
             group_admin_pubkeys: BTreeSet::from([pubkey]),
             group_relays: BTreeSet::from([RelayUrl::parse("wss://relay.example.com").unwrap()]),
             welcomer: pubkey,

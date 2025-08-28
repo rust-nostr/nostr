@@ -60,6 +60,7 @@ async fn main() -> Result<()> {
 
     let image_url = "http://blossom_server:4531/fake_img.png".to_owned();
     let image_key = generate_encryption_key();
+    let image_nonce = vec![4u8; 12]; // random bytes
     let name = "Bob & Alice".to_owned();
     let description = "A secret chat between Bob and Alice".to_owned();
 
@@ -68,6 +69,7 @@ async fn main() -> Result<()> {
         description,
         Some(image_url),
         Some(image_key),
+        Some(image_nonce),
         vec![relay_url.clone()],
         vec![alice_keys.public_key(), bob_keys.public_key()],
     );

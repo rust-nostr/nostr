@@ -250,6 +250,7 @@ mod tests {
         let nostr_group_id = create_test_nostr_group_id();
         let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
         let image_key = Some(generate_encryption_key());
+        let image_nonce = Some(vec![16u8; 12]);
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -262,6 +263,7 @@ mod tests {
             state: GroupState::Active,
             image_url,
             image_key,
+            image_nonce,
         };
         nostr_storage.save_group(group.clone()).unwrap();
         let found_group = nostr_storage
@@ -290,6 +292,7 @@ mod tests {
         let nostr_group_id = create_test_nostr_group_id();
         let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
         let image_key = Some(generate_encryption_key());
+        let image_nonce = Some(vec![16u8; 12]);
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -302,6 +305,7 @@ mod tests {
             state: GroupState::Active,
             image_url,
             image_key,
+            image_nonce,
         };
         nostr_storage.save_group(group.clone()).unwrap();
         let relay_url1 = RelayUrl::parse("wss://relay1.example.com").unwrap();
@@ -348,6 +352,7 @@ mod tests {
         let nostr_group_id = create_test_nostr_group_id();
         let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
         let image_key = Some(generate_encryption_key());
+        let image_nonce = Some(vec![16u8; 12]);
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -360,6 +365,7 @@ mod tests {
             state: GroupState::Active,
             image_url,
             image_key,
+            image_nonce,
         };
         nostr_storage.save_group(group.clone()).unwrap();
         let group_exporter_secret_0 = GroupExporterSecret {
@@ -434,6 +440,7 @@ mod tests {
             group_description: "A test welcome group".to_string(),
             group_image_key: None,
             group_image_url: None,
+            group_image_nonce: None,
             group_admin_pubkeys: BTreeSet::from([pubkey]),
             group_relays: BTreeSet::from([RelayUrl::parse("wss://relay.example.com").unwrap()]),
             welcomer: pubkey,
@@ -494,6 +501,7 @@ mod tests {
         let nostr_group_id = create_test_nostr_group_id();
         let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
         let image_key = Some(generate_encryption_key());
+        let image_nonce = Some(vec![16u8; 12]);
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -506,6 +514,7 @@ mod tests {
             state: GroupState::Active,
             image_url,
             image_key,
+            image_nonce,
         };
         nostr_storage.save_group(group.clone()).unwrap();
         let event_id = EventId::all_zeros();
@@ -590,6 +599,7 @@ mod tests {
         let nostr_group_id = create_test_nostr_group_id();
         let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
         let image_key = Some(generate_encryption_key());
+        let image_nonce = Some(vec![16u8; 12]);
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -602,6 +612,7 @@ mod tests {
             state: GroupState::Active,
             image_url,
             image_key,
+            image_nonce,
         };
 
         // Save the group
@@ -623,6 +634,8 @@ mod tests {
         let nostr_group_id = create_test_nostr_group_id();
         let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
         let image_key = Some(generate_encryption_key());
+        let image_nonce = Some(vec![16u8; 12]);
+
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -635,6 +648,7 @@ mod tests {
             state: GroupState::Active,
             image_url,
             image_key,
+            image_nonce,
         };
 
         // Save the group

@@ -88,15 +88,16 @@ impl GroupStorage for NostrMlsSqliteStorage {
         conn_guard
             .execute(
                 "INSERT INTO groups
-             (mls_group_id, nostr_group_id, name, description, image_url, image_key, admin_pubkeys, last_message_id,
+             (mls_group_id, nostr_group_id, name, description, image_url, image_key, image_nonce, admin_pubkeys, last_message_id,
               last_message_at, epoch, state)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(mls_group_id) DO UPDATE SET
                 nostr_group_id = excluded.nostr_group_id,
                 name = excluded.name,
                 description = excluded.description,
                 image_url = excluded.image_url,
                 image_key = excluded.image_key,
+                image_nonce = excluded.image_nonce,
                 admin_pubkeys = excluded.admin_pubkeys,
                 last_message_id = excluded.last_message_id,
                 last_message_at = excluded.last_message_at,
@@ -109,6 +110,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
                     &group.description,
                     &group.image_url,
                     &group.image_key,
+                    &group.image_nonce,
                     &admin_pubkeys_json,
                     last_message_id,
                     &last_message_at,
@@ -293,6 +295,7 @@ mod tests {
         nostr_group_id[0..13].copy_from_slice(b"test_group_12");
         let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
         let image_key = Some(generate_encryption_key());
+        let image_nonce = Some(vec![8u8; 12]);
 
         let group = Group {
             mls_group_id: mls_group_id.clone(),
@@ -306,6 +309,7 @@ mod tests {
             state: GroupState::Active,
             image_url,
             image_key,
+            image_nonce,
         };
 
         // Save the group
@@ -352,11 +356,11 @@ mod tests {
             state: GroupState::Active,
             image_url: None,
             image_key: None,
+            image_nonce: None,
         };
 
         // Save the group
-        let result = storage.save_group(group);
-        assert!(result.is_ok());
+        storage.save_group(group).unwrap();
 
         // Create a group relay
         let relay_url = RelayUrl::parse("wss://relay.example.com").unwrap();
@@ -366,8 +370,7 @@ mod tests {
         };
 
         // Save the group relay
-        let result = storage.save_group_relay(group_relay);
-        assert!(result.is_ok());
+        storage.save_group_relay(group_relay).unwrap();
 
         // Get group relays
         let relays = storage.group_relays(&mls_group_id).unwrap();
@@ -399,6 +402,7 @@ mod tests {
             state: GroupState::Active,
             image_url: None,
             image_key: None,
+            image_nonce: None,
         };
 
         // Save the group

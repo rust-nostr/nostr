@@ -39,6 +39,7 @@ pub(crate) struct RawNostrGroupDataExtension {
     pub relays: Vec<Vec<u8>>,
     pub image_url: Vec<u8>,
     pub image_key: Vec<u8>,
+    pub image_nonce: Vec<u8>,
 }
 
 /// This is an MLS Group Context extension used to store the group's name,
@@ -59,6 +60,8 @@ pub struct NostrGroupDataExtension {
     pub image_url: Option<String>,
     /// Private key to decrypt group image (encrypted when stored)
     pub image_key: Option<Vec<u8>>,
+    /// Nonce to decrypt group image
+    pub image_nonce: Option<Vec<u8>>,
 }
 
 impl NostrGroupDataExtension {
@@ -86,6 +89,7 @@ impl NostrGroupDataExtension {
         relays: IR,
         image_url: Option<T3>,
         image_key: Option<Vec<u8>>,
+        image_nonce: Option<Vec<u8>>,
     ) -> Self
     where
         T1: Into<String>,
@@ -106,6 +110,7 @@ impl NostrGroupDataExtension {
             relays: relays.into_iter().collect(),
             image_url: image_url.map(Into::into),
             image_key,
+            image_nonce,
         }
     }
 
@@ -136,6 +141,12 @@ impl NostrGroupDataExtension {
             Some(raw.image_key)
         };
 
+        let image_nonce = if raw.image_nonce.is_empty() {
+            None
+        } else {
+            Some(raw.image_nonce)
+        };
+
         Ok(Self {
             nostr_group_id: raw.nostr_group_id,
             name: String::from_utf8(raw.name)?,
@@ -144,6 +155,7 @@ impl NostrGroupDataExtension {
             relays,
             image_url,
             image_key,
+            image_nonce,
         })
     }
 
@@ -279,6 +291,11 @@ impl NostrGroupDataExtension {
         self.image_key.as_ref()
     }
 
+    /// Returns the group nonce
+    pub fn image_nonce(&self) -> Option<&Vec<u8>> {
+        self.image_nonce.as_ref()
+    }
+
     /// Sets the group image key.
     ///
     /// # Arguments
@@ -286,6 +303,15 @@ impl NostrGroupDataExtension {
     /// * `image_key` - The new image encryption key (optional)
     pub fn set_image_key(&mut self, image_key: Option<Vec<u8>>) {
         self.image_key = image_key;
+    }
+
+    /// Sets the group image nonce.
+    ///
+    /// # Arguments
+    ///
+    /// * `image_nonce` - The new image encryption key (optional)
+    pub fn set_image_nonce(&mut self, image_nonce: Option<Vec<u8>>) {
+        self.image_nonce = image_nonce;
     }
 
     pub(crate) fn as_raw(&self) -> RawNostrGroupDataExtension {
@@ -308,6 +334,7 @@ impl NostrGroupDataExtension {
                 .as_ref()
                 .map_or_else(Vec::new, |img| img.as_bytes().to_vec()),
             image_key: self.image_key.clone().unwrap_or_default(),
+            image_nonce: self.image_nonce.clone().unwrap_or_default(),
         }
     }
 }
@@ -316,6 +343,7 @@ impl NostrGroupDataExtension {
 mod tests {
     use aes_gcm::aead::OsRng;
     use aes_gcm::{Aes128Gcm, KeyInit};
+    use rand::RngCore;
 
     use super::*;
 
@@ -337,6 +365,8 @@ mod tests {
 
         let key = generate_encryption_key();
         let image = "http://blossom_test:4443/fake_img.png";
+        let mut image_nonce = [0u8; 12];
+        ::rand::rng().fill_bytes(&mut image_nonce);
 
         NostrGroupDataExtension::new(
             "Test Group",
@@ -345,6 +375,7 @@ mod tests {
             [relay1, relay2],
             Some(image),
             Some(key),
+            Some(image_nonce.to_vec()),
         )
     }
 
@@ -459,11 +490,18 @@ mod tests {
         extension.set_image_key(Some(image_key));
         assert!(extension.image_key().is_some());
 
+        // Test setting image nonce
+        let image_nonce = vec![0u8; 12];
+        extension.set_image_nonce(Some(image_nonce));
+        assert!(extension.image_nonce().is_some());
+
         // Test clearing image
         extension.set_image_url(None);
         extension.set_image_key(None);
+        extension.set_image_nonce(None);
         assert!(extension.image_url().is_none());
         assert!(extension.image_key().is_none());
+        assert!(extension.image_nonce().is_none());
     }
 
     #[test]
@@ -473,15 +511,18 @@ mod tests {
         // Set some image data
         let image_url = "https://example.com/test.png".to_string();
         let image_key = generate_encryption_key();
+        let image_nonce = vec![7; 12]; // fill in random bytes
 
         extension.set_image_url(Some(image_url.clone()));
         extension.set_image_key(Some(image_key.clone()));
+        extension.set_image_nonce(Some(image_nonce.clone()));
 
         // Convert to raw and back
         let raw = extension.as_raw();
         let reconstructed = NostrGroupDataExtension::from_raw(raw).unwrap();
 
         assert_eq!(reconstructed.image_url(), Some(image_url.as_str()));
+        assert_eq!(reconstructed.image_nonce(), Some(&image_nonce));
         assert!(reconstructed.image_key().is_some());
         // We can't directly compare SecretKeys due to how they're implemented,
         // but we can verify the bytes are the same
