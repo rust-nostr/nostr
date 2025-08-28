@@ -21,7 +21,7 @@ impl std::error::Error for PolicyError {}
 impl fmt::Display for PolicyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Backend(e) => write!(f, "{e}"),
+            Self::Backend(e) => e.fmt(f),
         }
     }
 }

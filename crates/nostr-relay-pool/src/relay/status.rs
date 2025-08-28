@@ -71,14 +71,14 @@ pub enum RelayStatus {
 impl fmt::Display for RelayStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Initialized => write!(f, "Initialized"),
-            Self::Pending => write!(f, "Pending"),
-            Self::Connecting => write!(f, "Connecting"),
-            Self::Connected => write!(f, "Connected"),
-            Self::Disconnected => write!(f, "Disconnected"),
-            Self::Terminated => write!(f, "Terminated"),
-            Self::Banned => write!(f, "Banned"),
-            Self::Sleeping => write!(f, "Sleeping"),
+            Self::Initialized => f.write_str("Initialized"),
+            Self::Pending => f.write_str("Pending"),
+            Self::Connecting => f.write_str("Connecting"),
+            Self::Connected => f.write_str("Connected"),
+            Self::Disconnected => f.write_str("Disconnected"),
+            Self::Terminated => f.write_str("Terminated"),
+            Self::Banned => f.write_str("Banned"),
+            Self::Sleeping => f.write_str("Sleeping"),
         }
     }
 }

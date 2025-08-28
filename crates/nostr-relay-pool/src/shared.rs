@@ -34,8 +34,8 @@ impl std::error::Error for SharedStateError {}
 impl fmt::Display for SharedStateError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::SignerNotConfigured => write!(f, "signer not configured"),
-            Self::MutexPoisoned => write!(f, "mutex poisoned"),
+            Self::SignerNotConfigured => f.write_str("signer not configured"),
+            Self::MutexPoisoned => f.write_str("mutex poisoned"),
         }
     }
 }

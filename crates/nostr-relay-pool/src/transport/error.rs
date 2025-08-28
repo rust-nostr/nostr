@@ -18,7 +18,7 @@ impl std::error::Error for TransportError {}
 impl fmt::Display for TransportError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Backend(e) => write!(f, "{e}"),
+            Self::Backend(e) => e.fmt(f),
         }
     }
 }

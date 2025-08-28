@@ -130,18 +130,18 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Transport(e) => write!(f, "{e}"),
-            Self::SharedState(e) => write!(f, "{e}"),
-            Self::Policy(e) => write!(f, "{e}"),
-            Self::MessageHandle(e) => write!(f, "{e}"),
-            Self::Event(e) => write!(f, "{e}"),
-            Self::EventBuilder(e) => write!(f, "{e}"),
-            Self::Hex(e) => write!(f, "{e}"),
-            Self::Negentropy(e) => write!(f, "{e}"),
-            Self::Database(e) => write!(f, "{e}"),
-            Self::Timeout => write!(f, "timeout"),
-            Self::NotRepliedToPing => write!(f, "not replied to ping"),
-            Self::CantParsePong => write!(f, "can't parse pong"),
+            Self::Transport(e) => e.fmt(f),
+            Self::SharedState(e) => e.fmt(f),
+            Self::Policy(e) => e.fmt(f),
+            Self::MessageHandle(e) => e.fmt(f),
+            Self::Event(e) => e.fmt(f),
+            Self::EventBuilder(e) => e.fmt(f),
+            Self::Hex(e) => e.fmt(f),
+            Self::Negentropy(e) => e.fmt(f),
+            Self::Database(e) => e.fmt(f),
+            Self::Timeout => f.write_str("timeout"),
+            Self::NotRepliedToPing => f.write_str("not replied to ping"),
+            Self::CantParsePong => f.write_str("can't parse pong"),
             Self::PongNotMatch { expected, received } => write!(
                 f,
                 "pong not match: expected={expected}, received={received}"
@@ -149,25 +149,25 @@ impl fmt::Display for Error {
             Self::CantSendChannelMessage { channel } => {
                 write!(f, "can't send message to the '{channel}' channel")
             }
-            Self::NotReady => write!(f, "relay is initialized but not ready"),
-            Self::NotConnected => write!(f, "relay not connected"),
-            Self::SubscriptionNotFound => write!(f, "subscription not found"),
-            Self::EventNotMatchFilter => write!(f, "event doesn't match the subscription filter"),
-            Self::TooManyEvents => write!(f, "received too many events for the subscription"),
-            Self::Sleeping => write!(f, "relay is sleeping"),
-            Self::Banned => write!(f, "relay banned"),
+            Self::NotReady => f.write_str("relay is initialized but not ready"),
+            Self::NotConnected => f.write_str("relay not connected"),
+            Self::SubscriptionNotFound => f.write_str("subscription not found"),
+            Self::EventNotMatchFilter => f.write_str("event doesn't match the subscription filter"),
+            Self::TooManyEvents => f.write_str("received too many events for the subscription"),
+            Self::Sleeping => f.write_str("relay is sleeping"),
+            Self::Banned => f.write_str("relay banned"),
             Self::ConnectionRejected { reason } => {
                 let reason: &str = reason.as_deref().unwrap_or("unknown");
                 write!(f, "connection rejected: reason={reason}")
             }
-            Self::TerminationRequest => write!(f, "received termination request"),
-            Self::ReceivedShutdown => write!(f, "received shutdown"),
-            Self::RelayMessage(message) => write!(f, "{message}"),
-            Self::BatchMessagesEmpty => write!(f, "can't batch empty list of messages"),
-            Self::ReadDisabled => write!(f, "read actions are disabled"),
-            Self::WriteDisabled => write!(f, "write actions are disabled"),
-            Self::NegentropyNotSupported => write!(f, "negentropy not supported"),
-            Self::UnknownNegentropyError => write!(f, "unknown negentropy error"),
+            Self::TerminationRequest => f.write_str("received termination request"),
+            Self::ReceivedShutdown => f.write_str("received shutdown"),
+            Self::RelayMessage(message) => f.write_str(message),
+            Self::BatchMessagesEmpty => f.write_str("can't batch empty list of messages"),
+            Self::ReadDisabled => f.write_str("read actions are disabled"),
+            Self::WriteDisabled => f.write_str("write actions are disabled"),
+            Self::NegentropyNotSupported => f.write_str("negentropy not supported"),
+            Self::UnknownNegentropyError => f.write_str("unknown negentropy error"),
             Self::RelayMessageTooLarge { size, max_size } => write!(
                 f,
                 "Received message too large: size={size}, max_size={max_size}"
@@ -180,16 +180,16 @@ impl fmt::Display for Error {
                 f,
                 "Received event with too many tags: tags={size}, max_tags={max_size}"
             ),
-            Self::EventExpired => write!(f, "event expired"),
-            Self::Handler(e) => write!(f, "{e}"),
+            Self::EventExpired => f.write_str("event expired"),
+            Self::Handler(e) => f.write_str(e),
             Self::MaximumLatencyExceeded { max, current } => write!(
                 f,
                 "Maximum latency exceeded: max={}ms, current={}ms",
                 max.as_millis(),
                 current.as_millis()
             ),
-            Self::AuthenticationFailed => write!(f, "authentication failed"),
-            Self::PrematureExit => write!(f, "premature exit"),
+            Self::AuthenticationFailed => f.write_str("authentication failed"),
+            Self::PrematureExit => f.write_str("premature exit"),
         }
     }
 }
