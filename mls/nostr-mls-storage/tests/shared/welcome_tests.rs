@@ -9,7 +9,10 @@ use super::{create_test_group, create_test_processed_welcome, create_test_welcom
 
 /// Test welcome storage functionality
 #[allow(dead_code)]
-pub fn test_save_and_find_welcome<S: WelcomeStorage + GroupStorage>(storage: S) {
+pub fn test_save_and_find_welcome<S>(storage: S)
+where
+    S: WelcomeStorage + GroupStorage,
+{
     let mls_group_id = GroupId::from_slice(&[1, 2, 3, 13]);
 
     // First create the group (required for foreign key constraints)
@@ -45,7 +48,10 @@ pub fn test_save_and_find_welcome<S: WelcomeStorage + GroupStorage>(storage: S) 
 
 /// Test processed welcome functionality
 #[allow(dead_code)]
-pub fn test_processed_welcome<S: WelcomeStorage>(storage: S) {
+pub fn test_processed_welcome<S>(storage: S)
+where
+    S: WelcomeStorage,
+{
     let wrapper_event_id = EventId::all_zeros();
     let welcome_event_id =
         EventId::from_hex("1111111111111111111111111111111111111111111111111111111111111111")

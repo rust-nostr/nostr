@@ -12,7 +12,10 @@ use super::create_test_group;
 
 /// Test basic group save and find functionality
 #[allow(dead_code)]
-pub fn test_save_and_find_group<S: GroupStorage>(storage: S) {
+pub fn test_save_and_find_group<S>(storage: S)
+where
+    S: GroupStorage,
+{
     let mls_group_id = GroupId::from_slice(&[1, 2, 3, 6]);
     let group = create_test_group(mls_group_id.clone());
 
@@ -46,7 +49,10 @@ pub fn test_save_and_find_group<S: GroupStorage>(storage: S) {
 
 /// Test all groups functionality
 #[allow(dead_code)]
-pub fn test_all_groups<S: GroupStorage>(storage: S) {
+pub fn test_all_groups<S>(storage: S)
+where
+    S: GroupStorage,
+{
     // Initially should be empty
     let groups = storage.all_groups().unwrap();
     assert_eq!(groups.len(), 0);
@@ -72,7 +78,10 @@ pub fn test_all_groups<S: GroupStorage>(storage: S) {
 
 /// Test group exporter secret functionality
 #[allow(dead_code)]
-pub fn test_group_exporter_secret<S: GroupStorage>(storage: S) {
+pub fn test_group_exporter_secret<S>(storage: S)
+where
+    S: GroupStorage,
+{
     let mls_group_id = GroupId::from_slice(&[1, 2, 3, 7]);
     let group = create_test_group(mls_group_id.clone());
     storage.save_group(group).unwrap();
@@ -109,7 +118,10 @@ pub fn test_group_exporter_secret<S: GroupStorage>(storage: S) {
 
 /// Test basic group relay functionality (not the comprehensive replace tests)
 #[allow(dead_code)]
-pub fn test_basic_group_relays<S: GroupStorage>(storage: S) {
+pub fn test_basic_group_relays<S>(storage: S)
+where
+    S: GroupStorage,
+{
     let mls_group_id = GroupId::from_slice(&[1, 2, 3, 11]);
     let group = create_test_group(mls_group_id.clone());
     storage.save_group(group).unwrap();
@@ -133,7 +145,10 @@ pub fn test_basic_group_relays<S: GroupStorage>(storage: S) {
 
 /// Test comprehensive relay replacement functionality
 #[allow(dead_code)]
-pub fn test_replace_group_relays_comprehensive<S: GroupStorage>(storage: S) {
+pub fn test_replace_group_relays_comprehensive<S>(storage: S)
+where
+    S: GroupStorage,
+{
     let mls_group_id = GroupId::from_slice(&[1, 2, 3, 4]);
     let group = create_test_group(mls_group_id.clone());
 
@@ -201,7 +216,10 @@ pub fn test_replace_group_relays_comprehensive<S: GroupStorage>(storage: S) {
 
 /// Test error cases for relay replacement
 #[allow(dead_code)]
-pub fn test_replace_group_relays_error_cases<S: GroupStorage>(storage: S) {
+pub fn test_replace_group_relays_error_cases<S>(storage: S)
+where
+    S: GroupStorage,
+{
     // Test: Replace relays for non-existent group
     let non_existent_group_id = GroupId::from_slice(&[99, 99, 99, 99]);
     let relay = RelayUrl::parse("wss://relay.example.com").unwrap();
@@ -217,7 +235,10 @@ pub fn test_replace_group_relays_error_cases<S: GroupStorage>(storage: S) {
 
 /// Test duplicate handling for replace_group_relays
 #[allow(dead_code)]
-pub fn test_replace_group_relays_duplicate_handling<S: GroupStorage>(storage: S) {
+pub fn test_replace_group_relays_duplicate_handling<S>(storage: S)
+where
+    S: GroupStorage,
+{
     let mls_group_id = GroupId::from_slice(&[1, 2, 3, 5]);
     let group = create_test_group(mls_group_id.clone());
 
@@ -242,7 +263,10 @@ pub fn test_replace_group_relays_duplicate_handling<S: GroupStorage>(storage: S)
 
 /// Test edge cases and error conditions for group operations
 #[allow(dead_code)]
-pub fn test_group_edge_cases<S: GroupStorage>(storage: S) {
+pub fn test_group_edge_cases<S>(storage: S)
+where
+    S: GroupStorage,
+{
     // Test saving group with empty name
     let mls_group_id = GroupId::from_slice(&[1, 2, 3, 14]);
     let mut group = create_test_group(mls_group_id.clone());
@@ -279,7 +303,10 @@ pub fn test_group_edge_cases<S: GroupStorage>(storage: S) {
 
 /// Test concurrent relay operations and edge cases
 #[allow(dead_code)]
-pub fn test_replace_relays_edge_cases<S: GroupStorage>(storage: S) {
+pub fn test_replace_relays_edge_cases<S>(storage: S)
+where
+    S: GroupStorage,
+{
     let mls_group_id = GroupId::from_slice(&[1, 2, 3, 15]);
     let group = create_test_group(mls_group_id.clone());
     storage.save_group(group).unwrap();
@@ -312,7 +339,10 @@ pub fn test_replace_relays_edge_cases<S: GroupStorage>(storage: S) {
 
 /// Test message storage functionality with group queries
 #[allow(dead_code)]
-pub fn test_messages_for_group<S: GroupStorage>(storage: S) {
+pub fn test_messages_for_group<S>(storage: S)
+where
+    S: GroupStorage,
+{
     let mls_group_id = GroupId::from_slice(&[1, 2, 3, 12]);
     let group = create_test_group(mls_group_id.clone());
     storage.save_group(group).unwrap();

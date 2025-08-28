@@ -9,7 +9,10 @@ use super::{create_test_group, create_test_message, create_test_processed_messag
 
 /// Test message storage functionality
 #[allow(dead_code)]
-pub fn test_save_and_find_message<S: MessageStorage + GroupStorage>(storage: S) {
+pub fn test_save_and_find_message<S>(storage: S)
+where
+    S: MessageStorage + GroupStorage,
+{
     let mls_group_id = GroupId::from_slice(&[1, 2, 3, 12]);
 
     // First create the group (required for foreign key constraints)
@@ -40,7 +43,10 @@ pub fn test_save_and_find_message<S: MessageStorage + GroupStorage>(storage: S) 
 
 /// Test processed message functionality
 #[allow(dead_code)]
-pub fn test_processed_message<S: MessageStorage>(storage: S) {
+pub fn test_processed_message<S>(storage: S)
+where
+    S: MessageStorage,
+{
     let wrapper_event_id = EventId::all_zeros();
     let message_event_id =
         EventId::from_hex("1111111111111111111111111111111111111111111111111111111111111111")
