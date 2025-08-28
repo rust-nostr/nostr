@@ -3324,7 +3324,10 @@ name = "nostr-mls-storage"
 version = "0.43.0"
 dependencies = [
  "nostr",
+ "nostr-mls-memory-storage",
+ "nostr-mls-sqlite-storage",
  "openmls",
+ "openmls_memory_storage",
  "openmls_traits",
  "serde",
  "serde_json",

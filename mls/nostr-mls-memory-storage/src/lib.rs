@@ -310,19 +310,9 @@ mod tests {
         nostr_storage.save_group(group.clone()).unwrap();
         let relay_url1 = RelayUrl::parse("wss://relay1.example.com").unwrap();
         let relay_url2 = RelayUrl::parse("wss://relay2.example.com").unwrap();
-        let group_relay1 = GroupRelay {
-            mls_group_id: mls_group_id.clone(),
-            relay_url: relay_url1,
-        };
-        let group_relay2 = GroupRelay {
-            mls_group_id: mls_group_id.clone(),
-            relay_url: relay_url2,
-        };
+        let relays = BTreeSet::from([relay_url1, relay_url2]);
         nostr_storage
-            .save_group_relay(group_relay1.clone())
-            .unwrap();
-        nostr_storage
-            .save_group_relay(group_relay2.clone())
+            .replace_group_relays(&mls_group_id, relays)
             .unwrap();
         let found_relays = nostr_storage.group_relays(&mls_group_id).unwrap();
         assert_eq!(found_relays.len(), 2);
@@ -337,11 +327,6 @@ mod tests {
                 panic!("Group relays not found in cache");
             }
         }
-        nostr_storage
-            .save_group_relay(group_relay1.clone())
-            .unwrap();
-        let found_relays_after_duplicate = nostr_storage.group_relays(&mls_group_id).unwrap();
-        assert_eq!(found_relays_after_duplicate.len(), 2);
     }
 
     #[test]

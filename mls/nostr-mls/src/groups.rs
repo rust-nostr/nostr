@@ -934,17 +934,10 @@ where
             |e: nostr_mls_storage::groups::error::GroupError| Error::Group(e.to_string()),
         )?;
 
-        // Always (re-)save the group relays after saving the group
-        for relay_url in config.relays.into_iter() {
-            let group_relay = group_types::GroupRelay {
-                mls_group_id: group.mls_group_id.clone(),
-                relay_url,
-            };
-
-            self.storage()
-                .save_group_relay(group_relay)
-                .map_err(|e| Error::Group(e.to_string()))?;
-        }
+        // Save the group relays after saving the group
+        self.storage()
+            .replace_group_relays(&group.mls_group_id, config.relays.into_iter().collect())
+            .map_err(|e| Error::Group(e.to_string()))?;
 
         Ok(GroupResult {
             group,
@@ -1159,6 +1152,11 @@ where
             stored_group.image_key = group_data.image_key;
             stored_group.admin_pubkeys = group_data.admins;
             stored_group.nostr_group_id = group_data.nostr_group_id;
+
+            // Sync relays atomically - replace entire relay set with current extension data
+            self.storage()
+                .replace_group_relays(group_id, group_data.relays)
+                .map_err(|e| Error::Group(e.to_string()))?;
         }
 
         self.storage()

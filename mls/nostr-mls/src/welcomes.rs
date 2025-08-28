@@ -112,16 +112,12 @@ where
             .map_err(|e| Error::Group(e.to_string()))?;
 
         // Save the group relays
-        for relay in welcome_preview.nostr_group_data.relays.iter() {
-            let group_relay = group_types::GroupRelay {
-                mls_group_id: mls_group_id.clone(),
-                relay_url: relay.clone(),
-            };
-
-            self.storage()
-                .save_group_relay(group_relay)
-                .map_err(|e| Error::Group(e.to_string()))?;
-        }
+        self.storage()
+            .replace_group_relays(
+                &mls_group_id,
+                welcome_preview.nostr_group_data.relays.clone(),
+            )
+            .map_err(|e| Error::Group(e.to_string()))?;
 
         let processed_welcome = welcome_types::ProcessedWelcome {
             wrapper_event_id: *wrapper_event_id,
@@ -188,17 +184,10 @@ where
                 |e: nostr_mls_storage::groups::error::GroupError| Error::Group(e.to_string()),
             )?;
 
-            // Always (re-)save the group relays after saving the group
-            for relay_url in welcome_preview.nostr_group_data.relays.into_iter() {
-                let group_relay = group_types::GroupRelay {
-                    mls_group_id: mls_group_id.clone(),
-                    relay_url,
-                };
-
-                self.storage()
-                    .save_group_relay(group_relay)
-                    .map_err(|e| Error::Group(e.to_string()))?;
-            }
+            // Save the group relays after saving the group
+            self.storage()
+                .replace_group_relays(&mls_group_id, welcome_preview.nostr_group_data.relays)
+                .map_err(|e| Error::Group(e.to_string()))?;
         }
 
         Ok(())
