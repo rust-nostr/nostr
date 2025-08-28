@@ -23,7 +23,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidIdentity => write!(f, "Invalid identity tag"),
+            Self::InvalidIdentity => f.write_str("Invalid identity tag"),
         }
     }
 }
@@ -45,11 +45,18 @@ pub enum ExternalIdentity {
 
 impl fmt::Display for ExternalIdentity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl ExternalIdentity {
+    /// Get as `&str`
+    pub fn as_str(&self) -> &str {
         match self {
-            Self::GitHub => write!(f, "github"),
-            Self::Twitter => write!(f, "twitter"),
-            Self::Mastodon => write!(f, "mastodon"),
-            Self::Telegram => write!(f, "telegram"),
+            Self::GitHub => "github",
+            Self::Twitter => "twitter",
+            Self::Mastodon => "mastodon",
+            Self::Telegram => "telegram",
         }
     }
 }

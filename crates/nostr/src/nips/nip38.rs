@@ -26,10 +26,17 @@ pub enum StatusType {
 
 impl fmt::Display for StatusType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl StatusType {
+    /// Get as `&str`
+    pub fn as_str(&self) -> &str {
         match self {
-            Self::General => write!(f, "general"),
-            Self::Music => write!(f, "music"),
-            Self::Custom(s) => write!(f, "{s}"),
+            Self::General => "general",
+            Self::Music => "music",
+            Self::Custom(s) => s.as_str(),
         }
     }
 }

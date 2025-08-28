@@ -48,12 +48,8 @@ pub enum Error {
     UnsupportedMethod(String),
     /// Invalid URI
     InvalidURI,
-    /// Invalid URI scheme
-    InvalidURIScheme,
     /// Not a request
     NotRequest,
-    /// Not a response
-    NotResponse,
     /// Unexpected result
     UnexpectedResult,
 }
@@ -64,19 +60,17 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Key(e) => write!(f, "{e}"),
-            Self::Json(e) => write!(f, "{e}"),
-            Self::RelayUrl(e) => write!(f, "{e}"),
-            Self::Url(e) => write!(f, "{e}"),
-            Self::Event(e) => write!(f, "{e}"),
-            Self::InvalidRequest => write!(f, "Invalid request"),
-            Self::InvalidParamsLength => write!(f, "Invalid params len"),
+            Self::Key(e) => e.fmt(f),
+            Self::Json(e) => e.fmt(f),
+            Self::RelayUrl(e) => e.fmt(f),
+            Self::Url(e) => e.fmt(f),
+            Self::Event(e) => e.fmt(f),
+            Self::InvalidRequest => f.write_str("Invalid request"),
+            Self::InvalidParamsLength => f.write_str("Invalid params len"),
             Self::UnsupportedMethod(name) => write!(f, "Unsupported method: {name}"),
-            Self::InvalidURI => write!(f, "Invalid uri"),
-            Self::InvalidURIScheme => write!(f, "Invalid uri scheme"),
-            Self::NotRequest => write!(f, "Not a request"),
-            Self::NotResponse => write!(f, "Not a response"),
-            Self::UnexpectedResult => write!(f, "Unexpected result"),
+            Self::InvalidURI => f.write_str("Invalid uri"),
+            Self::NotRequest => f.write_str("Not a request"),
+            Self::UnexpectedResult => f.write_str("Unexpected result"),
         }
     }
 }
@@ -870,7 +864,7 @@ impl NostrConnectURI {
 
                 Err(Error::InvalidURI)
             }
-            _ => Err(Error::InvalidURIScheme),
+            _ => Err(Error::InvalidURI),
         }
     }
 

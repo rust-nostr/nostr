@@ -30,7 +30,7 @@ pub enum WrongKindError {
 impl fmt::Display for WrongKindError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Single(k) => write!(f, "{k}"),
+            Self::Single(k) => k.fmt(f),
             Self::Range(range) => write!(f, "'{} <= k <= {}'", range.start, range.end),
         }
     }
@@ -74,21 +74,21 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Event(e) => write!(f, "{e}"),
-            Self::NIP01(e) => write!(f, "{e}"),
+            Self::Event(e) => e.fmt(f),
+            Self::NIP01(e) => e.fmt(f),
             #[cfg(feature = "nip03")]
-            Self::NIP03(e) => write!(f, "{e}"),
+            Self::NIP03(e) => e.fmt(f),
             #[cfg(feature = "nip04")]
-            Self::NIP04(e) => write!(f, "{e}"),
+            Self::NIP04(e) => e.fmt(f),
             #[cfg(all(feature = "std", feature = "nip44"))]
-            Self::NIP44(e) => write!(f, "{e}"),
-            Self::NIP58(e) => write!(f, "{e}"),
+            Self::NIP44(e) => e.fmt(f),
+            Self::NIP58(e) => e.fmt(f),
             #[cfg(all(feature = "std", feature = "nip59"))]
-            Self::NIP59(e) => write!(f, "{e}"),
+            Self::NIP59(e) => e.fmt(f),
             Self::WrongKind { received, expected } => {
                 write!(f, "Wrong kind: received={received}, expected={expected}")
             }
-            Self::EmptyTags => write!(f, "Empty tags, while at least one tag is required"),
+            Self::EmptyTags => f.write_str("At least one tag is required"),
         }
     }
 }

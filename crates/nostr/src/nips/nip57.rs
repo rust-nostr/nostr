@@ -63,17 +63,16 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Key(e) => write!(f, "{e}"),
-            Self::Builder(e) => write!(f, "{e}"),
-            Self::Event(e) => write!(f, "{e}"),
-            Self::Bech32Decode(e) => write!(f, "{e}"),
-            Self::Bech32Encode(e) => write!(f, "{e}"),
-            Self::InvalidPrivateZapMessage => write!(f, "Invalid private zap message"),
-            Self::PrivateZapMessageNotFound => write!(f, "Private zap message not found"),
-            Self::WrongBech32Prefix => write!(f, "Wrong bech32 prefix"),
-            Self::WrongBlockMode => write!(
-                f,
-                "Wrong encryption block mode. The content must be encrypted using CBC mode!"
+            Self::Key(e) => e.fmt(f),
+            Self::Builder(e) => e.fmt(f),
+            Self::Event(e) => e.fmt(f),
+            Self::Bech32Decode(e) => e.fmt(f),
+            Self::Bech32Encode(e) => e.fmt(f),
+            Self::InvalidPrivateZapMessage => f.write_str("Invalid private zap message"),
+            Self::PrivateZapMessageNotFound => f.write_str("Private zap message not found"),
+            Self::WrongBech32Prefix => f.write_str("Wrong bech32 prefix"),
+            Self::WrongBlockMode => f.write_str(
+                "Wrong encryption block mode. The content must be encrypted using CBC mode!",
             ),
         }
     }

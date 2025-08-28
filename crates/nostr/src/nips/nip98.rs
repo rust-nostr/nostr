@@ -46,9 +46,9 @@ pub enum RequiredTags {
 impl fmt::Display for RequiredTags {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::AbsoluteURL => write!(f, "u"),
-            Self::Method => write!(f, "method"),
-            Self::Payload => write!(f, "payload"),
+            Self::AbsoluteURL => f.write_str("u"),
+            Self::Method => f.write_str("method"),
+            Self::Payload => f.write_str("payload"),
         }
     }
 }
@@ -110,25 +110,25 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             #[cfg(feature = "std")]
-            Self::Base64(e) => write!(f, "{e}"),
+            Self::Base64(e) => e.fmt(f),
             #[cfg(feature = "std")]
-            Self::Event(e) => write!(f, "{e}"),
+            Self::Event(e) => e.fmt(f),
             #[cfg(feature = "std")]
-            Self::EventBuilder(e) => write!(f, "{e}"),
+            Self::EventBuilder(e) => e.fmt(f),
             Self::MissingTag(tag) => write!(f, "missing '{tag}' tag"),
-            Self::UnknownMethod => write!(f, "Unknown HTTP method"),
+            Self::UnknownMethod => f.write_str("Unknown HTTP method"),
             #[cfg(feature = "std")]
-            Self::AuthorizationHeaderMissing => write!(f, "nostr authorization header missing"),
+            Self::AuthorizationHeaderMissing => f.write_str("nostr authorization header missing"),
             #[cfg(feature = "std")]
-            Self::MalformedAuthorizationHeader => write!(f, "malformed nostr authorization header"),
+            Self::MalformedAuthorizationHeader => f.write_str("malformed nostr authorization header"),
             #[cfg(feature = "std")]
-            Self::WrongAuthHeaderKind => write!(f, "wrong nostr authorization header kind"),
+            Self::WrongAuthHeaderKind => f.write_str("wrong nostr authorization header kind"),
             #[cfg(feature = "std")]
             Self::AuthorizationNotMatchRequest { authorized_url, authorized_method, request_url, request_method} => write!(f, "authorization doesn't match request: authorized_url={authorized_url}, authorized_method={authorized_method}, request_url={request_url}, request_method={request_method}"),
             #[cfg(feature = "std")]
             Self::AuthorizationTooOld { current, created_at } => write!(f, "authorization event is too old: current_time={current}, created_at={created_at}"),
             #[cfg(feature = "std")]
-            Self::PayloadHashMismatch => write!(f, "payload hash doesn't match the body hash"),
+            Self::PayloadHashMismatch => f.write_str("payload hash doesn't match the body hash"),
         }
     }
 }
@@ -171,11 +171,18 @@ pub enum HttpMethod {
 
 impl fmt::Display for HttpMethod {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl HttpMethod {
+    /// Get as `&str`
+    pub fn as_str(&self) -> &str {
         match self {
-            Self::GET => write!(f, "GET"),
-            Self::POST => write!(f, "POST"),
-            Self::PUT => write!(f, "PUT"),
-            Self::PATCH => write!(f, "PATCH"),
+            Self::GET => "GET",
+            Self::POST => "POST",
+            Self::PUT => "PUT",
+            Self::PATCH => "PATCH",
         }
     }
 }

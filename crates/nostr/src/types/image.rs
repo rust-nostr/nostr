@@ -8,13 +8,13 @@ use core::fmt;
 use core::num::ParseIntError;
 use core::str::{FromStr, Split};
 
-#[derive(Debug, PartialEq, Eq)]
 /// Image error
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// Impossible to parse integer
     ParseIntError(ParseIntError),
     /// Invalid Image Dimensions
-    InvalidImageDimensions,
+    InvalidDimensions,
 }
 
 #[cfg(feature = "std")]
@@ -23,8 +23,8 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::ParseIntError(e) => write!(f, "{e}"),
-            Self::InvalidImageDimensions => write!(f, "Invalid image dimensions"),
+            Self::ParseIntError(e) => e.fmt(f),
+            Self::InvalidDimensions => f.write_str("Invalid dimensions"),
         }
     }
 }
@@ -52,6 +52,12 @@ impl ImageDimensions {
     }
 }
 
+impl fmt::Display for ImageDimensions {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}x{}", self.width, self.height)
+    }
+}
+
 impl FromStr for ImageDimensions {
     type Err = Error;
 
@@ -60,13 +66,7 @@ impl FromStr for ImageDimensions {
         if let (Some(width), Some(height)) = (spitted.next(), spitted.next()) {
             Ok(Self::new(width.parse()?, height.parse()?))
         } else {
-            Err(Error::InvalidImageDimensions)
+            Err(Error::InvalidDimensions)
         }
-    }
-}
-
-impl fmt::Display for ImageDimensions {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}x{}", self.width, self.height)
     }
 }

@@ -33,11 +33,11 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidLength => write!(f, "invalid length"),
-            Self::InvalidKind => write!(f, "invalid kind"),
-            Self::IdentifierTagNotFound => write!(f, "identifier tag not found"),
-            Self::MismatchedBadgeDefinitionOrAward => write!(f, "mismatched badge definition/award"),
-            Self::BadgeAwardsLackAwardedPublicKey => write!(f, "badge award events lack the awarded public keybadge award events lack the awarded public key"),
+            Self::InvalidLength => f.write_str("invalid length"),
+            Self::InvalidKind => f.write_str("invalid kind"),
+            Self::IdentifierTagNotFound => f.write_str("identifier tag not found"),
+            Self::MismatchedBadgeDefinitionOrAward => f.write_str("mismatched badge definition/award"),
+            Self::BadgeAwardsLackAwardedPublicKey => f.write_str("badge award events lack the awarded public keybadge award events lack the awarded public key"),
         }
     }
 }

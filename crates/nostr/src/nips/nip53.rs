@@ -31,7 +31,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::UnknownLiveEventMarker(u) => write!(f, "Unknown marker: {u}"),
-            Self::DescriptionMissing => write!(f, "Event missing a description"),
+            Self::DescriptionMissing => f.write_str("Event missing a description"),
         }
     }
 }
@@ -49,10 +49,17 @@ pub enum LiveEventMarker {
 
 impl fmt::Display for LiveEventMarker {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl LiveEventMarker {
+    /// Get as `&str`
+    pub fn as_str(&self) -> &str {
         match self {
-            Self::Host => write!(f, "Host"),
-            Self::Speaker => write!(f, "Speaker"),
-            Self::Participant => write!(f, "Participant"),
+            Self::Host => "Host",
+            Self::Speaker => "Speaker",
+            Self::Participant => "Participant",
         }
     }
 }
@@ -85,11 +92,18 @@ pub enum LiveEventStatus {
 
 impl fmt::Display for LiveEventStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl LiveEventStatus {
+    /// Get as `&str`
+    pub fn as_str(&self) -> &str {
         match self {
-            Self::Planned => write!(f, "planned"),
-            Self::Live => write!(f, "live"),
-            Self::Ended => write!(f, "ended"),
-            Self::Custom(s) => write!(f, "{s}"),
+            Self::Planned => "planned",
+            Self::Live => "live",
+            Self::Ended => "ended",
+            Self::Custom(s) => s.as_str(),
         }
     }
 }

@@ -86,17 +86,17 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::RelayUrl(e) => write!(f, "{e}"),
-            Self::Bech32Decode(e) => write!(f, "{e}"),
-            Self::Bech32Encode(e) => write!(f, "{e}"),
-            Self::Keys(e) => write!(f, "{e}"),
-            Self::Event(e) => write!(f, "{e}"),
+            Self::RelayUrl(e) => e.fmt(f),
+            Self::Bech32Decode(e) => e.fmt(f),
+            Self::Bech32Encode(e) => e.fmt(f),
+            Self::Keys(e) => e.fmt(f),
+            Self::Event(e) => e.fmt(f),
             #[cfg(feature = "nip49")]
-            Self::NIP49(e) => write!(f, "{e}"),
-            Self::WrongPrefix => write!(f, "Wrong prefix"),
+            Self::NIP49(e) => e.fmt(f),
+            Self::WrongPrefix => f.write_str("Wrong prefix"),
             Self::FieldMissing(name) => write!(f, "Field missing: {name}"),
-            Self::TLV => write!(f, "TLV error"),
-            Self::TryFromSlice => write!(f, "From slice error"),
+            Self::TLV => f.write_str("TLV error"),
+            Self::TryFromSlice => f.write_str("From slice error"),
         }
     }
 }

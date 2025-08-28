@@ -1066,7 +1066,7 @@ impl InnerRelay {
                 // Send notification
                 self.send_notification(RelayNotification::Message { message }, true);
             }
-            Ok(None) | Err(Error::MessageHandle(MessageHandleError::EmptyMsg)) => (),
+            Ok(None) => (),
             Err(e) => tracing::error!(
                 url = %self.url,
                 msg = %msg,

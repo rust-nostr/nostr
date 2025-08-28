@@ -29,8 +29,6 @@ pub enum Error {
     V2(v2::ErrorV2),
     /// Error while decoding from base64
     Base64Decode(base64::DecodeError),
-    /// Invalid length
-    InvalidLength,
     /// Error while encoding to UTF-8
     Utf8Encode,
     /// Unknown version
@@ -47,13 +45,12 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Key(e) => write!(f, "{e}"),
-            Self::V2(e) => write!(f, "{e}"),
+            Self::Key(e) => e.fmt(f),
+            Self::V2(e) => e.fmt(f),
             Self::Base64Decode(e) => write!(f, "Error while decoding from base64: {e}"),
-            Self::InvalidLength => write!(f, "Invalid length"),
-            Self::Utf8Encode => write!(f, "Error while encoding to UTF-8"),
+            Self::Utf8Encode => f.write_str("Error while encoding to UTF-8"),
             Self::UnknownVersion(v) => write!(f, "unknown version: {v}"),
-            Self::VersionNotFound => write!(f, "Version not found in payload"),
+            Self::VersionNotFound => f.write_str("Version not found in payload"),
             Self::NotFound(value) => write!(f, "{value} not found in payload"),
         }
     }

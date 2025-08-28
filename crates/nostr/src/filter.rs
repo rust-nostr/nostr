@@ -8,6 +8,7 @@
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
 use core::fmt;
+use core::fmt::Write;
 use core::hash::Hash;
 use core::str::FromStr;
 
@@ -36,7 +37,7 @@ impl std::error::Error for SingleLetterTagError {}
 impl fmt::Display for SingleLetterTagError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidChar => write!(f, "invalid char"),
+            Self::InvalidChar => f.write_str("invalid char"),
         }
     }
 }
@@ -280,7 +281,7 @@ impl SingleLetterTag {
 
 impl fmt::Display for SingleLetterTag {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_str())
+        f.write_char(self.as_char())
     }
 }
 

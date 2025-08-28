@@ -38,8 +38,8 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidExternalContent => write!(f, "invalid external content ID"),
-            Self::InvalidNip73Kind => write!(f, "Invalid NIP-73 kind"),
+            Self::InvalidExternalContent => f.write_str("invalid external content ID"),
+            Self::InvalidNip73Kind => f.write_str("Invalid NIP-73 kind"),
         }
     }
 }
@@ -115,15 +115,15 @@ pub enum Nip73Kind {
 impl fmt::Display for Nip73Kind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Url => write!(f, "web"),
-            Self::Book => write!(f, "isbn"),
-            Self::Geohashe => write!(f, "geo"),
-            Self::Movie => write!(f, "isan"),
-            Self::Paper => write!(f, "doi"),
-            Self::Hashtag => write!(f, "{HASHTAG}"),
-            Self::PodcastFeed => write!(f, "podcast:guid"),
-            Self::PodcastEpisode => write!(f, "podcast:item:guid"),
-            Self::PodcastPublisher => write!(f, "podcast:publisher:guid"),
+            Self::Url => f.write_str("web"),
+            Self::Book => f.write_str("isbn"),
+            Self::Geohashe => f.write_str("geo"),
+            Self::Movie => f.write_str("isan"),
+            Self::Paper => f.write_str("doi"),
+            Self::Hashtag => HASHTAG.fmt(f),
+            Self::PodcastFeed => f.write_str("podcast:guid"),
+            Self::PodcastEpisode => f.write_str("podcast:item:guid"),
+            Self::PodcastPublisher => f.write_str("podcast:publisher:guid"),
             Self::BlockchainTransaction(blockchain) => write!(f, "{blockchain}:tx"),
             Self::BlockchainAddress(blockchain) => write!(f, "{blockchain}:address"),
         }
@@ -133,7 +133,7 @@ impl fmt::Display for Nip73Kind {
 impl fmt::Display for ExternalContentId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Url(url) => write!(f, "{url}"),
+            Self::Url(url) => url.fmt(f),
             Self::Hashtag(hashtag) => write!(f, "{HASHTAG}{hashtag}"),
             Self::Geohash(hash) => write!(f, "{GEOHASH}{hash}"),
             Self::Book(id) => write!(f, "{BOOK}{id}"),

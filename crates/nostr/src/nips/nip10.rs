@@ -22,7 +22,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidMarker => write!(f, "invalid marker"),
+            Self::InvalidMarker => f.write_str("invalid marker"),
         }
     }
 }
@@ -41,8 +41,8 @@ pub enum Marker {
 impl fmt::Display for Marker {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Root => write!(f, "root"),
-            Self::Reply => write!(f, "reply"),
+            Self::Root => f.write_str("root"),
+            Self::Reply => f.write_str("reply"),
         }
     }
 }

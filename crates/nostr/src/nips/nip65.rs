@@ -24,7 +24,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidRelayMetadata => write!(f, "Invalid relay metadata"),
+            Self::InvalidRelayMetadata => f.write_str("Invalid relay metadata"),
         }
     }
 }
@@ -50,7 +50,7 @@ impl RelayMetadata {
 
 impl fmt::Display for RelayMetadata {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_str())
+        f.write_str(self.as_str())
     }
 }
 

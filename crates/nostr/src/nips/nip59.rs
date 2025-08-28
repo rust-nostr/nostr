@@ -39,9 +39,9 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Signer(e) => write!(f, "{e}"),
-            Self::Event(e) => write!(f, "{e}"),
-            Self::NotGiftWrap => write!(f, "Not a Gift Wrap"),
+            Self::Signer(e) => e.fmt(f),
+            Self::Event(e) => e.fmt(f),
+            Self::NotGiftWrap => f.write_str("Not a Gift Wrap"),
         }
     }
 }

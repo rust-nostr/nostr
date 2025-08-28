@@ -56,18 +56,18 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Json(e) => write!(f, "{e}"),
-            Self::NIP04(e) => write!(f, "{e}"),
+            Self::Json(e) => e.fmt(f),
+            Self::NIP04(e) => e.fmt(f),
             #[cfg(feature = "std")]
-            Self::EventBuilder(e) => write!(f, "{e}"),
-            Self::ErrorCode(e) => write!(f, "{e}"),
+            Self::EventBuilder(e) => e.fmt(f),
+            Self::ErrorCode(e) => e.fmt(f),
             Self::CantDeserializeResponse { response, error } => write!(
                 f,
                 "Can't deserialize response: response={response}, error={error}"
             ),
-            Self::UnexpectedResult => write!(f, "Unexpected result"),
-            Self::UnknownMethod => write!(f, "Unknown method"),
-            Self::InvalidURI => write!(f, "Invalid URI"),
+            Self::UnexpectedResult => f.write_str("Unexpected result"),
+            Self::UnknownMethod => f.write_str("Unknown method"),
+            Self::InvalidURI => f.write_str("Invalid URI"),
         }
     }
 }

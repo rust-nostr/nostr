@@ -32,8 +32,8 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::UnknownPollType => write!(f, "unknown poll type"),
-            Self::UnexpectedTag => write!(f, "unexpected tag"),
+            Self::UnknownPollType => f.write_str("unknown poll type"),
+            Self::UnexpectedTag => f.write_str("unexpected tag"),
         }
     }
 }
@@ -49,7 +49,7 @@ pub enum PollType {
 
 impl fmt::Display for PollType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_str())
+        f.write_str(self.as_str())
     }
 }
 

@@ -35,10 +35,10 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Json(e) => write!(f, "{e}"),
-            Self::Url(e) => write!(f, "{e}"),
-            Self::InvalidFormat => write!(f, "invalid format"),
-            Self::ImpossibleToVerify => write!(f, "impossible to verify"),
+            Self::Json(e) => e.fmt(f),
+            Self::Url(e) => e.fmt(f),
+            Self::InvalidFormat => f.write_str("invalid format"),
+            Self::ImpossibleToVerify => f.write_str("impossible to verify"),
         }
     }
 }

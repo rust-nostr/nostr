@@ -22,7 +22,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::UnknownStatus => write!(f, "Unknown status"),
+            Self::UnknownStatus => f.write_str("Unknown status"),
         }
     }
 }
@@ -44,12 +44,19 @@ pub enum DataVendingMachineStatus {
 
 impl fmt::Display for DataVendingMachineStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl DataVendingMachineStatus {
+    /// Get as `&str`
+    pub fn as_str(&self) -> &str {
         match self {
-            Self::PaymentRequired => write!(f, "payment-required"),
-            Self::Processing => write!(f, "processing"),
-            Self::Error => write!(f, "error"),
-            Self::Success => write!(f, "success"),
-            Self::Partial => write!(f, "partial"),
+            Self::PaymentRequired => "payment-required",
+            Self::Processing => "processing",
+            Self::Error => "error",
+            Self::Success => "success",
+            Self::Partial => "partial",
         }
     }
 }

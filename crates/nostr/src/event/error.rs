@@ -30,12 +30,12 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Json(e) => write!(f, "{e}"),
-            Self::Signer(e) => write!(f, "{e}"),
-            Self::Hex(e) => write!(f, "{e}"),
+            Self::Json(e) => e.fmt(f),
+            Self::Signer(e) => e.fmt(f),
+            Self::Hex(e) => e.fmt(f),
             Self::UnknownKey(key) => write!(f, "Unknown key: {key}"),
-            Self::InvalidId => write!(f, "Invalid event ID"),
-            Self::InvalidSignature => write!(f, "Invalid signature"),
+            Self::InvalidId => f.write_str("Invalid event ID"),
+            Self::InvalidSignature => f.write_str("Invalid signature"),
         }
     }
 }

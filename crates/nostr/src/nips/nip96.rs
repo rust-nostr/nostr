@@ -38,10 +38,10 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NIP98(e) => write!(f, "{e}"),
-            Self::InvalidURL => write!(f, "Invalid URL"),
-            Self::ResponseDecodeError => write!(f, "Response decoding error"),
-            Self::UploadError(e) => write!(f, "File upload error: {e}"),
+            Self::NIP98(e) => e.fmt(f),
+            Self::InvalidURL => f.write_str("Invalid URL"),
+            Self::ResponseDecodeError => f.write_str("Response decoding error"),
+            Self::UploadError(e) => f.write_str(e),
         }
     }
 }

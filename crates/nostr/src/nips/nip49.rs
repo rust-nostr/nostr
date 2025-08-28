@@ -73,22 +73,22 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::ChaCha20Poly1305(e) => write!(f, "{e}"),
-            Self::InvalidScryptParams(e) => write!(f, "{e}"),
-            Self::InvalidScryptOutputLen(e) => write!(f, "{e}"),
-            Self::Keys(e) => write!(f, "{e}"),
-            Self::TryFromSlice => write!(f, "From slice error"),
+            Self::ChaCha20Poly1305(e) => e.fmt(f),
+            Self::InvalidScryptParams(e) => e.fmt(f),
+            Self::InvalidScryptOutputLen(e) => e.fmt(f),
+            Self::Keys(e) => e.fmt(f),
+            Self::TryFromSlice => f.write_str("From slice error"),
             Self::InvalidLength { expected, found } => {
                 write!(f, "Invalid bytes len: expected={expected}, found={found}")
             }
             Self::UnknownVersion(v) => write!(f, "unknown version: {v}"),
             Self::UnknownKeySecurity(v) => write!(f, "unknown security: {v}"),
-            Self::VersionNotFound => write!(f, "version not found"),
-            Self::Log2RoundNotFound => write!(f, "`log N` not found"),
-            Self::SaltNotFound => write!(f, "salt not found"),
-            Self::NonceNotFound => write!(f, "nonce not found"),
-            Self::KeySecurityNotFound => write!(f, "security not found"),
-            Self::CipherTextNotFound => write!(f, "ciphertext not found"),
+            Self::VersionNotFound => f.write_str("version not found"),
+            Self::Log2RoundNotFound => f.write_str("`log N` not found"),
+            Self::SaltNotFound => f.write_str("salt not found"),
+            Self::NonceNotFound => f.write_str("nonce not found"),
+            Self::KeySecurityNotFound => f.write_str("security not found"),
+            Self::CipherTextNotFound => f.write_str("ciphertext not found"),
         }
     }
 }

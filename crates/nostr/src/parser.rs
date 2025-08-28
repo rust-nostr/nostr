@@ -36,8 +36,8 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NIP21(e) => write!(f, "{e}"),
-            Self::Url(e) => write!(f, "{e}"),
+            Self::NIP21(e) => e.fmt(f),
+            Self::Url(e) => e.fmt(f),
         }
     }
 }

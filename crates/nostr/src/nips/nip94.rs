@@ -8,6 +8,7 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::fmt;
 
 use hashes::sha256::Hash as Sha256Hash;
 
@@ -24,18 +25,18 @@ pub enum FileMetadataError {
     MissingSha,
 }
 
-impl core::fmt::Display for FileMetadataError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+#[cfg(feature = "std")]
+impl std::error::Error for FileMetadataError {}
+
+impl fmt::Display for FileMetadataError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::MissingUrl => write!(f, "missing url"),
-            Self::MissingMimeType => write!(f, "missing mime type"),
-            Self::MissingSha => write!(f, "missing file sha256"),
+            Self::MissingUrl => f.write_str("missing url"),
+            Self::MissingMimeType => f.write_str("missing mime type"),
+            Self::MissingSha => f.write_str("missing file sha256"),
         }
     }
 }
-
-#[cfg(feature = "std")]
-impl std::error::Error for FileMetadataError {}
 
 /// File Metadata
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

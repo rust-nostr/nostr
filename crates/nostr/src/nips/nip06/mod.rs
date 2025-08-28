@@ -38,8 +38,8 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::BIP32(e) => write!(f, "BIP32: {e}"),
-            Self::BIP39(e) => write!(f, "BIP39: {e}"),
+            Self::BIP32(e) => e.fmt(f),
+            Self::BIP39(e) => e.fmt(f),
         }
     }
 }

@@ -22,7 +22,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::UnknownReportType => write!(f, "Unknown report type"),
+            Self::UnknownReportType => f.write_str("Unknown report type"),
         }
     }
 }
@@ -50,14 +50,21 @@ pub enum Report {
 
 impl fmt::Display for Report {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Report {
+    /// Get as `&str`
+    pub fn as_str(&self) -> &str {
         match self {
-            Self::Nudity => write!(f, "nudity"),
-            Self::Malware => write!(f, "malware"),
-            Self::Profanity => write!(f, "profanity"),
-            Self::Illegal => write!(f, "illegal"),
-            Self::Spam => write!(f, "spam"),
-            Self::Impersonation => write!(f, "impersonation"),
-            Self::Other => write!(f, "other"),
+            Self::Nudity => "nudity",
+            Self::Malware => "malware",
+            Self::Profanity => "profanity",
+            Self::Illegal => "illegal",
+            Self::Spam => "spam",
+            Self::Impersonation => "impersonation",
+            Self::Other => "other",
         }
     }
 }

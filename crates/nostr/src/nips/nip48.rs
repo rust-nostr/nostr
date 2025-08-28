@@ -26,12 +26,19 @@ pub enum Protocol {
 
 impl fmt::Display for Protocol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Protocol {
+    /// Get as `&str`
+    pub fn as_str(&self) -> &str {
         match self {
-            Self::ActivityPub => write!(f, "activitypub"),
-            Self::ATProto => write!(f, "atproto"),
-            Self::Rss => write!(f, "rss"),
-            Self::Web => write!(f, "web"),
-            Self::Custom(m) => write!(f, "{m}"),
+            Self::ActivityPub => "activitypub",
+            Self::ATProto => "atproto",
+            Self::Rss => "rss",
+            Self::Web => "web",
+            Self::Custom(m) => m.as_str(),
         }
     }
 }

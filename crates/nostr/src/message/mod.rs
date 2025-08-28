@@ -19,19 +19,14 @@ pub mod relay;
 
 pub use self::client::ClientMessage;
 pub use self::relay::{MachineReadablePrefix, RelayMessage};
-use crate::event;
 
 /// Messages error
 #[derive(Debug)]
 pub enum MessageHandleError {
     /// Impossible to deserialize message
     Json(serde_json::Error),
-    /// Event error
-    Event(event::Error),
     /// Invalid message format
     InvalidMessageFormat,
-    /// Empty message
-    EmptyMsg,
 }
 
 #[cfg(feature = "std")]
@@ -40,10 +35,8 @@ impl std::error::Error for MessageHandleError {}
 impl fmt::Display for MessageHandleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Json(e) => write!(f, "{e}"),
-            Self::Event(e) => write!(f, "{e}"),
-            Self::InvalidMessageFormat => write!(f, "Invalid format"),
-            Self::EmptyMsg => write!(f, "Empty message"),
+            Self::Json(e) => e.fmt(f),
+            Self::InvalidMessageFormat => f.write_str("Invalid format"),
         }
     }
 }
@@ -51,12 +44,6 @@ impl fmt::Display for MessageHandleError {
 impl From<serde_json::Error> for MessageHandleError {
     fn from(e: serde_json::Error) -> Self {
         Self::Json(e)
-    }
-}
-
-impl From<event::Error> for MessageHandleError {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
     }
 }
 

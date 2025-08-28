@@ -36,9 +36,9 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Url(e) => write!(f, "{e}"),
-            Self::UnsupportedScheme => write!(f, "Unsupported scheme"),
-            Self::MultipleSchemeSeparators => write!(f, "Multiple scheme separators"),
+            Self::Url(e) => e.fmt(f),
+            Self::UnsupportedScheme => f.write_str("Unsupported scheme"),
+            Self::MultipleSchemeSeparators => f.write_str("Multiple scheme separators"),
         }
     }
 }
@@ -189,7 +189,7 @@ impl RelayUrl {
 
 impl fmt::Display for RelayUrl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_str())
+        f.write_str(self.as_str())
     }
 }
 

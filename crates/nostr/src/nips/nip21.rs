@@ -29,7 +29,7 @@ pub enum UnsupportedVariant {
 impl fmt::Display for UnsupportedVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::SecretKey => write!(f, "secret key"),
+            Self::SecretKey => f.write_str("secret key"),
         }
     }
 }
@@ -51,9 +51,9 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NIP19(e) => write!(f, "NIP19: {e}"),
+            Self::NIP19(e) => e.fmt(f),
             Self::UnsupportedVariant(t) => write!(f, "Unsupported variant: {t}"),
-            Self::InvalidURI => write!(f, "Invalid nostr URI"),
+            Self::InvalidURI => f.write_str("Invalid nostr URI"),
         }
     }
 }

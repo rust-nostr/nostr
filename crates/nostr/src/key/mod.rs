@@ -52,10 +52,10 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Secp256k1(e) => write!(f, "{e}"),
-            Self::Hex(e) => write!(f, "{e}"),
-            Self::InvalidSecretKey => write!(f, "Invalid secret key"),
-            Self::InvalidPublicKey => write!(f, "Invalid public key"),
+            Self::Secp256k1(e) => e.fmt(f),
+            Self::Hex(e) => e.fmt(f),
+            Self::InvalidSecretKey => f.write_str("Invalid secret key"),
+            Self::InvalidPublicKey => f.write_str("Invalid public key"),
         }
     }
 }

@@ -414,7 +414,7 @@ impl JsonUtil for RelayMessage<'_> {
         let msg: &[u8] = json.as_ref();
 
         if msg.is_empty() {
-            return Err(MessageHandleError::EmptyMsg);
+            return Err(MessageHandleError::InvalidMessageFormat);
         }
 
         let value: Value = serde_json::from_slice(msg)?;

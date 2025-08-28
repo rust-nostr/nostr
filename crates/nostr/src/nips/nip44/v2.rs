@@ -6,10 +6,9 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/44.md>
 
-use alloc::string::{FromUtf8Error, String, ToString};
+use alloc::string::{FromUtf8Error, String};
 use alloc::vec;
 use alloc::vec::Vec;
-use core::array::TryFromSliceError;
 use core::ops::{Deref, Range};
 use core::{fmt, iter};
 
@@ -42,10 +41,10 @@ pub enum ErrorV2 {
     FromSlice(FromSliceError),
     /// Error while encoding to UTF-8
     Utf8Encode(FromUtf8Error),
-    /// Try from slice
-    TryFromSlice(String),
     /// HKDF Length
     HkdfLength(usize),
+    /// Try from slice
+    TryFromSlice,
     /// Message is empty
     MessageEmpty,
     /// Message is too long
@@ -62,14 +61,14 @@ impl std::error::Error for ErrorV2 {}
 impl fmt::Display for ErrorV2 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::FromSlice(e) => write!(f, "{e}"),
+            Self::FromSlice(e) => e.fmt(f),
             Self::Utf8Encode(e) => write!(f, "error while encoding to UTF-8: {e}"),
-            Self::TryFromSlice(e) => write!(f, "try from slice error: {e}"),
             Self::HkdfLength(size) => write!(f, "invalid Length for HKDF: {size}"),
-            Self::MessageEmpty => write!(f, "message empty"),
-            Self::MessageTooLong => write!(f, "message too long"),
-            Self::InvalidHmac => write!(f, "invalid HMAC"),
-            Self::InvalidPadding => write!(f, "invalid padding"),
+            Self::TryFromSlice => f.write_str("could not convert slice to array"),
+            Self::MessageEmpty => f.write_str("message empty"),
+            Self::MessageTooLong => f.write_str("message too long"),
+            Self::InvalidHmac => f.write_str("invalid HMAC"),
+            Self::InvalidPadding => f.write_str("invalid padding"),
         }
     }
 }
@@ -86,18 +85,12 @@ impl From<FromUtf8Error> for ErrorV2 {
     }
 }
 
-impl From<TryFromSliceError> for ErrorV2 {
-    fn from(e: TryFromSliceError) -> Self {
-        Self::TryFromSlice(e.to_string())
-    }
-}
-
 struct MessageKeys([u8; MESSAGE_KEYS_SIZE]);
 
 impl MessageKeys {
     #[inline]
-    pub fn from_slice(slice: &[u8]) -> Result<Self, TryFromSliceError> {
-        Ok(Self(slice.try_into()?))
+    pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
+        Ok(Self(slice.try_into().map_err(|_| ErrorV2::TryFromSlice)?))
     }
 
     #[inline]
@@ -272,7 +265,7 @@ pub fn decrypt_to_bytes(
 
     let be_bytes: [u8; 2] = buffer[0..2]
         .try_into()
-        .map_err(|e| Error::from(ErrorV2::from(e)))?;
+        .map_err(|_| Error::from(ErrorV2::TryFromSlice))?;
     let unpadded_len: usize = u16::from_be_bytes(be_bytes) as usize;
 
     if buffer.len() < 2 + unpadded_len {
