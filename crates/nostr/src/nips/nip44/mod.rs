@@ -11,9 +11,6 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use base64::engine::{general_purpose, Engine};
-#[cfg(feature = "std")]
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::RngCore;
 
 pub mod v2;
 
@@ -104,7 +101,6 @@ impl TryFrom<u8> for Version {
 
 /// Encrypt
 #[inline]
-#[cfg(feature = "std")]
 pub fn encrypt<T>(
     secret_key: &SecretKey,
     public_key: &PublicKey,
@@ -114,27 +110,11 @@ pub fn encrypt<T>(
 where
     T: AsRef<[u8]>,
 {
-    encrypt_with_rng(&mut OsRng, secret_key, public_key, content, version)
-}
-
-/// Encrypt
-pub fn encrypt_with_rng<R, T>(
-    rng: &mut R,
-    secret_key: &SecretKey,
-    public_key: &PublicKey,
-    content: T,
-    version: Version,
-) -> Result<String, Error>
-where
-    R: RngCore,
-    T: AsRef<[u8]>,
-{
     match version {
         Version::V2 => {
             let conversation_key: ConversationKey =
                 ConversationKey::derive(secret_key, public_key)?;
-            let payload: Vec<u8> =
-                v2::encrypt_to_bytes_with_rng(rng, &conversation_key, content.as_ref())?;
+            let payload: Vec<u8> = v2::encrypt_to_bytes(&conversation_key, content.as_ref())?;
             Ok(general_purpose::STANDARD.encode(payload))
         }
     }
