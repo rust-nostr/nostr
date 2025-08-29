@@ -131,14 +131,17 @@ impl NostrProvider {
     /// Try to install the provider
     ///
     /// Returns `Err(<installed-provider>)` if a provider was already installed.
+    #[cfg(feature = "std")]
     pub fn try_install(self) -> Result<(), Self> {
-        #[cfg(feature = "std")]
-        let this: Self = self;
+        NOSTR_PROVIDER.set(self)
+    }
 
-        #[cfg(not(feature = "std"))]
-        let this = Box::new(self);
-
-        NOSTR_PROVIDER.set(this)
+    /// Try to install the provider
+    ///
+    /// Returns `Err(<installed-provider>)` if a provider was already installed.
+    #[cfg(not(feature = "std"))]
+    pub fn try_install(self) -> Result<(), Box<Self>> {
+        NOSTR_PROVIDER.set(Box::new(self))
     }
 
     #[inline]
