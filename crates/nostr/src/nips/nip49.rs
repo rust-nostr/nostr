@@ -11,17 +11,15 @@ use alloc::vec::Vec;
 use core::array::TryFromSliceError;
 use core::fmt;
 
-use chacha20poly1305::aead::{Aead, AeadCore, KeyInit, Payload};
+use chacha20poly1305::aead::{Aead, KeyInit, Nonce, Payload};
 use chacha20poly1305::XChaCha20Poly1305;
 use scrypt::errors::{InvalidOutputLen, InvalidParams};
 use scrypt::Params as ScryptParams;
-#[cfg(feature = "std")]
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::{CryptoRng, RngCore};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use unicode_normalization::UnicodeNormalization;
 
 use super::nip19::{FromBech32, ToBech32};
+use crate::provider::NostrProvider;
 use crate::{key, SecretKey};
 
 const SALT_SIZE: usize = 16;
@@ -184,37 +182,24 @@ impl EncryptedSecretKey {
     pub const LEN: usize = 1 + 1 + SALT_SIZE + NONCE_SIZE + 1 + CIPHERTEXT_SIZE; // 91;
 
     /// Encrypt secret key
-    #[inline]
-    #[cfg(feature = "std")]
     pub fn new(
         secret_key: &SecretKey,
         password: &str,
         log_n: u8,
         key_security: KeySecurity,
     ) -> Result<Self, Error> {
-        Self::new_with_rng(&mut OsRng, secret_key, password, log_n, key_security)
-    }
+        let provider = NostrProvider::get();
 
-    /// Encrypt secret key
-    pub fn new_with_rng<R>(
-        rng: &mut R,
-        secret_key: &SecretKey,
-        password: &str,
-        log_n: u8,
-        key_security: KeySecurity,
-    ) -> Result<Self, Error>
-    where
-        R: RngCore + CryptoRng,
-    {
         // Generate salt
         let salt: [u8; SALT_SIZE] = {
             let mut salt: [u8; SALT_SIZE] = [0u8; SALT_SIZE];
-            rng.fill_bytes(&mut salt);
+            provider.rng.fill(&mut salt);
             salt
         };
 
         // Generate nonce
-        let nonce = XChaCha20Poly1305::generate_nonce(rng);
+        let mut nonce = Nonce::<XChaCha20Poly1305>::default();
+        provider.rng.fill(&mut nonce);
 
         // Derive key
         let key: [u8; KEY_SIZE] = derive_key(password, &salt, log_n)?;

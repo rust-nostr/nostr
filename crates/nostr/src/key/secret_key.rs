@@ -12,7 +12,7 @@ use serde::{Deserialize, Deserializer};
 
 use super::Error;
 use crate::nips::nip19::FromBech32;
-#[cfg(all(feature = "std", feature = "nip49"))]
+#[cfg(feature = "nip49")]
 use crate::nips::nip49::{self, EncryptedSecretKey, KeySecurity};
 use crate::provider::NostrProvider;
 
@@ -117,7 +117,7 @@ impl SecretKey {
     /// By default, `LOG_N` is set to `16` and [`KeySecurity::Unknown`].
     /// To use custom values check [`EncryptedSecretKey`] constructors.
     #[inline]
-    #[cfg(all(feature = "std", feature = "nip49"))]
+    #[cfg(feature = "nip49")]
     pub fn encrypt(&self, password: &str) -> Result<EncryptedSecretKey, nip49::Error> {
         EncryptedSecretKey::new(self, password, 16, KeySecurity::Unknown)
     }
