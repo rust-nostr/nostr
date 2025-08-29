@@ -56,6 +56,8 @@ pub struct NostrGroupConfigData {
     pub image_url: Option<String>,
     /// Key to decrypt the image
     pub image_key: Option<Vec<u8>>,
+    /// Nonce to decrypt the image
+    pub image_nonce: Option<Vec<u8>>,
     /// Relays used by the group
     pub relays: Vec<RelayUrl>,
     /// Group admins
@@ -73,6 +75,8 @@ pub struct NostrGroupDataUpdate {
     pub image_url: Option<Option<String>>,
     /// Key to decrypt the image (optional, use Some(None) to clear)
     pub image_key: Option<Option<Vec<u8>>>,
+    /// Nonce to decrypt the image (optional, use Some(None) to clear)
+    pub image_nonce: Option<Option<Vec<u8>>>,
     /// Relays used by the group (optional)
     pub relays: Option<Vec<RelayUrl>>,
     /// Group admins (optional)
@@ -86,6 +90,7 @@ impl NostrGroupConfigData {
         description: String,
         image_url: Option<String>,
         image_key: Option<Vec<u8>>,
+        image_nonce: Option<Vec<u8>>,
         relays: Vec<RelayUrl>,
         admins: Vec<PublicKey>,
     ) -> Self {
@@ -94,6 +99,7 @@ impl NostrGroupConfigData {
             description,
             image_url,
             image_key,
+            image_nonce,
             relays,
             admins,
         }
@@ -136,6 +142,12 @@ impl NostrGroupDataUpdate {
     /// Sets the image key to be updated
     pub fn image_key(mut self, image_key: Option<Vec<u8>>) -> Self {
         self.image_key = Some(image_key);
+        self
+    }
+
+    /// Sets the image key to be updated
+    pub fn image_nonce(mut self, image_nonce: Option<Vec<u8>>) -> Self {
+        self.image_nonce = Some(image_nonce);
         self
     }
 
@@ -732,6 +744,10 @@ where
             group_data.image_key = image_key;
         }
 
+        if let Some(image_nonce) = update.image_nonce {
+            group_data.image_nonce = image_nonce;
+        }
+
         if let Some(relays) = update.relays {
             group_data.relays = relays.into_iter().collect();
         }
@@ -835,6 +851,7 @@ where
             config.relays.clone(),
             config.image_url.clone(),
             config.image_key.clone(),
+            config.image_nonce.clone(),
         );
 
         tracing::debug!(
@@ -910,6 +927,7 @@ where
             state: group_types::GroupState::Active,
             image_url: config.image_url,
             image_key: config.image_key,
+            image_nonce: config.image_nonce,
         };
 
         self.storage().save_group(group.clone()).map_err(

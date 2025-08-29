@@ -75,6 +75,7 @@ pub fn create_nostr_group_config_data(admins: Vec<PublicKey>) -> NostrGroupConfi
     let relays = vec![RelayUrl::parse("wss://test.relay").unwrap()];
     let image_url = "https://example.com/test.png".to_string();
     let image_key = nostr::SecretKey::generate().as_secret_bytes().to_owned();
+    let image_nonce = [3u8; 12].to_vec();
     let name = "Test Group".to_owned();
     let description = "A test group for basic testing".to_owned();
     NostrGroupConfigData::new(
@@ -82,6 +83,7 @@ pub fn create_nostr_group_config_data(admins: Vec<PublicKey>) -> NostrGroupConfi
         description,
         Some(image_url),
         Some(image_key),
+        Some(image_nonce),
         relays,
         admins,
     )
