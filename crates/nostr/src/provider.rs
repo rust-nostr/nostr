@@ -3,6 +3,7 @@
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
 use alloc::sync::Arc;
+use core::fmt::Debug;
 use core::ops::Range;
 #[cfg(all(feature = "std", not(target_arch = "wasm32")))]
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -29,14 +30,15 @@ static NOSTR_PROVIDER: OnceCell<NostrProvider> = OnceCell::new();
 #[cfg(not(feature = "std"))]
 static NOSTR_PROVIDER: OnceBox<NostrProvider> = OnceBox::new();
 
-/// Default time provider.
-pub struct DefaultTimeProvider;
-
 /// Helper trait for acquiring time in `no_std` environments.
-pub trait TimeProvider: Send + Sync {
+pub trait TimeProvider: Debug + Send + Sync {
     /// Get the current UNIX timestamp.
     fn now(&self) -> Timestamp;
 }
+
+/// Default time provider.
+#[derive(Debug)]
+pub struct DefaultTimeProvider;
 
 #[cfg(feature = "std")]
 impl TimeProvider for DefaultTimeProvider {
@@ -50,7 +52,7 @@ impl TimeProvider for DefaultTimeProvider {
 }
 
 /// A source of cryptographically secure randomness.
-pub trait SecureRandom: Send + Sync {
+pub trait SecureRandom: Debug + Send + Sync {
     /// Fill the given buffer with random bytes.
     ///
     /// The bytes must be sourced from a cryptographically secure random number
@@ -76,6 +78,7 @@ impl SecureRandom for OsRng {
 
 // TODO: use another name?
 /// Nostr provider
+#[derive(Debug)]
 pub struct NostrProvider {
     /// Secp256k1 context
     pub secp: Secp256k1<All>,
@@ -108,16 +111,27 @@ impl NostrProvider {
 
     /// Install provider
     ///
-    /// Returns `false` if a provider was already installed.
+    /// # Panic
+    ///
+    /// Panic if a provider is already installed!
+    /// Use [`NostrProvider::try_install()`] for a non-panic version of this method.
     #[inline]
-    pub fn install(self) -> bool {
+    pub fn install(self) {
+        self.try_install()
+            .expect("Nostr provider already installed!");
+    }
+
+    /// Try to install the provider
+    ///
+    /// Returns `Err(<installed-provider>)` if a provider was already installed.
+    pub fn try_install(self) -> Result<(), Self> {
         #[cfg(feature = "std")]
         let this: Self = self;
 
         #[cfg(not(feature = "std"))]
         let this = Box::new(self);
 
-        NOSTR_PROVIDER.set(this).is_ok()
+        NOSTR_PROVIDER.set(this)
     }
 
     #[inline]
