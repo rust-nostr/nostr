@@ -11,6 +11,8 @@ pub mod groups;
 pub mod messages;
 pub mod welcomes;
 
+pub mod test_utils;
+
 use self::groups::GroupStorage;
 use self::messages::MessageStorage;
 use self::welcomes::WelcomeStorage;

@@ -28,10 +28,16 @@
 ### Breaking changes
 
 - Remove group type from groups
+- Remove `save_group_relay` method (https://github.com/rust-nostr/nostr/pull/1056)
 
 ### Changed
 
 - Upgrade openmls to v0.7.0
+
+### Added
+
+- Added `replace_group_relays` to make relay replace for groups an atomic operation (https://github.com/rust-nostr/nostr/pull/1056)
+- Comprehensive consistency testing framework for testing all nostr-mls-storage implementations for correctness and consistency (https://github.com/rust-nostr/nostr/pull/1056)
 
 ## v0.43.0 - 2025/07/28
 

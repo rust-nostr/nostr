@@ -50,6 +50,7 @@ pub fn row_to_group(row: &Row) -> SqliteResult<Group> {
     let description: String = row.get("description")?;
     let image_url: Option<String> = row.get("image_url")?;
     let image_key: Option<Vec<u8>> = row.get("image_key")?;
+    let image_nonce: Option<Vec<u8>> = row.get("image_nonce")?;
 
     // Parse admin pubkeys from JSON
     let admin_pubkeys_json: &str = row.get_ref("admin_pubkeys")?.as_str()?;
@@ -80,6 +81,7 @@ pub fn row_to_group(row: &Row) -> SqliteResult<Group> {
         state,
         image_url,
         image_key,
+        image_nonce,
     })
 }
 
@@ -203,6 +205,7 @@ pub fn row_to_welcome(row: &Row) -> SqliteResult<Welcome> {
     let group_description: String = row.get("group_description")?;
     let group_image_url: Option<String> = row.get("group_image_url")?;
     let group_image_key: Option<Vec<u8>> = row.get("group_image_key")?;
+    let group_image_nonce: Option<Vec<u8>> = row.get("group_image_nonce")?;
     let group_admin_pubkeys_json: &str = row.get_ref("group_admin_pubkeys")?.as_str()?;
     let group_relays_json: &str = row.get_ref("group_relays")?.as_str()?;
     let welcomer_blob: &[u8] = row.get_ref("welcomer")?.as_blob()?;
@@ -241,6 +244,7 @@ pub fn row_to_welcome(row: &Row) -> SqliteResult<Welcome> {
         group_description,
         group_image_url,
         group_image_key,
+        group_image_nonce,
         group_admin_pubkeys,
         group_relays,
         welcomer,

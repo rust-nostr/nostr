@@ -42,6 +42,10 @@
 - Improved synchronization between MLSGroup and stored Group state on all commits. (https://github.com/rust-nostr/nostr/pull/1050)
 - Added `NostrMls::update_group_data` method to handle updates of any of the fields of the `NostrGroupDataExtension` (https://github.com/rust-nostr/nostr/pull/1050)
 
+### Fixed
+
+- Bug where group relays weren't being persisted properly on change in NostrGroupDataExtension (https://github.com/rust-nostr/nostr/pull/1056)
+
 ## v0.43.0 - 2025/07/28
 
 ### Breaking changes
@@ -49,6 +53,7 @@
 - Changed return type of `NostrMls::add_members` and `NostrMls::self_update` (https://github.com/rust-nostr/nostr/pull/934)
 - Changed return type of all group and message methods to return Events instead of serialized MLS objects. (https://github.com/rust-nostr/nostr/pull/940)
 - Changed the input params of `NostrMls::create_group`, and additional fields for `NostrGroupDataExtension` (https://github.com/rust-nostr/nostr/pull/965)
+- `NostrGroupDataExtension` requires additional `image_nonce` field (https://github.com/rust-nostr/nostr/pull/1054)
 
 ### Added
 

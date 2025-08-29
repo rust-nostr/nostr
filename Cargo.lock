@@ -3281,6 +3281,7 @@ dependencies = [
  "openmls_basic_credential",
  "openmls_rust_crypto",
  "openmls_traits",
+ "rand 0.9.2",
  "tempfile",
  "tls_codec",
  "tokio",
@@ -3323,7 +3324,10 @@ name = "nostr-mls-storage"
 version = "0.43.0"
 dependencies = [
  "nostr",
+ "nostr-mls-memory-storage",
+ "nostr-mls-sqlite-storage",
  "openmls",
+ "openmls_memory_storage",
  "openmls_traits",
  "serde",
  "serde_json",

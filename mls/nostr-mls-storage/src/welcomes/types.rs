@@ -44,6 +44,8 @@ pub struct Welcome {
     pub group_image_url: Option<String>,
     /// Group image key (from NostrGroupDataExtension)
     pub group_image_key: Option<Vec<u8>>,
+    /// Group image nonce (from NostrGroupDataExtension)
+    pub group_image_nonce: Option<Vec<u8>>,
     /// Group admin pubkeys (from NostrGroupDataExtension)
     pub group_admin_pubkeys: BTreeSet<PublicKey>,
     /// Group relays (from NostrGroupDataExtension)

@@ -90,6 +90,8 @@ pub struct Group {
     pub image_url: Option<String>,
     /// Secret key of the image
     pub image_key: Option<Vec<u8>>,
+    /// Nonce used to encrypt the image
+    pub image_nonce: Option<Vec<u8>>,
     /// Hex encoded (same value as the NostrGroupDataExtension)
     pub admin_pubkeys: BTreeSet<PublicKey>,
     /// Hex encoded Nostr event ID of the last message in the group
@@ -183,6 +185,7 @@ mod tests {
             description: "Test Description".to_string(),
             image_url: None,
             image_key: None,
+            image_nonce: None,
             admin_pubkeys: BTreeSet::new(),
             last_message_id: None,
             last_message_at: None,

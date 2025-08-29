@@ -141,6 +141,7 @@ mod tests {
             state: GroupState::Active,
             image_url: None,
             image_key: None,
+            image_nonce: None,
         };
 
         // Save the group
