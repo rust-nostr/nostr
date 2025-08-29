@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 #![feature(alloc_error_handler)]
-#![feature(panic_info_message)]
 #![no_std]
 #![no_main]
 
@@ -25,6 +24,7 @@ static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
 
 const HEAP_SIZE: usize = 1024 * 256; // 256 KB
 
+#[derive(Debug)]
 struct FakeTime;
 
 impl TimeProvider for FakeTime {
@@ -33,6 +33,7 @@ impl TimeProvider for FakeTime {
     }
 }
 
+#[derive(Debug)]
 struct FakeRng;
 
 impl SecureRandom for FakeRng {
@@ -49,10 +50,9 @@ fn main() -> ! {
 
     unsafe { ALLOCATOR.init(cortex_m_rt::heap_start() as usize, HEAP_SIZE) }
 
-    let secp = Secp256k1::new();
-
+    // Install provider
     NostrProvider {
-        secp,
+        secp: Secp256k1::new(),
         time: Arc::new(FakeTime),
         rng: Arc::new(FakeRng),
     }.install();
@@ -62,7 +62,7 @@ fn main() -> ! {
     hprintln!("Restored keys from bech32:").unwrap();
     print_keys(&keys);
 
-    // Restore from menmonic
+    // Restore from mnemonic
     let mnemonic: &str = "equal dragon fabric refuse stable cherry smoke allow alley easy never medal attend together lumber movie what sad siege weather matrix buffalo state shoot";
     let keys = Keys::from_mnemonic(mnemonic, None).unwrap();
     hprintln!("\nRestore keys from mnemonic:").unwrap();
