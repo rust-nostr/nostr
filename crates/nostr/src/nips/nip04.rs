@@ -18,10 +18,8 @@ use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use base64::engine::{general_purpose, Engine};
 use cbc::{Decryptor, Encryptor};
-#[cfg(feature = "std")]
-use secp256k1::rand;
-use secp256k1::rand::RngCore;
 
+use crate::provider::NostrProvider;
 use crate::{key, util, PublicKey, SecretKey};
 
 type Aes256CbcEnc = Encryptor<Aes256>;
@@ -68,8 +66,6 @@ impl From<key::Error> for Error {
 /// Encrypt
 ///
 /// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP17!</div>
-#[inline]
-#[cfg(feature = "std")]
 pub fn encrypt<T>(
     secret_key: &SecretKey,
     public_key: &PublicKey,
@@ -78,28 +74,14 @@ pub fn encrypt<T>(
 where
     T: AsRef<[u8]>,
 {
-    encrypt_with_rng(&mut rand::thread_rng(), secret_key, public_key, content)
-}
+    let provider = NostrProvider::get();
 
-/// Encrypt
-///
-/// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP17!</div>
-pub fn encrypt_with_rng<R, T>(
-    rng: &mut R,
-    secret_key: &SecretKey,
-    public_key: &PublicKey,
-    content: T,
-) -> Result<String, Error>
-where
-    R: RngCore,
-    T: AsRef<[u8]>,
-{
     // Generate key
     let key: [u8; 32] = util::generate_shared_key(secret_key, public_key)?;
 
     // Generate iv
     let mut iv: [u8; 16] = [0u8; 16];
-    rng.fill_bytes(&mut iv);
+    provider.rng.fill(&mut iv);
 
     // Compose cipher
     let cipher = Aes256CbcEnc::new(&key.into(), &iv.into());
