@@ -130,6 +130,7 @@ Learn more about `rust-nostr` at <https://rust-nostr.org>.
 |     ✅     | [B7 - Blossom](https://github.com/nostr-protocol/nips/blob/master/B7.md)                                        |
 |     ✅     | [C0 - Code Snippets](https://github.com/nostr-protocol/nips/blob/master/C0.md)                                  |
 |     ❌     | [C7 - Chats](https://github.com/nostr-protocol/nips/blob/master/C7.md)                                          |
+|     ✅     | [EE - Messaging using the MLS Protocol](https://github.com/nostr-protocol/nips/blob/master/EE.md)               |
 
 ## State
 
