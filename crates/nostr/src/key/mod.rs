@@ -152,7 +152,7 @@ impl Keys {
 
         Self {
             public_key: PublicKey::from(public_key),
-            secret_key: SecretKey::from(secret_key),
+            secret_key,
             key_pair: OnceCell::new(),
         }
     }

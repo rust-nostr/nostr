@@ -272,7 +272,7 @@ impl EventBuilder {
                     self.tags.push(Tag::pow(nonce, difficulty));
 
                     let created_at: Timestamp =
-                        self.custom_created_at.unwrap_or_else(|| Timestamp::now());
+                        self.custom_created_at.unwrap_or_else(Timestamp::now);
                     let id: EventId = EventId::new(
                         &public_key,
                         &created_at,
@@ -300,7 +300,7 @@ impl EventBuilder {
                 let mut unsigned: UnsignedEvent = UnsignedEvent {
                     id: None,
                     pubkey: public_key,
-                    created_at: self.custom_created_at.unwrap_or_else(|| Timestamp::now()),
+                    created_at: self.custom_created_at.unwrap_or_else(Timestamp::now),
                     kind: self.kind,
                     tags: self.tags,
                     content: self.content,

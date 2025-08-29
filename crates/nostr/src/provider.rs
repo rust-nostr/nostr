@@ -88,6 +88,13 @@ pub struct NostrProvider {
     pub rng: Arc<dyn SecureRandom>,
 }
 
+#[cfg(feature = "std")]
+impl Default for NostrProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NostrProvider {
     /// New default nostr provider
     ///

@@ -82,13 +82,13 @@ impl SecretKey {
     pub fn generate() -> Self {
         let provider = NostrProvider::get();
 
-        let mut data: [u8; 32] = random_32_bytes(&provider);
+        let mut data: [u8; 32] = random_32_bytes(provider);
 
         loop {
             match Self::from_slice(&data) {
                 Ok(secret_key) => return secret_key,
                 Err(_) => {
-                    data = random_32_bytes(&provider);
+                    data = random_32_bytes(provider);
                 }
             }
         }
