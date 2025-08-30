@@ -53,7 +53,7 @@ pub struct NostrGroupConfigData {
     /// Group description
     pub description: String,
     /// URL to encrypted group image
-    pub image_url: Option<String>,
+    pub image_hash: Option<Vec<u8>>,
     /// Key to decrypt the image
     pub image_key: Option<Vec<u8>>,
     /// Nonce to decrypt the image
@@ -72,7 +72,7 @@ pub struct NostrGroupDataUpdate {
     /// Group description (optional)
     pub description: Option<String>,
     /// URL to encrypted group image (optional, use Some(None) to clear)
-    pub image_url: Option<Option<String>>,
+    pub image_hash: Option<Option<Vec<u8>>>,
     /// Key to decrypt the image (optional, use Some(None) to clear)
     pub image_key: Option<Option<Vec<u8>>>,
     /// Nonce to decrypt the image (optional, use Some(None) to clear)
@@ -88,7 +88,7 @@ impl NostrGroupConfigData {
     pub fn new(
         name: String,
         description: String,
-        image_url: Option<String>,
+        image_hash: Option<Vec<u8>>,
         image_key: Option<Vec<u8>>,
         image_nonce: Option<Vec<u8>>,
         relays: Vec<RelayUrl>,
@@ -97,7 +97,7 @@ impl NostrGroupConfigData {
         Self {
             name,
             description,
-            image_url,
+            image_hash,
             image_key,
             image_nonce,
             relays,
@@ -131,11 +131,8 @@ impl NostrGroupDataUpdate {
     }
 
     /// Sets the image URL to be updated
-    pub fn image_url<T>(mut self, image_url: Option<T>) -> Self
-    where
-        T: Into<String>,
-    {
-        self.image_url = Some(image_url.map(Into::into));
+    pub fn image_hash(mut self, image_hash: Option<Vec<u8>>) -> Self {
+        self.image_hash = Some(image_hash);
         self
     }
 
@@ -715,7 +712,7 @@ where
     /// mls.update_group_data(&group_id, update)?;
     ///
     /// // Update image, clearing the existing one
-    /// let update = NostrGroupDataUpdate::new().image_url(None);
+    /// let update = NostrGroupDataUpdate::new().image_hash(None);
     /// mls.update_group_data(&group_id, update)?;
     /// ```
     pub fn update_group_data(
@@ -736,8 +733,8 @@ where
             group_data.description = description;
         }
 
-        if let Some(image_url) = update.image_url {
-            group_data.image_url = image_url;
+        if let Some(image_hash) = update.image_hash {
+            group_data.image_hash = image_hash;
         }
 
         if let Some(image_key) = update.image_key {
@@ -849,7 +846,7 @@ where
             config.description,
             admins,
             config.relays.clone(),
-            config.image_url.clone(),
+            config.image_hash.clone(),
             config.image_key.clone(),
             config.image_nonce.clone(),
         );
@@ -925,7 +922,7 @@ where
             last_message_at: None,
             epoch: mls_group.epoch().as_u64(),
             state: group_types::GroupState::Active,
-            image_url: config.image_url,
+            image_hash: config.image_hash,
             image_key: config.image_key,
             image_nonce: config.image_nonce,
         };
@@ -1148,7 +1145,7 @@ where
         if let Ok(group_data) = NostrGroupDataExtension::from_group(&mls_group) {
             stored_group.name = group_data.name;
             stored_group.description = group_data.description;
-            stored_group.image_url = group_data.image_url;
+            stored_group.image_hash = group_data.image_hash;
             stored_group.image_key = group_data.image_key;
             stored_group.admin_pubkeys = group_data.admins;
             stored_group.nostr_group_id = group_data.nostr_group_id;
@@ -2163,16 +2160,16 @@ mod tests {
             updated_group_data.description,
             initial_group_data.description
         );
-        assert_eq!(updated_group_data.image_url, initial_group_data.image_url);
+        assert_eq!(updated_group_data.image_hash, initial_group_data.image_hash);
 
         // Test 2: Update multiple fields at once
         let new_description = "Updated Description".to_string();
-        let new_image_url = "https://example.com/new-image.png".to_string();
+        let new_image_hash = b"hash of the image blob".to_vec();
         let new_image_key = vec![1, 2, 3, 4, 5];
 
         let update = NostrGroupDataUpdate::new()
             .description(new_description.clone())
-            .image_url(Some(new_image_url.clone()))
+            .image_hash(Some(new_image_hash.clone()))
             .image_key(Some(new_image_key.clone()));
 
         let update_result = creator_nostr_mls
@@ -2193,13 +2190,11 @@ mod tests {
 
         assert_eq!(final_group_data.name, new_name); // Should remain from previous update
         assert_eq!(final_group_data.description, new_description);
-        assert_eq!(final_group_data.image_url, Some(new_image_url));
+        assert_eq!(final_group_data.image_hash, Some(new_image_hash));
         assert_eq!(final_group_data.image_key, Some(new_image_key));
 
         // Test 3: Clear optional fields
-        let update = NostrGroupDataUpdate::new()
-            .image_url::<String>(None)
-            .image_key(None);
+        let update = NostrGroupDataUpdate::new().image_hash(None).image_key(None);
 
         let update_result = creator_nostr_mls
             .update_group_data(group_id, update)
@@ -2219,7 +2214,7 @@ mod tests {
 
         assert_eq!(cleared_group_data.name, new_name);
         assert_eq!(cleared_group_data.description, new_description);
-        assert_eq!(cleared_group_data.image_url, None);
+        assert_eq!(cleared_group_data.image_hash, None);
         assert_eq!(cleared_group_data.image_key, None);
 
         // Test 4: Empty update (should succeed but not change anything)
@@ -2246,7 +2241,10 @@ mod tests {
             unchanged_group_data.description,
             cleared_group_data.description
         );
-        assert_eq!(unchanged_group_data.image_url, cleared_group_data.image_url);
+        assert_eq!(
+            unchanged_group_data.image_hash,
+            cleared_group_data.image_hash
+        );
         assert_eq!(unchanged_group_data.image_key, cleared_group_data.image_key);
     }
 

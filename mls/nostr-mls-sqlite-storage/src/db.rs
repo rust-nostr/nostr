@@ -48,7 +48,7 @@ pub fn row_to_group(row: &Row) -> SqliteResult<Group> {
     let nostr_group_id: [u8; 32] = row.get("nostr_group_id")?;
     let name: String = row.get("name")?;
     let description: String = row.get("description")?;
-    let image_url: Option<String> = row.get("image_url")?;
+    let image_hash: Option<Vec<u8>> = row.get("image_hash")?;
     let image_key: Option<Vec<u8>> = row.get("image_key")?;
     let image_nonce: Option<Vec<u8>> = row.get("image_nonce")?;
 
@@ -79,7 +79,7 @@ pub fn row_to_group(row: &Row) -> SqliteResult<Group> {
         last_message_at,
         epoch,
         state,
-        image_url,
+        image_hash,
         image_key,
         image_nonce,
     })
@@ -203,7 +203,7 @@ pub fn row_to_welcome(row: &Row) -> SqliteResult<Welcome> {
     let nostr_group_id: [u8; 32] = row.get("nostr_group_id")?;
     let group_name: String = row.get("group_name")?;
     let group_description: String = row.get("group_description")?;
-    let group_image_url: Option<String> = row.get("group_image_url")?;
+    let group_image_hash: Option<Vec<u8>> = row.get("group_image_hash")?;
     let group_image_key: Option<Vec<u8>> = row.get("group_image_key")?;
     let group_image_nonce: Option<Vec<u8>> = row.get("group_image_nonce")?;
     let group_admin_pubkeys_json: &str = row.get_ref("group_admin_pubkeys")?.as_str()?;
@@ -242,7 +242,7 @@ pub fn row_to_welcome(row: &Row) -> SqliteResult<Welcome> {
         nostr_group_id,
         group_name,
         group_description,
-        group_image_url,
+        group_image_hash,
         group_image_key,
         group_image_nonce,
         group_admin_pubkeys,

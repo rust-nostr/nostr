@@ -53,7 +53,7 @@ async fn main() -> Result<()> {
 
     // To create a group, Alice fetches Bob's key package event from the Nostr network.
     // Alice creates the group, adding Bob.
-    let image_url = "http://blossom_server:4531/fake_img.png".to_owned();
+    let image_hash = b"hash of image blob".to_vec();
     let image_key = generate_encryption_key();
     let image_nonce = vec![0u8; 12]; // fill in random bytes
     let name = "Bob & Alice".to_owned();
@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
     let config = NostrGroupConfigData::new(
         name,
         description,
-        Some(image_url),
+        Some(image_hash),
         Some(image_key),
         Some(image_nonce),
         vec![relay_url.clone()],

@@ -88,14 +88,14 @@ impl GroupStorage for NostrMlsSqliteStorage {
         conn_guard
             .execute(
                 "INSERT INTO groups
-             (mls_group_id, nostr_group_id, name, description, image_url, image_key, image_nonce, admin_pubkeys, last_message_id,
+             (mls_group_id, nostr_group_id, name, description, image_hash, image_key, image_nonce, admin_pubkeys, last_message_id,
               last_message_at, epoch, state)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(mls_group_id) DO UPDATE SET
                 nostr_group_id = excluded.nostr_group_id,
                 name = excluded.name,
                 description = excluded.description,
-                image_url = excluded.image_url,
+                image_hash = excluded.image_hash,
                 image_key = excluded.image_key,
                 image_nonce = excluded.image_nonce,
                 admin_pubkeys = excluded.admin_pubkeys,
@@ -108,7 +108,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
                     &group.nostr_group_id,
                     &group.name,
                     &group.description,
-                    &group.image_url,
+                    &group.image_hash,
                     &group.image_key,
                     &group.image_nonce,
                     &admin_pubkeys_json,
@@ -305,7 +305,7 @@ mod tests {
         let mls_group_id = GroupId::from_slice(&[1, 2, 3, 4]);
         let mut nostr_group_id = [0u8; 32];
         nostr_group_id[0..13].copy_from_slice(b"test_group_12");
-        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
+        let image_hash = Some(b"hash of image blob".to_vec().to_owned());
         let image_key = Some(generate_encryption_key());
         let image_nonce = Some(vec![8u8; 12]);
 
@@ -319,7 +319,7 @@ mod tests {
             last_message_at: None,
             epoch: 0,
             state: GroupState::Active,
-            image_url,
+            image_hash,
             image_key,
             image_nonce,
         };
@@ -369,7 +369,7 @@ mod tests {
             last_message_at: None,
             epoch: 0,
             state: GroupState::Active,
-            image_url: None,
+            image_hash: None,
             image_key: None,
             image_nonce: None,
         };

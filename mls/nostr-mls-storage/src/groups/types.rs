@@ -87,7 +87,7 @@ pub struct Group {
     /// UTF-8 encoded (same value as the NostrGroupDataExtension)
     pub description: String,
     /// UTF-8 encoded (same value as the NostrGroupDataExtension)
-    pub image_url: Option<String>,
+    pub image_hash: Option<Vec<u8>>,
     /// Secret key of the image
     pub image_key: Option<Vec<u8>>,
     /// Nonce used to encrypt the image
@@ -183,7 +183,7 @@ mod tests {
             nostr_group_id: [0u8; 32],
             name: "Test Group".to_string(),
             description: "Test Description".to_string(),
-            image_url: None,
+            image_hash: None,
             image_key: None,
             image_nonce: None,
             admin_pubkeys: BTreeSet::new(),

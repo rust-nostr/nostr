@@ -35,7 +35,7 @@ pub fn create_test_group(mls_group_id: GroupId) -> Group {
         last_message_at: None,
         epoch: 0,
         state: GroupState::Active,
-        image_url: None,
+        image_hash: None,
         image_key: None,
         image_nonce: None,
     }
@@ -119,7 +119,7 @@ pub fn create_test_welcome(mls_group_id: GroupId, event_id: EventId) -> Welcome 
         nostr_group_id: [0u8; 32],
         group_name: "Test Group".to_string(),
         group_description: "A test group".to_string(),
-        group_image_url: None,
+        group_image_hash: None,
         group_image_key: None,
         group_image_nonce: None,
         group_admin_pubkeys: BTreeSet::from([pubkey]),
