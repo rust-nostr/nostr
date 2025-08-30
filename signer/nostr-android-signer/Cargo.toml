@@ -1,0 +1,21 @@
+[package]
+name = "nostr-android-signer"
+version = "0.1.0"
+edition = "2021"
+description = "Nostr Android signer implementation (NIP-55; AIDL)."
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "nip55", "android", "signer"]
+
+[dependencies]
+anyhow = "1.0"
+async-trait = "0.1"
+nostr = { workspace = true, features = ["std"] }
+rsbinder = { version = "0.4", features = ["tokio"] }
+
+[build-dependencies]
+rsbinder-aidl = { version = "0.4", features = ["async"] }

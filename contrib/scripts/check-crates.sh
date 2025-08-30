@@ -29,6 +29,7 @@ buildargs=(
     "-p nostr --features all-nips"                                # std + all-nips
     "-p nostr --no-default-features --features alloc"             # Only alloc feature
     "-p nostr --no-default-features --features alloc,all-nips"    # alloc + all-nips
+    "-p nostr-android-signer"
     "-p nostr-browser-signer --target wasm32-unknown-unknown"
     "-p nostr-browser-signer-proxy"
     "-p nostr-blossom"
