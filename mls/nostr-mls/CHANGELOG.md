@@ -54,6 +54,7 @@
 - Changed return type of all group and message methods to return Events instead of serialized MLS objects. (https://github.com/rust-nostr/nostr/pull/940)
 - Changed the input params of `NostrMls::create_group`, and additional fields for `NostrGroupDataExtension` (https://github.com/rust-nostr/nostr/pull/965)
 - `NostrGroupDataExtension` requires additional `image_nonce` field (https://github.com/rust-nostr/nostr/pull/1054)
+- `image_nonce` instead of `image_hash` (https://github.com/rust-nostr/nostr/pull/1059)
 
 ### Added
 

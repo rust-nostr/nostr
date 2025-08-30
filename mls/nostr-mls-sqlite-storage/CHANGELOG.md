@@ -29,6 +29,7 @@
 
 - Remove group type from groups
 - Replaced `save_group_relay` with `replace_group_relays` trait method (https://github.com/rust-nostr/nostr/pull/1056)
+- `image_nonce` instead of `image_hash` (https://github.com/rust-nostr/nostr/pull/1059)
 
 ### Changed
 
