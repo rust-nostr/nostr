@@ -248,7 +248,7 @@ mod tests {
         let nostr_storage = NostrMlsMemoryStorage::new(storage);
         let mls_group_id = create_test_group_id();
         let nostr_group_id = create_test_nostr_group_id();
-        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
+        let image_hash = Some(b"hash of image blob".to_vec());
         let image_key = Some(generate_encryption_key());
         let image_nonce = Some(vec![16u8; 12]);
         let group = Group {
@@ -261,7 +261,7 @@ mod tests {
             last_message_at: None,
             epoch: 0,
             state: GroupState::Active,
-            image_url,
+            image_hash,
             image_key,
             image_nonce,
         };
@@ -290,7 +290,7 @@ mod tests {
         let nostr_storage = NostrMlsMemoryStorage::new(storage);
         let mls_group_id = create_test_group_id();
         let nostr_group_id = create_test_nostr_group_id();
-        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
+        let image_hash = Some(b"hash of image blob".to_vec());
         let image_key = Some(generate_encryption_key());
         let image_nonce = Some(vec![16u8; 12]);
         let group = Group {
@@ -303,7 +303,7 @@ mod tests {
             last_message_at: None,
             epoch: 0,
             state: GroupState::Active,
-            image_url,
+            image_hash,
             image_key,
             image_nonce,
         };
@@ -335,7 +335,7 @@ mod tests {
         let nostr_storage = NostrMlsMemoryStorage::new(storage);
         let mls_group_id = create_test_group_id();
         let nostr_group_id = create_test_nostr_group_id();
-        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
+        let image_hash = Some(b"hash of image blob".to_vec());
         let image_key = Some(generate_encryption_key());
         let image_nonce = Some(vec![16u8; 12]);
         let group = Group {
@@ -348,7 +348,7 @@ mod tests {
             last_message_at: None,
             epoch: 0,
             state: GroupState::Active,
-            image_url,
+            image_hash,
             image_key,
             image_nonce,
         };
@@ -424,7 +424,7 @@ mod tests {
             group_name: "Test Welcome Group".to_string(),
             group_description: "A test welcome group".to_string(),
             group_image_key: None,
-            group_image_url: None,
+            group_image_hash: None,
             group_image_nonce: None,
             group_admin_pubkeys: BTreeSet::from([pubkey]),
             group_relays: BTreeSet::from([RelayUrl::parse("wss://relay.example.com").unwrap()]),
@@ -484,7 +484,7 @@ mod tests {
         let nostr_storage = NostrMlsMemoryStorage::new(storage);
         let mls_group_id = create_test_group_id();
         let nostr_group_id = create_test_nostr_group_id();
-        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
+        let image_hash = Some(b"hash of image blob".to_vec());
         let image_key = Some(generate_encryption_key());
         let image_nonce = Some(vec![16u8; 12]);
         let group = Group {
@@ -497,7 +497,7 @@ mod tests {
             last_message_at: None,
             epoch: 0,
             state: GroupState::Active,
-            image_url,
+            image_hash,
             image_key,
             image_nonce,
         };
@@ -582,7 +582,7 @@ mod tests {
         // Create a test group to verify the cache works
         let mls_group_id = create_test_group_id();
         let nostr_group_id = create_test_nostr_group_id();
-        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
+        let image_hash = Some(b"hash of image blob".to_vec());
         let image_key = Some(generate_encryption_key());
         let image_nonce = Some(vec![16u8; 12]);
         let group = Group {
@@ -595,7 +595,7 @@ mod tests {
             last_message_at: None,
             epoch: 0,
             state: GroupState::Active,
-            image_url,
+            image_hash,
             image_key,
             image_nonce,
         };
@@ -617,7 +617,7 @@ mod tests {
         // Create a test group to verify the default implementation works
         let mls_group_id = create_test_group_id();
         let nostr_group_id = create_test_nostr_group_id();
-        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
+        let image_hash = Some(b"hash of image blob".to_vec());
         let image_key = Some(generate_encryption_key());
         let image_nonce = Some(vec![16u8; 12]);
 
@@ -631,7 +631,7 @@ mod tests {
             last_message_at: None,
             epoch: 0,
             state: GroupState::Active,
-            image_url,
+            image_hash,
             image_key,
             image_nonce,
         };

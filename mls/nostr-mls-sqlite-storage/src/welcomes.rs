@@ -34,7 +34,7 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
         conn_guard
             .execute(
                 "INSERT OR REPLACE INTO welcomes
-             (id, event, mls_group_id, nostr_group_id, group_name, group_description, group_image_url, group_image_key, group_image_nonce,
+             (id, event, mls_group_id, nostr_group_id, group_name, group_description, group_image_hash, group_image_key, group_image_nonce,
               group_admin_pubkeys, group_relays, welcomer, member_count, state, wrapper_event_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
@@ -44,7 +44,7 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
                     welcome.nostr_group_id,
                     welcome.group_name,
                     welcome.group_description,
-                    welcome.group_image_url,
+                    welcome.group_image_hash,
                     welcome.group_image_key,
                     welcome.group_image_nonce,
                     group_admin_pubkeys_json,
@@ -168,7 +168,7 @@ mod tests {
         let mls_group_id = GroupId::from_slice(&[1, 2, 3, 4]);
         let mut nostr_group_id = [0u8; 32];
         nostr_group_id[0..13].copy_from_slice(b"test_group_12");
-        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
+        let image_hash = Some(b"hash of image blob".to_vec().to_owned());
         let image_key = Some(generate_encryption_key());
         let image_nonce = Some(vec![5u8; 12]);
 
@@ -182,7 +182,7 @@ mod tests {
             last_message_at: None,
             epoch: 0,
             state: GroupState::Active,
-            image_url: image_url.clone(),
+            image_hash: image_hash.clone(),
             image_key: image_key.clone(),
             image_nonce: image_nonce.clone(),
         };
@@ -218,7 +218,7 @@ mod tests {
             nostr_group_id: welcome_nostr_group_id,
             group_name: "Test Group".to_string(),
             group_description: "A test group".to_string(),
-            group_image_url: image_url,
+            group_image_hash: image_hash,
             group_image_key: image_key,
             group_image_nonce: image_nonce,
             group_admin_pubkeys: BTreeSet::from([pubkey]),
