@@ -6,6 +6,10 @@ Nostr Android signer implementation ([NIP-55](https://github.com/nostr-protocol/
 
 **This implementation uses the AIDL (Android Interface Definition Language) to communicate with the signer!**
 
+## Platform support
+
+Currently, supports only **android** targets with **64-bit pointer width**.
+
 ## Changelog
 
 All notable changes to this library are documented in the [CHANGELOG.md](CHANGELOG.md).
