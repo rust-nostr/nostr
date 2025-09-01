@@ -36,7 +36,7 @@ impl From<StatusCode> for Error {
 }
 
 /// Android signer client (NIP-55)
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AndroidSigner {
     signer: Strong<dyn INostrSignerAsync<Tokio>>,
     // TODO: cache public key of current user in a OnceCell
