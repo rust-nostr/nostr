@@ -5,9 +5,9 @@ use nostr::prelude::{BoxedFuture, SignerBackend};
 use nostr::{Event, JsonUtil, NostrSigner, PublicKey, SignerError, UnsignedEvent};
 use rsbinder::{self, hub, ProcessState, Strong, Tokio};
 
-mod aidl_signer;
+mod aidl;
 
-use self::aidl_signer::com::nostr::signer::ISigner::ISignerAsync;
+use self::aidl::com::nostr::signer::INostrSigner::INostrSignerAsync;
 
 // Define the name of the service to be registered in the HUB(service manager).
 const SERVICE_NAME: &str = "nostr_nip55_signer";
@@ -15,7 +15,7 @@ const SERVICE_NAME: &str = "nostr_nip55_signer";
 /// Android signer client (NIP-55)
 #[derive(Debug)]
 pub struct AndroidSigner {
-    signer: Strong<dyn ISignerAsync<Tokio>>,
+    signer: Strong<dyn INostrSignerAsync<Tokio>>,
     // TODO: cache public key of current user in a OnceCell
 }
 

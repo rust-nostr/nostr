@@ -1,6 +1,6 @@
 package com.nostr.signer;
 
-interface ISigner {
+interface INostrSigner {
     String getPublicKey();
 
     /** Take an unsigned event and returns the signed one. */
