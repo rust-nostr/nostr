@@ -52,6 +52,7 @@ Learn more about `rust-nostr` at <https://rust-nostr.org>.
 |     ✅     | [05 - Mapping Nostr keys to DNS-based internet ids](https://github.com/nostr-protocol/nips/blob/master/05.md)   |
 |     ✅     | [06 - Basic key derivation from mnemonic seed phrase](https://github.com/nostr-protocol/nips/blob/master/06.md) |
 |     ✅     | [07 - `window.nostr` capability for web browsers](https://github.com/nostr-protocol/nips/blob/master/07.md)     |
+|     ❌     | [08 - Handling Mentions](https://github.com/nostr-protocol/nips/blob/master/08.md)                              |
 |     ✅     | [09 - Event Deletion](https://github.com/nostr-protocol/nips/blob/master/09.md)                                 |
 |     ✅     | [10 - Use of `e` and `p` tags in text events](https://github.com/nostr-protocol/nips/blob/master/10.md)         |
 |     ✅     | [11 - Relay Information Document](https://github.com/nostr-protocol/nips/blob/master/11.md)                     |
@@ -100,8 +101,10 @@ Learn more about `rust-nostr` at <https://rust-nostr.org>.
 |     ❌     | [60 - Cashu Wallet](https://github.com/nostr-protocol/nips/blob/master/60.md)                                   |
 |     ❌     | [61 - Nutzaps](https://github.com/nostr-protocol/nips/blob/master/61.md)                                        |
 |     ✅     | [62 - Request to Vanish](https://github.com/nostr-protocol/nips/blob/master/62.md)                              |
+|     ❌     | [64 - Chess (PGN)](https://github.com/nostr-protocol/nips/blob/master/64.md)                                    |
 |     ✅     | [65 - Relay List Metadata](https://github.com/nostr-protocol/nips/blob/master/65.md)                            |
 |     ❌     | [66 - Relay Discovery and Liveness Monitoring](https://github.com/nostr-protocol/nips/blob/master/66.md)        |
+|     ❌     | [68 - Picture-first feeds](https://github.com/nostr-protocol/nips/blob/master/68.md)                            |
 |     ❌     | [69 - P2P Order events](https://github.com/nostr-protocol/nips/blob/master/69.md)                               |
 |     ✅     | [70 - Protected Events](https://github.com/nostr-protocol/nips/blob/master/70.md)                               |
 |     ❌     | [71 - Video Events](https://github.com/nostr-protocol/nips/blob/master/71.md)                                   |
@@ -113,6 +116,7 @@ Learn more about `rust-nostr` at <https://rust-nostr.org>.
 |     ❌     | [7D - Threads](https://github.com/nostr-protocol/nips/blob/master/7D.md)                                        |
 |     ❌     | [84 - Highlights](https://github.com/nostr-protocol/nips/blob/master/84.md)                                     |
 |     ❌     | [86 - Relay Management API](https://github.com/nostr-protocol/nips/blob/master/86.md)                           |
+|     ❌     | [87 - Ecash Mint Discoverability](https://github.com/nostr-protocol/nips/blob/master/87.md)                     |
 |     ✅     | [88 - Polls](https://github.com/nostr-protocol/nips/blob/master/88.md)                                          |
 |     ❌     | [89 - Recommended Application Handlers](https://github.com/nostr-protocol/nips/blob/master/89.md)               |
 |     ✅     | [90 - Data Vending Machine](https://github.com/nostr-protocol/nips/blob/master/90.md)                           |
@@ -126,6 +130,7 @@ Learn more about `rust-nostr` at <https://rust-nostr.org>.
 |     ✅     | [B7 - Blossom](https://github.com/nostr-protocol/nips/blob/master/B7.md)                                        |
 |     ✅     | [C0 - Code Snippets](https://github.com/nostr-protocol/nips/blob/master/C0.md)                                  |
 |     ❌     | [C7 - Chats](https://github.com/nostr-protocol/nips/blob/master/C7.md)                                          |
+|     ✅     | [EE - Messaging using the MLS Protocol](https://github.com/nostr-protocol/nips/blob/master/EE.md)               |
 
 ## State
 
