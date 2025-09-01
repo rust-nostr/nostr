@@ -1,9 +1,9 @@
 use std::borrow::Cow;
+use std::fmt;
 
-use anyhow::{Context, Result};
 use nostr::prelude::{BoxedFuture, SignerBackend};
 use nostr::{Event, JsonUtil, NostrSigner, PublicKey, SignerError, UnsignedEvent};
-use rsbinder::{self, hub, ProcessState, Strong, Tokio};
+use rsbinder::{self, hub, ProcessState, StatusCode, Strong, Tokio};
 
 mod aidl;
 
@@ -11,6 +11,29 @@ use self::aidl::com::nostr::signer::INostrSigner::INostrSignerAsync;
 
 // Define the name of the service to be registered in the HUB(service manager).
 const SERVICE_NAME: &str = "nostr_nip55_signer";
+
+/// Android signer error
+#[derive(Debug)]
+pub enum Error {
+    /// Binder error
+    Status(StatusCode),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Status(e) => e.fmt(f),
+        }
+    }
+}
+
+impl From<StatusCode> for Error {
+    fn from(e: StatusCode) -> Self {
+        Self::Status(e)
+    }
+}
 
 /// Android signer client (NIP-55)
 #[derive(Debug)]
@@ -20,12 +43,12 @@ pub struct AndroidSigner {
 }
 
 impl AndroidSigner {
-    pub fn new() -> Result<Self> {
+    pub fn new() -> Result<Self, Error> {
         ProcessState::init_default();
 
-        let service = hub::get_interface(SERVICE_NAME).context("getting signer service")?;
-
-        Ok(Self { signer: service })
+        Ok(Self {
+            signer: hub::get_interface(SERVICE_NAME)?,
+        })
     }
 }
 

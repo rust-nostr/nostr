@@ -12,7 +12,6 @@ rust-version.workspace = true
 keywords = ["nostr", "nip55", "android", "signer"]
 
 [dependencies]
-anyhow = "1.0"
 async-trait = "0.1"
 nostr = { workspace = true, features = ["std"] }
 rsbinder = { version = "0.4", features = ["tokio"] }
