@@ -691,38 +691,11 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
     #[inline]
-    pub fn reaction<S>(event: &Event, reaction: S) -> Self
+    pub fn reaction<S>(target: ReactionTarget, reaction: S) -> Self
     where
         S: Into<String>,
     {
-        Self::reaction_extended(event.id, event.pubkey, Some(event.kind), reaction)
-    }
-
-    /// Add reaction (like/upvote, dislike/downvote or emoji) to an event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
-    pub fn reaction_extended<S>(
-        event_id: EventId,
-        public_key: PublicKey,
-        kind: Option<Kind>,
-        reaction: S,
-    ) -> Self
-    where
-        S: Into<String>,
-    {
-        let mut tags: Vec<Tag> = Vec::with_capacity(2 + usize::from(kind.is_some()));
-
-        tags.push(Tag::event(event_id));
-        tags.push(Tag::public_key(public_key));
-
-        if let Some(kind) = kind {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
-                kind,
-                uppercase: false,
-            }));
-        }
-
-        Self::new(Kind::Reaction, reaction).tags(tags)
+        Self::new(Kind::Reaction, reaction).tags(target.into_tags())
     }
 
     /// Create a new channel

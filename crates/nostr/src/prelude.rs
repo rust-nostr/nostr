@@ -44,6 +44,7 @@ pub use crate::nips::nip17::{self, *};
 pub use crate::nips::nip19::{self, *};
 pub use crate::nips::nip21::{self, *};
 pub use crate::nips::nip22::{self, *};
+pub use crate::nips::nip25::{self, *};
 pub use crate::nips::nip34::{self, *};
 pub use crate::nips::nip35::{self, *};
 pub use crate::nips::nip38::{self, *};

@@ -30,6 +30,8 @@
 - Set `payment_hash` as optional in `MakeInvoiceResponse` (https://github.com/rust-nostr/nostr/pull/1045)
 - Remove `hex` module (https://github.com/rust-nostr/nostr/pull/1051)
 - Use `Cow` for non-copy fields in `nip22::CommentTarget` enum (https://github.com/rust-nostr/nostr/pull/1053)
+- Change `EventBuilder::reaction` args (https://github.com/rust-nostr/nostr/pull/1063)
+- Remove `EventBuilder::reaction_extended` (https://github.com/rust-nostr/nostr/pull/1063)
 
 ### Added
 
@@ -45,6 +47,7 @@
 - Add `CommentTarget::as_vec` to convert the comment target into a vector of tags (https://github.com/rust-nostr/nostr/pull/1038)
 - Support NIP-A0 (Voice Messages) (https://github.com/rust-nostr/nostr/pull/1032)
 - Add `hex` dependency (https://github.com/rust-nostr/nostr/pull/1051)
+- Add `nip25::ReactionTarget` (https://github.com/rust-nostr/nostr/pull/1063)
 
 ### Changed
 
