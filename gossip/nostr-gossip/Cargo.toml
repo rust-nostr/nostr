@@ -1,0 +1,15 @@
+[package]
+name = "nostr-gossip"
+version = "0.43.0"
+edition = "2021"
+description = "Nostr gossip traits"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "gossip"]
+
+[dependencies]
+nostr = { workspace = true, features = ["std"] }
