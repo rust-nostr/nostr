@@ -36,6 +36,7 @@ jobs:
           - nostr-http-file-storage
           - nostr-database
           - nostr-lmdb
+          - nostr-gossip
           - nostr-mls-storage
           - nostr-mls-memory-storage
           - nostr-mls-sqlite-storage

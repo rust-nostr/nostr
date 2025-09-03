@@ -14,6 +14,7 @@ The project is split up into several crates in the `crates/` directory:
         * [**nostr-lmdb**](./database/nostr-lmdb): LMDB storage backend
         * [**nostr-ndb**](./database/nostr-ndb): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
         * [**nostr-indexeddb**](./database/nostr-indexeddb): IndexedDB storage backend
+    * [**nostr-gossip**](./gossip/nostr-gossip): Gossip traits
     * [**nostr-mls**](./mls/nostr-mls): A library for implementing NIP-EE MLS messaging
     * [**nostr-mls-storage**](./mls/nostr-mls-storage): Storage traits for using MLS messaging
         * [**nostr-mls-memory-storage**](./mls/nostr-mls-memory-storage): In-memory storage for nostr-mls

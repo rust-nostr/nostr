@@ -8,6 +8,9 @@ members = [
     "database/nostr-lmdb",
     "database/nostr-ndb",
 
+    # Gossip
+    "gossip/nostr-gossip",
+
     # Nostr MLS
     "mls/nostr-mls",
     "mls/nostr-mls-memory-storage",
@@ -47,6 +50,7 @@ nostr-connect = { version = "0.43", path = "./signer/nostr-connect", default-fea
 nostr-database = { version = "0.43", path = "./database/nostr-database", default-features = false }
 nostr-indexeddb = { version = "0.43", path = "./database/nostr-indexeddb", default-features = false }
 nostr-lmdb = { version = "0.43", path = "./database/nostr-lmdb", default-features = false }
+nostr-gossip = { version = "0.43.0", path = "./gossip/nostr-gossip", default-features = false }
 nostr-mls-memory-storage = { version = "0.43", path = "./mls/nostr-mls-memory-storage", default-features = false }
 nostr-mls-sqlite-storage = { version = "0.43", path = "./mls/nostr-mls-sqlite-storage", default-features = false }
 nostr-mls-storage = { version = "0.43", path = "./mls/nostr-mls-storage", default-features = false }

@@ -3224,6 +3224,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-gossip"
+version = "0.1.0"
+dependencies = [
+ "nostr",
+]
+
+[[package]]
 name = "nostr-http-file-storage"
 version = "0.43.0"
 dependencies = [
