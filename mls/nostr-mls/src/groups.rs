@@ -1147,6 +1147,7 @@ where
             stored_group.description = group_data.description;
             stored_group.image_hash = group_data.image_hash;
             stored_group.image_key = group_data.image_key;
+            stored_group.image_nonce = group_data.image_nonce;
             stored_group.admin_pubkeys = group_data.admins;
             stored_group.nostr_group_id = group_data.nostr_group_id;
 
