@@ -35,6 +35,7 @@ buildargs=(
     "-p nostr-http-file-storage"
     "-p nostr-database"
     "-p nostr-lmdb"
+    "-p nostr-gossip"
     "-p nostr-mls-storage"
     "-p nostr-mls-memory-storage"
     "-p nostr-mls-sqlite-storage"
