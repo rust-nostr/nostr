@@ -29,7 +29,7 @@
 
 - Remove group type from groups
 - Remove `save_group_relay` method (https://github.com/rust-nostr/nostr/pull/1056)
-- `image_nonce` instead of `image_hash` (https://github.com/rust-nostr/nostr/pull/1059)
+- `image_hash` instead of `image_url` (https://github.com/rust-nostr/nostr/pull/1059)
 
 ### Changed
 
