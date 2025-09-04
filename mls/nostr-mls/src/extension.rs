@@ -37,7 +37,7 @@ pub(crate) struct RawNostrGroupDataExtension {
     pub description: Vec<u8>,
     pub admin_pubkeys: Vec<Vec<u8>>,
     pub relays: Vec<Vec<u8>>,
-    pub image_url: Vec<u8>,
+    pub image_hash: Vec<u8>,
     pub image_key: Vec<u8>,
     pub image_nonce: Vec<u8>,
 }
@@ -56,8 +56,8 @@ pub struct NostrGroupDataExtension {
     pub admins: BTreeSet<PublicKey>,
     /// Relays
     pub relays: BTreeSet<RelayUrl>,
-    /// Group image URL (optional)
-    pub image_url: Option<String>,
+    /// Group image hash, assuming the app will use single Blossom server
+    pub image_hash: Option<Vec<u8>>,
     /// Private key to decrypt group image (encrypted when stored)
     pub image_key: Option<Vec<u8>>,
     /// Nonce to decrypt group image
@@ -82,19 +82,18 @@ impl NostrGroupDataExtension {
     /// A new NostrGroupDataExtension instance with a randomly generated group ID and
     /// the provided parameters converted to bytes. This group ID value is what's used when publishing
     /// events to Nostr relays for the group.
-    pub fn new<T1, T2, T3, IA, IR>(
+    pub fn new<T1, T2, IA, IR>(
         name: T1,
         description: T2,
         admins: IA,
         relays: IR,
-        image_url: Option<T3>,
+        image_hash: Option<Vec<u8>>,
         image_key: Option<Vec<u8>>,
         image_nonce: Option<Vec<u8>>,
     ) -> Self
     where
         T1: Into<String>,
         T2: Into<String>,
-        T3: Into<String>,
         IA: IntoIterator<Item = PublicKey>,
         IR: IntoIterator<Item = RelayUrl>,
     {
@@ -108,7 +107,7 @@ impl NostrGroupDataExtension {
             description: description.into(),
             admins: admins.into_iter().collect(),
             relays: relays.into_iter().collect(),
-            image_url: image_url.map(Into::into),
+            image_hash,
             image_key,
             image_nonce,
         }
@@ -129,10 +128,10 @@ impl NostrGroupDataExtension {
             relays.insert(url);
         }
 
-        let image_url = if raw.image_url.is_empty() {
+        let image_hash = if raw.image_hash.is_empty() {
             None
         } else {
-            Some(String::from_utf8(raw.image_url)?)
+            Some(raw.image_hash)
         };
 
         let image_key = if raw.image_key.is_empty() {
@@ -153,7 +152,7 @@ impl NostrGroupDataExtension {
             description: String::from_utf8(raw.description)?,
             admins,
             relays,
-            image_url,
+            image_hash,
             image_key,
             image_nonce,
         })
@@ -273,8 +272,8 @@ impl NostrGroupDataExtension {
     }
 
     /// Returns the group image URL.
-    pub fn image_url(&self) -> Option<&str> {
-        self.image_url.as_deref()
+    pub fn image_hash(&self) -> Option<&Vec<u8>> {
+        self.image_hash.as_ref()
     }
 
     /// Sets the group image URL.
@@ -282,8 +281,8 @@ impl NostrGroupDataExtension {
     /// # Arguments
     ///
     /// * `image` - The new image URL (optional)
-    pub fn set_image_url(&mut self, image_url: Option<String>) {
-        self.image_url = image_url;
+    pub fn set_image_hash(&mut self, image_hash: Option<Vec<u8>>) {
+        self.image_hash = image_hash;
     }
 
     /// Returns the group image key.
@@ -329,10 +328,7 @@ impl NostrGroupDataExtension {
                 .iter()
                 .map(|url| url.to_string().into_bytes())
                 .collect(),
-            image_url: self
-                .image_url
-                .as_ref()
-                .map_or_else(Vec::new, |img| img.as_bytes().to_vec()),
+            image_hash: self.image_hash.clone().unwrap_or_default(),
             image_key: self.image_key.clone().unwrap_or_default(),
             image_nonce: self.image_nonce.clone().unwrap_or_default(),
         }
@@ -364,7 +360,7 @@ mod tests {
         let relay2 = RelayUrl::parse(RELAY_2).unwrap();
 
         let key = generate_encryption_key();
-        let image = "http://blossom_test:4443/fake_img.png";
+        let image_hash = b"hash of the image blob";
         let mut image_nonce = [0u8; 12];
         ::rand::rng().fill_bytes(&mut image_nonce);
 
@@ -373,7 +369,7 @@ mod tests {
             "Test Description",
             [pk1, pk2],
             [relay1, relay2],
-            Some(image),
+            Some(image_hash.to_vec()),
             Some(key),
             Some(image_nonce.to_vec()),
         )
@@ -481,9 +477,9 @@ mod tests {
         let mut extension = create_test_extension();
 
         // Test setting image URL
-        let image_url = Some("https://example.com/image.png".to_string());
-        extension.set_image_url(image_url.clone());
-        assert_eq!(extension.image_url(), image_url.as_deref());
+        let image_hash = Some(b"hash of image blob".to_vec());
+        extension.set_image_hash(image_hash.clone());
+        assert_eq!(extension.image_hash(), image_hash.as_ref());
 
         // Test setting image key
         let image_key = generate_encryption_key();
@@ -496,10 +492,10 @@ mod tests {
         assert!(extension.image_nonce().is_some());
 
         // Test clearing image
-        extension.set_image_url(None);
+        extension.set_image_hash(None);
         extension.set_image_key(None);
         extension.set_image_nonce(None);
-        assert!(extension.image_url().is_none());
+        assert!(extension.image_hash().is_none());
         assert!(extension.image_key().is_none());
         assert!(extension.image_nonce().is_none());
     }
@@ -509,11 +505,11 @@ mod tests {
         let mut extension = create_test_extension();
 
         // Set some image data
-        let image_url = "https://example.com/test.png".to_string();
+        let image_hash = b"hash of image clone".to_vec();
         let image_key = generate_encryption_key();
         let image_nonce = vec![7; 12]; // fill in random bytes
 
-        extension.set_image_url(Some(image_url.clone()));
+        extension.set_image_hash(Some(image_hash.clone()));
         extension.set_image_key(Some(image_key.clone()));
         extension.set_image_nonce(Some(image_nonce.clone()));
 
@@ -521,7 +517,7 @@ mod tests {
         let raw = extension.as_raw();
         let reconstructed = NostrGroupDataExtension::from_raw(raw).unwrap();
 
-        assert_eq!(reconstructed.image_url(), Some(image_url.as_str()));
+        assert_eq!(reconstructed.image_hash(), Some(&image_hash));
         assert_eq!(reconstructed.image_nonce(), Some(&image_nonce));
         assert!(reconstructed.image_key().is_some());
         // We can't directly compare SecretKeys due to how they're implemented,

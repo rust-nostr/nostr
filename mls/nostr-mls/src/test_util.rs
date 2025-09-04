@@ -73,7 +73,7 @@ where
 /// Returns a NostrGroupConfigData with standard test values for creating test groups.
 pub fn create_nostr_group_config_data(admins: Vec<PublicKey>) -> NostrGroupConfigData {
     let relays = vec![RelayUrl::parse("wss://test.relay").unwrap()];
-    let image_url = "https://example.com/test.png".to_string();
+    let image_hash = b"hash of image blob".to_vec();
     let image_key = nostr::SecretKey::generate().as_secret_bytes().to_owned();
     let image_nonce = [3u8; 12].to_vec();
     let name = "Test Group".to_owned();
@@ -81,7 +81,7 @@ pub fn create_nostr_group_config_data(admins: Vec<PublicKey>) -> NostrGroupConfi
     NostrGroupConfigData::new(
         name,
         description,
-        Some(image_url),
+        Some(image_hash),
         Some(image_key),
         Some(image_nonce),
         relays,
