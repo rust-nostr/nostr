@@ -26,6 +26,59 @@ pub use self::options::{ClientOptions, SleepWhenIdle};
 pub use self::options::{Connection, ConnectionTarget};
 use crate::gossip::{BrokenDownFilters, Gossip};
 
+/// Options for fetch events with retry
+#[derive(Debug, Clone)]
+pub struct FetchRetryOptions {
+    /// Maximum number of retry attempts
+    pub max_attempts: u32,
+    /// Initial timeout for each attempt
+    pub initial_timeout: Duration,
+    /// Maximum timeout (caps exponential backoff)
+    pub max_timeout: Duration,
+    /// Backoff multiplier for exponential backoff
+    pub backoff_multiplier: f64,
+    /// Add random jitter to delays
+    pub jitter: bool,
+}
+
+impl Default for FetchRetryOptions {
+    fn default() -> Self {
+        Self {
+            max_attempts: 3,
+            initial_timeout: Duration::from_secs(5),
+            max_timeout: Duration::from_secs(30),
+            backoff_multiplier: 2.0,
+            jitter: true,
+        }
+    }
+}
+
+impl FetchRetryOptions {
+    /// Calculate timeout for a given attempt
+    pub fn calculate_timeout(&self, attempt: u32) -> Duration {
+        let timeout_ms = (self.initial_timeout.as_millis() as f64
+            * self.backoff_multiplier.powi(attempt as i32)) as u64;
+        Duration::from_millis(timeout_ms.min(self.max_timeout.as_millis() as u64))
+    }
+    
+    /// Calculate delay before retry for a given attempt
+    pub fn calculate_delay(&self, attempt: u32) -> Duration {
+        let mut delay_ms = (1000.0 * self.backoff_multiplier.powi(attempt as i32)) as u64;
+        
+        if self.jitter {
+            use std::collections::hash_map::DefaultHasher;
+            use std::hash::{Hash, Hasher};
+            
+            let mut hasher = DefaultHasher::new();
+            attempt.hash(&mut hasher);
+            let jitter = (hasher.finish() % 500) as u64; // 0-500ms jitter
+            delay_ms += jitter;
+        }
+        
+        Duration::from_millis(delay_ms.min(self.max_timeout.as_millis() as u64))
+    }
+}
+
 /// Nostr client
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -747,6 +800,54 @@ impl Client {
             .pool
             .fetch_events(filter, timeout, ReqExitPolicy::ExitOnEOSE)
             .await?)
+    }
+
+    /// Fetch events with automatic retry and exponential backoff
+    ///
+    /// This method provides a higher-level interface that automatically retries
+    /// failed fetch operations with exponential backoff. Useful for scenarios
+    /// where applications need to poll for events that may not be immediately available.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// # use std::time::Duration;
+    /// # use nostr_sdk::prelude::*;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<()> {
+    /// #   let client = Client::default();
+    /// let filter = Filter::new().kind(Kind::TextNote).limit(1);
+    /// let options = FetchRetryOptions {
+    ///     max_attempts: 5,
+    ///     initial_timeout: Duration::from_secs(2),
+    ///     max_timeout: Duration::from_secs(10),
+    ///     backoff_multiplier: 2.0,
+    ///     jitter: true,
+    /// };
+    /// 
+    /// let events = client.fetch_events_with_retry(filter, options).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn fetch_events_with_retry(&self, filter: Filter, options: FetchRetryOptions) -> Result<Events, Error> {
+        let mut last_error = None;
+        
+        for attempt in 0..options.max_attempts {
+            let timeout = options.calculate_timeout(attempt);
+            
+            match self.fetch_events(filter.clone(), timeout).await {
+                Ok(events) => return Ok(events),
+                Err(e) => {
+                    last_error = Some(e);
+                    
+                    if attempt + 1 < options.max_attempts {
+                        let delay = options.calculate_delay(attempt);
+                        tokio::time::sleep(delay).await;
+                    }
+                }
+            }
+        }
+        
+        Err(last_error.unwrap_or_else(|| Error::RelayPool(pool::Error::NoRelays)))
     }
 
     /// Fetch events from specific relays
