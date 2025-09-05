@@ -48,6 +48,7 @@
 - Support NIP-A0 (Voice Messages) (https://github.com/rust-nostr/nostr/pull/1032)
 - Add `hex` dependency (https://github.com/rust-nostr/nostr/pull/1051)
 - Add `nip25::ReactionTarget` (https://github.com/rust-nostr/nostr/pull/1063)
+- Add `RelayUrl::host` function (https://github.com/rust-nostr/nostr/pull/1066)
 
 ### Changed
 
