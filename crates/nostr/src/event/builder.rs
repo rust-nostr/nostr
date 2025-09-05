@@ -1706,6 +1706,38 @@ impl EventBuilder {
     pub fn poll_response(response: PollResponse) -> Self {
         response.to_event_builder()
     }
+
+    /// Chat message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C7.md>
+    #[inline]
+    pub fn chat_message<S>(content: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::new(Kind::ChatMessage, content)
+    }
+
+    /// Chat message reply
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/C7.md>
+    #[inline]
+    pub fn chat_message_reply<S>(
+        content: S,
+        reply_to: &Event,
+        relay_url: Option<RelayUrl>,
+    ) -> Self
+    where
+        S: Into<String>,
+    {
+        let tags = vec![Tag::from_standardized_without_cell(TagStandard::Quote {
+            event_id: reply_to.id,
+            relay_url: relay_url,
+            public_key: Some(reply_to.pubkey),
+        })];
+
+        Self::new(Kind::ChatMessage, content).tags(tags)
+    }
 }
 
 #[cfg(test)]
