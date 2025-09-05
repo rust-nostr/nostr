@@ -3,13 +3,35 @@
     <head>
         <title>NIP-07 Proxy</title>
         <link rel="stylesheet" href="style.css">
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                padding: 20px;
+                background-color: #f0f0f0;
+            }
+            .container {
+                max-width: 600px;
+                margin: 0 auto;
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            .status-box {
+                background: #f9f9f9;
+                padding: 10px;
+                border-radius: 4px;
+                margin: 10px 0;
+                border-left: 4px solid #ccc;
+            }
+        </style>
     </head>
     <body>
         <div class="container">
             <h1>NIP-07 Proxy</h1>
             <p>This page acts as a proxy between your native application and the NIP-07 browser extension.</p>
             <div class="status-box">
-                <strong>Status:</strong> <span id="status">Checking...</span>
+                <strong>Status:</strong> <span id="nip07-proxy-status">Checking...</span>
             </div>
             <p><small>Keep this tab open while using your application. The page will automatically poll for requests from your native app.</small></p>
 

@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Changed
+
+- Allow customizing HTML page (https://github.com/rust-nostr/nostr/pull/1203)
+
 ## v0.44.0 - 2025/11/06
 
 ### Added
