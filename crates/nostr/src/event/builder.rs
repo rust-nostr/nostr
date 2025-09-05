@@ -1732,7 +1732,7 @@ impl EventBuilder {
     {
         let tags = vec![Tag::from_standardized_without_cell(TagStandard::Quote {
             event_id: reply_to.id,
-            relay_url: relay_url,
+            relay_url,
             public_key: Some(reply_to.pubkey),
         })];
 
