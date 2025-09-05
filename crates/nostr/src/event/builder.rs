@@ -1721,12 +1721,7 @@ impl EventBuilder {
     /// Chat message reply
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/C7.md>
-    #[inline]
-    pub fn chat_message_reply<S>(
-        content: S,
-        reply_to: &Event,
-        relay_url: Option<RelayUrl>,
-    ) -> Self
+    pub fn chat_message_reply<S>(content: S, reply_to: &Event, relay_url: Option<RelayUrl>) -> Self
     where
         S: Into<String>,
     {
