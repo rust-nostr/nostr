@@ -1,5 +1,18 @@
 //! Test utilities for cross-storage consistency testing
 
+/// Random data generation utilities for testing MLS group features
+pub mod crypto_utils {
+    use aes_gcm::aead::rand_core::RngCore;
+    use aes_gcm::aead::OsRng;
+
+    /// Generates random bytes as Vec<u8> of the specified length
+    pub fn generate_random_bytes(length: usize) -> Vec<u8> {
+        let mut bytes = vec![0u8; length];
+        RngCore::fill_bytes(&mut OsRng, &mut bytes);
+        bytes
+    }
+}
+
 /// Cross-storage consistency testing utilities
 pub mod cross_storage {
     use std::collections::BTreeSet;

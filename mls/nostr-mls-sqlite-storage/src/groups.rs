@@ -10,6 +10,7 @@ use nostr_mls_storage::messages::types::Message;
 use openmls::group::GroupId;
 use rusqlite::{params, OptionalExtension};
 
+use crate::db::{Hash32, Nonce12};
 use crate::{db, NostrMlsSqliteStorage};
 
 #[inline]
@@ -108,9 +109,9 @@ impl GroupStorage for NostrMlsSqliteStorage {
                     &group.nostr_group_id,
                     &group.name,
                     &group.description,
-                    &group.image_hash,
-                    &group.image_key,
-                    &group.image_nonce,
+                    &group.image_hash.map(Hash32::from),
+                    &group.image_key.map(Hash32::from),
+                    &group.image_nonce.map(Nonce12::from),
                     &admin_pubkeys_json,
                     last_message_id,
                     &last_message_at,
@@ -287,15 +288,10 @@ impl GroupStorage for NostrMlsSqliteStorage {
 
 #[cfg(test)]
 mod tests {
-    use aes_gcm::aead::OsRng;
-    use aes_gcm::{Aes128Gcm, KeyInit};
     use nostr_mls_storage::groups::types::GroupState;
+    use nostr_mls_storage::test_utils::crypto_utils::generate_random_bytes;
 
     use super::*;
-
-    pub fn generate_encryption_key() -> Vec<u8> {
-        Aes128Gcm::generate_key(OsRng).to_vec()
-    }
 
     #[test]
     fn test_save_and_find_group() {
@@ -303,11 +299,10 @@ mod tests {
 
         // Create a test group
         let mls_group_id = GroupId::from_slice(&[1, 2, 3, 4]);
-        let mut nostr_group_id = [0u8; 32];
-        nostr_group_id[0..13].copy_from_slice(b"test_group_12");
-        let image_hash = Some(b"hash of image blob".to_vec().to_owned());
-        let image_key = Some(generate_encryption_key());
-        let image_nonce = Some(vec![8u8; 12]);
+        let nostr_group_id = generate_random_bytes(32).try_into().unwrap();
+        let image_hash = Some(generate_random_bytes(32).try_into().unwrap());
+        let image_key = Some(generate_random_bytes(32).try_into().unwrap());
+        let image_nonce = Some(generate_random_bytes(12).try_into().unwrap());
 
         let group = Group {
             mls_group_id: mls_group_id.clone(),
@@ -333,7 +328,7 @@ mod tests {
             .find_group_by_mls_group_id(&mls_group_id)
             .unwrap()
             .unwrap();
-        assert_eq!(found_group.nostr_group_id[0..13], b"test_group_12"[..]);
+        assert_eq!(found_group.nostr_group_id, nostr_group_id);
 
         // Find by Nostr group ID
         let found_group = storage
@@ -356,8 +351,7 @@ mod tests {
 
         // Create a test group
         let mls_group_id = GroupId::from_slice(&[1, 2, 3, 4]);
-        let mut nostr_group_id = [0u8; 32];
-        nostr_group_id[0..13].copy_from_slice(b"test_group_12");
+        let nostr_group_id = generate_random_bytes(32).try_into().unwrap();
 
         let group = Group {
             mls_group_id: mls_group_id.clone(),

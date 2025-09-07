@@ -70,12 +70,18 @@ where
 
 /// Creates standard test group configuration data
 ///
-/// Returns a NostrGroupConfigData with standard test values for creating test groups.
+/// Returns a NostrGroupConfigData with random test values for creating test groups.
 pub fn create_nostr_group_config_data(admins: Vec<PublicKey>) -> NostrGroupConfigData {
     let relays = vec![RelayUrl::parse("wss://test.relay").unwrap()];
-    let image_hash = b"hash of image blob".to_vec();
-    let image_key = nostr::SecretKey::generate().as_secret_bytes().to_owned();
-    let image_nonce = [3u8; 12].to_vec();
+    let image_hash = nostr_mls_storage::test_utils::crypto_utils::generate_random_bytes(32)
+        .try_into()
+        .unwrap();
+    let image_key = nostr_mls_storage::test_utils::crypto_utils::generate_random_bytes(32)
+        .try_into()
+        .unwrap();
+    let image_nonce = nostr_mls_storage::test_utils::crypto_utils::generate_random_bytes(12)
+        .try_into()
+        .unwrap();
     let name = "Test Group".to_owned();
     let description = "A test group for basic testing".to_owned();
     NostrGroupConfigData::new(
@@ -136,4 +142,37 @@ where
 /// message creation and processing.
 pub fn create_test_rumor(sender_keys: &Keys, content: &str) -> nostr::UnsignedEvent {
     EventBuilder::new(Kind::TextNote, content).build(sender_keys.public_key())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_helper_function_randomness() {
+        let (_, _, admins) = create_test_group_members();
+
+        // Test that the helper works and generates random data
+        let config1 = create_nostr_group_config_data(admins.clone());
+        let config2 = create_nostr_group_config_data(admins);
+
+        // Both should have the same basic properties
+        assert_eq!(config1.name, "Test Group");
+        assert_eq!(config2.name, "Test Group");
+        assert_eq!(config1.description, "A test group for basic testing");
+        assert_eq!(config2.description, "A test group for basic testing");
+
+        // Random helper should return different values (very unlikely to be the same)
+        assert_ne!(config1.image_hash, config2.image_hash);
+        assert_ne!(config1.image_key, config2.image_key);
+        assert_ne!(config1.image_nonce, config2.image_nonce);
+
+        // All should be Some (not None)
+        assert!(config1.image_hash.is_some());
+        assert!(config1.image_key.is_some());
+        assert!(config1.image_nonce.is_some());
+        assert!(config2.image_hash.is_some());
+        assert!(config2.image_key.is_some());
+        assert!(config2.image_nonce.is_some());
+    }
 }

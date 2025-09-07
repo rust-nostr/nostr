@@ -53,11 +53,11 @@ pub struct NostrGroupConfigData {
     /// Group description
     pub description: String,
     /// URL to encrypted group image
-    pub image_hash: Option<Vec<u8>>,
+    pub image_hash: Option<[u8; 32]>,
     /// Key to decrypt the image
-    pub image_key: Option<Vec<u8>>,
+    pub image_key: Option<[u8; 32]>,
     /// Nonce to decrypt the image
-    pub image_nonce: Option<Vec<u8>>,
+    pub image_nonce: Option<[u8; 12]>,
     /// Relays used by the group
     pub relays: Vec<RelayUrl>,
     /// Group admins
@@ -72,11 +72,11 @@ pub struct NostrGroupDataUpdate {
     /// Group description (optional)
     pub description: Option<String>,
     /// URL to encrypted group image (optional, use Some(None) to clear)
-    pub image_hash: Option<Option<Vec<u8>>>,
+    pub image_hash: Option<Option<[u8; 32]>>,
     /// Key to decrypt the image (optional, use Some(None) to clear)
-    pub image_key: Option<Option<Vec<u8>>>,
+    pub image_key: Option<Option<[u8; 32]>>,
     /// Nonce to decrypt the image (optional, use Some(None) to clear)
-    pub image_nonce: Option<Option<Vec<u8>>>,
+    pub image_nonce: Option<Option<[u8; 12]>>,
     /// Relays used by the group (optional)
     pub relays: Option<Vec<RelayUrl>>,
     /// Group admins (optional)
@@ -88,9 +88,9 @@ impl NostrGroupConfigData {
     pub fn new(
         name: String,
         description: String,
-        image_hash: Option<Vec<u8>>,
-        image_key: Option<Vec<u8>>,
-        image_nonce: Option<Vec<u8>>,
+        image_hash: Option<[u8; 32]>,
+        image_key: Option<[u8; 32]>,
+        image_nonce: Option<[u8; 12]>,
         relays: Vec<RelayUrl>,
         admins: Vec<PublicKey>,
     ) -> Self {
@@ -131,19 +131,19 @@ impl NostrGroupDataUpdate {
     }
 
     /// Sets the image URL to be updated
-    pub fn image_hash(mut self, image_hash: Option<Vec<u8>>) -> Self {
+    pub fn image_hash(mut self, image_hash: Option<[u8; 32]>) -> Self {
         self.image_hash = Some(image_hash);
         self
     }
 
     /// Sets the image key to be updated
-    pub fn image_key(mut self, image_key: Option<Vec<u8>>) -> Self {
+    pub fn image_key(mut self, image_key: Option<[u8; 32]>) -> Self {
         self.image_key = Some(image_key);
         self
     }
 
     /// Sets the image key to be updated
-    pub fn image_nonce(mut self, image_nonce: Option<Vec<u8>>) -> Self {
+    pub fn image_nonce(mut self, image_nonce: Option<[u8; 12]>) -> Self {
         self.image_nonce = Some(image_nonce);
         self
     }
@@ -846,9 +846,9 @@ where
             config.description,
             admins,
             config.relays.clone(),
-            config.image_hash.clone(),
-            config.image_key.clone(),
-            config.image_nonce.clone(),
+            config.image_hash,
+            config.image_key,
+            config.image_nonce,
         );
 
         tracing::debug!(
@@ -2165,13 +2165,17 @@ mod tests {
 
         // Test 2: Update multiple fields at once
         let new_description = "Updated Description".to_string();
-        let new_image_hash = b"hash of the image blob".to_vec();
-        let new_image_key = vec![1, 2, 3, 4, 5];
+        let new_image_hash = nostr_mls_storage::test_utils::crypto_utils::generate_random_bytes(32)
+            .try_into()
+            .unwrap();
+        let new_image_key = nostr_mls_storage::test_utils::crypto_utils::generate_random_bytes(32)
+            .try_into()
+            .unwrap();
 
         let update = NostrGroupDataUpdate::new()
             .description(new_description.clone())
-            .image_hash(Some(new_image_hash.clone()))
-            .image_key(Some(new_image_key.clone()));
+            .image_hash(Some(new_image_hash))
+            .image_key(Some(new_image_key));
 
         let update_result = creator_nostr_mls
             .update_group_data(group_id, update)

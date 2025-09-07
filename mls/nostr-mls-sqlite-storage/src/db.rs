@@ -13,8 +13,92 @@ use nostr_mls_storage::welcomes::types::{
     ProcessedWelcome, ProcessedWelcomeState, Welcome, WelcomeState,
 };
 use openmls::group::GroupId;
-use rusqlite::types::Type;
+use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, Type, ValueRef};
 use rusqlite::{Error, Result as SqliteResult, Row};
+
+/// Wrapper for [u8; 32] to implement rusqlite traits
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Hash32([u8; 32]);
+
+impl From<[u8; 32]> for Hash32 {
+    fn from(arr: [u8; 32]) -> Self {
+        Hash32(arr)
+    }
+}
+
+impl From<Hash32> for [u8; 32] {
+    fn from(hash: Hash32) -> Self {
+        hash.0
+    }
+}
+
+impl ToSql for Hash32 {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        Ok(ToSqlOutput::from(self.0.as_slice()))
+    }
+}
+
+impl FromSql for Hash32 {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        match value {
+            ValueRef::Blob(blob) => {
+                if blob.len() == 32 {
+                    let mut arr = [0u8; 32];
+                    arr.copy_from_slice(blob);
+                    Ok(Hash32(arr))
+                } else {
+                    Err(FromSqlError::InvalidBlobSize {
+                        expected_size: 32,
+                        blob_size: blob.len(),
+                    })
+                }
+            }
+            _ => Err(FromSqlError::InvalidType),
+        }
+    }
+}
+
+/// Wrapper for [u8; 12] to implement rusqlite traits
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Nonce12([u8; 12]);
+
+impl From<[u8; 12]> for Nonce12 {
+    fn from(arr: [u8; 12]) -> Self {
+        Nonce12(arr)
+    }
+}
+
+impl From<Nonce12> for [u8; 12] {
+    fn from(nonce: Nonce12) -> Self {
+        nonce.0
+    }
+}
+
+impl ToSql for Nonce12 {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        Ok(ToSqlOutput::from(self.0.as_slice()))
+    }
+}
+
+impl FromSql for Nonce12 {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        match value {
+            ValueRef::Blob(blob) => {
+                if blob.len() == 12 {
+                    let mut arr = [0u8; 12];
+                    arr.copy_from_slice(blob);
+                    Ok(Nonce12(arr))
+                } else {
+                    Err(FromSqlError::InvalidBlobSize {
+                        expected_size: 12,
+                        blob_size: blob.len(),
+                    })
+                }
+            }
+            _ => Err(FromSqlError::InvalidType),
+        }
+    }
+}
 
 #[inline]
 fn map_to_text_boxed_error<T>(e: T) -> Error
@@ -48,9 +132,13 @@ pub fn row_to_group(row: &Row) -> SqliteResult<Group> {
     let nostr_group_id: [u8; 32] = row.get("nostr_group_id")?;
     let name: String = row.get("name")?;
     let description: String = row.get("description")?;
-    let image_hash: Option<Vec<u8>> = row.get("image_hash")?;
-    let image_key: Option<Vec<u8>> = row.get("image_key")?;
-    let image_nonce: Option<Vec<u8>> = row.get("image_nonce")?;
+    let image_hash: Option<[u8; 32]> = row
+        .get::<_, Option<Hash32>>("image_hash")?
+        .map(|h| h.into());
+    let image_key: Option<[u8; 32]> = row.get::<_, Option<Hash32>>("image_key")?.map(|h| h.into());
+    let image_nonce: Option<[u8; 12]> = row
+        .get::<_, Option<Nonce12>>("image_nonce")?
+        .map(|n| n.into());
 
     // Parse admin pubkeys from JSON
     let admin_pubkeys_json: &str = row.get_ref("admin_pubkeys")?.as_str()?;
@@ -203,9 +291,15 @@ pub fn row_to_welcome(row: &Row) -> SqliteResult<Welcome> {
     let nostr_group_id: [u8; 32] = row.get("nostr_group_id")?;
     let group_name: String = row.get("group_name")?;
     let group_description: String = row.get("group_description")?;
-    let group_image_hash: Option<Vec<u8>> = row.get("group_image_hash")?;
-    let group_image_key: Option<Vec<u8>> = row.get("group_image_key")?;
-    let group_image_nonce: Option<Vec<u8>> = row.get("group_image_nonce")?;
+    let group_image_hash: Option<[u8; 32]> = row
+        .get::<_, Option<Hash32>>("group_image_hash")?
+        .map(|h| h.into());
+    let group_image_key: Option<[u8; 32]> = row
+        .get::<_, Option<Hash32>>("group_image_key")?
+        .map(|h| h.into());
+    let group_image_nonce: Option<[u8; 12]> = row
+        .get::<_, Option<Nonce12>>("group_image_nonce")?
+        .map(|n| n.into());
     let group_admin_pubkeys_json: &str = row.get_ref("group_admin_pubkeys")?.as_str()?;
     let group_relays_json: &str = row.get_ref("group_relays")?.as_str()?;
     let welcomer_blob: &[u8] = row.get_ref("welcomer")?.as_blob()?;
