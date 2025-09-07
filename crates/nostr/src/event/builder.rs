@@ -1721,17 +1721,18 @@ impl EventBuilder {
     /// Chat message reply
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/C7.md>
+    #[inline]
     pub fn chat_message_reply<S>(content: S, reply_to: &Event, relay_url: Option<RelayUrl>) -> Self
     where
         S: Into<String>,
     {
-        let tags = vec![Tag::from_standardized_without_cell(TagStandard::Quote {
-            event_id: reply_to.id,
-            relay_url,
-            public_key: Some(reply_to.pubkey),
-        })];
-
-        Self::new(Kind::ChatMessage, content).tags(tags)
+        Self::new(Kind::ChatMessage, content).tag(Tag::from_standardized_without_cell(
+            TagStandard::Quote {
+                event_id: reply_to.id,
+                relay_url,
+                public_key: Some(reply_to.pubkey),
+            },
+        ))
     }
 }
 
