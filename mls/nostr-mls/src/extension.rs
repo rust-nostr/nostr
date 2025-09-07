@@ -65,7 +65,7 @@ pub struct NostrGroupDataExtension {
     pub admins: BTreeSet<PublicKey>,
     /// Relays
     pub relays: BTreeSet<RelayUrl>,
-    /// Group image hash, assuming the app will use single Blossom server
+    /// Group image hash (blossom hash)
     pub image_hash: Option<[u8; 32]>,
     /// Private key to decrypt group image (encrypted when stored)
     pub image_key: Option<[u8; 32]>,
@@ -584,32 +584,6 @@ mod tests {
         println!(
             "Overhead difference: {} bytes",
             with_data_size as i32 - without_data_size as i32
-        );
-
-        // Check the field sizes
-        println!(
-            "Hash field with data: {} bytes",
-            with_data_raw.image_hash.len()
-        );
-        println!(
-            "Hash field without data: {} bytes",
-            without_data_raw.image_hash.len()
-        );
-        println!(
-            "Key field with data: {} bytes",
-            with_data_raw.image_key.len()
-        );
-        println!(
-            "Key field without data: {} bytes",
-            without_data_raw.image_key.len()
-        );
-        println!(
-            "Nonce field with data: {} bytes",
-            with_data_raw.image_nonce.len()
-        );
-        println!(
-            "Nonce field without data: {} bytes",
-            without_data_raw.image_nonce.len()
         );
 
         // Test round-trip to ensure correctness
