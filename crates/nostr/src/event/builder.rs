@@ -49,6 +49,8 @@ pub enum Error {
     /// NIP04 error
     #[cfg(feature = "nip04")]
     NIP04(nip04::Error),
+    /// NIP21 error
+    NIP21(nip21::Error),
     /// NIP44 error
     #[cfg(all(feature = "std", feature = "nip44"))]
     NIP44(nip44::Error),
@@ -80,6 +82,7 @@ impl fmt::Display for Error {
             Self::NIP03(e) => e.fmt(f),
             #[cfg(feature = "nip04")]
             Self::NIP04(e) => e.fmt(f),
+            Self::NIP21(e) => e.fmt(f),
             #[cfg(all(feature = "std", feature = "nip44"))]
             Self::NIP44(e) => e.fmt(f),
             Self::NIP58(e) => e.fmt(f),
@@ -122,6 +125,12 @@ impl From<nostr_ots::Error> for Error {
 impl From<nip04::Error> for Error {
     fn from(e: nip04::Error) -> Self {
         Self::NIP04(e)
+    }
+}
+
+impl From<nip21::Error> for Error {
+    fn from(e: nip21::Error) -> Self {
+        Self::NIP21(e)
     }
 }
 
