@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use nostr::prelude::*;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use nostr_gossip::NostrGossip;
 
 pub mod constant;
 
@@ -28,181 +29,12 @@ pub enum BrokenDownFilters {
     Other(Filter),
 }
 
-#[derive(Debug, Clone, Default)]
-struct RelayList<T> {
-    pub collection: T,
-    /// Timestamp of when the event metadata was created
-    pub event_created_at: Timestamp,
-    /// Timestamp of when the metadata was updated
-    pub last_update: Timestamp,
-}
-
-#[derive(Debug, Clone, Default)]
-struct RelayLists {
-    pub nip17: RelayList<HashSet<RelayUrl>>,
-    pub nip65: RelayList<HashMap<RelayUrl, Option<RelayMetadata>>>,
-    /// Timestamp of the last check
-    pub last_check: Timestamp,
-}
-
-type PublicKeyMap = HashMap<PublicKey, RelayLists>;
-
-/// Gossip tracker
 #[derive(Debug, Clone)]
-pub struct Gossip {
-    /// Keep track of seen public keys and of their NIP65
-    public_keys: Arc<RwLock<PublicKeyMap>>,
+pub(crate) struct GossipWrapper {
+    gossip: Arc<dyn NostrGossip>,
 }
 
-impl Gossip {
-    pub fn new() -> Self {
-        Self {
-            public_keys: Arc::new(RwLock::new(HashMap::new())),
-        }
-    }
-
-    pub async fn process_event(&self, event: &Event) {
-        // Check if the event can be processed
-        // This avoids the acquire of the lock for every event processed that is not a NIP17 or NIP65
-        if event.kind != Kind::RelayList && event.kind != Kind::InboxRelays {
-            return;
-        }
-
-        // Acquire write lock
-        let mut public_keys = self.public_keys.write().await;
-
-        // Update
-        self.update_event(&mut public_keys, event);
-    }
-
-    /// Update graph
-    ///
-    /// Only the first [`MAX_RELAYS_LIST`] relays will be used.
-    pub async fn update<I>(&self, events: I)
-    where
-        I: IntoIterator<Item = Event>,
-    {
-        let mut public_keys = self.public_keys.write().await;
-
-        for event in events.into_iter() {
-            self.update_event(&mut public_keys, &event);
-        }
-    }
-
-    fn update_event(&self, public_keys: &mut RwLockWriteGuard<PublicKeyMap>, event: &Event) {
-        if event.kind == Kind::RelayList {
-            public_keys
-                .entry(event.pubkey)
-                .and_modify(|lists| {
-                    // Update only if new metadata has more recent timestamp
-                    if event.created_at >= lists.nip65.event_created_at {
-                        lists.nip65 = RelayList {
-                            collection: extract_nip65_relay_list(
-                                event,
-                                MAX_RELAYS_PER_NIP65_MARKER,
-                            ),
-                            event_created_at: event.created_at,
-                            last_update: Timestamp::now(),
-                        };
-                    }
-                })
-                .or_insert_with(|| RelayLists {
-                    nip65: RelayList {
-                        collection: extract_nip65_relay_list(event, MAX_RELAYS_PER_NIP65_MARKER),
-                        event_created_at: event.created_at,
-                        last_update: Timestamp::now(),
-                    },
-                    ..Default::default()
-                });
-        } else if event.kind == Kind::InboxRelays {
-            public_keys
-                .entry(event.pubkey)
-                .and_modify(|lists| {
-                    // Update only if new metadata has more recent timestamp
-                    if event.created_at >= lists.nip17.event_created_at {
-                        lists.nip17 = RelayList {
-                            collection: nip17::extract_relay_list(event)
-                                .take(MAX_NIP17_RELAYS)
-                                .cloned()
-                                .collect(),
-                            event_created_at: event.created_at,
-                            last_update: Timestamp::now(),
-                        };
-                    }
-                })
-                .or_insert_with(|| RelayLists {
-                    nip17: RelayList {
-                        collection: nip17::extract_relay_list(event)
-                            .take(MAX_NIP17_RELAYS)
-                            .cloned()
-                            .collect(),
-                        event_created_at: event.created_at,
-                        last_update: Timestamp::now(),
-                    },
-                    ..Default::default()
-                });
-        }
-    }
-
-    /// Check for what public keys the metadata are outdated or not existent (both for NIP17 and NIP65)
-    pub async fn check_outdated<I>(&self, public_keys: I) -> HashSet<PublicKey>
-    where
-        I: IntoIterator<Item = PublicKey>,
-    {
-        let map = self.public_keys.read().await;
-        let now = Timestamp::now();
-
-        let mut outdated: HashSet<PublicKey> = HashSet::new();
-
-        for public_key in public_keys.into_iter() {
-            match map.get(&public_key) {
-                Some(lists) => {
-                    if lists.last_check + CHECK_OUTDATED_INTERVAL > now {
-                        continue;
-                    }
-
-                    // Check if collections are empty
-                    let empty: bool =
-                        lists.nip17.collection.is_empty() || lists.nip65.collection.is_empty();
-
-                    // Check if expired
-                    let expired: bool = lists.nip17.last_update + PUBKEY_METADATA_OUTDATED_AFTER
-                        < now
-                        || lists.nip65.last_update + PUBKEY_METADATA_OUTDATED_AFTER < now;
-
-                    if empty || expired {
-                        outdated.insert(public_key);
-                    }
-                }
-                None => {
-                    // Public key not found, insert into outdated
-                    outdated.insert(public_key);
-                }
-            }
-        }
-
-        outdated
-    }
-
-    pub async fn update_last_check<I>(&self, public_keys: I)
-    where
-        I: IntoIterator<Item = PublicKey>,
-    {
-        let mut map = self.public_keys.write().await;
-        let now = Timestamp::now();
-
-        for public_key in public_keys.into_iter() {
-            map.entry(public_key)
-                .and_modify(|lists| {
-                    lists.last_check = now;
-                })
-                .or_insert_with(|| RelayLists {
-                    last_check: now,
-                    ..Default::default()
-                });
-        }
-    }
-
+impl GossipWrapper {
     fn get_nip17_relays<'a, I>(
         &self,
         txn: &RwLockReadGuard<PublicKeyMap>,

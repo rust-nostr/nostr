@@ -44,6 +44,12 @@ pub trait NostrGossip: Any + Debug + Send + Sync {
         relay_url: Option<&'a RelayUrl>,
     ) -> BoxedFuture<'a, Result<(), GossipError>>;
 
+    /// Check if the [`PublicKey`] needs to update the relay lists
+    fn is_stale_public_key(&self, public_key: &PublicKey) -> BoxedFuture<Result<bool, GossipError>>;
+
+    /// Update the last check timestamp for stale [`PublicKey`].
+    fn update_fetch_attempt(&self, public_key: PublicKey) -> BoxedFuture<Result<(), GossipError>>;
+
     /// Get the best relays for a [`PublicKey`].
     fn get_best_relays<'a>(
         &'a self,
