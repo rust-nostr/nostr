@@ -12,7 +12,6 @@ rust-version = "1.74.0"
 keywords = ["nostr", "mls", "openmls"]
 
 [dependencies]
-aes-gcm = "0.10.3"
 hex = { workspace = true, features = ["std"] }
 nostr = { workspace = true, features = ["std", "nip44"] }
 nostr-mls-storage.workspace = true
@@ -24,6 +23,7 @@ tls_codec = "0.4"
 tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
+nostr-mls-storage = { workspace = true, features = ["test-utils"] }
 nostr-mls-memory-storage.workspace = true
 nostr-mls-sqlite-storage.workspace = true
 rand = "0.9.2"

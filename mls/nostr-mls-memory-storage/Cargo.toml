@@ -20,4 +20,4 @@ openmls_memory_storage = { version = "0.4.0", default-features = false }
 parking_lot = "0.12"
 
 [dev-dependencies]
-aes-gcm = "0.10.3"
+nostr-mls-storage = { workspace = true, features = ["test-utils"] }
