@@ -9,9 +9,9 @@ use openmls_traits::storage::StorageProvider;
 
 pub mod groups;
 pub mod messages;
-pub mod welcomes;
-
+#[cfg(feature = "test-utils")]
 pub mod test_utils;
+pub mod welcomes;
 
 use self::groups::GroupStorage;
 use self::messages::MessageStorage;

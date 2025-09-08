@@ -6,6 +6,7 @@ use nostr_mls_storage::welcomes::types::{ProcessedWelcome, Welcome};
 use nostr_mls_storage::welcomes::WelcomeStorage;
 use rusqlite::{params, OptionalExtension};
 
+use crate::db::{Hash32, Nonce12};
 use crate::{db, NostrMlsSqliteStorage};
 
 #[inline]
@@ -34,7 +35,7 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
         conn_guard
             .execute(
                 "INSERT OR REPLACE INTO welcomes
-             (id, event, mls_group_id, nostr_group_id, group_name, group_description, group_image_url, group_image_key, group_image_nonce,
+             (id, event, mls_group_id, nostr_group_id, group_name, group_description, group_image_hash, group_image_key, group_image_nonce,
               group_admin_pubkeys, group_relays, welcomer, member_count, state, wrapper_event_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 params![
@@ -44,9 +45,9 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
                     welcome.nostr_group_id,
                     welcome.group_name,
                     welcome.group_description,
-                    welcome.group_image_url,
-                    welcome.group_image_key,
-                    welcome.group_image_nonce,
+                    welcome.group_image_hash.map(Hash32::from),
+                    welcome.group_image_key.map(Hash32::from),
+                    welcome.group_image_nonce.map(Nonce12::from),
                     group_admin_pubkeys_json,
                     group_relays_json,
                     welcome.welcomer.as_bytes(),
@@ -144,21 +145,15 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
-
-    use aes_gcm::aead::OsRng;
-    use aes_gcm::{Aes128Gcm, KeyInit};
-    use nostr::{EventId, Kind, PublicKey, RelayUrl, Timestamp, UnsignedEvent};
-    use nostr_mls_storage::groups::types::{Group, GroupState};
+    use nostr::EventId;
     use nostr_mls_storage::groups::GroupStorage;
-    use nostr_mls_storage::welcomes::types::{ProcessedWelcomeState, WelcomeState};
+    use nostr_mls_storage::test_utils::cross_storage::{
+        create_test_group, create_test_processed_welcome, create_test_welcome,
+    };
+    use nostr_mls_storage::welcomes::types::ProcessedWelcomeState;
     use openmls::group::GroupId;
 
     use super::*;
-
-    pub fn generate_encryption_key() -> Vec<u8> {
-        Aes128Gcm::generate_key(OsRng).to_vec()
-    }
 
     #[test]
     fn test_save_and_find_welcome() {
@@ -166,68 +161,15 @@ mod tests {
 
         // First create a group (welcomes require a valid group foreign key)
         let mls_group_id = GroupId::from_slice(&[1, 2, 3, 4]);
-        let mut nostr_group_id = [0u8; 32];
-        nostr_group_id[0..13].copy_from_slice(b"test_group_12");
-        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
-        let image_key = Some(generate_encryption_key());
-        let image_nonce = Some(vec![5u8; 12]);
-
-        let group = Group {
-            mls_group_id: mls_group_id.clone(),
-            nostr_group_id,
-            name: "Test Group".to_string(),
-            description: "A test group".to_string(),
-            admin_pubkeys: BTreeSet::new(),
-            last_message_id: None,
-            last_message_at: None,
-            epoch: 0,
-            state: GroupState::Active,
-            image_url: image_url.clone(),
-            image_key: image_key.clone(),
-            image_nonce: image_nonce.clone(),
-        };
+        let group = create_test_group(mls_group_id.clone());
 
         // Save the group
         let result = storage.save_group(group);
         assert!(result.is_ok(), "{:?}", result);
 
-        // Create a test welcome
-        let event_id =
-            EventId::parse("6a2affe9878ebcf50c10cf74c7b25aad62e0db9fb347f6aafeda30e9f578f260")
-                .unwrap();
-        let pubkey =
-            PublicKey::parse("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
-                .unwrap();
-        let wrapper_event_id =
-            EventId::parse("3287abd422284bc3679812c373c52ed4aa0af4f7c57b9c63ec440f6c3ed6c3a2")
-                .unwrap();
-
-        let mut welcome_nostr_group_id = [0u8; 32];
-        welcome_nostr_group_id[0..13].copy_from_slice(b"test_group_12");
-
-        let welcome = Welcome {
-            id: event_id,
-            event: UnsignedEvent::new(
-                pubkey,
-                Timestamp::now(),
-                Kind::MlsWelcome,
-                vec![],
-                "content".to_string(),
-            ),
-            mls_group_id: mls_group_id.clone(),
-            nostr_group_id: welcome_nostr_group_id,
-            group_name: "Test Group".to_string(),
-            group_description: "A test group".to_string(),
-            group_image_url: image_url,
-            group_image_key: image_key,
-            group_image_nonce: image_nonce,
-            group_admin_pubkeys: BTreeSet::from([pubkey]),
-            group_relays: BTreeSet::from([RelayUrl::parse("wss://relay.example.com").unwrap()]),
-            welcomer: pubkey,
-            member_count: 3,
-            state: WelcomeState::Pending,
-            wrapper_event_id,
-        };
+        // Create a test welcome using the helper
+        let event_id = EventId::all_zeros();
+        let welcome = create_test_welcome(mls_group_id.clone(), event_id);
 
         // Save the welcome
         let result = storage.save_welcome(welcome.clone());
@@ -239,8 +181,8 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(found_welcome.id, event_id);
-        assert_eq!(&found_welcome.nostr_group_id[0..13], b"test_group_12");
-        assert_eq!(found_welcome.state, WelcomeState::Pending);
+        assert_eq!(found_welcome.mls_group_id, mls_group_id);
+        assert_eq!(found_welcome.state, welcome.state);
 
         // Test pending welcomes
         let pending_welcomes = storage.pending_welcomes().unwrap();
@@ -252,21 +194,15 @@ mod tests {
     fn test_processed_welcome() {
         let storage = NostrMlsSqliteStorage::new_in_memory().unwrap();
 
-        // Create a test processed welcome
-        let wrapper_event_id =
-            EventId::parse("6a2affe9878ebcf50c10cf74c7b25aad62e0db9fb347f6aafeda30e9f578f260")
-                .unwrap();
+        // Create test event IDs using helper methods
+        let wrapper_event_id = EventId::all_zeros();
         let welcome_event_id =
-            EventId::parse("3287abd422284bc3679812c373c52ed4aa0af4f7c57b9c63ec440f6c3ed6c3a2")
+            EventId::from_hex("1111111111111111111111111111111111111111111111111111111111111111")
                 .unwrap();
 
-        let processed_welcome = ProcessedWelcome {
-            wrapper_event_id,
-            welcome_event_id: Some(welcome_event_id),
-            processed_at: Timestamp::from(1_000_000_000u64),
-            state: ProcessedWelcomeState::Processed,
-            failure_reason: None,
-        };
+        // Create a test processed welcome using the helper
+        let processed_welcome =
+            create_test_processed_welcome(wrapper_event_id, Some(welcome_event_id));
 
         // Save the processed welcome
         let result = storage.save_processed_welcome(processed_welcome.clone());

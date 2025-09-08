@@ -20,6 +20,15 @@ use tls_codec::{
 use crate::constant::NOSTR_GROUP_DATA_EXTENSION_TYPE;
 use crate::error::Error;
 
+/// TLS-serializable representation of Nostr Group Data Extension.
+///
+/// This struct is used exclusively for TLS codec serialization/deserialization
+/// when the extension is transmitted over the MLS protocol. It uses `Vec<u8>`
+/// for optional binary fields to allow empty vectors to represent `None` values,
+/// which avoids the serialization issues that would occur with fixed-size arrays.
+///
+/// Users should not interact with this struct directly - use `NostrGroupDataExtension`
+/// instead, which provides proper type safety and a clean API.
 #[derive(
     Debug,
     Clone,
@@ -31,15 +40,15 @@ use crate::error::Error;
     TlsSerializeBytes,
     TlsSize,
 )]
-pub(crate) struct RawNostrGroupDataExtension {
+pub(crate) struct TlsNostrGroupDataExtension {
     pub nostr_group_id: [u8; 32],
     pub name: Vec<u8>,
     pub description: Vec<u8>,
     pub admin_pubkeys: Vec<Vec<u8>>,
     pub relays: Vec<Vec<u8>>,
-    pub image_url: Vec<u8>,
-    pub image_key: Vec<u8>,
-    pub image_nonce: Vec<u8>,
+    pub image_hash: Vec<u8>,  // Use Vec<u8> to allow empty for None
+    pub image_key: Vec<u8>,   // Use Vec<u8> to allow empty for None
+    pub image_nonce: Vec<u8>, // Use Vec<u8> to allow empty for None
 }
 
 /// This is an MLS Group Context extension used to store the group's name,
@@ -56,12 +65,12 @@ pub struct NostrGroupDataExtension {
     pub admins: BTreeSet<PublicKey>,
     /// Relays
     pub relays: BTreeSet<RelayUrl>,
-    /// Group image URL (optional)
-    pub image_url: Option<String>,
+    /// Group image hash (blossom hash)
+    pub image_hash: Option<[u8; 32]>,
     /// Private key to decrypt group image (encrypted when stored)
-    pub image_key: Option<Vec<u8>>,
+    pub image_key: Option<[u8; 32]>,
     /// Nonce to decrypt group image
-    pub image_nonce: Option<Vec<u8>>,
+    pub image_nonce: Option<[u8; 12]>,
 }
 
 impl NostrGroupDataExtension {
@@ -82,19 +91,18 @@ impl NostrGroupDataExtension {
     /// A new NostrGroupDataExtension instance with a randomly generated group ID and
     /// the provided parameters converted to bytes. This group ID value is what's used when publishing
     /// events to Nostr relays for the group.
-    pub fn new<T1, T2, T3, IA, IR>(
+    pub fn new<T1, T2, IA, IR>(
         name: T1,
         description: T2,
         admins: IA,
         relays: IR,
-        image_url: Option<T3>,
-        image_key: Option<Vec<u8>>,
-        image_nonce: Option<Vec<u8>>,
+        image_hash: Option<[u8; 32]>,
+        image_key: Option<[u8; 32]>,
+        image_nonce: Option<[u8; 12]>,
     ) -> Self
     where
         T1: Into<String>,
         T2: Into<String>,
-        T3: Into<String>,
         IA: IntoIterator<Item = PublicKey>,
         IR: IntoIterator<Item = RelayUrl>,
     {
@@ -108,13 +116,13 @@ impl NostrGroupDataExtension {
             description: description.into(),
             admins: admins.into_iter().collect(),
             relays: relays.into_iter().collect(),
-            image_url: image_url.map(Into::into),
+            image_hash,
             image_key,
             image_nonce,
         }
     }
 
-    pub(crate) fn from_raw(raw: RawNostrGroupDataExtension) -> Result<Self, Error> {
+    pub(crate) fn from_raw(raw: TlsNostrGroupDataExtension) -> Result<Self, Error> {
         let mut admins = BTreeSet::new();
         for admin in raw.admin_pubkeys {
             let bytes = hex::decode(&admin)?;
@@ -129,22 +137,34 @@ impl NostrGroupDataExtension {
             relays.insert(url);
         }
 
-        let image_url = if raw.image_url.is_empty() {
+        let image_hash = if raw.image_hash.is_empty() {
             None
         } else {
-            Some(String::from_utf8(raw.image_url)?)
+            Some(
+                raw.image_hash
+                    .try_into()
+                    .map_err(|_| Error::InvalidImageHashLength)?,
+            )
         };
 
         let image_key = if raw.image_key.is_empty() {
             None
         } else {
-            Some(raw.image_key)
+            Some(
+                raw.image_key
+                    .try_into()
+                    .map_err(|_| Error::InvalidImageKeyLength)?,
+            )
         };
 
         let image_nonce = if raw.image_nonce.is_empty() {
             None
         } else {
-            Some(raw.image_nonce)
+            Some(
+                raw.image_nonce
+                    .try_into()
+                    .map_err(|_| Error::InvalidImageNonceLength)?,
+            )
         };
 
         Ok(Self {
@@ -153,7 +173,7 @@ impl NostrGroupDataExtension {
             description: String::from_utf8(raw.description)?,
             admins,
             relays,
-            image_url,
+            image_hash,
             image_key,
             image_nonce,
         })
@@ -179,7 +199,7 @@ impl NostrGroupDataExtension {
         };
 
         let (deserialized, _) =
-            RawNostrGroupDataExtension::tls_deserialize_bytes(&group_data_extension.0)?;
+            TlsNostrGroupDataExtension::tls_deserialize_bytes(&group_data_extension.0)?;
 
         Self::from_raw(deserialized)
     }
@@ -199,7 +219,7 @@ impl NostrGroupDataExtension {
         };
 
         let (deserialized, _) =
-            RawNostrGroupDataExtension::tls_deserialize_bytes(&group_data_extension.0)?;
+            TlsNostrGroupDataExtension::tls_deserialize_bytes(&group_data_extension.0)?;
 
         Self::from_raw(deserialized)
     }
@@ -273,8 +293,8 @@ impl NostrGroupDataExtension {
     }
 
     /// Returns the group image URL.
-    pub fn image_url(&self) -> Option<&str> {
-        self.image_url.as_deref()
+    pub fn image_hash(&self) -> Option<&[u8; 32]> {
+        self.image_hash.as_ref()
     }
 
     /// Sets the group image URL.
@@ -282,17 +302,17 @@ impl NostrGroupDataExtension {
     /// # Arguments
     ///
     /// * `image` - The new image URL (optional)
-    pub fn set_image_url(&mut self, image_url: Option<String>) {
-        self.image_url = image_url;
+    pub fn set_image_hash(&mut self, image_hash: Option<[u8; 32]>) {
+        self.image_hash = image_hash;
     }
 
     /// Returns the group image key.
-    pub fn image_key(&self) -> Option<&Vec<u8>> {
+    pub fn image_key(&self) -> Option<&[u8; 32]> {
         self.image_key.as_ref()
     }
 
     /// Returns the group image nonce
-    pub fn image_nonce(&self) -> Option<&Vec<u8>> {
+    pub fn image_nonce(&self) -> Option<&[u8; 12]> {
         self.image_nonce.as_ref()
     }
 
@@ -301,7 +321,7 @@ impl NostrGroupDataExtension {
     /// # Arguments
     ///
     /// * `image_key` - The new image encryption key (optional)
-    pub fn set_image_key(&mut self, image_key: Option<Vec<u8>>) {
+    pub fn set_image_key(&mut self, image_key: Option<[u8; 32]>) {
         self.image_key = image_key;
     }
 
@@ -310,12 +330,12 @@ impl NostrGroupDataExtension {
     /// # Arguments
     ///
     /// * `image_nonce` - The new image encryption key (optional)
-    pub fn set_image_nonce(&mut self, image_nonce: Option<Vec<u8>>) {
+    pub fn set_image_nonce(&mut self, image_nonce: Option<[u8; 12]>) {
         self.image_nonce = image_nonce;
     }
 
-    pub(crate) fn as_raw(&self) -> RawNostrGroupDataExtension {
-        RawNostrGroupDataExtension {
+    pub(crate) fn as_raw(&self) -> TlsNostrGroupDataExtension {
+        TlsNostrGroupDataExtension {
             nostr_group_id: self.nostr_group_id,
             name: self.name.as_bytes().to_vec(),
             description: self.description.as_bytes().to_vec(),
@@ -329,27 +349,20 @@ impl NostrGroupDataExtension {
                 .iter()
                 .map(|url| url.to_string().into_bytes())
                 .collect(),
-            image_url: self
-                .image_url
-                .as_ref()
-                .map_or_else(Vec::new, |img| img.as_bytes().to_vec()),
-            image_key: self.image_key.clone().unwrap_or_default(),
-            image_nonce: self.image_nonce.clone().unwrap_or_default(),
+            image_hash: self.image_hash.map_or_else(Vec::new, |hash| hash.to_vec()),
+            image_key: self.image_key.map_or_else(Vec::new, |key| key.to_vec()),
+            image_nonce: self
+                .image_nonce
+                .map_or_else(Vec::new, |nonce| nonce.to_vec()),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use aes_gcm::aead::OsRng;
-    use aes_gcm::{Aes128Gcm, KeyInit};
-    use rand::RngCore;
+    use nostr_mls_storage::test_utils::crypto_utils::generate_random_bytes;
 
     use super::*;
-
-    pub fn generate_encryption_key() -> Vec<u8> {
-        Aes128Gcm::generate_key(OsRng).to_vec()
-    }
 
     const ADMIN_1: &str = "npub1a6awmmklxfmspwdv52qq58sk5c07kghwc4v2eaudjx2ju079cdqs2452ys";
     const ADMIN_2: &str = "npub1t5sdrgt7md8a8lf77ka02deta4vj35p3ktfskd5yz68pzmt9334qy6qks0";
@@ -363,19 +376,18 @@ mod tests {
         let relay1 = RelayUrl::parse(RELAY_1).unwrap();
         let relay2 = RelayUrl::parse(RELAY_2).unwrap();
 
-        let key = generate_encryption_key();
-        let image = "http://blossom_test:4443/fake_img.png";
-        let mut image_nonce = [0u8; 12];
-        ::rand::rng().fill_bytes(&mut image_nonce);
+        let image_hash = generate_random_bytes(32).try_into().unwrap();
+        let image_key = generate_random_bytes(32).try_into().unwrap();
+        let image_nonce = generate_random_bytes(12).try_into().unwrap();
 
         NostrGroupDataExtension::new(
             "Test Group",
             "Test Description",
             [pk1, pk2],
             [relay1, relay2],
-            Some(image),
-            Some(key),
-            Some(image_nonce.to_vec()),
+            Some(image_hash),
+            Some(image_key),
+            Some(image_nonce),
         )
     }
 
@@ -481,25 +493,25 @@ mod tests {
         let mut extension = create_test_extension();
 
         // Test setting image URL
-        let image_url = Some("https://example.com/image.png".to_string());
-        extension.set_image_url(image_url.clone());
-        assert_eq!(extension.image_url(), image_url.as_deref());
+        let image_hash = Some(generate_random_bytes(32).try_into().unwrap());
+        extension.set_image_hash(image_hash);
+        assert_eq!(extension.image_hash(), image_hash.as_ref());
 
         // Test setting image key
-        let image_key = generate_encryption_key();
+        let image_key = generate_random_bytes(32).try_into().unwrap();
         extension.set_image_key(Some(image_key));
         assert!(extension.image_key().is_some());
 
         // Test setting image nonce
-        let image_nonce = vec![0u8; 12];
+        let image_nonce = generate_random_bytes(12).try_into().unwrap();
         extension.set_image_nonce(Some(image_nonce));
         assert!(extension.image_nonce().is_some());
 
         // Test clearing image
-        extension.set_image_url(None);
+        extension.set_image_hash(None);
         extension.set_image_key(None);
         extension.set_image_nonce(None);
-        assert!(extension.image_url().is_none());
+        assert!(extension.image_hash().is_none());
         assert!(extension.image_key().is_none());
         assert!(extension.image_nonce().is_none());
     }
@@ -509,26 +521,82 @@ mod tests {
         let mut extension = create_test_extension();
 
         // Set some image data
-        let image_url = "https://example.com/test.png".to_string();
-        let image_key = generate_encryption_key();
-        let image_nonce = vec![7; 12]; // fill in random bytes
+        let image_hash = generate_random_bytes(32).try_into().unwrap();
+        let image_key = generate_random_bytes(32).try_into().unwrap();
+        let image_nonce = generate_random_bytes(12).try_into().unwrap();
 
-        extension.set_image_url(Some(image_url.clone()));
-        extension.set_image_key(Some(image_key.clone()));
-        extension.set_image_nonce(Some(image_nonce.clone()));
+        extension.set_image_hash(Some(image_hash));
+        extension.set_image_key(Some(image_key));
+        extension.set_image_nonce(Some(image_nonce));
 
         // Convert to raw and back
         let raw = extension.as_raw();
         let reconstructed = NostrGroupDataExtension::from_raw(raw).unwrap();
 
-        assert_eq!(reconstructed.image_url(), Some(image_url.as_str()));
+        assert_eq!(reconstructed.image_hash(), Some(&image_hash));
         assert_eq!(reconstructed.image_nonce(), Some(&image_nonce));
         assert!(reconstructed.image_key().is_some());
         // We can't directly compare SecretKeys due to how they're implemented,
         // but we can verify the bytes are the same
-        assert_eq!(reconstructed.image_key().unwrap(), &image_key[..]);
+        assert_eq!(reconstructed.image_key().unwrap(), &image_key);
     }
 
-    // TODO: from_group_context and from_group methods would need more complex setup
-    // with mocked MlsGroup and GroupContext objects to test properly
+    #[test]
+    fn test_serialization_overhead() {
+        use tls_codec::Size;
+
+        // Test with fixed-size vs variable-size fields
+        let test_hash = [1u8; 32];
+        let test_key = [2u8; 32];
+        let test_nonce = [3u8; 12];
+
+        // Create extension with Some values
+        let extension_with_data = NostrGroupDataExtension::new(
+            "Test",
+            "Description",
+            [PublicKey::parse(ADMIN_1).unwrap()],
+            [RelayUrl::parse(RELAY_1).unwrap()],
+            Some(test_hash),
+            Some(test_key),
+            Some(test_nonce),
+        );
+
+        // Create extension with None values
+        let extension_without_data = NostrGroupDataExtension::new(
+            "Test",
+            "Description",
+            [PublicKey::parse(ADMIN_1).unwrap()],
+            [RelayUrl::parse(RELAY_1).unwrap()],
+            None,
+            None,
+            None,
+        );
+
+        // Serialize both to measure size
+        let with_data_raw = extension_with_data.as_raw();
+        let without_data_raw = extension_without_data.as_raw();
+
+        let with_data_size = with_data_raw.tls_serialized_len();
+        let without_data_size = without_data_raw.tls_serialized_len();
+
+        println!("With data: {} bytes", with_data_size);
+        println!("Without data: {} bytes", without_data_size);
+        println!(
+            "Overhead difference: {} bytes",
+            with_data_size as i32 - without_data_size as i32
+        );
+
+        // Test round-trip to ensure correctness
+        let roundtrip_with = NostrGroupDataExtension::from_raw(with_data_raw).unwrap();
+        let roundtrip_without = NostrGroupDataExtension::from_raw(without_data_raw).unwrap();
+
+        // Verify data preservation
+        assert_eq!(roundtrip_with.image_hash, Some(test_hash));
+        assert_eq!(roundtrip_with.image_key, Some(test_key));
+        assert_eq!(roundtrip_with.image_nonce, Some(test_nonce));
+
+        assert_eq!(roundtrip_without.image_hash, None);
+        assert_eq!(roundtrip_without.image_key, None);
+        assert_eq!(roundtrip_without.image_nonce, None);
+    }
 }

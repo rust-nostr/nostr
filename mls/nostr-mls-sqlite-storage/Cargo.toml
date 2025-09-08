@@ -23,5 +23,5 @@ serde_json.workspace = true
 tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
-aes-gcm = "0.10.3"
+nostr-mls-storage = { workspace = true, features = ["test-utils"] }
 tempfile.workspace = true

@@ -20,7 +20,6 @@ jobs:
       - name: Check
         run: bash contrib/scripts/check-fmt.sh check
 
-  # TODO: check MSRV
   check-crates:
     name: Check crates
     runs-on: ubuntu-latest
@@ -63,6 +62,8 @@ jobs:
 
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2.7.8
+      with:
+        key: ${{ matrix.crate }}
 
     - name: Check
       run: cargo check -p ${{ matrix.crate }}
@@ -83,8 +84,6 @@ jobs:
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.7.8
-        with:
-          key: "check-docs"
 
       - name: Check
         run: bash contrib/scripts/check-docs.sh
@@ -101,8 +100,6 @@ jobs:
 
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2.7.8
-      with:
-        key: "build-no-std"
 
     - name: Set default toolchain
       run: rustup default nightly
@@ -111,7 +108,7 @@ jobs:
       run: rustup set profile minimal
 
     - name: Install just
-      run: cargo install just
+      uses: extractions/setup-just@v3
 
     - name: Init
       run: sudo apt update && just init

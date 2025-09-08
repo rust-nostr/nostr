@@ -11,7 +11,13 @@ readme = "README.md"
 rust-version = "1.74.0"
 keywords = ["nostr", "mls", "openmls"]
 
+[features]
+default = []
+# Enabld test utils module
+test-utils = ["dep:aes-gcm"]
+
 [dependencies]
+aes-gcm = { version = "0.10", optional = true }
 nostr = { workspace = true, features = ["std"] }
 openmls = { version = "0.7.0", default-features = false }
 openmls_traits = { version = "0.4.0", default-features = false }

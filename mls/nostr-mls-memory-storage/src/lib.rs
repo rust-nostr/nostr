@@ -171,13 +171,12 @@ impl NostrMlsStorageProvider for NostrMlsMemoryStorage {
 mod tests {
     use std::collections::BTreeSet;
 
-    use aes_gcm::aead::OsRng;
-    use aes_gcm::{Aes128Gcm, KeyInit};
     use nostr::{EventId, Kind, PublicKey, RelayUrl, Tags, Timestamp, UnsignedEvent};
     use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupState};
     use nostr_mls_storage::groups::GroupStorage;
     use nostr_mls_storage::messages::types::{Message, MessageState, ProcessedMessageState};
     use nostr_mls_storage::messages::MessageStorage;
+    use nostr_mls_storage::test_utils::crypto_utils::generate_random_bytes;
     use nostr_mls_storage::welcomes::types::{ProcessedWelcomeState, Welcome, WelcomeState};
     use nostr_mls_storage::welcomes::WelcomeStorage;
     use openmls::group::GroupId;
@@ -185,18 +184,8 @@ mod tests {
 
     use super::*;
 
-    pub fn generate_encryption_key() -> Vec<u8> {
-        Aes128Gcm::generate_key(OsRng).to_vec()
-    }
-
     fn create_test_group_id() -> GroupId {
         GroupId::from_slice(&[1, 2, 3, 4])
-    }
-
-    fn create_test_nostr_group_id() -> [u8; 32] {
-        let mut id = [0u8; 32];
-        id[0..4].copy_from_slice(&[1, 2, 3, 4]);
-        id
     }
 
     #[test]
@@ -247,10 +236,10 @@ mod tests {
         let storage = MemoryStorage::default();
         let nostr_storage = NostrMlsMemoryStorage::new(storage);
         let mls_group_id = create_test_group_id();
-        let nostr_group_id = create_test_nostr_group_id();
-        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
-        let image_key = Some(generate_encryption_key());
-        let image_nonce = Some(vec![16u8; 12]);
+        let nostr_group_id = generate_random_bytes(32).try_into().unwrap();
+        let image_hash = Some(generate_random_bytes(32).try_into().unwrap());
+        let image_key = Some(generate_random_bytes(32).try_into().unwrap());
+        let image_nonce = Some(generate_random_bytes(12).try_into().unwrap());
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -261,7 +250,7 @@ mod tests {
             last_message_at: None,
             epoch: 0,
             state: GroupState::Active,
-            image_url,
+            image_hash,
             image_key,
             image_nonce,
         };
@@ -289,10 +278,10 @@ mod tests {
         let storage = MemoryStorage::default();
         let nostr_storage = NostrMlsMemoryStorage::new(storage);
         let mls_group_id = create_test_group_id();
-        let nostr_group_id = create_test_nostr_group_id();
-        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
-        let image_key = Some(generate_encryption_key());
-        let image_nonce = Some(vec![16u8; 12]);
+        let nostr_group_id = generate_random_bytes(32).try_into().unwrap();
+        let image_hash = Some(generate_random_bytes(32).try_into().unwrap());
+        let image_key = Some(generate_random_bytes(32).try_into().unwrap());
+        let image_nonce = Some(generate_random_bytes(12).try_into().unwrap());
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -303,7 +292,7 @@ mod tests {
             last_message_at: None,
             epoch: 0,
             state: GroupState::Active,
-            image_url,
+            image_hash,
             image_key,
             image_nonce,
         };
@@ -334,10 +323,10 @@ mod tests {
         let storage = MemoryStorage::default();
         let nostr_storage = NostrMlsMemoryStorage::new(storage);
         let mls_group_id = create_test_group_id();
-        let nostr_group_id = create_test_nostr_group_id();
-        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
-        let image_key = Some(generate_encryption_key());
-        let image_nonce = Some(vec![16u8; 12]);
+        let nostr_group_id = generate_random_bytes(32).try_into().unwrap();
+        let image_hash = Some(generate_random_bytes(32).try_into().unwrap());
+        let image_key = Some(generate_random_bytes(32).try_into().unwrap());
+        let image_nonce = Some(generate_random_bytes(12).try_into().unwrap());
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -348,7 +337,7 @@ mod tests {
             last_message_at: None,
             epoch: 0,
             state: GroupState::Active,
-            image_url,
+            image_hash,
             image_key,
             image_nonce,
         };
@@ -409,7 +398,7 @@ mod tests {
 
         // Create a test welcome
         let mls_group_id = create_test_group_id();
-        let nostr_group_id = create_test_nostr_group_id();
+        let nostr_group_id = generate_random_bytes(32).try_into().unwrap();
         let welcome = Welcome {
             id: event_id,
             event: UnsignedEvent::new(
@@ -424,7 +413,7 @@ mod tests {
             group_name: "Test Welcome Group".to_string(),
             group_description: "A test welcome group".to_string(),
             group_image_key: None,
-            group_image_url: None,
+            group_image_hash: None,
             group_image_nonce: None,
             group_admin_pubkeys: BTreeSet::from([pubkey]),
             group_relays: BTreeSet::from([RelayUrl::parse("wss://relay.example.com").unwrap()]),
@@ -483,10 +472,10 @@ mod tests {
         let storage = MemoryStorage::default();
         let nostr_storage = NostrMlsMemoryStorage::new(storage);
         let mls_group_id = create_test_group_id();
-        let nostr_group_id = create_test_nostr_group_id();
-        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
-        let image_key = Some(generate_encryption_key());
-        let image_nonce = Some(vec![16u8; 12]);
+        let nostr_group_id = generate_random_bytes(32).try_into().unwrap();
+        let image_hash = Some(generate_random_bytes(32).try_into().unwrap());
+        let image_key = Some(generate_random_bytes(32).try_into().unwrap());
+        let image_nonce = Some(generate_random_bytes(12).try_into().unwrap());
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -497,7 +486,7 @@ mod tests {
             last_message_at: None,
             epoch: 0,
             state: GroupState::Active,
-            image_url,
+            image_hash,
             image_key,
             image_nonce,
         };
@@ -581,10 +570,10 @@ mod tests {
 
         // Create a test group to verify the cache works
         let mls_group_id = create_test_group_id();
-        let nostr_group_id = create_test_nostr_group_id();
-        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
-        let image_key = Some(generate_encryption_key());
-        let image_nonce = Some(vec![16u8; 12]);
+        let nostr_group_id = generate_random_bytes(32).try_into().unwrap();
+        let image_hash = Some(generate_random_bytes(32).try_into().unwrap());
+        let image_key = Some(generate_random_bytes(32).try_into().unwrap());
+        let image_nonce = Some(generate_random_bytes(12).try_into().unwrap());
         let group = Group {
             mls_group_id: mls_group_id.clone(),
             nostr_group_id,
@@ -595,7 +584,7 @@ mod tests {
             last_message_at: None,
             epoch: 0,
             state: GroupState::Active,
-            image_url,
+            image_hash,
             image_key,
             image_nonce,
         };
@@ -616,10 +605,10 @@ mod tests {
 
         // Create a test group to verify the default implementation works
         let mls_group_id = create_test_group_id();
-        let nostr_group_id = create_test_nostr_group_id();
-        let image_url = Some("http://blossom_server:4531/fake_img.png".to_owned());
-        let image_key = Some(generate_encryption_key());
-        let image_nonce = Some(vec![16u8; 12]);
+        let nostr_group_id = generate_random_bytes(32).try_into().unwrap();
+        let image_hash = Some(generate_random_bytes(32).try_into().unwrap());
+        let image_key = Some(generate_random_bytes(32).try_into().unwrap());
+        let image_nonce = Some(generate_random_bytes(12).try_into().unwrap());
 
         let group = Group {
             mls_group_id: mls_group_id.clone(),
@@ -631,7 +620,7 @@ mod tests {
             last_message_at: None,
             epoch: 0,
             state: GroupState::Active,
-            image_url,
+            image_hash,
             image_key,
             image_nonce,
         };

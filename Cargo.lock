@@ -3271,7 +3271,6 @@ dependencies = [
 name = "nostr-mls"
 version = "0.43.0"
 dependencies = [
- "aes-gcm",
  "hex",
  "nostr",
  "nostr-mls-memory-storage",
@@ -3293,7 +3292,6 @@ dependencies = [
 name = "nostr-mls-memory-storage"
 version = "0.43.0"
 dependencies = [
- "aes-gcm",
  "lru",
  "nostr",
  "nostr-mls-storage",
@@ -3306,7 +3304,6 @@ dependencies = [
 name = "nostr-mls-sqlite-storage"
 version = "0.43.0"
 dependencies = [
- "aes-gcm",
  "nostr",
  "nostr-mls-storage",
  "openmls",
@@ -3323,6 +3320,7 @@ dependencies = [
 name = "nostr-mls-storage"
 version = "0.43.0"
 dependencies = [
+ "aes-gcm",
  "nostr",
  "nostr-mls-memory-storage",
  "nostr-mls-sqlite-storage",

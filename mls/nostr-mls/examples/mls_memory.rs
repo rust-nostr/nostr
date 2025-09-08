@@ -2,12 +2,11 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use aes_gcm::aead::OsRng;
-use aes_gcm::{Aes128Gcm, KeyInit};
 use nostr::event::builder::EventBuilder;
 use nostr_mls::messages::MessageProcessingResult;
 use nostr_mls::prelude::*;
 use nostr_mls_memory_storage::NostrMlsMemoryStorage;
+use nostr_mls_storage::test_utils::crypto_utils::generate_random_bytes;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
@@ -15,10 +14,6 @@ fn generate_identity() -> (Keys, NostrMls<NostrMlsMemoryStorage>) {
     let keys = Keys::generate();
     let nostr_mls = NostrMls::new(NostrMlsMemoryStorage::default());
     (keys, nostr_mls)
-}
-
-pub fn generate_encryption_key() -> Vec<u8> {
-    Aes128Gcm::generate_key(OsRng).to_vec()
 }
 
 #[tokio::main]
@@ -53,16 +48,16 @@ async fn main() -> Result<()> {
 
     // To create a group, Alice fetches Bob's key package event from the Nostr network.
     // Alice creates the group, adding Bob.
-    let image_url = "http://blossom_server:4531/fake_img.png".to_owned();
-    let image_key = generate_encryption_key();
-    let image_nonce = vec![0u8; 12]; // fill in random bytes
+    let image_hash: [u8; 32] = generate_random_bytes(32).try_into().unwrap();
+    let image_key = generate_random_bytes(32).try_into().unwrap();
+    let image_nonce = generate_random_bytes(12).try_into().unwrap();
     let name = "Bob & Alice".to_owned();
     let description = "A secret chat between Bob and Alice".to_owned();
 
     let config = NostrGroupConfigData::new(
         name,
         description,
-        Some(image_url),
+        Some(image_hash),
         Some(image_key),
         Some(image_nonce),
         vec![relay_url.clone()],

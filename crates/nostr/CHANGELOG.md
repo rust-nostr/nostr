@@ -36,6 +36,7 @@
 ### Added
 
 - Add NIP-C7 support (https://github.com/rust-nostr/nostr/pull/1067)
+- Implement `ToBech32` trait for `Nip21`
 - Add nip47 holdinvoice methods and notification (https://github.com/rust-nostr/nostr/pull/1019)
 - Add `TransactionState` to `LookupInvoiceResponse` and `PaymentNotification` (https://github.com/rust-nostr/nostr/pull/1045)
 - Add `description`, `description_hash`, `preimage`, `amount`, `created_at` and `expires_at` optional fields to `MakeInvoiceResponse` (https://github.com/rust-nostr/nostr/pull/1045)
@@ -49,6 +50,7 @@
 - Support NIP-A0 (Voice Messages) (https://github.com/rust-nostr/nostr/pull/1032)
 - Add `hex` dependency (https://github.com/rust-nostr/nostr/pull/1051)
 - Add `nip25::ReactionTarget` (https://github.com/rust-nostr/nostr/pull/1063)
+- Add `RelayUrl::host` function (https://github.com/rust-nostr/nostr/pull/1066)
 
 ### Changed
 
