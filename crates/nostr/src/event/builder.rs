@@ -1739,7 +1739,7 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        let mut content: String = content.into();
+        let mut content = content.into();
 
         if !has_nostr_event_uri(&content, &reply_to.id) {
             let nevent = Nip19Event {
@@ -1748,8 +1748,7 @@ impl EventBuilder {
                 kind: None,
                 relays: relay_url.clone().into_iter().collect(),
             };
-            let nevent_uri: String = nevent.to_nostr_uri()?;
-            content = format!("{nevent_uri}\n{content}");
+            content = format!("{}\n{content}", nevent.to_nostr_uri()?);
         }
 
         Ok(
