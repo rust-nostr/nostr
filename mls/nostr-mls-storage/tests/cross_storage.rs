@@ -121,7 +121,7 @@ fn create_test_group_for_cross_storage(
         last_message_at: None,
         epoch: 0,
         state: GroupState::Active,
-        image_url: None,
+        image_hash: None,
         image_key: None,
         image_nonce: None,
     }

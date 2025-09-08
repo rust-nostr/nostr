@@ -3323,6 +3323,7 @@ dependencies = [
 name = "nostr-mls-storage"
 version = "0.43.0"
 dependencies = [
+ "aes-gcm",
  "nostr",
  "nostr-mls-memory-storage",
  "nostr-mls-sqlite-storage",

@@ -116,6 +116,12 @@ pub enum Error {
     CommitFromNonAdmin,
     /// Error when updating group context extensions
     UpdateGroupContextExts(String),
+    /// Invalid image hash length
+    InvalidImageHashLength,
+    /// Invalid image key length
+    InvalidImageKeyLength,
+    /// Invalid image nonce length
+    InvalidImageNonceLength,
 }
 
 impl std::error::Error for Error {}
@@ -186,6 +192,9 @@ impl fmt::Display for Error {
             Self::UpdateGroupContextExts(e) => {
                 write!(f, "Error when updating group context extensions {e}")
             }
+            Self::InvalidImageHashLength => write!(f, "invalid image hash length"),
+            Self::InvalidImageKeyLength => write!(f, "invalid image key length"),
+            Self::InvalidImageNonceLength => write!(f, "invalid image nonce length"),
         }
     }
 }
