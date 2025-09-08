@@ -1731,18 +1731,45 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/C7.md>
     #[inline]
-    pub fn chat_message_reply<S>(content: S, reply_to: &Event, relay_url: Option<RelayUrl>) -> Self
+    pub fn chat_message_reply<S>(
+        content: S,
+        reply_to: &Event,
+        relay_url: Option<RelayUrl>,
+    ) -> Result<Self, Error>
     where
         S: Into<String>,
     {
-        Self::new(Kind::ChatMessage, content).tag(Tag::from_standardized_without_cell(
-            TagStandard::Quote {
+        let mut content: String = content.into();
+
+        if !has_nostr_event_uri(&content, &reply_to.id) {
+            let nevent = Nip19Event {
                 event_id: reply_to.id,
-                relay_url,
-                public_key: Some(reply_to.pubkey),
-            },
-        ))
+                author: None,
+                kind: None,
+                relays: relay_url.clone().into_iter().collect(),
+            };
+            let nevent_uri: String = nevent.to_nostr_uri()?;
+            content = format!("{nevent_uri}\n{content}");
+        }
+
+        Ok(
+            Self::new(Kind::ChatMessage, content).tag(Tag::from_standardized_without_cell(
+                TagStandard::Quote {
+                    event_id: reply_to.id,
+                    relay_url,
+                    public_key: Some(reply_to.pubkey),
+                },
+            )),
+        )
     }
+}
+
+fn has_nostr_event_uri(content: &str, event_id: &EventId) -> bool {
+    const OPTS: NostrParserOptions = NostrParserOptions::disable_all().nostr_uris(true);
+
+    NostrParser::new().parse(content).opts(OPTS).any(
+        |token| matches!(token, Token::Nostr(uri) if uri.event_id().as_ref() == Some(event_id)),
+    )
 }
 
 #[cfg(test)]
