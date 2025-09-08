@@ -108,7 +108,7 @@ jobs:
       run: rustup set profile minimal
 
     - name: Install just
-      run: cargo install just
+      uses: extractions/setup-just@v3
 
     - name: Init
       run: sudo apt update && just init
