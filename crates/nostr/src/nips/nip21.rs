@@ -196,6 +196,20 @@ impl Nip21 {
     }
 }
 
+impl ToBech32 for Nip21 {
+    type Err = Error;
+
+    fn to_bech32(&self) -> Result<String, Self::Err> {
+        match self {
+            Self::Pubkey(val) => Ok(val.to_bech32()?),
+            Self::Profile(val) => Ok(val.to_bech32()?),
+            Self::EventId(val) => Ok(val.to_bech32()?),
+            Self::Event(val) => Ok(val.to_bech32()?),
+            Self::Coordinate(val) => Ok(val.to_bech32()?),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use core::str::FromStr;

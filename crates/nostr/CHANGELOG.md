@@ -35,6 +35,7 @@
 
 ### Added
 
+- Implement `ToBech32` trait for `Nip21`
 - Add nip47 holdinvoice methods and notification (https://github.com/rust-nostr/nostr/pull/1019)
 - Add `TransactionState` to `LookupInvoiceResponse` and `PaymentNotification` (https://github.com/rust-nostr/nostr/pull/1045)
 - Add `description`, `description_hash`, `preimage`, `amount`, `created_at` and `expires_at` optional fields to `MakeInvoiceResponse` (https://github.com/rust-nostr/nostr/pull/1045)
