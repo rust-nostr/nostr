@@ -35,6 +35,7 @@
 
 ### Added
 
+- Add NIP-C7 support (https://github.com/rust-nostr/nostr/pull/1067)
 - Implement `ToBech32` trait for `Nip21`
 - Add nip47 holdinvoice methods and notification (https://github.com/rust-nostr/nostr/pull/1019)
 - Add `TransactionState` to `LookupInvoiceResponse` and `PaymentNotification` (https://github.com/rust-nostr/nostr/pull/1045)
