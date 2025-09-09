@@ -1776,7 +1776,6 @@ impl EventBuilder {
         builder
     }
 
-
     /// Thread reply
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/7D.md>
