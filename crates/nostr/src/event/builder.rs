@@ -1730,7 +1730,6 @@ impl EventBuilder {
     /// Chat message reply
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/C7.md>
-    #[inline]
     pub fn chat_message_reply<S>(
         content: S,
         reply_to: &Event,
@@ -1766,9 +1765,17 @@ impl EventBuilder {
 fn has_nostr_event_uri(content: &str, event_id: &EventId) -> bool {
     const OPTS: NostrParserOptions = NostrParserOptions::disable_all().nostr_uris(true);
 
-    NostrParser::new().parse(content).opts(OPTS).any(
-        |token| matches!(token, Token::Nostr(uri) if uri.event_id().as_ref() == Some(event_id)),
-    )
+    let parser = NostrParser::new().parse(content).opts(OPTS);
+    
+    for token in parser.into_iter() {
+        if let Token::Nostr(nip21) = token {
+            if nip21.event_id().as_ref() == Some(event_id) {
+                return true;
+            }
+        }
+    }
+
+    false
 }
 
 #[cfg(test)]
