@@ -1766,7 +1766,7 @@ fn has_nostr_event_uri(content: &str, event_id: &EventId) -> bool {
     const OPTS: NostrParserOptions = NostrParserOptions::disable_all().nostr_uris(true);
 
     let parser = NostrParser::new().parse(content).opts(OPTS);
-    
+
     for token in parser.into_iter() {
         if let Token::Nostr(nip21) = token {
             if nip21.event_id().as_ref() == Some(event_id) {
