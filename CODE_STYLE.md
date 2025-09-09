@@ -88,6 +88,45 @@ Derive `Debug`, `Clone`, `Copy`, `PartialEq`, `Eq` and `Hash` for public types w
 
 Derive `Default` when there is a reasonable default value for the type.
 
+## Readability over brevity
+
+Functional programming constructs are allowed, but the code must remain readable. 
+Prefer explicit loops and conditionals over complex functional programming constructs when it improves readability, 
+especially for complex logic with multiple nested conditions.
+
+```rust
+// GOOD (more readable)
+fn has_nostr_event_uri(content: &str, event_id: &EventId) -> bool {
+    const OPTS: NostrParserOptions = NostrParserOptions::disable_all().nostr_uris(true);
+    
+    let parser = NostrParser::new().parse(content).opts(OPTS);
+    
+    for token in parser.into_iter() {
+        if let Token::Nostr(nip21) = token {
+            if let Some(id) = nip21.event_id() {
+                if &id == event_id {
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
+}
+
+// BAD (difficult to read)
+fn has_nostr_event_uri(content: &str, event_id: &EventId) -> bool {
+    const OPTS: NostrParserOptions = NostrParserOptions::disable_all().nostr_uris(true);
+
+    NostrParser::new().parse(content).opts(OPTS).any(
+        |token| matches!(token, Token::Nostr(uri) if uri.event_id().as_ref() == Some(event_id)),
+    )
+}
+```
+
+**Rationale:** Functional programming is powerful and often concise, but readability should not be sacrificed. Complex nested conditions, guard clauses, and intricate pattern matching within closures can make code difficult to understand and debug. Choose the approach that makes the intent clearest.
+
+
 ## Full paths for logging
 
 Always write `tracing::<op>!(...)` instead of importing `use tracing::<op>;` and invoking `<op>!(...)`.
