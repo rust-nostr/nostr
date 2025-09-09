@@ -1760,6 +1760,47 @@ impl EventBuilder {
             )),
         )
     }
+
+    /// Thread
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/7D.md>
+    #[inline]
+    pub fn thread<S>(content: S, title: Option<String>) -> Self
+    where
+        S: Into<String>,
+    {
+        let mut builder = Self::new(Kind::Thread, content);
+        if let Some(t) = title {
+            builder = builder.tag(Tag::from_standardized_without_cell(TagStandard::Title(t)));
+        }
+        builder
+    }
+
+
+    /// Thread reply
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/7D.md>
+    #[inline]
+    pub fn thread_reply<S>(content: S, reply_to: &Event, relay_url: Option<RelayUrl>) -> Self
+    where
+        S: Into<String>,
+    {
+        let tags = vec![
+            Tag::from_standardized_without_cell(TagStandard::Event {
+                event_id: reply_to.id,
+                relay_url,
+                marker: None,
+                public_key: Some(reply_to.pubkey),
+                uppercase: true,
+            }),
+            Tag::from_standardized_without_cell(TagStandard::Kind {
+                kind: Kind::Thread,
+                uppercase: true,
+            }),
+        ];
+
+        Self::new(Kind::Comment, content).tags(tags)
+    }
 }
 
 fn has_nostr_event_uri(content: &str, event_id: &EventId) -> bool {
