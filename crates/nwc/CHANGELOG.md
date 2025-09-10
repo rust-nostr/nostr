@@ -28,6 +28,7 @@
 ### Added
 
 - Add `NWC::reconnect_relay` (https://github.com/rust-nostr/nostr/pull/1020)
+- Add `NWC::uri`
 
 ## v0.43.0 - 2025/07/28
 

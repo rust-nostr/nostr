@@ -67,6 +67,12 @@ impl NWC {
         }
     }
 
+    /// Get URI
+    #[inline]
+    pub fn uri(&self) -> &NostrWalletConnectURI {
+        &self.uri
+    }
+
     /// Get relays status
     pub async fn status(&self) -> HashMap<RelayUrl, RelayStatus> {
         let relays = self.pool.relays().await;
