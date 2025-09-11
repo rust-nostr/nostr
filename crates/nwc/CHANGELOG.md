@@ -25,10 +25,18 @@
 
 ## Unreleased
 
+### Changed
+
+- Subscribe to the response using the request event ID (https://github.com/rust-nostr/nostr/pull/1073)
+
 ### Added
 
 - Add `NWC::reconnect_relay` (https://github.com/rust-nostr/nostr/pull/1020)
 - Add `NWC::uri`
+
+### Fixed
+
+- Fix the compatibility issues with some NWC services, like Primal (https://github.com/rust-nostr/nostr/pull/1073)
 
 ## v0.43.0 - 2025/07/28
 

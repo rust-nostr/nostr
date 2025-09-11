@@ -18,7 +18,6 @@ use std::sync::Arc;
 
 pub extern crate nostr;
 
-use async_utility::time;
 use nostr::nips::nip47::{Notification, Request, Response};
 use nostr_relay_pool::prelude::*;
 
@@ -31,7 +30,6 @@ pub use self::error::Error;
 #[doc(hidden)]
 pub use self::options::NostrWalletConnectOptions;
 
-const ID: &str = "nwc";
 const NOTIFICATIONS_ID: &str = "nwc-notifications";
 
 /// Nostr Wallet Connect client
@@ -94,16 +92,6 @@ impl NWC {
         // Connect to relays
         self.pool.connect().await;
 
-        let filter = Filter::new()
-            .author(self.uri.public_key)
-            .kind(Kind::WalletConnectResponse)
-            .limit(0); // Limit to 0 means give me 0 events until EOSE
-
-        // Subscribe
-        self.pool
-            .subscribe_with_id(SubscriptionId::new(ID), filter, SubscribeOptions::default())
-            .await?;
-
         // Mark as bootstrapped
         self.bootstrapped.store(true, Ordering::SeqCst);
 
@@ -119,26 +107,29 @@ impl NWC {
         // Convert request to event
         let event: Event = req.to_event(&self.uri)?;
 
-        let mut notifications = self.pool.notifications();
+        // Construct the filter to wait for the response
+        let filter = Filter::new()
+            .author(self.uri.public_key)
+            .kind(Kind::WalletConnectResponse)
+            .event(event.id);
 
-        // Send request
-        let output: Output<EventId> = self.pool.send_event(&event).await?;
+        // Subscribe to filter and create the stream
+        let mut stream = self
+            .pool
+            .stream_events(filter, self.opts.timeout, ReqExitPolicy::WaitForEvents(1))
+            .await?;
 
-        time::timeout(Some(self.opts.timeout), async {
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Event { event, .. } = notification {
-                    if event.kind == Kind::WalletConnectResponse
-                        && event.tags.event_ids().next() == Some(output.id())
-                    {
-                        return Ok(Response::from_event(&self.uri, &event)?);
-                    }
-                }
-            }
+        // Send the request
+        self.pool.send_event(&event).await?;
 
-            Err(Error::PrematureExit)
-        })
-        .await
-        .ok_or(Error::Timeout)?
+        // Wait for the response event
+        let received_event: Event = stream.next().await.ok_or(Error::PrematureExit)?;
+
+        // Parse response
+        let response: Response = Response::from_event(&self.uri, &received_event)?;
+
+        // Return response
+        Ok(response)
     }
 
     /// Pay invoice

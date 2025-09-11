@@ -3586,7 +3586,6 @@ checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 name = "nwc"
 version = "0.43.0"
 dependencies = [
- "async-utility",
  "nostr",
  "nostr-relay-pool",
  "tokio",
