@@ -32,6 +32,7 @@ nip57 = ["nostr/nip57"]
 nip59 = ["nostr/nip59"]
 nip96 = ["nostr/nip96"]
 nip98 = ["nostr/nip98"]
+pow-mt = ["nostr/pow-mt"]
 
 [dependencies]
 async-utility.workspace = true
