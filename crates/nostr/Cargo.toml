@@ -47,6 +47,8 @@ alloc = [
     "serde/alloc",
     "serde_json/alloc",
 ]
+# Enable event POW mining using multi-threads
+pow-multi-thread = ["std"]
 all-nips = ["nip04", "nip06", "nip44", "nip46", "nip47", "nip49", "nip57", "nip59", "nip96", "nip98"]
 nip03 = ["dep:nostr-ots"]
 nip04 = ["dep:aes", "dep:base64", "dep:cbc"]
