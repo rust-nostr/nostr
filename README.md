@@ -113,7 +113,7 @@ Learn more about `rust-nostr` at <https://rust-nostr.org>.
 |     ❌     | [75 - Zap Goals](https://github.com/nostr-protocol/nips/blob/master/75.md)                                      |
 |     ✅     | [77 - Negentropy Syncing](https://github.com/nostr-protocol/nips/blob/master/77.md)                             |
 |     ✅     | [78 - Arbitrary custom app data](https://github.com/nostr-protocol/nips/blob/master/78.md)                      |
-|     ❌     | [7D - Threads](https://github.com/nostr-protocol/nips/blob/master/7D.md)                                        |
+|     ✅     | [7D - Threads](https://github.com/nostr-protocol/nips/blob/master/7D.md)                                        |
 |     ❌     | [84 - Highlights](https://github.com/nostr-protocol/nips/blob/master/84.md)                                     |
 |     ❌     | [86 - Relay Management API](https://github.com/nostr-protocol/nips/blob/master/86.md)                           |
 |     ❌     | [87 - Ecash Mint Discoverability](https://github.com/nostr-protocol/nips/blob/master/87.md)                     |
