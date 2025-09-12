@@ -59,6 +59,7 @@ nip57 = ["dep:aes", "dep:cbc"]
 nip59 = ["nip44"]
 nip96 = ["nip98"]
 nip98 = ["dep:base64"]
+pow-mt = ["std"]
 
 [dependencies]
 aes = { version = "0.8", optional = true }

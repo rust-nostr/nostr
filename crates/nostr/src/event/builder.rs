@@ -178,6 +178,142 @@ pub struct EventBuilder {
 }
 
 impl EventBuilder {
+    /// Mine PoW using single thread (fallback method)
+    fn mine_pow_single_thread<T>(&mut self, supplier: &T, public_key: PublicKey, difficulty: u8) -> UnsignedEvent
+    where
+        T: TimeSupplier,
+    {
+        let mut nonce: u128 = 0;
+
+        loop {
+            nonce += 1;
+
+            self.tags.push(Tag::pow(nonce, difficulty));
+
+            let created_at: Timestamp = self
+                .custom_created_at
+                .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
+            let id: EventId = EventId::new(
+                &public_key,
+                &created_at,
+                &self.kind,
+                &self.tags,
+                &self.content,
+            );
+
+            if id.check_pow(difficulty) {
+                return UnsignedEvent {
+                    id: Some(id),
+                    pubkey: public_key,
+                    created_at,
+                    kind: self.kind,
+                    tags: self.tags.clone(),
+                    content: self.content.clone(),
+                };
+            }
+
+            self.tags.pop();
+        }
+    }
+
+    /// Mine PoW using multiple threads with std::thread
+    #[cfg(feature = "pow-mt")]
+    fn mine_pow_mt<T>(&self, supplier: &T, public_key: PublicKey, difficulty: u8) -> UnsignedEvent
+    where
+        T: TimeSupplier,
+    {
+        use std::sync::{Arc, Mutex};
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use std::thread;
+
+        let found = Arc::new(AtomicBool::new(false));
+        let result_nonce = Arc::new(Mutex::new(0u128));
+        
+        // Get the number of available CPU cores
+        let num_threads = thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1);
+        
+        // Create a timestamp that all threads will use
+        let created_at: Timestamp = self
+            .custom_created_at
+            .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
+
+        // Spawn threads
+        let handles: Vec<_> = (0..num_threads)
+            .map(|thread_id| {
+                let found = Arc::clone(&found);
+                let result_nonce = Arc::clone(&result_nonce);
+                let tags = self.tags.clone();
+                let kind = self.kind;
+                let content = self.content.clone();
+                
+                thread::spawn(move || {
+                    let mut nonce = thread_id as u128;
+                    
+                    loop {
+                        // Check if another thread found the solution
+                        if found.load(Ordering::Relaxed) {
+                            break;
+                        }
+                        
+                        nonce += num_threads as u128;
+                        
+                        // Create tags with this nonce
+                        let mut thread_tags = tags.clone();
+                        thread_tags.push(Tag::pow(nonce, difficulty));
+                        
+                        // Calculate the event ID
+                        let id: EventId = EventId::new(
+                            &public_key,
+                            &created_at,
+                            &kind,
+                            &thread_tags,
+                            &content,
+                        );
+                        
+                        // Check if this nonce satisfies the difficulty requirement
+                        if id.check_pow(difficulty) {
+                            // We found a valid nonce, signal other threads to stop and store the result
+                            found.store(true, Ordering::Relaxed);
+                            if let Ok(mut result) = result_nonce.try_lock() {
+                                *result = nonce;
+                            }
+                            break;
+                        }
+                    }
+                })
+            })
+            .collect();
+
+        // Wait for all threads to finish
+        for handle in handles {
+            let _ = handle.join();
+        }
+        
+        // Build the final event with the winning nonce
+        let winning_nonce = *result_nonce.lock().unwrap();
+        let mut final_tags = self.tags.clone();
+        final_tags.push(Tag::pow(winning_nonce, difficulty));
+        
+        let final_id = EventId::new(
+            &public_key,
+            &created_at,
+            &self.kind,
+            &final_tags,
+            &self.content,
+        );
+        
+        UnsignedEvent {
+            id: Some(final_id),
+            pubkey: public_key,
+            created_at,
+            kind: self.kind,
+            tags: final_tags,
+            content: self.content.clone(),
+        }
+    }
+
     /// New event builder
     #[inline]
     pub fn new<S>(kind: Kind, content: S) -> Self
@@ -280,36 +416,13 @@ impl EventBuilder {
         // Check if should be POW
         match self.pow {
             Some(difficulty) if difficulty > 0 => {
-                let mut nonce: u128 = 0;
-
-                loop {
-                    nonce += 1;
-
-                    self.tags.push(Tag::pow(nonce, difficulty));
-
-                    let created_at: Timestamp = self
-                        .custom_created_at
-                        .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
-                    let id: EventId = EventId::new(
-                        &public_key,
-                        &created_at,
-                        &self.kind,
-                        &self.tags,
-                        &self.content,
-                    );
-
-                    if id.check_pow(difficulty) {
-                        return UnsignedEvent {
-                            id: Some(id),
-                            pubkey: public_key,
-                            created_at,
-                            kind: self.kind,
-                            tags: self.tags,
-                            content: self.content,
-                        };
-                    }
-
-                    self.tags.pop();
+                #[cfg(feature = "pow-mt")]
+                {
+                    self.mine_pow_mt(supplier, public_key, difficulty)
+                }
+                #[cfg(not(feature = "pow-mt"))]
+                {
+                    self.mine_pow_single_thread(supplier, public_key, difficulty)
                 }
             }
             // No POW difficulty set OR difficulty == 0
@@ -2121,6 +2234,37 @@ mod tests {
         let mut ids = reply_of_reply.tags.event_ids().copied();
         assert_eq!(ids.next().unwrap(), reply.id);
         assert_eq!(ids.next().unwrap(), root_event.id);
+    }
+
+    #[test]
+    #[cfg(feature = "pow-mt")]
+    fn test_pow_mining_both_implementations() {
+        let keys = Keys::generate();
+        let mut builder_single = EventBuilder::text_note("Mining test");
+        let builder_multi = EventBuilder::text_note("Mining test");
+        let difficulty = 10u8; // Use low difficulty for fast test
+
+        // Test multi-threaded implementation
+        let multi_threaded_event = builder_multi.mine_pow_mt(&Instant::now(), keys.public_key(), difficulty);
+
+        // Test single-threaded implementation
+        let single_threaded_event = builder_single.mine_pow_single_thread(&Instant::now(), keys.public_key(), difficulty);
+
+        // Both should have valid PoW
+        assert!(single_threaded_event.id.unwrap().check_pow(difficulty));
+        assert!(multi_threaded_event.id.unwrap().check_pow(difficulty));
+        
+        // Both should have the same basic structure (different nonces are expected)
+        assert_eq!(single_threaded_event.pubkey, multi_threaded_event.pubkey);
+        assert_eq!(single_threaded_event.kind, multi_threaded_event.kind);
+        assert_eq!(single_threaded_event.content, multi_threaded_event.content);
+        
+        // Both should have a pow tag
+        let single_pow_tag = single_threaded_event.tags.iter().find(|t| t.kind() == TagKind::Nonce);
+        let multi_pow_tag = multi_threaded_event.tags.iter().find(|t| t.kind() == TagKind::Nonce);
+        
+        assert!(single_pow_tag.is_some());
+        assert!(multi_pow_tag.is_some());
     }
 }
 
