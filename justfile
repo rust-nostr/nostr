@@ -29,10 +29,6 @@ check-fmt:
 check-crates:
 	@bash contrib/scripts/check-crates.sh
 
-# Check MSRV of all the crates
-check-crates-msrv:
-	@bash contrib/scripts/check-crates.sh msrv
-
 # Check Rust docs
 check-docs:
 	@bash contrib/scripts/check-docs.sh
