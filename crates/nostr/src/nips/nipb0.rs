@@ -9,8 +9,6 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use url::Url;
-
 use crate::{EventBuilder, Kind, Tag, TagStandard, Timestamp};
 
 /// Web Bookmark
@@ -19,7 +17,7 @@ pub struct WebBookmark {
     /// Description of the web bookmark.
     pub description: String,
     /// URL of the web bookmark.
-    pub url: Url,
+    pub url: String,
     /// Timestamp when the web bookmark was first published.
     pub published_at: Option<Timestamp>,
     /// Title of the web bookmark.
@@ -31,13 +29,13 @@ pub struct WebBookmark {
 impl WebBookmark {
     /// Create a new web bookmark
     #[inline]
-    pub fn new<T>(description: T, url: Url) -> Self
+    pub fn new<T>(description: T, url: T) -> Self
     where
         T: Into<String>,
     {
         Self {
             description: description.into(),
-            url,
+            url: url.into(),
             published_at: None,
             title: None,
             hashtags: Vec::new(),
@@ -76,12 +74,7 @@ impl WebBookmark {
     /// Convert the web bookmark to an event builder
     #[allow(clippy::wrong_self_convention)]
     pub(crate) fn to_event_builder(self) -> EventBuilder {
-        let mut tags: Vec<Tag> = vec![TagStandard::Identifier(format!(
-            "{}{}", 
-            self.url.host_str().unwrap_or(""), 
-            self.url.path()
-        ))
-        .into()];
+        let mut tags: Vec<Tag> = vec![TagStandard::Identifier(self.url).into()];
 
         let mut add_if_some = |tag: Option<TagStandard>| {
             if let Some(tag) = tag {
