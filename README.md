@@ -126,7 +126,7 @@ Learn more about `rust-nostr` at <https://rust-nostr.org>.
 |     ✅     | [98 - HTTP Auth](https://github.com/nostr-protocol/nips/blob/master/98.md)                                      |
 |     ❌     | [99 - Classified Listings](https://github.com/nostr-protocol/nips/blob/master/99.md)                            |
 |     ✅     | [A0 - Voice Messages](https://github.com/nostr-protocol/nips/blob/master/A0.md)                                 |
-|     ❌     | [B0 - Web Bookmarks](https://github.com/nostr-protocol/nips/blob/master/B0.md)                                  |
+|     ✅     | [B0 - Web Bookmarks](https://github.com/nostr-protocol/nips/blob/master/B0.md)                                  |
 |     ✅     | [B7 - Blossom](https://github.com/nostr-protocol/nips/blob/master/B7.md)                                        |
 |     ✅     | [C0 - Code Snippets](https://github.com/nostr-protocol/nips/blob/master/C0.md)                                  |
 |     ✅     | [C7 - Chats](https://github.com/nostr-protocol/nips/blob/master/C7.md)                                          |

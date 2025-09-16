@@ -167,6 +167,7 @@ kind_variants! {
     PollResponse => 1018, "Poll response", "<https://github.com/nostr-protocol/nips/blob/master/88.md>",
     ChatMessage => 9, "Chat Message", "<https://github.com/nostr-protocol/nips/blob/master/C7.md>",
     Thread => 11, "Thread", "<https://github.com/nostr-protocol/nips/blob/master/7D.md>",
+    WebBookmark => 39701, "Web Bookmark", "<https://github.com/nostr-protocol/nips/blob/master/B0.md>",
 }
 
 impl PartialEq for Kind {
