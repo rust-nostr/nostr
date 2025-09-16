@@ -8,6 +8,7 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
+
 use url::Url;
 
 use crate::{EventBuilder, Kind, Tag, TagStandard, Timestamp};
@@ -75,9 +76,12 @@ impl WebBookmark {
     /// Convert the web bookmark to an event builder
     #[allow(clippy::wrong_self_convention)]
     pub(crate) fn to_event_builder(self) -> EventBuilder {
-        let mut tags: Vec<Tag> = vec![
-            TagStandard::Identifier(format!("{}{}", self.url.host_str().unwrap_or(""), self.url.path())).into()
-        ];
+        let mut tags: Vec<Tag> = vec![TagStandard::Identifier(format!(
+            "{}{}", 
+            self.url.host_str().unwrap_or(""), 
+            self.url.path()
+        ))
+        .into()];
 
         let mut add_if_some = |tag: Option<TagStandard>| {
             if let Some(tag) = tag {
