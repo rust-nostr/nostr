@@ -2,15 +2,17 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use once_cell::sync::Lazy; // TODO: use `std::sync::LazyLock` when MSRV >= 1.80.0
+use std::sync::LazyLock;
+
 use regex::Regex;
 
-static MAIN_PATTERN: Lazy<Regex> = Lazy::new(|| {
+static MAIN_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#"(?m:\s*(?:([^\s\\'"]+)|'([^']*)'|"((?:[^"\\]|\\.)*)"|(\\.?)|(\S))(\s|\z)?)"#)
         .unwrap()
 });
-static ESCAPE_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"\\(.)").unwrap());
-static METACHAR_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r#"\\([$`"\\\n])"#).unwrap());
+static ESCAPE_PATTERN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\\(.)").unwrap());
+static METACHAR_PATTERN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"\\([$`"\\\n])"#).unwrap());
 
 /// Splits a string into a vector of words in the same way the UNIX Bourne shell does.
 ///
