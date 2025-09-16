@@ -3,7 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use clap::Parser;
-use nostr::hashes::{sha256, Hash};
+use nostr::hashes::{Hash, sha256};
 use nostr::prelude::*;
 use nostr_blossom::prelude::*;
 

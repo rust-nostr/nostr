@@ -3,9 +3,9 @@
 use std::collections::BTreeSet;
 
 use nostr::{PublicKey, RelayUrl};
+use nostr_mls_storage::groups::GroupStorage;
 use nostr_mls_storage::groups::error::{GroupError, InvalidGroupState};
 use nostr_mls_storage::groups::types::*;
-use nostr_mls_storage::groups::GroupStorage;
 use nostr_mls_storage::messages::types::Message;
 use openmls::group::GroupId;
 

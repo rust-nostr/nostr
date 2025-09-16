@@ -13,16 +13,16 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
+use aes::Aes256;
 use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
-use aes::Aes256;
-use base64::engine::{general_purpose, Engine};
+use base64::engine::{Engine, general_purpose};
 use cbc::{Decryptor, Encryptor};
 #[cfg(feature = "std")]
 use secp256k1::rand;
 use secp256k1::rand::RngCore;
 
-use crate::{key, util, PublicKey, SecretKey};
+use crate::{PublicKey, SecretKey, key, util};
 
 type Aes256CbcEnc = Encryptor<Aes256>;
 type Aes256CbcDec = Decryptor<Aes256>;

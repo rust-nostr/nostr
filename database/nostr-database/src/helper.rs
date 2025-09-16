@@ -856,25 +856,29 @@ mod tests {
         assert_eq!(indexes.count(Filter::new()).await, 8);
 
         // Test get previously deleted replaceable event (check if was deleted by indexes)
-        assert!(indexes
-            .query(
-                Filter::new()
-                    .kind(Kind::Metadata)
-                    .author(keys_a.public_key())
-            )
-            .await
-            .is_empty());
+        assert!(
+            indexes
+                .query(
+                    Filter::new()
+                        .kind(Kind::Metadata)
+                        .author(keys_a.public_key())
+                )
+                .await
+                .is_empty()
+        );
 
         // Test get previously deleted param. replaceable event (check if was deleted by indexes)
-        assert!(indexes
-            .query(
-                Filter::new()
-                    .kind(Kind::Custom(32122))
-                    .author(keys_a.public_key())
-                    .identifier("id-2")
-            )
-            .await
-            .is_empty());
+        assert!(
+            indexes
+                .query(
+                    Filter::new()
+                        .kind(Kind::Custom(32122))
+                        .author(keys_a.public_key())
+                        .identifier("id-2")
+                )
+                .await
+                .is_empty()
+        );
 
         // Test get param replaceable events WITHOUT using indexes (identifier not passed)
         assert_eq!(

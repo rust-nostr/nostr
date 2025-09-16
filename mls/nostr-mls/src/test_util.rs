@@ -7,8 +7,8 @@ use nostr::{Event, EventBuilder, Keys, Kind, PublicKey, RelayUrl};
 use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls::group::GroupId;
 
-use crate::groups::NostrGroupConfigData;
 use crate::NostrMls;
+use crate::groups::NostrGroupConfigData;
 
 /// Creates test group members with standard configuration
 ///

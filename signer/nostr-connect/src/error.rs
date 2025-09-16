@@ -6,9 +6,9 @@
 
 use std::fmt;
 
+use nostr::PublicKey;
 use nostr::event::builder;
 use nostr::nips::{nip04, nip44, nip46};
-use nostr::PublicKey;
 use nostr_relay_pool::pool;
 use tokio::sync::SetError;
 

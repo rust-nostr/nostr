@@ -10,8 +10,8 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
-use hashes::sha256::Hash as Sha256Hash;
 use hashes::Hash;
+use hashes::sha256::Hash as Sha256Hash;
 use serde::{Deserialize, Serialize};
 
 use crate::nips::nip98;

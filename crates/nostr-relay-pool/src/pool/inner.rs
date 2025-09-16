@@ -5,13 +5,13 @@
 //! Relay Pool
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use async_utility::task;
 use atomic_destructor::AtomicDestroyer;
 use nostr_database::prelude::*;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 
 use super::options::RelayPoolOptions;
 use super::{RelayPoolBuilder, RelayPoolNotification};

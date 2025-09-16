@@ -6,8 +6,8 @@
 
 use std::borrow::Borrow;
 use std::cmp::Ordering;
-use std::collections::btree_set::{IntoIter, Iter};
 use std::collections::BTreeSet;
+use std::collections::btree_set::{IntoIter, Iter};
 use std::hash::{Hash, Hasher};
 
 /// Represents the possible options for removing a value.

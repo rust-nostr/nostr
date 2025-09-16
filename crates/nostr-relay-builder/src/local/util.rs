@@ -4,8 +4,8 @@
 
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
-use nostr::secp256k1::rand::rngs::OsRng;
 use nostr::secp256k1::rand::Rng;
+use nostr::secp256k1::rand::rngs::OsRng;
 use tokio::net::TcpListener;
 
 pub async fn find_available_port() -> u16 {

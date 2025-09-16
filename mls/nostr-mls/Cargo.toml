@@ -1,14 +1,14 @@
 [package]
 name = "nostr-mls"
 version = "0.43.0"
-edition = "2021"
+edition.workspace = true
 description = "A simplified interface to build secure messaging apps on nostr with MLS."
 authors = ["Jeff Gardner <j@jeffg.me>", "Yuki Kishimoto <yukikishimoto@protonmail.com>", "Rust Nostr Developers"]
 homepage.workspace = true
 repository.workspace = true
 license.workspace = true
 readme = "README.md"
-rust-version = "1.74.0"
+rust-version.workspace = true
 keywords = ["nostr", "mls", "openmls"]
 
 [dependencies]

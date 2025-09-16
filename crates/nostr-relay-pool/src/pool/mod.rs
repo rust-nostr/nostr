@@ -10,11 +10,11 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use async_utility::futures_util::{future, StreamExt};
+use async_utility::futures_util::{StreamExt, future};
 use async_utility::task;
 use atomic_destructor::{AtomicDestructor, StealthClone};
 use nostr_database::prelude::*;
-use tokio::sync::{broadcast, mpsc, RwLockReadGuard};
+use tokio::sync::{RwLockReadGuard, broadcast, mpsc};
 
 pub mod builder;
 pub mod constants;
@@ -29,9 +29,9 @@ use self::inner::{InnerRelayPool, Relays};
 pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
 use crate::monitor::Monitor;
+use crate::relay::Relay;
 use crate::relay::flags::FlagCheck;
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
-use crate::relay::Relay;
 use crate::shared::SharedState;
 use crate::stream::ReceiverStream;
 use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};

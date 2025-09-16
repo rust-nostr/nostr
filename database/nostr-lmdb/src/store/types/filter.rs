@@ -81,8 +81,8 @@ impl DatabaseFilter {
         self.ids_match(event)
             && self.authors_match(event)
             && self.kind_match(event)
-            && self.since.map_or(true, |t| event.created_at >= t)
-            && self.until.map_or(true, |t| event.created_at <= t)
+            && self.since.is_none_or(|t| event.created_at >= t)
+            && self.until.is_none_or(|t| event.created_at <= t)
             && self.tag_match(event)
             && self.search_match(event)
     }

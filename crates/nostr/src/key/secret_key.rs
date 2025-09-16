@@ -8,18 +8,18 @@ use alloc::string::String;
 use core::ops::{Deref, DerefMut};
 use core::str::FromStr;
 
+use secp256k1::rand::Rng;
 #[cfg(feature = "std")]
 use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::Rng;
 use secp256k1::{Secp256k1, Signing};
 use serde::{Deserialize, Deserializer};
 
 use super::Error;
+#[cfg(feature = "std")]
+use crate::SECP256K1;
 use crate::nips::nip19::FromBech32;
 #[cfg(all(feature = "std", feature = "nip49"))]
 use crate::nips::nip49::{self, EncryptedSecretKey, KeySecurity};
-#[cfg(feature = "std")]
-use crate::SECP256K1;
 
 /// Secret key
 #[derive(Debug, Clone, PartialEq, Eq)]

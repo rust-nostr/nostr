@@ -1,15 +1,15 @@
 //! Nostr MLS Welcomes
 
 use nostr::{EventId, Timestamp, UnsignedEvent};
+use nostr_mls_storage::NostrMlsStorageProvider;
 use nostr_mls_storage::groups::types as group_types;
 use nostr_mls_storage::welcomes::types as welcome_types;
-use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls::prelude::*;
 use tls_codec::Deserialize as TlsDeserialize;
 
+use crate::NostrMls;
 use crate::error::Error;
 use crate::extension::NostrGroupDataExtension;
-use crate::NostrMls;
 
 /// Welcome preview
 #[derive(Debug)]

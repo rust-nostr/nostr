@@ -1,7 +1,7 @@
 [package]
 name = "nostr-sdk"
 version = "0.43.0"
-edition = "2021"
+edition.workspace = true
 description = "High level Nostr client library."
 authors.workspace = true
 homepage.workspace = true

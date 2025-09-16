@@ -16,8 +16,8 @@ use std::sync::{Arc, Mutex};
 use nostr_mls_storage::{Backend, NostrMlsStorageProvider};
 use openmls_sqlite_storage::{Codec, SqliteStorageProvider};
 use rusqlite::Connection;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 mod db;
 pub mod error;
@@ -282,8 +282,8 @@ mod tests {
 
     #[test]
     fn test_group_exporter_secrets() {
-        use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupState};
         use nostr_mls_storage::groups::GroupStorage;
+        use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupState};
 
         // Create an in-memory SQLite database
         let storage = NostrMlsSqliteStorage::new_in_memory().unwrap();

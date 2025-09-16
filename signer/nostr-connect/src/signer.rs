@@ -4,8 +4,8 @@
 
 //! Nostr Connect signer
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use nostr::nips::nip46::ResponseResult;
 use nostr_relay_pool::prelude::*;

@@ -27,6 +27,7 @@
 
 ### Changed
 
+- Bump edition to `2024` and MSRV to `1.85.0` (https://github.com/rust-nostr/nostr/pull/1076)
 - Consolidate deletion logic and improve transactional consistency (https://github.com/rust-nostr/nostr/pull/1010)
 - Add automatic event batching for better write performance (https://github.com/rust-nostr/nostr/pull/1010)
 

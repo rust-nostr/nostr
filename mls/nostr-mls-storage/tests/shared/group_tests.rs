@@ -3,9 +3,9 @@
 use std::collections::BTreeSet;
 
 use nostr::RelayUrl;
+use nostr_mls_storage::groups::GroupStorage;
 use nostr_mls_storage::groups::error::GroupError;
 use nostr_mls_storage::groups::types::GroupExporterSecret;
-use nostr_mls_storage::groups::GroupStorage;
 use openmls::group::GroupId;
 
 use super::create_test_group;

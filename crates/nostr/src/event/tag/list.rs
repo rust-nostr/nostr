@@ -666,11 +666,11 @@ mod tests {
 
 #[cfg(bench)]
 mod benches {
-    use test::{black_box, Bencher};
+    use test::{Bencher, black_box};
 
     use super::*;
-    use crate::key::Keys;
     use crate::RelayUrl;
+    use crate::key::Keys;
 
     fn generate_tags(n: usize) -> Tags {
         let half = n / 2;

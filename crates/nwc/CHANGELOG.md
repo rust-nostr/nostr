@@ -27,6 +27,7 @@
 
 ### Changed
 
+- Bump edition to `2024` and MSRV to `1.85.0` (https://github.com/rust-nostr/nostr/pull/1076)
 - Subscribe to the response using the request event ID (https://github.com/rust-nostr/nostr/pull/1073)
 
 ### Added

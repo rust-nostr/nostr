@@ -31,7 +31,7 @@ use crate::signer::{NostrSigner, SignerBackend, SignerError};
 #[cfg(feature = "std")]
 use crate::util::BoxedFuture;
 #[cfg(feature = "std")]
-use crate::{Event, UnsignedEvent, SECP256K1};
+use crate::{Event, SECP256K1, UnsignedEvent};
 
 /// [`Keys`] error
 #[derive(Debug, PartialEq)]
@@ -387,7 +387,7 @@ mod tests {
 
 #[cfg(bench)]
 mod benches {
-    use test::{black_box, Bencher};
+    use test::{Bencher, black_box};
 
     use super::*;
 

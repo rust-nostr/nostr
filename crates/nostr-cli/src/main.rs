@@ -21,7 +21,7 @@ use tokio::time::Instant;
 mod cli;
 mod util;
 
-use self::cli::{io, parser, Cli, Command, ShellCommand, ShellCommandDatabase};
+use self::cli::{Cli, Command, ShellCommand, ShellCommandDatabase, io, parser};
 
 #[tokio::main]
 async fn main() {

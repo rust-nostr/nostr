@@ -5,8 +5,8 @@
 //! Relay Service Flags
 
 use std::ops::{BitOr, BitOrAssign, BitXor, BitXorAssign};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Flag checks
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

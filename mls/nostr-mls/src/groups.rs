@@ -15,16 +15,16 @@ use std::collections::BTreeSet;
 use std::str;
 
 use nostr::prelude::*;
+use nostr_mls_storage::NostrMlsStorageProvider;
 use nostr_mls_storage::groups::types as group_types;
 use nostr_mls_storage::messages::types as message_types;
-use nostr_mls_storage::NostrMlsStorageProvider;
 use openmls::group::GroupId;
 use openmls::prelude::*;
 use openmls_basic_credential::SignatureKeyPair;
 use tls_codec::Serialize as TlsSerialize;
 
-use super::extension::NostrGroupDataExtension;
 use super::NostrMls;
+use super::extension::NostrGroupDataExtension;
 use crate::error::Error;
 
 /// Result of creating a new MLS group
@@ -1287,7 +1287,7 @@ mod tests {
 
     use nostr::{Keys, PublicKey};
     use nostr_mls_memory_storage::NostrMlsMemoryStorage;
-    use nostr_mls_storage::messages::{types as message_types, MessageStorage};
+    use nostr_mls_storage::messages::{MessageStorage, types as message_types};
     use openmls::group::GroupId;
     use openmls::prelude::BasicCredential;
 
@@ -1304,28 +1304,36 @@ mod tests {
         let member_pks: Vec<PublicKey> = members.iter().map(|k| k.public_key()).collect();
 
         // Test valid configuration
-        assert!(nostr_mls
-            .validate_group_members(&creator_pk, &member_pks, &admins)
-            .is_ok());
+        assert!(
+            nostr_mls
+                .validate_group_members(&creator_pk, &member_pks, &admins)
+                .is_ok()
+        );
 
         // Test creator not in admin list
         let bad_admins = vec![member_pks[0]];
-        assert!(nostr_mls
-            .validate_group_members(&creator_pk, &member_pks, &bad_admins)
-            .is_err());
+        assert!(
+            nostr_mls
+                .validate_group_members(&creator_pk, &member_pks, &bad_admins)
+                .is_err()
+        );
 
         // Test creator in member list
         let bad_members = vec![creator_pk, member_pks[0]];
-        assert!(nostr_mls
-            .validate_group_members(&creator_pk, &bad_members, &admins)
-            .is_err());
+        assert!(
+            nostr_mls
+                .validate_group_members(&creator_pk, &bad_members, &admins)
+                .is_err()
+        );
 
         // Test admin not in member list
         let non_member = Keys::generate().public_key();
         let bad_admins = vec![creator_pk, non_member];
-        assert!(nostr_mls
-            .validate_group_members(&creator_pk, &member_pks, &bad_admins)
-            .is_err());
+        assert!(
+            nostr_mls
+                .validate_group_members(&creator_pk, &member_pks, &bad_admins)
+                .is_err()
+        );
     }
 
     #[test]

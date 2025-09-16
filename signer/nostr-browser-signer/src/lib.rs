@@ -23,7 +23,7 @@ use js_sys::{Array, Function, JsString, Object, Promise, Reflect};
 use nostr::secp256k1::schnorr::Signature;
 use nostr::signer::{NostrSigner, SignerBackend, SignerError};
 use nostr::util::BoxedFuture;
-use nostr::{event, key, secp256k1, Event, PublicKey, UnsignedEvent};
+use nostr::{Event, PublicKey, UnsignedEvent, event, key, secp256k1};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::Window;

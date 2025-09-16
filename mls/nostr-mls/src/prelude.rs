@@ -9,9 +9,9 @@
 #![doc(hidden)]
 
 pub use nostr::prelude::*;
-pub use nostr_mls_storage::groups::{types as group_types, GroupStorage};
-pub use nostr_mls_storage::messages::{types as message_types, MessageStorage};
-pub use nostr_mls_storage::welcomes::{types as welcome_types, WelcomeStorage};
+pub use nostr_mls_storage::groups::{GroupStorage, types as group_types};
+pub use nostr_mls_storage::messages::{MessageStorage, types as message_types};
+pub use nostr_mls_storage::welcomes::{WelcomeStorage, types as welcome_types};
 pub use nostr_mls_storage::{Backend, NostrMlsStorageProvider};
 pub use openmls::prelude::*;
 

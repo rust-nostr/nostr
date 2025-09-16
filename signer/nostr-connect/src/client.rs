@@ -12,8 +12,8 @@ use std::time::Duration;
 use async_utility::time;
 use nostr::nips::nip46::ResponseResult;
 use nostr_relay_pool::prelude::*;
-use tokio::sync::broadcast::Receiver;
 use tokio::sync::OnceCell;
+use tokio::sync::broadcast::Receiver;
 
 use crate::error::Error;
 

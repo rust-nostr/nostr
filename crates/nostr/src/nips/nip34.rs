@@ -219,7 +219,10 @@ impl fmt::Display for GitPatchContent {
                 last_commit,
                 commits_len,
             } => {
-                write!(f, "From {last_commit} Mon Sep 17 00:00:00 2001\nSubject: [PATCH 0/{commits_len}] {title}\n\n{description}")
+                write!(
+                    f,
+                    "From {last_commit} Mon Sep 17 00:00:00 2001\nSubject: [PATCH 0/{commits_len}] {title}\n\n{description}"
+                )
             }
             Self::Patch { content, .. } => write!(f, "{content}"),
         }
@@ -334,10 +337,10 @@ mod tests {
                 RelayUrl::parse("wss://example.org").unwrap(),
             ],
             euc: Some(Sha1Hash::from_str("aa231c4c6a5777dc89b42207b499891a344add5c").unwrap()),
-            maintainers: vec![PublicKey::parse(
-                "npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
-            )
-            .unwrap()],
+            maintainers: vec![
+                PublicKey::parse("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")
+                    .unwrap(),
+            ],
         };
 
         let keys = Keys::generate();

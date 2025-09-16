@@ -19,7 +19,7 @@ use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
 use crate::error::Error;
 use crate::prelude::*;
-use crate::{util, NostrMls};
+use crate::{NostrMls, util};
 
 /// Default number of epochs to look back when trying to decrypt messages with older exporter secrets
 const DEFAULT_EPOCH_LOOKBACK: u64 = 5;
@@ -908,7 +908,9 @@ where
             }
             // Decryption failed using the current epoch exporter secret
             Err(_) => {
-                tracing::debug!("Failed to decrypt message with current exporter secret. Trying with past ones.");
+                tracing::debug!(
+                    "Failed to decrypt message with current exporter secret. Trying with past ones."
+                );
 
                 // Try with past exporter secrets
                 self.try_decrypt_with_past_epochs(

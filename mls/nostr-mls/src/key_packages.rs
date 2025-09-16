@@ -8,8 +8,8 @@ use openmls_basic_credential::SignatureKeyPair;
 use openmls_traits::storage::StorageProvider;
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize};
 
-use crate::error::Error;
 use crate::NostrMls;
+use crate::error::Error;
 
 impl<Storage> NostrMls<Storage>
 where

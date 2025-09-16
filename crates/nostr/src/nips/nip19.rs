@@ -24,7 +24,7 @@ use super::nip05::Nip05Profile;
 use super::nip49::{self, EncryptedSecretKey};
 use crate::event::id::EventId;
 use crate::types::url::{self, RelayUrl};
-use crate::{event, key, Event, Kind, PublicKey, SecretKey};
+use crate::{Event, Kind, PublicKey, SecretKey, event, key};
 
 pub const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 pub const PREFIX_BECH32_SECRET_KEY_ENCRYPTED: &str = "ncryptsec";
@@ -915,7 +915,7 @@ mod tests {
 #[cfg(bench)]
 mod benches {
     use super::*;
-    use crate::test::{black_box, Bencher};
+    use crate::test::{Bencher, black_box};
 
     #[bench]
     pub fn to_bech32_nevent(bh: &mut Bencher) {

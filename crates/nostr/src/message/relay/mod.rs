@@ -12,7 +12,7 @@ use core::fmt;
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::MessageHandleError;
 use crate::{Event, EventId, JsonUtil, SubscriptionId};
@@ -573,16 +573,20 @@ mod tests {
     #[test]
     fn test_handle_invalid_ok() {
         // Missing params
-        assert!(RelayMessage::from_json(
-            r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30"]"#
-        )
-        .is_err());
+        assert!(
+            RelayMessage::from_json(
+                r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30"]"#
+            )
+            .is_err()
+        );
 
         // Invalid event_id
-        assert!(RelayMessage::from_json(
-            r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7dde", true, ""]"#
-        )
-        .is_err());
+        assert!(
+            RelayMessage::from_json(
+                r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7dde", true, ""]"#
+            )
+            .is_err()
+        );
 
         // Invalid status
         assert!(
@@ -625,7 +629,7 @@ mod tests {
 
 #[cfg(bench)]
 mod benches {
-    use test::{black_box, Bencher};
+    use test::{Bencher, black_box};
 
     use super::*;
 

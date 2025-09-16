@@ -15,7 +15,7 @@ use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use nostr_database::prelude::*;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
-use tokio::sync::{broadcast, Notify, Semaphore};
+use tokio::sync::{Notify, Semaphore, broadcast};
 
 use super::session::{Nip42Session, RateLimiterResponse, Session, Tokens};
 use super::util;

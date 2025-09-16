@@ -21,7 +21,7 @@ use nostr::signer::NostrSigner;
 use nostr::types::url::Url;
 #[cfg(all(feature = "socks", not(target_arch = "wasm32")))]
 use reqwest::Proxy;
-use reqwest::{multipart, Client, ClientBuilder, Response};
+use reqwest::{Client, ClientBuilder, Response, multipart};
 
 pub mod prelude;
 

@@ -15,8 +15,8 @@ use nostr_relay_pool::transport::websocket::{
     DefaultWebsocketTransport, IntoWebSocketTransport, WebSocketTransport,
 };
 
-use crate::client::options::ClientOptions;
 use crate::client::Client;
+use crate::client::options::ClientOptions;
 
 /// Client builder
 #[derive(Debug, Clone)]

@@ -6,8 +6,8 @@
 
 use std::time::Duration;
 
-use nostr_relay_pool::monitor::Monitor;
 use nostr_relay_pool::RelayOptions;
+use nostr_relay_pool::monitor::Monitor;
 
 /// Default timeout
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);

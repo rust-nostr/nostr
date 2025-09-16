@@ -1,14 +1,14 @@
 [package]
 name = "nostr-mls-storage"
 version = "0.43.0"
-edition = "2021"
+edition.workspace = true
 description = "Storage abstraction for nostr-mls that wraps OpenMLS storage backends"
 authors = ["Jeff Gardner <j@jeffg.me>", "Yuki Kishimoto <yukikishimoto@protonmail.com>", "Rust Nostr Developers"]
 homepage.workspace = true
 repository.workspace = true
 license.workspace = true
 readme = "README.md"
-rust-version = "1.74.0"
+rust-version.workspace = true
 keywords = ["nostr", "mls", "openmls"]
 
 [features]

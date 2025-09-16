@@ -3,7 +3,7 @@
 // Distributed under the MIT software license
 
 use nostr_sdk::prelude::*;
-use prettytable::{row, Table};
+use prettytable::{Table, row};
 
 pub fn print_events<I>(events: I, json: bool)
 where

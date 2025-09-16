@@ -878,14 +878,14 @@ impl Filter {
     fn ids_match(&self, event: &Event) -> bool {
         self.ids
             .as_ref()
-            .map_or(true, |ids| ids.is_empty() || ids.contains(&event.id))
+            .is_none_or(|ids| ids.is_empty() || ids.contains(&event.id))
     }
 
     #[inline]
     fn authors_match(&self, event: &Event) -> bool {
-        self.authors.as_ref().map_or(true, |authors| {
-            authors.is_empty() || authors.contains(&event.pubkey)
-        })
+        self.authors
+            .as_ref()
+            .is_none_or(|authors| authors.is_empty() || authors.contains(&event.pubkey))
     }
 
     fn tag_match(&self, event: &Event) -> bool {
@@ -912,9 +912,9 @@ impl Filter {
 
     #[inline]
     fn kind_match(&self, event: &Event) -> bool {
-        self.kinds.as_ref().map_or(true, |kinds| {
-            kinds.is_empty() || kinds.contains(&event.kind)
-        })
+        self.kinds
+            .as_ref()
+            .is_none_or(|kinds| kinds.is_empty() || kinds.contains(&event.kind))
     }
 
     #[inline]
@@ -935,8 +935,8 @@ impl Filter {
         (!opts.id || self.ids_match(event))
             && (!opts.author || self.authors_match(event))
             && (!opts.kind || self.kind_match(event))
-            && (!opts.since || self.since.map_or(true, |t| event.created_at >= t))
-            && (!opts.until || self.until.map_or(true, |t| event.created_at <= t))
+            && (!opts.since || self.since.is_none_or(|t| event.created_at >= t))
+            && (!opts.until || self.until.is_none_or(|t| event.created_at <= t))
             && (!opts.tags || self.tag_match(event))
             && (!opts.nip50 || self.search_match(event))
     }
@@ -1282,10 +1282,10 @@ mod tests {
         assert!(filter.match_event(&event, MatchEventOptions::new()));
 
         // Not match (tags)
-        let filter: Filter = Filter::new().events(vec![EventId::from_hex(
-            "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5",
-        )
-        .unwrap()]);
+        let filter: Filter = Filter::new().events(vec![
+            EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
+                .unwrap(),
+        ]);
         assert!(!filter.match_event(&event, MatchEventOptions::new()));
 
         // Not match (tags filter for events with empty tags)
@@ -1335,7 +1335,7 @@ mod benches {
     use core::str::FromStr;
 
     use secp256k1::schnorr::Signature;
-    use test::{black_box, Bencher};
+    use test::{Bencher, black_box};
 
     use super::*;
     use crate::{Tag, TagStandard};

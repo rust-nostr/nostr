@@ -2,13 +2,13 @@
 
 use std::time::Duration;
 
-use base64::engine::general_purpose;
 use base64::Engine;
-use nostr::hashes::sha256::Hash as Sha256Hash;
+use base64::engine::general_purpose;
 use nostr::hashes::Hash;
+use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::signer::NostrSigner;
 use nostr::{Event, EventBuilder, JsonUtil, PublicKey, Timestamp, Url};
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE, RANGE};
+use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue, RANGE};
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::redirect::Policy;
 use reqwest::{Response, StatusCode};

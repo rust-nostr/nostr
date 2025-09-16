@@ -57,6 +57,7 @@
 
 ### Changed
 
+- Bump edition to `2024` and MSRV to `1.85.0` (https://github.com/rust-nostr/nostr/pull/1076)
 - NIP-47 fields synchronized with current specs (https://github.com/rust-nostr/nostr/pull/1021)
 - Check that `a`/`A` and `k`/`K` tags have the same event kind in NIP-22 events (https://github.com/rust-nostr/nostr/pull/1035)
 

@@ -27,6 +27,7 @@
 
 ### Changed
 
+- Bump edition to `2024` and MSRV to `1.85.0` (https://github.com/rust-nostr/nostr/pull/1076)
 - Add checks to ensure REQ limits are respected before receiving the EOSE message (https://github.com/rust-nostr/nostr/pull/1024)
 
 ### Fixed

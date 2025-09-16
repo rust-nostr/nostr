@@ -321,9 +321,11 @@ mod tests {
         let time_filter = Filter::new().since(since).until(until);
         let time_events = db.query(time_filter).await.expect("Failed to query");
         assert!(!time_events.is_empty());
-        assert!(time_events
-            .iter()
-            .all(|e| e.created_at >= since && e.created_at <= until));
+        assert!(
+            time_events
+                .iter()
+                .all(|e| e.created_at >= since && e.created_at <= until)
+        );
     }
 
     #[tokio::test]

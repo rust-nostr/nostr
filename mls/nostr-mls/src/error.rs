@@ -9,7 +9,7 @@ use std::{fmt, str};
 
 use nostr::nips::nip44;
 use nostr::types::url;
-use nostr::{event, key, Kind, SignerError};
+use nostr::{Kind, SignerError, event, key};
 use openmls::credentials::errors::BasicCredentialError;
 use openmls::error::LibraryError;
 use openmls::extensions::errors::InvalidExtensionError;

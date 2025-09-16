@@ -34,6 +34,7 @@
 
 ### Changed
 
+- Bump edition to `2024` and MSRV to `1.85.0` (https://github.com/rust-nostr/nostr/pull/1076)
 - Upgrade openmls to v0.7.0 (https://github.com/rust-nostr/nostr/commit/b0616f4dca544b4076678255062b1133510f2813)
 - Add `NostrMls::update_group_name`, `NostrMls::update_group_description`, `NostrMls::update_group_image` for updating the group data in the `NostrGroupDataExtension` (https://github.com/rust-nostr/nostr/commit/35d934d8ac8122f05e637bd9055e9e4a6167724a)
 

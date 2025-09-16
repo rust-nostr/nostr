@@ -69,7 +69,7 @@ impl std::error::Error for MismatchedQuotes {}
 
 #[cfg(test)]
 mod tests {
-    use super::{split, MismatchedQuotes};
+    use super::{MismatchedQuotes, split};
 
     #[test]
     fn nothing_special() {

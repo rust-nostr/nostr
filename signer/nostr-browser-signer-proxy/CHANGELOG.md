@@ -25,6 +25,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Bump edition to `2024` and MSRV to `1.85.0` (https://github.com/rust-nostr/nostr/pull/1076)
+
 ### Added
 
 - `BrowserSignerProxy::is_started` function to know if the server currently running or not (https://github.com/rust-nostr/nostr/pull/1025)

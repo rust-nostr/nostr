@@ -9,8 +9,8 @@ use std::sync::Arc;
 use nostr::NostrSigner;
 use nostr_database::{MemoryDatabase, NostrDatabase};
 
-use super::options::RelayPoolOptions;
 use super::RelayPool;
+use super::options::RelayPoolOptions;
 use crate::monitor::Monitor;
 use crate::policy::AdmitPolicy;
 use crate::transport::websocket::{DefaultWebsocketTransport, WebSocketTransport};

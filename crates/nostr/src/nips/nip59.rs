@@ -16,7 +16,7 @@ use crate::event::unsigned::UnsignedEvent;
 use crate::event::{self, Event};
 use crate::signer::SignerError;
 #[cfg(feature = "std")]
-use crate::{EventBuilder, Timestamp, SECP256K1};
+use crate::{EventBuilder, SECP256K1, Timestamp};
 use crate::{JsonUtil, Kind, NostrSigner, PublicKey};
 
 /// Range for random timestamp tweak (up to 2 days)

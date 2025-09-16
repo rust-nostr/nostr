@@ -1,12 +1,12 @@
 //! Implementation of MessageStorage trait for SQLite storage.
 
 use nostr::{EventId, JsonUtil};
+use nostr_mls_storage::messages::MessageStorage;
 use nostr_mls_storage::messages::error::MessageError;
 use nostr_mls_storage::messages::types::{Message, ProcessedMessage};
-use nostr_mls_storage::messages::MessageStorage;
-use rusqlite::{params, OptionalExtension};
+use rusqlite::{OptionalExtension, params};
 
-use crate::{db, NostrMlsSqliteStorage};
+use crate::{NostrMlsSqliteStorage, db};
 
 #[inline]
 fn into_message_err<T>(e: T) -> MessageError
@@ -113,8 +113,8 @@ mod tests {
     use std::collections::BTreeSet;
 
     use nostr::{EventId, Kind, PublicKey, Tags, Timestamp, UnsignedEvent};
-    use nostr_mls_storage::groups::types::{Group, GroupState};
     use nostr_mls_storage::groups::GroupStorage;
+    use nostr_mls_storage::groups::types::{Group, GroupState};
     use nostr_mls_storage::messages::types::{MessageState, ProcessedMessageState};
     use openmls::group::GroupId;
 

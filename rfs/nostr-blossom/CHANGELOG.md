@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Changed
+
+- Bump edition to `2024` and MSRV to `1.85.0` (https://github.com/rust-nostr/nostr/pull/1076)
+
 ## v0.43.0 - 2025/07/28
 
 No notable changes in this release.

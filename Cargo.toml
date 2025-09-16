@@ -27,11 +27,12 @@ default-members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
+edition = "2024"
 authors = ["Yuki Kishimoto <yukikishimoto@protonmail.com>", "Rust Nostr Developers"]
 homepage = "https://github.com/rust-nostr/nostr"
 repository = "https://github.com/rust-nostr/nostr.git"
 license = "MIT"
-rust-version = "1.70.0"
+rust-version = "1.85.0"
 
 [workspace.dependencies]
 async-utility = "0.3"

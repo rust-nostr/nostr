@@ -10,8 +10,8 @@ use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 use async_utility::time;
-use async_wsocket::futures_util::Future;
 use async_wsocket::ConnectionMode;
+use async_wsocket::futures_util::Future;
 use atomic_destructor::AtomicDestructor;
 use nostr_database::prelude::*;
 use tokio::sync::{broadcast, mpsc};

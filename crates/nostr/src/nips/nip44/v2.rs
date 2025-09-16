@@ -12,14 +12,14 @@ use alloc::vec::Vec;
 use core::ops::{Deref, Range};
 use core::{fmt, iter};
 
-use chacha20::cipher::{KeyIvInit, StreamCipher};
 use chacha20::ChaCha20;
+use chacha20::cipher::{KeyIvInit, StreamCipher};
 use hashes::hmac::{Hmac, HmacEngine};
 use hashes::sha256::Hash as Sha256Hash;
 use hashes::{FromSliceError, Hash, HashEngine};
+use secp256k1::rand::RngCore;
 #[cfg(feature = "std")]
 use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::RngCore;
 
 use super::Error;
 use crate::util::{self, hkdf};
@@ -344,11 +344,11 @@ mod tests {
 
     use core::str::FromStr;
 
-    use base64::engine::{general_purpose, Engine};
+    use base64::engine::{Engine, general_purpose};
 
     use super::*;
-    use crate::nips::nip44;
     use crate::Keys;
+    use crate::nips::nip44;
 
     const JSON_VECTORS: &str = include_str!("nip44.vectors.json");
 

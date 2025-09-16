@@ -1,14 +1,14 @@
 [package]
 name = "nostr-keyring"
 version = "0.43.0"
-edition = "2021"
+edition.workspace = true
 description = "Keyring for nostr"
 authors.workspace = true
 homepage.workspace = true
 repository.workspace = true
 license.workspace = true
 readme = "README.md"
-rust-version = "1.75.0"
+rust-version.workspace = true
 keywords = ["nostr", "keyring"]
 
 [features]
@@ -18,7 +18,7 @@ async = ["dep:async-utility"]
 
 [dependencies]
 async-utility = { workspace = true, optional = true }
-keyring = { version = "3.6", features = ["apple-native", "linux-native", "linux-native-sync-persistent", "windows-native"] } # MSRV: 1.75.0
+keyring = { version = "3.6", features = ["apple-native", "linux-native", "linux-native-sync-persistent", "windows-native"] }
 nostr = { workspace = true, features = ["std"] }
 
 [dev-dependencies]

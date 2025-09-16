@@ -20,7 +20,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::event::unsigned::UnsignedEvent;
 use crate::types::url::{self, ParseError, RelayUrl, Url};
-use crate::{event, key, Event, JsonUtil, PublicKey};
+use crate::{Event, JsonUtil, PublicKey, event, key};
 
 /// NIP46 URI Scheme
 pub const NOSTR_CONNECT_URI_SCHEME: &str = "nostrconnect";

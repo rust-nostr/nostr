@@ -10,9 +10,9 @@ use core::ops::{Add, Range, Sub};
 use core::str::{self, FromStr};
 use core::time::Duration;
 
+use secp256k1::rand::Rng;
 #[cfg(feature = "std")]
 use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::Rng;
 
 mod supplier;
 
@@ -300,7 +300,7 @@ mod tests {
 
 #[cfg(bench)]
 mod benches {
-    use test::{black_box, Bencher};
+    use test::{Bencher, black_box};
 
     use super::*;
 

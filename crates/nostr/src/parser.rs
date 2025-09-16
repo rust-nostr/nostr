@@ -820,8 +820,8 @@ mod tests {
     use alloc::vec::Vec;
 
     use super::*;
-    use crate::nips::nip19::{FromBech32, Nip19Event, Nip19Profile};
     use crate::PublicKey;
+    use crate::nips::nip19::{FromBech32, Nip19Event, Nip19Profile};
 
     const PARSER: NostrParser = NostrParser::new();
 
@@ -1372,15 +1372,42 @@ mod tests {
         let profile2 = Nip21::Profile(Nip19Profile::from_bech32("nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40").unwrap());
 
         let vector = vec![
-            ("#rustnostr #nostr #kotlin #jvm\n\nnostr:nevent1qqsz8xjlh82ykfr3swjk5fw0l3v33pcsaq4z6f7q0zy2dxrfm7x2yeqpz4mhxue69uhkummnw3ezummcw3ezuer9wchsygrgmqgktyvpqzma5slu9rmarlqj24zxdcg3tzrtneamxfhktmzzwgpsgqqqqqqsmxphku", vec![Token::Nostr(event)]),
-            ("I have never been very active in discussions but working on rust-nostr (at the time called nostr-rs-sdk) since September 2022 🦀 \n\nIf I remember correctly there were also nostr:nprofile1qqsqfyvdlsmvj0nakmxq6c8n0c2j9uwrddjd8a95ynzn9479jhlth3gpvemhxue69uhkv6tvw3jhytnwdaehgu3wwa5kuef0dec82c33w94xwcmdd3cxketedsux6ertwecrgues0pk8xdrew33h27pkd4unvvpkw3nkv7pe0p68gat58ycrw6ps0fenwdnvva48w0mzwfhkzerrv9ehg0t5wf6k2qgnwaehxw309ac82unsd3jhqct89ejhxtcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsh8njvk and nostr:nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40", vec![Token::Nostr(profile1), Token::Nostr(profile2.clone())]),
-            ("Test ending with full stop: nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet.", vec![Token::Nostr(pubkey.clone())]),
-            ("nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet", vec![Token::Nostr(pubkey.clone())]),
-            ("Public key without prefix npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet", vec![]),
-            ("Public key `nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet+.", vec![Token::Nostr(pubkey.clone())]),
-            ("Duplicated npub: nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet, nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet", vec![Token::Nostr(pubkey.clone()), Token::Nostr(pubkey)]),
-            ("Uppercase nostr:npub1DRVpZev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eSEET", vec![]),
-            ("Npub and nprofile that point to the same public key: nostr:npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c and nostr:nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40", vec![Token::Nostr(pubkey2), Token::Nostr(profile2)]),
+            (
+                "#rustnostr #nostr #kotlin #jvm\n\nnostr:nevent1qqsz8xjlh82ykfr3swjk5fw0l3v33pcsaq4z6f7q0zy2dxrfm7x2yeqpz4mhxue69uhkummnw3ezummcw3ezuer9wchsygrgmqgktyvpqzma5slu9rmarlqj24zxdcg3tzrtneamxfhktmzzwgpsgqqqqqqsmxphku",
+                vec![Token::Nostr(event)],
+            ),
+            (
+                "I have never been very active in discussions but working on rust-nostr (at the time called nostr-rs-sdk) since September 2022 🦀 \n\nIf I remember correctly there were also nostr:nprofile1qqsqfyvdlsmvj0nakmxq6c8n0c2j9uwrddjd8a95ynzn9479jhlth3gpvemhxue69uhkv6tvw3jhytnwdaehgu3wwa5kuef0dec82c33w94xwcmdd3cxketedsux6ertwecrgues0pk8xdrew33h27pkd4unvvpkw3nkv7pe0p68gat58ycrw6ps0fenwdnvva48w0mzwfhkzerrv9ehg0t5wf6k2qgnwaehxw309ac82unsd3jhqct89ejhxtcpz4mhxue69uhhyetvv9ujuerpd46hxtnfduhsh8njvk and nostr:nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40",
+                vec![Token::Nostr(profile1), Token::Nostr(profile2.clone())],
+            ),
+            (
+                "Test ending with full stop: nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet.",
+                vec![Token::Nostr(pubkey.clone())],
+            ),
+            (
+                "nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
+                vec![Token::Nostr(pubkey.clone())],
+            ),
+            (
+                "Public key without prefix npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
+                vec![],
+            ),
+            (
+                "Public key `nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet+.",
+                vec![Token::Nostr(pubkey.clone())],
+            ),
+            (
+                "Duplicated npub: nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet, nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
+                vec![Token::Nostr(pubkey.clone()), Token::Nostr(pubkey)],
+            ),
+            (
+                "Uppercase nostr:npub1DRVpZev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eSEET",
+                vec![],
+            ),
+            (
+                "Npub and nprofile that point to the same public key: nostr:npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c and nostr:nprofile1qqswuyd9ml6qcxd92h6pleptfrcqucvvjy39vg4wx7mv9wm8kakyujgpypmhxue69uhkx6r0wf6hxtndd94k2erfd3nk2u3wvdhk6w35xs6z7qgwwaehxw309ahx7uewd3hkctcpypmhxue69uhkummnw3ezuetfde6kuer6wasku7nfvuh8xurpvdjj7a0nq40",
+                vec![Token::Nostr(pubkey2), Token::Nostr(profile2)],
+            ),
             ("content without nostr URIs", vec![]),
         ];
 
@@ -1454,7 +1481,7 @@ mod tests {
 
 #[cfg(bench)]
 mod benches {
-    use test::{black_box, Bencher};
+    use test::{Bencher, black_box};
 
     use super::*;
 

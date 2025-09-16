@@ -11,10 +11,10 @@ use alloc::vec::Vec;
 use core::array::TryFromSliceError;
 use core::fmt;
 
-use chacha20poly1305::aead::{Aead, AeadCore, KeyInit, Payload};
 use chacha20poly1305::XChaCha20Poly1305;
-use scrypt::errors::{InvalidOutputLen, InvalidParams};
+use chacha20poly1305::aead::{Aead, AeadCore, KeyInit, Payload};
 use scrypt::Params as ScryptParams;
+use scrypt::errors::{InvalidOutputLen, InvalidParams};
 #[cfg(feature = "std")]
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::rand::{CryptoRng, RngCore};
@@ -22,7 +22,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use unicode_normalization::UnicodeNormalization;
 
 use super::nip19::{FromBech32, ToBech32};
-use crate::{key, SecretKey};
+use crate::{SecretKey, key};
 
 const SALT_SIZE: usize = 16;
 const NONCE_SIZE: usize = 24;

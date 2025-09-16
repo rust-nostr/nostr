@@ -13,8 +13,8 @@
 
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use atomic_destructor::{AtomicDestroyer, AtomicDestructor};
@@ -30,10 +30,10 @@ use nostr::prelude::{BoxedFuture, SignerBackend};
 use nostr::{Event, NostrSigner, PublicKey, SignerError, UnsignedEvent};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize, Serializer};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::oneshot::Sender;
-use tokio::sync::{oneshot, Mutex, Notify};
+use tokio::sync::{Mutex, Notify, oneshot};
 use tokio::time;
 use uuid::Uuid;
 

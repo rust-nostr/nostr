@@ -19,8 +19,8 @@ use std::sync::{Arc, Mutex};
 pub extern crate nostr;
 pub extern crate nostr_database as database;
 
-use indexed_db_futures::js_sys::wasm_bindgen::{JsCast, JsValue};
 use indexed_db_futures::js_sys::JsString;
+use indexed_db_futures::js_sys::wasm_bindgen::{JsCast, JsValue};
 use indexed_db_futures::request::{IdbOpenDbRequestLike, OpenDbRequest};
 use indexed_db_futures::web_sys::IdbTransactionMode;
 use indexed_db_futures::{IdbDatabase, IdbQuerySource, IdbVersionChangeEvent};
@@ -28,7 +28,7 @@ use nostr_database::prelude::*;
 
 mod error;
 
-use self::error::{into_err, IndexedDBError};
+use self::error::{IndexedDBError, into_err};
 
 const CURRENT_DB_VERSION: u32 = 3;
 const EVENTS_CF: &str = "events";

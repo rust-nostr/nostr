@@ -1,13 +1,13 @@
 //! Implementation of WelcomeStorage trait for SQLite storage.
 
 use nostr::{EventId, JsonUtil};
+use nostr_mls_storage::welcomes::WelcomeStorage;
 use nostr_mls_storage::welcomes::error::WelcomeError;
 use nostr_mls_storage::welcomes::types::{ProcessedWelcome, Welcome};
-use nostr_mls_storage::welcomes::WelcomeStorage;
-use rusqlite::{params, OptionalExtension};
+use rusqlite::{OptionalExtension, params};
 
 use crate::db::{Hash32, Nonce12};
-use crate::{db, NostrMlsSqliteStorage};
+use crate::{NostrMlsSqliteStorage, db};
 
 #[inline]
 fn into_welcome_err<T>(e: T) -> WelcomeError

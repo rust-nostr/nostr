@@ -2,8 +2,8 @@
 
 /// Random data generation utilities for testing MLS group features
 pub mod crypto_utils {
-    use aes_gcm::aead::rand_core::RngCore;
     use aes_gcm::aead::OsRng;
+    use aes_gcm::aead::rand_core::RngCore;
 
     /// Generates random bytes as Vec<u8> of the specified length
     pub fn generate_random_bytes(length: usize) -> Vec<u8> {
@@ -20,13 +20,13 @@ pub mod cross_storage {
     use nostr::{EventId, RelayUrl, Timestamp};
     use openmls::group::GroupId;
 
+    use crate::groups::GroupStorage;
     use crate::groups::error::GroupError;
     use crate::groups::types::{Group, GroupExporterSecret, GroupState};
-    use crate::groups::GroupStorage;
-    use crate::messages::types::{Message, MessageState, ProcessedMessage, ProcessedMessageState};
     use crate::messages::MessageStorage;
-    use crate::welcomes::types::{ProcessedWelcome, ProcessedWelcomeState, Welcome, WelcomeState};
+    use crate::messages::types::{Message, MessageState, ProcessedMessage, ProcessedMessageState};
     use crate::welcomes::WelcomeStorage;
+    use crate::welcomes::types::{ProcessedWelcome, ProcessedWelcomeState, Welcome, WelcomeState};
 
     /// Creates a test group with the given ID for testing purposes
     pub fn create_test_group(mls_group_id: GroupId) -> Group {

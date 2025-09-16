@@ -9,8 +9,8 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::str::FromStr;
 
-use super::error::Error;
 use super::Tag;
+use super::error::Error;
 use crate::filter::SingleLetterTag;
 
 /// Cow Tag

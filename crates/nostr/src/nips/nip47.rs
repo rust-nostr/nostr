@@ -19,9 +19,9 @@ use serde_json::Value;
 use super::nip04;
 use crate::types::url::form_urlencoded::byte_serialize;
 use crate::types::url::{RelayUrl, Url};
-#[cfg(feature = "std")]
-use crate::{event, EventBuilder, Keys, Kind, Tag};
 use crate::{Event, JsonUtil, PublicKey, SecretKey, Timestamp};
+#[cfg(feature = "std")]
+use crate::{EventBuilder, Keys, Kind, Tag, event};
 
 /// NIP47 error
 #[derive(Debug)]
@@ -1538,7 +1538,10 @@ mod tests {
 
         assert_eq!(Request::from_json(request.as_json()).unwrap(), request);
 
-        assert_eq!(request.as_json(), "{\"method\":\"pay_invoice\",\"params\":{\"invoice\":\"lnbc210n1pj99rx0pp5ehevgz9nf7d97h05fgkdeqxzytm6yuxd7048axru03fpzxxvzt7shp5gv7ef0s26pw5gy5dpwvsh6qgc8se8x2lmz2ev90l9vjqzcns6u6scqzzsxqyz5vqsp\"}}");
+        assert_eq!(
+            request.as_json(),
+            "{\"method\":\"pay_invoice\",\"params\":{\"invoice\":\"lnbc210n1pj99rx0pp5ehevgz9nf7d97h05fgkdeqxzytm6yuxd7048axru03fpzxxvzt7shp5gv7ef0s26pw5gy5dpwvsh6qgc8se8x2lmz2ev90l9vjqzcns6u6scqzzsxqyz5vqsp\"}}"
+        );
     }
 
     #[test]

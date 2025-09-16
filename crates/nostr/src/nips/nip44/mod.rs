@@ -10,15 +10,15 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
-use base64::engine::{general_purpose, Engine};
+use base64::engine::{Engine, general_purpose};
+use secp256k1::rand::RngCore;
 #[cfg(feature = "std")]
 use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::RngCore;
 
 pub mod v2;
 
 use self::v2::ConversationKey;
-use crate::{key, PublicKey, SecretKey};
+use crate::{PublicKey, SecretKey, key};
 
 /// Error
 #[derive(Debug, PartialEq)]

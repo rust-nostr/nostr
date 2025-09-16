@@ -7,6 +7,7 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 #![warn(clippy::large_futures)]
+#![allow(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive for `BTreeSet<Event>`
 
 use std::any::Any;

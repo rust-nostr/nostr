@@ -12,14 +12,14 @@ use core::pin::Pin;
 
 #[cfg(feature = "std")]
 use secp256k1::global::GlobalContext;
-use secp256k1::{ecdh, Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey};
-use serde::de::DeserializeOwned;
+use secp256k1::{Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey, ecdh};
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 #[cfg(feature = "nip44")]
 pub mod hkdf;
 
-use crate::{key, PublicKey, SecretKey};
+use crate::{PublicKey, SecretKey, key};
 
 /// A boxed future
 #[cfg(not(target_arch = "wasm32"))]

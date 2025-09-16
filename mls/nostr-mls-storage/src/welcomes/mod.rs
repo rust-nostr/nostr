@@ -22,7 +22,7 @@ pub trait WelcomeStorage {
 
     /// Find a welcome by event ID
     fn find_welcome_by_event_id(&self, event_id: &EventId)
-        -> Result<Option<Welcome>, WelcomeError>;
+    -> Result<Option<Welcome>, WelcomeError>;
 
     /// Get all pending welcomes
     fn pending_welcomes(&self) -> Result<Vec<Welcome>, WelcomeError>;

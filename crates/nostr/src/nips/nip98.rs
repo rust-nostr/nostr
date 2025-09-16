@@ -14,13 +14,13 @@ use core::fmt;
 use core::str::FromStr;
 
 #[cfg(feature = "std")]
-use base64::engine::{general_purpose, Engine};
-use hashes::sha256::Hash as Sha256Hash;
+use base64::engine::{Engine, general_purpose};
 #[cfg(feature = "std")]
 use hashes::Hash;
+use hashes::sha256::Hash as Sha256Hash;
 
 #[cfg(feature = "std")]
-use crate::event::{self, builder, Event, EventBuilder};
+use crate::event::{self, Event, EventBuilder, builder};
 #[cfg(feature = "std")]
 use crate::signer::NostrSigner;
 #[cfg(feature = "std")]
@@ -120,13 +120,29 @@ impl fmt::Display for Error {
             #[cfg(feature = "std")]
             Self::AuthorizationHeaderMissing => f.write_str("nostr authorization header missing"),
             #[cfg(feature = "std")]
-            Self::MalformedAuthorizationHeader => f.write_str("malformed nostr authorization header"),
+            Self::MalformedAuthorizationHeader => {
+                f.write_str("malformed nostr authorization header")
+            }
             #[cfg(feature = "std")]
             Self::WrongAuthHeaderKind => f.write_str("wrong nostr authorization header kind"),
             #[cfg(feature = "std")]
-            Self::AuthorizationNotMatchRequest { authorized_url, authorized_method, request_url, request_method} => write!(f, "authorization doesn't match request: authorized_url={authorized_url}, authorized_method={authorized_method}, request_url={request_url}, request_method={request_method}"),
+            Self::AuthorizationNotMatchRequest {
+                authorized_url,
+                authorized_method,
+                request_url,
+                request_method,
+            } => write!(
+                f,
+                "authorization doesn't match request: authorized_url={authorized_url}, authorized_method={authorized_method}, request_url={request_url}, request_method={request_method}"
+            ),
             #[cfg(feature = "std")]
-            Self::AuthorizationTooOld { current, created_at } => write!(f, "authorization event is too old: current_time={current}, created_at={created_at}"),
+            Self::AuthorizationTooOld {
+                current,
+                created_at,
+            } => write!(
+                f,
+                "authorization event is too old: current_time={current}, created_at={created_at}"
+            ),
             #[cfg(feature = "std")]
             Self::PayloadHashMismatch => f.write_str("payload hash doesn't match the body hash"),
         }

@@ -8,8 +8,8 @@
 use std::collections::BTreeSet;
 use std::str;
 
-use nostr::secp256k1::rand::rngs::OsRng;
 use nostr::secp256k1::rand::Rng;
+use nostr::secp256k1::rand::rngs::OsRng;
 use nostr::{PublicKey, RelayUrl};
 use openmls::extensions::{Extension, ExtensionType};
 use openmls::group::{GroupContext, MlsGroup};
@@ -108,7 +108,7 @@ impl NostrGroupDataExtension {
     {
         // Generate a random 32-byte group ID
         let mut rng = OsRng;
-        let random_bytes: [u8; 32] = rng.gen();
+        let random_bytes: [u8; 32] = rng.r#gen();
 
         Self {
             nostr_group_id: random_bytes,

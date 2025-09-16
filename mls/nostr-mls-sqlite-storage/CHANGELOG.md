@@ -33,6 +33,7 @@
 
 ### Changed
 
+- Bump edition to `2024` and MSRV to `1.85.0` (https://github.com/rust-nostr/nostr/pull/1076)
 - Upgrade openmls to v0.7.0
 
 ## v0.43.0 - 2025/07/28

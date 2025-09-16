@@ -1,7 +1,7 @@
 [package]
 name = "nostr-database"
 version = "0.43.0"
-edition = "2021"
+edition.workspace = true
 description = "Events database abstraction and in-memory implementation"
 authors.workspace = true
 homepage.workspace = true

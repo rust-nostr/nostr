@@ -1,9 +1,9 @@
 //! Memory-based storage implementation of the NostrMlsStorageProvider trait for Nostr MLS messages
 
 use nostr::EventId;
+use nostr_mls_storage::messages::MessageStorage;
 use nostr_mls_storage::messages::error::MessageError;
 use nostr_mls_storage::messages::types::*;
-use nostr_mls_storage::messages::MessageStorage;
 
 use crate::NostrMlsMemoryStorage;
 

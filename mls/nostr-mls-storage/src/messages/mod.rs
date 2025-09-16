@@ -21,7 +21,7 @@ pub trait MessageStorage {
 
     /// Find a message by event ID
     fn find_message_by_event_id(&self, event_id: &EventId)
-        -> Result<Option<Message>, MessageError>;
+    -> Result<Option<Message>, MessageError>;
 
     /// Save a processed message
     fn save_processed_message(

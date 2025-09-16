@@ -1,7 +1,7 @@
 [package]
 name = "nostr-relay-builder"
 version = "0.43.0"
-edition = "2021"
+edition.workspace = true
 description = "Build your own custom nostr relay!"
 authors.workspace = true
 homepage.workspace = true

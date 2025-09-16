@@ -172,13 +172,13 @@ mod tests {
     use std::collections::BTreeSet;
 
     use nostr::{EventId, Kind, PublicKey, RelayUrl, Tags, Timestamp, UnsignedEvent};
-    use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupState};
     use nostr_mls_storage::groups::GroupStorage;
-    use nostr_mls_storage::messages::types::{Message, MessageState, ProcessedMessageState};
+    use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupState};
     use nostr_mls_storage::messages::MessageStorage;
+    use nostr_mls_storage::messages::types::{Message, MessageState, ProcessedMessageState};
     use nostr_mls_storage::test_utils::crypto_utils::generate_random_bytes;
-    use nostr_mls_storage::welcomes::types::{ProcessedWelcomeState, Welcome, WelcomeState};
     use nostr_mls_storage::welcomes::WelcomeStorage;
+    use nostr_mls_storage::welcomes::types::{ProcessedWelcomeState, Welcome, WelcomeState};
     use openmls::group::GroupId;
     use openmls_memory_storage::MemoryStorage;
 

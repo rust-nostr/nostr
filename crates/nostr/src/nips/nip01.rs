@@ -20,7 +20,7 @@ use serde_json::Value;
 use super::nip19::FromBech32;
 use super::nip21::FromNostrUri;
 use crate::types::Url;
-use crate::{key, Filter, JsonUtil, Kind, PublicKey, Tag};
+use crate::{Filter, JsonUtil, Kind, PublicKey, Tag, key};
 
 /// Raw Event error
 #[derive(Debug, PartialEq)]
@@ -555,7 +555,7 @@ mod tests {
 
 #[cfg(bench)]
 mod benches {
-    use test::{black_box, Bencher};
+    use test::{Bencher, black_box};
 
     use super::*;
 

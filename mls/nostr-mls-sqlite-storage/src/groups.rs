@@ -3,15 +3,15 @@
 use std::collections::BTreeSet;
 
 use nostr::{PublicKey, RelayUrl};
+use nostr_mls_storage::groups::GroupStorage;
 use nostr_mls_storage::groups::error::GroupError;
 use nostr_mls_storage::groups::types::{Group, GroupExporterSecret, GroupRelay};
-use nostr_mls_storage::groups::GroupStorage;
 use nostr_mls_storage::messages::types::Message;
 use openmls::group::GroupId;
-use rusqlite::{params, OptionalExtension};
+use rusqlite::{OptionalExtension, params};
 
 use crate::db::{Hash32, Nonce12};
-use crate::{db, NostrMlsSqliteStorage};
+use crate::{NostrMlsSqliteStorage, db};
 
 #[inline]
 fn into_group_err<T>(e: T) -> GroupError

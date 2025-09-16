@@ -1,9 +1,9 @@
 //! Memory-based storage implementation of the NostrMlsStorageProvider trait for Nostr MLS welcomes
 
 use nostr::EventId;
+use nostr_mls_storage::welcomes::WelcomeStorage;
 use nostr_mls_storage::welcomes::error::WelcomeError;
 use nostr_mls_storage::welcomes::types::*;
-use nostr_mls_storage::welcomes::WelcomeStorage;
 
 use crate::NostrMlsMemoryStorage;
 
