@@ -51,7 +51,14 @@ pub enum Error {
     /// Not a request
     NotRequest,
     /// Unexpected result
-    UnexpectedResult,
+    UnexpectedResponse {
+        /// Request method
+        method: NostrConnectMethod,
+        /// Expected response
+        expected: String,
+        /// Received response
+        received: String,
+    },
 }
 
 #[cfg(feature = "std")]
@@ -70,7 +77,14 @@ impl fmt::Display for Error {
             Self::UnsupportedMethod(name) => write!(f, "Unsupported method: {name}"),
             Self::InvalidURI => f.write_str("Invalid uri"),
             Self::NotRequest => f.write_str("Not a request"),
-            Self::UnexpectedResult => f.write_str("Unexpected result"),
+            Self::UnexpectedResponse {
+                method,
+                received,
+                expected,
+            } => write!(
+                f,
+                "Unexpected response: method={method}, expected={received}, received={expected}"
+            ),
         }
     }
 }
@@ -465,7 +479,11 @@ impl ResponseResult {
                 if response == "ack" {
                     Ok(Self::Ack)
                 } else {
-                    Err(Error::UnexpectedResult)
+                    Err(Error::UnexpectedResponse {
+                        method,
+                        expected: String::from("ack"),
+                        received: response,
+                    })
                 }
             }
             NostrConnectMethod::GetPublicKey => {
@@ -490,7 +508,11 @@ impl ResponseResult {
                 if response == "pong" {
                     Ok(Self::Pong)
                 } else {
-                    Err(Error::UnexpectedResult)
+                    Err(Error::UnexpectedResponse {
+                        method,
+                        expected: String::from("pong"),
+                        received: response,
+                    })
                 }
             }
         }
@@ -511,7 +533,11 @@ impl ResponseResult {
         if let Self::Ack = self {
             Ok(())
         } else {
-            Err(Error::UnexpectedResult)
+            Err(Error::UnexpectedResponse {
+                method: NostrConnectMethod::Connect,
+                expected: String::from("ack"),
+                received: self.to_string(),
+            })
         }
     }
 
@@ -520,7 +546,11 @@ impl ResponseResult {
         if let Self::GetPublicKey(val) = self {
             Ok(val)
         } else {
-            Err(Error::UnexpectedResult)
+            Err(Error::UnexpectedResponse {
+                method: NostrConnectMethod::GetPublicKey,
+                expected: String::from("user public key"),
+                received: self.to_string(),
+            })
         }
     }
 
@@ -529,7 +559,11 @@ impl ResponseResult {
         if let Self::SignEvent(val) = self {
             Ok(*val)
         } else {
-            Err(Error::UnexpectedResult)
+            Err(Error::UnexpectedResponse {
+                method: NostrConnectMethod::SignEvent,
+                expected: String::from("signed event"),
+                received: self.to_string(),
+            })
         }
     }
 
@@ -538,7 +572,11 @@ impl ResponseResult {
         if let Self::Nip04Encrypt { ciphertext } = self {
             Ok(ciphertext)
         } else {
-            Err(Error::UnexpectedResult)
+            Err(Error::UnexpectedResponse {
+                method: NostrConnectMethod::Nip04Encrypt,
+                expected: String::from("NIP-04 encrypted text"),
+                received: self.to_string(),
+            })
         }
     }
 
@@ -547,7 +585,11 @@ impl ResponseResult {
         if let Self::Nip04Decrypt { plaintext } = self {
             Ok(plaintext)
         } else {
-            Err(Error::UnexpectedResult)
+            Err(Error::UnexpectedResponse {
+                method: NostrConnectMethod::Nip04Decrypt,
+                expected: String::from("NIP-04 decrypted text"),
+                received: self.to_string(),
+            })
         }
     }
 
@@ -556,7 +598,11 @@ impl ResponseResult {
         if let Self::Nip44Encrypt { ciphertext } = self {
             Ok(ciphertext)
         } else {
-            Err(Error::UnexpectedResult)
+            Err(Error::UnexpectedResponse {
+                method: NostrConnectMethod::Nip44Encrypt,
+                expected: String::from("NIP-44 encrypted text"),
+                received: self.to_string(),
+            })
         }
     }
 
@@ -565,7 +611,11 @@ impl ResponseResult {
         if let Self::Nip44Decrypt { plaintext } = self {
             Ok(plaintext)
         } else {
-            Err(Error::UnexpectedResult)
+            Err(Error::UnexpectedResponse {
+                method: NostrConnectMethod::Nip44Decrypt,
+                expected: String::from("NIP-44 decrypted text"),
+                received: self.to_string(),
+            })
         }
     }
 
@@ -574,7 +624,11 @@ impl ResponseResult {
         if let Self::Pong = self {
             Ok(())
         } else {
-            Err(Error::UnexpectedResult)
+            Err(Error::UnexpectedResponse {
+                method: NostrConnectMethod::Ping,
+                expected: String::from("pong"),
+                received: self.to_string(),
+            })
         }
     }
 }
@@ -1066,7 +1120,14 @@ mod test {
         assert_eq!(res, ResponseResult::Ack);
 
         let res = ResponseResult::parse(NostrConnectMethod::Ping, "ack");
-        assert_eq!(res.unwrap_err(), Error::UnexpectedResult);
+        assert_eq!(
+            res.unwrap_err(),
+            Error::UnexpectedResponse {
+                method: NostrConnectMethod::Ping,
+                expected: String::from("pong"),
+                received: String::from("ack"),
+            }
+        );
 
         let res: ResponseResult = ResponseResult::parse(
             NostrConnectMethod::GetPublicKey,
