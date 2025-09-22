@@ -44,7 +44,7 @@ check-deny:
 # Release rust crates
 [confirm]
 release:
-    @bash contrib/scripts/release.sh
+    cargo +stable publish --workspace
 
 # Run benches (unstable)
 bench:
