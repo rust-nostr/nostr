@@ -679,16 +679,24 @@ pub struct MakeInvoiceResponse {
     /// Bolt 11 invoice
     pub invoice: String,
     /// Invoice's payment hash
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub payment_hash: Option<String>,
     /// Invoice's description
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub description: Option<String>,
     /// Invoice's description hash
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub description_hash: Option<String>,
     /// Payment preimage
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub preimage: Option<String>,
     /// Amount in msats.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -712,16 +720,24 @@ pub struct LookupInvoiceResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state: Option<TransactionState>,
     /// Bolt11 invoice
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub invoice: Option<String>,
     /// Invoice's description
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub description: Option<String>,
     /// Invoice's description hash
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub description_hash: Option<String>,
     /// Payment preimage
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub preimage: Option<String>,
     /// Payment hash
     pub payment_hash: String,
@@ -755,18 +771,22 @@ pub struct GetInfoResponse {
     /// The alias of the lightning node
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub alias: Option<String>,
     /// The color of the current node in hex code format
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub color: Option<String>,
     /// Lightning Node's public key
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub pubkey: Option<secp256k1::PublicKey>,
     /// Active network
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub network: Option<String>,
     /// Current block height
     #[serde(default)]
@@ -775,6 +795,7 @@ pub struct GetInfoResponse {
     /// Most Recent Block Hash
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub block_hash: Option<String>,
     /// Available methods for this connection
     pub methods: Vec<String>,
@@ -791,13 +812,19 @@ pub struct MakeHoldInvoiceResponse {
     #[serde(rename = "type")]
     pub transaction_type: TransactionType,
     /// Bolt11 invoice
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub invoice: Option<String>,
     /// Description
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub description: Option<String>,
     /// Description hash
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub description_hash: Option<String>,
     /// Payment hash
     pub payment_hash: String,
@@ -1397,10 +1424,14 @@ pub struct PaymentNotification {
     /// Bolt11 invoice
     pub invoice: String,
     /// Invoice's description
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub description: Option<String>,
     /// Invoice's description hash
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub description_hash: Option<String>,
     /// Payment preimage
     pub preimage: String,
@@ -1431,10 +1462,14 @@ pub struct HoldInvoiceAcceptedNotification {
     /// Bolt11 invoice
     pub invoice: String,
     /// Description
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub description: Option<String>,
     /// Description hash
+    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub description_hash: Option<String>,
     /// Payment hash
     pub payment_hash: String,
@@ -1449,6 +1484,20 @@ pub struct HoldInvoiceAcceptedNotification {
     /// Optional metadata about the payment
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<Value>,
+}
+
+fn deserialize_empty_string_as_none<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: FromStr,
+    T::Err: fmt::Display,
+{
+    let opt: Option<String> = Option::deserialize(deserializer)?;
+    match opt {
+        Some(s) if s.is_empty() => Ok(None),
+        Some(s) => T::from_str(&s).map(Some).map_err(serde::de::Error::custom),
+        None => Ok(None),
+    }
 }
 
 #[cfg(test)]
@@ -1676,5 +1725,35 @@ mod tests {
         let reponse_result_deserialized: Notification =
             serde_json::from_str(&notification_json).unwrap();
         assert_eq!(notification_parsed, reponse_result_deserialized)
+    }
+
+    // Issues:
+    // - https://github.com/rust-nostr/nostr/issues/1078
+    // - https://github.com/getAlby/hub/issues/1746
+    #[test]
+    fn test_parse_get_info_response_with_empty_strings() {
+        let json = r#"{"alias":"","color":"","pubkey":"","network":"","block_height":0,"block_hash":"","methods":["pay_invoice","pay_keysend","multi_pay_invoice","multi_pay_keysend","get_info","get_budget"],"notifications":[],"lud16":""}"#;
+        let response: GetInfoResponse = serde_json::from_str(json).unwrap();
+
+        assert_eq!(
+            response,
+            GetInfoResponse {
+                alias: None,
+                color: None,
+                pubkey: None,
+                network: None,
+                block_height: Some(0),
+                block_hash: None,
+                methods: vec![
+                    String::from("pay_invoice"),
+                    String::from("pay_keysend"),
+                    String::from("multi_pay_invoice"),
+                    String::from("multi_pay_keysend"),
+                    String::from("get_info"),
+                    String::from("get_budget")
+                ],
+                notifications: Vec::new()
+            }
+        );
     }
 }
