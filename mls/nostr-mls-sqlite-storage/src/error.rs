@@ -8,6 +8,8 @@ pub enum Error {
     /// SQLite database error
     Database(String),
     /// Error from rusqlite
+    R2d2(r2d2::Error),
+    /// Error from rusqlite
     Rusqlite(rusqlite::Error),
     /// Error during database migration
     Refinery(refinery::Error),
@@ -21,10 +23,17 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Database(msg) => write!(f, "Database error: {}", msg),
+            Self::R2d2(e) => e.fmt(f),
             Self::Rusqlite(err) => write!(f, "SQLite error: {}", err),
             Self::Refinery(msg) => write!(f, "Migration error: {}", msg),
             Self::OpenMls(msg) => write!(f, "OpenMLS error: {}", msg),
         }
+    }
+}
+
+impl From<r2d2::Error> for Error {
+    fn from(e: r2d2::Error) -> Self {
+        Self::R2d2(e)
     }
 }
 

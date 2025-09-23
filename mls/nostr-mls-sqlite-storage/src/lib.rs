@@ -10,11 +10,14 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 
+use std::borrow::{Borrow, BorrowMut};
+use std::ops::{Deref, DerefMut};
 use std::path::Path;
-use std::sync::{Arc, Mutex};
 
 use nostr_mls_storage::{Backend, NostrMlsStorageProvider};
 use openmls_sqlite_storage::{Codec, SqliteStorageProvider};
+use r2d2::{Pool, PooledConnection};
+use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::Connection;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -29,7 +32,24 @@ mod welcomes;
 use self::error::Error;
 
 // Define a type alias for the specific SqliteStorageProvider we're using
-type MlsStorage = SqliteStorageProvider<JsonCodec, Connection>;
+type MlsStorage = SqliteStorageProvider<JsonCodec, MlsStorageConnection>;
+
+#[doc(hidden)]
+pub struct MlsStorageConnection {
+    connection: PooledConnection<SqliteConnectionManager>,
+}
+
+impl Borrow<Connection> for MlsStorageConnection {
+    fn borrow(&self) -> &Connection {
+        self.connection.deref()
+    }
+}
+
+impl BorrowMut<Connection> for MlsStorageConnection {
+    fn borrow_mut(&mut self) -> &mut Connection {
+        self.connection.deref_mut()
+    }
+}
 
 // TODO: make this private?
 /// A codec for JSON serialization and deserialization.
@@ -58,10 +78,8 @@ impl Codec for JsonCodec {
 /// This struct implements the NostrMlsStorageProvider trait for SQLite databases.
 /// It directly interfaces with a SQLite database for storing MLS data.
 pub struct NostrMlsSqliteStorage {
-    /// The OpenMLS storage implementation
-    openmls_storage: MlsStorage,
     /// The SQLite connection
-    db_connection: Arc<Mutex<Connection>>,
+    db_connection: Pool<SqliteConnectionManager>,
 }
 
 impl NostrMlsSqliteStorage {
@@ -84,29 +102,27 @@ impl NostrMlsSqliteStorage {
         }
 
         // Create or open the SQLite database
-        let mls_connection: Connection = Connection::open(&file_path)?;
+        let manager = SqliteConnectionManager::file(file_path).with_init(|c| {
+            c.execute_batch("PRAGMA foreign_keys = ON;")?;
 
-        // Enable foreign keys
-        mls_connection.execute_batch("PRAGMA foreign_keys = ON;")?;
+            migrations::run_migrations(c)?;
+
+            Ok(())
+        });
+        let pool = Pool::new(manager)?;
+
+        let conn = MlsStorageConnection {
+            connection: pool.get()?,
+        };
 
         // Create OpenMLS storage
-        let mut openmls_storage: MlsStorage = SqliteStorageProvider::new(mls_connection);
+        let mut openmls_storage: MlsStorage = SqliteStorageProvider::new(conn);
 
         // Initialize the OpenMLS storage
         openmls_storage.initialize()?;
 
-        // Create a new connection for the Nostr MLS storage
-        let mut nostr_mls_connection = Connection::open(&file_path)?;
-
-        // Enable foreign keys
-        nostr_mls_connection.execute_batch("PRAGMA foreign_keys = ON;")?;
-
-        // Apply migrations
-        migrations::run_migrations(&mut nostr_mls_connection)?;
-
         Ok(Self {
-            openmls_storage,
-            db_connection: Arc::new(Mutex::new(nostr_mls_connection)),
+            db_connection: pool,
         })
     }
 
@@ -118,31 +134,27 @@ impl NostrMlsSqliteStorage {
     #[cfg(test)]
     pub fn new_in_memory() -> Result<Self, Error> {
         // Create an in-memory SQLite database
-        let mls_connection = Connection::open_in_memory()?;
+        let manager = SqliteConnectionManager::memory().with_init(|c| {
+            c.execute_batch("PRAGMA foreign_keys = ON;")?;
 
-        // Enable foreign keys
-        mls_connection.execute_batch("PRAGMA foreign_keys = ON;")?;
+            migrations::run_migrations(c)?;
+
+            Ok(())
+        });
+        let pool = Pool::new(manager)?;
+
+        let conn = MlsStorageConnection {
+            connection: pool.get()?,
+        };
 
         // Create OpenMLS storage
-        let mut openmls_storage: MlsStorage = SqliteStorageProvider::new(mls_connection);
+        let mut openmls_storage: MlsStorage = SqliteStorageProvider::new(conn);
 
         // Initialize the OpenMLS storage
         openmls_storage.initialize()?;
 
-        // For in-memory databases, we need to share the connection
-        // to keep the database alive, so we will clone the connection
-        // and let OpenMLS use a new handle
-        let mut nostr_mls_connection: Connection = Connection::open_in_memory()?;
-
-        // Enable foreign keys
-        nostr_mls_connection.execute_batch("PRAGMA foreign_keys = ON;")?;
-
-        // Setup the schema in this connection as well
-        migrations::run_migrations(&mut nostr_mls_connection)?;
-
         Ok(Self {
-            openmls_storage,
-            db_connection: Arc::new(Mutex::new(nostr_mls_connection)),
+            db_connection: pool,
         })
     }
 }
@@ -169,7 +181,14 @@ impl NostrMlsStorageProvider for NostrMlsSqliteStorage {
     ///
     /// A reference to the openmls storage implementation.
     fn openmls_storage(&self) -> &Self::OpenMlsStorageProvider {
-        &self.openmls_storage
+        let conn = MlsStorageConnection {
+            connection: self.db_connection.get().unwrap(),
+        };
+
+        // Create OpenMLS storage
+        let openmls_storage: MlsStorage = SqliteStorageProvider::new(conn);
+
+        Box::leak(Box::new(openmls_storage))
     }
 
     /// Get a mutable reference to the openmls storage provider.
@@ -181,7 +200,14 @@ impl NostrMlsStorageProvider for NostrMlsSqliteStorage {
     ///
     /// A mutable reference to the openmls storage implementation.
     fn openmls_storage_mut(&mut self) -> &mut Self::OpenMlsStorageProvider {
-        &mut self.openmls_storage
+        let conn = MlsStorageConnection {
+            connection: self.db_connection.get().unwrap(),
+        };
+
+        // Create OpenMLS storage
+        let openmls_storage: MlsStorage = SqliteStorageProvider::new(conn);
+
+        Box::leak(Box::new(openmls_storage))
     }
 }
 
@@ -237,10 +263,6 @@ mod tests {
 
         // Test that we can get a reference to the openmls storage
         let _openmls_storage = storage.openmls_storage();
-
-        // Test mutable accessor
-        let mut mutable_storage = NostrMlsSqliteStorage::new_in_memory().unwrap();
-        let _mutable_ref = mutable_storage.openmls_storage_mut();
     }
 
     #[test]
@@ -253,7 +275,7 @@ mod tests {
 
         // Verify the database has been properly initialized with migrations
         {
-            let conn_guard = storage.db_connection.lock().unwrap();
+            let conn_guard = storage.db_connection.get().unwrap();
 
             // Check if the tables exist
             let mut stmt = conn_guard

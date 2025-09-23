@@ -19,7 +19,7 @@ where
 
 impl WelcomeStorage for NostrMlsSqliteStorage {
     fn save_welcome(&self, welcome: Welcome) -> Result<(), WelcomeError> {
-        let conn_guard = self.db_connection.lock().map_err(into_welcome_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_welcome_err)?;
 
         // Serialize complex types to JSON
         let group_admin_pubkeys_json: String = serde_json::to_string(&welcome.group_admin_pubkeys)
@@ -65,7 +65,7 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
         &self,
         event_id: &EventId,
     ) -> Result<Option<Welcome>, WelcomeError> {
-        let conn_guard = self.db_connection.lock().map_err(into_welcome_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_welcome_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM welcomes WHERE id = ?")
@@ -77,7 +77,7 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
     }
 
     fn pending_welcomes(&self) -> Result<Vec<Welcome>, WelcomeError> {
-        let conn_guard = self.db_connection.lock().map_err(into_welcome_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_welcome_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM welcomes WHERE state = 'pending'")
@@ -101,7 +101,7 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
         &self,
         processed_welcome: ProcessedWelcome,
     ) -> Result<(), WelcomeError> {
-        let conn_guard = self.db_connection.lock().map_err(into_welcome_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_welcome_err)?;
 
         // Convert welcome_event_id to string if it exists
         let welcome_event_id: Option<&[u8; 32]> = processed_welcome
@@ -131,7 +131,7 @@ impl WelcomeStorage for NostrMlsSqliteStorage {
         &self,
         event_id: &EventId,
     ) -> Result<Option<ProcessedWelcome>, WelcomeError> {
-        let conn_guard = self.db_connection.lock().map_err(into_welcome_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_welcome_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM processed_welcomes WHERE wrapper_event_id = ?")

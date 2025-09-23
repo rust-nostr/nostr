@@ -18,7 +18,7 @@ where
 
 impl MessageStorage for NostrMlsSqliteStorage {
     fn save_message(&self, message: Message) -> Result<(), MessageError> {
-        let conn_guard = self.db_connection.lock().map_err(into_message_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_message_err)?;
 
         // Serialize complex types to JSON
         let tags_json: String = serde_json::to_string(&message.tags)
@@ -51,7 +51,7 @@ impl MessageStorage for NostrMlsSqliteStorage {
         &self,
         event_id: &EventId,
     ) -> Result<Option<Message>, MessageError> {
-        let conn_guard = self.db_connection.lock().map_err(into_message_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_message_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM messages WHERE id = ?")
@@ -66,7 +66,7 @@ impl MessageStorage for NostrMlsSqliteStorage {
         &self,
         processed_message: ProcessedMessage,
     ) -> Result<(), MessageError> {
-        let conn_guard = self.db_connection.lock().map_err(into_message_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_message_err)?;
 
         // Convert message_event_id to string if it exists
         let message_event_id = processed_message
@@ -96,7 +96,7 @@ impl MessageStorage for NostrMlsSqliteStorage {
         &self,
         event_id: &EventId,
     ) -> Result<Option<ProcessedMessage>, MessageError> {
-        let conn_guard = self.db_connection.lock().map_err(into_message_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_message_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM processed_messages WHERE wrapper_event_id = ?")

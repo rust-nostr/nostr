@@ -23,7 +23,7 @@ where
 
 impl GroupStorage for NostrMlsSqliteStorage {
     fn all_groups(&self) -> Result<Vec<Group>, GroupError> {
-        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_group_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM groups")
@@ -48,7 +48,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
         &self,
         mls_group_id: &GroupId,
     ) -> Result<Option<Group>, GroupError> {
-        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_group_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM groups WHERE mls_group_id = ?")
@@ -63,7 +63,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
         &self,
         nostr_group_id: &[u8; 32],
     ) -> Result<Option<Group>, GroupError> {
-        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_group_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM groups WHERE nostr_group_id = ?")
@@ -75,7 +75,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
     }
 
     fn save_group(&self, group: Group) -> Result<(), GroupError> {
-        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_group_err)?;
 
         let admin_pubkeys_json: String =
             serde_json::to_string(&group.admin_pubkeys).map_err(|e| {
@@ -133,7 +133,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
             )));
         }
 
-        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_group_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM messages WHERE mls_group_id = ? ORDER BY created_at DESC")
@@ -173,7 +173,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
             )));
         }
 
-        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_group_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM group_relays WHERE mls_group_id = ?")
@@ -206,7 +206,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
             )));
         }
 
-        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_group_err)?;
 
         // Use a transaction for atomicity
         let tx = conn_guard.unchecked_transaction().map_err(into_group_err)?;
@@ -246,7 +246,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
             )));
         }
 
-        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_group_err)?;
 
         let mut stmt = conn_guard
             .prepare("SELECT * FROM group_exporter_secrets WHERE mls_group_id = ? AND epoch = ?")
@@ -274,7 +274,7 @@ impl GroupStorage for NostrMlsSqliteStorage {
             )));
         }
 
-        let conn_guard = self.db_connection.lock().map_err(into_group_err)?;
+        let conn_guard = self.db_connection.get().map_err(into_group_err)?;
 
         conn_guard.execute(
             "INSERT OR REPLACE INTO group_exporter_secrets (mls_group_id, epoch, secret) VALUES (?, ?, ?)",
