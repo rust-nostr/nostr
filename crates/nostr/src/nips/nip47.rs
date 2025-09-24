@@ -782,7 +782,7 @@ pub struct GetInfoResponse {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(deserialize_with = "deserialize_empty_string_as_none")]
-    pub pubkey: Option<secp256k1::PublicKey>,
+    pub pubkey: Option<String>,
     /// Active network
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]

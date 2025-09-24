@@ -32,6 +32,7 @@
 - Use `Cow` for non-copy fields in `nip22::CommentTarget` enum (https://github.com/rust-nostr/nostr/pull/1053)
 - Change `EventBuilder::reaction` args (https://github.com/rust-nostr/nostr/pull/1063)
 - Remove `EventBuilder::reaction_extended` (https://github.com/rust-nostr/nostr/pull/1063)
+- Change NIP-47 `GetInfoResponse` `pubkey` type from `PublicKey` to `String`
 
 ### Added
 
