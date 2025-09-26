@@ -499,6 +499,8 @@ impl Lmdb {
         let filter: DatabaseFilter = filter.into();
 
         if !filter.ids.is_empty() {
+            tracing::debug!("Querying by IDs...");
+
             // Fetch by id
             for id in filter.ids.iter() {
                 // Check if limit is set
@@ -516,6 +518,8 @@ impl Lmdb {
                 }
             }
         } else if !filter.authors.is_empty() && !filter.kinds.is_empty() {
+            tracing::debug!("Querying by authors and kinds...");
+
             // We may bring since forward if we hit the limit without going back that
             // far, so we use a mutable since:
             let mut since = since;
@@ -571,6 +575,8 @@ impl Lmdb {
                 }
             }
         } else if !filter.authors.is_empty() && !filter.generic_tags.is_empty() {
+            tracing::debug!("Querying by authors and tags...");
+
             // We may bring since forward if we hit the limit without going back that
             // far, so we use a mutable since:
             let mut since = since;
@@ -592,6 +598,8 @@ impl Lmdb {
                 }
             }
         } else if !filter.kinds.is_empty() && !filter.generic_tags.is_empty() {
+            tracing::debug!("Querying by kinds and tags...");
+
             // We may bring since forward if we hit the limit without going back that
             // far, so we use a mutable since:
             let mut since = since;
@@ -613,6 +621,8 @@ impl Lmdb {
                 }
             }
         } else if !filter.generic_tags.is_empty() {
+            tracing::debug!("Querying by tags...");
+
             // We may bring since forward if we hit the limit without going back that
             // far, so we use a mutable since:
             let mut since = since;
@@ -631,6 +641,8 @@ impl Lmdb {
                 }
             }
         } else if !filter.authors.is_empty() {
+            tracing::debug!("Querying by authors...");
+
             // We may bring since forward if we hit the limit without going back that
             // far, so we use a mutable since:
             let mut since = since;
@@ -647,6 +659,8 @@ impl Lmdb {
                 )?;
             }
         } else {
+            tracing::debug!("Scraping...");
+
             // SCRAPE
             // This is INEFFICIENT as it scans through many events
 
