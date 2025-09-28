@@ -100,6 +100,7 @@ enum QueryFilterPattern {
     Ids,
     AuthorsAndKinds,
     AuthorsAndTags,
+    AuthorKindsAndTags,
     KindsAndTags,
     Tags,
     Authors,
@@ -110,6 +111,11 @@ impl QueryFilterPattern {
     fn from_filter(filter: &DatabaseFilter) -> Self {
         if !filter.ids.is_empty() {
             Self::Ids
+        } else if !filter.authors.is_empty()
+            && !filter.kinds.is_empty()
+            && !filter.generic_tags.is_empty()
+        {
+            Self::AuthorKindsAndTags
         } else if !filter.authors.is_empty() && !filter.kinds.is_empty() {
             Self::AuthorsAndKinds
         } else if !filter.authors.is_empty() && !filter.generic_tags.is_empty() {
@@ -543,6 +549,14 @@ impl Lmdb {
             QueryFilterPattern::AuthorsAndTags => {
                 self.query_by_authors_and_tags(txn, filter, since, &until, limit, &mut output)?
             }
+            QueryFilterPattern::AuthorKindsAndTags => self.query_by_authors_kinds_and_tags(
+                txn,
+                filter,
+                since,
+                &until,
+                limit,
+                &mut output,
+            )?,
             QueryFilterPattern::KindsAndTags => {
                 self.query_by_kinds_and_tags(txn, filter, since, &until, limit, &mut output)?
             }
@@ -681,6 +695,60 @@ impl Lmdb {
                             Some(v)
                         });
                     self.iterate_filter_until_limit(txn, &filter, iter, &mut since, limit, output)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn query_by_authors_kinds_and_tags<'a>(
+        &self,
+        txn: &'a RoTxn,
+        filter: DatabaseFilter,
+        since: Timestamp,
+        until: &Timestamp,
+        limit: Option<usize>,
+        output: &mut BTreeSet<EventBorrow<'a>>,
+    ) -> Result<(), Error> {
+        // We may bring since forward if we hit the limit without going back that
+        // far, so we use a mutable since:
+        let mut since: Timestamp = since;
+
+        for author in filter.authors.iter() {
+            for kind in filter.kinds.iter() {
+                // Author + Kind index
+                let akc_iter = self.akc_iter(txn, author, *kind, &since, until)?;
+
+                // Collect Author + Kind BTree set
+                let akc_set: BTreeSet<&[u8]> = akc_iter
+                    .filter_map(|res| {
+                        let (_k, v) = res.ok()?;
+                        Some(v)
+                    })
+                    .collect();
+
+                for (tagname, set) in filter.generic_tags.iter() {
+                    for tag_value in set.iter() {
+                        // Author + Tag index
+                        let atc_iter =
+                            self.atc_iter(txn, author, tagname, tag_value, &since, until)?;
+
+                        // Collect Author + Tag BTree set
+                        let atc_set: BTreeSet<&[u8]> = atc_iter
+                            .filter_map(|res| {
+                                let (_k, v) = res.ok()?;
+                                Some(v)
+                            })
+                            .collect();
+
+                        // Intersection
+                        let iter = atc_set.intersection(&akc_set).copied();
+
+                        self.iterate_filter_until_limit(
+                            txn, &filter, iter, &mut since, limit, output,
+                        )?;
+                    }
                 }
             }
         }

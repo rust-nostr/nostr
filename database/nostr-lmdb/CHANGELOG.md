@@ -29,6 +29,7 @@
 
 - Consolidate deletion logic and improve transactional consistency (https://github.com/rust-nostr/nostr/pull/1010)
 - Add automatic event batching for better write performance (https://github.com/rust-nostr/nostr/pull/1010)
+- Improve performance of queries with authors, kinds and tags (https://github.com/rust-nostr/nostr/pull/1080)
 
 ### Fixed
 
