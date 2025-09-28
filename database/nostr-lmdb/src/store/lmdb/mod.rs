@@ -674,7 +674,12 @@ impl Lmdb {
         for author in filter.authors.iter() {
             for (tagname, set) in filter.generic_tags.iter() {
                 for tag_value in set.iter() {
-                    let iter = self.atc_iter(txn, author, tagname, tag_value, &since, until)?;
+                    let iter = self
+                        .atc_iter(txn, author, tagname, tag_value, &since, until)?
+                        .filter_map(|res| {
+                            let (_k, v) = res.ok()?;
+                            Some(v)
+                        });
                     self.iterate_filter_until_limit(txn, &filter, iter, &mut since, limit, output)?;
                 }
             }
@@ -699,7 +704,12 @@ impl Lmdb {
         for kind in filter.kinds.iter() {
             for (tag_name, set) in filter.generic_tags.iter() {
                 for tag_value in set.iter() {
-                    let iter = self.ktc_iter(txn, *kind, tag_name, tag_value, &since, until)?;
+                    let iter = self
+                        .ktc_iter(txn, *kind, tag_name, tag_value, &since, until)?
+                        .filter_map(|res| {
+                            let (_k, v) = res.ok()?;
+                            Some(v)
+                        });
                     self.iterate_filter_until_limit(txn, &filter, iter, &mut since, limit, output)?;
                 }
             }
@@ -723,7 +733,12 @@ impl Lmdb {
 
         for (tag_name, set) in filter.generic_tags.iter() {
             for tag_value in set.iter() {
-                let iter = self.tc_iter(txn, tag_name, tag_value, &since, until)?;
+                let iter = self
+                    .tc_iter(txn, tag_name, tag_value, &since, until)?
+                    .filter_map(|res| {
+                        let (_k, v) = res.ok()?;
+                        Some(v)
+                    });
                 self.iterate_filter_until_limit(txn, &filter, iter, &mut since, limit, output)?;
             }
         }
@@ -745,7 +760,10 @@ impl Lmdb {
         let mut since: Timestamp = since;
 
         for author in filter.authors.iter() {
-            let iter = self.ac_iter(txn, author, &since, until)?;
+            let iter = self.ac_iter(txn, author, &since, until)?.filter_map(|res| {
+                let (_k, v) = res.ok()?;
+                Some(v)
+            });
             self.iterate_filter_until_limit(txn, &filter, iter, &mut since, limit, output)?;
         }
 
@@ -786,22 +804,23 @@ impl Lmdb {
         Ok(())
     }
 
-    fn iterate_filter_until_limit<'a>(
+    fn iterate_filter_until_limit<'a, 'i, I>(
         &self,
         txn: &'a RoTxn,
         filter: &DatabaseFilter,
-        iter: RoRange<Bytes, Bytes>,
+        iter: I,
         since: &mut Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = &'i [u8]>,
+    {
         let mut count: usize = 0;
 
-        for result in iter {
-            let (_key, value) = result?;
-
+        for id in iter {
             // Get event by ID
-            let event = self.get_event_by_id(txn, value)?.ok_or(Error::NotFound)?;
+            let event = self.get_event_by_id(txn, id)?.ok_or(Error::NotFound)?;
 
             if event.created_at < *since {
                 break;
