@@ -576,27 +576,7 @@ impl Lmdb {
             }
         } else if !filter.authors.is_empty() && !filter.generic_tags.is_empty() {
             tracing::debug!("Querying by authors and tags...");
-
-            // We may bring since forward if we hit the limit without going back that
-            // far, so we use a mutable since:
-            let mut since = since;
-
-            for author in filter.authors.iter() {
-                for (tagname, set) in filter.generic_tags.iter() {
-                    for tag_value in set.iter() {
-                        let iter =
-                            self.atc_iter(txn, author, tagname, tag_value, &since, &until)?;
-                        self.iterate_filter_until_limit(
-                            txn,
-                            &filter,
-                            iter,
-                            &mut since,
-                            limit,
-                            &mut output,
-                        )?;
-                    }
-                }
-            }
+            self.query_by_authors_and_tags(txn, filter, since, &until, limit, &mut output)?;
         } else if !filter.kinds.is_empty() && !filter.generic_tags.is_empty() {
             tracing::debug!("Querying by kinds and tags...");
 
@@ -688,6 +668,31 @@ impl Lmdb {
             Some(limit) => Box::new(output.into_iter().take(limit)),
             None => Box::new(output.into_iter()),
         })
+    }
+
+    fn query_by_authors_and_tags<'a>(
+        &self,
+        txn: &'a RoTxn,
+        filter: DatabaseFilter,
+        since: Timestamp,
+        until: &Timestamp,
+        limit: Option<usize>,
+        output: &mut BTreeSet<EventBorrow<'a>>,
+    ) -> Result<(), Error> {
+        // We may bring since forward if we hit the limit without going back that
+        // far, so we use a mutable since:
+        let mut since: Timestamp = since;
+
+        for author in filter.authors.iter() {
+            for (tagname, set) in filter.generic_tags.iter() {
+                for tag_value in set.iter() {
+                    let iter = self.atc_iter(txn, author, tagname, tag_value, &since, until)?;
+                    self.iterate_filter_until_limit(txn, &filter, iter, &mut since, limit, output)?;
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn iterate_filter_until_limit<'a>(
