@@ -509,27 +509,7 @@ impl Lmdb {
             self.query_by_authors_and_tags(txn, filter, since, &until, limit, &mut output)?;
         } else if !filter.kinds.is_empty() && !filter.generic_tags.is_empty() {
             tracing::debug!("Querying by kinds and tags...");
-
-            // We may bring since forward if we hit the limit without going back that
-            // far, so we use a mutable since:
-            let mut since = since;
-
-            for kind in filter.kinds.iter() {
-                for (tag_name, set) in filter.generic_tags.iter() {
-                    for tag_value in set.iter() {
-                        let iter =
-                            self.ktc_iter(txn, *kind, tag_name, tag_value, &since, &until)?;
-                        self.iterate_filter_until_limit(
-                            txn,
-                            &filter,
-                            iter,
-                            &mut since,
-                            limit,
-                            &mut output,
-                        )?;
-                    }
-                }
-            }
+            self.query_by_kinds_and_tags(txn, filter, since, &until, limit, &mut output)?;
         } else if !filter.generic_tags.is_empty() {
             tracing::debug!("Querying by tags...");
 
@@ -711,6 +691,31 @@ impl Lmdb {
             for (tagname, set) in filter.generic_tags.iter() {
                 for tag_value in set.iter() {
                     let iter = self.atc_iter(txn, author, tagname, tag_value, &since, until)?;
+                    self.iterate_filter_until_limit(txn, &filter, iter, &mut since, limit, output)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn query_by_kinds_and_tags<'a>(
+        &self,
+        txn: &'a RoTxn,
+        filter: DatabaseFilter,
+        since: Timestamp,
+        until: &Timestamp,
+        limit: Option<usize>,
+        output: &mut BTreeSet<EventBorrow<'a>>,
+    ) -> Result<(), Error> {
+        // We may bring since forward if we hit the limit without going back that
+        // far, so we use a mutable since:
+        let mut since: Timestamp = since;
+
+        for kind in filter.kinds.iter() {
+            for (tag_name, set) in filter.generic_tags.iter() {
+                for tag_value in set.iter() {
+                    let iter = self.ktc_iter(txn, *kind, tag_name, tag_value, &since, until)?;
                     self.iterate_filter_until_limit(txn, &filter, iter, &mut since, limit, output)?;
                 }
             }
