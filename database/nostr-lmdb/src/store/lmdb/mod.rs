@@ -515,22 +515,7 @@ impl Lmdb {
             self.query_by_tags(txn, filter, since, &until, limit, &mut output)?;
         } else if !filter.authors.is_empty() {
             tracing::debug!("Querying by authors...");
-
-            // We may bring since forward if we hit the limit without going back that
-            // far, so we use a mutable since:
-            let mut since = since;
-
-            for author in filter.authors.iter() {
-                let iter = self.ac_iter(txn, author, since, until)?;
-                self.iterate_filter_until_limit(
-                    txn,
-                    &filter,
-                    iter,
-                    &mut since,
-                    limit,
-                    &mut output,
-                )?;
-            }
+            self.query_by_authors(txn, filter, since, &until, limit, &mut output)?;
         } else {
             tracing::debug!("Scraping...");
 
@@ -725,6 +710,27 @@ impl Lmdb {
                 let iter = self.tc_iter(txn, tag_name, tag_value, &since, until)?;
                 self.iterate_filter_until_limit(txn, &filter, iter, &mut since, limit, output)?;
             }
+        }
+
+        Ok(())
+    }
+
+    fn query_by_authors<'a>(
+        &self,
+        txn: &'a RoTxn,
+        filter: DatabaseFilter,
+        since: Timestamp,
+        until: &Timestamp,
+        limit: Option<usize>,
+        output: &mut BTreeSet<EventBorrow<'a>>,
+    ) -> Result<(), Error> {
+        // We may bring since forward if we hit the limit without going back that
+        // far, so we use a mutable since:
+        let mut since: Timestamp = since;
+
+        for author in filter.authors.iter() {
+            let iter = self.ac_iter(txn, author, &since, until)?;
+            self.iterate_filter_until_limit(txn, &filter, iter, &mut since, limit, output)?;
         }
 
         Ok(())
@@ -988,11 +994,11 @@ impl Lmdb {
         &'a self,
         txn: &'a RoTxn,
         author: &[u8; 32],
-        since: Timestamp,
-        until: Timestamp,
+        since: &Timestamp,
+        until: &Timestamp,
     ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
-        let start_prefix = index::make_ac_index_key(author, &until, &EVENT_ID_ALL_ZEROS);
-        let end_prefix = index::make_ac_index_key(author, &since, &EVENT_ID_ALL_255);
+        let start_prefix = index::make_ac_index_key(author, until, &EVENT_ID_ALL_ZEROS);
+        let end_prefix = index::make_ac_index_key(author, since, &EVENT_ID_ALL_255);
         let range = (
             Bound::Included(start_prefix.as_slice()),
             Bound::Excluded(end_prefix.as_slice()),
