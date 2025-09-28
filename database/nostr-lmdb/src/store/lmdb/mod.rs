@@ -414,7 +414,7 @@ impl Lmdb {
                 }
 
                 let coordinate = Coordinate::new(event.kind, event.pubkey);
-                self.remove_replaceable(txn, &coordinate, event.created_at)?;
+                self.remove_replaceable(txn, &coordinate, &event.created_at)?;
             }
         }
 
@@ -526,7 +526,7 @@ impl Lmdb {
 
             for author in filter.authors.iter() {
                 for kind in filter.kinds.iter() {
-                    let iter = self.akc_iter(txn, author, *kind, since, until)?;
+                    let iter = self.akc_iter(txn, author, *kind, &since, &until)?;
 
                     // Count how many we have found of this author-kind pair, so we
                     // can possibly update `since`
@@ -749,8 +749,8 @@ impl Lmdb {
             txn,
             author.as_bytes(),
             kind.as_u16(),
-            Timestamp::min(),
-            Timestamp::max(),
+            &Timestamp::min(),
+            &Timestamp::max(),
         )?;
 
         if let Some(result) = iter.next() {
@@ -800,7 +800,7 @@ impl Lmdb {
         &self,
         txn: &mut RwTxn,
         coordinate: &Coordinate,
-        until: Timestamp,
+        until: &Timestamp,
     ) -> Result<(), Error> {
         if !coordinate.kind.is_replaceable() {
             return Err(Error::WrongEventKind);
@@ -810,7 +810,7 @@ impl Lmdb {
             txn,
             coordinate.public_key.as_bytes(),
             coordinate.kind.as_u16(),
-            Timestamp::zero(),
+            &Timestamp::zero(),
             until,
         )?;
 
@@ -965,11 +965,11 @@ impl Lmdb {
         txn: &'a RoTxn,
         author: &[u8; 32],
         kind: u16,
-        since: Timestamp,
-        until: Timestamp,
+        since: &Timestamp,
+        until: &Timestamp,
     ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
-        let start_prefix = index::make_akc_index_key(author, kind, &until, &EVENT_ID_ALL_ZEROS);
-        let end_prefix = index::make_akc_index_key(author, kind, &since, &EVENT_ID_ALL_255);
+        let start_prefix = index::make_akc_index_key(author, kind, until, &EVENT_ID_ALL_ZEROS);
+        let end_prefix = index::make_akc_index_key(author, kind, since, &EVENT_ID_ALL_255);
         let range = (
             Bound::Included(start_prefix.as_slice()),
             Bound::Excluded(end_prefix.as_slice()),
@@ -1037,7 +1037,7 @@ impl Lmdb {
 
             // Remove events (up to the created_at of the deletion event)
             if coordinate.kind.is_replaceable() {
-                self.remove_replaceable(txn, coordinate, event.created_at)?;
+                self.remove_replaceable(txn, coordinate, &event.created_at)?;
             } else if coordinate.kind.is_addressable() {
                 self.remove_addressable(txn, coordinate, event.created_at)?;
             }
