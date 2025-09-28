@@ -500,23 +500,7 @@ impl Lmdb {
 
         if !filter.ids.is_empty() {
             tracing::debug!("Querying by IDs...");
-
-            // Fetch by id
-            for id in filter.ids.iter() {
-                // Check if limit is set
-                if let Some(limit) = limit {
-                    // Stop if limited
-                    if output.len() >= limit {
-                        break;
-                    }
-                }
-
-                if let Some(event) = self.get_event_by_id(txn, id)? {
-                    if filter.match_event(&event) {
-                        output.insert(event);
-                    }
-                }
-            }
+            self.query_by_ids(txn, filter, limit, &mut output)?;
         } else if !filter.authors.is_empty() && !filter.kinds.is_empty() {
             tracing::debug!("Querying by authors and kinds...");
 
@@ -668,6 +652,33 @@ impl Lmdb {
             Some(limit) => Box::new(output.into_iter().take(limit)),
             None => Box::new(output.into_iter()),
         })
+    }
+
+    fn query_by_ids<'a>(
+        &self,
+        txn: &'a RoTxn,
+        filter: DatabaseFilter,
+        limit: Option<usize>,
+        output: &mut BTreeSet<EventBorrow<'a>>,
+    ) -> Result<(), Error> {
+        // Fetch by id
+        for id in filter.ids.iter() {
+            // Check if limit is set
+            if let Some(limit) = limit {
+                // Stop if limited
+                if output.len() >= limit {
+                    break;
+                }
+            }
+
+            if let Some(event) = self.get_event_by_id(txn, id)? {
+                if filter.match_event(&event) {
+                    output.insert(event);
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn query_by_authors_and_tags<'a>(
