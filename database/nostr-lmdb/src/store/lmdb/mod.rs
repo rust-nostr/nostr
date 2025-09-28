@@ -518,27 +518,7 @@ impl Lmdb {
             self.query_by_authors(txn, filter, since, &until, limit, &mut output)?;
         } else {
             tracing::debug!("Scraping...");
-
-            // SCRAPE
-            // This is INEFFICIENT as it scans through many events
-
-            let iter = self.ci_iter(txn, &since, &until)?;
-            for result in iter {
-                // Check if limit is set
-                if let Some(limit) = limit {
-                    // Stop if limited
-                    if output.len() >= limit {
-                        break;
-                    }
-                }
-
-                let (_key, value) = result?;
-                let event = self.get_event_by_id(txn, value)?.ok_or(Error::NotFound)?;
-
-                if filter.match_event(&event) {
-                    output.insert(event);
-                }
-            }
+            self.query_by_scraping(txn, filter, &since, &until, limit, &mut output)?;
         }
 
         // Optionally apply limit
@@ -731,6 +711,40 @@ impl Lmdb {
         for author in filter.authors.iter() {
             let iter = self.ac_iter(txn, author, &since, until)?;
             self.iterate_filter_until_limit(txn, &filter, iter, &mut since, limit, output)?;
+        }
+
+        Ok(())
+    }
+
+    /// SCRAPE
+    ///
+    /// This is INEFFICIENT as it scans through many events
+    fn query_by_scraping<'a>(
+        &self,
+        txn: &'a RoTxn,
+        filter: DatabaseFilter,
+        since: &Timestamp,
+        until: &Timestamp,
+        limit: Option<usize>,
+        output: &mut BTreeSet<EventBorrow<'a>>,
+    ) -> Result<(), Error> {
+        let iter = self.ci_iter(txn, since, until)?;
+
+        for result in iter {
+            // Check if limit is set
+            if let Some(limit) = limit {
+                // Stop if limited
+                if output.len() >= limit {
+                    break;
+                }
+            }
+
+            let (_key, value) = result?;
+            let event = self.get_event_by_id(txn, value)?.ok_or(Error::NotFound)?;
+
+            if filter.match_event(&event) {
+                output.insert(event);
+            }
         }
 
         Ok(())
