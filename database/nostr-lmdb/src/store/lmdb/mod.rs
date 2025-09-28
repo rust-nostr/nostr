@@ -95,6 +95,37 @@ impl From<&EventBorrow<'_>> for DeletionInfo {
     }
 }
 
+#[derive(Debug)]
+enum QueryFilterPattern {
+    Ids,
+    AuthorsAndKinds,
+    AuthorsAndTags,
+    KindsAndTags,
+    Tags,
+    Authors,
+    Scraping,
+}
+
+impl QueryFilterPattern {
+    fn from_filter(filter: &DatabaseFilter) -> Self {
+        if !filter.ids.is_empty() {
+            Self::Ids
+        } else if !filter.authors.is_empty() && !filter.kinds.is_empty() {
+            Self::AuthorsAndKinds
+        } else if !filter.authors.is_empty() && !filter.generic_tags.is_empty() {
+            Self::AuthorsAndTags
+        } else if !filter.kinds.is_empty() && !filter.generic_tags.is_empty() {
+            Self::KindsAndTags
+        } else if !filter.generic_tags.is_empty() {
+            Self::Tags
+        } else if !filter.authors.is_empty() {
+            Self::Authors
+        } else {
+            Self::Scraping
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Lmdb {
     /// LMDB env
@@ -498,27 +529,32 @@ impl Lmdb {
 
         let filter: DatabaseFilter = filter.into();
 
-        if !filter.ids.is_empty() {
-            tracing::debug!("Querying by IDs...");
-            self.query_by_ids(txn, filter, limit, &mut output)?;
-        } else if !filter.authors.is_empty() && !filter.kinds.is_empty() {
-            tracing::debug!("Querying by authors and kinds...");
-            self.query_by_authors_and_kinds(txn, filter, since, &until, limit, &mut output)?;
-        } else if !filter.authors.is_empty() && !filter.generic_tags.is_empty() {
-            tracing::debug!("Querying by authors and tags...");
-            self.query_by_authors_and_tags(txn, filter, since, &until, limit, &mut output)?;
-        } else if !filter.kinds.is_empty() && !filter.generic_tags.is_empty() {
-            tracing::debug!("Querying by kinds and tags...");
-            self.query_by_kinds_and_tags(txn, filter, since, &until, limit, &mut output)?;
-        } else if !filter.generic_tags.is_empty() {
-            tracing::debug!("Querying by tags...");
-            self.query_by_tags(txn, filter, since, &until, limit, &mut output)?;
-        } else if !filter.authors.is_empty() {
-            tracing::debug!("Querying by authors...");
-            self.query_by_authors(txn, filter, since, &until, limit, &mut output)?;
-        } else {
-            tracing::debug!("Scraping...");
-            self.query_by_scraping(txn, filter, &since, &until, limit, &mut output)?;
+        // Identify pattern
+        let pattern: QueryFilterPattern = QueryFilterPattern::from_filter(&filter);
+
+        tracing::debug!("Querying by pattern: {pattern:?}");
+
+        // Query by pattern
+        match pattern {
+            QueryFilterPattern::Ids => self.query_by_ids(txn, filter, limit, &mut output)?,
+            QueryFilterPattern::AuthorsAndKinds => {
+                self.query_by_authors_and_kinds(txn, filter, since, &until, limit, &mut output)?
+            }
+            QueryFilterPattern::AuthorsAndTags => {
+                self.query_by_authors_and_tags(txn, filter, since, &until, limit, &mut output)?
+            }
+            QueryFilterPattern::KindsAndTags => {
+                self.query_by_kinds_and_tags(txn, filter, since, &until, limit, &mut output)?
+            }
+            QueryFilterPattern::Tags => {
+                self.query_by_tags(txn, filter, since, &until, limit, &mut output)?
+            }
+            QueryFilterPattern::Authors => {
+                self.query_by_authors(txn, filter, since, &until, limit, &mut output)?
+            }
+            QueryFilterPattern::Scraping => {
+                self.query_by_scraping(txn, filter, &since, &until, limit, &mut output)?
+            }
         }
 
         // Optionally apply limit
