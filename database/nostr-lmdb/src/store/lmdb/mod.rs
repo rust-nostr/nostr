@@ -503,61 +503,7 @@ impl Lmdb {
             self.query_by_ids(txn, filter, limit, &mut output)?;
         } else if !filter.authors.is_empty() && !filter.kinds.is_empty() {
             tracing::debug!("Querying by authors and kinds...");
-
-            // We may bring since forward if we hit the limit without going back that
-            // far, so we use a mutable since:
-            let mut since = since;
-
-            for author in filter.authors.iter() {
-                for kind in filter.kinds.iter() {
-                    let iter = self.akc_iter(txn, author, *kind, &since, &until)?;
-
-                    // Count how many we have found of this author-kind pair, so we
-                    // can possibly update `since`
-                    let mut paircount = 0;
-
-                    'per_event: for result in iter {
-                        let (_key, value) = result?;
-                        let event = self.get_event_by_id(txn, value)?.ok_or(Error::NotFound)?;
-
-                        // If we have gone beyond since, we can stop early
-                        // (We have to check because `since` might change in this loop)
-                        if event.created_at < since {
-                            break 'per_event;
-                        }
-
-                        // check against the rest of the filter
-                        if filter.match_event(&event) {
-                            let created_at = event.created_at;
-
-                            // Accept the event
-                            output.insert(event);
-                            paircount += 1;
-
-                            // Stop this pair if limited
-                            if let Some(limit) = limit {
-                                if paircount >= limit {
-                                    // Since we found the limit just among this pair,
-                                    // potentially move since forward
-                                    if created_at > since {
-                                        since = created_at;
-                                    }
-                                    break 'per_event;
-                                }
-                            }
-
-                            // If kind is replaceable (and not parameterized)
-                            // then don't take any more events for this author-kind
-                            // pair.
-                            // NOTE that this optimization is difficult to implement
-                            // for other replaceable event situations
-                            if Kind::from(*kind).is_replaceable() {
-                                break 'per_event;
-                            }
-                        }
-                    }
-                }
-            }
+            self.query_by_authors_and_kinds(txn, filter, since, &until, limit, &mut output)?;
         } else if !filter.authors.is_empty() && !filter.generic_tags.is_empty() {
             tracing::debug!("Querying by authors and tags...");
             self.query_by_authors_and_tags(txn, filter, since, &until, limit, &mut output)?;
@@ -674,6 +620,73 @@ impl Lmdb {
             if let Some(event) = self.get_event_by_id(txn, id)? {
                 if filter.match_event(&event) {
                     output.insert(event);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn query_by_authors_and_kinds<'a>(
+        &self,
+        txn: &'a RoTxn,
+        filter: DatabaseFilter,
+        since: Timestamp,
+        until: &Timestamp,
+        limit: Option<usize>,
+        output: &mut BTreeSet<EventBorrow<'a>>,
+    ) -> Result<(), Error> {
+        // We may bring since forward if we hit the limit without going back that
+        // far, so we use a mutable since:
+        let mut since: Timestamp = since;
+
+        for author in filter.authors.iter() {
+            for kind in filter.kinds.iter() {
+                let iter = self.akc_iter(txn, author, *kind, &since, until)?;
+
+                // Count how many we have found of this author-kind pair, so we
+                // can possibly update `since`
+                let mut paircount = 0;
+
+                'per_event: for result in iter {
+                    let (_key, value) = result?;
+                    let event = self.get_event_by_id(txn, value)?.ok_or(Error::NotFound)?;
+
+                    // If we have gone beyond since, we can stop early
+                    // (We have to check because `since` might change in this loop)
+                    if event.created_at < since {
+                        break 'per_event;
+                    }
+
+                    // check against the rest of the filter
+                    if filter.match_event(&event) {
+                        let created_at = event.created_at;
+
+                        // Accept the event
+                        output.insert(event);
+                        paircount += 1;
+
+                        // Stop this pair if limited
+                        if let Some(limit) = limit {
+                            if paircount >= limit {
+                                // Since we found the limit just among this pair,
+                                // potentially move since forward
+                                if created_at > since {
+                                    since = created_at;
+                                }
+                                break 'per_event;
+                            }
+                        }
+
+                        // If kind is replaceable (and not parameterized)
+                        // then don't take any more events for this author-kind
+                        // pair.
+                        // NOTE that this optimization is difficult to implement
+                        // for other replaceable event situations
+                        if Kind::from(*kind).is_replaceable() {
+                            break 'per_event;
+                        }
+                    }
                 }
             }
         }
