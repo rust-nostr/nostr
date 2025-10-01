@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -exuo pipefail
 
 version="nightly-2025-03-12"
 flags=""

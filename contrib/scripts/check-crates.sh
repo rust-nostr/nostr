@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -exuo pipefail
 
 # MSRV
 msrv="1.70.0"
