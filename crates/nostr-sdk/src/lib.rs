@@ -19,15 +19,6 @@ pub use async_utility;
 #[doc(hidden)]
 pub use nostr::{self, *};
 #[doc(hidden)]
-#[cfg(all(target_arch = "wasm32", feature = "indexeddb"))]
-pub use nostr_indexeddb::WebDatabase;
-#[doc(hidden)]
-#[cfg(feature = "lmdb")]
-pub use nostr_lmdb::NostrLMDB;
-#[doc(hidden)]
-#[cfg(feature = "ndb")]
-pub use nostr_ndb::{self as ndb, NdbDatabase};
-#[doc(hidden)]
 pub use nostr_relay_pool::{
     self as pool, AtomicRelayServiceFlags, Relay, RelayConnectionStats, RelayOptions, RelayPool,
     RelayPoolNotification, RelayPoolOptions, RelayServiceFlags, RelayStatus,

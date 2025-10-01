@@ -4,6 +4,7 @@
 
 use std::time::Duration;
 
+use nostr_lmdb::NostrLMDB;
 use nostr_sdk::prelude::*;
 
 #[tokio::main]

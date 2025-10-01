@@ -25,6 +25,10 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Remove `lmdb`, `ndb` and `indexeddb` features (https://github.com/rust-nostr/nostr/pull/1083)
+
 ### Added
 
 - `Client::public_key` function to retrieve the public key (https://github.com/rust-nostr/nostr/pull/1028)

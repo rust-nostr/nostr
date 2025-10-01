@@ -2,6 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use nostr_lmdb::NostrLMDB;
 use nostr_sdk::prelude::*;
 
 #[tokio::main]

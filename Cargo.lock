@@ -2868,7 +2868,6 @@ dependencies = [
  "nostr",
  "nostr-connect",
  "nostr-database",
- "nostr-indexeddb",
  "nostr-lmdb",
  "nostr-ndb",
  "nostr-relay-pool",

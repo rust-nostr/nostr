@@ -105,9 +105,6 @@ The following crate feature flags are available:
 | Feature            | Default | Description                                                           |
 |--------------------|:-------:|-----------------------------------------------------------------------|
 | `tor`              |   No    | Enable support for embedded tor client                                |
-| `lmdb`             |   No    | Enable LMDB storage backend                                           |
-| `ndb`              |   No    | Enable [nostrdb](https://github.com/damus-io/nostrdb) storage backend |
-| `indexeddb`        |   No    | Enable Web's IndexedDb storage backend                                |
 | `pow-multi-thread` |   No    | Enable event POW mining using multi-threads                           |
 | `all-nips`         |   No    | Enable all NIPs                                                       |
 | `nip03`            |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                 |
