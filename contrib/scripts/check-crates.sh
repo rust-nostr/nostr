@@ -35,10 +35,6 @@ buildargs=(
     "-p nostr-http-file-storage"
     "-p nostr-database"
     "-p nostr-lmdb"
-    "-p nostr-mls-storage"
-    "-p nostr-mls-memory-storage"
-    "-p nostr-mls-sqlite-storage"
-    "-p nostr-mls"
     "-p nostr-indexeddb --target wasm32-unknown-unknown"
     "-p nostr-ndb"
     "-p nostr-keyring"
@@ -56,10 +52,6 @@ buildargs=(
 
 skip_msrv=(
     "-p nostr-lmdb"                       # MSRV: 1.72.0
-    "-p nostr-mls-storage"                # MSRV: 1.74.0
-    "-p nostr-mls-memory-storage"         # MSRV: 1.74.0
-    "-p nostr-mls-sqlite-storage"         # MSRV: 1.74.0
-    "-p nostr-mls"                        # MSRV: 1.74.0
     "-p nostr-keyring"                    # MSRV: 1.75.0
     "-p nostr-keyring --features async"   # MSRV: 1.75.0
     "-p nostr-sdk --features tor"         # MSRV: 1.77.0
