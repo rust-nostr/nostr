@@ -2,30 +2,27 @@
 
 ## Project structure
 
-The project is split up into several crates in the `crates/` directory:
+The project is split up into several crates:
 
-* Libraries:
-    * [**nostr**](./crates/nostr): Rust implementation of Nostr protocol
-    * Signers
-        * [**nostr-browser-signer**](./signer/nostr-browser-signer): Nostr Browser signer implementation (NIP-07)
-        * [**nostr-browser-signer-proxy**](./signer/nostr-browser-signer-proxy): Proxy for using the Nostr Browser signer (NIP-07) in native applications
-        * [**nostr-connect**](./signer/nostr-connect): Nostr Connect (NIP-46) 
-    * [**nostr-database**](./database/nostr-database): Events database abstraction and in-memory implementation
-        * [**nostr-lmdb**](./database/nostr-lmdb): LMDB storage backend
-        * [**nostr-ndb**](./database/nostr-ndb): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
-        * [**nostr-indexeddb**](./database/nostr-indexeddb): IndexedDB storage backend
-    * Remote File Storage implementations:
-        * [**nostr-blossom**](./rfs/nostr-blossom): A library for interacting with the Blossom protocol
-        * [**nostr-http-file-storage**](./rfs/nostr-http-file-storage): HTTP File Storage client (NIP-96)
-    * [**nostr-keyring**](./crates/nostr-keyring): Nostr Keyring
-    * [**nostr-relay-pool**](./crates/nostr-relay-pool): Nostr Relay Pool
-    * [**nostr-sdk**](./crates/nostr-sdk): High level client library
-    * [**nwc**](./crates/nwc): Nostr Wallet Connect (NWC) client (NIP-47)
-* Binaries (tools):
-    * [**nostr-cli**](./crates/nostr-cli): Nostr CLI
+-[**nostr**](./crates/nostr): Rust implementation of Nostr protocol
+- Signers
+    - [**nostr-browser-signer**](./signer/nostr-browser-signer): Nostr Browser signer implementation (NIP-07)
+    - [**nostr-browser-signer-proxy**](./signer/nostr-browser-signer-proxy): Proxy for using the Nostr Browser signer (NIP-07) in native applications
+    - [**nostr-connect**](./signer/nostr-connect): Nostr Connect (NIP-46) 
+- [**nostr-database**](./database/nostr-database): Events database abstraction and in-memory implementation
+    - [**nostr-lmdb**](./database/nostr-lmdb): LMDB storage backend
+    - [**nostr-ndb**](./database/nostr-ndb): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
+    - [**nostr-indexeddb**](./database/nostr-indexeddb): IndexedDB storage backend
+- Remote File Storage implementations:
+    - [**nostr-blossom**](./rfs/nostr-blossom): A library for interacting with the Blossom protocol
+    - [**nostr-http-file-storage**](./rfs/nostr-http-file-storage): HTTP File Storage client (NIP-96)
+- [**nostr-keyring**](./crates/nostr-keyring): Nostr Keyring
+- [**nostr-relay-pool**](./crates/nostr-relay-pool): Nostr Relay Pool
+- [**nostr-sdk**](./crates/nostr-sdk): High level client library
+- [**nwc**](./crates/nwc): Nostr Wallet Connect (NWC) client (NIP-47)
 
 > Note: this repository contains the Rust codebase.
-> There are several other projects (i.e., bindings)
+> There are several other projects (i.e., bindings, CLI, etc.)
 > which are maintained in other repositories <https://rust-nostr.org/projects>.
 
 ### Embedded

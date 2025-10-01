@@ -48,7 +48,6 @@ jobs:
           - nostr-sdk --features all-nips
           - nostr-sdk --features tor
           - nostr-sdk --all-features
-          - nostr-cli
     steps:
     - name: Checkout
       uses: actions/checkout@v4

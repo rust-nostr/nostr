@@ -47,7 +47,6 @@ buildargs=(
     "-p nostr-sdk --features all-nips"                            # Only NIPs features
     "-p nostr-sdk --features tor"                                 # Embedded tor client
     "-p nostr-sdk --all-features"                                 # All features
-    "-p nostr-cli"
 )
 
 skip_msrv=(
@@ -56,7 +55,6 @@ skip_msrv=(
     "-p nostr-keyring --features async"   # MSRV: 1.75.0
     "-p nostr-sdk --features tor"         # MSRV: 1.77.0
     "-p nostr-sdk --all-features"         # MSRV: 1.77.0 (since uses lmdb and tor)
-    "-p nostr-cli"                        # MSRV: 1.74.0
 )
 
 for arg in "${buildargs[@]}";
