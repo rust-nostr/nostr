@@ -4,18 +4,17 @@
 
 use std::collections::hash_map::Entry as HashMapEntry;
 use std::collections::{BTreeSet, HashMap, HashSet};
+use std::ops::Deref;
 use std::sync::Arc;
 
 use nostr::prelude::*;
-use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use nostr_gossip::{BestRelaySelection, NostrGossip};
 
-pub mod constant;
+use crate::client::Error;
 
-use self::constant::{
-    CHECK_OUTDATED_INTERVAL, MAX_NIP17_RELAYS, MAX_RELAYS_ALLOWED_IN_NIP65,
-    MAX_RELAYS_PER_NIP65_MARKER, PUBKEY_METADATA_OUTDATED_AFTER,
-};
-
+/// Used as a kind of protection if someone inserts too many relays in the NIP65 list.
+/// Only the first 10 relays are extracted from the NIP65 list and then handled.
+const MAX_RELAYS_ALLOWED_IN_NIP65: usize = 10;
 const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
 
 #[derive(Debug)]
@@ -28,353 +27,76 @@ pub enum BrokenDownFilters {
     Other(Filter),
 }
 
-#[derive(Debug, Clone, Default)]
-struct RelayList<T> {
-    pub collection: T,
-    /// Timestamp of when the event metadata was created
-    pub event_created_at: Timestamp,
-    /// Timestamp of when the metadata was updated
-    pub last_update: Timestamp,
-}
-
-#[derive(Debug, Clone, Default)]
-struct RelayLists {
-    pub nip17: RelayList<HashSet<RelayUrl>>,
-    pub nip65: RelayList<HashMap<RelayUrl, Option<RelayMetadata>>>,
-    /// Timestamp of the last check
-    pub last_check: Timestamp,
-}
-
-type PublicKeyMap = HashMap<PublicKey, RelayLists>;
-
-/// Gossip tracker
 #[derive(Debug, Clone)]
-pub struct Gossip {
-    /// Keep track of seen public keys and of their NIP65
-    public_keys: Arc<RwLock<PublicKeyMap>>,
+pub(crate) struct GossipWrapper {
+    gossip: Arc<dyn NostrGossip>,
 }
 
-impl Gossip {
-    pub fn new() -> Self {
-        Self {
-            public_keys: Arc::new(RwLock::new(HashMap::new())),
-        }
+impl Deref for GossipWrapper {
+    type Target = Arc<dyn NostrGossip>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.gossip
+    }
+}
+
+impl GossipWrapper {
+    #[inline]
+    pub(crate) fn new(gossip: Arc<dyn NostrGossip>) -> Self {
+        Self { gossip }
     }
 
-    pub async fn process_event(&self, event: &Event) {
-        // Check if the event can be processed
-        // This avoids the acquire of the lock for every event processed that is not a NIP17 or NIP65
-        if event.kind != Kind::RelayList && event.kind != Kind::InboxRelays {
-            return;
-        }
-
-        // Acquire write lock
-        let mut public_keys = self.public_keys.write().await;
-
-        // Update
-        self.update_event(&mut public_keys, event);
-    }
-
-    /// Update graph
-    ///
-    /// Only the first [`MAX_RELAYS_LIST`] relays will be used.
-    pub async fn update<I>(&self, events: I)
-    where
-        I: IntoIterator<Item = Event>,
-    {
-        let mut public_keys = self.public_keys.write().await;
-
-        for event in events.into_iter() {
-            self.update_event(&mut public_keys, &event);
-        }
-    }
-
-    fn update_event(&self, public_keys: &mut RwLockWriteGuard<PublicKeyMap>, event: &Event) {
-        if event.kind == Kind::RelayList {
-            public_keys
-                .entry(event.pubkey)
-                .and_modify(|lists| {
-                    // Update only if new metadata has more recent timestamp
-                    if event.created_at >= lists.nip65.event_created_at {
-                        lists.nip65 = RelayList {
-                            collection: extract_nip65_relay_list(
-                                event,
-                                MAX_RELAYS_PER_NIP65_MARKER,
-                            ),
-                            event_created_at: event.created_at,
-                            last_update: Timestamp::now(),
-                        };
-                    }
-                })
-                .or_insert_with(|| RelayLists {
-                    nip65: RelayList {
-                        collection: extract_nip65_relay_list(event, MAX_RELAYS_PER_NIP65_MARKER),
-                        event_created_at: event.created_at,
-                        last_update: Timestamp::now(),
-                    },
-                    ..Default::default()
-                });
-        } else if event.kind == Kind::InboxRelays {
-            public_keys
-                .entry(event.pubkey)
-                .and_modify(|lists| {
-                    // Update only if new metadata has more recent timestamp
-                    if event.created_at >= lists.nip17.event_created_at {
-                        lists.nip17 = RelayList {
-                            collection: nip17::extract_relay_list(event)
-                                .take(MAX_NIP17_RELAYS)
-                                .cloned()
-                                .collect(),
-                            event_created_at: event.created_at,
-                            last_update: Timestamp::now(),
-                        };
-                    }
-                })
-                .or_insert_with(|| RelayLists {
-                    nip17: RelayList {
-                        collection: nip17::extract_relay_list(event)
-                            .take(MAX_NIP17_RELAYS)
-                            .cloned()
-                            .collect(),
-                        event_created_at: event.created_at,
-                        last_update: Timestamp::now(),
-                    },
-                    ..Default::default()
-                });
-        }
-    }
-
-    /// Check for what public keys the metadata are outdated or not existent (both for NIP17 and NIP65)
-    pub async fn check_outdated<I>(&self, public_keys: I) -> HashSet<PublicKey>
-    where
-        I: IntoIterator<Item = PublicKey>,
-    {
-        let map = self.public_keys.read().await;
-        let now = Timestamp::now();
-
-        let mut outdated: HashSet<PublicKey> = HashSet::new();
-
-        for public_key in public_keys.into_iter() {
-            match map.get(&public_key) {
-                Some(lists) => {
-                    if lists.last_check + CHECK_OUTDATED_INTERVAL > now {
-                        continue;
-                    }
-
-                    // Check if collections are empty
-                    let empty: bool =
-                        lists.nip17.collection.is_empty() || lists.nip65.collection.is_empty();
-
-                    // Check if expired
-                    let expired: bool = lists.nip17.last_update + PUBKEY_METADATA_OUTDATED_AFTER
-                        < now
-                        || lists.nip65.last_update + PUBKEY_METADATA_OUTDATED_AFTER < now;
-
-                    if empty || expired {
-                        outdated.insert(public_key);
-                    }
-                }
-                None => {
-                    // Public key not found, insert into outdated
-                    outdated.insert(public_key);
-                }
-            }
-        }
-
-        outdated
-    }
-
-    pub async fn update_last_check<I>(&self, public_keys: I)
-    where
-        I: IntoIterator<Item = PublicKey>,
-    {
-        let mut map = self.public_keys.write().await;
-        let now = Timestamp::now();
-
-        for public_key in public_keys.into_iter() {
-            map.entry(public_key)
-                .and_modify(|lists| {
-                    lists.last_check = now;
-                })
-                .or_insert_with(|| RelayLists {
-                    last_check: now,
-                    ..Default::default()
-                });
-        }
-    }
-
-    fn get_nip17_relays<'a, I>(
+    pub(crate) async fn get_relays<'a, I>(
         &self,
-        txn: &RwLockReadGuard<PublicKeyMap>,
         public_keys: I,
-    ) -> HashSet<RelayUrl>
+        selection: BestRelaySelection,
+    ) -> Result<HashSet<RelayUrl>, Error>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
         let mut urls: HashSet<RelayUrl> = HashSet::new();
 
         for public_key in public_keys.into_iter() {
-            if let Some(lists) = txn.get(public_key) {
-                for url in lists.nip17.collection.iter() {
-                    urls.insert(url.clone());
-                }
-            }
+            let relays: HashSet<RelayUrl> =
+                self.gossip.get_best_relays(public_key, selection).await?;
+            urls.extend(relays);
         }
 
-        urls
+        Ok(urls)
     }
 
-    fn get_nip65_relays<'a, I>(
+    async fn map_relays<'a, I>(
         &self,
-        txn: &RwLockReadGuard<PublicKeyMap>,
         public_keys: I,
-        metadata: Option<RelayMetadata>,
-    ) -> HashSet<RelayUrl>
-    where
-        I: IntoIterator<Item = &'a PublicKey>,
-    {
-        let mut urls: HashSet<RelayUrl> = HashSet::new();
-
-        for public_key in public_keys.into_iter() {
-            if let Some(lists) = txn.get(public_key) {
-                for (url, m) in lists.nip65.collection.iter() {
-                    let insert: bool = match m {
-                        Some(val) => match metadata {
-                            Some(metadata) => val == &metadata,
-                            None => true,
-                        },
-                        None => true,
-                    };
-
-                    if insert {
-                        urls.insert(url.clone());
-                    }
-                }
-            }
-        }
-
-        urls
-    }
-
-    fn map_nip17_relays<'a, I>(
-        &self,
-        txn: &RwLockReadGuard<PublicKeyMap>,
-        public_keys: I,
-    ) -> HashMap<RelayUrl, BTreeSet<PublicKey>>
+        selection: BestRelaySelection,
+    ) -> Result<HashMap<RelayUrl, BTreeSet<PublicKey>>, Error>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
         let mut urls: HashMap<RelayUrl, BTreeSet<PublicKey>> = HashMap::new();
 
         for public_key in public_keys.into_iter() {
-            if let Some(lists) = txn.get(public_key) {
-                for url in lists.nip17.collection.iter() {
-                    urls.entry(url.clone())
-                        .and_modify(|s| {
-                            s.insert(*public_key);
-                        })
-                        .or_default()
-                        .insert(*public_key);
-                }
+            let relays: HashSet<RelayUrl> =
+                self.gossip.get_best_relays(public_key, selection).await?;
+
+            for url in relays.into_iter() {
+                urls.entry(url)
+                    .and_modify(|s| {
+                        s.insert(*public_key);
+                    })
+                    .or_default()
+                    .insert(*public_key);
             }
         }
 
-        urls
+        Ok(urls)
     }
 
-    fn map_nip65_relays<'a, I>(
+    pub(crate) async fn break_down_filter(
         &self,
-        txn: &RwLockReadGuard<PublicKeyMap>,
-        public_keys: I,
-        metadata: RelayMetadata,
-    ) -> HashMap<RelayUrl, BTreeSet<PublicKey>>
-    where
-        I: IntoIterator<Item = &'a PublicKey>,
-    {
-        let mut urls: HashMap<RelayUrl, BTreeSet<PublicKey>> = HashMap::new();
-
-        for public_key in public_keys.into_iter() {
-            if let Some(lists) = txn.get(public_key) {
-                for (url, m) in lists.nip65.collection.iter() {
-                    let insert: bool = match m {
-                        Some(val) => val == &metadata,
-                        None => true,
-                    };
-
-                    if insert {
-                        urls.entry(url.clone())
-                            .and_modify(|s| {
-                                s.insert(*public_key);
-                            })
-                            .or_default()
-                            .insert(*public_key);
-                    }
-                }
-            }
-        }
-
-        urls
-    }
-
-    /// Get outbox (write) relays for public keys
-    #[inline]
-    pub async fn get_nip65_outbox_relays<'a, I>(&self, public_keys: I) -> HashSet<RelayUrl>
-    where
-        I: IntoIterator<Item = &'a PublicKey>,
-    {
-        let txn = self.public_keys.read().await;
-        self.get_nip65_relays(&txn, public_keys, Some(RelayMetadata::Write))
-    }
-
-    /// Get inbox (read) relays for public keys
-    #[inline]
-    pub async fn get_nip65_inbox_relays<'a, I>(&self, public_keys: I) -> HashSet<RelayUrl>
-    where
-        I: IntoIterator<Item = &'a PublicKey>,
-    {
-        let txn = self.public_keys.read().await;
-        self.get_nip65_relays(&txn, public_keys, Some(RelayMetadata::Read))
-    }
-
-    /// Get NIP17 inbox (read) relays for public keys
-    #[inline]
-    pub async fn get_nip17_inbox_relays<'a, I>(&self, public_keys: I) -> HashSet<RelayUrl>
-    where
-        I: IntoIterator<Item = &'a PublicKey>,
-    {
-        let txn = self.public_keys.read().await;
-        self.get_nip17_relays(&txn, public_keys)
-    }
-
-    /// Map outbox (write) relays for public keys
-    #[inline]
-    fn map_nip65_outbox_relays<'a, I>(
-        &self,
-        txn: &RwLockReadGuard<PublicKeyMap>,
-        public_keys: I,
-    ) -> HashMap<RelayUrl, BTreeSet<PublicKey>>
-    where
-        I: IntoIterator<Item = &'a PublicKey>,
-    {
-        self.map_nip65_relays(txn, public_keys, RelayMetadata::Write)
-    }
-
-    /// Map NIP65 inbox (read) relays for public keys
-    #[inline]
-    fn map_nip65_inbox_relays<'a, I>(
-        &self,
-        txn: &RwLockReadGuard<PublicKeyMap>,
-        public_keys: I,
-    ) -> HashMap<RelayUrl, BTreeSet<PublicKey>>
-    where
-        I: IntoIterator<Item = &'a PublicKey>,
-    {
-        self.map_nip65_relays(txn, public_keys, RelayMetadata::Read)
-    }
-
-    pub async fn break_down_filter(&self, filter: Filter) -> BrokenDownFilters {
-        let txn = self.public_keys.read().await;
-
+        filter: Filter,
+    ) -> Result<BrokenDownFilters, Error> {
         // Extract `p` tag from generic tags and parse public key hex
         let p_tag: Option<BTreeSet<PublicKey>> = filter.generic_tags.get(&P_TAG).map(|s| {
             s.iter()
@@ -385,16 +107,21 @@ impl Gossip {
         // Match pattern
         match (&filter.authors, &p_tag) {
             (Some(authors), None) => {
-                // Get map of outbox relays
+                // Get map of write relays
                 let mut outbox: HashMap<RelayUrl, BTreeSet<PublicKey>> =
-                    self.map_nip65_outbox_relays(&txn, authors);
+                    self.map_relays(authors, BestRelaySelection::Write).await?;
+
+                // Get map of private message relays
+                let nip17_relays = self
+                    .map_relays(authors, BestRelaySelection::PrivateMessage)
+                    .await?;
 
                 // Extend with NIP17 relays
-                outbox.extend(self.map_nip17_relays(&txn, authors));
+                outbox.extend(nip17_relays);
 
                 // No relay available for the authors
                 if outbox.is_empty() {
-                    return BrokenDownFilters::Orphan(filter);
+                    return Ok(BrokenDownFilters::Orphan(filter));
                 }
 
                 let mut map: HashMap<RelayUrl, Filter> = HashMap::with_capacity(outbox.len());
@@ -409,19 +136,25 @@ impl Gossip {
                     map.insert(relay, new_filter);
                 }
 
-                BrokenDownFilters::Filters(map)
+                Ok(BrokenDownFilters::Filters(map))
             }
             (None, Some(p_public_keys)) => {
                 // Get map of inbox relays
-                let mut inbox: HashMap<RelayUrl, BTreeSet<PublicKey>> =
-                    self.map_nip65_inbox_relays(&txn, p_public_keys);
+                let mut inbox: HashMap<RelayUrl, BTreeSet<PublicKey>> = self
+                    .map_relays(p_public_keys, BestRelaySelection::Read)
+                    .await?;
+
+                // Get map of private message relays
+                let nip17_relays = self
+                    .map_relays(p_public_keys, BestRelaySelection::PrivateMessage)
+                    .await?;
 
                 // Extend with NIP17 relays
-                inbox.extend(self.map_nip17_relays(&txn, p_public_keys));
+                inbox.extend(nip17_relays);
 
                 // No relay available for the p tags
                 if inbox.is_empty() {
-                    return BrokenDownFilters::Orphan(filter);
+                    return Ok(BrokenDownFilters::Orphan(filter));
                 }
 
                 let mut map: HashMap<RelayUrl, Filter> = HashMap::with_capacity(inbox.len());
@@ -438,19 +171,27 @@ impl Gossip {
                     map.insert(relay, new_filter);
                 }
 
-                BrokenDownFilters::Filters(map)
+                Ok(BrokenDownFilters::Filters(map))
             }
             (Some(authors), Some(p_public_keys)) => {
+                let union: BTreeSet<PublicKey> = authors.union(p_public_keys).copied().collect();
+
                 // Get map of outbox and inbox relays
-                let mut relays: HashSet<RelayUrl> =
-                    self.get_nip65_relays(&txn, authors.union(p_public_keys), None);
+                let mut relays: HashSet<RelayUrl> = self
+                    .get_relays(union.iter(), BestRelaySelection::All)
+                    .await?;
+
+                // Get map of private message relays
+                let nip17_relays = self
+                    .get_relays(union.iter(), BestRelaySelection::PrivateMessage)
+                    .await?;
 
                 // Extend with NIP17 relays
-                relays.extend(self.get_nip17_relays(&txn, authors.union(p_public_keys)));
+                relays.extend(nip17_relays);
 
                 // No relay available for the authors and p tags
                 if relays.is_empty() {
-                    return BrokenDownFilters::Orphan(filter);
+                    return Ok(BrokenDownFilters::Orphan(filter));
                 }
 
                 let mut map: HashMap<RelayUrl, Filter> = HashMap::with_capacity(relays.len());
@@ -460,10 +201,10 @@ impl Gossip {
                     map.insert(relay, filter.clone());
                 }
 
-                BrokenDownFilters::Filters(map)
+                Ok(BrokenDownFilters::Filters(map))
             }
             // Nothing to do, add to `other` list
-            (None, None) => BrokenDownFilters::Other(filter),
+            (None, None) => Ok(BrokenDownFilters::Other(filter)),
         }
     }
 }

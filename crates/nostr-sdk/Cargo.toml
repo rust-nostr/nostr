@@ -35,6 +35,7 @@ nip98 = ["nostr/nip98"]
 async-utility.workspace = true
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
+nostr-gossip.workspace = true
 nostr-relay-pool.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 
