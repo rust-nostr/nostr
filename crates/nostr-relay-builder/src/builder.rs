@@ -280,10 +280,14 @@ impl RelayBuilder {
         self
     }
 
-    /// Set min POW difficulty
+    /// Sets the minimum Proof of Work difficulty.
+    ///
+    /// Only values `> 0` are accepted!
     #[inline]
     pub fn min_pow(mut self, difficulty: u8) -> Self {
-        self.min_pow = Some(difficulty);
+        if difficulty > 0 {
+            self.min_pow = Some(difficulty);
+        }
         self
     }
 
