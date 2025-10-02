@@ -7,7 +7,7 @@
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::futures_util::stream::BoxStream;
@@ -15,7 +15,7 @@ use async_utility::futures_util::{future, StreamExt};
 use async_utility::task;
 use atomic_destructor::{AtomicDestructor, StealthClone};
 use nostr_database::prelude::*;
-use tokio::sync::{broadcast, mpsc, RwLockReadGuard};
+use tokio::sync::{broadcast, mpsc, Mutex, RwLockReadGuard};
 
 pub mod builder;
 pub mod constants;
@@ -1195,78 +1195,72 @@ impl RelayPool {
             return Err(Error::NoRelays);
         }
 
-        // Construct new map with also `Relay` struct
-        let mut map: HashMap<RelayUrl, (Relay, Filter)> = HashMap::with_capacity(targets.len());
+        let mut urls = Vec::with_capacity(targets.len());
+        let mut futures = Vec::with_capacity(targets.len());
 
-        // Populate the new map.
-        // Return an error if the relay doesn't exists.
         for (url, filter) in targets.into_iter() {
-            // Get relay
-            let relay: Relay = self.internal_relay(&relays, &url).cloned()?;
+            // Try to get the relay
+            let relay: &Relay = self.internal_relay(&relays, &url)?;
 
-            // Insert into new map
-            map.insert(url, (relay, filter));
+            // Push url
+            urls.push(url);
+
+            // Push stream events future
+            futures.push(relay.stream_events(filter, timeout, policy));
         }
 
-        // Drop relays read guard
-        drop(relays);
+        // Wait that futures complete
+        let awaited = future::join_all(futures).await;
 
-        // Create channel
-        // TODO: use unbounded channel otherwise events can be lost since below the `try_send` is used.
-        let (tx, rx) = mpsc::channel::<Event>(map.len() * 512);
+        // Re-construct streams
+        let mut streams = Vec::with_capacity(awaited.len());
 
-        // Spawn stream task
+        for (url, stream) in urls.iter().zip(awaited.into_iter()) {
+            match stream {
+                Ok(stream) => streams.push(stream),
+                Err(e) => tracing::error!(url = %url, error = %e, "Failed to stream events."),
+            }
+        }
+
+        // Create a new channel
+        let (tx, rx) = mpsc::channel::<Event>(streams.len() * 512);
+
+        // Single driver task: polls all streams, de-duplicates, forwards
         task::spawn(async move {
             // IDs collection, needed to check if an event was already sent to the stream
-            let ids: Mutex<HashSet<EventId>> = Mutex::new(HashSet::new());
+            let ids: Arc<Mutex<HashSet<EventId>>> = Arc::new(Mutex::new(HashSet::new()));
 
-            let mut urls: Vec<RelayUrl> = Vec::with_capacity(map.len());
-            let mut futures = Vec::with_capacity(map.len());
+            let mut futures = Vec::with_capacity(streams.len());
 
-            // Populate `urls` and `futures` vectors
-            for (url, (relay, filter)) in map.into_iter() {
-                urls.push(url);
-                futures.push(relay.fetch_events_with_callback_owned(
-                    filter,
-                    timeout,
-                    policy,
-                    |event| {
-                        // Use a synchronous mutex here!
-                        //
-                        // From tokio docs:
-                        // ```
-                        // A synchronous mutex will block the current thread when waiting to acquire the lock.
-                        // This, in turn, will block other tasks from processing.
-                        // However, switching to tokio::sync::Mutex usually does not help as the asynchronous mutex uses a synchronous mutex internally.
-                        //
-                        // As a rule of thumb, using a synchronous mutex from within asynchronous code is fine as long
-                        // as contention remains low and the lock is not held across calls to .await.
-                        // ```
-                        //
-                        // SAFETY: panics only if another user of this mutex panicked while holding the mutex.
-                        let mut ids = ids.lock().unwrap();
+            for (url, mut stream) in urls.into_iter().zip(streams.into_iter()) {
+                let tx = tx.clone();
+                let ids = ids.clone();
 
-                        // Check if ID was already seen or insert into set.
-                        if ids.insert(event.id) {
-                            // Immediately drop the set
-                            drop(ids);
+                futures.push(async move {
+                    while let Some(res) = stream.next().await {
+                        match res {
+                            Ok(event) => {
+                                let mut ids = ids.lock().await;
 
-                            // Send event
-                            let _ = tx.try_send(event);
+                                // Check if ID was already seen or insert into set.
+                                if ids.insert(event.id) {
+                                    // Immediately drop the set
+                                    drop(ids);
+
+                                    // Send event
+                                    let _ = tx.send(event).await;
+                                }
+                            }
+                            Err(e) => {
+                                tracing::error!(url = %url, error = %e, "Failed to stream events.")
+                            }
                         }
-                    },
-                ));
+                    }
+                });
             }
 
-            // Join all futures
-            let list = future::join_all(futures).await;
-
-            // Iter results
-            for (url, result) in urls.into_iter().zip(list.into_iter()) {
-                if let Err(e) = result {
-                    tracing::error!(url = %url, error = %e, "Failed to stream events.");
-                }
-            }
+            // Wait that all futures complete
+            future::join_all(futures).await;
         });
 
         // Return stream

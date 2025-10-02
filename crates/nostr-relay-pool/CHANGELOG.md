@@ -34,6 +34,10 @@
 
 - Add checks to ensure REQ limits are respected before receiving the EOSE message (https://github.com/rust-nostr/nostr/pull/1024)
 
+### Added
+
+- Add `Relay::stream_events` method (https://github.com/rust-nostr/nostr/pull/1088)
+
 ### Fixed
 
 - `ban_relay_on_mismatch` no longer requires `verify_subscriptions` to be enabled.
