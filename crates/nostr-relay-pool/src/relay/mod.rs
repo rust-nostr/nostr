@@ -7,8 +7,12 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
+use std::pin::Pin;
+use std::task::{Context, Poll};
 use std::time::Duration;
 
+use async_utility::futures_util::stream::BoxStream as BoxedStream;
+use async_utility::futures_util::{Stream, StreamExt};
 use async_utility::time;
 use async_wsocket::futures_util::Future;
 use async_wsocket::ConnectionMode;
@@ -120,6 +124,49 @@ impl Reconciliation {
         self.sent.extend(other.sent);
         self.received.extend(other.received);
         self.send_failures.extend(other.send_failures);
+    }
+}
+
+struct SubscriptionActivityEventStream {
+    rx: mpsc::Receiver<SubscriptionActivity>,
+    done: bool,
+}
+
+impl SubscriptionActivityEventStream {
+    fn new(rx: mpsc::Receiver<SubscriptionActivity>) -> Self {
+        Self { rx, done: false }
+    }
+}
+
+impl Stream for SubscriptionActivityEventStream {
+    type Item = Result<Event, Error>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        if self.done {
+            return Poll::Ready(None);
+        }
+
+        match Pin::new(&mut self.rx).poll_recv(cx) {
+            Poll::Ready(Some(activity)) => match activity {
+                SubscriptionActivity::ReceivedEvent(event) => Poll::Ready(Some(Ok(event))),
+                SubscriptionActivity::Closed(reason) => match reason {
+                    SubscriptionAutoClosedReason::AuthenticationFailed => {
+                        self.done = true;
+                        Poll::Ready(Some(Err(Error::AuthenticationFailed)))
+                    }
+                    SubscriptionAutoClosedReason::Closed(message) => {
+                        self.done = true;
+                        Poll::Ready(Some(Err(Error::RelayMessage(message))))
+                    }
+                    SubscriptionAutoClosedReason::Completed => {
+                        self.done = true;
+                        Poll::Ready(None)
+                    }
+                },
+            },
+            Poll::Ready(None) => Poll::Ready(None),
+            Poll::Pending => Poll::Pending,
+        }
     }
 }
 
@@ -564,16 +611,14 @@ impl Relay {
         self.inner.unsubscribe_all().await
     }
 
-    /// Get events of filter with custom callback
-    pub(crate) async fn fetch_events_with_callback(
+    pub(crate) async fn stream_events<'a>(
         &self,
         filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
-        mut callback: impl FnMut(Event),
-    ) -> Result<(), Error> {
-        // Create channel
-        let (tx, mut rx) = mpsc::channel(512);
+    ) -> Result<BoxedStream<'a, Result<Event, Error>>, Error> {
+        // Create channels
+        let (tx, rx) = mpsc::channel(512);
 
         // Compose auto-closing options
         let opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
@@ -585,42 +630,7 @@ impl Relay {
         self.subscribe_auto_closing(id, filter, opts, Some(tx))
             .await?;
 
-        // Handle subscription activity
-        while let Some(activity) = rx.recv().await {
-            match activity {
-                SubscriptionActivity::ReceivedEvent(event) => {
-                    callback(event);
-                }
-                SubscriptionActivity::Closed(reason) => {
-                    match reason {
-                        // NIP42 authentication failed
-                        SubscriptionAutoClosedReason::AuthenticationFailed => {
-                            return Err(Error::AuthenticationFailed);
-                        }
-                        // Closed by relay
-                        SubscriptionAutoClosedReason::Closed(message) => {
-                            return Err(Error::RelayMessage(message));
-                        }
-                        // Completed
-                        SubscriptionAutoClosedReason::Completed => break,
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    #[inline]
-    pub(crate) async fn fetch_events_with_callback_owned(
-        self,
-        filter: Filter,
-        timeout: Duration,
-        policy: ReqExitPolicy,
-        callback: impl Fn(Event),
-    ) -> Result<(), Error> {
-        self.fetch_events_with_callback(filter, timeout, policy, callback)
-            .await
+        Ok(Box::pin(SubscriptionActivityEventStream::new(rx)))
     }
 
     /// Fetch events
@@ -630,11 +640,19 @@ impl Relay {
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<Events, Error> {
+        // Construct a new events collection
         let mut events: Events = Events::new(&filter);
-        self.fetch_events_with_callback(filter, timeout, policy, |event| {
+
+        // Stream events
+        let mut stream = self.stream_events(filter, timeout, policy).await?;
+
+        while let Some(res) = stream.next().await {
+            // Get event from the result
+            let event: Event = res?;
+
             // Use force insert here!
             // Due to the configurable REQ exit policy, the user may want to wait for events after EOSE.
-            // If the filter had a limit, the force insert allows adding events post-EOSE.
+            // If the filter has a limit, the force insert allows adding events post-EOSE.
             //
             // For example, if we use `Events::insert` here,
             // if the filter is '{"kinds":[1],"limit":3}' and the policy `ReqExitPolicy::WaitForEventsAfterEOSE(1)`,
@@ -644,8 +662,8 @@ impl Relay {
             //
             // LOOKUP_ID: EVENTS_FORCE_INSERT
             events.force_insert(event);
-        })
-        .await?;
+        }
+
         Ok(events)
     }
 
