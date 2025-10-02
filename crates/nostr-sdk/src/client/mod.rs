@@ -10,6 +10,7 @@ use std::iter;
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_utility::futures_util::stream::BoxStream;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
 use nostr_relay_pool::prelude::*;
@@ -849,7 +850,7 @@ impl Client {
         &self,
         filter: Filter,
         timeout: Duration,
-    ) -> Result<ReceiverStream<Event>, Error> {
+    ) -> Result<BoxStream<Event>, Error> {
         // Check if gossip is enabled
         if self.opts.gossip {
             self.gossip_stream_events(filter, timeout, ReqExitPolicy::ExitOnEOSE)
@@ -875,7 +876,7 @@ impl Client {
         urls: I,
         filter: Filter,
         timeout: Duration,
-    ) -> Result<ReceiverStream<Event>, Error>
+    ) -> Result<BoxStream<Event>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -898,7 +899,7 @@ impl Client {
         &self,
         targets: HashMap<RelayUrl, Filter>,
         timeout: Duration,
-    ) -> Result<ReceiverStream<Event>, Error> {
+    ) -> Result<BoxStream<Event>, Error> {
         Ok(self
             .pool
             .stream_events_targeted(targets, timeout, ReqExitPolicy::default())
@@ -1491,11 +1492,11 @@ impl Client {
         filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<ReceiverStream<Event>, Error> {
+    ) -> Result<BoxStream<Event>, Error> {
         let filters = self.break_down_filter(filter).await?;
 
         // Stream events
-        let stream: ReceiverStream<Event> = self
+        let stream: BoxStream<Event> = self
             .pool
             .stream_events_targeted(filters, timeout, policy)
             .await?;
@@ -1512,7 +1513,7 @@ impl Client {
         let mut events: Events = Events::new(&filter);
 
         // Stream events
-        let mut stream: ReceiverStream<Event> =
+        let mut stream: BoxStream<Event> =
             self.gossip_stream_events(filter, timeout, policy).await?;
 
         while let Some(event) = stream.next().await {

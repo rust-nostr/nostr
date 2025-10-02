@@ -25,7 +25,7 @@ pub mod prelude;
 pub mod relay;
 #[doc(hidden)]
 mod shared;
-pub mod stream;
+mod stream;
 pub mod transport;
 
 pub use self::pool::options::RelayPoolOptions;

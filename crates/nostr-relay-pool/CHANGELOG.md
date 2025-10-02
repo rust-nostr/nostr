@@ -28,6 +28,7 @@
 ### Breaking changes
 
 - Rename `BoxSink` and `BoxStream` to `WebSocketSink` and `WebSocketStream` (https://github.com/rust-nostr/nostr/pull/1086)
+- Replace `ReceiverStream` with `BoxStream` and make `stream` module private (https://github.com/rust-nostr/nostr/pull/1087)
 
 ### Changed
 

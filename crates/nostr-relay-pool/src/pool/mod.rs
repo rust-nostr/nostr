@@ -10,6 +10,7 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use async_utility::futures_util::stream::BoxStream;
 use async_utility::futures_util::{future, StreamExt};
 use async_utility::task;
 use atomic_destructor::{AtomicDestructor, StealthClone};
@@ -1147,7 +1148,7 @@ impl RelayPool {
         filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<ReceiverStream<Event>, Error> {
+    ) -> Result<BoxStream<Event>, Error> {
         let urls: Vec<RelayUrl> = self.__read_relay_urls().await;
         self.stream_events_from(urls, filter, timeout, policy).await
     }
@@ -1159,7 +1160,7 @@ impl RelayPool {
         filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<ReceiverStream<Event>, Error>
+    ) -> Result<BoxStream<Event>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -1180,7 +1181,7 @@ impl RelayPool {
         targets: HashMap<RelayUrl, Filter>,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<ReceiverStream<Event>, Error> {
+    ) -> Result<BoxStream<Event>, Error> {
         // Check if `targets` map is empty
         if targets.is_empty() {
             return Err(Error::NoRelaysSpecified);
@@ -1269,7 +1270,7 @@ impl RelayPool {
         });
 
         // Return stream
-        Ok(ReceiverStream::new(rx))
+        Ok(Box::pin(ReceiverStream::new(rx)))
     }
 
     /// Handle notifications
