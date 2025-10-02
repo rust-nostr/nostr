@@ -37,7 +37,7 @@ use crate::policy::AdmitStatus;
 use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
-use crate::transport::websocket::{BoxSink, BoxStream};
+use crate::transport::websocket::{WebSocketSink, WebSocketStream};
 
 type ClientMessageJson = String;
 
@@ -500,7 +500,7 @@ impl InnerRelay {
         self.stats.just_woke_up();
     }
 
-    pub(super) fn spawn_connection_task(&self, stream: Option<(BoxSink, BoxStream)>) {
+    pub(super) fn spawn_connection_task(&self, stream: Option<(WebSocketSink, WebSocketStream)>) {
         // Check if the connection task is already running
         // This is checked also later, but it's checked also here to avoid a full-clone if we know that is already running.
         if self.is_running() {
@@ -516,7 +516,7 @@ impl InnerRelay {
     }
 
     /// This **MUST** be called only by the [`InnerRelay::spawn_connection_task`] method!
-    async fn connection_task(self, mut stream: Option<(BoxSink, BoxStream)>) {
+    async fn connection_task(self, mut stream: Option<(WebSocketSink, WebSocketStream)>) {
         // Set the connection task as running and get the previous value.
         let is_running: bool = self.atomic.running.swap(true, Ordering::SeqCst);
 
@@ -656,7 +656,7 @@ impl InnerRelay {
         &self,
         timeout: Duration,
         status_on_failure: RelayStatus,
-    ) -> Result<(BoxSink, BoxStream), Error> {
+    ) -> Result<(WebSocketSink, WebSocketStream), Error> {
         // Update status
         self.set_status(RelayStatus::Connecting, true);
 
@@ -696,7 +696,7 @@ impl InnerRelay {
     /// If `stream` arg is passed, no connection attempt will be done.
     async fn connect_and_run(
         &self,
-        stream: Option<(BoxSink, BoxStream)>,
+        stream: Option<(WebSocketSink, WebSocketStream)>,
         rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
         last_ws_error: &mut Option<String>,
     ) {
@@ -738,8 +738,8 @@ impl InnerRelay {
     /// Run message handlers, pinger and other services
     async fn post_connection(
         &self,
-        mut ws_tx: BoxSink,
-        ws_rx: BoxStream,
+        mut ws_tx: WebSocketSink,
+        ws_rx: WebSocketStream,
         rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
     ) {
         // (Re)subscribe to relay
@@ -788,7 +788,7 @@ impl InnerRelay {
 
     async fn sender_message_handler(
         &self,
-        ws_tx: &mut BoxSink,
+        ws_tx: &mut WebSocketSink,
         rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
         ping: &PingTracker,
     ) -> Result<(), Error> {
@@ -860,7 +860,7 @@ impl InnerRelay {
 
     async fn receiver_message_handler(
         &self,
-        mut ws_rx: BoxStream,
+        mut ws_rx: WebSocketStream,
         ping: &PingTracker,
         ingester_tx: mpsc::UnboundedSender<IngesterCommand>,
     ) -> Result<(), Error> {
@@ -2092,7 +2092,7 @@ impl InnerRelay {
 }
 
 /// Send WebSocket messages with timeout set to [WEBSOCKET_TX_TIMEOUT].
-async fn send_ws_msgs(tx: &mut BoxSink, msgs: Vec<Message>) -> Result<(), Error> {
+async fn send_ws_msgs(tx: &mut WebSocketSink, msgs: Vec<Message>) -> Result<(), Error> {
     let mut stream = futures_util::stream::iter(msgs.into_iter().map(Ok));
     match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.send_all(&mut stream)).await {
         Some(res) => Ok(res?),
@@ -2101,7 +2101,7 @@ async fn send_ws_msgs(tx: &mut BoxSink, msgs: Vec<Message>) -> Result<(), Error>
 }
 
 /// Send WebSocket messages with timeout set to [WEBSOCKET_TX_TIMEOUT].
-async fn close_ws(tx: &mut BoxSink) -> Result<(), Error> {
+async fn close_ws(tx: &mut WebSocketSink) -> Result<(), Error> {
     // TODO: remove timeout from here?
     match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.close()).await {
         Some(res) => Ok(res?),

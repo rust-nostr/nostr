@@ -25,6 +25,10 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Rename `BoxSink` and `BoxStream` to `WebSocketSink` and `WebSocketStream` (https://github.com/rust-nostr/nostr/pull/1086)
+
 ### Changed
 
 - Add checks to ensure REQ limits are respected before receiving the EOSE message (https://github.com/rust-nostr/nostr/pull/1024)

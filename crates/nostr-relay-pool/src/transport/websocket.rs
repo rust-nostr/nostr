@@ -20,16 +20,16 @@ use super::error::TransportError;
 
 /// WebSocket transport sink
 #[cfg(not(target_arch = "wasm32"))]
-pub type BoxSink = Box<dyn Sink<Message, Error = TransportError> + Send + Unpin>;
+pub type WebSocketSink = Box<dyn Sink<Message, Error = TransportError> + Send + Unpin>;
 /// WebSocket transport stream
 #[cfg(not(target_arch = "wasm32"))]
-pub type BoxStream = Box<dyn Stream<Item = Result<Message, TransportError>> + Send + Unpin>;
+pub type WebSocketStream = Box<dyn Stream<Item = Result<Message, TransportError>> + Send + Unpin>;
 /// WebSocket transport sink
 #[cfg(target_arch = "wasm32")]
-pub type BoxSink = Box<dyn Sink<Message, Error = TransportError> + Unpin>;
+pub type WebSocketSink = Box<dyn Sink<Message, Error = TransportError> + Unpin>;
 /// WebSocket transport stream
 #[cfg(target_arch = "wasm32")]
-pub type BoxStream = Box<dyn Stream<Item = Result<Message, TransportError>> + Unpin>;
+pub type WebSocketStream = Box<dyn Stream<Item = Result<Message, TransportError>> + Unpin>;
 
 #[doc(hidden)]
 pub trait IntoWebSocketTransport {
@@ -71,7 +71,7 @@ pub trait WebSocketTransport: fmt::Debug + Send + Sync {
         url: &'a Url,
         mode: &'a ConnectionMode,
         timeout: Duration,
-    ) -> BoxedFuture<'a, Result<(BoxSink, BoxStream), TransportError>>;
+    ) -> BoxedFuture<'a, Result<(WebSocketSink, WebSocketStream), TransportError>>;
 }
 
 /// Default websocket transport
@@ -88,7 +88,7 @@ impl WebSocketTransport for DefaultWebsocketTransport {
         url: &'a Url,
         mode: &'a ConnectionMode,
         timeout: Duration,
-    ) -> BoxedFuture<'a, Result<(BoxSink, BoxStream), TransportError>> {
+    ) -> BoxedFuture<'a, Result<(WebSocketSink, WebSocketStream), TransportError>> {
         Box::pin(async move {
             // Connect
             let socket: WebSocket = WebSocket::connect(url, mode, timeout)
@@ -100,8 +100,9 @@ impl WebSocketTransport for DefaultWebsocketTransport {
 
             // NOTE: don't use sink_map_err here, as it may cause panics!
             // Issue: https://github.com/rust-nostr/nostr/issues/984
-            let sink: BoxSink = Box::new(TransportSink(tx)) as BoxSink;
-            let stream: BoxStream = Box::new(rx.map_err(TransportError::backend)) as BoxStream;
+            let sink: WebSocketSink = Box::new(TransportSink(tx)) as WebSocketSink;
+            let stream: WebSocketStream =
+                Box::new(rx.map_err(TransportError::backend)) as WebSocketStream;
 
             Ok((sink, stream))
         })

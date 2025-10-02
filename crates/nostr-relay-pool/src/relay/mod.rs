@@ -39,7 +39,7 @@ pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
 use crate::policy::AdmitStatus;
 use crate::shared::SharedState;
-use crate::transport::websocket::{BoxSink, BoxStream};
+use crate::transport::websocket::{WebSocketSink, WebSocketStream};
 
 /// Subscription auto-closed reason
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -331,7 +331,7 @@ impl Relay {
 
         // Try to connect
         // This will set the status to "terminated" if the connection fails
-        let stream: (BoxSink, BoxStream) = self
+        let stream: (WebSocketSink, WebSocketStream) = self
             .inner
             ._try_connect(timeout, RelayStatus::Terminated)
             .await?;
