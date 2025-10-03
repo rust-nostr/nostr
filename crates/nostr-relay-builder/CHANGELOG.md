@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Fixed
+
+- Consider a PoW difficulty if it’s greater than 0 in `RelayBuilder::min_pow` (https://github.com/rust-nostr/nostr/pull/1085)
+
 ## v0.43.0 - 2025/07/28
 
 No notable changes in this release.
