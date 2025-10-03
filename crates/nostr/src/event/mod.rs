@@ -574,6 +574,15 @@ mod benches {
     }
 
     #[bench]
+    pub fn event_check_pow(bh: &mut Bencher) {
+        let json = r#"{"id":"000006d11924b38e55275637c6401965c54f9ae05ffed89bce0edc1720984656","pubkey":"385c3a6ec0b9d57a4330dbd6284989be5bd00e41c535f9ca39b6ae7c521b81cd","created_at":1759497131,"kind":1,"tags":[["nonce","1180727","20"]],"content":"This is a Nostr message with embedded proof-of-work","sig":"0b216dfa714db2f146f9fa7cf20954c3fd5a2dabf69cd30ab58cf142a7ebe0fd3f4bc8e9c261245dabc0be8f942ec15d3fe3ce4dcbe81df01ceb4ced91739f52"}"#;
+        let event = Event::from_json(json).unwrap();
+        bh.iter(|| {
+            black_box(event.check_pow(16));
+        });
+    }
+
+    #[bench]
     pub fn verify_event_id(bh: &mut Bencher) {
         let json = r#"{"content":"uRuvYr585B80L6rSJiHocw==?iv=oh6LVqdsYYol3JfFnXTbPA==","created_at":1640839235,"id":"2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45","kind":4,"pubkey":"f86c44a2de95d9149b51c6a29afeabba264c18e2fa7c49de93424a0c56947785","sig":"a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd","tags":[["p","13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"]]}"#;
         let event = Event::from_json(json).unwrap();
