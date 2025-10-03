@@ -3086,7 +3086,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-relay-pool"
-version = "0.43.0"
+version = "0.43.1"
 dependencies = [
  "async-utility",
  "async-wsocket",
