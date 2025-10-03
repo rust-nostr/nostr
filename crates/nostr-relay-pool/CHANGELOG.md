@@ -42,6 +42,12 @@
 
 - `ban_relay_on_mismatch` no longer requires `verify_subscriptions` to be enabled.
 
+## v0.43.1 - 2025/10/03
+
+### Changed
+
+- Rework event stream ensuring that all REQs are sent before continuing with the code execution (https://github.com/rust-nostr/nostr/pull/1088)
+
 ## v0.43.0 - 2025/07/28
 
 ### Breaking changes
