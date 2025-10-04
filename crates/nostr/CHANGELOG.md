@@ -39,6 +39,7 @@
 - Add NIP-B0 support (https://github.com/rust-nostr/nostr/pull/1077)
 - Add NIP-7D support (https://github.com/rust-nostr/nostr/pull/1071)
 - Add NIP-C7 support (https://github.com/rust-nostr/nostr/pull/1067)
+- Add NIP-60 support (https://github.com/rust-nostr/nostr/pull/1092)
 - Implement `ToBech32` trait for `Nip21`
 - Add `Kind::CashuNutZapInfo` (10019) and `Kind::CashuNutZap` (9321) variants
 - Add nip47 holdinvoice methods and notification (https://github.com/rust-nostr/nostr/pull/1019)

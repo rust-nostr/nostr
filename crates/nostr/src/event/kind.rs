@@ -160,6 +160,7 @@ kind_variants! {
     CashuWallet => 17375, "Cashu Wallet", "<https://github.com/nostr-protocol/nips/blob/master/60.md>",
     CashuWalletUnspentProof => 7375, "Cashu Wallet Unspent Proof", "<https://github.com/nostr-protocol/nips/blob/master/60.md>",
     CashuWalletSpendingHistory => 7376, "Cashu Wallet Spending History", "<https://github.com/nostr-protocol/nips/blob/master/60.md>",
+    CashuWalletQuote => 7374, "Cashu Wallet Redeeming a quote", "<https://github.com/nostr-protocol/nips/blob/master/60.md>",
     CashuNutZapInfo => 10019, "Cashu Nut Zap informational event", "<https://github.com/nostr-protocol/nips/blob/master/61.md>",
     CashuNutZap => 9321, "Cashu Nut Zap", "<https://github.com/nostr-protocol/nips/blob/master/61.md>",
     CodeSnippet => 1337, "Code Snippets", "<https://github.com/nostr-protocol/nips/blob/master/C0.md>",

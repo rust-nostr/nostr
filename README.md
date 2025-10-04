@@ -91,7 +91,7 @@ Learn more about `rust-nostr` at <https://rust-nostr.org>.
 |     ✅     | [57 - Lightning Zaps](https://github.com/nostr-protocol/nips/blob/master/57.md)                                 |
 |     ✅     | [58 - Badges](https://github.com/nostr-protocol/nips/blob/master/58.md)                                         |
 |     ✅     | [59 - Gift Wrap](https://github.com/nostr-protocol/nips/blob/master/59.md)                                      |
-|     ❌     | [60 - Cashu Wallet](https://github.com/nostr-protocol/nips/blob/master/60.md)                                   |
+|     ✅     | [60 - Cashu Wallet](https://github.com/nostr-protocol/nips/blob/master/60.md)                                   |
 |     ❌     | [61 - Nutzaps](https://github.com/nostr-protocol/nips/blob/master/61.md)                                        |
 |     ✅     | [62 - Request to Vanish](https://github.com/nostr-protocol/nips/blob/master/62.md)                              |
 |     ❌     | [64 - Chess (PGN)](https://github.com/nostr-protocol/nips/blob/master/64.md)                                    |

@@ -98,6 +98,7 @@ The following crate feature flags are available:
 | `nip49`            |   No    | Enable NIP-49: Private Key Encryption                         |
 | `nip57`            |   No    | Enable NIP-57: Zaps                                           |
 | `nip59`            |   No    | Enable NIP-59: Gift Wrap                                      |
+| `nip60`            |   No    | Enable NIP-60: Cashu Wallets                                  |
 
 ## Changelog
 
