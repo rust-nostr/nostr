@@ -316,6 +316,21 @@ impl InnerLocalRelay {
                         .await;
                 }
 
+                if !event.verify_id() {
+                    return send_msg(
+                            ws_tx,
+                            RelayMessage::Ok {
+                                event_id: event.id,
+                                status: false,
+                                message: Cow::Owned(format!(
+                                    "{}: invalid event ID",
+                                    MachineReadablePrefix::Invalid
+                                )),
+                            },
+                        )
+                        .await;
+                }
+
                 // Check POW
                 if let Some(difficulty) = self.min_pow {
                     if !event.id.check_pow(difficulty) {
@@ -332,6 +347,21 @@ impl InnerLocalRelay {
                             )
                             .await;
                     }
+                }
+
+                if !event.verify_signature() {
+                    return send_msg(
+                            ws_tx,
+                            RelayMessage::Ok {
+                                event_id: event.id,
+                                status: false,
+                                message: Cow::Owned(format!(
+                                    "{}: invalid event signature",
+                                    MachineReadablePrefix::Invalid
+                                )),
+                            },
+                        )
+                        .await;
                 }
 
                 // Check if it's configured to require NIP42 authentication for writing
@@ -456,36 +486,6 @@ impl InnerLocalRelay {
                             )
                             .await;
                     }
-                }
-
-                if !event.verify_id() {
-                    return send_msg(
-                            ws_tx,
-                            RelayMessage::Ok {
-                                event_id: event.id,
-                                status: false,
-                                message: Cow::Owned(format!(
-                                    "{}: invalid event ID",
-                                    MachineReadablePrefix::Invalid
-                                )),
-                            },
-                        )
-                        .await;
-                }
-
-                if !event.verify_signature() {
-                    return send_msg(
-                            ws_tx,
-                            RelayMessage::Ok {
-                                event_id: event.id,
-                                status: false,
-                                message: Cow::Owned(format!(
-                                    "{}: invalid event signature",
-                                    MachineReadablePrefix::Invalid
-                                )),
-                            },
-                        )
-                        .await;
                 }
 
                 if event.kind.is_ephemeral() {
