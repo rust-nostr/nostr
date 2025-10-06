@@ -24,8 +24,7 @@ pub(crate) enum GossipKind {
 }
 
 impl GossipKind {
-    #[allow(clippy::wrong_self_convention)]
-    pub(crate) fn to_event_kind(self) -> Kind {
+    pub(crate) fn to_event_kind(&self) -> Kind {
         match self {
             Self::Nip17 => Kind::InboxRelays,
             Self::Nip65 => Kind::RelayList,
@@ -48,6 +47,8 @@ struct RelayList<T> {
     pub collection: T,
     /// Timestamp of when the event metadata was created
     pub event_created_at: Timestamp,
+    /// Timestamp of the last check
+    pub last_check: Option<Timestamp>,
     /// Timestamp of when the metadata was updated
     pub last_update: Timestamp,
 }
@@ -56,8 +57,6 @@ struct RelayList<T> {
 struct RelayLists {
     pub nip17: RelayList<HashSet<RelayUrl>>,
     pub nip65: RelayList<HashMap<RelayUrl, Option<RelayMetadata>>>,
-    /// Timestamp of the last check
-    pub last_check: Timestamp,
 }
 
 type PublicKeyMap = HashMap<PublicKey, RelayLists>;
@@ -117,6 +116,7 @@ impl Gossip {
                                 MAX_RELAYS_PER_NIP65_MARKER,
                             ),
                             event_created_at: event.created_at,
+                            last_check: None,
                             last_update: Timestamp::now(),
                         };
                     }
@@ -125,6 +125,7 @@ impl Gossip {
                     nip65: RelayList {
                         collection: extract_nip65_relay_list(event, MAX_RELAYS_PER_NIP65_MARKER),
                         event_created_at: event.created_at,
+                        last_check: None,
                         last_update: Timestamp::now(),
                     },
                     ..Default::default()
@@ -141,6 +142,7 @@ impl Gossip {
                                 .cloned()
                                 .collect(),
                             event_created_at: event.created_at,
+                            last_check: None,
                             last_update: Timestamp::now(),
                         };
                     }
@@ -152,6 +154,7 @@ impl Gossip {
                             .cloned()
                             .collect(),
                         event_created_at: event.created_at,
+                        last_check: None,
                         last_update: Timestamp::now(),
                     },
                     ..Default::default()
@@ -172,11 +175,7 @@ impl Gossip {
         for public_key in public_keys.into_iter() {
             match map.get(&public_key) {
                 Some(lists) => {
-                    if lists.last_check + CHECK_OUTDATED_INTERVAL > now {
-                        continue;
-                    }
-
-                    let (empty, expired) = match kind {
+                    let (last_check, empty, expired) = match kind {
                         GossipKind::Nip17 => {
                             // Check if the collection is empty
                             let empty: bool = lists.nip17.collection.is_empty();
@@ -185,7 +184,7 @@ impl Gossip {
                             let expired: bool =
                                 lists.nip17.last_update + PUBKEY_METADATA_OUTDATED_AFTER < now;
 
-                            (empty, expired)
+                            (lists.nip17.last_check.unwrap_or_default(), empty, expired)
                         }
                         GossipKind::Nip65 => {
                             // Check if the collection is empty
@@ -195,9 +194,13 @@ impl Gossip {
                             let expired: bool =
                                 lists.nip65.last_update + PUBKEY_METADATA_OUTDATED_AFTER < now;
 
-                            (empty, expired)
+                            (lists.nip65.last_check.unwrap_or_default(), empty, expired)
                         }
                     };
+
+                    if last_check + CHECK_OUTDATED_INTERVAL > now {
+                        continue;
+                    }
 
                     if empty || expired {
                         outdated.insert(public_key);
@@ -213,7 +216,7 @@ impl Gossip {
         outdated
     }
 
-    pub async fn update_last_check<I>(&self, public_keys: I)
+    pub async fn update_last_check<I>(&self, public_keys: I, kind: &GossipKind)
     where
         I: IntoIterator<Item = PublicKey>,
     {
@@ -222,12 +225,19 @@ impl Gossip {
 
         for public_key in public_keys.into_iter() {
             map.entry(public_key)
-                .and_modify(|lists| {
-                    lists.last_check = now;
+                .and_modify(|lists| match kind {
+                    GossipKind::Nip17 => lists.nip17.last_check = Some(now),
+                    GossipKind::Nip65 => lists.nip65.last_check = Some(now),
                 })
-                .or_insert_with(|| RelayLists {
-                    last_check: now,
-                    ..Default::default()
+                .or_insert_with(|| {
+                    let mut lists = RelayLists::default();
+
+                    match kind {
+                        GossipKind::Nip17 => lists.nip17.last_check = Some(now),
+                        GossipKind::Nip65 => lists.nip65.last_check = Some(now),
+                    }
+
+                    lists
                 });
         }
     }
