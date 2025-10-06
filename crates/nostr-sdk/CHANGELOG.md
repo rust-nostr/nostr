@@ -33,6 +33,7 @@
 ### Changed
 
 - Fetch gossip NIP-17 list only if really needed (https://github.com/rust-nostr/nostr/pull/1090)
+- Try to fetch only newer events when updating gossip lists (https://github.com/rust-nostr/nostr/pull/1090)
 
 ### Added
 
