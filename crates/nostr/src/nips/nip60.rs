@@ -16,6 +16,7 @@ use crate::key::PublicKey;
 #[cfg(feature = "nip44")]
 use crate::prelude::nip44;
 use crate::types::Url;
+use crate::types::url::ParseError;
 use crate::Timestamp;
 
 /// NIP60 error
@@ -29,7 +30,7 @@ pub enum Error {
     /// Tag error
     Tag(crate::event::tag::Error),
     /// URL error
-    Url(url::ParseError),
+    Url(ParseError),
     /// Invalid direction
     InvalidDirection,
     /// Missing required field
@@ -81,8 +82,8 @@ impl From<crate::event::tag::Error> for Error {
     }
 }
 
-impl From<url::ParseError> for Error {
-    fn from(e: url::ParseError) -> Self {
+impl From<ParseError> for Error {
+    fn from(e: ParseError) -> Self {
         Self::Url(e)
     }
 }
