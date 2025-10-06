@@ -15,6 +15,7 @@ The project is split up into several crates:
     - [**nostr-indexeddb**](./database/nostr-indexeddb): IndexedDB storage backend
 - [**nostr-gossip**](./gossip/nostr-gossip): Gossip traits
     - [**nostr-gossip-memory**](./gossip/nostr-gossip-memory): In-memory gossip database
+    - [**nostr-gossip-sqlite**](./gossip/nostr-gossip-sqlite): SQLite storage for gossip
 - Remote File Storage implementations:
     - [**nostr-blossom**](./rfs/nostr-blossom): A library for interacting with the Blossom protocol
     - [**nostr-http-file-storage**](./rfs/nostr-http-file-storage): HTTP File Storage client (NIP-96)
