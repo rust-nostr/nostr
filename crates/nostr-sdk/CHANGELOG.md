@@ -30,6 +30,10 @@
 - Remove `lmdb`, `ndb` and `indexeddb` features (https://github.com/rust-nostr/nostr/pull/1083)
 - Replace `ReceiverStream` with `BoxStream` (https://github.com/rust-nostr/nostr/pull/1087)
 
+### Changed
+
+- Fetch gossip NIP-17 list only if really needed (https://github.com/rust-nostr/nostr/pull/1090)
+
 ### Added
 
 - `Client::public_key` function to retrieve the public key (https://github.com/rust-nostr/nostr/pull/1028)

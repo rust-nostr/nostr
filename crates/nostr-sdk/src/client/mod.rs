@@ -25,7 +25,7 @@ pub use self::error::Error;
 pub use self::options::{ClientOptions, SleepWhenIdle};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Connection, ConnectionTarget};
-use crate::gossip::{BrokenDownFilters, Gossip};
+use crate::gossip::{self, BrokenDownFilters, Gossip, GossipFilterPattern, GossipKind};
 
 /// Nostr client
 #[derive(Debug, Clone)]
@@ -1323,22 +1323,29 @@ impl Client {
 // Gossip
 impl Client {
     /// Check if there are outdated public keys and update them
-    async fn check_and_update_gossip<I>(&self, public_keys: I) -> Result<(), Error>
+    async fn check_and_update_gossip<I>(
+        &self,
+        public_keys: I,
+        kind: GossipKind,
+    ) -> Result<(), Error>
     where
         I: IntoIterator<Item = PublicKey>,
     {
         let outdated_public_keys: HashSet<PublicKey> =
-            self.gossip.check_outdated(public_keys).await;
+            self.gossip.check_outdated(public_keys, &kind).await;
 
         // No outdated public keys, immediately return.
         if outdated_public_keys.is_empty() {
             return Ok(());
         }
 
+        // Get kind
+        let kind: Kind = kind.to_event_kind();
+
         // Compose filters
         let filter: Filter = Filter::default()
             .authors(outdated_public_keys.clone())
-            .kinds([Kind::RelayList, Kind::InboxRelays]);
+            .kind(kind);
 
         // Query from database
         let stored_events: Events = self.database().query(filter.clone()).await?;
@@ -1374,23 +1381,38 @@ impl Client {
         // Extract all public keys from filters
         let public_keys = filter.extract_public_keys();
 
-        // Check and update outdated public keys
-        self.check_and_update_gossip(public_keys).await?;
+        // Find pattern to decide what list to update
+        let pattern: GossipFilterPattern = gossip::find_filter_pattern(&filter);
+
+        // Update outdated public keys
+        match &pattern {
+            GossipFilterPattern::Nip65 => {
+                self.check_and_update_gossip(public_keys, GossipKind::Nip65)
+                    .await?;
+            }
+            GossipFilterPattern::Nip65AndNip17 => {
+                self.check_and_update_gossip(public_keys.iter().copied(), GossipKind::Nip65)
+                    .await?;
+                self.check_and_update_gossip(public_keys, GossipKind::Nip17)
+                    .await?;
+            }
+        }
 
         // Broken-down filters
-        let filters: HashMap<RelayUrl, Filter> = match self.gossip.break_down_filter(filter).await {
-            BrokenDownFilters::Filters(filters) => filters,
-            BrokenDownFilters::Orphan(filter) | BrokenDownFilters::Other(filter) => {
-                // Get read relays
-                let read_relays: Vec<RelayUrl> = self.pool.__read_relay_urls().await;
+        let filters: HashMap<RelayUrl, Filter> =
+            match self.gossip.break_down_filter(filter, pattern).await {
+                BrokenDownFilters::Filters(filters) => filters,
+                BrokenDownFilters::Orphan(filter) | BrokenDownFilters::Other(filter) => {
+                    // Get read relays
+                    let read_relays: Vec<RelayUrl> = self.pool.__read_relay_urls().await;
 
-                let mut map = HashMap::with_capacity(read_relays.len());
-                for url in read_relays.into_iter() {
-                    map.insert(url, filter.clone());
+                    let mut map = HashMap::with_capacity(read_relays.len());
+                    for url in read_relays.into_iter() {
+                        map.insert(url, filter.clone());
+                    }
+                    map
                 }
-                map
-            }
-        };
+            };
 
         // Add gossip (outbox and inbox) relays
         for url in filters.keys() {
@@ -1417,9 +1439,15 @@ impl Client {
 
         // Get involved public keys and check what are up to date in the gossip graph and which ones require an update.
         if is_gift_wrap {
+            let kind: GossipKind = if is_nip17 {
+                GossipKind::Nip17
+            } else {
+                GossipKind::Nip65
+            };
+
             // Get only p tags since the author of a gift wrap is randomized
             let public_keys = event.tags.public_keys().copied();
-            self.check_and_update_gossip(public_keys).await?;
+            self.check_and_update_gossip(public_keys, kind).await?;
         } else {
             // Get all public keys involved in the event: author + p tags
             let public_keys = event
@@ -1427,7 +1455,8 @@ impl Client {
                 .public_keys()
                 .copied()
                 .chain(iter::once(event.pubkey));
-            self.check_and_update_gossip(public_keys).await?;
+            self.check_and_update_gossip(public_keys, GossipKind::Nip65)
+                .await?;
         };
 
         // Check if NIP17 or NIP65
