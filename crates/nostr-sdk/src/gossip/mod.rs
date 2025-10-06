@@ -9,10 +9,10 @@ use std::sync::Arc;
 use nostr::prelude::*;
 use nostr_gossip::{BestRelaySelection, NostrGossip};
 
+use crate::client::options::GossipOptions;
 use crate::client::Error;
 
 const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
-const MAX_NIP17_RELAYS: usize = 3;
 
 #[derive(Debug)]
 pub enum BrokenDownFilters {
@@ -94,6 +94,7 @@ impl GossipWrapper {
         &self,
         filter: Filter,
         pattern: GossipFilterPattern,
+        opts: &GossipOptions,
     ) -> Result<BrokenDownFilters, Error> {
         // Extract `p` tag from generic tags and parse public key hex
         let p_tag: Option<BTreeSet<PublicKey>> = filter.generic_tags.get(&P_TAG).map(|s| {
@@ -107,17 +108,32 @@ impl GossipWrapper {
             (Some(authors), None) => {
                 // Get map of write relays
                 let mut outbox: HashMap<RelayUrl, BTreeSet<PublicKey>> = self
-                    .map_relays(authors, BestRelaySelection::Write { limit: 2 })
+                    .map_relays(
+                        authors,
+                        BestRelaySelection::Write {
+                            limit: opts.write_relays_per_user,
+                        },
+                    )
                     .await?;
 
                 // Get map of hints relays
                 let hints: HashMap<RelayUrl, BTreeSet<PublicKey>> = self
-                    .map_relays(authors, BestRelaySelection::Hints { limit: 1 })
+                    .map_relays(
+                        authors,
+                        BestRelaySelection::Hints {
+                            limit: opts.hint_relays_per_user,
+                        },
+                    )
                     .await?;
 
                 // Get map of relays that received more events
                 let most_received: HashMap<RelayUrl, BTreeSet<PublicKey>> = self
-                    .map_relays(authors, BestRelaySelection::MostReceived { limit: 1 })
+                    .map_relays(
+                        authors,
+                        BestRelaySelection::MostReceived {
+                            limit: opts.most_used_relays_per_user,
+                        },
+                    )
                     .await?;
 
                 // Extend with hints and most received
@@ -130,7 +146,7 @@ impl GossipWrapper {
                         .map_relays(
                             authors,
                             BestRelaySelection::PrivateMessage {
-                                limit: MAX_NIP17_RELAYS,
+                                limit: opts.nip17_relays,
                             },
                         )
                         .await?;
@@ -160,17 +176,32 @@ impl GossipWrapper {
             (None, Some(p_public_keys)) => {
                 // Get map of inbox relays
                 let mut inbox: HashMap<RelayUrl, BTreeSet<PublicKey>> = self
-                    .map_relays(p_public_keys, BestRelaySelection::Read { limit: 2 })
+                    .map_relays(
+                        p_public_keys,
+                        BestRelaySelection::Read {
+                            limit: opts.read_relays_per_user,
+                        },
+                    )
                     .await?;
 
                 // Get map of hints relays
                 let hints: HashMap<RelayUrl, BTreeSet<PublicKey>> = self
-                    .map_relays(p_public_keys, BestRelaySelection::Hints { limit: 1 })
+                    .map_relays(
+                        p_public_keys,
+                        BestRelaySelection::Hints {
+                            limit: opts.hint_relays_per_user,
+                        },
+                    )
                     .await?;
 
                 // Get map of relays that received more events
                 let most_received: HashMap<RelayUrl, BTreeSet<PublicKey>> = self
-                    .map_relays(p_public_keys, BestRelaySelection::MostReceived { limit: 1 })
+                    .map_relays(
+                        p_public_keys,
+                        BestRelaySelection::MostReceived {
+                            limit: opts.most_used_relays_per_user,
+                        },
+                    )
                     .await?;
 
                 // Extend with hints and most received
@@ -184,7 +215,7 @@ impl GossipWrapper {
                         .map_relays(
                             p_public_keys,
                             BestRelaySelection::PrivateMessage {
-                                limit: MAX_NIP17_RELAYS,
+                                limit: opts.nip17_relays,
                             },
                         )
                         .await?;
@@ -221,10 +252,10 @@ impl GossipWrapper {
                     .get_relays(
                         union.iter(),
                         BestRelaySelection::All {
-                            read: 2,
-                            write: 2,
-                            hints: 1,
-                            most_received: 1,
+                            read: opts.read_relays_per_user,
+                            write: opts.write_relays_per_user,
+                            hints: opts.hint_relays_per_user,
+                            most_received: opts.most_used_relays_per_user,
                         },
                     )
                     .await?;
@@ -236,7 +267,7 @@ impl GossipWrapper {
                         .get_relays(
                             union.iter(),
                             BestRelaySelection::PrivateMessage {
-                                limit: MAX_NIP17_RELAYS,
+                                limit: opts.nip17_relays,
                             },
                         )
                         .await?;
@@ -369,7 +400,11 @@ mod tests {
         // Single author
         let filter = Filter::new().author(keys_a.public_key);
         match gossip
-            .break_down_filter(filter.clone(), GossipFilterPattern::Nip65)
+            .break_down_filter(
+                filter.clone(),
+                GossipFilterPattern::Nip65,
+                &GossipOptions::default(),
+            )
             .await
             .unwrap()
         {
@@ -385,7 +420,11 @@ mod tests {
         // Multiple authors
         let authors_filter = Filter::new().authors([keys_a.public_key, keys_b.public_key]);
         match gossip
-            .break_down_filter(authors_filter.clone(), GossipFilterPattern::Nip65)
+            .break_down_filter(
+                authors_filter.clone(),
+                GossipFilterPattern::Nip65,
+                &GossipOptions::default(),
+            )
             .await
             .unwrap()
         {
@@ -416,7 +455,11 @@ mod tests {
         // Other filter
         let search_filter = Filter::new().search("Test").limit(10);
         match gossip
-            .break_down_filter(search_filter.clone(), GossipFilterPattern::Nip65)
+            .break_down_filter(
+                search_filter.clone(),
+                GossipFilterPattern::Nip65,
+                &GossipOptions::default(),
+            )
             .await
             .unwrap()
         {
@@ -429,7 +472,11 @@ mod tests {
         // Single p tags
         let p_tag_filter = Filter::new().pubkey(keys_a.public_key);
         match gossip
-            .break_down_filter(p_tag_filter.clone(), GossipFilterPattern::Nip65)
+            .break_down_filter(
+                p_tag_filter.clone(),
+                GossipFilterPattern::Nip65,
+                &GossipOptions::default(),
+            )
             .await
             .unwrap()
         {
@@ -450,7 +497,11 @@ mod tests {
             .author(keys_a.public_key)
             .pubkey(keys_b.public_key);
         match gossip
-            .break_down_filter(filter.clone(), GossipFilterPattern::Nip65)
+            .break_down_filter(
+                filter.clone(),
+                GossipFilterPattern::Nip65,
+                &GossipOptions::default(),
+            )
             .await
             .unwrap()
         {
@@ -470,7 +521,11 @@ mod tests {
         let random_keys = Keys::generate();
         let filter = Filter::new().author(random_keys.public_key);
         match gossip
-            .break_down_filter(filter.clone(), GossipFilterPattern::Nip65)
+            .break_down_filter(
+                filter.clone(),
+                GossipFilterPattern::Nip65,
+                &GossipOptions::default(),
+            )
             .await
             .unwrap()
         {
