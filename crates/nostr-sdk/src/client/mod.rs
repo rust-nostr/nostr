@@ -1326,13 +1326,13 @@ impl Client {
     async fn check_and_update_gossip<I>(
         &self,
         public_keys: I,
-        kind: GossipKind,
+        gossip_kind: GossipKind,
     ) -> Result<(), Error>
     where
         I: IntoIterator<Item = PublicKey>,
     {
         let outdated_public_keys: HashSet<PublicKey> =
-            self.gossip.check_outdated(public_keys, &kind).await;
+            self.gossip.check_outdated(public_keys, &gossip_kind).await;
 
         // No outdated public keys, immediately return.
         if outdated_public_keys.is_empty() {
@@ -1340,7 +1340,7 @@ impl Client {
         }
 
         // Get kind
-        let kind: Kind = kind.to_event_kind();
+        let kind: Kind = gossip_kind.to_event_kind();
 
         // Compose database filter
         let db_filter: Filter = Filter::default()
@@ -1402,7 +1402,9 @@ impl Client {
                     missing_public_keys.remove(&event.pubkey);
 
                     // Update the last check for this public key
-                    self.gossip.update_last_check([event.pubkey]).await;
+                    self.gossip
+                        .update_last_check([event.pubkey], &gossip_kind)
+                        .await;
                 }
 
                 updated_events = updated_events.merge(events);
@@ -1418,7 +1420,9 @@ impl Client {
             .await?;
 
         // Update the last check for the missing public keys
-        self.gossip.update_last_check(missing_public_keys).await;
+        self.gossip
+            .update_last_check(missing_public_keys, &gossip_kind)
+            .await;
 
         // Merge all the events
         let merged: Events = stored_events.merge(updated_events).merge(missing_events);
