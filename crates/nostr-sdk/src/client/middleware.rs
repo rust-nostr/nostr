@@ -2,13 +2,12 @@ use std::sync::Arc;
 
 use nostr::util::BoxedFuture;
 use nostr::{Event, RelayUrl, SubscriptionId};
+use nostr_gossip::NostrGossip;
 use nostr_relay_pool::policy::{AdmitPolicy, AdmitStatus, PolicyError};
-
-use crate::gossip::Gossip;
 
 #[derive(Debug)]
 pub(crate) struct AdmissionPolicyMiddleware {
-    pub(crate) gossip: Option<Gossip>,
+    pub(crate) gossip: Option<Arc<dyn NostrGossip>>,
     pub(crate) external_policy: Option<Arc<dyn AdmitPolicy>>,
 }
 
@@ -34,7 +33,10 @@ impl AdmitPolicy for AdmissionPolicyMiddleware {
         Box::pin(async move {
             // Process event in gossip
             if let Some(gossip) = &self.gossip {
-                gossip.process_event(event).await;
+                gossip
+                    .process(event, Some(relay_url))
+                    .await
+                    .map_err(PolicyError::backend)?;
             }
 
             // Check if event is allowed by external policy
