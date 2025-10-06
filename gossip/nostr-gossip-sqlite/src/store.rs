@@ -11,18 +11,17 @@ use nostr_gossip::error::GossipError;
 use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
 use sqlx::migrate::Migrator;
 use sqlx::sqlite::SqliteConnectOptions;
-use sqlx::{Sqlite, SqlitePool, Transaction};
+use sqlx::{Executor, Sqlite, SqlitePool, Transaction};
 
-use crate::constant::PUBKEY_METADATA_OUTDATED_AFTER;
+use crate::constant::{PUBKEY_METADATA_OUTDATED_AFTER, READ_WRITE_FLAGS};
 use crate::error::Error;
 use crate::flags::Flags;
-use crate::model::PublicKeyRow;
+use crate::model::ListRow;
 
 /// Nostr Gossip SQLite store.
 #[derive(Debug, Clone)]
 pub struct NostrGossipSqlite {
     pool: SqlitePool,
-    //best_relays_limit: usize,
 }
 
 impl NostrGossipSqlite {
@@ -70,82 +69,21 @@ impl NostrGossipSqlite {
         // Beings a new transaction
         let mut tx = self.pool.begin().await?;
 
+        // Save public key and get ID
         let pk_id: i32 = get_or_save_public_key(&mut tx, &event.pubkey).await?;
 
+        // Check the event kind
         match &event.kind {
             // Extract NIP-65 relays
             Kind::RelayList => {
-                for (relay_url, metadata) in nip65::extract_relay_list(event) {
-                    let relay_id: i32 = get_or_save_relay_url(&mut tx, relay_url).await?;
-
-                    // New bitflag for the relay
-                    let bitflag: Flags = match metadata {
-                        Some(RelayMetadata::Read) => Flags::READ,
-                        Some(RelayMetadata::Write) => Flags::WRITE,
-                        None => {
-                            let mut f = Flags::READ;
-                            f.add(Flags::WRITE);
-                            f
-                        }
-                    };
-
-                    // Create a mask for READ and WRITE flags
-                    let mut read_write_mask: Flags = Flags::READ;
-                    read_write_mask.add(Flags::WRITE);
-
-                    // Update the bitflag: remove the previous READ and WRITE values and apply the new bitflag (preserves any other flag)
-                    sqlx::query(
-                        r#"
-                    INSERT INTO relays_per_user (public_key_id, relay_id, bitflags)
-                    VALUES ($1, $2, $3)
-                    ON CONFLICT (public_key_id, relay_id)
-                    DO UPDATE SET
-                        bitflags = (bitflags & ~$4) | excluded.bitflags
-                    "#,
-                    )
-                    .bind(pk_id)
-                    .bind(relay_id)
-                    .bind(bitflag.as_u16())
-                    .bind(read_write_mask.as_u16())
-                    .execute(&mut *tx)
-                    .await?;
-                }
+                update_nip65_relays(&mut tx, pk_id, nip65::extract_relay_list(event)).await?
             }
             // Extract NIP-17 relays
             Kind::InboxRelays => {
-                for relay_url in nip17::extract_relay_list(event) {
-                    let relay_id: i32 = get_or_save_relay_url(&mut tx, relay_url).await?;
-
-                    sqlx::query(
-                        r#"
-                    INSERT INTO relays_per_user (public_key_id, relay_id, bitflags)
-                    VALUES ($1, $2, $3)
-                    ON CONFLICT (public_key_id, relay_id)
-                    DO UPDATE SET
-                        bitflags = bitflags | excluded.bitflags
-                    "#,
-                    )
-                    .bind(pk_id)
-                    .bind(relay_id)
-                    .bind(Flags::PRIVATE_MESSAGE.as_u16())
-                    .execute(&mut *tx)
-                    .await?;
-                }
+                update_nip17_relays(&mut tx, pk_id, nip17::extract_relay_list(event)).await?
             }
             // Extract hints
-            _ => {
-                for tag in event.tags.filter_standardized(TagKind::p()) {
-                    if let TagStandard::PublicKey {
-                        public_key,
-                        relay_url: Some(relay_url),
-                        ..
-                    } = tag
-                    {
-                        let p_tag_pk_id = get_or_save_public_key(&mut tx, public_key).await?;
-                        update_relay_per_user(&mut tx, p_tag_pk_id, relay_url, Flags::HINT).await?;
-                    }
-                }
-            }
+            _ => update_hints(&mut tx, event).await?,
         }
 
         if let Some(relay_url) = relay_url {
@@ -163,47 +101,35 @@ impl NostrGossipSqlite {
         public_key: &PublicKey,
         list: GossipListKind,
     ) -> Result<GossipPublicKeyStatus, Error> {
-        let row: Option<PublicKeyRow> = sqlx::query_as(
-            "SELECT last_nip17_update, last_nip65_update FROM public_keys WHERE public_key = $1",
-        )
-        .bind(public_key.as_bytes().as_slice())
-        .fetch_optional(&self.pool)
-        .await?;
+        // Get public key ID
+        match get_id_by_public_key(&self.pool, public_key).await? {
+            Some(pk_id) => {
+                let row: Option<ListRow> = sqlx::query_as(
+                    "SELECT event_created_at, last_checked_at FROM lists WHERE public_key_id = $1 AND event_kind = $2",
+                )
+                    .bind(pk_id)
+                    .bind(list.to_event_kind().as_u16())
+                    .fetch_optional(&self.pool)
+                    .await?;
 
-        let now: Timestamp = Timestamp::now();
+                match row {
+                    Some(row) => {
+                        let now: Timestamp = Timestamp::now();
+                        let last: Timestamp =
+                            Timestamp::from_i64_secs(row.last_checked_at.unwrap_or(0));
 
-        match (list, row) {
-            (
-                GossipListKind::Nip17,
-                Some(PublicKeyRow {
-                    last_nip17_update: Some(timestamp),
-                    ..
-                }),
-            ) => {
-                let last: Timestamp = Timestamp::from_i64_secs(timestamp);
-
-                if last + PUBKEY_METADATA_OUTDATED_AFTER < now {
-                    Ok(GossipPublicKeyStatus::Outdated)
-                } else {
-                    Ok(GossipPublicKeyStatus::Updated)
+                        if last + PUBKEY_METADATA_OUTDATED_AFTER < now {
+                            Ok(GossipPublicKeyStatus::Outdated {
+                                created_at: row.event_created_at.map(Timestamp::from_i64_secs),
+                            })
+                        } else {
+                            Ok(GossipPublicKeyStatus::Updated)
+                        }
+                    }
+                    None => Ok(GossipPublicKeyStatus::Outdated { created_at: None }),
                 }
             }
-            (
-                GossipListKind::Nip65,
-                Some(PublicKeyRow {
-                    last_nip65_update: Some(timestamp),
-                    ..
-                }),
-            ) => {
-                let last: Timestamp = Timestamp::from_i64_secs(timestamp);
-
-                if last + PUBKEY_METADATA_OUTDATED_AFTER < now {
-                    Ok(GossipPublicKeyStatus::Outdated)
-                } else {
-                    Ok(GossipPublicKeyStatus::Updated)
-                }
-            }
-            (_, _) => Ok(GossipPublicKeyStatus::Outdated),
+            None => Ok(GossipPublicKeyStatus::Outdated { created_at: None }),
         }
     }
 
@@ -212,20 +138,30 @@ impl NostrGossipSqlite {
         public_key: &PublicKey,
         list: GossipListKind,
     ) -> Result<(), Error> {
+        // Beings a new transaction
+        let mut tx = self.pool.begin().await?;
+
+        // Save public key and get ID
+        let pk_id: i32 = get_or_save_public_key(&mut tx, public_key).await?;
+
         let now: i64 = Timestamp::now().as_u64() as i64;
 
-        let column = match list {
-            GossipListKind::Nip17 => "last_nip17_update",
-            GossipListKind::Nip65 => "last_nip65_update",
-        };
+        sqlx::query(
+            r#"
+            INSERT INTO lists (public_key_id, event_kind, last_checked_at)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (public_key_id, event_kind)
+            DO UPDATE SET last_checked_at = excluded.last_checked_at
+            "#,
+        )
+        .bind(pk_id)
+        .bind(list.to_event_kind().as_u16())
+        .bind(now)
+        .execute(&mut *tx)
+        .await?;
 
-        let query = format!("UPDATE public_keys SET {column} = $1 WHERE public_key = $2",);
-
-        sqlx::query(&query)
-            .bind(now)
-            .bind(public_key.as_bytes().as_slice())
-            .execute(&self.pool)
-            .await?;
+        // Write changes
+        tx.commit().await?;
 
         Ok(())
     }
@@ -321,7 +257,7 @@ impl NostrGossipSqlite {
 
         let rows: Vec<(String,)> = sqlx::query_as(query)
             .bind(public_key.as_bytes().as_slice())
-            .bind(flag.as_u16())
+            .bind(flag)
             .bind(limit as i64)
             .fetch_all(&self.pool)
             .await?;
@@ -341,19 +277,22 @@ async fn get_or_save_public_key(
     tx: &mut Transaction<'_, Sqlite>,
     public_key: &PublicKey,
 ) -> Result<i32, Error> {
-    match get_id_by_public_key(tx, public_key).await? {
+    match get_id_by_public_key(&mut **tx, public_key).await? {
         Some(id) => Ok(id),
         None => save_public_key(tx, public_key).await,
     }
 }
 
-async fn get_id_by_public_key(
-    tx: &mut Transaction<'_, Sqlite>,
+async fn get_id_by_public_key<'a, E>(
+    executor: E,
     public_key: &PublicKey,
-) -> Result<Option<i32>, Error> {
+) -> Result<Option<i32>, Error>
+where
+    E: Executor<'a, Database = Sqlite>,
+{
     let pk_id: Option<(i32,)> = sqlx::query_as("SELECT id FROM public_keys WHERE public_key = $1")
         .bind(public_key.as_bytes().as_slice())
-        .fetch_optional(&mut **tx)
+        .fetch_optional(executor)
         .await?;
     Ok(pk_id.map(|(p,)| p))
 }
@@ -403,6 +342,19 @@ async fn save_relay_url(
     Ok(pk_id.0)
 }
 
+async fn remove_flag_from_user_relays(
+    tx: &mut Transaction<'_, Sqlite>,
+    public_key_id: i32,
+    flags_to_remove: Flags,
+) -> Result<(), Error> {
+    sqlx::query("UPDATE relays_per_user SET bitflags = (bitflags & ~$1) WHERE public_key_id = $2")
+        .bind(flags_to_remove)
+        .bind(public_key_id)
+        .execute(&mut **tx)
+        .await?;
+    Ok(())
+}
+
 /// Add relay per user or update the received events and bitflags.
 async fn update_relay_per_user(
     tx: &mut Transaction<'_, Sqlite>,
@@ -426,10 +378,103 @@ async fn update_relay_per_user(
         "#)
         .bind(public_key_id)
         .bind(relay_id)
-        .bind(flags.as_u16())
+        .bind(flags)
         .bind(now as i64)
         .execute(&mut **tx)
         .await?;
+
+    Ok(())
+}
+
+async fn update_nip65_relays<'a, I>(
+    tx: &mut Transaction<'_, Sqlite>,
+    public_key_id: i32,
+    iter: I,
+) -> Result<(), Error>
+where
+    I: IntoIterator<Item = (&'a RelayUrl, &'a Option<RelayMetadata>)>,
+{
+    // Remove all READ and WRITE flags from the relays of the public key
+    remove_flag_from_user_relays(tx, public_key_id, READ_WRITE_FLAGS).await?;
+
+    // Extract relay list
+    for (relay_url, metadata) in iter {
+        // Save relay and get ID
+        let relay_id: i32 = get_or_save_relay_url(tx, relay_url).await?;
+
+        // New bitflag for the relay
+        let bitflag: Flags = match metadata {
+            Some(RelayMetadata::Read) => Flags::READ,
+            Some(RelayMetadata::Write) => Flags::WRITE,
+            None => READ_WRITE_FLAGS,
+        };
+
+        // Update bitflag
+        sqlx::query(
+            r#"
+                    INSERT INTO relays_per_user (public_key_id, relay_id, bitflags)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (public_key_id, relay_id)
+                    DO UPDATE SET
+                        bitflags = bitflags | excluded.bitflags
+                    "#,
+        )
+        .bind(public_key_id)
+        .bind(relay_id)
+        .bind(bitflag)
+        .execute(&mut **tx)
+        .await?;
+    }
+
+    Ok(())
+}
+
+async fn update_nip17_relays<'a, I>(
+    tx: &mut Transaction<'_, Sqlite>,
+    public_key_id: i32,
+    iter: I,
+) -> Result<(), Error>
+where
+    I: IntoIterator<Item = &'a RelayUrl>,
+{
+    // Remove all PRIVATE_MESSAGE flag from the relays of the public key
+    remove_flag_from_user_relays(tx, public_key_id, Flags::PRIVATE_MESSAGE).await?;
+
+    // Extract relay list
+    for relay_url in iter {
+        let relay_id: i32 = get_or_save_relay_url(tx, relay_url).await?;
+
+        sqlx::query(
+            r#"
+                    INSERT INTO relays_per_user (public_key_id, relay_id, bitflags)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (public_key_id, relay_id)
+                    DO UPDATE SET
+                        bitflags = bitflags | excluded.bitflags
+                    "#,
+        )
+        .bind(public_key_id)
+        .bind(relay_id)
+        .bind(Flags::PRIVATE_MESSAGE)
+        .execute(&mut **tx)
+        .await?;
+    }
+
+    Ok(())
+}
+
+async fn update_hints(tx: &mut Transaction<'_, Sqlite>, event: &Event) -> Result<(), Error> {
+    for tag in event.tags.filter_standardized(TagKind::p()) {
+        if let TagStandard::PublicKey {
+            public_key,
+            relay_url: Some(relay_url),
+            ..
+        } = tag
+        {
+            let p_tag_pk_id: i32 = get_or_save_public_key(tx, public_key).await?;
+            update_relay_per_user(tx, p_tag_pk_id, relay_url, Flags::HINT).await?;
+        }
+    }
 
     Ok(())
 }
@@ -696,7 +741,7 @@ mod tests {
             .get_status(&public_key, GossipListKind::Nip65)
             .await
             .unwrap();
-        assert!(matches!(status, GossipPublicKeyStatus::Outdated));
+        assert!(matches!(status, GossipPublicKeyStatus::Outdated { .. }));
 
         // Process a NIP-65 event
         let json = r#"{"id":"0a49bed4a1eb0973a68a0d43b7ca62781ffd4e052b91bbadef09e5cf756f6e68","pubkey":"68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272","created_at":1759351841,"kind":10002,"tags":[["alt","Relay list to discover the user's content"],["r","wss://relay.damus.io/"],["r","wss://nostr.wine/"],["r","wss://nostr.oxtr.dev/"],["r","wss://relay.nostr.wirednet.jp/"]],"content":"","sig":"f5bc6c18b0013214588d018c9086358fb76a529aa10867d4d02a75feb239412ae1c94ac7c7917f6e6e2303d72f00dc4e9b03b168ef98f3c3c0dec9a457ce0304"}"#;
@@ -705,7 +750,7 @@ mod tests {
 
         // Update fetch attempt
         store
-            ._update_fetch_attempt(&public_key, GossipListKind::Nip65)
+            .update_fetch_attempt(&public_key, GossipListKind::Nip65)
             .await
             .unwrap();
 

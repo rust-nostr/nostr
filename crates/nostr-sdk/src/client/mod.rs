@@ -13,7 +13,7 @@ use std::time::Duration;
 use async_utility::futures_util::stream::BoxStream;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
-use nostr_gossip::{BestRelaySelection, GossipListKind, NostrGossip};
+use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
 use nostr_relay_pool::prelude::*;
 use tokio::sync::broadcast;
 
@@ -74,7 +74,6 @@ impl Client {
     /// use nostr_sdk::prelude::*;
     ///
     /// let signer = Keys::generate();
-    /// let opts = ClientOptions::default().gossip(true);
     /// let client: Client = Client::builder().signer(signer).opts(opts).build();
     /// ```
     #[inline]
@@ -1341,14 +1340,14 @@ impl Client {
     {
         tracing::debug!(kind = ?gossip_kind, "Start checking and updating gossip data.");
 
-        let mut outdated_public_keys: HashSet<PublicKey> = HashSet::new();
+        let mut outdated_public_keys: HashMap<PublicKey, Timestamp> = HashMap::new();
 
         for public_key in public_keys.into_iter() {
             // Get the public key status
             let status = gossip.status(&public_key, gossip_kind).await?;
 
-            if status.is_outdated() {
-                outdated_public_keys.insert(public_key);
+            if let GossipPublicKeyStatus::Outdated { created_at } = status {
+                outdated_public_keys.insert(public_key, created_at.unwrap_or_default());
             }
         }
 
@@ -1366,7 +1365,7 @@ impl Client {
 
         // Compose database filter
         let db_filter: Filter = Filter::default()
-            .authors(outdated_public_keys.clone())
+            .authors(outdated_public_keys.keys().copied())
             .kind(kind);
 
         tracing::debug!(filter = ?db_filter, "Querying database for outdated gossip data.");
@@ -1391,32 +1390,29 @@ impl Client {
         let mut filters: Vec<Filter> = Vec::with_capacity(stored_events.len());
 
         // Keep track of the missing public keys
-        let mut missing_public_keys: HashSet<PublicKey> = outdated_public_keys;
+        let mut missing_public_keys: HashSet<PublicKey> =
+            outdated_public_keys.keys().copied().collect();
 
         // Try to fetch from relays only the newer events (last created_at + 1)
-        for event in stored_events.iter() {
-            let author = event.pubkey;
-            let created_at = event.created_at;
-
+        for (author, created_at) in outdated_public_keys.iter() {
             // Construct filter
             let filter: Filter = Filter::new()
-                .author(author)
+                .author(*author)
                 .kind(kind)
-                .since(created_at + Duration::from_secs(1))
+                .since(*created_at + Duration::from_secs(1))
                 .limit(1);
 
             filters.push(filter);
 
             // Remove from the missing set
-            missing_public_keys.remove(&event.pubkey);
+            missing_public_keys.remove(author);
         }
 
         tracing::debug!(filters = ?filters, "Fetching outdated gossip data from relays.");
 
         // Fetch the events
         // NOTE: the received events are automatically processed
-        self
-            .pool
+        self.pool
             .fetch_events_from(
                 urls.clone(),
                 filters,
@@ -1426,11 +1422,9 @@ impl Client {
             .await?;
 
         // Update the last check for the stored public keys
-        for pk in stored_events.iter().map(|e| e.pubkey) {
+        for pk in outdated_public_keys.keys() {
             // Update the last check for this public key
-            gossip
-                .update_fetch_attempt(&pk, gossip_kind)
-                .await?;
+            gossip.update_fetch_attempt(pk, gossip_kind).await?;
         }
 
         // Get the missing events
