@@ -2885,6 +2885,8 @@ dependencies = [
  "nostr",
  "nostr-connect",
  "nostr-database",
+ "nostr-gossip",
+ "nostr-gossip-memory",
  "nostr-lmdb",
  "nostr-ndb",
  "nostr-relay-pool",
