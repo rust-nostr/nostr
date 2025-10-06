@@ -42,6 +42,16 @@ impl Timestamp {
         Self(secs)
     }
 
+    /// Construct from seconds
+    #[inline]
+    pub const fn from_i64_secs(secs: i64) -> Self {
+        if secs <= 0 {
+            Self::zero()
+        } else {
+            Self::from_secs(secs as u64)
+        }
+    }
+
     /// Compose `0` timestamp
     #[inline]
     pub const fn zero() -> Self {
