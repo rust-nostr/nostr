@@ -12,6 +12,49 @@ use std::time::Duration;
 
 use nostr_relay_pool::prelude::*;
 
+/// Max number of relays to use for gossip
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GossipRelayLimits {
+    /// Max number of **read** relays per user (default: 3)
+    pub read_relays_per_user: usize,
+    /// Max number of **write** relays per user (default: 3)
+    pub write_relays_per_user: usize,
+    /// Max number of **hint** relays per user (default: 1)
+    pub hint_relays_per_user: usize,
+    /// Max number of **most used** relays per user (default: 1)
+    pub most_used_relays_per_user: usize,
+    /// Max number of NIP-17 relays per user (default: 3)
+    pub nip17_relays: usize,
+}
+
+impl Default for GossipRelayLimits {
+    fn default() -> Self {
+        Self {
+            read_relays_per_user: 3,
+            write_relays_per_user: 3,
+            hint_relays_per_user: 1,
+            most_used_relays_per_user: 1,
+            nip17_relays: 3,
+        }
+    }
+}
+
+/// Gossip options
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GossipOptions {
+    /// Max number of relays to use
+    pub limits: GossipRelayLimits,
+}
+
+impl GossipOptions {
+    /// Set limits
+    #[inline]
+    pub fn limits(mut self, limits: GossipRelayLimits) -> Self {
+        self.limits = limits;
+        self
+    }
+}
+
 /// Options
 #[derive(Debug, Clone, Default)]
 pub struct ClientOptions {
@@ -23,6 +66,7 @@ pub struct ClientOptions {
     pub(super) sleep_when_idle: SleepWhenIdle,
     pub(super) verify_subscriptions: bool,
     pub(super) ban_relay_on_mismatch: bool,
+    pub(super) gossip: GossipOptions,
     pub(super) pool: RelayPoolOptions,
 }
 
@@ -48,12 +92,6 @@ impl ClientOptions {
     #[inline]
     pub fn automatic_authentication(mut self, enabled: bool) -> Self {
         self.pool = self.pool.automatic_authentication(enabled);
-        self
-    }
-
-    /// Enable gossip model (default: false)
-    #[deprecated(since = "0.44.0", note = "Use ClientBuilder::gossip instead")]
-    pub fn gossip(self, _enable: bool) -> Self {
         self
     }
 
@@ -97,6 +135,13 @@ impl ClientOptions {
     /// If true, ban a relay when it sends an event that doesn't match the subscription filter.
     pub fn ban_relay_on_mismatch(mut self, ban_relay: bool) -> Self {
         self.ban_relay_on_mismatch = ban_relay;
+        self
+    }
+
+    /// Set gossip options
+    #[inline]
+    pub fn gossip(mut self, opts: GossipOptions) -> Self {
+        self.gossip = opts;
         self
     }
 

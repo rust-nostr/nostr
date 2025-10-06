@@ -1634,20 +1634,22 @@ impl Client {
         }
 
         // Broken-down filters
-        let filters: HashMap<RelayUrl, Filter> =
-            match gossip.break_down_filter(filter, pattern).await? {
-                BrokenDownFilters::Filters(filters) => filters,
-                BrokenDownFilters::Orphan(filter) | BrokenDownFilters::Other(filter) => {
-                    // Get read relays
-                    let read_relays: Vec<RelayUrl> = self.pool.__read_relay_urls().await;
+        let filters: HashMap<RelayUrl, Filter> = match gossip
+            .break_down_filter(filter, pattern, &self.opts.gossip.limits)
+            .await?
+        {
+            BrokenDownFilters::Filters(filters) => filters,
+            BrokenDownFilters::Orphan(filter) | BrokenDownFilters::Other(filter) => {
+                // Get read relays
+                let read_relays: Vec<RelayUrl> = self.pool.__read_relay_urls().await;
 
-                    let mut map = HashMap::with_capacity(read_relays.len());
-                    for url in read_relays.into_iter() {
-                        map.insert(url, filter.clone());
-                    }
-                    map
+                let mut map = HashMap::with_capacity(read_relays.len());
+                for url in read_relays.into_iter() {
+                    map.insert(url, filter.clone());
                 }
-            };
+                map
+            }
+        };
 
         // Add gossip (outbox and inbox) relays
         for url in filters.keys() {
