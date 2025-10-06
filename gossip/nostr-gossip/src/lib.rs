@@ -29,21 +29,26 @@ pub enum GossipListKind {
     Nip65,
 }
 
+impl GossipListKind {
+    /// Convert to event [`Kind`].
+    pub fn to_event_kind(&self) -> Kind {
+        match self {
+            Self::Nip17 => Kind::InboxRelays,
+            Self::Nip65 => Kind::RelayList,
+        }
+    }
+}
+
 /// Public key status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum GossipPublicKeyStatus {
     /// The public key data is updated
     Updated,
     /// The public key data is outdated
-    Outdated,
-}
-
-impl GossipPublicKeyStatus {
-    /// Check if the public key data is outdated
-    #[inline]
-    pub fn is_outdated(&self) -> bool {
-        matches!(self, Self::Outdated)
-    }
+    Outdated {
+        /// The timestamp of the relay list event that is currently stored
+        created_at: Option<Timestamp>,
+    },
 }
 
 /// Best relay selection.
@@ -105,7 +110,7 @@ pub trait NostrGossip: Any + Debug + Send + Sync {
         list: GossipListKind,
     ) -> BoxedFuture<'a, Result<GossipPublicKeyStatus, GossipError>>;
 
-    /// Update the last check timestamp for stale [`PublicKey`].
+    /// Update the last check timestamp for an [`PublicKey`].
     fn update_fetch_attempt<'a>(
         &'a self,
         public_key: &'a PublicKey,

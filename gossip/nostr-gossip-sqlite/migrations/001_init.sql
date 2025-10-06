@@ -3,12 +3,22 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE public_keys(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     public_key BLOB NOT NULL UNIQUE,
-    last_nip17_update BIGINT DEFAULT NULL,
-    last_nip65_update BIGINT DEFAULT NULL,
     CHECK (length(public_key) = 32)
 );
 
 CREATE INDEX idx_public_keys_public_key ON public_keys(public_key);
+
+CREATE TABLE lists(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    public_key_id INTEGER NOT NULL,
+    event_kind INTEGER NOT NULL,
+    event_created_at BIGINT DEFAULT NULL,
+    last_checked_at BIGINT DEFAULT NULL,
+    UNIQUE(public_key_id, event_kind),
+    FOREIGN KEY (public_key_id) REFERENCES public_keys(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_lists_pub_kind ON lists(public_key_id, event_kind);
 
 CREATE TABLE relays(
     id INTEGER PRIMARY KEY AUTOINCREMENT,

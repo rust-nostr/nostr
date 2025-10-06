@@ -4,4 +4,8 @@
 
 use std::time::Duration;
 
+use crate::flags::Flags;
+
 pub(super) const PUBKEY_METADATA_OUTDATED_AFTER: Duration = Duration::from_secs(60 * 60); // 60 min
+
+pub(super) const READ_WRITE_FLAGS: Flags = Flags::read_write();

@@ -13,7 +13,7 @@ use std::time::Duration;
 use async_utility::futures_util::stream::{BoxStream, FuturesUnordered};
 use nostr::prelude::*;
 use nostr_database::prelude::*;
-use nostr_gossip::{BestRelaySelection, GossipListKind, NostrGossip};
+use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
 use nostr_relay_pool::prelude::*;
 use tokio::sync::{broadcast, Semaphore};
 
@@ -1339,14 +1339,14 @@ impl Client {
     where
         I: IntoIterator<Item = PublicKey>,
     {
-        let mut outdated_public_keys: HashSet<PublicKey> = HashSet::new();
+        let mut outdated_public_keys: HashMap<PublicKey, Timestamp> = HashMap::new();
 
         for public_key in public_keys.into_iter() {
             // Get the public key status
             let status = gossip.status(&public_key, gossip_kind).await?;
 
-            if status.is_outdated() {
-                outdated_public_keys.insert(public_key);
+            if let GossipPublicKeyStatus::Outdated { created_at } = status {
+                outdated_public_keys.insert(public_key, created_at.unwrap_or_default());
             }
         }
 
@@ -1363,7 +1363,7 @@ impl Client {
 
         // Compose database filter
         let db_filter: Filter = Filter::default()
-            .authors(outdated_public_keys.clone())
+            .authors(outdated_public_keys.keys().copied())
             .kind(kind);
 
         // Get events from database
@@ -1387,9 +1387,7 @@ impl Client {
         let mut futures = FuturesUnordered::new();
 
         // Try to fetch from relays only the newer events (last created_at + 1)
-        for event in stored_events.iter() {
-            let author = event.pubkey;
-            let created_at = event.created_at;
+        for (author, created_at) in outdated_public_keys.iter() {
             let urls = urls.clone();
             let semaphore = semaphore.clone();
 
@@ -1399,9 +1397,9 @@ impl Client {
 
                 // Construct filter
                 let filter: Filter = Filter::new()
-                    .author(author)
+                    .author(*author)
                     .kind(kind)
-                    .since(created_at + Duration::from_secs(1))
+                    .since(*created_at + Duration::from_secs(1))
                     .limit(1);
 
                 // Fetch the event
@@ -1415,7 +1413,8 @@ impl Client {
         }
 
         // Keep track of the missing public keys
-        let mut missing_public_keys: HashSet<PublicKey> = outdated_public_keys;
+        let mut missing_public_keys: HashSet<PublicKey> =
+            outdated_public_keys.keys().copied().collect();
 
         while let Some(result) = futures.next().await {
             if let Ok(events) = result {
