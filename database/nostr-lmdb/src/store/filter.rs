@@ -109,6 +109,24 @@ impl DatabaseFilter {
 
 #[inline]
 fn match_content(query: &[u8], content: &[u8]) -> bool {
+    // Early exit if query is empty
+    if query.is_empty() {
+        return false;
+    }
+
+    // Early exit for impossible matches
+    if query.len() > content.len() {
+        return false;
+    }
+
+    // Fast path for single-byte searches (common case)
+    if query.len() == 1 {
+        let query_byte = query[0];
+        return content
+            .iter()
+            .any(|&b| b.to_ascii_lowercase() == query_byte);
+    }
+
     content
         .windows(query.len())
         .any(|window| window.eq_ignore_ascii_case(query))
