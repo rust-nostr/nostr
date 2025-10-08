@@ -7,15 +7,15 @@ use std::collections::{BTreeMap, BTreeSet, HashSet};
 use nostr::event::borrow::EventBorrow;
 use nostr::{Filter, SingleLetterTag, Timestamp};
 
-pub struct DatabaseFilter {
-    pub ids: HashSet<[u8; 32]>,
-    pub authors: HashSet<[u8; 32]>,
-    pub kinds: HashSet<u16>,
-    /// Lowercase query
-    pub search: Option<String>,
-    pub since: Option<Timestamp>,
-    pub until: Option<Timestamp>,
-    pub generic_tags: BTreeMap<SingleLetterTag, BTreeSet<String>>,
+pub(crate) struct DatabaseFilter {
+    pub(crate) ids: HashSet<[u8; 32]>,
+    pub(crate) authors: HashSet<[u8; 32]>,
+    pub(crate) kinds: HashSet<u16>,
+    // THIS IS LOWERCASE
+    pub(crate) search: Option<String>,
+    pub(crate) since: Option<Timestamp>,
+    pub(crate) until: Option<Timestamp>,
+    pub(crate) generic_tags: BTreeMap<SingleLetterTag, BTreeSet<String>>,
 }
 
 impl DatabaseFilter {
@@ -77,7 +77,7 @@ impl DatabaseFilter {
     }
 
     #[inline]
-    pub fn match_event(&self, event: &EventBorrow) -> bool {
+    pub(crate) fn match_event(&self, event: &EventBorrow) -> bool {
         self.ids_match(event)
             && self.authors_match(event)
             && self.kind_match(event)

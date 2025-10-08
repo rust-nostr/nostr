@@ -19,7 +19,7 @@ use nostr_database::{FlatBufferBuilder, FlatBufferEncode, RejectedReason, SaveEv
 mod index;
 
 use super::error::Error;
-use super::types::DatabaseFilter;
+use super::filter::DatabaseFilter;
 
 const EVENT_ID_ALL_ZEROS: [u8; 32] = [0; 32];
 const EVENT_ID_ALL_255: [u8; 32] = [255; 32];

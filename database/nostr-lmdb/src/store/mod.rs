@@ -12,9 +12,9 @@ use heed::RoTxn;
 use nostr_database::prelude::*;
 
 mod error;
+mod filter;
 mod ingester;
 mod lmdb;
-mod types;
 
 use self::error::Error;
 use self::ingester::{Ingester, IngesterItem};
