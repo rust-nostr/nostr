@@ -61,3 +61,11 @@ impl<'a> CowTag<'a> {
         self.buf
     }
 }
+
+impl<'a> From<&'a Tag> for CowTag<'a> {
+    fn from(tag: &'a Tag) -> Self {
+        Self {
+            buf: tag.buf.iter().map(|v| Cow::Borrowed(v.as_str())).collect(),
+        }
+    }
+}

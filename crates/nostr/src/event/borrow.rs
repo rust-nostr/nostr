@@ -79,3 +79,17 @@ impl EventBorrow<'_> {
         )
     }
 }
+
+impl<'a> From<&'a Event> for EventBorrow<'a> {
+    fn from(event: &'a Event) -> Self {
+        Self {
+            id: event.id.as_bytes(),
+            pubkey: event.pubkey.as_bytes(),
+            created_at: event.created_at,
+            kind: event.kind.as_u16(),
+            tags: event.tags.iter().map(CowTag::from).collect(),
+            content: &event.content,
+            sig: event.sig.as_ref(),
+        }
+    }
+}
