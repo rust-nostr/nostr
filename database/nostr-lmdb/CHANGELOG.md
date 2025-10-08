@@ -31,6 +31,10 @@
 - Add automatic event batching for better write performance (https://github.com/rust-nostr/nostr/pull/1010)
 - Improve performance of queries with authors, kinds and tags (https://github.com/rust-nostr/nostr/pull/1080)
 
+### Added
+
+- Support NIP-50 filtering on both event content and some selected tags (https://github.com/rust-nostr/nostr/pull/1093)
+
 ### Fixed
 
 - Fix NIP-01 compliance for replaceable events with identical timestamps (https://github.com/rust-nostr/nostr/pull/1017)

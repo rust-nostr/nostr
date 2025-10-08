@@ -7,6 +7,10 @@ use std::collections::{BTreeMap, BTreeSet, HashSet};
 use nostr::event::borrow::EventBorrow;
 use nostr::{Filter, SingleLetterTag, Timestamp};
 
+const TITLE: &str = "title";
+const DESCRIPTION: &str = "description";
+const SUBJECT: &str = "subject";
+
 pub(crate) struct DatabaseFilter {
     pub(crate) ids: HashSet<[u8; 32]>,
     pub(crate) authors: HashSet<[u8; 32]>,
@@ -66,11 +70,26 @@ impl DatabaseFilter {
             Some(query) => {
                 // NOTE: `query` was already converted to lowercase
                 let query: &[u8] = query.as_bytes();
-                event
-                    .content
-                    .as_bytes()
-                    .windows(query.len())
-                    .any(|window| window.eq_ignore_ascii_case(query))
+
+                // Match content - early return on match
+                if match_content(query, event.content.as_bytes()) {
+                    return true;
+                }
+
+                // Match tags - only if content didn't match
+                for (kind, content) in event
+                    .tags
+                    .iter()
+                    .filter_map(|t| Some((t.kind(), t.content()?)))
+                {
+                    if let TITLE | DESCRIPTION | SUBJECT = kind {
+                        if match_content(query, content.as_bytes()) {
+                            return true;
+                        }
+                    }
+                }
+
+                false
             }
             None => true,
         }
@@ -86,6 +105,13 @@ impl DatabaseFilter {
             && self.tag_match(event)
             && self.search_match(event)
     }
+}
+
+#[inline]
+fn match_content(query: &[u8], content: &[u8]) -> bool {
+    content
+        .windows(query.len())
+        .any(|window| window.eq_ignore_ascii_case(query))
 }
 
 impl From<Filter> for DatabaseFilter {
@@ -117,5 +143,85 @@ impl From<Filter> for DatabaseFilter {
             until: filter.until,
             generic_tags: filter.generic_tags,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use nostr::{Event, EventBuilder, Keys, Tag};
+
+    use super::*;
+
+    fn create_test_event(content: &str) -> Event {
+        let keys = Keys::generate();
+        EventBuilder::text_note(content)
+            .sign_with_keys(&keys)
+            .unwrap()
+    }
+
+    #[test]
+    fn test_search_match_in_content() {
+        let event = create_test_event("Hello World");
+        let event: EventBorrow = (&event).into();
+
+        let mut filter = DatabaseFilter::from(Filter::new());
+
+        // Case insensitive match
+        filter.search = Some("hello".to_string());
+        assert!(filter.match_event(&event));
+
+        filter.search = Some("world".to_string());
+        assert!(filter.match_event(&event));
+
+        // No match
+        filter.search = Some("rust".to_string());
+        assert!(!filter.match_event(&event));
+    }
+
+    #[test]
+    fn test_search_match_in_tags() {
+        let keys = Keys::generate();
+        let event = EventBuilder::text_note("content")
+            .tag(Tag::parse(["title", "Search userfacing tags"]).unwrap())
+            .sign_with_keys(&keys)
+            .unwrap();
+        let event: EventBorrow = (&event).into();
+
+        let mut filter = DatabaseFilter::from(Filter::new());
+
+        filter.search = Some("userfacing".to_string());
+        assert!(filter.match_event(&event));
+
+        filter.search = Some("bitcoin".to_string());
+        assert!(!filter.match_event(&event));
+    }
+
+    #[test]
+    fn test_search_empty_query() {
+        let event = create_test_event("test");
+        let event: EventBorrow = (&event).into();
+        let mut filter = DatabaseFilter::from(Filter::new());
+
+        filter.search = Some("".to_string());
+        assert!(!filter.match_event(&event));
+    }
+
+    #[test]
+    fn test_search_no_query() {
+        let event = create_test_event("test");
+        let event: EventBorrow = (&event).into();
+        let filter = DatabaseFilter::from(Filter::new());
+
+        assert!(filter.match_event(&event));
+    }
+
+    #[test]
+    fn test_search_partial_match() {
+        let event = create_test_event("nostr protocol");
+        let event: EventBorrow = (&event).into();
+        let mut filter = DatabaseFilter::from(Filter::new());
+
+        filter.search = Some("proto".to_string());
+        assert!(filter.match_event(&event));
     }
 }
