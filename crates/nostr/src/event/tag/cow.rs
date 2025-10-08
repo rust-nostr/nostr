@@ -32,6 +32,12 @@ impl<'a> CowTag<'a> {
         Ok(Self { buf: tag })
     }
 
+    /// Return the **first** tag value (index `1`), if exists.
+    #[inline]
+    pub fn content(&self) -> Option<&str> {
+        self.buf.get(1).map(|s| s.as_ref())
+    }
+
     /// Extract tag name and value
     pub fn extract(&self) -> Option<(SingleLetterTag, &str)> {
         if self.buf.len() >= 2 {
