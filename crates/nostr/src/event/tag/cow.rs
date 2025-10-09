@@ -32,6 +32,13 @@ impl<'a> CowTag<'a> {
         Ok(Self { buf: tag })
     }
 
+    /// Get the tag kind
+    #[inline]
+    pub fn kind(&self) -> &str {
+        // SAFETY: we checked that buf is not empty
+        self.buf[0].as_ref()
+    }
+
     /// Return the **first** tag value (index `1`), if exists.
     #[inline]
     pub fn content(&self) -> Option<&str> {
