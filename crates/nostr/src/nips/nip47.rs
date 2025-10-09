@@ -798,7 +798,7 @@ pub struct GetInfoResponse {
     #[serde(deserialize_with = "deserialize_empty_string_as_none")]
     pub block_hash: Option<String>,
     /// Available methods for this connection
-    pub methods: Vec<String>,
+    pub methods: Vec<Method>,
     /// List of supported notifications for this connection (optional)
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -1732,7 +1732,7 @@ mod tests {
     // - https://github.com/getAlby/hub/issues/1746
     #[test]
     fn test_parse_get_info_response_with_empty_strings() {
-        let json = r#"{"alias":"","color":"","pubkey":"","network":"","block_height":0,"block_hash":"","methods":["pay_invoice","pay_keysend","multi_pay_invoice","multi_pay_keysend","get_info","get_budget"],"notifications":[],"lud16":""}"#;
+        let json = r#"{"alias":"","color":"","pubkey":"","network":"","block_height":0,"block_hash":"","methods":["pay_invoice","pay_keysend","multi_pay_invoice","multi_pay_keysend","get_info","get_balance"],"notifications":[],"lud16":""}"#;
         let response: GetInfoResponse = serde_json::from_str(json).unwrap();
 
         assert_eq!(
@@ -1745,12 +1745,12 @@ mod tests {
                 block_height: Some(0),
                 block_hash: None,
                 methods: vec![
-                    String::from("pay_invoice"),
-                    String::from("pay_keysend"),
-                    String::from("multi_pay_invoice"),
-                    String::from("multi_pay_keysend"),
-                    String::from("get_info"),
-                    String::from("get_budget")
+                    Method::PayInvoice,
+                    Method::PayKeysend,
+                    Method::MultiPayInvoice,
+                    Method::MultiPayKeysend,
+                    Method::GetInfo,
+                    Method::GetBalance,
                 ],
                 notifications: Vec::new()
             }

@@ -33,6 +33,7 @@
 - Change `EventBuilder::reaction` args (https://github.com/rust-nostr/nostr/pull/1063)
 - Remove `EventBuilder::reaction_extended` (https://github.com/rust-nostr/nostr/pull/1063)
 - Change NIP-47 `GetInfoResponse` `pubkey` type from `PublicKey` to `String`
+- Change `methods` type to `Vec<Method>` in `GetInfoResponse` (https://github.com/rust-nostr/nostr/pull/1094)
 
 ### Added
 
