@@ -10,28 +10,31 @@ use std::iter;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_utility::futures_util::stream::BoxStream;
+use async_utility::futures_util::stream::{BoxStream, FuturesUnordered};
 use nostr::prelude::*;
 use nostr_database::prelude::*;
+use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
 use nostr_relay_pool::prelude::*;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, Semaphore};
 
 pub mod builder;
 mod error;
+mod middleware;
 pub mod options;
 
 pub use self::builder::ClientBuilder;
 pub use self::error::Error;
+use self::middleware::AdmissionPolicyMiddleware;
 pub use self::options::{ClientOptions, SleepWhenIdle};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Connection, ConnectionTarget};
-use crate::gossip::{BrokenDownFilters, Gossip};
+use crate::gossip::{self, BrokenDownFilters, GossipFilterPattern, GossipWrapper};
 
 /// Nostr client
 #[derive(Debug, Clone)]
 pub struct Client {
     pool: RelayPool,
-    gossip: Gossip,
+    gossip: Option<GossipWrapper>,
     opts: ClientOptions,
 }
 
@@ -80,10 +83,16 @@ impl Client {
     }
 
     fn from_builder(builder: ClientBuilder) -> Self {
+        // Construct admission policy middleware
+        let admit_policy_wrapper = AdmissionPolicyMiddleware {
+            gossip: builder.gossip.clone(),
+            external_policy: builder.admit_policy,
+        };
+
         // Construct relay pool builder
         let pool_builder: RelayPoolBuilder = RelayPoolBuilder {
             websocket_transport: builder.websocket_transport,
-            admit_policy: builder.admit_policy,
+            admit_policy: Some(Arc::new(admit_policy_wrapper)),
             monitor: builder.monitor,
             opts: builder.opts.pool,
             __database: builder.database,
@@ -93,7 +102,7 @@ impl Client {
         // Construct client
         Self {
             pool: pool_builder.build(),
-            gossip: Gossip::new(),
+            gossip: builder.gossip.map(GossipWrapper::new),
             opts: builder.opts,
         }
     }
@@ -518,7 +527,7 @@ impl Client {
     /// So remember to unsubscribe when you no longer need it. You can get all your active (non-auto-closing) subscriptions
     /// by calling `client.subscriptions().await`.
     ///
-    /// If `gossip` is enabled (see [`ClientOptions::gossip`]) the events will be requested also to
+    /// If `gossip` is enabled the events will be requested also to
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// # Auto-closing subscription
@@ -568,7 +577,7 @@ impl Client {
 
     /// Subscribe to filters with custom [SubscriptionId]
     ///
-    /// If `gossip` is enabled (see [`ClientOptions::gossip`]) the events will be requested also to
+    /// If `gossip` is enabled the events will be requested also to
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// # Auto-closing subscription
@@ -584,10 +593,9 @@ impl Client {
     ) -> Result<Output<()>, Error> {
         let opts: SubscribeOptions = SubscribeOptions::default().close_on(opts);
 
-        if self.opts.gossip {
-            self.gossip_subscribe(id, filter, opts).await
-        } else {
-            Ok(self.pool.subscribe_with_id(id, filter, opts).await?)
+        match &self.gossip {
+            Some(gossip) => self.gossip_subscribe(gossip, id, filter, opts).await,
+            None => Ok(self.pool.subscribe_with_id(id, filter, opts).await?),
         }
     }
 
@@ -672,7 +680,7 @@ impl Client {
 
     /// Sync events with relays (negentropy reconciliation)
     ///
-    /// If `gossip` is enabled (see [`ClientOptions::gossip`]) the events will be reconciled also from
+    /// If `gossip` is enabled the events will be reconciled also from
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// <https://github.com/hoytech/negentropy>
@@ -682,11 +690,10 @@ impl Client {
         filter: Filter,
         opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
-        if self.opts.gossip {
-            return self.gossip_sync_negentropy(filter, opts).await;
+        match &self.gossip {
+            Some(gossip) => self.gossip_sync_negentropy(gossip, filter, opts).await,
+            None => Ok(self.pool.sync(filter, opts).await?),
         }
-
-        Ok(self.pool.sync(filter, opts).await?)
     }
 
     /// Sync events with specific relays (negentropy reconciliation)
@@ -716,7 +723,7 @@ impl Client {
     ///
     /// # Gossip
     ///
-    /// If `gossip` is enabled (see [`ClientOptions::gossip`]) the events will be requested also to
+    /// If `gossip` is enabled, the events will be requested also to
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// # Example
@@ -738,16 +745,16 @@ impl Client {
     /// # }
     /// ```
     pub async fn fetch_events(&self, filter: Filter, timeout: Duration) -> Result<Events, Error> {
-        if self.opts.gossip {
-            return self
-                .gossip_fetch_events(filter, timeout, ReqExitPolicy::ExitOnEOSE)
-                .await;
+        match &self.gossip {
+            Some(gossip) => {
+                self.gossip_fetch_events(gossip, filter, timeout, ReqExitPolicy::ExitOnEOSE)
+                    .await
+            }
+            None => Ok(self
+                .pool
+                .fetch_events(filter, timeout, ReqExitPolicy::ExitOnEOSE)
+                .await?),
         }
-
-        Ok(self
-            .pool
-            .fetch_events(filter, timeout, ReqExitPolicy::ExitOnEOSE)
-            .await?)
     }
 
     /// Fetch events from specific relays
@@ -784,7 +791,7 @@ impl Client {
     ///
     /// # Gossip
     ///
-    /// If `gossip` is enabled (see [`ClientOptions::gossip`]) the events will be requested also to
+    /// If `gossip` is enabled the events will be requested also to
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     ///
     /// # Notes and alternative example
@@ -844,22 +851,22 @@ impl Client {
     ///
     /// # Gossip
     ///
-    /// If `gossip` is enabled (see [`ClientOptions::gossip`]) the events will be streamed also from
+    /// If `gossip` is enabled the events will be streamed also from
     /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
     pub async fn stream_events(
         &self,
         filter: Filter,
         timeout: Duration,
     ) -> Result<BoxStream<Event>, Error> {
-        // Check if gossip is enabled
-        if self.opts.gossip {
-            self.gossip_stream_events(filter, timeout, ReqExitPolicy::ExitOnEOSE)
-                .await
-        } else {
-            Ok(self
+        match &self.gossip {
+            Some(gossip) => {
+                self.gossip_stream_events(gossip, filter, timeout, ReqExitPolicy::ExitOnEOSE)
+                    .await
+            }
+            None => Ok(self
                 .pool
                 .stream_events(filter, timeout, ReqExitPolicy::ExitOnEOSE)
-                .await?)
+                .await?),
         }
     }
 
@@ -944,28 +951,31 @@ impl Client {
     ///
     /// # Gossip
     ///
-    /// If `gossip` is enabled (see [`ClientOptions::gossip`]):
+    /// If `gossip` is enabled:
     /// - the [`Event`] will be sent also to NIP65 relays (automatically discovered);
     /// - the gossip data will be updated, if the [`Event`] is a NIP17/NIP65 relay list.
     #[inline]
     pub async fn send_event(&self, event: &Event) -> Result<Output<EventId>, Error> {
-        // NOT gossip, send event to all relays
-        if !self.opts.gossip {
-            return Ok(self.pool.send_event(event).await?);
+        match &self.gossip {
+            Some(gossip) => {
+                // Process event for gossip
+                gossip.process(event, None).await?;
+
+                // Send event using gossip
+                self.gossip_send_event(gossip, event, false).await
+            }
+            None => {
+                // NOT gossip, send event to all relays
+                Ok(self.pool.send_event(event).await?)
+            }
         }
-
-        // Update gossip graph
-        self.gossip.process_event(event).await;
-
-        // Send event using gossip
-        self.gossip_send_event(event, false).await
     }
 
     /// Send event to specific relays
     ///
     /// # Gossip
     ///
-    /// If `gossip` is enabled (see [`ClientOptions::gossip`]) and the [`Event`] is a NIP17/NIP65 relay list,
+    /// If `gossip` is enabled and the [`Event`] is a NIP17/NIP65 relay list,
     /// the gossip data will be updated.
     #[inline]
     pub async fn send_event_to<I, U>(
@@ -978,9 +988,8 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        // If gossip is enabled, update the gossip graph
-        if self.opts.gossip {
-            self.gossip.process_event(event).await;
+        if let Some(gossip) = &self.gossip {
+            gossip.process(event, None).await?;
         }
 
         // Send event to relays
@@ -1171,7 +1180,7 @@ impl Client {
 
     /// Send a private direct message
     ///
-    /// If `gossip` is enabled (see [`ClientOptions::gossip`]) the message will be sent to the NIP17 relays (automatically discovered).
+    /// If `gossip` is enabled the message will be sent to the NIP17 relays (automatically discovered).
     /// If gossip is not enabled will be sent to all relays with [`RelayServiceFlags::WRITE`] flag.
     ///
     /// This method requires a [`NostrSigner`].
@@ -1198,12 +1207,10 @@ impl Client {
         let event: Event =
             EventBuilder::private_msg(&signer, receiver, message, rumor_extra_tags).await?;
 
-        // NOT gossip, send to all relays
-        if !self.opts.gossip {
-            return self.send_event(&event).await;
+        match &self.gossip {
+            Some(gossip) => self.gossip_send_event(gossip, &event, true).await,
+            None => self.send_event(&event).await,
         }
-
-        self.gossip_send_event(&event, true).await
     }
 
     /// Send a private direct message to specific relays
@@ -1323,25 +1330,49 @@ impl Client {
 // Gossip
 impl Client {
     /// Check if there are outdated public keys and update them
-    async fn check_and_update_gossip<I>(&self, public_keys: I) -> Result<(), Error>
+    async fn check_and_update_gossip<I>(
+        &self,
+        gossip: &Arc<dyn NostrGossip>,
+        public_keys: I,
+        gossip_kind: GossipListKind,
+    ) -> Result<(), Error>
     where
         I: IntoIterator<Item = PublicKey>,
     {
-        let outdated_public_keys: HashSet<PublicKey> =
-            self.gossip.check_outdated(public_keys).await;
+        let mut outdated_public_keys: HashMap<PublicKey, Timestamp> = HashMap::new();
+
+        for public_key in public_keys.into_iter() {
+            // Get the public key status
+            let status = gossip.status(&public_key, gossip_kind).await?;
+
+            if let GossipPublicKeyStatus::Outdated { created_at } = status {
+                outdated_public_keys.insert(public_key, created_at.unwrap_or_default());
+            }
+        }
 
         // No outdated public keys, immediately return.
         if outdated_public_keys.is_empty() {
             return Ok(());
         }
 
-        // Compose filters
-        let filter: Filter = Filter::default()
-            .authors(outdated_public_keys.clone())
-            .kinds([Kind::RelayList, Kind::InboxRelays]);
+        // Get kind
+        let kind: Kind = match gossip_kind {
+            GossipListKind::Nip17 => Kind::InboxRelays,
+            GossipListKind::Nip65 => Kind::RelayList,
+        };
 
-        // Query from database
-        let stored_events: Events = self.database().query(filter.clone()).await?;
+        // Compose database filter
+        let db_filter: Filter = Filter::default()
+            .authors(outdated_public_keys.keys().copied())
+            .kind(kind);
+
+        // Get events from database
+        let stored_events: Events = self.database().query(db_filter).await?;
+
+        // Process stored events
+        for event in stored_events.iter() {
+            gossip.process(event, None).await?;
+        }
 
         // Get DISCOVERY and READ relays
         let urls: Vec<RelayUrl> = self
@@ -1352,33 +1383,105 @@ impl Client {
             )
             .await;
 
-        // Get events from discovery and read relays
-        let events: Events = self
-            .fetch_events_from(urls, filter, Duration::from_secs(10))
+        let semaphore = Arc::new(Semaphore::new(10)); // Allow at max 10 concurrent requests
+        let mut futures = FuturesUnordered::new();
+
+        // Try to fetch from relays only the newer events (last created_at + 1)
+        for (author, created_at) in outdated_public_keys.iter() {
+            let urls = urls.clone();
+            let semaphore = semaphore.clone();
+
+            futures.push(async move {
+                // Acquire permit
+                let _permit = semaphore.acquire().await;
+
+                // Construct filter
+                let filter: Filter = Filter::new()
+                    .author(*author)
+                    .kind(kind)
+                    .since(*created_at + Duration::from_secs(1))
+                    .limit(1);
+
+                // Fetch the event
+                // NOTE: the received events are automatically processed
+                let events: Events = self
+                    .fetch_events_from(urls, filter, Duration::from_secs(10))
+                    .await?;
+
+                Ok::<_, Error>(events)
+            });
+        }
+
+        // Keep track of the missing public keys
+        let mut missing_public_keys: HashSet<PublicKey> =
+            outdated_public_keys.keys().copied().collect();
+
+        while let Some(result) = futures.next().await {
+            if let Ok(events) = result {
+                if let Some(event) = events.first() {
+                    // Remove from missing set
+                    missing_public_keys.remove(&event.pubkey);
+
+                    // Update the last check for this public key
+                    gossip
+                        .update_fetch_attempt(&event.pubkey, gossip_kind)
+                        .await?;
+                }
+            }
+        }
+
+        // Get the missing events
+        let missing_filter: Filter = Filter::default()
+            .authors(missing_public_keys.clone())
+            .kind(kind);
+
+        // NOTE: the received events are automatically processed
+        self.fetch_events_from(urls, missing_filter, Duration::from_secs(10))
             .await?;
 
         // Update last check for these public keys
-        self.gossip.update_last_check(outdated_public_keys).await;
-
-        // Merge database and relays events
-        let merged: Events = events.merge(stored_events);
-
-        // Update gossip graph
-        self.gossip.update(merged).await;
+        for pk in missing_public_keys.into_iter() {
+            gossip.update_fetch_attempt(&pk, gossip_kind).await?;
+        }
 
         Ok(())
     }
 
     /// Break down filters for gossip and discovery relays
-    async fn break_down_filter(&self, filter: Filter) -> Result<HashMap<RelayUrl, Filter>, Error> {
+    async fn break_down_filter(
+        &self,
+        gossip: &GossipWrapper,
+        filter: Filter,
+    ) -> Result<HashMap<RelayUrl, Filter>, Error> {
         // Extract all public keys from filters
         let public_keys = filter.extract_public_keys();
 
-        // Check and update outdated public keys
-        self.check_and_update_gossip(public_keys).await?;
+        // Find pattern to decide what list to update
+        let pattern: GossipFilterPattern = gossip::find_filter_pattern(&filter);
+
+        // Update outdated public keys
+        match &pattern {
+            GossipFilterPattern::Nip65 => {
+                self.check_and_update_gossip(gossip, public_keys, GossipListKind::Nip65)
+                    .await?;
+            }
+            GossipFilterPattern::Nip65AndNip17 => {
+                self.check_and_update_gossip(
+                    gossip,
+                    public_keys.iter().copied(),
+                    GossipListKind::Nip65,
+                )
+                .await?;
+                self.check_and_update_gossip(gossip, public_keys, GossipListKind::Nip17)
+                    .await?;
+            }
+        }
 
         // Broken-down filters
-        let filters: HashMap<RelayUrl, Filter> = match self.gossip.break_down_filter(filter).await {
+        let filters: HashMap<RelayUrl, Filter> = match gossip
+            .break_down_filter(filter, pattern, &self.opts.gossip)
+            .await?
+        {
             BrokenDownFilters::Filters(filters) => filters,
             BrokenDownFilters::Orphan(filter) | BrokenDownFilters::Other(filter) => {
                 // Get read relays
@@ -1410,6 +1513,7 @@ impl Client {
 
     async fn gossip_send_event(
         &self,
+        gossip: &GossipWrapper,
         event: &Event,
         is_nip17: bool,
     ) -> Result<Output<EventId>, Error> {
@@ -1417,9 +1521,16 @@ impl Client {
 
         // Get involved public keys and check what are up to date in the gossip graph and which ones require an update.
         if is_gift_wrap {
+            let kind: GossipListKind = if is_nip17 {
+                GossipListKind::Nip17
+            } else {
+                GossipListKind::Nip65
+            };
+
             // Get only p tags since the author of a gift wrap is randomized
             let public_keys = event.tags.public_keys().copied();
-            self.check_and_update_gossip(public_keys).await?;
+            self.check_and_update_gossip(gossip, public_keys, kind)
+                .await?;
         } else {
             // Get all public keys involved in the event: author + p tags
             let public_keys = event
@@ -1427,17 +1538,20 @@ impl Client {
                 .public_keys()
                 .copied()
                 .chain(iter::once(event.pubkey));
-            self.check_and_update_gossip(public_keys).await?;
+            self.check_and_update_gossip(gossip, public_keys, GossipListKind::Nip65)
+                .await?;
         };
 
         // Check if NIP17 or NIP65
         let urls: HashSet<RelayUrl> = if is_nip17 && is_gift_wrap {
             // Get NIP17 relays
             // Get only for relays for p tags since gift wraps are signed with random key (random author)
-            let relays = self
-                .gossip
-                .get_nip17_inbox_relays(event.tags.public_keys())
-                .await;
+            let relays = gossip
+                .get_relays(
+                    event.tags.public_keys(),
+                    BestRelaySelection::PrivateMessage { limit: 3 },
+                )
+                .await?;
 
             // Clients SHOULD publish kind 14 events to the 10050-listed relays.
             // If that is not found, that indicates the user is not ready to receive messages under this NIP and clients shouldn't try.
@@ -1457,14 +1571,34 @@ impl Client {
             relays
         } else {
             // Get NIP65 relays
-            let mut outbox = self.gossip.get_nip65_outbox_relays(&[event.pubkey]).await;
-            let inbox = self
-                .gossip
-                .get_nip65_inbox_relays(event.tags.public_keys())
-                .await;
+            let mut outbox = gossip
+                .get_best_relays(&event.pubkey, BestRelaySelection::Write { limit: 2 })
+                .await?;
+            let inbox = gossip
+                .get_relays(
+                    event.tags.public_keys(),
+                    BestRelaySelection::Read { limit: 2 },
+                )
+                .await?;
+            let hints = gossip
+                .get_relays(
+                    event.tags.public_keys(),
+                    BestRelaySelection::Hints { limit: 1 },
+                )
+                .await?;
+            let most_received = gossip
+                .get_relays(
+                    event.tags.public_keys(),
+                    BestRelaySelection::MostReceived { limit: 1 },
+                )
+                .await?;
+
+            outbox.extend(inbox);
+            outbox.extend(hints);
+            outbox.extend(most_received);
 
             // Add outbox and inbox relays
-            for url in outbox.iter().chain(inbox.iter()) {
+            for url in outbox.iter() {
                 if self.add_gossip_relay(url).await? {
                     self.connect_relay(url).await?;
                 }
@@ -1476,9 +1610,6 @@ impl Client {
             // Extend OUTBOX relays with WRITE ones
             outbox.extend(write_relays);
 
-            // Extend outbox relays with inbox ones
-            outbox.extend(inbox);
-
             // Return all relays
             outbox
         };
@@ -1489,11 +1620,12 @@ impl Client {
 
     async fn gossip_stream_events(
         &self,
+        gossip: &GossipWrapper,
         filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<BoxStream<Event>, Error> {
-        let filters = self.break_down_filter(filter).await?;
+        let filters = self.break_down_filter(gossip, filter).await?;
 
         // Stream events
         let stream: BoxStream<Event> = self
@@ -1506,6 +1638,7 @@ impl Client {
 
     async fn gossip_fetch_events(
         &self,
+        gossip: &GossipWrapper,
         filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
@@ -1513,8 +1646,9 @@ impl Client {
         let mut events: Events = Events::new(&filter);
 
         // Stream events
-        let mut stream: BoxStream<Event> =
-            self.gossip_stream_events(filter, timeout, policy).await?;
+        let mut stream: BoxStream<Event> = self
+            .gossip_stream_events(gossip, filter, timeout, policy)
+            .await?;
 
         while let Some(event) = stream.next().await {
             // To find out more about why the `force_insert` was used, search for EVENTS_FORCE_INSERT ine the code.
@@ -1526,21 +1660,23 @@ impl Client {
 
     async fn gossip_subscribe(
         &self,
+        gossip: &GossipWrapper,
         id: SubscriptionId,
         filter: Filter,
         opts: SubscribeOptions,
     ) -> Result<Output<()>, Error> {
-        let filters = self.break_down_filter(filter).await?;
+        let filters = self.break_down_filter(gossip, filter).await?;
         Ok(self.pool.subscribe_targeted(id, filters, opts).await?)
     }
 
     async fn gossip_sync_negentropy(
         &self,
+        gossip: &GossipWrapper,
         filter: Filter,
         opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
         // Break down filter
-        let temp_filters = self.break_down_filter(filter).await?;
+        let temp_filters = self.break_down_filter(gossip, filter).await?;
 
         let database = self.database();
         let mut filters: HashMap<RelayUrl, (Filter, Vec<_>)> =

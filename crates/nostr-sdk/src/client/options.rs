@@ -12,11 +12,37 @@ use std::time::Duration;
 
 use nostr_relay_pool::prelude::*;
 
+/// Gossip options
+#[derive(Debug, Clone, Copy)]
+pub struct GossipOptions {
+    /// Max number of **read** relays per user
+    pub read_relays_per_user: usize,
+    /// Max number of **write** relays per user
+    pub write_relays_per_user: usize,
+    /// Max number of **hint** relays per user
+    pub hint_relays_per_user: usize,
+    /// Max number of **most used** relays per user
+    pub most_used_relays_per_user: usize,
+    /// Max number of NIP-17 relays per user
+    pub nip17_relays: usize,
+}
+
+impl Default for GossipOptions {
+    fn default() -> Self {
+        Self {
+            read_relays_per_user: 3,
+            write_relays_per_user: 3,
+            hint_relays_per_user: 1,
+            most_used_relays_per_user: 1,
+            nip17_relays: 3,
+        }
+    }
+}
+
 /// Options
 #[derive(Debug, Clone, Default)]
 pub struct ClientOptions {
     pub(super) autoconnect: bool,
-    pub(super) gossip: bool,
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) connection: Connection,
     pub(super) relay_limits: RelayLimits,
@@ -25,6 +51,7 @@ pub struct ClientOptions {
     pub(super) verify_subscriptions: bool,
     pub(super) ban_relay_on_mismatch: bool,
     pub(super) pool: RelayPoolOptions,
+    pub(super) gossip: GossipOptions,
 }
 
 impl ClientOptions {
@@ -49,13 +76,6 @@ impl ClientOptions {
     #[inline]
     pub fn automatic_authentication(mut self, enabled: bool) -> Self {
         self.pool = self.pool.automatic_authentication(enabled);
-        self
-    }
-
-    /// Enable gossip model (default: false)
-    #[inline]
-    pub fn gossip(mut self, enable: bool) -> Self {
-        self.gossip = enable;
         self
     }
 
@@ -99,6 +119,13 @@ impl ClientOptions {
     /// If true, ban a relay when it sends an event that doesn't match the subscription filter.
     pub fn ban_relay_on_mismatch(mut self, ban_relay: bool) -> Self {
         self.ban_relay_on_mismatch = ban_relay;
+        self
+    }
+
+    /// Set gossip options
+    #[inline]
+    pub fn gossip(mut self, opts: GossipOptions) -> Self {
+        self.gossip = opts;
         self
     }
 
