@@ -10,6 +10,7 @@ use nostr::{Filter, SingleLetterTag, Timestamp};
 const TITLE: &str = "title";
 const DESCRIPTION: &str = "description";
 const SUBJECT: &str = "subject";
+const NAME: &str = "name";
 
 pub(crate) struct DatabaseFilter {
     pub(crate) ids: HashSet<[u8; 32]>,
@@ -132,7 +133,7 @@ fn match_content(query: &[u8], content: &[u8]) -> bool {
 
 #[inline]
 fn is_allowed_tag_kind(kind: &str) -> bool {
-    matches!(kind, TITLE | DESCRIPTION | SUBJECT)
+    matches!(kind, TITLE | DESCRIPTION | SUBJECT | NAME)
 }
 
 impl From<Filter> for DatabaseFilter {
