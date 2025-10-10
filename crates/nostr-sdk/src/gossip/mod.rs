@@ -18,6 +18,20 @@ use self::constant::{
 
 const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
 
+pub(crate) enum GossipKind {
+    Nip17,
+    Nip65,
+}
+
+impl GossipKind {
+    pub(crate) fn to_event_kind(&self) -> Kind {
+        match self {
+            Self::Nip17 => Kind::InboxRelays,
+            Self::Nip65 => Kind::RelayList,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum BrokenDownFilters {
     /// Filters by url
@@ -33,6 +47,8 @@ struct RelayList<T> {
     pub collection: T,
     /// Timestamp of when the event metadata was created
     pub event_created_at: Timestamp,
+    /// Timestamp of the last check
+    pub last_check: Option<Timestamp>,
     /// Timestamp of when the metadata was updated
     pub last_update: Timestamp,
 }
@@ -41,8 +57,6 @@ struct RelayList<T> {
 struct RelayLists {
     pub nip17: RelayList<HashSet<RelayUrl>>,
     pub nip65: RelayList<HashMap<RelayUrl, Option<RelayMetadata>>>,
-    /// Timestamp of the last check
-    pub last_check: Timestamp,
 }
 
 type PublicKeyMap = HashMap<PublicKey, RelayLists>;
@@ -102,6 +116,7 @@ impl Gossip {
                                 MAX_RELAYS_PER_NIP65_MARKER,
                             ),
                             event_created_at: event.created_at,
+                            last_check: None,
                             last_update: Timestamp::now(),
                         };
                     }
@@ -110,6 +125,7 @@ impl Gossip {
                     nip65: RelayList {
                         collection: extract_nip65_relay_list(event, MAX_RELAYS_PER_NIP65_MARKER),
                         event_created_at: event.created_at,
+                        last_check: None,
                         last_update: Timestamp::now(),
                     },
                     ..Default::default()
@@ -126,6 +142,7 @@ impl Gossip {
                                 .cloned()
                                 .collect(),
                             event_created_at: event.created_at,
+                            last_check: None,
                             last_update: Timestamp::now(),
                         };
                     }
@@ -137,6 +154,7 @@ impl Gossip {
                             .cloned()
                             .collect(),
                         event_created_at: event.created_at,
+                        last_check: None,
                         last_update: Timestamp::now(),
                     },
                     ..Default::default()
@@ -145,7 +163,7 @@ impl Gossip {
     }
 
     /// Check for what public keys the metadata are outdated or not existent (both for NIP17 and NIP65)
-    pub async fn check_outdated<I>(&self, public_keys: I) -> HashSet<PublicKey>
+    pub async fn check_outdated<I>(&self, public_keys: I, kind: &GossipKind) -> HashSet<PublicKey>
     where
         I: IntoIterator<Item = PublicKey>,
     {
@@ -157,18 +175,32 @@ impl Gossip {
         for public_key in public_keys.into_iter() {
             match map.get(&public_key) {
                 Some(lists) => {
-                    if lists.last_check + CHECK_OUTDATED_INTERVAL > now {
+                    let (last_check, empty, expired) = match kind {
+                        GossipKind::Nip17 => {
+                            // Check if the collection is empty
+                            let empty: bool = lists.nip17.collection.is_empty();
+
+                            // Check if expired
+                            let expired: bool =
+                                lists.nip17.last_update + PUBKEY_METADATA_OUTDATED_AFTER < now;
+
+                            (lists.nip17.last_check.unwrap_or_default(), empty, expired)
+                        }
+                        GossipKind::Nip65 => {
+                            // Check if the collection is empty
+                            let empty: bool = lists.nip65.collection.is_empty();
+
+                            // Check if expired
+                            let expired: bool =
+                                lists.nip65.last_update + PUBKEY_METADATA_OUTDATED_AFTER < now;
+
+                            (lists.nip65.last_check.unwrap_or_default(), empty, expired)
+                        }
+                    };
+
+                    if last_check + CHECK_OUTDATED_INTERVAL > now {
                         continue;
                     }
-
-                    // Check if collections are empty
-                    let empty: bool =
-                        lists.nip17.collection.is_empty() || lists.nip65.collection.is_empty();
-
-                    // Check if expired
-                    let expired: bool = lists.nip17.last_update + PUBKEY_METADATA_OUTDATED_AFTER
-                        < now
-                        || lists.nip65.last_update + PUBKEY_METADATA_OUTDATED_AFTER < now;
 
                     if empty || expired {
                         outdated.insert(public_key);
@@ -184,7 +216,7 @@ impl Gossip {
         outdated
     }
 
-    pub async fn update_last_check<I>(&self, public_keys: I)
+    pub async fn update_last_check<I>(&self, public_keys: I, kind: &GossipKind)
     where
         I: IntoIterator<Item = PublicKey>,
     {
@@ -193,12 +225,19 @@ impl Gossip {
 
         for public_key in public_keys.into_iter() {
             map.entry(public_key)
-                .and_modify(|lists| {
-                    lists.last_check = now;
+                .and_modify(|lists| match kind {
+                    GossipKind::Nip17 => lists.nip17.last_check = Some(now),
+                    GossipKind::Nip65 => lists.nip65.last_check = Some(now),
                 })
-                .or_insert_with(|| RelayLists {
-                    last_check: now,
-                    ..Default::default()
+                .or_insert_with(|| {
+                    let mut lists = RelayLists::default();
+
+                    match kind {
+                        GossipKind::Nip17 => lists.nip17.last_check = Some(now),
+                        GossipKind::Nip65 => lists.nip65.last_check = Some(now),
+                    }
+
+                    lists
                 });
         }
     }
@@ -372,7 +411,11 @@ impl Gossip {
         self.map_nip65_relays(txn, public_keys, RelayMetadata::Read)
     }
 
-    pub async fn break_down_filter(&self, filter: Filter) -> BrokenDownFilters {
+    pub async fn break_down_filter(
+        &self,
+        filter: Filter,
+        pattern: GossipFilterPattern,
+    ) -> BrokenDownFilters {
         let txn = self.public_keys.read().await;
 
         // Extract `p` tag from generic tags and parse public key hex
@@ -390,7 +433,9 @@ impl Gossip {
                     self.map_nip65_outbox_relays(&txn, authors);
 
                 // Extend with NIP17 relays
-                outbox.extend(self.map_nip17_relays(&txn, authors));
+                if pattern.has_nip17() {
+                    outbox.extend(self.map_nip17_relays(&txn, authors));
+                }
 
                 // No relay available for the authors
                 if outbox.is_empty() {
@@ -417,7 +462,9 @@ impl Gossip {
                     self.map_nip65_inbox_relays(&txn, p_public_keys);
 
                 // Extend with NIP17 relays
-                inbox.extend(self.map_nip17_relays(&txn, p_public_keys));
+                if pattern.has_nip17() {
+                    inbox.extend(self.map_nip17_relays(&txn, p_public_keys));
+                }
 
                 // No relay available for the p tags
                 if inbox.is_empty() {
@@ -446,7 +493,9 @@ impl Gossip {
                     self.get_nip65_relays(&txn, authors.union(p_public_keys), None);
 
                 // Extend with NIP17 relays
-                relays.extend(self.get_nip17_relays(&txn, authors.union(p_public_keys)));
+                if pattern.has_nip17() {
+                    relays.extend(self.get_nip17_relays(&txn, authors.union(p_public_keys)));
+                }
 
                 // No relay available for the authors and p tags
                 if relays.is_empty() {
@@ -559,6 +608,38 @@ fn extract_nip65_relay_list(
     }
 
     map
+}
+
+pub(crate) enum GossipFilterPattern {
+    Nip65,
+    Nip65AndNip17,
+}
+
+impl GossipFilterPattern {
+    #[inline]
+    fn has_nip17(&self) -> bool {
+        matches!(self, Self::Nip65AndNip17)
+    }
+}
+
+/// Use both NIP-65 and NIP-17 if:
+/// - the `kinds` field contains the [`Kind::GiftWrap`];
+/// - if it's set a `#p` tag and no kind is specified
+pub(crate) fn find_filter_pattern(filter: &Filter) -> GossipFilterPattern {
+    let (are_kinds_empty, has_gift_wrap_kind): (bool, bool) = match &filter.kinds {
+        Some(kinds) if kinds.is_empty() => (true, false),
+        Some(kinds) => (false, kinds.contains(&Kind::GiftWrap)),
+        None => (true, false),
+    };
+    let has_p_tags: bool = filter.generic_tags.contains_key(&P_TAG);
+
+    // TODO: use both also if there are only IDs?
+
+    if has_gift_wrap_kind || (has_p_tags && are_kinds_empty) {
+        return GossipFilterPattern::Nip65AndNip17;
+    }
+
+    GossipFilterPattern::Nip65
 }
 
 #[cfg(test)]
@@ -736,7 +817,10 @@ mod tests {
 
         // Single author
         let filter = Filter::new().author(keys_a.public_key);
-        match graph.break_down_filter(filter.clone()).await {
+        match graph
+            .break_down_filter(filter.clone(), GossipFilterPattern::Nip65)
+            .await
+        {
             BrokenDownFilters::Filters(map) => {
                 assert_eq!(map.get(&damus_url).unwrap(), &filter);
                 assert_eq!(map.get(&nostr_bg_url).unwrap(), &filter);
@@ -748,7 +832,10 @@ mod tests {
 
         // Multiple authors
         let authors_filter = Filter::new().authors([keys_a.public_key, keys_b.public_key]);
-        match graph.break_down_filter(authors_filter.clone()).await {
+        match graph
+            .break_down_filter(authors_filter.clone(), GossipFilterPattern::Nip65)
+            .await
+        {
             BrokenDownFilters::Filters(map) => {
                 assert_eq!(map.get(&damus_url).unwrap(), &authors_filter);
                 assert_eq!(
@@ -775,7 +862,10 @@ mod tests {
 
         // Other filter
         let search_filter = Filter::new().search("Test").limit(10);
-        match graph.break_down_filter(search_filter.clone()).await {
+        match graph
+            .break_down_filter(search_filter.clone(), GossipFilterPattern::Nip65)
+            .await
+        {
             BrokenDownFilters::Other(filter) => {
                 assert_eq!(filter, search_filter);
             }
@@ -784,7 +874,10 @@ mod tests {
 
         // Single p tags
         let p_tag_filter = Filter::new().pubkey(keys_a.public_key);
-        match graph.break_down_filter(p_tag_filter.clone()).await {
+        match graph
+            .break_down_filter(p_tag_filter.clone(), GossipFilterPattern::Nip65)
+            .await
+        {
             BrokenDownFilters::Filters(map) => {
                 assert_eq!(map.get(&damus_url).unwrap(), &p_tag_filter);
                 assert_eq!(map.get(&nostr_bg_url).unwrap(), &p_tag_filter);
@@ -801,7 +894,10 @@ mod tests {
         let filter = Filter::new()
             .author(keys_a.public_key)
             .pubkey(keys_b.public_key);
-        match graph.break_down_filter(filter.clone()).await {
+        match graph
+            .break_down_filter(filter.clone(), GossipFilterPattern::Nip65)
+            .await
+        {
             BrokenDownFilters::Filters(map) => {
                 assert_eq!(map.get(&damus_url).unwrap(), &filter);
                 assert_eq!(map.get(&nostr_bg_url).unwrap(), &filter);
@@ -817,7 +913,10 @@ mod tests {
         // test orphan filters
         let random_keys = Keys::generate();
         let filter = Filter::new().author(random_keys.public_key);
-        match graph.break_down_filter(filter.clone()).await {
+        match graph
+            .break_down_filter(filter.clone(), GossipFilterPattern::Nip65)
+            .await
+        {
             BrokenDownFilters::Orphan(f) => {
                 assert_eq!(f, filter);
             }
