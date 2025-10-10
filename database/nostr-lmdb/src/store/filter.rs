@@ -82,10 +82,8 @@ impl DatabaseFilter {
                     .iter()
                     .filter_map(|t| Some((t.kind(), t.content()?)))
                 {
-                    if let TITLE | DESCRIPTION | SUBJECT = kind {
-                        if match_content(query, content.as_bytes()) {
-                            return true;
-                        }
+                    if is_allowed_tag_kind(kind) && match_content(query, content.as_bytes()) {
+                        return true;
                     }
                 }
 
@@ -130,6 +128,11 @@ fn match_content(query: &[u8], content: &[u8]) -> bool {
     content
         .windows(query.len())
         .any(|window| window.eq_ignore_ascii_case(query))
+}
+
+#[inline]
+fn is_allowed_tag_kind(kind: &str) -> bool {
+    matches!(kind, TITLE | DESCRIPTION | SUBJECT)
 }
 
 impl From<Filter> for DatabaseFilter {
