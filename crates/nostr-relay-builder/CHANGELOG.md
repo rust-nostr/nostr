@@ -25,6 +25,10 @@
 
 ## Unreleased
 
+### Added
+
+- Add `RelayBuilder::max_filter_limit` and `RelayBuilder::default_filter_limit` to limit the filter's limit (https://github.com/rust-nostr/nostr/pull/1096)
+
 ### Fixed
 
 - Consider a PoW difficulty if it’s greater than 0 in `RelayBuilder::min_pow` (https://github.com/rust-nostr/nostr/pull/1085)
