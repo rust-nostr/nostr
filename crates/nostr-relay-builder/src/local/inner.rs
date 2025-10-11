@@ -39,6 +39,8 @@ pub(super) struct InnerLocalRelay {
     mode: RelayBuilderMode,
     rate_limit: RateLimit,
     connections_limit: Arc<Semaphore>,
+    max_filter_limit: Option<usize>,
+    default_filter_limit: usize,
     min_pow: Option<u8>, // TODO: use AtomicU8 to allow to change it?
     #[cfg(feature = "tor")]
     hidden_service: Option<String>,
@@ -100,6 +102,8 @@ impl InnerLocalRelay {
             mode: builder.mode,
             rate_limit: builder.rate_limit,
             connections_limit: Arc::new(Semaphore::new(max_connections)),
+            max_filter_limit: builder.max_filter_limit,
+            default_filter_limit: builder.default_filter_limit,
             min_pow: builder.min_pow,
             #[cfg(feature = "tor")]
             hidden_service,
@@ -592,6 +596,17 @@ impl InnerLocalRelay {
                     }
                 }
 
+                let mut filter: Filter = filter.into_owned();
+                let filter_limit = filter.limit.unwrap_or_default();
+
+                if filter_limit == 0 {
+                    filter.limit = Some(self.default_filter_limit)
+                } else if let Some(max_limit) = self.max_filter_limit {
+                    if filter_limit > max_limit {
+                        filter.limit = Some(max_limit)
+                    }
+                }
+
                 // check query policy plugins
                 for plugin in self.query_policy.iter() {
                     if let PolicyResult::Reject(msg) = plugin.admit_query(&filter, addr).await {
@@ -605,8 +620,6 @@ impl InnerLocalRelay {
                             .await;
                     }
                 }
-
-                let filter: Filter = filter.into_owned();
 
                 // Check if subscription has IDs
                 let ids_len: Option<usize> = filter.ids.as_ref().map(|ids| ids.len());

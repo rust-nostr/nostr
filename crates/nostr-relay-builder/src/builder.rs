@@ -186,6 +186,10 @@ pub struct RelayBuilder {
     pub(crate) tor: Option<RelayBuilderHiddenService>,
     /// Max connections allowed
     pub(crate) max_connections: Option<usize>,
+    /// Max filter's limit
+    pub(crate) max_filter_limit: Option<usize>,
+    /// Default filter's limit if there is no limit
+    pub(crate) default_filter_limit: usize,
     /// Min POW difficulty
     pub(crate) min_pow: Option<u8>,
     /// Write policy plugins
@@ -211,6 +215,8 @@ impl Default for RelayBuilder {
             #[cfg(feature = "tor")]
             tor: None,
             max_connections: None,
+            max_filter_limit: None,
+            default_filter_limit: 500,
             min_pow: None,
             write_plugins: Vec::new(),
             query_plugins: Vec::new(),
@@ -277,6 +283,21 @@ impl RelayBuilder {
     #[inline]
     pub fn max_connections(mut self, max: usize) -> Self {
         self.max_connections = Some(max);
+        self
+    }
+
+    /// Sets the maximum limit for the filter. If the filter's limit exceeds
+    /// this value, it will fallback to this number.
+    #[inline]
+    pub fn max_filter_limit(mut self, max: usize) -> Self {
+        self.max_filter_limit = Some(max);
+        self
+    }
+
+    /// Sets the default filter limit when no limit is specified. Defaults 500.
+    #[inline]
+    pub fn default_filter_limit(mut self, limit: usize) -> Self {
+        self.default_filter_limit = limit;
         self
     }
 
