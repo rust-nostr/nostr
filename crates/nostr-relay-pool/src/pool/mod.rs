@@ -582,22 +582,23 @@ impl RelayPool {
 
     /// Get subscriptions
     #[inline]
-    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, HashMap<RelayUrl, Filter>> {
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, HashMap<RelayUrl, Vec<Filter>>> {
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
 
-        let mut subscriptions: HashMap<SubscriptionId, HashMap<RelayUrl, Filter>> = HashMap::new();
+        let mut subscriptions: HashMap<SubscriptionId, HashMap<RelayUrl, Vec<Filter>>> =
+            HashMap::new();
 
         for (url, relay) in relays.iter() {
             // Get relay subscriptions
             let relay_subscriptions = relay.subscriptions().await;
 
             // Iterate relay subscriptions and populate the general subscriptions map
-            for (id, filter) in relay_subscriptions.into_iter() {
+            for (id, list) in relay_subscriptions.into_iter() {
                 subscriptions
                     .entry(id)
                     .or_default()
-                    .insert(url.clone(), filter);
+                    .insert(url.clone(), list);
             }
         }
 
@@ -606,17 +607,17 @@ impl RelayPool {
 
     /// Get a subscription
     #[inline]
-    pub async fn subscription(&self, id: &SubscriptionId) -> HashMap<RelayUrl, Filter> {
+    pub async fn subscription(&self, id: &SubscriptionId) -> HashMap<RelayUrl, Vec<Filter>> {
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
 
-        let mut filters: HashMap<RelayUrl, Filter> = HashMap::new();
+        let mut filters: HashMap<RelayUrl, Vec<Filter>> = HashMap::new();
 
         // Iterate relays and populate filters
         for (url, relay) in relays.iter() {
             // try to get subscription by ID from the relay
-            if let Some(filter) = relay.subscription(id).await {
-                filters.insert(url.clone(), filter);
+            if let Some(list) = relay.subscription(id).await {
+                filters.insert(url.clone(), list);
             }
         }
 
@@ -627,10 +628,13 @@ impl RelayPool {
     ///
     /// When a new relay is added, saved subscriptions will be automatically used for it.
     #[inline]
-    pub async fn save_subscription(&self, id: SubscriptionId, filter: Filter) {
+    pub async fn save_subscription<F>(&self, id: SubscriptionId, filters: F)
+    where
+        F: Into<Vec<Filter>>,
+    {
         let mut subscriptions = self.inner.atomic.inherit_subscriptions.write().await;
-        let current: &mut Filter = subscriptions.entry(id).or_default();
-        *current = filter;
+        let current: &mut Vec<Filter> = subscriptions.entry(id).or_default();
+        *current = filters.into();
     }
 
     async fn remove_subscription(&self, id: &SubscriptionId) {
@@ -801,13 +805,16 @@ impl RelayPool {
     /// Subscribe to filters to all relays with `READ` flag.
     ///
     /// Check [`RelayPool::subscribe_with_id_to`] docs to learn more.
-    pub async fn subscribe(
+    pub async fn subscribe<F>(
         &self,
-        filter: Filter,
+        filters: F,
         opts: SubscribeOptions,
-    ) -> Result<Output<SubscriptionId>, Error> {
+    ) -> Result<Output<SubscriptionId>, Error>
+    where
+        F: Into<Vec<Filter>>,
+    {
         let id: SubscriptionId = SubscriptionId::generate();
-        let output: Output<()> = self.subscribe_with_id(id.clone(), filter, opts).await?;
+        let output: Output<()> = self.subscribe_with_id(id.clone(), filters, opts).await?;
         Ok(Output {
             val: id,
             success: output.success,
@@ -818,23 +825,29 @@ impl RelayPool {
     /// Subscribe to filters with custom [SubscriptionId] to all relays with `READ` flag.
     ///
     /// Check [`RelayPool::subscribe_with_id_to`] docs to learn more.
-    pub async fn subscribe_with_id(
+    pub async fn subscribe_with_id<F>(
         &self,
         id: SubscriptionId,
-        filter: Filter,
+        filters: F,
         opts: SubscribeOptions,
-    ) -> Result<Output<()>, Error> {
+    ) -> Result<Output<()>, Error>
+    where
+        F: Into<Vec<Filter>>,
+    {
+        // Convert filters
+        let filters: Vec<Filter> = filters.into();
+
         // Check if isn't auto-closing subscription
         if !opts.is_auto_closing() {
             // Save subscription
-            self.save_subscription(id.clone(), filter.clone()).await;
+            self.save_subscription(id.clone(), filters.clone()).await;
         }
 
         // Get relay urls
         let urls: Vec<RelayUrl> = self.__read_relay_urls().await;
 
         // Subscribe
-        self.subscribe_with_id_to(urls, id, filter, opts).await
+        self.subscribe_with_id_to(urls, id, filters, opts).await
     }
 
     /// Subscribe to filters to specific relays
@@ -873,40 +886,43 @@ impl RelayPool {
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
     ///
     /// Auto-closing subscriptions aren't saved in the subscription map!
-    pub async fn subscribe_with_id_to<I, U>(
+    pub async fn subscribe_with_id_to<I, U, F>(
         &self,
         urls: I,
         id: SubscriptionId,
-        filter: Filter,
+        filters: F,
         opts: SubscribeOptions,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
+        F: Into<Vec<Filter>>,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let targets = urls.into_iter().map(|u| (u, filter.clone()));
+        let filters: Vec<Filter> = filters.into();
+        let targets = urls.into_iter().map(|u| (u, filters.clone()));
         self.subscribe_targeted(id, targets, opts).await
     }
 
     /// Targeted subscription
     ///
     /// Subscribe to specific relays with specific filters.
-    pub async fn subscribe_targeted<I, U>(
+    pub async fn subscribe_targeted<I, U, F>(
         &self,
         id: SubscriptionId,
         targets: I,
         opts: SubscribeOptions,
     ) -> Result<Output<()>, Error>
     where
-        I: IntoIterator<Item = (U, Filter)>,
+        I: IntoIterator<Item = (U, F)>,
         U: TryIntoUrl,
+        F: Into<Vec<Filter>>,
         Error: From<<U as TryIntoUrl>::Err>,
     {
         // Collect targets
-        let targets: HashMap<RelayUrl, Filter> = targets
+        let targets: HashMap<RelayUrl, Vec<Filter>> = targets
             .into_iter()
-            .map(|(u, f)| Ok((u.try_into_url()?, f)))
+            .map(|(u, f)| Ok((u.try_into_url()?, f.into())))
             .collect::<Result<_, Error>>()?;
 
         // Check if urls set is empty
@@ -1105,34 +1121,49 @@ impl RelayPool {
     }
 
     /// Fetch events from relays with [`RelayServiceFlags::READ`] flag.
-    pub async fn fetch_events(
+    pub async fn fetch_events<F>(
         &self,
-        filter: Filter,
+        filters: F,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<Events, Error> {
+    ) -> Result<Events, Error>
+    where
+        F: Into<Vec<Filter>>,
+    {
         let urls: Vec<RelayUrl> = self.__read_relay_urls().await;
-        self.fetch_events_from(urls, filter, timeout, policy).await
+        self.fetch_events_from(urls, filters, timeout, policy).await
     }
 
     /// Fetch events from specific relays
-    pub async fn fetch_events_from<I, U>(
+    pub async fn fetch_events_from<I, U, F>(
         &self,
         urls: I,
-        filter: Filter,
+        filters: F,
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<Events, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
+        F: Into<Vec<Filter>>,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let mut events: Events = Events::new(&filter);
+        // Convert filters
+        let filters: Vec<Filter> = filters.into();
+
+        // Construct a new events collection
+        let mut events: Events = if filters.len() == 1 {
+            // SAFETY: this can't panic because the filters are already verified that list isn't empty.
+            let filter: &Filter = &filters[0];
+            Events::new(filter)
+        } else {
+            // More than a filter, so we can't ensure to respect the limit -> construct a default collection.
+            Events::default()
+        };
 
         // Stream events
         let mut stream = self
-            .stream_events_from(urls, filter, timeout, policy)
+            .stream_events_from(urls, filters, timeout, policy)
             .await?;
         while let Some(event) = stream.next().await {
             // To find out more about why the `force_insert` was used, search for EVENTS_FORCE_INSERT ine the code.
@@ -1154,34 +1185,45 @@ impl RelayPool {
     }
 
     /// Stream events from specific relays
-    pub async fn stream_events_from<I, U>(
+    pub async fn stream_events_from<I, U, F>(
         &self,
         urls: I,
-        filter: Filter,
+        filters: F,
         timeout: Duration,
         policy: ReqExitPolicy,
     ) -> Result<BoxStream<Event>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
+        F: Into<Vec<Filter>>,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        let targets = urls
-            .into_iter()
-            .map(|u| Ok((u.try_into_url()?, filter.clone())))
-            .collect::<Result<_, Error>>()?;
+        let filters: Vec<Filter> = filters.into();
+        let targets = urls.into_iter().map(|u| (u, filters.clone()));
         self.stream_events_targeted(targets, timeout, policy).await
     }
 
     /// Targeted streaming events
     ///
     /// Stream events from specific relays with specific filters
-    pub async fn stream_events_targeted(
+    pub async fn stream_events_targeted<I, U, F>(
         &self,
-        targets: HashMap<RelayUrl, Filter>,
+        targets: I,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<BoxStream<Event>, Error> {
+    ) -> Result<BoxStream<Event>, Error>
+    where
+        I: IntoIterator<Item = (U, F)>,
+        U: TryIntoUrl,
+        F: Into<Vec<Filter>>,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Collect targets
+        let targets: HashMap<RelayUrl, Vec<Filter>> = targets
+            .into_iter()
+            .map(|(u, v)| Ok((u.try_into_url()?, v.into())))
+            .collect::<Result<_, Error>>()?;
+
         // Check if `targets` map is empty
         if targets.is_empty() {
             return Err(Error::NoRelaysSpecified);

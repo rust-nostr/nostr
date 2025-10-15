@@ -502,13 +502,13 @@ impl Client {
 
     /// Get subscriptions
     #[inline]
-    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, HashMap<RelayUrl, Filter>> {
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, HashMap<RelayUrl, Vec<Filter>>> {
         self.pool.subscriptions().await
     }
 
     /// Get subscription
     #[inline]
-    pub async fn subscription(&self, id: &SubscriptionId) -> HashMap<RelayUrl, Filter> {
+    pub async fn subscription(&self, id: &SubscriptionId) -> HashMap<RelayUrl, Vec<Filter>> {
         self.pool.subscription(id).await
     }
 

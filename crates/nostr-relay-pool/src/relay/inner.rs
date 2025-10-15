@@ -114,7 +114,7 @@ impl RelayChannels {
 
 #[derive(Debug)]
 struct SubscriptionData {
-    pub filter: Filter,
+    pub filters: Vec<Filter>,
     pub subscribed_at: Timestamp,
     pub is_auto_closing: bool,
     /// Received EOSE msg
@@ -128,8 +128,7 @@ struct SubscriptionData {
 impl Default for SubscriptionData {
     fn default() -> Self {
         Self {
-            // TODO: use `Option<Filter>`?
-            filter: Filter::new(),
+            filters: Vec::new(),
             subscribed_at: Timestamp::zero(),
             is_auto_closing: false,
             received_eose: false,
@@ -291,17 +290,17 @@ impl InnerRelay {
     }
 
     /// Returns all long-lived (non-auto-closing) subscriptions
-    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
         let subscription = self.atomic.subscriptions.read().await;
         subscription
             .iter()
-            .filter_map(|(k, v)| (!v.is_auto_closing).then_some((k.clone(), v.filter.clone())))
+            .filter_map(|(k, v)| (!v.is_auto_closing).then_some((k.clone(), v.filters.clone())))
             .collect()
     }
 
-    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
+    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
         let subscription = self.atomic.subscriptions.read().await;
-        subscription.get(id).map(|d| d.filter.clone())
+        subscription.get(id).map(|d| d.filters.clone())
     }
 
     pub(super) async fn remove_subscription(&self, id: &SubscriptionId) {
@@ -310,22 +309,26 @@ impl InnerRelay {
     }
 
     /// Register an auto-closing subscription
-    pub(crate) async fn add_auto_closing_subscription(&self, id: SubscriptionId, filter: Filter) {
+    pub(crate) async fn add_auto_closing_subscription(
+        &self,
+        id: SubscriptionId,
+        filters: Vec<Filter>,
+    ) {
         let mut subscriptions = self.atomic.subscriptions.write().await;
         let data: &mut SubscriptionData = subscriptions.entry(id).or_default();
-        data.filter = filter;
+        data.filters = filters;
         data.is_auto_closing = true;
     }
 
     pub(crate) async fn update_subscription(
         &self,
         id: SubscriptionId,
-        filter: Filter,
+        filters: Vec<Filter>,
         update_subscribed_at: bool,
     ) {
         let mut subscriptions = self.atomic.subscriptions.write().await;
         let data: &mut SubscriptionData = subscriptions.entry(id).or_default();
-        data.filter = filter;
+        data.filters = filters;
 
         if update_subscribed_at {
             data.subscribed_at = Timestamp::now();
@@ -1147,7 +1150,7 @@ impl InnerRelay {
 
             // Check if the subscription id exist and verify if the event matches the subscription filter.
             let SubscriptionData {
-                filter,
+                filters,
                 received_eose,
                 received_events,
                 ..
@@ -1155,9 +1158,13 @@ impl InnerRelay {
                 .get(&subscription_id)
                 .ok_or(Error::SubscriptionNotFound)?;
 
-            // EOSE received, not check anymore the limit
-            if !received_eose {
-                // Check if `filters` has a limit
+            // Check filter limit ONLY if EOSE is not received yet and if there is only ONE filter.
+            // We can't ensure that limit is respected if there is more than one filter.
+            if !received_eose && filters.len() == 1 {
+                // SAFETY: we've checked above that exists one filter.
+                let filter: &Filter = &filters[0];
+
+                // Check if the filter has a limit
                 if let Some(limit) = filter.limit {
                     // Update number of received events
                     let prev: usize = received_events.fetch_add(1, Ordering::SeqCst);
@@ -1176,13 +1183,15 @@ impl InnerRelay {
             }
 
             // Check if the filter matches the event
-            if !filter.match_event(&event, MATCH_EVENT_OPTS) {
-                // Ban the relay
-                if self.opts.ban_relay_on_mismatch {
-                    self.ban();
-                }
+            for filter in filters.iter() {
+                if !filter.match_event(&event, MATCH_EVENT_OPTS) {
+                    // Ban the relay
+                    if self.opts.ban_relay_on_mismatch {
+                        self.ban();
+                    }
 
-                return Err(Error::EventNotMatchFilter);
+                    return Err(Error::EventNotMatchFilter);
+                }
             }
         }
 
@@ -1405,12 +1414,9 @@ impl InnerRelay {
     pub async fn resubscribe(&self) -> Result<(), Error> {
         // TODO: avoid subscriptions clone
         let subscriptions = self.subscriptions().await;
-        for (id, filter) in subscriptions.into_iter() {
-            if !filter.is_empty() && self.should_resubscribe(&id).await {
-                self.send_msg(ClientMessage::Req {
-                    subscription_id: Cow::Owned(id),
-                    filters: vec![Cow::Owned(filter)],
-                })?;
+        for (id, filters) in subscriptions.into_iter() {
+            if !filters.is_empty() && self.should_resubscribe(&id).await {
+                self.send_msg(ClientMessage::req(id, filters))?;
             } else {
                 tracing::debug!("Skip re-subscription of '{id}'");
             }
@@ -1422,7 +1428,7 @@ impl InnerRelay {
     pub(super) fn spawn_auto_closing_handler(
         &self,
         id: SubscriptionId,
-        filter: Filter,
+        filters: Vec<Filter>,
         opts: SubscribeAutoCloseOptions,
         notifications: broadcast::Receiver<RelayNotification>,
         activity: Option<Sender<SubscriptionActivity>>,
@@ -1431,7 +1437,7 @@ impl InnerRelay {
         task::spawn(async move {
             // Check if CLOSE needed
             let to_close: bool = match relay
-                .handle_auto_closing(&id, &filter, opts, notifications, &activity)
+                .handle_auto_closing(&id, &filters, opts, notifications, &activity)
                 .await
             {
                 Some(HandleAutoClosing { to_close, reason }) => {
@@ -1473,7 +1479,7 @@ impl InnerRelay {
     async fn handle_auto_closing(
         &self,
         id: &SubscriptionId,
-        filter: &Filter,
+        filters: &[Filter],
         opts: SubscribeAutoCloseOptions,
         mut notifications: broadcast::Receiver<RelayNotification>,
         activity: &Option<Sender<SubscriptionActivity>>,
@@ -1612,7 +1618,7 @@ impl InnerRelay {
                             require_resubscription = false;
                             let msg = ClientMessage::Req {
                                 subscription_id: Cow::Borrowed(id),
-                                filters: vec![Cow::Borrowed(filter)],
+                                filters: filters.iter().map(Cow::Borrowed).collect(),
                             };
                             let _ = self.send_msg(msg);
                         }
@@ -1876,7 +1882,7 @@ impl InnerRelay {
         };
 
         // Register an auto-closing subscription
-        self.add_auto_closing_subscription(down_sub_id.clone(), filter.clone())
+        self.add_auto_closing_subscription(down_sub_id.clone(), vec![filter.clone()])
             .await;
 
         // Send msg

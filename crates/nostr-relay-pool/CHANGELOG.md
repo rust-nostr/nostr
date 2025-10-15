@@ -29,6 +29,8 @@
 
 - Rename `BoxSink` and `BoxStream` to `WebSocketSink` and `WebSocketStream` (https://github.com/rust-nostr/nostr/pull/1086)
 - Replace `ReceiverStream` with `BoxStream` and make `stream` module private (https://github.com/rust-nostr/nostr/pull/1087)
+- Update `Relay::subscriptions` and `Relay::subscription` outputs (https://github.com/rust-nostr/nostr/pull/1102)
+- Update `RelayPool::subscriptions` and `RelayPool::subscription` outputs (https://github.com/rust-nostr/nostr/pull/1102)
 
 ### Changed
 
@@ -37,6 +39,7 @@
 ### Added
 
 - Add `Relay::stream_events` method (https://github.com/rust-nostr/nostr/pull/1088)
+- Re-add support for multi-filter REQ (https://github.com/rust-nostr/nostr/pull/1102)
 
 ### Fixed
 

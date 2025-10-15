@@ -26,7 +26,7 @@ pub(super) type Relays = HashMap<RelayUrl, Relay>;
 pub(super) struct AtomicPrivateData {
     pub(super) relays: RwLock<Relays>,
     /// Map of subscriptions that will be inherited by new added relays.
-    pub(super) inherit_subscriptions: RwLock<HashMap<SubscriptionId, Filter>>,
+    pub(super) inherit_subscriptions: RwLock<HashMap<SubscriptionId, Vec<Filter>>>,
     pub(super) shutdown: AtomicBool,
 }
 

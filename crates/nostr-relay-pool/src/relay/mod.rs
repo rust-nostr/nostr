@@ -235,13 +235,13 @@ impl Relay {
 
     /// Get subscriptions
     #[inline]
-    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Filter> {
+    pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
         self.inner.subscriptions().await
     }
 
     /// Get filters by [SubscriptionId]
     #[inline]
-    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Filter> {
+    pub async fn subscription(&self, id: &SubscriptionId) -> Option<Vec<Filter>> {
         self.inner.subscription(id).await
     }
 
@@ -531,30 +531,36 @@ impl Relay {
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
     ///
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
-    pub async fn subscribe_with_id(
+    pub async fn subscribe_with_id<F>(
         &self,
         id: SubscriptionId,
-        filter: Filter,
+        filters: F,
         opts: SubscribeOptions,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+    where
+        F: Into<Vec<Filter>>,
+    {
+        // Convert filters
+        let filters: Vec<Filter> = filters.into();
+
         // Check if the auto-close condition is set
         match opts.auto_close {
-            Some(opts) => self.subscribe_auto_closing(id, filter, opts, None).await,
-            None => self.subscribe_long_lived(id, filter).await,
+            Some(opts) => self.subscribe_auto_closing(id, filters, opts, None).await,
+            None => self.subscribe_long_lived(id, filters).await,
         }
     }
 
     async fn subscribe_auto_closing(
         &self,
         id: SubscriptionId,
-        filter: Filter,
+        filters: Vec<Filter>,
         opts: SubscribeAutoCloseOptions,
         activity: Option<mpsc::Sender<SubscriptionActivity>>,
     ) -> Result<(), Error> {
         // Compose REQ message
         let msg: ClientMessage = ClientMessage::Req {
             subscription_id: Cow::Borrowed(&id),
-            filters: vec![Cow::Borrowed(&filter)],
+            filters: filters.iter().map(Cow::Borrowed).collect(),
         };
 
         // Subscribe to notifications
@@ -562,7 +568,7 @@ impl Relay {
 
         // Register the auto-closing subscription
         self.inner
-            .add_auto_closing_subscription(id.clone(), filter.clone())
+            .add_auto_closing_subscription(id.clone(), filters.clone())
             .await;
 
         // Send REQ message
@@ -576,24 +582,28 @@ impl Relay {
 
         // Spawn auto-closing handler
         self.inner
-            .spawn_auto_closing_handler(id, filter, opts, notifications, activity);
+            .spawn_auto_closing_handler(id, filters, opts, notifications, activity);
 
         // Return
         Ok(())
     }
 
-    async fn subscribe_long_lived(&self, id: SubscriptionId, filter: Filter) -> Result<(), Error> {
+    async fn subscribe_long_lived(
+        &self,
+        id: SubscriptionId,
+        filters: Vec<Filter>,
+    ) -> Result<(), Error> {
         // Compose REQ message
         let msg: ClientMessage = ClientMessage::Req {
             subscription_id: Cow::Borrowed(&id),
-            filters: vec![Cow::Borrowed(&filter)],
+            filters: filters.iter().map(Cow::Borrowed).collect(),
         };
 
         // Send REQ message
         self.inner.send_msg(msg)?;
 
         // No auto-close subscription: update subscription filter
-        self.inner.update_subscription(id, filter, true).await;
+        self.inner.update_subscription(id, filters, true).await;
 
         // Return
         Ok(())
@@ -612,12 +622,15 @@ impl Relay {
     }
 
     /// Stream events from relay
-    pub async fn stream_events<'a>(
+    pub async fn stream_events<'a, F>(
         &self,
-        filter: Filter,
+        filters: F,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<BoxedStream<'a, Result<Event, Error>>, Error> {
+    ) -> Result<BoxedStream<'a, Result<Event, Error>>, Error>
+    where
+        F: Into<Vec<Filter>>,
+    {
         // Create channels
         let (tx, rx) = mpsc::channel(512);
 
@@ -628,7 +641,7 @@ impl Relay {
 
         // Subscribe
         let id: SubscriptionId = SubscriptionId::generate();
-        self.subscribe_auto_closing(id, filter, opts, Some(tx))
+        self.subscribe_auto_closing(id, filters.into(), opts, Some(tx))
             .await?;
 
         Ok(Box::pin(SubscriptionActivityEventStream::new(rx)))
