@@ -10,11 +10,11 @@ use std::iter;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_utility::futures_util::stream::{BoxStream, FuturesUnordered};
+use async_utility::futures_util::stream::BoxStream;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
 use nostr_relay_pool::prelude::*;
-use tokio::sync::{broadcast, Semaphore};
+use tokio::sync::broadcast;
 
 pub mod builder;
 mod error;
@@ -1359,56 +1359,46 @@ impl Client {
             )
             .await;
 
-        let semaphore = Arc::new(Semaphore::new(10)); // Allow at max 10 concurrent requests
-        let mut futures = FuturesUnordered::new();
+        let mut filters: Vec<Filter> = Vec::with_capacity(stored_events.len());
 
         // Try to fetch from relays only the newer events (last created_at + 1)
         for event in stored_events.iter() {
             let author = event.pubkey;
             let created_at = event.created_at;
-            let urls = urls.clone();
-            let semaphore = semaphore.clone();
 
-            futures.push(async move {
-                // Acquire permit
-                let _permit = semaphore.acquire().await;
+            // Construct filter
+            let filter: Filter = Filter::new()
+                .author(author)
+                .kind(kind)
+                .since(created_at + Duration::from_secs(1))
+                .limit(1);
 
-                // Construct filter
-                let filter: Filter = Filter::new()
-                    .author(author)
-                    .kind(kind)
-                    .since(created_at + Duration::from_secs(1))
-                    .limit(1);
-
-                // Fetch the event
-                let events: Events = self
-                    .fetch_events_from(urls, filter, Duration::from_secs(10))
-                    .await?;
-
-                Ok::<_, Error>(events)
-            });
+            filters.push(filter);
         }
+
+        // Fetch the events
+        let updated_events: Events = self
+            .pool
+            .fetch_events_from(
+                urls.clone(),
+                filters,
+                Duration::from_secs(10),
+                ReqExitPolicy::ExitOnEOSE,
+            )
+            .await?;
 
         // Keep track of the missing public keys
         let mut missing_public_keys: HashSet<PublicKey> = outdated_public_keys;
 
-        // Keep track of the updated events
-        let mut updated_events = Events::default();
+        // Process events
+        for event in updated_events.iter() {
+            // Remove from missing set
+            missing_public_keys.remove(&event.pubkey);
 
-        while let Some(result) = futures.next().await {
-            if let Ok(events) = result {
-                if let Some(event) = events.first() {
-                    // Remove from missing set
-                    missing_public_keys.remove(&event.pubkey);
-
-                    // Update the last check for this public key
-                    self.gossip
-                        .update_last_check([event.pubkey], &gossip_kind)
-                        .await;
-                }
-
-                updated_events = updated_events.merge(events);
-            }
+            // Update the last check for this public key
+            self.gossip
+                .update_last_check([event.pubkey], &gossip_kind)
+                .await;
         }
 
         // Get the missing events
