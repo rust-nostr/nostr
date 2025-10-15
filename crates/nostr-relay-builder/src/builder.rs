@@ -186,6 +186,8 @@ pub struct RelayBuilder {
     pub(crate) tor: Option<RelayBuilderHiddenService>,
     /// Max connections allowed
     pub(crate) max_connections: Option<usize>,
+    /// Max subscription ID length
+    pub(crate) max_subid_length: usize,
     /// Max filter's limit
     pub(crate) max_filter_limit: Option<usize>,
     /// Default filter's limit if there is no limit
@@ -215,6 +217,7 @@ impl Default for RelayBuilder {
             #[cfg(feature = "tor")]
             tor: None,
             max_connections: None,
+            max_subid_length: 250,
             max_filter_limit: None,
             default_filter_limit: 500,
             min_pow: None,
@@ -283,6 +286,13 @@ impl RelayBuilder {
     #[inline]
     pub fn max_connections(mut self, max: usize) -> Self {
         self.max_connections = Some(max);
+        self
+    }
+
+    /// Sets the maximum subscription ID length. Defaults 250.
+    #[inline]
+    pub fn max_subid_length(mut self, max: usize) -> Self {
+        self.max_subid_length = max;
         self
     }
 

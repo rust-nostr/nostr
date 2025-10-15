@@ -28,6 +28,7 @@
 ### Added
 
 - Add `RelayBuilder::max_filter_limit` and `RelayBuilder::default_filter_limit` to limit the filter's limit (https://github.com/rust-nostr/nostr/pull/1096)
+- Add `RelayBuilder::max_subid_length` to enforce a limit on subscription ID size (https://github.com/rust-nostr/nostr/pull/1098)
 
 ### Fixed
 

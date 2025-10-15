@@ -39,6 +39,7 @@ pub(super) struct InnerLocalRelay {
     mode: RelayBuilderMode,
     rate_limit: RateLimit,
     connections_limit: Arc<Semaphore>,
+    max_subid_length: usize,
     max_filter_limit: Option<usize>,
     default_filter_limit: usize,
     min_pow: Option<u8>, // TODO: use AtomicU8 to allow to change it?
@@ -102,6 +103,7 @@ impl InnerLocalRelay {
             mode: builder.mode,
             rate_limit: builder.rate_limit,
             connections_limit: Arc::new(Semaphore::new(max_connections)),
+            max_subid_length: builder.max_subid_length,
             max_filter_limit: builder.max_filter_limit,
             default_filter_limit: builder.default_filter_limit,
             min_pow: builder.min_pow,
@@ -732,6 +734,22 @@ impl InnerLocalRelay {
     where
         S: AsyncRead + AsyncWrite + Unpin,
     {
+        // Check the subscription ID length
+        if subscription_id.as_str().chars().count() > self.max_subid_length {
+            return send_msg(
+                ws_tx,
+                RelayMessage::Closed {
+                    subscription_id,
+                    message: Cow::Owned(format!(
+                        "{}: subscription ID exceeds max length {}",
+                        MachineReadablePrefix::Blocked,
+                        self.max_subid_length
+                    )),
+                },
+            )
+            .await;
+        }
+
         // Check number of subscriptions
         if session.subscriptions.len() >= self.rate_limit.max_reqs
             && !session.subscriptions.contains_key(&subscription_id)
