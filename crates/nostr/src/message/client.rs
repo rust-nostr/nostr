@@ -25,16 +25,7 @@ pub enum ClientMessage<'a> {
         /// Subscription ID
         subscription_id: Cow<'a, SubscriptionId>,
         /// Filter
-        filter: Cow<'a, Filter>,
-    },
-    /// Multi-filter REQ (deprecated)
-    ///
-    /// <https://github.com/nostr-protocol/nips/pull/1645>
-    ReqMultiFilter {
-        /// Subscription ID
-        subscription_id: Cow<'a, SubscriptionId>,
-        /// Filters
-        filters: Vec<Filter>,
+        filters: Vec<Cow<'a, Filter>>,
     },
     /// Count
     ///
@@ -83,10 +74,13 @@ impl ClientMessage<'_> {
 
     /// Create `REQ` message
     #[inline]
-    pub fn req(subscription_id: SubscriptionId, filter: Filter) -> Self {
+    pub fn req<T>(subscription_id: SubscriptionId, filters: T) -> Self
+    where
+        T: Into<Vec<Filter>>,
+    {
         Self::Req {
             subscription_id: Cow::Owned(subscription_id),
-            filter: Cow::Owned(filter),
+            filters: filters.into().into_iter().map(Cow::Owned).collect(),
         }
     }
 
@@ -154,12 +148,6 @@ impl ClientMessage<'_> {
         match self {
             Self::Event(event) => json!(["EVENT", event]),
             Self::Req {
-                subscription_id,
-                filter,
-            } => {
-                json!(["REQ", subscription_id, filter])
-            }
-            Self::ReqMultiFilter {
                 subscription_id,
                 filters,
             } => {
@@ -231,16 +219,13 @@ impl ClientMessage<'_> {
 
         // ["REQ", <subscription_id>, <filter JSON>]
         if v[0] == "REQ" {
-            if v_len == 3 {
-                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-                let filter: Filter = serde_json::from_value(v[2].clone())?;
-                return Ok(Self::req(subscription_id, filter));
-            } else if v_len >= 3 {
+            if v_len >= 3 {
                 // Deprecated REQ
                 // ["REQ", <subscription_id>, <filter JSON>, <filter JSON>, ...]
                 let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-                let filters: Vec<Filter> = serde_json::from_value(Value::Array(v[2..].to_vec()))?;
-                return Ok(Self::ReqMultiFilter {
+                let filters: Vec<Cow<Filter>> =
+                    serde_json::from_value(Value::Array(v[2..].to_vec()))?;
+                return Ok(Self::Req {
                     subscription_id: Cow::Owned(subscription_id),
                     filters,
                 });

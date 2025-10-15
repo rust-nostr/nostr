@@ -1409,7 +1409,7 @@ impl InnerRelay {
             if !filter.is_empty() && self.should_resubscribe(&id).await {
                 self.send_msg(ClientMessage::Req {
                     subscription_id: Cow::Owned(id),
-                    filter: Cow::Owned(filter),
+                    filters: vec![Cow::Owned(filter)],
                 })?;
             } else {
                 tracing::debug!("Skip re-subscription of '{id}'");
@@ -1612,7 +1612,7 @@ impl InnerRelay {
                             require_resubscription = false;
                             let msg = ClientMessage::Req {
                                 subscription_id: Cow::Borrowed(id),
-                                filter: Cow::Borrowed(filter),
+                                filters: vec![Cow::Borrowed(filter)],
                             };
                             let _ = self.send_msg(msg);
                         }
@@ -1872,7 +1872,7 @@ impl InnerRelay {
         let filter = Filter::new().ids(ids);
         let msg: ClientMessage = ClientMessage::Req {
             subscription_id: Cow::Borrowed(down_sub_id),
-            filter: Cow::Borrowed(&filter),
+            filters: vec![Cow::Borrowed(&filter)],
         };
 
         // Register an auto-closing subscription

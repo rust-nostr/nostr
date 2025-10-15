@@ -34,6 +34,7 @@
 - Remove `EventBuilder::reaction_extended` (https://github.com/rust-nostr/nostr/pull/1063)
 - Change NIP-47 `GetInfoResponse` `pubkey` type from `PublicKey` to `String`
 - Change `methods` type to `Vec<Method>` in `GetInfoResponse` (https://github.com/rust-nostr/nostr/pull/1094)
+- Merge `ClientMessage::Req` and `ClientMessage::ReqMultiFilter` variants (https://github.com/rust-nostr/nostr/pull/1101)
 
 ### Added
 

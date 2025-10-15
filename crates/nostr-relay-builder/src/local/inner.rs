@@ -568,23 +568,16 @@ impl InnerLocalRelay {
             }
             ClientMessage::Req {
                 subscription_id,
-                filter,
+                filters,
             } => {
                 self.handle_req(
                     session,
                     ws_tx,
                     addr,
                     subscription_id,
-                    vec![filter.into_owned()],
+                    filters.into_iter().map(|f| f.into_owned()).collect(),
                 )
                 .await
-            }
-            ClientMessage::ReqMultiFilter {
-                subscription_id,
-                filters,
-            } => {
-                self.handle_req(session, ws_tx, addr, subscription_id, filters)
-                    .await
             }
             ClientMessage::Count {
                 subscription_id,

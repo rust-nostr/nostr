@@ -7,6 +7,8 @@
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
+use alloc::vec;
+use alloc::vec::Vec;
 use core::fmt;
 use core::fmt::Write;
 use core::hash::Hash;
@@ -317,54 +319,6 @@ impl<'de> Deserialize<'de> for SingleLetterTag {
     }
 }
 
-/// Subscription filters
-///
-/// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-//
-// NOTE: the various fields are `Option` for the reason described at https://github.com/rust-nostr/nostr/issues/302
-//
-#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct Filter {
-    /// List of [`EventId`]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
-    pub ids: Option<BTreeSet<EventId>>,
-    /// List of [`PublicKey`]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
-    pub authors: Option<BTreeSet<PublicKey>>,
-    /// List of a kind numbers
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
-    pub kinds: Option<BTreeSet<Kind>>,
-    /// It's a string describing a query in a human-readable form, i.e. "best nostr apps"
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/50.md>
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
-    pub search: Option<String>,
-    /// An integer unix timestamp, events must be newer than this to pass
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
-    pub since: Option<Timestamp>,
-    /// An integer unix timestamp, events must be older than this to pass
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
-    pub until: Option<Timestamp>,
-    /// Maximum number of events to be returned in the initial query
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
-    pub limit: Option<usize>,
-    /// Generic tag queries
-    #[serde(
-        flatten,
-        serialize_with = "serialize_generic_tags",
-        deserialize_with = "deserialize_generic_tags"
-    )]
-    #[serde(default)]
-    pub generic_tags: GenericTags,
-}
-
 /// Specifies which event fields to compare with a filter.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct MatchEventOptions {
@@ -469,6 +423,54 @@ impl MatchEventOptions {
         self.nip50 = enable;
         self
     }
+}
+
+/// Subscription filters
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/01.md>
+//
+// NOTE: the various fields are `Option` for the reason described at https://github.com/rust-nostr/nostr/issues/302
+//
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct Filter {
+    /// List of [`EventId`]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub ids: Option<BTreeSet<EventId>>,
+    /// List of [`PublicKey`]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub authors: Option<BTreeSet<PublicKey>>,
+    /// List of a kind numbers
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub kinds: Option<BTreeSet<Kind>>,
+    /// It's a string describing a query in a human-readable form, i.e. "best nostr apps"
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/50.md>
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub search: Option<String>,
+    /// An integer unix timestamp, events must be newer than this to pass
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub since: Option<Timestamp>,
+    /// An integer unix timestamp, events must be older than this to pass
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub until: Option<Timestamp>,
+    /// Maximum number of events to be returned in the initial query
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub limit: Option<usize>,
+    /// Generic tag queries
+    #[serde(
+        flatten,
+        serialize_with = "serialize_generic_tags",
+        deserialize_with = "deserialize_generic_tags"
+    )]
+    #[serde(default)]
+    pub generic_tags: GenericTags,
 }
 
 impl Filter {
@@ -944,6 +946,12 @@ impl Filter {
 
 impl JsonUtil for Filter {
     type Err = serde_json::Error;
+}
+
+impl From<Filter> for Vec<Filter> {
+    fn from(filter: Filter) -> Self {
+        vec![filter]
+    }
 }
 
 fn serialize_generic_tags<S>(generic_tags: &GenericTags, serializer: S) -> Result<S::Ok, S::Error>

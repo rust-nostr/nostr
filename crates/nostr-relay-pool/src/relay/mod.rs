@@ -554,7 +554,7 @@ impl Relay {
         // Compose REQ message
         let msg: ClientMessage = ClientMessage::Req {
             subscription_id: Cow::Borrowed(&id),
-            filter: Cow::Borrowed(&filter),
+            filters: vec![Cow::Borrowed(&filter)],
         };
 
         // Subscribe to notifications
@@ -586,7 +586,7 @@ impl Relay {
         // Compose REQ message
         let msg: ClientMessage = ClientMessage::Req {
             subscription_id: Cow::Borrowed(&id),
-            filter: Cow::Borrowed(&filter),
+            filters: vec![Cow::Borrowed(&filter)],
         };
 
         // Send REQ message
