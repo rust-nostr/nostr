@@ -790,10 +790,13 @@ impl InnerLocalRelay {
                         }
                     }
                 }
-                None => {
-                    // No limit set, use the default one
-                    filter.limit = Some(self.default_filter_limit)
-                }
+                // No limit set, if the filter has IDs, set the limit to the number of IDs, otherwise to the default limit.
+                None => match filter.ids.as_ref() {
+                    Some(ids) => {
+                        filter.limit = Some(ids.len());
+                    }
+                    None => filter.limit = Some(self.default_filter_limit),
+                },
             }
         }
 
