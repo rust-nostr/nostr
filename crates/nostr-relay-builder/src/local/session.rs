@@ -73,7 +73,7 @@ impl Nip42Session {
 }
 
 pub(super) struct Session<'a> {
-    pub subscriptions: HashMap<SubscriptionId, Filter>,
+    pub subscriptions: HashMap<SubscriptionId, Vec<Filter>>,
     pub negentropy_subscription: HashMap<SubscriptionId, Negentropy<'a, NegentropyStorageVector>>,
     pub nip42: Nip42Session,
     pub tokens: Tokens,
