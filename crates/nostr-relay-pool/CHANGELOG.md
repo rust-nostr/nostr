@@ -37,7 +37,6 @@
 ### Added
 
 - Add `Relay::stream_events` method (https://github.com/rust-nostr/nostr/pull/1088)
-- Add support for multi-filter REQ (https://github.com/rust-nostr/nostr/pull/1099)
 
 ### Fixed
 
