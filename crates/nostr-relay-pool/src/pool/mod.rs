@@ -1212,18 +1212,25 @@ impl RelayPool {
         // Wait that futures complete
         let awaited = future::join_all(futures).await;
 
-        // Re-construct streams
-        let mut streams = Vec::with_capacity(awaited.len());
+        // The urls and futures len MUST be the same!
+        assert_eq!(urls.len(), awaited.len());
 
-        for (url, stream) in urls.iter().zip(awaited.into_iter()) {
+        // Re-construct streams
+        let mut streams: Vec<(RelayUrl, BoxStream<_>)> = Vec::with_capacity(awaited.len());
+
+        // Zip-up urls and futures into a single iterator
+        let iter = urls.into_iter().zip(awaited.into_iter());
+
+        for (url, stream) in iter {
             match stream {
-                Ok(stream) => streams.push(stream),
+                Ok(stream) => streams.push((url, stream)),
                 Err(e) => tracing::error!(url = %url, error = %e, "Failed to stream events."),
             }
         }
 
         // Create a new channel
-        let (tx, rx) = mpsc::channel::<Event>(streams.len() * 512);
+        // NOTE: the events are deduplicated, so here isn't necessary a huge capacity.
+        let (tx, rx) = mpsc::channel(512);
 
         // Single driver task: polls all streams, de-duplicates, forwards
         task::spawn(async move {
@@ -1232,7 +1239,7 @@ impl RelayPool {
 
             let mut futures = Vec::with_capacity(streams.len());
 
-            for (url, mut stream) in urls.into_iter().zip(streams.into_iter()) {
+            for (url, mut stream) in streams.into_iter() {
                 let tx = tx.clone();
                 let ids = ids.clone();
 
@@ -1261,6 +1268,9 @@ impl RelayPool {
 
             // Wait that all futures complete
             future::join_all(futures).await;
+
+            // Close the channel
+            drop(tx);
         });
 
         // Return stream
