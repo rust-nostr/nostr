@@ -845,11 +845,12 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/25.md>
     #[inline]
-    pub fn reaction<S>(target: ReactionTarget, reaction: S) -> Self
+    pub fn reaction<T, S>(target: T, reaction: S) -> Self
     where
+        T: Into<ReactionTarget>,
         S: Into<String>,
     {
-        Self::new(Kind::Reaction, reaction).tags(target.into_tags())
+        Self::new(Kind::Reaction, reaction).tags(target.into().into_tags())
     }
 
     /// Create a new channel

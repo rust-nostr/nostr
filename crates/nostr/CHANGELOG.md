@@ -66,6 +66,7 @@
 - NIP-47 fields synchronized with current specs (https://github.com/rust-nostr/nostr/pull/1021)
 - Check that `a`/`A` and `k`/`K` tags have the same event kind in NIP-22 events (https://github.com/rust-nostr/nostr/pull/1035)
 - Deserialize NIP-47 empty strings as `None` (https://github.com/rust-nostr/nostr/pull/1079)
+- Make `EventBuilder::reaction` target arg generic over `ReactionTarget` type
 
 ### Deprecated
 
