@@ -1361,6 +1361,9 @@ impl Client {
 
         let mut filters: Vec<Filter> = Vec::with_capacity(stored_events.len());
 
+        // Keep track of the missing public keys
+        let mut missing_public_keys: HashSet<PublicKey> = outdated_public_keys;
+
         // Try to fetch from relays only the newer events (last created_at + 1)
         for event in stored_events.iter() {
             let author = event.pubkey;
@@ -1374,6 +1377,9 @@ impl Client {
                 .limit(1);
 
             filters.push(filter);
+
+            // Remove from the missing set
+            missing_public_keys.remove(&event.pubkey);
         }
 
         // Fetch the events
@@ -1387,35 +1393,31 @@ impl Client {
             )
             .await?;
 
-        // Keep track of the missing public keys
-        let mut missing_public_keys: HashSet<PublicKey> = outdated_public_keys;
-
-        // Process events
-        for event in updated_events.iter() {
-            // Remove from missing set
-            missing_public_keys.remove(&event.pubkey);
-
-            // Update the last check for this public key
-            self.gossip
-                .update_last_check([event.pubkey], &gossip_kind)
-                .await;
-        }
-
-        // Get the missing events
-        let missing_filter: Filter = Filter::default()
-            .authors(missing_public_keys.clone())
-            .kind(kind);
-        let missing_events: Events = self
-            .fetch_events_from(urls, missing_filter, Duration::from_secs(10))
-            .await?;
-
-        // Update the last check for the missing public keys
+        // Update the last check for the stored public keys
         self.gossip
-            .update_last_check(missing_public_keys, &gossip_kind)
+            .update_last_check(stored_events.iter().map(|e| e.pubkey), &gossip_kind)
             .await;
 
         // Merge all the events
-        let merged: Events = stored_events.merge(updated_events).merge(missing_events);
+        let mut merged: Events = stored_events.merge(updated_events);
+
+        // Get the missing events
+        if !missing_public_keys.is_empty() {
+            let missing_filter: Filter = Filter::default()
+                .authors(missing_public_keys.clone())
+                .kind(kind);
+
+            let missing_events: Events = self
+                .fetch_events_from(urls, missing_filter, Duration::from_secs(10))
+                .await?;
+
+            merged = merged.merge(missing_events);
+
+            // Update the last check for the missing public keys
+            self.gossip
+                .update_last_check(missing_public_keys, &gossip_kind)
+                .await;
+        }
 
         // Update gossip graph
         self.gossip.update(merged).await;
