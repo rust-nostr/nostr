@@ -1331,11 +1331,14 @@ impl Client {
     where
         I: IntoIterator<Item = PublicKey>,
     {
+        tracing::debug!(kind = ?gossip_kind, "Start checking and updating gossip data.");
+
         let outdated_public_keys: HashSet<PublicKey> =
             self.gossip.check_outdated(public_keys, &gossip_kind).await;
 
         // No outdated public keys, immediately return.
         if outdated_public_keys.is_empty() {
+            tracing::debug!(kind = ?gossip_kind, "No outdated gossip data.");
             return Ok(());
         }
 
@@ -1346,6 +1349,8 @@ impl Client {
         let db_filter: Filter = Filter::default()
             .authors(outdated_public_keys.clone())
             .kind(kind);
+
+        tracing::debug!(filter = ?db_filter, "Querying database for outdated gossip data.");
 
         // Get events from database
         let stored_events: Events = self.database().query(db_filter).await?;
@@ -1382,6 +1387,8 @@ impl Client {
             missing_public_keys.remove(&event.pubkey);
         }
 
+        tracing::debug!(filters = ?filters, "Fetching outdated gossip data from relays.");
+
         // Fetch the events
         let updated_events: Events = self
             .pool
@@ -1407,6 +1414,8 @@ impl Client {
                 .authors(missing_public_keys.clone())
                 .kind(kind);
 
+            tracing::debug!(filter = ?missing_filter, "Fetching missing gossip data from relays.");
+
             let missing_events: Events = self
                 .fetch_events_from(urls, missing_filter, Duration::from_secs(10))
                 .await?;
@@ -1421,6 +1430,8 @@ impl Client {
 
         // Update gossip graph
         self.gossip.update(merged).await;
+
+        tracing::debug!(kind = ?gossip_kind, "Gossip data updated.");
 
         Ok(())
     }

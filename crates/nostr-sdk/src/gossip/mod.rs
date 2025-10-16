@@ -18,6 +18,7 @@ use self::constant::{
 
 const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
 
+#[derive(Debug)]
 pub(crate) enum GossipKind {
     Nip17,
     Nip65,
