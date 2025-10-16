@@ -648,17 +648,14 @@ impl EventBuilder {
     /// Comment
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/22.md>
-    pub fn comment<S>(
-        content: S,
-        comment_to: CommentTarget<'_>,
-        root: Option<CommentTarget<'_>>,
-    ) -> Self
+    pub fn comment<'a, S, T>(content: S, comment_to: T, root: Option<T>) -> Self
     where
+        T: Into<CommentTarget<'a>>,
         S: Into<String>,
     {
         Self::new(Kind::Comment, content)
-            .tags(root.map(|c| c.as_vec(true)).unwrap_or_default())
-            .tags(comment_to.as_vec(false))
+            .tags(root.map(|c| c.into().as_vec(true)).unwrap_or_default())
+            .tags(comment_to.into().as_vec(false))
     }
 
     /// Long-form text note (generally referred to as "articles" or "blog posts").
@@ -828,17 +825,14 @@ impl EventBuilder {
     ///
     /// [NIP-92]: https://github.com/nostr-protocol/nips/blob/master/92.md
     #[inline]
-    pub fn voice_message_reply<T>(
-        voice_url: T,
-        root: Option<CommentTarget<'_>>,
-        parent: CommentTarget<'_>,
-    ) -> Self
+    pub fn voice_message_reply<'a, T, U>(voice_url: U, root: Option<T>, parent: T) -> Self
     where
-        T: Into<Url>,
+        T: Into<CommentTarget<'a>>,
+        U: Into<Url>,
     {
         EventBuilder::new(Kind::VoiceMessageReply, voice_url.into().as_str())
-            .tags(root.map(|c| c.as_vec(true)).unwrap_or_default())
-            .tags(parent.as_vec(false))
+            .tags(root.map(|c| c.into().as_vec(true)).unwrap_or_default())
+            .tags(parent.into().as_vec(false))
     }
 
     /// Add reaction (like/upvote, dislike/downvote or emoji) to an event

@@ -67,6 +67,7 @@
 - Check that `a`/`A` and `k`/`K` tags have the same event kind in NIP-22 events (https://github.com/rust-nostr/nostr/pull/1035)
 - Deserialize NIP-47 empty strings as `None` (https://github.com/rust-nostr/nostr/pull/1079)
 - Make `EventBuilder::reaction` target arg generic over `ReactionTarget` type
+- Make `EventBuilder::comment` and `EventBuilder::voice_message_reply` args generic over `CommentTarget` type
 
 ### Deprecated
 
