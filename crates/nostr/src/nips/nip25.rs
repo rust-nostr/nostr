@@ -74,3 +74,15 @@ impl ReactionTarget {
         tags
     }
 }
+
+impl From<&Event> for ReactionTarget {
+    fn from(event: &Event) -> Self {
+        Self {
+            event_id: event.id,
+            public_key: event.pubkey,
+            coordinate: event.coordinate().map(|c| c.into_owned()),
+            kind: Some(event.kind),
+            relay_hint: None,
+        }
+    }
+}
