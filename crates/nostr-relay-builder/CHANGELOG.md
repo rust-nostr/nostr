@@ -30,6 +30,7 @@
 - Add `RelayBuilder::max_filter_limit` and `RelayBuilder::default_filter_limit` to limit the filter's limit (https://github.com/rust-nostr/nostr/pull/1096)
 - Add `RelayBuilder::max_subid_length` to enforce a limit on subscription ID size (https://github.com/rust-nostr/nostr/pull/1098)
 - Add support for multi-filter REQ (https://github.com/rust-nostr/nostr/pull/1099)
+- Add support for NIP-42 DMs, DMs returned for the mentioned public key only (https://github.com/rust-nostr/nostr/pull/1104)
 
 ### Fixed
 

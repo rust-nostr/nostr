@@ -26,6 +26,7 @@ use crate::builder::{
 use crate::error::Error;
 
 type WsTx<S> = SplitSink<WebSocketStream<S>, Message>;
+const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
 
 #[derive(Debug, Clone)]
 pub(super) struct InnerLocalRelay {
@@ -42,6 +43,7 @@ pub(super) struct InnerLocalRelay {
     max_subid_length: usize,
     max_filter_limit: Option<usize>,
     default_filter_limit: usize,
+    auth_dm: bool,
     min_pow: Option<u8>, // TODO: use AtomicU8 to allow to change it?
     #[cfg(feature = "tor")]
     hidden_service: Option<String>,
@@ -106,6 +108,7 @@ impl InnerLocalRelay {
             max_subid_length: builder.max_subid_length,
             max_filter_limit: builder.max_filter_limit,
             default_filter_limit: builder.default_filter_limit,
+            auth_dm: builder.auth_dm,
             min_pow: builder.min_pow,
             #[cfg(feature = "tor")]
             hidden_service,
@@ -766,27 +769,42 @@ impl InnerLocalRelay {
 
             // Check mode and if it's authenticated
             if nip42.mode.is_read() && !session.nip42.is_authenticated() {
-                // Generate and send AUTH challenge
-                send_msg(
+                return send_auth_and_close(
                     ws_tx,
-                    RelayMessage::Auth {
-                        challenge: Cow::Owned(session.nip42.generate_challenge()),
-                    },
-                )
-                .await?;
-
-                // Return error
-                return send_msg(
-                    ws_tx,
-                    RelayMessage::Closed {
-                        subscription_id,
-                        message: Cow::Owned(format!(
-                            "{}: you must auth",
-                            MachineReadablePrefix::AuthRequired
-                        )),
-                    },
+                    subscription_id,
+                    session.nip42.generate_challenge(),
                 )
                 .await;
+            }
+        }
+
+        // Check if NIP-42 DMs are enabled and any filter includes the GiftWrap kind
+        if let Some(giftwraps_filters) = self
+            .auth_dm
+            .then(|| find_filters_with_kind(&filters, &Kind::GiftWrap))
+            .flatten()
+        {
+            let Some(ref pkey) = session.nip42.public_key else {
+                // The user must be authenticated to access DMs
+                return send_auth_and_close(
+                    ws_tx,
+                    subscription_id,
+                    session.nip42.generate_challenge(),
+                )
+                .await;
+            };
+
+            let hex_pkey = pkey.to_hex();
+            for filter in giftwraps_filters {
+                let Some(p_tag) = filter.generic_tags.get(&P_TAG) else {
+                    // Reject if no "p" tag is present (requesting all relay DMs)
+                    return send_gift_wrap_error(ws_tx, subscription_id).await;
+                };
+
+                if p_tag.len() != 1 || p_tag.iter().next().expect("length is 1") != &hex_pkey {
+                    // Reject if multiple public keys or wrong public key
+                    return send_gift_wrap_error(ws_tx, subscription_id).await;
+                }
             }
         }
 
@@ -911,6 +929,81 @@ where
 {
     tx.send(Message::Text(msg.as_json().into())).await?;
     Ok(())
+}
+
+async fn send_auth_and_close<S>(
+    tx: &mut WsTx<S>,
+    subscription_id: Cow<'_, SubscriptionId>,
+    challenge: String,
+) -> Result<()>
+where
+    S: AsyncRead + AsyncWrite + Unpin,
+{
+    // Generate and send AUTH challenge
+    send_msg(
+        tx,
+        RelayMessage::Auth {
+            challenge: Cow::Owned(challenge),
+        },
+    )
+    .await?;
+
+    // Return error
+    send_msg(
+        tx,
+        RelayMessage::Closed {
+            subscription_id,
+            message: Cow::Owned(format!(
+                "{}: you must auth",
+                MachineReadablePrefix::AuthRequired
+            )),
+        },
+    )
+    .await
+}
+
+/// Finds filters containing the specified kind. Returns `None` if no such
+/// filters exist.
+fn find_filters_with_kind<'a>(filters: &'a [Filter], kind: &Kind) -> Option<Vec<&'a Filter>> {
+    let mut match_filters = Vec::new();
+
+    for filter in filters {
+        if filter
+            .kinds
+            .as_ref()
+            .is_some_and(|kinds| kinds.contains(kind))
+        {
+            match_filters.push(filter);
+        }
+    }
+
+    if match_filters.is_empty() {
+        return None;
+    }
+
+    Some(match_filters)
+}
+
+/// Send gift wrap error, when a user ask for someone else DMs
+#[inline]
+async fn send_gift_wrap_error<S>(
+    tx: &mut WsTx<S>,
+    subscription_id: Cow<'_, SubscriptionId>,
+) -> Result<()>
+where
+    S: AsyncRead + AsyncWrite + Unpin,
+{
+    send_msg(
+        tx,
+        RelayMessage::Closed {
+            subscription_id,
+            message: Cow::Owned(format!(
+                "{}: you cannot request another user's gift wrap",
+                MachineReadablePrefix::Error
+            )),
+        },
+    )
+    .await
 }
 
 #[inline]
