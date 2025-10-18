@@ -1355,6 +1355,9 @@ impl Client {
         // Get events from database
         let stored_events: Events = self.database().query(db_filter).await?;
 
+        // Keep track of the missing public keys
+        let mut missing_public_keys: HashSet<PublicKey> = outdated_public_keys;
+
         // Get DISCOVERY and READ relays
         let urls: Vec<RelayUrl> = self
             .pool
@@ -1364,27 +1367,55 @@ impl Client {
             )
             .await;
 
-        let mut filters: Vec<Filter> = Vec::with_capacity(stored_events.len());
+        // Group events by similar timestamps (within 60 seconds)
+        let mut timestamp_groups: HashMap<Timestamp, (Timestamp, Vec<PublicKey>)> = HashMap::new();
 
-        // Keep track of the missing public keys
-        let mut missing_public_keys: HashSet<PublicKey> = outdated_public_keys;
-
-        // Try to fetch from relays only the newer events (last created_at + 1)
         for event in stored_events.iter() {
-            let author = event.pubkey;
-            let created_at = event.created_at;
+            // Find if there's a group within 60 seconds
+            let group_key = timestamp_groups
+                .keys()
+                .find(|&&ts| {
+                    let diff = if event.created_at > ts {
+                        event.created_at - ts
+                    } else {
+                        ts - event.created_at
+                    };
+                    diff.as_u64() <= 60
+                })
+                .copied();
 
-            // Construct filter
-            let filter: Filter = Filter::new()
-                .author(author)
-                .kind(kind)
-                .since(created_at + Duration::from_secs(1))
-                .limit(1);
+            match group_key {
+                Some(key) => {
+                    // Add to existing group
+                    timestamp_groups.entry(key).and_modify(|(max_ts, list)| {
+                        list.push(event.pubkey);
 
-            filters.push(filter);
+                        // Update to the greater timestamp
+                        if event.created_at > *max_ts {
+                            *max_ts = event.created_at;
+                        }
+                    });
+                }
+                None => {
+                    // Create new group
+                    timestamp_groups
+                        .insert(event.created_at, (event.created_at, vec![event.pubkey]));
+                }
+            }
 
             // Remove from the missing set
             missing_public_keys.remove(&event.pubkey);
+        }
+
+        // Create filters for each timestamp group
+        let mut filters: Vec<Filter> = Vec::with_capacity(timestamp_groups.len());
+        for (max_ts, authors) in timestamp_groups.into_values() {
+            let filter = Filter::new()
+                .authors(authors)
+                .kind(kind)
+                .since(max_ts + Duration::from_secs(1));
+
+            filters.push(filter);
         }
 
         let mut merged: Events = stored_events;
