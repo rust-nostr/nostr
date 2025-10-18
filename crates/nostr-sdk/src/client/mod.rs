@@ -1387,26 +1387,31 @@ impl Client {
             missing_public_keys.remove(&event.pubkey);
         }
 
+        let mut merged: Events = stored_events;
+
         tracing::debug!(filters = ?filters, "Fetching outdated gossip data from relays.");
 
-        // Fetch the events
-        let updated_events: Events = self
-            .pool
-            .fetch_events_from(
-                urls.clone(),
-                filters,
-                Duration::from_secs(10),
-                ReqExitPolicy::ExitOnEOSE,
-            )
-            .await?;
+        // Split filters in chunks of 10
+        for chunk in filters.chunks(10) {
+            // Fetch the events
+            let updated_events: Events = self
+                .pool
+                .fetch_events_from(
+                    urls.clone(),
+                    chunk,
+                    Duration::from_secs(10),
+                    ReqExitPolicy::ExitOnEOSE,
+                )
+                .await?;
+
+            // Merge all the events
+            merged = merged.merge(updated_events);
+        }
 
         // Update the last check for the stored public keys
         self.gossip
-            .update_last_check(stored_events.iter().map(|e| e.pubkey), &gossip_kind)
+            .update_last_check(merged.iter().map(|e| e.pubkey), &gossip_kind)
             .await;
-
-        // Merge all the events
-        let mut merged: Events = stored_events.merge(updated_events);
 
         // Get the missing events
         if !missing_public_keys.is_empty() {
