@@ -192,6 +192,9 @@ pub struct RelayBuilder {
     pub(crate) max_filter_limit: Option<usize>,
     /// Default filter's limit if there is no limit
     pub(crate) default_filter_limit: usize,
+    /// Enables NIP-42 authentication for kind 1059 (GiftWrap), ensuring the
+    /// authenticated pubkey is the only "p" tag
+    pub(crate) auth_dm: bool,
     /// Min POW difficulty
     pub(crate) min_pow: Option<u8>,
     /// Write policy plugins
@@ -220,6 +223,7 @@ impl Default for RelayBuilder {
             max_subid_length: 250,
             max_filter_limit: None,
             default_filter_limit: 500,
+            auth_dm: false,
             min_pow: None,
             write_plugins: Vec::new(),
             query_plugins: Vec::new(),
@@ -308,6 +312,14 @@ impl RelayBuilder {
     #[inline]
     pub fn default_filter_limit(mut self, limit: usize) -> Self {
         self.default_filter_limit = limit;
+        self
+    }
+
+    /// If enabled, NIP-42 will be used for DMs, returning GiftWrap events for
+    /// the mentioned public key only.
+    #[inline]
+    pub fn auth_dm(mut self, enable: bool) -> Self {
+        self.auth_dm = enable;
         self
     }
 
