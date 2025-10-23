@@ -14,7 +14,7 @@ use async_utility::futures_util::stream::BoxStream;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
 use nostr_relay_pool::prelude::*;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, Semaphore};
 
 pub mod builder;
 mod error;
@@ -33,6 +33,8 @@ pub struct Client {
     pool: RelayPool,
     gossip: Gossip,
     opts: ClientOptions,
+    /// Semaphore used to limit the number of gossip checks and syncs
+    gossip_sync: Arc<Semaphore>,
 }
 
 impl Default for Client {
@@ -95,6 +97,8 @@ impl Client {
             pool: pool_builder.build(),
             gossip: Gossip::new(),
             opts: builder.opts,
+            // Allow only one gossip check and sync at a time
+            gossip_sync: Arc::new(Semaphore::new(1)),
         }
     }
 
@@ -1322,7 +1326,11 @@ impl Client {
 
 // Gossip
 impl Client {
-    /// Check if there are outdated public keys and update them
+    /// Check for and update outdated public key data
+    ///
+    /// Steps:
+    /// 1. Attempts negentropy sync with DISCOVERY and READ relays to efficiently reconcile data
+    /// 2. For any relays where negentropy sync fails, falls back to standard REQ messages to fetch the gossip lists
     async fn check_and_update_gossip<I>(
         &self,
         public_keys: I,
@@ -1331,29 +1339,103 @@ impl Client {
     where
         I: IntoIterator<Item = PublicKey>,
     {
-        tracing::debug!(kind = ?gossip_kind, "Start checking and updating gossip data.");
+        let public_keys: HashSet<PublicKey> = public_keys.into_iter().collect();
 
-        let outdated_public_keys: HashSet<PublicKey> =
-            self.gossip.check_outdated(public_keys, &gossip_kind).await;
+        // First check: check if there are outdated public keys.
+        let outdated_public_keys_first_check: HashSet<PublicKey> = self
+            .gossip
+            .check_outdated(public_keys.clone(), &gossip_kind)
+            .await;
 
         // No outdated public keys, immediately return.
-        if outdated_public_keys.is_empty() {
-            tracing::debug!(kind = ?gossip_kind, "No outdated gossip data.");
+        if outdated_public_keys_first_check.is_empty() {
+            tracing::debug!(kind = ?gossip_kind, "Gossip data is up to date.");
             return Ok(());
         }
 
+        tracing::debug!("Acquiring gossip sync permit...");
+
+        let _permit = self.gossip_sync.acquire().await;
+
+        tracing::debug!(kind = ?gossip_kind, "Acquired gossip sync permit. Start syncing...");
+
+        // Second check: check data is still outdated after acquiring permit
+        // (another process might have updated it while we were waiting)
+        let outdated_public_keys: HashSet<PublicKey> =
+            self.gossip.check_outdated(public_keys, &gossip_kind).await;
+
+        // Double-check: data might have been updated while waiting for permit
+        if outdated_public_keys.is_empty() {
+            tracing::debug!(kind = ?gossip_kind, "Gossip data is up to date.");
+            return Ok(());
+        }
+
+        // Negentropy sync and database check
+        let (output, stored_events) = self
+            .check_and_update_gossip_sync(&gossip_kind, outdated_public_keys.clone())
+            .await?;
+
+        // Keep track of the missing public keys
+        let mut missing_public_keys: HashSet<PublicKey> = outdated_public_keys;
+
+        let mut merged: Events = stored_events;
+
+        // Check if sync failed for some relay
+        if !output.failed.is_empty() {
+            tracing::debug!(
+                relays = ?output.failed,
+                "Gossip sync failed for some relays."
+            );
+
+            // Try to fetch the updated events
+            let fetched = self
+                .check_and_update_gossip_fetch(
+                    &gossip_kind,
+                    &output,
+                    &merged,
+                    &mut missing_public_keys,
+                )
+                .await?;
+
+            // Merge the fetched events
+            merged = merged.merge(fetched);
+
+            // Get the missing events
+            if !missing_public_keys.is_empty() {
+                // Try to fetch the missing events
+                let missing: Events = self
+                    .check_and_update_gossip_missing(&gossip_kind, &output, missing_public_keys)
+                    .await?;
+
+                // Merge the missing events
+                merged = merged.merge(missing);
+            }
+        }
+
+        // Update gossip
+        self.gossip.update(merged).await;
+
+        tracing::debug!(kind = ?gossip_kind, "Gossip sync terminated.");
+
+        Ok(())
+    }
+
+    /// Check and update gossip data using negentropy sync
+    async fn check_and_update_gossip_sync(
+        &self,
+        gossip_kind: &GossipKind,
+        outdated_public_keys: HashSet<PublicKey>,
+    ) -> Result<(Output<Reconciliation>, Events), Error> {
         // Get kind
         let kind: Kind = gossip_kind.to_event_kind();
 
+        tracing::debug!(
+            public_keys = outdated_public_keys.len(),
+            "Syncing outdated gossip data."
+        );
+
         // Compose database filter
-        let db_filter: Filter = Filter::default()
-            .authors(outdated_public_keys.clone())
-            .kind(kind);
-
-        tracing::debug!(filter = ?db_filter, "Querying database for outdated gossip data.");
-
-        // Get events from database
-        let stored_events: Events = self.database().query(db_filter).await?;
+        let filter: Filter = Filter::default().authors(outdated_public_keys).kind(kind);
 
         // Get DISCOVERY and READ relays
         let urls: Vec<RelayUrl> = self
@@ -1364,40 +1446,75 @@ impl Client {
             )
             .await;
 
-        let mut filters: Vec<Filter> = Vec::with_capacity(stored_events.len());
+        // Negentropy sync
+        let opts: SyncOptions = SyncOptions::default().direction(SyncDirection::Down);
+        let output: Output<Reconciliation> = self.sync_with(urls, filter.clone(), &opts).await?;
 
-        // Keep track of the missing public keys
-        let mut missing_public_keys: HashSet<PublicKey> = outdated_public_keys;
+        // Get events from the database
+        let stored_events: Events = self.database().query(filter).await?;
+
+        // Update the last check for the stored public keys
+        self.gossip
+            .update_last_check(stored_events.iter().map(|e| e.pubkey), gossip_kind)
+            .await;
+
+        Ok((output, stored_events))
+    }
+
+    /// Try to fetch the new gossip events from the relays that failed the negentropy sync
+    async fn check_and_update_gossip_fetch(
+        &self,
+        gossip_kind: &GossipKind,
+        output: &Output<Reconciliation>,
+        stored_events: &Events,
+        missing_public_keys: &mut HashSet<PublicKey>,
+    ) -> Result<Events, Error> {
+        // Get kind
+        let kind: Kind = gossip_kind.to_event_kind();
+
+        let mut filters: Vec<Filter> = Vec::new();
+
+        let skip_ids: HashSet<EventId> = output.local.union(&output.received).copied().collect();
 
         // Try to fetch from relays only the newer events (last created_at + 1)
         for event in stored_events.iter() {
-            let author = event.pubkey;
-            let created_at = event.created_at;
+            // Remove from the missing set
+            missing_public_keys.remove(&event.pubkey);
+
+            // Skip the already synced events
+            if skip_ids.contains(&event.id) {
+                continue;
+            }
 
             // Construct filter
             let filter: Filter = Filter::new()
-                .author(author)
+                .author(event.pubkey)
                 .kind(kind)
-                .since(created_at + Duration::from_secs(1))
+                .since(event.created_at + Duration::from_secs(1))
                 .limit(1);
 
             filters.push(filter);
-
-            // Remove from the missing set
-            missing_public_keys.remove(&event.pubkey);
         }
 
-        let mut merged: Events = stored_events;
+        if filters.is_empty() {
+            tracing::debug!("Skipping gossip fetch, as it's no longer required.");
+            return Ok(Events::default());
+        }
 
-        tracing::debug!(filters = ?filters, "Fetching outdated gossip data from relays.");
+        tracing::debug!(
+            filters = filters.len(),
+            "Fetching outdated gossip data from relays."
+        );
+
+        let mut fetched: Events = Events::default();
 
         // Split filters in chunks of 10
         for chunk in filters.chunks(10) {
             // Fetch the events
-            let updated_events: Events = self
+            let received: Events = self
                 .pool
                 .fetch_events_from(
-                    urls.clone(),
+                    output.failed.keys(),
                     chunk,
                     Duration::from_secs(10),
                     ReqExitPolicy::ExitOnEOSE,
@@ -1405,40 +1522,50 @@ impl Client {
                 .await?;
 
             // Merge all the events
-            merged = merged.merge(updated_events);
+            fetched = fetched.merge(received);
         }
 
-        // Update the last check for the stored public keys
+        // Update the last check for the fetched public keys
         self.gossip
-            .update_last_check(merged.iter().map(|e| e.pubkey), &gossip_kind)
+            .update_last_check(fetched.iter().map(|e| e.pubkey), gossip_kind)
             .await;
 
-        // Get the missing events
-        if !missing_public_keys.is_empty() {
-            let missing_filter: Filter = Filter::default()
-                .authors(missing_public_keys.clone())
-                .kind(kind);
+        Ok(fetched)
+    }
 
-            tracing::debug!(filter = ?missing_filter, "Fetching missing gossip data from relays.");
+    /// Try to fetch the gossip events for the missing public keys from the relays that failed the negentropy sync
+    async fn check_and_update_gossip_missing(
+        &self,
+        gossip_kind: &GossipKind,
+        output: &Output<Reconciliation>,
+        missing_public_keys: HashSet<PublicKey>,
+    ) -> Result<Events, Error> {
+        // Get kind
+        let kind: Kind = gossip_kind.to_event_kind();
 
-            let missing_events: Events = self
-                .fetch_events_from(urls, missing_filter, Duration::from_secs(10))
-                .await?;
+        tracing::debug!(
+            public_keys = missing_public_keys.len(),
+            "Fetching missing gossip data from relays."
+        );
 
-            merged = merged.merge(missing_events);
+        let missing_filter: Filter = Filter::default()
+            .authors(missing_public_keys.clone())
+            .kind(kind);
 
-            // Update the last check for the missing public keys
-            self.gossip
-                .update_last_check(missing_public_keys, &gossip_kind)
-                .await;
-        }
+        let missing_events: Events = self
+            .fetch_events_from(
+                output.failed.keys(),
+                missing_filter,
+                Duration::from_secs(10),
+            )
+            .await?;
 
-        // Update gossip graph
-        self.gossip.update(merged).await;
+        // Update the last check for the missing public keys
+        self.gossip
+            .update_last_check(missing_public_keys, gossip_kind)
+            .await;
 
-        tracing::debug!(kind = ?gossip_kind, "Gossip data updated.");
-
-        Ok(())
+        Ok(missing_events)
     }
 
     /// Break down filters for gossip and discovery relays
