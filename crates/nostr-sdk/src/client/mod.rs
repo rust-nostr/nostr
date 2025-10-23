@@ -18,10 +18,12 @@ use tokio::sync::{broadcast, Semaphore};
 
 pub mod builder;
 mod error;
+mod middleware;
 pub mod options;
 
 pub use self::builder::ClientBuilder;
 pub use self::error::Error;
+use self::middleware::AdmissionPolicyMiddleware;
 pub use self::options::{ClientOptions, SleepWhenIdle};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Connection, ConnectionTarget};
@@ -82,10 +84,23 @@ impl Client {
     }
 
     fn from_builder(builder: ClientBuilder) -> Self {
+        // Construct the gossip instance
+        let gossip: Gossip = Gossip::new();
+
+        // Construct admission policy middleware
+        let admit_policy_wrapper = AdmissionPolicyMiddleware {
+            gossip: if builder.opts.gossip {
+                Some(gossip.clone())
+            } else {
+                None
+            },
+            external_policy: builder.admit_policy,
+        };
+
         // Construct relay pool builder
         let pool_builder: RelayPoolBuilder = RelayPoolBuilder {
             websocket_transport: builder.websocket_transport,
-            admit_policy: builder.admit_policy,
+            admit_policy: Some(Arc::new(admit_policy_wrapper)),
             monitor: builder.monitor,
             opts: builder.opts.pool,
             __database: builder.database,
@@ -95,7 +110,7 @@ impl Client {
         // Construct client
         Self {
             pool: pool_builder.build(),
-            gossip: Gossip::new(),
+            gossip,
             opts: builder.opts,
             // Allow only one gossip check and sync at a time
             gossip_sync: Arc::new(Semaphore::new(1)),
@@ -1378,8 +1393,6 @@ impl Client {
         // Keep track of the missing public keys
         let mut missing_public_keys: HashSet<PublicKey> = outdated_public_keys;
 
-        let mut merged: Events = stored_events;
-
         // Check if sync failed for some relay
         if !output.failed.is_empty() {
             tracing::debug!(
@@ -1388,32 +1401,25 @@ impl Client {
             );
 
             // Try to fetch the updated events
-            let fetched = self
-                .check_and_update_gossip_fetch(
-                    &gossip_kind,
-                    &output,
-                    &merged,
-                    &mut missing_public_keys,
-                )
-                .await?;
-
-            // Merge the fetched events
-            merged = merged.merge(fetched);
+            self.check_and_update_gossip_fetch(
+                &gossip_kind,
+                &output,
+                &stored_events,
+                &mut missing_public_keys,
+            )
+            .await?;
 
             // Get the missing events
             if !missing_public_keys.is_empty() {
                 // Try to fetch the missing events
-                let missing: Events = self
-                    .check_and_update_gossip_missing(&gossip_kind, &output, missing_public_keys)
+                self.check_and_update_gossip_missing(&gossip_kind, &output, missing_public_keys)
                     .await?;
-
-                // Merge the missing events
-                merged = merged.merge(missing);
             }
         }
 
-        // Update gossip
-        self.gossip.update(merged).await;
+        // Update gossip with stored events
+        // The events received by the relays are automatically processed in the middleware!
+        self.gossip.update(stored_events).await;
 
         tracing::debug!(kind = ?gossip_kind, "Gossip sync terminated.");
 
@@ -1447,6 +1453,7 @@ impl Client {
             .await;
 
         // Negentropy sync
+        // NOTE: the received events are automatically processed in the middleware!
         let opts: SyncOptions = SyncOptions::default().direction(SyncDirection::Down);
         let output: Output<Reconciliation> = self.sync_with(urls, filter.clone(), &opts).await?;
 
@@ -1468,7 +1475,7 @@ impl Client {
         output: &Output<Reconciliation>,
         stored_events: &Events,
         missing_public_keys: &mut HashSet<PublicKey>,
-    ) -> Result<Events, Error> {
+    ) -> Result<(), Error> {
         // Get kind
         let kind: Kind = gossip_kind.to_event_kind();
 
@@ -1498,7 +1505,7 @@ impl Client {
 
         if filters.is_empty() {
             tracing::debug!("Skipping gossip fetch, as it's no longer required.");
-            return Ok(Events::default());
+            return Ok(());
         }
 
         tracing::debug!(
@@ -1506,11 +1513,10 @@ impl Client {
             "Fetching outdated gossip data from relays."
         );
 
-        let mut fetched: Events = Events::default();
-
         // Split filters in chunks of 10
         for chunk in filters.chunks(10) {
             // Fetch the events
+            // NOTE: the received events are automatically processed in the middleware!
             let received: Events = self
                 .pool
                 .fetch_events_from(
@@ -1521,16 +1527,13 @@ impl Client {
                 )
                 .await?;
 
-            // Merge all the events
-            fetched = fetched.merge(received);
+            // Update the last check for the fetched public keys
+            self.gossip
+                .update_last_check(received.iter().map(|e| e.pubkey), gossip_kind)
+                .await;
         }
 
-        // Update the last check for the fetched public keys
-        self.gossip
-            .update_last_check(fetched.iter().map(|e| e.pubkey), gossip_kind)
-            .await;
-
-        Ok(fetched)
+        Ok(())
     }
 
     /// Try to fetch the gossip events for the missing public keys from the relays that failed the negentropy sync
@@ -1539,7 +1542,7 @@ impl Client {
         gossip_kind: &GossipKind,
         output: &Output<Reconciliation>,
         missing_public_keys: HashSet<PublicKey>,
-    ) -> Result<Events, Error> {
+    ) -> Result<(), Error> {
         // Get kind
         let kind: Kind = gossip_kind.to_event_kind();
 
@@ -1552,20 +1555,20 @@ impl Client {
             .authors(missing_public_keys.clone())
             .kind(kind);
 
-        let missing_events: Events = self
-            .fetch_events_from(
-                output.failed.keys(),
-                missing_filter,
-                Duration::from_secs(10),
-            )
-            .await?;
+        // NOTE: the received events are automatically processed in the middleware!
+        self.fetch_events_from(
+            output.failed.keys(),
+            missing_filter,
+            Duration::from_secs(10),
+        )
+        .await?;
 
         // Update the last check for the missing public keys
         self.gossip
             .update_last_check(missing_public_keys, gossip_kind)
             .await;
 
-        Ok(missing_events)
+        Ok(())
     }
 
     /// Break down filters for gossip and discovery relays
