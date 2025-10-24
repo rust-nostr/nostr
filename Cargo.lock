@@ -2764,6 +2764,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-gossip-memory"
+version = "0.43.0"
+dependencies = [
+ "lru",
+ "nostr",
+ "nostr-gossip",
+ "tokio",
+]
+
+[[package]]
 name = "nostr-http-file-storage"
 version = "0.43.0"
 dependencies = [
