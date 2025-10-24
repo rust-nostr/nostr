@@ -204,7 +204,7 @@ impl BrowserSigner {
         Reflect::set(
             &unsigned_obj,
             &JsValue::from_str("created_at"),
-            &(unsigned.created_at.as_u64() as f64).into(),
+            &(unsigned.created_at.as_secs() as f64).into(),
         )?;
 
         Reflect::set(

@@ -44,6 +44,7 @@
 - Add NIP-60 support (https://github.com/rust-nostr/nostr/pull/1092)
 - Implement `ToBech32` trait for `Nip21`
 - Add `CowTag::kind` and `CowTag::content`
+- Add `Timestamp::as_secs`
 - Add `Kind::CashuNutZapInfo` (10019) and `Kind::CashuNutZap` (9321) variants
 - Add nip47 holdinvoice methods and notification (https://github.com/rust-nostr/nostr/pull/1019)
 - Add `TransactionState` to `LookupInvoiceResponse` and `PaymentNotification` (https://github.com/rust-nostr/nostr/pull/1045)
@@ -71,6 +72,7 @@
 
 ### Deprecated
 
+- Deprecate `Timestamp::as_u64`
 - Deprecate `kind` field in `CommentTarget::Coordinate` variant (https://github.com/rust-nostr/nostr/pull/1035)
 
 ### Breaking changes

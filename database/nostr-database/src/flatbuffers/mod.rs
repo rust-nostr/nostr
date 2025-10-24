@@ -105,7 +105,7 @@ impl FlatBufferEncode for Event {
         let args = event_fbs::EventArgs {
             id: Some(&id),
             pubkey: Some(&pubkey),
-            created_at: self.created_at.as_u64(),
+            created_at: self.created_at.as_secs(),
             kind: self.kind.as_u16() as u64,
             tags: Some(fbb.create_vector(&tags)),
             content: Some(fbb.create_string(&self.content)),

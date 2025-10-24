@@ -52,7 +52,7 @@ impl Nip42Session {
 
                 // Check created_at
                 let now = Timestamp::now();
-                let diff: u64 = now.as_u64().abs_diff(event.created_at.as_u64());
+                let diff: u64 = now.as_secs().abs_diff(event.created_at.as_secs());
                 if diff > 120 {
                     return Err(String::from("challenge is too old (max allowed 2 min)"));
                 }

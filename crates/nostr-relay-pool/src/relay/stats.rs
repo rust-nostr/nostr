@@ -102,7 +102,7 @@ impl RelayConnectionStats {
     /// Update last activity timestamp
     #[inline]
     pub(super) fn update_activity(&self) {
-        let now: u64 = Timestamp::now().as_u64();
+        let now: u64 = Timestamp::now().as_secs();
         self.inner.last_activity_at.store(now, Ordering::SeqCst);
     }
 
@@ -115,7 +115,7 @@ impl RelayConnectionStats {
     /// Update the wake-up timestamp
     #[inline]
     pub(super) fn just_woke_up(&self) {
-        let now: u64 = Timestamp::now().as_u64();
+        let now: u64 = Timestamp::now().as_secs();
         self.inner.woke_up_at.store(now, Ordering::SeqCst);
     }
 
@@ -142,7 +142,7 @@ impl RelayConnectionStats {
     pub(super) fn new_success(&self) {
         self.inner.success.fetch_add(1, Ordering::SeqCst);
 
-        let now: u64 = Timestamp::now().as_u64();
+        let now: u64 = Timestamp::now().as_secs();
 
         self.inner.connected_at.store(now, Ordering::SeqCst);
 
@@ -190,8 +190,8 @@ mod tests {
         assert_eq!(stats.attempts(), 1);
         assert_eq!(stats.success(), 1);
         assert_eq!(stats.success_rate(), 1.0);
-        assert!(stats.connected_at().as_u64() > 0);
-        assert!(stats.first_connection_timestamp().as_u64() > 0);
+        assert!(stats.connected_at().as_secs() > 0);
+        assert!(stats.first_connection_timestamp().as_secs() > 0);
     }
 
     #[test]

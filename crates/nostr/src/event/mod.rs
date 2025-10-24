@@ -431,7 +431,7 @@ mod tests {
     #[cfg(feature = "std")]
     fn test_event_not_expired() {
         let now = Timestamp::now();
-        let expiry_date: u64 = now.as_u64() * 2;
+        let expiry_date: u64 = now.as_secs() * 2;
 
         let my_keys = Keys::generate();
         let event = EventBuilder::text_note("my content")

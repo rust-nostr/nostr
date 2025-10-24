@@ -650,7 +650,7 @@ impl InnerLocalRelay {
                 let mut storage = NegentropyStorageVector::with_capacity(items.len());
                 for (id, timestamp) in items.into_iter() {
                     let id: Id = Id::from_byte_array(id.to_bytes());
-                    storage.insert(timestamp.as_u64(), id)?;
+                    storage.insert(timestamp.as_secs(), id)?;
                 }
                 storage.seal()?;
 

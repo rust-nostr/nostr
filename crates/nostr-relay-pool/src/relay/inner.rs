@@ -469,7 +469,7 @@ impl InnerRelay {
             return false;
         }
 
-        let idle_duration_secs: u64 = Timestamp::now().as_u64() - reference_time.as_u64();
+        let idle_duration_secs: u64 = Timestamp::now().as_secs() - reference_time.as_secs();
         let idle_duration: Duration = Duration::from_secs(idle_duration_secs);
         idle_duration >= self.opts.idle_timeout
     }
@@ -2129,7 +2129,7 @@ fn prepare_negentropy_storage(
     // Add items
     for (id, timestamp) in items.into_iter() {
         let id: Id = Id::from_byte_array(id.to_bytes());
-        storage.insert(timestamp.as_u64(), id)?;
+        storage.insert(timestamp.as_secs(), id)?;
     }
 
     // Seal

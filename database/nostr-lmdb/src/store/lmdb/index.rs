@@ -16,7 +16,7 @@ const TAG_VALUE_PAD_LEN: usize = 182;
 #[inline]
 fn reverse_and_conv_to_be64(created_at: &Timestamp) -> [u8; 8] {
     // Reverse
-    let created_at: u64 = u64::MAX - created_at.as_u64();
+    let created_at: u64 = u64::MAX - created_at.as_secs();
 
     // Convert to big-endian
     created_at.to_be_bytes()

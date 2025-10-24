@@ -120,10 +120,16 @@ impl Timestamp {
         self.0 = self.0.saturating_sub(secs);
     }
 
-    /// Get timestamp as [`u64`]
+    /// Get timestamp as seconds
     #[inline]
-    pub fn as_u64(&self) -> u64 {
+    pub const fn as_secs(&self) -> u64 {
         self.0
+    }
+
+    /// Get timestamp as [`u64`]
+    #[deprecated(since = "0.44.0", note = "Use `as_secs` instead")]
+    pub fn as_u64(&self) -> u64 {
+        self.as_secs()
     }
 
     /// Check if timestamp is `0`
@@ -134,7 +140,7 @@ impl Timestamp {
 
     /// Convert [`Timestamp`] to human datetime
     pub fn to_human_datetime(&self) -> String {
-        let timestamp: u64 = self.as_u64();
+        let timestamp: u64 = self.as_secs();
 
         if timestamp >= 253_402_300_800 {
             // Year 9999
@@ -241,14 +247,14 @@ impl fmt::Display for Timestamp {
 impl Add<Timestamp> for Timestamp {
     type Output = Self;
     fn add(self, rhs: Timestamp) -> Self::Output {
-        Self::from_secs(self.0.saturating_add(rhs.as_u64()))
+        Self::from_secs(self.0.saturating_add(rhs.as_secs()))
     }
 }
 
 impl Sub<Timestamp> for Timestamp {
     type Output = Self;
     fn sub(self, rhs: Timestamp) -> Self::Output {
-        Self::from_secs(self.0.saturating_sub(rhs.as_u64()))
+        Self::from_secs(self.0.saturating_sub(rhs.as_secs()))
     }
 }
 

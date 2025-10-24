@@ -420,12 +420,12 @@ impl TimeDelta {
     pub fn subtracting(t1: Timestamp, t2: Timestamp) -> TimeDelta {
         if t1 > t2 {
             TimeDelta {
-                delta_abs_seconds: (t1 - t2).as_u64(),
+                delta_abs_seconds: (t1 - t2).as_secs(),
                 negative: false,
             }
         } else {
             TimeDelta {
-                delta_abs_seconds: (t2 - t1).as_u64(),
+                delta_abs_seconds: (t2 - t1).as_secs(),
                 negative: true,
             }
         }

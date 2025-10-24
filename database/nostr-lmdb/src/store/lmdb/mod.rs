@@ -1074,7 +1074,7 @@ impl Lmdb {
         when: Timestamp,
     ) -> Result<(), Error> {
         let key: Vec<u8> = index::make_coordinate_index_key(coordinate);
-        self.deleted_coordinates.put(txn, &key, &when.as_u64())?;
+        self.deleted_coordinates.put(txn, &key, &when.as_secs())?;
         Ok(())
     }
 

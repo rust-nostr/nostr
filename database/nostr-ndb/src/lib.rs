@@ -204,11 +204,11 @@ fn ndb_filter_conversion(f: &Filter) -> nostrdb::Filter {
     }
 
     if let Some(since) = f.since {
-        filter = filter.since(since.as_u64());
+        filter = filter.since(since.as_secs());
     }
 
     if let Some(until) = f.until {
-        filter = filter.until(until.as_u64());
+        filter = filter.until(until.as_secs());
     }
 
     if let Some(limit) = f.limit {
