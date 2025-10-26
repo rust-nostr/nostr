@@ -39,6 +39,8 @@ pub struct Client {
     gossip_sync: Arc<Semaphore>,
 }
 
+
+
 impl Default for Client {
     #[inline]
     fn default() -> Self {
@@ -1006,6 +1008,22 @@ impl Client {
         Ok(self.pool.send_event_to(urls, event).await?)
     }
 
+    #[cfg(feature = "nip59")]
+    async fn send_private_wrap(
+        &self,
+        event: &Event,
+        enforce_nip17: bool,
+    ) -> Result<Output<EventId>, Error> {
+        if !self.opts.gossip {
+            return self.send_event(event).await;
+        }
+
+        match self.gossip_send_event(event, true).await {
+            Err(Error::PrivateMsgRelaysNotFound) if !enforce_nip17 => self.send_event(event).await,
+            res => res,
+        }
+    }
+
     /// Build, sign and return [`Event`]
     ///
     /// This method requires a [`NostrSigner`].
@@ -1214,15 +1232,16 @@ impl Client {
         I: IntoIterator<Item = Tag>,
     {
         let signer = self.signer().await?;
-        let event: Event =
-            EventBuilder::private_msg(&signer, receiver, message, rumor_extra_tags).await?;
+        let (receiver_wrap, sender_wrap) =
+            build_private_dm_wraps(&signer, receiver, message, rumor_extra_tags).await?;
 
-        // NOT gossip, send to all relays
-        if !self.opts.gossip {
-            return self.send_event(&event).await;
-        }
+        // Always enforce NIP-17 routing for the receiver copy.
+        let output = self.send_private_wrap(&receiver_wrap, true).await?;
 
-        self.gossip_send_event(&event, true).await
+        // Send the sender's copy; fall back to default relays if we don't have a NIP-17 list.
+        let _ = self.send_private_wrap(&sender_wrap, false).await?;
+
+        Ok(output)
     }
 
     /// Send a private direct message to specific relays
@@ -1247,9 +1266,16 @@ impl Client {
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let signer = self.signer().await?;
-        let event: Event =
-            EventBuilder::private_msg(&signer, receiver, message, rumor_extra_tags).await?;
-        self.send_event_to(urls, &event).await
+        let (receiver_wrap, sender_wrap) =
+            build_private_dm_wraps(&signer, receiver, message, rumor_extra_tags).await?;
+
+        // The caller provided explicit relay targets for the receiver copy.
+        let output = self.send_event_to(urls, &receiver_wrap).await?;
+
+        // Still publish the sender copy so the author retains their own history.
+        let _ = self.send_private_wrap(&sender_wrap, false).await?;
+
+        Ok(output)
     }
 
     /// Construct Gift Wrap and send to relays
@@ -1781,5 +1807,63 @@ impl Client {
 
         // Reconciliation
         Ok(self.pool.sync_targeted(filters, opts).await?)
+    }
+}
+
+#[cfg(feature = "nip59")]
+async fn build_private_dm_wraps<T, S, I>(
+    signer: &T,
+    receiver: PublicKey,
+    message: S,
+    rumor_extra_tags: I,
+) -> Result<(Event, Event), Error>
+where
+    T: NostrSigner,
+    S: Into<String>,
+    I: IntoIterator<Item = Tag>,
+{
+    let sender_pubkey: PublicKey = signer.get_public_key().await?;
+    let rumor: UnsignedEvent = EventBuilder::private_msg_rumor(receiver, message)
+        .tags(rumor_extra_tags)
+        .build(sender_pubkey);
+
+    // Clone the rumor so both wraps carry identical payloads/IDs.
+    let sender_rumor: UnsignedEvent = rumor.clone();
+
+    let receiver_wrap: Event = EventBuilder::gift_wrap(signer, &receiver, rumor, []).await?;
+    let sender_wrap: Event =
+        EventBuilder::gift_wrap(signer, &sender_pubkey, sender_rumor, []).await?;
+
+    Ok((receiver_wrap, sender_wrap))
+}
+
+#[cfg(all(test, feature = "nip59"))]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn build_private_dm_wraps_produces_sender_copy() {
+        let sender = Keys::generate();
+        let receiver = Keys::generate();
+
+        let (receiver_wrap, sender_wrap) = build_private_dm_wraps(
+            &sender,
+            receiver.public_key(),
+            "hi there",
+            [],
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(receiver_wrap.kind, Kind::GiftWrap);
+        assert_eq!(sender_wrap.kind, Kind::GiftWrap);
+
+        let receiver_targets: Vec<PublicKey> =
+            receiver_wrap.tags.public_keys().copied().collect();
+        assert_eq!(receiver_targets, vec![receiver.public_key()]);
+
+        let sender_targets: Vec<PublicKey> =
+            sender_wrap.tags.public_keys().copied().collect();
+        assert_eq!(sender_targets, vec![sender.public_key()]);
     }
 }
