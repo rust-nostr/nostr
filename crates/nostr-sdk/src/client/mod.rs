@@ -1006,6 +1006,42 @@ impl Client {
         Ok(self.pool.send_event_to(urls, event).await?)
     }
 
+    #[cfg(feature = "nip59")]
+    async fn send_dm_via_inbox_relays(&self, event: &Event) -> Result<Output<EventId>, Error> {
+        let recipients: Vec<PublicKey> = event.tags.public_keys().copied().collect();
+        if recipients.is_empty() {
+            return Err(Error::PrivateMsgRelaysNotFound);
+        }
+
+        if let Err(err) = self
+            .check_and_update_gossip(recipients.clone(), GossipKind::Nip17)
+            .await
+        {
+            if !matches!(err, Error::RelayPool(pool::Error::NoRelaysSpecified)) {
+                return Err(err);
+            }
+        }
+
+        let relay_set = self
+            .gossip
+            .get_nip17_inbox_relays(recipients.iter())
+            .await;
+
+        if relay_set.is_empty() {
+            return Err(Error::PrivateMsgRelaysNotFound);
+        }
+
+        let relays: Vec<RelayUrl> = relay_set.into_iter().collect();
+
+        for url in relays.iter() {
+            if self.add_write_relay(url.clone()).await? {
+                self.connect_relay(url.clone()).await?;
+            }
+        }
+
+        Ok(self.pool.send_event_to(relays, event).await?)
+    }
+
     /// Build, sign and return [`Event`]
     ///
     /// This method requires a [`NostrSigner`].
@@ -1219,7 +1255,7 @@ impl Client {
 
         // NOT gossip, send to all relays
         if !self.opts.gossip {
-            return self.send_event(&event).await;
+            return self.send_dm_via_inbox_relays(&event).await;
         }
 
         self.gossip_send_event(&event, true).await
@@ -1781,5 +1817,24 @@ impl Client {
 
         // Reconciliation
         Ok(self.pool.sync_targeted(filters, opts).await?)
+    }
+}
+
+#[cfg(all(test, feature = "nip59"))]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn send_private_msg_without_inbox_relays_errors() {
+        let sender = Keys::generate();
+        let receiver = Keys::generate();
+
+        let client = Client::builder().signer(sender).build();
+
+        let res = client
+            .send_private_msg(receiver.public_key(), "ping", [])
+            .await;
+
+        assert!(matches!(res, Err(Error::PrivateMsgRelaysNotFound)));
     }
 }
