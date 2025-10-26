@@ -1014,14 +1014,63 @@ impl Client {
         event: &Event,
         enforce_nip17: bool,
     ) -> Result<Output<EventId>, Error> {
+        // Always enforce receiver readiness for DM gift wraps.
         if !self.opts.gossip {
-            return self.send_event(event).await;
+            return self.send_dm_via_inbox_relays(event, enforce_nip17).await;
         }
 
         match self.gossip_send_event(event, true).await {
-            Err(Error::PrivateMsgRelaysNotFound) if !enforce_nip17 => self.send_event(event).await,
+            Err(Error::PrivateMsgRelaysNotFound) if !enforce_nip17 => {
+                self.send_event(event).await
+            }
             res => res,
         }
+    }
+
+    #[cfg(feature = "nip59")]
+    async fn send_dm_via_inbox_relays(
+        &self,
+        event: &Event,
+        enforce_nip17: bool,
+    ) -> Result<Output<EventId>, Error> {
+        let recipients: Vec<PublicKey> = event.tags.public_keys().copied().collect();
+        if recipients.is_empty() {
+            return Err(Error::PrivateMsgRelaysNotFound);
+        }
+
+        // Ensure our local view of the recipients' NIP-17 lists is fresh before sending.
+        if let Err(err) = self
+            .check_and_update_gossip(recipients.clone(), GossipKind::Nip17)
+            .await
+        {
+            match err {
+                Error::RelayPool(pool::Error::NoRelaysSpecified) => {}
+                _ => return Err(err),
+            }
+        }
+
+        let relay_set = self
+            .gossip
+            .get_nip17_inbox_relays(recipients.iter())
+            .await;
+
+        if relay_set.is_empty() {
+            return if enforce_nip17 {
+                Err(Error::PrivateMsgRelaysNotFound)
+            } else {
+                self.send_event(event).await
+            };
+        }
+
+        let relays: Vec<RelayUrl> = relay_set.into_iter().collect();
+
+        for url in relays.iter() {
+            if self.add_write_relay(url.clone()).await? {
+                self.connect_relay(url.clone()).await?;
+            }
+        }
+
+        Ok(self.pool.send_event_to(relays, event).await?)
     }
 
     /// Build, sign and return [`Event`]
@@ -1865,5 +1914,23 @@ mod tests {
         let sender_targets: Vec<PublicKey> =
             sender_wrap.tags.public_keys().copied().collect();
         assert_eq!(sender_targets, vec![sender.public_key()]);
+    }
+
+    #[tokio::test]
+    async fn send_private_msg_without_inbox_relays_errors() {
+        let sender = Keys::generate();
+        let receiver = Keys::generate();
+
+        let client = Client::builder().signer(sender).build();
+
+        let res = client
+            .send_private_msg(receiver.public_key(), "ping", [])
+            .await;
+
+        match res {
+            Err(Error::PrivateMsgRelaysNotFound) => {}
+            Err(other) => panic!("unexpected error: {other:?}"),
+            Ok(_) => panic!("expected PrivateMsgRelaysNotFound"),
+        }
     }
 }
