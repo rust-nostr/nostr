@@ -35,6 +35,7 @@
 - Change NIP-47 `GetInfoResponse` `pubkey` type from `PublicKey` to `String`
 - Change `methods` type to `Vec<Method>` in `GetInfoResponse` (https://github.com/rust-nostr/nostr/pull/1094)
 - Merge `ClientMessage::Req` and `ClientMessage::ReqMultiFilter` variants (https://github.com/rust-nostr/nostr/pull/1101)
+- Rename `public_key` to `remote_signer_public_key` in `NostrConnectRequest::Connect` variant (https://github.com/rust-nostr/nostr/pull/1111)
 
 ### Added
 

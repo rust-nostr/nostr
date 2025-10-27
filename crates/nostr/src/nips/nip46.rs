@@ -197,8 +197,8 @@ impl<'de> Deserialize<'de> for NostrConnectMethod {
 pub enum NostrConnectRequest {
     /// Connect
     Connect {
-        /// Remote public key
-        public_key: PublicKey,
+        /// Remote signer public key
+        remote_signer_public_key: PublicKey,
         /// Optional secret
         secret: Option<String>,
     },
@@ -243,10 +243,15 @@ impl NostrConnectRequest {
     pub fn from_message(method: NostrConnectMethod, params: Vec<String>) -> Result<Self, Error> {
         match method {
             NostrConnectMethod::Connect => {
-                let public_key = params.first().ok_or(Error::InvalidRequest)?;
-                let public_key: PublicKey = PublicKey::from_hex(public_key)?;
+                let remote_signer_public_key: &String =
+                    params.first().ok_or(Error::InvalidRequest)?;
+                let remote_signer_public_key: PublicKey =
+                    PublicKey::from_hex(remote_signer_public_key)?;
                 let secret: Option<String> = params.get(1).cloned();
-                Ok(Self::Connect { public_key, secret })
+                Ok(Self::Connect {
+                    remote_signer_public_key,
+                    secret,
+                })
             }
             NostrConnectMethod::GetPublicKey => Ok(Self::GetPublicKey),
             NostrConnectMethod::SignEvent => {
@@ -315,8 +320,11 @@ impl NostrConnectRequest {
     /// Get req params
     pub fn params(&self) -> Vec<String> {
         match self {
-            Self::Connect { public_key, secret } => {
-                let mut params = vec![public_key.to_hex()];
+            Self::Connect {
+                remote_signer_public_key,
+                secret,
+            } => {
+                let mut params = vec![remote_signer_public_key.to_hex()];
                 if let Some(secret) = secret {
                     params.push(secret.to_owned());
                 }
@@ -1190,7 +1198,7 @@ mod test {
         assert_eq!(
             req,
             NostrConnectRequest::Connect {
-                public_key: PublicKey::from_hex(
+                remote_signer_public_key: PublicKey::from_hex(
                     "79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3"
                 )
                 .unwrap(),
