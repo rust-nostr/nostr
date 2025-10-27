@@ -1630,6 +1630,7 @@ impl Client {
         event: &Event,
         is_nip17: bool,
     ) -> Result<Output<EventId>, Error> {
+        let is_contact_list: bool = event.kind == Kind::ContactList;
         let is_gift_wrap: bool = event.kind == Kind::GiftWrap;
 
         // Get involved public keys and check what are up to date in the gossip graph and which ones require an update.
@@ -1643,6 +1644,10 @@ impl Client {
             // Get only p tags since the author of a gift wrap is randomized
             let public_keys = event.tags.public_keys().copied();
             self.check_and_update_gossip(public_keys, kind).await?;
+        } else if is_contact_list {
+            // Contact list, update only author
+            self.check_and_update_gossip([event.pubkey], GossipKind::Nip65)
+                .await?;
         } else {
             // Get all public keys involved in the event: author + p tags
             let public_keys = event
@@ -1680,15 +1685,21 @@ impl Client {
 
             relays
         } else {
-            // Get NIP65 relays
-            let mut outbox = self.gossip.get_nip65_outbox_relays(&[event.pubkey]).await;
-            let inbox = self
-                .gossip
-                .get_nip65_inbox_relays(event.tags.public_keys())
-                .await;
+            // Get OUTBOX relays
+            let mut relays = self.gossip.get_nip65_outbox_relays(&[event.pubkey]).await;
 
-            // Add outbox and inbox relays
-            for url in outbox.iter().chain(inbox.iter()) {
+            // Extend with INBOX relays
+            if !is_contact_list {
+                let inbox = self
+                    .gossip
+                    .get_nip65_inbox_relays(event.tags.public_keys())
+                    .await;
+
+                relays.extend(inbox);
+            }
+
+            // Add OUTBOX and INBOX relays
+            for url in relays.iter() {
                 if self.add_gossip_relay(url).await? {
                     self.connect_relay(url).await?;
                 }
@@ -1697,14 +1708,11 @@ impl Client {
             // Get WRITE relays
             let write_relays: Vec<RelayUrl> = self.pool.__write_relay_urls().await;
 
-            // Extend OUTBOX relays with WRITE ones
-            outbox.extend(write_relays);
-
-            // Extend outbox relays with inbox ones
-            outbox.extend(inbox);
+            // Extend relays with WRITE ones
+            relays.extend(write_relays);
 
             // Return all relays
-            outbox
+            relays
         };
 
         // Send event

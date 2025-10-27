@@ -34,6 +34,7 @@
 
 - Fetch gossip NIP-17 list only if really needed (https://github.com/rust-nostr/nostr/pull/1090)
 - Try to fetch only newer events when updating gossip lists (https://github.com/rust-nostr/nostr/pull/1090)
+- Don't send kind 3 (contact list) to inbox relays when using gossip (https://github.com/rust-nostr/nostr/pull/1112)
 
 ### Added
 
