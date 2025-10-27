@@ -23,13 +23,12 @@ use crate::error::Error;
 #[derive(Debug, Clone)]
 pub struct NostrConnect {
     uri: NostrConnectURI,
-    app_keys: Keys,
+    client_keys: Keys,
     remote_signer_public_key: OnceCell<PublicKey>,
     user_public_key: OnceCell<PublicKey>,
     pool: RelayPool,
     timeout: Duration,
     opts: RelayOptions,
-    secret: Option<String>,
     auth_url_handler: Option<Arc<dyn AuthUrlHandler>>,
 }
 
@@ -37,28 +36,28 @@ impl NostrConnect {
     /// Construct Nostr Connect client
     pub fn new(
         uri: NostrConnectURI,
-        app_keys: Keys,
+        client_keys: Keys,
         timeout: Duration,
         opts: Option<RelayOptions>,
     ) -> Result<Self, Error> {
         // Check app keys
         if let NostrConnectURI::Client { public_key, .. } = &uri {
-            if public_key != &app_keys.public_key {
+            if public_key != &client_keys.public_key {
                 return Err(Error::PublicKeyNotMatchAppKeys);
             }
         }
 
         Ok(Self {
-            app_keys,
+            uri,
+            client_keys,
             // NOT set the remote_signer_public_key, also if bunker URI!
             // If you already set remote_signer_public_key, you'll need another field to know if boostrap was already done.
+            // If the URI is bunker, the remote_signer_public_key is set in the bootstrap method.
             remote_signer_public_key: OnceCell::new(),
             user_public_key: OnceCell::new(),
             pool: RelayPool::default(),
             timeout,
             opts: opts.unwrap_or_default(),
-            secret: uri.secret().map(|secret| secret.to_string()),
-            uri,
             auth_url_handler: None,
         })
     }
@@ -85,10 +84,10 @@ impl NostrConnect {
     /// #[tokio::main]
     /// async fn main() -> Result<()> {
     ///     let uri = NostrConnectURI::parse("bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss://relay.nsec.app")?;
-    ///     let app_keys = Keys::generate();
+    ///     let client_keys = Keys::generate();
     ///     let timeout = Duration::from_secs(60);
     ///
-    ///     let mut connect = NostrConnect::new(uri, app_keys, timeout, None)?;
+    ///     let mut connect = NostrConnect::new(uri, client_keys, timeout, None)?;
     ///
     ///     // Set auth_url handler
     ///     connect.auth_url_handler(MyAuthUrlHandler);
@@ -128,32 +127,7 @@ impl NostrConnect {
         let remote_signer_public_key: PublicKey = match self.uri.remote_signer_public_key() {
             Some(public_key) => *public_key,
             None => {
-                match get_remote_signer_public_key(&self.app_keys, notifications, self.timeout)
-                    .await?
-                {
-                    GetRemoteSignerPublicKey::RemoteOnly(public_key) => public_key,
-                    GetRemoteSignerPublicKey::WithUserPublicKey { remote, user } => {
-                        // Check if user public key was already set
-                        match self.user_public_key.get().copied() {
-                            Some(set_user_public_key) => {
-                                // User public key was already set but not match the one received by the signer.
-                                if set_user_public_key != user {
-                                    return Err(Error::UserPublicKeyNotMatch {
-                                        expected: Box::new(user),
-                                        local: Box::new(set_user_public_key),
-                                    });
-                                }
-                            }
-                            None => {
-                                // No user public key in cell, set it.
-                                self.user_public_key.set(user)?;
-                            }
-                        }
-
-                        // Return remote signer public key
-                        remote
-                    }
-                }
+                get_remote_signer_public_key(&self.client_keys, notifications, self.timeout).await?
             }
         };
 
@@ -166,7 +140,7 @@ impl NostrConnect {
     }
 
     async fn subscribe(&self) -> Result<Receiver<RelayPoolNotification>, Error> {
-        let public_key: PublicKey = self.app_keys.public_key();
+        let public_key: PublicKey = self.client_keys.public_key();
 
         let filter = Filter::new()
             .pubkey(public_key)
@@ -183,10 +157,10 @@ impl NostrConnect {
         Ok(notifications)
     }
 
-    /// Get local app keys
+    /// Get client keys, used for communicating with the remote signer
     #[inline]
     pub fn local_keys(&self) -> &Keys {
-        &self.app_keys
+        &self.client_keys
     }
 
     /// Get signer relays
@@ -200,7 +174,8 @@ impl NostrConnect {
         Ok(NostrConnectURI::Bunker {
             remote_signer_public_key: *self.remote_signer_public_key().await?,
             relays: self.relays().to_vec(),
-            secret: self.secret.clone(),
+            // Not use the secret. The secret is used only for the first connection.
+            secret: None,
         })
     }
 
@@ -238,7 +213,7 @@ impl NostrConnect {
         req: NostrConnectRequest,
         remote_signer_public_key: PublicKey,
     ) -> Result<ResponseResult, Error> {
-        let secret_key: &SecretKey = self.app_keys.secret_key();
+        let secret_key: &SecretKey = self.client_keys.secret_key();
 
         // Convert request to event
         let msg = NostrConnectMessage::request(&req);
@@ -246,8 +221,8 @@ impl NostrConnect {
 
         let req_id = msg.id().to_string();
         let event: Event =
-            EventBuilder::nostr_connect(&self.app_keys, remote_signer_public_key, msg)?
-                .sign_with_keys(&self.app_keys)?;
+            EventBuilder::nostr_connect(&self.client_keys, remote_signer_public_key, msg)?
+                .sign_with_keys(&self.client_keys)?;
 
         let mut notifications = self.pool.notifications();
 
@@ -309,8 +284,8 @@ impl NostrConnect {
     /// Connect msg
     async fn connect(&self, remote_signer_public_key: PublicKey) -> Result<(), Error> {
         let req = NostrConnectRequest::Connect {
-            public_key: remote_signer_public_key,
-            secret: self.secret.clone(),
+            remote_signer_public_key,
+            secret: self.uri.secret().map(|secret| secret.to_string()),
         };
         let res = self
             .send_request_with_pk(req, remote_signer_public_key)
@@ -392,23 +367,18 @@ impl NostrConnect {
     }
 }
 
-enum GetRemoteSignerPublicKey {
-    WithUserPublicKey { remote: PublicKey, user: PublicKey },
-    RemoteOnly(PublicKey),
-}
-
 async fn get_remote_signer_public_key(
-    app_keys: &Keys,
+    client_keys: &Keys,
     mut notifications: Receiver<RelayPoolNotification>,
     timeout: Duration,
-) -> Result<GetRemoteSignerPublicKey, Error> {
+) -> Result<PublicKey, Error> {
     time::timeout(Some(timeout), async {
         while let Ok(notification) = notifications.recv().await {
             if let RelayPoolNotification::Event { event, .. } = notification {
                 if event.kind == Kind::NostrConnect {
                     // Decrypt content
                     let msg: String = nip44::decrypt(
-                        app_keys.secret_key(),
+                        client_keys.secret_key(),
                         &event.pubkey,
                         event.content.as_str(),
                     )?;
@@ -418,27 +388,13 @@ async fn get_remote_signer_public_key(
                     // Parse message
                     let msg: NostrConnectMessage = NostrConnectMessage::from_json(msg)?;
 
-                    // Match message
-                    match &msg {
-                        NostrConnectMessage::Request { .. } => {
-                            if let Ok(NostrConnectRequest::Connect { public_key, .. }) =
-                                msg.to_request()
-                            {
-                                return Ok(GetRemoteSignerPublicKey::WithUserPublicKey {
-                                    remote: event.pubkey,
-                                    user: public_key,
-                                });
-                            }
-                        }
-                        NostrConnectMessage::Response { .. } => {
-                            if let Ok(NostrConnectResponse {
-                                result: Some(ResponseResult::Ack),
-                                error: None,
-                            }) = msg.to_response(NostrConnectMethod::Connect)
-                            {
-                                return Ok(GetRemoteSignerPublicKey::RemoteOnly(event.pubkey));
-                            }
-                        }
+                    // Check if it's a `connect` response
+                    if let Ok(NostrConnectResponse {
+                        result: Some(ResponseResult::Ack),
+                        error: None,
+                    }) = msg.to_response(NostrConnectMethod::Connect)
+                    {
+                        return Ok(event.pubkey);
                     }
                 }
             }

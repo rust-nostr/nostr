@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Fixed
+
+- Fix `NostrConnectRequest::Connect` message handling (https://github.com/rust-nostr/nostr/pull/1111)
+
 ## v0.43.0 - 2025/07/28
 
 ### Breaking changes

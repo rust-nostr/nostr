@@ -107,7 +107,7 @@ impl NostrConnectRemoteSigner {
 
     async fn send_connect_ack(&self, public_key: PublicKey) -> Result<(), Error> {
         let req: NostrConnectRequest = NostrConnectRequest::Connect {
-            public_key: self.keys.user.public_key(),
+            remote_signer_public_key: self.keys.signer.public_key(),
             secret: self.secret.clone(),
         };
 
@@ -194,14 +194,25 @@ impl NostrConnectRemoteSigner {
                                         .approve(&event.pubkey, &req)
                                     {
                                         match req {
-                                            NostrConnectRequest::Connect { secret, .. } => {
-                                                if self.match_secret(secret) {
-                                                    NostrConnectResponse::with_result(
-                                                        ResponseResult::Ack,
-                                                    )
+                                            NostrConnectRequest::Connect {
+                                                remote_signer_public_key,
+                                                secret,
+                                            } => {
+                                                if remote_signer_public_key
+                                                    == self.keys.signer.public_key
+                                                {
+                                                    if self.match_secret(secret) {
+                                                        NostrConnectResponse::with_result(
+                                                            ResponseResult::Ack,
+                                                        )
+                                                    } else {
+                                                        NostrConnectResponse::with_error(
+                                                            "Secret not match",
+                                                        )
+                                                    }
                                                 } else {
                                                     NostrConnectResponse::with_error(
-                                                        "Secret not match",
+                                                        "Remote signer public key not match",
                                                     )
                                                 }
                                             }

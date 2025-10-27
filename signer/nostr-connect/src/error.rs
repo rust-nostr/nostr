@@ -37,14 +37,6 @@ pub enum Error {
     UnexpectedUri,
     /// Public key not match
     PublicKeyNotMatchAppKeys,
-    /// User public key not match
-    // TODO: remove these `Box<T>`. Currently clippy return the following warning: "the `Err`-variant returned from this function is very large"
-    UserPublicKeyNotMatch {
-        /// The expected user public key, sent by the signer
-        expected: Box<PublicKey>,
-        /// The local set user public key
-        local: Box<PublicKey>,
-    },
 }
 
 impl std::error::Error for Error {}
@@ -63,10 +55,6 @@ impl fmt::Display for Error {
             Self::Timeout => f.write_str("timeout"),
             Self::UnexpectedUri => f.write_str("unexpected URI"),
             Self::PublicKeyNotMatchAppKeys => f.write_str("public key not match app keys"),
-            Self::UserPublicKeyNotMatch { expected, local } => write!(
-                f,
-                "user public key not match: expected={expected}, local={local}"
-            ),
         }
     }
 }
