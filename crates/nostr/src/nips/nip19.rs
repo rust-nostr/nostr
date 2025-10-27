@@ -397,8 +397,9 @@ impl Nip19Event {
     }
 
     /// Construct new NIP19 event from [`Event`].
+    #[deprecated(since = "0.44.0", note = "Use `from` instead.")]
     pub fn from_event(event: &Event) -> Self {
-        Self::new(event.id).author(event.pubkey).kind(event.kind)
+        Self::from(event)
     }
 
     /// Add author
@@ -478,6 +479,12 @@ impl Nip19Event {
             kind,
             relays,
         })
+    }
+}
+
+impl From<&Event> for Nip19Event {
+    fn from(event: &Event) -> Self {
+        Self::new(event.id).author(event.pubkey).kind(event.kind)
     }
 }
 
