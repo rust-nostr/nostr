@@ -1332,6 +1332,30 @@ impl Client {
 
 // Gossip
 impl Client {
+    async fn check_outdated_public_keys<'a, I>(
+        &self,
+        gossip: &Arc<dyn NostrGossip>,
+        public_keys: I,
+        gossip_kind: GossipListKind,
+    ) -> Result<HashSet<PublicKey>, Error>
+    where
+        I: IntoIterator<Item = &'a PublicKey>,
+    {
+        // First check: check if there are outdated public keys.
+        let mut outdated_public_keys: HashSet<PublicKey> = HashSet::new();
+
+        for public_key in public_keys.into_iter() {
+            // Get the public key status
+            let status = gossip.status(public_key, gossip_kind).await?;
+
+            if let GossipPublicKeyStatus::Outdated { .. } = status {
+                outdated_public_keys.insert(*public_key);
+            }
+        }
+
+        Ok(outdated_public_keys)
+    }
+
     /// Check for and update outdated public key data
     ///
     /// Steps:
@@ -1349,16 +1373,9 @@ impl Client {
         let public_keys: HashSet<PublicKey> = public_keys.into_iter().collect();
 
         // First check: check if there are outdated public keys.
-        let mut outdated_public_keys_first_check: HashSet<PublicKey> = HashSet::new();
-
-        for public_key in public_keys.iter() {
-            // Get the public key status
-            let status = gossip.status(public_key, gossip_kind).await?;
-
-            if let GossipPublicKeyStatus::Outdated { .. } = status {
-                outdated_public_keys_first_check.insert(*public_key);
-            }
-        }
+        let outdated_public_keys_first_check: HashSet<PublicKey> = self
+            .check_outdated_public_keys(gossip, public_keys.iter(), gossip_kind)
+            .await?;
 
         // No outdated public keys, immediately return.
         if outdated_public_keys_first_check.is_empty() {
@@ -1374,16 +1391,9 @@ impl Client {
 
         // Second check: check data is still outdated after acquiring permit
         // (another process might have updated it while we were waiting)
-        let mut outdated_public_keys: HashSet<PublicKey> = HashSet::new();
-
-        for public_key in public_keys.into_iter() {
-            // Get the public key status
-            let status = gossip.status(&public_key, gossip_kind).await?;
-
-            if let GossipPublicKeyStatus::Outdated { .. } = status {
-                outdated_public_keys.insert(public_key);
-            }
-        }
+        let outdated_public_keys: HashSet<PublicKey> = self
+            .check_outdated_public_keys(gossip, public_keys.iter(), gossip_kind)
+            .await?;
 
         // Double-check: data might have been updated while waiting for permit
         if outdated_public_keys.is_empty() {
