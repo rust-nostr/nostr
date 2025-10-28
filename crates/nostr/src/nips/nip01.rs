@@ -240,6 +240,9 @@ impl FromBech32 for Coordinate {
     }
 }
 
+impl ToNostrUri for Coordinate {}
+impl FromNostrUri for Coordinate {}
+
 /// Borrowed coordinate
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CoordinateBorrow<'a> {

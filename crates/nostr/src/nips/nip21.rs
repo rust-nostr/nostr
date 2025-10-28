@@ -11,7 +11,6 @@ use core::convert::Infallible;
 use core::fmt;
 
 use super::nip19::{self, FromBech32, Nip19, Nip19Coordinate, Nip19Event, Nip19Profile, ToBech32};
-use crate::nips::nip01::Coordinate;
 use crate::{EventId, PublicKey};
 
 /// URI scheme
@@ -114,7 +113,6 @@ impl ToNostrUri for Nip19Profile {}
 impl FromNostrUri for Nip19Profile {}
 impl ToNostrUri for Nip19Event {}
 impl FromNostrUri for Nip19Event {}
-impl FromNostrUri for Coordinate {}
 impl ToNostrUri for Nip19Coordinate {}
 impl FromNostrUri for Nip19Coordinate {}
 
