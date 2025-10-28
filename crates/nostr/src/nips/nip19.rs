@@ -647,22 +647,6 @@ impl FromBech32 for Nip19Profile {
     }
 }
 
-impl FromBech32 for Coordinate {
-    type Err = Error;
-
-    fn from_bech32(addr: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(addr)?;
-
-        if hrp != HRP_COORDINATE {
-            return Err(Error::WrongPrefix);
-        }
-
-        let coordinate = Nip19Coordinate::from_bech32_data(data)?;
-
-        Ok(coordinate.coordinate)
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Nip19Coordinate {
     pub coordinate: Coordinate,
