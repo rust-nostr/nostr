@@ -31,6 +31,8 @@ pub enum Error {
     Event(event::Error),
     /// Not Gift Wrap event
     NotGiftWrap,
+    /// Rumor author does not match the seal signer
+    SenderMismatch,
 }
 
 #[cfg(feature = "std")]
@@ -42,6 +44,7 @@ impl fmt::Display for Error {
             Self::Signer(e) => e.fmt(f),
             Self::Event(e) => e.fmt(f),
             Self::NotGiftWrap => f.write_str("Not a Gift Wrap"),
+            Self::SenderMismatch => f.write_str("Sender public key mismatch"),
         }
     }
 }
@@ -106,10 +109,16 @@ impl UnwrappedGift {
 
         // Decrypt rumor
         let rumor: String = signer.nip44_decrypt(&seal.pubkey, &seal.content).await?;
+        let rumor: UnsignedEvent = UnsignedEvent::from_json(rumor)?;
+
+        // Ensure the rumor author matches the authenticated seal signer per NIP-17.
+        if rumor.pubkey != seal.pubkey {
+            return Err(Error::SenderMismatch);
+        }
 
         Ok(UnwrappedGift {
             sender: seal.pubkey,
-            rumor: UnsignedEvent::from_json(rumor)?,
+            rumor,
         })
     }
 }
@@ -191,5 +200,44 @@ mod tests {
             extract_rumor(&receiver_keys, &event).await.unwrap_err(),
             Error::NotGiftWrap
         ));
+    }
+
+    #[tokio::test]
+    async fn test_sender_mismatch_detection() {
+        use crate::{Kind, Timestamp};
+
+        let sender_keys =
+            Keys::parse("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+                .unwrap();
+        let receiver_keys =
+            Keys::parse("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+                .unwrap();
+        let impersonated_keys =
+            Keys::parse("5b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+                .unwrap();
+
+        // Construct a rumor that lies about its pubkey but is still wrapped/signed
+        // by `sender_keys`. This mimics a spoofing attempt the recipient must reject.
+        let rumor = UnsignedEvent::new(
+            impersonated_keys.public_key(),
+            Timestamp::now(),
+            Kind::TextNote,
+            [],
+            "spoofed",
+        );
+
+        let gift_wrap: Event = EventBuilder::gift_wrap(
+            &sender_keys,
+            &receiver_keys.public_key(),
+            rumor,
+            [],
+        )
+        .await
+        .unwrap();
+
+        match extract_rumor(&receiver_keys, &gift_wrap).await {
+            Err(Error::SenderMismatch) => {}
+            other => panic!("expected SenderMismatch, got {other:?}"),
+        }
     }
 }
