@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::nip19::{self, FromBech32, ToBech32};
-use super::nip21::FromNostrUri;
+use super::nip21::{FromNostrUri, ToNostrUri};
 use crate::types::Url;
 use crate::{key, Filter, JsonUtil, Kind, PublicKey, Tag};
 
@@ -254,6 +254,8 @@ impl ToBech32 for CoordinateBorrow<'_> {
         nip19::coordinate_to_bech32(*self, &[])
     }
 }
+
+impl ToNostrUri for CoordinateBorrow<'_> {}
 
 /// Metadata
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
