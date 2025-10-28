@@ -14,7 +14,7 @@ use nostr_gossip::error::GossipError;
 use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
 use tokio::sync::Mutex;
 
-use crate::constant::PUBKEY_METADATA_OUTDATED_AFTER;
+use crate::constant::{MAX_NIP17_SIZE, MAX_NIP65_SIZE, PUBKEY_METADATA_OUTDATED_AFTER};
 use crate::flags::Flags;
 
 #[derive(Default)]
@@ -70,7 +70,7 @@ impl NostrGossipMemory {
                 let pk_data: &mut PkData =
                     public_keys.get_or_insert_mut(event.pubkey, PkData::default);
 
-                for (relay_url, metadata) in nip65::extract_relay_list(event) {
+                for (relay_url, metadata) in nip65::extract_relay_list(event).take(MAX_NIP65_SIZE) {
                     // New bitflag for the relay
                     let bitflag: Flags = match metadata {
                         Some(RelayMetadata::Read) => Flags::READ,
@@ -100,7 +100,7 @@ impl NostrGossipMemory {
                 let pk_data: &mut PkData =
                     public_keys.get_or_insert_mut(event.pubkey, PkData::default);
 
-                for relay_url in nip17::extract_relay_list(event) {
+                for relay_url in nip17::extract_relay_list(event).take(MAX_NIP17_SIZE) {
                     let relay_data = pk_data
                         .relays
                         .get_or_insert_mut(relay_url.clone(), PkRelayData::default);
