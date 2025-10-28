@@ -12,6 +12,7 @@ rust-version.workspace = true
 keywords = ["nostr", "gossip", "in-memory"]
 
 [dependencies]
+indexmap = "2.11"
 lru.workspace = true
 nostr = { workspace = true, features = ["std"] }
 nostr-gossip.workspace = true

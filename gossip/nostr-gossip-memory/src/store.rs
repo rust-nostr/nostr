@@ -2,9 +2,9 @@
 
 use std::cmp::Ordering;
 use std::collections::HashSet;
-use std::num::NonZeroUsize;
 use std::sync::Arc;
 
+use indexmap::IndexMap;
 use lru::LruCache;
 use nostr::nips::nip17;
 use nostr::nips::nip65::{self, RelayMetadata};
@@ -27,7 +27,7 @@ struct PkRelayData {
 struct PkData {
     last_nip17_update: Option<Timestamp>,
     last_nip65_update: Option<Timestamp>,
-    relays: LruCache<RelayUrl, PkRelayData>,
+    relays: IndexMap<RelayUrl, PkRelayData>,
 }
 
 impl Default for PkData {
@@ -35,7 +35,7 @@ impl Default for PkData {
         Self {
             last_nip17_update: None,
             last_nip65_update: None,
-            relays: LruCache::new(NonZeroUsize::new(25).expect("Invalid cache size")),
+            relays: IndexMap::new(),
         }
     }
 }
@@ -86,13 +86,19 @@ impl NostrGossipMemory {
                     let mut read_write_mask: Flags = Flags::READ;
                     read_write_mask.add(Flags::WRITE);
 
-                    let relay_data = pk_data
-                        .relays
-                        .get_or_insert_mut(relay_url.clone(), PkRelayData::default);
+                    match pk_data.relays.get_mut(relay_url) {
+                        Some(relay_data) => {
+                            // Update the bitflag: remove the previous READ and WRITE values and apply the new bitflag (preserves any other flag)
+                            relay_data.bitflags.remove(read_write_mask);
+                            relay_data.bitflags.add(bitflag);
+                        }
+                        None => {
+                            let mut relay_data = PkRelayData::default();
+                            relay_data.bitflags.add(bitflag);
 
-                    // Update the bitflag: remove the previous READ and WRITE values and apply the new bitflag (preserves any other flag)
-                    relay_data.bitflags.remove(read_write_mask);
-                    relay_data.bitflags.add(bitflag);
+                            pk_data.relays.insert(relay_url.clone(), relay_data);
+                        }
+                    }
                 }
             }
             // Extract NIP-17 relays
@@ -101,11 +107,17 @@ impl NostrGossipMemory {
                     public_keys.get_or_insert_mut(event.pubkey, PkData::default);
 
                 for relay_url in nip17::extract_relay_list(event).take(MAX_NIP17_SIZE) {
-                    let relay_data = pk_data
-                        .relays
-                        .get_or_insert_mut(relay_url.clone(), PkRelayData::default);
+                    match pk_data.relays.get_mut(relay_url) {
+                        Some(relay_data) => {
+                            relay_data.bitflags.add(Flags::PRIVATE_MESSAGE);
+                        }
+                        None => {
+                            let mut relay_data = PkRelayData::default();
+                            relay_data.bitflags.add(Flags::PRIVATE_MESSAGE);
 
-                    relay_data.bitflags.add(Flags::PRIVATE_MESSAGE);
+                            pk_data.relays.insert(relay_url.clone(), relay_data);
+                        }
+                    }
                 }
             }
             // Extract hints
@@ -300,13 +312,22 @@ impl NostrGossipMemory {
 
 /// Add relay per user or update the received events and bitflags.
 fn update_relay_per_user(pk_data: &mut PkData, relay_url: RelayUrl, flags: Flags) {
-    let relay_data = pk_data
-        .relays
-        .get_or_insert_mut(relay_url, PkRelayData::default);
+    match pk_data.relays.get_mut(&relay_url) {
+        Some(relay_data) => {
+            relay_data.bitflags.add(flags);
+            relay_data.received_events = relay_data.received_events.saturating_add(1);
+            relay_data.last_received_event = Some(Timestamp::now());
+        }
+        None => {
+            let mut relay_data = PkRelayData::default();
 
-    relay_data.bitflags.add(flags);
-    relay_data.received_events = relay_data.received_events.saturating_add(1);
-    relay_data.last_received_event = Some(Timestamp::now());
+            relay_data.bitflags.add(flags);
+            relay_data.received_events = relay_data.received_events.saturating_add(1);
+            relay_data.last_received_event = Some(Timestamp::now());
+
+            pk_data.relays.insert(relay_url, relay_data);
+        }
+    }
 }
 
 impl NostrGossip for NostrGossipMemory {
