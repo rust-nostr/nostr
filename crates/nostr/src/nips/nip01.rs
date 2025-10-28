@@ -17,7 +17,7 @@ use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::nip19::FromBech32;
+use super::nip19::{self, FromBech32, ToBech32};
 use super::nip21::FromNostrUri;
 use crate::types::Url;
 use crate::{key, Filter, JsonUtil, Kind, PublicKey, Tag};
@@ -243,6 +243,15 @@ impl CoordinateBorrow<'_> {
             public_key: *self.public_key,
             identifier: self.identifier.map(|s| s.to_string()).unwrap_or_default(),
         }
+    }
+}
+
+impl ToBech32 for CoordinateBorrow<'_> {
+    type Err = nip19::Error;
+
+    #[inline]
+    fn to_bech32(&self) -> Result<String, Self::Err> {
+        nip19::coordinate_to_bech32(*self, &[])
     }
 }
 

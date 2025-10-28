@@ -18,7 +18,7 @@ use core::str::FromStr;
 
 use bech32::{self, Bech32, Hrp};
 
-use super::nip01::Coordinate;
+use super::nip01::{Coordinate, CoordinateBorrow};
 use super::nip05::Nip05Profile;
 #[cfg(feature = "nip49")]
 use super::nip49::{self, EncryptedSecretKey};
@@ -761,37 +761,47 @@ impl FromBech32 for Nip19Coordinate {
 impl ToBech32 for Nip19Coordinate {
     type Err = Error;
 
+    #[inline]
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        // Allocate capacity
-        let identifier_len: usize = 2 + self.identifier.len();
-        let relays_len: usize = self.relays.iter().map(|u| 2 + u.as_str().len()).sum();
-        let mut bytes: Vec<u8> = Vec::with_capacity(
-            identifier_len + FIXED_1_1_32_BYTES_TVL + FIXED_KIND_BYTES_TVL + relays_len,
-        );
-
-        // Identifier
-        bytes.push(SPECIAL); // Type
-        bytes.push(self.identifier.len() as u8); // Len
-        bytes.extend(self.identifier.as_bytes()); // Value
-
-        // Author
-        bytes.push(AUTHOR); // Type
-        bytes.push(32); // Len
-        bytes.extend(self.public_key.as_bytes()); // Value
-
-        // Kind
-        bytes.push(KIND); // Type
-        bytes.push(4); // Len
-        bytes.extend((self.kind.as_u16() as u32).to_be_bytes()); // Value
-
-        for relay in self.relays.iter() {
-            bytes.push(RELAY); // Type
-            bytes.push(relay.as_str().len() as u8); // Len
-            bytes.extend(relay.as_str().as_bytes()); // Value
-        }
-
-        Ok(bech32::encode::<Bech32>(HRP_COORDINATE, &bytes)?)
+        coordinate_to_bech32(self.coordinate.borrow(), &self.relays)
     }
+}
+
+pub(super) fn coordinate_to_bech32<'a>(
+    coordinate: CoordinateBorrow<'a>,
+    relays: &[RelayUrl],
+) -> Result<String, Error> {
+    let identifier: &'a str = coordinate.identifier.unwrap_or_default();
+
+    // Allocate capacity
+    let identifier_len: usize = 2 + identifier.len();
+    let relays_len: usize = relays.iter().map(|u| 2 + u.as_str().len()).sum();
+    let mut bytes: Vec<u8> = Vec::with_capacity(
+        identifier_len + FIXED_1_1_32_BYTES_TVL + FIXED_KIND_BYTES_TVL + relays_len,
+    );
+
+    // Identifier
+    bytes.push(SPECIAL); // Type
+    bytes.push(identifier.len() as u8); // Len
+    bytes.extend(identifier.as_bytes()); // Value
+
+    // Author
+    bytes.push(AUTHOR); // Type
+    bytes.push(32); // Len
+    bytes.extend(coordinate.public_key.as_bytes()); // Value
+
+    // Kind
+    bytes.push(KIND); // Type
+    bytes.push(4); // Len
+    bytes.extend((coordinate.kind.as_u16() as u32).to_be_bytes()); // Value
+
+    for relay in relays.iter() {
+        bytes.push(RELAY); // Type
+        bytes.push(relay.as_str().len() as u8); // Len
+        bytes.extend(relay.as_str().as_bytes()); // Value
+    }
+
+    Ok(bech32::encode::<Bech32>(HRP_COORDINATE, &bytes)?)
 }
 
 #[cfg(test)]

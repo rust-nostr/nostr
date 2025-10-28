@@ -44,6 +44,7 @@
 - Add NIP-C7 support (https://github.com/rust-nostr/nostr/pull/1067)
 - Add NIP-60 support (https://github.com/rust-nostr/nostr/pull/1092)
 - Implement `ToBech32` trait for `Nip21`
+- Implement `ToBech32` for `CoordinateBorrow`
 - Implement `From<&Event>` for `Nip19Event`
 - Add `CowTag::kind` and `CowTag::content`
 - Add `Timestamp::as_secs`
