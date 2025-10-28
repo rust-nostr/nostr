@@ -2,6 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use nostr_gossip_memory::prelude::*;
 use nostr_sdk::prelude::*;
 
 #[tokio::main]
@@ -9,9 +10,10 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let keys = Keys::parse("nsec12kcgs78l06p30jz7z7h3n2x2cy99nw2z6zspjdp7qc206887mwvs95lnkx")?;
+    let gossip = NostrGossipMemory::unbounded();
     let client = Client::builder()
         .signer(keys.clone())
-        .opts(ClientOptions::new().gossip(true))
+        .gossip(gossip)
         .build();
 
     println!("Bot public key: {}", keys.public_key().to_bech32()?);

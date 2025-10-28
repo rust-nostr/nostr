@@ -76,8 +76,7 @@ impl Client {
     /// use nostr_sdk::prelude::*;
     ///
     /// let signer = Keys::generate();
-    /// let opts = ClientOptions::default().gossip(true);
-    /// let client: Client = Client::builder().signer(signer).opts(opts).build();
+    /// let client: Client = Client::builder().signer(signer).build();
     /// ```
     #[inline]
     pub fn builder() -> ClientBuilder {
