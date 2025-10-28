@@ -333,7 +333,7 @@ mod tests {
     }
 
     async fn setup() -> GossipWrapper {
-        let db = NostrGossipMemory::new();
+        let db = NostrGossipMemory::unbounded();
 
         let events = vec![
             build_relay_list_event(SECRET_KEY_A, KEY_A_RELAYS.to_vec()),

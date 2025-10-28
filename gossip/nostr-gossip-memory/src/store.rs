@@ -2,6 +2,7 @@
 
 use std::cmp::Ordering;
 use std::collections::HashSet;
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
@@ -46,18 +47,18 @@ pub struct NostrGossipMemory {
     public_keys: Arc<Mutex<LruCache<PublicKey, PkData>>>,
 }
 
-impl Default for NostrGossipMemory {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl NostrGossipMemory {
-    /// Construct a new instance
-    pub fn new() -> Self {
+    /// Construct a new **unbounded** instance
+    pub fn unbounded() -> Self {
         Self {
-            // TODO: allow to make this bounded
             public_keys: Arc::new(Mutex::new(LruCache::unbounded())),
+        }
+    }
+
+    /// Construct a new **bounded** instance
+    pub fn bounded(limit: NonZeroUsize) -> Self {
+        Self {
+            public_keys: Arc::new(Mutex::new(LruCache::new(limit))),
         }
     }
 
@@ -378,7 +379,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_event() {
-        let store = NostrGossipMemory::default();
+        let store = NostrGossipMemory::unbounded();
 
         let json = r#"{"id":"b7b1fb52ad8461a03e949820ae29a9ea07e35bcd79c95c4b59b0254944f62805","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1704644581,"kind":1,"tags":[],"content":"Text note","sig":"ed73a8a4e7c26cd797a7b875c634d9ecb6958c57733305fed23b978109d0411d21b3e182cb67c8ad750884e30ca383b509382ae6187b36e76ee76e6a142c4284"}"#;
         let event = Event::from_json(json).unwrap();
@@ -392,7 +393,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_nip65_relay_list() {
-        let store = NostrGossipMemory::default();
+        let store = NostrGossipMemory::unbounded();
 
         // NIP-65 relay list event with read and write relays
         let json = r#"{"id":"0a49bed4a1eb0973a68a0d43b7ca62781ffd4e052b91bbadef09e5cf756f6e68","pubkey":"68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272","created_at":1759351841,"kind":10002,"tags":[["alt","Relay list to discover the user's content"],["r","wss://relay.damus.io/"],["r","wss://nostr.wine/"],["r","wss://nostr.oxtr.dev/"],["r","wss://relay.nostr.wirednet.jp/"]],"content":"","sig":"f5bc6c18b0013214588d018c9086358fb76a529aa10867d4d02a75feb239412ae1c94ac7c7917f6e6e2303d72f00dc4e9b03b168ef98f3c3c0dec9a457ce0304"}"#;
@@ -419,7 +420,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_nip17_inbox_relays() {
-        let store = NostrGossipMemory::default();
+        let store = NostrGossipMemory::unbounded();
 
         // NIP-17 inbox relays event
         let json = r#"{"id":"8d9b40907f80bd7d5014bdc6a2541227b92f4ae20cbff59792b4746a713da81e","pubkey":"68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272","created_at":1756718818,"kind":10050,"tags":[["relay","wss://auth.nostr1.com/"],["relay","wss://nostr.oxtr.dev/"],["relay","wss://nip17.com"]],"content":"","sig":"05611df32f5c4e55bb8d74ab2840378b7707ad162f785a78f8bdaecee5b872667e4e43bcbbf3c6c638335c637f001155b48b7a7040ce2695660467be62f142d5"}"#;
@@ -439,7 +440,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_hints_from_p_tags() {
-        let store = NostrGossipMemory::default();
+        let store = NostrGossipMemory::unbounded();
 
         let public_key =
             PublicKey::parse("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")
@@ -471,7 +472,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_received_events_tracking() {
-        let store = NostrGossipMemory::default();
+        let store = NostrGossipMemory::unbounded();
 
         let keys = Keys::generate();
         let relay_url = RelayUrl::parse("wss://test.relay.io").unwrap();
@@ -499,7 +500,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_best_relays_all_selection() {
-        let store = NostrGossipMemory::default();
+        let store = NostrGossipMemory::unbounded();
 
         let public_key =
             PublicKey::from_hex("68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272")
@@ -555,7 +556,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_status_tracking() {
-        let store = NostrGossipMemory::default();
+        let store = NostrGossipMemory::unbounded();
 
         let public_key =
             PublicKey::from_hex("68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272")
@@ -582,7 +583,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_empty_results() {
-        let store = NostrGossipMemory::default();
+        let store = NostrGossipMemory::unbounded();
 
         // Random public key with no data
         let public_key =
