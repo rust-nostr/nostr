@@ -31,6 +31,8 @@ pub use self::kind::Kind;
 pub use self::tag::{Tag, TagKind, TagStandard, Tags};
 pub use self::unsigned::UnsignedEvent;
 use crate::nips::nip01::CoordinateBorrow;
+use crate::nips::nip19::{self, Nip19Event, ToBech32};
+use crate::nips::nip21::ToNostrUri;
 #[cfg(feature = "std")]
 use crate::types::time::Instant;
 use crate::types::time::TimeSupplier;
@@ -293,6 +295,19 @@ impl JsonUtil for Event {
         Ok(serde_json::from_slice(json.as_ref())?)
     }
 }
+
+impl ToBech32 for Event {
+    type Err = nip19::Error;
+
+    fn to_bech32(&self) -> Result<String, Self::Err> {
+        match self.coordinate() {
+            Some(coordinate) => coordinate.to_bech32(),
+            None => Nip19Event::from(self).to_bech32(),
+        }
+    }
+}
+
+impl ToNostrUri for Event {}
 
 impl TryFrom<&Event> for Metadata {
     type Error = serde_json::Error;

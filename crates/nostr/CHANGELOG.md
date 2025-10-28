@@ -48,6 +48,8 @@
 - Implement `ToNostrUri` for `Coordinate`
 - Implement `ToBech32` for `CoordinateBorrow`
 - Implement `ToNostrUri` for `CoordinateBorrow`
+- Implement `ToBech32` for `Event`
+- Implement `ToNostrUri` for `Event`
 - Implement `From<&Event>` for `Nip19Event`
 - Add `CowTag::kind` and `CowTag::content`
 - Add `Timestamp::as_secs`
