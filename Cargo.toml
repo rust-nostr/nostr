@@ -8,6 +8,10 @@ members = [
     "database/nostr-lmdb",
     "database/nostr-ndb",
 
+    # Gossip
+    "gossip/nostr-gossip",
+    "gossip/nostr-gossip-memory",
+
     # Remote File Storage implementations
     "rfs/nostr-blossom",
     "rfs/nostr-http-file-storage",
@@ -39,6 +43,8 @@ negentropy = { version = "0.5", default-features = false }
 nostr = { version = "0.43", path = "./crates/nostr", default-features = false }
 nostr-connect = { version = "0.43", path = "./signer/nostr-connect", default-features = false }
 nostr-database = { version = "0.43", path = "./database/nostr-database", default-features = false }
+nostr-gossip = { version = "0.43", path = "./gossip/nostr-gossip", default-features = false }
+nostr-gossip-memory = { version = "0.43", path = "./gossip/nostr-gossip-memory", default-features = false }
 nostr-lmdb = { version = "0.43", path = "./database/nostr-lmdb", default-features = false }
 nostr-ndb = { version = "0.43", path = "./database/nostr-ndb", default-features = false }
 nostr-relay-builder = { version = "0.43", path = "./crates/nostr-relay-builder", default-features = false }

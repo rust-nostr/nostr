@@ -35,6 +35,7 @@ nip98 = ["nostr/nip98"]
 async-utility.workspace = true
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
+nostr-gossip.workspace = true
 nostr-relay-pool.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true, features = ["std"] }
@@ -43,6 +44,7 @@ tracing = { workspace = true, features = ["std"] }
 nostr-connect.workspace = true
 nostr-lmdb.workspace = true
 nostr-ndb.workspace = true
+nostr-gossip-memory.workspace = true
 tokio = { workspace = true, features = ["macros"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 

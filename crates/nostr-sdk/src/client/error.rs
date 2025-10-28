@@ -7,6 +7,7 @@ use std::fmt;
 use nostr::prelude::*;
 use nostr::serde_json;
 use nostr_database::prelude::*;
+use nostr_gossip::error::GossipError;
 use nostr_relay_pool::__private::SharedStateError;
 use nostr_relay_pool::prelude::*;
 
@@ -21,6 +22,8 @@ pub enum Error {
     Database(DatabaseError),
     /// Signer error
     Signer(SignerError),
+    /// Gossip error
+    Gossip(GossipError),
     /// [`EventBuilder`] error
     EventBuilder(event::builder::Error),
     /// Json error
@@ -45,6 +48,7 @@ impl fmt::Display for Error {
             Self::RelayPool(e) => e.fmt(f),
             Self::Database(e) => e.fmt(f),
             Self::Signer(e) => e.fmt(f),
+            Self::Gossip(e) => e.fmt(f),
             Self::EventBuilder(e) => e.fmt(f),
             Self::Json(e) => e.fmt(f),
             Self::SharedState(e) => e.fmt(f),
@@ -79,6 +83,12 @@ impl From<DatabaseError> for Error {
 impl From<SignerError> for Error {
     fn from(e: SignerError) -> Self {
         Self::Signer(e)
+    }
+}
+
+impl From<GossipError> for Error {
+    fn from(e: GossipError) -> Self {
+        Self::Gossip(e)
     }
 }
 

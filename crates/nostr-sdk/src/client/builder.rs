@@ -9,6 +9,7 @@ use std::sync::Arc;
 use nostr::signer::{IntoNostrSigner, NostrSigner};
 use nostr_database::memory::MemoryDatabase;
 use nostr_database::{IntoNostrDatabase, NostrDatabase};
+use nostr_gossip::NostrGossip;
 use nostr_relay_pool::monitor::Monitor;
 use nostr_relay_pool::policy::AdmitPolicy;
 use nostr_relay_pool::transport::websocket::{
@@ -29,6 +30,8 @@ pub struct ClientBuilder {
     pub admit_policy: Option<Arc<dyn AdmitPolicy>>,
     /// Database
     pub database: Arc<dyn NostrDatabase>,
+    /// Gossip
+    pub gossip: Option<Arc<dyn NostrGossip>>,
     /// Relay monitor
     pub monitor: Option<Monitor>,
     /// Client options
@@ -42,6 +45,7 @@ impl Default for ClientBuilder {
             websocket_transport: Arc::new(DefaultWebsocketTransport),
             admit_policy: None,
             database: Arc::new(MemoryDatabase::default()),
+            gossip: None,
             monitor: None,
             opts: ClientOptions::default(),
         }
@@ -103,6 +107,16 @@ impl ClientBuilder {
         D: IntoNostrDatabase,
     {
         self.database = database.into_nostr_database();
+        self
+    }
+
+    /// Set a gossip database
+    #[inline]
+    pub fn gossip<T>(mut self, gossip: T) -> Self
+    where
+        T: NostrGossip + 'static,
+    {
+        self.gossip = Some(Arc::new(gossip));
         self
     }
 

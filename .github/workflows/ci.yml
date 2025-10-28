@@ -35,6 +35,8 @@ jobs:
           - nostr-blossom
           - nostr-http-file-storage
           - nostr-database
+          - nostr-gossip
+          - nostr-gossip-memory
           - nostr-lmdb
           - nostr-indexeddb --target wasm32-unknown-unknown
           - nostr-ndb

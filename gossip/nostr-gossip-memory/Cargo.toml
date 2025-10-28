@@ -1,0 +1,22 @@
+[package]
+name = "nostr-gossip-memory"
+version = "0.43.0"
+edition = "2021"
+description = "In-memory gossip database"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "gossip", "in-memory"]
+
+[dependencies]
+indexmap = "2.11"
+lru.workspace = true
+nostr = { workspace = true, features = ["std"] }
+nostr-gossip.workspace = true
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

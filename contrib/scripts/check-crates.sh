@@ -34,6 +34,8 @@ buildargs=(
     "-p nostr-blossom"
     "-p nostr-http-file-storage"
     "-p nostr-database"
+    "-p nostr-gossip"
+    "-p nostr-gossip-memory"
     "-p nostr-lmdb"
     "-p nostr-indexeddb --target wasm32-unknown-unknown"
     "-p nostr-ndb"
