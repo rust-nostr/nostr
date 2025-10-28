@@ -11,3 +11,4 @@ of the PR were done in a specific way -->
 
 - [ ] I followed the [contribution guidelines](https://github.com/rust-nostr/nostr/blob/master/CONTRIBUTING.md)
 - [ ] I updated the [CHANGELOG](https://github.com/rust-nostr/nostr/blob/master/CHANGELOG.md) (if applicable)
+- [ ] I personally wrote and understood all code in this PR
