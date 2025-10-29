@@ -2,7 +2,7 @@
 
 /// Gossip flags
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct GossipFlags(u16);
+pub struct GossipFlags(u32);
 
 impl GossipFlags {
     /// Empty flags.
@@ -47,9 +47,9 @@ impl GossipFlags {
         self.0 & other.0 != 0
     }
 
-    /// Get flags as [`u16`].
+    /// Get flags as [`u32`].
     #[inline]
-    pub const fn as_u16(&self) -> u16 {
+    pub const fn as_u32(&self) -> u32 {
         self.0
     }
 }
