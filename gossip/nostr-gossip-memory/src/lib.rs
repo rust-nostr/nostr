@@ -10,6 +10,5 @@
 #![warn(clippy::large_futures)]
 
 mod constant;
-mod flags;
 pub mod prelude;
 pub mod store;

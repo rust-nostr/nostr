@@ -11,4 +11,5 @@
 pub use nostr::prelude::*;
 
 pub use crate::error::*;
+pub use crate::flags::*;
 pub use crate::*;

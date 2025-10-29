@@ -12,15 +12,15 @@ use nostr::nips::nip65::{self, RelayMetadata};
 use nostr::util::BoxedFuture;
 use nostr::{Event, Kind, PublicKey, RelayUrl, TagKind, TagStandard, Timestamp};
 use nostr_gossip::error::GossipError;
+use nostr_gossip::flags::GossipFlags;
 use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
 use tokio::sync::Mutex;
 
 use crate::constant::{MAX_NIP17_SIZE, MAX_NIP65_SIZE, PUBKEY_METADATA_OUTDATED_AFTER};
-use crate::flags::Flags;
 
 #[derive(Default)]
 struct PkRelayData {
-    bitflags: Flags,
+    bitflags: GossipFlags,
     received_events: u64,
     last_received_event: Option<Timestamp>,
 }
@@ -73,19 +73,19 @@ impl NostrGossipMemory {
 
                 for (relay_url, metadata) in nip65::extract_relay_list(event).take(MAX_NIP65_SIZE) {
                     // New bitflag for the relay
-                    let bitflag: Flags = match metadata {
-                        Some(RelayMetadata::Read) => Flags::READ,
-                        Some(RelayMetadata::Write) => Flags::WRITE,
+                    let bitflag: GossipFlags = match metadata {
+                        Some(RelayMetadata::Read) => GossipFlags::READ,
+                        Some(RelayMetadata::Write) => GossipFlags::WRITE,
                         None => {
-                            let mut f = Flags::READ;
-                            f.add(Flags::WRITE);
+                            let mut f = GossipFlags::READ;
+                            f.add(GossipFlags::WRITE);
                             f
                         }
                     };
 
                     // Create a mask for READ and WRITE flags
-                    let mut read_write_mask: Flags = Flags::READ;
-                    read_write_mask.add(Flags::WRITE);
+                    let mut read_write_mask: GossipFlags = GossipFlags::READ;
+                    read_write_mask.add(GossipFlags::WRITE);
 
                     match pk_data.relays.get_mut(relay_url) {
                         Some(relay_data) => {
@@ -110,11 +110,11 @@ impl NostrGossipMemory {
                 for relay_url in nip17::extract_relay_list(event).take(MAX_NIP17_SIZE) {
                     match pk_data.relays.get_mut(relay_url) {
                         Some(relay_data) => {
-                            relay_data.bitflags.add(Flags::PRIVATE_MESSAGE);
+                            relay_data.bitflags.add(GossipFlags::PRIVATE_MESSAGE);
                         }
                         None => {
                             let mut relay_data = PkRelayData::default();
-                            relay_data.bitflags.add(Flags::PRIVATE_MESSAGE);
+                            relay_data.bitflags.add(GossipFlags::PRIVATE_MESSAGE);
 
                             pk_data.relays.insert(relay_url.clone(), relay_data);
                         }
@@ -132,7 +132,7 @@ impl NostrGossipMemory {
                     {
                         let pk_data: &mut PkData =
                             public_keys.get_or_insert_mut(*public_key, PkData::default);
-                        update_relay_per_user(pk_data, relay_url.clone(), Flags::HINT);
+                        update_relay_per_user(pk_data, relay_url.clone(), GossipFlags::HINT);
                     }
                 }
             }
@@ -140,7 +140,7 @@ impl NostrGossipMemory {
 
         if let Some(relay_url) = relay_url {
             let pk_data: &mut PkData = public_keys.get_or_insert_mut(event.pubkey, PkData::default);
-            update_relay_per_user(pk_data, relay_url.clone(), Flags::RECEIVED);
+            update_relay_per_user(pk_data, relay_url.clone(), GossipFlags::RECEIVED);
         }
     }
 
@@ -207,13 +207,18 @@ impl NostrGossipMemory {
                 most_received,
             } => {
                 // Get read relays
-                relays.extend(self.get_relays_by_flag(&public_keys, public_key, Flags::READ, read));
+                relays.extend(self.get_relays_by_flag(
+                    &public_keys,
+                    public_key,
+                    GossipFlags::READ,
+                    read,
+                ));
 
                 // Get write relays
                 relays.extend(self.get_relays_by_flag(
                     &public_keys,
                     public_key,
-                    Flags::WRITE,
+                    GossipFlags::WRITE,
                     write,
                 ));
 
@@ -221,7 +226,7 @@ impl NostrGossipMemory {
                 relays.extend(self.get_relays_by_flag(
                     &public_keys,
                     public_key,
-                    Flags::HINT,
+                    GossipFlags::HINT,
                     hints,
                 ));
 
@@ -229,7 +234,7 @@ impl NostrGossipMemory {
                 relays.extend(self.get_relays_by_flag(
                     &public_keys,
                     public_key,
-                    Flags::RECEIVED,
+                    GossipFlags::RECEIVED,
                     most_received,
                 ));
             }
@@ -237,7 +242,7 @@ impl NostrGossipMemory {
                 relays.extend(self.get_relays_by_flag(
                     &public_keys,
                     public_key,
-                    Flags::READ,
+                    GossipFlags::READ,
                     limit,
                 ));
             }
@@ -245,7 +250,7 @@ impl NostrGossipMemory {
                 relays.extend(self.get_relays_by_flag(
                     &public_keys,
                     public_key,
-                    Flags::WRITE,
+                    GossipFlags::WRITE,
                     limit,
                 ));
             }
@@ -253,7 +258,7 @@ impl NostrGossipMemory {
                 relays.extend(self.get_relays_by_flag(
                     &public_keys,
                     public_key,
-                    Flags::PRIVATE_MESSAGE,
+                    GossipFlags::PRIVATE_MESSAGE,
                     limit,
                 ));
             }
@@ -261,7 +266,7 @@ impl NostrGossipMemory {
                 relays.extend(self.get_relays_by_flag(
                     &public_keys,
                     public_key,
-                    Flags::HINT,
+                    GossipFlags::HINT,
                     limit,
                 ));
             }
@@ -269,7 +274,7 @@ impl NostrGossipMemory {
                 relays.extend(self.get_relays_by_flag(
                     &public_keys,
                     public_key,
-                    Flags::RECEIVED,
+                    GossipFlags::RECEIVED,
                     limit,
                 ));
             }
@@ -282,7 +287,7 @@ impl NostrGossipMemory {
         &self,
         tx: &LruCache<PublicKey, PkData>,
         public_key: &PublicKey,
-        flag: Flags,
+        flag: GossipFlags,
         limit: usize,
     ) -> impl Iterator<Item = RelayUrl> + '_ {
         let mut relays: Vec<(RelayUrl, u64, Option<Timestamp>)> = Vec::new();
@@ -312,7 +317,7 @@ impl NostrGossipMemory {
 }
 
 /// Add relay per user or update the received events and bitflags.
-fn update_relay_per_user(pk_data: &mut PkData, relay_url: RelayUrl, flags: Flags) {
+fn update_relay_per_user(pk_data: &mut PkData, relay_url: RelayUrl, flags: GossipFlags) {
     match pk_data.relays.get_mut(&relay_url) {
         Some(relay_data) => {
             relay_data.bitflags.add(flags);

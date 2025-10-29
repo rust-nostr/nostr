@@ -16,6 +16,7 @@ use std::fmt::Debug;
 use nostr::prelude::*;
 
 pub mod error;
+pub mod flags;
 pub mod prelude;
 
 use self::error::GossipError;
