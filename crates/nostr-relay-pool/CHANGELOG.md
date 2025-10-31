@@ -45,6 +45,10 @@
 
 - `ban_relay_on_mismatch` no longer requires `verify_subscriptions` to be enabled.
 
+### Removed
+
+- Remove `Error::NegentropyReconciliationFailed` variant
+
 ## v0.43.1 - 2025/10/03
 
 ### Changed

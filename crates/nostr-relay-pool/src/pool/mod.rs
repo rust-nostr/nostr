@@ -1112,11 +1112,6 @@ impl RelayPool {
             }
         }
 
-        // Check if sync failed (no success)
-        if output.success.is_empty() {
-            return Err(Error::NegentropyReconciliationFailed);
-        }
-
         Ok(output)
     }
 

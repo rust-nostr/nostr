@@ -33,8 +33,6 @@ pub enum Error {
     NoRelays,
     /// No relays specified
     NoRelaysSpecified,
-    /// Negentropy reconciliation failed
-    NegentropyReconciliationFailed,
     /// Relay not found
     RelayNotFound,
     /// Relay Pool is shutdown
@@ -54,7 +52,6 @@ impl fmt::Display for Error {
             Self::TooManyRelays { .. } => f.write_str("too many relays"),
             Self::NoRelays => f.write_str("no relays"),
             Self::NoRelaysSpecified => f.write_str("no relays specified"),
-            Self::NegentropyReconciliationFailed => f.write_str("negentropy reconciliation failed"),
             Self::RelayNotFound => f.write_str("relay not found"),
             Self::Shutdown => f.write_str("relay pool is shutdown"),
         }
