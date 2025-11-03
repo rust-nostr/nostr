@@ -43,11 +43,11 @@
 
 ### Fixed
 
-- `ban_relay_on_mismatch` no longer requires `verify_subscriptions` to be enabled.
+- `ban_relay_on_mismatch` no longer requires `verify_subscriptions` to be enabled (https://github.com/rust-nostr/nostr/pull/1023)
 
 ### Removed
 
-- Remove `Error::NegentropyReconciliationFailed` variant
+- Remove `Error::NegentropyReconciliationFailed` variant (https://github.com/rust-nostr/nostr/commit/6befa6de8ab080a8153b7f8b788981d7be365ebf)
 
 ## v0.43.1 - 2025/10/03
 
