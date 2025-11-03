@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 pub extern crate nostr;
 
@@ -120,7 +121,9 @@ impl NWC {
             .await?;
 
         // Send the request
-        self.pool.send_event(&event).await?;
+        self.pool
+            .send_event(&event, Duration::from_secs(10))
+            .await?;
 
         // Wait for the response event
         let received_event: Event = stream.next().await.ok_or(Error::PrematureExit)?;

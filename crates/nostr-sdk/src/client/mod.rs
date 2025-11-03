@@ -29,6 +29,8 @@ pub use self::options::{ClientOptions, SleepWhenIdle};
 pub use self::options::{Connection, ConnectionTarget};
 use crate::gossip::{self, BrokenDownFilters, GossipFilterPattern, GossipWrapper};
 
+const SEND_EVENT_TIMEOUT: Duration = Duration::from_secs(10);
+
 /// Nostr client
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -968,7 +970,7 @@ impl Client {
             }
             None => {
                 // NOT gossip, send event to all relays
-                Ok(self.pool.send_event(event).await?)
+                Ok(self.pool.send_event(event, SEND_EVENT_TIMEOUT).await?)
             }
         }
     }
@@ -995,7 +997,10 @@ impl Client {
         }
 
         // Send event to relays
-        Ok(self.pool.send_event_to(urls, event).await?)
+        Ok(self
+            .pool
+            .send_event_to(urls, event, SEND_EVENT_TIMEOUT)
+            .await?)
     }
 
     /// Build, sign and return [`Event`]
@@ -1778,7 +1783,10 @@ impl Client {
         };
 
         // Send event
-        Ok(self.pool.send_event_to(urls, event).await?)
+        Ok(self
+            .pool
+            .send_event_to(urls, event, SEND_EVENT_TIMEOUT)
+            .await?)
     }
 
     async fn gossip_stream_events(

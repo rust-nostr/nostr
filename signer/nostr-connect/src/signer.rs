@@ -6,6 +6,7 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use nostr::nips::nip46::ResponseResult;
 use nostr_relay_pool::prelude::*;
@@ -114,7 +115,9 @@ impl NostrConnectRemoteSigner {
         let msg: NostrConnectMessage = NostrConnectMessage::request(&req);
         let event: Event = EventBuilder::nostr_connect(&self.keys.signer, public_key, msg)?
             .sign_with_keys(&self.keys.signer)?;
-        self.pool.send_event(&event).await?;
+        self.pool
+            .send_event(&event, Duration::from_secs(10))
+            .await?;
         Ok(())
     }
 
@@ -339,7 +342,9 @@ impl NostrConnectRemoteSigner {
                                         msg,
                                     )?
                                     .sign_with_keys(&self.keys.signer)?;
-                                    self.pool.send_event(&event).await?;
+                                    self.pool
+                                        .send_event(&event, Duration::from_secs(10))
+                                        .await?;
                                 }
                             }
                             Err(e) => {

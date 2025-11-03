@@ -29,7 +29,7 @@ mod ping;
 pub mod stats;
 mod status;
 
-use self::constants::{WAIT_FOR_AUTHENTICATION_TIMEOUT, WAIT_FOR_OK_TIMEOUT};
+use self::constants::WAIT_FOR_AUTHENTICATION_TIMEOUT;
 pub use self::error::Error;
 pub use self::flags::{AtomicRelayServiceFlags, FlagCheck, RelayServiceFlags};
 use self::inner::InnerRelay;
@@ -419,6 +419,7 @@ impl Relay {
         &self,
         notifications: &mut broadcast::Receiver<RelayNotification>,
         event: &Event,
+        timeout: Duration,
     ) -> Result<(bool, String), Error> {
         // Send the EVENT message
         self.inner
@@ -426,19 +427,19 @@ impl Relay {
 
         // Wait for OK
         self.inner
-            .wait_for_ok(notifications, &event.id, WAIT_FOR_OK_TIMEOUT)
+            .wait_for_ok(notifications, &event.id, timeout)
             .await
     }
 
     /// Send event and wait for `OK` relay msg
-    pub async fn send_event(&self, event: &Event) -> Result<EventId, Error> {
+    pub async fn send_event(&self, event: &Event, timeout: Duration) -> Result<EventId, Error> {
         // Health, write permission and number of messages checks are executed in `batch_msg` method.
 
         // Subscribe to notifications
         let mut notifications = self.inner.internal_notification_sender.subscribe();
 
         // Send event
-        let (status, message) = self._send_event(&mut notifications, event).await?;
+        let (status, message) = self._send_event(&mut notifications, event, timeout).await?;
 
         // Check status
         if status {
@@ -451,11 +452,13 @@ impl Relay {
             let has_signer: bool = self.inner.state.has_signer().await;
             if self.inner.state.is_auto_authentication_enabled() && has_signer {
                 // Wait that relay authenticate
+                // TODO: use the same timeout as for sending the event?
                 self.wait_for_authentication(&mut notifications, WAIT_FOR_AUTHENTICATION_TIMEOUT)
                     .await?;
 
                 // Try to resend event
-                let (status, message) = self._send_event(&mut notifications, event).await?;
+                let (status, message) =
+                    self._send_event(&mut notifications, event, timeout).await?;
 
                 // Check status
                 return if status {
@@ -837,7 +840,10 @@ mod tests {
             let event = EventBuilder::text_note(i.to_string())
                 .sign_with_keys(&keys)
                 .unwrap();
-            relay.send_event(&event).await.unwrap();
+            relay
+                .send_event(&event, Duration::from_secs(5))
+                .await
+                .unwrap();
         }
 
         (relay, mock)
@@ -882,7 +888,10 @@ mod tests {
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
             .unwrap();
-        relay.send_event(&event).await.unwrap();
+        relay
+            .send_event(&event, Duration::from_secs(5))
+            .await
+            .unwrap();
     }
 
     #[tokio::test]
@@ -1306,7 +1315,10 @@ mod tests {
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
             .unwrap();
-        let err = relay.send_event(&event).await.unwrap_err();
+        let err = relay
+            .send_event(&event, Duration::from_secs(5))
+            .await
+            .unwrap_err();
         if let Error::RelayMessage(msg) = err {
             assert_eq!(
                 MachineReadablePrefix::parse(&msg).unwrap(),
@@ -1323,7 +1335,10 @@ mod tests {
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
             .unwrap();
-        assert!(relay.send_event(&event).await.is_ok());
+        assert!(relay
+            .send_event(&event, Duration::from_secs(5))
+            .await
+            .is_ok());
     }
 
     #[tokio::test]
@@ -1348,7 +1363,10 @@ mod tests {
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
             .unwrap();
-        relay.send_event(&event).await.unwrap();
+        relay
+            .send_event(&event, Duration::from_secs(5))
+            .await
+            .unwrap();
 
         let filter = Filter::new().kind(Kind::TextNote).limit(3);
 
@@ -1451,7 +1469,7 @@ mod tests {
             let event = EventBuilder::metadata(&Metadata::new().name("Test"))
                 .sign_with_keys(&keys)
                 .unwrap();
-            r.send_event(&event).await.unwrap();
+            r.send_event(&event, Duration::from_secs(5)).await.unwrap();
         });
 
         let events = relay
@@ -1484,7 +1502,7 @@ mod tests {
                 let event = EventBuilder::text_note("Additional")
                     .sign_with_keys(&keys)
                     .unwrap();
-                r.send_event(&event).await.unwrap();
+                r.send_event(&event, Duration::from_secs(5)).await.unwrap();
             }
         });
 
@@ -1517,7 +1535,7 @@ mod tests {
                 let event = EventBuilder::text_note("Additional")
                     .sign_with_keys(&keys)
                     .unwrap();
-                r.send_event(&event).await.unwrap();
+                r.send_event(&event, Duration::from_secs(5)).await.unwrap();
 
                 tokio::time::sleep(Duration::from_secs(2)).await;
             }
@@ -1566,7 +1584,10 @@ mod tests {
 
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_secs(2)).await;
-            relay1.send_event(&event).await.unwrap();
+            relay1
+                .send_event(&event, Duration::from_secs(5))
+                .await
+                .unwrap();
         });
 
         // Subscribe
@@ -1710,7 +1731,10 @@ mod tests {
 
         // Send events to the relays
         for event in relays_events.iter() {
-            relay.send_event(event).await.unwrap();
+            relay
+                .send_event(event, Duration::from_secs(5))
+                .await
+                .unwrap();
         }
 
         // Sync
@@ -1756,7 +1780,10 @@ mod tests {
         let event = EventBuilder::text_note("text wake-up")
             .sign_with_keys(&Keys::generate())
             .unwrap();
-        relay.send_event(&event).await.unwrap();
+        relay
+            .send_event(&event, Duration::from_secs(5))
+            .await
+            .unwrap();
         assert_eq!(relay.status(), RelayStatus::Connected);
 
         // Check if relay is sleeping

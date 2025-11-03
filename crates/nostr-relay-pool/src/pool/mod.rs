@@ -725,9 +725,13 @@ impl RelayPool {
     }
 
     /// Send event to all relays with `WRITE` flag (check [`RelayServiceFlags`] for more details).
-    pub async fn send_event(&self, event: &Event) -> Result<Output<EventId>, Error> {
+    pub async fn send_event(
+        &self,
+        event: &Event,
+        timeout: Duration,
+    ) -> Result<Output<EventId>, Error> {
         let urls: Vec<RelayUrl> = self.__write_relay_urls().await;
-        self.send_event_to(urls, event).await
+        self.send_event_to(urls, event, timeout).await
     }
 
     /// Send event to specific relays
@@ -735,6 +739,7 @@ impl RelayPool {
         &self,
         urls: I,
         event: &Event,
+        timeout: Duration,
     ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -779,7 +784,7 @@ impl RelayPool {
         for url in set.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
             urls.push(url);
-            futures.push(relay.send_event(event));
+            futures.push(relay.send_event(event, timeout));
         }
 
         // Join futures
