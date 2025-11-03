@@ -27,6 +27,8 @@
 
 ### Breaking changes
 
+- Change the `address` field type in `CommentTarget::Coordinate` to `CoordinateBorrow` (https://github.com/rust-nostr/nostr/pull/1034)
+- Change the `EventBuilder::comment` function `root` and `comment_to` parameters types from `&Event` to `CommentTarget<'_>` (https://github.com/rust-nostr/nostr/pull/1047)
 - Set `payment_hash` as optional in `MakeInvoiceResponse` (https://github.com/rust-nostr/nostr/pull/1045)
 - Remove `hex` module (https://github.com/rust-nostr/nostr/pull/1051)
 - Use `Cow` for non-copy fields in `nip22::CommentTarget` enum (https://github.com/rust-nostr/nostr/pull/1053)
@@ -43,6 +45,7 @@
 - Add NIP-7D support (https://github.com/rust-nostr/nostr/pull/1071)
 - Add NIP-C7 support (https://github.com/rust-nostr/nostr/pull/1067)
 - Add NIP-60 support (https://github.com/rust-nostr/nostr/pull/1092)
+- Add NIP-A0 support (https://github.com/rust-nostr/nostr/pull/1032)
 - Implement `ToBech32` trait for `Nip21`
 - Implement `ToBech32` for `Coordinate`
 - Implement `ToNostrUri` for `Coordinate`
@@ -64,7 +67,6 @@
 - Add repository state announcements kind `Kind::RepoState` (30618) (https://github.com/rust-nostr/nostr/pull/1041)
 - Add `HEAD` tag kind (https://github.com/rust-nostr/nostr/pull/1043)
 - Add `CommentTarget::as_vec` to convert the comment target into a vector of tags (https://github.com/rust-nostr/nostr/pull/1038)
-- Support NIP-A0 (Voice Messages) (https://github.com/rust-nostr/nostr/pull/1032)
 - Add `hex` dependency (https://github.com/rust-nostr/nostr/pull/1051)
 - Add `nip25::ReactionTarget` (https://github.com/rust-nostr/nostr/pull/1063)
 - Add `RelayUrl::host` function (https://github.com/rust-nostr/nostr/pull/1066)
@@ -83,11 +85,6 @@
 - Deprecate `Timestamp::as_u64`
 - Deprecate `Nip19Event::from_event`
 - Deprecate `kind` field in `CommentTarget::Coordinate` variant (https://github.com/rust-nostr/nostr/pull/1035)
-
-### Breaking changes
-
-- Change the `address` field type in `CommentTarget::Coordinate` to `CoordinateBorrow` (https://github.com/rust-nostr/nostr/pull/1034)
-- Change the `EventBuilder::comment` function `root` and `comment_to` parameters types from `&Event` to `CommentTarget<'_>` (https://github.com/rust-nostr/nostr/pull/1047)
 
 ## v0.43.1 - 2025/08/21
 
