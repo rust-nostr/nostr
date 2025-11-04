@@ -112,7 +112,7 @@ impl GitRepositoryAnnouncement {
         }
 
         // Build
-        Ok(EventBuilder::new(Kind::GitRepoAnnouncement, "").tags(tags))
+        Ok(EventBuilder::new(Kind::GitRepoAnnouncement).tags(tags))
     }
 }
 
@@ -164,7 +164,9 @@ impl GitIssue {
         tags.extend(self.labels.into_iter().map(Tag::hashtag));
 
         // Build
-        Ok(EventBuilder::new(Kind::GitIssue, self.content).tags(tags))
+        Ok(EventBuilder::new(Kind::GitIssue)
+            .content(self.content)
+            .tags(tags))
     }
 }
 
@@ -310,7 +312,9 @@ impl GitPatch {
         tags.extend(self.labels.into_iter().map(Tag::hashtag));
 
         // Build
-        Ok(EventBuilder::new(Kind::GitPatch, content).tags(tags))
+        Ok(EventBuilder::new(Kind::GitPatch)
+            .content(content)
+            .tags(tags))
     }
 }
 

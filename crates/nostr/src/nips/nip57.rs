@@ -256,7 +256,8 @@ pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
     tags.push(Tag::from_standardized_without_cell(TagStandard::Anon {
         msg: None,
     }));
-    Ok(EventBuilder::new(Kind::ZapRequest, message)
+    Ok(EventBuilder::new(Kind::ZapRequest)
+        .content(message)
         .tags(tags)
         .sign_with_keys(&keys)?)
 }
@@ -292,7 +293,8 @@ where
     if let Some(event_id) = data.event_id {
         tags.push(Tag::event(event_id));
     }
-    let msg: String = EventBuilder::new(Kind::ZapPrivateMessage, &data.message)
+    let msg: String = EventBuilder::new(Kind::ZapPrivateMessage)
+        .content(&data.message)
         .tags(tags)
         .sign_with_ctx(secp, rng, supplier, keys)?
         .as_json();
@@ -304,7 +306,7 @@ where
         msg: Some(msg),
     }));
     let private_zap_keys: Keys = Keys::new_with_ctx(secp, secret_key);
-    Ok(EventBuilder::new(Kind::ZapRequest, "")
+    Ok(EventBuilder::new(Kind::ZapRequest)
         .tags(tags)
         .custom_created_at(created_at)
         .sign_with_ctx(secp, rng, supplier, &private_zap_keys)?)

@@ -87,7 +87,8 @@ impl EventDeletionRequest {
             tags.push(Tag::coordinate(coordinate, None));
         }
 
-        EventBuilder::new(Kind::EventDeletion, self.reason.unwrap_or_default())
+        EventBuilder::new(Kind::EventDeletion)
+            .content(self.reason.unwrap_or_default())
             .tags(tags)
             .dedup_tags()
     }

@@ -162,6 +162,8 @@ impl CodeSnippet {
             tags.push(TagStandard::Dependency(dep).into());
         }
 
-        EventBuilder::new(Kind::CodeSnippet, self.snippet).tags(tags)
+        EventBuilder::new(Kind::CodeSnippet)
+            .content(self.snippet)
+            .tags(tags)
     }
 }

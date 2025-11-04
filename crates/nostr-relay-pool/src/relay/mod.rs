@@ -1560,7 +1560,7 @@ mod tests {
 
         // Event
         let kind = Kind::Custom(22_222); // Ephemeral kind
-        let event: Event = EventBuilder::new(kind, "").sign_with_keys(&keys).unwrap();
+        let event: Event = EventBuilder::new(kind).sign_with_keys(&keys).unwrap();
 
         let event_id: EventId = event.id;
 
@@ -1675,7 +1675,8 @@ mod tests {
             EventBuilder::text_note("Local 2")
                 .sign_with_keys(&Keys::generate())
                 .unwrap(),
-            EventBuilder::new(Kind::Custom(123), "Local 123")
+            EventBuilder::new(Kind::Custom(123))
+                .content("Local 123")
                 .sign_with_keys(&Keys::generate())
                 .unwrap(),
         ];
@@ -1703,7 +1704,8 @@ mod tests {
             EventBuilder::text_note("Test 3")
                 .sign_with_keys(&Keys::generate())
                 .unwrap(),
-            EventBuilder::new(Kind::Custom(123), "Test 4")
+            EventBuilder::new(Kind::Custom(123))
+                .content("Test 4")
                 .sign_with_keys(&Keys::generate())
                 .unwrap(),
         ];

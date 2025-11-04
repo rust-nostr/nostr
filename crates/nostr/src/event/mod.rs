@@ -418,7 +418,8 @@ mod tests {
     #[cfg(feature = "std")]
     fn test_custom_kind() {
         let keys = Keys::generate();
-        let e: Event = EventBuilder::new(Kind::Custom(123), "my content")
+        let e: Event = EventBuilder::new(Kind::Custom(123))
+            .content("my content")
             .sign_with_keys(&keys)
             .unwrap();
 

@@ -169,7 +169,7 @@ impl Poll {
             tags.push(Tag::custom(ENDS_AT_TAG_KIND, [timestamp.to_string()]));
         }
 
-        EventBuilder::new(Kind::Poll, self.title).tags(tags)
+        EventBuilder::new(Kind::Poll).content(self.title).tags(tags)
     }
 }
 
@@ -217,7 +217,7 @@ impl PollResponse {
             }
         };
 
-        EventBuilder::new(Kind::PollResponse, "").tags(tags)
+        EventBuilder::new(Kind::PollResponse).tags(tags)
     }
 }
 

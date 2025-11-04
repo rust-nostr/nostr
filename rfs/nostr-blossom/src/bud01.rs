@@ -121,6 +121,8 @@ impl BlossomBuilderExtension for EventBuilder {
     #[inline]
     fn blossom_auth(authorization: BlossomAuthorization) -> Self {
         let tags: Vec<Tag> = authorization.clone().into();
-        Self::new(Kind::BlossomAuth, authorization.content).tags(tags)
+        Self::new(Kind::BlossomAuth)
+            .content(authorization.content)
+            .tags(tags)
     }
 }

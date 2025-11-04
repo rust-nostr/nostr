@@ -404,7 +404,8 @@ mod tests {
         let keys = Keys::generate();
 
         // Create first addressable event
-        let event1 = EventBuilder::new(Kind::from(32121), "Content 1")
+        let event1 = EventBuilder::new(Kind::from(32121))
+            .content("Content 1")
             .tag(Tag::identifier("test-id"))
             .custom_created_at(Timestamp::from_secs(1000))
             .sign_with_keys(&keys)
@@ -413,7 +414,8 @@ mod tests {
         db.save_event(&event1).await.expect("Failed to save event");
 
         // Create newer addressable event with same identifier
-        let event2 = EventBuilder::new(Kind::from(32121), "Content 2")
+        let event2 = EventBuilder::new(Kind::from(32121))
+            .content("Content 2")
             .tag(Tag::identifier("test-id"))
             .custom_created_at(Timestamp::from_secs(2000))
             .sign_with_keys(&keys)
@@ -581,11 +583,11 @@ mod tests {
                 )
                 .sign_with_keys(&keys_b)
                 .unwrap(),
-                EventBuilder::new(Kind::Custom(33_333), "")
+                EventBuilder::new(Kind::Custom(33_333))
                     .tag(Tag::identifier("my-id-a"))
                     .sign_with_keys(&keys_a)
                     .unwrap(),
-                EventBuilder::new(Kind::Custom(33_333), "")
+                EventBuilder::new(Kind::Custom(33_333))
                     .tag(Tag::identifier("my-id-b"))
                     .sign_with_keys(&keys_b)
                     .unwrap(),
@@ -708,7 +710,7 @@ mod tests {
 
         let (keys, expected_event) = db
             .add_event(
-                EventBuilder::new(Kind::Custom(33_333), "")
+                EventBuilder::new(Kind::Custom(33_333))
                     .tag(Tag::identifier("my-id-a"))
                     .custom_created_at(now - Duration::from_secs(120)),
             )
@@ -729,7 +731,8 @@ mod tests {
         // Replace previous event
         let (new_expected_event, status) = db
             .add_event_with_keys(
-                EventBuilder::new(Kind::Custom(33_333), "Test replace")
+                EventBuilder::new(Kind::Custom(33_333))
+                    .content("Test replace")
                     .tag(Tag::identifier("my-id-a"))
                     .custom_created_at(now),
                 &keys,
@@ -758,7 +761,8 @@ mod tests {
         // Trey to add param replaceable event with older timestamp (MUSTN'T be stored)
         let (_, status) = db
             .add_event_with_keys(
-                EventBuilder::new(Kind::Custom(33_333), "Test replace 2")
+                EventBuilder::new(Kind::Custom(33_333))
+                    .content("Test replace 2")
                     .tag(Tag::identifier("my-id-a"))
                     .custom_created_at(now - Duration::from_secs(2000)),
                 &keys,
@@ -857,7 +861,7 @@ mod tests {
         assert_eq!(before_by_author.len(), 1);
 
         // Create and save a Kind 5 deletion event
-        let deletion_event = EventBuilder::new(Kind::EventDeletion, "")
+        let deletion_event = EventBuilder::new(Kind::EventDeletion)
             .tag(Tag::event(event.id))
             .sign_with_keys(&keys)
             .expect("Failed to sign");

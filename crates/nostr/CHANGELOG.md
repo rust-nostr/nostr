@@ -38,6 +38,7 @@
 - Change `methods` type to `Vec<Method>` in `GetInfoResponse` (https://github.com/rust-nostr/nostr/pull/1094)
 - Merge `ClientMessage::Req` and `ClientMessage::ReqMultiFilter` variants (https://github.com/rust-nostr/nostr/pull/1101)
 - Rename `public_key` to `remote_signer_public_key` in `NostrConnectRequest::Connect` variant (https://github.com/rust-nostr/nostr/pull/1111)
+- Change `EventBuilder::new` signature (TBD)
 
 ### Added
 
@@ -72,6 +73,7 @@
 - Add `nip25::ReactionTarget` (https://github.com/rust-nostr/nostr/pull/1063)
 - Add `RelayUrl::host` function (https://github.com/rust-nostr/nostr/pull/1066)
 - Add support for multithreaded event POW mining (https://github.com/rust-nostr/nostr/pull/1075)
+- Add `EventBuilder::content` method (TBD)
 
 ### Changed
 

@@ -160,7 +160,8 @@ where
         .await?;
 
     // Compose builder
-    Ok(EventBuilder::new(Kind::Seal, content)
+    Ok(EventBuilder::new(Kind::Seal)
+        .content(content)
         .custom_created_at(Timestamp::tweaked(RANGE_RANDOM_TIMESTAMP_TWEAK)))
 }
 

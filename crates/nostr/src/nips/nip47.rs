@@ -630,7 +630,8 @@ impl Request {
     pub fn to_event(self, uri: &NostrWalletConnectURI) -> Result<Event, Error> {
         let encrypted = nip04::encrypt(&uri.secret, &uri.public_key, self.as_json())?;
         let keys: Keys = Keys::new(uri.secret.clone());
-        Ok(EventBuilder::new(Kind::WalletConnectRequest, encrypted)
+        Ok(EventBuilder::new(Kind::WalletConnectRequest)
+            .content(encrypted)
             .tag(Tag::public_key(uri.public_key))
             .sign_with_keys(&keys)?)
     }

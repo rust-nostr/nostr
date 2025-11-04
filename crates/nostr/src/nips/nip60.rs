@@ -221,7 +221,7 @@ impl WalletEvent {
         let content: String = self.to_encrypted_content(secret_key, public_key)?;
 
         // Construct event builder
-        Ok(EventBuilder::new(Kind::CashuWallet, content))
+        Ok(EventBuilder::new(Kind::CashuWallet).content(content))
     }
 }
 
@@ -290,7 +290,7 @@ impl TokenEvent {
         let content: String = self.to_encrypted_content(secret_key, public_key)?;
 
         // Construct event builder
-        Ok(EventBuilder::new(Kind::CashuWalletUnspentProof, content))
+        Ok(EventBuilder::new(Kind::CashuWalletUnspentProof).content(content))
     }
 }
 
@@ -504,7 +504,9 @@ impl SpendingHistory {
             ])?);
         }
 
-        Ok(EventBuilder::new(Kind::CashuWalletSpendingHistory, content).tags(tags))
+        Ok(EventBuilder::new(Kind::CashuWalletSpendingHistory)
+            .content(content)
+            .tags(tags))
     }
 }
 
@@ -597,7 +599,9 @@ impl QuoteEvent {
         let expiration: Timestamp = Timestamp::now() + 14 * 24 * 60 * 60; // 2 weeks in seconds
         tags.push(Tag::expiration(expiration));
 
-        Ok(EventBuilder::new(Kind::CashuWalletQuote, content).tags(tags))
+        Ok(EventBuilder::new(Kind::CashuWalletQuote)
+            .content(content)
+            .tags(tags))
     }
 }
 
