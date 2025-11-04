@@ -11,25 +11,22 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 
 use async_utility::futures_util::stream::SplitSink;
-use async_wsocket::futures_util::{Sink, SinkExt, Stream, StreamExt, TryStreamExt};
+use async_wsocket::futures_util::{Sink, SinkExt, StreamExt, TryStreamExt};
 use async_wsocket::{ConnectionMode, Message, WebSocket};
 use nostr::util::BoxedFuture;
 use nostr::Url;
 
 use super::error::TransportError;
+use crate::stream::BoxedStream;
 
 /// WebSocket transport sink
 #[cfg(not(target_arch = "wasm32"))]
 pub type WebSocketSink = Box<dyn Sink<Message, Error = TransportError> + Send + Unpin>;
-/// WebSocket transport stream
-#[cfg(not(target_arch = "wasm32"))]
-pub type WebSocketStream = Box<dyn Stream<Item = Result<Message, TransportError>> + Send + Unpin>;
 /// WebSocket transport sink
 #[cfg(target_arch = "wasm32")]
 pub type WebSocketSink = Box<dyn Sink<Message, Error = TransportError> + Unpin>;
 /// WebSocket transport stream
-#[cfg(target_arch = "wasm32")]
-pub type WebSocketStream = Box<dyn Stream<Item = Result<Message, TransportError>> + Unpin>;
+pub type WebSocketStream = BoxedStream<Result<Message, TransportError>>;
 
 #[doc(hidden)]
 pub trait IntoWebSocketTransport {
@@ -102,7 +99,7 @@ impl WebSocketTransport for DefaultWebsocketTransport {
             // Issue: https://github.com/rust-nostr/nostr/issues/984
             let sink: WebSocketSink = Box::new(TransportSink(tx)) as WebSocketSink;
             let stream: WebSocketStream =
-                Box::new(rx.map_err(TransportError::backend)) as WebSocketStream;
+                Box::pin(rx.map_err(TransportError::backend)) as WebSocketStream;
 
             Ok((sink, stream))
         })

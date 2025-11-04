@@ -10,7 +10,6 @@ use std::iter;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_utility::futures_util::stream::BoxStream;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
 use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
@@ -860,7 +859,7 @@ impl Client {
         &self,
         filter: Filter,
         timeout: Duration,
-    ) -> Result<BoxStream<Event>, Error> {
+    ) -> Result<BoxedStream<Event>, Error> {
         match &self.gossip {
             Some(gossip) => {
                 self.gossip_stream_events(gossip, filter, timeout, ReqExitPolicy::ExitOnEOSE)
@@ -886,7 +885,7 @@ impl Client {
         urls: I,
         filter: Filter,
         timeout: Duration,
-    ) -> Result<BoxStream<Event>, Error>
+    ) -> Result<BoxedStream<Event>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -909,7 +908,7 @@ impl Client {
         &self,
         targets: HashMap<RelayUrl, Filter>,
         timeout: Duration,
-    ) -> Result<BoxStream<Event>, Error> {
+    ) -> Result<BoxedStream<Event>, Error> {
         Ok(self
             .pool
             .stream_events_targeted(targets, timeout, ReqExitPolicy::default())
@@ -1788,11 +1787,11 @@ impl Client {
         filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<BoxStream<Event>, Error> {
+    ) -> Result<BoxedStream<Event>, Error> {
         let filters = self.break_down_filter(gossip, filter).await?;
 
         // Stream events
-        let stream: BoxStream<Event> = self
+        let stream: BoxedStream<Event> = self
             .pool
             .stream_events_targeted(filters, timeout, policy)
             .await?;
@@ -1810,7 +1809,7 @@ impl Client {
         let mut events: Events = Events::new(&filter);
 
         // Stream events
-        let mut stream: BoxStream<Event> = self
+        let mut stream: BoxedStream<Event> = self
             .gossip_stream_events(gossip, filter, timeout, policy)
             .await?;
 

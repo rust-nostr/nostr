@@ -28,7 +28,7 @@
 ### Breaking changes
 
 - Rename `BoxSink` and `BoxStream` to `WebSocketSink` and `WebSocketStream` (https://github.com/rust-nostr/nostr/pull/1086)
-- Replace `ReceiverStream` with `BoxStream` and make `stream` module private (https://github.com/rust-nostr/nostr/pull/1087)
+- Replace `ReceiverStream` with `BoxedStream` (https://github.com/rust-nostr/nostr/pull/1087 and https://github.com/rust-nostr/nostr/pull/1121)
 - Update `Relay::subscriptions` and `Relay::subscription` outputs (https://github.com/rust-nostr/nostr/pull/1102)
 - Update `RelayPool::subscriptions` and `RelayPool::subscription` outputs (https://github.com/rust-nostr/nostr/pull/1102)
 

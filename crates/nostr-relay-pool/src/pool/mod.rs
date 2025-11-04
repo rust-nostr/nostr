@@ -10,7 +10,6 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_utility::futures_util::stream::BoxStream;
 use async_utility::futures_util::{future, StreamExt};
 use async_utility::task;
 use atomic_destructor::{AtomicDestructor, StealthClone};
@@ -34,7 +33,7 @@ use crate::relay::flags::FlagCheck;
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
 use crate::relay::Relay;
 use crate::shared::SharedState;
-use crate::stream::ReceiverStream;
+use crate::stream::{BoxedStream, ReceiverStream};
 use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};
 
 /// Relay Pool Notification
@@ -1174,7 +1173,7 @@ impl RelayPool {
         filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<BoxStream<Event>, Error> {
+    ) -> Result<BoxedStream<Event>, Error> {
         let urls: Vec<RelayUrl> = self.__read_relay_urls().await;
         self.stream_events_from(urls, filter, timeout, policy).await
     }
@@ -1186,7 +1185,7 @@ impl RelayPool {
         filters: F,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<BoxStream<Event>, Error>
+    ) -> Result<BoxedStream<Event>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -1206,7 +1205,7 @@ impl RelayPool {
         targets: I,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<BoxStream<Event>, Error>
+    ) -> Result<BoxedStream<Event>, Error>
     where
         I: IntoIterator<Item = (U, F)>,
         U: TryIntoUrl,
@@ -1253,7 +1252,7 @@ impl RelayPool {
         assert_eq!(urls.len(), awaited.len());
 
         // Re-construct streams
-        let mut streams: Vec<(RelayUrl, BoxStream<_>)> = Vec::with_capacity(awaited.len());
+        let mut streams: Vec<(RelayUrl, BoxedStream<_>)> = Vec::with_capacity(awaited.len());
 
         // Zip-up urls and futures into a single iterator
         let iter = urls.into_iter().zip(awaited.into_iter());

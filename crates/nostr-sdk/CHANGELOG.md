@@ -28,7 +28,7 @@
 ### Breaking changes
 
 - Remove `lmdb`, `ndb` and `indexeddb` features (https://github.com/rust-nostr/nostr/pull/1083)
-- Replace `ReceiverStream` with `BoxStream` (https://github.com/rust-nostr/nostr/pull/1087)
+- Replace `ReceiverStream` with `BoxedStream` (https://github.com/rust-nostr/nostr/pull/1087 and https://github.com/rust-nostr/nostr/pull/1121)
 
 ### Changed
 

@@ -11,7 +11,6 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use async_utility::futures_util::stream::BoxStream as BoxedStream;
 use async_utility::futures_util::{Stream, StreamExt};
 use async_utility::time;
 use async_wsocket::futures_util::Future;
@@ -43,6 +42,7 @@ pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
 use crate::policy::AdmitStatus;
 use crate::shared::SharedState;
+use crate::stream::BoxedStream;
 use crate::transport::websocket::{WebSocketSink, WebSocketStream};
 
 /// Subscription auto-closed reason
@@ -622,12 +622,12 @@ impl Relay {
     }
 
     /// Stream events from relay
-    pub async fn stream_events<'a, F>(
+    pub async fn stream_events<F>(
         &self,
         filters: F,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<BoxedStream<'a, Result<Event, Error>>, Error>
+    ) -> Result<BoxedStream<Result<Event, Error>>, Error>
     where
         F: Into<Vec<Filter>>,
     {
