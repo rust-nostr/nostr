@@ -167,7 +167,7 @@ pub struct RelayBuilderNip42 {
 }
 
 /// Relay builder
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RelayBuilder {
     /// IP address
     pub(crate) addr: Option<IpAddr>,
