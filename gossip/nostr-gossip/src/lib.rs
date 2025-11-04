@@ -12,6 +12,7 @@
 use std::any::Any;
 use std::collections::HashSet;
 use std::fmt::Debug;
+use std::sync::Arc;
 
 use nostr::prelude::*;
 
@@ -124,4 +125,33 @@ pub trait NostrGossip: Any + Debug + Send + Sync {
         public_key: &'a PublicKey,
         selection: BestRelaySelection,
     ) -> BoxedFuture<'a, Result<HashSet<RelayUrl>, GossipError>>;
+}
+
+#[doc(hidden)]
+pub trait IntoNostrGossip {
+    fn into_nostr_gossip(self) -> Arc<dyn NostrGossip>;
+}
+
+impl IntoNostrGossip for Arc<dyn NostrGossip> {
+    fn into_nostr_gossip(self) -> Arc<dyn NostrGossip> {
+        self
+    }
+}
+
+impl<T> IntoNostrGossip for T
+where
+    T: NostrGossip + Sized + 'static,
+{
+    fn into_nostr_gossip(self) -> Arc<dyn NostrGossip> {
+        Arc::new(self)
+    }
+}
+
+impl<T> IntoNostrGossip for Arc<T>
+where
+    T: NostrGossip + 'static,
+{
+    fn into_nostr_gossip(self) -> Arc<dyn NostrGossip> {
+        self
+    }
 }

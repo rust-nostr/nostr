@@ -9,7 +9,7 @@ use std::sync::Arc;
 use nostr::signer::{IntoNostrSigner, NostrSigner};
 use nostr_database::memory::MemoryDatabase;
 use nostr_database::{IntoNostrDatabase, NostrDatabase};
-use nostr_gossip::NostrGossip;
+use nostr_gossip::{IntoNostrGossip, NostrGossip};
 use nostr_relay_pool::monitor::Monitor;
 use nostr_relay_pool::policy::AdmitPolicy;
 use nostr_relay_pool::transport::websocket::{
@@ -114,9 +114,9 @@ impl ClientBuilder {
     #[inline]
     pub fn gossip<T>(mut self, gossip: T) -> Self
     where
-        T: NostrGossip + 'static,
+        T: IntoNostrGossip,
     {
-        self.gossip = Some(Arc::new(gossip));
+        self.gossip = Some(gossip.into_nostr_gossip());
         self
     }
 
