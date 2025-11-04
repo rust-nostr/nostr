@@ -56,6 +56,7 @@
 - Implement `From<&Event>` for `Nip19Event`
 - Add `CowTag::kind` and `CowTag::content`
 - Add `Timestamp::as_secs`
+- Add `EventBuilder::tag_maybe`
 - Add `Kind::CashuNutZapInfo` (10019) and `Kind::CashuNutZap` (9321) variants
 - Add nip47 holdinvoice methods and notification (https://github.com/rust-nostr/nostr/pull/1019)
 - Add `TransactionState` to `LookupInvoiceResponse` and `PaymentNotification` (https://github.com/rust-nostr/nostr/pull/1045)

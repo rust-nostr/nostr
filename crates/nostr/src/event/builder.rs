@@ -208,6 +208,14 @@ impl EventBuilder {
         self
     }
 
+    /// Add tag if `Some`.
+    pub fn tag_maybe(mut self, tag: Option<Tag>) -> Self {
+        if let Some(tag) = tag {
+            self.tags.push(tag);
+        }
+        self
+    }
+
     /// Add tags
     ///
     /// This method extends the current tags.
