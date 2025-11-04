@@ -80,6 +80,7 @@
 - Deserialize NIP-47 empty strings as `None` (https://github.com/rust-nostr/nostr/pull/1079)
 - Make `EventBuilder::reaction` target arg generic over `ReactionTarget` type
 - Make `EventBuilder::comment` and `EventBuilder::voice_message_reply` args generic over `CommentTarget` type
+- Ensure rumor matches seal author when unwrapping NIP-59 gift (https://github.com/rust-nostr/nostr/pull/1123)
 
 ### Deprecated
 
