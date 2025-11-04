@@ -1368,7 +1368,7 @@ mod tests {
     #[tokio::test]
     async fn test_shutdown() {
         let mock = MockRelay::run().await.unwrap();
-        let url = mock.url();
+        let url = mock.url().await;
 
         let pool = RelayPool::default();
 

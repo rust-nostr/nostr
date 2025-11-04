@@ -30,21 +30,23 @@ impl Deref for MockRelay {
 }
 
 impl MockRelay {
+    async fn new(builder: RelayBuilder) -> Result<Self, Error> {
+        let relay = LocalRelay::new(builder);
+        relay.run().await?;
+        Ok(Self { local: relay })
+    }
+
     /// Run mock relay
     #[inline]
     pub async fn run() -> Result<Self, Error> {
         let builder = RelayBuilder::default();
-        Ok(Self {
-            local: LocalRelay::run(builder).await?,
-        })
+        Self::new(builder).await
     }
 
     /// Run unresponsive relay
     #[inline]
     pub async fn run_with_opts(opts: RelayTestOptions) -> Result<Self, Error> {
         let builder = RelayBuilder::default().test(opts);
-        Ok(Self {
-            local: LocalRelay::run(builder).await?,
-        })
+        Self::new(builder).await
     }
 }

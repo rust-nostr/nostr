@@ -5,6 +5,7 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use async_utility::futures_util::stream::{self, SplitSink};
@@ -15,10 +16,12 @@ use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use nostr_database::prelude::*;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
-use tokio::sync::{broadcast, Notify, Semaphore};
+use tokio::sync::{broadcast, Notify, OnceCell, Semaphore};
 
 use super::session::{Nip42Session, RateLimiterResponse, Session, Tokens};
 use super::util;
+#[cfg(feature = "tor")]
+use crate::builder::RelayBuilderHiddenService;
 use crate::builder::{
     PolicyResult, QueryPolicy, RateLimit, RelayBuilder, RelayBuilderMode, RelayBuilderNip42,
     RelayTestOptions, WritePolicy,
@@ -30,7 +33,8 @@ const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
 
 #[derive(Debug, Clone)]
 pub(super) struct InnerLocalRelay {
-    addr: SocketAddr,
+    ip: IpAddr,
+    addr: OnceCell<SocketAddr>,
     database: Arc<dyn NostrDatabase>,
     shutdown: Arc<Notify>,
     /// Channel to notify new event received
@@ -46,11 +50,14 @@ pub(super) struct InnerLocalRelay {
     auth_dm: bool,
     min_pow: Option<u8>, // TODO: use AtomicU8 to allow to change it?
     #[cfg(feature = "tor")]
-    hidden_service: Option<String>,
+    tor: Option<RelayBuilderHiddenService>,
+    #[cfg(feature = "tor")]
+    hidden_service: OnceCell<Option<String>>,
     write_policy: Vec<Arc<dyn WritePolicy>>,
     query_policy: Vec<Arc<dyn QueryPolicy>>,
     nip42: Option<RelayBuilderNip42>,
     test: RelayTestOptions,
+    running: Arc<AtomicBool>,
 }
 
 impl AtomicDestroyer for InnerLocalRelay {
@@ -60,35 +67,16 @@ impl AtomicDestroyer for InnerLocalRelay {
 }
 
 impl InnerLocalRelay {
-    pub async fn new(builder: RelayBuilder) -> Result<Self, Error> {
+    pub fn new(builder: RelayBuilder) -> Self {
         // TODO: check if configured memory database with events option disabled
 
         // Get IP
         let ip: IpAddr = builder.addr.unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST));
 
-        // Get port
-        let port: u16 = match builder.port {
-            Some(port) => port,
-            None => util::find_available_port().await,
-        };
-
         // Compose local address
-        let addr: SocketAddr = SocketAddr::new(ip, port);
-
-        // If enabled, launch tor hidden service
-        #[cfg(feature = "tor")]
-        let hidden_service: Option<String> = match builder.tor {
-            Some(opts) => {
-                let service = native::tor::launch_onion_service(
-                    opts.nickname,
-                    addr,
-                    80,
-                    opts.custom_path.as_ref(),
-                )
-                .await?;
-                service.onion_name().map(|n| format!("ws://{n}"))
-            }
-            None => None,
+        let addr: OnceCell<SocketAddr> = match builder.port {
+            Some(port) => OnceCell::from(SocketAddr::new(ip, port)),
+            None => OnceCell::new(),
         };
 
         // Channels
@@ -97,7 +85,8 @@ impl InnerLocalRelay {
         let max_connections: usize = builder.max_connections.unwrap_or(Semaphore::MAX_PERMITS);
 
         // Compose relay
-        Ok(Self {
+        Self {
+            ip,
             addr,
             database: builder.database,
             shutdown: Arc::new(Notify::new()),
@@ -111,26 +100,42 @@ impl InnerLocalRelay {
             auth_dm: builder.auth_dm,
             min_pow: builder.min_pow,
             #[cfg(feature = "tor")]
-            hidden_service,
+            tor: builder.tor,
+            #[cfg(feature = "tor")]
+            hidden_service: OnceCell::new(),
             write_policy: builder.write_plugins,
             query_policy: builder.query_plugins,
             nip42: builder.nip42,
             test: builder.test,
-        })
+            running: Arc::new(AtomicBool::new(false)),
+        }
     }
 
-    pub async fn run(builder: RelayBuilder) -> Result<Self, Error> {
-        let relay: Self = Self::new(builder).await?;
-        relay.listen().await?;
-        Ok(relay)
+    async fn addr(&self) -> &SocketAddr {
+        self.addr
+            .get_or_init(|| async {
+                let port: u16 = util::find_available_port().await;
+                SocketAddr::new(self.ip, port)
+            })
+            .await
     }
 
     /// Start socket to listen for new websocket connections
-    async fn listen(&self) -> Result<(), Error> {
-        let listener: TcpListener = TcpListener::bind(&self.addr).await?;
+    pub async fn run(&self) -> Result<(), Error> {
+        if self.running.load(Ordering::SeqCst) {
+            return Err(Error::AlreadyRunning);
+        }
+
+        // Get the address
+        let addr: &SocketAddr = self.addr().await;
+
+        // Start listener
+        let listener: TcpListener = TcpListener::bind(&addr).await?;
 
         let r: Self = self.clone();
         tokio::spawn(async move {
+            r.running.store(true, Ordering::SeqCst);
+
             loop {
                 tokio::select! {
                     output = listener.accept() => {
@@ -152,6 +157,8 @@ impl InnerLocalRelay {
                 }
             }
 
+            r.running.store(false, Ordering::SeqCst);
+
             tracing::info!("Local relay listener loop terminated.");
         });
 
@@ -159,14 +166,34 @@ impl InnerLocalRelay {
     }
 
     #[inline]
-    pub fn url(&self) -> String {
-        format!("ws://{}", self.addr)
+    pub async fn url(&self) -> RelayUrl {
+        let addr: &SocketAddr = self.addr().await;
+        let addr: String = format!("ws://{addr}");
+        // SAFETY: must be a valid address
+        RelayUrl::parse(&addr).unwrap()
     }
 
     #[inline]
     #[cfg(feature = "tor")]
-    pub fn hidden_service(&self) -> Option<&str> {
-        self.hidden_service.as_deref()
+    pub async fn hidden_service(&self) -> Result<&Option<String>, Error> {
+        self.hidden_service
+            .get_or_try_init(|| async {
+                match &self.tor {
+                    Some(opts) => {
+                        let addr = self.addr().await;
+                        let service = native::tor::launch_onion_service(
+                            opts.nickname.clone(),
+                            *addr,
+                            80,
+                            opts.custom_path.as_ref(),
+                        )
+                        .await?;
+                        Ok(service.onion_name().map(|n| format!("ws://{n}")))
+                    }
+                    None => Ok(None),
+                }
+            })
+            .await
     }
 
     pub fn notify_event(&self, event: Event) -> bool {

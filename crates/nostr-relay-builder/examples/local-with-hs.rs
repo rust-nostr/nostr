@@ -13,10 +13,12 @@ async fn main() -> Result<()> {
     let tor = RelayBuilderHiddenService::new("rust-nostr-local-hs-test");
     let builder = RelayBuilder::default().tor(tor);
 
-    let relay = LocalRelay::run(builder).await?;
+    let relay = LocalRelay::new(builder)?;
 
-    println!("Url: {}", relay.url());
-    println!("Hidden service: {:?}", relay.hidden_service());
+    relay.run().await?;
+
+    println!("Url: {}", relay.url().await);
+    println!("Hidden service: {:?}", relay.hidden_service().await?);
 
     // Keep up the program
     loop {

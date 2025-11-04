@@ -35,7 +35,7 @@ impl Default for RateLimit {
 }
 
 /// Relay builder tor hidden service options
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[cfg(feature = "tor")]
 pub struct RelayBuilderHiddenService {
     /// Nickname (local identifier) for a Tor hidden service

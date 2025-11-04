@@ -66,9 +66,12 @@ async fn main() -> Result<()> {
         .write_policy(accept_profile_data)
         .query_policy(low_author_limit);
 
-    let relay = LocalRelay::run(builder).await?;
+    let relay = LocalRelay::new(builder);
 
-    println!("Url: {}", relay.url());
+    relay.run().await?;
+
+    let url = relay.url().await;
+    println!("Url: {url}");
 
     // Keep up the program
     loop {

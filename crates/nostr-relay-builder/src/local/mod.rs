@@ -27,33 +27,33 @@ pub struct LocalRelay {
 }
 
 impl LocalRelay {
-    /// Create a new local relay without listening
+    /// Create a new local relay
     #[inline]
-    pub async fn new(builder: RelayBuilder) -> Result<Self, Error> {
-        Ok(Self {
-            inner: AtomicDestructor::new(InnerLocalRelay::new(builder).await?),
-        })
+    pub fn new(builder: RelayBuilder) -> Self {
+        Self {
+            inner: AtomicDestructor::new(InnerLocalRelay::new(builder)),
+        }
     }
 
-    /// Run local relay from [`RelayBuilder`]
+    /// Run the local relay
     #[inline]
-    pub async fn run(builder: RelayBuilder) -> Result<Self, Error> {
-        Ok(Self {
-            inner: AtomicDestructor::new(InnerLocalRelay::run(builder).await?),
-        })
+    pub async fn run(&self) -> Result<(), Error> {
+        self.inner.run().await?;
+        Ok(())
     }
 
     /// Get url
     #[inline]
-    pub fn url(&self) -> String {
-        self.inner.url()
+    pub async fn url(&self) -> RelayUrl {
+        self.inner.url().await
     }
 
-    /// Get hidden service address if available
+    /// Run and get the hidden service address
     #[inline]
     #[cfg(feature = "tor")]
-    pub fn hidden_service(&self) -> Option<&str> {
-        self.inner.hidden_service()
+    pub async fn hidden_service(&self) -> Result<Option<&str>, Error> {
+        let addr: &Option<String> = self.inner.hidden_service().await?;
+        Ok(addr.as_deref())
     }
 
     /// Send event to subscribers

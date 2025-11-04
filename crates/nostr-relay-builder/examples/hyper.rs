@@ -115,7 +115,7 @@ async fn main() -> nostr_relay_builder::prelude::Result<()> {
     tracing_subscriber::fmt::init();
 
     let builder = RelayBuilder::default();
-    let relay = LocalRelay::new(builder).await?;
+    let relay = LocalRelay::new(builder);
 
     let http_addr: SocketAddr = "127.0.0.1:8000".parse()?;
     let listener = TcpListener::bind(&http_addr).await?;

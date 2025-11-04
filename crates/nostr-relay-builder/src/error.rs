@@ -17,6 +17,8 @@ pub enum Error {
     /// Tor error
     #[cfg(feature = "tor")]
     Tor(tor::Error),
+    /// Relay already running
+    AlreadyRunning,
 }
 
 impl std::error::Error for Error {}
@@ -27,6 +29,7 @@ impl fmt::Display for Error {
             Self::IO(e) => write!(f, "{e}"),
             #[cfg(feature = "tor")]
             Self::Tor(e) => write!(f, "{e}"),
+            Self::AlreadyRunning => write!(f, "the relay is already running"),
         }
     }
 }

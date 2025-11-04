@@ -12,7 +12,8 @@ async fn main() -> Result<()> {
 
     let relay = MockRelay::run().await?;
 
-    println!("Url: {}", relay.url());
+    let url = relay.url().await;
+    println!("Url: {url}");
 
     // Keep up the program
     loop {

@@ -25,6 +25,10 @@
 
 ## Unreleased
 
+### Breaking change
+
+- Change `LocalRelay::new`, `LocalRelay::run`, `LocalRelay::url` and `LocalRelay::hidden_service` signatures (https://github.com/rust-nostr/nostr/pull/1122)
+
 ### Added
 
 - Add `RelayBuilder::max_filter_limit` and `RelayBuilder::default_filter_limit` to limit the filter's limit (https://github.com/rust-nostr/nostr/pull/1096)

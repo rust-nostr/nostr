@@ -824,7 +824,7 @@ mod tests {
     async fn setup_event_fetching_relay(num_events: usize) -> (Relay, MockRelay) {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         let relay = new_relay(url, RelayOptions::default());
         relay.connect();
@@ -846,7 +846,7 @@ mod tests {
     async fn setup_subscription_relay() -> (SubscriptionId, Relay, MockRelay) {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         // Sender
         let relay: Relay = new_relay(url.clone(), RelayOptions::default());
@@ -872,7 +872,7 @@ mod tests {
     async fn test_ok_msg() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         let relay: Relay = new_relay(url, RelayOptions::default());
 
@@ -889,7 +889,7 @@ mod tests {
     async fn test_status_with_reconnection_enabled() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         let relay: Relay = new_relay(url, RelayOptions::default());
 
@@ -912,7 +912,7 @@ mod tests {
     async fn test_status_with_reconnection_disabled() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         let relay: Relay = new_relay(url, RelayOptions::default().reconnect(false));
 
@@ -935,7 +935,7 @@ mod tests {
     async fn test_disconnect() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         let relay: Relay = new_relay(url, RelayOptions::default());
 
@@ -988,7 +988,7 @@ mod tests {
     async fn test_connect() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         let relay: Relay = new_relay(url, RelayOptions::default());
 
@@ -1022,7 +1022,7 @@ mod tests {
     async fn test_try_connect() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         let relay: Relay = new_relay(url, RelayOptions::default());
 
@@ -1062,7 +1062,7 @@ mod tests {
             ..Default::default()
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         let relay: Relay = new_relay(url, RelayOptions::default());
 
@@ -1095,7 +1095,7 @@ mod tests {
             ..Default::default()
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         let relay: Relay = new_relay(url, RelayOptions::default());
 
@@ -1124,7 +1124,7 @@ mod tests {
             ..Default::default()
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         let relay: Relay = new_relay(url, RelayOptions::default());
 
@@ -1149,7 +1149,7 @@ mod tests {
     async fn test_ban_relay() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         let relay = new_relay(url, RelayOptions::default());
 
@@ -1188,7 +1188,7 @@ mod tests {
             ..Default::default()
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         let relay: Relay = new_relay(url, RelayOptions::default());
 
@@ -1213,7 +1213,7 @@ mod tests {
             send_random_events: true,
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         let relay: Relay = new_relay(
             url,
@@ -1247,7 +1247,7 @@ mod tests {
             send_random_events: true,
         };
         let mock = MockRelay::run_with_opts(opts).await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         let relay = new_relay(
             url,
@@ -1289,8 +1289,9 @@ mod tests {
             mode: RelayBuilderNip42Mode::Write,
         };
         let builder = RelayBuilder::default().nip42(opts);
-        let mock = LocalRelay::run(builder).await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let mock = LocalRelay::new(builder);
+        mock.run().await.unwrap();
+        let url = mock.url().await;
 
         let relay: Relay = new_relay(url, RelayOptions::default());
 
@@ -1332,8 +1333,9 @@ mod tests {
             mode: RelayBuilderNip42Mode::Read,
         };
         let builder = RelayBuilder::default().nip42(opts);
-        let mock = LocalRelay::run(builder).await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let mock = LocalRelay::new(builder);
+        mock.run().await.unwrap();
+        let url = mock.url().await;
 
         let relay: Relay = new_relay(url, RelayOptions::default());
 
@@ -1536,7 +1538,7 @@ mod tests {
     async fn test_subscribe_ephemeral_event() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         // Sender
         let relay1: Relay = new_relay(url.clone(), RelayOptions::default());
@@ -1628,7 +1630,7 @@ mod tests {
     async fn test_admit_connection() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         let mut relay = new_relay(url.clone(), RelayOptions::default());
 
@@ -1657,7 +1659,7 @@ mod tests {
     async fn test_negentropy_sync() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         // Database
         let database = MemoryDatabase::with_opts(MemoryDatabaseOptions {
@@ -1732,7 +1734,7 @@ mod tests {
     async fn test_sleep_when_idle() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         // Relay
         let opts = RelayOptions::default()
@@ -1787,7 +1789,7 @@ mod tests {
     async fn test_sleep_when_idle_with_long_lived_subscription() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
-        let url = RelayUrl::parse(&mock.url()).unwrap();
+        let url = mock.url().await;
 
         // Relay
         let opts = RelayOptions::default()
