@@ -13,7 +13,7 @@ async fn main() -> Result<()> {
     let tor = RelayBuilderHiddenService::new("rust-nostr-local-hs-test");
     let builder = RelayBuilder::default().tor(tor);
 
-    let relay = LocalRelay::new(builder)?;
+    let relay = LocalRelay::new(builder);
 
     relay.run().await?;
 
