@@ -44,6 +44,7 @@ jobs:
           - nostr-keyring --features async
           - nostr-relay-pool
           - nostr-relay-builder
+          - nostr-relay-builder --features tor
           - nostr-connect
           - nwc
           - nostr-sdk
