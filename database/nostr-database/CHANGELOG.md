@@ -23,6 +23,10 @@
 
 -->
 
+## v0.44.0 - 2025/11/06
+
+No notable changes in this release.
+
 ## v0.43.0 - 2025/07/28
 
 ### Breaking changes
