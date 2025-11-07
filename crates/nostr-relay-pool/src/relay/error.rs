@@ -34,6 +34,8 @@ pub enum Error {
     Negentropy(negentropy::Error),
     /// Database error
     Database(DatabaseError),
+    /// Can't receive send confirmation
+    CantReceiveSendConfirmation,
     /// Generic timeout
     Timeout,
     /// Not replied to ping
@@ -139,6 +141,7 @@ impl fmt::Display for Error {
             Self::Hex(e) => e.fmt(f),
             Self::Negentropy(e) => e.fmt(f),
             Self::Database(e) => e.fmt(f),
+            Self::CantReceiveSendConfirmation => f.write_str("can't receive send confirmation"),
             Self::Timeout => f.write_str("timeout"),
             Self::NotRepliedToPing => f.write_str("not replied to ping"),
             Self::CantParsePong => f.write_str("can't parse pong"),

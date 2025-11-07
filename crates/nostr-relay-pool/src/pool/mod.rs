@@ -30,7 +30,7 @@ pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
 use crate::monitor::Monitor;
 use crate::relay::flags::FlagCheck;
-use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
+use crate::relay::options::{RelayOptions, ReqExitPolicy, SendMessageOptions, SyncOptions};
 use crate::relay::Relay;
 use crate::shared::SharedState;
 use crate::stream::{BoxedStream, ReceiverStream};
@@ -653,13 +653,14 @@ impl RelayPool {
         &self,
         urls: I,
         msg: ClientMessage<'_>,
+        opts: SendMessageOptions,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.batch_msg_to(urls, vec![msg]).await
+        self.batch_msg_to(urls, &[msg], opts).await
     }
 
     /// Send multiple client messages at once to specific relays
@@ -668,7 +669,8 @@ impl RelayPool {
     pub async fn batch_msg_to<I, U>(
         &self,
         urls: I,
-        msgs: Vec<ClientMessage<'_>>,
+        msgs: &[ClientMessage<'_>],
+        opts: SendMessageOptions,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -705,12 +707,23 @@ impl RelayPool {
             }
         }
 
+        let mut urls: Vec<RelayUrl> = Vec::with_capacity(set.len());
+        let mut futures = Vec::with_capacity(set.len());
         let mut output: Output<()> = Output::default();
 
-        // Batch messages and construct outputs
+        // Compose futures
         for url in set.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
-            match relay.batch_msg(msgs.clone()) {
+            urls.push(url);
+            futures.push(relay.batch_msg(msgs, opts));
+        }
+
+        // Join futures
+        let list = future::join_all(futures).await;
+
+        // Iter results and construct output
+        for (url, result) in urls.into_iter().zip(list.into_iter()) {
+            match result {
                 Ok(..) => {
                     // Success, insert relay url in 'success' set result
                     output.success.insert(url);

@@ -927,7 +927,10 @@ impl Client {
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        Ok(self.pool.send_msg_to(urls, msg).await?)
+        Ok(self
+            .pool
+            .send_msg_to(urls, msg, SendMessageOptions::default())
+            .await?)
     }
 
     /// Batch send client messages to **specific relays**
@@ -935,14 +938,17 @@ impl Client {
     pub async fn batch_msg_to<I, U>(
         &self,
         urls: I,
-        msgs: Vec<ClientMessage<'_>>,
+        msgs: &[ClientMessage<'_>],
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        Ok(self.pool.batch_msg_to(urls, msgs).await?)
+        Ok(self
+            .pool
+            .batch_msg_to(urls, msgs, SendMessageOptions::default())
+            .await?)
     }
 
     /// Send the event to relays
