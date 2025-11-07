@@ -411,7 +411,7 @@ impl Relay {
 
     /// Send multiple [`ClientMessage`] at once
     #[inline]
-    pub async fn batch_msg(&self, msgs: Vec<ClientMessage<'_>>) -> Result<(), Error> {
+    pub async fn batch_msg(&self, msgs: &[ClientMessage<'_>]) -> Result<(), Error> {
         self.inner.batch_msg(msgs).await
     }
 

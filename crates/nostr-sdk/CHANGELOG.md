@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Breaking changes
+
+- Change `Client::batch_msg_to` signature (https://github.com/rust-nostr/nostr/pull/1124)
+
 ## v0.44.0 - 2025/11/06
 
 ### Breaking changes

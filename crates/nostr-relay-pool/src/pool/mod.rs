@@ -659,7 +659,7 @@ impl RelayPool {
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.batch_msg_to(urls, vec![msg]).await
+        self.batch_msg_to(urls, &[msg]).await
     }
 
     /// Send multiple client messages at once to specific relays
@@ -668,7 +668,7 @@ impl RelayPool {
     pub async fn batch_msg_to<I, U>(
         &self,
         urls: I,
-        msgs: Vec<ClientMessage<'_>>,
+        msgs: &[ClientMessage<'_>],
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -713,7 +713,7 @@ impl RelayPool {
         for url in set.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
             urls.push(url);
-            futures.push(relay.batch_msg(msgs.clone()));
+            futures.push(relay.batch_msg(msgs));
         }
 
         // Join futures

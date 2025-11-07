@@ -935,7 +935,7 @@ impl Client {
     pub async fn batch_msg_to<I, U>(
         &self,
         urls: I,
-        msgs: Vec<ClientMessage<'_>>,
+        msgs: &[ClientMessage<'_>],
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,

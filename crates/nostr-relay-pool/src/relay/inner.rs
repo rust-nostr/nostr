@@ -86,11 +86,11 @@ impl RelayChannels {
 
     fn send_client_msgs(
         &self,
-        msgs: Vec<ClientMessage>,
+        msgs: &[ClientMessage],
         confirmation: Option<oneshot::Sender<()>>,
     ) -> Result<(), Error> {
         // Serialize messages to JSON
-        let msgs: Vec<ClientMessageJson> = msgs.into_iter().map(|msg| msg.as_json()).collect();
+        let msgs: Vec<ClientMessageJson> = msgs.iter().map(|msg| msg.as_json()).collect();
 
         // Build request
         let req: SendMessageRequest = SendMessageRequest { msgs, confirmation };
@@ -1325,10 +1325,10 @@ impl InnerRelay {
 
     #[inline]
     pub async fn send_msg(&self, msg: ClientMessage<'_>) -> Result<(), Error> {
-        self.batch_msg(vec![msg]).await
+        self.batch_msg(&[msg]).await
     }
 
-    pub async fn batch_msg(&self, msgs: Vec<ClientMessage<'_>>) -> Result<(), Error> {
+    pub async fn batch_msg(&self, msgs: &[ClientMessage<'_>]) -> Result<(), Error> {
         // Check if relay is operational
         self.ensure_operational()?;
 
