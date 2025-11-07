@@ -28,7 +28,7 @@
 ### Breaking changes
 
 - Change `Relay::send_msg` and `Relay::batch_msg` signatures (https://github.com/rust-nostr/nostr/pull/1124)
-- Change `RelayPool::batch_msg_to` signature (https://github.com/rust-nostr/nostr/pull/1124)
+- Change `RelayPool::send_msg_to` and `RelayPool::batch_msg_to` signatures (https://github.com/rust-nostr/nostr/pull/1124)
 
 ## v0.44.0 - 2025/11/06
 

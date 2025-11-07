@@ -35,8 +35,8 @@ pub use self::flags::{AtomicRelayServiceFlags, FlagCheck, RelayServiceFlags};
 use self::inner::InnerRelay;
 pub use self::limits::RelayLimits;
 pub use self::options::{
-    RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection,
-    SyncOptions, SyncProgress,
+    RelayOptions, ReqExitPolicy, SendMessageOptions, SendMessagePolicy, SubscribeAutoCloseOptions,
+    SubscribeOptions, SyncDirection, SyncOptions, SyncProgress,
 };
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
@@ -405,14 +405,22 @@ impl Relay {
 
     /// Send msg to relay
     #[inline]
-    pub async fn send_msg(&self, msg: ClientMessage<'_>) -> Result<(), Error> {
-        self.inner.send_msg(msg).await
+    pub async fn send_msg(
+        &self,
+        msg: ClientMessage<'_>,
+        opts: SendMessageOptions,
+    ) -> Result<(), Error> {
+        self.inner.send_msg(msg, opts).await
     }
 
     /// Send multiple [`ClientMessage`] at once
     #[inline]
-    pub async fn batch_msg(&self, msgs: &[ClientMessage<'_>]) -> Result<(), Error> {
-        self.inner.batch_msg(msgs).await
+    pub async fn batch_msg(
+        &self,
+        msgs: &[ClientMessage<'_>],
+        opts: SendMessageOptions,
+    ) -> Result<(), Error> {
+        self.inner.batch_msg(msgs, opts).await
     }
 
     async fn _send_event(
@@ -422,7 +430,10 @@ impl Relay {
     ) -> Result<(bool, String), Error> {
         // Send the EVENT message
         self.inner
-            .send_msg(ClientMessage::Event(Cow::Borrowed(event)))
+            .send_msg(
+                ClientMessage::Event(Cow::Borrowed(event)),
+                SendMessageOptions::default(),
+            )
             .await?;
 
         // Wait for OK
@@ -573,7 +584,11 @@ impl Relay {
             .await;
 
         // Send REQ message
-        if let Err(e) = self.inner.send_msg(msg).await {
+        if let Err(e) = self
+            .inner
+            .send_msg(msg, SendMessageOptions::default())
+            .await
+        {
             // Remove previously added subscription
             self.inner.remove_subscription(&id).await;
 
@@ -601,7 +616,9 @@ impl Relay {
         };
 
         // Send REQ message
-        self.inner.send_msg(msg).await?;
+        self.inner
+            .send_msg(msg, SendMessageOptions::default())
+            .await?;
 
         // No auto-close subscription: update subscription filter
         self.inner.update_subscription(id, filters, true).await;
@@ -689,7 +706,9 @@ impl Relay {
             subscription_id: Cow::Borrowed(&id),
             filter: Cow::Owned(filter),
         };
-        self.inner.send_msg(msg).await?;
+        self.inner
+            .send_msg(msg, SendMessageOptions::default())
+            .await?;
 
         let mut count = 0;
 
@@ -715,7 +734,9 @@ impl Relay {
         .ok_or(Error::Timeout)?;
 
         // Unsubscribe
-        self.inner.send_msg(ClientMessage::close(id)).await?;
+        self.inner
+            .send_msg(ClientMessage::close(id), SendMessageOptions::default())
+            .await?;
 
         Ok(count)
     }

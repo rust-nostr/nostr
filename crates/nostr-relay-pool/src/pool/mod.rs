@@ -30,7 +30,7 @@ pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
 use crate::monitor::Monitor;
 use crate::relay::flags::FlagCheck;
-use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
+use crate::relay::options::{RelayOptions, ReqExitPolicy, SendMessageOptions, SyncOptions};
 use crate::relay::Relay;
 use crate::shared::SharedState;
 use crate::stream::{BoxedStream, ReceiverStream};
@@ -653,13 +653,14 @@ impl RelayPool {
         &self,
         urls: I,
         msg: ClientMessage<'_>,
+        opts: SendMessageOptions,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         Error: From<<U as TryIntoUrl>::Err>,
     {
-        self.batch_msg_to(urls, &[msg]).await
+        self.batch_msg_to(urls, &[msg], opts).await
     }
 
     /// Send multiple client messages at once to specific relays
@@ -669,6 +670,7 @@ impl RelayPool {
         &self,
         urls: I,
         msgs: &[ClientMessage<'_>],
+        opts: SendMessageOptions,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -713,7 +715,7 @@ impl RelayPool {
         for url in set.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
             urls.push(url);
-            futures.push(relay.batch_msg(msgs));
+            futures.push(relay.batch_msg(msgs, opts));
         }
 
         // Join futures

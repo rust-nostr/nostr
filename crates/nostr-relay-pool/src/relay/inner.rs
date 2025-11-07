@@ -22,11 +22,14 @@ use tokio::sync::{broadcast, oneshot, Mutex, MutexGuard, Notify, RwLock, RwLockW
 use super::constants::{
     DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE,
     NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP,
-    NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, SLEEP_INTERVAL, WAIT_FOR_OK_TIMEOUT,
-    WEBSOCKET_TX_TIMEOUT,
+    NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, SLEEP_INTERVAL, WAIT_FOR_MSG_SEND_CONFIRMATION_TIMEOUT,
+    WAIT_FOR_OK_TIMEOUT, WEBSOCKET_TX_TIMEOUT,
 };
 use super::flags::AtomicRelayServiceFlags;
-use super::options::{RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, SyncOptions};
+use super::options::{
+    RelayOptions, ReqExitPolicy, SendMessageOptions, SendMessagePolicy, SubscribeAutoCloseOptions,
+    SyncOptions,
+};
 use super::ping::PingTracker;
 use super::stats::RelayConnectionStats;
 use super::{
@@ -1324,11 +1327,19 @@ impl InnerRelay {
     }
 
     #[inline]
-    pub async fn send_msg(&self, msg: ClientMessage<'_>) -> Result<(), Error> {
-        self.batch_msg(&[msg]).await
+    pub async fn send_msg(
+        &self,
+        msg: ClientMessage<'_>,
+        opts: SendMessageOptions,
+    ) -> Result<(), Error> {
+        self.batch_msg(&[msg], opts).await
     }
 
-    pub async fn batch_msg(&self, msgs: &[ClientMessage<'_>]) -> Result<(), Error> {
+    pub async fn batch_msg(
+        &self,
+        msgs: &[ClientMessage<'_>],
+        opts: SendMessageOptions,
+    ) -> Result<(), Error> {
         // Check if relay is operational
         self.ensure_operational()?;
 
@@ -1347,30 +1358,45 @@ impl InnerRelay {
             return Err(Error::ReadDisabled);
         }
 
-        let (tx, rx) = oneshot::channel();
+        // Handle send policy
+        match opts.policy {
+            SendMessagePolicy::DontWait => {
+                // Send messages
+                self.atomic.channels.send_client_msgs(msgs, None)
+            }
+            SendMessagePolicy::WaitForSendConfirmation { timeout } => {
+                let (tx, rx) = oneshot::channel();
 
-        // Send messages
-        self.atomic.channels.send_client_msgs(msgs, Some(tx))?;
+                // Send messages
+                self.atomic.channels.send_client_msgs(msgs, Some(tx))?;
 
-        // Wait for confirmation and propagate error, if any
-        time::timeout(Some(Duration::from_secs(10)), rx)
-            .await
-            .ok_or(Error::Timeout)?
-            .map_err(|_| Error::CantReceiveSendConfirmation)
+                // Wait for confirmation and propagate error, if any
+                time::timeout(Some(timeout), rx)
+                    .await
+                    .ok_or(Error::Timeout)?
+                    .map_err(|_| Error::CantReceiveSendConfirmation)
+            }
+        }
     }
 
     async fn send_neg_msg(&self, id: &SubscriptionId, message: &str) -> Result<(), Error> {
-        self.send_msg(ClientMessage::NegMsg {
-            subscription_id: Cow::Borrowed(id),
-            message: Cow::Borrowed(message),
-        })
+        self.send_msg(
+            ClientMessage::NegMsg {
+                subscription_id: Cow::Borrowed(id),
+                message: Cow::Borrowed(message),
+            },
+            SendMessageOptions::default(),
+        )
         .await
     }
 
     async fn send_neg_close(&self, id: &SubscriptionId) -> Result<(), Error> {
-        self.send_msg(ClientMessage::NegClose {
-            subscription_id: Cow::Borrowed(id),
-        })
+        self.send_msg(
+            ClientMessage::NegClose {
+                subscription_id: Cow::Borrowed(id),
+            },
+            SendMessageOptions::default(),
+        )
         .await
     }
 
@@ -1387,8 +1413,11 @@ impl InnerRelay {
         let mut notifications = self.internal_notification_sender.subscribe();
 
         // Send the AUTH message
-        self.send_msg(ClientMessage::Auth(Cow::Borrowed(&event)))
-            .await?;
+        self.send_msg(
+            ClientMessage::Auth(Cow::Borrowed(&event)),
+            SendMessageOptions::default(),
+        )
+        .await?;
 
         // Wait for OK
         // The event ID is already checked in `wait_for_ok` method
@@ -1447,7 +1476,11 @@ impl InnerRelay {
         let subscriptions = self.subscriptions().await;
         for (id, filters) in subscriptions.into_iter() {
             if !filters.is_empty() && self.should_resubscribe(&id).await {
-                self.send_msg(ClientMessage::req(id, filters)).await?;
+                self.send_msg(
+                    ClientMessage::req(id, filters),
+                    SendMessageOptions::default(),
+                )
+                .await?;
             } else {
                 tracing::debug!("Skip re-subscription of '{id}'");
             }
@@ -1495,9 +1528,13 @@ impl InnerRelay {
             // Close subscription
             let send_result = if to_close {
                 tracing::debug!(id = %id, "Auto-closing subscription.");
-                relay
-                    .send_msg(ClientMessage::Close(Cow::Borrowed(&id)))
-                    .await
+                let msg: ClientMessage<'_> = ClientMessage::Close(Cow::Borrowed(&id));
+                let opts: SendMessageOptions = SendMessageOptions::default().policy(
+                    SendMessagePolicy::WaitForSendConfirmation {
+                        timeout: WAIT_FOR_MSG_SEND_CONFIRMATION_TIMEOUT,
+                    },
+                );
+                relay.send_msg(msg, opts).await
             } else {
                 Ok(())
             };
@@ -1653,7 +1690,7 @@ impl InnerRelay {
                                 subscription_id: Cow::Borrowed(id),
                                 filters: filters.iter().map(Cow::Borrowed).collect(),
                             };
-                            let _ = self.send_msg(msg).await;
+                            let _ = self.send_msg(msg, SendMessageOptions::default()).await;
                         }
                     }
                     RelayNotification::AuthenticationFailed => {
@@ -1743,7 +1780,8 @@ impl InnerRelay {
         }
 
         // Send CLOSE message
-        self.send_msg(ClientMessage::Close(id)).await
+        self.send_msg(ClientMessage::Close(id), SendMessageOptions::default())
+            .await
     }
 
     pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<(), Error> {
@@ -1843,7 +1881,8 @@ impl InnerRelay {
                 match self.state.database().event_by_id(&id).await {
                     Ok(Some(event)) => {
                         in_flight_up.insert(id);
-                        self.send_msg(ClientMessage::event(event)).await?;
+                        self.send_msg(ClientMessage::event(event), SendMessageOptions::default())
+                            .await?;
                         num_sent += 1;
                     }
                     Ok(None) => {
@@ -1923,8 +1962,14 @@ impl InnerRelay {
         self.add_auto_closing_subscription(down_sub_id.clone(), vec![filter.clone()])
             .await;
 
+        // Construct send msg options
+        let opts: SendMessageOptions =
+            SendMessageOptions::default().policy(SendMessagePolicy::WaitForSendConfirmation {
+                timeout: WAIT_FOR_MSG_SEND_CONFIRMATION_TIMEOUT,
+            });
+
         // Send msg
-        if let Err(e) = self.send_msg(msg).await {
+        if let Err(e) = self.send_msg(msg, opts).await {
             // Remove previously added subscription
             self.remove_subscription(down_sub_id).await;
 
@@ -1998,7 +2043,8 @@ impl InnerRelay {
             id_size: None,
             initial_message: Cow::Owned(hex::encode(initial_message)),
         };
-        self.send_msg(open_msg).await?;
+        self.send_msg(open_msg, SendMessageOptions::default())
+            .await?;
 
         // Check if negentropy is supported
         check_negentropy_support(&sub_id, opts, &mut temp_notifications).await?;
@@ -2085,8 +2131,11 @@ impl InnerRelay {
                                 self.remove_subscription(&down_sub_id).await;
 
                                 // Close subscription
-                                self.send_msg(ClientMessage::Close(Cow::Borrowed(&down_sub_id)))
-                                    .await?;
+                                self.send_msg(
+                                    ClientMessage::Close(Cow::Borrowed(&down_sub_id)),
+                                    SendMessageOptions::default(),
+                                )
+                                .await?;
                             }
                         }
                         RelayMessage::Closed {

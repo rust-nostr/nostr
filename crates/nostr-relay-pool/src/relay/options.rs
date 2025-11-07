@@ -166,6 +166,34 @@ impl RelayOptions {
     }
 }
 
+/// Send message policy
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum SendMessagePolicy {
+    /// Don't wait for the send confirmation.
+    #[default]
+    DontWait,
+    /// Wait for send confirmation.
+    WaitForSendConfirmation {
+        /// Timeout
+        timeout: Duration,
+    },
+}
+
+/// Send message options
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SendMessageOptions {
+    /// Policy to use when sending messages.
+    pub policy: SendMessagePolicy,
+}
+
+impl SendMessageOptions {
+    /// Set policy
+    pub const fn policy(mut self, policy: SendMessagePolicy) -> Self {
+        self.policy = policy;
+        self
+    }
+}
+
 /// Auto-closing subscribe options
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SubscribeAutoCloseOptions {

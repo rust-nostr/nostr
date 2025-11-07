@@ -9,6 +9,7 @@ use core::time::Duration;
 
 pub(super) const WAIT_FOR_OK_TIMEOUT: Duration = Duration::from_secs(10);
 pub(super) const WAIT_FOR_AUTHENTICATION_TIMEOUT: Duration = Duration::from_secs(7);
+pub(super) const WAIT_FOR_MSG_SEND_CONFIRMATION_TIMEOUT: Duration = Duration::from_secs(10);
 pub(super) const DEFAULT_CONNECTION_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Relay default notification channel size
