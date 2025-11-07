@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Breaking changes
+
+- Change `Relay::send_msg` and `Relay::batch_msg` signatures (https://github.com/rust-nostr/nostr/pull/1124)
+
 ## v0.44.0 - 2025/11/06
 
 ### Breaking changes

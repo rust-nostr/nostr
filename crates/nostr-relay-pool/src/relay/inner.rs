@@ -17,7 +17,7 @@ use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use nostr::secp256k1::rand::{self, Rng};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard};
+use tokio::sync::{broadcast, oneshot, Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard};
 
 use super::constants::{
     DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE,
@@ -58,11 +58,16 @@ struct HandleAutoClosing {
     reason: Option<SubscriptionAutoClosedReason>,
 }
 
+struct SendMessageRequest {
+    msgs: Vec<ClientMessageJson>,
+    confirmation: Option<oneshot::Sender<()>>,
+}
+
 #[derive(Debug)]
 struct RelayChannels {
     nostr: (
-        Sender<Vec<ClientMessageJson>>,
-        Mutex<Receiver<Vec<ClientMessageJson>>>,
+        Sender<SendMessageRequest>,
+        Mutex<Receiver<SendMessageRequest>>,
     ),
     ping: Notify,
     terminate: Notify,
@@ -79,21 +84,28 @@ impl RelayChannels {
         }
     }
 
-    pub fn send_client_msgs(&self, msgs: Vec<ClientMessage>) -> Result<(), Error> {
+    fn send_client_msgs(
+        &self,
+        msgs: Vec<ClientMessage>,
+        confirmation: Option<oneshot::Sender<()>>,
+    ) -> Result<(), Error> {
         // Serialize messages to JSON
         let msgs: Vec<ClientMessageJson> = msgs.into_iter().map(|msg| msg.as_json()).collect();
+
+        // Build request
+        let req: SendMessageRequest = SendMessageRequest { msgs, confirmation };
 
         // Send
         self.nostr
             .0
-            .try_send(msgs)
+            .try_send(req)
             .map_err(|_| Error::CantSendChannelMessage {
                 channel: String::from("nostr"),
             })
     }
 
     #[inline]
-    pub async fn rx_nostr(&self) -> MutexGuard<'_, Receiver<Vec<ClientMessageJson>>> {
+    async fn rx_nostr(&self) -> MutexGuard<'_, Receiver<SendMessageRequest>> {
         self.nostr.1.lock().await
     }
 
@@ -700,7 +712,7 @@ impl InnerRelay {
     async fn connect_and_run(
         &self,
         stream: Option<(WebSocketSink, WebSocketStream)>,
-        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
+        rx_nostr: &mut MutexGuard<'_, Receiver<SendMessageRequest>>,
         last_ws_error: &mut Option<String>,
     ) {
         match stream {
@@ -743,7 +755,7 @@ impl InnerRelay {
         &self,
         mut ws_tx: WebSocketSink,
         ws_rx: WebSocketStream,
-        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
+        rx_nostr: &mut MutexGuard<'_, Receiver<SendMessageRequest>>,
     ) {
         // (Re)subscribe to relay
         if self.flags.can_read() {
@@ -792,7 +804,7 @@ impl InnerRelay {
     async fn sender_message_handler(
         &self,
         ws_tx: &mut WebSocketSink,
-        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
+        rx_nostr: &mut MutexGuard<'_, Receiver<SendMessageRequest>>,
         ping: &PingTracker,
     ) -> Result<(), Error> {
         #[cfg(target_arch = "wasm32")]
@@ -801,7 +813,7 @@ impl InnerRelay {
         loop {
             tokio::select! {
                 // Nostr channel receiver
-                Some(msgs) = rx_nostr.recv() => {
+                Some(SendMessageRequest { msgs, confirmation }) = rx_nostr.recv() => {
                     // Compose WebSocket text messages
                     let msgs: Vec<Message> = msgs
                         .into_iter()
@@ -822,6 +834,14 @@ impl InnerRelay {
 
                     // Send WebSocket messages
                     send_ws_msgs(ws_tx, msgs).await?;
+
+                    // Send confirmation that messages has been sent
+                    if let Some(confirmation) = confirmation {
+                        match confirmation.send(()) {
+                            Ok(()) => tracing::trace!("Message confirmation sent."),
+                            Err(_) => tracing::error!("Can't send message confirmation."),
+                        }
+                    }
 
                     // Increase sent bytes
                     self.stats.add_bytes_sent(size);
@@ -1304,11 +1324,11 @@ impl InnerRelay {
     }
 
     #[inline]
-    pub fn send_msg(&self, msg: ClientMessage<'_>) -> Result<(), Error> {
-        self.batch_msg(vec![msg])
+    pub async fn send_msg(&self, msg: ClientMessage<'_>) -> Result<(), Error> {
+        self.batch_msg(vec![msg]).await
     }
 
-    pub fn batch_msg(&self, msgs: Vec<ClientMessage<'_>>) -> Result<(), Error> {
+    pub async fn batch_msg(&self, msgs: Vec<ClientMessage<'_>>) -> Result<(), Error> {
         // Check if relay is operational
         self.ensure_operational()?;
 
@@ -1327,21 +1347,31 @@ impl InnerRelay {
             return Err(Error::ReadDisabled);
         }
 
+        let (tx, rx) = oneshot::channel();
+
         // Send messages
-        self.atomic.channels.send_client_msgs(msgs)
+        self.atomic.channels.send_client_msgs(msgs, Some(tx))?;
+
+        // Wait for confirmation and propagate error, if any
+        time::timeout(Some(Duration::from_secs(10)), rx)
+            .await
+            .ok_or(Error::Timeout)?
+            .map_err(|_| Error::CantReceiveSendConfirmation)
     }
 
-    fn send_neg_msg(&self, id: &SubscriptionId, message: &str) -> Result<(), Error> {
+    async fn send_neg_msg(&self, id: &SubscriptionId, message: &str) -> Result<(), Error> {
         self.send_msg(ClientMessage::NegMsg {
             subscription_id: Cow::Borrowed(id),
             message: Cow::Borrowed(message),
         })
+        .await
     }
 
-    fn send_neg_close(&self, id: &SubscriptionId) -> Result<(), Error> {
+    async fn send_neg_close(&self, id: &SubscriptionId) -> Result<(), Error> {
         self.send_msg(ClientMessage::NegClose {
             subscription_id: Cow::Borrowed(id),
         })
+        .await
     }
 
     async fn auth(&self, challenge: String) -> Result<(), Error> {
@@ -1357,7 +1387,8 @@ impl InnerRelay {
         let mut notifications = self.internal_notification_sender.subscribe();
 
         // Send the AUTH message
-        self.send_msg(ClientMessage::Auth(Cow::Borrowed(&event)))?;
+        self.send_msg(ClientMessage::Auth(Cow::Borrowed(&event)))
+            .await?;
 
         // Wait for OK
         // The event ID is already checked in `wait_for_ok` method
@@ -1416,7 +1447,7 @@ impl InnerRelay {
         let subscriptions = self.subscriptions().await;
         for (id, filters) in subscriptions.into_iter() {
             if !filters.is_empty() && self.should_resubscribe(&id).await {
-                self.send_msg(ClientMessage::req(id, filters))?;
+                self.send_msg(ClientMessage::req(id, filters)).await?;
             } else {
                 tracing::debug!("Skip re-subscription of '{id}'");
             }
@@ -1464,7 +1495,9 @@ impl InnerRelay {
             // Close subscription
             let send_result = if to_close {
                 tracing::debug!(id = %id, "Auto-closing subscription.");
-                relay.send_msg(ClientMessage::Close(Cow::Borrowed(&id)))
+                relay
+                    .send_msg(ClientMessage::Close(Cow::Borrowed(&id)))
+                    .await
             } else {
                 Ok(())
             };
@@ -1620,7 +1653,7 @@ impl InnerRelay {
                                 subscription_id: Cow::Borrowed(id),
                                 filters: filters.iter().map(Cow::Borrowed).collect(),
                             };
-                            let _ = self.send_msg(msg);
+                            let _ = self.send_msg(msg).await;
                         }
                     }
                     RelayNotification::AuthenticationFailed => {
@@ -1695,10 +1728,10 @@ impl InnerRelay {
         .await?
     }
 
-    fn _unsubscribe_long_lived_subscription(
+    async fn _unsubscribe_long_lived_subscription(
         &self,
-        subscriptions: &mut RwLockWriteGuard<HashMap<SubscriptionId, SubscriptionData>>,
-        id: Cow<SubscriptionId>,
+        subscriptions: &mut RwLockWriteGuard<'_, HashMap<SubscriptionId, SubscriptionData>>,
+        id: Cow<'_, SubscriptionId>,
     ) -> Result<(), Error> {
         // Remove the subscription from the map
         if let Some(sub) = subscriptions.remove(&id) {
@@ -1710,12 +1743,13 @@ impl InnerRelay {
         }
 
         // Send CLOSE message
-        self.send_msg(ClientMessage::Close(id))
+        self.send_msg(ClientMessage::Close(id)).await
     }
 
     pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<(), Error> {
         let mut subscriptions = self.atomic.subscriptions.write().await;
         self._unsubscribe_long_lived_subscription(&mut subscriptions, Cow::Borrowed(id))
+            .await
     }
 
     pub async fn unsubscribe_all(&self) -> Result<(), Error> {
@@ -1726,14 +1760,15 @@ impl InnerRelay {
 
         // Unsubscribe
         for id in ids.into_iter() {
-            self._unsubscribe_long_lived_subscription(&mut subscriptions, Cow::Owned(id))?;
+            self._unsubscribe_long_lived_subscription(&mut subscriptions, Cow::Owned(id))
+                .await?;
         }
 
         Ok(())
     }
 
     #[inline(never)]
-    fn handle_neg_msg<I>(
+    async fn handle_neg_msg<I>(
         &self,
         subscription_id: &SubscriptionId,
         msg: Option<Vec<u8>>,
@@ -1775,13 +1810,16 @@ impl InnerRelay {
         }
 
         match msg {
-            Some(query) => self.send_neg_msg(subscription_id, &hex::encode(query)),
+            Some(query) => {
+                self.send_neg_msg(subscription_id, &hex::encode(query))
+                    .await
+            }
             None => {
                 // Mark sync as done
                 *sync_done = true;
 
                 // Send NEG-CLOSE message
-                self.send_neg_close(subscription_id)
+                self.send_neg_close(subscription_id).await
             }
         }
     }
@@ -1805,7 +1843,7 @@ impl InnerRelay {
                 match self.state.database().event_by_id(&id).await {
                     Ok(Some(event)) => {
                         in_flight_up.insert(id);
-                        self.send_msg(ClientMessage::event(event))?;
+                        self.send_msg(ClientMessage::event(event)).await?;
                         num_sent += 1;
                     }
                     Ok(None) => {
@@ -1886,7 +1924,7 @@ impl InnerRelay {
             .await;
 
         // Send msg
-        if let Err(e) = self.send_msg(msg) {
+        if let Err(e) = self.send_msg(msg).await {
             // Remove previously added subscription
             self.remove_subscription(down_sub_id).await;
 
@@ -1960,7 +1998,7 @@ impl InnerRelay {
             id_size: None,
             initial_message: Cow::Owned(hex::encode(initial_message)),
         };
-        self.send_msg(open_msg)?;
+        self.send_msg(open_msg).await?;
 
         // Check if negentropy is supported
         check_negentropy_support(&sub_id, opts, &mut temp_notifications).await?;
@@ -2006,7 +2044,8 @@ impl InnerRelay {
                                     &mut have_ids,
                                     &mut need_ids,
                                     &mut sync_done,
-                                )?;
+                                )
+                                .await?;
                             }
                         }
                         RelayMessage::NegErr {
@@ -2046,7 +2085,8 @@ impl InnerRelay {
                                 self.remove_subscription(&down_sub_id).await;
 
                                 // Close subscription
-                                self.send_msg(ClientMessage::Close(Cow::Borrowed(&down_sub_id)))?;
+                                self.send_msg(ClientMessage::Close(Cow::Borrowed(&down_sub_id)))
+                                    .await?;
                             }
                         }
                         RelayMessage::Closed {
