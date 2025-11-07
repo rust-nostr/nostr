@@ -452,6 +452,9 @@ pub enum TransactionState {
     /// Failed (for payments)
     #[serde(rename = "failed")]
     Failed,
+    /// Accepted (for hold invoices)
+    #[serde(rename = "accepted")]
+    Accepted,
 }
 
 /// List Transactions Request
@@ -1503,6 +1506,9 @@ pub struct HoldInvoiceAcceptedNotification {
     /// Transaction type
     #[serde(rename = "type")]
     pub transaction_type: TransactionType,
+    /// Transaction state
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state: Option<TransactionState>,
     /// Bolt11 invoice
     pub invoice: String,
     /// Description
