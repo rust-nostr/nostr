@@ -2712,7 +2712,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-browser-signer"
-version = "0.44.0"
+version = "0.44.1"
 dependencies = [
  "js-sys",
  "nostr",
