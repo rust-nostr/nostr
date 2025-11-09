@@ -14,7 +14,7 @@ use nostr::{Event, Kind, PublicKey, RelayUrl, TagKind, TagStandard, Timestamp};
 use nostr_gossip::error::GossipError;
 use nostr_gossip::flags::GossipFlags;
 use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 
 use crate::constant::{MAX_NIP17_SIZE, MAX_NIP65_SIZE, PUBKEY_METADATA_OUTDATED_AFTER};
 
@@ -44,26 +44,26 @@ impl Default for PkData {
 /// Gossip in-memory storage.
 #[derive(Debug, Clone)]
 pub struct NostrGossipMemory {
-    public_keys: Arc<Mutex<LruCache<PublicKey, PkData>>>,
+    public_keys: Arc<RwLock<LruCache<PublicKey, PkData>>>,
 }
 
 impl NostrGossipMemory {
     /// Construct a new **unbounded** instance
     pub fn unbounded() -> Self {
         Self {
-            public_keys: Arc::new(Mutex::new(LruCache::unbounded())),
+            public_keys: Arc::new(RwLock::new(LruCache::unbounded())),
         }
     }
 
     /// Construct a new **bounded** instance
     pub fn bounded(limit: NonZeroUsize) -> Self {
         Self {
-            public_keys: Arc::new(Mutex::new(LruCache::new(limit))),
+            public_keys: Arc::new(RwLock::new(LruCache::new(limit))),
         }
     }
 
     async fn process_event(&self, event: &Event, relay_url: Option<&RelayUrl>) {
-        let mut public_keys = self.public_keys.lock().await;
+        let mut public_keys = self.public_keys.write().await;
 
         match &event.kind {
             // Extract NIP-65 relays
@@ -149,9 +149,9 @@ impl NostrGossipMemory {
         public_key: &PublicKey,
         list: GossipListKind,
     ) -> GossipPublicKeyStatus {
-        let mut public_keys = self.public_keys.lock().await;
+        let public_keys = self.public_keys.read().await;
 
-        match public_keys.get(public_key) {
+        match public_keys.peek(public_key) {
             Some(pk_data) => {
                 let now: Timestamp = Timestamp::now();
 
@@ -178,7 +178,7 @@ impl NostrGossipMemory {
     }
 
     async fn _update_fetch_attempt(&self, public_key: &PublicKey, list: GossipListKind) {
-        let mut public_keys = self.public_keys.lock().await;
+        let mut public_keys = self.public_keys.write().await;
 
         let pk_data: &mut PkData = public_keys.get_or_insert_mut(*public_key, PkData::default);
 
@@ -195,7 +195,7 @@ impl NostrGossipMemory {
         public_key: &PublicKey,
         selection: BestRelaySelection,
     ) -> HashSet<RelayUrl> {
-        let public_keys = self.public_keys.lock().await;
+        let public_keys = self.public_keys.read().await;
 
         let mut relays: HashSet<RelayUrl> = HashSet::new();
 
