@@ -12,7 +12,6 @@
 #![allow(clippy::arc_with_non_send_sync)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(bench, feature(test))]
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(all(feature = "std", feature = "all-nips"), doc = include_str!("../README.md"))]
 
 #[cfg(not(any(feature = "std", feature = "alloc")))]

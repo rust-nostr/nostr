@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Fixed
+
+- Fix doc building by removing `#![cfg_attr(docsrs, feature(doc_auto_cfg))]`
+
 ## v0.44.0 - 2025/11/06
 
 ### Breaking changes

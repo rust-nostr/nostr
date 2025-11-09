@@ -11,7 +11,6 @@
 #![cfg_attr(test, allow(missing_docs))]
 #![cfg_attr(not(test), warn(missing_docs))]
 #![warn(rustdoc::bare_urls)]
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![doc = include_str!("../README.md")]
 // Crate available only for WASM
 #![cfg(target_family = "wasm")]
