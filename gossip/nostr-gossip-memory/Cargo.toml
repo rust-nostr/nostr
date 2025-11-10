@@ -19,4 +19,4 @@ nostr-gossip.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+nostr-gossip-test-suite.workspace = true

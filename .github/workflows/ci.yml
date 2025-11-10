@@ -37,6 +37,7 @@ jobs:
           - nostr-database
           - nostr-gossip
           - nostr-gossip-memory
+          - nostr-gossip-test-suite
           - nostr-lmdb
           - nostr-indexeddb --target wasm32-unknown-unknown
           - nostr-ndb

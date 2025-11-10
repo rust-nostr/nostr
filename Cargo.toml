@@ -11,6 +11,7 @@ members = [
     # Gossip
     "gossip/nostr-gossip",
     "gossip/nostr-gossip-memory",
+    "gossip/nostr-gossip-test-suite",
 
     # Remote File Storage implementations
     "rfs/nostr-blossom",
@@ -45,6 +46,7 @@ nostr-connect = { version = "0.44", path = "./signer/nostr-connect", default-fea
 nostr-database = { version = "0.44", path = "./database/nostr-database", default-features = false }
 nostr-gossip = { version = "0.44", path = "./gossip/nostr-gossip", default-features = false }
 nostr-gossip-memory = { version = "0.44", path = "./gossip/nostr-gossip-memory", default-features = false }
+nostr-gossip-test-suite = { path = "./gossip/nostr-gossip-test-suite" }
 nostr-lmdb = { version = "0.44", path = "./database/nostr-lmdb", default-features = false }
 nostr-ndb = { version = "0.44", path = "./database/nostr-ndb", default-features = false }
 nostr-relay-builder = { version = "0.44", path = "./crates/nostr-relay-builder", default-features = false }
