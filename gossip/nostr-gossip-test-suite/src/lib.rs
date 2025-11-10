@@ -39,14 +39,22 @@ macro_rules! gossip_unit_tests {
 
             // Test Read selection
             let read_relays = store
-                .get_best_relays(&public_key, BestRelaySelection::Read { limit: 2 })
+                .get_best_relays(
+                    &public_key,
+                    BestRelaySelection::Read { limit: 2 },
+                    GossipAllowedRelays::default(),
+                )
                 .await.unwrap();
 
             assert_eq!(read_relays.len(), 2); // relay.damus.io and nos.lol
 
             // Test Write selection
             let write_relays = store
-                .get_best_relays(&public_key, BestRelaySelection::Write { limit: 2 })
+                .get_best_relays(
+                    &public_key,
+                    BestRelaySelection::Write { limit: 2 },
+                    GossipAllowedRelays::default(),
+                )
                 .await.unwrap();
 
             assert_eq!(write_relays.len(), 2); // relay.damus.io and relay.nostr.band
@@ -66,7 +74,11 @@ macro_rules! gossip_unit_tests {
 
             // Test PrivateMessage selection
             let pm_relays = store
-                .get_best_relays(&public_key, BestRelaySelection::PrivateMessage { limit: 4 })
+                .get_best_relays(
+                    &public_key,
+                    BestRelaySelection::PrivateMessage { limit: 4 },
+                    GossipAllowedRelays::default(),
+                )
                 .await.unwrap();
 
             assert_eq!(pm_relays.len(), 3); // inbox.nostr.wine and relay.primal.net
@@ -97,7 +109,11 @@ macro_rules! gossip_unit_tests {
             store.process(&event, None).await.unwrap();
 
             let hint_relays = store
-                .get_best_relays(&public_key, BestRelaySelection::Hints { limit: 5 })
+                .get_best_relays(
+                    &public_key,
+                    BestRelaySelection::Hints { limit: 5 },
+                    GossipAllowedRelays::default(),
+                )
                 .await.unwrap();
 
             assert_eq!(hint_relays.len(), 1);
@@ -125,6 +141,7 @@ macro_rules! gossip_unit_tests {
                 .get_best_relays(
                     &keys.public_key,
                     BestRelaySelection::MostReceived { limit: 10 },
+                    GossipAllowedRelays::default(),
                 )
                 .await.unwrap();
 
@@ -169,6 +186,7 @@ macro_rules! gossip_unit_tests {
                         hints: 5,
                         most_received: 5,
                     },
+                    GossipAllowedRelays::default(),
                 )
                 .await.unwrap();
 
@@ -186,6 +204,92 @@ macro_rules! gossip_unit_tests {
             assert!(all_relays
                 .iter()
                 .any(|r| r.as_str() == "wss://received.relay.io"));
+        }
+
+        #[tokio::test]
+        async fn test_selection_with_allowed_relays() {
+            let store: $store_type = $setup_fn().await;
+
+            // NIP-65 relay list event with read and write relays
+            let json = r#"{"id":"0a49bed4a1eb0973a68a0d43b7ca62781ffd4e052b91bbadef09e5cf756f6e68","pubkey":"68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272","created_at":1759351841,"kind":10002,"tags":[["alt","Relay list to discover the user's content"],["r","wss://relay.damus.io/"],["r","ws://192.168.1.11:7777"],["r","ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion"]],"content":"","sig":"f5bc6c18b0013214588d018c9086358fb76a529aa10867d4d02a75feb239412ae1c94ac7c7917f6e6e2303d72f00dc4e9b03b168ef98f3c3c0dec9a457ce0304"}"#;
+            let event = Event::from_json(json).unwrap();
+
+            store.process(&event, None).await.unwrap();
+
+            let public_key = event.pubkey;
+            let damus_relay = RelayUrl::parse("wss://relay.damus.io").unwrap();
+            let local_relay = RelayUrl::parse("ws://192.168.1.11:7777").unwrap();
+            let oxtr_relay =
+                RelayUrl::parse("ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion")
+                    .unwrap();
+
+            // Test selection with all relays
+            let read_relays = store
+                .get_best_relays(
+                    &public_key,
+                    BestRelaySelection::Read { limit: u8::MAX },
+                    GossipAllowedRelays {
+                        onion: true,
+                        local: true,
+                        without_tls: true,
+                    },
+                )
+                .await.unwrap();
+
+            assert_eq!(read_relays.len(), 3);
+            assert!(read_relays.contains(&damus_relay));
+            assert!(read_relays.contains(&local_relay));
+            assert!(read_relays.contains(&oxtr_relay));
+
+            // Test selection without local relays
+            let read_relays = store
+                .get_best_relays(
+                    &public_key,
+                    BestRelaySelection::Read { limit: u8::MAX },
+                    GossipAllowedRelays {
+                        onion: true,
+                        local: false,
+                        without_tls: true,
+                    },
+                )
+                .await.unwrap();
+
+            assert_eq!(read_relays.len(), 2);
+            assert!(read_relays.contains(&damus_relay));
+            assert!(read_relays.contains(&oxtr_relay));
+
+            // Test selection without onion and local relays
+            let read_relays = store
+                .get_best_relays(
+                    &public_key,
+                    BestRelaySelection::Read { limit: u8::MAX },
+                    GossipAllowedRelays {
+                        onion: false,
+                        local: true,
+                        without_tls: true,
+                    },
+                )
+                .await.unwrap();
+
+            assert_eq!(read_relays.len(), 2);
+            assert!(read_relays.contains(&damus_relay));
+            assert!(read_relays.contains(&local_relay));
+
+            // Test selection TLS-only relays
+            let read_relays = store
+                .get_best_relays(
+                    &public_key,
+                    BestRelaySelection::Read { limit: u8::MAX },
+                    GossipAllowedRelays {
+                        onion: true,
+                        local: true,
+                        without_tls: false,
+                    },
+                )
+                .await.unwrap();
+
+            assert_eq!(read_relays.len(), 1);
+            assert!(read_relays.contains(&damus_relay));
         }
 
         #[tokio::test]
@@ -226,7 +330,11 @@ macro_rules! gossip_unit_tests {
 
             // Should return empty set
             let relays = store
-                .get_best_relays(&public_key, BestRelaySelection::Read { limit: 10 })
+                .get_best_relays(
+                    &public_key,
+                    BestRelaySelection::Read { limit: 10 },
+                    GossipAllowedRelays::default(),
+                )
                 .await.unwrap();
 
             assert_eq!(relays.len(), 0);

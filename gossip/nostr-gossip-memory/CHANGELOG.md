@@ -33,6 +33,10 @@
 
 - Replace `Mutex` with `RwLock` for better concurrency (https://github.com/rust-nostr/nostr/pull/1126)
 
+### Added
+
+- Add support for `GossipAllowedRelays` filtering during relay selection (https://github.com/rust-nostr/nostr/pull/1128)
+
 ## v0.44.0 - 2025/11/06
 
 First release.

@@ -10,6 +10,7 @@ use std::net::SocketAddr;
 use std::path::Path;
 use std::time::Duration;
 
+use nostr_gossip::GossipAllowedRelays;
 use nostr_relay_pool::prelude::*;
 
 /// Max number of relays to use for gossip
@@ -44,6 +45,8 @@ impl Default for GossipRelayLimits {
 pub struct GossipOptions {
     /// Max number of relays to use
     pub limits: GossipRelayLimits,
+    /// Allowed relay during selection
+    pub allowed: GossipAllowedRelays,
 }
 
 impl GossipOptions {
@@ -51,6 +54,13 @@ impl GossipOptions {
     #[inline]
     pub fn limits(mut self, limits: GossipRelayLimits) -> Self {
         self.limits = limits;
+        self
+    }
+
+    /// Set allowed
+    #[inline]
+    pub fn allowed(mut self, allowed: GossipAllowedRelays) -> Self {
+        self.allowed = allowed;
         self
     }
 }
