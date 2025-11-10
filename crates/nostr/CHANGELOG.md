@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Added
+
+- Add `RelayUrlScheme` enum and `RelayUrl::scheme` method (https://github.com/rust-nostr/nostr/pull/1127) 
+
 ## v0.44.1 - 2025/11/09
 
 ### Fixed

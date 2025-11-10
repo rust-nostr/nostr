@@ -49,9 +49,46 @@ impl From<ParseError> for Error {
     }
 }
 
+/// Relay URL scheme
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum RelayUrlScheme {
+    /// WebSocket (no SSL/TLS)
+    Ws,
+    /// WebSocket Secure
+    Wss,
+}
+
+impl RelayUrlScheme {
+    /// Parse relay URL scheme
+    #[inline]
+    pub fn parse(scheme: &str) -> Result<Self, Error> {
+        match scheme {
+            "ws" => Ok(Self::Ws),
+            "wss" => Ok(Self::Wss),
+            _ => Err(Error::UnsupportedScheme),
+        }
+    }
+
+    /// Check if the scheme is secure (uses SSL/TLS)
+    #[inline]
+    pub fn is_secure(&self) -> bool {
+        matches!(self, Self::Wss)
+    }
+
+    /// Get as `&str`
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Ws => "ws",
+            Self::Wss => "wss",
+        }
+    }
+}
+
 /// Relay URL
 #[derive(Clone)]
 pub struct RelayUrl {
+    scheme: RelayUrlScheme,
     url: Url,
     has_trailing_slash: bool,
 }
@@ -104,14 +141,20 @@ impl RelayUrl {
         // Parse URL
         let url: Url = Url::parse(url)?;
 
-        // Check scheme
-        match url.scheme() {
-            "ws" | "wss" => Ok(Self {
-                url,
-                has_trailing_slash,
-            }),
-            _ => Err(Error::UnsupportedScheme),
-        }
+        // Parse scheme
+        let scheme: RelayUrlScheme = RelayUrlScheme::parse(url.scheme())?;
+
+        Ok(Self {
+            scheme,
+            url,
+            has_trailing_slash,
+        })
+    }
+
+    /// Get scheme
+    #[inline]
+    pub fn scheme(&self) -> RelayUrlScheme {
+        self.scheme
     }
 
     /// Check if the host is a local network address.
@@ -315,6 +358,23 @@ impl TryIntoUrl for &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_relay_url_scheme_parse() {
+        // Valid
+        assert!(RelayUrlScheme::parse("ws").is_ok());
+        assert!(RelayUrlScheme::parse("wss").is_ok());
+
+        // Invalid
+        assert_eq!(
+            RelayUrlScheme::parse("http").unwrap_err(),
+            Error::UnsupportedScheme
+        );
+        assert_eq!(
+            RelayUrlScheme::parse("https").unwrap_err(),
+            Error::UnsupportedScheme
+        );
+    }
 
     #[test]
     fn test_relay_url_valid() {
