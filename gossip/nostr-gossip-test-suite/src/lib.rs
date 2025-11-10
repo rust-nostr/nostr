@@ -1,11 +1,14 @@
 //! Gossip test suite
 
+pub extern crate tokio;
+
 /// Macro to generate common gossip store tests.
 #[macro_export]
 macro_rules! gossip_unit_tests {
     ($store_type:ty, $setup_fn:expr) => {
-        use nostr::prelude::*;
         use nostr_gossip::prelude::*;
+
+        use $crate::tokio;
 
         #[tokio::test]
         async fn test_process_event() {
@@ -35,15 +38,15 @@ macro_rules! gossip_unit_tests {
 
             // Test Read selection
             let read_relays = store
-                ._get_best_relays(&public_key, BestRelaySelection::Read { limit: 2 })
-                .await;
+                .get_best_relays(&public_key, BestRelaySelection::Read { limit: 2 })
+                .await.unwrap();
 
             assert_eq!(read_relays.len(), 2); // relay.damus.io and nos.lol
 
             // Test Write selection
             let write_relays = store
-                ._get_best_relays(&public_key, BestRelaySelection::Write { limit: 2 })
-                .await;
+                .get_best_relays(&public_key, BestRelaySelection::Write { limit: 2 })
+                .await.unwrap();
 
             assert_eq!(write_relays.len(), 2); // relay.damus.io and relay.nostr.band
         }
@@ -62,8 +65,8 @@ macro_rules! gossip_unit_tests {
 
             // Test PrivateMessage selection
             let pm_relays = store
-                ._get_best_relays(&public_key, BestRelaySelection::PrivateMessage { limit: 4 })
-                .await;
+                .get_best_relays(&public_key, BestRelaySelection::PrivateMessage { limit: 4 })
+                .await.unwrap();
 
             assert_eq!(pm_relays.len(), 3); // inbox.nostr.wine and relay.primal.net
         }
@@ -93,8 +96,8 @@ macro_rules! gossip_unit_tests {
             store.process(&event, None).await.unwrap();
 
             let hint_relays = store
-                ._get_best_relays(&public_key, BestRelaySelection::Hints { limit: 5 })
-                .await;
+                .get_best_relays(&public_key, BestRelaySelection::Hints { limit: 5 })
+                .await.unwrap();
 
             assert_eq!(hint_relays.len(), 1);
             assert!(hint_relays.iter().any(|r| r == &relay_url));
@@ -118,11 +121,11 @@ macro_rules! gossip_unit_tests {
 
             // Test MostReceived selection
             let most_received = store
-                ._get_best_relays(
+                .get_best_relays(
                     &keys.public_key,
                     BestRelaySelection::MostReceived { limit: 10 },
                 )
-                .await;
+                .await.unwrap();
 
             assert_eq!(most_received.len(), 1);
             assert!(most_received.iter().any(|r| r == &relay_url));
@@ -157,7 +160,7 @@ macro_rules! gossip_unit_tests {
 
             // Test All selection
             let all_relays = store
-                ._get_best_relays(
+                .get_best_relays(
                     &public_key,
                     BestRelaySelection::All {
                         read: 5,
@@ -166,7 +169,7 @@ macro_rules! gossip_unit_tests {
                         most_received: 5,
                     },
                 )
-                .await;
+                .await.unwrap();
 
             // Should have relays from all categories (duplicates removed by HashSet)
             assert!(all_relays.len() >= 3);
@@ -193,7 +196,7 @@ macro_rules! gossip_unit_tests {
                     .unwrap();
 
             // Initially should be outdated
-            let status = store.get_status(&public_key, GossipListKind::Nip65).await;
+            let status = store.status(&public_key, GossipListKind::Nip65).await.unwrap();
             assert!(matches!(status, GossipPublicKeyStatus::Outdated { .. }));
 
             // Process a NIP-65 event
@@ -203,11 +206,11 @@ macro_rules! gossip_unit_tests {
 
             // Update fetch attempt
             store
-                ._update_fetch_attempt(&public_key, GossipListKind::Nip65)
-                .await;
+                .update_fetch_attempt(&public_key, GossipListKind::Nip65)
+                .await.unwrap();
 
             // Should now be updated
-            let status = store.get_status(&public_key, GossipListKind::Nip65).await;
+            let status = store.status(&public_key, GossipListKind::Nip65).await.unwrap();
             assert!(matches!(status, GossipPublicKeyStatus::Updated));
         }
 
@@ -222,8 +225,8 @@ macro_rules! gossip_unit_tests {
 
             // Should return empty set
             let relays = store
-                ._get_best_relays(&public_key, BestRelaySelection::Read { limit: 10 })
-                .await;
+                .get_best_relays(&public_key, BestRelaySelection::Read { limit: 10 })
+                .await.unwrap();
 
             assert_eq!(relays.len(), 0);
         }
