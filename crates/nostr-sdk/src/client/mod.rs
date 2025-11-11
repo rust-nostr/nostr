@@ -1362,7 +1362,7 @@ impl Client {
     /// 2. For any relays where negentropy sync fails, falls back to standard REQ messages to fetch the gossip lists
     async fn check_and_update_gossip<I>(
         &self,
-        gossip: &Arc<dyn NostrGossip>,
+        gossip: &GossipWrapper,
         public_keys: I,
         gossip_kind: GossipListKind,
     ) -> Result<(), Error>
@@ -1382,11 +1382,13 @@ impl Client {
             return Ok(());
         }
 
-        tracing::debug!("Acquiring gossip sync permit...");
+        let sync_id: u64 = gossip.next_sync_id();
+
+        tracing::debug!(sync_id, "Acquiring gossip sync permit...");
 
         let _permit = self.gossip_sync.acquire().await;
 
-        tracing::debug!(kind = ?gossip_kind, "Acquired gossip sync permit. Start syncing...");
+        tracing::debug!(sync_id, kind = ?gossip_kind, "Acquired gossip sync permit. Start syncing...");
 
         // Second check: check data is still outdated after acquiring permit
         // (another process might have updated it while we were waiting)
@@ -1396,13 +1398,18 @@ impl Client {
 
         // Double-check: data might have been updated while waiting for permit
         if outdated_public_keys.is_empty() {
-            tracing::debug!(kind = ?gossip_kind, "Gossip data is up to date.");
+            tracing::debug!(sync_id = %sync_id, kind = ?gossip_kind, "Gossip sync skipped: data updated by another process while acquiring permits.");
             return Ok(());
         }
 
         // Negentropy sync and database check
         let (output, stored_events) = self
-            .check_and_update_gossip_sync(gossip, &gossip_kind, outdated_public_keys.clone())
+            .check_and_update_gossip_sync(
+                sync_id,
+                gossip,
+                &gossip_kind,
+                outdated_public_keys.clone(),
+            )
             .await?;
 
         // Keep track of the missing public keys
@@ -1410,13 +1417,14 @@ impl Client {
 
         // Check if sync failed for some relay
         if !output.failed.is_empty() {
-            tracing::debug!(
+            tracing::debug!(sync_id,
                 relays = ?output.failed,
                 "Gossip sync failed for some relays."
             );
 
             // Try to fetch the updated events
             self.check_and_update_gossip_fetch(
+                sync_id,
                 gossip,
                 &gossip_kind,
                 &output,
@@ -1429,6 +1437,7 @@ impl Client {
             if !missing_public_keys.is_empty() {
                 // Try to fetch the missing events
                 self.check_and_update_gossip_missing(
+                    sync_id,
                     gossip,
                     &gossip_kind,
                     &output,
@@ -1438,7 +1447,7 @@ impl Client {
             }
         }
 
-        tracing::debug!(kind = ?gossip_kind, "Gossip sync terminated.");
+        tracing::debug!(sync_id, kind = ?gossip_kind, "Gossip sync terminated.");
 
         Ok(())
     }
@@ -1446,6 +1455,7 @@ impl Client {
     /// Check and update gossip data using negentropy sync
     async fn check_and_update_gossip_sync(
         &self,
+        sync_id: u64,
         gossip: &Arc<dyn NostrGossip>,
         gossip_kind: &GossipListKind,
         outdated_public_keys: HashSet<PublicKey>,
@@ -1454,6 +1464,7 @@ impl Client {
         let kind: Kind = gossip_kind.to_event_kind();
 
         tracing::debug!(
+            sync_id,
             public_keys = outdated_public_keys.len(),
             "Syncing outdated gossip data."
         );
@@ -1499,6 +1510,7 @@ impl Client {
     /// Try to fetch the new gossip events from the relays that failed the negentropy sync
     async fn check_and_update_gossip_fetch(
         &self,
+        sync_id: u64,
         gossip: &Arc<dyn NostrGossip>,
         gossip_kind: &GossipListKind,
         output: &Output<Reconciliation>,
@@ -1533,11 +1545,15 @@ impl Client {
         }
 
         if filters.is_empty() {
-            tracing::debug!("Skipping gossip fetch, as it's no longer required.");
+            tracing::debug!(
+                sync_id,
+                "Skipping gossip fetch, as it's no longer required."
+            );
             return Ok(());
         }
 
         tracing::debug!(
+            sync_id,
             filters = filters.len(),
             "Fetching outdated gossip data from relays."
         );
@@ -1569,6 +1585,7 @@ impl Client {
     /// Try to fetch the gossip events for the missing public keys from the relays that failed the negentropy sync
     async fn check_and_update_gossip_missing(
         &self,
+        sync_id: u64,
         gossip: &Arc<dyn NostrGossip>,
         gossip_kind: &GossipListKind,
         output: &Output<Reconciliation>,
@@ -1578,6 +1595,7 @@ impl Client {
         let kind: Kind = gossip_kind.to_event_kind();
 
         tracing::debug!(
+            sync_id,
             public_keys = missing_public_keys.len(),
             "Fetching missing gossip data from relays."
         );
