@@ -2786,7 +2786,6 @@ dependencies = [
 name = "nostr-gossip-test-suite"
 version = "0.1.0"
 dependencies = [
- "nostr",
  "nostr-gossip",
  "tokio",
 ]
