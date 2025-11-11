@@ -4,6 +4,7 @@
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ops::Deref;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use nostr::prelude::*;
@@ -30,6 +31,7 @@ pub enum BrokenDownFilters {
 #[derive(Debug, Clone)]
 pub(crate) struct GossipWrapper {
     gossip: Arc<dyn NostrGossip>,
+    sync_counter: Arc<AtomicUsize>,
     pub(crate) permits: Arc<GossipSyncPermits>,
 }
 
@@ -47,8 +49,15 @@ impl GossipWrapper {
     pub(crate) fn new(gossip: Arc<dyn NostrGossip>) -> Self {
         Self {
             gossip,
+            sync_counter: Arc::new(AtomicUsize::new(0)),
             permits: Arc::new(GossipSyncPermits::default()),
         }
+    }
+
+    /// Generate next sync ID
+    #[inline]
+    pub(crate) fn next_sync_id(&self) -> usize {
+        self.sync_counter.fetch_add(1, Ordering::Relaxed)
     }
 
     pub(crate) async fn get_relays<'a, I>(
