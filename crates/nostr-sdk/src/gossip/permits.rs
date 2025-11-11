@@ -1,6 +1,8 @@
 use std::num::NonZeroUsize;
 use std::sync::Arc;
+use std::time::Duration;
 
+use async_utility::time;
 use lru::LruCache;
 use nostr::PublicKey;
 use nostr_gossip::GossipListKind;
@@ -37,17 +39,21 @@ impl GossipSyncPermits {
     }
 
     /// Acquire a permit for a specific public key and gossip kind
+    ///
+    /// Returns Ok(None) if the permit can't be acquired within 1 second.
     pub(crate) async fn acquire(
         &self,
         public_key: PublicKey,
         kind: GossipListKind,
-    ) -> Result<OwnedSemaphorePermit, AcquireError> {
+    ) -> Result<Option<OwnedSemaphorePermit>, AcquireError> {
         let key: Key = (public_key, kind);
 
         // Get the semaphore
         let semaphore: Arc<Semaphore> = self.get_semaphore(key).await;
 
         // Acquire the permit
-        semaphore.acquire_owned().await
+        time::timeout(Some(Duration::from_secs(1)), semaphore.acquire_owned())
+            .await
+            .transpose()
     }
 }

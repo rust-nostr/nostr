@@ -4,7 +4,7 @@
 
 //! Client
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::future::Future;
 use std::iter;
 use std::sync::Arc;
@@ -1384,27 +1384,34 @@ impl Client {
         tracing::debug!(sync_id = %sync_id, "Acquiring gossip sync permits...");
 
         // Collect all permits we need - this ensures we only block on keys we actually need
+        let mut permits_queue: VecDeque<PublicKey> =
+            outdated_public_keys_first_check.iter().copied().collect();
         let mut permits: HashMap<PublicKey, OwnedSemaphorePermit> =
             HashMap::with_capacity(outdated_public_keys_first_check.len());
-        for (index, pk) in outdated_public_keys_first_check.iter().enumerate() {
-            tracing::trace!(sync_id = %sync_id, public_key = %pk, kind = ?gossip_kind, "Acquiring gossip sync permit...");
+
+        while let Some(public_key) = permits_queue.pop_front() {
+            tracing::trace!(sync_id = %sync_id, public_key = %public_key, kind = ?gossip_kind, "Acquiring gossip sync permit...");
 
             // Acquire permit
-            match gossip.permits.acquire(*pk, gossip_kind).await {
-                Ok(permit) => {
+            match gossip.permits.acquire(public_key, gossip_kind).await {
+                Ok(Some(permit)) => {
                     tracing::trace!(
                         sync_id = %sync_id,
-                        public_key = %pk,
+                        public_key = %public_key,
                         kind = ?gossip_kind,
                         "Permit acquired acquired"
                     );
 
-                    permits.insert(*pk, permit);
+                    permits.insert(public_key, permit);
+                }
+                // Timeout, try again later
+                Ok(None) => {
+                    permits_queue.push_back(public_key);
                 }
                 Err(e) => {
                     tracing::warn!(
                         sync_id = %sync_id,
-                        public_key = %pk,
+                        public_key = %public_key,
                         kind = ?gossip_kind,
                         "Failed to acquire gossip sync permit: {}",
                         e
@@ -1412,7 +1419,7 @@ impl Client {
                 }
             }
 
-            tracing::trace!(sync_id = %sync_id, public_key = %pk, kind = ?gossip_kind, "Acquired {}/{} gossip permits.", index + 1, outdated_public_keys_first_check.len());
+            tracing::trace!(sync_id = %sync_id, public_key = %public_key, kind = ?gossip_kind, "Missing to acquire {} gossip permits.", permits_queue.len());
         }
 
         tracing::debug!(
