@@ -106,9 +106,9 @@ pub enum Nip73Kind {
     PodcastEpisode,
     /// Podcast publishers kind "podcast:publisher:guid"
     PodcastPublisher,
-    /// Blockchain transaction kind "<blockchain>:tx"
+    /// Blockchain transaction kind "\<blockchain\>:tx"
     BlockchainTransaction(String),
-    /// Blockchain address kind "<blockchain>:address"
+    /// Blockchain address kind "\<blockchain\>:address"
     BlockchainAddress(String),
 }
 
