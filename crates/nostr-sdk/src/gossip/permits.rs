@@ -1,12 +1,10 @@
 use std::num::NonZeroUsize;
 use std::sync::Arc;
-use std::time::Duration;
 
-use async_utility::time;
 use lru::LruCache;
 use nostr::PublicKey;
 use nostr_gossip::GossipListKind;
-use tokio::sync::{AcquireError, Mutex, OwnedSemaphorePermit, Semaphore};
+use tokio::sync::{Mutex, OwnedSemaphorePermit, Semaphore, TryAcquireError};
 
 const CACHE_LIMIT: usize = 35_000;
 
@@ -45,15 +43,17 @@ impl GossipSyncPermits {
         &self,
         public_key: PublicKey,
         kind: GossipListKind,
-    ) -> Result<Option<OwnedSemaphorePermit>, AcquireError> {
+    ) -> Result<Option<OwnedSemaphorePermit>, String> {
         let key: Key = (public_key, kind);
 
         // Get the semaphore
         let semaphore: Arc<Semaphore> = self.get_semaphore(key).await;
 
         // Acquire the permit
-        time::timeout(Some(Duration::from_secs(1)), semaphore.acquire_owned())
-            .await
-            .transpose()
+        match semaphore.try_acquire_owned() {
+            Ok(permit) => Ok(Some(permit)),
+            Err(TryAcquireError::NoPermits) => Ok(None),
+            Err(TryAcquireError::Closed) => Err(String::from("Semaphore closed")),
+        }
     }
 }
