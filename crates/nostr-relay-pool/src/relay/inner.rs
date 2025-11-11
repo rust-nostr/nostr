@@ -1899,6 +1899,7 @@ impl InnerRelay {
         Ok(())
     }
 
+    /// Returns `true` if the events was in the `in_flight_up` collection.
     #[inline(never)]
     fn handle_neg_ok(
         &self,
@@ -1907,7 +1908,7 @@ impl InnerRelay {
         status: bool,
         message: Cow<'_, str>,
         output: &mut Reconciliation,
-    ) {
+    ) -> bool {
         if in_flight_up.remove(&event_id) {
             if status {
                 output.sent.insert(event_id);
@@ -1928,6 +1929,10 @@ impl InnerRelay {
                     .or_default()
                     .insert(event_id, message.into_owned());
             }
+
+            true
+        } else {
+            false
         }
     }
 
@@ -1971,12 +1976,17 @@ impl InnerRelay {
         let mut have_ids: Vec<EventId> = Vec::new();
         let mut need_ids: Vec<EventId> = Vec::new();
         let down_sub_id: SubscriptionId = SubscriptionId::generate();
+        let mut last_relevant_msg: Instant = Instant::now();
 
         // Start reconciliation
         while let Ok(notification) = notifications.recv().await {
+            if last_relevant_msg.elapsed() > opts.idle_timeout {
+                return Err(Error::Timeout);
+            }
+
             match notification {
                 RelayNotification::Message { message } => {
-                    match message {
+                    let is_relevant: bool = match message {
                         RelayMessage::NegMsg {
                             subscription_id,
                             message,
@@ -2007,6 +2017,12 @@ impl InnerRelay {
                                     &mut need_ids,
                                     &mut sync_done,
                                 )?;
+
+                                // Relevant to this sync
+                                true
+                            } else {
+                                // Not relevant to this sync
+                                false
                             }
                         }
                         RelayMessage::NegErr {
@@ -2015,6 +2031,9 @@ impl InnerRelay {
                         } => {
                             if subscription_id.as_ref() == &sub_id {
                                 return Err(Error::RelayMessage(message.into_owned()));
+                            } else {
+                                // Not relevant to this sync
+                                false
                             }
                         }
                         RelayMessage::Ok {
@@ -2022,13 +2041,7 @@ impl InnerRelay {
                             status,
                             message,
                         } => {
-                            self.handle_neg_ok(
-                                &mut in_flight_up,
-                                event_id,
-                                status,
-                                message,
-                                output,
-                            );
+                            self.handle_neg_ok(&mut in_flight_up, event_id, status, message, output)
                         }
                         RelayMessage::Event {
                             subscription_id,
@@ -2036,10 +2049,16 @@ impl InnerRelay {
                         } => {
                             if subscription_id.as_ref() == &down_sub_id {
                                 output.received.insert(event.id);
+
+                                // Relevant to this sync
+                                true
+                            } else {
+                                // Not relevant to this sync
+                                false
                             }
                         }
-                        RelayMessage::EndOfStoredEvents(id) => {
-                            if id.as_ref() == &down_sub_id {
+                        RelayMessage::EndOfStoredEvents(subscription_id) => {
+                            if subscription_id.as_ref() == &down_sub_id {
                                 in_flight_down = false;
 
                                 // Remove subscription
@@ -2047,6 +2066,12 @@ impl InnerRelay {
 
                                 // Close subscription
                                 self.send_msg(ClientMessage::Close(Cow::Borrowed(&down_sub_id)))?;
+
+                                // Relevant to this sync
+                                true
+                            } else {
+                                // Not relevant to this sync
+                                false
                             }
                         }
                         RelayMessage::Closed {
@@ -2057,10 +2082,16 @@ impl InnerRelay {
 
                                 // NOTE: the subscription is removed in the `InnerRelay::handle_relay_message` method,
                                 // so there is no need to try to remove it also here.
+
+                                // Relevant to this sync
+                                true
+                            } else {
+                                // Not relevant to this sync
+                                false
                             }
                         }
-                        _ => (),
-                    }
+                        _ => false,
+                    };
 
                     // Send events
                     self.upload_neg_events(&mut have_ids, &mut in_flight_up, opts)
@@ -2069,6 +2100,11 @@ impl InnerRelay {
                     // Get events
                     self.req_neg_events(&mut need_ids, &mut in_flight_down, &down_sub_id, opts)
                         .await?;
+
+                    // NOTE: update this after the uploading and requesting of the events, as it may require some time.
+                    if is_relevant {
+                        last_relevant_msg = Instant::now();
+                    }
                 }
                 RelayNotification::RelayStatus { status } => {
                     if status.is_disconnected() {

@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Added
+
+- Add idle timeout for negentropy sync (https://github.com/rust-nostr/nostr/pull/1131)
+
 ## v0.44.0 - 2025/11/06
 
 ### Breaking changes

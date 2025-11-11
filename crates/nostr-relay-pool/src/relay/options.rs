@@ -269,6 +269,7 @@ impl SyncProgress {
 #[derive(Debug, Clone)]
 pub struct SyncOptions {
     pub(super) initial_timeout: Duration,
+    pub(super) idle_timeout: Duration,
     pub(super) direction: SyncDirection,
     pub(super) dry_run: bool,
     pub(super) progress: Option<Sender<SyncProgress>>,
@@ -278,6 +279,7 @@ impl Default for SyncOptions {
     fn default() -> Self {
         Self {
             initial_timeout: Duration::from_secs(10),
+            idle_timeout: Duration::from_secs(10),
             direction: SyncDirection::default(),
             dry_run: false,
             progress: None,
@@ -296,6 +298,12 @@ impl SyncOptions {
     #[inline]
     pub fn initial_timeout(mut self, initial_timeout: Duration) -> Self {
         self.initial_timeout = initial_timeout;
+        self
+    }
+
+    /// Automatically terminate the sync if no message is received within the [`Duration`] (default: 10 secs)
+    pub fn idle_timeout(mut self, timeout: Duration) -> Self {
+        self.idle_timeout = timeout;
         self
     }
 
