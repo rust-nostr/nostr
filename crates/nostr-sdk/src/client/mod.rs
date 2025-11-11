@@ -14,7 +14,7 @@ use nostr::prelude::*;
 use nostr_database::prelude::*;
 use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
 use nostr_relay_pool::prelude::*;
-use tokio::sync::{broadcast, Semaphore};
+use tokio::sync::broadcast;
 
 pub mod builder;
 mod error;
@@ -35,8 +35,6 @@ pub struct Client {
     pool: RelayPool,
     gossip: Option<GossipWrapper>,
     opts: ClientOptions,
-    /// Semaphore used to limit the number of gossip checks and syncs
-    gossip_sync: Arc<Semaphore>,
 }
 
 impl Default for Client {
@@ -104,8 +102,6 @@ impl Client {
             pool: pool_builder.build(),
             gossip: builder.gossip.map(GossipWrapper::new),
             opts: builder.opts,
-            // Allow only one gossip check and sync at a time
-            gossip_sync: Arc::new(Semaphore::new(1)),
         }
     }
 
@@ -1362,7 +1358,7 @@ impl Client {
     /// 2. For any relays where negentropy sync fails, falls back to standard REQ messages to fetch the gossip lists
     async fn check_and_update_gossip<I>(
         &self,
-        gossip: &Arc<dyn NostrGossip>,
+        gossip: &GossipWrapper,
         public_keys: I,
         gossip_kind: GossipListKind,
     ) -> Result<(), Error>
@@ -1382,11 +1378,32 @@ impl Client {
             return Ok(());
         }
 
-        tracing::debug!("Acquiring gossip sync permit...");
+        tracing::debug!("Acquiring gossip sync permits...");
 
-        let _permit = self.gossip_sync.acquire().await;
+        // Collect all permits we need - this ensures we only block on keys we actually need
+        let mut permits = Vec::with_capacity(outdated_public_keys_first_check.len());
+        for pk in outdated_public_keys_first_check.iter() {
+            tracing::trace!(public_key = %pk, kind = ?gossip_kind, "Acquiring gossip sync permit...");
 
-        tracing::debug!(kind = ?gossip_kind, "Acquired gossip sync permit. Start syncing...");
+            // Acquire permit
+            match gossip.permits.acquire(*pk, gossip_kind).await {
+                Ok(lock) => permits.push(lock),
+                Err(e) => {
+                    tracing::warn!(
+                        public_key = %pk,
+                        kind = ?gossip_kind,
+                        "Failed to acquire gossip sync permit: {}",
+                        e
+                    );
+                }
+            }
+        }
+
+        tracing::debug!(
+            permits = permits.len(),
+            kind = ?gossip_kind,
+            "Acquired gossip sync permits. Start syncing..."
+        );
 
         // Second check: check data is still outdated after acquiring permit
         // (another process might have updated it while we were waiting)
@@ -1437,6 +1454,8 @@ impl Client {
                 .await?;
             }
         }
+
+        drop(permits);
 
         tracing::debug!(kind = ?gossip_kind, "Gossip sync terminated.");
 

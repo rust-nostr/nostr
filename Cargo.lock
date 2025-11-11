@@ -2900,6 +2900,7 @@ name = "nostr-sdk"
 version = "0.44.1"
 dependencies = [
  "async-utility",
+ "lru",
  "nostr",
  "nostr-connect",
  "nostr-database",

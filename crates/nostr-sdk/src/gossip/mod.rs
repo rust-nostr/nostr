@@ -9,6 +9,9 @@ use std::sync::Arc;
 use nostr::prelude::*;
 use nostr_gossip::{BestRelaySelection, NostrGossip};
 
+mod permits;
+
+use self::permits::GossipSyncPermits;
 use crate::client::options::GossipRelayLimits;
 use crate::client::Error;
 
@@ -27,6 +30,7 @@ pub enum BrokenDownFilters {
 #[derive(Debug, Clone)]
 pub(crate) struct GossipWrapper {
     gossip: Arc<dyn NostrGossip>,
+    pub(crate) permits: Arc<GossipSyncPermits>,
 }
 
 impl Deref for GossipWrapper {
@@ -41,7 +45,10 @@ impl Deref for GossipWrapper {
 impl GossipWrapper {
     #[inline]
     pub(crate) fn new(gossip: Arc<dyn NostrGossip>) -> Self {
-        Self { gossip }
+        Self {
+            gossip,
+            permits: Arc::new(GossipSyncPermits::default()),
+        }
     }
 
     pub(crate) async fn get_relays<'a, I>(
