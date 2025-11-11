@@ -14,7 +14,7 @@ use nostr::prelude::*;
 use nostr_database::prelude::*;
 use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
 use nostr_relay_pool::prelude::*;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, OwnedSemaphorePermit};
 
 pub mod builder;
 mod error;
@@ -1384,13 +1384,23 @@ impl Client {
         tracing::debug!(sync_id = %sync_id, "Acquiring gossip sync permits...");
 
         // Collect all permits we need - this ensures we only block on keys we actually need
-        let mut permits = Vec::with_capacity(outdated_public_keys_first_check.len());
-        for pk in outdated_public_keys_first_check.iter() {
+        let mut permits: HashMap<PublicKey, OwnedSemaphorePermit> =
+            HashMap::with_capacity(outdated_public_keys_first_check.len());
+        for (index, pk) in outdated_public_keys_first_check.iter().enumerate() {
             tracing::trace!(sync_id = %sync_id, public_key = %pk, kind = ?gossip_kind, "Acquiring gossip sync permit...");
 
             // Acquire permit
             match gossip.permits.acquire(*pk, gossip_kind).await {
-                Ok(lock) => permits.push(lock),
+                Ok(permit) => {
+                    tracing::trace!(
+                        sync_id = %sync_id,
+                        public_key = %pk,
+                        kind = ?gossip_kind,
+                        "Permit acquired acquired"
+                    );
+
+                    permits.insert(*pk, permit);
+                }
                 Err(e) => {
                     tracing::warn!(
                         sync_id = %sync_id,
@@ -1401,6 +1411,8 @@ impl Client {
                     );
                 }
             }
+
+            tracing::trace!(sync_id = %sync_id, public_key = %pk, kind = ?gossip_kind, "Acquired {}/{} gossip permits.", index + 1, outdated_public_keys_first_check.len());
         }
 
         tracing::debug!(
@@ -1421,6 +1433,9 @@ impl Client {
             tracing::debug!(sync_id = %sync_id, kind = ?gossip_kind, "Gossip sync skipped: data updated by another process while acquiring permits.");
             return Ok(());
         }
+
+        // Retain only the permits we need
+        permits.retain(|pk, _permit| outdated_public_keys.contains(pk));
 
         // Negentropy sync and database check
         let (output, stored_events) = self
