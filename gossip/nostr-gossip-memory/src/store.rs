@@ -288,7 +288,7 @@ impl NostrGossipMemory {
         tx: &LruCache<PublicKey, PkData>,
         public_key: &PublicKey,
         flag: GossipFlags,
-        limit: usize,
+        limit: u8,
     ) -> impl Iterator<Item = RelayUrl> + '_ {
         let mut relays: Vec<(RelayUrl, u64, Option<Timestamp>)> = Vec::new();
 
@@ -312,7 +312,10 @@ impl NostrGossipMemory {
         });
 
         // Take only the requested limit and extract relay URLs
-        relays.into_iter().take(limit).map(|(url, _, _)| url)
+        relays
+            .into_iter()
+            .take(limit as usize)
+            .map(|(url, _, _)| url)
     }
 }
 

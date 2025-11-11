@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Breaking changes
+
+- Replace `usize` with `u8` for gossip relay limits
+
 ## v0.44.1 - 2025/11/09
 
 ### Fixed

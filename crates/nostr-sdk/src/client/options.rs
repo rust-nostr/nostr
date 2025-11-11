@@ -16,15 +16,15 @@ use nostr_relay_pool::prelude::*;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GossipRelayLimits {
     /// Max number of **read** relays per user (default: 3)
-    pub read_relays_per_user: usize,
+    pub read_relays_per_user: u8,
     /// Max number of **write** relays per user (default: 3)
-    pub write_relays_per_user: usize,
+    pub write_relays_per_user: u8,
     /// Max number of **hint** relays per user (default: 1)
-    pub hint_relays_per_user: usize,
+    pub hint_relays_per_user: u8,
     /// Max number of **most used** relays per user (default: 1)
-    pub most_used_relays_per_user: usize,
+    pub most_used_relays_per_user: u8,
     /// Max number of NIP-17 relays per user (default: 3)
-    pub nip17_relays: usize,
+    pub nip17_relays: u8,
 }
 
 impl Default for GossipRelayLimits {

@@ -25,6 +25,10 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Replace `usize` with `u8` for relay limits
+
 ### Changed
 
 - Replace `Mutex` with `RwLock` for better concurrency (https://github.com/rust-nostr/nostr/pull/1126)

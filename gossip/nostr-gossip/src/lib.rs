@@ -59,38 +59,38 @@ pub enum BestRelaySelection {
     /// Get all the best relays for **reading** and **writing** events (NIP-65)
     All {
         /// Limit for read relays
-        read: usize,
+        read: u8,
         /// Limit for write relays
-        write: usize,
+        write: u8,
         /// Limit for hints
-        hints: usize,
+        hints: u8,
         /// Limit for most received relays
-        most_received: usize,
+        most_received: u8,
     },
     /// Get the best relays for **reading** events (NIP-65)
     Read {
         /// Limit
-        limit: usize,
+        limit: u8,
     },
     /// Get the best relays for **writing** events (NIP-65)
     Write {
         /// Limit
-        limit: usize,
+        limit: u8,
     },
     /// Get the best relays for **reading** and **writing** private messages (NIP-17)
     PrivateMessage {
         /// Limit
-        limit: usize,
+        limit: u8,
     },
     /// Relays found in hints
     Hints {
         /// Limit
-        limit: usize,
+        limit: u8,
     },
     /// Relays that received most events
     MostReceived {
         /// Limit
-        limit: usize,
+        limit: u8,
     },
 }
 
