@@ -491,3 +491,34 @@ mod tests {
         assert_eq!(url.domain(), None);
     }
 }
+
+#[cfg(bench)]
+mod benches {
+    use super::*;
+    use crate::test::{black_box, Bencher};
+
+    const LOCAL_URL: &str = "ws://127.0.0.1:7777";
+    const CLEARNET_URL: &str = "wss://relay.damus.io";
+    const ONION_URL: &str = "ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion";
+
+    #[bench]
+    pub fn parse_local_relay_url(bh: &mut Bencher) {
+        bh.iter(|| {
+            black_box(RelayUrl::parse(LOCAL_URL)).unwrap();
+        });
+    }
+
+    #[bench]
+    pub fn parse_clearnet_relay_url(bh: &mut Bencher) {
+        bh.iter(|| {
+            black_box(RelayUrl::parse(CLEARNET_URL)).unwrap();
+        });
+    }
+
+    #[bench]
+    pub fn parse_onion_relay_url(bh: &mut Bencher) {
+        bh.iter(|| {
+            black_box(RelayUrl::parse(ONION_URL)).unwrap();
+        });
+    }
+}
