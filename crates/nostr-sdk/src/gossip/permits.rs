@@ -25,21 +25,27 @@ impl Default for GossipSyncPermits {
     }
 }
 
+/// NOTE: don't acquire the Mutex lock in the same function as the semaphore permit,
+/// or most likely will cause a deadlock!
 impl GossipSyncPermits {
+    /// Lock the mutex and get the cloned semaphore.
+    async fn get_semaphore(&self, key: Key) -> Arc<Semaphore> {
+        let mut permits = self.permits.lock().await;
+        permits
+            .get_or_insert(key, || Arc::new(Semaphore::new(1)))
+            .clone()
+    }
+
     /// Acquire a permit for a specific public key and gossip kind
     pub(crate) async fn acquire(
         &self,
         public_key: PublicKey,
         kind: GossipListKind,
     ) -> Result<OwnedSemaphorePermit, AcquireError> {
-        let mut permits = self.permits.lock().await;
-
         let key: Key = (public_key, kind);
 
-        // Get or create the semaphore for this specific key
-        let semaphore: Arc<Semaphore> = permits
-            .get_or_insert(key, || Arc::new(Semaphore::new(1)))
-            .clone();
+        // Get the semaphore
+        let semaphore: Arc<Semaphore> = self.get_semaphore(key).await;
 
         // Acquire the permit
         semaphore.acquire_owned().await
