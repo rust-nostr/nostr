@@ -14,7 +14,7 @@ use nostr::prelude::*;
 use nostr_database::prelude::*;
 use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
 use nostr_relay_pool::prelude::*;
-use tokio::sync::{broadcast, Semaphore};
+use tokio::sync::broadcast;
 
 pub mod builder;
 mod error;
@@ -35,8 +35,6 @@ pub struct Client {
     pool: RelayPool,
     gossip: Option<GossipWrapper>,
     opts: ClientOptions,
-    /// Semaphore used to limit the number of gossip checks and syncs
-    gossip_sync: Arc<Semaphore>,
 }
 
 impl Default for Client {
@@ -104,8 +102,6 @@ impl Client {
             pool: pool_builder.build(),
             gossip: builder.gossip.map(GossipWrapper::new),
             opts: builder.opts,
-            // Allow only one gossip check and sync at a time
-            gossip_sync: Arc::new(Semaphore::new(1)),
         }
     }
 
@@ -1371,36 +1367,18 @@ impl Client {
     {
         let public_keys: HashSet<PublicKey> = public_keys.into_iter().collect();
 
-        // First check: check if there are outdated public keys.
-        let outdated_public_keys_first_check: HashSet<PublicKey> = self
+        // Check if there are outdated public keys.
+        let outdated_public_keys: HashSet<PublicKey> = self
             .check_outdated_public_keys(gossip, public_keys.iter(), gossip_kind)
             .await?;
 
         // No outdated public keys, immediately return.
-        if outdated_public_keys_first_check.is_empty() {
+        if outdated_public_keys.is_empty() {
             tracing::debug!(kind = ?gossip_kind, "Gossip data is up to date.");
             return Ok(());
         }
 
         let sync_id: u64 = gossip.next_sync_id();
-
-        tracing::debug!(sync_id, "Acquiring gossip sync permit...");
-
-        let _permit = self.gossip_sync.acquire().await;
-
-        tracing::debug!(sync_id, kind = ?gossip_kind, "Acquired gossip sync permit. Start syncing...");
-
-        // Second check: check data is still outdated after acquiring permit
-        // (another process might have updated it while we were waiting)
-        let outdated_public_keys: HashSet<PublicKey> = self
-            .check_outdated_public_keys(gossip, public_keys.iter(), gossip_kind)
-            .await?;
-
-        // Double-check: data might have been updated while waiting for permit
-        if outdated_public_keys.is_empty() {
-            tracing::debug!(sync_id = %sync_id, kind = ?gossip_kind, "Gossip sync skipped: data updated by another process while acquiring permits.");
-            return Ok(());
-        }
 
         // Negentropy sync and database check
         let (output, stored_events) = self
