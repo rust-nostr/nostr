@@ -13,8 +13,8 @@
 #[cfg(not(any(feature = "sqlite", feature = "postgres", feature = "mysql")))]
 compile_error!("At least one database backend must be enabled");
 
-mod model;
-pub mod error;
 pub mod db;
+pub mod error;
+mod model;
 
 pub use self::db::{NostrSql, NostrSqlBackend};

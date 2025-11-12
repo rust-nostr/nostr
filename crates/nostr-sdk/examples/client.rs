@@ -3,6 +3,7 @@
 // Distributed under the MIT software license
 
 use std::time::Duration;
+
 use nostr_sdk::prelude::*;
 
 #[tokio::main]
@@ -22,7 +23,7 @@ async fn main() -> Result<()> {
     println!("Event ID: {}", output.id().to_bech32()?);
     println!("Sent to: {:?}", output.success);
     println!("Not sent to: {:?}", output.failed);
-    
+
     let events = client
         .fetch_events(Filter::new().kind(Kind::TextNote), Duration::from_secs(10))
         .await?;
@@ -30,6 +31,6 @@ async fn main() -> Result<()> {
     for event in events {
         println!("{}", event.as_json())
     }
-    
+
     Ok(())
 }

@@ -25,7 +25,7 @@ impl fmt::Display for Error {
             Self::Sqlx(e) => write!(f, "{e}"),
             Self::Migrate(e) => write!(f, "{e}"),
         }
-    }   
+    }
 }
 
 impl From<sqlx::Error> for Error {

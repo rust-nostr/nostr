@@ -2,7 +2,6 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-
 use std::time::Duration;
 
 use nostr_database::prelude::*;
@@ -20,7 +19,7 @@ async fn main() -> Result<()> {
         password: Some(String::from("password")),
         database: String::from("nostr"),
     };
-    
+
     // Create a nostr db instance and run pending db migrations if any
     let db = NostrSql::new(backend).await?;
 

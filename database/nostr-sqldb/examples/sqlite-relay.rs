@@ -2,7 +2,6 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-
 use std::time::Duration;
 
 use nostr_database::prelude::*;

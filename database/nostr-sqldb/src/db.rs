@@ -9,14 +9,14 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-#[cfg(feature = "sqlite")]
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
-#[cfg(feature = "postgres")]
-use sqlx::postgres::{PgConnectOptions, PgPool};
+use nostr_database::prelude::*;
 #[cfg(feature = "mysql")]
 use sqlx::mysql::{MySql, MySqlPool};
-use sqlx::{Transaction, QueryBuilder};
-use nostr_database::prelude::*;
+#[cfg(feature = "postgres")]
+use sqlx::postgres::{PgConnectOptions, PgPool};
+#[cfg(feature = "sqlite")]
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
+use sqlx::{QueryBuilder, Transaction};
 use tokio::sync::Mutex;
 
 use crate::error::Error;
@@ -32,7 +32,7 @@ pub enum NostrSqlBackend {
         /// SQLite database path
         ///
         /// If no path is passed, an in-memory database will be created.
-        path: Option<PathBuf>
+        path: Option<PathBuf>,
     },
     /// Postgres
     #[cfg(feature = "postgres")]
@@ -47,7 +47,7 @@ pub enum NostrSqlBackend {
         password: Option<String>,
         /// Database name
         database: String,
-    }
+    },
 }
 
 impl NostrSqlBackend {
@@ -56,9 +56,11 @@ impl NostrSqlBackend {
     #[cfg(feature = "sqlite")]
     pub fn sqlite<P>(path: P) -> Self
     where
-        P: AsRef<Path>
+        P: AsRef<Path>,
     {
-        Self::Sqlite { path: Some(path.as_ref().to_path_buf()) }
+        Self::Sqlite {
+            path: Some(path.as_ref().to_path_buf()),
+        }
     }
 
     /// New in-memory SQLite database
@@ -99,15 +101,15 @@ impl NostrSql {
     pub async fn new(backend: NostrSqlBackend) -> Result<Self, Error> {
         let pool = match backend {
             #[cfg(feature = "sqlite")]
-            NostrSqlBackend::Sqlite {path} => {
-                let mut opts: SqliteConnectOptions = SqliteConnectOptions::new().create_if_missing(true);
-                
+            NostrSqlBackend::Sqlite { path } => {
+                let mut opts: SqliteConnectOptions =
+                    SqliteConnectOptions::new().create_if_missing(true);
+
                 match path {
                     Some(path) => opts = opts.filename(path),
                     None => opts = opts.in_memory(true),
                 };
-                
-                
+
                 let pool: SqlitePool = SqlitePool::connect_with(opts).await?;
 
                 sqlx::migrate!("migrations/sqlite").run(&pool).await?;
@@ -115,9 +117,18 @@ impl NostrSql {
                 Db::Sqlite(pool)
             }
             #[cfg(feature = "postgres")]
-            NostrSqlBackend::Postgres {host, port, username, password, database } => {
-                let mut opts: PgConnectOptions = PgConnectOptions::new_without_pgpass().host(&host).port(port).database(&database);
-                
+            NostrSqlBackend::Postgres {
+                host,
+                port,
+                username,
+                password,
+                database,
+            } => {
+                let mut opts: PgConnectOptions = PgConnectOptions::new_without_pgpass()
+                    .host(&host)
+                    .port(port)
+                    .database(&database);
+
                 if let Some(username) = username {
                     opts = opts.username(&username);
                 }
@@ -141,7 +152,11 @@ impl NostrSql {
     }
 
     /// Returns true if successfully inserted
-    async fn insert_event_tx(&self, tx: &mut Transaction<'_, Any>, event: &EventDb) -> Result<bool, Error> {
+    async fn insert_event_tx(
+        &self,
+        tx: &mut Transaction<'_, Any>,
+        event: &EventDb,
+    ) -> Result<bool, Error> {
         let sql: &str = match self.kind {
             #[cfg(feature = "sqlite")]
             PoolKind::Sqlite => {
@@ -170,7 +185,11 @@ impl NostrSql {
         Ok(result.rows_affected() > 0)
     }
 
-    async fn insert_tags_tx(&self, tx: &mut Transaction<'_, Any>, tags: &[EventTagDb]) -> Result<(), Error> {
+    async fn insert_tags_tx(
+        &self,
+        tx: &mut Transaction<'_, Any>,
+        tags: &[EventTagDb],
+    ) -> Result<(), Error> {
         let sql: &str = match self.kind {
             #[cfg(feature = "sqlite")]
             PoolKind::Sqlite => {
@@ -197,7 +216,6 @@ impl NostrSql {
 
         Ok(())
     }
-
 
     async fn _save_event(&self, event: &Event) -> Result<SaveEventStatus, Error> {
         if event.kind.is_ephemeral() {
@@ -260,7 +278,9 @@ impl NostrDatabase for NostrSql {
         event: &'a Event,
     ) -> BoxedFuture<'a, Result<SaveEventStatus, DatabaseError>> {
         Box::pin(async move {
-            self._save_event(event).await.map_err(DatabaseError::backend)
+            self._save_event(event)
+                .await
+                .map_err(DatabaseError::backend)
         })
     }
 
@@ -269,7 +289,11 @@ impl NostrDatabase for NostrSql {
         event_id: &'a EventId,
     ) -> BoxedFuture<'a, Result<DatabaseEventStatus, DatabaseError>> {
         Box::pin(async move {
-            match self.get_event_by_id(event_id).await.map_err(DatabaseError::backend)? {
+            match self
+                .get_event_by_id(event_id)
+                .await
+                .map_err(DatabaseError::backend)?
+            {
                 Some(e) if e.deleted => Ok(DatabaseEventStatus::Deleted),
                 Some(_) => Ok(DatabaseEventStatus::Saved),
                 None => Ok(DatabaseEventStatus::NotExistent),
@@ -282,19 +306,21 @@ impl NostrDatabase for NostrSql {
         event_id: &'a EventId,
     ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>> {
         Box::pin(async move {
-            match self.get_event_by_id(event_id).await.map_err(DatabaseError::backend)? {
-                Some(e) if !e.deleted => {
-                    Ok(Some(Event::decode(&e.payload).map_err(DatabaseError::backend)?))
-                }
+            match self
+                .get_event_by_id(event_id)
+                .await
+                .map_err(DatabaseError::backend)?
+            {
+                Some(e) if !e.deleted => Ok(Some(
+                    Event::decode(&e.payload).map_err(DatabaseError::backend)?,
+                )),
                 _ => Ok(None),
             }
         })
     }
 
     fn count(&self, filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>> {
-        Box::pin(async move {
-            Ok(self.query(filter).await?.len())
-        })
+        Box::pin(async move { Ok(self.query(filter).await?.len()) })
     }
 
     fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>> {
@@ -306,7 +332,10 @@ impl NostrDatabase for NostrSql {
 
             let sql = build_filter_query(filter);
 
-            let payloads: Vec<(Vec<u8>,)> = sqlx::query_as(&sql).fetch_all(&self.pool).await.map_err(DatabaseError::backend)?;
+            let payloads: Vec<(Vec<u8>,)> = sqlx::query_as(&sql)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(DatabaseError::backend)?;
 
             for (payload,) in payloads.into_iter() {
                 if let Ok(event) = Event::decode(&payload) {
@@ -330,11 +359,11 @@ impl NostrDatabase for NostrSql {
         //
         //     Ok(())
         // })
-        Box::pin(async move { Err(DatabaseError::NotSupported )})
+        Box::pin(async move { Err(DatabaseError::NotSupported) })
     }
 
     fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
-        Box::pin(async move { Err(DatabaseError::NotSupported )})
+        Box::pin(async move { Err(DatabaseError::NotSupported) })
     }
 }
 
@@ -343,7 +372,7 @@ fn build_filter_query(filter: Filter) -> String {
         "SELECT DISTINCT e.payload
          FROM events e
          INNER JOIN event_tags et ON e.id = et.event_id
-         WHERE e.deleted = 0"
+         WHERE e.deleted = 0",
     );
 
     // Add filters
@@ -393,10 +422,12 @@ fn build_filter_query(filter: Filter) -> String {
     if !filter.generic_tags.is_empty() {
         for (tag, values) in filter.generic_tags {
             if !values.is_empty() {
-                query_builder.push(" AND EXISTS (
+                query_builder.push(
+                    " AND EXISTS (
                     SELECT 1 FROM event_tags et2
                     WHERE et2.event_id = e.id
-                    AND et2.tag = ");
+                    AND et2.tag = ",
+                );
                 query_builder.push_bind(tag.to_string());
                 query_builder.push(" AND et2.tag_value IN (");
 
@@ -492,13 +523,13 @@ mod tests {
                 EventBuilder::metadata(
                     &Metadata::new().name("account-a").display_name("Account A"),
                 )
-                    .sign_with_keys(&keys_a)
-                    .unwrap(),
+                .sign_with_keys(&keys_a)
+                .unwrap(),
                 EventBuilder::metadata(
                     &Metadata::new().name("account-b").display_name("Account B"),
                 )
-                    .sign_with_keys(&keys_b)
-                    .unwrap(),
+                .sign_with_keys(&keys_b)
+                .unwrap(),
                 EventBuilder::new(Kind::Custom(33_333), "")
                     .tag(Tag::identifier("my-id-a"))
                     .sign_with_keys(&keys_a)

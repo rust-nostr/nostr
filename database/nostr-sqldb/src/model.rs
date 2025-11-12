@@ -2,9 +2,9 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use sqlx::FromRow;
 use nostr::event::Event;
 use nostr_database::{FlatBufferBuilder, FlatBufferEncode};
+use sqlx::FromRow;
 
 #[derive(Debug, Clone, FromRow)]
 pub(crate) struct EventDb {
