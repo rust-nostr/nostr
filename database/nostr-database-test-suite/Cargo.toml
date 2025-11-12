@@ -1,0 +1,9 @@
+[package]
+name = "nostr-database-test-suite"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+nostr-database.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

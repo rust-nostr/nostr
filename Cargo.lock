@@ -2764,6 +2764,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-database-test-suite"
+version = "0.1.0"
+dependencies = [
+ "nostr-database",
+ "tokio",
+]
+
+[[package]]
 name = "nostr-gossip"
 version = "0.44.0"
 dependencies = [
@@ -2829,6 +2837,7 @@ dependencies = [
  "heed",
  "nostr",
  "nostr-database",
+ "nostr-database-test-suite",
  "tempfile",
  "tokio",
  "tracing",

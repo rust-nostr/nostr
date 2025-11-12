@@ -35,6 +35,7 @@ jobs:
           - nostr-blossom
           - nostr-http-file-storage
           - nostr-database
+          - nostr-database-test-suite
           - nostr-gossip
           - nostr-gossip-memory
           - nostr-gossip-test-suite

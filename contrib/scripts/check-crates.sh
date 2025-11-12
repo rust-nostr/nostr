@@ -34,6 +34,7 @@ buildargs=(
     "-p nostr-blossom"
     "-p nostr-http-file-storage"
     "-p nostr-database"
+    "-p nostr-database-test-suite"
     "-p nostr-gossip"
     "-p nostr-gossip-memory"
     "-p nostr-gossip-test-suite"

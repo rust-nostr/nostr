@@ -28,5 +28,6 @@ heed = { version = "0.20", default-features = false, features = ["read-txn-no-tl
 
 [dev-dependencies]
 futures = "0.3"
+nostr-database-test-suite.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
