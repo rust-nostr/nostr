@@ -1,0 +1,46 @@
+[package]
+name = "nostr-sqldb"
+version = "0.44.0"
+edition = "2021"
+description = "SQL storage backend for Nostr apps"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "database", "postgres", "mysql", "sqlite"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+default = ["sqlite"]
+# Enable SQLite support
+sqlite = ["sqlx/sqlite"]
+# Enable Postgres support
+postgres = ["sqlx/postgres", "sqlx/tls-rustls-ring-webpki"]
+# Enable MySQL/MariaDB support
+mysql = ["sqlx/mysql", "sqlx/tls-rustls-ring-webpki"]
+
+[dependencies]
+nostr = { workspace = true, features = ["std"] }
+nostr-database = { workspace = true, features = ["flatbuf"] }
+sqlx = { version = "0.8", features = ["migrate", "runtime-tokio"] }
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+nostr-database-test-suite.workspace = true
+nostr-relay-builder.workspace = true
+tempfile.workspace = true
+tokio.workspace = true
+tracing-subscriber.workspace = true
+
+[[example]]
+name = "postgres-relay"
+required-features = ["postgres"]
+
+[[example]]
+name = "sqlite-relay"
+required-features = ["sqlite"]
