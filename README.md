@@ -36,7 +36,33 @@ Check the example in the [`embedded/`](./crates/nostr/examples/embedded) directo
 
 Learn more about `rust-nostr` at <https://rust-nostr.org>.
 
+## Getting started
+
+### Prerequisites
+
+- Rust **1.85.0** (automatically enforced through `rust-toolchain.toml`). Install it with `rustup` and make sure the `clippy`, `rustfmt`, and `rust-docs` components are available.
+- [`just`](https://github.com/casey/just) for the repo’s helper recipes (optional but strongly encouraged).
+
+### Clone and check
+
+```bash
+git clone https://github.com/rust-nostr/nostr.git
+cd nostr
+just check        # fmt + lint + doc + workspace checks
+cargo test        # run the full workspace test suite
+```
+
+Run only the formatting and lint gate the CI expects with `just precommit`, or call any script directly from `contrib/scripts/`.
+
+### Examples and docs
+
+- High-level client examples live in `crates/nostr-sdk/examples/`; run one with `cargo run --example client --package nostr-sdk`.
+- Low-level protocol examples live under `crates/nostr/examples/`.
+- To browse the API documentation offline, run `cargo doc --workspace --no-deps --open`. This generates the same content that powers <https://docs.rs> and complements the mdBook available at <https://rust-nostr.org>.
+
 ## Supported NIPs
+
+The table below lists which NIPs have implementations somewhere in this workspace. Some features are behind crate flags (for example `nostr-sdk --features nip44,nip57`) or only available when using a specific crate (e.g., signer integrations). ✅ means “implemented and tested behind the relevant feature flag”, ❌ means “not available anywhere in this repo yet”.
 
 | Supported | NIP                                                                                                             |
 |:---------:|-----------------------------------------------------------------------------------------------------------------|
