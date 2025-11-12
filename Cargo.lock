@@ -215,7 +215,7 @@ dependencies = [
  "rand",
  "safelog",
  "serde",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-async-utils",
  "tor-basic-utils",
  "tor-chanmgr",
@@ -259,7 +259,7 @@ dependencies = [
  "nom",
  "num-traits",
  "rusticata-macros",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -1155,7 +1155,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e1b84d32b18d9a256d81e4fec2e4cfd0ab6dde5e5ff49be1713ae0adbd0060c2"
 dependencies = [
  "heck 0.5.0",
- "indexmap 1.9.3",
+ "indexmap 2.12.0",
  "itertools 0.12.1",
  "proc-macro-crate",
  "proc-macro2",
@@ -1173,7 +1173,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b48e8e38a4aa565da767322b5ca55fb0f8347983c5bc7f7647db069405420479"
 dependencies = [
  "heck 0.5.0",
- "indexmap 1.9.3",
+ "indexmap 2.12.0",
  "itertools 0.14.0",
  "proc-macro-crate",
  "proc-macro2",
@@ -1675,7 +1675,7 @@ dependencies = [
  "once_cell",
  "pwd-grp",
  "serde",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "walkdir",
 ]
 
@@ -1706,7 +1706,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f261f25f1e94963fe8f72863f4da841b280fa3b5a573990b425a26b585a54578"
 dependencies = [
  "fslock-arti-fork",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "winapi",
 ]
 
@@ -2996,10 +2996,11 @@ dependencies = [
 
 [[package]]
 name = "nostr-sqldb"
-version = "0.42.0"
+version = "0.44.0"
 dependencies = [
  "nostr",
  "nostr-database",
+ "nostr-database-test-suite",
  "nostr-relay-builder",
  "sqlx",
  "tempfile",
@@ -3018,7 +3019,7 @@ dependencies = [
  "flatbuffers 23.5.26",
  "futures",
  "libc",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tokio",
  "tracing",
 ]
@@ -3730,7 +3731,7 @@ checksum = "dd6f9d3d47bdd2ad6945c5015a226ec6155d0bcdfd8f7cd29f86b71f8de99d2b"
 dependencies = [
  "getrandom 0.2.15",
  "libredox",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -3966,9 +3967,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.19"
+version = "0.23.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "934b404430bb06b3fae2cba809eb45a1ab1aecd64491213d7c3301b88393f8d1"
+checksum = "533f54bc6a7d4f647e46ad909549eda97bf5afc1585190ef692b4286b198bd8f"
 dependencies = [
  "log",
  "once_cell",
@@ -3991,15 +3992,18 @@ dependencies = [
 
 [[package]]
 name = "rustls-pki-types"
-version = "1.10.0"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16f1201b3c9a7ee8039bcadc17b7e605e2945b27eee7631788c1bd2b0643674b"
+checksum = "94182ad936a0c91c324cd46c6511b9510ed16af436d7b5bab34beab0afd55f7a"
+dependencies = [
+ "zeroize",
+]
 
 [[package]]
 name = "rustls-webpki"
-version = "0.102.8"
+version = "0.103.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64ca1bc8749bd4cf37b5ce386cc146580777b4e8572c7b97baf22c83f444bee9"
+checksum = "2ffdfa2f5286e2247234e03f680868ac2815974dc39e00ea15adc445d0aafe52"
 dependencies = [
  "ring 0.17.14",
  "rustls-pki-types",
@@ -4028,7 +4032,7 @@ dependencies = [
  "educe",
  "either",
  "fluid-let",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -4390,7 +4394,7 @@ dependencies = [
  "paste",
  "serde",
  "slotmap",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "void",
 ]
 
@@ -4479,7 +4483,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "smallvec",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tokio",
  "tokio-stream",
  "tracing",
@@ -4562,7 +4566,7 @@ dependencies = [
  "smallvec",
  "sqlx-core",
  "stringprep",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tracing",
  "whoami",
 ]
@@ -4599,7 +4603,7 @@ dependencies = [
  "smallvec",
  "sqlx-core",
  "stringprep",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tracing",
  "whoami",
 ]
@@ -4623,7 +4627,7 @@ dependencies = [
  "serde",
  "serde_urlencoded",
  "sqlx-core",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tracing",
  "url",
 ]
@@ -4816,11 +4820,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "2.0.8"
+version = "2.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08f5383f3e0071702bf93ab5ee99b52d26936be9dedd9413067cbdcddcb6141a"
+checksum = "f63587ca0f12b72a0600bcba1d40081f830876000bb46dd2337a3051618f4fc8"
 dependencies = [
- "thiserror-impl 2.0.8",
+ "thiserror-impl 2.0.17",
 ]
 
 [[package]]
@@ -4836,9 +4840,9 @@ dependencies = [
 
 [[package]]
 name = "thiserror-impl"
-version = "2.0.8"
+version = "2.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2f357fcec90b3caef6623a099691be676d033b40a058ac95d2a6ade6fa0c943"
+checksum = "3ff15c8ecd7de3849db632e14d18d2571fa09dfc5ed93479bc4485c7a517c913"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5049,7 +5053,7 @@ dependencies = [
  "oneshot-fused-workaround",
  "pin-project",
  "postage",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "void",
 ]
 
@@ -5069,7 +5073,7 @@ dependencies = [
  "serde",
  "slab",
  "smallvec",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -5084,7 +5088,7 @@ dependencies = [
  "educe",
  "getrandom 0.2.15",
  "safelog",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-error",
  "tor-llcrypto",
  "zeroize",
@@ -5106,7 +5110,7 @@ dependencies = [
  "paste",
  "rand",
  "smallvec",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-basic-utils",
  "tor-bytes",
  "tor-cert",
@@ -5129,7 +5133,7 @@ dependencies = [
  "derive_builder_fork_arti",
  "derive_more 2.0.1",
  "digest",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-bytes",
  "tor-checkable",
  "tor-llcrypto",
@@ -5152,7 +5156,7 @@ dependencies = [
  "rand",
  "safelog",
  "serde",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-async-utils",
  "tor-basic-utils",
  "tor-cell",
@@ -5178,7 +5182,7 @@ checksum = "8f1671c146d35ead4a350a50d7d2b25230635c0271539d310d92ea8d7c777313"
 dependencies = [
  "humantime",
  "signature",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-llcrypto",
 ]
 
@@ -5208,7 +5212,7 @@ dependencies = [
  "safelog",
  "serde",
  "static_assertions",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-async-utils",
  "tor-basic-utils",
  "tor-chanmgr",
@@ -5255,7 +5259,7 @@ dependencies = [
  "serde-value",
  "serde_ignored",
  "strum",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "toml",
  "tor-basic-utils",
  "tor-error",
@@ -5274,7 +5278,7 @@ dependencies = [
  "once_cell",
  "serde",
  "shellexpand",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-error",
  "tor-general-addr",
 ]
@@ -5287,7 +5291,7 @@ checksum = "9b9c48e1e8cc9c925ae5bdca8c71952886d2407f1f286cc4d8f4f7aad082d6a6"
 dependencies = [
  "digest",
  "hex",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-llcrypto",
 ]
 
@@ -5307,7 +5311,7 @@ dependencies = [
  "httpdate",
  "itertools 0.14.0",
  "memchr",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-circmgr",
  "tor-error",
  "tor-hscrypto",
@@ -5351,7 +5355,7 @@ dependencies = [
  "serde",
  "signature",
  "strum",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "time",
  "tor-async-utils",
  "tor-basic-utils",
@@ -5384,7 +5388,7 @@ dependencies = [
  "retry-error",
  "static_assertions",
  "strum",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tracing",
  "void",
 ]
@@ -5396,7 +5400,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f35f8ecb457f99f655c805f6c5cc855c63e71fa84c24a48e11e9fc51a7d7ad4b"
 dependencies = [
  "derive_more 2.0.1",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "void",
 ]
 
@@ -5425,7 +5429,7 @@ dependencies = [
  "safelog",
  "serde",
  "strum",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-async-utils",
  "tor-basic-utils",
  "tor-config",
@@ -5462,7 +5466,7 @@ dependencies = [
  "safelog",
  "slotmap-careful",
  "strum",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-async-utils",
  "tor-basic-utils",
  "tor-bytes",
@@ -5502,7 +5506,7 @@ dependencies = [
  "safelog",
  "signature",
  "subtle",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-basic-utils",
  "tor-bytes",
  "tor-error",
@@ -5528,7 +5532,7 @@ dependencies = [
  "safelog",
  "serde",
  "serde_with",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-async-utils",
  "tor-cell",
  "tor-config",
@@ -5573,7 +5577,7 @@ dependencies = [
  "serde",
  "serde_with",
  "strum",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-async-utils",
  "tor-basic-utils",
  "tor-bytes",
@@ -5612,7 +5616,7 @@ dependencies = [
  "rand",
  "signature",
  "ssh-key",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-bytes",
  "tor-cert",
  "tor-checkable",
@@ -5643,7 +5647,7 @@ dependencies = [
  "serde",
  "signature",
  "ssh-key",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-basic-utils",
  "tor-bytes",
  "tor-config",
@@ -5676,7 +5680,7 @@ dependencies = [
  "serde",
  "serde_with",
  "strum",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-basic-utils",
  "tor-bytes",
  "tor-config",
@@ -5712,7 +5716,7 @@ dependencies = [
  "sha3",
  "signature",
  "subtle",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-memquota",
  "visibility",
  "x25519-dalek",
@@ -5728,7 +5732,7 @@ dependencies = [
  "futures",
  "humantime",
  "once_cell",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-error",
  "tor-rtcompat",
  "tracing",
@@ -5752,7 +5756,7 @@ dependencies = [
  "serde",
  "slotmap-careful",
  "static_assertions",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-async-utils",
  "tor-basic-utils",
  "tor-config",
@@ -5782,7 +5786,7 @@ dependencies = [
  "serde",
  "static_assertions",
  "strum",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "time",
  "tor-basic-utils",
  "tor-error",
@@ -5821,7 +5825,7 @@ dependencies = [
  "signature",
  "smallvec",
  "subtle",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "time",
  "tinystr",
  "tor-basic-utils",
@@ -5860,7 +5864,7 @@ dependencies = [
  "sanitize-filename",
  "serde",
  "serde_json",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "time",
  "tor-async-utils",
  "tor-basic-utils",
@@ -5899,7 +5903,7 @@ dependencies = [
  "slotmap-careful",
  "static_assertions",
  "subtle",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tokio",
  "tokio-util",
  "tor-async-utils",
@@ -5932,7 +5936,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a7d228eda4c7e7c96fff6a5f6759d1bd03bad69b62b9d94f2ac409de3518b8a"
 dependencies = [
  "caret",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -5968,7 +5972,7 @@ dependencies = [
  "paste",
  "pin-project",
  "rustls-pki-types",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tokio",
  "tokio-util",
  "tor-error",
@@ -5997,7 +6001,7 @@ dependencies = [
  "priority-queue",
  "slotmap-careful",
  "strum",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-error",
  "tor-general-addr",
  "tor-rtcompat",
@@ -6018,7 +6022,7 @@ dependencies = [
  "educe",
  "safelog",
  "subtle",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-bytes",
  "tor-error",
 ]
@@ -6031,7 +6035,7 @@ checksum = "7388f506c9278d07421e6799aa8a912adee4ea6921b3dd08a1247a619de82124"
 dependencies = [
  "derive-deftly 1.0.1",
  "derive_more 2.0.1",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "tor-memquota",
 ]
 
@@ -6146,7 +6150,7 @@ dependencies = [
  "rustls",
  "rustls-pki-types",
  "sha1",
- "thiserror 2.0.8",
+ "thiserror 2.0.17",
  "utf-8",
 ]
 

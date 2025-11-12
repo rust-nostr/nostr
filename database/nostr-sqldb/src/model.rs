@@ -16,6 +16,13 @@ pub(crate) struct EventDb {
     pub deleted: bool,
 }
 
+impl EventDb {
+    #[inline]
+    pub(super) fn is_deleted(&self) -> bool {
+        self.deleted
+    }
+}
+
 #[derive(Debug, Clone, FromRow)]
 pub(crate) struct EventTagDb {
     pub tag: String,
@@ -36,7 +43,7 @@ impl EventDataDb {
             event: EventDb {
                 id: event.id.as_bytes().to_vec(),
                 pubkey: event.pubkey.as_bytes().to_vec(),
-                created_at: event.created_at.as_u64() as i64,
+                created_at: event.created_at.as_secs() as i64,
                 kind: event.kind.as_u16() as i64,
                 payload: event.encode(fbb).to_vec(),
                 deleted: false,

@@ -16,5 +16,7 @@ compile_error!("At least one database backend must be enabled");
 pub mod db;
 pub mod error;
 mod model;
+// #[cfg(feature = "sqlite")]
+// pub mod sqlite;
 
 pub use self::db::{NostrSql, NostrSqlBackend};

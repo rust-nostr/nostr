@@ -21,8 +21,9 @@ async fn main() -> Result<()> {
     let builder = RelayBuilder::default().database(db);
 
     // Create local relay
-    let relay = LocalRelay::run(builder).await?;
-    println!("Url: {}", relay.url());
+    let relay = LocalRelay::new(builder);
+    relay.run().await?;
+    println!("Url: {}", relay.url().await);
 
     // Keep up the program
     loop {

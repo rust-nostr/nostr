@@ -52,6 +52,7 @@ nostr-gossip-memory = { version = "0.44", path = "./gossip/nostr-gossip-memory",
 nostr-gossip-test-suite = { path = "./gossip/nostr-gossip-test-suite" }
 nostr-lmdb = { version = "0.44", path = "./database/nostr-lmdb", default-features = false }
 nostr-ndb = { version = "0.44", path = "./database/nostr-ndb", default-features = false }
+nostr-sqldb = { version = "0.44", path = "./database/nostr-sqldb", default-features = false }
 nostr-relay-builder = { version = "0.44", path = "./crates/nostr-relay-builder", default-features = false }
 nostr-relay-pool = { version = "0.44", path = "./crates/nostr-relay-pool", default-features = false }
 reqwest = { version = "0.12", default-features = false }
