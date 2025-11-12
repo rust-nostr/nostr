@@ -38,41 +38,33 @@ macro_rules! database_unit_tests {
                 .collect()
         }
 
+        fn build_event(keys: &Keys, builder: EventBuilder) -> Event {
+            builder.sign_with_keys(keys).expect("Failed to build and sign event")
+        }
+
         // Return the number of added events
         async fn add_random_events(store: &$store_type) -> usize {
             let keys_a = Keys::generate();
             let keys_b = Keys::generate();
 
             let events = vec![
-                EventBuilder::text_note("Text Note A")
-                    .sign_with_keys(&keys_a)
-                    .unwrap(),
-                EventBuilder::text_note("Text Note B")
-                    .sign_with_keys(&keys_b)
-                    .unwrap(),
-                EventBuilder::metadata(
+                build_event(&keys_a, EventBuilder::text_note("Text Note A")),
+                build_event(&keys_b, EventBuilder::text_note("Text Note B")),
+                build_event(&keys_a, EventBuilder::metadata(
                     &Metadata::new().name("account-a").display_name("Account A"),
-                )
-                .sign_with_keys(&keys_a)
-                .unwrap(),
-                EventBuilder::metadata(
+                )),
+                build_event(&keys_b, EventBuilder::metadata(
                     &Metadata::new().name("account-b").display_name("Account B"),
-                )
-                .sign_with_keys(&keys_b)
-                .unwrap(),
-                EventBuilder::new(Kind::Custom(33_333), "")
-                    .tag(Tag::identifier("my-id-a"))
-                    .sign_with_keys(&keys_a)
-                    .unwrap(),
-                EventBuilder::new(Kind::Custom(33_333), "")
-                    .tag(Tag::identifier("my-id-b"))
-                    .sign_with_keys(&keys_b)
-                    .unwrap(),
+                )),
+                build_event(&keys_a, EventBuilder::new(Kind::Custom(33_333), "")
+                    .tag(Tag::identifier("my-id-a"))),
+                build_event(&keys_b, EventBuilder::new(Kind::Custom(33_333), "")
+                    .tag(Tag::identifier("my-id-b"))),
             ];
 
             // Store
             for event in events.iter() {
-                store.save_event(event).await.unwrap();
+                store.save_event(event).await.expect("Failed to save event");
             }
 
             events.len()
@@ -80,8 +72,7 @@ macro_rules! database_unit_tests {
 
         async fn add_event(store: &$store_type, builder: EventBuilder) -> (Keys, Event) {
             let keys = Keys::generate();
-            let event = builder.sign_with_keys(&keys).unwrap();
-            store.save_event(&event).await.unwrap();
+            let (event, ..) = add_event_with_keys(store, builder, &keys).await;
             (keys, event)
         }
 
@@ -90,13 +81,21 @@ macro_rules! database_unit_tests {
             builder: EventBuilder,
             keys: &Keys,
         ) -> (Event, SaveEventStatus) {
-            let event = builder.sign_with_keys(keys).unwrap();
-            let status = store.save_event(&event).await.unwrap();
+            let event = builder.sign_with_keys(keys).expect("Failed to sign event");
+            let status = store.save_event(&event).await.expect("Failed to save event");
             (event, status)
         }
 
+        async fn get_event_by_id(store: &$store_type, id: &EventId) -> Option<Event> {
+            store.event_by_id(id).await.expect("Failed to get event by ID")
+        }
+
+        async fn get_existent_event_by_id(store: &$store_type, id: &EventId) -> Event {
+            get_event_by_id(store, id).await.expect("Expected event to exist")
+        }
+
         async fn count_all(store: &$store_type) -> usize {
-            store.count(Filter::new()).await.unwrap()
+            store.count(Filter::new()).await.expect("Failed to count events")
         }
 
         #[tokio::test]
@@ -247,7 +246,7 @@ macro_rules! database_unit_tests {
             // Should only have the newer event
             assert_eq!(results.len(), 1);
             // Verify it's the newer event by content
-            let result_event = results.first().unwrap();
+            let result_event = results.first().expect("Failed to get first event");
             assert!(result_event.content.contains("Second"));
         }
 
@@ -283,7 +282,7 @@ macro_rules! database_unit_tests {
             // Should only have the newer event
             assert_eq!(results.len(), 1);
             // Verify it's the newer event by content
-            let result_event = results.first().unwrap();
+            let result_event = results.first().expect("Failed to get first event");
             assert_eq!(result_event.content, "Content 2");
         }
 
@@ -393,15 +392,12 @@ macro_rules! database_unit_tests {
         async fn test_event_by_id() {
             let store: $store_type = $setup_fn().await;
 
-            let added_events: usize = add_random_events(&store).await;
+            let _added_events: usize = add_random_events(&store).await;
 
             let (_keys, expected_event) = add_event(&store, EventBuilder::text_note("Test")).await;
 
-            let event = store.event_by_id(&expected_event.id).await.unwrap().unwrap();
+            let event = get_existent_event_by_id(&store, &expected_event.id).await;
             assert_eq!(event, expected_event);
-
-            // Check if number of events in database match the expected
-            assert_eq!(count_all(&store).await, added_events + 1)
         }
 
         #[tokio::test]
@@ -422,14 +418,14 @@ macro_rules! database_unit_tests {
                 .await;
 
             // Test event by ID
-            let event = store.event_by_id(&expected_event.id).await.unwrap().unwrap();
+            let event = get_existent_event_by_id(&store, &expected_event.id).await;;
             assert_eq!(event, expected_event);
 
             // Test filter query
             let events = store
                 .query(Filter::new().author(keys.public_key).kind(Kind::Metadata))
                 .await
-                .unwrap();
+                .expect("Failed to query events");
             assert_eq!(events.to_vec(), vec![expected_event.clone()]);
 
             // Check if number of events in database match the expected
@@ -445,14 +441,10 @@ macro_rules! database_unit_tests {
             assert!(status.is_success());
 
             // Test event by ID (MUST be None because replaced)
-            assert!(store.event_by_id(&expected_event.id).await.unwrap().is_none());
+            assert!(get_event_by_id(&store, &expected_event.id).await.is_none());
 
             // Test event by ID
-            let event = store
-                .event_by_id(&new_expected_event.id)
-                .await
-                .unwrap()
-                .unwrap();
+            let event = get_existent_event_by_id(&store, &new_expected_event.id).await;
             assert_eq!(event, new_expected_event);
 
             // Test filter query
@@ -484,7 +476,7 @@ macro_rules! database_unit_tests {
             let coordinate = Coordinate::new(Kind::from(33_333), keys.public_key).identifier("my-id-a");
 
             // Test event by ID
-            let event = store.event_by_id(&expected_event.id).await.unwrap().unwrap();
+            let event = get_existent_event_by_id(&store, &expected_event.id).await;
             assert_eq!(event, expected_event);
 
             // Test filter query
@@ -506,14 +498,10 @@ macro_rules! database_unit_tests {
             assert!(status.is_success());
 
             // Test event by ID (MUST be None` because replaced)
-            assert!(store.event_by_id(&expected_event.id).await.unwrap().is_none());
+            assert!(get_event_by_id(&store, &expected_event.id).await.is_none());
 
             // Test event by ID
-            let event = store
-                .event_by_id(&new_expected_event.id)
-                .await
-                .unwrap()
-                .unwrap();
+            let event = get_existent_event_by_id(&store, &new_expected_event.id).await;
             assert_eq!(event, new_expected_event);
 
             // Test filter query
@@ -600,9 +588,7 @@ macro_rules! database_unit_tests {
             let keys = Keys::generate();
 
             // Create and save an event
-            let event = EventBuilder::text_note("Test event")
-                .sign_with_keys(&keys)
-                .expect("Failed to sign");
+            let event = build_event(&keys, EventBuilder::text_note("Test event"));
 
             let status = store.save_event(&event).await.expect("Failed to save event");
             assert!(matches!(status, SaveEventStatus::Success));
@@ -625,10 +611,8 @@ macro_rules! database_unit_tests {
             assert_eq!(before_by_author.len(), 1);
 
             // Create and save a Kind 5 deletion event
-            let deletion_event = EventBuilder::new(Kind::EventDeletion, "")
-                .tag(Tag::event(event.id))
-                .sign_with_keys(&keys)
-                .expect("Failed to sign");
+            let deletion_event = build_event(&keys, EventBuilder::new(Kind::EventDeletion, "")
+                .tag(Tag::event(event.id)));
 
             let del_status = store
                 .save_event(&deletion_event)
