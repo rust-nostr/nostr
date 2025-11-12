@@ -82,6 +82,36 @@ async fn main() -> Result<()> {
 
 More examples can be found in the [examples/](https://github.com/rust-nostr/nostr/tree/master/crates/nostr-sdk/examples) directory.
 
+### Deleting events (NIP-09)
+
+Use [`EventDeletionRequest`](https://docs.rs/nostr/latest/nostr/nips/nip09/struct.EventDeletionRequest.html) when you need to retract one or more events you previously signed. NIP-09 is advisory: relays and clients may ignore the request, so always wait for confirmations.
+
+```rust,no_run
+use nostr_sdk::prelude::*;
+
+# #[tokio::main]
+# async fn main() -> Result<(), Box<dyn std::error::Error>> {
+let client = Client::default();
+client.add_relay("wss://relay.example.com").await?;
+client.connect().await;
+
+// Collect the events (or coordinates) you want to delete
+let delete = EventDeletionRequest::new()
+    .id(EventId::from_hex("7469af3be8c8e06e1b50ef1caceba30392ddc0b6614507398b7d7daa4c218e96")?)
+    .reason("published by accident");
+
+client
+    .send_event_builder(EventBuilder::delete(delete))
+    .await?;
+# Ok(()) }
+```
+
+Guidelines:
+
+- Only the author’s keys can sign a deletion event for a given note.
+- Include `Coordinate` tags (kind:pubkey:d) when deleting replaceable or parameterized replaceable events.
+- Keep local state until relays confirm the deletion; replays may still surface the original content.
+
 ## WASM
 
 This crate supports the `wasm32` targets.

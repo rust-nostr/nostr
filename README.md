@@ -35,6 +35,7 @@ Check the example in the [`embedded/`](./crates/nostr/examples/embedded) directo
 ## Book
 
 Learn more about `rust-nostr` at <https://rust-nostr.org>.
+For focused topics that haven’t landed in the public book yet (e.g., NIP-09 deletions), see the notes under [`docs/`](./docs/nip09-deletions.md).
 
 ## Getting started
 
