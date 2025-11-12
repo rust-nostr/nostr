@@ -10,7 +10,9 @@
 #![allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive for async_trait
 
 use std::borrow::Cow;
+use std::io::{Error, ErrorKind};
 use std::ops::{Deref, DerefMut};
+use std::path::Path;
 
 pub extern crate nostr;
 pub extern crate nostr_database as database;
@@ -35,10 +37,14 @@ impl NdbDatabase {
     /// Open nostrdb
     pub fn open<P>(path: P) -> Result<Self, DatabaseError>
     where
-        P: AsRef<str>,
+        P: AsRef<Path>,
     {
-        let path: &str = path.as_ref();
-        let config = Config::new();
+        let path: &Path = path.as_ref();
+        let path: &str = path.to_str().ok_or_else(|| {
+            DatabaseError::backend(Error::new(ErrorKind::InvalidInput, "path is not valid "))
+        })?;
+
+        let config: Config = Config::new();
 
         Ok(Self {
             db: Ndb::new(path, &config).map_err(DatabaseError::backend)?,
