@@ -11,7 +11,7 @@ This project follows the rust-nostr organization guidelines: https://github.com/
 The commit **must** be formatted as follows:
 
 ```
-<context>: <short descriptrion>
+<context>: <short description>
 
 <description explaining reasons for the changes>
 ```
@@ -24,7 +24,7 @@ If applicable, link the `issue`/`PR` to be closed with:
 The `context` **must be**:
 
 - `nostr` for changes to the `nostr` crate
-- `sdk`, `cli`, `relay-pool`, `connect`, `nwc` and so on for the others crates (remote the `nostr-` prefix)
+- `sdk`, `cli`, `relay-pool`, `connect`, `nwc` and so on for the others crates (remove the `nostr-` prefix)
 - `test` for changes to the unit tests
 - `doc` for changes to the documentation
 - `contrib` for changes to the scripts and tools
