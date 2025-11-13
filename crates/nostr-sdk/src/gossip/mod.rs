@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use nostr::prelude::*;
-use nostr_gossip::{BestRelaySelection, NostrGossip};
+use nostr_gossip::{BestRelaySelection, GossipAllowedRelays, NostrGossip};
 
 use crate::client::options::GossipRelayLimits;
 use crate::client::Error;
@@ -58,6 +58,7 @@ impl GossipWrapper {
         &self,
         public_keys: I,
         selection: BestRelaySelection,
+        allowed: GossipAllowedRelays,
     ) -> Result<HashSet<RelayUrl>, Error>
     where
         I: IntoIterator<Item = &'a PublicKey>,
@@ -65,8 +66,10 @@ impl GossipWrapper {
         let mut urls: HashSet<RelayUrl> = HashSet::new();
 
         for public_key in public_keys.into_iter() {
-            let relays: HashSet<RelayUrl> =
-                self.gossip.get_best_relays(public_key, selection).await?;
+            let relays: HashSet<RelayUrl> = self
+                .gossip
+                .get_best_relays(public_key, selection, allowed)
+                .await?;
             urls.extend(relays);
         }
 
@@ -77,6 +80,7 @@ impl GossipWrapper {
         &self,
         public_keys: I,
         selection: BestRelaySelection,
+        allowed: GossipAllowedRelays,
     ) -> Result<HashMap<RelayUrl, BTreeSet<PublicKey>>, Error>
     where
         I: IntoIterator<Item = &'a PublicKey>,
@@ -84,8 +88,10 @@ impl GossipWrapper {
         let mut urls: HashMap<RelayUrl, BTreeSet<PublicKey>> = HashMap::new();
 
         for public_key in public_keys.into_iter() {
-            let relays: HashSet<RelayUrl> =
-                self.gossip.get_best_relays(public_key, selection).await?;
+            let relays: HashSet<RelayUrl> = self
+                .gossip
+                .get_best_relays(public_key, selection, allowed)
+                .await?;
 
             for url in relays.into_iter() {
                 urls.entry(url)
@@ -105,6 +111,7 @@ impl GossipWrapper {
         filter: Filter,
         pattern: GossipFilterPattern,
         limits: &GossipRelayLimits,
+        allowed: GossipAllowedRelays,
     ) -> Result<BrokenDownFilters, Error> {
         // Extract `p` tag from generic tags and parse public key hex
         let p_tag: Option<BTreeSet<PublicKey>> = filter.generic_tags.get(&P_TAG).map(|s| {
@@ -123,6 +130,7 @@ impl GossipWrapper {
                         BestRelaySelection::Write {
                             limit: limits.write_relays_per_user,
                         },
+                        allowed,
                     )
                     .await?;
 
@@ -133,6 +141,7 @@ impl GossipWrapper {
                         BestRelaySelection::Hints {
                             limit: limits.hint_relays_per_user,
                         },
+                        allowed,
                     )
                     .await?;
 
@@ -143,6 +152,7 @@ impl GossipWrapper {
                         BestRelaySelection::MostReceived {
                             limit: limits.most_used_relays_per_user,
                         },
+                        allowed,
                     )
                     .await?;
 
@@ -158,6 +168,7 @@ impl GossipWrapper {
                             BestRelaySelection::PrivateMessage {
                                 limit: limits.nip17_relays,
                             },
+                            allowed,
                         )
                         .await?;
 
@@ -191,6 +202,7 @@ impl GossipWrapper {
                         BestRelaySelection::Read {
                             limit: limits.read_relays_per_user,
                         },
+                        allowed,
                     )
                     .await?;
 
@@ -201,6 +213,7 @@ impl GossipWrapper {
                         BestRelaySelection::Hints {
                             limit: limits.hint_relays_per_user,
                         },
+                        allowed,
                     )
                     .await?;
 
@@ -211,6 +224,7 @@ impl GossipWrapper {
                         BestRelaySelection::MostReceived {
                             limit: limits.most_used_relays_per_user,
                         },
+                        allowed,
                     )
                     .await?;
 
@@ -227,6 +241,7 @@ impl GossipWrapper {
                             BestRelaySelection::PrivateMessage {
                                 limit: limits.nip17_relays,
                             },
+                            allowed,
                         )
                         .await?;
 
@@ -267,6 +282,7 @@ impl GossipWrapper {
                             hints: limits.hint_relays_per_user,
                             most_received: limits.most_used_relays_per_user,
                         },
+                        allowed,
                     )
                     .await?;
 
@@ -279,6 +295,7 @@ impl GossipWrapper {
                             BestRelaySelection::PrivateMessage {
                                 limit: limits.nip17_relays,
                             },
+                            allowed,
                         )
                         .await?;
 
@@ -410,6 +427,7 @@ mod tests {
                 filter.clone(),
                 GossipFilterPattern::Nip65,
                 &GossipRelayLimits::default(),
+                GossipAllowedRelays::default(),
             )
             .await
             .unwrap()
@@ -430,6 +448,7 @@ mod tests {
                 authors_filter.clone(),
                 GossipFilterPattern::Nip65,
                 &GossipRelayLimits::default(),
+                GossipAllowedRelays::default(),
             )
             .await
             .unwrap()
@@ -465,6 +484,7 @@ mod tests {
                 search_filter.clone(),
                 GossipFilterPattern::Nip65,
                 &GossipRelayLimits::default(),
+                GossipAllowedRelays::default(),
             )
             .await
             .unwrap()
@@ -482,6 +502,7 @@ mod tests {
                 p_tag_filter.clone(),
                 GossipFilterPattern::Nip65,
                 &GossipRelayLimits::default(),
+                GossipAllowedRelays::default(),
             )
             .await
             .unwrap()
@@ -507,6 +528,7 @@ mod tests {
                 filter.clone(),
                 GossipFilterPattern::Nip65,
                 &GossipRelayLimits::default(),
+                GossipAllowedRelays::default(),
             )
             .await
             .unwrap()
@@ -531,6 +553,7 @@ mod tests {
                 filter.clone(),
                 GossipFilterPattern::Nip65,
                 &GossipRelayLimits::default(),
+                GossipAllowedRelays::default(),
             )
             .await
             .unwrap()
