@@ -38,6 +38,11 @@ Learn more about `rust-nostr` at <https://rust-nostr.org>.
 
 ## Supported NIPs
 
+The table below lists which NIPs have implementations somewhere in this workspace. 
+Some features are behind crate flags or only available when using a specific crate (e.g., signer integrations). 
+
+✅ means “implemented and tested behind the relevant feature flag”, ❌ means “not available anywhere in this repo yet”.
+
 | Supported | NIP                                                                                                             |
 |:---------:|-----------------------------------------------------------------------------------------------------------------|
 |     ✅     | [01 - Basic protocol flow description](https://github.com/nostr-protocol/nips/blob/master/01.md)                |
