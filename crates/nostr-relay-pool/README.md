@@ -1,5 +1,40 @@
 # Nostr Relay Pool
 
+This library is the low-level building block used by [`nostr-sdk`](../nostr-sdk) to manage relays.
+
+If you’re just trying to write a nostr client or bot, you’re probably looking for [`nostr-sdk`](../nostr-sdk) instead.
+
+## Usage
+
+```rust,no_run
+use std::time::Duration;
+
+use nostr_relay_pool::prelude::*;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let pool = RelayPool::new();
+
+    // Add relays with custom options (timeouts, flags, etc.)
+    pool.add_relay("wss://relay.damus.io", RelayOptions::default()).await?;
+    pool.add_relay("wss://relay.primal.net", RelayOptions::default()).await?;
+
+    // Fire up the background tasks and, optionally, wait until we are connected
+    pool.connect().await;
+    pool.wait_for_connection(Duration::from_secs(5)).await;
+
+    // Listen for notifications
+    let mut notifications = pool.notifications();
+    while let Ok(notification) = notifications.recv().await {
+        println!("Got notification: {:?}", notification);
+    }
+
+    Ok(())
+}
+```
+
+More examples can be found in the [examples directory](./examples).
+
 ## Crate Feature Flags
 
 The following crate feature flags are available:
