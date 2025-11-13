@@ -57,6 +57,6 @@ Closes https://<domain>.com/rust-nostr/nostr/issue/2222
 
 ### Coding Conventions
 
-Install https://github.com/casey/just and use `just precommit` or `just check` 
+Install https://github.com/casey/just and use `just precommit` or `just ci`
 to format and check the code before committing.
 The CI also enforces this.

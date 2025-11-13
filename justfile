@@ -9,19 +9,25 @@ default:
 # Execute the pre-commit checks
 precommit: fmt check-crates check-docs
 
+# Execute continuous integration (CI) checks
+ci: check-fmt check-crates check-docs
+
 # Format the entire Rust code
 fmt:
-	@bash contrib/scripts/check-fmt.sh
+	@bash contrib/scripts/fmt.sh
 
 # Check if the Rust code is formatted
+[private]
 check-fmt:
-	@bash contrib/scripts/check-fmt.sh check
+	@bash contrib/scripts/fmt.sh check
 
 # Check all the crates
+[private]
 check-crates:
 	@bash contrib/scripts/check-crates.sh
 
 # Check Rust docs
+[private]
 check-docs:
 	@bash contrib/scripts/check-docs.sh
 
@@ -33,7 +39,3 @@ release:
 # Run benches (unstable)
 bench:
 	RUSTFLAGS='--cfg=bench' cargo +nightly bench
-
-# Count the lines of codes of this project
-loc:
-	@echo "--- Counting lines of .rs files (LOC):" && find -type f -name "*.rs" -not -path "*/target/*" -exec cat {} \; | wc -l
