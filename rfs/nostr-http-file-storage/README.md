@@ -1,8 +1,41 @@
 # Nostr HTTP File Storage client (NIP-96)
 
-## Description
+Client for [NIP-96](https://github.com/nostr-protocol/nips/blob/master/96.md) working with servers. 
+Handles discovery of `nip96.json`, authenticated uploads, and returns the download URL you can embed inside events.
 
-Nostr HTTP File Storage client ([NIP-96](https://github.com/nostr-protocol/nips/blob/master/96.md)).
+```rust,no_run
+use nostr_http_file_storage::prelude::*;
+
+# #[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = NostrHttpFileStorageClient::new();
+    let server = Url::parse("https://files.example.com")?;
+
+    // Fetch nip96.json to learn limits and auth requirements
+    let config = client.get_server_config(&server).await?;
+
+    let signer = Keys::parse("<my-key>")?;
+    let download_url = client
+        .upload(
+            &signer,
+            &config,
+            b"hello nostr".to_vec(),
+            Some("text/plain"),
+        )
+        .await?;
+
+    println!("File available at {download_url}");
+    Ok(())
+}
+```
+
+## Crate Feature Flags
+
+The following crate feature flags are available:
+
+| Feature | Default | Description                    |
+|---------|:-------:|--------------------------------|
+| `socks` |   No    | Enable support for socks proxy |
 
 ## Changelog
 

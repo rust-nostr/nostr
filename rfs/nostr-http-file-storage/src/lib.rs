@@ -10,6 +10,7 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 #![warn(clippy::large_futures)]
+#![doc = include_str!("../README.md")]
 
 use std::fmt;
 #[cfg(all(feature = "socks", not(target_arch = "wasm32")))]
