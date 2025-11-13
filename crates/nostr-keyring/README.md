@@ -1,5 +1,31 @@
 # Nostr Keyring
 
+Thin wrapper around the system keyring that stores `Keys` objects without forcing you to handle secret material manually. 
+The crate keeps all serialization in-memory and relies on the OS-provided credential store (macOS Keychain, Windows Credential Manager, Secret Service, etc.).
+
+## Getting started
+
+```rust,no_run
+use nostr_keyring::prelude::*;
+
+fn main() -> Result<()> {
+    let keyring = NostrKeyring::new("my-nostr-app");
+    
+    // Save a key
+    let keys = Keys::generate();
+    keyring.set("example", &keys)?;
+    
+    // Get it
+    let restored: Keys = keyring.get("example")?;
+    
+    assert_eq!(keys.public_key(), restored.public_key());
+
+    Ok(())
+}
+```
+
+More examples can be found in the [examples directory](./examples).
+
 ## Crate Feature Flags
 
 The following crate feature flags are available:
