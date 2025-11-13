@@ -29,6 +29,10 @@
 
 - Replace `usize` with `u8` for gossip relay limits
 
+### Removed
+
+- Remove gossip concurrency limit (https://github.com/rust-nostr/nostr/pull/1132)
+
 ## v0.44.1 - 2025/11/09
 
 ### Fixed
