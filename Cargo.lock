@@ -2880,6 +2880,7 @@ dependencies = [
  "negentropy",
  "nostr",
  "nostr-database",
+ "nostr-lmdb",
  "tokio",
  "tracing",
  "tracing-subscriber",
