@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check
-        run: bash contrib/scripts/check-fmt.sh check
+        run: bash contrib/scripts/fmt.sh check
 
   check-crates:
     name: Check crates
