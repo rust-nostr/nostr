@@ -15,6 +15,7 @@ buildargs=(
     "-p nostr-database-test-suite"
     "-p nostr-gossip"
     "-p nostr-gossip-memory"
+    "-p nostr-gossip-sqlite"
     "-p nostr-gossip-test-suite"
     "-p nostr-lmdb"
     "-p nostr-indexeddb --target wasm32-unknown-unknown"

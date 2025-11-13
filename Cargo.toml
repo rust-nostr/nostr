@@ -12,6 +12,7 @@ members = [
     # Gossip
     "gossip/nostr-gossip",
     "gossip/nostr-gossip-memory",
+    "gossip/nostr-gossip-sqlite",
     "gossip/nostr-gossip-test-suite",
 
     # Remote File Storage implementations
@@ -48,6 +49,7 @@ nostr-database = { version = "0.44", path = "./database/nostr-database", default
 nostr-database-test-suite = { path = "./database/nostr-database-test-suite" }
 nostr-gossip = { version = "0.44", path = "./gossip/nostr-gossip", default-features = false }
 nostr-gossip-memory = { version = "0.44", path = "./gossip/nostr-gossip-memory", default-features = false }
+nostr-gossip-sqlite = { version = "0.44", path = "./gossip/nostr-gossip-sqlite", default-features = false }
 nostr-gossip-test-suite = { path = "./gossip/nostr-gossip-test-suite" }
 nostr-lmdb = { version = "0.44", path = "./database/nostr-lmdb", default-features = false }
 nostr-ndb = { version = "0.44", path = "./database/nostr-ndb", default-features = false }

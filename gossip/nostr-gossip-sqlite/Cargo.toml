@@ -1,0 +1,25 @@
+[package]
+name = "nostr-gossip-sqlite"
+version = "0.44.0"
+edition = "2021"
+description = "Nostr SQLite gossip backend"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["nostr", "gossip", "sqlite"]
+
+[features]
+default = []
+unbundled = ["sqlx/sqlite-unbundled"]
+
+[dependencies]
+nostr = { workspace = true, features = ["std"] }
+nostr-gossip.workspace = true
+sqlx = { version = "0.8", features = ["migrate", "runtime-tokio", "sqlite"] }
+
+[dev-dependencies]
+nostr-gossip-test-suite.workspace = true
+tempfile.workspace = true
