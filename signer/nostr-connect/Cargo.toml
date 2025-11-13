@@ -11,6 +11,10 @@ readme = "README.md"
 rust-version.workspace = true
 keywords = ["nostr", "signer", "nip46", "nostr-connect"]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 default = []
 tor = ["nostr-relay-pool/tor"]

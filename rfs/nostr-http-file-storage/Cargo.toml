@@ -11,6 +11,10 @@ readme = "README.md"
 rust-version.workspace = true
 keywords = ["nostr", "nip96", "storage", "http"]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 default = []
 # Enable support for SOCKS proxy

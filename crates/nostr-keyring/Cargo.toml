@@ -11,6 +11,10 @@ readme = "README.md"
 rust-version = "1.75.0"
 keywords = ["nostr", "keyring"]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 default = []
 # Enables async APIs
