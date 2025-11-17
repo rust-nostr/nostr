@@ -25,6 +25,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Make `Kind::from_u16` and `Kind::as_u16` const (https://github.com/rust-nostr/nostr/pull/1136)
+
 ### Added
 
 - Add `RelayUrlScheme` enum and `RelayUrl::scheme` method (https://github.com/rust-nostr/nostr/pull/1127) 

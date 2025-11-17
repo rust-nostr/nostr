@@ -44,24 +44,25 @@ macro_rules! kind_variants {
             Custom(u16),
         }
 
-        impl From<u16> for Kind {
-            fn from(u: u16) -> Self {
-                match u {
+        impl Kind {
+            /// Construct from 16-bit unsigned integer
+            pub const fn from_u16(kind: u16) -> Self {
+                match kind {
                     $(
                         $value => Self::$name,
                     )*
                     x => Self::Custom(x),
                 }
             }
-        }
 
-        impl From<Kind> for u16 {
-            fn from(e: Kind) -> u16 {
-                match e {
+            /// Get as 16-bit unsigned integer
+            #[inline]
+            pub const fn as_u16(&self) -> u16 {
+                match self {
                     $(
-                        Kind::$name => $value,
+                        Self::$name => $value,
                     )*
-                    Kind::Custom(u) => u,
+                    Self::Custom(u) => *u,
                 }
             }
         }
@@ -201,18 +202,6 @@ impl Hash for Kind {
 }
 
 impl Kind {
-    /// Construct from 16-bit unsigned integer
-    #[inline]
-    pub fn from_u16(kind: u16) -> Self {
-        Self::from(kind)
-    }
-
-    /// Get as 16-bit unsigned integer
-    #[inline]
-    pub fn as_u16(&self) -> u16 {
-        (*self).into()
-    }
-
     /// Check if it's regular
     ///
     /// Regular means that event is expected to be stored by relays.
@@ -294,7 +283,19 @@ impl FromStr for Kind {
 
     fn from_str(kind: &str) -> Result<Self, Self::Err> {
         let kind: u16 = kind.parse()?;
-        Ok(Self::from(kind))
+        Ok(Self::from_u16(kind))
+    }
+}
+
+impl From<u16> for Kind {
+    fn from(kind: u16) -> Self {
+        Self::from_u16(kind)
+    }
+}
+
+impl From<Kind> for u16 {
+    fn from(kind: Kind) -> u16 {
+        kind.as_u16()
     }
 }
 
@@ -303,7 +304,7 @@ impl Add<u16> for Kind {
 
     fn add(self, rhs: u16) -> Self::Output {
         let kind: u16 = self.as_u16();
-        Kind::from(kind + rhs)
+        Kind::from_u16(kind + rhs)
     }
 }
 
@@ -338,14 +339,14 @@ impl Visitor<'_> for KindVisitor {
     where
         E: Error,
     {
-        Ok(Self::Value::from(v))
+        Ok(Self::Value::from_u16(v))
     }
 
     fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
     where
         E: Error,
     {
-        Ok(Self::Value::from(v as u16))
+        Ok(Self::Value::from_u16(v as u16))
     }
 }
 
