@@ -43,6 +43,7 @@ jobs:
           - nostr-lmdb
           - nostr-indexeddb --target wasm32-unknown-unknown
           - nostr-ndb
+          - nostr-sqlite
           - nostr-keyring
           - nostr-keyring --features async
           - nostr-relay-pool
