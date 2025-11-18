@@ -108,9 +108,9 @@ macro_rules! database_unit_tests {
                 let status = store.save_event(event).await.expect("Failed to save event");
                 if i == 7 || i == 11 {
                     // These should be rejected for invalid deletions
-                    assert!(!status.is_success());
+                    assert_eq!(status, SaveEventStatus::Rejected(RejectedReason::InvalidDelete));
                 } else {
-                    assert!(matches!(status, SaveEventStatus::Success));
+                    assert_eq!(status, SaveEventStatus::Success);
                 }
 
                 // NOTE: Sleep prevents automatic batching - events in the same batch share
@@ -135,14 +135,14 @@ macro_rules! database_unit_tests {
 
             // Save event first time
             let status = store.save_event(event).await.expect("Failed to save event");
-            assert!(matches!(status, SaveEventStatus::Success));
+            assert_eq!(status, SaveEventStatus::Success);
 
             // Try to save again
             let status = store.save_event(event).await.expect("Failed to save event");
-            assert!(matches!(
+            assert_eq!(
                 status,
                 SaveEventStatus::Rejected(nostr_database::RejectedReason::Duplicate)
-            ));
+            );
         }
 
         #[tokio::test]
@@ -591,7 +591,7 @@ macro_rules! database_unit_tests {
             let event = build_event(&keys, EventBuilder::text_note("Test event"));
 
             let status = store.save_event(&event).await.expect("Failed to save event");
-            assert!(matches!(status, SaveEventStatus::Success));
+            assert_eq!(status, SaveEventStatus::Success);
 
             // Sleep to ensure it's committed
             time::sleep(Duration::from_millis(50)).await;
@@ -601,7 +601,7 @@ macro_rules! database_unit_tests {
                 .query(Filter::new().id(event.id))
                 .await
                 .expect("Failed to query");
-            assert_eq!(before_by_id.len(), 1);
+            assert_eq!(before_by_id.len(), 1, "Expected 1 event with ID: {}", event.id);
 
             // Verify it exists with author-kind filter
             let before_by_author = store
@@ -618,7 +618,7 @@ macro_rules! database_unit_tests {
                 .save_event(&deletion_event)
                 .await
                 .expect("Failed to save deletion");
-            assert!(matches!(del_status, SaveEventStatus::Success));
+            assert_eq!(del_status, SaveEventStatus::Success);
 
             // Sleep to ensure deletion is processed
             time::sleep(Duration::from_millis(100)).await;
@@ -678,13 +678,13 @@ macro_rules! database_unit_tests {
             // Test 1: Insert event1 first, then event2
             {
                 let status1 = store.save_event(&event1).await.expect("Failed to save event1");
-                assert!(matches!(status1, SaveEventStatus::Success));
+                assert_eq!(status1, SaveEventStatus::Success);
 
                 let status2 = store.save_event(&event2).await.expect("Failed to save event2");
-                assert!(matches!(
+                assert_eq!(
                     status2,
                     SaveEventStatus::Rejected(RejectedReason::Replaced)
-                ));
+                );
 
                 // Query to see which event is stored
                 let filter = Filter::new()
@@ -713,10 +713,10 @@ macro_rules! database_unit_tests {
             // Test 2: Insert event2 first, then event1
             {
                 let status2 = store.save_event(&event2).await.expect("Failed to save event2");
-                assert!(matches!(status2, SaveEventStatus::Success));
+                assert_eq!(status2, SaveEventStatus::Success);
 
                 let status1 = store.save_event(&event1).await.expect("Failed to save event1");
-                assert!(matches!(status1, SaveEventStatus::Success));
+                assert_eq!(status1, SaveEventStatus::Success);
 
                 // Query to see which event is stored
                 let filter = Filter::new()
@@ -763,13 +763,13 @@ macro_rules! database_unit_tests {
             // Test 1: Insert event1 first, then event2
             {
                 let status1 = store.save_event(&event1).await.expect("Failed to save event1");
-                assert!(matches!(status1, SaveEventStatus::Success));
+                assert_eq!(status1, SaveEventStatus::Success);
 
                 let status2 = store.save_event(&event2).await.expect("Failed to save event2");
-                assert!(matches!(
+                assert_eq!(
                     status2,
                     SaveEventStatus::Rejected(RejectedReason::Replaced)
-                ));
+                );
 
                 // Query to see which event is stored
                 let filter = Filter::new()
@@ -802,10 +802,10 @@ macro_rules! database_unit_tests {
             // Test 2: Insert event2 first, then event1
             {
                 let status2 = store.save_event(&event2).await.expect("Failed to save event2");
-                assert!(matches!(status2, SaveEventStatus::Success));
+                assert_eq!(status2, SaveEventStatus::Success);
 
                 let status1 = store.save_event(&event1).await.expect("Failed to save event1");
-                assert!(matches!(status1, SaveEventStatus::Success));
+                assert_eq!(status1, SaveEventStatus::Success);
 
                 // Query to see which event is stored
                 let filter = Filter::new()
