@@ -3040,6 +3040,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-sqlite"
+version = "0.44.0"
+dependencies = [
+ "nostr",
+ "nostr-database",
+ "nostr-database-test-suite",
+ "nostr-relay-builder",
+ "sqlx",
+ "tempfile",
+ "tokio",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "nostrdb"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

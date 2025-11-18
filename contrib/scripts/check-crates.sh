@@ -18,6 +18,7 @@ buildargs=(
     "-p nostr-gossip-sqlite"
     "-p nostr-gossip-test-suite"
     "-p nostr-lmdb"
+    "-p nostr-sqlite"
     "-p nostr-indexeddb --target wasm32-unknown-unknown"
     "-p nostr-ndb"
     "-p nostr-keyring"
