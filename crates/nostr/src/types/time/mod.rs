@@ -6,6 +6,7 @@
 
 use alloc::string::{String, ToString};
 use core::fmt;
+use core::num::{ParseIntError, TryFromIntError};
 use core::ops::{Add, Range, Sub};
 use core::str::{self, FromStr};
 use core::time::Duration;
@@ -229,8 +230,17 @@ impl From<u64> for Timestamp {
     }
 }
 
+impl TryFrom<i64> for Timestamp {
+    type Error = TryFromIntError;
+
+    fn try_from(value: i64) -> Result<Self, Self::Error> {
+        let secs: u64 = value.try_into()?;
+        Ok(Self::from_secs(secs))
+    }
+}
+
 impl FromStr for Timestamp {
-    type Err = core::num::ParseIntError;
+    type Err = ParseIntError;
 
     #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
