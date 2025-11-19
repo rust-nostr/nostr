@@ -6,6 +6,7 @@
 
 use std::fmt;
 use std::net::{IpAddr, SocketAddr};
+use std::num::NonZeroUsize;
 #[cfg(all(feature = "tor", any(target_os = "android", target_os = "ios")))]
 use std::path::Path;
 #[cfg(feature = "tor")]
@@ -212,7 +213,7 @@ impl Default for RelayBuilder {
             port: None,
             database: Arc::new(MemoryDatabase::with_opts(MemoryDatabaseOptions {
                 events: true,
-                max_events: Some(75_000),
+                max_events: Some(NonZeroUsize::new(75_000).unwrap()),
             })),
             mode: RelayBuilderMode::default(),
             rate_limit: RateLimit::default(),

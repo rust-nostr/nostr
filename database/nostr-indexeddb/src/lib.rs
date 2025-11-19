@@ -14,6 +14,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::future::IntoFuture;
+use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex};
 
 pub extern crate nostr;
@@ -98,7 +99,7 @@ impl WebDatabase {
     }
 
     /// Open database with **limited** capacity
-    pub async fn open_bounded<S>(name: S, max_capacity: usize) -> Result<Self, DatabaseError>
+    pub async fn open_bounded<S>(name: S, max_capacity: NonZeroUsize) -> Result<Self, DatabaseError>
     where
         S: AsRef<str>,
     {

@@ -28,6 +28,7 @@
 ### Breaking changes
 
 - Remove `Backend::is_persistent` method (https://github.com/rust-nostr/nostr/pull/1138)
+- Use `NonZeroUsize` for bounded capacities instead of `usize` (https://github.com/rust-nostr/nostr/pull/1139)
 
 ### Changed
 

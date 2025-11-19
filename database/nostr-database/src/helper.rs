@@ -8,6 +8,7 @@
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::iter;
+use std::num::NonZeroUsize;
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -161,10 +162,10 @@ struct InternalDatabaseHelper {
 }
 
 impl InternalDatabaseHelper {
-    pub fn bounded(size: usize) -> Self {
+    pub fn bounded(size: NonZeroUsize) -> Self {
         let mut helper: InternalDatabaseHelper = InternalDatabaseHelper::default();
         helper.events.change_capacity(Capacity::Bounded {
-            max: size,
+            max: size.get(),
             policy: OverCapacityPolicy::Last,
         });
         helper
@@ -682,7 +683,7 @@ impl DatabaseHelper {
 
     /// Bounded database helper
     #[inline]
-    pub fn bounded(max: usize) -> Self {
+    pub fn bounded(max: NonZeroUsize) -> Self {
         Self {
             inner: Arc::new(RwLock::new(InternalDatabaseHelper::bounded(max))),
         }
