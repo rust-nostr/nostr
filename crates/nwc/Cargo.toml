@@ -2,14 +2,14 @@
 name = "nwc"
 version = "0.44.0"
 edition = "2021"
-description = "Nostr Wallet Connect"
+description = "Nostr Wallet Connect client"
 authors.workspace = true
 homepage.workspace = true
 repository.workspace = true
 license.workspace = true
 readme = "README.md"
 rust-version.workspace = true
-keywords = ["nostr", "zapper", "nwc"]
+keywords = ["nostr", "nwc"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -17,6 +17,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = []
+# Enables the tor embedded client
 tor = ["nostr-relay-pool/tor"]
 
 [dependencies]
