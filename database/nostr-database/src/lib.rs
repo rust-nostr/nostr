@@ -38,21 +38,42 @@ pub use self::profile::Profile;
 /// NIP65 relays map
 pub type RelaysMap = HashMap<RelayUrl, Option<RelayMetadata>>;
 
-/// Backend
+/// Backend type
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Backend {
-    /// Memory
+    /// In-memory (RAM)
     Memory,
-    /// RocksDB
-    RocksDB,
     /// Lightning Memory-Mapped Database
     LMDB,
     /// SQLite
     SQLite,
+    /// Postgres
+    Postgres,
+    /// MySQL (i.e., MariaDB)
+    MySql,
+    /// RocksDB
+    RocksDB,
     /// IndexedDB
     IndexedDB,
+    /// MongoDB
+    MongoDB,
+    /// Redis
+    Redis,
+    /// Apache Cassandra
+    Cassandra,
     /// Custom
     Custom(String),
+}
+
+impl Backend {
+    /// Custom backend type
+    #[inline]
+    pub fn custom<T>(name: T) -> Self
+    where
+        T: Into<String>,
+    {
+        Self::Custom(name.into())
+    }
 }
 
 impl Backend {
@@ -191,19 +212,4 @@ pub trait NostrDatabase: Any + Debug + Send + Sync {
 
     /// Wipe all data
     fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>>;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_backend_is_persistent() {
-        assert!(!Backend::Memory.is_persistent());
-        assert!(Backend::RocksDB.is_persistent());
-        assert!(Backend::LMDB.is_persistent());
-        assert!(Backend::SQLite.is_persistent());
-        assert!(Backend::IndexedDB.is_persistent());
-        assert!(Backend::Custom("custom".to_string()).is_persistent());
-    }
 }
