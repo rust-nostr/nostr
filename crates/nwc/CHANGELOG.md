@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Changed
+
+- Rename `NWC` to `NostrWalletConnect`
+
 ## v0.44.0 - 2025/11/06
 
 ### Changed

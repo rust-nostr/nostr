@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
 
     println!("🔗 Connecting to wallet service...");
 
-    let nwc = NWC::new(uri);
+    let nwc = NostrWalletConnect::new(uri);
 
     nwc.subscribe_to_notifications().await?;
 

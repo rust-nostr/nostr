@@ -32,9 +32,13 @@ pub use self::options::NostrWalletConnectOptions;
 
 const NOTIFICATIONS_ID: &str = "nwc-notifications";
 
+#[allow(missing_docs)]
+#[deprecated(since = "0.45.0", note = "Use NostrWalletConnect instead")]
+pub type NWC = NostrWalletConnect;
+
 /// Nostr Wallet Connect client
 #[derive(Debug, Clone)]
-pub struct NWC {
+pub struct NostrWalletConnect {
     uri: NostrWalletConnectUri,
     pool: RelayPool,
     opts: NostrWalletConnectOptions,
@@ -42,7 +46,7 @@ pub struct NWC {
     notifications_subscribed: Arc<AtomicBool>,
 }
 
-impl NWC {
+impl NostrWalletConnect {
     /// New `NWC` client
     #[inline]
     pub fn new(uri: NostrWalletConnectUri) -> Self {
