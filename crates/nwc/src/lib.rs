@@ -15,20 +15,20 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 pub extern crate nostr;
 
 use nostr::nips::nip47::{Notification, Request, Response};
 use nostr_relay_pool::prelude::*;
 
+pub mod builder;
 pub mod error;
-pub mod options;
 pub mod prelude;
 
+use self::builder::NostrWalletConnectBuilder;
 #[doc(hidden)]
 pub use self::error::Error;
-#[doc(hidden)]
-pub use self::options::NostrWalletConnectOptions;
 
 const NOTIFICATIONS_ID: &str = "nwc-notifications";
 
@@ -41,29 +41,49 @@ pub type NWC = NostrWalletConnect;
 pub struct NostrWalletConnect {
     uri: NostrWalletConnectUri,
     pool: RelayPool,
-    opts: NostrWalletConnectOptions,
+    timeout: Duration,
+    relay_opts: RelayOptions,
     bootstrapped: Arc<AtomicBool>,
     notifications_subscribed: Arc<AtomicBool>,
 }
 
 impl NostrWalletConnect {
-    /// New `NWC` client
+    /// Construct a new client.
+    ///
+    /// Use [`NostrWalletConnect::builder`] for customizing the client.
     #[inline]
     pub fn new(uri: NostrWalletConnectUri) -> Self {
-        Self::with_opts(uri, NostrWalletConnectOptions::default())
+        Self::builder(uri).build()
     }
 
-    /// New `NWC` client with custom [`NostrWalletConnectOptions`].
-    pub fn with_opts(uri: NostrWalletConnectUri, opts: NostrWalletConnectOptions) -> Self {
-        let pool = match opts.monitor.as_ref() {
-            Some(monitor) => RelayPool::builder().monitor(monitor.clone()).build(),
+    /// Construct a new Nostr Wallet Connect client builder.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::time::Duration;
+    /// use nwc::prelude::*;
+    ///
+    /// # let uri = NostrWalletConnectUri::parse("nostr+walletconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?secret=71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c&relay=wss%3A%2F%2Frelay.damus.io").unwrap();
+    /// let nwc = NostrWalletConnect::builder(uri).timeout(Duration::from_secs(30)).build();
+    /// # let _ = nwc;
+    /// ```
+    #[inline]
+    pub fn builder(uri: NostrWalletConnectUri) -> NostrWalletConnectBuilder {
+        NostrWalletConnectBuilder::new(uri)
+    }
+
+    fn from_builder(builder: NostrWalletConnectBuilder) -> Self {
+        let pool: RelayPool = match builder.monitor {
+            Some(monitor) => RelayPool::builder().monitor(monitor).build(),
             None => RelayPool::default(),
         };
 
         Self {
-            uri,
+            uri: builder.uri,
             pool,
-            opts,
+            timeout: builder.timeout,
+            relay_opts: builder.relay,
             bootstrapped: Arc::new(AtomicBool::new(false)),
             notifications_subscribed: Arc::new(AtomicBool::new(false)),
         }
@@ -90,7 +110,7 @@ impl NostrWalletConnect {
 
         // Add relays
         for url in self.uri.relays.iter() {
-            self.pool.add_relay(url, self.opts.relay.clone()).await?;
+            self.pool.add_relay(url, self.relay_opts.clone()).await?;
         }
 
         // Connect to relays
@@ -120,7 +140,7 @@ impl NostrWalletConnect {
         // Subscribe to filter and create the stream
         let mut stream = self
             .pool
-            .stream_events(filter, self.opts.timeout, ReqExitPolicy::WaitForEvents(1))
+            .stream_events(filter, self.timeout, ReqExitPolicy::WaitForEvents(1))
             .await?;
 
         // Send the request
@@ -315,7 +335,7 @@ impl NostrWalletConnect {
 
     /// Manually reconnect to a specific relay
     ///
-    /// This function can be used to force a reconnection to a relay when automatic reconnection
+    /// This function can be used to force a reconnection to a relay when the automatic reconnection
     /// is disabled via [`RelayOptions::reconnect`].
     ///
     /// If the client is not bootstrapped, it will do nothing.
@@ -331,7 +351,7 @@ impl NostrWalletConnect {
         Ok(self.pool.connect_relay(url).await?)
     }
 
-    /// Completely shutdown [NWC] client
+    /// Completely shutdown
     #[inline]
     pub async fn shutdown(self) {
         self.pool.disconnect().await

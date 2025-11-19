@@ -25,9 +25,18 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Replace `NostrWalletConnectOptions` with `NostrWalletConnectBuilder` (https://github.com/rust-nostr/nostr/pull/1140)
+- Remove `NostrWalletConnect::with_opts` (https://github.com/rust-nostr/nostr/pull/1140)
+
 ### Changed
 
 - Rename `NWC` to `NostrWalletConnect`
+
+### Added
+
+- Add `NostrWalletConnect::builder` constructor (https://github.com/rust-nostr/nostr/pull/1140)
 
 ## v0.44.0 - 2025/11/06
 

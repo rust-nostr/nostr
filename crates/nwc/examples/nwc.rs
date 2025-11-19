@@ -31,8 +31,7 @@ async fn main() -> Result<()> {
     });
 
     // Create NWC client with monitor
-    let nwc =
-        NostrWalletConnect::with_opts(uri, NostrWalletConnectOptions::default().monitor(monitor));
+    let nwc = NostrWalletConnect::builder(uri).monitor(monitor).build();
 
     // Get balance
     let balance = nwc.get_balance().await?;
