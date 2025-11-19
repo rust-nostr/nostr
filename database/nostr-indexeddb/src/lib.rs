@@ -308,6 +308,13 @@ impl NostrDatabase for WebDatabase {
         Backend::IndexedDB
     }
 
+    fn features(&self) -> Features {
+        Features {
+            persistent: true,
+            full_text_search: true,
+        }
+    }
+
     fn save_event<'a>(
         &'a self,
         event: &'a Event,

@@ -130,6 +130,13 @@ impl NostrDatabase for NostrLMDB {
         Backend::LMDB
     }
 
+    fn features(&self) -> Features {
+        Features {
+            persistent: true,
+            full_text_search: true,
+        }
+    }
+
     fn save_event<'a>(
         &'a self,
         event: &'a Event,

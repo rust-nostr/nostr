@@ -13,7 +13,7 @@ use tokio::sync::RwLock;
 
 use crate::{
     Backend, DatabaseError, DatabaseEventResult, DatabaseEventStatus, DatabaseHelper, Events,
-    NostrDatabase, SaveEventStatus,
+    Features, NostrDatabase, SaveEventStatus,
 };
 
 const MAX_EVENTS: usize = 35_000;
@@ -106,6 +106,16 @@ impl MemoryDatabase {
 impl NostrDatabase for MemoryDatabase {
     fn backend(&self) -> Backend {
         Backend::Memory
+    }
+
+    fn features(&self) -> Features {
+        Features {
+            persistent: false,
+            full_text_search: match &self.inner {
+                InnerMemoryDatabase::Tracker(..) => false,
+                InnerMemoryDatabase::Full(..) => true,
+            },
+        }
     }
 
     fn save_event<'a>(

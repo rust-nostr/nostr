@@ -76,13 +76,13 @@ impl Backend {
     }
 }
 
-impl Backend {
-    /// Check if it's a persistent backend
-    ///
-    /// All values different from [`Backend::Memory`] are considered persistent
-    pub fn is_persistent(&self) -> bool {
-        !matches!(self, Self::Memory)
-    }
+/// Backend features
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Features {
+    /// Whether the database supports persistent storage.
+    pub persistent: bool,
+    /// Whether the database supports full-text search.
+    pub full_text_search: bool,
 }
 
 /// Database event status
@@ -165,6 +165,9 @@ where
 pub trait NostrDatabase: Any + Debug + Send + Sync {
     /// Name of the backend database used
     fn backend(&self) -> Backend;
+
+    /// Get backend features
+    fn features(&self) -> Features;
 
     /// Save [`Event`] into store
     ///

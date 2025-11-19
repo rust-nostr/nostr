@@ -36,6 +36,7 @@
 ### Added
 
 - Add `Backend::custom` constructor (https://github.com/rust-nostr/nostr/pull/1138)
+- Add `NostrDatabase::features` method (https://github.com/rust-nostr/nostr/pull/1138)
 
 ## v0.44.0 - 2025/11/06
 

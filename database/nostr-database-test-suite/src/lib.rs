@@ -526,6 +526,12 @@ macro_rules! database_unit_tests {
         #[tokio::test]
         async fn test_full_text_search() {
             let store: $store_type = $setup_fn().await;
+            let features = store.features();
+
+            if !features.full_text_search {
+                println!("Skipping full text search tests as the database doesn't support it!");
+                return;
+            }
 
             let _added_events: usize = add_random_events(&store).await;
 
