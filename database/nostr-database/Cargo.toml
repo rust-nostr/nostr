@@ -20,6 +20,7 @@ default = []
 flatbuf = ["dep:flatbuffers"]
 
 [dependencies]
+btreecap = "0.1"
 flatbuffers = { version = "25.2", optional = true }
 lru.workspace = true
 nostr = { workspace = true, features = ["std"] }

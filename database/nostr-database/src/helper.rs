@@ -12,12 +12,12 @@ use std::num::NonZeroUsize;
 use std::ops::Deref;
 use std::sync::Arc;
 
+use btreecap::{BTreeCapSet, Capacity, Insert, OverCapacityPolicy};
 use nostr::filter::MatchEventOptions;
 use nostr::nips::nip01::{Coordinate, CoordinateBorrow};
 use nostr::{Alphabet, Event, EventId, Filter, Kind, PublicKey, SingleLetterTag, Timestamp};
 use tokio::sync::{OwnedRwLockReadGuard, RwLock};
 
-use crate::collections::tree::{BTreeCappedSet, Capacity, InsertResult, OverCapacityPolicy};
 use crate::{Events, RejectedReason, SaveEventStatus};
 
 type DatabaseEvent = Arc<Event>;
@@ -151,7 +151,7 @@ enum InternalQueryResult<'a> {
 #[derive(Debug, Clone, Default)]
 struct InternalDatabaseHelper {
     /// Sorted events
-    events: BTreeCappedSet<DatabaseEvent>,
+    events: BTreeCapSet<DatabaseEvent>,
     /// Events by ID
     ids: HashMap<EventId, DatabaseEvent>,
     author_index: HashMap<PublicKey, BTreeSet<DatabaseEvent>>,
@@ -165,7 +165,7 @@ impl InternalDatabaseHelper {
     pub fn bounded(size: NonZeroUsize) -> Self {
         let mut helper: InternalDatabaseHelper = InternalDatabaseHelper::default();
         helper.events.change_capacity(Capacity::Bounded {
-            max: size.get(),
+            max: size,
             policy: OverCapacityPolicy::Last,
         });
         helper
@@ -327,7 +327,7 @@ impl InternalDatabaseHelper {
         if status.is_success() {
             let e: DatabaseEvent = Arc::new(event.clone()); // TODO: avoid clone?
 
-            let InsertResult { inserted, pop } = self.events.insert(e.clone());
+            let Insert { inserted, pop } = self.events.insert(e.clone());
 
             if inserted {
                 self.ids.insert(e.id, e.clone());

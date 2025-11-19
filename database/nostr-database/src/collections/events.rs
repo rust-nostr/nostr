@@ -5,10 +5,10 @@
 use std::collections::btree_set::IntoIter;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::num::NonZeroUsize;
 
+use btreecap::{BTreeCapSet, Capacity, OverCapacityPolicy};
 use nostr::{Event, Filter};
-
-use super::tree::{BTreeCappedSet, Capacity, OverCapacityPolicy};
 
 // Lookup ID: EVENT_ORD_IMPL
 const POLICY: OverCapacityPolicy = OverCapacityPolicy::Last;
@@ -16,7 +16,7 @@ const POLICY: OverCapacityPolicy = OverCapacityPolicy::Last;
 /// Descending sorted collection of events
 #[derive(Debug, Clone)]
 pub struct Events {
-    set: BTreeCappedSet<Event>,
+    set: BTreeCapSet<Event>,
     hash: u64,
     prev_not_match: bool,
 }
@@ -24,7 +24,7 @@ pub struct Events {
 impl Default for Events {
     fn default() -> Self {
         Self {
-            set: BTreeCappedSet::unbounded(),
+            set: BTreeCapSet::unbounded(),
             hash: 0,
             prev_not_match: false,
         }
@@ -47,9 +47,15 @@ impl Events {
         filter.hash(&mut hasher);
         let hash: u64 = hasher.finish();
 
-        let set: BTreeCappedSet<Event> = match filter.limit {
-            Some(limit) => BTreeCappedSet::bounded_with_policy(limit, POLICY),
-            None => BTreeCappedSet::unbounded(),
+        let set: BTreeCapSet<Event> = match filter.limit {
+            Some(limit) => match NonZeroUsize::new(limit) {
+                Some(max) => BTreeCapSet::with_capacity(Capacity::Bounded {
+                    max,
+                    policy: POLICY,
+                }),
+                None => BTreeCapSet::unbounded(),
+            },
+            None => BTreeCapSet::unbounded(),
         };
 
         Self {
@@ -231,7 +237,7 @@ mod tests {
         assert_eq!(
             events1.set.capacity(),
             Capacity::Bounded {
-                max: 100,
+                max: NonZeroUsize::new(100).unwrap(),
                 policy: POLICY
             }
         );
@@ -240,7 +246,7 @@ mod tests {
         assert_eq!(
             events2.set.capacity(),
             Capacity::Bounded {
-                max: 100,
+                max: NonZeroUsize::new(100).unwrap(),
                 policy: POLICY
             }
         );
@@ -255,7 +261,7 @@ mod tests {
         assert_eq!(
             events.set.capacity(),
             Capacity::Bounded {
-                max: 100,
+                max: NonZeroUsize::new(100).unwrap(),
                 policy: POLICY
             }
         );
@@ -269,7 +275,7 @@ mod tests {
         assert_eq!(
             events1.set.capacity(),
             Capacity::Bounded {
-                max: 100,
+                max: NonZeroUsize::new(100).unwrap(),
                 policy: POLICY
             }
         );
@@ -278,7 +284,7 @@ mod tests {
         assert_eq!(
             events2.set.capacity(),
             Capacity::Bounded {
-                max: 10,
+                max: NonZeroUsize::new(10).unwrap(),
                 policy: POLICY
             }
         );
@@ -287,7 +293,7 @@ mod tests {
         assert_eq!(
             events3.set.capacity(),
             Capacity::Bounded {
-                max: 1,
+                max: NonZeroUsize::new(1).unwrap(),
                 policy: POLICY
             }
         );

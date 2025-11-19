@@ -578,6 +578,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "btreecap"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6160c957d8aa33d0a8ba1dbab98e3cb57023ad9374c501441e88559f99e6c4c9"
+
+[[package]]
 name = "bumpalo"
 version = "3.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2757,6 +2763,7 @@ dependencies = [
 name = "nostr-database"
 version = "0.44.0"
 dependencies = [
+ "btreecap",
  "flatbuffers 25.2.10",
  "lru",
  "nostr",

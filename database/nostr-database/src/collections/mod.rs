@@ -3,4 +3,3 @@
 // Distributed under the MIT software license
 
 pub mod events;
-pub mod tree;
