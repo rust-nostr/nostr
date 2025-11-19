@@ -627,7 +627,7 @@ impl Request {
 
     /// Create request [Event]
     #[cfg(feature = "std")]
-    pub fn to_event(self, uri: &NostrWalletConnectURI) -> Result<Event, Error> {
+    pub fn to_event(self, uri: &NostrWalletConnectUri) -> Result<Event, Error> {
         let encrypted = nip04::encrypt(&uri.secret, &uri.public_key, self.as_json())?;
         let keys: Keys = Keys::new(uri.secret.clone());
         Ok(EventBuilder::new(Kind::WalletConnectRequest, encrypted)
@@ -929,7 +929,7 @@ struct ResponseTemplate {
 impl Response {
     /// Deserialize from [Event]
     #[inline]
-    pub fn from_event(uri: &NostrWalletConnectURI, event: &Event) -> Result<Self, Error> {
+    pub fn from_event(uri: &NostrWalletConnectUri, event: &Event) -> Result<Self, Error> {
         let decrypt_res: String = nip04::decrypt(&uri.secret, &event.pubkey, &event.content)?;
         Self::from_json(&decrypt_res).map_err(|e| Error::CantDeserializeResponse {
             response: decrypt_res,
@@ -1128,9 +1128,13 @@ where
 /// NIP47 URI Scheme
 pub const NOSTR_WALLET_CONNECT_URI_SCHEME: &str = "nostr+walletconnect";
 
+#[allow(missing_docs)]
+#[deprecated(since = "0.45.0", note = "Use NostrWalletConnectUri instead")]
+pub type NostrWalletConnectURI = NostrWalletConnectUri;
+
 /// Nostr Connect URI
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct NostrWalletConnectURI {
+pub struct NostrWalletConnectUri {
     /// App Pubkey
     pub public_key: PublicKey,
     /// URL of the relay of choice where the `App` is connected and the `Signer` must send and listen for messages.
@@ -1141,8 +1145,8 @@ pub struct NostrWalletConnectURI {
     pub lud16: Option<String>,
 }
 
-impl NostrWalletConnectURI {
-    /// Create new [`NostrWalletConnectURI`]
+impl NostrWalletConnectUri {
+    /// Create a new URI
     #[inline]
     pub fn new(
         public_key: PublicKey,
@@ -1208,7 +1212,7 @@ impl NostrWalletConnectURI {
     }
 }
 
-impl FromStr for NostrWalletConnectURI {
+impl FromStr for NostrWalletConnectUri {
     type Err = Error;
 
     fn from_str(uri: &str) -> Result<Self, Self::Err> {
@@ -1216,7 +1220,7 @@ impl FromStr for NostrWalletConnectURI {
     }
 }
 
-impl fmt::Display for NostrWalletConnectURI {
+impl fmt::Display for NostrWalletConnectUri {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut relays_str: String = String::new();
 
@@ -1241,7 +1245,7 @@ impl fmt::Display for NostrWalletConnectURI {
     }
 }
 
-impl Serialize for NostrWalletConnectURI {
+impl Serialize for NostrWalletConnectUri {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -1250,13 +1254,13 @@ impl Serialize for NostrWalletConnectURI {
     }
 }
 
-impl<'a> Deserialize<'a> for NostrWalletConnectURI {
+impl<'a> Deserialize<'a> for NostrWalletConnectUri {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'a>,
     {
-        let uri = String::deserialize(deserializer)?;
-        NostrWalletConnectURI::from_str(&uri).map_err(serde::de::Error::custom)
+        let uri: String = String::deserialize(deserializer)?;
+        Self::from_str(&uri).map_err(serde::de::Error::custom)
     }
 }
 
@@ -1318,7 +1322,7 @@ pub struct NotificationTemplate {
 impl Notification {
     /// Deserialize from [Event]
     #[inline]
-    pub fn from_event(uri: &NostrWalletConnectURI, event: &Event) -> Result<Self, Error> {
+    pub fn from_event(uri: &NostrWalletConnectUri, event: &Event) -> Result<Self, Error> {
         let decrypt_res: String = nip04::decrypt(&uri.secret, &event.pubkey, &event.content)?;
         Self::from_json(decrypt_res)
     }
@@ -1515,7 +1519,7 @@ mod tests {
         let secret =
             SecretKey::from_str("71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c")
                 .unwrap();
-        let uri = NostrWalletConnectURI::new(
+        let uri = NostrWalletConnectUri::new(
             pubkey,
             vec![relay_url],
             secret,
@@ -1530,7 +1534,7 @@ mod tests {
     #[test]
     fn test_parse_uri() {
         let uri = "nostr+walletconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?secret=71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c&relay=wss%3A%2F%2Frelay.damus.io&lud16=nostr%40nostr.com";
-        let uri = NostrWalletConnectURI::from_str(uri).unwrap();
+        let uri = NostrWalletConnectUri::from_str(uri).unwrap();
 
         let pubkey =
             PublicKey::from_str("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
@@ -1541,7 +1545,7 @@ mod tests {
                 .unwrap();
         assert_eq!(
             uri,
-            NostrWalletConnectURI::new(
+            NostrWalletConnectUri::new(
                 pubkey,
                 vec![relay_url],
                 secret,

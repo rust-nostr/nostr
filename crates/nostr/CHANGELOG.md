@@ -27,12 +27,13 @@
 
 ### Changed
 
+- Rename `NostrWalletConnectURI` to `NostrWalletConnectUri`
 - Make `Kind::from_u16` and `Kind::as_u16` const (https://github.com/rust-nostr/nostr/pull/1136)
 
 ### Added
 
 - Impl `TryFrom<i64>` for `Timestamp`
-- Add `RelayUrlScheme` enum and `RelayUrl::scheme` method (https://github.com/rust-nostr/nostr/pull/1127) 
+- Add `RelayUrlScheme` enum and `RelayUrl::scheme` method (https://github.com/rust-nostr/nostr/pull/1127)
 
 ## v0.44.1 - 2025/11/09
 

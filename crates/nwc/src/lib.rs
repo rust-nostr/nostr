@@ -35,7 +35,7 @@ const NOTIFICATIONS_ID: &str = "nwc-notifications";
 /// Nostr Wallet Connect client
 #[derive(Debug, Clone)]
 pub struct NWC {
-    uri: NostrWalletConnectURI,
+    uri: NostrWalletConnectUri,
     pool: RelayPool,
     opts: NostrWalletConnectOptions,
     bootstrapped: Arc<AtomicBool>,
@@ -45,12 +45,12 @@ pub struct NWC {
 impl NWC {
     /// New `NWC` client
     #[inline]
-    pub fn new(uri: NostrWalletConnectURI) -> Self {
+    pub fn new(uri: NostrWalletConnectUri) -> Self {
         Self::with_opts(uri, NostrWalletConnectOptions::default())
     }
 
     /// New `NWC` client with custom [`NostrWalletConnectOptions`].
-    pub fn with_opts(uri: NostrWalletConnectURI, opts: NostrWalletConnectOptions) -> Self {
+    pub fn with_opts(uri: NostrWalletConnectUri, opts: NostrWalletConnectOptions) -> Self {
         let pool = match opts.monitor.as_ref() {
             Some(monitor) => RelayPool::builder().monitor(monitor.clone()).build(),
             None => RelayPool::default(),
@@ -67,7 +67,7 @@ impl NWC {
 
     /// Get URI
     #[inline]
-    pub fn uri(&self) -> &NostrWalletConnectURI {
+    pub fn uri(&self) -> &NostrWalletConnectUri {
         &self.uri
     }
 

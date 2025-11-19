@@ -18,8 +18,8 @@ async fn main() -> Result<()> {
         .expect("Failed to read line");
 
     // Parse URI and compose NWC client
-    let uri: NostrWalletConnectURI =
-        NostrWalletConnectURI::from_str(&nwc_uri_string).expect("Failed to parse NWC URI");
+    let uri: NostrWalletConnectUri =
+        NostrWalletConnectUri::from_str(&nwc_uri_string).expect("Failed to parse NWC URI");
 
     // Create monitor and subscribe to it
     let monitor = Monitor::new(100);
