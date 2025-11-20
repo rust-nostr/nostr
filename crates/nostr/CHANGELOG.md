@@ -25,6 +25,10 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Change the output and behavior of nip17::extract_relay_list and nip17::extract_owned_relay_list functions
+
 ### Changed
 
 - Rename `NostrWalletConnectURI` to `NostrWalletConnectUri`
