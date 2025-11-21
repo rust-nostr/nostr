@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Fixed
+
+- Fix database is locked (code: 5) error (https://github.com/rust-nostr/nostr/pull/1141)
+
 ## v0.44.0 - 2025/11/06
 
 ### Changed
