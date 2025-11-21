@@ -359,7 +359,11 @@ mod tests {
         assert!(matches!(results[2], Ok(SaveEventStatus::Success)));
 
         // Verify the new events were saved
-        let saved_count = store.query(Filter::new()).expect("Failed to query").len();
+        let saved_count = store
+            .query(Filter::new())
+            .await
+            .expect("Failed to query")
+            .len();
         assert_eq!(saved_count, 3); // event1, event2, event3
     }
 
@@ -403,7 +407,11 @@ mod tests {
         delete_result.expect("Failed to delete events");
 
         // Verify results
-        let remaining = store.query(Filter::new()).expect("Failed to query").len();
+        let remaining = store
+            .query(Filter::new())
+            .await
+            .expect("Failed to query")
+            .len();
 
         // We had 10 events, deleted 5, added 2
         assert_eq!(remaining, 7);

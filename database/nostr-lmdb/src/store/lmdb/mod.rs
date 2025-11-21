@@ -408,8 +408,8 @@ impl Lmdb {
     }
 
     #[inline]
-    pub(crate) fn has_event(&self, txn: &RoTxn, event_id: &[u8; 32]) -> Result<bool, Error> {
-        Ok(self.get_event_by_id(txn, event_id)?.is_some())
+    pub(crate) fn has_event(&self, txn: &RoTxn, event_id: &EventId) -> Result<bool, Error> {
+        Ok(self.get_event_by_id(txn, event_id.as_bytes())?.is_some())
     }
 
     /// Save event with transaction support - uses single transaction for batch consistency
@@ -424,7 +424,7 @@ impl Lmdb {
         }
 
         // Already exists
-        if self.has_event(txn, event.id.as_bytes())? {
+        if self.has_event(txn, &event.id)? {
             return Ok(SaveEventStatus::Rejected(RejectedReason::Duplicate));
         }
 

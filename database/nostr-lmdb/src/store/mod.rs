@@ -21,7 +21,7 @@ use self::ingester::{Ingester, IngesterItem};
 use self::lmdb::Lmdb;
 
 #[derive(Debug)]
-pub struct Store {
+pub(super) struct Store {
     db: Lmdb,
     ingester: Sender<IngesterItem>,
 }
@@ -53,65 +53,78 @@ impl Store {
         F: FnOnce(Lmdb) -> R + Send + 'static,
         R: Send + 'static,
     {
+        // TODO: is this clone cheap?
         let db = self.db.clone();
         Ok(task::spawn_blocking(move || f(db)).await?)
     }
 
-    /// Store an event.
-    pub async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, Error> {
+    pub(super) async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, Error> {
         let (item, rx) = IngesterItem::save_event_with_feedback(event.clone());
         self.ingester.send(item).map_err(|_| Error::FlumeSend)?;
         rx.await?
     }
 
-    /// Get an event by ID
-    pub fn get_event_by_id(&self, id: &EventId) -> Result<Option<Event>, Error> {
-        let txn = self.db.read_txn()?;
-        let event: Option<Event> = self
-            .db
-            .get_event_by_id(&txn, id.as_bytes())?
-            .map(|e| e.into_owned());
-        txn.commit()?;
-        Ok(event)
+    pub(super) async fn get_event_by_id(&self, id: EventId) -> Result<Option<Event>, Error> {
+        self.interact(move |db| {
+            let txn = db.read_txn()?;
+            let event: Option<Event> = db
+                .get_event_by_id(&txn, id.as_bytes())?
+                .map(|e| e.into_owned());
+            txn.commit()?;
+            Ok(event)
+        })
+        .await?
     }
 
-    /// Do we have an event
-    pub fn has_event(&self, id: &EventId) -> Result<bool, Error> {
-        let txn = self.db.read_txn()?;
-        let has: bool = self.db.has_event(&txn, id.as_bytes())?;
-        txn.commit()?;
-        Ok(has)
+    pub(super) async fn check_id(&self, id: EventId) -> Result<DatabaseEventStatus, Error> {
+        self.interact(move |db| {
+            let txn = db.read_txn()?;
+
+            let status: DatabaseEventStatus = if db.is_deleted(&txn, &id)? {
+                DatabaseEventStatus::Deleted
+            } else if db.has_event(&txn, &id)? {
+                DatabaseEventStatus::Saved
+            } else {
+                DatabaseEventStatus::NotExistent
+            };
+
+            txn.commit()?;
+
+            Ok(status)
+        })
+        .await?
     }
 
-    /// Is the event deleted
-    pub fn event_is_deleted(&self, id: &EventId) -> Result<bool, Error> {
-        let txn = self.db.read_txn()?;
-        let deleted: bool = self.db.is_deleted(&txn, id)?;
-        txn.commit()?;
-        Ok(deleted)
-    }
-
-    pub fn count(&self, filter: Filter) -> Result<usize, Error> {
-        let txn = self.db.read_txn()?;
-        let output = self.db.query(&txn, filter)?;
-        let len: usize = output.count();
-        txn.commit()?;
-        Ok(len)
+    pub(super) async fn count(&self, filter: Filter) -> Result<usize, Error> {
+        self.interact(move |db| {
+            let txn = db.read_txn()?;
+            let output = db.query(&txn, filter)?;
+            let len: usize = output.count();
+            txn.commit()?;
+            Ok(len)
+        })
+        .await?
     }
 
     // Lookup ID: EVENT_ORD_IMPL
-    pub fn query(&self, filter: Filter) -> Result<Events, Error> {
-        let mut events: Events = Events::new(&filter);
+    pub(super) async fn query(&self, filter: Filter) -> Result<Events, Error> {
+        self.interact(move |db| {
+            let mut events: Events = Events::new(&filter);
 
-        let txn: RoTxn = self.db.read_txn()?;
-        let output = self.db.query(&txn, filter)?;
-        events.extend(output.into_iter().map(|e| e.into_owned()));
-        txn.commit()?;
+            let txn: RoTxn = db.read_txn()?;
+            let output = db.query(&txn, filter)?;
+            events.extend(output.into_iter().map(|e| e.into_owned()));
+            txn.commit()?;
 
-        Ok(events)
+            Ok(events)
+        })
+        .await?
     }
 
-    pub fn negentropy_items(&self, filter: Filter) -> Result<Vec<(EventId, Timestamp)>, Error> {
+    pub(super) async fn negentropy_items(
+        &self,
+        filter: Filter,
+    ) -> Result<Vec<(EventId, Timestamp)>, Error> {
         let txn = self.db.read_txn()?;
         let events = self.db.query(&txn, filter)?;
         let items = events
@@ -122,7 +135,7 @@ impl Store {
         Ok(items)
     }
 
-    pub async fn delete(&self, filter: Filter) -> Result<(), Error> {
+    pub(super) async fn delete(&self, filter: Filter) -> Result<(), Error> {
         let (item, rx) = IngesterItem::delete_with_feedback(filter);
         self.ingester.send(item).map_err(|_| Error::FlumeSend)?;
         rx.await?
