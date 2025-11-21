@@ -343,6 +343,7 @@ mod tests {
     async fn setup_test_store() -> (Arc<Store>, TempDir) {
         let temp_dir = TempDir::new().expect("Failed to create temp directory");
         let store = Store::open(temp_dir.path(), 1024 * 1024 * 10, 10, 50)
+            .await
             .expect("Failed to open test store");
         (Arc::new(store), temp_dir)
     }

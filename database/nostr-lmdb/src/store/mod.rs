@@ -4,7 +4,7 @@
 // Distributed under the MIT software license
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use async_utility::task;
 use flume::Sender;
@@ -27,7 +27,7 @@ pub(super) struct Store {
 }
 
 impl Store {
-    pub(super) fn open<P>(
+    pub(super) async fn open<P>(
         path: P,
         map_size: usize,
         max_readers: u32,
@@ -36,12 +36,20 @@ impl Store {
     where
         P: AsRef<Path>,
     {
-        let path: &Path = path.as_ref();
+        let path: PathBuf = path.as_ref().to_path_buf();
 
-        // Create the directory if it doesn't exist
-        fs::create_dir_all(path)?;
+        // Open the database in a blocking task
+        let db: Lmdb = task::spawn_blocking(move || {
+            // Create the directory if it doesn't exist
+            fs::create_dir_all(&path)?;
 
-        let db: Lmdb = Lmdb::new(path, map_size, max_readers, additional_dbs)?;
+            let db: Lmdb = Lmdb::new(path, map_size, max_readers, additional_dbs)?;
+
+            Ok::<Lmdb, Error>(db)
+        })
+        .await??;
+
+        // Run the ingester
         let ingester: Sender<IngesterItem> = Ingester::run(db.clone());
 
         Ok(Self { db, ingester })
