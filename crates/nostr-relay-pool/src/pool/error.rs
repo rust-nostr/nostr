@@ -14,14 +14,14 @@ use crate::relay;
 /// Relay Pool error
 #[derive(Debug)]
 pub enum Error {
+    /// Database error
+    Database(DatabaseError),
     /// Shared state error
     SharedState(SharedStateError),
     /// Url parse error
     RelayUrl(url::Error),
     /// Relay error
     Relay(relay::Error),
-    /// Database error
-    Database(DatabaseError),
     /// Notification Handler error
     Handler(String),
     /// Too many relays
@@ -44,10 +44,10 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Database(e) => write!(f, "database: {e}"),
             Self::SharedState(e) => e.fmt(f),
             Self::RelayUrl(e) => e.fmt(f),
             Self::Relay(e) => e.fmt(f),
-            Self::Database(e) => e.fmt(f),
             Self::Handler(e) => e.fmt(f),
             Self::TooManyRelays { .. } => f.write_str("too many relays"),
             Self::NoRelays => f.write_str("no relays"),
@@ -55,6 +55,12 @@ impl fmt::Display for Error {
             Self::RelayNotFound => f.write_str("relay not found"),
             Self::Shutdown => f.write_str("relay pool is shutdown"),
         }
+    }
+}
+
+impl From<DatabaseError> for Error {
+    fn from(e: DatabaseError) -> Self {
+        Self::Database(e)
     }
 }
 
@@ -73,12 +79,6 @@ impl From<url::Error> for Error {
 impl From<relay::Error> for Error {
     fn from(e: relay::Error) -> Self {
         Self::Relay(e)
-    }
-}
-
-impl From<DatabaseError> for Error {
-    fn from(e: DatabaseError) -> Self {
-        Self::Database(e)
     }
 }
 

@@ -18,10 +18,12 @@ use crate::transport::error::TransportError;
 pub enum Error {
     /// Transport error
     Transport(TransportError),
-    /// Shared state error
-    SharedState(SharedStateError),
     /// Policy error
     Policy(PolicyError),
+    /// Database error
+    Database(DatabaseError),
+    /// Shared state error
+    SharedState(SharedStateError),
     /// MessageHandle error
     MessageHandle(MessageHandleError),
     /// Event error
@@ -32,8 +34,6 @@ pub enum Error {
     Hex(hex::FromHexError),
     /// Negentropy error
     Negentropy(negentropy::Error),
-    /// Database error
-    Database(DatabaseError),
     /// Generic timeout
     Timeout,
     /// Not replied to ping
@@ -130,15 +130,15 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Transport(e) => e.fmt(f),
+            Self::Transport(e) => write!(f, "transport: {e}"),
+            Self::Policy(e) => write!(f, "policy: {e}"),
+            Self::Database(e) => write!(f, "database: {e}"),
             Self::SharedState(e) => e.fmt(f),
-            Self::Policy(e) => e.fmt(f),
             Self::MessageHandle(e) => e.fmt(f),
             Self::Event(e) => e.fmt(f),
             Self::EventBuilder(e) => e.fmt(f),
             Self::Hex(e) => e.fmt(f),
             Self::Negentropy(e) => e.fmt(f),
-            Self::Database(e) => e.fmt(f),
             Self::Timeout => f.write_str("timeout"),
             Self::NotRepliedToPing => f.write_str("not replied to ping"),
             Self::CantParsePong => f.write_str("can't parse pong"),
@@ -200,15 +200,21 @@ impl From<TransportError> for Error {
     }
 }
 
-impl From<SharedStateError> for Error {
-    fn from(e: SharedStateError) -> Self {
-        Self::SharedState(e)
-    }
-}
-
 impl From<PolicyError> for Error {
     fn from(e: PolicyError) -> Self {
         Self::Policy(e)
+    }
+}
+
+impl From<DatabaseError> for Error {
+    fn from(e: DatabaseError) -> Self {
+        Self::Database(e)
+    }
+}
+
+impl From<SharedStateError> for Error {
+    fn from(e: SharedStateError) -> Self {
+        Self::SharedState(e)
     }
 }
 
@@ -239,11 +245,5 @@ impl From<hex::FromHexError> for Error {
 impl From<negentropy::Error> for Error {
     fn from(e: negentropy::Error) -> Self {
         Self::Negentropy(e)
-    }
-}
-
-impl From<DatabaseError> for Error {
-    fn from(e: DatabaseError) -> Self {
-        Self::Database(e)
     }
 }
