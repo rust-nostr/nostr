@@ -818,9 +818,13 @@ impl JsonUtil for NostrConnectMetadata {
     type Err = Error;
 }
 
+#[allow(missing_docs)]
+#[deprecated(since = "0.45.0", note = "use `NostrConnectUri` instead")]
+pub type NostrConnectURI = NostrConnectUri;
+
 /// Nostr Connect URI
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
-pub enum NostrConnectURI {
+pub enum NostrConnectUri {
     /// Direct connection initiated by remote signer
     Bunker {
         /// Remote signer public key
@@ -841,8 +845,8 @@ pub enum NostrConnectURI {
     },
 }
 
-impl NostrConnectURI {
-    /// Construct [NostrConnectURI] initiated by the client
+impl NostrConnectUri {
+    /// Construct a new `nostrconnect://` URI
     #[inline]
     pub fn client<I, S>(public_key: PublicKey, relays: I, app_name: S) -> Self
     where
@@ -969,7 +973,7 @@ impl NostrConnectURI {
     }
 }
 
-impl FromStr for NostrConnectURI {
+impl FromStr for NostrConnectUri {
     type Err = Error;
 
     #[inline]
@@ -978,7 +982,7 @@ impl FromStr for NostrConnectURI {
     }
 }
 
-impl fmt::Display for NostrConnectURI {
+impl fmt::Display for NostrConnectUri {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Bunker {
@@ -1053,7 +1057,7 @@ mod test {
     #[test]
     fn test_parse_bunker_uri() {
         let uri = "bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss://relay.nsec.app";
-        let uri = NostrConnectURI::parse(uri).unwrap();
+        let uri = NostrConnectUri::parse(uri).unwrap();
 
         let remote_signer_public_key =
             PublicKey::parse("79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3")
@@ -1062,7 +1066,7 @@ mod test {
         assert_eq!(uri.relays(), vec![relay_url.clone()]);
         assert_eq!(
             uri,
-            NostrConnectURI::Bunker {
+            NostrConnectUri::Bunker {
                 remote_signer_public_key,
                 relays: vec![relay_url],
                 secret: None
@@ -1073,14 +1077,14 @@ mod test {
     #[test]
     fn test_parse_client_uri() {
         let uri = r#"nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?metadata={"name":"Example"}&relay=wss://relay.damus.io"#;
-        let uri = NostrConnectURI::parse(uri).unwrap();
+        let uri = NostrConnectUri::parse(uri).unwrap();
 
         let pubkey =
             PublicKey::parse("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
                 .unwrap();
         let relay_url = RelayUrl::parse("wss://relay.damus.io").unwrap();
         let app_name = "Example";
-        assert_eq!(uri, NostrConnectURI::client(pubkey, [relay_url], app_name));
+        assert_eq!(uri, NostrConnectUri::client(pubkey, [relay_url], app_name));
     }
 
     #[test]
@@ -1092,7 +1096,7 @@ mod test {
                 .unwrap();
         let relay_url = RelayUrl::parse("wss://relay.nsec.app").unwrap();
         assert_eq!(
-            NostrConnectURI::Bunker {
+            NostrConnectUri::Bunker {
                 remote_signer_public_key,
                 relays: vec![relay_url],
                 secret: Some(String::from("abcd"))
@@ -1112,7 +1116,7 @@ mod test {
         let relay_url = RelayUrl::parse("wss://relay.damus.io").unwrap();
         let app_name = "Example";
         assert_eq!(
-            NostrConnectURI::client(pubkey, [relay_url], app_name).to_string(),
+            NostrConnectUri::client(pubkey, [relay_url], app_name).to_string(),
             uri
         );
     }

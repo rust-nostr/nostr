@@ -22,7 +22,7 @@ use crate::error::Error;
 /// <https://github.com/nostr-protocol/nips/blob/master/46.md>
 #[derive(Debug, Clone)]
 pub struct NostrConnect {
-    uri: NostrConnectURI,
+    uri: NostrConnectUri,
     client_keys: Keys,
     remote_signer_public_key: OnceCell<PublicKey>,
     user_public_key: OnceCell<PublicKey>,
@@ -35,13 +35,13 @@ pub struct NostrConnect {
 impl NostrConnect {
     /// Construct Nostr Connect client
     pub fn new(
-        uri: NostrConnectURI,
+        uri: NostrConnectUri,
         client_keys: Keys,
         timeout: Duration,
         opts: Option<RelayOptions>,
     ) -> Result<Self, Error> {
         // Check app keys
-        if let NostrConnectURI::Client { public_key, .. } = &uri {
+        if let NostrConnectUri::Client { public_key, .. } = &uri {
             if public_key != &client_keys.public_key {
                 return Err(Error::PublicKeyNotMatchAppKeys);
             }
@@ -83,7 +83,7 @@ impl NostrConnect {
     ///
     /// #[tokio::main]
     /// async fn main() -> Result<()> {
-    ///     let uri = NostrConnectURI::parse("bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss://relay.nsec.app")?;
+    ///     let uri = NostrConnectUri::parse("bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss://relay.nsec.app")?;
     ///     let client_keys = Keys::generate();
     ///     let timeout = Duration::from_secs(60);
     ///
@@ -170,8 +170,8 @@ impl NostrConnect {
     }
 
     /// Get `bunker` URI
-    pub async fn bunker_uri(&self) -> Result<NostrConnectURI, Error> {
-        Ok(NostrConnectURI::Bunker {
+    pub async fn bunker_uri(&self) -> Result<NostrConnectUri, Error> {
+        Ok(NostrConnectUri::Bunker {
             remote_signer_public_key: *self.remote_signer_public_key().await?,
             relays: self.relays().to_vec(),
             // Not use the secret. The secret is used only for the first connection.

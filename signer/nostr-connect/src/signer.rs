@@ -74,20 +74,20 @@ impl NostrConnectRemoteSigner {
 
     /// Construct remote signer from client URI (`nostrconnect://..`)
     pub fn from_uri(
-        uri: NostrConnectURI,
+        uri: NostrConnectUri,
         keys: NostrConnectKeys,
         secret: Option<String>,
         opts: Option<RelayOptions>,
     ) -> Result<Self, Error> {
         match uri {
-            NostrConnectURI::Client {
+            NostrConnectUri::Client {
                 public_key, relays, ..
             } => {
                 let mut signer = Self::new(keys, relays, secret, opts)?;
                 signer.nostr_connect_client_public_key = Some(public_key);
                 Ok(signer)
             }
-            NostrConnectURI::Bunker { .. } => Err(Error::UnexpectedUri),
+            NostrConnectUri::Bunker { .. } => Err(Error::UnexpectedUri),
         }
     }
 
@@ -97,8 +97,8 @@ impl NostrConnectRemoteSigner {
     }
 
     /// Get `bunker` URI
-    pub fn bunker_uri(&self) -> NostrConnectURI {
-        NostrConnectURI::Bunker {
+    pub fn bunker_uri(&self) -> NostrConnectUri {
+        NostrConnectUri::Bunker {
             remote_signer_public_key: self.keys.signer.public_key(),
             relays: self.relays().to_vec(),
             secret: self.secret.clone(),

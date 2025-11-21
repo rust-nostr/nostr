@@ -14,11 +14,11 @@ async fn main() -> Result<()> {
     let app_keys = Keys::parse("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")?;
 
     // Compose signer from bunker URI
-    let uri = NostrConnectURI::parse("bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss://relay.nsec.app")?;
+    let uri = NostrConnectUri::parse("bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss://relay.nsec.app")?;
     let signer = NostrConnect::new(uri, app_keys, Duration::from_secs(120), None)?;
 
     // Compose signer
-    // let uri = NostrConnectURI::client(
+    // let uri = NostrConnectUri::client(
     //     app_keys.public_key(),
     //     [Url::parse("wss://relay.nsec.app")?],
     //     "Test app",
@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
     // let signer = NostrConnect::new(uri, app_keys, Duration::from_secs(120), None)?;
 
     // Get bunker URI for future connections
-    let bunker_uri: NostrConnectURI = signer.bunker_uri().await?;
+    let bunker_uri: NostrConnectUri = signer.bunker_uri().await?;
     println!("\nBunker URI: {bunker_uri}\n");
 
     // Compose client

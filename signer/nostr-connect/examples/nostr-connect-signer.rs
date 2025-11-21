@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
     let signer = NostrConnectRemoteSigner::new(keys, ["wss://relay.nsec.app"], None, None)?;
 
     // Compose signer from URI
-    // let uri = NostrConnectURI::parse("nostrconnect://...")?;
+    // let uri = NostrConnectUri::parse("nostrconnect://...")?;
     // let signer = NostrConnectRemoteSigner::from_uri(uri, keys, None, None)?;
 
     // Print bunker URI
