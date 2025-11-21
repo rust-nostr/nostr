@@ -2,6 +2,7 @@
 
 use std::collections::HashSet;
 use std::path::Path;
+use std::time::Duration;
 
 use nostr::nips::nip17;
 use nostr::nips::nip65::{self, RelayMetadata};
@@ -44,6 +45,7 @@ impl NostrGossipSqlite {
     {
         // Built options
         let opts: SqliteConnectOptions = SqliteConnectOptions::new()
+            .busy_timeout(Duration::from_secs(60))
             .create_if_missing(true)
             .filename(path);
 
