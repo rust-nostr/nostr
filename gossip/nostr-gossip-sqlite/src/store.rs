@@ -1,7 +1,9 @@
 //! Nostr gossip SQLite store.
 
 use std::collections::HashSet;
+use std::ops::{Deref, DerefMut};
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 
 use nostr::nips::nip17;
@@ -14,15 +16,43 @@ use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, No
 use sqlx::migrate::Migrator;
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::{Executor, Sqlite, SqlitePool, Transaction};
+use tokio::sync::{Semaphore, SemaphorePermit};
 
 use crate::constant::{PUBKEY_METADATA_OUTDATED_AFTER, READ_WRITE_FLAGS};
 use crate::error::Error;
 use crate::model::ListRow;
 
+struct SqlTx<'a> {
+    tx: Transaction<'a, Sqlite>,
+    _permit: SemaphorePermit<'a>,
+}
+
+impl<'a> Deref for SqlTx<'a> {
+    type Target = Transaction<'a, Sqlite>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.tx
+    }
+}
+
+impl DerefMut for SqlTx<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.tx
+    }
+}
+
+impl SqlTx<'_> {
+    #[inline]
+    async fn commit(self) -> Result<(), Error> {
+        Ok(self.tx.commit().await?)
+    }
+}
+
 /// Nostr Gossip SQLite store.
 #[derive(Debug, Clone)]
 pub struct NostrGossipSqlite {
     pool: SqlitePool,
+    write_semaphore: Arc<Semaphore>,
 }
 
 impl NostrGossipSqlite {
@@ -35,7 +65,11 @@ impl NostrGossipSqlite {
         migrator.run(&pool).await?;
 
         // Construct
-        Ok(Self { pool })
+        Ok(Self {
+            pool,
+            // Limit concurrent writes to 1
+            write_semaphore: Arc::new(Semaphore::new(1)),
+        })
     }
 
     /// Open a persistent database
@@ -63,13 +97,26 @@ impl NostrGossipSqlite {
     //     Self::new(opts).await
     // }
 
+    async fn write_tx(&self) -> Result<SqlTx, Error> {
+        // Acquire permit to write
+        let permit = self.write_semaphore.acquire().await?;
+
+        // Being transaction
+        let tx: Transaction<Sqlite> = self.pool.begin().await?;
+
+        Ok(SqlTx {
+            tx,
+            _permit: permit,
+        })
+    }
+
     async fn process_event(
         &self,
         event: &Event,
         relay_url: Option<&RelayUrl>,
     ) -> Result<(), Error> {
         // Beings a new transaction
-        let mut tx = self.pool.begin().await?;
+        let mut tx = self.write_tx().await?;
 
         // Save public key and get ID
         let pk_id: i32 = get_or_save_public_key(&mut tx, &event.pubkey).await?;
@@ -144,7 +191,7 @@ impl NostrGossipSqlite {
         list: GossipListKind,
     ) -> Result<(), Error> {
         // Beings a new transaction
-        let mut tx = self.pool.begin().await?;
+        let mut tx = self.write_tx().await?;
 
         // Save public key and get ID
         let pk_id: i32 = get_or_save_public_key(&mut tx, public_key).await?;
@@ -162,7 +209,7 @@ impl NostrGossipSqlite {
         .bind(pk_id)
         .bind(list.to_event_kind().as_u16())
         .bind(now)
-        .execute(&mut *tx)
+        .execute(&mut **tx)
         .await?;
 
         // Write changes

@@ -19,6 +19,7 @@ unbundled = ["sqlx/sqlite-unbundled"]
 nostr = { workspace = true, features = ["std"] }
 nostr-gossip.workspace = true
 sqlx = { version = "0.8", features = ["migrate", "runtime-tokio", "sqlite"] }
+tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
 nostr-gossip-test-suite.workspace = true
