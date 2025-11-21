@@ -141,13 +141,9 @@ impl Store {
         rx.await?
     }
 
-    pub async fn wipe(&self) -> Result<(), Error> {
-        self.interact(move |db| {
-            let mut txn = db.write_txn()?;
-            db.wipe(&mut txn)?;
-            txn.commit()?;
-            Ok(())
-        })
-        .await?
+    pub(super) async fn wipe(&self) -> Result<(), Error> {
+        let (item, rx) = IngesterItem::wipe_with_feedback();
+        self.ingester.send(item).map_err(|_| Error::FlumeSend)?;
+        rx.await?
     }
 }
