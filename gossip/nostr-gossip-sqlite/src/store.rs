@@ -14,7 +14,7 @@ use nostr_gossip::error::GossipError;
 use nostr_gossip::flags::GossipFlags;
 use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
 use sqlx::migrate::Migrator;
-use sqlx::sqlite::SqliteConnectOptions;
+use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode};
 use sqlx::{Executor, Sqlite, SqlitePool, Transaction};
 use tokio::sync::{Semaphore, SemaphorePermit};
 
@@ -80,6 +80,7 @@ impl NostrGossipSqlite {
         // Built options
         let opts: SqliteConnectOptions = SqliteConnectOptions::new()
             .busy_timeout(Duration::from_secs(60))
+            .journal_mode(SqliteJournalMode::Wal)
             .create_if_missing(true)
             .filename(path);
 
