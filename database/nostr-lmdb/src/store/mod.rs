@@ -5,9 +5,9 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::Sender;
 
 use async_utility::task;
-use flume::Sender;
 use heed::RoTxn;
 use nostr_database::prelude::*;
 
@@ -68,7 +68,12 @@ impl Store {
 
     pub(super) async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, Error> {
         let (item, rx) = IngesterItem::save_event_with_feedback(event.clone());
-        self.ingester.send(item).map_err(|_| Error::FlumeSend)?;
+
+        // Send to the ingester
+        // This will never block the current thread according to `std::sync::mpsc::Sender` docs
+        self.ingester.send(item).map_err(|_| Error::MpscSend)?;
+
+        // Wait for a reply
         rx.await?
     }
 
@@ -145,13 +150,23 @@ impl Store {
 
     pub(super) async fn delete(&self, filter: Filter) -> Result<(), Error> {
         let (item, rx) = IngesterItem::delete_with_feedback(filter);
-        self.ingester.send(item).map_err(|_| Error::FlumeSend)?;
+
+        // Send to the ingester
+        // This will never block the current thread according to `std::sync::mpsc::Sender` docs
+        self.ingester.send(item).map_err(|_| Error::MpscSend)?;
+
+        // Wait for a reply
         rx.await?
     }
 
     pub(super) async fn wipe(&self) -> Result<(), Error> {
         let (item, rx) = IngesterItem::wipe_with_feedback();
-        self.ingester.send(item).map_err(|_| Error::FlumeSend)?;
+
+        // Send to the ingester
+        // This will never block the current thread according to `std::sync::mpsc::Sender` docs
+        self.ingester.send(item).map_err(|_| Error::MpscSend)?;
+
+        // Wait for a reply
         rx.await?
     }
 }

@@ -13,7 +13,6 @@ keywords = ["nostr", "database", "lmdb"]
 
 [dependencies]
 async-utility.workspace = true
-flume = "0.11"
 nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
 tokio = { workspace = true, features = ["sync"] }
@@ -27,7 +26,6 @@ heed = { version = "0.20", default-features = false, features = ["read-txn-no-tl
 heed = { version = "0.20", default-features = false, features = ["read-txn-no-tls", "posix-sem"] }
 
 [dev-dependencies]
-futures = "0.3"
 nostr-database-test-suite.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

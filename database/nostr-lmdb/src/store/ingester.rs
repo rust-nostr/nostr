@@ -10,9 +10,9 @@
 //! The ingester provides automatic batching of operations for optimal LMDB write performance.
 //! Events are collected from a channel and committed in batches using a single transaction.
 
-use std::{iter, thread};
+use std::sync::mpsc::{Receiver, Sender};
+use std::thread;
 
-use flume::{Receiver, Sender};
 use heed::RwTxn;
 use nostr::{Event, Filter};
 use nostr_database::{FlatBufferBuilder, SaveEventStatus};
@@ -163,8 +163,8 @@ pub(super) struct Ingester {
 impl Ingester {
     /// Build and spawn a new ingester
     pub(super) fn run(db: Lmdb) -> Sender<IngesterItem> {
-        // Create a new flume channel (unbounded for maximum performance)
-        let (tx, rx) = flume::unbounded();
+        // Create new asynchronous channel
+        let (tx, rx) = std::sync::mpsc::channel();
 
         // Construct and spawn ingester
         let ingester: Self = Self { db, rx };
@@ -182,123 +182,37 @@ impl Ingester {
         tracing::debug!("Ingester thread started");
 
         let mut fbb: FlatBufferBuilder = FlatBufferBuilder::with_capacity(FLATBUFFER_CAPACITY);
-        let mut results: Vec<OperationResult> = Vec::new();
 
-        loop {
-            // Recv the first item
-            let first_item: IngesterItem = match self.rx.recv() {
-                Ok(item) => item,
-                // All senders have been dropped, exit the loop
-                Err(flume::RecvError::Disconnected) => {
-                    tracing::debug!("Ingester channel disconnected, exiting.");
-                    break;
-                }
-            };
+        // Listen for items
+        while let Ok(item) = self.rx.recv() {
+            // Process item
+            let res: OperationResult = self.process_item(&mut fbb, item);
 
-            // Drain the rest of the channel into a batch
-            let batch = iter::once(first_item).chain(self.rx.drain());
-
-            // Process batch, reusing the "results" vector
-            self.process_batch_in_transaction(batch, &mut fbb, &mut results);
-
-            tracing::debug!("Processed batch of {} operations", results.len());
-
-            // Drain the results and send them back through channels
-            for result in results.drain(..) {
-                result.send();
-            }
+            // Send result
+            res.send();
         }
 
         tracing::debug!("Ingester thread exited");
     }
 
-    fn process_batch_in_transaction<I>(
-        &self,
-        batch: I,
-        fbb: &mut FlatBufferBuilder,
-        results: &mut Vec<OperationResult>,
-    ) where
-        I: Iterator<Item = IngesterItem>,
-    {
-        // Note: We're only using a write transaction here since LMDB doesn't require
-        // a separate read transaction for queries within a write transaction
+    fn process_item(&self, fbb: &mut FlatBufferBuilder, item: IngesterItem) -> OperationResult {
+        // Try to get write transaction
         let mut write_txn = match self.db.write_txn() {
             Ok(txn) => txn,
-            Err(e) => {
-                tracing::error!(error = %e, "Failed to create write transaction");
-
-                // Send error for all items
-                for item in batch {
-                    results.push(
-                        item.operation
-                            .into_error_result(Error::BatchTransactionFailed),
-                    );
-                }
-
-                return;
-            }
+            Err(e) => return item.operation.into_error_result(e),
         };
 
-        let mut batch_iter = batch.peekable();
-
-        // Process all operations in the batch
-        while let Some(item) = batch_iter.next() {
-            let result: OperationResult = self.process_operation(&mut write_txn, item, fbb);
-
-            // Check if we need to abort on actual database errors (not on rejections)
-            let abort_on_error: bool = match &result {
-                OperationResult::Save { result: Err(e), .. } => {
-                    tracing::error!(error = %e, "Failed to save event, aborting batch");
-                    true
-                }
-                OperationResult::Delete { result: Err(e), .. } => {
-                    tracing::error!(error = %e, "Failed to delete event, aborting batch");
-                    true
-                }
-                OperationResult::Save {
-                    result: Ok(SaveEventStatus::Rejected(_)),
-                    ..
-                } => false, // Rejections are expected, don't abort
-                _ => false,
-            };
-
-            // Add operation to results
-            results.push(result);
-
-            if abort_on_error {
-                // Mark all previous operations as failed
-                mark_all_as_failed(results);
-
-                // All remaining operations get BatchTransactionFailed error
-                for item in batch_iter {
-                    results.push(
-                        item.operation
-                            .into_error_result(Error::BatchTransactionFailed),
-                    );
-                }
-
-                // Abort the write transaction first, then drop read transaction
-                write_txn.abort();
-                return;
-            }
-        }
-
-        // All operations succeeded, commit the transaction
-        if let Err(e) = write_txn.commit() {
-            tracing::error!(error = %e, "Failed to commit batch transaction");
-
-            // Mark all operations as failed
-            mark_all_as_failed(results);
-        }
+        // Process operation
+        self.process_operation(&mut write_txn, fbb, item.operation)
     }
 
     fn process_operation(
         &self,
         txn: &mut RwTxn,
-        item: IngesterItem,
         fbb: &mut FlatBufferBuilder,
+        operation: IngesterOperation,
     ) -> OperationResult {
-        match item.operation {
+        match operation {
             IngesterOperation::SaveEvent { event, tx } => {
                 let result = self.db.save_event_with_txn(txn, fbb, &event);
                 OperationResult::Save { result, tx }
@@ -312,143 +226,5 @@ impl Ingester {
                 OperationResult::Wipe { result, tx }
             }
         }
-    }
-}
-
-/// Mark all operations as failed
-fn mark_all_as_failed(results: &mut [OperationResult]) {
-    // All previously processed operations get BatchTransactionFailed error
-    for prev_result in results.iter_mut() {
-        match prev_result {
-            OperationResult::Save { result: res, .. } => *res = Err(Error::BatchTransactionFailed),
-            OperationResult::Delete { result: res, .. } => {
-                *res = Err(Error::BatchTransactionFailed)
-            }
-            OperationResult::Wipe { result: res, .. } => *res = Err(Error::BatchTransactionFailed),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-
-    use futures::future::join_all;
-    use nostr::{EventBuilder, Keys, Kind};
-    use tempfile::TempDir;
-
-    use super::*;
-    use crate::store::Store;
-
-    async fn setup_test_store() -> (Arc<Store>, TempDir) {
-        let temp_dir = TempDir::new().expect("Failed to create temp directory");
-        let store = Store::open(temp_dir.path(), 1024 * 1024 * 10, 10, 50)
-            .await
-            .expect("Failed to open test store");
-        (Arc::new(store), temp_dir)
-    }
-
-    #[tokio::test]
-    async fn test_batch_error_handling() {
-        let (store, _temp_dir) = setup_test_store().await;
-        let keys = Keys::generate();
-
-        // Create a mix of valid and duplicate events
-        let event1 = EventBuilder::text_note("Event 1")
-            .sign_with_keys(&keys)
-            .expect("Failed to sign event");
-
-        // Save event1 first
-        store
-            .save_event(&event1)
-            .await
-            .expect("Failed to save event");
-
-        // Now try to save a batch with duplicate and new events
-        let event2 = EventBuilder::text_note("Event 2")
-            .sign_with_keys(&keys)
-            .expect("Failed to sign event");
-
-        let event3 = EventBuilder::text_note("Event 3")
-            .sign_with_keys(&keys)
-            .expect("Failed to sign event");
-
-        let futures = vec![
-            store.save_event(&event1), // Duplicate
-            store.save_event(&event2), // New
-            store.save_event(&event3), // New
-        ];
-
-        let results = join_all(futures).await;
-
-        // First should be rejected as duplicate
-        assert!(matches!(
-            results[0],
-            Ok(SaveEventStatus::Rejected(
-                nostr_database::RejectedReason::Duplicate
-            ))
-        ));
-
-        // Others should succeed
-        assert!(matches!(results[1], Ok(SaveEventStatus::Success)));
-        assert!(matches!(results[2], Ok(SaveEventStatus::Success)));
-
-        // Verify the new events were saved
-        let saved_count = store
-            .query(Filter::new())
-            .await
-            .expect("Failed to query")
-            .len();
-        assert_eq!(saved_count, 3); // event1, event2, event3
-    }
-
-    #[tokio::test]
-    async fn test_mixed_operations_batch() {
-        let (store, _temp_dir) = setup_test_store().await;
-        let keys = Keys::generate();
-
-        // Create some events
-        let mut events = Vec::new();
-        for i in 0..10 {
-            let event = EventBuilder::text_note(format!("Event to delete {}", i))
-                .sign_with_keys(&keys)
-                .expect("Failed to sign event");
-            store
-                .save_event(&event)
-                .await
-                .expect("Failed to save event");
-            events.push(event);
-        }
-
-        // Now create a mixed batch of saves and deletes
-        let new_event1 = EventBuilder::text_note("New event 1")
-            .sign_with_keys(&keys)
-            .expect("Failed to sign event");
-
-        let new_event2 = EventBuilder::text_note("New event 2")
-            .sign_with_keys(&keys)
-            .expect("Failed to sign event");
-
-        // Execute mixed operations concurrently
-        let save_fut1 = store.save_event(&new_event1);
-        let save_fut2 = store.save_event(&new_event2);
-        let delete_fut = store.delete(Filter::new().kind(Kind::TextNote).limit(5));
-
-        let (save1_result, save2_result, delete_result) =
-            tokio::join!(save_fut1, save_fut2, delete_fut);
-
-        save1_result.expect("Failed to save new event 1");
-        save2_result.expect("Failed to save new event 2");
-        delete_result.expect("Failed to delete events");
-
-        // Verify results
-        let remaining = store
-            .query(Filter::new())
-            .await
-            .expect("Failed to query")
-            .len();
-
-        // We had 10 events, deleted 5, added 2
-        assert_eq!(remaining, 7);
     }
 }

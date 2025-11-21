@@ -22,14 +22,12 @@ pub enum Error {
     Key(key::Error),
     Secp256k1(secp256k1::Error),
     OneshotRecv(oneshot::error::RecvError),
-    /// Flume channel send error
-    FlumeSend,
+    /// MPSC send error
+    MpscSend,
     /// The event kind is wrong
     WrongEventKind,
     /// Not found
     NotFound,
-    /// Batched transaction failed - sent to operations that didn't cause the error
-    BatchTransactionFailed,
 }
 
 impl std::error::Error for Error {}
@@ -44,10 +42,9 @@ impl fmt::Display for Error {
             Self::Key(e) => write!(f, "{e}"),
             Self::Secp256k1(e) => write!(f, "{e}"),
             Self::OneshotRecv(e) => write!(f, "{e}"),
-            Self::FlumeSend => write!(f, "flume channel send error"),
+            Self::MpscSend => write!(f, "mpsc channel send error"),
             Self::NotFound => write!(f, "Not found"),
             Self::WrongEventKind => write!(f, "Wrong event kind"),
-            Self::BatchTransactionFailed => write!(f, "Batched transaction failed"),
         }
     }
 }
