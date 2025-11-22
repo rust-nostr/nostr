@@ -20,8 +20,9 @@ The project is split up into several crates:
     - [**nostr-blossom**](./rfs/nostr-blossom): A library for interacting with the Blossom protocol
     - [**nostr-http-file-storage**](./rfs/nostr-http-file-storage): HTTP File Storage client (NIP-96)
 - [**nostr-keyring**](./crates/nostr-keyring): Nostr Keyring
+- [**nostr-relay-builder**](./crates/nostr-relay-builder): Build your own custom nostr relay
 - [**nostr-relay-pool**](./crates/nostr-relay-pool): Nostr Relay Pool
-- [**nostr-sdk**](./crates/nostr-sdk): High level client library
+- [**nostr-sdk**](./crates/nostr-sdk): High-level client library
 - [**nwc**](./crates/nwc): Nostr Wallet Connect (NWC) client (NIP-47)
 
 > Note: this repository contains the Rust codebase.
