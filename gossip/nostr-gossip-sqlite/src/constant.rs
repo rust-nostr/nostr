@@ -13,3 +13,5 @@ pub(super) const READ_WRITE_FLAGS: GossipFlags = {
     flags.add(GossipFlags::WRITE);
     flags
 };
+
+pub(super) const RELAYS_QUERY_LIMIT: u8 = 21;
