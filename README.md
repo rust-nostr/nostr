@@ -132,7 +132,6 @@ Some features are behind crate flags or only available when using a specific cra
 |     ✅     | [B7 - Blossom](https://github.com/nostr-protocol/nips/blob/master/B7.md)                                        |
 |     ✅     | [C0 - Code Snippets](https://github.com/nostr-protocol/nips/blob/master/C0.md)                                  |
 |     ✅     | [C7 - Chats](https://github.com/nostr-protocol/nips/blob/master/C7.md)                                          |
-|     ✅     | [EE - Messaging using the MLS Protocol](https://github.com/nostr-protocol/nips/blob/master/EE.md)               |
 
 ## State
 
