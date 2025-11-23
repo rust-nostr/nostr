@@ -25,9 +25,13 @@
 
 ## Unreleased
 
-### Fixed
+### Breaking changes
 
-- Fix database is locked (code: 5) error (https://github.com/rust-nostr/nostr/pull/1141)
+- Make `NostrLMDB::open` async (https://github.com/rust-nostr/nostr/pull/1141)
+
+### Changed
+
+- Spawn blocking task for read operations (https://github.com/rust-nostr/nostr/pull/1141)
 
 ## v0.44.0 - 2025/11/06
 
