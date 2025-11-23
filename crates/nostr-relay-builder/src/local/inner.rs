@@ -14,6 +14,9 @@ use async_wsocket::native::{self, Message, WebSocketStream};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use nostr_database::prelude::*;
+use nostr_relay_pool::{
+    pool, Output, Reconciliation, RelayOptions, RelayPool, RelayPoolNotification, SyncOptions,
+};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
 use tokio::sync::{broadcast, Notify, OnceCell, Semaphore};
@@ -194,6 +197,54 @@ impl InnerLocalRelay {
                 }
             })
             .await
+    }
+
+    pub(super) async fn sync_with<I, U>(
+        &self,
+        urls: I,
+        filter: Filter,
+        opts: &SyncOptions,
+    ) -> Result<Output<Reconciliation>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Construct a new pool
+        let pool: RelayPool = RelayPool::default();
+
+        // Add relays to pool
+        for url in urls {
+            pool.add_relay(url, RelayOptions::default()).await?;
+        }
+
+        // Connect
+        pool.connect().await;
+
+        // Subscribe to notifications
+        let mut notifications = pool.notifications();
+
+        // Create a notification future
+        let fut = async {
+            while let Ok(notification) = notifications.recv().await {
+                // Notify about new events received by the sync
+                if let RelayPoolNotification::Event { event, .. } = notification {
+                    self.notify_event(*event);
+                }
+            }
+        };
+
+        // Start sync and wait for the result
+        tokio::select! {
+            result = pool.sync(filter, opts) => {
+                // Shutdown pool
+                pool.shutdown().await;
+
+                // Return reconciliation output
+                Ok(result?)
+            },
+            _ = fut => Err(Error::PrematureExit)
+        }
     }
 
     pub fn notify_event(&self, event: Event) -> bool {

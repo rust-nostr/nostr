@@ -29,6 +29,10 @@
 
 - Rename all `RelayBuilder*` structs and enums to `LocalRelayBuilder*` (https://github.com/rust-nostr/nostr/pull/1145)
 
+### Added
+
+- Add `LocalRelay::sync_with` method (https://github.com/rust-nostr/nostr/pull/1146)
+
 ## v0.44.0 - 2025/11/06
 
 ### Breaking change

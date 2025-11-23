@@ -8,6 +8,7 @@ use std::net::SocketAddr;
 
 use atomic_destructor::AtomicDestructor;
 use nostr_database::prelude::*;
+use nostr_relay_pool::{pool, Output, Reconciliation, SyncOptions};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 mod inner;
@@ -54,6 +55,22 @@ impl LocalRelay {
     pub async fn hidden_service(&self) -> Result<Option<&str>, Error> {
         let addr: &Option<String> = self.inner.hidden_service().await?;
         Ok(addr.as_deref())
+    }
+
+    /// Sync events with other relay(s).
+    #[inline]
+    pub async fn sync_with<I, U>(
+        &self,
+        urls: I,
+        filter: Filter,
+        opts: &SyncOptions,
+    ) -> Result<Output<Reconciliation>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        self.inner.sync_with(urls, filter, opts).await
     }
 
     /// Send event to subscribers

@@ -2998,6 +2998,7 @@ dependencies = [
  "nostr",
  "nostr-database",
  "nostr-lmdb",
+ "nostr-relay-pool",
  "tokio",
  "tracing",
  "tracing-subscriber",

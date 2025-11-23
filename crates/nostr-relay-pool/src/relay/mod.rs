@@ -781,7 +781,7 @@ mod tests {
     use async_utility::time;
     use nostr_relay_builder::prelude::*;
 
-    use super::{Error, *};
+    use super::{Error, SyncOptions, *};
     use crate::policy::{AdmitPolicy, PolicyError};
 
     #[derive(Debug)]
