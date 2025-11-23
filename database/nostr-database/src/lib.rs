@@ -81,7 +81,16 @@ impl Backend {
 pub struct Features {
     /// Whether the database supports persistent storage.
     pub persistent: bool,
-    /// Whether the database supports full-text search.
+    /// Whether the database supports event expiration (NIP-40)
+    ///
+    /// When supported, the database will automatically exclude expired events
+    /// from query results and/or delete them.
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
+    pub event_expiration: bool,
+    /// Whether the database supports full-text search (NIP-50)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/50.md>
     pub full_text_search: bool,
 }
 

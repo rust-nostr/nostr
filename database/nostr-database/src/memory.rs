@@ -104,6 +104,7 @@ impl NostrDatabase for MemoryDatabase {
     fn features(&self) -> Features {
         Features {
             persistent: false,
+            event_expiration: false,
             full_text_search: match &self.inner {
                 InnerMemoryDatabase::Tracker(..) => false,
                 InnerMemoryDatabase::Full(..) => true,

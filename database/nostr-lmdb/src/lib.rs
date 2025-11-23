@@ -134,6 +134,7 @@ impl NostrDatabase for NostrLMDB {
     fn features(&self) -> Features {
         Features {
             persistent: true,
+            event_expiration: false,
             full_text_search: true,
         }
     }
