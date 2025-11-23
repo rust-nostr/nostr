@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 
 use nostr_database::prelude::*;
 
+pub mod prelude;
 mod store;
 
 use self::store::Store;
