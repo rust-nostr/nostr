@@ -314,6 +314,7 @@ impl NostrDatabase for WebDatabase {
             persistent: true,
             event_expiration: false,
             full_text_search: true,
+            request_to_vanish: false,
         }
     }
 

@@ -147,6 +147,7 @@ impl NostrDatabase for NostrLmdb {
             persistent: true,
             event_expiration: false,
             full_text_search: true,
+            request_to_vanish: false,
         }
     }
 

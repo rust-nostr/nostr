@@ -92,6 +92,10 @@ pub struct Features {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/50.md>
     pub full_text_search: bool,
+    /// Whether the database supports the request to vanish (NIP-62)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
+    pub request_to_vanish: bool,
 }
 
 /// Database event status

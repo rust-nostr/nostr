@@ -109,6 +109,7 @@ impl NostrDatabase for MemoryDatabase {
                 InnerMemoryDatabase::Tracker(..) => false,
                 InnerMemoryDatabase::Full(..) => true,
             },
+            request_to_vanish: false,
         }
     }
 
