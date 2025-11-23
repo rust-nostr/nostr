@@ -18,6 +18,33 @@ mod event_generated;
 
 pub use self::event_generated::event_fbs;
 
+/// Missing field
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum MissingField {
+    /// ID
+    Id,
+    /// Public key
+    Pubkey,
+    /// Tags
+    Tags,
+    /// Content
+    Content,
+    /// Signature
+    Sig,
+}
+
+impl fmt::Display for MissingField {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Id => write!(f, "id"),
+            Self::Pubkey => write!(f, "pubkey"),
+            Self::Tags => write!(f, "tags"),
+            Self::Content => write!(f, "content"),
+            Self::Sig => write!(f, "sig"),
+        }
+    }
+}
+
 /// FlatBuffers Error
 #[derive(Debug)]
 pub enum Error {
@@ -27,8 +54,8 @@ pub enum Error {
     Tag(tag::Error),
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
-    /// Not found
-    NotFound,
+    /// Field not found
+    FieldNotFound(MissingField),
 }
 
 impl std::error::Error for Error {}
@@ -39,7 +66,7 @@ impl fmt::Display for Error {
             Self::FlatBuffer(e) => write!(f, "{e}"),
             Self::Tag(e) => write!(f, "{e}"),
             Self::Secp256k1(e) => write!(f, "{e}"),
-            Self::NotFound => write!(f, "not found"),
+            Self::FieldNotFound(field) => write!(f, "'{field}' field not found"),
         }
     }
 }
@@ -125,19 +152,25 @@ impl FlatBufferDecode for Event {
         let ev = event_fbs::root_as_event(buf)?;
         let tags = ev
             .tags()
-            .ok_or(Error::NotFound)?
+            .ok_or(Error::FieldNotFound(MissingField::Tags))?
             .into_iter()
             .filter_map(|tag| tag.data().map(Tag::parse))
             .collect::<Result<Vec<Tag>, _>>()?;
 
         Ok(Self::new(
-            EventId::from_byte_array(ev.id().ok_or(Error::NotFound)?.0),
-            PublicKey::from_byte_array(ev.pubkey().ok_or(Error::NotFound)?.0),
+            EventId::from_byte_array(ev.id().ok_or(Error::FieldNotFound(MissingField::Id))?.0),
+            PublicKey::from_byte_array(
+                ev.pubkey()
+                    .ok_or(Error::FieldNotFound(MissingField::Pubkey))?
+                    .0,
+            ),
             Timestamp::from(ev.created_at()),
             Kind::from(ev.kind() as u16),
             tags,
-            ev.content().ok_or(Error::NotFound)?.to_owned(),
-            Signature::from_slice(&ev.sig().ok_or(Error::NotFound)?.0)?,
+            ev.content()
+                .ok_or(Error::FieldNotFound(MissingField::Content))?
+                .to_owned(),
+            Signature::from_slice(&ev.sig().ok_or(Error::FieldNotFound(MissingField::Sig))?.0)?,
         ))
     }
 }
@@ -146,7 +179,7 @@ impl<'a> FlatBufferDecodeBorrowed<'a> for EventBorrow<'a> {
     fn decode(buf: &'a [u8]) -> Result<Self, Error> {
         let ev = event_fbs::root_as_event(buf)?;
 
-        let fb_tags = ev.tags().ok_or(Error::NotFound)?;
+        let fb_tags = ev.tags().ok_or(Error::FieldNotFound(MissingField::Tags))?;
         let mut tags = Vec::with_capacity(fb_tags.len());
 
         for tag in fb_tags.iter().filter_map(|t| t.data()) {
@@ -154,13 +187,18 @@ impl<'a> FlatBufferDecodeBorrowed<'a> for EventBorrow<'a> {
         }
 
         Ok(Self {
-            id: &ev.id().ok_or(Error::NotFound)?.0,
-            pubkey: &ev.pubkey().ok_or(Error::NotFound)?.0,
+            id: &ev.id().ok_or(Error::FieldNotFound(MissingField::Id))?.0,
+            pubkey: &ev
+                .pubkey()
+                .ok_or(Error::FieldNotFound(MissingField::Pubkey))?
+                .0,
             created_at: Timestamp::from_secs(ev.created_at()),
             kind: ev.kind() as u16, // TODO: should use try_into
             tags,
-            content: ev.content().ok_or(Error::NotFound)?,
-            sig: &ev.sig().ok_or(Error::NotFound)?.0,
+            content: ev
+                .content()
+                .ok_or(Error::FieldNotFound(MissingField::Content))?,
+            sig: &ev.sig().ok_or(Error::FieldNotFound(MissingField::Sig))?.0,
         })
     }
 }
