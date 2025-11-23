@@ -1,13 +1,13 @@
 use std::time::Duration;
 
-use nostr_lmdb::NostrLMDB;
+use nostr_lmdb::NostrLmdb;
 use nostr_relay_builder::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let db = NostrLMDB::open("./db/nostr-lmdb").await?;
+    let db = NostrLmdb::open("./db/nostr-lmdb").await?;
 
     let builder = RelayBuilder::default().port(7777).database(db);
 

@@ -26,6 +26,10 @@ const MAP_SIZE: usize = 1024 * 1024 * 1024 * 32; // 32GB
 #[cfg(target_pointer_width = "32")]
 const MAP_SIZE: usize = 0xFFFFF000; // 4GB (2^32-4096)
 
+#[allow(missing_docs)]
+#[deprecated(since = "0.45.0", note = "Use NostrLmdb instead")]
+pub type NostrLMDB = NostrLmdb;
+
 /// Nostr LMDB database builder
 #[derive(Debug, Clone)]
 pub struct NostrLmdbBuilder {
@@ -88,24 +92,24 @@ impl NostrLmdbBuilder {
     }
 
     /// Build
-    pub async fn build(self) -> Result<NostrLMDB, DatabaseError> {
+    pub async fn build(self) -> Result<NostrLmdb, DatabaseError> {
         let map_size: usize = self.map_size.unwrap_or(MAP_SIZE);
         let max_readers: u32 = self.max_readers.unwrap_or(126);
         let additional_dbs: u32 = self.additional_dbs.unwrap_or(0);
         let db: Store = Store::open(self.path, map_size, max_readers, additional_dbs)
             .await
             .map_err(DatabaseError::backend)?;
-        Ok(NostrLMDB { db })
+        Ok(NostrLmdb { db })
     }
 }
 
 /// LMDB Nostr Database
 #[derive(Debug)]
-pub struct NostrLMDB {
+pub struct NostrLmdb {
     db: Store,
 }
 
-impl NostrLMDB {
+impl NostrLmdb {
     /// Open LMDB database
     #[inline]
     pub async fn open<P>(path: P) -> Result<Self, DatabaseError>
@@ -125,7 +129,7 @@ impl NostrLMDB {
     }
 }
 
-impl NostrDatabase for NostrLMDB {
+impl NostrDatabase for NostrLmdb {
     #[inline]
     fn backend(&self) -> Backend {
         Backend::LMDB
@@ -213,13 +217,13 @@ mod tests {
     use super::*;
 
     struct TempDatabase {
-        db: NostrLMDB,
+        db: NostrLmdb,
         // Needed to avoid the drop and deletion of temp folder
         _temp: TempDir,
     }
 
     impl Deref for TempDatabase {
-        type Target = NostrLMDB;
+        type Target = NostrLmdb;
 
         fn deref(&self) -> &Self::Target {
             &self.db
@@ -230,7 +234,7 @@ mod tests {
         async fn new() -> Self {
             let path = tempfile::tempdir().unwrap();
             Self {
-                db: NostrLMDB::open(&path).await.unwrap(),
+                db: NostrLmdb::open(&path).await.unwrap(),
                 _temp: path,
             }
         }

@@ -4,14 +4,14 @@
 
 use std::time::Duration;
 
-use nostr_lmdb::NostrLMDB;
+use nostr_lmdb::NostrLmdb;
 use nostr_sdk::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let database = NostrLMDB::open("./db/nostr-lmdb").await?;
+    let database = NostrLmdb::open("./db/nostr-lmdb").await?;
     let client: Client = Client::builder().database(database).build();
     client.add_relay("wss://relay.damus.io").await?;
 

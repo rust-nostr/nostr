@@ -10,13 +10,13 @@ The crate exposes two main entry points:
 ## Quick start
 
 ```rust,no_run
-use nostr_lmdb::NostrLMDB;
+use nostr_lmdb::NostrLmdb;
 use nostr_relay_builder::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Open a database (all databases that implements `NostrDatabase` trait can be used).
-    let database = NostrLMDB::open("nostr-relay").await?;
+    let database = NostrLmdb::open("nostr-relay").await?;
 
     // Configure the relay.
     let builder = RelayBuilder::default()
