@@ -18,6 +18,7 @@ use nostr_database::{FlatBufferBuilder, FlatBufferEncode, RejectedReason, SaveEv
 
 mod index;
 
+use self::index::AllIndexesKeys;
 use super::error::Error;
 use super::filter::DatabaseFilter;
 
@@ -265,64 +266,25 @@ impl Lmdb {
         fbb: &mut FlatBufferBuilder,
         event: &Event,
     ) -> Result<(), Error> {
-        let id: &[u8] = event.id.as_bytes();
-
         // Store event
-        self.events.put(txn, id, event.encode(fbb))?;
+        self.events
+            .put(txn, event.id.as_bytes(), event.encode(fbb))?;
 
-        // Index by created_at and id
-        let ci_index_key: Vec<u8> =
-            index::make_ci_index_key(&event.created_at, event.id.as_bytes());
-        self.ci_index.put(txn, &ci_index_key, id)?;
+        // Index event
+        let event: EventBorrow = EventBorrow::from(event);
+        let index: AllIndexesKeys = AllIndexesKeys::new(event);
+        self.index_event(txn, index)
+    }
 
-        // Index by author and kind (with created_at and id)
-        let akc_index_key: Vec<u8> = index::make_akc_index_key(
-            event.pubkey.as_bytes(),
-            event.kind.as_u16(),
-            &event.created_at,
-            event.id.as_bytes(),
-        );
-        self.akc_index.put(txn, &akc_index_key, id)?;
+    fn index_event(&self, txn: &mut RwTxn, index: AllIndexesKeys) -> Result<(), Error> {
+        self.ci_index.put(txn, &index.ci_index, &index.id)?;
+        self.akc_index.put(txn, &index.akc_index, &index.id)?;
+        self.ac_index.put(txn, &index.ac_index, &index.id)?;
 
-        // Index by author (with created_at and id)
-        let ac_index_key: Vec<u8> = index::make_ac_index_key(
-            event.pubkey.as_bytes(),
-            &event.created_at,
-            event.id.as_bytes(),
-        );
-        self.ac_index.put(txn, &ac_index_key, id)?;
-
-        for tag in event.tags.iter() {
-            if let (Some(tag_name), Some(tag_value)) = (tag.single_letter_tag(), tag.content()) {
-                // Index by author and tag (with created_at and id)
-                let atc_index_key: Vec<u8> = index::make_atc_index_key(
-                    event.pubkey.as_bytes(),
-                    &tag_name,
-                    tag_value,
-                    &event.created_at,
-                    event.id.as_bytes(),
-                );
-                self.atc_index.put(txn, &atc_index_key, id)?;
-
-                // Index by kind and tag (with created_at and id)
-                let ktc_index_key: Vec<u8> = index::make_ktc_index_key(
-                    event.kind.as_u16(),
-                    &tag_name,
-                    tag_value,
-                    &event.created_at,
-                    event.id.as_bytes(),
-                );
-                self.ktc_index.put(txn, &ktc_index_key, id)?;
-
-                // Index by tag (with created_at and id)
-                let tc_index_key: Vec<u8> = index::make_tc_index_key(
-                    &tag_name,
-                    tag_value,
-                    &event.created_at,
-                    event.id.as_bytes(),
-                );
-                self.tc_index.put(txn, &tc_index_key, id)?;
-            }
+        for tag in index.tags.into_iter() {
+            self.atc_index.put(txn, &tag.atc_index, &index.id)?;
+            self.ktc_index.put(txn, &tag.ktc_index, &index.id)?;
+            self.tc_index.put(txn, &tag.tc_index, &index.id)?;
         }
 
         Ok(())
@@ -395,7 +357,16 @@ impl Lmdb {
     }
 
     pub(crate) fn wipe(&self, txn: &mut RwTxn) -> Result<(), Error> {
+        // Wipe events
         self.events.clear(txn)?;
+
+        // Wipe indexes
+        self.wipe_indexes(txn)?;
+
+        Ok(())
+    }
+
+    fn wipe_indexes(&self, txn: &mut RwTxn) -> Result<(), Error> {
         self.ci_index.clear(txn)?;
         self.tc_index.clear(txn)?;
         self.ac_index.clear(txn)?;
@@ -404,6 +375,33 @@ impl Lmdb {
         self.ktc_index.clear(txn)?;
         self.deleted_ids.clear(txn)?;
         self.deleted_coordinates.clear(txn)?;
+        Ok(())
+    }
+
+    pub(super) fn reindex(&self, txn: &mut RwTxn) -> Result<(), Error> {
+        // First, wipe all indexes
+        self.wipe_indexes(txn)?;
+
+        // Collect indexes
+        // TODO: avoid this allocation
+        let size: u64 = self.events.len(txn)?;
+        let mut indexes: Vec<AllIndexesKeys> = Vec::with_capacity(size as usize);
+
+        for result in self.events.iter(txn)? {
+            let (_id, event) = result?;
+
+            // Decode event
+            if let Ok(event) = EventBorrow::decode(event) {
+                // Build indexes
+                let index: AllIndexesKeys = AllIndexesKeys::new(event);
+                indexes.push(index);
+            }
+        }
+
+        for index in indexes.into_iter() {
+            self.index_event(txn, index)?;
+        }
+
         Ok(())
     }
 

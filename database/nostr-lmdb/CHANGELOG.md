@@ -34,6 +34,10 @@
 - Rename `NostrLMDB` to `NostrLmdb`
 - Spawn blocking task for read operations (https://github.com/rust-nostr/nostr/pull/1141)
 
+### Added
+
+- Add `NostrLmdb::reindex` (https://github.com/rust-nostr/nostr/pull/1143)
+
 ## v0.44.0 - 2025/11/06
 
 ### Changed

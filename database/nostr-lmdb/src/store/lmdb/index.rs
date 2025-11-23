@@ -5,12 +5,84 @@
 
 use core::{cmp, iter};
 
+use nostr::event::borrow::EventBorrow;
 use nostr::nips::nip01::CoordinateBorrow;
 use nostr::{EventId, PublicKey, SingleLetterTag, Timestamp};
 
 const CREATED_AT_BE: usize = 8;
 const KIND_BE: usize = 2;
 const TAG_VALUE_PAD_LEN: usize = 182;
+
+pub(super) struct TagIndexKeys {
+    pub(super) atc_index: Vec<u8>,
+    pub(super) ktc_index: Vec<u8>,
+    pub(super) tc_index: Vec<u8>,
+}
+
+pub(super) struct AllIndexesKeys {
+    pub(super) id: [u8; EventId::LEN],
+    pub(super) ci_index: Vec<u8>,
+    pub(super) akc_index: Vec<u8>,
+    pub(super) ac_index: Vec<u8>,
+    pub(super) tags: Vec<TagIndexKeys>,
+}
+
+impl AllIndexesKeys {
+    pub fn new(event: EventBorrow<'_>) -> Self {
+        // Index by created_at and id
+        let ci_index: Vec<u8> = make_ci_index_key(&event.created_at, event.id);
+
+        // Index by author and kind (with created_at and id)
+        let akc_index: Vec<u8> =
+            make_akc_index_key(event.pubkey, event.kind, &event.created_at, event.id);
+
+        // Index by author (with created_at and id)
+        let ac_index: Vec<u8> = make_ac_index_key(event.pubkey, &event.created_at, event.id);
+
+        let tags = event
+            .tags
+            .iter()
+            .filter_map(|t| t.extract())
+            .map(|(tag_name, tag_value)| {
+                // Index by author and tag (with created_at and id)
+                let atc_index: Vec<u8> = make_atc_index_key(
+                    event.pubkey,
+                    &tag_name,
+                    tag_value,
+                    &event.created_at,
+                    event.id,
+                );
+
+                // Index by kind and tag (with created_at and id)
+                let ktc_index: Vec<u8> = make_ktc_index_key(
+                    event.kind,
+                    &tag_name,
+                    tag_value,
+                    &event.created_at,
+                    event.id,
+                );
+
+                // Index by tag (with created_at and id)
+                let tc_index: Vec<u8> =
+                    make_tc_index_key(&tag_name, tag_value, &event.created_at, event.id);
+
+                TagIndexKeys {
+                    atc_index,
+                    ktc_index,
+                    tc_index,
+                }
+            })
+            .collect();
+
+        Self {
+            id: *event.id,
+            ci_index,
+            akc_index,
+            ac_index,
+            tags,
+        }
+    }
+}
 
 /// Reverse created_at and convert `u64` to big-endian byte order
 #[inline]

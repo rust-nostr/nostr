@@ -128,6 +128,12 @@ impl NostrLmdb {
     {
         NostrLmdbBuilder::new(path)
     }
+
+    /// Re-index the database.
+    #[inline]
+    pub async fn reindex(&self) -> Result<(), DatabaseError> {
+        self.db.reindex().await.map_err(DatabaseError::backend)
+    }
 }
 
 impl NostrDatabase for NostrLmdb {

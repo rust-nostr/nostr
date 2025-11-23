@@ -66,6 +66,12 @@ impl Store {
         Ok(task::spawn_blocking(move || f(db)).await?)
     }
 
+    pub(crate) async fn reindex(&self) -> Result<(), Error> {
+        let (item, rx) = IngesterItem::reindex();
+        self.ingester.send(item).map_err(|_| Error::FlumeSend)?;
+        rx.await?
+    }
+
     pub(super) async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, Error> {
         let (item, rx) = IngesterItem::save_event_with_feedback(event.clone());
         self.ingester.send(item).map_err(|_| Error::FlumeSend)?;
