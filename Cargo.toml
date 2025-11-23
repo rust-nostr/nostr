@@ -8,6 +8,7 @@ members = [
     "database/nostr-indexeddb",
     "database/nostr-lmdb",
     "database/nostr-ndb",
+    "database/nostr-sqlite",
 
     # Gossip
     "gossip/nostr-gossip",
@@ -58,6 +59,7 @@ nostr-relay-pool = { version = "0.44", path = "./crates/nostr-relay-pool", defau
 reqwest = { version = "0.12", default-features = false }
 serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false }
+sqlx = "0.8"
 tempfile = "3.23"
 tokio = { version = ">=1.37", default-features = false }
 tracing = { version = "0.1", default-features = false }
