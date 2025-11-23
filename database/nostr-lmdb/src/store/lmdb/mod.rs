@@ -18,83 +18,12 @@ use nostr_database::{FlatBufferBuilder, FlatBufferEncode, RejectedReason, SaveEv
 
 mod index;
 
-use self::index::AllIndexesKeys;
+use self::index::EventIndexKeys;
 use super::error::Error;
 use super::filter::DatabaseFilter;
 
 const EVENT_ID_ALL_ZEROS: [u8; 32] = [0; 32];
 const EVENT_ID_ALL_255: [u8; 32] = [255; 32];
-
-/// Information needed to delete an event from all indexes.
-///
-/// This struct exists to work around Rust's borrow checker limitations when using LMDB transactions.
-/// LMDB's `EventBorrow` holds a reference to data within the transaction, preventing us from
-/// getting a mutable borrow to the same transaction for deletion operations.
-///
-/// ## Why DeletionInfo?
-///
-/// When using a single `RwTxn` for both reads and writes (for batch consistency), we face a
-/// fundamental constraint: we cannot hold an immutable borrow (from `get_event_by_id`) while
-/// trying to get a mutable borrow (for deletion operations) on the same transaction.
-///
-/// DeletionInfo solves this by extracting only the minimal data needed for deletion into an
-/// owned structure, allowing the `EventBorrow` to be dropped before mutation begins.
-///
-/// ## Lifetime Constraints
-///
-/// - DeletionInfo instances must live strictly shorter than the encompassing RwTxn
-/// - The data is extracted while the transaction has an immutable borrow
-/// - The EventBorrow is dropped before any mutation occurs
-/// - Only then can deletion proceed with a mutable borrow
-///
-/// ## Performance Characteristics
-///
-/// - Minimal overhead: only copies IDs (32 bytes each) and basic metadata
-/// - Tag data is cloned but typically small (< 10 tags per event)
-/// - Total overhead per deletion: ~200 bytes
-/// - Enables single-transaction batching which provides >2x performance improvement
-///
-/// ## Example Usage
-///
-/// ```rust,ignore
-/// // Extract info while transaction is borrowed immutably
-/// let deletion_info = {
-///     if let Some(event) = self.get_event_by_id(&**txn, id)? {
-///         Some(DeletionInfo::from(&event))
-///     } else {
-///         None
-///     }
-/// }; // EventBorrow is dropped here!
-///
-/// // Now we can safely mutate the transaction
-/// if let Some(info) = deletion_info {
-///     self.remove(txn, &info)?;
-/// }
-/// ```
-struct DeletionInfo {
-    id: [u8; 32],
-    pubkey: [u8; 32],
-    created_at: Timestamp,
-    kind: u16,
-    tags: Vec<(SingleLetterTag, String)>,
-}
-
-impl From<&EventBorrow<'_>> for DeletionInfo {
-    fn from(event: &EventBorrow<'_>) -> Self {
-        Self {
-            id: *event.id,
-            pubkey: *event.pubkey,
-            created_at: event.created_at,
-            kind: event.kind,
-            tags: event
-                .tags
-                .iter()
-                .filter_map(|tag| tag.extract())
-                .map(|(name, value)| (name, value.to_string()))
-                .collect(),
-        }
-    }
-}
 
 #[derive(Debug)]
 enum QueryFilterPattern {
@@ -272,11 +201,11 @@ impl Lmdb {
 
         // Index event
         let event: EventBorrow = EventBorrow::from(event);
-        let index: AllIndexesKeys = AllIndexesKeys::new(event);
+        let index: EventIndexKeys = EventIndexKeys::new(event);
         self.index_event(txn, index)
     }
 
-    fn index_event(&self, txn: &mut RwTxn, index: AllIndexesKeys) -> Result<(), Error> {
+    fn index_event(&self, txn: &mut RwTxn, index: EventIndexKeys) -> Result<(), Error> {
         self.ci_index.put(txn, &index.ci_index, &index.id)?;
         self.akc_index.put(txn, &index.akc_index, &index.id)?;
         self.ac_index.put(txn, &index.ac_index, &index.id)?;
@@ -307,50 +236,17 @@ impl Lmdb {
     /// - Check if the event exists
     ///
     /// It only performs the mechanical deletion from all indexes.
-    fn remove(&self, txn: &mut RwTxn, info: &DeletionInfo) -> Result<(), Error> {
-        // Delete from main events table
-        self.events.delete(txn, &info.id)?;
-
-        // Delete from ci_index (created_at + id)
-        let ci_index_key: Vec<u8> = index::make_ci_index_key(&info.created_at, &info.id);
-        self.ci_index.delete(txn, &ci_index_key)?;
-
-        // Delete from akc_index (author + kind + created_at + id)
-        let akc_index_key: Vec<u8> =
-            index::make_akc_index_key(&info.pubkey, info.kind, &info.created_at, &info.id);
-        self.akc_index.delete(txn, &akc_index_key)?;
-
-        // Delete from ac_index (author + created_at + id)
-        let ac_index_key: Vec<u8> =
-            index::make_ac_index_key(&info.pubkey, &info.created_at, &info.id);
-        self.ac_index.delete(txn, &ac_index_key)?;
+    fn remove(&self, txn: &mut RwTxn, index: &EventIndexKeys) -> Result<(), Error> {
+        self.events.delete(txn, &index.id)?;
+        self.ci_index.delete(txn, &index.ci_index)?;
+        self.akc_index.delete(txn, &index.akc_index)?;
+        self.ac_index.delete(txn, &index.ac_index)?;
 
         // Delete tag indexes
-        for (tag_name, tag_value) in &info.tags {
-            // Delete from atc_index (author + tag + created_at + id)
-            let atc_index_key: Vec<u8> = index::make_atc_index_key(
-                &info.pubkey,
-                tag_name,
-                tag_value,
-                &info.created_at,
-                &info.id,
-            );
-            self.atc_index.delete(txn, &atc_index_key)?;
-
-            // Delete from ktc_index (kind + tag + created_at + id)
-            let ktc_index_key: Vec<u8> = index::make_ktc_index_key(
-                info.kind,
-                tag_name,
-                tag_value,
-                &info.created_at,
-                &info.id,
-            );
-            self.ktc_index.delete(txn, &ktc_index_key)?;
-
-            // Delete from tc_index (tag + created_at + id)
-            let tc_index_key: Vec<u8> =
-                index::make_tc_index_key(tag_name, tag_value, &info.created_at, &info.id);
-            self.tc_index.delete(txn, &tc_index_key)?;
+        for tag in &index.tags {
+            self.atc_index.delete(txn, &tag.atc_index)?;
+            self.ktc_index.delete(txn, &tag.ktc_index)?;
+            self.tc_index.delete(txn, &tag.tc_index)?;
         }
 
         Ok(())
@@ -385,7 +281,7 @@ impl Lmdb {
         // Collect indexes
         // TODO: avoid this allocation
         let size: u64 = self.events.len(txn)?;
-        let mut indexes: Vec<AllIndexesKeys> = Vec::with_capacity(size as usize);
+        let mut indexes: Vec<EventIndexKeys> = Vec::with_capacity(size as usize);
 
         for result in self.events.iter(txn)? {
             let (_id, event) = result?;
@@ -393,7 +289,7 @@ impl Lmdb {
             // Decode event
             if let Ok(event) = EventBorrow::decode(event) {
                 // Build indexes
-                let index: AllIndexesKeys = AllIndexesKeys::new(event);
+                let index: EventIndexKeys = EventIndexKeys::new(event);
                 indexes.push(index);
             }
         }
@@ -496,17 +392,17 @@ impl Lmdb {
     /// Delete events
     pub fn delete(&self, txn: &mut RwTxn, filter: Filter) -> Result<(), Error> {
         // First, collect all deletion info while we have immutable borrows
-        let deletion_infos: Vec<DeletionInfo> = {
+        let indexes: Vec<EventIndexKeys> = {
             let events = self.query(txn, filter)?;
             events
                 .into_iter()
-                .map(|event| DeletionInfo::from(&event))
+                .map(|event| EventIndexKeys::new(event))
                 .collect()
         }; // All EventBorrow instances dropped here
 
         // Now we can safely mutate the transaction
-        for info in deletion_infos {
-            self.remove(txn, &info)?;
+        for index in indexes {
+            self.remove(txn, &index)?;
         }
 
         Ok(())
@@ -995,19 +891,19 @@ impl Lmdb {
             until,
         )?;
 
-        // Collect DeletionInfo for all events first to avoid iterator lifetime issues
-        let mut deletion_infos: Vec<DeletionInfo> = Vec::new();
+        // Collect indexes for all events first to avoid iterator lifetime issues
+        let mut indexes: Vec<EventIndexKeys> = Vec::new();
 
         for result in iter {
             let (_key, id) = result?;
             if let Some(event) = self.get_event_by_id(txn, id)? {
-                deletion_infos.push(DeletionInfo::from(&event));
+                indexes.push(EventIndexKeys::new(event));
             }
         }
 
         // Now perform deletions
-        for info in deletion_infos {
-            self.remove(txn, &info)?;
+        for index in indexes {
+            self.remove(txn, &index)?;
         }
 
         Ok(())
@@ -1035,21 +931,21 @@ impl Lmdb {
         )?;
 
         // Collect DeletionInfo for all events first to avoid iterator lifetime issues
-        let mut deletion_infos = Vec::new();
+        let mut indexes = Vec::new();
 
         for result in iter {
             let (_key, id) = result?;
             if let Some(event) = self.get_event_by_id(txn, id)? {
                 // Our index doesn't have Kind embedded, so we have to check it
                 if event.kind == coordinate.kind.as_u16() {
-                    deletion_infos.push(DeletionInfo::from(&event));
+                    indexes.push(EventIndexKeys::new(event));
                 }
             }
         }
 
         // Now perform deletions
-        for info in deletion_infos {
-            self.remove(txn, &info)?;
+        for index in indexes {
+            self.remove(txn, &index)?;
         }
 
         Ok(())
@@ -1194,7 +1090,7 @@ impl Lmdb {
                     return Ok(true);
                 }
 
-                deletions_to_process.push((*id, DeletionInfo::from(&target)));
+                deletions_to_process.push((*id, EventIndexKeys::new(target)));
             }
         }
 

@@ -13,21 +13,23 @@ const CREATED_AT_BE: usize = 8;
 const KIND_BE: usize = 2;
 const TAG_VALUE_PAD_LEN: usize = 182;
 
-pub(super) struct TagIndexKeys {
+// TODO: use fixed-size arrays instead of vectors
+pub(super) struct TagIndexKeySet {
     pub(super) atc_index: Vec<u8>,
     pub(super) ktc_index: Vec<u8>,
     pub(super) tc_index: Vec<u8>,
 }
 
-pub(super) struct AllIndexesKeys {
+// TODO: use fixed-size arrays instead of vectors
+pub(super) struct EventIndexKeys {
     pub(super) id: [u8; EventId::LEN],
     pub(super) ci_index: Vec<u8>,
     pub(super) akc_index: Vec<u8>,
     pub(super) ac_index: Vec<u8>,
-    pub(super) tags: Vec<TagIndexKeys>,
+    pub(super) tags: Vec<TagIndexKeySet>,
 }
 
-impl AllIndexesKeys {
+impl EventIndexKeys {
     pub fn new(event: EventBorrow<'_>) -> Self {
         // Index by created_at and id
         let ci_index: Vec<u8> = make_ci_index_key(&event.created_at, event.id);
@@ -66,7 +68,7 @@ impl AllIndexesKeys {
                 let tc_index: Vec<u8> =
                     make_tc_index_key(&tag_name, tag_value, &event.created_at, event.id);
 
-                TagIndexKeys {
+                TagIndexKeySet {
                     atc_index,
                     ktc_index,
                     tc_index,
