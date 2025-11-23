@@ -47,3 +47,9 @@ required-features = ["tor"]
 
 [[example]]
 name = "mock"
+
+[[example]]
+name = "policy"
+
+[[example]]
+name = "simple_relay"
