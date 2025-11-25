@@ -10,10 +10,8 @@ use nostr_relay_builder::prelude::*;
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let tor = RelayBuilderHiddenService::new("rust-nostr-local-hs-test");
-    let builder = RelayBuilder::default().tor(tor);
-
-    let relay = LocalRelay::new(builder);
+    let tor = LocalRelayBuilderHiddenService::new("rust-nostr-local-hs-test");
+    let relay = LocalRelay::builder().tor(tor).build();
 
     relay.run().await?;
 

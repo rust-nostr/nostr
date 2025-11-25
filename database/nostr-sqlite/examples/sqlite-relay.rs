@@ -15,8 +15,7 @@ async fn main() -> Result<()> {
     let db = NostrSqlite::open("nostr.sqlite").await?;
 
     // Create relay
-    let builder = LocalRelayBuilder::default().database(db);
-    let relay = LocalRelay::new(builder);
+    let relay = LocalRelay::builder().database(db).build();
 
     relay.run().await?;
 

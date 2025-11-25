@@ -31,7 +31,7 @@ impl Deref for MockRelay {
 
 impl MockRelay {
     async fn new(builder: LocalRelayBuilder) -> Result<Self, Error> {
-        let relay = LocalRelay::new(builder);
+        let relay: LocalRelay = builder.build();
         relay.run().await?;
         Ok(Self { local: relay })
     }

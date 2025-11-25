@@ -9,9 +9,7 @@ async fn main() -> Result<()> {
 
     let db = NostrLmdb::open("./db/nostr-lmdb").await?;
 
-    let builder = LocalRelayBuilder::default().port(7777).database(db);
-
-    let relay = LocalRelay::new(builder);
+    let relay = LocalRelay::builder().port(7777).database(db).build();
 
     relay.run().await?;
 

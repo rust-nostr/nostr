@@ -18,17 +18,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Open a database (all databases that implements `NostrDatabase` trait can be used).
     let database = NostrLmdb::open("nostr-relay").await?;
 
-    // Configure the relay.
-    let builder = LocalRelayBuilder::default()
+    // Create the relay.
+    let relay = LocalRelay::builder()
         .port(7777)
         .database(database)
         .rate_limit(RateLimit {
             max_reqs: 128,
             notes_per_minute: 30,
-        });
-
-    // Construct the relay instance.
-    let relay = LocalRelay::new(builder);
+        })
+        .build();
 
     // Start the relay.
     relay.run().await?;

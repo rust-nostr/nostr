@@ -16,6 +16,8 @@ use std::time::Duration;
 
 use nostr_database::prelude::*;
 
+use crate::local::LocalRelay;
+
 /// Rate limit
 #[derive(Debug, Clone)]
 pub struct RateLimit {
@@ -388,5 +390,11 @@ impl LocalRelayBuilder {
     pub(crate) fn test(mut self, test: LocalRelayTestOptions) -> Self {
         self.test = test;
         self
+    }
+
+    /// Build local relay
+    #[inline]
+    pub fn build(self) -> LocalRelay {
+        LocalRelay::from_builder(self)
     }
 }

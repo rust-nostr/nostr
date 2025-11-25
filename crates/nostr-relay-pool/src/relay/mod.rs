@@ -1288,8 +1288,7 @@ mod tests {
         let opts = LocalRelayBuilderNip42 {
             mode: LocalRelayBuilderNip42Mode::Write,
         };
-        let builder = LocalRelayBuilder::default().nip42(opts);
-        let mock = LocalRelay::new(builder);
+        let mock = LocalRelay::builder().nip42(opts).build();
         mock.run().await.unwrap();
         let url = mock.url().await;
 
@@ -1332,8 +1331,7 @@ mod tests {
         let opts = LocalRelayBuilderNip42 {
             mode: LocalRelayBuilderNip42Mode::Read,
         };
-        let builder = LocalRelayBuilder::default().nip42(opts);
-        let mock = LocalRelay::new(builder);
+        let mock = LocalRelay::builder().nip42(opts).build();
         mock.run().await.unwrap();
         let url = mock.url().await;
 

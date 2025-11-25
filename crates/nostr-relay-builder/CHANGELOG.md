@@ -25,12 +25,19 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Change `LocalRelay::new` constructor signature (https://github.com/rust-nostr/nostr/pull/1147)
+
 ### Changes
 
 - Rename all `RelayBuilder*` structs and enums to `LocalRelayBuilder*` (https://github.com/rust-nostr/nostr/pull/1145)
 
 ### Added
 
+- Add `LocalRelay::builder` constructor (https://github.com/rust-nostr/nostr/pull/1147)
+- Add `LocalRelayBuilder::build` method (https://github.com/rust-nostr/nostr/pull/1147)
+- Impl `Default` for `LocalRelay` (https://github.com/rust-nostr/nostr/pull/1147)
 - Add `LocalRelay::sync_with` method (https://github.com/rust-nostr/nostr/pull/1146)
 
 ## v0.44.0 - 2025/11/06
