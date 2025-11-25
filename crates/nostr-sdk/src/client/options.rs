@@ -58,7 +58,6 @@ impl GossipOptions {
 /// Options
 #[derive(Debug, Clone, Default)]
 pub struct ClientOptions {
-    pub(super) autoconnect: bool,
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) connection: Connection,
     pub(super) relay_limits: RelayLimits,
@@ -75,15 +74,6 @@ impl ClientOptions {
     #[inline]
     pub fn new() -> Self {
         Self::default()
-    }
-
-    /// Automatically start connection with relays (default: false)
-    ///
-    /// When set to `true`, there isn't the need of calling the connect methods.
-    #[inline]
-    pub fn autoconnect(mut self, val: bool) -> Self {
-        self.autoconnect = val;
-        self
     }
 
     /// Auto authenticate to relays (default: true)

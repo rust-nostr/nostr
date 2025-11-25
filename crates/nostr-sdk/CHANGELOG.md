@@ -28,6 +28,7 @@
 ### Breaking changes
 
 - Replace `usize` with `u8` for gossip relay limits
+- Remove `autoconnect` option from `ClientOptions`
 
 ## v0.44.1 - 2025/11/09
 
