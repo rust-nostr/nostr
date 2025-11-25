@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
 
     let low_author_limit = RejectAuthorLimit { limit: 2 };
 
-    let builder = RelayBuilder::default()
+    let builder = LocalRelayBuilder::default()
         .write_policy(accept_profile_data)
         .query_policy(low_author_limit);
 

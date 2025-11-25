@@ -21,10 +21,10 @@ use tokio::sync::{broadcast, Notify, OnceCell, Semaphore};
 use super::session::{Nip42Session, RateLimiterResponse, Session, Tokens};
 use super::util;
 #[cfg(feature = "tor")]
-use crate::builder::RelayBuilderHiddenService;
+use crate::builder::LocalRelayBuilderHiddenService;
 use crate::builder::{
-    PolicyResult, QueryPolicy, RateLimit, RelayBuilder, RelayBuilderMode, RelayBuilderNip42,
-    RelayTestOptions, WritePolicy,
+    LocalRelayBuilder, LocalRelayBuilderMode, LocalRelayBuilderNip42, LocalRelayTestOptions,
+    PolicyResult, QueryPolicy, RateLimit, WritePolicy,
 };
 use crate::error::Error;
 
@@ -41,7 +41,7 @@ pub(super) struct InnerLocalRelay {
     ///
     /// Every session will listen and check own subscriptions
     new_event: broadcast::Sender<Event>,
-    mode: RelayBuilderMode,
+    mode: LocalRelayBuilderMode,
     rate_limit: RateLimit,
     connections_limit: Arc<Semaphore>,
     max_subid_length: usize,
@@ -50,13 +50,13 @@ pub(super) struct InnerLocalRelay {
     auth_dm: bool,
     min_pow: Option<u8>, // TODO: use AtomicU8 to allow to change it?
     #[cfg(feature = "tor")]
-    tor: Option<RelayBuilderHiddenService>,
+    tor: Option<LocalRelayBuilderHiddenService>,
     #[cfg(feature = "tor")]
     hidden_service: OnceCell<Option<String>>,
     write_policy: Vec<Arc<dyn WritePolicy>>,
     query_policy: Vec<Arc<dyn QueryPolicy>>,
-    nip42: Option<RelayBuilderNip42>,
-    test: RelayTestOptions,
+    nip42: Option<LocalRelayBuilderNip42>,
+    test: LocalRelayTestOptions,
     running: Arc<AtomicBool>,
 }
 
@@ -67,7 +67,7 @@ impl AtomicDestroyer for InnerLocalRelay {
 }
 
 impl InnerLocalRelay {
-    pub fn new(builder: RelayBuilder) -> Self {
+    pub fn new(builder: LocalRelayBuilder) -> Self {
         // TODO: check if configured memory database with events option disabled
 
         // Get IP
@@ -517,7 +517,7 @@ impl InnerLocalRelay {
                 }
 
                 // Check mode
-                if let RelayBuilderMode::PublicKey(pk) = self.mode {
+                if let LocalRelayBuilderMode::PublicKey(pk) = self.mode {
                     let authored: bool = event.pubkey == pk;
                     let tagged: bool = event.tags.public_keys().any(|p| p == &pk);
 

@@ -15,7 +15,7 @@ mod session;
 mod util;
 
 use self::inner::InnerLocalRelay;
-use crate::builder::RelayBuilder;
+use crate::builder::LocalRelayBuilder;
 use crate::error::Error;
 
 /// A local nostr relay
@@ -29,7 +29,7 @@ pub struct LocalRelay {
 impl LocalRelay {
     /// Create a new local relay
     #[inline]
-    pub fn new(builder: RelayBuilder) -> Self {
+    pub fn new(builder: LocalRelayBuilder) -> Self {
         Self {
             inner: AtomicDestructor::new(InnerLocalRelay::new(builder)),
         }

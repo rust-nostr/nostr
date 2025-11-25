@@ -1057,7 +1057,7 @@ mod tests {
     #[tokio::test]
     async fn test_disconnect_unresponsive_relay_that_connect() {
         // Mock relay
-        let opts = RelayTestOptions {
+        let opts = LocalRelayTestOptions {
             unresponsive_connection: Some(Duration::from_secs(2)),
             ..Default::default()
         };
@@ -1090,7 +1090,7 @@ mod tests {
     #[tokio::test]
     async fn test_disconnect_unresponsive_relay_that_not_connect() {
         // Mock relay
-        let opts = RelayTestOptions {
+        let opts = LocalRelayTestOptions {
             unresponsive_connection: Some(Duration::from_secs(10)),
             ..Default::default()
         };
@@ -1119,7 +1119,7 @@ mod tests {
     #[tokio::test]
     async fn test_disconnect_unresponsive_during_try_connect() {
         // Mock relay
-        let opts = RelayTestOptions {
+        let opts = LocalRelayTestOptions {
             unresponsive_connection: Some(Duration::from_secs(10)),
             ..Default::default()
         };
@@ -1183,7 +1183,7 @@ mod tests {
     #[tokio::test]
     async fn test_wait_for_connection() {
         // Mock relay
-        let opts = RelayTestOptions {
+        let opts = LocalRelayTestOptions {
             unresponsive_connection: Some(Duration::from_secs(2)),
             ..Default::default()
         };
@@ -1208,7 +1208,7 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_events_ban_relay() {
         // Mock relay
-        let opts = RelayTestOptions {
+        let opts = LocalRelayTestOptions {
             unresponsive_connection: None,
             send_random_events: true,
         };
@@ -1242,7 +1242,7 @@ mod tests {
     #[tokio::test]
     async fn test_subscribe_ban_relay() {
         // Mock relay
-        let opts = RelayTestOptions {
+        let opts = LocalRelayTestOptions {
             unresponsive_connection: None,
             send_random_events: true,
         };
@@ -1285,10 +1285,10 @@ mod tests {
     #[tokio::test]
     async fn test_nip42_send_event() {
         // Mock relay
-        let opts = RelayBuilderNip42 {
-            mode: RelayBuilderNip42Mode::Write,
+        let opts = LocalRelayBuilderNip42 {
+            mode: LocalRelayBuilderNip42Mode::Write,
         };
-        let builder = RelayBuilder::default().nip42(opts);
+        let builder = LocalRelayBuilder::default().nip42(opts);
         let mock = LocalRelay::new(builder);
         mock.run().await.unwrap();
         let url = mock.url().await;
@@ -1329,10 +1329,10 @@ mod tests {
     #[tokio::test]
     async fn test_nip42_fetch_events() {
         // Mock relay
-        let opts = RelayBuilderNip42 {
-            mode: RelayBuilderNip42Mode::Read,
+        let opts = LocalRelayBuilderNip42 {
+            mode: LocalRelayBuilderNip42Mode::Read,
         };
-        let builder = RelayBuilder::default().nip42(opts);
+        let builder = LocalRelayBuilder::default().nip42(opts);
         let mock = LocalRelay::new(builder);
         mock.run().await.unwrap();
         let url = mock.url().await;

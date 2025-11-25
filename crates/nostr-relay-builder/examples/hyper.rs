@@ -15,7 +15,7 @@ use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
 use nostr::hashes::sha1::Hash as Sha1Hash;
 use nostr::hashes::{Hash, HashEngine};
-use nostr_relay_builder::{LocalRelay, RelayBuilder};
+use nostr_relay_builder::{LocalRelay, LocalRelayBuilder};
 use tokio::net::TcpListener;
 
 struct HttpServer {
@@ -114,7 +114,7 @@ impl Service<Request<Incoming>> for HttpServer {
 async fn main() -> nostr_relay_builder::prelude::Result<()> {
     tracing_subscriber::fmt::init();
 
-    let builder = RelayBuilder::default();
+    let builder = LocalRelayBuilder::default();
     let relay = LocalRelay::new(builder);
 
     let http_addr: SocketAddr = "127.0.0.1:8000".parse()?;

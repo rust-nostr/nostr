@@ -19,7 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let database = NostrLmdb::open("nostr-relay").await?;
 
     // Configure the relay.
-    let builder = RelayBuilder::default()
+    let builder = LocalRelayBuilder::default()
         .port(7777)
         .database(database)
         .rate_limit(RateLimit {
