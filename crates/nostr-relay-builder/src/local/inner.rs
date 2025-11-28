@@ -26,8 +26,8 @@ use super::util;
 #[cfg(feature = "tor")]
 use crate::builder::LocalRelayBuilderHiddenService;
 use crate::builder::{
-    LocalRelayBuilder, LocalRelayBuilderMode, LocalRelayBuilderNip42, LocalRelayTestOptions,
-    PolicyResult, QueryPolicy, RateLimit, WritePolicy,
+    EventKindListener, LocalRelayBuilder, LocalRelayBuilderMode, LocalRelayBuilderNip42,
+    LocalRelayTestOptions, PolicyResult, QueryKindListener, QueryPolicy, RateLimit, WritePolicy,
 };
 use crate::error::Error;
 
@@ -58,6 +58,8 @@ pub(super) struct InnerLocalRelay {
     hidden_service: OnceCell<Option<String>>,
     write_policy: Vec<Arc<dyn WritePolicy>>,
     query_policy: Vec<Arc<dyn QueryPolicy>>,
+    event_listeners: HashMap<Kind, Arc<dyn EventKindListener>>,
+    query_listeners: HashMap<Kind, Arc<dyn QueryKindListener>>,
     nip42: Option<LocalRelayBuilderNip42>,
     test: LocalRelayTestOptions,
     running: Arc<AtomicBool>,
@@ -108,6 +110,8 @@ impl InnerLocalRelay {
             hidden_service: OnceCell::new(),
             write_policy: builder.write_plugins,
             query_policy: builder.query_plugins,
+            event_listeners: builder.event_listeners,
+            query_listeners: builder.query_listeners,
             nip42: builder.nip42,
             test: builder.test,
             running: Arc::new(AtomicBool::new(false)),
@@ -533,6 +537,11 @@ impl InnerLocalRelay {
                     }
                 }
 
+                // Check the event kind listeners
+                if let Some(listener) = self.event_listeners.get(&event.kind) {
+                    listener.action(&event).await;
+                }
+
                 // Check if event already exists
                 let event_status = self.database.check_id(&event.id).await?;
                 match event_status {
@@ -923,6 +932,17 @@ impl InnerLocalRelay {
                         },
                     )
                     .await;
+                }
+            }
+        }
+
+        // Check the query kind listeners
+        for query in &filters {
+            if let Some(kinds) = &query.kinds {
+                for kind in kinds {
+                    if let Some(listener) = self.query_listeners.get(kind) {
+                        listener.action(query).await;
+                    }
                 }
             }
         }
