@@ -4,6 +4,7 @@
 
 //! Relay Builder
 
+use std::collections::HashMap;
 use std::fmt;
 use std::net::{IpAddr, SocketAddr};
 use std::num::NonZeroUsize;
@@ -137,6 +138,18 @@ pub trait QueryPolicy: fmt::Debug + Send + Sync {
     ) -> BoxedFuture<'a, PolicyResult>;
 }
 
+/// Listens for events of a specific kind and performs an action when an event matches.
+pub trait EventKindListener: fmt::Debug + Send + Sync {
+    /// Executes logic when an event matching the specified kind occurs.
+    fn action<'a>(&'a self, event: &'a Event) -> BoxedFuture<'a, ()>;
+}
+
+/// Listens for queries of a specific kind and performs an action when a query matches.
+pub trait QueryKindListener: fmt::Debug + Send + Sync {
+    /// Executes logic when a query matching the specified kind occurs.
+    fn action<'a>(&'a self, query: &'a Filter) -> BoxedFuture<'a, ()>;
+}
+
 #[allow(missing_docs)]
 #[deprecated(since = "0.45.0", note = "Use `LocalRelayTestOptions` instead")]
 pub type RelayTestOptions = LocalRelayTestOptions;
@@ -232,6 +245,10 @@ pub struct LocalRelayBuilder {
     pub(crate) write_plugins: Vec<Arc<dyn WritePolicy>>,
     /// Query policy plugins
     pub(crate) query_plugins: Vec<Arc<dyn QueryPolicy>>,
+    /// Event kind listeners
+    pub(crate) event_listeners: HashMap<Kind, Arc<dyn EventKindListener>>,
+    /// query kind listeners
+    pub(crate) query_listeners: HashMap<Kind, Arc<dyn QueryKindListener>>,
     /// Test options
     pub(crate) test: LocalRelayTestOptions,
 }
@@ -258,6 +275,8 @@ impl Default for LocalRelayBuilder {
             min_pow: None,
             write_plugins: Vec::new(),
             query_plugins: Vec::new(),
+            event_listeners: HashMap::new(),
+            query_listeners: HashMap::new(),
             test: LocalRelayTestOptions::default(),
         }
     }
@@ -382,6 +401,26 @@ impl LocalRelayBuilder {
         T: QueryPolicy + 'static,
     {
         self.query_plugins.push(Arc::new(policy));
+        self
+    }
+
+    /// Add an event kind listener. Only one listener per kind.
+    #[inline]
+    pub fn event_listener<T>(mut self, kind: Kind, listener: T) -> Self
+    where
+        T: EventKindListener + 'static,
+    {
+        self.event_listeners.insert(kind, Arc::new(listener));
+        self
+    }
+
+    /// Add a query kind listener. Only one listener per kind.
+    #[inline]
+    pub fn query_listener<T>(mut self, kind: Kind, listener: T) -> Self
+    where
+        T: QueryKindListener + 'static,
+    {
+        self.query_listeners.insert(kind, Arc::new(listener));
         self
     }
 

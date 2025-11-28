@@ -39,6 +39,7 @@
 - Add `LocalRelayBuilder::build` method (https://github.com/rust-nostr/nostr/pull/1147)
 - Impl `Default` for `LocalRelay` (https://github.com/rust-nostr/nostr/pull/1147)
 - Add `LocalRelay::sync_with` method (https://github.com/rust-nostr/nostr/pull/1146)
+- Add event and query kind listener (https://github.com/rust-nostr/nostr/pull/1149)
 
 ## v0.44.0 - 2025/11/06
 
