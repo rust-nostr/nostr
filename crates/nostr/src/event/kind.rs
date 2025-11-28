@@ -354,6 +354,11 @@ impl Visitor<'_> for KindVisitor {
 mod tests {
     use super::*;
 
+    #[derive(Serialize, Deserialize)]
+    struct TestKind {
+        kind: Kind,
+    }
+
     #[test]
     fn test_equal_kind() {
         assert_eq!(Kind::Custom(20100), Kind::from_u16(20100));
@@ -373,6 +378,41 @@ mod tests {
     fn test_kind_is_addressable() {
         assert!(Kind::Custom(32122).is_addressable());
         assert!(!Kind::TextNote.is_addressable());
+    }
+
+    #[test]
+    fn test_kind_from_str() {
+        assert_eq!(Kind::from_str("0").unwrap(), Kind::Metadata);
+        assert_eq!(Kind::from_str("1").unwrap(), Kind::TextNote);
+        assert_eq!(Kind::from_str("1621").unwrap(), Kind::Custom(1621));
+        assert_eq!(Kind::from_str("20100").unwrap(), Kind::Custom(20100));
+    }
+
+    #[test]
+    fn test_kind_deserialize() {
+        let json: &str = r#"{"kind": 1621}"#;
+        let TestKind { kind } = serde_json::from_str(json).unwrap();
+
+        assert_eq!(kind, Kind::Custom(1621));
+    }
+
+    #[test]
+    fn test_kind_serialize() {
+        let kind = TestKind {
+            kind: Kind::Metadata,
+        };
+        let json = serde_json::to_string(&kind).unwrap();
+        let expected_json: &str = r#"{"kind":0}"#;
+
+        assert_eq!(json, expected_json);
+    }
+
+    #[test]
+    fn test_kind_serialize_deserialize_round_trip() {
+        let kind = Kind::Custom(20100);
+        let json = serde_json::to_string(&kind).unwrap();
+        let deserialized_kind: Kind = serde_json::from_str(&json).unwrap();
+        assert_eq!(kind, deserialized_kind);
     }
 }
 
