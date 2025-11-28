@@ -11,7 +11,7 @@ use core::num::ParseIntError;
 use core::ops::{Add, Range};
 use core::str::FromStr;
 
-use serde::de::{Deserialize, Deserializer, Error, Visitor};
+use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
 
 /// NIP90 - Job request range
@@ -322,31 +322,8 @@ impl<'de> Deserialize<'de> for Kind {
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_u16(KindVisitor)
-    }
-}
-
-struct KindVisitor;
-
-impl Visitor<'_> for KindVisitor {
-    type Value = Kind;
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "a 16-bit unsigned number (0-65535)")
-    }
-
-    fn visit_u16<E>(self, v: u16) -> Result<Self::Value, E>
-    where
-        E: Error,
-    {
-        Ok(Self::Value::from_u16(v))
-    }
-
-    fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
-    where
-        E: Error,
-    {
-        Ok(Self::Value::from_u16(v as u16))
+        let kind: u16 = Deserialize::deserialize(deserializer)?;
+        Ok(Self::from_u16(kind))
     }
 }
 
