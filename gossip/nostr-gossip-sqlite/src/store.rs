@@ -1,5 +1,6 @@
 //! Nostr gossip SQLite store.
 
+use std::cmp;
 use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 use std::path::Path;
@@ -12,13 +13,15 @@ use nostr::util::BoxedFuture;
 use nostr::{Event, Kind, PublicKey, RelayUrl, TagKind, TagStandard, Timestamp};
 use nostr_gossip::error::GossipError;
 use nostr_gossip::flags::GossipFlags;
-use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
+use nostr_gossip::{
+    BestRelaySelection, GossipAllowedRelays, GossipListKind, GossipPublicKeyStatus, NostrGossip,
+};
 use sqlx::migrate::Migrator;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode};
 use sqlx::{Executor, Sqlite, SqlitePool, Transaction};
 use tokio::sync::{Semaphore, SemaphorePermit};
 
-use crate::constant::{PUBKEY_METADATA_OUTDATED_AFTER, READ_WRITE_FLAGS};
+use crate::constant::{PUBKEY_METADATA_OUTDATED_AFTER, READ_WRITE_FLAGS, RELAYS_QUERY_LIMIT};
 use crate::error::Error;
 use crate::model::ListRow;
 
@@ -223,6 +226,7 @@ impl NostrGossipSqlite {
         &self,
         public_key: &PublicKey,
         selection: BestRelaySelection,
+        allowed: GossipAllowedRelays,
     ) -> Result<HashSet<RelayUrl>, Error> {
         let mut relays: HashSet<RelayUrl> = HashSet::new();
 
@@ -235,55 +239,65 @@ impl NostrGossipSqlite {
             } => {
                 // Get read relays
                 relays.extend(
-                    self.get_relays_by_flag(public_key, GossipFlags::READ, read)
+                    self.get_relays_by_flag(public_key, GossipFlags::READ, allowed, read)
                         .await?,
                 );
 
                 // Get write relays
                 relays.extend(
-                    self.get_relays_by_flag(public_key, GossipFlags::WRITE, write)
+                    self.get_relays_by_flag(public_key, GossipFlags::WRITE, allowed, write)
                         .await?,
                 );
 
                 // Get hint relays
                 relays.extend(
-                    self.get_relays_by_flag(public_key, GossipFlags::HINT, hints)
+                    self.get_relays_by_flag(public_key, GossipFlags::HINT, allowed, hints)
                         .await?,
                 );
 
                 // Get most received relays
                 relays.extend(
-                    self.get_relays_by_flag(public_key, GossipFlags::RECEIVED, most_received)
-                        .await?,
+                    self.get_relays_by_flag(
+                        public_key,
+                        GossipFlags::RECEIVED,
+                        allowed,
+                        most_received,
+                    )
+                    .await?,
                 );
             }
             BestRelaySelection::Read { limit } => {
                 relays.extend(
-                    self.get_relays_by_flag(public_key, GossipFlags::READ, limit)
+                    self.get_relays_by_flag(public_key, GossipFlags::READ, allowed, limit)
                         .await?,
                 );
             }
             BestRelaySelection::Write { limit } => {
                 relays.extend(
-                    self.get_relays_by_flag(public_key, GossipFlags::WRITE, limit)
+                    self.get_relays_by_flag(public_key, GossipFlags::WRITE, allowed, limit)
                         .await?,
                 );
             }
             BestRelaySelection::PrivateMessage { limit } => {
                 relays.extend(
-                    self.get_relays_by_flag(public_key, GossipFlags::PRIVATE_MESSAGE, limit)
-                        .await?,
+                    self.get_relays_by_flag(
+                        public_key,
+                        GossipFlags::PRIVATE_MESSAGE,
+                        allowed,
+                        limit,
+                    )
+                    .await?,
                 );
             }
             BestRelaySelection::Hints { limit } => {
                 relays.extend(
-                    self.get_relays_by_flag(public_key, GossipFlags::HINT, limit)
+                    self.get_relays_by_flag(public_key, GossipFlags::HINT, allowed, limit)
                         .await?,
                 );
             }
             BestRelaySelection::MostReceived { limit } => {
                 relays.extend(
-                    self.get_relays_by_flag(public_key, GossipFlags::RECEIVED, limit)
+                    self.get_relays_by_flag(public_key, GossipFlags::RECEIVED, allowed, limit)
                         .await?,
                 );
             }
@@ -296,6 +310,7 @@ impl NostrGossipSqlite {
         &self,
         public_key: &PublicKey,
         flag: GossipFlags,
+        allowed: GossipAllowedRelays,
         limit: u8,
     ) -> Result<Vec<RelayUrl>, Error> {
         let query = r#"
@@ -308,16 +323,34 @@ impl NostrGossipSqlite {
             LIMIT $3
         "#;
 
+        let query_limit: u8 = cmp::max(limit, RELAYS_QUERY_LIMIT);
+
         let rows: Vec<(String,)> = sqlx::query_as(query)
             .bind(public_key.as_bytes().as_slice())
             .bind(flag.as_u32())
-            .bind(limit)
+            .bind(query_limit)
             .fetch_all(&self.pool)
             .await?;
 
         let mut relays = Vec::with_capacity(rows.len());
         for (url,) in rows.into_iter() {
+            if relays.len() >= limit as usize {
+                break;
+            }
+
             if let Ok(relay_url) = RelayUrl::parse(&url) {
+                if !allowed.onion && relay_url.is_onion() {
+                    continue;
+                }
+
+                if !allowed.local && relay_url.is_local_addr() {
+                    continue;
+                }
+
+                if !allowed.without_tls && !relay_url.scheme().is_secure() {
+                    continue;
+                }
+
                 relays.push(relay_url);
             }
         }
@@ -573,9 +606,10 @@ impl NostrGossip for NostrGossipSqlite {
         &'a self,
         public_key: &'a PublicKey,
         selection: BestRelaySelection,
+        allowed: GossipAllowedRelays,
     ) -> BoxedFuture<'a, Result<HashSet<RelayUrl>, GossipError>> {
         Box::pin(async move {
-            self._get_best_relays(public_key, selection)
+            self._get_best_relays(public_key, selection, allowed)
                 .await
                 .map_err(GossipError::backend)
         })
