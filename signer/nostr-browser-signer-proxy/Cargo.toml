@@ -22,7 +22,7 @@ serde = { workspace = true, features = ["std", "derive"] }
 serde_json = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = ["macros", "net", "rt", "rt-multi-thread", "sync", "time"] }
 tracing = { workspace = true, features = ["std"] }
-uuid = { version = "1.17", features = ["serde", "v4"] }
+uuid = { version = "1.18", features = ["serde", "v4"] }
 
 [dev-dependencies]
 nostr = { workspace = true, features = ["nip59"] }
