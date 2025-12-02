@@ -27,6 +27,7 @@
 
 ### Added
 
+- Add `Output::new` constructor and `Output::into_inner` method
 - Add idle timeout for negentropy sync (https://github.com/rust-nostr/nostr/pull/1131)
 
 ## v0.44.0 - 2025/11/06

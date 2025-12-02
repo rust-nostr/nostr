@@ -44,6 +44,28 @@ where
     }
 }
 
+impl<T> Output<T>
+where
+    T: Debug,
+{
+    /// Create a new output
+    #[must_use]
+    pub fn new(val: T) -> Self {
+        Self {
+            val,
+            success: HashSet::new(),
+            failed: HashMap::new(),
+        }
+    }
+
+    /// Get inner value
+    #[inline]
+    #[must_use]
+    pub fn into_inner(self) -> T {
+        self.val
+    }
+}
+
 impl Output<EventId> {
     /// Get event ID
     #[inline]
