@@ -513,26 +513,6 @@ impl InnerLocalRelay {
                     }
                 }
 
-                // check write policy
-                for policy in self.write_policy.iter() {
-                    let event_id = event.id;
-                    if let PolicyResult::Reject(m) = policy.admit_event(&event, addr).await {
-                        return send_msg(
-                            ws_tx,
-                            RelayMessage::Ok {
-                                event_id,
-                                status: false,
-                                message: Cow::Owned(format!(
-                                    "{}: {}",
-                                    MachineReadablePrefix::Blocked,
-                                    m
-                                )),
-                            },
-                        )
-                        .await;
-                    }
-                }
-
                 // Check if event already exists
                 let event_status = self.database.check_id(&event.id).await?;
                 match event_status {
@@ -581,6 +561,25 @@ impl InnerLocalRelay {
                                 message: Cow::Owned(format!(
                                     "{}: event not related to owner of this relay",
                                     MachineReadablePrefix::Blocked
+                                )),
+                            },
+                        )
+                        .await;
+                    }
+                }
+
+                // Check write policies
+                for policy in self.write_policy.iter() {
+                    if let PolicyResult::Reject(m) = policy.admit_event(&event, addr).await {
+                        return send_msg(
+                            ws_tx,
+                            RelayMessage::Ok {
+                                event_id: event.id,
+                                status: false,
+                                message: Cow::Owned(format!(
+                                    "{}: {}",
+                                    MachineReadablePrefix::Blocked,
+                                    m
                                 )),
                             },
                         )
@@ -907,7 +906,7 @@ impl InnerLocalRelay {
             }
         }
 
-        // check query policy plugins
+        // Check query policies
         for plugin in self.query_policy.iter() {
             for filter in filters.iter() {
                 if let PolicyResult::Reject(msg) = plugin.admit_query(filter, addr).await {
