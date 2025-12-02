@@ -33,6 +33,7 @@
 
 - Rename `NostrConnectURI` to `NostrConnectUri`
 - Rename `NostrWalletConnectURI` to `NostrWalletConnectUri`
+- Prevent overflow in `Kind` addition
 - Make `Kind::from_u16` and `Kind::as_u16` const (https://github.com/rust-nostr/nostr/pull/1136)
 
 ### Added

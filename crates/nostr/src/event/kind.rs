@@ -299,12 +299,14 @@ impl From<Kind> for u16 {
     }
 }
 
+// Currently, this is needed for NIP-90
 impl Add<u16> for Kind {
     type Output = Self;
 
     fn add(self, rhs: u16) -> Self::Output {
         let kind: u16 = self.as_u16();
-        Kind::from_u16(kind + rhs)
+        let sum: u16 = kind.saturating_add(rhs);
+        Kind::from_u16(sum)
     }
 }
 
@@ -390,6 +392,22 @@ mod tests {
         let json = serde_json::to_string(&kind).unwrap();
         let deserialized_kind: Kind = serde_json::from_str(&json).unwrap();
         assert_eq!(kind, deserialized_kind);
+    }
+
+    #[test]
+    fn test_kind_add() {
+        let kind = Kind::TextNote + 100;
+        assert_eq!(kind, Kind::Custom(101));
+
+        let kind = Kind::Custom(20100) + 100;
+        assert_eq!(kind, Kind::Custom(20200));
+    }
+
+    #[test]
+    fn test_kind_add_overflow() {
+        // MUST NOT overflow
+        let kind = Kind::Custom(u16::MAX - 1) + 10;
+        assert_eq!(kind, Kind::Custom(u16::MAX));
     }
 }
 
