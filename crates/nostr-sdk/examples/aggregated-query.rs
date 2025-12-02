@@ -26,7 +26,10 @@ async fn main() -> Result<()> {
         .kind(Kind::TextNote)
         .limit(50);
     let stored_events = client.database().query(filter.clone()).await?;
-    let fetched_events = client.fetch_events(filter, Duration::from_secs(10)).await?;
+    let fetched_events = client
+        .fetch_events(filter, Duration::from_secs(10))
+        .await?
+        .into_inner();
     let events = stored_events.merge(fetched_events);
 
     for event in events.into_iter() {
@@ -41,7 +44,10 @@ async fn main() -> Result<()> {
 
     // Query events from relays
     let filter = Filter::new().author(public_key).kind(Kind::Metadata);
-    let fetched_events = client.fetch_events(filter, Duration::from_secs(10)).await?;
+    let fetched_events = client
+        .fetch_events(filter, Duration::from_secs(10))
+        .await?
+        .into_inner();
 
     // Add temp relay and fetch other events
     client.add_relay("wss://nostr.oxtr.dev").await?;
@@ -49,7 +55,8 @@ async fn main() -> Result<()> {
     let filter = Filter::new().kind(Kind::ContactList).limit(100);
     let fetched_events_from = client
         .fetch_events_from(["wss://nostr.oxtr.dev"], filter, Duration::from_secs(10))
-        .await?;
+        .await?
+        .into_inner();
     client.force_remove_relay("wss://nostr.oxtr.dev").await?;
 
     // Aggregate results (can be done many times)

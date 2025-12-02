@@ -22,7 +22,8 @@ async fn main() -> Result<()> {
         .stream_events(filter, Duration::from_secs(15))
         .await?;
 
-    while let Some(event) = stream.next().await {
+    while let Some((_url, res)) = stream.next().await {
+        let event = res?;
         println!("{}", event.as_json());
     }
 

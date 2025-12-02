@@ -10,7 +10,7 @@ use nostr::{EventId, RelayUrl, SubscriptionId};
 
 /// Output
 ///
-/// Send or negentropy reconciliation output
+/// Send, fetch or negentropy reconciliation output
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Output<T>
 where
@@ -21,7 +21,7 @@ where
     /// Set of relays that success
     pub success: HashSet<RelayUrl>,
     /// Map of relays that failed, with related errors.
-    pub failed: HashMap<RelayUrl, String>,
+    pub failed: HashMap<RelayUrl, Vec<String>>,
 }
 
 impl<T> Deref for Output<T>
