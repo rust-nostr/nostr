@@ -1102,70 +1102,65 @@ where
 
     let event_id: EventId = EventId::from_hex(tag[1].as_ref())?;
 
-    let tag_2: Option<&str> = tag.get(2).map(|r| r.as_ref());
-    let tag_3: Option<&str> = tag.get(3).map(|r| r.as_ref());
-    let tag_4: Option<&str> = tag.get(4).map(|r| r.as_ref());
+    // Try getting indexes 2, 3 and 4 and make sure they are not empty.
+    // If these are empty, they are handled as None.
+    let tag_2: Option<&str> = tag.get(2).map(|r| r.as_ref()).filter(|r| !r.is_empty());
+    let tag_3: Option<&str> = tag.get(3).map(|r| r.as_ref()).filter(|r| !r.is_empty());
+    let tag_4: Option<&str> = tag.get(4).map(|r| r.as_ref()).filter(|r| !r.is_empty());
 
     // Check if it's a report
     if let Some(tag_2) = tag_2 {
-        return match Report::from_str(tag_2) {
-            // Valid report
-            Ok(report) if !uppercase => Ok(TagStandard::EventReport(event_id, report)),
-            // Invalid report: uppercase "E" tag
-            Ok(..) if uppercase => Err(Error::UnknownStandardizedTag),
-            // Not a report
-            _ => {
-                // Check if 3rd arg is a marker or a public key
-                let (marker, public_key) = match (tag_3, tag_4) {
-                    (Some(marker), Some(public_key)) => {
-                        let marker = if marker.is_empty() {
-                            None
-                        } else {
-                            Some(Marker::from_str(marker)?)
-                        };
-                        let public_key = PublicKey::from_hex(public_key)?;
-                        (marker, Some(public_key))
-                    }
-                    (Some(marker), None) => {
-                        if marker.is_empty() {
-                            (None, None)
-                        } else {
-                            match Marker::from_str(marker) {
-                                Ok(marker) => (Some(marker), None),
-                                Err(..) => {
-                                    let public_key = PublicKey::from_hex(marker)?;
-                                    (None, Some(public_key))
-                                }
-                            }
-                        }
-                    }
-                    (None, Some(public_key)) => {
-                        let public_key = PublicKey::from_hex(public_key)?;
-                        (None, Some(public_key))
-                    }
-                    (None, None) => (None, None),
-                };
-
-                Ok(TagStandard::Event {
-                    event_id,
-                    relay_url: if !tag_2.is_empty() {
-                        Some(RelayUrl::parse(tag_2)?)
-                    } else {
-                        None
-                    },
-                    marker,
-                    public_key,
-                    uppercase,
-                })
+        if let Ok(report) = Report::from_str(tag_2) {
+            if uppercase {
+                // Uppercase report, invalid!
+                return Err(Error::UnknownStandardizedTag);
             }
-        };
+
+            return Ok(TagStandard::EventReport(event_id, report));
+        }
     }
+
+    // Parse 2nd arg
+    let relay_url: Option<RelayUrl> = match tag_2 {
+        Some(url) => Some(RelayUrl::parse(url)?),
+        None => None,
+    };
+
+    // Check if 3rd arg is a marker or a public key
+    let (marker, public_key) = match (tag_3, tag_4) {
+        (Some(marker), Some(public_key)) => {
+            // Parse marker and public key
+            // NOTE: we already checked above if the strings are empty
+            let marker: Marker = Marker::from_str(marker)?;
+            let public_key: PublicKey = PublicKey::from_hex(public_key)?;
+
+            (Some(marker), Some(public_key))
+        }
+        (Some(marker), None) => {
+            // NOTE: we already checked above if the strings are empty
+            // Try parse 3rd arg as a marked (NIP-10)
+            match Marker::from_str(marker) {
+                Ok(marker) => (Some(marker), None),
+                // It's not a marker, try to parse it as a public key (NIP-01)
+                Err(..) => {
+                    let public_key: PublicKey = PublicKey::from_hex(marker)?;
+                    (None, Some(public_key))
+                }
+            }
+        }
+        (None, Some(public_key)) => {
+            // NOTE: we already checked above if the string is empty
+            let public_key = PublicKey::from_hex(public_key)?;
+            (None, Some(public_key))
+        }
+        (None, None) => (None, None),
+    };
 
     Ok(TagStandard::Event {
         event_id,
-        relay_url: None,
-        marker: None,
-        public_key: None,
+        relay_url,
+        marker,
+        public_key,
         uppercase,
     })
 }
@@ -1529,6 +1524,25 @@ mod tests {
 
     use super::*;
     use crate::nips::nip39::ExternalIdentity;
+
+    // Issue: https://gitworkshop.dev/yukikishimoto.com/nostr/issues/note15xl8ae8dnmt26adfw6ec8gshxxs242vrvsa3v36ctwq2x9gglkustlxlwa
+    #[test]
+    fn tag_e_tag_with_blank_values() {
+        let hex = "a3ce0a22c5c25e5a41a17004d38ed2aa8f815dda918c92400c6b611c41acbc78";
+        let id = EventId::from_hex(hex).unwrap();
+
+        let result = TagStandard::parse(&["e", hex, "", "", ""]).unwrap();
+        assert_eq!(
+            result,
+            TagStandard::Event {
+                event_id: id,
+                relay_url: None,
+                marker: None,
+                public_key: None,
+                uppercase: false
+            }
+        )
+    }
 
     #[test]
     fn test_tag_standard_is_reply() {

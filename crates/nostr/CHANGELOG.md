@@ -41,6 +41,10 @@
 - Impl `TryFrom<i64>` for `Timestamp`
 - Add `RelayUrlScheme` enum and `RelayUrl::scheme` method (https://github.com/rust-nostr/nostr/pull/1127)
 
+### Fixed
+
+- Fix parsing of e tag with blank values (https://github.com/rust-nostr/nostr/pull/1158)
+
 ## v0.44.1 - 2025/11/09
 
 ### Fixed
