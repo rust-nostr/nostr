@@ -146,8 +146,11 @@ impl NostrWalletConnect {
         // Send the request
         self.pool.send_event(&event).await?;
 
-        // Wait for the response event
-        let received_event: Event = stream.next().await.ok_or(Error::PrematureExit)?;
+        // Wait for the response
+        let (_, res) = stream.next().await.ok_or(Error::PrematureExit)?;
+
+        // Unwrap event
+        let received_event: Event = res?;
 
         // Parse response
         let response: Response = Response::from_event(&self.uri, &received_event)?;

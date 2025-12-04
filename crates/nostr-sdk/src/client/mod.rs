@@ -737,7 +737,11 @@ impl Client {
     ///     .unwrap();
     /// # }
     /// ```
-    pub async fn fetch_events(&self, filter: Filter, timeout: Duration) -> Result<Events, Error> {
+    pub async fn fetch_events(
+        &self,
+        filter: Filter,
+        timeout: Duration,
+    ) -> Result<Output<Events>, Error> {
         match &self.gossip {
             Some(gossip) => {
                 self.gossip_fetch_events(gossip, filter, timeout, ReqExitPolicy::ExitOnEOSE)
@@ -763,7 +767,7 @@ impl Client {
         urls: I,
         filter: Filter,
         timeout: Duration,
-    ) -> Result<Events, Error>
+    ) -> Result<Output<Events>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -807,7 +811,8 @@ impl Client {
     /// let stored_events: Events = client.database().query(filter.clone()).await?;
     ///
     /// // Query relays
-    /// let fetched_events: Events = client.fetch_events(filter, Duration::from_secs(10)).await?;
+    /// let output: Output<Events> = client.fetch_events(filter, Duration::from_secs(10)).await?;
+    /// let fetched_events: Events = output.into_inner();
     ///
     /// // Merge result
     /// let events: Events = stored_events.merge(fetched_events);
@@ -823,15 +828,17 @@ impl Client {
         &self,
         filter: Filter,
         timeout: Duration,
-    ) -> Result<Events, Error> {
+    ) -> Result<Output<Events>, Error> {
         // Query database
         let stored_events: Events = self.database().query(filter.clone()).await?;
 
         // Query relays
-        let fetched_events: Events = self.fetch_events(filter, timeout).await?;
+        let mut output: Output<Events> = self.fetch_events(filter, timeout).await?;
 
         // Merge result
-        Ok(stored_events.merge(fetched_events))
+        output.val = output.val.merge(stored_events);
+
+        Ok(output)
     }
 
     /// Stream events from relays
@@ -850,16 +857,24 @@ impl Client {
         &self,
         filter: Filter,
         timeout: Duration,
-    ) -> Result<BoxedStream<Event>, Error> {
+    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error> {
         match &self.gossip {
             Some(gossip) => {
                 self.gossip_stream_events(gossip, filter, timeout, ReqExitPolicy::ExitOnEOSE)
                     .await
             }
-            None => Ok(self
-                .pool
-                .stream_events(filter, timeout, ReqExitPolicy::ExitOnEOSE)
-                .await?),
+            None => {
+                let stream = self
+                    .pool
+                    .stream_events(filter, timeout, ReqExitPolicy::ExitOnEOSE)
+                    .await?;
+
+                // Map stream to change the error type
+                let stream = stream.map(|(u, r)| (u, r.map_err(Error::from)));
+
+                // Box the stream
+                Ok(Box::pin(stream))
+            }
         }
     }
 
@@ -876,16 +891,22 @@ impl Client {
         urls: I,
         filter: Filter,
         timeout: Duration,
-    ) -> Result<BoxedStream<Event>, Error>
+    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        Ok(self
+        let stream = self
             .pool
             .stream_events_from(urls, filter, timeout, ReqExitPolicy::default())
-            .await?)
+            .await?;
+
+        // Map stream to change the error type
+        let stream = stream.map(|(u, r)| (u, r.map_err(Error::from)));
+
+        // Box the stream
+        Ok(Box::pin(stream))
     }
 
     /// Stream events from specific relays with specific filters
@@ -899,11 +920,17 @@ impl Client {
         &self,
         targets: HashMap<RelayUrl, Filter>,
         timeout: Duration,
-    ) -> Result<BoxedStream<Event>, Error> {
-        Ok(self
+    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error> {
+        let stream = self
             .pool
             .stream_events_targeted(targets, timeout, ReqExitPolicy::default())
-            .await?)
+            .await?;
+
+        // Map stream to change the error type
+        let stream = stream.map(|(u, r)| (u, r.map_err(Error::from)));
+
+        // Box the stream
+        Ok(Box::pin(stream))
     }
 
     /// Send the client message to a **specific relays**
@@ -1050,7 +1077,9 @@ impl Client {
             .author(public_key)
             .kind(Kind::Metadata)
             .limit(1);
-        let events: Events = self.fetch_events(filter, timeout).await?;
+        let output: Output<Events> = self.fetch_events(filter, timeout).await?;
+        let events: Events = output.into_inner();
+
         match events.first() {
             Some(event) => Ok(Some(Metadata::try_from(event)?)),
             None => Ok(None),
@@ -1104,7 +1133,8 @@ impl Client {
     pub async fn get_contact_list(&self, timeout: Duration) -> Result<Vec<Contact>, Error> {
         let mut contact_list: Vec<Contact> = Vec::new();
         let filter: Filter = self.get_contact_list_filter().await?;
-        let events: Events = self.fetch_events(filter, timeout).await?;
+        let output: Output<Events> = self.fetch_events(filter, timeout).await?;
+        let events: Events = output.into_inner();
 
         // Get first event (result of `fetch_events` is sorted DESC by timestamp)
         if let Some(event) = events.first_owned() {
@@ -1139,7 +1169,8 @@ impl Client {
     ) -> Result<Vec<PublicKey>, Error> {
         let mut pubkeys: Vec<PublicKey> = Vec::new();
         let filter: Filter = self.get_contact_list_filter().await?;
-        let events: Events = self.fetch_events(filter, timeout).await?;
+        let output: Output<Events> = self.fetch_events(filter, timeout).await?;
+        let events: Events = output.into_inner();
 
         for event in events.into_iter() {
             pubkeys.extend(event.tags.public_keys());
@@ -1160,7 +1191,9 @@ impl Client {
             public_keys.iter().map(|p| (*p, Metadata::new())).collect();
 
         let filter: Filter = Filter::new().authors(public_keys).kind(Kind::Metadata);
-        let events: Events = self.fetch_events(filter, timeout).await?;
+        let output: Output<Events> = self.fetch_events(filter, timeout).await?;
+        let events: Events = output.into_inner();
+
         for event in events.into_iter() {
             let metadata = Metadata::from_json(&event.content)?;
             if let Some(m) = contacts.get_mut(&event.pubkey) {
@@ -1553,7 +1586,7 @@ impl Client {
         for chunk in filters.chunks(10) {
             // Fetch the events
             // NOTE: the received events are automatically processed in the middleware!
-            let received: Events = self
+            let received: Output<Events> = self
                 .pool
                 .fetch_events_from(
                     output.failed.keys(),
@@ -1796,16 +1829,20 @@ impl Client {
         filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<BoxedStream<Event>, Error> {
+    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error> {
         let filters = self.break_down_filter(gossip, filter).await?;
 
         // Stream events
-        let stream: BoxedStream<Event> = self
+        let stream = self
             .pool
             .stream_events_targeted(filters, timeout, policy)
             .await?;
 
-        Ok(stream)
+        // Map stream to change the error type
+        let stream = stream.map(|(u, r)| (u, r.map_err(Error::from)));
+
+        // Box the stream
+        Ok(Box::pin(stream))
     }
 
     async fn gossip_fetch_events(
@@ -1814,20 +1851,31 @@ impl Client {
         filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<Events, Error> {
-        let mut events: Events = Events::new(&filter);
+    ) -> Result<Output<Events>, Error> {
+        let events: Events = Events::new(&filter);
+        let mut output: Output<Events> = Output::new(events);
 
         // Stream events
-        let mut stream: BoxedStream<Event> = self
+        let mut stream = self
             .gossip_stream_events(gossip, filter, timeout, policy)
             .await?;
 
-        while let Some(event) = stream.next().await {
-            // To find out more about why the `force_insert` was used, search for EVENTS_FORCE_INSERT ine the code.
-            events.force_insert(event);
+        while let Some((url, result)) = stream.next().await {
+            match result {
+                Ok(..) => {
+                    output.success.insert(url);
+                }
+                Err(e) => {
+                    output
+                        .failed
+                        .entry(url)
+                        .and_modify(|errors| errors.push(e.to_string()))
+                        .or_insert_with(|| vec![e.to_string()]);
+                }
+            }
         }
 
-        Ok(events)
+        Ok(output)
     }
 
     async fn gossip_subscribe(

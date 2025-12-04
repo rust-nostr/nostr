@@ -6,6 +6,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
+use std::pin::Pin;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
@@ -491,7 +492,11 @@ impl RelayPool {
                     output.success.insert(url);
                 }
                 Err(e) => {
-                    output.failed.insert(url, e.to_string());
+                    output
+                        .failed
+                        .entry(url)
+                        .and_modify(|errors| errors.push(e.to_string()))
+                        .or_insert_with(|| vec![e.to_string()]);
                 }
             }
         }
@@ -716,7 +721,11 @@ impl RelayPool {
                     output.success.insert(url);
                 }
                 Err(e) => {
-                    output.failed.insert(url, e.to_string());
+                    output
+                        .failed
+                        .entry(url)
+                        .and_modify(|errors| errors.push(e.to_string()))
+                        .or_insert_with(|| vec![e.to_string()]);
                 }
             }
         }
@@ -793,7 +802,11 @@ impl RelayPool {
                     output.success.insert(url);
                 }
                 Err(e) => {
-                    output.failed.insert(url, e.to_string());
+                    output
+                        .failed
+                        .entry(url)
+                        .and_modify(|errors| errors.push(e.to_string()))
+                        .or_insert_with(|| vec![e.to_string()]);
                 }
             }
         }
@@ -965,7 +978,11 @@ impl RelayPool {
                     output.success.insert(url);
                 }
                 Err(e) => {
-                    output.failed.insert(url, e.to_string());
+                    output
+                        .failed
+                        .entry(url)
+                        .and_modify(|errors| errors.push(e.to_string()))
+                        .or_insert_with(|| vec![e.to_string()]);
                 }
             }
         }
@@ -1106,7 +1123,11 @@ impl RelayPool {
                     output.merge(reconciliation);
                 }
                 Err(e) => {
-                    output.failed.insert(url, e.to_string());
+                    output
+                        .failed
+                        .entry(url)
+                        .and_modify(|errors| errors.push(e.to_string()))
+                        .or_insert_with(|| vec![e.to_string()]);
                 }
             }
         }
@@ -1120,7 +1141,7 @@ impl RelayPool {
         filters: F,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<Events, Error>
+    ) -> Result<Output<Events>, Error>
     where
         F: Into<Vec<Filter>>,
     {
@@ -1135,7 +1156,7 @@ impl RelayPool {
         filters: F,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<Events, Error>
+    ) -> Result<Output<Events>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -1146,7 +1167,7 @@ impl RelayPool {
         let filters: Vec<Filter> = filters.into();
 
         // Construct a new events collection
-        let mut events: Events = if filters.len() == 1 {
+        let events: Events = if filters.len() == 1 {
             // SAFETY: this can't panic because the filters are already verified that list isn't empty.
             let filter: &Filter = &filters[0];
             Events::new(filter)
@@ -1155,16 +1176,32 @@ impl RelayPool {
             Events::default()
         };
 
+        let mut output: Output<Events> = Output::new(events);
+
         // Stream events
         let mut stream = self
             .stream_events_from(urls, filters, timeout, policy)
             .await?;
-        while let Some(event) = stream.next().await {
-            // To find out more about why the `force_insert` was used, search for EVENTS_FORCE_INSERT ine the code.
-            events.force_insert(event);
+        while let Some((url, result)) = stream.next().await {
+            match result {
+                Ok(event) => {
+                    // To find out more about why the `force_insert` was used, search for EVENTS_FORCE_INSERT ine the code.
+                    output.val.force_insert(event);
+
+                    // TODO: here the output could have a relay URL both in success and in error
+                    output.success.insert(url);
+                }
+                Err(e) => {
+                    output
+                        .failed
+                        .entry(url)
+                        .and_modify(|errors| errors.push(e.to_string()))
+                        .or_insert_with(|| vec![e.to_string()]);
+                }
+            }
         }
 
-        Ok(events)
+        Ok(output)
     }
 
     /// Stream events from relays with `READ` flag.
@@ -1173,7 +1210,7 @@ impl RelayPool {
         filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<BoxedStream<Event>, Error> {
+    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error> {
         let urls: Vec<RelayUrl> = self.__read_relay_urls().await;
         self.stream_events_from(urls, filter, timeout, policy).await
     }
@@ -1185,7 +1222,7 @@ impl RelayPool {
         filters: F,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<BoxedStream<Event>, Error>
+    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -1200,12 +1237,13 @@ impl RelayPool {
     /// Targeted streaming events
     ///
     /// Stream events from specific relays with specific filters
+    #[inline]
     pub async fn stream_events_targeted<I, U, F>(
         &self,
         targets: I,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<BoxedStream<Event>, Error>
+    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error>
     where
         I: IntoIterator<Item = (U, F)>,
         U: TryIntoUrl,
@@ -1231,6 +1269,10 @@ impl RelayPool {
             return Err(Error::NoRelays);
         }
 
+        // Create a new channel
+        // NOTE: the events are deduplicated, so here isn't necessary a huge capacity.
+        let (tx, rx) = mpsc::channel(1024);
+
         let mut urls = Vec::with_capacity(targets.len());
         let mut futures = Vec::with_capacity(targets.len());
 
@@ -1251,55 +1293,60 @@ impl RelayPool {
         // The urls and futures len MUST be the same!
         assert_eq!(urls.len(), awaited.len());
 
-        // Re-construct streams
-        let mut streams: Vec<(RelayUrl, BoxedStream<_>)> = Vec::with_capacity(awaited.len());
-
         // Zip-up urls and futures into a single iterator
-        let iter = urls.into_iter().zip(awaited.into_iter());
-
-        for (url, stream) in iter {
-            match stream {
-                Ok(stream) => streams.push((url, stream)),
-                Err(e) => tracing::error!(url = %url, error = %e, "Failed to stream events."),
-            }
-        }
-
-        // Create a new channel
-        // NOTE: the events are deduplicated, so here isn't necessary a huge capacity.
-        let (tx, rx) = mpsc::channel(512);
+        let streams = urls.into_iter().zip(awaited.into_iter());
 
         // Single driver task: polls all streams, de-duplicates, forwards
         task::spawn(async move {
+            #[cfg(not(target_arch = "wasm32"))]
+            type OutFuture = Pin<Box<dyn Future<Output = ()> + Send>>;
+            #[cfg(target_arch = "wasm32")]
+            type OutFuture = Pin<Box<dyn Future<Output = ()>>>;
+
             // IDs collection, needed to check if an event was already sent to the stream
             let ids: Arc<Mutex<HashSet<EventId>>> = Arc::new(Mutex::new(HashSet::new()));
 
-            let mut futures = Vec::with_capacity(streams.len());
+            let mut futures: Vec<OutFuture> = Vec::with_capacity(streams.len());
 
-            for (url, mut stream) in streams.into_iter() {
+            for (url, res) in streams.into_iter() {
                 let tx = tx.clone();
-                let ids = ids.clone();
 
-                futures.push(async move {
-                    while let Some(res) = stream.next().await {
-                        match res {
-                            Ok(event) => {
-                                let mut ids = ids.lock().await;
+                let future: OutFuture = match res {
+                    Ok(mut stream) => {
+                        let ids = ids.clone();
 
-                                // Check if ID was already seen or insert into set.
-                                if ids.insert(event.id) {
-                                    // Immediately drop the set
-                                    drop(ids);
+                        Box::pin(async move {
+                            while let Some(res) = stream.next().await {
+                                match res {
+                                    Ok(event) => {
+                                        let mut ids = ids.lock().await;
 
-                                    // Send event
-                                    let _ = tx.send(event).await;
+                                        // Check if ID was already seen or insert into set.
+                                        if ids.insert(event.id) {
+                                            // Immediately drop the set
+                                            drop(ids);
+
+                                            // Send event
+                                            let _ = tx.send((url.clone(), Ok(event))).await;
+                                        }
+                                    }
+                                    Err(e) => {
+                                        // Send error
+                                        let _ = tx.send((url.clone(), Err(Error::Relay(e)))).await;
+                                    }
                                 }
                             }
-                            Err(e) => {
-                                tracing::error!(url = %url, error = %e, "Failed to stream events.")
-                            }
-                        }
+                        })
                     }
-                });
+                    Err(e) => {
+                        Box::pin(async move {
+                            // Send error
+                            let _ = tx.send((url, Err(Error::Relay(e)))).await;
+                        })
+                    }
+                };
+
+                futures.push(future);
             }
 
             // Wait that all futures complete
