@@ -28,6 +28,7 @@ jobs:
         crate:
           - nostr
           - nostr --features all-nips
+          - nostr --features all-nips --target wasm32-wasip2
           - nostr --no-default-features --features alloc
           - nostr --no-default-features --features alloc,all-nips
           - nostr-browser-signer --target wasm32-unknown-unknown
@@ -62,6 +63,19 @@ jobs:
     - name: Install deps
       run: sudo apt update && sudo apt install -y libdbus-1-dev pkg-config
 
+    - name: Install WASI SDK
+      if: "contains(matrix.crate, 'wasm32-wasip2')"
+      run: |
+        wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-29/wasi-sdk-29.0-x86_64-linux.tar.gz
+        tar xvf wasi-sdk-29.0-x86_64-linux.tar.gz
+        
+        WASI_SDK="$(pwd)/wasi-sdk-29.0-x86_64-linux"
+        
+        echo "WASI_SDK=$WASI_SDK" >> $GITHUB_ENV
+        echo "CC_wasm32_wasip2=$WASI_SDK/bin/clang" >> $GITHUB_ENV
+        echo "AR_wasm32_wasip2=$WASI_SDK/bin/llvm-ar" >> $GITHUB_ENV
+        echo "CFLAGS_wasm32_wasip2=--sysroot=$WASI_SDK/share/wasi-sysroot" >> $GITHUB_ENV
+
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2.7.8
       with:
@@ -74,7 +88,7 @@ jobs:
       run: cargo clippy -p ${{ matrix.crate }} -- -D warnings
 
     - name: Test
-      if: "!contains(matrix.crate, 'wasm32-unknown-unknown')"
+      if: "!contains(matrix.crate, 'wasm32-')"
       run: cargo test -p ${{ matrix.crate }}
 
   check-docs:
