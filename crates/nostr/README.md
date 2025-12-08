@@ -59,6 +59,27 @@ fn main() -> Result<()> {
 
 More examples can be found in the [examples/](https://github.com/rust-nostr/nostr/tree/master/crates/nostr/examples) directory.
 
+## Crate Feature Flags
+
+The following crate feature flags are available:
+
+| Feature            | Default | Description                                                   |
+|--------------------|:-------:|---------------------------------------------------------------|
+| `std`              |   Yes   | Enable `std` library                                          |
+| `alloc`            |   No    | Needed to use this library in `no_std` context                |
+| `pow-multi-thread` |   No    | Enable event POW mining using multi-threads                   |
+| `all-nips`         |   No    | Enable all NIPs                                               |
+| `nip03`            |   No    | Enable NIP-03: OpenTimestamps Attestations for Events         |
+| `nip04`            |   No    | Enable NIP-04: Encrypted Direct Message                       |
+| `nip06`            |   No    | Enable NIP-06: Basic key derivation from mnemonic seed phrase |
+| `nip44`            |   No    | Enable NIP-44: Encrypted Payloads (Versioned)                 |
+| `nip46`            |   No    | Enable NIP-46: Nostr Connect                                  |
+| `nip47`            |   No    | Enable NIP-47: Nostr Wallet Connect                           |
+| `nip49`            |   No    | Enable NIP-49: Private Key Encryption                         |
+| `nip57`            |   No    | Enable NIP-57: Zaps                                           |
+| `nip59`            |   No    | Enable NIP-59: Gift Wrap                                      |
+| `nip60`            |   No    | Enable NIP-60: Cashu Wallets                                  |
+
 ## WASM
 
 This crate supports the `wasm32-unknown-unknown` and `wasm32-wasip2` targets. 
@@ -110,27 +131,6 @@ The other platforms should work out of the box.
 This crate support [`no_std`](https://docs.rust-embedded.org/book/intro/no-std.html) environments.
 
 Check the example in the [embedded/](https://github.com/rust-nostr/nostr/tree/master/crates/nostr/examples/embedded) directory.
-
-## Crate Feature Flags
-
-The following crate feature flags are available:
-
-| Feature            | Default | Description                                                   |
-|--------------------|:-------:|---------------------------------------------------------------|
-| `std`              |   Yes   | Enable `std` library                                          |
-| `alloc`            |   No    | Needed to use this library in `no_std` context                |
-| `pow-multi-thread` |   No    | Enable event POW mining using multi-threads                   |
-| `all-nips`         |   No    | Enable all NIPs                                               |
-| `nip03`            |   No    | Enable NIP-03: OpenTimestamps Attestations for Events         |
-| `nip04`            |   No    | Enable NIP-04: Encrypted Direct Message                       |
-| `nip06`            |   No    | Enable NIP-06: Basic key derivation from mnemonic seed phrase |
-| `nip44`            |   No    | Enable NIP-44: Encrypted Payloads (Versioned)                 |
-| `nip46`            |   No    | Enable NIP-46: Nostr Connect                                  |
-| `nip47`            |   No    | Enable NIP-47: Nostr Wallet Connect                           |
-| `nip49`            |   No    | Enable NIP-49: Private Key Encryption                         |
-| `nip57`            |   No    | Enable NIP-57: Zaps                                           |
-| `nip59`            |   No    | Enable NIP-59: Gift Wrap                                      |
-| `nip60`            |   No    | Enable NIP-60: Cashu Wallets                                  |
 
 ## Changelog
 
