@@ -68,9 +68,9 @@ The other WASM targets may be supported bur are not tested.
 
 To compile for `wasm32-wasip2` you need to:
 
-- Download the WASI SDK from <ttps://github.com/WebAssembly/wasi-sdk>
-- Extract it and set the `WASI_SDK_PATH` environment variable
-- Set the `CC_wasm32_wasip2="$WASI_SDK_PATH/bin/clang"`, `AR_wasm32_wasip2="$WASI_SDK_PATH/bin/llvm-ar"` and `CFLAGS_wasm32_wasip2="--sysroot=$WASI_SDK_PATH/share/wasi-sysroot"` environment variables
+- Download the WASI SDK from <https://github.com/WebAssembly/wasi-sdk>
+- Extract it and set the `WASI_SDK` environment variable
+- Set the `CC_wasm32_wasip2="$WASI_SDK/bin/clang"`, `AR_wasm32_wasip2="$WASI_SDK/bin/llvm-ar"` and `CFLAGS_wasm32_wasip2="--sysroot=$WASI_SDK/share/wasi-sysroot"` environment variables
 - Build!
 
 **Example (note, links and version may be outdated):**
