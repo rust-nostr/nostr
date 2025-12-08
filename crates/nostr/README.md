@@ -61,9 +61,41 @@ More examples can be found in the [examples/](https://github.com/rust-nostr/nost
 
 ## WASM
 
-This crate supports the `wasm32` targets.
+This crate supports the `wasm32-unknown-unknown` and `wasm32-wasip2` targets. 
+The other WASM targets may be supported bur are not tested.
 
-On macOS you need to install `llvm`:
+### wasm32-wasip2
+
+To compile for `wasm32-wasip2` you need to:
+
+- Download the WASI SDK from <ttps://github.com/WebAssembly/wasi-sdk>
+- Extract it and set the `WASI_SDK_PATH` environment variable
+- Set the `CC_wasm32_wasip2="$WASI_SDK_PATH/bin/clang"`, `AR_wasm32_wasip2="$WASI_SDK_PATH/bin/llvm-ar"` and `CFLAGS_wasm32_wasip2="--sysroot=$WASI_SDK_PATH/share/wasi-sysroot"` environment variables
+- Build!
+
+**Example (note, links and version may be outdated):**
+
+```bash
+# 1. Download and extract the WASI SDK
+wget https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-29/wasi-sdk-29.0-x86_64-linux.tar.gz
+tar xvf wasi-sdk-29.0-x86_64-linux.tar.gz
+
+# 2. Set the path variable (adjust if you extracted it somewhere else)
+export WASI_SDK="$(pwd)/wasi-sdk-29.0-x86_64-linux"
+
+# 3. Export the environment variables that the 'cc' crate looks for
+# This tells the build script specifically which compiler to use for this target
+export CC_wasm32_wasip2="$WASI_SDK/bin/clang"
+export AR_wasm32_wasip2="$WASI_SDK/bin/llvm-ar"
+export CFLAGS_wasm32_wasip2="--sysroot=$WASI_SDK/share/wasi-sysroot"
+
+# 4. Now run your build command
+cargo build --target wasm32-wasip2
+```
+
+### wasm32-unknown-unknown
+
+On **macOS** you need to install `llvm`:
 
 ```shell
 brew install llvm
@@ -71,7 +103,7 @@ LLVM_PATH=$(brew --prefix llvm)
 AR="${LLVM_PATH}/bin/llvm-ar" CC="${LLVM_PATH}/bin/clang" cargo build --target wasm32-unknown-unknown
 ```
 
-NOTE: Currently `nip03` feature not support WASM.
+The other platforms should work out of the box.
 
 ## Embedded
 

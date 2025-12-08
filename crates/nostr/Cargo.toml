@@ -82,9 +82,10 @@ unicode-normalization = { version = "0.1", default-features = false, optional = 
 url = { version = "2.5", default-features = false, features = ["serde"], optional = true } # Used in std
 url-fork = { version = "3.0", default-features = false, features = ["serde"], optional = true } # Used for no_std
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
+# Explicitly for WASM32 (Browser and JS environments)
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
-instant = { version = "0.1", features = ["wasm-bindgen", "inaccurate"] }
+instant = { version = "0.1", features = ["wasm-bindgen"] }
 
 [dev-dependencies]
 reqwest = { workspace = true, features = ["rustls-tls"] }

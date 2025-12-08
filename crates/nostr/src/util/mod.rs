@@ -22,11 +22,11 @@ pub mod hkdf;
 use crate::{key, PublicKey, SecretKey};
 
 /// A boxed future
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 /// A boxed future
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 /// Generate shared key

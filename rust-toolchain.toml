@@ -2,4 +2,7 @@
 channel = "1.85.0"
 profile = "minimal"
 components = ["clippy", "rust-docs", "rustfmt"]
-targets = ["wasm32-unknown-unknown"]
+targets = [
+    "wasm32-wasip2",                # WASI
+    "wasm32-unknown-unknown",       # Browser and JS environments
+]

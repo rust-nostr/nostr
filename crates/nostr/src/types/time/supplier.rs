@@ -6,14 +6,17 @@
 
 use core::ops::Sub;
 use core::time::Duration;
-#[cfg(all(feature = "std", not(target_arch = "wasm32")))]
+#[cfg(all(
+    feature = "std",
+    not(all(target_arch = "wasm32", target_os = "unknown"))
+))]
 pub use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub use instant::{Instant, SystemTime};
 
 /// Unix epoch
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub const UNIX_EPOCH: SystemTime = SystemTime::UNIX_EPOCH;
 
 use super::Timestamp;
