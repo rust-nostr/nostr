@@ -9,7 +9,10 @@
 use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use core::cmp::Ordering;
+use core::convert::Infallible;
 use core::fmt;
+use core::hash::{Hash, Hasher};
 use core::str::FromStr;
 
 use serde::ser::{SerializeMap, SerializeStruct};
@@ -42,10 +45,10 @@ pub enum Error {
         /// Deserialization error
         error: String,
     },
+    /// Unsupported method
+    UnsupportedMethod(Method),
     /// Unexpected result
     UnexpectedResult,
-    /// Unknown method
-    UnknownMethod,
     /// Invalid URI
     InvalidURI,
 }
@@ -65,8 +68,8 @@ impl fmt::Display for Error {
                 f,
                 "Can't deserialize response: response={response}, error={error}"
             ),
+            Self::UnsupportedMethod(name) => write!(f, "Unsupported method: {name}"),
             Self::UnexpectedResult => f.write_str("Unexpected result"),
-            Self::UnknownMethod => f.write_str("Unknown method"),
             Self::InvalidURI => f.write_str("Invalid URI"),
         }
     }
@@ -142,7 +145,7 @@ impl fmt::Display for NIP47Error {
 }
 
 /// Method
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone)]
 pub enum Method {
     /// Pay Invoice
     PayInvoice,
@@ -168,11 +171,39 @@ pub enum Method {
     CancelHoldInvoice,
     /// Settle Hold Invoice
     SettleHoldInvoice,
+    /// Unknown method
+    Unknown(String),
 }
 
 impl fmt::Display for Method {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_str())
+    }
+}
+
+impl PartialEq for Method {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_str() == other.as_str()
+    }
+}
+
+impl Eq for Method {}
+
+impl PartialOrd for Method {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Method {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.as_str().cmp(other.as_str())
+    }
+}
+
+impl Hash for Method {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.as_str().hash(state)
     }
 }
 
@@ -192,12 +223,13 @@ impl Method {
             Self::MakeHoldInvoice => "make_hold_invoice",
             Self::CancelHoldInvoice => "cancel_hold_invoice",
             Self::SettleHoldInvoice => "settle_hold_invoice",
+            Self::Unknown(method) => method.as_str(),
         }
     }
 }
 
 impl FromStr for Method {
-    type Err = Error;
+    type Err = Infallible;
 
     fn from_str(method: &str) -> Result<Self, Self::Err> {
         match method {
@@ -213,7 +245,7 @@ impl FromStr for Method {
             "make_hold_invoice" => Ok(Self::MakeHoldInvoice),
             "cancel_hold_invoice" => Ok(Self::CancelHoldInvoice),
             "settle_hold_invoice" => Ok(Self::SettleHoldInvoice),
-            _ => Err(Error::UnknownMethod),
+            m => Ok(Self::Unknown(m.to_string())),
         }
     }
 }
@@ -617,6 +649,9 @@ impl Request {
                 let params: CancelHoldInvoiceRequest = serde_json::from_value(template.params)?;
                 RequestParams::CancelHoldInvoice(params)
             }
+            Method::Unknown(name) => {
+                return Err(Error::UnsupportedMethod(Method::Unknown(name)));
+            }
         };
 
         Ok(Self {
@@ -994,6 +1029,9 @@ impl Response {
                 Method::SettleHoldInvoice => {
                     let result: SettleHoldInvoiceResponse = serde_json::from_value(result)?;
                     ResponseResult::SettleHoldInvoice(result)
+                }
+                Method::Unknown(name) => {
+                    return Err(Error::UnsupportedMethod(Method::Unknown(name)));
                 }
             };
 
@@ -1509,6 +1547,67 @@ mod tests {
     use core::str::FromStr;
 
     use super::*;
+
+    #[test]
+    fn test_method_eq() {
+        assert_eq!(Method::GetBalance, Method::GetBalance);
+
+        assert_eq!(
+            Method::PayInvoice,
+            Method::Unknown(String::from("pay_invoice"))
+        );
+        assert_eq!(
+            Method::MultiPayInvoice,
+            Method::Unknown(String::from("multi_pay_invoice"))
+        );
+        assert_eq!(
+            Method::PayKeysend,
+            Method::Unknown(String::from("pay_keysend"))
+        );
+        assert_eq!(
+            Method::MultiPayKeysend,
+            Method::Unknown(String::from("multi_pay_keysend"))
+        );
+        assert_eq!(
+            Method::MakeInvoice,
+            Method::Unknown(String::from("make_invoice"))
+        );
+        assert_eq!(
+            Method::LookupInvoice,
+            Method::Unknown(String::from("lookup_invoice"))
+        );
+        assert_eq!(
+            Method::ListTransactions,
+            Method::Unknown(String::from("list_transactions"))
+        );
+        assert_eq!(
+            Method::GetBalance,
+            Method::Unknown(String::from("get_balance"))
+        );
+        assert_eq!(Method::GetInfo, Method::Unknown(String::from("get_info")));
+        assert_eq!(
+            Method::MakeHoldInvoice,
+            Method::Unknown(String::from("make_hold_invoice"))
+        );
+        assert_eq!(
+            Method::CancelHoldInvoice,
+            Method::Unknown(String::from("cancel_hold_invoice"))
+        );
+        assert_eq!(
+            Method::SettleHoldInvoice,
+            Method::Unknown(String::from("settle_hold_invoice"))
+        );
+        assert_eq!(
+            Method::Unknown(String::from("unknown_method")),
+            Method::Unknown(String::from("unknown_method"))
+        );
+    }
+
+    #[test]
+    fn test_method_ne() {
+        assert_ne!(Method::GetBalance, Method::GetInfo);
+        assert_ne!(Method::GetInfo, Method::Unknown(String::from("test")));
+    }
 
     #[test]
     fn test_uri() {

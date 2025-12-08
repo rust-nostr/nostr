@@ -40,6 +40,7 @@
 
 - Impl `TryFrom<i64>` for `Timestamp`
 - Add `RelayUrlScheme` enum and `RelayUrl::scheme` method (https://github.com/rust-nostr/nostr/pull/1127)
+- Add `Method::Unknown` variant (https://github.com/rust-nostr/nostr/pull/1162)
 
 ## v0.44.2 - 2025/12/04
 
