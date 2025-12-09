@@ -228,10 +228,10 @@ pub struct LocalRelayBuilder {
     pub(crate) auth_dm: bool,
     /// Min POW difficulty
     pub(crate) min_pow: Option<u8>,
-    /// Write policy plugins
-    pub(crate) write_plugins: Vec<Arc<dyn WritePolicy>>,
-    /// Query policy plugins
-    pub(crate) query_plugins: Vec<Arc<dyn QueryPolicy>>,
+    /// Write policy
+    pub(crate) write_policy: Option<Arc<dyn WritePolicy>>,
+    /// Query policy
+    pub(crate) query_policy: Option<Arc<dyn QueryPolicy>>,
     /// Test options
     pub(crate) test: LocalRelayTestOptions,
 }
@@ -256,8 +256,8 @@ impl Default for LocalRelayBuilder {
             default_filter_limit: 500,
             auth_dm: false,
             min_pow: None,
-            write_plugins: Vec::new(),
-            query_plugins: Vec::new(),
+            write_policy: None,
+            query_policy: None,
             test: LocalRelayTestOptions::default(),
         }
     }
@@ -365,23 +365,23 @@ impl LocalRelayBuilder {
         self
     }
 
-    /// Add a write policy plugin
+    /// Set a **write** policy plugin
     #[inline]
     pub fn write_policy<T>(mut self, policy: T) -> Self
     where
         T: WritePolicy + 'static,
     {
-        self.write_plugins.push(Arc::new(policy));
+        self.write_policy = Some(Arc::new(policy));
         self
     }
 
-    /// Add a query policy plugin
+    /// Set a **query** policy plugin
     #[inline]
     pub fn query_policy<T>(mut self, policy: T) -> Self
     where
         T: QueryPolicy + 'static,
     {
-        self.query_plugins.push(Arc::new(policy));
+        self.query_policy = Some(Arc::new(policy));
         self
     }
 

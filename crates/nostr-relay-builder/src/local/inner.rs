@@ -56,8 +56,8 @@ pub(super) struct InnerLocalRelay {
     tor: Option<LocalRelayBuilderHiddenService>,
     #[cfg(feature = "tor")]
     hidden_service: OnceCell<Option<String>>,
-    write_policy: Vec<Arc<dyn WritePolicy>>,
-    query_policy: Vec<Arc<dyn QueryPolicy>>,
+    write_policy: Option<Arc<dyn WritePolicy>>,
+    query_policy: Option<Arc<dyn QueryPolicy>>,
     nip42: Option<LocalRelayBuilderNip42>,
     test: LocalRelayTestOptions,
     running: Arc<AtomicBool>,
@@ -106,8 +106,8 @@ impl InnerLocalRelay {
             tor: builder.tor,
             #[cfg(feature = "tor")]
             hidden_service: OnceCell::new(),
-            write_policy: builder.write_plugins,
-            query_policy: builder.query_plugins,
+            write_policy: builder.write_policy,
+            query_policy: builder.query_policy,
             nip42: builder.nip42,
             test: builder.test,
             running: Arc::new(AtomicBool::new(false)),
@@ -568,8 +568,8 @@ impl InnerLocalRelay {
                     }
                 }
 
-                // Check write policies
-                for policy in self.write_policy.iter() {
+                // Check write policy
+                if let Some(policy) = self.write_policy.as_ref() {
                     if let PolicyResult::Reject(m) = policy.admit_event(&event, addr).await {
                         return send_msg(
                             ws_tx,
@@ -906,10 +906,10 @@ impl InnerLocalRelay {
             }
         }
 
-        // Check query policies
-        for plugin in self.query_policy.iter() {
+        // Check query policy
+        if let Some(policy) = self.query_policy.as_ref() {
             for filter in filters.iter() {
-                if let PolicyResult::Reject(msg) = plugin.admit_query(filter, addr).await {
+                if let PolicyResult::Reject(msg) = policy.admit_query(filter, addr).await {
                     return send_msg(
                         ws_tx,
                         RelayMessage::Closed {
