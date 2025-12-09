@@ -27,7 +27,7 @@ use super::util;
 use crate::builder::LocalRelayBuilderHiddenService;
 use crate::builder::{
     LocalRelayBuilder, LocalRelayBuilderMode, LocalRelayBuilderNip42, LocalRelayTestOptions,
-    PolicyResult, QueryPolicy, RateLimit, WritePolicy,
+    QueryPolicy, QueryPolicyResult, RateLimit, WritePolicy, WritePolicyResult,
 };
 use crate::error::Error;
 
@@ -570,17 +570,15 @@ impl InnerLocalRelay {
 
                 // Check write policy
                 if let Some(policy) = self.write_policy.as_ref() {
-                    if let PolicyResult::Reject(m) = policy.admit_event(&event, addr).await {
+                    if let WritePolicyResult::Reject { message, status } =
+                        policy.admit_event(&event, addr).await
+                    {
                         return send_msg(
                             ws_tx,
                             RelayMessage::Ok {
                                 event_id: event.id,
-                                status: false,
-                                message: Cow::Owned(format!(
-                                    "{}: {}",
-                                    MachineReadablePrefix::Blocked,
-                                    m
-                                )),
+                                status,
+                                message,
                             },
                         )
                         .await;
@@ -909,16 +907,14 @@ impl InnerLocalRelay {
         // Check query policy
         if let Some(policy) = self.query_policy.as_ref() {
             for filter in filters.iter() {
-                if let PolicyResult::Reject(msg) = policy.admit_query(filter, addr).await {
+                if let QueryPolicyResult::Reject { prefix, message } =
+                    policy.admit_query(filter, addr).await
+                {
                     return send_msg(
                         ws_tx,
                         RelayMessage::Closed {
                             subscription_id,
-                            message: Cow::Owned(format!(
-                                "{}: {}",
-                                MachineReadablePrefix::Error,
-                                msg
-                            )),
+                            message: Cow::Owned(format!("{prefix}: {message}",)),
                         },
                     )
                     .await;

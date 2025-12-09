@@ -4,6 +4,7 @@
 
 //! Relay Builder
 
+use std::borrow::Cow;
 use std::fmt;
 use std::net::{IpAddr, SocketAddr};
 use std::num::NonZeroUsize;
@@ -109,12 +110,70 @@ pub enum LocalRelayBuilderMode {
     PublicKey(PublicKey),
 }
 
-/// Generic plugin policy response
-pub enum PolicyResult {
-    /// Policy enforces that the event/query should be accepted
+/// Write policy result
+pub enum WritePolicyResult {
+    /// Continue processing the event without taking any action.
     Accept,
-    /// Policy enforces that the event/query should be rejected
-    Reject(String),
+    /// Stop processing the event and reply with a OK message with a status.
+    Reject {
+        /// The rejection message to be sent.
+        message: Cow<'static, str>,
+        /// Indicates whether the operation was successful.
+        status: bool,
+    },
+}
+
+impl WritePolicyResult {
+    /// Stops processing and send a success message. Check [MachineReadablePrefix]
+    #[inline]
+    pub fn ok_msg<S>(msg: S) -> Self
+    where
+        S: Into<Cow<'static, str>>,
+    {
+        Self::Reject {
+            message: msg.into(),
+            status: true,
+        }
+    }
+
+    /// Stops processing and send a rejection message. Check [MachineReadablePrefix]
+    #[inline]
+    pub fn reject<S>(msg: S) -> Self
+    where
+        S: Into<Cow<'static, str>>,
+    {
+        Self::Reject {
+            message: msg.into(),
+            status: false,
+        }
+    }
+}
+
+/// Query policy result
+pub enum QueryPolicyResult {
+    /// Accept the query
+    Accept,
+    /// Reject the query
+    Reject {
+        /// The reject message prefix.
+        prefix: MachineReadablePrefix,
+        /// The reject message.
+        message: Cow<'static, str>,
+    },
+}
+
+impl QueryPolicyResult {
+    /// Reject the query
+    #[inline]
+    pub fn reject<S>(prefix: MachineReadablePrefix, msg: S) -> Self
+    where
+        S: Into<Cow<'static, str>>,
+    {
+        Self::Reject {
+            prefix,
+            message: msg.into(),
+        }
+    }
 }
 
 /// Custom policy for accepting events into the relay database
@@ -124,7 +183,7 @@ pub trait WritePolicy: fmt::Debug + Send + Sync {
         &'a self,
         event: &'a Event,
         addr: &'a SocketAddr,
-    ) -> BoxedFuture<'a, PolicyResult>;
+    ) -> BoxedFuture<'a, WritePolicyResult>;
 }
 
 /// Filters REQ's to the internal relay database
@@ -134,7 +193,7 @@ pub trait QueryPolicy: fmt::Debug + Send + Sync {
         &'a self,
         query: &'a Filter,
         addr: &'a SocketAddr,
-    ) -> BoxedFuture<'a, PolicyResult>;
+    ) -> BoxedFuture<'a, QueryPolicyResult>;
 }
 
 #[allow(missing_docs)]
