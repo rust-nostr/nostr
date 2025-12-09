@@ -450,6 +450,9 @@ pub enum TransactionState {
     /// Failed (for payments)
     #[serde(rename = "failed")]
     Failed,
+    /// Accepted (for hold invoices)
+    #[serde(rename = "accepted")]
+    Accepted,
 }
 
 /// List Transactions Request
