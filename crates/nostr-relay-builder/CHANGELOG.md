@@ -29,6 +29,7 @@
 
 - Change `LocalRelay::new` constructor signature (https://github.com/rust-nostr/nostr/pull/1147)
 - Allow only a single `write` and `query` policy (https://github.com/rust-nostr/nostr/pull/1165)
+- Replace `PolicyResult` with `WritePolicyResult` and `QueryPolicyResult` (https://github.com/rust-nostr/nostr/pull/1166)
 
 ### Changes
 
