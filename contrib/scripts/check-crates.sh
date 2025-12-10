@@ -3,10 +3,14 @@
 set -exuo pipefail
 
 buildargs=(
-    "-p nostr"                                                    # Only std feature
-    "-p nostr --features all-nips"                                # std + all-nips
-    "-p nostr --no-default-features --features alloc"             # Only alloc feature
-    "-p nostr --no-default-features --features alloc,all-nips"    # alloc + all-nips
+    "-p nostr"                                                      # Only std feature
+    "-p nostr --features rand"                                      # std + rand
+    "-p nostr --features all-nips"                                  # std + all-nips
+    "-p nostr --features all-nips,rand"                             # std + all-nips + rand
+    "-p nostr --no-default-features --features alloc"               # Only alloc feature
+    "-p nostr --no-default-features --features alloc,rand"          # alloc +rand
+    "-p nostr --no-default-features --features alloc,all-nips"      # alloc + all-nips
+    "-p nostr --no-default-features --features alloc,all-nips,rand" # alloc + all-nips + rand
     "-p nostr-browser-signer --target wasm32-unknown-unknown"
     "-p nostr-browser-signer-proxy"
     "-p nostr-blossom"

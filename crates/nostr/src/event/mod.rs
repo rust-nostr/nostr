@@ -404,7 +404,7 @@ impl<'de> Deserialize<'de> for Event {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     use crate::Keys;
 
     #[test]
@@ -415,7 +415,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     fn test_custom_kind() {
         let keys = Keys::generate();
         let e: Event = EventBuilder::new(Kind::Custom(123), "my content")
@@ -431,7 +431,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     fn test_event_expired() {
         let my_keys = Keys::generate();
         let event = EventBuilder::text_note("my content")
@@ -443,7 +443,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     fn test_event_not_expired() {
         let now = Timestamp::now();
         let expiry_date: u64 = now.as_secs() * 2;
@@ -458,7 +458,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     fn test_event_without_expiration_tag() {
         let my_keys = Keys::generate();
         let event = EventBuilder::text_note("my content")

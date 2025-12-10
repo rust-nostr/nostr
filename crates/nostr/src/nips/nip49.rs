@@ -11,13 +11,14 @@ use alloc::vec::Vec;
 use core::array::TryFromSliceError;
 use core::fmt;
 
-use chacha20poly1305::aead::{Aead, AeadCore, KeyInit, Payload};
+use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::XChaCha20Poly1305;
+#[cfg(all(feature = "std", feature = "rand"))]
+use rand::rngs::OsRng;
+#[cfg(feature = "rand")]
+use rand::{CryptoRng, RngCore};
 use scrypt::errors::{InvalidOutputLen, InvalidParams};
 use scrypt::Params as ScryptParams;
-#[cfg(feature = "std")]
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::{CryptoRng, RngCore};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use unicode_normalization::UnicodeNormalization;
 
@@ -185,23 +186,24 @@ impl EncryptedSecretKey {
 
     /// Encrypt secret key
     #[inline]
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     pub fn new(
         secret_key: &SecretKey,
         password: &str,
         log_n: u8,
         key_security: KeySecurity,
     ) -> Result<Self, Error> {
-        Self::new_with_rng(&mut OsRng, secret_key, password, log_n, key_security)
+        Self::new_with_rng(secret_key, password, log_n, key_security, &mut OsRng)
     }
 
     /// Encrypt secret key
+    #[cfg(feature = "rand")]
     pub fn new_with_rng<R>(
-        rng: &mut R,
         secret_key: &SecretKey,
         password: &str,
         log_n: u8,
         key_security: KeySecurity,
+        rng: &mut R,
     ) -> Result<Self, Error>
     where
         R: RngCore + CryptoRng,
@@ -214,8 +216,30 @@ impl EncryptedSecretKey {
         };
 
         // Generate nonce
-        let nonce = XChaCha20Poly1305::generate_nonce(rng);
+        let mut nonce: [u8; NONCE_SIZE] = [0u8; NONCE_SIZE];
+        rng.fill_bytes(&mut nonce);
 
+        Self::new_with_salt_and_nonce(secret_key, password, log_n, key_security, salt, nonce)
+    }
+
+    /// Encrypt secret key with custom salt and nonce
+    ///
+    /// **Use with caution**: improper usage can catastrophically compromise security.
+    ///
+    /// * **Nonce**: Must be unique for every encryption with the same key. Reusing a nonce
+    ///   with the same derived key destroys the security of the stream cipher, potentially
+    ///   leaking the secret key.
+    /// * **Salt**: Should be random. Using a non-random salt weakens protection against
+    ///   pre-computation attacks and causes the same password to always derive the same
+    ///   encryption key.
+    pub fn new_with_salt_and_nonce(
+        secret_key: &SecretKey,
+        password: &str,
+        log_n: u8,
+        key_security: KeySecurity,
+        salt: [u8; SALT_SIZE],
+        nonce: [u8; NONCE_SIZE],
+    ) -> Result<Self, Error> {
         // Derive key
         let key: [u8; KEY_SIZE] = derive_key(password, &salt, log_n)?;
 
@@ -229,14 +253,14 @@ impl EncryptedSecretKey {
         };
 
         // Encrypt
-        let ciphertext: Vec<u8> = cipher.encrypt(&nonce, payload)?;
+        let ciphertext: Vec<u8> = cipher.encrypt(&nonce.into(), payload)?;
         let ciphertext: [u8; CIPHERTEXT_SIZE] = ciphertext.as_slice().try_into()?;
 
         Ok(Self {
             version: Version::default(),
             log_n,
             salt,
-            nonce: nonce.into(),
+            nonce,
             key_security,
             ciphertext,
         })
@@ -397,7 +421,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     fn test_encrypted_secret_key_encryption_decryption() {
         let original_secret_key = SecretKey::from_hex(SECRET_KEY).unwrap();
         let encrypted_secret_key =

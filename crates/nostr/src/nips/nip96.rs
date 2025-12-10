@@ -10,14 +10,19 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
+#[cfg(all(feature = "std", feature = "rand"))]
 use hashes::sha256::Hash as Sha256Hash;
+#[cfg(all(feature = "std", feature = "rand"))]
 use hashes::Hash;
 use serde::{Deserialize, Serialize};
 
 use crate::nips::nip98;
+#[cfg(all(feature = "std", feature = "rand"))]
 use crate::nips::nip98::{HttpData, HttpMethod};
+#[cfg(all(feature = "std", feature = "rand"))]
+use crate::signer::NostrSigner;
 use crate::types::Url;
-use crate::{JsonUtil, NostrSigner, TagKind, TagStandard, Tags};
+use crate::{JsonUtil, TagKind, TagStandard, Tags};
 
 /// NIP96 error
 #[derive(Debug, PartialEq)]
@@ -148,6 +153,7 @@ impl UploadRequest {
     /// needed to make an upload request with the HTTP client.
     /// Note: please create the multipart form data yourself using your
     /// preferred HTTP client's multipart impl.
+    #[cfg(all(feature = "std", feature = "rand"))]
     pub async fn new<T>(signer: &T, config: &ServerConfig, file_data: &[u8]) -> Result<Self, Error>
     where
         T: NostrSigner,

@@ -19,9 +19,11 @@ use hashes::sha256::Hash as Sha256Hash;
 #[cfg(feature = "std")]
 use hashes::Hash;
 
+#[cfg(all(feature = "std", feature = "rand"))]
+use crate::event::EventBuilder;
 #[cfg(feature = "std")]
-use crate::event::{self, builder, Event, EventBuilder};
-#[cfg(feature = "std")]
+use crate::event::{self, builder, Event};
+#[cfg(all(feature = "std", feature = "rand"))]
 use crate::signer::NostrSigner;
 #[cfg(feature = "std")]
 use crate::util::JsonUtil;
@@ -235,7 +237,7 @@ impl HttpData {
     /// Build the base64-encoded HTTP `Authorization` header **value**.
     ///
     /// Return a string with the following format: `Nostr <base64>`.
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     pub async fn to_authorization<T>(self, signer: &T) -> Result<String, Error>
     where
         T: NostrSigner,

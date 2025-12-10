@@ -11,13 +11,16 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use base64::engine::{general_purpose, Engine};
-#[cfg(feature = "std")]
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::RngCore;
+#[cfg(all(feature = "std", feature = "rand"))]
+use rand::rngs::OsRng;
+#[cfg(feature = "rand")]
+use rand::RngCore;
 
 pub mod v2;
 
 use self::v2::ConversationKey;
+#[cfg(feature = "rand")]
+use crate::util;
 use crate::{key, PublicKey, SecretKey};
 
 /// Error
@@ -102,9 +105,16 @@ impl TryFrom<u8> for Version {
     }
 }
 
+/// NIP-44 nonce
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Nonce {
+    /// V2 - 32-byte nonce
+    V2([u8; 32]),
+}
+
 /// Encrypt
 #[inline]
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "rand"))]
 pub fn encrypt<T>(
     secret_key: &SecretKey,
     public_key: &PublicKey,
@@ -114,28 +124,63 @@ pub fn encrypt<T>(
 where
     T: AsRef<[u8]>,
 {
-    encrypt_with_rng(&mut OsRng, secret_key, public_key, content, version)
+    encrypt_with_rng(secret_key, public_key, content, version, &mut OsRng)
 }
 
 /// Encrypt
+#[cfg(feature = "rand")]
 pub fn encrypt_with_rng<R, T>(
-    rng: &mut R,
     secret_key: &SecretKey,
     public_key: &PublicKey,
     content: T,
     version: Version,
+    rng: &mut R,
 ) -> Result<String, Error>
 where
     R: RngCore,
     T: AsRef<[u8]>,
 {
-    match version {
+    let nonce: Nonce = match version {
         Version::V2 => {
+            let nonce: [u8; 32] = util::random_32_bytes(rng);
+            Nonce::V2(nonce)
+        }
+    };
+
+    encrypt_with_nonce(secret_key, public_key, content, nonce)
+}
+
+/// Encrypt
+pub fn encrypt_with_nonce<T>(
+    secret_key: &SecretKey,
+    public_key: &PublicKey,
+    content: T,
+    nonce: Nonce,
+) -> Result<String, Error>
+where
+    T: AsRef<[u8]>,
+{
+    let payload: Vec<u8> = encrypt_to_bytes_with_nonce(secret_key, public_key, content, nonce)?;
+    Ok(general_purpose::STANDARD.encode(payload))
+}
+
+/// Encrypt to bytes (**not base64 encoded!**)
+pub fn encrypt_to_bytes_with_nonce<T>(
+    secret_key: &SecretKey,
+    public_key: &PublicKey,
+    content: T,
+    nonce: Nonce,
+) -> Result<Vec<u8>, Error>
+where
+    T: AsRef<[u8]>,
+{
+    match nonce {
+        Nonce::V2(nonce) => {
             let conversation_key: ConversationKey =
                 ConversationKey::derive(secret_key, public_key)?;
             let payload: Vec<u8> =
-                v2::encrypt_to_bytes_with_rng(rng, &conversation_key, content.as_ref())?;
-            Ok(general_purpose::STANDARD.encode(payload))
+                v2::encrypt_to_bytes_with_nonce(&conversation_key, content.as_ref(), nonce)?;
+            Ok(payload)
         }
     }
 }
@@ -179,7 +224,7 @@ where
 }
 
 #[cfg(test)]
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "rand"))]
 mod tests {
     use core::str::FromStr;
 

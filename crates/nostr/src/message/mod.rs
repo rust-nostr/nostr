@@ -7,11 +7,14 @@
 use alloc::string::{String, ToString};
 use core::fmt;
 
+#[cfg(feature = "rand")]
 use hashes::sha256::Hash as Sha256Hash;
+#[cfg(feature = "rand")]
 use hashes::Hash;
-#[cfg(feature = "std")]
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::RngCore;
+#[cfg(all(feature = "std", feature = "rand"))]
+use rand::rngs::OsRng;
+#[cfg(feature = "rand")]
+use rand::RngCore;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 pub mod client;
@@ -19,6 +22,8 @@ pub mod relay;
 
 pub use self::client::ClientMessage;
 pub use self::relay::{MachineReadablePrefix, RelayMessage};
+#[cfg(feature = "rand")]
+use crate::util;
 
 /// Messages error
 #[derive(Debug)]
@@ -63,19 +68,19 @@ impl SubscriptionId {
 
     /// Generate new random [`SubscriptionId`]
     #[inline]
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     pub fn generate() -> Self {
         Self::generate_with_rng(&mut OsRng)
     }
 
     /// Generate new random [`SubscriptionId`]
+    #[cfg(feature = "rand")]
     pub fn generate_with_rng<R>(rng: &mut R) -> Self
     where
         R: RngCore,
     {
         // Random bytes
-        let mut bytes: [u8; 32] = [0u8; 32];
-        rng.fill_bytes(&mut bytes);
+        let bytes: [u8; 32] = util::random_32_bytes(rng);
 
         // Hash random bytes
         let hash: [u8; 32] = Sha256Hash::hash(&bytes).to_byte_array();

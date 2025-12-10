@@ -28,6 +28,7 @@
 ### Breaking changes
 
 - Change the output and behavior of nip17::extract_relay_list and nip17::extract_owned_relay_list functions
+- Add `rand` feature (https://github.com/rust-nostr/nostr/pull/1167)
 
 ### Changed
 

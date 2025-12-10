@@ -6,6 +6,7 @@ pub extern crate tokio;
 #[macro_export]
 macro_rules! gossip_unit_tests {
     ($store_type:ty, $setup_fn:expr) => {
+        use nostr::prelude::*;
         use nostr_gossip::prelude::*;
 
         use $crate::tokio;

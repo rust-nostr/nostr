@@ -366,8 +366,7 @@ fn extract_external(event: &Event, is_root: bool) -> Option<(&ExternalContentId,
         })
 }
 
-#[cfg(test)]
-#[cfg(feature = "std")]
+#[cfg(all(test, feature = "std", feature = "rand"))]
 mod tests {
     use super::*;
     use crate::prelude::*;

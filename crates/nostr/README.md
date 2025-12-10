@@ -67,6 +67,7 @@ The following crate feature flags are available:
 |--------------------|:-------:|---------------------------------------------------------------|
 | `std`              |   Yes   | Enable `std` library                                          |
 | `alloc`            |   No    | Needed to use this library in `no_std` context                |
+| `rand`             |   No    | Enables `rand` crate                                          |
 | `pow-multi-thread` |   No    | Enable event POW mining using multi-threads                   |
 | `all-nips`         |   No    | Enable all NIPs                                               |
 | `nip03`            |   No    | Enable NIP-03: OpenTimestamps Attestations for Events         |

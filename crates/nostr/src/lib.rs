@@ -12,7 +12,7 @@
 #![allow(clippy::arc_with_non_send_sync)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(bench, feature(test))]
-#![cfg_attr(all(feature = "std", feature = "all-nips"), doc = include_str!("../README.md"))]
+#![cfg_attr(all(feature = "std", feature = "rand", feature = "all-nips"), doc = include_str!("../README.md"))]
 
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 compile_error!("at least one of the `std` or `alloc` features must be enabled");
@@ -29,6 +29,8 @@ extern crate alloc;
 #[macro_use]
 extern crate serde;
 pub extern crate bitcoin_hashes as hashes;
+#[cfg(feature = "rand")]
+pub extern crate rand;
 pub extern crate secp256k1;
 
 #[doc(hidden)]

@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use super::nip44;
 use crate::event::{self, tag, Event, EventId, TagKind};
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "rand"))]
 use crate::event::{EventBuilder, Kind, Tag};
 use crate::key::{PublicKey, SecretKey};
 use crate::types::time::Timestamp;
@@ -187,7 +187,7 @@ impl WalletEvent {
         Ok(Self { privkey, mints })
     }
 
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     fn to_encrypted_content(
         &self,
         secret_key: &SecretKey,
@@ -211,7 +211,7 @@ impl WalletEvent {
     }
 
     /// Convert to [`EventBuilder`].
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     pub fn to_event_builder(
         &self,
         secret_key: &SecretKey,
@@ -264,7 +264,7 @@ impl TokenEvent {
         self
     }
 
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     fn to_encrypted_content(
         &self,
         secret_key: &SecretKey,
@@ -280,7 +280,7 @@ impl TokenEvent {
     }
 
     /// Convert to [`EventBuilder`].
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     pub fn to_event_builder(
         &self,
         secret_key: &SecretKey,
@@ -436,7 +436,7 @@ impl SpendingHistory {
         self
     }
 
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     fn to_encrypted_content(
         &self,
         secret_key: &SecretKey,
@@ -484,7 +484,7 @@ impl SpendingHistory {
     }
 
     /// Convert to event builder
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     pub fn to_event_builder(
         &self,
         secret_key: &SecretKey,
@@ -565,7 +565,7 @@ impl QuoteEvent {
         self
     }
 
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     fn to_encrypted_content(
         &self,
         secret_key: &SecretKey,
@@ -580,7 +580,7 @@ impl QuoteEvent {
     }
 
     /// Convert to event builder
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     pub fn to_event_builder(
         &self,
         secret_key: &SecretKey,

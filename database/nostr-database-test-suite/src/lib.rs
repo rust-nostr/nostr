@@ -10,6 +10,7 @@ macro_rules! database_unit_tests {
         use std::ops::Deref;
         use std::time::Duration;
 
+        use nostr::prelude::*;
         use nostr_database::prelude::*;
 
         use $crate::tokio::{self, time};

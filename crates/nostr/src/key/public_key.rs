@@ -10,10 +10,10 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::str::FromStr;
 
-use secp256k1::XOnlyPublicKey;
+use secp256k1::{Secp256k1, Signing, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer, Serialize};
 
-use super::Error;
+use super::{Error, SecretKey};
 use crate::nips::nip19::FromBech32;
 use crate::nips::nip21::FromNostrUri;
 
@@ -119,6 +119,16 @@ impl PublicKey {
 
         // Construct
         Ok(Self::from_byte_array(bytes))
+    }
+
+    /// Derive public key from [`SecretKey`].
+    pub fn from_secret_key<C>(secp: &Secp256k1<C>, secret_key: &SecretKey) -> Self
+    where
+        C: Signing,
+    {
+        let pk: secp256k1::PublicKey = secp256k1::PublicKey::from_secret_key(secp, secret_key);
+        let (xonly, _): (XOnlyPublicKey, _) = pk.x_only_public_key();
+        Self::from(xonly)
     }
 
     /// Get public key as `hex` string

@@ -20,11 +20,13 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
 use super::nip04;
+#[cfg(feature = "std")]
+use crate::event;
 use crate::types::url::form_urlencoded::byte_serialize;
 use crate::types::url::{RelayUrl, Url};
-#[cfg(feature = "std")]
-use crate::{event, EventBuilder, Keys, Kind, Tag};
 use crate::{Event, JsonUtil, PublicKey, SecretKey, Timestamp};
+#[cfg(all(feature = "std", feature = "rand"))]
+use crate::{EventBuilder, Keys, Kind, Tag};
 
 /// NIP47 error
 #[derive(Debug)]
@@ -661,7 +663,7 @@ impl Request {
     }
 
     /// Create request [Event]
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     pub fn to_event(self, uri: &NostrWalletConnectUri) -> Result<Event, Error> {
         let encrypted = nip04::encrypt(&uri.secret, &uri.public_key, self.as_json())?;
         let keys: Keys = Keys::new(uri.secret.clone());
