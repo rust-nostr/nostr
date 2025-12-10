@@ -7,13 +7,16 @@
 use alloc::string::{String, ToString};
 use core::fmt;
 use core::num::{ParseIntError, TryFromIntError};
-use core::ops::{Add, Range, Sub};
+#[cfg(feature = "rand")]
+use core::ops::Range;
+use core::ops::{Add, Sub};
 use core::str::{self, FromStr};
 use core::time::Duration;
 
-#[cfg(feature = "std")]
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::Rng;
+#[cfg(all(feature = "std", feature = "rand"))]
+use rand::rngs::OsRng;
+#[cfg(feature = "rand")]
+use rand::{Rng, RngCore};
 
 mod supplier;
 
@@ -85,7 +88,7 @@ impl Timestamp {
     /// Get tweaked UNIX timestamp
     ///
     /// Remove a random number of seconds from now
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     pub fn tweaked(range: Range<u64>) -> Self {
         let mut now: Timestamp = Self::now();
         now.tweak(range);
@@ -95,10 +98,11 @@ impl Timestamp {
     /// Get tweaked UNIX timestamp
     ///
     /// Remove a random number of seconds from now
+    #[cfg(feature = "rand")]
     pub fn tweaked_with_supplier_and_rng<T, R>(supplier: &T, rng: &mut R, range: Range<u64>) -> Self
     where
         T: TimeSupplier,
-        R: Rng,
+        R: RngCore,
     {
         let mut now: Timestamp = Self::now_with_supplier(supplier);
         now.tweak_with_rng(rng, range);
@@ -107,15 +111,16 @@ impl Timestamp {
 
     /// Remove a random number of seconds from [`Timestamp`]
     #[inline]
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     pub fn tweak(&mut self, range: Range<u64>) {
         self.tweak_with_rng(&mut OsRng, range);
     }
 
     /// Remove a random number of seconds from [`Timestamp`]
+    #[cfg(feature = "rand")]
     pub fn tweak_with_rng<R>(&mut self, rng: &mut R, range: Range<u64>)
     where
-        R: Rng,
+        R: RngCore,
     {
         let secs: u64 = rng.gen_range(range);
         self.0 = self.0.saturating_sub(secs);

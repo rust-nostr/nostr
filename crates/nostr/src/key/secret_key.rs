@@ -8,18 +8,18 @@ use alloc::string::String;
 use core::ops::{Deref, DerefMut};
 use core::str::FromStr;
 
-#[cfg(feature = "std")]
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::Rng;
-use secp256k1::{Secp256k1, Signing};
+#[cfg(all(feature = "std", feature = "rand"))]
+use rand::rngs::OsRng;
+#[cfg(feature = "rand")]
+use rand::RngCore;
 use serde::{Deserialize, Deserializer};
 
 use super::Error;
 use crate::nips::nip19::FromBech32;
-#[cfg(all(feature = "std", feature = "nip49"))]
+#[cfg(all(feature = "std", feature = "rand", feature = "nip49"))]
 use crate::nips::nip49::{self, EncryptedSecretKey, KeySecurity};
-#[cfg(feature = "std")]
-use crate::SECP256K1;
+#[cfg(feature = "rand")]
+use crate::util;
 
 /// Secret key
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -84,30 +84,26 @@ impl SecretKey {
 
     /// Generate new random secret key
     #[inline]
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     pub fn generate() -> Self {
         Self::generate_with_rng(&mut OsRng)
     }
 
-    /// Generate random a secret key with a custom [`Rng`]
+    /// Generate random a secret key with a custom [`RngCore`].
     #[inline]
-    #[cfg(feature = "std")]
+    #[cfg(feature = "rand")]
     pub fn generate_with_rng<R>(rng: &mut R) -> Self
     where
-        R: Rng + ?Sized,
+        R: RngCore + ?Sized,
     {
-        Self::generate_with_ctx(SECP256K1, rng)
-    }
+        let mut data: [u8; Self::LEN] = util::random_32_bytes(rng);
 
-    /// Generate random secret key with custom `secp256k1` context and [`Rng`]
-    #[inline]
-    pub fn generate_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
-    where
-        C: Signing,
-        R: Rng + ?Sized,
-    {
-        let (secret_key, _) = secp.generate_keypair(rng);
-        Self { inner: secret_key }
+        loop {
+            match secp256k1::SecretKey::from_slice(&data) {
+                Ok(secret_key) => return Self { inner: secret_key },
+                Err(_) => data = util::random_32_bytes(rng),
+            }
+        }
     }
 
     /// Get secret key as `hex` string
@@ -133,7 +129,7 @@ impl SecretKey {
     /// By default, `LOG_N` is set to `16` and [`KeySecurity::Unknown`].
     /// To use custom values check [`EncryptedSecretKey`] constructors.
     #[inline]
-    #[cfg(all(feature = "std", feature = "nip49"))]
+    #[cfg(all(feature = "std", feature = "rand", feature = "nip49"))]
     pub fn encrypt(&self, password: &str) -> Result<EncryptedSecretKey, nip49::Error> {
         EncryptedSecretKey::new(self, password, 16, KeySecurity::Unknown)
     }

@@ -33,7 +33,7 @@ nip98 = ["nostr/nip98"]
 
 [dependencies]
 async-utility.workspace = true
-nostr = { workspace = true, features = ["std"] }
+nostr = { workspace = true, features = ["std", "rand"] }
 nostr-database.workspace = true
 nostr-gossip.workspace = true
 nostr-relay-pool.workspace = true

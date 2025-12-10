@@ -6,13 +6,16 @@
 
 use alloc::string::String;
 
-#[cfg(feature = "std")]
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::{CryptoRng, Rng};
+#[cfg(all(feature = "std", feature = "rand"))]
+use rand::rngs::OsRng;
+#[cfg(feature = "rand")]
+use rand::{CryptoRng, RngCore};
 use secp256k1::schnorr::Signature;
 use secp256k1::{Message, Secp256k1, Signing, Verification};
 
 use super::error::Error;
+#[cfg(feature = "rand")]
+use crate::util;
 use crate::{Event, EventId, JsonUtil, Keys, Kind, PublicKey, Tag, Tags, Timestamp};
 #[cfg(feature = "std")]
 use crate::{NostrSigner, SECP256K1};
@@ -113,17 +116,15 @@ impl UnsignedEvent {
     }
 
     /// Sign an unsigned event with [`Keys`] signer
-    ///
-    /// Internally: calculate [EventId] (if not set), sign it, compose and verify [Event].
     #[inline]
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     pub fn sign_with_keys(self, keys: &Keys) -> Result<Event, Error> {
         self.sign_with_ctx(SECP256K1, &mut OsRng, keys)
     }
 
     /// Sign an unsigned event with [`Keys`] signer
-    ///
-    /// Internally: calculate [EventId] (if not set), sign it, compose and verify [Event].
+    #[inline]
+    #[cfg(feature = "rand")]
     pub fn sign_with_ctx<C, R>(
         self,
         secp: &Secp256k1<C>,
@@ -132,12 +133,28 @@ impl UnsignedEvent {
     ) -> Result<Event, Error>
     where
         C: Signing + Verification,
-        R: Rng + CryptoRng,
+        R: RngCore + CryptoRng,
+    {
+        let aux: [u8; 32] = util::random_32_bytes(rng);
+        self.sign_with_aux_rand(secp, keys, &aux)
+    }
+
+    /// Sign an unsigned event using the given auxiliary random data.
+    ///
+    /// Internally: calculate [EventId] (if not set), sign it, compose and verify [Event].
+    pub fn sign_with_aux_rand<C>(
+        self,
+        secp: &Secp256k1<C>,
+        keys: &Keys,
+        aux: &[u8; 32],
+    ) -> Result<Event, Error>
+    where
+        C: Signing + Verification,
     {
         let verify_id: bool = self.id.is_some();
         let id: EventId = self.id.unwrap_or_else(|| self.compute_id());
         let message: Message = Message::from_digest(id.to_bytes());
-        let sig: Signature = keys.sign_schnorr_with_ctx(secp, &message, rng);
+        let sig: Signature = keys.sign_schnorr_with_aux_rand(secp, &message, aux);
         self.internal_add_signature(secp, id, sig, verify_id, false)
     }
 

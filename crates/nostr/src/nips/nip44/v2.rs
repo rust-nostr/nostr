@@ -17,9 +17,6 @@ use chacha20::ChaCha20;
 use hashes::hmac::{Hmac, HmacEngine};
 use hashes::sha256::Hash as Sha256Hash;
 use hashes::{FromSliceError, Hash, HashEngine};
-#[cfg(feature = "std")]
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::RngCore;
 
 use super::Error;
 use crate::util::{self, hkdf};
@@ -156,52 +153,16 @@ impl ConversationKey {
     }
 }
 
-/// Encrypt with NIP44 (v2)
+/// Encrypt with NIP44 (v2) using custom nonce
+///
+/// The nonce must be **UNIQUE** for each message.
 ///
 /// **The result is NOT encoded in base64!**
-#[inline]
-#[cfg(feature = "std")]
-pub fn encrypt_to_bytes(
+pub fn encrypt_to_bytes_with_nonce(
     conversation_key: &ConversationKey,
     plaintext: &[u8],
+    nonce: [u8; 32],
 ) -> Result<Vec<u8>, Error> {
-    encrypt_to_bytes_with_rng(&mut OsRng, conversation_key, plaintext)
-}
-
-/// Encrypt with NIP44 (v2) using custom Rng
-///
-/// **The result is NOT encoded in base64!**
-#[inline]
-pub fn encrypt_to_bytes_with_rng<R>(
-    rng: &mut R,
-    conversation_key: &ConversationKey,
-    plaintext: &[u8],
-) -> Result<Vec<u8>, Error>
-where
-    R: RngCore,
-{
-    internal_encrypt_to_bytes_with_rng(rng, conversation_key, plaintext, None)
-}
-
-fn internal_encrypt_to_bytes_with_rng<R>(
-    rng: &mut R,
-    conversation_key: &ConversationKey,
-    plaintext: &[u8],
-    override_random_nonce: Option<&[u8; 32]>,
-) -> Result<Vec<u8>, Error>
-where
-    R: RngCore,
-{
-    // Generate nonce
-    let nonce: [u8; 32] = match override_random_nonce {
-        Some(nonce) => *nonce,
-        None => {
-            let mut nonce: [u8; 32] = [0; 32];
-            rng.fill_bytes(&mut nonce);
-            nonce
-        }
-    };
-
     // Get Message Keys
     let keys: MessageKeys = get_message_keys(conversation_key, &nonce)?;
 
@@ -530,13 +491,9 @@ mod tests {
             );
 
             // Test encryption with an overridden nonce
-            let computed_ciphertext = internal_encrypt_to_bytes_with_rng(
-                &mut OsRng,
-                &conversation_key,
-                plaintext.as_bytes(),
-                Some(&nonce),
-            )
-            .unwrap();
+            let computed_ciphertext =
+                encrypt_to_bytes_with_nonce(&conversation_key, plaintext.as_bytes(), nonce)
+                    .unwrap();
             let computed_ciphertext = general_purpose::STANDARD.encode(computed_ciphertext);
             assert_eq!(
                 computed_ciphertext, ciphertext,

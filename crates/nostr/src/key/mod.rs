@@ -15,9 +15,10 @@ use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::sync::OnceLock as OnceCell;
 
-#[cfg(feature = "std")]
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::{CryptoRng, Rng};
+#[cfg(all(feature = "std", feature = "rand"))]
+use rand::rngs::OsRng;
+#[cfg(feature = "rand")]
+use rand::{CryptoRng, RngCore};
 use secp256k1::schnorr::Signature;
 use secp256k1::{self, Keypair, Message, Secp256k1, Signing, XOnlyPublicKey};
 
@@ -26,12 +27,16 @@ pub mod secret_key;
 
 pub use self::public_key::PublicKey;
 pub use self::secret_key::SecretKey;
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "rand"))]
 use crate::signer::{NostrSigner, SignerBackend, SignerError};
-#[cfg(feature = "std")]
+#[cfg(feature = "rand")]
+use crate::util;
+#[cfg(all(feature = "std", feature = "rand"))]
 use crate::util::BoxedFuture;
 #[cfg(feature = "std")]
-use crate::{Event, UnsignedEvent, SECP256K1};
+use crate::util::SECP256K1;
+#[cfg(all(feature = "std", feature = "rand"))]
+use crate::{Event, UnsignedEvent};
 
 /// [`Keys`] error
 #[derive(Debug, PartialEq)]
@@ -168,24 +173,10 @@ impl Keys {
     /// This constructor uses a random number generator that retrieves randomness from the operating system (see [`OsRng`]).
     ///
     /// Use [`Keys::generate_with_rng`] to specify a custom random source.
-    ///
-    /// Check [`Keys::generate_with_ctx`] to learn more about how this constructor works internally.
     #[inline]
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     pub fn generate() -> Self {
-        Self::generate_with_rng(&mut OsRng)
-    }
-
-    /// Generate random keys using a custom random source
-    ///
-    /// Check [`Keys::generate_with_ctx`] to learn more about how this constructor works internally.
-    #[inline]
-    #[cfg(feature = "std")]
-    pub fn generate_with_rng<R>(rng: &mut R) -> Self
-    where
-        R: Rng + ?Sized,
-    {
-        Self::generate_with_ctx(SECP256K1, rng)
+        Self::generate_with_rng(SECP256K1, &mut OsRng)
     }
 
     /// Generate random keys
@@ -194,16 +185,18 @@ impl Keys {
     /// This allows faster keys generation (i.e., for vanity pubkey mining).
     /// The [`Keypair`] will be automatically created when needed and stored in a cell.
     #[inline]
-    pub fn generate_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
+    #[cfg(feature = "rand")]
+    pub fn generate_with_rng<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
     where
         C: Signing,
-        R: Rng + ?Sized,
+        R: RngCore + ?Sized,
     {
-        let (secret_key, public_key) = secp.generate_keypair(rng);
-        let (public_key, _) = public_key.x_only_public_key();
+        let secret_key: SecretKey = SecretKey::generate_with_rng(rng);
+        let public_key: PublicKey = PublicKey::from_secret_key(secp, &secret_key);
+
         Self {
-            public_key: PublicKey::from(public_key),
-            secret_key: SecretKey::from(secret_key),
+            public_key,
+            secret_key,
             key_pair: OnceCell::new(),
         }
     }
@@ -234,13 +227,14 @@ impl Keys {
     ///
     /// This method uses a random number generator that retrieves randomness from the operating system (see [`OsRng`]).
     #[inline]
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", feature = "rand"))]
     pub fn sign_schnorr(&self, message: &Message) -> Signature {
-        self.sign_schnorr_with_ctx(SECP256K1, message, &mut OsRng)
+        self.sign_schnorr_with_rng(SECP256K1, message, &mut OsRng)
     }
 
     /// Creates a schnorr signature of the [`Message`] using a custom random number generation source.
-    pub fn sign_schnorr_with_ctx<C, R>(
+    #[cfg(feature = "rand")]
+    pub fn sign_schnorr_with_rng<C, R>(
         &self,
         secp: &Secp256k1<C>,
         message: &Message,
@@ -248,10 +242,24 @@ impl Keys {
     ) -> Signature
     where
         C: Signing,
-        R: Rng + CryptoRng,
+        R: RngCore + CryptoRng,
+    {
+        let aux: [u8; 32] = util::random_32_bytes(rng);
+        self.sign_schnorr_with_aux_rand(secp, message, &aux)
+    }
+
+    /// Creates a schnorr signature using the given auxiliary random data.
+    pub fn sign_schnorr_with_aux_rand<C>(
+        &self,
+        secp: &Secp256k1<C>,
+        message: &Message,
+        aux: &[u8; 32],
+    ) -> Signature
+    where
+        C: Signing,
     {
         let keypair: &Keypair = self.key_pair(secp);
-        secp.sign_schnorr_with_rng(message, keypair, rng)
+        secp.sign_schnorr_with_aux_rand(message, keypair, aux)
     }
 }
 
@@ -266,7 +274,7 @@ impl FromStr for Keys {
     }
 }
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "rand"))]
 impl NostrSigner for Keys {
     fn backend(&self) -> SignerBackend {
         SignerBackend::Keys

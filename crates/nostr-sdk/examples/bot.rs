@@ -48,7 +48,7 @@ async fn main() -> Result<()> {
                         Ok(UnwrappedGift { rumor, sender }) => {
                             if rumor.kind == Kind::PrivateDirectMessage {
                                 let content: String = match rumor.content.as_str() {
-                                    "/rand" => rand::random::<u16>().to_string(),
+                                    "/hello" => String::from("Hello, World!"),
                                     "/help" => help(),
                                     _ => String::from(
                                         "Invalid command, send /help to see all commands.",
@@ -73,7 +73,7 @@ async fn main() -> Result<()> {
 fn help() -> String {
     let mut output = String::new();
     output.push_str("Commands:\n");
-    output.push_str("/rand - Random number\n");
+    output.push_str("/hello - Hello\n");
     output.push_str("/help - Help");
     output
 }

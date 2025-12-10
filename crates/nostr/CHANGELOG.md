@@ -28,13 +28,14 @@
 ### Breaking changes
 
 - Change the output and behavior of nip17::extract_relay_list and nip17::extract_owned_relay_list functions
+- Add `rand` feature (https://github.com/rust-nostr/nostr/pull/1167)
 
 ### Changed
 
 - Rename `NostrConnectURI` to `NostrConnectUri`
 - Rename `NostrWalletConnectURI` to `NostrWalletConnectUri`
 - Prevent overflow in `Kind` addition
-- Refinements for `wasm32-wasip2` target (https://github.com/rust-nostr/nostr/pull/1164)
+- Refinements for `wasm32` targets (https://github.com/rust-nostr/nostr/pull/1164 and https://github.com/rust-nostr/nostr/pull/1167)
 - Make `Kind::from_u16` and `Kind::as_u16` const (https://github.com/rust-nostr/nostr/pull/1136)
 
 ### Added

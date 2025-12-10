@@ -10,6 +10,8 @@ use core::fmt::Debug;
 use core::future::Future;
 use core::pin::Pin;
 
+#[cfg(feature = "rand")]
+use rand::RngCore;
 #[cfg(feature = "std")]
 use secp256k1::global::GlobalContext;
 use secp256k1::{ecdh, Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey};
@@ -28,6 +30,16 @@ pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 /// A boxed future
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
+
+#[cfg(feature = "rand")]
+pub(crate) fn random_32_bytes<R>(rng: &mut R) -> [u8; 32]
+where
+    R: RngCore + ?Sized,
+{
+    let mut ret = [0u8; 32];
+    rng.fill_bytes(&mut ret);
+    ret
+}
 
 /// Generate shared key
 ///

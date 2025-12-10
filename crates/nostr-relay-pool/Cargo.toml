@@ -26,7 +26,7 @@ atomic-destructor.workspace = true
 hex = { workspace = true, features = ["std"] }
 lru.workspace = true
 negentropy = { workspace = true, features = ["std"] }
-nostr = { workspace = true, features = ["std"] }
+nostr = { workspace = true, features = ["std", "rand"] }
 nostr-database.workspace = true
 tokio = { workspace = true, features = ["macros", "sync"] }
 tracing.workspace = true

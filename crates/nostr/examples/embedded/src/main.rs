@@ -15,7 +15,7 @@ use core::panic::PanicInfo;
 use alloc_cortex_m::CortexMHeap;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::{debug, hprintln};
-use nostr::secp256k1::rand::{self, RngCore};
+use nostr::rand::{self, RngCore};
 use nostr::secp256k1::Secp256k1;
 use nostr::{FromBech32, Keys, ToBech32, SecretKey};
 use nostr::nips::nip06::FromMnemonic;
@@ -72,7 +72,7 @@ fn main() -> ! {
     print_keys(&keys);
 
     // Generate new random keys
-    let keys = Keys::generate_with_ctx(&secp, &mut FakeRng);
+    let keys = Keys::generate_with_rng(&secp, &mut FakeRng);
     hprintln!("\nRandom keys (using FakeRng):").unwrap();
     print_keys(&keys);
 

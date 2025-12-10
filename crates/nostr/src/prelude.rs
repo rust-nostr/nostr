@@ -12,7 +12,8 @@
 // External crates
 #[cfg(feature = "nip06")]
 pub use bip39::Mnemonic;
-pub use secp256k1::rand;
+#[cfg(feature = "rand")]
+pub use rand;
 pub use secp256k1::schnorr::Signature;
 pub use serde_json::Value;
 

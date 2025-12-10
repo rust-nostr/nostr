@@ -11,30 +11,42 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use aes::cipher::block_padding::Pkcs7;
-use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+#[cfg(feature = "rand")]
+use aes::cipher::BlockEncryptMut;
+use aes::cipher::{BlockDecryptMut, KeyIvInit};
 use aes::Aes256;
-use bech32::{Bech32, Hrp};
-use cbc::{Decryptor, Encryptor};
+#[cfg(feature = "rand")]
+use bech32::Bech32;
+use bech32::Hrp;
+use cbc::Decryptor;
+#[cfg(feature = "rand")]
+use cbc::Encryptor;
 use hashes::sha256::Hash as Sha256Hash;
 use hashes::Hash;
-#[cfg(feature = "std")]
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::rand::{CryptoRng, RngCore};
-use secp256k1::{self, Secp256k1, Signing, Verification};
+#[cfg(all(feature = "std", feature = "rand"))]
+use rand::rngs::OsRng;
+#[cfg(feature = "rand")]
+use rand::{CryptoRng, RngCore};
+#[cfg(feature = "rand")]
+use secp256k1::{Secp256k1, Signing, Verification};
 
 use super::nip01::Coordinate;
 use crate::event::builder::Error as BuilderError;
 use crate::key::Error as KeyError;
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "rand"))]
 use crate::types::time::Instant;
+#[cfg(feature = "rand")]
 use crate::types::time::TimeSupplier;
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "rand"))]
 use crate::SECP256K1;
 use crate::{
-    event, util, Event, EventBuilder, EventId, JsonUtil, Keys, Kind, PublicKey, RelayUrl,
-    SecretKey, Tag, TagStandard, Timestamp,
+    event, util, Event, EventId, JsonUtil, PublicKey, RelayUrl, SecretKey, Tag, TagStandard,
+    Timestamp,
 };
+#[cfg(feature = "rand")]
+use crate::{EventBuilder, Keys, Kind};
 
+#[cfg(feature = "rand")]
 type Aes256CbcEnc = Encryptor<Aes256>;
 type Aes256CbcDec = Decryptor<Aes256>;
 
@@ -248,7 +260,7 @@ impl From<ZapRequestData> for Vec<Tag> {
 }
 
 /// Create **anonymous** zap request
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "rand"))]
 pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
     let keys = Keys::generate();
     let message: String = data.message.clone();
@@ -263,12 +275,13 @@ pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
 
 /// Create **private** zap request
 #[inline]
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "rand"))]
 pub fn private_zap_request(data: ZapRequestData, keys: &Keys) -> Result<Event, Error> {
     private_zap_request_with_ctx(SECP256K1, &mut OsRng, &Instant::now(), data, keys)
 }
 
 /// Create **private** zap request
+#[cfg(feature = "rand")]
 pub fn private_zap_request_with_ctx<C, R, T>(
     secp: &Secp256k1<C>,
     rng: &mut R,
@@ -324,6 +337,7 @@ pub fn create_encryption_key(
 }
 
 /// Encrypt a private zap message using the given keys
+#[cfg(feature = "rand")]
 pub fn encrypt_private_zap_message<R, T>(
     rng: &mut R,
     secret_key: &SecretKey,
@@ -414,8 +428,8 @@ fn decrypt_private_zap_message(key: [u8; 32], private_zap_event: &Event) -> Resu
     Ok(Event::from_json(result)?)
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
+#[cfg(all(feature = "std", feature = "rand"))]
 mod tests {
     use super::*;
 

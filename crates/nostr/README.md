@@ -67,6 +67,7 @@ The following crate feature flags are available:
 |--------------------|:-------:|---------------------------------------------------------------|
 | `std`              |   Yes   | Enable `std` library                                          |
 | `alloc`            |   No    | Needed to use this library in `no_std` context                |
+| `rand`             |   No    | Enables `rand` crate                                          |
 | `pow-multi-thread` |   No    | Enable event POW mining using multi-threads                   |
 | `all-nips`         |   No    | Enable all NIPs                                               |
 | `nip03`            |   No    | Enable NIP-03: OpenTimestamps Attestations for Events         |
@@ -125,6 +126,16 @@ AR="${LLVM_PATH}/bin/llvm-ar" CC="${LLVM_PATH}/bin/clang" cargo build --target w
 ```
 
 The other platforms should work out of the box.
+
+#### Compiling for a JavaScript environment
+
+If you intend to use this crate **inside a JS runtime** (i.e., browser or Node.js),
+make sure to enable the appropriate features in your own project’s `Cargo.toml`:
+
+```toml
+getrandom = { version = "*", features = ["js"] }
+instant = { version = "*", features = ["wasm-bindgen"] }
+```
 
 ## Embedded
 
