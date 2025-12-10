@@ -13,7 +13,9 @@ use nostr::util::BoxedFuture;
 use nostr::{Event, Kind, PublicKey, RelayUrl, TagKind, TagStandard, Timestamp};
 use nostr_gossip::error::GossipError;
 use nostr_gossip::flags::GossipFlags;
-use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
+use nostr_gossip::{
+    BestRelaySelection, GossipAllowedRelays, GossipListKind, GossipPublicKeyStatus, NostrGossip,
+};
 use tokio::sync::RwLock;
 
 use crate::constant::{MAX_NIP17_SIZE, MAX_NIP65_SIZE, PUBKEY_METADATA_OUTDATED_AFTER};
@@ -194,6 +196,7 @@ impl NostrGossipMemory {
         &self,
         public_key: &PublicKey,
         selection: BestRelaySelection,
+        allowed: GossipAllowedRelays,
     ) -> HashSet<RelayUrl> {
         let public_keys = self.public_keys.read().await;
 
@@ -211,6 +214,7 @@ impl NostrGossipMemory {
                     &public_keys,
                     public_key,
                     GossipFlags::READ,
+                    allowed,
                     read,
                 ));
 
@@ -219,6 +223,7 @@ impl NostrGossipMemory {
                     &public_keys,
                     public_key,
                     GossipFlags::WRITE,
+                    allowed,
                     write,
                 ));
 
@@ -227,6 +232,7 @@ impl NostrGossipMemory {
                     &public_keys,
                     public_key,
                     GossipFlags::HINT,
+                    allowed,
                     hints,
                 ));
 
@@ -235,6 +241,7 @@ impl NostrGossipMemory {
                     &public_keys,
                     public_key,
                     GossipFlags::RECEIVED,
+                    allowed,
                     most_received,
                 ));
             }
@@ -243,6 +250,7 @@ impl NostrGossipMemory {
                     &public_keys,
                     public_key,
                     GossipFlags::READ,
+                    allowed,
                     limit,
                 ));
             }
@@ -251,6 +259,7 @@ impl NostrGossipMemory {
                     &public_keys,
                     public_key,
                     GossipFlags::WRITE,
+                    allowed,
                     limit,
                 ));
             }
@@ -259,6 +268,7 @@ impl NostrGossipMemory {
                     &public_keys,
                     public_key,
                     GossipFlags::PRIVATE_MESSAGE,
+                    allowed,
                     limit,
                 ));
             }
@@ -267,6 +277,7 @@ impl NostrGossipMemory {
                     &public_keys,
                     public_key,
                     GossipFlags::HINT,
+                    allowed,
                     limit,
                 ));
             }
@@ -275,6 +286,7 @@ impl NostrGossipMemory {
                     &public_keys,
                     public_key,
                     GossipFlags::RECEIVED,
+                    allowed,
                     limit,
                 ));
             }
@@ -288,12 +300,25 @@ impl NostrGossipMemory {
         tx: &LruCache<PublicKey, PkData>,
         public_key: &PublicKey,
         flag: GossipFlags,
+        allowed: GossipAllowedRelays,
         limit: u8,
     ) -> impl Iterator<Item = RelayUrl> + '_ {
         let mut relays: Vec<(RelayUrl, u64, Option<Timestamp>)> = Vec::new();
 
         if let Some(pk_data) = tx.peek(public_key) {
             for (relay_url, relay_data) in pk_data.relays.iter() {
+                if !allowed.onion && relay_url.is_onion() {
+                    continue;
+                }
+
+                if !allowed.local && relay_url.is_local_addr() {
+                    continue;
+                }
+
+                if !allowed.without_tls && !relay_url.scheme().is_secure() {
+                    continue;
+                }
+
                 // Check if the relay has the specified flag
                 if relay_data.bitflags.has(flag) {
                     relays.push((
@@ -374,8 +399,9 @@ impl NostrGossip for NostrGossipMemory {
         &'a self,
         public_key: &'a PublicKey,
         selection: BestRelaySelection,
+        allowed: GossipAllowedRelays,
     ) -> BoxedFuture<'a, Result<HashSet<RelayUrl>, GossipError>> {
-        Box::pin(async move { Ok(self._get_best_relays(public_key, selection).await) })
+        Box::pin(async move { Ok(self._get_best_relays(public_key, selection, allowed).await) })
     }
 }
 
