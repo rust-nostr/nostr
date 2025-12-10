@@ -2335,9 +2335,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e0242819d153cba4b4b05a5a8f2a7e9bbf97b6055b2a002b395c96b5ff3c0222"
 dependencies = [
  "cfg-if",
- "js-sys",
- "wasm-bindgen",
- "web-sys",
 ]
 
 [[package]]
@@ -2808,7 +2805,6 @@ dependencies = [
  "cbc",
  "chacha20",
  "chacha20poly1305",
- "getrandom 0.2.16",
  "hex",
  "instant",
  "nostr-ots",
@@ -2840,6 +2836,7 @@ dependencies = [
 name = "nostr-browser-signer"
 version = "0.44.1"
 dependencies = [
+ "getrandom 0.2.16",
  "js-sys",
  "nostr",
  "wasm-bindgen",
@@ -2952,6 +2949,7 @@ dependencies = [
 name = "nostr-indexeddb"
 version = "0.44.0"
 dependencies = [
+ "getrandom 0.2.16",
  "hex",
  "indexed_db_futures",
  "nostr",

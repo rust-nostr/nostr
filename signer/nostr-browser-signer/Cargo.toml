@@ -16,6 +16,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
+getrandom = { workspace = true, features = ["js"] }
 js-sys = { version = "0.3", default-features = false, features = ["std"] }
 nostr = { workspace = true, default-features = false, features = ["std"] }
 wasm-bindgen = { version = "0.2", default-features = false, features = ["std"] }

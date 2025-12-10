@@ -127,6 +127,16 @@ AR="${LLVM_PATH}/bin/llvm-ar" CC="${LLVM_PATH}/bin/clang" cargo build --target w
 
 The other platforms should work out of the box.
 
+#### Compiling for a JavaScript environment
+
+If you intend to use this crate **inside a JS runtime** (i.e., browser or Node.js),
+make sure to enable the appropriate features in your own project’s `Cargo.toml`:
+
+```toml
+getrandom = { version = "*", features = ["js"] }
+instant = { version = "*", features = ["wasm-bindgen"] }
+```
+
 ## Embedded
 
 This crate support [`no_std`](https://docs.rust-embedded.org/book/intro/no-std.html) environments.

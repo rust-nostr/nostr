@@ -86,10 +86,22 @@ unicode-normalization = { version = "0.1", default-features = false, optional = 
 url = { version = "2.5", default-features = false, features = ["serde"], optional = true } # Used in std
 url-fork = { version = "3.0", default-features = false, features = ["serde"], optional = true } # Used for no_std
 
-# Explicitly for WASM32 (Browser and JS environments)
+# Explicit configuration for `wasm32-unknown-*` targets.
+#
+# NOTE:
+# The `wasm32-unknown-unknown` target can also be used outside a JS runtime,
+# so we should NOT automatically enable JS-specific features (i.e., wasm-bindgen)
+# or JS-dependent crates here.
+#
+# Instead, any JS-specific features must be enabled explicitly by the consuming
+# project (for example, a client intended to run in a browser), such as:
+#
+# getrandom = { version = "*", features = ["js"] }
+# instant   = { version = "*", features = ["wasm-bindgen"] }
+#
+# Only minimal, runtime-agnostic dependencies should be added for this target.
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
-getrandom = { version = "0.2", features = ["js"] }
-instant = { version = "0.1", features = ["wasm-bindgen"] }
+instant = "0.1"
 
 [dev-dependencies]
 reqwest = { workspace = true, features = ["rustls-tls"] }
