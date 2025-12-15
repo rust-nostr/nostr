@@ -31,7 +31,6 @@ std = [
     "rand?/std",
     "scrypt?/std",
     "secp256k1/std",
-    "secp256k1/global-context",
     "serde/std",
     "serde_json/std",
     "unicode-normalization?/std",
@@ -52,6 +51,8 @@ alloc = [
 ]
 # Enable random stuff
 rand = ["dep:rand"]
+# Enable OS Random Number Generator
+os-rng = ["rand", "rand/os_rng"]
 # Enable event POW mining using multi-threads
 pow-multi-thread = ["std"]
 all-nips = ["nip04", "nip06", "nip44", "nip46", "nip47", "nip49", "nip57", "nip59", "nip60", "nip96", "nip98"]
@@ -80,7 +81,7 @@ chacha20poly1305 = { version = "0.10", default-features = false, optional = true
 hex = { workspace = true, default-features = false }
 nostr-ots = { version = "0.2", optional = true }
 once_cell = { version = "1.21", default-features = false }
-rand = { version = "0.8", default-features = false, optional = true }
+rand = { version = "0.9", default-features = false, optional = true }
 scrypt = { version = "0.11", default-features = false, optional = true }
 secp256k1 = { version = "0.29", default-features = false, features = ["serde"] }
 serde = { workspace = true, default-features = false, features = ["derive"] }
@@ -99,8 +100,8 @@ url-fork = { version = "3.0", default-features = false, features = ["serde"], op
 # Instead, any JS-specific features must be enabled explicitly by the consuming
 # project (for example, a client intended to run in a browser), such as:
 #
-# getrandom = { version = "*", features = ["js"] }
-# instant   = { version = "*", features = ["wasm-bindgen"] }
+# getrandom = { version = "*", features = ["wasm_js"] }
+# instant = { version = "*", features = ["wasm-bindgen"] }
 #
 # Only minimal, runtime-agnostic dependencies should be added for this target.
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
@@ -112,7 +113,7 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [[example]]
 name = "keys"
-required-features = ["std", "rand"]
+required-features = ["std", "rand", "os-rng"]
 
 [[example]]
 name = "nip05"
@@ -124,7 +125,7 @@ required-features = ["std", "nip06"]
 
 [[example]]
 name = "nip09"
-required-features = ["std", "rand"]
+required-features = ["std", "rand", "os-rng"]
 
 [[example]]
 name = "nip11"
@@ -132,7 +133,7 @@ required-features = ["std"]
 
 [[example]]
 name = "nip13"
-required-features = ["std", "rand"]
+required-features = ["std", "rand", "os-rng"]
 
 [[example]]
 name = "nip19"
@@ -140,19 +141,19 @@ required-features = ["std"]
 
 [[example]]
 name = "nip57"
-required-features = ["std", "rand", "nip57"]
+required-features = ["std", "rand", "os-rng", "nip57"]
 
 [[example]]
 name = "nip15"
-required-features = ["std", "rand"]
+required-features = ["std", "rand", "os-rng"]
 
 [[example]]
 name = "nip96"
-required-features = ["std", "rand", "nip96"]
+required-features = ["std", "rand", "os-rng", "nip96"]
 
 [[example]]
 name = "nip98"
-required-features = ["std", "rand", "nip98"]
+required-features = ["std", "rand", "os-rng", "nip98"]
 
 [[example]]
 name = "parser"

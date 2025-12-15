@@ -15,8 +15,10 @@ use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::sync::OnceLock as OnceCell;
 
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::rngs::OsRng;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::TryRngCore;
 #[cfg(feature = "rand")]
 use rand::{CryptoRng, RngCore};
 use secp256k1::schnorr::Signature;
@@ -27,15 +29,15 @@ pub mod secret_key;
 
 pub use self::public_key::PublicKey;
 pub use self::secret_key::SecretKey;
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::signer::{NostrSigner, SignerBackend, SignerError};
 #[cfg(feature = "rand")]
 use crate::util;
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::util::BoxedFuture;
 #[cfg(feature = "std")]
 use crate::util::SECP256K1;
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::{Event, UnsignedEvent};
 
 /// [`Keys`] error
@@ -174,9 +176,9 @@ impl Keys {
     ///
     /// Use [`Keys::generate_with_rng`] to specify a custom random source.
     #[inline]
-    #[cfg(all(feature = "std", feature = "rand"))]
+    #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn generate() -> Self {
-        Self::generate_with_rng(&SECP256K1, &mut OsRng)
+        Self::generate_with_rng(&SECP256K1, &mut OsRng.unwrap_err())
     }
 
     /// Generate random keys
@@ -189,7 +191,7 @@ impl Keys {
     pub fn generate_with_rng<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
     where
         C: Signing,
-        R: RngCore + ?Sized,
+        R: RngCore,
     {
         let secret_key: SecretKey = SecretKey::generate_with_rng(rng);
         let public_key: PublicKey = PublicKey::from_secret_key(secp, &secret_key);
@@ -227,9 +229,9 @@ impl Keys {
     ///
     /// This method uses a random number generator that retrieves randomness from the operating system (see [`OsRng`]).
     #[inline]
-    #[cfg(all(feature = "std", feature = "rand"))]
+    #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn sign_schnorr(&self, message: &Message) -> Signature {
-        self.sign_schnorr_with_rng(&SECP256K1, message, &mut OsRng)
+        self.sign_schnorr_with_rng(&SECP256K1, message, &mut OsRng.unwrap_err())
     }
 
     /// Creates a schnorr signature of the [`Message`] using a custom random number generation source.
@@ -274,7 +276,7 @@ impl FromStr for Keys {
     }
 }
 
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 impl NostrSigner for Keys {
     fn backend(&self) -> SignerBackend {
         SignerBackend::Keys

@@ -46,7 +46,7 @@ pub fn is_valid_auth_event(event: &Event, relay_url: &RelayUrl, challenge: &str)
     true
 }
 
-#[cfg(all(test, feature = "std", feature = "rand"))]
+#[cfg(all(test, feature = "std", feature = "os-rng"))]
 mod tests {
     use super::*;
     use crate::{EventBuilder, Keys};

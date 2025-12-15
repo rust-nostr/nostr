@@ -15,7 +15,7 @@ use core::panic::PanicInfo;
 use alloc_cortex_m::CortexMHeap;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::{debug, hprintln};
-use nostr::rand::{self, RngCore};
+use nostr::rand::RngCore;
 use nostr::secp256k1::Secp256k1;
 use nostr::{FromBech32, Keys, ToBech32, SecretKey};
 use nostr::nips::nip06::FromMnemonic;
@@ -37,15 +37,10 @@ impl RngCore for FakeRng {
         57
     }
 
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
         for i in dest {
             *i = 57;
         }
-        Ok(())
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        self.try_fill_bytes(dest).unwrap();
     }
 }
 

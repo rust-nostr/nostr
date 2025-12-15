@@ -18,10 +18,12 @@ use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use aes::Aes256;
 use base64::engine::{general_purpose, Engine};
 use cbc::{Decryptor, Encryptor};
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::rngs::OsRng;
 #[cfg(feature = "rand")]
 use rand::RngCore;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::TryRngCore;
 
 use crate::{key, util, PublicKey, SecretKey};
 
@@ -70,7 +72,7 @@ impl From<key::Error> for Error {
 ///
 /// <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP17!</div>
 #[inline]
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 pub fn encrypt<T>(
     secret_key: &SecretKey,
     public_key: &PublicKey,
@@ -79,7 +81,7 @@ pub fn encrypt<T>(
 where
     T: AsRef<[u8]>,
 {
-    encrypt_with_rng(&mut OsRng, secret_key, public_key, content)
+    encrypt_with_rng(&mut OsRng.unwrap_err(), secret_key, public_key, content)
 }
 
 /// Encrypt
@@ -181,7 +183,7 @@ where
     String::from_utf8(result).map_err(|_| Error::Utf8Encode)
 }
 
-#[cfg(all(test, feature = "std", feature = "rand"))]
+#[cfg(all(test, feature = "std", feature = "os-rng"))]
 mod tests {
     use core::str::FromStr;
 

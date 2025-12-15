@@ -15,7 +15,7 @@ use async_wsocket::{ConnectionMode, Message};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use nostr::rand::rngs::OsRng;
-use nostr::rand::{Rng, RngCore};
+use nostr::rand::{Rng, RngCore, TryRngCore};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard};
@@ -630,7 +630,7 @@ impl InnerRelay {
 
             // The jitter is added to avoid situations where multiple relays reconnect simultaneously after a failure.
             // This helps prevent synchronized retry storms.
-            let jitter: i8 = OsRng.gen_range(JITTER_RANGE);
+            let jitter: i8 = OsRng.unwrap_err().random_range(JITTER_RANGE);
 
             // Apply jitter
             if jitter >= 0 {
@@ -838,7 +838,7 @@ impl InnerRelay {
                         }
 
                         // Generate and save nonce
-                        let mut rng = OsRng;
+                        let mut rng = OsRng.unwrap_err();
                         let nonce: u64 = rng.next_u64();
                         ping.set_last_nonce(nonce);
                         ping.set_replied(false);

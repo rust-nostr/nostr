@@ -13,8 +13,10 @@ use core::fmt;
 
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::XChaCha20Poly1305;
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::rngs::OsRng;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::TryRngCore;
 #[cfg(feature = "rand")]
 use rand::{CryptoRng, RngCore};
 use scrypt::errors::{InvalidOutputLen, InvalidParams};
@@ -186,14 +188,20 @@ impl EncryptedSecretKey {
 
     /// Encrypt secret key
     #[inline]
-    #[cfg(all(feature = "std", feature = "rand"))]
+    #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn new(
         secret_key: &SecretKey,
         password: &str,
         log_n: u8,
         key_security: KeySecurity,
     ) -> Result<Self, Error> {
-        Self::new_with_rng(secret_key, password, log_n, key_security, &mut OsRng)
+        Self::new_with_rng(
+            secret_key,
+            password,
+            log_n,
+            key_security,
+            &mut OsRng.unwrap_err(),
+        )
     }
 
     /// Encrypt secret key
@@ -421,7 +429,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "std", feature = "rand"))]
+    #[cfg(all(feature = "std", feature = "os-rng"))]
     fn test_encrypted_secret_key_encryption_decryption() {
         let original_secret_key = SecretKey::from_hex(SECRET_KEY).unwrap();
         let encrypted_secret_key =

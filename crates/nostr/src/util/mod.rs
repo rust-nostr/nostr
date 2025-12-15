@@ -13,10 +13,12 @@ use core::pin::Pin;
 // TODO: replace with LazyLock when MSRV will be >= 1.80.0
 #[cfg(feature = "std")]
 use once_cell::sync::Lazy;
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(feature = "os-rng")]
 use rand::rngs::OsRng;
 #[cfg(feature = "rand")]
 use rand::RngCore;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::TryRngCore;
 use secp256k1::{ecdh, Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey};
 #[cfg(feature = "std")]
 use secp256k1::{All, Secp256k1};
@@ -39,9 +41,9 @@ pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 #[cfg(feature = "rand")]
 pub(crate) fn random_32_bytes<R>(rng: &mut R) -> [u8; 32]
 where
-    R: RngCore + ?Sized,
+    R: RngCore,
 {
-    let mut ret = [0u8; 32];
+    let mut ret: [u8; 32] = [0u8; 32];
     rng.fill_bytes(&mut ret);
     ret
 }
@@ -66,15 +68,15 @@ pub fn generate_shared_key(
 /// Secp256k1 global context
 #[cfg(feature = "std")]
 pub static SECP256K1: Lazy<Secp256k1<All>> = Lazy::new(|| {
-    #[cfg(feature = "rand")]
+    #[cfg(feature = "os-rng")]
     let mut ctx: Secp256k1<All> = Secp256k1::new();
-    #[cfg(not(feature = "rand"))]
+    #[cfg(not(feature = "os-rng"))]
     let ctx: Secp256k1<All> = Secp256k1::new();
 
     // Randomize
-    #[cfg(feature = "rand")]
+    #[cfg(feature = "os-rng")]
     {
-        let seed: [u8; 32] = random_32_bytes(&mut OsRng);
+        let seed: [u8; 32] = random_32_bytes(&mut OsRng.unwrap_err());
         ctx.seeded_randomize(&seed);
     }
 

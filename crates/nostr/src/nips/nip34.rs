@@ -314,7 +314,7 @@ impl GitPatch {
     }
 }
 
-#[cfg(all(test, feature = "std", feature = "rand"))]
+#[cfg(all(test, feature = "std", feature = "os-rng"))]
 mod tests {
     use core::str::FromStr;
 

@@ -8,15 +8,17 @@ use alloc::string::String;
 use core::ops::{Deref, DerefMut};
 use core::str::FromStr;
 
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::rngs::OsRng;
 #[cfg(feature = "rand")]
 use rand::RngCore;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::TryRngCore;
 use serde::{Deserialize, Deserializer};
 
 use super::Error;
 use crate::nips::nip19::FromBech32;
-#[cfg(all(feature = "std", feature = "rand", feature = "nip49"))]
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip49"))]
 use crate::nips::nip49::{self, EncryptedSecretKey, KeySecurity};
 #[cfg(feature = "rand")]
 use crate::util;
@@ -84,9 +86,9 @@ impl SecretKey {
 
     /// Generate new random secret key
     #[inline]
-    #[cfg(all(feature = "std", feature = "rand"))]
+    #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn generate() -> Self {
-        Self::generate_with_rng(&mut OsRng)
+        Self::generate_with_rng(&mut OsRng.unwrap_err())
     }
 
     /// Generate random a secret key with a custom [`RngCore`].
@@ -94,7 +96,7 @@ impl SecretKey {
     #[cfg(feature = "rand")]
     pub fn generate_with_rng<R>(rng: &mut R) -> Self
     where
-        R: RngCore + ?Sized,
+        R: RngCore,
     {
         let mut data: [u8; Self::LEN] = util::random_32_bytes(rng);
 
@@ -129,7 +131,7 @@ impl SecretKey {
     /// By default, `LOG_N` is set to `16` and [`KeySecurity::Unknown`].
     /// To use custom values check [`EncryptedSecretKey`] constructors.
     #[inline]
-    #[cfg(all(feature = "std", feature = "rand", feature = "nip49"))]
+    #[cfg(all(feature = "std", feature = "os-rng", feature = "nip49"))]
     pub fn encrypt(&self, password: &str) -> Result<EncryptedSecretKey, nip49::Error> {
         EncryptedSecretKey::new(self, password, 16, KeySecurity::Unknown)
     }

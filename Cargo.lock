@@ -2809,7 +2809,7 @@ dependencies = [
  "instant",
  "nostr-ots",
  "once_cell",
- "rand 0.8.5",
+ "rand 0.9.2",
  "reqwest",
  "scrypt",
  "secp256k1",
@@ -2837,7 +2837,6 @@ dependencies = [
 name = "nostr-browser-signer"
 version = "0.44.1"
 dependencies = [
- "getrandom 0.2.16",
  "js-sys",
  "nostr",
  "wasm-bindgen",
@@ -2950,7 +2949,6 @@ dependencies = [
 name = "nostr-indexeddb"
 version = "0.44.0"
 dependencies = [
- "getrandom 0.2.16",
  "hex",
  "indexed_db_futures",
  "nostr",

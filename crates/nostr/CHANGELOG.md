@@ -29,9 +29,11 @@
 
 - Change the output and behavior of nip17::extract_relay_list and nip17::extract_owned_relay_list functions
 - Add `rand` feature (https://github.com/rust-nostr/nostr/pull/1167)
+- Add `os-rng` feature (https://github.com/rust-nostr/nostr/pull/1171)
 
 ### Changed
 
+- Bump `rand` from 0.8 to 0.9 (https://github.com/rust-nostr/nostr/pull/1171)
 - Rename `NostrConnectURI` to `NostrConnectUri`
 - Rename `NostrWalletConnectURI` to `NostrWalletConnectUri`
 - Prevent overflow in `Kind` addition

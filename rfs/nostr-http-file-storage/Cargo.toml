@@ -21,7 +21,7 @@ default = []
 socks = ["reqwest/socks"]
 
 [dependencies]
-nostr = { workspace = true, features = ["std", "rand", "nip96"] }
+nostr = { workspace = true, features = ["std", "rand", "os-rng", "nip96"] }
 reqwest = { workspace = true, features = ["json", "multipart", "rustls-tls"] }
 tokio = { workspace = true, features = ["sync"] }
 

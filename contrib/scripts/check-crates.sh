@@ -5,8 +5,10 @@ set -exuo pipefail
 buildargs=(
     "-p nostr"                                                      # Only std feature
     "-p nostr --features rand"                                      # std + rand
+    "-p nostr --features os-rng"                                    # std + os-rng
     "-p nostr --features all-nips"                                  # std + all-nips
     "-p nostr --features all-nips,rand"                             # std + all-nips + rand
+    "-p nostr --features all-nips,os-rng"                           # std + all-nips + os-rng
     "-p nostr --no-default-features --features alloc"               # Only alloc feature
     "-p nostr --no-default-features --features alloc,rand"          # alloc +rand
     "-p nostr --no-default-features --features alloc,all-nips"      # alloc + all-nips

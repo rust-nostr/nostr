@@ -28,10 +28,13 @@ jobs:
         crate:
           - nostr
           - nostr --features rand
+          - nostr --features os-rng
           - nostr --features all-nips
           - nostr --features all-nips,rand
+          - nostr --features all-nips,os-rng
           - nostr --features all-nips --target wasm32-wasip2
           - nostr --features all-nips,rand --target wasm32-wasip2
+          - nostr --features all-nips,os-rng --target wasm32-wasip2
           - nostr --no-default-features --features alloc
           - nostr --no-default-features --features alloc,rand
           - nostr --no-default-features --features alloc,all-nips

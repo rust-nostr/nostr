@@ -5,6 +5,6 @@ edition = "2021"
 publish = false
 
 [dependencies]
-nostr = { workspace = true, features = ["std", "rand"] }
+nostr = { workspace = true, features = ["std", "rand", "os-rng"] }
 nostr-gossip.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

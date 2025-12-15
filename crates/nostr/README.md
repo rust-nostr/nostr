@@ -67,7 +67,8 @@ The following crate feature flags are available:
 |--------------------|:-------:|---------------------------------------------------------------|
 | `std`              |   Yes   | Enable `std` library                                          |
 | `alloc`            |   No    | Needed to use this library in `no_std` context                |
-| `rand`             |   No    | Enables `rand` crate                                          |
+| `rand`             |   No    | Enables `rand` traits                                         |
+| `os-rng`           |   No    | Enable OS Random Number Generator                             |
 | `pow-multi-thread` |   No    | Enable event POW mining using multi-threads                   |
 | `all-nips`         |   No    | Enable all NIPs                                               |
 | `nip03`            |   No    | Enable NIP-03: OpenTimestamps Attestations for Events         |
@@ -130,10 +131,16 @@ The other platforms should work out of the box.
 #### Compiling for a JavaScript environment
 
 If you intend to use this crate **inside a JS runtime** (i.e., browser or Node.js),
-make sure to enable the appropriate features in your own project’s `Cargo.toml`:
+make sure to enable the appropriate features in your own project’s `.cargo/config.toml` and `Cargo.toml` files:
 
 ```toml
-getrandom = { version = "*", features = ["js"] }
+# .cargo/config.toml
+[target.wasm32-unknown-unknown]
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"']
+```
+
+```toml
+# Cargo.toml
 instant = { version = "*", features = ["wasm-bindgen"] }
 ```
 

@@ -11,10 +11,12 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use base64::engine::{general_purpose, Engine};
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::rngs::OsRng;
 #[cfg(feature = "rand")]
 use rand::RngCore;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::TryRngCore;
 
 pub mod v2;
 
@@ -114,7 +116,7 @@ pub enum Nonce {
 
 /// Encrypt
 #[inline]
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 pub fn encrypt<T>(
     secret_key: &SecretKey,
     public_key: &PublicKey,
@@ -124,7 +126,13 @@ pub fn encrypt<T>(
 where
     T: AsRef<[u8]>,
 {
-    encrypt_with_rng(secret_key, public_key, content, version, &mut OsRng)
+    encrypt_with_rng(
+        secret_key,
+        public_key,
+        content,
+        version,
+        &mut OsRng.unwrap_err(),
+    )
 }
 
 /// Encrypt
@@ -224,7 +232,7 @@ where
 }
 
 #[cfg(test)]
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 mod tests {
     use core::str::FromStr;
 

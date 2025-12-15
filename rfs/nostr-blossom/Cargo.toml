@@ -13,10 +13,11 @@ keywords = ["nostr", "blossom"]
 
 [dependencies]
 base64.workspace = true
-nostr = { workspace = true, features = ["std", "rand"] }
+nostr = { workspace = true, features = ["std"] }
 reqwest = { workspace = true, default-features = false, features = ["json", "rustls-tls"] }
 serde = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
 clap = { workspace = true, features = ["derive"] }
+nostr = { workspace = true, features = ["std", "os-rng"] }
 tokio = { workspace = true, features = ["full"] }

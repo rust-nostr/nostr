@@ -12,7 +12,7 @@ fn main() -> Result<()> {
     let keyring = NostrKeyring::new("my-nostr-app");
     
     // Save a key
-    let keys = Keys::generate();
+    let keys = Keys::parse("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")?;
     keyring.set("example", &keys)?;
     
     // Get it

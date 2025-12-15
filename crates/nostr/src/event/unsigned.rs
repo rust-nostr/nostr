@@ -6,8 +6,10 @@
 
 use alloc::string::String;
 
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::rngs::OsRng;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::TryRngCore;
 #[cfg(feature = "rand")]
 use rand::{CryptoRng, RngCore};
 use secp256k1::schnorr::Signature;
@@ -116,9 +118,9 @@ impl UnsignedEvent {
 
     /// Sign an unsigned event with [`Keys`] signer
     #[inline]
-    #[cfg(all(feature = "std", feature = "rand"))]
+    #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn sign_with_keys(self, keys: &Keys) -> Result<Event, Error> {
-        self.sign_with_ctx(&SECP256K1, &mut OsRng, keys)
+        self.sign_with_ctx(&SECP256K1, &mut OsRng.unwrap_err(), keys)
     }
 
     /// Sign an unsigned event with [`Keys`] signer

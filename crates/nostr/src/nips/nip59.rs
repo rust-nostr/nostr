@@ -17,7 +17,7 @@ use crate::event::{self, Event};
 use crate::signer::SignerError;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::{EventBuilder, Timestamp};
 use crate::{JsonUtil, Kind, NostrSigner, PublicKey};
 
@@ -138,7 +138,7 @@ where
 /// Make a seal
 ///
 /// The `rumor` can be an [`EventBuilder`] or an [`UnsignedEvent`].
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 pub async fn make_seal<T>(
     signer: &T,
     receiver_pubkey: &PublicKey,
@@ -167,7 +167,7 @@ where
 }
 
 #[cfg(test)]
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 mod tests {
     use super::*;
     use crate::{EventBuilder, Keys};

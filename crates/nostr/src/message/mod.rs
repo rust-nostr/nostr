@@ -11,10 +11,12 @@ use core::fmt;
 use hashes::sha256::Hash as Sha256Hash;
 #[cfg(feature = "rand")]
 use hashes::Hash;
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::rngs::OsRng;
 #[cfg(feature = "rand")]
 use rand::RngCore;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::TryRngCore;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 pub mod client;
@@ -68,9 +70,9 @@ impl SubscriptionId {
 
     /// Generate new random [`SubscriptionId`]
     #[inline]
-    #[cfg(all(feature = "std", feature = "rand"))]
+    #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn generate() -> Self {
-        Self::generate_with_rng(&mut OsRng)
+        Self::generate_with_rng(&mut OsRng.unwrap_err())
     }
 
     /// Generate new random [`SubscriptionId`]

@@ -93,7 +93,7 @@ impl EventDeletionRequest {
     }
 }
 
-#[cfg(all(test, feature = "std", feature = "rand"))]
+#[cfg(all(test, feature = "std", feature = "os-rng"))]
 mod tests {
     use super::*;
     use crate::{Event, Keys, Tags};

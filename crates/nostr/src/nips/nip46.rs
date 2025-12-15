@@ -13,10 +13,12 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::rngs::OsRng;
 #[cfg(feature = "rand")]
 use rand::RngCore;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::TryRngCore;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::event::unsigned::UnsignedEvent;
@@ -677,9 +679,9 @@ impl fmt::Display for NostrConnectMessage {
 impl NostrConnectMessage {
     /// Compose [`NostrConnectMessage::Request`] from [`NostrConnectRequest`].
     #[inline]
-    #[cfg(all(feature = "std", feature = "rand"))]
+    #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn request(req: &NostrConnectRequest) -> Self {
-        Self::request_with_rng(&mut OsRng, req)
+        Self::request_with_rng(&mut OsRng.unwrap_err(), req)
     }
 
     /// Compose [`NostrConnectMessage::Request`] from [`NostrConnectRequest`].

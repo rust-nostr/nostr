@@ -25,7 +25,7 @@ use crate::event;
 use crate::types::url::form_urlencoded::byte_serialize;
 use crate::types::url::{RelayUrl, Url};
 use crate::{Event, JsonUtil, PublicKey, SecretKey, Timestamp};
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::{EventBuilder, Keys, Kind, Tag};
 
 /// NIP47 error
@@ -663,7 +663,7 @@ impl Request {
     }
 
     /// Create request [Event]
-    #[cfg(all(feature = "std", feature = "rand"))]
+    #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn to_event(self, uri: &NostrWalletConnectUri) -> Result<Event, Error> {
         let encrypted = nip04::encrypt(&uri.secret, &uri.public_key, self.as_json())?;
         let keys: Keys = Keys::new(uri.secret.clone());

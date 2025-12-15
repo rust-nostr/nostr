@@ -23,8 +23,10 @@ use cbc::Decryptor;
 use cbc::Encryptor;
 use hashes::sha256::Hash as Sha256Hash;
 use hashes::Hash;
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::rngs::OsRng;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::TryRngCore;
 #[cfg(feature = "rand")]
 use rand::{CryptoRng, RngCore};
 #[cfg(feature = "rand")]
@@ -33,11 +35,11 @@ use secp256k1::{Secp256k1, Signing, Verification};
 use super::nip01::Coordinate;
 use crate::event::builder::Error as BuilderError;
 use crate::key::Error as KeyError;
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::types::time::Instant;
 #[cfg(feature = "rand")]
 use crate::types::time::TimeSupplier;
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::SECP256K1;
 use crate::{
     event, util, Event, EventId, JsonUtil, PublicKey, RelayUrl, SecretKey, Tag, TagStandard,
@@ -260,7 +262,7 @@ impl From<ZapRequestData> for Vec<Tag> {
 }
 
 /// Create **anonymous** zap request
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
     let keys = Keys::generate();
     let message: String = data.message.clone();
@@ -275,9 +277,15 @@ pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
 
 /// Create **private** zap request
 #[inline]
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 pub fn private_zap_request(data: ZapRequestData, keys: &Keys) -> Result<Event, Error> {
-    private_zap_request_with_ctx(&SECP256K1, &mut OsRng, &Instant::now(), data, keys)
+    private_zap_request_with_ctx(
+        &SECP256K1,
+        &mut OsRng.unwrap_err(),
+        &Instant::now(),
+        data,
+        keys,
+    )
 }
 
 /// Create **private** zap request
@@ -429,7 +437,7 @@ fn decrypt_private_zap_message(key: [u8; 32], private_zap_event: &Event) -> Resu
 }
 
 #[cfg(test)]
-#[cfg(all(feature = "std", feature = "rand"))]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 mod tests {
     use super::*;
 
