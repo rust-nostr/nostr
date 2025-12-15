@@ -277,7 +277,7 @@ pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
 #[inline]
 #[cfg(all(feature = "std", feature = "rand"))]
 pub fn private_zap_request(data: ZapRequestData, keys: &Keys) -> Result<Event, Error> {
-    private_zap_request_with_ctx(SECP256K1, &mut OsRng, &Instant::now(), data, keys)
+    private_zap_request_with_ctx(&SECP256K1, &mut OsRng, &Instant::now(), data, keys)
 }
 
 /// Create **private** zap request

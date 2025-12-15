@@ -10,11 +10,16 @@ use core::fmt::Debug;
 use core::future::Future;
 use core::pin::Pin;
 
+// TODO: replace with LazyLock when MSRV will be >= 1.80.0
+#[cfg(feature = "std")]
+use once_cell::sync::Lazy;
+#[cfg(all(feature = "std", feature = "rand"))]
+use rand::rngs::OsRng;
 #[cfg(feature = "rand")]
 use rand::RngCore;
-#[cfg(feature = "std")]
-use secp256k1::global::GlobalContext;
 use secp256k1::{ecdh, Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey};
+#[cfg(feature = "std")]
+use secp256k1::{All, Secp256k1};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -60,7 +65,21 @@ pub fn generate_shared_key(
 
 /// Secp256k1 global context
 #[cfg(feature = "std")]
-pub static SECP256K1: &GlobalContext = secp256k1::global::SECP256K1;
+pub static SECP256K1: Lazy<Secp256k1<All>> = Lazy::new(|| {
+    #[cfg(feature = "rand")]
+    let mut ctx: Secp256k1<All> = Secp256k1::new();
+    #[cfg(not(feature = "rand"))]
+    let ctx: Secp256k1<All> = Secp256k1::new();
+
+    // Randomize
+    #[cfg(feature = "rand")]
+    {
+        let seed: [u8; 32] = random_32_bytes(&mut OsRng);
+        ctx.seeded_randomize(&seed);
+    }
+
+    ctx
+});
 
 /// JSON util
 pub trait JsonUtil: Sized + Serialize + DeserializeOwned

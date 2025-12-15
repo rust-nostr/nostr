@@ -127,7 +127,7 @@ impl Keys {
     #[inline]
     #[cfg(feature = "std")]
     pub fn new(secret_key: SecretKey) -> Self {
-        Self::new_with_ctx(SECP256K1, secret_key)
+        Self::new_with_ctx(&SECP256K1, secret_key)
     }
 
     /// Construct from a secret key.
@@ -153,7 +153,7 @@ impl Keys {
     #[inline]
     #[cfg(feature = "std")]
     pub fn parse(secret_key: &str) -> Result<Self, Error> {
-        Self::parse_with_ctx(SECP256K1, secret_key)
+        Self::parse_with_ctx(&SECP256K1, secret_key)
     }
 
     /// Parse secret key and construct keys.
@@ -176,7 +176,7 @@ impl Keys {
     #[inline]
     #[cfg(all(feature = "std", feature = "rand"))]
     pub fn generate() -> Self {
-        Self::generate_with_rng(SECP256K1, &mut OsRng)
+        Self::generate_with_rng(&SECP256K1, &mut OsRng)
     }
 
     /// Generate random keys
@@ -229,7 +229,7 @@ impl Keys {
     #[inline]
     #[cfg(all(feature = "std", feature = "rand"))]
     pub fn sign_schnorr(&self, message: &Message) -> Signature {
-        self.sign_schnorr_with_rng(SECP256K1, message, &mut OsRng)
+        self.sign_schnorr_with_rng(&SECP256K1, message, &mut OsRng)
     }
 
     /// Creates a schnorr signature of the [`Message`] using a custom random number generation source.

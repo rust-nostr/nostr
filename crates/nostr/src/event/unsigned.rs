@@ -119,7 +119,7 @@ impl UnsignedEvent {
     #[inline]
     #[cfg(all(feature = "std", feature = "rand"))]
     pub fn sign_with_keys(self, keys: &Keys) -> Result<Event, Error> {
-        self.sign_with_ctx(SECP256K1, &mut OsRng, keys)
+        self.sign_with_ctx(&SECP256K1, &mut OsRng, keys)
     }
 
     /// Sign an unsigned event with [`Keys`] signer
@@ -164,7 +164,7 @@ impl UnsignedEvent {
     #[inline]
     #[cfg(feature = "std")]
     pub fn add_signature(self, sig: Signature) -> Result<Event, Error> {
-        self.add_signature_with_ctx(SECP256K1, sig)
+        self.add_signature_with_ctx(&SECP256K1, sig)
     }
 
     /// Add signature to unsigned event
