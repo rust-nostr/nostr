@@ -19,12 +19,16 @@ impl WritePolicy for AcceptKinds {
         &'a self,
         event: &'a Event,
         _addr: &'a SocketAddr,
-    ) -> BoxedFuture<'a, PolicyResult> {
+    ) -> BoxedFuture<'a, WritePolicyResult> {
         Box::pin(async move {
             if self.kinds.contains(&event.kind) {
-                PolicyResult::Accept
+                // Do nothing, keep processing the event
+                WritePolicyResult::Accept
             } else {
-                PolicyResult::Reject("kind not accepted".to_string())
+                WritePolicyResult::reject(format!(
+                    "{}: kind not accepted",
+                    MachineReadablePrefix::Blocked
+                ))
             }
         })
     }
@@ -41,12 +45,12 @@ impl QueryPolicy for RejectAuthorLimit {
         &'a self,
         query: &'a Filter,
         _addr: &'a SocketAddr,
-    ) -> BoxedFuture<'a, PolicyResult> {
+    ) -> BoxedFuture<'a, QueryPolicyResult> {
         Box::pin(async move {
             if query.authors.as_ref().map(|a| a.len()).unwrap_or(0) > self.limit {
-                PolicyResult::Reject("query too expensive".to_string())
+                QueryPolicyResult::reject(MachineReadablePrefix::Blocked, "query too expensive")
             } else {
-                PolicyResult::Accept
+                QueryPolicyResult::Accept
             }
         })
     }
