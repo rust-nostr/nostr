@@ -246,6 +246,71 @@ impl Stream for SubscriptionActivityEventStream {
     }
 }
 
+/// Stream adapter that wraps events with their source relay URL.
+///
+/// This stream is used by `Relay::stream_events_with_source` to provide
+/// relay provenance information alongside each event, enabling creation
+/// of NIP-19 shareable identifiers with relay hints.
+struct SubscriptionActivityRelayEventStream {
+    /// Channel receiver for subscription activity
+    rx: mpsc::Receiver<SubscriptionActivity>,
+    /// The relay URL to attach to each event
+    relay_url: RelayUrl,
+    /// Whether the stream has completed
+    done: bool,
+}
+
+impl SubscriptionActivityRelayEventStream {
+    /// Create a new relay event stream.
+    ///
+    /// # Arguments
+    /// * `rx` - The subscription activity receiver channel
+    /// * `relay_url` - The relay URL to attach to each event
+    fn new(rx: mpsc::Receiver<SubscriptionActivity>, relay_url: RelayUrl) -> Self {
+        Self {
+            rx,
+            relay_url,
+            done: false,
+        }
+    }
+}
+
+impl Stream for SubscriptionActivityRelayEventStream {
+    type Item = Result<RelayEvent, Error>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        if self.done {
+            return Poll::Ready(None);
+        }
+
+        match Pin::new(&mut self.rx).poll_recv(cx) {
+            Poll::Ready(Some(activity)) => match activity {
+                SubscriptionActivity::ReceivedEvent(event) => {
+                    // Wrap the event with the relay URL for provenance tracking
+                    let relay_event = RelayEvent::new(self.relay_url.clone(), event);
+                    Poll::Ready(Some(Ok(relay_event)))
+                }
+                SubscriptionActivity::Closed(reason) => match reason {
+                    SubscriptionAutoClosedReason::AuthenticationFailed => {
+                        self.done = true;
+                        Poll::Ready(Some(Err(Error::AuthenticationFailed)))
+                    }
+                    SubscriptionAutoClosedReason::Closed(message) => {
+                        self.done = true;
+                        Poll::Ready(Some(Err(Error::RelayMessage(message))))
+                    }
+                    SubscriptionAutoClosedReason::Completed => {
+                        self.done = true;
+                        Poll::Ready(None)
+                    }
+                },
+            },
+            Poll::Ready(None) => Poll::Ready(None),
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
 /// Relay
 #[derive(Debug, Clone)]
 pub struct Relay {
@@ -721,6 +786,58 @@ impl Relay {
             .await?;
 
         Ok(Box::pin(SubscriptionActivityEventStream::new(rx)))
+    }
+
+    /// Stream events from relay with source relay URL.
+    ///
+    /// This method is identical to [`Relay::stream_events`] but returns [`RelayEvent`]
+    /// which includes the relay URL alongside each event. This is essential for:
+    ///
+    /// - Creating NIP-19 shareable identifiers (`nevent`, `nprofile`) with relay hints
+    /// - Implementing the NIP-65 gossip model where relay provenance informs routing
+    /// - Tracking which relay served each event for debugging or analytics
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use nostr_sdk::prelude::*;
+    ///
+    /// let mut stream = relay.stream_events_with_source(
+    ///     Filter::new().kind(Kind::TextNote),
+    ///     Duration::from_secs(10),
+    ///     ReqExitPolicy::ExitOnEOSE,
+    /// ).await?;
+    ///
+    /// while let Some(result) = stream.next().await {
+    ///     let relay_event = result?;
+    ///     println!("Event {} from {}", relay_event.id, relay_event.relay_url);
+    /// }
+    /// ```
+    pub async fn stream_events_with_source<F>(
+        &self,
+        filters: F,
+        timeout: Duration,
+        policy: ReqExitPolicy,
+    ) -> Result<BoxedStream<Result<RelayEvent, Error>>, Error>
+    where
+        F: Into<Vec<Filter>>,
+    {
+        // Create channels for subscription activity
+        let (tx, rx) = mpsc::channel(512);
+
+        // Compose auto-closing options
+        let opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
+            .exit_policy(policy)
+            .timeout(Some(timeout));
+
+        // Subscribe with auto-closing behavior
+        let id: SubscriptionId = SubscriptionId::generate();
+        self.subscribe_auto_closing(id, filters.into(), opts, Some(tx))
+            .await?;
+
+        // Return stream that wraps events with this relay's URL
+        let relay_url = self.inner.url.clone();
+        Ok(Box::pin(SubscriptionActivityRelayEventStream::new(rx, relay_url)))
     }
 
     /// Fetch events
