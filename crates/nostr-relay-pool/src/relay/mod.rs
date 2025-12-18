@@ -7,6 +7,7 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
+use std::ops::Deref;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
@@ -124,6 +125,81 @@ impl Reconciliation {
         self.sent.extend(other.sent);
         self.received.extend(other.received);
         self.send_failures.extend(other.send_failures);
+    }
+}
+
+/// An event bundled with its source relay URL.
+///
+/// This type is returned by streaming methods that preserve relay provenance,
+/// which is essential for creating NIP-19 shareable identifiers (`nevent`, `nprofile`)
+/// with relay hints.
+///
+/// # Example
+///
+/// ```ignore
+/// use nostr_sdk::prelude::*;
+///
+/// let mut stream = client.stream_events_with_source(
+///     Filter::new().kind(Kind::TextNote),
+///     Duration::from_secs(10),
+///     ReqExitPolicy::ExitOnEOSE,
+/// ).await?;
+///
+/// while let Some(relay_event) = stream.next().await {
+///     // Access relay URL for creating nevent links
+///     println!("Event {} from {}", relay_event.id, relay_event.relay_url);
+///
+///     // Deref allows direct access to Event fields
+///     println!("Content: {}", relay_event.content);
+/// }
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RelayEvent {
+    /// The relay URL where this event was received
+    pub relay_url: RelayUrl,
+    /// The event
+    pub event: Event,
+}
+
+impl RelayEvent {
+    /// Create a new `RelayEvent`
+    #[inline]
+    pub fn new(relay_url: RelayUrl, event: Event) -> Self {
+        Self { relay_url, event }
+    }
+
+    /// Consume and return the inner event, discarding relay information
+    #[inline]
+    pub fn into_event(self) -> Event {
+        self.event
+    }
+
+    /// Consume and return both the relay URL and event
+    #[inline]
+    pub fn into_parts(self) -> (RelayUrl, Event) {
+        (self.relay_url, self.event)
+    }
+
+    /// Get reference to the relay URL
+    #[inline]
+    pub fn relay_url(&self) -> &RelayUrl {
+        &self.relay_url
+    }
+}
+
+impl Deref for RelayEvent {
+    type Target = Event;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.event
+    }
+}
+
+impl From<RelayEvent> for Event {
+    #[inline]
+    fn from(relay_event: RelayEvent) -> Self {
+        relay_event.event
     }
 }
 
