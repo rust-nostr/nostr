@@ -31,7 +31,7 @@ pub use self::output::Output;
 use crate::monitor::Monitor;
 use crate::relay::flags::FlagCheck;
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
-use crate::relay::Relay;
+use crate::relay::{Relay, RelayEvent};
 use crate::shared::SharedState;
 use crate::stream::{BoxedStream, ReceiverStream};
 use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};
@@ -1310,6 +1310,210 @@ impl RelayPool {
         });
 
         // Return stream
+        Ok(Box::pin(ReceiverStream::new(rx)))
+    }
+
+    /// Stream events from relays with `READ` flag, including source relay URL.
+    ///
+    /// This method is identical to [`RelayPool::stream_events`] but returns [`RelayEvent`]
+    /// which includes the relay URL alongside each event. This is essential for:
+    ///
+    /// - Creating NIP-19 shareable identifiers (`nevent`, `nprofile`) with relay hints
+    /// - Implementing NIP-65 gossip model routing decisions
+    /// - Tracking which relay served each event for debugging or analytics
+    ///
+    /// # Note
+    ///
+    /// Events are deduplicated by ID - only the first occurrence of each event is returned,
+    /// with the relay URL of the relay that first delivered it.
+    pub async fn stream_events_with_source(
+        &self,
+        filter: Filter,
+        timeout: Duration,
+        policy: ReqExitPolicy,
+    ) -> Result<BoxedStream<RelayEvent>, Error> {
+        let urls: Vec<RelayUrl> = self.__read_relay_urls().await;
+        self.stream_events_from_with_source(urls, filter, timeout, policy)
+            .await
+    }
+
+    /// Stream events from specific relays, including source relay URL.
+    ///
+    /// This method is identical to [`RelayPool::stream_events_from`] but returns [`RelayEvent`]
+    /// which includes the relay URL alongside each event.
+    ///
+    /// # Note
+    ///
+    /// Events are deduplicated by ID - only the first occurrence of each event is returned,
+    /// with the relay URL of the relay that first delivered it.
+    pub async fn stream_events_from_with_source<I, U, F>(
+        &self,
+        urls: I,
+        filters: F,
+        timeout: Duration,
+        policy: ReqExitPolicy,
+    ) -> Result<BoxedStream<RelayEvent>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        F: Into<Vec<Filter>>,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        let filters: Vec<Filter> = filters.into();
+        let targets = urls.into_iter().map(|u| (u, filters.clone()));
+        self.stream_events_targeted_with_source(targets, timeout, policy)
+            .await
+    }
+
+    /// Targeted streaming events with source relay URL.
+    ///
+    /// Stream events from specific relays with specific filters, including
+    /// the source relay URL with each event.
+    ///
+    /// This method is identical to [`RelayPool::stream_events_targeted`] but returns
+    /// [`RelayEvent`] which includes the relay URL alongside each event. This is essential for:
+    ///
+    /// - Creating NIP-19 shareable identifiers (`nevent`, `nprofile`) with relay hints
+    /// - Implementing NIP-65 gossip model routing decisions
+    /// - Tracking which relay served each event for debugging or analytics
+    ///
+    /// # Note
+    ///
+    /// Events are deduplicated by ID - only the first occurrence of each event is returned,
+    /// with the relay URL of the relay that first delivered it.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use nostr_sdk::prelude::*;
+    ///
+    /// let targets = vec![
+    ///     ("wss://relay1.example.com", Filter::new().kind(Kind::TextNote)),
+    ///     ("wss://relay2.example.com", Filter::new().kind(Kind::Metadata)),
+    /// ];
+    ///
+    /// let mut stream = pool.stream_events_targeted_with_source(
+    ///     targets,
+    ///     Duration::from_secs(10),
+    ///     ReqExitPolicy::ExitOnEOSE,
+    /// ).await?;
+    ///
+    /// while let Some(relay_event) = stream.next().await {
+    ///     // Create nevent with relay hint
+    ///     println!("Event {} from {}", relay_event.id, relay_event.relay_url);
+    /// }
+    /// ```
+    pub async fn stream_events_targeted_with_source<I, U, F>(
+        &self,
+        targets: I,
+        timeout: Duration,
+        policy: ReqExitPolicy,
+    ) -> Result<BoxedStream<RelayEvent>, Error>
+    where
+        I: IntoIterator<Item = (U, F)>,
+        U: TryIntoUrl,
+        F: Into<Vec<Filter>>,
+        Error: From<<U as TryIntoUrl>::Err>,
+    {
+        // Collect targets into a map of relay URL -> filters
+        let targets: HashMap<RelayUrl, Vec<Filter>> = targets
+            .into_iter()
+            .map(|(u, v)| Ok((u.try_into_url()?, v.into())))
+            .collect::<Result<_, Error>>()?;
+
+        // Check if `targets` map is empty
+        if targets.is_empty() {
+            return Err(Error::NoRelaysSpecified);
+        }
+
+        // Lock with read shared access
+        let relays = self.inner.atomic.relays.read().await;
+
+        // Check if empty
+        if relays.is_empty() {
+            return Err(Error::NoRelays);
+        }
+
+        let mut urls = Vec::with_capacity(targets.len());
+        let mut futures = Vec::with_capacity(targets.len());
+
+        for (url, filter) in targets.into_iter() {
+            // Try to get the relay
+            let relay: &Relay = self.internal_relay(&relays, &url)?;
+
+            // Push url
+            urls.push(url);
+
+            // Push stream events future - use the with_source variant to get RelayEvent
+            futures.push(relay.stream_events_with_source(filter, timeout, policy));
+        }
+
+        // Wait that futures complete
+        let awaited = future::join_all(futures).await;
+
+        // The urls and futures len MUST be the same!
+        assert_eq!(urls.len(), awaited.len());
+
+        // Re-construct streams: each stream already yields RelayEvent with its relay URL
+        let mut streams: Vec<BoxedStream<Result<RelayEvent, _>>> = Vec::with_capacity(awaited.len());
+
+        // Zip-up urls and futures into a single iterator
+        let iter = urls.into_iter().zip(awaited.into_iter());
+
+        for (url, stream) in iter {
+            match stream {
+                Ok(stream) => streams.push(stream),
+                Err(e) => tracing::error!(url = %url, error = %e, "Failed to stream events."),
+            }
+        }
+
+        // Create a new channel for the merged, deduplicated stream
+        // NOTE: events are deduplicated, so a smaller capacity is sufficient
+        let (tx, rx) = mpsc::channel::<RelayEvent>(512);
+
+        // Single driver task: polls all streams, de-duplicates by event ID, forwards RelayEvent
+        task::spawn(async move {
+            // IDs collection to track seen events for deduplication
+            let ids: Arc<Mutex<HashSet<EventId>>> = Arc::new(Mutex::new(HashSet::new()));
+
+            let mut futures = Vec::with_capacity(streams.len());
+
+            for mut stream in streams.into_iter() {
+                let tx = tx.clone();
+                let ids = ids.clone();
+
+                futures.push(async move {
+                    while let Some(res) = stream.next().await {
+                        match res {
+                            Ok(relay_event) => {
+                                let mut ids = ids.lock().await;
+
+                                // Check if this event ID was already seen
+                                // If new, forward the RelayEvent (preserving relay URL)
+                                if ids.insert(relay_event.id) {
+                                    // Immediately drop the lock
+                                    drop(ids);
+
+                                    // Send the RelayEvent with provenance info
+                                    let _ = tx.send(relay_event).await;
+                                }
+                            }
+                            Err(e) => {
+                                tracing::error!(error = %e, "Failed to stream events with source.")
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Wait for all streams to complete
+            future::join_all(futures).await;
+
+            // Close the channel when all streams are done
+            drop(tx);
+        });
+
+        // Return the merged stream of RelayEvents
         Ok(Box::pin(ReceiverStream::new(rx)))
     }
 
