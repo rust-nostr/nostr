@@ -16,9 +16,9 @@ use secp256k1::{Message, Secp256k1, Signing, Verification};
 use super::error::Error;
 #[cfg(feature = "rand")]
 use crate::util;
-use crate::{Event, EventId, JsonUtil, Keys, Kind, PublicKey, Tag, Tags, Timestamp};
 #[cfg(feature = "std")]
-use crate::{NostrSigner, SECP256K1};
+use crate::SECP256K1;
+use crate::{Event, EventId, JsonUtil, Keys, Kind, NostrSigner, PublicKey, Tag, Tags, Timestamp};
 
 /// Unsigned event
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -107,7 +107,6 @@ impl UnsignedEvent {
 
     /// Sign an unsigned event
     #[inline]
-    #[cfg(feature = "std")]
     pub async fn sign<T>(self, signer: &T) -> Result<Event, Error>
     where
         T: NostrSigner,
