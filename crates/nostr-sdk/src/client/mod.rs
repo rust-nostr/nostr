@@ -906,6 +906,104 @@ impl Client {
             .await?)
     }
 
+    /// Stream events from relays with source relay URL
+    ///
+    /// # Overview
+    ///
+    /// This method is identical to [`Client::stream_events`] but returns [`RelayEvent`]
+    /// which includes the relay URL alongside each event. This is essential for:
+    ///
+    /// - Creating NIP-19 shareable identifiers (`nevent`, `nprofile`) with relay hints
+    /// - Implementing NIP-65 gossip model routing decisions
+    /// - Tracking which relay served each event for debugging or analytics
+    ///
+    /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
+    /// To use another exit policy, check [`RelayPool::stream_events_with_source`].
+    ///
+    /// # Gossip
+    ///
+    /// If `gossip` is enabled, events will be streamed also from NIP-65 relays
+    /// (automatically discovered) of public keys included in filters (if any).
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use nostr_sdk::prelude::*;
+    ///
+    /// let mut stream = client.stream_events_with_source(
+    ///     Filter::new().kind(Kind::TextNote),
+    ///     Duration::from_secs(10),
+    /// ).await?;
+    ///
+    /// while let Some(relay_event) = stream.next().await {
+    ///     // Create nevent with relay hint for sharing
+    ///     println!("Event {} from {}", relay_event.id, relay_event.relay_url);
+    /// }
+    /// ```
+    pub async fn stream_events_with_source(
+        &self,
+        filter: Filter,
+        timeout: Duration,
+    ) -> Result<BoxedStream<RelayEvent>, Error> {
+        match &self.gossip {
+            Some(gossip) => {
+                self.gossip_stream_events_with_source(gossip, filter, timeout, ReqExitPolicy::ExitOnEOSE)
+                    .await
+            }
+            None => Ok(self
+                .pool
+                .stream_events_with_source(filter, timeout, ReqExitPolicy::ExitOnEOSE)
+                .await?),
+        }
+    }
+
+    /// Stream events from specific relays with source relay URL
+    ///
+    /// # Overview
+    ///
+    /// This method is identical to [`Client::stream_events_from`] but returns [`RelayEvent`]
+    /// which includes the relay URL alongside each event.
+    ///
+    /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
+    /// To use another exit policy, check [`RelayPool::stream_events_from_with_source`].
+    #[inline]
+    pub async fn stream_events_from_with_source<I, U>(
+        &self,
+        urls: I,
+        filter: Filter,
+        timeout: Duration,
+    ) -> Result<BoxedStream<RelayEvent>, Error>
+    where
+        I: IntoIterator<Item = U>,
+        U: TryIntoUrl,
+        pool::Error: From<<U as TryIntoUrl>::Err>,
+    {
+        Ok(self
+            .pool
+            .stream_events_from_with_source(urls, filter, timeout, ReqExitPolicy::default())
+            .await?)
+    }
+
+    /// Stream events from specific relays with specific filters, including source relay URL
+    ///
+    /// # Overview
+    ///
+    /// This method is identical to [`Client::stream_events_targeted`] but returns [`RelayEvent`]
+    /// which includes the relay URL alongside each event.
+    ///
+    /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
+    /// To use another exit policy, check [`RelayPool::stream_events_targeted_with_source`].
+    pub async fn stream_events_targeted_with_source(
+        &self,
+        targets: HashMap<RelayUrl, Filter>,
+        timeout: Duration,
+    ) -> Result<BoxedStream<RelayEvent>, Error> {
+        Ok(self
+            .pool
+            .stream_events_targeted_with_source(targets, timeout, ReqExitPolicy::default())
+            .await?)
+    }
+
     /// Send the client message to a **specific relays**
     #[inline]
     pub async fn send_msg_to<I, U>(
@@ -1803,6 +1901,30 @@ impl Client {
         let stream: BoxedStream<Event> = self
             .pool
             .stream_events_targeted(filters, timeout, policy)
+            .await?;
+
+        Ok(stream)
+    }
+
+    /// Internal method to stream events via gossip model with source relay URL.
+    ///
+    /// This is the with_source variant of `gossip_stream_events`, returning
+    /// `RelayEvent` which includes the relay URL for each event.
+    async fn gossip_stream_events_with_source(
+        &self,
+        gossip: &GossipWrapper,
+        filter: Filter,
+        timeout: Duration,
+        policy: ReqExitPolicy,
+    ) -> Result<BoxedStream<RelayEvent>, Error> {
+        // Break down the filter using the gossip model to determine
+        // which relays to query for which public keys
+        let filters = self.break_down_filter(gossip, filter).await?;
+
+        // Stream events with source relay URL using the targeted with_source variant
+        let stream: BoxedStream<RelayEvent> = self
+            .pool
+            .stream_events_targeted_with_source(filters, timeout, policy)
             .await?;
 
         Ok(stream)
