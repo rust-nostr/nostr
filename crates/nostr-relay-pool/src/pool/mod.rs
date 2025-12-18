@@ -1454,15 +1454,18 @@ impl RelayPool {
         // The urls and futures len MUST be the same!
         assert_eq!(urls.len(), awaited.len());
 
-        // Re-construct streams: each stream already yields RelayEvent with its relay URL
-        let mut streams: Vec<BoxedStream<Result<RelayEvent, _>>> = Vec::with_capacity(awaited.len());
+        // Re-construct streams paired with their relay URLs for error logging
+        // Each stream already yields RelayEvent with relay URL, but we keep the URL
+        // separately for error context when the stream itself fails
+        let mut streams: Vec<(RelayUrl, BoxedStream<Result<RelayEvent, _>>)> =
+            Vec::with_capacity(awaited.len());
 
         // Zip-up urls and futures into a single iterator
         let iter = urls.into_iter().zip(awaited.into_iter());
 
         for (url, stream) in iter {
             match stream {
-                Ok(stream) => streams.push(stream),
+                Ok(stream) => streams.push((url, stream)),
                 Err(e) => tracing::error!(url = %url, error = %e, "Failed to stream events."),
             }
         }
@@ -1478,7 +1481,7 @@ impl RelayPool {
 
             let mut futures = Vec::with_capacity(streams.len());
 
-            for mut stream in streams.into_iter() {
+            for (url, mut stream) in streams.into_iter() {
                 let tx = tx.clone();
                 let ids = ids.clone();
 
@@ -1499,7 +1502,7 @@ impl RelayPool {
                                 }
                             }
                             Err(e) => {
-                                tracing::error!(error = %e, "Failed to stream events with source.")
+                                tracing::error!(url = %url, error = %e, "Failed to stream events.")
                             }
                         }
                     }
