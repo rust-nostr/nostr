@@ -19,8 +19,8 @@ pub use async_utility;
 pub use nostr::{self, *};
 #[doc(hidden)]
 pub use nostr_relay_pool::{
-    self as pool, AtomicRelayServiceFlags, Relay, RelayConnectionStats, RelayOptions, RelayPool,
-    RelayPoolNotification, RelayPoolOptions, RelayServiceFlags, RelayStatus,
+    self as pool, AtomicRelayServiceFlags, Relay, RelayConnectionStats, RelayEvent, RelayOptions,
+    RelayPool, RelayPoolNotification, RelayPoolOptions, RelayServiceFlags, RelayStatus,
     SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection, SyncOptions,
 };
 
