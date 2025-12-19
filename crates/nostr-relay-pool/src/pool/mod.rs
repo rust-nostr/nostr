@@ -1400,7 +1400,10 @@ impl RelayPool {
     ///
     /// while let Some(relay_event) = stream.next().await {
     ///     // Create nevent with relay hint
-    ///     println!("Event {} from {}", relay_event.id, relay_event.relay_url);
+    ///     // relay_url() returns the first/primary relay URL
+    ///     if let Some(url) = relay_event.relay_url() {
+    ///         println!("Event {} from {}", relay_event.id, url);
+    ///     }
     /// }
     /// ```
     pub async fn stream_events_targeted_with_source<I, U, F>(

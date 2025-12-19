@@ -128,11 +128,25 @@ impl Reconciliation {
     }
 }
 
-/// An event bundled with its source relay URL.
+/// An event bundled with relay URLs where it was seen.
 ///
 /// This type is returned by streaming methods that preserve relay provenance,
 /// which is essential for creating NIP-19 shareable identifiers (`nevent`, `nprofile`)
 /// with relay hints.
+///
+/// # Relay URL Collection
+///
+/// The `relay_urls` field contains all relay URLs where this event was observed.
+/// Per NIP-19, shareable identifiers can include multiple relay hints:
+/// > "optionally, a relay in which the entity is more likely to be found...
+/// > this may be included multiple times"
+///
+/// # Streaming vs. Fetching
+///
+/// When using streaming methods (`stream_events_with_source`), each event is emitted
+/// when first seen, so `relay_urls` will typically contain only the first relay that
+/// delivered the event. For complete relay coverage, use fetch methods or accumulate
+/// relay URLs from the notification channel.
 ///
 /// # Example
 ///
@@ -142,12 +156,16 @@ impl Reconciliation {
 /// let mut stream = client.stream_events_with_source(
 ///     Filter::new().kind(Kind::TextNote),
 ///     Duration::from_secs(10),
-///     ReqExitPolicy::ExitOnEOSE,
 /// ).await?;
 ///
 /// while let Some(relay_event) = stream.next().await {
-///     // Access relay URL for creating nevent links
-///     println!("Event {} from {}", relay_event.id, relay_event.relay_url);
+///     // Get first relay URL (convenience for single-relay usage)
+///     if let Some(url) = relay_event.relay_url() {
+///         println!("Event {} from {}", relay_event.id, url);
+///     }
+///
+///     // Or get all relay URLs for NIP-19 with multiple hints
+///     let nevent = Nip19Event::new(relay_event.id, relay_event.relay_urls().to_vec());
 ///
 ///     // Deref allows direct access to Event fields
 ///     println!("Content: {}", relay_event.content);
@@ -155,17 +173,57 @@ impl Reconciliation {
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RelayEvent {
-    /// The relay URL where this event was received
-    pub relay_url: RelayUrl,
+    /// The relay URLs where this event was observed.
+    ///
+    /// In streaming mode, this typically contains only the first relay that delivered
+    /// the event. The first URL is considered the primary hint for NIP-19 identifiers.
+    relay_urls: Vec<RelayUrl>,
     /// The event
     pub event: Event,
 }
 
 impl RelayEvent {
-    /// Create a new `RelayEvent`
+    /// Create a new `RelayEvent` with a single relay URL
     #[inline]
     pub fn new(relay_url: RelayUrl, event: Event) -> Self {
-        Self { relay_url, event }
+        Self {
+            relay_urls: vec![relay_url],
+            event,
+        }
+    }
+
+    /// Create a new `RelayEvent` with multiple relay URLs
+    #[inline]
+    pub fn with_relay_urls(relay_urls: Vec<RelayUrl>, event: Event) -> Self {
+        Self { relay_urls, event }
+    }
+
+    /// Add a relay URL to this event's list of known sources
+    ///
+    /// This is useful when accumulating relay hints as the same event
+    /// is seen from multiple relays.
+    #[inline]
+    pub fn add_relay_url(&mut self, url: RelayUrl) {
+        if !self.relay_urls.contains(&url) {
+            self.relay_urls.push(url);
+        }
+    }
+
+    /// Get the primary relay URL (first in the list)
+    ///
+    /// Returns `None` if no relay URLs are present (should not happen in normal usage).
+    /// This is a convenience method for callers that only need a single relay hint.
+    #[inline]
+    pub fn relay_url(&self) -> Option<&RelayUrl> {
+        self.relay_urls.first()
+    }
+
+    /// Get all relay URLs where this event was observed
+    ///
+    /// For NIP-19 identifiers, you can include multiple relay hints.
+    #[inline]
+    pub fn relay_urls(&self) -> &[RelayUrl] {
+        &self.relay_urls
     }
 
     /// Consume and return the inner event, discarding relay information
@@ -174,16 +232,10 @@ impl RelayEvent {
         self.event
     }
 
-    /// Consume and return both the relay URL and event
+    /// Consume and return the relay URLs and event
     #[inline]
-    pub fn into_parts(self) -> (RelayUrl, Event) {
-        (self.relay_url, self.event)
-    }
-
-    /// Get reference to the relay URL
-    #[inline]
-    pub fn relay_url(&self) -> &RelayUrl {
-        &self.relay_url
+    pub fn into_parts(self) -> (Vec<RelayUrl>, Event) {
+        (self.relay_urls, self.event)
     }
 }
 
@@ -810,7 +862,10 @@ impl Relay {
     ///
     /// while let Some(result) = stream.next().await {
     ///     let relay_event = result?;
-    ///     println!("Event {} from {}", relay_event.id, relay_event.relay_url);
+    ///     // relay_url() returns the first/primary relay URL
+    ///     if let Some(url) = relay_event.relay_url() {
+    ///         println!("Event {} from {}", relay_event.id, url);
+    ///     }
     /// }
     /// ```
     pub async fn stream_events_with_source<F>(
