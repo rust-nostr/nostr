@@ -892,7 +892,9 @@ impl Relay {
 
         // Return stream that wraps events with this relay's URL
         let relay_url = self.inner.url.clone();
-        Ok(Box::pin(SubscriptionActivityRelayEventStream::new(rx, relay_url)))
+        Ok(Box::pin(SubscriptionActivityRelayEventStream::new(
+            rx, relay_url,
+        )))
     }
 
     /// Fetch events

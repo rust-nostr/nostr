@@ -950,8 +950,13 @@ impl Client {
     ) -> Result<BoxedStream<RelayEvent>, Error> {
         match &self.gossip {
             Some(gossip) => {
-                self.gossip_stream_events_with_source(gossip, filter, timeout, ReqExitPolicy::ExitOnEOSE)
-                    .await
+                self.gossip_stream_events_with_source(
+                    gossip,
+                    filter,
+                    timeout,
+                    ReqExitPolicy::ExitOnEOSE,
+                )
+                .await
             }
             None => Ok(self
                 .pool
