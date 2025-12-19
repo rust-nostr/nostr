@@ -28,6 +28,8 @@
 ### Breaking changes
 
 - Change `RelayPool::stream_events*` output to include the `RelayUrl` and `Result`, enabling callers to identify which relay sent the event or if a specific relay encountered an error (https://github.com/rust-nostr/nostr/pull/1156)
+- Allow storing multiple per-relay errors in `Output` (https://github.com/rust-nostr/nostr/pull/1174)
+- Change `RelayPool::fetch_events*` to return `Output<Events>` instead of `Events` (https://github.com/rust-nostr/nostr/pull/1174)
 
 ### Added
 

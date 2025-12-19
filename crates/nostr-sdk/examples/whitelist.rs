@@ -52,7 +52,10 @@ async fn main() -> Result<()> {
     let filter = Filter::new()
         .authors([allowed_public_key, not_in_whitelist_public_key])
         .kind(Kind::Metadata);
-    let events = client.fetch_events(filter, Duration::from_secs(10)).await?;
+    let events = client
+        .fetch_events(filter, Duration::from_secs(10))
+        .await?
+        .into_inner();
     println!("Received {} events.", events.len());
 
     assert_eq!(events.len(), 1);
