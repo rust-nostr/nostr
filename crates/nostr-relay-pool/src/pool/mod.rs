@@ -1123,7 +1123,7 @@ impl RelayPool {
         filters: F,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<Events, Error>
+    ) -> Result<Output<Events>, Error>
     where
         F: Into<Vec<Filter>>,
     {
@@ -1138,7 +1138,7 @@ impl RelayPool {
         filters: F,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<Events, Error>
+    ) -> Result<Output<Events>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
@@ -1149,7 +1149,7 @@ impl RelayPool {
         let filters: Vec<Filter> = filters.into();
 
         // Construct a new events collection
-        let mut events: Events = if filters.len() == 1 {
+        let events: Events = if filters.len() == 1 {
             // SAFETY: this can't panic because the filters are already verified that list isn't empty.
             let filter: &Filter = &filters[0];
             Events::new(filter)
@@ -1158,25 +1158,30 @@ impl RelayPool {
             Events::default()
         };
 
+        let mut output: Output<Events> = Output::new(events);
+
         // Stream events
         let mut stream = self
             .stream_events_from(urls, filters, timeout, policy)
             .await?;
+
+        // Handle results
         while let Some((url, result)) = stream.next().await {
-            // NOTE: not propagate the error here! A single error by any of the relays would stop the entire fetching process.
             match result {
                 Ok(event) => {
-                    // To find out more about why the `force_insert` was used, search for EVENTS_FORCE_INSERT in the code.
-                    events.force_insert(event);
+                    // To find out more about why the `force_insert` was used, search for EVENTS_FORCE_INSERT ine the code.
+                    output.force_insert(event);
+
+                    // TODO: here the output could have a relay URL both in success and in error
+                    output.success.insert(url);
                 }
                 Err(e) => {
-                    // TODO: use the Output<Events>
-                    tracing::error!(url = %url, error = %e, "Failed to handle streamed event");
+                    output.push_failed(url, e);
                 }
             }
         }
 
-        Ok(events)
+        Ok(output)
     }
 
     /// Stream events from relays with `READ` flag.
