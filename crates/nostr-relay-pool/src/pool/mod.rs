@@ -855,20 +855,21 @@ impl RelayPool {
     /// Subscribe to filters to specific relays
     ///
     /// Check [`RelayPool::subscribe_with_id_to`] docs to learn more.
-    pub async fn subscribe_to<I, U>(
+    pub async fn subscribe_to<I, U, F>(
         &self,
         urls: I,
-        filter: Filter,
+        filters: F,
         opts: SubscribeOptions,
     ) -> Result<Output<SubscriptionId>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
+        F: Into<Vec<Filter>>,
         Error: From<<U as TryIntoUrl>::Err>,
     {
         let id: SubscriptionId = SubscriptionId::generate();
         let output: Output<()> = self
-            .subscribe_with_id_to(urls, id.clone(), filter, opts)
+            .subscribe_with_id_to(urls, id.clone(), filters, opts)
             .await?;
         Ok(Output {
             val: id,
@@ -1180,14 +1181,18 @@ impl RelayPool {
     }
 
     /// Stream events from relays with `READ` flag.
-    pub async fn stream_events(
+    pub async fn stream_events<F>(
         &self,
-        filter: Filter,
+        filters: F,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error> {
+    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error>
+    where
+        F: Into<Vec<Filter>>,
+    {
         let urls: Vec<RelayUrl> = self.__read_relay_urls().await;
-        self.stream_events_from(urls, filter, timeout, policy).await
+        self.stream_events_from(urls, filters, timeout, policy)
+            .await
     }
 
     /// Stream events from specific relays

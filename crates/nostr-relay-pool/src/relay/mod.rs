@@ -514,11 +514,14 @@ impl Relay {
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
     ///
     /// Note: auto-closing subscriptions aren't saved in subscriptions map!
-    pub async fn subscribe(
+    pub async fn subscribe<F>(
         &self,
-        filters: Filter,
+        filters: F,
         opts: SubscribeOptions,
-    ) -> Result<SubscriptionId, Error> {
+    ) -> Result<SubscriptionId, Error>
+    where
+        F: Into<Vec<Filter>>,
+    {
         let id: SubscriptionId = SubscriptionId::generate();
         self.subscribe_with_id(id.clone(), filters, opts).await?;
         Ok(id)
@@ -648,17 +651,29 @@ impl Relay {
     }
 
     /// Fetch events
-    pub async fn fetch_events(
+    pub async fn fetch_events<F>(
         &self,
-        filter: Filter,
+        filters: F,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<Events, Error> {
+    ) -> Result<Events, Error>
+    where
+        F: Into<Vec<Filter>>,
+    {
+        let filters: Vec<Filter> = filters.into();
+
         // Construct a new events collection
-        let mut events: Events = Events::new(&filter);
+        let mut events: Events = if filters.len() == 1 {
+            // SAFETY: this can't panic because the filters are already verified that list isn't empty.
+            let filter: &Filter = &filters[0];
+            Events::new(filter)
+        } else {
+            // More than a filter, so we can't ensure to respect the limit -> construct a default collection.
+            Events::default()
+        };
 
         // Stream events
-        let mut stream = self.stream_events(filter, timeout, policy).await?;
+        let mut stream = self.stream_events(filters, timeout, policy).await?;
 
         while let Some(res) = stream.next().await {
             // Get event from the result
