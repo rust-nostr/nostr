@@ -2,15 +2,16 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::collections::hash_map::Entry as HashMapEntry;
 use std::collections::{HashMap, HashSet};
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::ops::{Deref, DerefMut};
 
 use nostr::{EventId, RelayUrl, SubscriptionId};
 
 /// Output
 ///
-/// Send or negentropy reconciliation output
+/// Send, fetch or negentropy reconciliation output
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Output<T>
 where
@@ -21,7 +22,7 @@ where
     /// Set of relays that success
     pub success: HashSet<RelayUrl>,
     /// Map of relays that failed, with related errors.
-    pub failed: HashMap<RelayUrl, String>,
+    pub failed: HashMap<RelayUrl, Vec<String>>,
 }
 
 impl<T> Deref for Output<T>
@@ -58,6 +59,20 @@ where
         }
     }
 
+    pub(crate) fn push_failed<E>(&mut self, relay: RelayUrl, error: E)
+    where
+        E: Display,
+    {
+        match self.failed.entry(relay) {
+            HashMapEntry::Vacant(entry) => {
+                entry.insert(vec![error.to_string()]);
+            }
+            HashMapEntry::Occupied(mut entry) => {
+                entry.get_mut().push(error.to_string());
+            }
+        }
+    }
+
     /// Get inner value
     #[inline]
     #[must_use]
@@ -79,5 +94,33 @@ impl Output<SubscriptionId> {
     #[inline]
     pub fn id(&self) -> &SubscriptionId {
         self.deref()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_push_failed() {
+        let relay1 = RelayUrl::parse("wss://relay1.example.com").unwrap();
+        let relay2 = RelayUrl::parse("wss://relay2.example.com").unwrap();
+
+        let mut output: Output<()> = Output::default();
+
+        assert!(output.failed.is_empty());
+
+        output.push_failed(relay1.clone(), "error1");
+        output.push_failed(relay2.clone(), "error2");
+
+        assert_eq!(output.failed.len(), 2);
+        assert_eq!(output.failed.get(&relay1).unwrap(), &vec!["error1"]);
+        assert_eq!(output.failed.get(&relay2).unwrap(), &vec!["error2"]);
+
+        output.push_failed(relay1.clone(), "error3");
+        assert_eq!(
+            output.failed.get(&relay1).unwrap(),
+            &vec!["error1", "error3"]
+        );
     }
 }

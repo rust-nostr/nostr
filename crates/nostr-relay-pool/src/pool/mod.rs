@@ -494,7 +494,7 @@ impl RelayPool {
                     output.success.insert(url);
                 }
                 Err(e) => {
-                    output.failed.insert(url, e.to_string());
+                    output.push_failed(url, e);
                 }
             }
         }
@@ -719,7 +719,7 @@ impl RelayPool {
                     output.success.insert(url);
                 }
                 Err(e) => {
-                    output.failed.insert(url, e.to_string());
+                    output.push_failed(url, e);
                 }
             }
         }
@@ -796,7 +796,7 @@ impl RelayPool {
                     output.success.insert(url);
                 }
                 Err(e) => {
-                    output.failed.insert(url, e.to_string());
+                    output.push_failed(url, e);
                 }
             }
         }
@@ -968,7 +968,7 @@ impl RelayPool {
                     output.success.insert(url);
                 }
                 Err(e) => {
-                    output.failed.insert(url, e.to_string());
+                    output.push_failed(url, e);
                 }
             }
         }
@@ -1109,7 +1109,7 @@ impl RelayPool {
                     output.merge(reconciliation);
                 }
                 Err(e) => {
-                    output.failed.insert(url, e.to_string());
+                    output.push_failed(url, e);
                 }
             }
         }
