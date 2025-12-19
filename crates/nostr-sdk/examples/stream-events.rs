@@ -22,8 +22,9 @@ async fn main() -> Result<()> {
         .stream_events(filter, Duration::from_secs(15))
         .await?;
 
-    while let Some(event) = stream.next().await {
-        println!("{}", event.as_json());
+    while let Some((url, res)) = stream.next().await {
+        let event = res?;
+        println!("Received event from '{url}': {}", event.as_json());
     }
 
     Ok(())

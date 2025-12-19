@@ -850,16 +850,24 @@ impl Client {
         &self,
         filter: Filter,
         timeout: Duration,
-    ) -> Result<BoxedStream<Event>, Error> {
+    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error> {
         match &self.gossip {
             Some(gossip) => {
                 self.gossip_stream_events(gossip, filter, timeout, ReqExitPolicy::ExitOnEOSE)
                     .await
             }
-            None => Ok(self
-                .pool
-                .stream_events(filter, timeout, ReqExitPolicy::ExitOnEOSE)
-                .await?),
+            None => {
+                let stream = self
+                    .pool
+                    .stream_events(filter, timeout, ReqExitPolicy::ExitOnEOSE)
+                    .await?;
+
+                // Map stream to change the error type
+                let stream = stream.map(|(u, r)| (u, r.map_err(Error::from)));
+
+                // Box the stream
+                Ok(Box::pin(stream))
+            }
         }
     }
 
@@ -876,16 +884,22 @@ impl Client {
         urls: I,
         filter: Filter,
         timeout: Duration,
-    ) -> Result<BoxedStream<Event>, Error>
+    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error>
     where
         I: IntoIterator<Item = U>,
         U: TryIntoUrl,
         pool::Error: From<<U as TryIntoUrl>::Err>,
     {
-        Ok(self
+        let stream = self
             .pool
             .stream_events_from(urls, filter, timeout, ReqExitPolicy::default())
-            .await?)
+            .await?;
+
+        // Map stream to change the error type
+        let stream = stream.map(|(u, r)| (u, r.map_err(Error::from)));
+
+        // Box the stream
+        Ok(Box::pin(stream))
     }
 
     /// Stream events from specific relays with specific filters
@@ -899,11 +913,17 @@ impl Client {
         &self,
         targets: HashMap<RelayUrl, Filter>,
         timeout: Duration,
-    ) -> Result<BoxedStream<Event>, Error> {
-        Ok(self
+    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error> {
+        let stream = self
             .pool
             .stream_events_targeted(targets, timeout, ReqExitPolicy::default())
-            .await?)
+            .await?;
+
+        // Map stream to change the error type
+        let stream = stream.map(|(u, r)| (u, r.map_err(Error::from)));
+
+        // Box the stream
+        Ok(Box::pin(stream))
     }
 
     /// Send the client message to a **specific relays**
@@ -1796,16 +1816,20 @@ impl Client {
         filter: Filter,
         timeout: Duration,
         policy: ReqExitPolicy,
-    ) -> Result<BoxedStream<Event>, Error> {
+    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error> {
         let filters = self.break_down_filter(gossip, filter).await?;
 
         // Stream events
-        let stream: BoxedStream<Event> = self
+        let stream = self
             .pool
             .stream_events_targeted(filters, timeout, policy)
             .await?;
 
-        Ok(stream)
+        // Map stream to change the error type
+        let stream = stream.map(|(u, r)| (u, r.map_err(Error::from)));
+
+        // Box the stream
+        Ok(Box::pin(stream))
     }
 
     async fn gossip_fetch_events(
@@ -1818,13 +1842,22 @@ impl Client {
         let mut events: Events = Events::new(&filter);
 
         // Stream events
-        let mut stream: BoxedStream<Event> = self
+        let mut stream = self
             .gossip_stream_events(gossip, filter, timeout, policy)
             .await?;
 
-        while let Some(event) = stream.next().await {
-            // To find out more about why the `force_insert` was used, search for EVENTS_FORCE_INSERT ine the code.
-            events.force_insert(event);
+        while let Some((url, result)) = stream.next().await {
+            // NOTE: not propagate the error here! A single error by any of the relays would stop the entire fetching process.
+            match result {
+                Ok(event) => {
+                    // To find out more about why the `force_insert` was used, search for EVENTS_FORCE_INSERT in the code.
+                    events.force_insert(event);
+                }
+                Err(e) => {
+                    // TODO: use the Output<Events>
+                    tracing::error!(url = %url, error = %e, "Failed to handle streamed event");
+                }
+            }
         }
 
         Ok(events)
