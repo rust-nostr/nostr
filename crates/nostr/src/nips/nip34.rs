@@ -18,7 +18,7 @@ use hashes::sha1::Hash as Sha1Hash;
 use crate::event::builder::{Error, EventBuilder, WrongKindError};
 use crate::nips::nip01::{self, Coordinate};
 use crate::types::url::Url;
-use crate::{Kind, PublicKey, RelayUrl, Tag, TagKind, TagStandard, Timestamp};
+use crate::{EventId, Kind, PublicKey, RelayUrl, Tag, TagKind, TagStandard, Timestamp};
 
 /// Earlier unique commit ID marker
 pub const EUC: &str = "euc";
@@ -311,6 +311,198 @@ impl GitPatch {
 
         // Build
         Ok(EventBuilder::new(Kind::GitPatch, content).tags(tags))
+    }
+}
+
+/// Git Pull Request
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GitPullRequest {
+    /// Repository coordinate
+    pub repository: Coordinate,
+    /// Pull request content (markdown)
+    pub content: String,
+    /// Subject
+    pub subject: Option<String>,
+    /// Labels
+    pub labels: Vec<String>,
+    /// Current commit ID (tip of the PR branch)
+    pub current_commit: Sha1Hash,
+    /// Git clone URLs where commit can be downloaded
+    pub clone: Vec<Url>,
+    /// Recommended branch name
+    pub branch_name: Option<String>,
+    /// Optional root patch event ID (indicates PR is a revision of an existing patch)
+    pub root_patch_event: Option<EventId>,
+    /// Merge base commit (the most recent common ancestor with the target branch)
+    pub merge_base: Option<Sha1Hash>,
+}
+
+impl GitPullRequest {
+    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
+        // Check if repository address kind is wrong
+        if self.repository.kind != Kind::GitRepoAnnouncement {
+            return Err(Error::WrongKind {
+                received: self.repository.kind,
+                expected: WrongKindError::Single(Kind::GitRepoAnnouncement),
+            });
+        }
+
+        // Verify coordinate
+        self.repository.verify()?;
+
+        let owner_public_key: PublicKey = self.repository.public_key;
+
+        // Calculate capacity: 2 required + up to 6 optional + labels
+        let capacity = 2 + 6 + self.labels.len();
+        let mut tags: Vec<Tag> = Vec::with_capacity(capacity);
+
+        // Add coordinate
+        tags.push(Tag::coordinate(self.repository, None));
+
+        // Add repository owner public key
+        tags.push(Tag::public_key(owner_public_key));
+
+        // Add subject
+        if let Some(subject) = self.subject {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Subject(
+                subject,
+            )));
+        }
+
+        // Add labels
+        tags.extend(self.labels.into_iter().map(Tag::hashtag));
+
+        // Add current commit
+        tags.push(Tag::custom(
+            TagKind::Custom(Cow::Borrowed("c")),
+            vec![self.current_commit.to_string()],
+        ));
+
+        // Add clone URLs
+        if !self.clone.is_empty() {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::GitClone(
+                self.clone,
+            )));
+        }
+
+        // Add branch name
+        if let Some(branch_name) = self.branch_name {
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::GitBranchName(branch_name),
+            ));
+        }
+
+        // Add root patch event (if this is a revision)
+        if let Some(root_patch) = self.root_patch_event {
+            tags.push(Tag::event(root_patch));
+        }
+
+        // Add merge base
+        if let Some(merge_base) = self.merge_base {
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::GitMergeBase(merge_base),
+            ));
+        }
+
+        // Build
+        Ok(EventBuilder::new(Kind::GitPullRequest, self.content).tags(tags))
+    }
+}
+
+/// Git Pull Request Update
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GitPullRequestUpdate {
+    /// Repository coordinate
+    pub repository: Coordinate,
+    /// The pull request event ID being updated
+    pub pull_request_event: EventId,
+    /// The pull request author
+    pub pull_request_author: PublicKey,
+    /// Updated current commit ID
+    pub current_commit: Sha1Hash,
+    /// Git clone URLs where commit can be downloaded
+    pub clone: Vec<Url>,
+    /// Merge base commit (the most recent common ancestor with the target branch)
+    pub merge_base: Option<Sha1Hash>,
+}
+
+impl GitPullRequestUpdate {
+    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
+        // Check if repository address kind is wrong
+        if self.repository.kind != Kind::GitRepoAnnouncement {
+            return Err(Error::WrongKind {
+                received: self.repository.kind,
+                expected: WrongKindError::Single(Kind::GitRepoAnnouncement),
+            });
+        }
+
+        // Verify coordinate
+        self.repository.verify()?;
+
+        let owner_public_key: PublicKey = self.repository.public_key;
+
+        // Calculate capacity: 5 required + 2 optional
+        let mut tags: Vec<Tag> = Vec::with_capacity(7);
+
+        // Add coordinate
+        tags.push(Tag::coordinate(self.repository, None));
+
+        // Add repository owner public key
+        tags.push(Tag::public_key(owner_public_key));
+
+        // Add NIP-22 tags for the pull request being updated
+        tags.push(Tag::custom(
+            TagKind::Custom(Cow::Borrowed("E")),
+            vec![self.pull_request_event.to_string()],
+        ));
+        tags.push(Tag::custom(
+            TagKind::Custom(Cow::Borrowed("P")),
+            vec![self.pull_request_author.to_string()],
+        ));
+
+        // Add updated current commit
+        tags.push(Tag::custom(
+            TagKind::Custom(Cow::Borrowed("c")),
+            vec![self.current_commit.to_string()],
+        ));
+
+        // Add clone URLs
+        if !self.clone.is_empty() {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::GitClone(
+                self.clone,
+            )));
+        }
+
+        // Add merge base
+        if let Some(merge_base) = self.merge_base {
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::GitMergeBase(merge_base),
+            ));
+        }
+
+        // Build
+        Ok(EventBuilder::new(Kind::GitPullRequestUpdate, "").tags(tags))
+    }
+}
+
+/// Git User Grasp List
+///
+/// List of grasp servers the user generally wishes to use for NIP-34 related activity
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GitUserGraspList {
+    /// Grasp service websocket URLs in order of preference
+    pub grasp_servers: Vec<RelayUrl>,
+}
+
+impl GitUserGraspList {
+    pub(crate) fn to_event_builder(self) -> EventBuilder {
+        let tags: Vec<Tag> = self
+            .grasp_servers
+            .into_iter()
+            .map(|url| Tag::custom(TagKind::Custom(Cow::Borrowed("g")), vec![url.to_string()]))
+            .collect();
+
+        EventBuilder::new(Kind::GitUserGraspList, "").tags(tags)
     }
 }
 

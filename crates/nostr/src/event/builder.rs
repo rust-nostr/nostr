@@ -1848,6 +1848,30 @@ impl EventBuilder {
         patch.to_event_builder()
     }
 
+    /// Git Pull Request
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    #[inline]
+    pub fn git_pull_request(pull_request: GitPullRequest) -> Result<Self, Error> {
+        pull_request.to_event_builder()
+    }
+
+    /// Git Pull Request Update
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    #[inline]
+    pub fn git_pull_request_update(update: GitPullRequestUpdate) -> Result<Self, Error> {
+        update.to_event_builder()
+    }
+
+    /// Git User Grasp List
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    #[inline]
+    pub fn git_user_grasp_list(grasp_list: GitUserGraspList) -> Self {
+        grasp_list.to_event_builder()
+    }
+
     /// Torrent metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/35.md>

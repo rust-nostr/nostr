@@ -45,6 +45,14 @@ pub enum TagKind<'a> {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     Head,
+    /// Branch name
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    BranchName,
+    /// Merge base
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    MergeBase,
     /// Content warning
     ContentWarning,
     /// Current participants
@@ -316,6 +324,7 @@ impl<'a> TagKind<'a> {
             Self::Anon => "anon",
             Self::Blurhash => "blurhash",
             Self::Bolt11 => "bolt11",
+            Self::BranchName => "branch-name",
             Self::Challenge => "challenge",
             Self::Client => "client",
             Self::Clone => "clone",
@@ -337,6 +346,7 @@ impl<'a> TagKind<'a> {
             Self::Lnurl => "lnurl",
             Self::Magnet => "magnet",
             Self::Maintainers => "maintainers",
+            Self::MergeBase => "merge-base",
             Self::Method => "method",
             Self::MlsProtocolVersion => "mls_protocol_version",
             Self::MlsCiphersuite => "mls_ciphersuite",
@@ -393,6 +403,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "anon" => Self::Anon,
             "blurhash" => Self::Blurhash,
             "bolt11" => Self::Bolt11,
+            "branch-name" => Self::BranchName,
             "challenge" => Self::Challenge,
             "client" => Self::Client,
             "clone" => Self::Clone,
@@ -413,6 +424,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "lnurl" => Self::Lnurl,
             "magnet" => Self::Magnet,
             "maintainers" => Self::Maintainers,
+            "merge-base" => Self::MergeBase,
             "method" => Self::Method,
             "mls_protocol_version" => Self::MlsProtocolVersion,
             "mls_ciphersuite" => Self::MlsCiphersuite,

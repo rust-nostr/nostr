@@ -93,6 +93,14 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     GitMaintainers(Vec<PublicKey>),
+    /// Git merge base commit
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitMergeBase(Sha1Hash),
+    /// Git branch name
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitBranchName(String),
     /// Public Key
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
@@ -465,6 +473,8 @@ impl TagStandard {
                 TagKind::Challenge => Ok(Self::Challenge(tag_1.to_string())),
                 TagKind::Head => Ok(Self::GitHead(tag_1.to_string())),
                 TagKind::Commit => Ok(Self::GitCommit(Sha1Hash::from_str(tag_1)?)),
+                TagKind::MergeBase => Ok(Self::GitMergeBase(Sha1Hash::from_str(tag_1)?)),
+                TagKind::BranchName => Ok(Self::GitBranchName(tag_1.to_string())),
                 TagKind::Title => Ok(Self::Title(tag_1.to_string())),
                 TagKind::Image => Ok(Self::Image(Url::parse(tag_1)?, None)),
                 TagKind::Thumb => Ok(Self::Thumb(Url::parse(tag_1)?, None)),
@@ -618,6 +628,8 @@ impl TagStandard {
                 TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::R))
             }
             Self::GitMaintainers(..) => TagKind::Maintainers,
+            Self::GitMergeBase(..) => TagKind::MergeBase,
+            Self::GitBranchName(..) => TagKind::BranchName,
             Self::PublicKey { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::P,
                 uppercase: *uppercase,
@@ -848,6 +860,12 @@ impl From<TagStandard> for Vec<String> {
                 tag.push(tag_kind);
                 tag.extend(public_keys.into_iter().map(|val| val.to_string()));
                 tag
+            }
+            TagStandard::GitMergeBase(hash) => {
+                vec![tag_kind, hash.to_string()]
+            }
+            TagStandard::GitBranchName(name) => {
+                vec![tag_kind, name]
             }
             TagStandard::PublicKeyReport(pk, report) => {
                 vec![tag_kind, pk.to_string(), report.to_string()]
