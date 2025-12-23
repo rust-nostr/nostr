@@ -51,6 +51,10 @@
 - Remove unnecessary `#[cfg(feature = "std")]` from `UnsignedEvent::sign` method
 - Remove `url-fork` dependency (https://github.com/rust-nostr/nostr/pull/1179)
 
+### Fixed
+
+- Remove unused generic in `EventBuilder::request_vanish` function (https://github.com/rust-nostr/nostr/pull/1181)
+
 ## v0.44.2 - 2025/12/04
 
 ### Fixed
