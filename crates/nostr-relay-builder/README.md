@@ -58,10 +58,10 @@ The following crate feature flags are available:
 |     ✅     | [09 - Event Deletion](https://github.com/nostr-protocol/nips/blob/master/09.md)                      |
 |     ❌     | [11 - Relay Information Document](https://github.com/nostr-protocol/nips/blob/master/11.md)          |
 |     ✅     | [17 - Private Direct Messages](https://github.com/nostr-protocol/nips/blob/master/17.md)             |
-|    🔧     | [40 - Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)                |
+|     🔧     | [40 - Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)                |
 |     ✅     | [42 - Authentication of clients to relays](https://github.com/nostr-protocol/nips/blob/master/42.md) |
-|    🔧     | [50 - Search Capability](https://github.com/nostr-protocol/nips/blob/master/50.md)                   |
-|     ❌     | [62 - Request to Vanish](https://github.com/nostr-protocol/nips/blob/master/62.md)                   |
+|     🔧     | [50 - Search Capability](https://github.com/nostr-protocol/nips/blob/master/50.md)                   |
+|     🔧     | [62 - Request to Vanish](https://github.com/nostr-protocol/nips/blob/master/62.md)                   |
 |     ✅     | [70 - Protected Events](https://github.com/nostr-protocol/nips/blob/master/70.md)                    |
 |     ✅     | [77 - Negentropy Syncing](https://github.com/nostr-protocol/nips/blob/master/77.md)                  |
 
