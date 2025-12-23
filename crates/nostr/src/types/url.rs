@@ -14,10 +14,7 @@ use core::str::FromStr;
 use std::net::IpAddr; // TODO: use `core::net` when MSRV will be at 1.77.0
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-#[cfg(feature = "std")]
 pub use url::*;
-#[cfg(not(feature = "std"))]
-pub use url_fork::*;
 
 /// Relay URL error
 #[derive(Debug, PartialEq, Eq)]

@@ -18,7 +18,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = ["std"]
 std = [
-    "dep:url",
     "base64?/std",
     "bech32/std",
     "bip39?/std",
@@ -34,9 +33,9 @@ std = [
     "serde/std",
     "serde_json/std",
     "unicode-normalization?/std",
+    "url/std",
 ]
 alloc = [
-    "dep:url-fork",
     "base64?/alloc",
     "bech32/alloc",
     "bitcoin_hashes/alloc",
@@ -87,8 +86,7 @@ secp256k1 = { version = "0.29", default-features = false, features = ["serde"] }
 serde = { workspace = true, default-features = false, features = ["derive"] }
 serde_json.workspace = true
 unicode-normalization = { version = "0.1", default-features = false, optional = true }
-url = { version = "2.5", default-features = false, features = ["serde"], optional = true } # Used in std
-url-fork = { version = "3.0", default-features = false, features = ["serde"], optional = true } # Used for no_std
+url = { version = "2.5", default-features = false, features = ["serde"] }
 
 # Explicit configuration for `wasm32-unknown-*` targets.
 #
