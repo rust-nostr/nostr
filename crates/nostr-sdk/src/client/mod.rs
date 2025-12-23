@@ -1686,7 +1686,12 @@ impl Client {
 
         // Broken-down filters
         let filters: HashMap<RelayUrl, Filter> = match gossip
-            .break_down_filter(filter, pattern, &self.opts.gossip.limits)
+            .break_down_filter(
+                filter,
+                pattern,
+                &self.opts.gossip.limits,
+                self.opts.gossip.allowed,
+            )
             .await?
         {
             BrokenDownFilters::Filters(filters) => filters,
@@ -1790,6 +1795,7 @@ impl Client {
                 .get_relays(
                     event.tags.public_keys(),
                     BestRelaySelection::PrivateMessage { limit: 3 },
+                    self.opts.gossip.allowed,
                 )
                 .await?;
 
@@ -1820,6 +1826,7 @@ impl Client {
                         hints: 1,
                         most_received: 1,
                     },
+                    self.opts.gossip.allowed,
                 )
                 .await?;
 
@@ -1834,6 +1841,7 @@ impl Client {
                             hints: 1,
                             most_received: 1,
                         },
+                        self.opts.gossip.allowed,
                     )
                     .await?;
 

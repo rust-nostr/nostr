@@ -23,6 +23,16 @@
 
 -->
 
+## Unreleased
+
+### Breaking changes
+
+- Change `NostrGossip::get_best_relays` signature (https://github.com/rust-nostr/nostr/pull/1128)
+
+### Added
+
+- Add `GossipAllowedRelays` struct to allow relays filtering during selection (https://github.com/rust-nostr/nostr/pull/1128)
+
 ## v0.44.0 - 2025/11/06
 
 First release.

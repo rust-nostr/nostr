@@ -35,6 +35,10 @@
 
 - Re-add support for multi-filter REQ (https://github.com/rust-nostr/nostr/pull/1176)
 
+### Added
+
+- Add `GossipAllowedRelays` to `GossipOptions` to filter relays during selection (https://github.com/rust-nostr/nostr/pull/1128)
+
 ## v0.44.1 - 2025/11/09
 
 ### Fixed

@@ -53,6 +53,27 @@ pub enum GossipPublicKeyStatus {
     },
 }
 
+/// Allowed gossip relay types during selection
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GossipAllowedRelays {
+    /// Allow tor onion relays (default: true)
+    pub onion: bool,
+    /// Allow local network relays (default: false)
+    pub local: bool,
+    /// Allow relays without SSL/TLS encryption (default: true)
+    pub without_tls: bool,
+}
+
+impl Default for GossipAllowedRelays {
+    fn default() -> Self {
+        Self {
+            onion: true,
+            local: false,
+            without_tls: true,
+        }
+    }
+}
+
 /// Best relay selection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BestRelaySelection {
@@ -124,6 +145,7 @@ pub trait NostrGossip: Any + Debug + Send + Sync {
         &'a self,
         public_key: &'a PublicKey,
         selection: BestRelaySelection,
+        allowed: GossipAllowedRelays,
     ) -> BoxedFuture<'a, Result<HashSet<RelayUrl>, GossipError>>;
 }
 
