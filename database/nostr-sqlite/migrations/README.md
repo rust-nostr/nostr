@@ -77,3 +77,15 @@ CREATE TABLE deleted_coordinates (
 ) WITHOUT ROWID;
 
 ```
+
+### Vanished Public Keys (NIP-62)
+
+The `vanished_public_keys` table records the public key that has requested to vanish.
+
+Complete SQL schema:
+
+```sql
+CREATE TABLE vanished_public_keys (
+    pubkey BLOB PRIMARY KEY NOT NULL CHECK(length(pubkey) = 32),  -- The public key that has requested to vanish via NIP-62
+) WITHOUT ROWID;
+```

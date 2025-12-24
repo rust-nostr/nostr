@@ -124,6 +124,8 @@ pub enum RejectedReason {
     Replaced,
     /// Attempt to delete a non-owned event
     InvalidDelete,
+    /// The event author vanished before
+    Vanished,
     /// Other reason
     Other,
 }

@@ -138,6 +138,11 @@ impl NostrSqlite {
             return Ok(SaveEventStatus::Rejected(RejectedReason::Deleted));
         }
 
+        // Reject event if the public key was vanished
+        if self.pubkey_is_vanished(&mut tx, &event.pubkey).await? {
+            return Ok(SaveEventStatus::Rejected(RejectedReason::Vanished));
+        }
+
         // Reject event if ADDR was deleted after it's created_at date
         // (non-parameterized or parameterized)
         if let Some(coordinate) = event.coordinate() {
@@ -214,6 +219,14 @@ impl NostrSqlite {
             if invalid {
                 tx.rollback().await?;
                 return Ok(SaveEventStatus::Rejected(RejectedReason::InvalidDelete));
+            }
+        }
+
+        if event.kind == Kind::RequestToVanish {
+            // For now, handling `ALL_RELAYS` only
+            if let Some(TagStandard::AllRelays) = event.tags.find_standardized(TagKind::Relay) {
+                self.handle_request_to_vanish(&mut tx, &event.pubkey)
+                    .await?;
             }
         }
 
@@ -299,6 +312,68 @@ impl NostrSqlite {
             Some((timestamp,)) => Ok(Some(timestamp.try_into()?)),
             None => Ok(None),
         }
+    }
+
+    async fn pubkey_is_vanished(
+        &self,
+        tx: &mut Transaction<'_, Sqlite>,
+        pubkey: &PublicKey,
+    ) -> Result<bool, Error> {
+        let is_vanished: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM vanished_public_keys WHERE pubkey = $1)",
+        )
+        .bind(pubkey.as_bytes().as_slice())
+        .fetch_one(&mut **tx)
+        .await?;
+        Ok(is_vanished)
+    }
+
+    async fn mark_pubkey_as_vanished(
+        &self,
+        tx: &mut Transaction<'_, Sqlite>,
+        pubkey: &PublicKey,
+    ) -> Result<(), Error> {
+        sqlx::query("INSERT OR IGNORE INTO vanished_public_keys(pubkey) VALUES ($1)")
+            .bind(pubkey.as_bytes().as_slice())
+            .execute(&mut **tx)
+            .await?;
+        Ok(())
+    }
+
+    async fn handle_request_to_vanish(
+        &self,
+        tx: &mut Transaction<'_, Sqlite>,
+        pubkey: &PublicKey,
+    ) -> Result<(), Error> {
+        self.mark_pubkey_as_vanished(tx, pubkey).await?;
+
+        // Delete all user events
+        sqlx::query("DELETE FROM events where pubkey = $1")
+            .bind(pubkey.as_bytes().as_slice())
+            .execute(&mut **tx)
+            .await?;
+
+        // Delete all gift wraps that mention the public key
+        sqlx::query(
+            r#"
+        DELETE FROM events
+        WHERE id IN (
+            SELECT e.id
+            FROM events AS e
+            INNER JOIN event_tags AS et
+                ON e.id = et.event_id
+            WHERE
+                e.kind = 1059 AND
+                et.tag_name = 'p' AND
+                et.tag_value = $1
+        )
+        "#,
+        )
+        .bind(pubkey.to_hex())
+        .execute(&mut **tx)
+        .await?;
+
+        Ok(())
     }
 
     async fn has_event<'a, E>(&self, executor: E, id: &EventId) -> Result<bool, Error>
@@ -410,7 +485,7 @@ impl NostrDatabase for NostrSqlite {
             persistent: true,
             event_expiration: false,
             full_text_search: true,
-            request_to_vanish: false,
+            request_to_vanish: true,
         }
     }
 

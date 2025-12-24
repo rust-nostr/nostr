@@ -10,6 +10,16 @@ The following crate feature flags are available:
 |-------------|:-------:|-----------------------|
 | `unbundled` |   No    | Uses unbundled SQLite |
 
+## Supported NIPs
+
+| Supported | NIP                                                                                                  |
+|:---------:|------------------------------------------------------------------------------------------------------|
+|    ❌    | [40 - Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)                 |
+|    ✅    | [50 - Search Capability](https://github.com/nostr-protocol/nips/blob/master/50.md)                    |
+|    ✅*    | [62 - Request to Vanish](https://github.com/nostr-protocol/nips/blob/master/62.md)                   |
+
+*: `ALL_RELAYS` only
+
 ## State
 
 **This library is in an ALPHA state**, things that are implemented generally work but the API will change in breaking ways.
