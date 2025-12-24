@@ -425,6 +425,22 @@ impl InnerLocalRelay {
                     .await;
                 }
 
+                // Check if the event is expired
+                if event.is_expired() {
+                    return send_msg(
+                        ws_tx,
+                        RelayMessage::Ok {
+                            event_id: event.id,
+                            status: false,
+                            message: Cow::Owned(format!(
+                                "{}: event is expired",
+                                MachineReadablePrefix::Blocked
+                            )),
+                        },
+                    )
+                    .await;
+                }
+
                 // Check POW
                 if let Some(difficulty) = self.min_pow {
                     if !event.id.check_pow(difficulty) {
@@ -956,13 +972,19 @@ impl InnerLocalRelay {
 
         let mut json_msgs: Vec<String> = Vec::with_capacity(events_len + 1);
 
+        let now = Timestamp::now();
         // Add events
-        json_msgs.extend(events.into_iter().map(|event| {
-            RelayMessage::Event {
-                subscription_id: Cow::Borrowed(subscription_id.as_ref()),
-                event: Cow::Owned(event),
+        json_msgs.extend(events.into_iter().filter_map(|event| {
+            if event.is_expired_at(&now) {
+                return None;
             }
-            .as_json()
+            Some(
+                RelayMessage::Event {
+                    subscription_id: Cow::Borrowed(subscription_id.as_ref()),
+                    event: Cow::Owned(event),
+                }
+                .as_json(),
+            )
         }));
 
         // Add EOSE message
