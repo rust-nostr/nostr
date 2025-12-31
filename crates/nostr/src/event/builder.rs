@@ -784,7 +784,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
     #[inline]
-    pub fn request_vanish<I>(target: VanishTarget) -> Result<Self, Error> {
+    pub fn request_vanish(target: VanishTarget) -> Result<Self, Error> {
         Self::request_vanish_with_reason(target, "")
     }
 
