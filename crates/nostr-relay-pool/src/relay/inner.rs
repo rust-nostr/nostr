@@ -1243,6 +1243,7 @@ impl InnerRelay {
                         RejectedReason::Expired => false,
                         RejectedReason::Replaced => false,
                         RejectedReason::InvalidDelete => false,
+                        RejectedReason::Vanished => false,
                         RejectedReason::Other => true,
                     },
                 };
