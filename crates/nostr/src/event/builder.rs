@@ -749,21 +749,27 @@ impl EventBuilder {
                 Tag::public_key(event.pubkey),
             ])
         } else {
-            Self::new(Kind::GenericRepost, event.as_json()).tags([
-                Tag::from_standardized_without_cell(TagStandard::Event {
-                    event_id: event.id,
-                    relay_url,
-                    marker: None,
-                    // NOTE: not add public key since it's already included as `p` tag
-                    public_key: None,
-                    uppercase: false,
-                }),
-                Tag::public_key(event.pubkey),
-                Tag::from_standardized_without_cell(TagStandard::Kind {
-                    kind: event.kind,
-                    uppercase: false,
-                }),
-            ])
+            Self::new(Kind::GenericRepost, event.as_json())
+                .tag_maybe(
+                    event
+                        .coordinate()
+                        .map(|c| Tag::coordinate(c.into_owned(), relay_url.clone())),
+                )
+                .tags([
+                    Tag::from_standardized_without_cell(TagStandard::Event {
+                        event_id: event.id,
+                        relay_url,
+                        marker: None,
+                        // NOTE: not add public key since it's already included as `p` tag
+                        public_key: None,
+                        uppercase: false,
+                    }),
+                    Tag::public_key(event.pubkey),
+                    Tag::from_standardized_without_cell(TagStandard::Kind {
+                        kind: event.kind,
+                        uppercase: false,
+                    }),
+                ])
         }
     }
 
