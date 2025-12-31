@@ -901,7 +901,7 @@ macro_rules! database_unit_tests {
             );
 
             // Request to vanish
-            let request_to_vanish = EventBuilder::request_vanish::<()>(VanishTarget::AllRelays)
+            let request_to_vanish = EventBuilder::request_vanish(VanishTarget::AllRelays)
                 .unwrap()
                 .sign_with_keys(&to_vanish)
                 .unwrap();
