@@ -47,6 +47,7 @@
 - Add `RelayUrlScheme` enum and `RelayUrl::scheme` method (https://github.com/rust-nostr/nostr/pull/1127)
 - Add `Method::Unknown` variant (https://github.com/rust-nostr/nostr/pull/1162)
 - Add `Kind::Highlight` variant (https://github.com/rust-nostr/nostr/pull/1191)
+- Implement `fmt::Display` for `CoordinateBorrow` (https://github.com/rust-nostr/nostr/pull/1194)
 
 ### Removed
 

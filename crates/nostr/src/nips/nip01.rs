@@ -74,7 +74,7 @@ pub struct Coordinate {
 
 impl fmt::Display for Coordinate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}:{}", self.kind, self.public_key, self.identifier)
+        self.borrow().fmt(f)
     }
 }
 
@@ -264,6 +264,18 @@ impl CoordinateBorrow<'_> {
             public_key: *self.public_key,
             identifier: self.identifier.map(|s| s.to_string()).unwrap_or_default(),
         }
+    }
+}
+
+impl fmt::Display for CoordinateBorrow<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}:{}:{}",
+            self.kind,
+            self.public_key,
+            self.identifier.unwrap_or_default()
+        )
     }
 }
 
@@ -582,6 +594,32 @@ mod tests {
             "30023:aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4:";
         let coordinate: Coordinate = Coordinate::parse(coordinate).unwrap();
         assert!(coordinate.verify().is_err());
+    }
+
+    #[test]
+    fn display_addressable_coordinate() {
+        let pkey = "00000001505e7e48927046e9bbaa728b1f3b511227e2200c578d6e6bb0c77eb9";
+        let coordinate = Coordinate::new(
+            Kind::GitRepoAnnouncement,
+            PublicKey::from_hex(pkey).unwrap(),
+        )
+        .identifier("n34");
+
+        assert_eq!(
+            coordinate.to_string(),
+            "30617:00000001505e7e48927046e9bbaa728b1f3b511227e2200c578d6e6bb0c77eb9:n34"
+        )
+    }
+
+    #[test]
+    fn display_replaceable_coordinate() {
+        let pkey = "00000001505e7e48927046e9bbaa728b1f3b511227e2200c578d6e6bb0c77eb9";
+        let coordinate = Coordinate::new(Kind::MuteList, PublicKey::from_hex(pkey).unwrap());
+
+        assert_eq!(
+            coordinate.to_string(),
+            "10000:00000001505e7e48927046e9bbaa728b1f3b511227e2200c578d6e6bb0c77eb9:"
+        )
     }
 }
 
