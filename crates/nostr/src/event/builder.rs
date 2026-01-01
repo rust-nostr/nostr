@@ -754,21 +754,27 @@ impl EventBuilder {
                 Tag::public_key(event.pubkey),
             ])
         } else {
-            Self::new(Kind::GenericRepost, event.as_json()).tags([
-                Tag::from_standardized_without_cell(TagStandard::Event {
-                    event_id: event.id,
-                    relay_url,
-                    marker: None,
-                    // NOTE: not add public key since it's already included as `p` tag
-                    public_key: None,
-                    uppercase: false,
-                }),
-                Tag::public_key(event.pubkey),
-                Tag::from_standardized_without_cell(TagStandard::Kind {
-                    kind: event.kind,
-                    uppercase: false,
-                }),
-            ])
+            Self::new(Kind::GenericRepost, event.as_json())
+                .tag_maybe(
+                    event
+                        .coordinate()
+                        .map(|c| Tag::coordinate(c.into_owned(), relay_url.clone())),
+                )
+                .tags([
+                    Tag::from_standardized_without_cell(TagStandard::Event {
+                        event_id: event.id,
+                        relay_url,
+                        marker: None,
+                        // NOTE: not add public key since it's already included as `p` tag
+                        public_key: None,
+                        uppercase: false,
+                    }),
+                    Tag::public_key(event.pubkey),
+                    Tag::from_standardized_without_cell(TagStandard::Kind {
+                        kind: event.kind,
+                        uppercase: false,
+                    }),
+                ])
         }
     }
 
@@ -2311,6 +2317,57 @@ mod tests {
         let mut ids = reply_of_reply.tags.event_ids().copied();
         assert_eq!(ids.next().unwrap(), reply.id);
         assert_eq!(ids.next().unwrap(), root_event.id);
+    }
+
+    #[test]
+    #[cfg(all(feature = "std", feature = "os-rng"))]
+    fn replaceable_repost() {
+        let keys = Keys::generate();
+        let replaceable = EventBuilder::mute_list(MuteList::default())
+            .sign_with_keys(&keys)
+            .unwrap();
+        let repost = EventBuilder::repost(&replaceable, None)
+            .sign_with_keys(&keys)
+            .unwrap();
+
+        assert_eq!(repost.kind, Kind::GenericRepost);
+        assert_eq!(
+            repost
+                .tags
+                .find_standardized(TagKind::single_letter(Alphabet::A, false))
+                .unwrap(),
+            &TagStandard::Coordinate {
+                coordinate: Coordinate::new(replaceable.kind, replaceable.pubkey),
+                relay_url: None,
+                uppercase: false
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(all(feature = "std", feature = "os-rng"))]
+    fn addressable_repost() {
+        let keys = Keys::generate();
+        let addressable = EventBuilder::follow_set("lorem", [])
+            .sign_with_keys(&keys)
+            .unwrap();
+        let repost = EventBuilder::repost(&addressable, None)
+            .sign_with_keys(&keys)
+            .unwrap();
+
+        assert_eq!(repost.kind, Kind::GenericRepost);
+        assert_eq!(
+            repost
+                .tags
+                .find_standardized(TagKind::single_letter(Alphabet::A, false))
+                .unwrap(),
+            &TagStandard::Coordinate {
+                coordinate: Coordinate::new(addressable.kind, addressable.pubkey)
+                    .identifier("lorem"),
+                relay_url: None,
+                uppercase: false
+            }
+        );
     }
 }
 
