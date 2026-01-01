@@ -48,6 +48,8 @@
 - Add `Method::Unknown` variant (https://github.com/rust-nostr/nostr/pull/1162)
 - Add `Kind::Highlight` variant (https://github.com/rust-nostr/nostr/pull/1191)
 - Implement `fmt::Display` for `CoordinateBorrow` (https://github.com/rust-nostr/nostr/pull/1194)
+- Add `Kind::BlossomServerList` variant (https://github.com/rust-nostr/nostr/pull/1195)
+- Add `EventBuilder::blossom_server_list` function (https://github.com/rust-nostr/nostr/pull/1195)
 
 ### Removed
 
