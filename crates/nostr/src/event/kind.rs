@@ -111,6 +111,7 @@ kind_variants! {
     ZapPrivateMessage => 9733, "Zap Private Message ", "<https://github.com/nostr-protocol/nips/blob/master/57.md>",
     ZapRequest => 9734, "Zap Request ", "<https://github.com/nostr-protocol/nips/blob/master/57.md>",
     ZapReceipt => 9735, "Zap Receipt ", "<https://github.com/nostr-protocol/nips/blob/master/57.md>",
+    Highlight => 9802, "Highlights", "<https://github.com/nostr-protocol/nips/blob/master/84.md>",
     MuteList => 10000, "Mute List", "<https://github.com/nostr-protocol/nips/blob/master/51.md>",
     PinList => 10001, "Pin List", "<https://github.com/nostr-protocol/nips/blob/master/51.md>",
     Bookmarks => 10003, "Bookmarks", "<https://github.com/nostr-protocol/nips/blob/master/51.md>",

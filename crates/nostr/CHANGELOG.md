@@ -46,6 +46,7 @@
 - Add `EventBuilder::git_pull_request`, `EventBuilder::git_pull_request_update` and `EventBuilder::git_user_grasp_list` (https://gitworkshop.dev/yukikishimoto.com/nostr/prs/note1jwe7k8fuynzze6w8pfxp2zkfehk9cteuuxuamvjkavefxq9a7m7qffreyq)
 - Add `RelayUrlScheme` enum and `RelayUrl::scheme` method (https://github.com/rust-nostr/nostr/pull/1127)
 - Add `Method::Unknown` variant (https://github.com/rust-nostr/nostr/pull/1162)
+- Add `Kind::Highlight` variant (https://github.com/rust-nostr/nostr/pull/1191)
 
 ### Removed
 
