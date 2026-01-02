@@ -6,15 +6,16 @@ use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use nostr::event::borrow::EventBorrow;
 use nostr::{Filter, SingleLetterTag, Timestamp};
+use tantivy_query_grammar::{parse_query, UserInputAst};
 
-use super::query::match_query;
+use super::query::eval_ast;
 
 pub(crate) struct DatabaseFilter {
     pub(crate) ids: HashSet<[u8; 32]>,
     pub(crate) authors: HashSet<[u8; 32]>,
     pub(crate) kinds: HashSet<u16>,
-    // THIS IS LOWERCASE
-    pub(crate) search: Option<String>,
+    /// Pre-parsed search query AST (query string already lowercased before parsing)
+    pub(crate) search: Option<UserInputAst>,
     pub(crate) since: Option<Timestamp>,
     pub(crate) until: Option<Timestamp>,
     pub(crate) generic_tags: BTreeMap<SingleLetterTag, BTreeSet<String>>,
@@ -65,7 +66,7 @@ impl DatabaseFilter {
     #[inline]
     fn search_match(&self, event: &EventBorrow) -> bool {
         match &self.search {
-            Some(query) => match_query(query, event),
+            Some(ast) => eval_ast(ast, event),
             None => true,
         }
     }
@@ -102,10 +103,10 @@ impl From<Filter> for DatabaseFilter {
                 .kinds
                 .map(|kinds| kinds.into_iter().map(|id| id.as_u16()).collect())
                 .unwrap_or_default(),
-            search: filter.search.map(|mut s| {
-                // Convert to lowercase
+            search: filter.search.and_then(|mut s| {
+                // Convert to lowercase and parse into AST
                 s.make_ascii_lowercase();
-                s
+                parse_query(&s).ok()
             }),
             since: filter.since,
             until: filter.until,

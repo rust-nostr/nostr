@@ -3,18 +3,19 @@
 // Distributed under the MIT software license
 
 use nostr::event::borrow::EventBorrow;
-use tantivy_query_grammar::{parse_query, Occur, UserInputAst, UserInputLeaf};
+#[cfg(test)]
+use tantivy_query_grammar::parse_query;
+use tantivy_query_grammar::{Occur, UserInputAst, UserInputLeaf};
 
 
 /// Match a query against an event
-#[inline]
-pub(super) fn match_query(query: &str, event: &EventBorrow) -> bool {
+#[cfg(test)]
+fn match_query(query: &str, event: &EventBorrow) -> bool {
     // Early exit if query is empty
     if query.is_empty() {
         return false;
     }
 
-    // TODO: expose query parser error?
     if let Ok(ast) = parse_query(query) {
         return eval_ast(&ast, event);
     }
@@ -23,7 +24,7 @@ pub(super) fn match_query(query: &str, event: &EventBorrow) -> bool {
 }
 
 /// Evaluate a UserInputAst against an event
-fn eval_ast(ast: &UserInputAst, event: &EventBorrow) -> bool {
+pub(super) fn eval_ast(ast: &UserInputAst, event: &EventBorrow) -> bool {
     match ast {
         UserInputAst::Clause(items) => eval_clause(items, event),
         UserInputAst::Boost(inner, _) => eval_ast(inner, event),
@@ -88,7 +89,7 @@ fn eval_leaf(leaf: &UserInputLeaf, event: &EventBorrow) -> bool {
                     event.tags.iter().any(|tag| {
                         if let Some(tag_content) = tag.content() {
                             tag.kind().eq_ignore_ascii_case(&field_lower)
-                                && contains_word(&tag_content.to_ascii_lowercase(), &phrase_lower)
+                                && tag_content.to_ascii_lowercase().contains(&phrase_lower)
                         } else {
                             false
                         }
@@ -97,7 +98,7 @@ fn eval_leaf(leaf: &UserInputLeaf, event: &EventBorrow) -> bool {
                 // No field: search content and multi-char tags
                 None => {
                     // Check content first
-                    if contains_word(&event.content.to_ascii_lowercase(), &phrase_lower) {
+                    if event.content.to_ascii_lowercase().contains(&phrase_lower) {
                         return true;
                     }
 
@@ -105,7 +106,7 @@ fn eval_leaf(leaf: &UserInputLeaf, event: &EventBorrow) -> bool {
                     event.tags.iter().any(|tag| {
                         if let Some(tag_content) = tag.content() {
                             tag.kind().len() > 1
-                                && contains_word(&tag_content.to_ascii_lowercase(), &phrase_lower)
+                                && tag_content.to_ascii_lowercase().contains(&phrase_lower)
                         } else {
                             false
                         }
@@ -121,20 +122,6 @@ fn eval_leaf(leaf: &UserInputLeaf, event: &EventBorrow) -> bool {
     }
 }
 
-/// Check if text contains the word/phrase, matching at word boundaries.
-/// For single words, matches whole words only.
-/// For phrases (containing spaces), matches the exact phrase.
-#[inline]
-fn contains_word(text: &str, word: &str) -> bool {
-    if word.contains(' ') {
-        // Phrase: exact substring match
-        text.contains(word)
-    } else {
-        // Single word: match at word boundaries
-        text.split(|c: char| !c.is_alphanumeric())
-            .any(|w| w == word)
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -185,16 +172,20 @@ mod tests {
     }
 
     #[test]
-    fn test_word_match() {
+    fn test_substring_match() {
         let event = create_test_event("nostr protocol");
         let event: EventBorrow = (&event).into();
 
-        // Whole word matches
+        // Full word matches
         assert!(match_query("protocol", &event));
         assert!(match_query("nostr", &event));
 
-        // Partial word does not match (word boundary matching)
-        assert!(!match_query("proto", &event));
+        // Partial/substring also matches
+        assert!(match_query("proto", &event));
+        assert!(match_query("nost", &event));
+
+        // Non-matching substring
+        assert!(!match_query("bitcoin", &event));
     }
 
     #[test]
