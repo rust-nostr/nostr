@@ -231,7 +231,7 @@ fn ndb_filter_conversion(f: &Filter) -> nostrdb::Filter {
     }
 
     if let Some(ref search) = f.search {
-        filter = filter.search(&search);
+        filter = filter.search(search);
     }
 
     filter.build()
