@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Added
+
+- respect the filter limit (https://github.com/rust-nostr/nostr/pull/1200)
+
 ## v0.44.0 - 2025/11/06
 
 No notable changes in this release.

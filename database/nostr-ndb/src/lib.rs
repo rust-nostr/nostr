@@ -187,7 +187,12 @@ fn ndb_query<'a>(
     filter: &Filter,
 ) -> Result<Vec<QueryResult<'a>>, DatabaseError> {
     let filter: nostrdb::Filter = ndb_filter_conversion(filter);
-    db.query(txn, &[filter], MAX_RESULTS)
+    let max_results = filter
+        .limit()
+        .map(|n| n.try_into().unwrap_or(i32::MAX))
+        .unwrap_or(MAX_RESULTS);
+
+    db.query(txn, &[filter], max_results)
         .map_err(DatabaseError::backend)
 }
 
