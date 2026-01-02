@@ -25,6 +25,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Respect the filter limit (https://github.com/rust-nostr/nostr/pull/1200)
+
 ### Added
 
 - Add search (NIP-50) capability (https://github.com/rust-nostr/nostr/pull/1196)
