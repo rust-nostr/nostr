@@ -1615,6 +1615,21 @@ impl EventBuilder {
         Self::new(Kind::Bookmarks, "").tags(tags)
     }
 
+    /// Blossom Server List
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/B7.md>
+    #[inline]
+    pub fn blossom_server_list<I>(servers: I) -> Self
+    where
+        I: IntoIterator<Item = Url>,
+    {
+        Self::new(Kind::BlossomServerList, "").tags(
+            servers
+                .into_iter()
+                .map(|s| Tag::from_standardized_without_cell(TagStandard::Server(s))),
+        )
+    }
+
     /// Communities
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>
