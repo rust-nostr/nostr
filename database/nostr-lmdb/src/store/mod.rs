@@ -15,6 +15,7 @@ mod error;
 mod filter;
 mod ingester;
 mod lmdb;
+mod query;
 
 use self::error::Error;
 use self::ingester::{Ingester, IngesterItem};

@@ -2964,6 +2964,7 @@ dependencies = [
  "nostr",
  "nostr-database",
  "nostr-database-test-suite",
+ "tantivy-query-grammar",
  "tempfile",
  "tokio",
  "tracing",
@@ -4870,6 +4871,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.111",
+]
+
+[[package]]
+name = "tantivy-query-grammar"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "768fccdc84d60d86235d42d7e4c33acf43c418258ff5952abf07bd7837fcd26b"
+dependencies = [
+ "nom",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
