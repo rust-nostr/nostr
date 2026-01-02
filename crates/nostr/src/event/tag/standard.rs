@@ -1123,7 +1123,11 @@ where
     // Try getting indexes 2, 3 and 4 and make sure they are not empty.
     // If these are empty, they are handled as None.
     let tag_2: Option<&str> = tag.get(2).map(|r| r.as_ref()).filter(|r| !r.is_empty());
-    let tag_3: Option<&str> = tag.get(3).map(|r| r.as_ref()).filter(|r| !r.is_empty());
+    // "mention" is a removed marker from NIP-10
+    let tag_3: Option<&str> = tag
+        .get(3)
+        .map(|r| r.as_ref())
+        .filter(|r| !r.is_empty() && *r != "mention");
     let tag_4: Option<&str> = tag.get(4).map(|r| r.as_ref()).filter(|r| !r.is_empty());
 
     // Check if it's a report
@@ -2983,5 +2987,24 @@ mod tests {
         );
         assert!(TagStandard::parse(&["t", "nostr"]).is_ok());
         assert!(TagStandard::parse(&["t", "سلام"]).is_ok());
+    }
+
+    #[test]
+    fn e_tag_with_mention_marker() {
+        let hex = "19bb195b83fd26db217b6feebb444de4808d90eb4375c31c75ba5bb5c5c10cfc";
+        let id = EventId::from_hex(hex).unwrap();
+
+        let result = TagStandard::parse(&["e", hex, "", "mention"]);
+
+        assert_eq!(
+            result,
+            Ok(TagStandard::Event {
+                event_id: id,
+                relay_url: None,
+                marker: None,
+                public_key: None,
+                uppercase: false
+            })
+        );
     }
 }
