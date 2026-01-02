@@ -339,15 +339,8 @@ impl NostrGossipSqlite {
             }
 
             if let Ok(relay_url) = RelayUrl::parse(&url) {
-                if !allowed.onion && relay_url.is_onion() {
-                    continue;
-                }
-
-                if !allowed.local && relay_url.is_local_addr() {
-                    continue;
-                }
-
-                if !allowed.without_tls && !relay_url.scheme().is_secure() {
+                // Check if the relay is allowed by the allowed relays filter
+                if !allowed.is_allowed(&relay_url) {
                     continue;
                 }
 
