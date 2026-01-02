@@ -74,6 +74,25 @@ impl Default for GossipAllowedRelays {
     }
 }
 
+impl GossipAllowedRelays {
+    /// Check if a relay URL is allowed.
+    pub fn is_allowed(&self, relay_url: &RelayUrl) -> bool {
+        if !self.onion && relay_url.is_onion() {
+            return false;
+        }
+
+        if !self.local && relay_url.is_local_addr() {
+            return false;
+        }
+
+        if !self.without_tls && !relay_url.scheme().is_secure() {
+            return false;
+        }
+
+        true
+    }
+}
+
 /// Best relay selection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BestRelaySelection {
@@ -175,5 +194,42 @@ where
 {
     fn into_nostr_gossip(self) -> Arc<dyn NostrGossip> {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_allowed_relays() {
+        let clearnet = RelayUrl::parse("wss://relay.damus.io").unwrap();
+        let clearnet_no_tls = RelayUrl::parse("ws://relay.example.com").unwrap();
+        let local = RelayUrl::parse("ws://192.168.1.11:7777").unwrap();
+        let onion =
+            RelayUrl::parse("ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion")
+                .unwrap();
+
+        // All except local
+        let allowed = GossipAllowedRelays {
+            onion: true,
+            local: false,
+            without_tls: true,
+        };
+        assert!(allowed.is_allowed(&clearnet));
+        assert!(allowed.is_allowed(&clearnet_no_tls));
+        assert!(!allowed.is_allowed(&local));
+        assert!(allowed.is_allowed(&onion));
+
+        // Allow only clearnet with TLS
+        let allowed = GossipAllowedRelays {
+            onion: false,
+            local: false,
+            without_tls: false,
+        };
+        assert!(allowed.is_allowed(&clearnet));
+        assert!(!allowed.is_allowed(&clearnet_no_tls));
+        assert!(!allowed.is_allowed(&local));
+        assert!(!allowed.is_allowed(&onion));
     }
 }

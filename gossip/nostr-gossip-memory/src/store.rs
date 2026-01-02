@@ -307,15 +307,8 @@ impl NostrGossipMemory {
 
         if let Some(pk_data) = tx.peek(public_key) {
             for (relay_url, relay_data) in pk_data.relays.iter() {
-                if !allowed.onion && relay_url.is_onion() {
-                    continue;
-                }
-
-                if !allowed.local && relay_url.is_local_addr() {
-                    continue;
-                }
-
-                if !allowed.without_tls && !relay_url.scheme().is_secure() {
+                // Check if the relay is allowed by the allowed relays filter
+                if !allowed.is_allowed(relay_url) {
                     continue;
                 }
 
