@@ -230,6 +230,10 @@ fn ndb_filter_conversion(f: &Filter) -> nostrdb::Filter {
         filter = filter.limit(limit as u64);
     }
 
+    if let Some(search) = &f.search {
+        filter = filter.search(search);
+    }
+
     filter.build()
 }
 
