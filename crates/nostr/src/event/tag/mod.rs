@@ -407,7 +407,7 @@ impl Tag {
 
     /// Repository head
     ///
-    /// JSON: `["HEAD", "<branch-name>"]`
+    /// JSON: `["HEAD", "ref: refs/heads/<branch-name>"]`
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[inline]
