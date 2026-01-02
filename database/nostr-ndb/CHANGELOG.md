@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Added
+
+- Add the search query arg to the NDB search filter (https://github.com/rust-nostr/nostr/pull/1196)
+
 ## v0.44.0 - 2025/11/06
 
 No notable changes in this release.
