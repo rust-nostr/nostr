@@ -42,9 +42,8 @@ pub mod prelude;
 
 pub use self::error::Error;
 
-const HTML: &str = include_str!("../index.html");
+const DEFAULT_HTML: &str = include_str!("../index.html");
 const JS: &str = include_str!("../proxy.js");
-const CSS: &str = include_str!("../style.css");
 
 type PendingResponseMap = HashMap<Uuid, Sender<Result<Value, String>>>;
 
@@ -166,6 +165,9 @@ pub struct BrowserSignerProxyOptions {
     pub timeout: Duration,
     /// Proxy server IP address and port. Default is `127.0.0.1:7400`.
     pub addr: SocketAddr,
+    /// Custom HTML page.
+    // NOTE: not `Option` to move it between threads without reference counter
+    pub custom_html: &'static str,
 }
 
 #[derive(Debug, Clone)]
@@ -218,6 +220,7 @@ impl Default for BrowserSignerProxyOptions {
             timeout: Duration::from_secs(30),
             // 7 for NIP-07 and 400 because the NIP title is 40 bytes :)
             addr: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 7400)),
+            custom_html: "",
         }
     }
 }
@@ -238,6 +241,16 @@ impl BrowserSignerProxyOptions {
     /// Sets the port number.
     pub const fn port(mut self, new_port: u16) -> Self {
         self.addr = SocketAddr::new(self.addr.ip(), new_port);
+        self
+    }
+
+    /// Sets a custom html page.
+    ///
+    /// The page must include `/proxy.js` script (`<script src="/proxy.js"></script>`)
+    /// which will handle communication with the server and update the element
+    /// with id `nip07-proxy-status` with the status.
+    pub const fn custom_html_page(mut self, custom_html: &'static str) -> Self {
+        self.custom_html = custom_html;
         self
     }
 }
@@ -311,6 +324,7 @@ impl BrowserSignerProxy {
 
         let addr: SocketAddr = self.inner.options.addr;
         let state: Arc<ProxyState> = self.inner.state.clone();
+        let custom_html = self.inner.options.custom_html;
         let shutdown: Arc<Notify> = self.inner.shutdown.clone();
 
         tokio::spawn(async move {
@@ -333,7 +347,7 @@ impl BrowserSignerProxy {
 
                         tokio::spawn(async move {
                             let service = service_fn(move |req| {
-                                handle_request(req, state.clone())
+                                handle_request(req, state.clone(), custom_html)
                             });
 
                             tokio::select! {
@@ -519,16 +533,20 @@ impl NostrSigner for BrowserSignerProxy {
 async fn handle_request(
     req: Request<Incoming>,
     state: Arc<ProxyState>,
+    custom_html: &'static str,
 ) -> Result<Response<BoxBody<Bytes, Error>>, Error> {
     match (req.method(), req.uri().path()) {
         // Serve the HTML proxy page
-        (&Method::GET, "/") => Ok(Response::builder()
-            .header("Content-Type", "text/html")
-            .body(full(HTML))?),
-        // Serve the CSS page style
-        (&Method::GET, "/style.css") => Ok(Response::builder()
-            .header("Content-Type", "text/css")
-            .body(full(CSS))?),
+        (&Method::GET, "/") => {
+            let html = if custom_html.is_empty() {
+                DEFAULT_HTML
+            } else {
+                custom_html
+            };
+            Ok(Response::builder()
+                .header("Content-Type", "text/html")
+                .body(full(html))?)
+        }
         // Serve the JS proxy script
         (&Method::GET, "/proxy.js") => Ok(Response::builder()
             .header("Content-Type", "application/javascript")

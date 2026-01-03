@@ -129,10 +129,14 @@ async function handleNip07Request(request) {
     }
 }
 
-function updateStatus(message, className) {
-    const statusEl = document.getElementById('status');
-    statusEl.textContent = message;
-    statusEl.className = className;
+function updateStatus(message, status) {
+    const statusEl = document.getElementById('nip07-proxy-status');
+    if (statusEl) {
+        statusEl.textContent = message;
+        statusEl.style = status === "connected" ?
+            "color: green; font-weight: bold;" :
+            "color: red; font-weight: bold;";
+    }
 }
 
 // Start polling when page loads
