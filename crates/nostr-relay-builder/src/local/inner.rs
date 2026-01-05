@@ -117,7 +117,7 @@ impl InnerLocalRelay {
     async fn addr(&self) -> &SocketAddr {
         self.addr
             .get_or_init(|| async {
-                let port: u16 = util::find_available_port().await;
+                let port: u16 = util::find_available_port(self.ip).await;
                 SocketAddr::new(self.ip, port)
             })
             .await
