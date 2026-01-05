@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Fixed
+
+- Check port availability with actual relay IP (https://github.com/rust-nostr/nostr/pull/1207)
+
 ## v0.44.0 - 2025/11/06
 
 ### Breaking change
