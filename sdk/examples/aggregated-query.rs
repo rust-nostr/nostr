@@ -50,7 +50,7 @@ async fn main() -> Result<()> {
     let fetched_events_from = client
         .fetch_events_from(["wss://nostr.oxtr.dev"], filter, Duration::from_secs(10))
         .await?;
-    client.force_remove_relay("wss://nostr.oxtr.dev").await?;
+    client.remove_relay("wss://nostr.oxtr.dev").force().await?;
 
     // Aggregate results (can be done many times)
     let events = stored_events
