@@ -8,7 +8,7 @@ use std::net::SocketAddr;
 
 use atomic_destructor::AtomicDestructor;
 use nostr_database::prelude::*;
-use nostr_relay_pool::{pool, Output, Reconciliation, SyncOptions};
+use nostr_relay_pool::{Output, Reconciliation, SyncOptions};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 mod inner;
@@ -79,7 +79,7 @@ impl LocalRelay {
 
     /// Sync events with other relay(s).
     #[inline]
-    pub async fn sync_with<I, U>(
+    pub async fn sync_with<'a, I, U>(
         &self,
         urls: I,
         filter: Filter,
@@ -87,8 +87,7 @@ impl LocalRelay {
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         self.inner.sync_with(urls, filter, opts).await
     }

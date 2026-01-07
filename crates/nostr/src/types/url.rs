@@ -4,9 +4,9 @@
 
 //! Urls
 
+use alloc::borrow::Cow;
 use alloc::string::String;
 use core::cmp::Ordering;
-use core::convert::Infallible;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::str::FromStr;
@@ -132,7 +132,7 @@ impl RelayUrl {
             return Err(Error::MultipleSchemeSeparators);
         }
 
-        // Check if has trailing slash
+        // Check if it has a trailing slash
         let has_trailing_slash: bool = url.ends_with('/');
 
         // Parse URL
@@ -280,75 +280,75 @@ impl<'a> From<&'a RelayUrl> for &'a Url {
     }
 }
 
-/// Try into relay URL
-pub trait TryIntoUrl {
-    /// Error
-    type Err: fmt::Debug;
-
-    /// Try into relay URL
-    fn try_into_url(self) -> Result<RelayUrl, Self::Err>;
+/// Relay URL argument.
+///
+/// This type allows passing different types to methods that accept a relay URL.
+pub enum RelayUrlArg<'a> {
+    /// An already parsed relay URL.
+    Parsed(Cow<'a, RelayUrl>),
+    /// A relay URL string that has to be parsed.
+    String(Cow<'a, str>),
 }
 
-impl TryIntoUrl for RelayUrl {
-    type Err = Infallible;
-
+impl<'a> RelayUrlArg<'a> {
+    /// Convert into [`RelayUrl`] without consuming self.
     #[inline]
-    fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
-        Ok(self)
+    pub fn try_as_relay_url(&'a self) -> Result<Cow<'a, RelayUrl>, Error> {
+        match self {
+            Self::Parsed(url) => Ok(Cow::Borrowed(url.as_ref())),
+            Self::String(s) => RelayUrl::parse(s).map(Cow::Owned),
+        }
+    }
+
+    /// Convert into [`RelayUrl`].
+    #[inline]
+    pub fn try_into_relay_url(self) -> Result<Cow<'a, RelayUrl>, Error> {
+        match self {
+            Self::Parsed(url) => Ok(url),
+            Self::String(s) => RelayUrl::parse(&s).map(Cow::Owned),
+        }
     }
 }
 
-impl TryIntoUrl for &RelayUrl {
-    type Err = Infallible;
-
-    #[inline]
-    fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
-        Ok(self.clone())
+impl From<RelayUrl> for RelayUrlArg<'_> {
+    fn from(url: RelayUrl) -> Self {
+        Self::Parsed(Cow::Owned(url))
     }
 }
 
-impl TryIntoUrl for Url {
-    type Err = Error;
-
-    #[inline]
-    fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
-        RelayUrl::parse(self.as_str())
+impl<'a> From<&'a RelayUrl> for RelayUrlArg<'a> {
+    fn from(url: &'a RelayUrl) -> Self {
+        Self::Parsed(Cow::Borrowed(url))
     }
 }
 
-impl TryIntoUrl for &Url {
-    type Err = Error;
-
-    #[inline]
-    fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
-        RelayUrl::parse(self.as_str())
+impl<'a> From<Cow<'a, RelayUrl>> for RelayUrlArg<'a> {
+    fn from(url: Cow<'a, RelayUrl>) -> Self {
+        Self::Parsed(url)
     }
 }
 
-impl TryIntoUrl for String {
-    type Err = Error;
-
-    #[inline]
-    fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
-        RelayUrl::parse(self.as_str())
+impl From<String> for RelayUrlArg<'_> {
+    fn from(s: String) -> Self {
+        Self::String(Cow::Owned(s))
     }
 }
 
-impl TryIntoUrl for &String {
-    type Err = Error;
-
-    #[inline]
-    fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
-        RelayUrl::parse(self)
+impl<'a> From<&'a String> for RelayUrlArg<'a> {
+    fn from(s: &'a String) -> Self {
+        Self::String(Cow::Borrowed(s))
     }
 }
 
-impl TryIntoUrl for &str {
-    type Err = Error;
+impl<'a> From<&'a str> for RelayUrlArg<'a> {
+    fn from(s: &'a str) -> Self {
+        Self::String(Cow::Borrowed(s))
+    }
+}
 
-    #[inline]
-    fn try_into_url(self) -> Result<RelayUrl, Self::Err> {
-        RelayUrl::parse(self)
+impl<'a> From<Cow<'a, str>> for RelayUrlArg<'a> {
+    fn from(s: Cow<'a, str>) -> Self {
+        Self::String(s)
     }
 }
 

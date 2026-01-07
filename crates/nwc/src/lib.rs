@@ -342,10 +342,9 @@ impl NostrWalletConnect {
     /// is disabled via [`RelayOptions::reconnect`].
     ///
     /// If the client is not bootstrapped, it will do nothing.
-    pub async fn reconnect_relay<U>(&self, url: U) -> Result<(), Error>
+    pub async fn reconnect_relay<'a, U>(&self, url: U) -> Result<(), Error>
     where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         if !self.bootstrapped.load(Ordering::SeqCst) {
             return Ok(());

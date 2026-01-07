@@ -4,6 +4,7 @@
 
 //! Relay Pool
 
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::iter::Zip;
@@ -247,12 +248,11 @@ impl RelayPool {
     }
 
     /// Get relay
-    pub async fn relay<U>(&self, url: U) -> Result<Relay, Error>
+    pub async fn relay<'a, U>(&self, url: U) -> Result<Relay, Error>
     where
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
-        let url: RelayUrl = url.try_into_url()?;
+        let url = url.into().try_into_relay_url()?;
         let relays = self.inner.atomic.relays.read().await;
         self.internal_relay(&relays, &url).cloned()
     }
@@ -266,13 +266,12 @@ impl RelayPool {
     ///
     /// Connection is **NOT** automatically started, remember to call [`RelayPool::connect`] or [`RelayPool::connect_relay`]!
     #[inline]
-    pub async fn add_relay<U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
+    pub async fn add_relay<'a, U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
     where
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         // Convert into url
-        let url: RelayUrl = url.try_into_url()?;
+        let url: Cow<RelayUrl> = url.into().try_into_relay_url()?;
 
         // Check if the pool has been shutdown
         if self.is_shutdown() {
@@ -294,8 +293,10 @@ impl RelayPool {
             }
         }
 
+        let url: RelayUrl = url.into_owned();
+
         // Compose new relay
-        let mut relay: Relay = Relay::new(url, self.inner.state.clone(), opts);
+        let mut relay: Relay = Relay::new(url.clone(), self.inner.state.clone(), opts);
 
         // Set notification sender
         relay
@@ -314,7 +315,7 @@ impl RelayPool {
         }
 
         // Insert relay into map
-        relays.insert(relay.url().clone(), relay);
+        relays.insert(url, relay);
 
         Ok(true)
     }
@@ -339,13 +340,12 @@ impl RelayPool {
         }
     }
 
-    async fn _remove_relay<U>(&self, url: U, force: bool) -> Result<(), Error>
+    async fn _remove_relay<'a, U>(&self, url: U, force: bool) -> Result<(), Error>
     where
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         // Convert into url
-        let url: RelayUrl = url.try_into_url()?;
+        let url: Cow<RelayUrl> = url.into().try_into_relay_url()?;
 
         // Acquire write lock
         let mut relays = self.inner.atomic.relays.write().await;
@@ -357,7 +357,7 @@ impl RelayPool {
         if !force {
             // If can't be removed, re-insert it.
             if !can_remove_relay(&relay) {
-                relays.insert(url, relay);
+                relays.insert(url.into_owned(), relay);
                 return Ok(());
             }
         }
@@ -376,10 +376,9 @@ impl RelayPool {
     ///
     /// To fore remove a relay use [`RelayPool::force_remove_relay`].
     #[inline]
-    pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
+    pub async fn remove_relay<'a, U>(&self, url: U) -> Result<(), Error>
     where
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         self._remove_relay(url, false).await
     }
@@ -388,10 +387,9 @@ impl RelayPool {
     ///
     /// Note: this method will remove the relay, also if it's in use for the gossip model or other service!
     #[inline]
-    pub async fn force_remove_relay<U>(&self, url: U) -> Result<(), Error>
+    pub async fn force_remove_relay<'a, U>(&self, url: U) -> Result<(), Error>
     where
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         self._remove_relay(url, true).await
     }
@@ -518,13 +516,12 @@ impl RelayPool {
     /// This method doesn't provide any information on if the connection was successful or not.
     ///
     /// Return [`Error::RelayNotFound`] if the relay doesn't exist in the pool.
-    pub async fn connect_relay<U>(&self, url: U) -> Result<(), Error>
+    pub async fn connect_relay<'a, U>(&self, url: U) -> Result<(), Error>
     where
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         // Convert url
-        let url: RelayUrl = url.try_into_url()?;
+        let url = url.into().try_into_relay_url()?;
 
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
@@ -541,13 +538,12 @@ impl RelayPool {
     /// Try to connect to a previously added relay
     ///
     /// For further details, see the documentation of [`Relay::try_connect`].
-    pub async fn try_connect_relay<U>(&self, url: U, timeout: Duration) -> Result<(), Error>
+    pub async fn try_connect_relay<'a, U>(&self, url: U, timeout: Duration) -> Result<(), Error>
     where
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         // Convert url
-        let url: RelayUrl = url.try_into_url()?;
+        let url: Cow<RelayUrl> = url.into().try_into_relay_url()?;
 
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
@@ -562,13 +558,12 @@ impl RelayPool {
     }
 
     /// Disconnect relay
-    pub async fn disconnect_relay<U>(&self, url: U) -> Result<(), Error>
+    pub async fn disconnect_relay<'a, U>(&self, url: U) -> Result<(), Error>
     where
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         // Convert url
-        let url: RelayUrl = url.try_into_url()?;
+        let url: Cow<RelayUrl> = url.into().try_into_relay_url()?;
 
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
@@ -652,15 +647,14 @@ impl RelayPool {
     /// Send a client message to specific relays
     ///
     /// Note: **the relays must already be added!**
-    pub async fn send_msg_to<I, U>(
+    pub async fn send_msg_to<'a, I, U>(
         &self,
         urls: I,
         msg: ClientMessage<'_>,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         self.batch_msg_to(urls, vec![msg]).await
     }
@@ -668,20 +662,19 @@ impl RelayPool {
     /// Send multiple client messages at once to specific relays
     ///
     /// Note: **the relays must already be added!**
-    pub async fn batch_msg_to<I, U>(
+    pub async fn batch_msg_to<'a, I, U>(
         &self,
         urls: I,
         msgs: Vec<ClientMessage<'_>>,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         // Compose URLs
-        let set: HashSet<RelayUrl> = urls
+        let set: HashSet<Cow<RelayUrl>> = urls
             .into_iter()
-            .map(|u| u.try_into_url())
+            .map(|u| u.into().try_into_relay_url())
             .collect::<Result<_, _>>()?;
 
         // Check if urls set is empty
@@ -711,7 +704,7 @@ impl RelayPool {
         let mut output: Output<()> = Output::default();
 
         // Batch messages and construct outputs
-        for url in set.into_iter() {
+        for url in set.into_iter().map(|r| r.into_owned()) {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
             match relay.batch_msg(msgs.clone()) {
                 Ok(..) => {
@@ -734,20 +727,19 @@ impl RelayPool {
     }
 
     /// Send event to specific relays
-    pub async fn send_event_to<I, U>(
+    pub async fn send_event_to<'a, I, U>(
         &self,
         urls: I,
         event: &Event,
     ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         // Compose URLs
-        let set: HashSet<RelayUrl> = urls
+        let set: HashSet<Cow<RelayUrl>> = urls
             .into_iter()
-            .map(|u| u.try_into_url())
+            .map(|u| u.into().try_into_relay_url())
             .collect::<Result<_, _>>()?;
 
         // Check if urls set is empty
@@ -781,7 +773,7 @@ impl RelayPool {
         // Compose futures
         for url in set.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
-            urls.push(url);
+            urls.push(url.into_owned());
             futures.push(relay.send_event(event));
         }
 
@@ -855,7 +847,7 @@ impl RelayPool {
     /// Subscribe to filters to specific relays
     ///
     /// Check [`RelayPool::subscribe_with_id_to`] docs to learn more.
-    pub async fn subscribe_to<I, U, F>(
+    pub async fn subscribe_to<'a, I, U, F>(
         &self,
         urls: I,
         filters: F,
@@ -863,9 +855,8 @@ impl RelayPool {
     ) -> Result<Output<SubscriptionId>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
+        U: Into<RelayUrlArg<'a>>,
         F: Into<Vec<Filter>>,
-        Error: From<<U as TryIntoUrl>::Err>,
     {
         let id: SubscriptionId = SubscriptionId::generate();
         let output: Output<()> = self
@@ -889,7 +880,7 @@ impl RelayPool {
     /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
     ///
     /// Auto-closing subscriptions aren't saved in the subscription map!
-    pub async fn subscribe_with_id_to<I, U, F>(
+    pub async fn subscribe_with_id_to<'a, I, U, F>(
         &self,
         urls: I,
         id: SubscriptionId,
@@ -898,9 +889,8 @@ impl RelayPool {
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
+        U: Into<RelayUrlArg<'a>>,
         F: Into<Vec<Filter>>,
-        Error: From<<U as TryIntoUrl>::Err>,
     {
         let filters: Vec<Filter> = filters.into();
         let targets = urls.into_iter().map(|u| (u, filters.clone()));
@@ -910,7 +900,7 @@ impl RelayPool {
     /// Targeted subscription
     ///
     /// Subscribe to specific relays with specific filters.
-    pub async fn subscribe_targeted<I, U, F>(
+    pub async fn subscribe_targeted<'a, I, U, F>(
         &self,
         id: SubscriptionId,
         targets: I,
@@ -918,14 +908,13 @@ impl RelayPool {
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = (U, F)>,
-        U: TryIntoUrl,
+        U: Into<RelayUrlArg<'a>>,
         F: Into<Vec<Filter>>,
-        Error: From<<U as TryIntoUrl>::Err>,
     {
         // Collect targets
-        let targets: HashMap<RelayUrl, Vec<Filter>> = targets
+        let targets: HashMap<Cow<RelayUrl>, Vec<Filter>> = targets
             .into_iter()
-            .map(|(u, f)| Ok((u.try_into_url()?, f.into())))
+            .map(|(u, f)| Ok((u.into().try_into_relay_url()?, f.into())))
             .collect::<Result<_, Error>>()?;
 
         // Check if urls set is empty
@@ -954,7 +943,7 @@ impl RelayPool {
         for (url, filter) in targets.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
             let id: SubscriptionId = id.clone();
-            urls.push(url);
+            urls.push(url.into_owned());
             futures.push(relay.subscribe_with_id(id, filter, opts));
         }
 
@@ -1024,7 +1013,7 @@ impl RelayPool {
     }
 
     /// Sync events with specific relays (negentropy reconciliation)
-    pub async fn sync_with<I, U>(
+    pub async fn sync_with<'a, I, U>(
         &self,
         urls: I,
         filter: Filter,
@@ -1032,8 +1021,7 @@ impl RelayPool {
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         // Get items
         let items: Vec<(EventId, Timestamp)> = self
@@ -1051,20 +1039,20 @@ impl RelayPool {
     }
 
     /// Sync events with specific relays and filters (negentropy reconciliation)
-    pub async fn sync_targeted<I, U>(
+    pub async fn sync_targeted<'a, I, U>(
         &self,
         targets: I,
         opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = (U, (Filter, Vec<(EventId, Timestamp)>))>,
-        U: TryIntoUrl,
-        Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         // Collect targets
-        let targets: HashMap<RelayUrl, (Filter, Vec<(EventId, Timestamp)>)> = targets
+        #[allow(clippy::type_complexity)]
+        let targets: HashMap<Cow<RelayUrl>, (Filter, Vec<(EventId, Timestamp)>)> = targets
             .into_iter()
-            .map(|(u, v)| Ok((u.try_into_url()?, v)))
+            .map(|(u, v)| Ok((u.into().try_into_relay_url()?, v)))
             .collect::<Result<_, Error>>()?;
 
         // Check if urls set is empty
@@ -1094,7 +1082,7 @@ impl RelayPool {
         // Compose futures
         for (url, (filter, items)) in targets.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
-            urls.push(url);
+            urls.push(url.into_owned());
             futures.push(relay.sync_with_items(filter, items, opts));
         }
 
@@ -1133,7 +1121,7 @@ impl RelayPool {
     }
 
     /// Fetch events from specific relays
-    pub async fn fetch_events_from<I, U, F>(
+    pub async fn fetch_events_from<'a, I, U, F>(
         &self,
         urls: I,
         filters: F,
@@ -1142,9 +1130,8 @@ impl RelayPool {
     ) -> Result<Events, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
+        U: Into<RelayUrlArg<'a>>,
         F: Into<Vec<Filter>>,
-        Error: From<<U as TryIntoUrl>::Err>,
     {
         // Convert filters
         let filters: Vec<Filter> = filters.into();
@@ -1196,7 +1183,7 @@ impl RelayPool {
     }
 
     /// Stream events from specific relays
-    pub async fn stream_events_from<I, U, F>(
+    pub async fn stream_events_from<'a, I, U, F>(
         &self,
         urls: I,
         filters: F,
@@ -1205,9 +1192,8 @@ impl RelayPool {
     ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
+        U: Into<RelayUrlArg<'a>>,
         F: Into<Vec<Filter>>,
-        Error: From<<U as TryIntoUrl>::Err>,
     {
         let filters: Vec<Filter> = filters.into();
         let targets = urls.into_iter().map(|u| (u, filters.clone()));
@@ -1217,7 +1203,7 @@ impl RelayPool {
     /// Targeted streaming events
     ///
     /// Stream events from specific relays with specific filters
-    pub async fn stream_events_targeted<I, U, F>(
+    pub async fn stream_events_targeted<'a, I, U, F>(
         &self,
         targets: I,
         timeout: Duration,
@@ -1225,14 +1211,13 @@ impl RelayPool {
     ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error>
     where
         I: IntoIterator<Item = (U, F)>,
-        U: TryIntoUrl,
+        U: Into<RelayUrlArg<'a>>,
         F: Into<Vec<Filter>>,
-        Error: From<<U as TryIntoUrl>::Err>,
     {
         // Collect targets
-        let targets: HashMap<RelayUrl, Vec<Filter>> = targets
+        let targets: HashMap<Cow<RelayUrl>, Vec<Filter>> = targets
             .into_iter()
-            .map(|(u, v)| Ok((u.try_into_url()?, v.into())))
+            .map(|(u, v)| Ok((u.into().try_into_relay_url()?, v.into())))
             .collect::<Result<_, Error>>()?;
 
         // Check if `targets` map is empty
@@ -1252,7 +1237,7 @@ impl RelayPool {
         // NOTE: the events are deduplicated and the send method awaits, so a huge capacity isn't necessary.
         let (tx, rx) = mpsc::channel(1024);
 
-        let mut urls = Vec::with_capacity(targets.len());
+        let mut urls: Vec<RelayUrl> = Vec::with_capacity(targets.len());
         let mut futures = Vec::with_capacity(targets.len());
 
         for (url, filter) in targets.into_iter() {
@@ -1260,7 +1245,7 @@ impl RelayPool {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
 
             // Push url
-            urls.push(url);
+            urls.push(url.into_owned());
 
             // Push stream events future
             futures.push(relay.stream_events(filter, timeout, policy));

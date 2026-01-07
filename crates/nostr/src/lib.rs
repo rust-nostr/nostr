@@ -70,7 +70,7 @@ pub use self::nips::nip19::{FromBech32, ToBech32};
 #[doc(hidden)]
 pub use self::signer::{NostrSigner, SignerError};
 #[doc(hidden)]
-pub use self::types::{ImageDimensions, RelayUrl, Timestamp, TryIntoUrl, Url};
+pub use self::types::{ImageDimensions, RelayUrl, RelayUrlArg, Timestamp, Url};
 #[doc(hidden)]
 pub use self::util::JsonUtil;
 #[doc(hidden)]

@@ -41,7 +41,7 @@ pub struct NostrConnectRemoteSigner {
 
 impl NostrConnectRemoteSigner {
     /// Construct new remote signer
-    pub fn new<I, U>(
+    pub fn new<'a, I, U>(
         keys: NostrConnectKeys,
         urls: I,
         secret: Option<String>,
@@ -49,15 +49,16 @@ impl NostrConnectRemoteSigner {
     ) -> Result<Self, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         let mut relays = Vec::new();
         for relay in urls.into_iter() {
             relays.push(
                 relay
-                    .try_into_url()
-                    .map_err(|e| Error::Pool(pool::Error::from(e)))?,
+                    .into()
+                    .try_into_relay_url()
+                    .map_err(|e| Error::Pool(pool::Error::from(e)))?
+                    .into_owned(),
             );
         }
 

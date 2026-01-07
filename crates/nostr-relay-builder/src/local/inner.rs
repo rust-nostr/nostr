@@ -15,7 +15,7 @@ use atomic_destructor::AtomicDestroyer;
 use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use nostr_database::prelude::*;
 use nostr_relay_pool::{
-    pool, Output, Reconciliation, RelayOptions, RelayPool, RelayPoolNotification, SyncOptions,
+    Output, Reconciliation, RelayOptions, RelayPool, RelayPoolNotification, SyncOptions,
 };
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
@@ -199,7 +199,7 @@ impl InnerLocalRelay {
             .await
     }
 
-    pub(super) async fn sync_with<I, U>(
+    pub(super) async fn sync_with<'a, I, U>(
         &self,
         urls: I,
         filter: Filter,
@@ -207,8 +207,7 @@ impl InnerLocalRelay {
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         // Construct a new pool
         let pool: RelayPool = RelayPool::default();

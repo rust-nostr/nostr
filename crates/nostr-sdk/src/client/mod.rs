@@ -221,10 +221,9 @@ impl Client {
 
     /// Get a previously added [`Relay`]
     #[inline]
-    pub async fn relay<U>(&self, url: U) -> Result<Relay, Error>
+    pub async fn relay<'a, U>(&self, url: U) -> Result<Relay, Error>
     where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         Ok(self.pool.relay(url).await?)
     }
@@ -275,17 +274,20 @@ impl Client {
     }
 
     /// If return `false` means that already existed
-    async fn get_or_add_relay_with_flag<U>(
+    async fn get_or_add_relay_with_flag<'a, U>(
         &self,
         url: U,
         flag: RelayServiceFlags,
     ) -> Result<bool, Error>
     where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         // Convert into url
-        let url: RelayUrl = url.try_into_url().map_err(pool::Error::from)?;
+        let url: RelayUrl = url
+            .into()
+            .try_into_relay_url()
+            .map_err(pool::Error::from)?
+            .into_owned();
 
         // Compose relay options
         let opts: RelayOptions = self.compose_relay_opts(&url).await;
@@ -317,10 +319,9 @@ impl Client {
     ///
     /// Connection is **NOT** automatically started with relay, remember to call [`Client::connect`]!
     #[inline]
-    pub async fn add_relay<U>(&self, url: U) -> Result<bool, Error>
+    pub async fn add_relay<'a, U>(&self, url: U) -> Result<bool, Error>
     where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         self.get_or_add_relay_with_flag(url, RelayServiceFlags::default())
             .await
@@ -332,10 +333,9 @@ impl Client {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     #[inline]
-    pub async fn add_discovery_relay<U>(&self, url: U) -> Result<bool, Error>
+    pub async fn add_discovery_relay<'a, U>(&self, url: U) -> Result<bool, Error>
     where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::DISCOVERY)
             .await
@@ -348,10 +348,9 @@ impl Client {
     /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
     /// to avoid to set pool subscriptions.
     #[inline]
-    pub async fn add_read_relay<U>(&self, url: U) -> Result<bool, Error>
+    pub async fn add_read_relay<'a, U>(&self, url: U) -> Result<bool, Error>
     where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::READ)
             .await
@@ -361,20 +360,18 @@ impl Client {
     ///
     /// If relay already exists, this method add the [`RelayServiceFlags::WRITE`] flag to it and return `false`.
     #[inline]
-    pub async fn add_write_relay<U>(&self, url: U) -> Result<bool, Error>
+    pub async fn add_write_relay<'a, U>(&self, url: U) -> Result<bool, Error>
     where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::WRITE)
             .await
     }
 
     #[inline]
-    async fn add_gossip_relay<U>(&self, url: U) -> Result<bool, Error>
+    async fn add_gossip_relay<'a, U>(&self, url: U) -> Result<bool, Error>
     where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::GOSSIP)
             .await
@@ -388,10 +385,9 @@ impl Client {
     ///
     /// To force remove the relay, use [`Client::force_remove_relay`].
     #[inline]
-    pub async fn remove_relay<U>(&self, url: U) -> Result<(), Error>
+    pub async fn remove_relay<'a, U>(&self, url: U) -> Result<(), Error>
     where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         Ok(self.pool.remove_relay(url).await?)
     }
@@ -400,10 +396,9 @@ impl Client {
     ///
     /// Note: this method will remove the relay, also if it's in use for the gossip model or other service!
     #[inline]
-    pub async fn force_remove_relay<U>(&self, url: U) -> Result<(), Error>
+    pub async fn force_remove_relay<'a, U>(&self, url: U) -> Result<(), Error>
     where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         Ok(self.pool.force_remove_relay(url).await?)
     }
@@ -428,10 +423,9 @@ impl Client {
     ///
     /// Check [`RelayPool::connect_relay`] docs to learn more.
     #[inline]
-    pub async fn connect_relay<U>(&self, url: U) -> Result<(), Error>
+    pub async fn connect_relay<'a, U>(&self, url: U) -> Result<(), Error>
     where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         Ok(self.pool.connect_relay(url).await?)
     }
@@ -440,20 +434,18 @@ impl Client {
     ///
     /// For further details, see the documentation of [`RelayPool::try_connect_relay`].
     #[inline]
-    pub async fn try_connect_relay<U>(&self, url: U, timeout: Duration) -> Result<(), Error>
+    pub async fn try_connect_relay<'a, U>(&self, url: U, timeout: Duration) -> Result<(), Error>
     where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         Ok(self.pool.try_connect_relay(url, timeout).await?)
     }
 
     /// Disconnect relay
     #[inline]
-    pub async fn disconnect_relay<U>(&self, url: U) -> Result<(), Error>
+    pub async fn disconnect_relay<'a, U>(&self, url: U) -> Result<(), Error>
     where
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         Ok(self.pool.disconnect_relay(url).await?)
     }
@@ -607,7 +599,7 @@ impl Client {
     ///
     /// It's possible to automatically close a subscription by configuring the [SubscribeAutoCloseOptions].
     #[inline]
-    pub async fn subscribe_to<I, U, F>(
+    pub async fn subscribe_to<'a, I, U, F>(
         &self,
         urls: I,
         filters: F,
@@ -615,9 +607,8 @@ impl Client {
     ) -> Result<Output<SubscriptionId>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
+        U: Into<RelayUrlArg<'a>>,
         F: Into<Vec<Filter>>,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let opts: SubscribeOptions = SubscribeOptions::default().close_on(opts);
         Ok(self.pool.subscribe_to(urls, filters, opts).await?)
@@ -629,7 +620,7 @@ impl Client {
     ///
     /// It's possible to automatically close a subscription by configuring the [SubscribeAutoCloseOptions].
     #[inline]
-    pub async fn subscribe_with_id_to<I, U, F>(
+    pub async fn subscribe_with_id_to<'a, I, U, F>(
         &self,
         urls: I,
         id: SubscriptionId,
@@ -638,9 +629,8 @@ impl Client {
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
+        U: Into<RelayUrlArg<'a>>,
         F: Into<Vec<Filter>>,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let opts: SubscribeOptions = SubscribeOptions::default().close_on(opts);
         Ok(self
@@ -653,7 +643,7 @@ impl Client {
     ///
     /// Subscribe to specific relays with specific filters
     #[inline]
-    pub async fn subscribe_targeted<I, U, F>(
+    pub async fn subscribe_targeted<'a, I, U, F>(
         &self,
         id: SubscriptionId,
         targets: I,
@@ -661,9 +651,8 @@ impl Client {
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = (U, F)>,
-        U: TryIntoUrl,
+        U: Into<RelayUrlArg<'a>>,
         F: Into<Vec<Filter>>,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         Ok(self.pool.subscribe_targeted(id, targets, opts).await?)
     }
@@ -701,7 +690,7 @@ impl Client {
     /// Sync events with specific relays (negentropy reconciliation)
     ///
     /// <https://github.com/hoytech/negentropy>
-    pub async fn sync_with<I, U>(
+    pub async fn sync_with<'a, I, U>(
         &self,
         urls: I,
         filter: Filter,
@@ -709,8 +698,7 @@ impl Client {
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         Ok(self.pool.sync_with(urls, filter, opts).await?)
     }
@@ -770,7 +758,7 @@ impl Client {
     /// To use another exit policy, check [`RelayPool::fetch_events_from`].
     /// For long-lived subscriptions, check [`Client::subscribe_to`].
     #[inline]
-    pub async fn fetch_events_from<I, U, F>(
+    pub async fn fetch_events_from<'a, I, U, F>(
         &self,
         urls: I,
         filters: F,
@@ -778,9 +766,8 @@ impl Client {
     ) -> Result<Events, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
+        U: Into<RelayUrlArg<'a>>,
         F: Into<Vec<Filter>>,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         Ok(self
             .pool
@@ -895,7 +882,7 @@ impl Client {
     /// To use another exit policy, check [`RelayPool::stream_events_from`].
     /// For long-lived subscriptions, check [`Client::subscribe_to`].
     #[inline]
-    pub async fn stream_events_from<I, U, F>(
+    pub async fn stream_events_from<'a, I, U, F>(
         &self,
         urls: I,
         filters: F,
@@ -903,9 +890,8 @@ impl Client {
     ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
+        U: Into<RelayUrlArg<'a>>,
         F: Into<Vec<Filter>>,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let stream = self
             .pool
@@ -926,16 +912,15 @@ impl Client {
     /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
     /// To use another exit policy, check [`RelayPool::stream_events_targeted`].
     /// For long-lived subscriptions, check [`Client::subscribe_targeted`].
-    pub async fn stream_events_targeted<I, U, F>(
+    pub async fn stream_events_targeted<'a, I, U, F>(
         &self,
         targets: I,
         timeout: Duration,
     ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error>
     where
         I: IntoIterator<Item = (U, F)>,
-        U: TryIntoUrl,
+        U: Into<RelayUrlArg<'a>>,
         F: Into<Vec<Filter>>,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let stream = self
             .pool
@@ -951,30 +936,28 @@ impl Client {
 
     /// Send the client message to a **specific relays**
     #[inline]
-    pub async fn send_msg_to<I, U>(
+    pub async fn send_msg_to<'a, I, U>(
         &self,
         urls: I,
         msg: ClientMessage<'_>,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         Ok(self.pool.send_msg_to(urls, msg).await?)
     }
 
     /// Batch send client messages to **specific relays**
     #[inline]
-    pub async fn batch_msg_to<I, U>(
+    pub async fn batch_msg_to<'a, I, U>(
         &self,
         urls: I,
         msgs: Vec<ClientMessage<'_>>,
     ) -> Result<Output<()>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         Ok(self.pool.batch_msg_to(urls, msgs).await?)
     }
@@ -1014,15 +997,14 @@ impl Client {
     /// If `gossip` is enabled and the [`Event`] is a NIP17/NIP65 relay list,
     /// the gossip data will be updated.
     #[inline]
-    pub async fn send_event_to<I, U>(
+    pub async fn send_event_to<'a, I, U>(
         &self,
         urls: I,
         event: &Event,
     ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         if let Some(gossip) = &self.gossip {
             gossip.process(event, None).await?;
@@ -1060,15 +1042,14 @@ impl Client {
     ///
     /// Check [`Client::send_event_to`] from more details.
     #[inline]
-    pub async fn send_event_builder_to<I, U>(
+    pub async fn send_event_builder_to<'a, I, U>(
         &self,
         urls: I,
         builder: EventBuilder,
     ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
+        U: Into<RelayUrlArg<'a>>,
     {
         let event: Event = self.sign_event_builder(builder).await?;
         self.send_event_to(urls, &event).await
@@ -1256,7 +1237,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub async fn send_private_msg_to<I, S, U, IT>(
+    pub async fn send_private_msg_to<'a, I, S, U, IT>(
         &self,
         urls: I,
         receiver: PublicKey,
@@ -1266,9 +1247,8 @@ impl Client {
     where
         I: IntoIterator<Item = U>,
         S: Into<String>,
-        U: TryIntoUrl,
+        U: Into<RelayUrlArg<'a>>,
         IT: IntoIterator<Item = Tag>,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         let signer = self.signer().await?;
         let event: Event =
@@ -1312,7 +1292,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub async fn gift_wrap_to<I, U, IT>(
+    pub async fn gift_wrap_to<'a, I, U, IT>(
         &self,
         urls: I,
         receiver: &PublicKey,
@@ -1321,9 +1301,8 @@ impl Client {
     ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
-        U: TryIntoUrl,
+        U: Into<RelayUrlArg<'a>>,
         IT: IntoIterator<Item = Tag>,
-        pool::Error: From<<U as TryIntoUrl>::Err>,
     {
         // Acquire signer
         let signer = self.signer().await?;
