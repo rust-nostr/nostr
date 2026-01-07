@@ -20,13 +20,13 @@ use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard};
 
+use super::capabilities::AtomicRelayCapabilities;
 use super::constants::{
     DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE,
     NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP,
     NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, SLEEP_INTERVAL, WAIT_FOR_OK_TIMEOUT,
     WEBSOCKET_TX_TIMEOUT,
 };
-use super::flags::AtomicRelayServiceFlags;
 use super::options::{RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, SyncOptions};
 use super::ping::PingTracker;
 use super::stats::RelayConnectionStats;
@@ -154,7 +154,7 @@ pub(crate) struct InnerRelay {
     pub(super) url: RelayUrl,
     pub(super) atomic: Arc<AtomicPrivateData>,
     pub(super) opts: RelayOptions,
-    pub(super) flags: AtomicRelayServiceFlags,
+    pub(super) capabilities: Arc<AtomicRelayCapabilities>,
     pub(super) stats: RelayConnectionStats,
     pub(super) state: SharedState,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
@@ -180,7 +180,7 @@ impl InnerRelay {
                 subscriptions: RwLock::new(HashMap::new()),
                 running: AtomicBool::new(false),
             }),
-            flags: AtomicRelayServiceFlags::new(opts.flags),
+            capabilities: Arc::new(AtomicRelayCapabilities::new(opts.capabilities)),
             opts,
             stats: RelayConnectionStats::default(),
             state,
@@ -747,7 +747,7 @@ impl InnerRelay {
         rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
     ) {
         // (Re)subscribe to relay
-        if self.flags.can_read() {
+        if self.capabilities.can_read() {
             if let Err(e) = self.resubscribe().await {
                 tracing::error!(url = %self.url, error = %e, "Impossible to subscribe.")
             }
@@ -880,7 +880,7 @@ impl InnerRelay {
                 }
                 #[cfg(not(target_arch = "wasm32"))]
                 Message::Pong(bytes) => {
-                    if self.flags.has_ping() && self.state.transport.support_ping() {
+                    if self.opts.ping && self.state.transport.support_ping() {
                         match bytes.try_into() {
                             Ok(nonce) => {
                                 // Nonce from big-endian bytes
@@ -987,7 +987,7 @@ impl InnerRelay {
         loop {
             // Check if support ping
             #[cfg(not(target_arch = "wasm32"))]
-            if self.flags.has_ping() && self.state.transport.support_ping() {
+            if self.opts.ping && self.state.transport.support_ping() {
                 // Ping supported, ping!
                 self.atomic.channels.ping();
             }
@@ -1321,12 +1321,12 @@ impl InnerRelay {
         }
 
         // If it can't write, check if there are "write" messages
-        if !self.flags.can_write() && msgs.iter().any(|msg| msg.is_event()) {
+        if !self.capabilities.can_write() && msgs.iter().any(|msg| msg.is_event()) {
             return Err(Error::WriteDisabled);
         }
 
         // If it can't read, check if there are "read" messages
-        if !self.flags.can_read() && msgs.iter().any(|msg| msg.is_req() || msg.is_close()) {
+        if !self.capabilities.can_read() && msgs.iter().any(|msg| msg.is_req() || msg.is_close()) {
             return Err(Error::ReadDisabled);
         }
 
