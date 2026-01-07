@@ -9,15 +9,16 @@ use std::time::Duration;
 use async_wsocket::ConnectionMode;
 use tokio::sync::watch::{self, Receiver, Sender};
 
+use super::capabilities::RelayCapabilities;
 use super::constants::{DEFAULT_NOTIFICATION_CHANNEL_SIZE, DEFAULT_RETRY_INTERVAL};
-use super::flags::RelayServiceFlags;
 use crate::RelayLimits;
 
 /// Relay options
 #[derive(Debug, Clone)]
 pub struct RelayOptions {
     pub(super) connection_mode: ConnectionMode,
-    pub(super) flags: RelayServiceFlags,
+    pub(super) capabilities: RelayCapabilities,
+    pub(super) ping: bool,
     pub(super) reconnect: bool,
     pub(super) sleep_when_idle: bool,
     pub(super) idle_timeout: Duration,
@@ -34,7 +35,8 @@ impl Default for RelayOptions {
     fn default() -> Self {
         Self {
             connection_mode: ConnectionMode::default(),
-            flags: RelayServiceFlags::default(),
+            capabilities: RelayCapabilities::default(),
+            ping: true,
             reconnect: true,
             sleep_when_idle: false,
             idle_timeout: Duration::from_secs(300),
@@ -64,38 +66,15 @@ impl RelayOptions {
     }
 
     /// Set Relay Service Flags
-    pub fn flags(mut self, flags: RelayServiceFlags) -> Self {
-        self.flags = flags;
+    pub fn capabilities(mut self, capabilities: RelayCapabilities) -> Self {
+        self.capabilities = capabilities;
         self
     }
 
-    /// Set read flag
-    pub fn read(mut self, read: bool) -> Self {
-        if read {
-            self.flags.add(RelayServiceFlags::READ);
-        } else {
-            self.flags.remove(RelayServiceFlags::READ);
-        }
-        self
-    }
-
-    /// Set write flag
-    pub fn write(mut self, write: bool) -> Self {
-        if write {
-            self.flags.add(RelayServiceFlags::WRITE);
-        } else {
-            self.flags.remove(RelayServiceFlags::WRITE);
-        }
-        self
-    }
-
-    /// Set ping flag
-    pub fn ping(mut self, ping: bool) -> Self {
-        if ping {
-            self.flags.add(RelayServiceFlags::PING);
-        } else {
-            self.flags.remove(RelayServiceFlags::PING);
-        }
+    /// Enable or disable ping
+    #[inline]
+    pub fn ping(mut self, enable: bool) -> Self {
+        self.ping = enable;
         self
     }
 

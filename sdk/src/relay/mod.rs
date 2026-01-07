@@ -8,6 +8,7 @@ use std::borrow::Cow;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
@@ -19,9 +20,9 @@ use atomic_destructor::AtomicDestructor;
 use nostr_database::prelude::*;
 use tokio::sync::{broadcast, mpsc};
 
+pub mod capabilities;
 pub mod constants;
 mod error;
-pub mod flags;
 mod inner;
 pub mod limits;
 pub mod options;
@@ -29,9 +30,9 @@ mod ping;
 pub mod stats;
 mod status;
 
+pub use self::capabilities::{AtomicRelayCapabilities, RelayCapabilities};
 use self::constants::{WAIT_FOR_AUTHENTICATION_TIMEOUT, WAIT_FOR_OK_TIMEOUT};
 pub use self::error::Error;
-pub use self::flags::{AtomicRelayServiceFlags, FlagCheck, RelayServiceFlags};
 use self::inner::InnerRelay;
 pub use self::limits::RelayLimits;
 pub use self::options::{
@@ -227,10 +228,10 @@ impl Relay {
         self.status().is_connected()
     }
 
-    /// Get Relay Service Flags
+    /// Get relay capabilities
     #[inline]
-    pub fn flags(&self) -> &AtomicRelayServiceFlags {
-        &self.inner.flags
+    pub fn capabilities(&self) -> &Arc<AtomicRelayCapabilities> {
+        &self.inner.capabilities
     }
 
     /// Get subscriptions
@@ -756,7 +757,7 @@ impl Relay {
         self.inner.ensure_operational()?;
 
         // Check if relay can read
-        if !self.inner.flags.can_read() {
+        if !self.inner.capabilities.can_read() {
             return Err(Error::ReadDisabled);
         }
 
