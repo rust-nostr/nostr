@@ -33,12 +33,12 @@ use self::inner::{InnerRelayPool, Relays};
 pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
 use crate::monitor::Monitor;
-use crate::relay::flags::FlagCheck;
+use crate::relay::capabilities::RelayCapabilities;
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
 use crate::relay::Relay;
 use crate::shared::SharedState;
 use crate::stream::{BoxedStream, ReceiverStream};
-use crate::{Reconciliation, RelayServiceFlags, SubscribeOptions};
+use crate::{Reconciliation, SubscribeOptions};
 
 /// Relay Pool Notification
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -163,24 +163,23 @@ impl RelayPool {
         self.inner.state.database()
     }
 
-    fn internal_relays_with_flag<'a>(
+    fn internal_relays_with_any_cap<'a>(
         &self,
         txn: &'a RwLockReadGuard<'a, Relays>,
-        flag: RelayServiceFlags,
-        check: FlagCheck,
+        capabilities: RelayCapabilities,
     ) -> impl Iterator<Item = (&'a RelayUrl, &'a Relay)> + 'a {
-        txn.iter().filter(move |(_, r)| r.flags().has(flag, check))
+        txn.iter()
+            .filter(move |(_, r)| r.capabilities().has_any(capabilities))
     }
 
-    /// Get relay URLs with specific flag/s
+    /// Get relay URLs with specific capabilities
     #[doc(hidden)]
-    pub async fn __relay_urls_with_flag(
+    pub async fn __relay_urls_with_any_cap(
         &self,
-        flag: RelayServiceFlags,
-        check: FlagCheck,
+        capabilities: RelayCapabilities,
     ) -> Vec<RelayUrl> {
         let relays = self.inner.atomic.relays.read().await;
-        self.internal_relays_with_flag(&relays, flag, check)
+        self.internal_relays_with_any_cap(&relays, capabilities)
             .map(|(k, ..)| k.clone())
             .collect()
     }
@@ -188,24 +187,21 @@ impl RelayPool {
     /// Get relays with `READ` or `WRITE` relays
     #[doc(hidden)]
     pub async fn __relay_urls(&self) -> Vec<RelayUrl> {
-        self.__relay_urls_with_flag(
-            RelayServiceFlags::READ | RelayServiceFlags::WRITE,
-            FlagCheck::Any,
-        )
-        .await
+        self.__relay_urls_with_any_cap(RelayCapabilities::READ | RelayCapabilities::WRITE)
+            .await
     }
 
     /// Get only READ relays
     #[doc(hidden)]
     pub async fn __read_relay_urls(&self) -> Vec<RelayUrl> {
-        self.__relay_urls_with_flag(RelayServiceFlags::READ, FlagCheck::All)
+        self.__relay_urls_with_any_cap(RelayCapabilities::READ)
             .await
     }
 
     /// Get only WRITE relays
     #[doc(hidden)]
     pub async fn __write_relay_urls(&self) -> Vec<RelayUrl> {
-        self.__relay_urls_with_flag(RelayServiceFlags::WRITE, FlagCheck::All)
+        self.__relay_urls_with_any_cap(RelayCapabilities::WRITE)
             .await
     }
 
@@ -217,25 +213,21 @@ impl RelayPool {
         relays.clone()
     }
 
-    /// Get relays with `READ` or `WRITE` flags
-    pub async fn relays(&self) -> HashMap<RelayUrl, Relay> {
-        self.relays_with_flag(
-            RelayServiceFlags::READ | RelayServiceFlags::WRITE,
-            FlagCheck::Any,
-        )
-        .await
-    }
-
-    /// Get relays that have a certain [`RelayServiceFlags`] enabled
-    pub async fn relays_with_flag(
+    /// Get relays that have a certain [`RelayCapabilities`] enabled
+    async fn _relays_with_any_cap(
         &self,
-        flag: RelayServiceFlags,
-        check: FlagCheck,
+        capabilities: RelayCapabilities,
     ) -> HashMap<RelayUrl, Relay> {
         let relays = self.inner.atomic.relays.read().await;
-        self.internal_relays_with_flag(&relays, flag, check)
+        self.internal_relays_with_any_cap(&relays, capabilities)
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect()
+    }
+
+    /// Get relays with `READ` or `WRITE` capabilities
+    pub async fn relays(&self) -> HashMap<RelayUrl, Relay> {
+        self._relays_with_any_cap(RelayCapabilities::READ | RelayCapabilities::WRITE)
+            .await
     }
 
     #[inline]
@@ -259,7 +251,7 @@ impl RelayPool {
 
     /// Add new relay
     ///
-    /// If the [`RelayServiceFlags::READ`] flag is set in [`RelayOptions`]
+    /// If the [`RelayCapabilities::READ`] capability is set in [`RelayOptions`]
     /// and the pool has some subscriptions, the new added relay will inherit them.
     /// Use [`RelayPool::subscribe_to`] method instead of [`RelayPool::subscribe`],
     /// to avoid setting pool subscriptions.
@@ -303,8 +295,8 @@ impl RelayPool {
             .inner
             .set_notification_sender(self.inner.notification_sender.clone());
 
-        // If relay has `READ` flag, inherit pool subscriptions
-        if relay.flags().has_read() {
+        // If relay has `READ` capability, inherit pool subscriptions
+        if relay.capabilities().has_read() {
             let subscriptions = self.inner.atomic.inherit_subscriptions.read().await;
             for (id, filter) in subscriptions.iter() {
                 relay
@@ -353,7 +345,7 @@ impl RelayPool {
         // Remove relay
         let relay: Relay = relays.remove(&url).ok_or(Error::RelayNotFound)?;
 
-        // If NOT force, check if it has `GOSSIP` flag
+        // If NOT force, check if it has `GOSSIP` capability
         if !force {
             // If can't be removed, re-insert it.
             if !can_remove_relay(&relay) {
@@ -370,9 +362,9 @@ impl RelayPool {
 
     /// Remove and disconnect relay
     ///
-    /// If the relay has [`RelayServiceFlags::GOSSIP`], it will not be removed from the pool and its
-    /// flags will be updated (remove [`RelayServiceFlags::READ`],
-    /// [`RelayServiceFlags::WRITE`] and [`RelayServiceFlags::DISCOVERY`] flags).
+    /// If the relay has [`RelayCapabilities::GOSSIP`], it will not be removed from the pool and its
+    /// capabilities will be updated (remove [`RelayCapabilities::READ`],
+    /// [`RelayCapabilities::WRITE`] and [`RelayCapabilities::DISCOVERY`] capabilities).
     ///
     /// To fore remove a relay use [`RelayPool::force_remove_relay`].
     #[inline]
@@ -720,7 +712,7 @@ impl RelayPool {
         Ok(output)
     }
 
-    /// Send event to all relays with `WRITE` flag (check [`RelayServiceFlags`] for more details).
+    /// Send event to all relays with `WRITE` capability (check [`RelayCapabilities`] for more details).
     pub async fn send_event(&self, event: &Event) -> Result<Output<EventId>, Error> {
         let urls: Vec<RelayUrl> = self.__write_relay_urls().await;
         self.send_event_to(urls, event).await
@@ -796,7 +788,7 @@ impl RelayPool {
         Ok(output)
     }
 
-    /// Subscribe to filters to all relays with `READ` flag.
+    /// Subscribe to filters to all relays with `READ` capability.
     ///
     /// Check [`RelayPool::subscribe_with_id_to`] docs to learn more.
     pub async fn subscribe<F>(
@@ -816,7 +808,7 @@ impl RelayPool {
         })
     }
 
-    /// Subscribe to filters with custom [SubscriptionId] to all relays with `READ` flag.
+    /// Subscribe to filters with custom [SubscriptionId] to all relays with `READ` capability.
     ///
     /// Check [`RelayPool::subscribe_with_id_to`] docs to learn more.
     pub async fn subscribe_with_id<F>(
@@ -1106,7 +1098,7 @@ impl RelayPool {
         Ok(output)
     }
 
-    /// Fetch events from relays with [`RelayServiceFlags::READ`] flag.
+    /// Fetch events from relays with [`RelayCapabilities::READ`] capability.
     pub async fn fetch_events<F>(
         &self,
         filters: F,
@@ -1167,7 +1159,7 @@ impl RelayPool {
         Ok(events)
     }
 
-    /// Stream events from relays with `READ` flag.
+    /// Stream events from relays with `READ` capability.
     pub async fn stream_events<F>(
         &self,
         filters: F,
@@ -1351,16 +1343,16 @@ impl RelayPool {
 /// Return `true` if the relay can be removed
 ///
 /// If it CAN'T be removed,
-/// the flags are automatically updated (remove `READ`, `WRITE` and `DISCOVERY` flags).
+/// the capabilities are automatically updated (remove `READ`, `WRITE` and `DISCOVERY` capabilities).
 fn can_remove_relay(relay: &Relay) -> bool {
-    let flags = relay.flags();
-    if flags.has_any(RelayServiceFlags::GOSSIP) {
-        // Remove READ, WRITE and DISCOVERY flags
-        flags.remove(
-            RelayServiceFlags::READ | RelayServiceFlags::WRITE | RelayServiceFlags::DISCOVERY,
+    let capabilities = relay.capabilities();
+    if capabilities.has_any(RelayCapabilities::GOSSIP) {
+        // Remove READ, WRITE and DISCOVERY capabilities
+        capabilities.remove(
+            RelayCapabilities::READ | RelayCapabilities::WRITE | RelayCapabilities::DISCOVERY,
         );
 
-        // Relay has `GOSSIP` flag so it can't be removed.
+        // Relay has `GOSSIP` capability so it can't be removed.
         return false;
     }
 
@@ -1375,9 +1367,9 @@ mod tests {
     use super::*;
 
     fn relay_gossip_opts() -> RelayOptions {
-        let mut flags: RelayServiceFlags = RelayServiceFlags::default();
-        flags.add(RelayServiceFlags::GOSSIP);
-        RelayOptions::default().flags(flags)
+        let mut capabilities: RelayCapabilities = RelayCapabilities::default();
+        capabilities.add(RelayCapabilities::GOSSIP);
+        RelayOptions::default().capabilities(capabilities)
     }
 
     #[tokio::test]

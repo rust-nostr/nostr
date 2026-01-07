@@ -27,7 +27,7 @@ pub mod transport;
 pub use self::client::{Client, ClientBuilder, ClientOptions};
 pub use self::pool::options::RelayPoolOptions;
 pub use self::pool::{Output, RelayPool, RelayPoolNotification};
-pub use self::relay::flags::{AtomicRelayServiceFlags, RelayServiceFlags};
+pub use self::relay::capabilities::{AtomicRelayCapabilities, RelayCapabilities};
 pub use self::relay::limits::RelayLimits;
 pub use self::relay::options::{
     RelayOptions, SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection, SyncOptions,

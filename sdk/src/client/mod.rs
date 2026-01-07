@@ -33,7 +33,7 @@ pub use self::options::{Connection, ConnectionTarget};
 use crate::monitor::Monitor;
 use crate::pool::{self, Output, RelayPool, RelayPoolBuilder, RelayPoolNotification};
 use crate::relay::{
-    FlagCheck, Reconciliation, Relay, RelayOptions, RelayServiceFlags, ReqExitPolicy,
+    Reconciliation, Relay, RelayCapabilities, RelayOptions, ReqExitPolicy,
     SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection, SyncOptions,
 };
 use crate::stream::BoxedStream;
@@ -219,10 +219,9 @@ impl Client {
         self.pool.notifications()
     }
 
-    /// Get relays with [`RelayServiceFlags::READ`] or [`RelayServiceFlags::WRITE`] flags
+    /// Get relays with [`RelayCapabilities::READ`] or [`RelayCapabilities::WRITE`] capabilities
     ///
     /// Call [`RelayPool::all_relays`] to get all relays
-    /// or [`RelayPool::relays_with_flag`] to get relays with specific [`RelayServiceFlags`].
     #[inline]
     pub async fn relays(&self) -> HashMap<RelayUrl, Relay> {
         self.pool.relays().await
@@ -286,7 +285,7 @@ impl Client {
     async fn get_or_add_relay_with_flag<'a, U>(
         &self,
         url: U,
-        flag: RelayServiceFlags,
+        capabilities: RelayCapabilities,
     ) -> Result<bool, Error>
     where
         U: Into<RelayUrlArg<'a>>,
@@ -301,13 +300,13 @@ impl Client {
         // Compose relay options
         let opts: RelayOptions = self.compose_relay_opts(&url).await;
 
-        // Set flag
-        let opts: RelayOptions = opts.flags(flag);
+        // Set capabilities
+        let opts: RelayOptions = opts.capabilities(capabilities);
 
         // Add relay with opts or edit current one
         match self.pool.__get_or_add_relay(url, opts).await? {
             Some(relay) => {
-                relay.flags().add(flag);
+                relay.capabilities().add(capabilities);
                 Ok(false)
             }
             None => Ok(true),
@@ -316,9 +315,9 @@ impl Client {
 
     /// Add relay
     ///
-    /// Relays added with this method will have both [`RelayServiceFlags::READ`] and [`RelayServiceFlags::WRITE`] flags enabled.
+    /// Relays added with this method will have both [`RelayCapabilities::READ`] and [`RelayCapabilities::WRITE`] capabilities enabled.
     ///
-    /// If the relay already exists, the flags will be updated and `false` returned.
+    /// If the relay already exists, the capabilities will be updated and `false` returned.
     ///
     /// If are set pool subscriptions, the new added relay will inherit them. Use [`Client::subscribe_to`] method instead of [`Client::subscribe`],
     /// to avoid to set pool subscriptions.
@@ -332,13 +331,13 @@ impl Client {
     where
         U: Into<RelayUrlArg<'a>>,
     {
-        self.get_or_add_relay_with_flag(url, RelayServiceFlags::default())
+        self.get_or_add_relay_with_flag(url, RelayCapabilities::default())
             .await
     }
 
     /// Add discovery relay
     ///
-    /// If relay already exists, this method automatically add the [`RelayServiceFlags::DISCOVERY`] flag to it and return `false`.
+    /// If relay already exists, this method automatically add the [`RelayCapabilities::DISCOVERY`] flag to it and return `false`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     #[inline]
@@ -346,13 +345,13 @@ impl Client {
     where
         U: Into<RelayUrlArg<'a>>,
     {
-        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::DISCOVERY)
+        self.get_or_add_relay_with_flag(url, RelayCapabilities::DISCOVERY)
             .await
     }
 
     /// Add read relay
     ///
-    /// If relay already exists, this method add the [`RelayServiceFlags::READ`] flag to it and return `false`.
+    /// If relay already exists, this method add the [`RelayCapabilities::READ`] flag to it and return `false`.
     ///
     /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
     /// to avoid to set pool subscriptions.
@@ -361,19 +360,19 @@ impl Client {
     where
         U: Into<RelayUrlArg<'a>>,
     {
-        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::READ)
+        self.get_or_add_relay_with_flag(url, RelayCapabilities::READ)
             .await
     }
 
     /// Add write relay
     ///
-    /// If relay already exists, this method add the [`RelayServiceFlags::WRITE`] flag to it and return `false`.
+    /// If relay already exists, this method add the [`RelayCapabilities::WRITE`] flag to it and return `false`.
     #[inline]
     pub async fn add_write_relay<'a, U>(&self, url: U) -> Result<bool, Error>
     where
         U: Into<RelayUrlArg<'a>>,
     {
-        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::WRITE)
+        self.get_or_add_relay_with_flag(url, RelayCapabilities::WRITE)
             .await
     }
 
@@ -382,15 +381,15 @@ impl Client {
     where
         U: Into<RelayUrlArg<'a>>,
     {
-        self.get_or_add_relay_with_flag(url, RelayServiceFlags::PING | RelayServiceFlags::GOSSIP)
+        self.get_or_add_relay_with_flag(url, RelayCapabilities::GOSSIP)
             .await
     }
 
     /// Remove and disconnect relay
     ///
-    /// If the relay has [`RelayServiceFlags::GOSSIP`], it will not be removed from the pool and its
-    /// flags will be updated (remove [`RelayServiceFlags::READ`],
-    /// [`RelayServiceFlags::WRITE`] and [`RelayServiceFlags::DISCOVERY`] flags).
+    /// If the relay has [`RelayCapabilities::GOSSIP`], it will not be removed from the pool and its
+    /// capabilities will be updated (remove [`RelayCapabilities::READ`],
+    /// [`RelayCapabilities::WRITE`] and [`RelayCapabilities::DISCOVERY`] capabilities).
     ///
     /// To force remove the relay, use [`Client::force_remove_relay`].
     #[inline]
@@ -975,7 +974,7 @@ impl Client {
     ///
     /// # Overview
     ///
-    /// Send the [`Event`] to all relays with [`RelayServiceFlags::WRITE`] flag.
+    /// Send the [`Event`] to all relays with [`RelayCapabilities::WRITE`] flag.
     ///
     /// # Gossip
     ///
@@ -1207,7 +1206,7 @@ impl Client {
     /// Send a private direct message
     ///
     /// If `gossip` is enabled the message will be sent to the NIP17 relays (automatically discovered).
-    /// If gossip is not enabled will be sent to all relays with [`RelayServiceFlags::WRITE`] flag.
+    /// If gossip is not enabled will be sent to all relays with [`RelayCapabilities::WRITE`] flag.
     ///
     /// This method requires a [`NostrSigner`].
     ///
@@ -1497,10 +1496,7 @@ impl Client {
         // Get DISCOVERY and READ relays
         let urls: Vec<RelayUrl> = self
             .pool
-            .__relay_urls_with_flag(
-                RelayServiceFlags::DISCOVERY | RelayServiceFlags::READ,
-                FlagCheck::Any,
-            )
+            .__relay_urls_with_any_cap(RelayCapabilities::DISCOVERY | RelayCapabilities::READ)
             .await;
 
         // Negentropy sync
