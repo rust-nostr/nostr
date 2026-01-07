@@ -150,7 +150,7 @@ impl NostrConnect {
         let notifications = self.client.notifications();
 
         // Subscribe
-        self.client.subscribe(filter, None).await?;
+        self.client.subscribe(filter).await?;
 
         Ok(notifications)
     }

@@ -177,6 +177,7 @@ impl SubscribeOptions {
         self
     }
 
+    #[cfg(test)]
     pub(crate) fn is_auto_closing(&self) -> bool {
         self.auto_close.is_some()
     }

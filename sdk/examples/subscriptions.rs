@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
         .since(Timestamp::now());
 
     // Subscribe (auto generate subscription ID)
-    let Output { val: sub_id_1, .. } = client.subscribe(subscription, None).await?;
+    let Output { val: sub_id_1, .. } = client.subscribe(subscription).await?;
 
     // Subscribe with custom ID
     let sub_id_2 = SubscriptionId::new("other-id");
@@ -33,18 +33,14 @@ async fn main() -> Result<()> {
         .author(public_key)
         .kind(Kind::TextNote)
         .since(Timestamp::now());
-    client
-        .subscribe_with_id(sub_id_2.clone(), filter, None)
-        .await?;
+    client.subscribe(filter).with_id(sub_id_2.clone()).await?;
 
     // Overwrite previous subscription
     let filter = Filter::new()
         .author(public_key)
         .kind(Kind::EncryptedDirectMessage)
         .since(Timestamp::now());
-    client
-        .subscribe_with_id(sub_id_1.clone(), filter, None)
-        .await?;
+    client.subscribe(filter).with_id(sub_id_1.clone()).await?;
 
     // Handle subscription notifications with `handle_notifications` method
     client

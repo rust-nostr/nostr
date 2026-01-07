@@ -35,7 +35,7 @@ pub use self::output::Output;
 use crate::monitor::Monitor;
 use crate::relay::capabilities::RelayCapabilities;
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SubscribeOptions, SyncOptions};
-use crate::relay::{AtomicRelayCapabilities, Reconciliation, Relay};
+use crate::relay::{AtomicRelayCapabilities, Reconciliation, Relay, SubscribeAutoCloseOptions};
 use crate::shared::SharedState;
 use crate::stream::{BoxedStream, ReceiverStream};
 
@@ -171,9 +171,7 @@ impl RelayPool {
             .filter(move |(_, r)| r.capabilities().has_any(capabilities))
     }
 
-    /// Get relay URLs with specific capabilities
-    #[doc(hidden)]
-    pub async fn __relay_urls_with_any_cap(
+    pub(crate) async fn relay_urls_with_any_cap(
         &self,
         capabilities: RelayCapabilities,
     ) -> Vec<RelayUrl> {
@@ -183,31 +181,21 @@ impl RelayPool {
             .collect()
     }
 
-    /// Get relays with `READ` or `WRITE` relays
-    #[doc(hidden)]
-    pub async fn __relay_urls(&self) -> Vec<RelayUrl> {
-        self.__relay_urls_with_any_cap(RelayCapabilities::READ | RelayCapabilities::WRITE)
+    pub(crate) async fn relay_urls(&self) -> Vec<RelayUrl> {
+        self.relay_urls_with_any_cap(RelayCapabilities::READ | RelayCapabilities::WRITE)
             .await
     }
 
-    /// Get only READ relays
-    #[doc(hidden)]
-    pub async fn __read_relay_urls(&self) -> Vec<RelayUrl> {
-        self.__relay_urls_with_any_cap(RelayCapabilities::READ)
-            .await
+    pub(crate) async fn read_relay_urls(&self) -> Vec<RelayUrl> {
+        self.relay_urls_with_any_cap(RelayCapabilities::READ).await
     }
 
-    /// Get only WRITE relays
-    #[doc(hidden)]
-    pub async fn __write_relay_urls(&self) -> Vec<RelayUrl> {
-        self.__relay_urls_with_any_cap(RelayCapabilities::WRITE)
-            .await
+    pub(crate) async fn write_relay_urls(&self) -> Vec<RelayUrl> {
+        self.relay_urls_with_any_cap(RelayCapabilities::WRITE).await
     }
 
-    /// Get all relays
-    ///
-    /// This method returns all relays added to the pool, including the ones for gossip protocol or other services.
-    pub async fn all_relays(&self) -> HashMap<RelayUrl, Relay> {
+    #[cfg(test)]
+    pub(crate) async fn all_relays(&self) -> HashMap<RelayUrl, Relay> {
         let relays = self.inner.atomic.relays.read().await;
         relays.clone()
     }
@@ -655,7 +643,7 @@ impl RelayPool {
 
     /// Send event to all relays with `WRITE` capability (check [`RelayCapabilities`] for more details).
     pub async fn send_event(&self, event: &Event) -> Result<Output<EventId>, Error> {
-        let urls: Vec<RelayUrl> = self.__write_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.write_relay_urls().await;
         self.send_event_to(urls, event).await
     }
 
@@ -729,159 +717,45 @@ impl RelayPool {
         Ok(output)
     }
 
-    /// Subscribe to filters to all relays with `READ` capability.
-    ///
-    /// Check [`RelayPool::subscribe_with_id_to`] docs to learn more.
-    pub async fn subscribe<F>(
+    pub(crate) async fn subscribe(
         &self,
-        filters: F,
-        opts: SubscribeOptions,
-    ) -> Result<Output<SubscriptionId>, Error>
-    where
-        F: Into<Vec<Filter>>,
-    {
-        let id: SubscriptionId = SubscriptionId::generate();
-        let output: Output<()> = self.subscribe_with_id(id.clone(), filters, opts).await?;
-        Ok(Output {
-            val: id,
-            success: output.success,
-            failed: output.failed,
-        })
-    }
-
-    /// Subscribe to filters with custom [SubscriptionId] to all relays with `READ` capability.
-    ///
-    /// Check [`RelayPool::subscribe_with_id_to`] docs to learn more.
-    pub async fn subscribe_with_id<F>(
-        &self,
-        id: SubscriptionId,
-        filters: F,
-        opts: SubscribeOptions,
-    ) -> Result<Output<()>, Error>
-    where
-        F: Into<Vec<Filter>>,
-    {
-        // Convert filters
-        let filters: Vec<Filter> = filters.into();
-
-        // Check if isn't auto-closing subscription
-        if !opts.is_auto_closing() {
-            // Save subscription
-            self.save_subscription(id.clone(), filters.clone()).await;
-        }
-
-        // Get relay urls
-        let urls: Vec<RelayUrl> = self.__read_relay_urls().await;
-
-        // Subscribe
-        self.subscribe_with_id_to(urls, id, filters, opts).await
-    }
-
-    /// Subscribe to filters to specific relays
-    ///
-    /// Check [`RelayPool::subscribe_with_id_to`] docs to learn more.
-    pub async fn subscribe_to<'a, I, U, F>(
-        &self,
-        urls: I,
-        filters: F,
-        opts: SubscribeOptions,
-    ) -> Result<Output<SubscriptionId>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: Into<RelayUrlArg<'a>>,
-        F: Into<Vec<Filter>>,
-    {
-        let id: SubscriptionId = SubscriptionId::generate();
-        let output: Output<()> = self
-            .subscribe_with_id_to(urls, id.clone(), filters, opts)
-            .await?;
-        Ok(Output {
-            val: id,
-            success: output.success,
-            failed: output.failed,
-        })
-    }
-
-    /// Subscribe to filters with custom [SubscriptionId] to specific relays
-    ///
-    /// This method doesn't add relays!
-    /// All the relays must be added to the pool with [`RelayPool::add_relay`].
-    /// If the specified relays don't exist, [`Error::RelayNotFound`] is returned.
-    ///
-    /// ### Auto-closing subscription
-    ///
-    /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
-    ///
-    /// Auto-closing subscriptions aren't saved in the subscription map!
-    pub async fn subscribe_with_id_to<'a, I, U, F>(
-        &self,
-        urls: I,
-        id: SubscriptionId,
-        filters: F,
-        opts: SubscribeOptions,
-    ) -> Result<Output<()>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: Into<RelayUrlArg<'a>>,
-        F: Into<Vec<Filter>>,
-    {
-        let filters: Vec<Filter> = filters.into();
-        let targets = urls.into_iter().map(|u| (u, filters.clone()));
-        self.subscribe_targeted(id, targets, opts).await
-    }
-
-    /// Targeted subscription
-    ///
-    /// Subscribe to specific relays with specific filters.
-    pub async fn subscribe_targeted<'a, I, U, F>(
-        &self,
-        id: SubscriptionId,
-        targets: I,
-        opts: SubscribeOptions,
-    ) -> Result<Output<()>, Error>
-    where
-        I: IntoIterator<Item = (U, F)>,
-        U: Into<RelayUrlArg<'a>>,
-        F: Into<Vec<Filter>>,
-    {
-        // Collect targets
-        let targets: HashMap<Cow<RelayUrl>, Vec<Filter>> = targets
-            .into_iter()
-            .map(|(u, f)| Ok((u.into().try_into_relay_url()?, f.into())))
-            .collect::<Result<_, Error>>()?;
-
+        filters: HashMap<RelayUrl, Vec<Filter>>,
+        id: Option<SubscriptionId>,
+        auto_close: Option<SubscribeAutoCloseOptions>,
+    ) -> Result<Output<SubscriptionId>, Error> {
         // Check if urls set is empty
-        if targets.is_empty() {
+        if filters.is_empty() {
             return Err(Error::NoRelaysSpecified);
         }
 
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
 
-        // Check if relays map is empty
-        if relays.is_empty() {
-            return Err(Error::NoRelays);
-        }
+        let mut urls: Vec<RelayUrl> = Vec::with_capacity(filters.len());
+        let mut futures = Vec::with_capacity(filters.len());
 
-        // Check if urls set contains ONLY already added relays
-        if !targets.keys().all(|url| relays.contains_key(url)) {
-            return Err(Error::RelayNotFound);
-        }
-
-        let mut urls: Vec<RelayUrl> = Vec::with_capacity(targets.len());
-        let mut futures = Vec::with_capacity(targets.len());
-        let mut output: Output<()> = Output::default();
+        // Get ID
+        let id: SubscriptionId = id.unwrap_or_else(SubscriptionId::generate);
 
         // Compose futures
-        for (url, filter) in targets.into_iter() {
-            let relay: &Relay = self.internal_relay(&relays, &url)?;
+        for (url, filter) in filters.into_iter() {
+            // Get relay
+            let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
+
+            // Prepare
             let id: SubscriptionId = id.clone();
-            urls.push(url.into_owned());
+            let opts: SubscribeOptions = SubscribeOptions::default().close_on(auto_close);
+
+            // Create future
+            urls.push(url);
             futures.push(relay.subscribe_with_id(id, filter, opts));
         }
 
         // Join futures
         let list = future::join_all(futures).await;
+
+        // Create an empty output
+        let mut output: Output<SubscriptionId> = Output::new(id);
 
         // Iter results and construct output
         for (url, result) in urls.into_iter().zip(list.into_iter()) {
@@ -941,7 +815,7 @@ impl RelayPool {
         filter: Filter,
         opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
-        let urls: Vec<RelayUrl> = self.__relay_urls().await;
+        let urls: Vec<RelayUrl> = self.relay_urls().await;
         self.sync_with(urls, filter, opts).await
     }
 
@@ -1049,7 +923,7 @@ impl RelayPool {
     where
         F: Into<Vec<Filter>>,
     {
-        let urls: Vec<RelayUrl> = self.__read_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.read_relay_urls().await;
         self.fetch_events_from(urls, filters, timeout, policy).await
     }
 
@@ -1110,7 +984,7 @@ impl RelayPool {
     where
         F: Into<Vec<Filter>>,
     {
-        let urls: Vec<RelayUrl> = self.__read_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.read_relay_urls().await;
         self.stream_events_from(urls, filters, timeout, policy)
             .await
     }
