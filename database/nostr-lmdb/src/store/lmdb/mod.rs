@@ -84,6 +84,8 @@ pub(crate) struct Lmdb {
     deleted_ids: Database<Bytes, Unit>, // Event ID
     /// Deleted coordinates
     deleted_coordinates: Database<Bytes, U64<NativeEndian>>, // Coordinate, UNIX timestamp
+    /// Vanished public keys
+    vanished_public_keys: Database<Bytes, Unit>, // Public key
 }
 
 impl Lmdb {
@@ -154,6 +156,11 @@ impl Lmdb {
             .types::<Bytes, U64<NativeEndian>>()
             .name("deleted-coordinates")
             .create(&mut txn)?;
+        let vanished_public_keys = env
+            .database_options()
+            .types::<Bytes, Unit>()
+            .name("vanished-public-keys")
+            .create(&mut txn)?;
 
         // Commit changes
         txn.commit()?;
@@ -169,6 +176,7 @@ impl Lmdb {
             ktc_index,
             deleted_ids,
             deleted_coordinates,
+            vanished_public_keys,
         })
     }
 
@@ -271,6 +279,7 @@ impl Lmdb {
         self.ktc_index.clear(txn)?;
         self.deleted_ids.clear(txn)?;
         self.deleted_coordinates.clear(txn)?;
+        self.vanished_public_keys.clear(txn)?;
         Ok(())
     }
 
@@ -327,6 +336,11 @@ impl Lmdb {
             return Ok(SaveEventStatus::Rejected(RejectedReason::Deleted));
         }
 
+        // Reject event if the public key was vanished
+        if self.is_pubkey_vanished(txn, &event.pubkey)? {
+            return Ok(SaveEventStatus::Rejected(RejectedReason::Vanished));
+        }
+
         // Reject event if ADDR was deleted after it's created_at date
         // (non-parameterized or parameterized)
         if let Some(coordinate) = event.coordinate() {
@@ -369,6 +383,14 @@ impl Lmdb {
             let invalid: bool = self.handle_deletion_event(txn, event)?;
             if invalid {
                 return Ok(SaveEventStatus::Rejected(RejectedReason::InvalidDelete));
+            }
+        }
+
+        // Handle request to vanish
+        if event.kind == Kind::RequestToVanish {
+            // For now, handling `ALL_RELAYS` only
+            if let Some(TagStandard::AllRelays) = event.tags.find_standardized(TagKind::Relay) {
+                self.handle_request_to_vanish(txn, &event.pubkey)?;
             }
         }
 
@@ -982,6 +1004,36 @@ impl Lmdb {
             .deleted_coordinates
             .get(txn, &key)?
             .map(Timestamp::from_secs))
+    }
+
+    pub(crate) fn mark_pubkey_vanished(
+        &self,
+        txn: &mut RwTxn,
+        pk: &PublicKey,
+    ) -> Result<(), Error> {
+        self.vanished_public_keys.put(txn, pk.as_bytes(), &())?;
+        Ok(())
+    }
+
+    #[inline]
+    pub(crate) fn is_pubkey_vanished(&self, txn: &RoTxn, pk: &PublicKey) -> Result<bool, Error> {
+        Ok(self.vanished_public_keys.get(txn, pk.as_bytes())?.is_some())
+    }
+
+    pub(crate) fn handle_request_to_vanish(
+        &self,
+        txn: &mut RwTxn,
+        pubkey: &PublicKey,
+    ) -> Result<(), Error> {
+        // Mark public key as vanished
+        self.mark_pubkey_vanished(txn, pubkey)?;
+        // Delete all authored events
+        self.delete(txn, Filter::new().author(*pubkey))?;
+
+        // Delete gift wraps that mention the pubkey
+        // (kind = GiftWrap || 1059, tag "p" with the hex of the pubkey)
+        self.delete(txn, Filter::new().kind(Kind::GiftWrap).pubkey(*pubkey))?;
+        Ok(())
     }
 
     pub(crate) fn ci_iter<'a>(
