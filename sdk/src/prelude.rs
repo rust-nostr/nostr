@@ -8,6 +8,7 @@
 #![allow(ambiguous_glob_reexports)]
 #![doc(hidden)]
 
+pub use async_wsocket::ConnectionMode;
 pub use futures::StreamExt;
 pub use nostr::prelude::*;
 pub use nostr_database::prelude::*;
@@ -15,7 +16,7 @@ pub use nostr_gossip::prelude::*;
 
 pub use crate::client::builder::*;
 pub use crate::client::options::*;
-pub use crate::client::*;
+pub use crate::client::{self, *};
 pub use crate::monitor::{self, *};
 pub use crate::policy::*;
 pub use crate::pool::builder::*;

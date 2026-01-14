@@ -13,10 +13,7 @@ use async_utility::futures_util::{SinkExt, StreamExt};
 use async_wsocket::native::{self, Message, WebSocketStream};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Id, Negentropy, NegentropyStorageVector};
-use nostr_database::prelude::*;
-use nostr_sdk::{
-    Output, Reconciliation, RelayOptions, RelayPool, RelayPoolNotification, SyncOptions,
-};
+use nostr_sdk::prelude::*;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
 use tokio::sync::{broadcast, Notify, OnceCell, Semaphore};

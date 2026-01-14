@@ -32,10 +32,10 @@ pub use self::options::{ClientOptions, SleepWhenIdle};
 pub use self::options::{Connection, ConnectionTarget};
 use crate::monitor::Monitor;
 use crate::pool::{self, Output, RelayPool, RelayPoolBuilder, RelayPoolNotification};
-use crate::relay::{
-    Reconciliation, Relay, RelayCapabilities, RelayOptions, ReqExitPolicy,
-    SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection, SyncOptions,
+use crate::relay::options::{
+    RelayOptions, SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection, SyncOptions,
 };
+use crate::relay::{Reconciliation, Relay, RelayCapabilities, ReqExitPolicy};
 use crate::stream::BoxedStream;
 
 /// Nostr client
