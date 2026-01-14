@@ -40,7 +40,7 @@ pub type NWC = NostrWalletConnect;
 #[derive(Debug, Clone)]
 pub struct NostrWalletConnect {
     uri: NostrWalletConnectUri,
-    pool: RelayPool,
+    client: Client,
     timeout: Duration,
     relay_opts: RelayOptions,
     bootstrapped: Arc<AtomicBool>,
@@ -74,14 +74,14 @@ impl NostrWalletConnect {
     }
 
     fn from_builder(builder: NostrWalletConnectBuilder) -> Self {
-        let pool: RelayPool = match builder.monitor {
-            Some(monitor) => RelayPool::builder().monitor(monitor).build(),
-            None => RelayPool::default(),
+        let client: Client = match builder.monitor {
+            Some(monitor) => Client::builder().monitor(monitor).build(),
+            None => Client::default(),
         };
 
         Self {
             uri: builder.uri,
-            pool,
+            client,
             timeout: builder.timeout,
             relay_opts: builder.relay,
             bootstrapped: Arc::new(AtomicBool::new(false)),
@@ -97,7 +97,7 @@ impl NostrWalletConnect {
 
     /// Get relays status
     pub async fn status(&self) -> HashMap<RelayUrl, RelayStatus> {
-        let relays = self.pool.relays().await;
+        let relays = self.client.relays().await;
         relays.into_iter().map(|(u, r)| (u, r.status())).collect()
     }
 
@@ -110,11 +110,14 @@ impl NostrWalletConnect {
 
         // Add relays
         for url in self.uri.relays.iter() {
-            self.pool.add_relay(url, self.relay_opts.clone()).await?;
+            self.client
+                .pool()
+                .add_relay(url, self.relay_opts.clone())
+                .await?;
         }
 
         // Connect to relays
-        self.pool.connect().await;
+        self.client.connect().await;
 
         // Mark as bootstrapped
         self.bootstrapped.store(true, Ordering::SeqCst);
@@ -139,12 +142,13 @@ impl NostrWalletConnect {
 
         // Subscribe to filter and create the stream
         let mut stream = self
-            .pool
+            .client
+            .pool()
             .stream_events(filter, self.timeout, ReqExitPolicy::WaitForEvents(1))
             .await?;
 
         // Send the request
-        self.pool.send_event(&event).await?;
+        self.client.send_event(&event).await?;
 
         // Wait for the response
         let (_, res) = stream.next().await.ok_or(Error::PrematureExit)?;
@@ -249,7 +253,8 @@ impl NostrWalletConnect {
 
         tracing::debug!("Notification filter: {:?}", notification_filter);
 
-        self.pool
+        self.client
+            .pool()
             .subscribe_with_id(
                 SubscriptionId::new(NOTIFICATIONS_ID),
                 notification_filter,
@@ -269,7 +274,7 @@ impl NostrWalletConnect {
         F: Fn(Notification) -> Fut,
         Fut: Future<Output = Result<bool>>,
     {
-        let mut notifications = self.pool.notifications();
+        let mut notifications = self.client.notifications();
 
         while let Ok(notification) = notifications.recv().await {
             tracing::trace!("Received relay pool notification: {:?}", notification);
@@ -329,7 +334,7 @@ impl NostrWalletConnect {
 
     /// Unsubscribe from notifications
     pub async fn unsubscribe_from_notifications(&self) -> Result<(), Error> {
-        self.pool
+        self.client
             .unsubscribe(&SubscriptionId::new(NOTIFICATIONS_ID))
             .await;
         self.notifications_subscribed.store(false, Ordering::SeqCst);
@@ -350,12 +355,12 @@ impl NostrWalletConnect {
             return Ok(());
         }
 
-        Ok(self.pool.connect_relay(url).await?)
+        Ok(self.client.connect_relay(url).await?)
     }
 
     /// Completely shutdown
     #[inline]
     pub async fn shutdown(self) {
-        self.pool.disconnect().await
+        self.client.disconnect().await
     }
 }

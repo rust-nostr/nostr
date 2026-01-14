@@ -26,7 +26,7 @@ pub struct NostrConnect {
     client_keys: Keys,
     remote_signer_public_key: OnceCell<PublicKey>,
     user_public_key: OnceCell<PublicKey>,
-    pool: RelayPool,
+    client: Client,
     timeout: Duration,
     opts: RelayOptions,
     auth_url_handler: Option<Arc<dyn AuthUrlHandler>>,
@@ -55,7 +55,7 @@ impl NostrConnect {
             // If the URI is bunker, the remote_signer_public_key is set in the bootstrap method.
             remote_signer_public_key: OnceCell::new(),
             user_public_key: OnceCell::new(),
-            pool: RelayPool::default(),
+            client: Client::default(),
             timeout,
             opts: opts.unwrap_or_default(),
             auth_url_handler: None,
@@ -107,18 +107,18 @@ impl NostrConnect {
 
     /// Get relays status
     pub async fn status(&self) -> HashMap<RelayUrl, RelayStatus> {
-        let relays = self.pool.relays().await;
+        let relays = self.client.relays().await;
         relays.into_iter().map(|(u, r)| (u, r.status())).collect()
     }
 
     async fn bootstrap(&self) -> Result<PublicKey, Error> {
         // Add relays
         for url in self.uri.relays().iter() {
-            self.pool.add_relay(url, self.opts.clone()).await?;
+            self.client.pool().add_relay(url, self.opts.clone()).await?;
         }
 
         // Connect to relays
-        self.pool.connect().await;
+        self.client.connect().await;
 
         // Subscribe
         let notifications = self.subscribe().await?;
@@ -147,12 +147,10 @@ impl NostrConnect {
             .kind(Kind::NostrConnect)
             .limit(0);
 
-        let notifications = self.pool.notifications();
+        let notifications = self.client.notifications();
 
         // Subscribe
-        self.pool
-            .subscribe(filter, SubscribeOptions::default())
-            .await?;
+        self.client.subscribe(filter, None).await?;
 
         Ok(notifications)
     }
@@ -224,10 +222,10 @@ impl NostrConnect {
             EventBuilder::nostr_connect(&self.client_keys, remote_signer_public_key, msg)?
                 .sign_with_keys(&self.client_keys)?;
 
-        let mut notifications = self.pool.notifications();
+        let mut notifications = self.client.notifications();
 
         // Send request
-        self.pool.send_event(&event).await?;
+        self.client.send_event(&event).await?;
 
         time::timeout(Some(self.timeout), async {
             while let Ok(notification) = notifications.recv().await {
@@ -363,7 +361,7 @@ impl NostrConnect {
 
     /// Completely shutdown
     pub async fn shutdown(self) {
-        self.pool.shutdown().await
+        self.client.shutdown().await
     }
 }
 

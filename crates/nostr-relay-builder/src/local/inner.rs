@@ -207,18 +207,18 @@ impl InnerLocalRelay {
         U: Into<RelayUrlArg<'a>>,
     {
         // Construct a new pool
-        let pool: RelayPool = RelayPool::default();
+        let client: Client = Client::default();
 
-        // Add relays to pool
+        // Add relays to client
         for url in urls {
-            pool.add_relay(url, RelayOptions::default()).await?;
+            client.add_relay(url).await?;
         }
 
         // Connect
-        pool.connect().await;
+        client.connect().await;
 
         // Subscribe to notifications
-        let mut notifications = pool.notifications();
+        let mut notifications = client.notifications();
 
         // Create a notification future
         let fut = async {
@@ -232,9 +232,9 @@ impl InnerLocalRelay {
 
         // Start sync and wait for the result
         tokio::select! {
-            result = pool.sync(filter, opts) => {
-                // Shutdown pool
-                pool.shutdown().await;
+            result = client.sync(filter, opts) => {
+                // Shutdown client
+                client.shutdown().await;
 
                 // Return reconciliation output
                 Ok(result?)
