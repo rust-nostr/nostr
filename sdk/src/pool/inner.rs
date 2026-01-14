@@ -5,6 +5,7 @@
 //! Relay Pool
 
 use std::collections::HashMap;
+use std::mem;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -14,7 +15,7 @@ use nostr_database::prelude::*;
 use tokio::sync::{broadcast, RwLock};
 
 use super::options::RelayPoolOptions;
-use super::{RelayPoolBuilder, RelayPoolNotification};
+use super::{can_remove_relay, RelayPoolBuilder, RelayPoolNotification};
 use crate::relay::Relay;
 use crate::shared::SharedState;
 
@@ -77,7 +78,7 @@ impl InnerRelayPool {
         }
 
         // Disconnect and force remove all relays
-        self.force_remove_all_relays().await;
+        self.remove_all_relays(true).await;
 
         // Send shutdown notification
         let _ = self
@@ -85,16 +86,33 @@ impl InnerRelayPool {
             .send(RelayPoolNotification::Shutdown);
     }
 
-    pub async fn force_remove_all_relays(&self) {
+    // Disconnect and remove all relays
+    pub async fn remove_all_relays(&self, force: bool) {
         // Acquire write lock
         let mut relays = self.atomic.relays.write().await;
 
-        // Disconnect all relays
-        for relay in relays.values() {
-            relay.disconnect();
-        }
+        if force {
+            // Make sure to disconnect all relays
+            for relay in relays.values() {
+                relay.disconnect();
+            }
 
-        // Clear map
-        relays.clear();
+            // Clear map
+            relays.clear();
+        } else {
+            // Drain the map to get owned keys and values
+            let old_relays: Relays = mem::take(&mut *relays);
+
+            for (url, relay) in old_relays {
+                // Check if it can be removed
+                if can_remove_relay(&relay) {
+                    // Disconnect
+                    relay.disconnect();
+                } else {
+                    // Re-insert into the map
+                    relays.insert(url, relay);
+                }
+            }
+        }
     }
 }
