@@ -168,7 +168,7 @@ impl NostrConnectRemoteSigner {
 
         self.client
             .handle_notifications(|notification| async {
-                if let RelayPoolNotification::Event { event, .. } = notification {
+                if let ClientNotification::Event { event, .. } = notification {
                     if event.kind == Kind::NostrConnect {
                         match nip44::decrypt(
                             self.keys.signer.secret_key(),

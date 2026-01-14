@@ -22,8 +22,6 @@ pub enum Error {
     RelayUrl(url::Error),
     /// Relay error
     Relay(relay::Error),
-    /// Notification Handler error
-    Handler(String),
     /// Too many relays
     TooManyRelays {
         /// Max numer allowed
@@ -48,7 +46,6 @@ impl fmt::Display for Error {
             Self::SharedState(e) => e.fmt(f),
             Self::RelayUrl(e) => e.fmt(f),
             Self::Relay(e) => e.fmt(f),
-            Self::Handler(e) => e.fmt(f),
             Self::TooManyRelays { .. } => f.write_str("too many relays"),
             Self::NoRelays => f.write_str("no relays"),
             Self::NoRelaysSpecified => f.write_str("no relays specified"),

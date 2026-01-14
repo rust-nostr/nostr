@@ -22,6 +22,7 @@ mod error;
 mod gossip;
 mod middleware;
 mod options;
+mod notification;
 
 pub use self::api::*;
 pub use self::builder::*;
@@ -29,8 +30,9 @@ pub use self::error::Error;
 use self::gossip::{BrokenDownFilters, GossipFilterPattern, GossipWrapper};
 use self::middleware::AdmissionPolicyMiddleware;
 pub use self::options::*;
+pub use self::notification::*;
 use crate::monitor::Monitor;
-use crate::pool::{Output, RelayPool, RelayPoolBuilder, RelayPoolNotification};
+use crate::pool::{Output, RelayPool, RelayPoolBuilder};
 use crate::relay::options::{RelayOptions, SyncDirection, SyncOptions};
 use crate::relay::{Reconciliation, Relay, RelayCapabilities, ReqExitPolicy};
 
@@ -211,7 +213,7 @@ impl Client {
     ///
     /// <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>
     #[inline]
-    pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
+    pub fn notifications(&self) -> broadcast::Receiver<ClientNotification> {
         self.pool.notifications()
     }
 
@@ -1099,13 +1101,22 @@ impl Client {
     /// Handle notifications
     ///
     /// The closure function expects a `bool` as output: return `true` to exit from the notification loop.
-    #[inline]
     pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
     where
-        F: Fn(RelayPoolNotification) -> Fut,
+        F: Fn(ClientNotification) -> Fut,
         Fut: Future<Output = Result<bool>>,
     {
-        Ok(self.pool.handle_notifications(func).await?)
+        let mut notifications = self.notifications();
+        while let Ok(notification) = notifications.recv().await {
+            let shutdown: bool = ClientNotification::Shutdown == notification;
+            let exit: bool = func(notification)
+                .await
+                .map_err(|e| Error::Handler(e.to_string()))?;
+            if exit || shutdown {
+                break;
+            }
+        }
+        Ok(())
     }
 }
 
