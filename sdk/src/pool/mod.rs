@@ -32,6 +32,7 @@ pub use self::error::Error;
 use self::inner::{InnerRelayPool, Relays};
 pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
+use crate::client::ClientNotification;
 use crate::monitor::Monitor;
 use crate::relay::capabilities::RelayCapabilities;
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SubscribeOptions, SyncOptions};
@@ -40,44 +41,6 @@ use crate::relay::{
 };
 use crate::shared::SharedState;
 use crate::stream::{BoxedStream, ReceiverStream};
-
-/// Relay Pool Notification
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum RelayPoolNotification {
-    /// Received a new [`Event`] from a relay.
-    ///
-    /// This notification is sent only the **first time** the [`Event`] is seen.
-    /// Events sent by this client are not included.
-    /// This is useful when you only need to process new incoming events
-    /// and avoid handling the same events multiple times.
-    ///
-    /// If you require notifications for all messages, including previously sent or received events,
-    /// consider using the [`RelayPoolNotification::Message`] variant instead.
-    Event {
-        /// The URL of the relay from which the event was received.
-        relay_url: RelayUrl,
-        /// Subscription ID
-        subscription_id: SubscriptionId,
-        /// The received event.
-        event: Box<Event>,
-    },
-    /// Received a [`RelayMessage`].
-    ///
-    /// This notification is sent **every time** a [`RelayMessage`] is received,
-    /// regardless of whether it has been received before.
-    ///
-    /// May includes messages wrapping events that were sent by this client.
-    Message {
-        /// The URL of the relay from which the message was received.
-        relay_url: RelayUrl,
-        /// The received relay message.
-        message: RelayMessage<'static>,
-    },
-    /// Shutdown
-    ///
-    /// This notification variant is sent after [`RelayPool::shutdown`] method is called and all connections have been closed.
-    Shutdown,
-}
 
 /// Relay Pool
 #[derive(Debug, Clone)]
@@ -130,7 +93,7 @@ impl RelayPool {
     /// Completely shutdown pool
     ///
     /// This method disconnects and removes all relays from the [`RelayPool`] and then
-    /// sends [`RelayPoolNotification::Shutdown`] notification.
+    /// sends [`ClientNotification::Shutdown`] notification.
     ///
     /// After this method has been called, the [`RelayPool`] can no longer be used (i.e. can't add relays).
     #[inline]
@@ -138,10 +101,7 @@ impl RelayPool {
         self.inner.shutdown().await
     }
 
-    /// Get new **pool** notification listener
-    ///
-    /// <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>
-    pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
+    pub(crate) fn notifications(&self) -> broadcast::Receiver<ClientNotification> {
         self.inner.notification_sender.subscribe()
     }
 
@@ -908,25 +868,6 @@ impl RelayPool {
 
         // Return stream
         Ok(Box::pin(ReceiverStream::new(rx)))
-    }
-
-    /// Handle notifications
-    pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
-    where
-        F: Fn(RelayPoolNotification) -> Fut,
-        Fut: Future<Output = Result<bool>>,
-    {
-        let mut notifications = self.notifications();
-        while let Ok(notification) = notifications.recv().await {
-            let shutdown: bool = RelayPoolNotification::Shutdown == notification;
-            let exit: bool = func(notification)
-                .await
-                .map_err(|e| Error::Handler(e.to_string()))?;
-            if exit || shutdown {
-                break;
-            }
-        }
-        Ok(())
     }
 }
 

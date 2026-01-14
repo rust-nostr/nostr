@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
     // Handle subscription notifications with `handle_notifications` method
     client
         .handle_notifications(|notification| async {
-            if let RelayPoolNotification::Event { event, .. } = notification {
+            if let ClientNotification::Event { event, .. } = notification {
                 if event.kind == Kind::GiftWrap {
                     let UnwrappedGift { rumor, .. } = client.unwrap_gift_wrap(&event).await?;
                     println!("Rumor: {}", rumor.as_json());

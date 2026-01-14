@@ -139,7 +139,7 @@ impl NostrConnect {
         Ok(remote_signer_public_key)
     }
 
-    async fn subscribe(&self) -> Result<Receiver<RelayPoolNotification>, Error> {
+    async fn subscribe(&self) -> Result<Receiver<ClientNotification>, Error> {
         let public_key: PublicKey = self.client_keys.public_key();
 
         let filter = Filter::new()
@@ -229,7 +229,7 @@ impl NostrConnect {
 
         time::timeout(Some(self.timeout), async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayPoolNotification::Event { event, .. } = notification {
+                if let ClientNotification::Event { event, .. } = notification {
                     if event.kind == Kind::NostrConnect {
                         let msg: String =
                             nip44::decrypt(secret_key, &event.pubkey, event.content.as_str())?;
@@ -367,12 +367,12 @@ impl NostrConnect {
 
 async fn get_remote_signer_public_key(
     client_keys: &Keys,
-    mut notifications: Receiver<RelayPoolNotification>,
+    mut notifications: Receiver<ClientNotification>,
     timeout: Duration,
 ) -> Result<PublicKey, Error> {
     time::timeout(Some(timeout), async {
         while let Ok(notification) = notifications.recv().await {
-            if let RelayPoolNotification::Event { event, .. } = notification {
+            if let ClientNotification::Event { event, .. } = notification {
                 if event.kind == Kind::NostrConnect {
                     // Decrypt content
                     let msg: String = nip44::decrypt(

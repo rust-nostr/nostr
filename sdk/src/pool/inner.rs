@@ -15,7 +15,7 @@ use nostr_database::prelude::*;
 use tokio::sync::{broadcast, RwLock};
 
 use super::options::RelayPoolOptions;
-use super::{can_remove_relay, RelayPoolBuilder, RelayPoolNotification};
+use super::{can_remove_relay, ClientNotification, RelayPoolBuilder};
 use crate::relay::Relay;
 use crate::shared::SharedState;
 
@@ -35,7 +35,7 @@ pub(super) struct AtomicPrivateData {
 pub struct InnerRelayPool {
     pub(super) state: SharedState,
     pub(super) atomic: Arc<AtomicPrivateData>,
-    pub(super) notification_sender: broadcast::Sender<RelayPoolNotification>, // TODO: move to shared state?
+    pub(super) notification_sender: broadcast::Sender<ClientNotification>, // TODO: move to shared state?
     pub(super) opts: RelayPoolOptions,
 }
 
@@ -81,9 +81,7 @@ impl InnerRelayPool {
         self.remove_all_relays(true).await;
 
         // Send shutdown notification
-        let _ = self
-            .notification_sender
-            .send(RelayPoolNotification::Shutdown);
+        let _ = self.notification_sender.send(ClientNotification::Shutdown);
     }
 
     // Disconnect and remove all relays
