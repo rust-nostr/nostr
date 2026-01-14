@@ -1534,8 +1534,8 @@ where
 {
     // Skip index 0 because is the tag kind
     let mut list: Vec<PublicKey> = Vec::with_capacity(tag.len().saturating_sub(1));
-    for url in tag.iter().skip(1) {
-        list.push(PublicKey::parse(url.as_ref())?);
+    for pkey in tag.iter().skip(1) {
+        list.push(PublicKey::parse(pkey.as_ref())?);
     }
     Ok(list)
 }
