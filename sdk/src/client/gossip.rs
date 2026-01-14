@@ -6,8 +6,7 @@ use std::sync::Arc;
 use nostr::prelude::*;
 use nostr_gossip::{BestRelaySelection, GossipAllowedRelays, NostrGossip};
 
-use crate::client::options::GossipRelayLimits;
-use crate::client::Error;
+use crate::client::{Error, GossipRelayLimits};
 
 const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
 
