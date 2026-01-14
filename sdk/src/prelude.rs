@@ -14,8 +14,6 @@ pub use nostr::prelude::*;
 pub use nostr_database::prelude::*;
 pub use nostr_gossip::prelude::*;
 
-pub use crate::client::builder::*;
-pub use crate::client::options::*;
 pub use crate::client::{self, *};
 pub use crate::monitor::{self, *};
 pub use crate::policy::*;
