@@ -11,7 +11,7 @@ use tokio::sync::watch::{self, Receiver, Sender};
 
 use super::capabilities::RelayCapabilities;
 use super::constants::{DEFAULT_NOTIFICATION_CHANNEL_SIZE, DEFAULT_RETRY_INTERVAL};
-use crate::RelayLimits;
+use super::limits::RelayLimits;
 
 /// Relay options
 #[derive(Debug, Clone)]

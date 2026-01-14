@@ -34,11 +34,10 @@ pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
 use crate::monitor::Monitor;
 use crate::relay::capabilities::RelayCapabilities;
-use crate::relay::options::{RelayOptions, ReqExitPolicy, SyncOptions};
-use crate::relay::Relay;
+use crate::relay::options::{RelayOptions, ReqExitPolicy, SubscribeOptions, SyncOptions};
+use crate::relay::{Reconciliation, Relay};
 use crate::shared::SharedState;
 use crate::stream::{BoxedStream, ReceiverStream};
-use crate::{Reconciliation, SubscribeOptions};
 
 /// Relay Pool Notification
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
