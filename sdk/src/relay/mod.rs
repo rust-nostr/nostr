@@ -35,6 +35,7 @@ pub use self::notification::*;
 pub use self::options::*;
 pub use self::stats::*;
 pub use self::status::*;
+use crate::client::ClientNotification;
 use crate::shared::SharedState;
 
 /// Subscription auto-closed reason
@@ -194,6 +195,14 @@ impl Relay {
     #[inline]
     pub fn queue(&self) -> usize {
         self.inner.queue()
+    }
+
+    #[inline]
+    pub(super) fn set_notification_sender(
+        &mut self,
+        notification_sender: broadcast::Sender<ClientNotification>,
+    ) {
+        self.inner.set_notification_sender(notification_sender);
     }
 
     /// Get new **relay** notification listener

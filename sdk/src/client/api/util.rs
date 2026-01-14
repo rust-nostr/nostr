@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use nostr::types::url;
 use nostr::{Filter, RelayUrl, RelayUrlArg};
@@ -29,7 +29,7 @@ async fn make_targets_from_filter_list(
     pool: &RelayPool,
     filters: Vec<Filter>,
 ) -> HashMap<RelayUrl, Vec<Filter>> {
-    let urls: Vec<RelayUrl> = pool.read_relay_urls().await;
+    let urls: HashSet<RelayUrl> = pool.read_relay_urls().await;
     urls.into_iter().map(|u| (u, filters.clone())).collect()
 }
 

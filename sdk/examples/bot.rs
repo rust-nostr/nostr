@@ -42,7 +42,7 @@ async fn main() -> Result<()> {
 
     client
         .handle_notifications(|notification| async {
-            if let RelayPoolNotification::Event { event, .. } = notification {
+            if let ClientNotification::Event { event, .. } = notification {
                 if event.kind == Kind::GiftWrap {
                     match UnwrappedGift::from_gift_wrap(&keys, &event).await {
                         Ok(UnwrappedGift { rumor, sender }) => {

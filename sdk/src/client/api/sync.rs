@@ -100,14 +100,15 @@ impl<'client, 'url> SyncEvents<'client, 'url> {
     }
 }
 
-fn construct_filters<'url, T>(
-    urls: Vec<T>,
+fn construct_filters<'url, I, T>(
+    urls: I,
     filter: Filter,
 ) -> Result<HashMap<RelayUrl, Filter>, Error>
 where
+    I: IntoIterator<Item = T>,
     T: Into<RelayUrlArg<'url>>,
 {
-    let mut filters: HashMap<RelayUrl, Filter> = HashMap::with_capacity(urls.len());
+    let mut filters: HashMap<RelayUrl, Filter> = HashMap::new();
 
     for url in urls {
         let url: RelayUrl = url.into().try_into_relay_url()?.into_owned();
@@ -168,7 +169,7 @@ where
                     // Gossip is not available, and there are no specified targets: use all relays as targets
                     (None, true) => {
                         // Get all READ and WRITE relays from pool
-                        let urls: Vec<RelayUrl> = self
+                        let urls: HashSet<RelayUrl> = self
                             .client
                             .pool
                             .relay_urls_with_any_cap(

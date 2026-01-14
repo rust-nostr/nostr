@@ -33,6 +33,8 @@ pub enum Error {
     Json(serde_json::Error),
     /// Shared state error
     SharedState(SharedStateError),
+    /// Notification Handler error
+    Handler(String),
     /// NIP59
     #[cfg(feature = "nip59")]
     NIP59(nip59::Error),
@@ -58,6 +60,7 @@ impl fmt::Display for Error {
             Self::EventBuilder(e) => e.fmt(f),
             Self::Json(e) => e.fmt(f),
             Self::SharedState(e) => e.fmt(f),
+            Self::Handler(e) => e.fmt(f),
             #[cfg(feature = "nip59")]
             Self::NIP59(e) => e.fmt(f),
             Self::GossipNotConfigured => f.write_str("gossip not configured"),

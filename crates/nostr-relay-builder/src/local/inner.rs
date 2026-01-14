@@ -225,7 +225,7 @@ impl InnerLocalRelay {
         let fut = async {
             while let Ok(notification) = notifications.recv().await {
                 // Notify about new events received by the sync
-                if let RelayPoolNotification::Event { event, .. } = notification {
+                if let ClientNotification::Event { event, .. } = notification {
                     self.notify_event(*event);
                 }
             }

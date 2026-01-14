@@ -39,6 +39,9 @@
 - Remove `Relay::sync_with_items` (https://github.com/rust-nostr/nostr/pull/1235)
 - Replace `Reconciliation` struct with `SyncSummary` (https://github.com/rust-nostr/nostr/pull/1235)
 - Change `Client::sync` and `Relay::sync` signature (https://github.com/rust-nostr/nostr/pull/1235)
+- Make `RelayPool` private (https://github.com/rust-nostr/nostr/pull/1237)
+- Replace `RelayPoolNotification` with `ClientNotification` (https://github.com/rust-nostr/nostr/pull/1237)
+- Relays no longer inherit subscriptions of the pool (https://github.com/rust-nostr/nostr/pull/1237)
 
 ### Changed
 

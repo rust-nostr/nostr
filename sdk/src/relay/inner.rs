@@ -25,8 +25,8 @@ use super::stats::RelayConnectionStats;
 use super::{
     Error, RelayNotification, RelayStatus, SubscriptionActivity, SubscriptionAutoClosedReason,
 };
+use crate::client::ClientNotification;
 use crate::policy::AdmitStatus;
-use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
 use crate::transport::websocket::{WebSocketSink, WebSocketStream};
@@ -149,7 +149,7 @@ pub(crate) struct InnerRelay {
     pub(super) stats: RelayConnectionStats,
     pub(super) state: SharedState,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
-    external_notification_sender: Option<broadcast::Sender<RelayPoolNotification>>,
+    external_notification_sender: Option<broadcast::Sender<ClientNotification>>,
 }
 
 impl InnerRelay {
@@ -376,9 +376,10 @@ impl InnerRelay {
         self.atomic.channels.nostr_queue()
     }
 
+    #[inline]
     pub(crate) fn set_notification_sender(
         &mut self,
-        notification_sender: broadcast::Sender<RelayPoolNotification>,
+        notification_sender: broadcast::Sender<ClientNotification>,
     ) {
         self.external_notification_sender = Some(notification_sender);
     }
@@ -390,25 +391,23 @@ impl InnerRelay {
                 let _ = self.internal_notification_sender.send(notification.clone());
 
                 // Convert relay to notification to pool notification
-                let notification: Option<RelayPoolNotification> = match notification {
+                let notification: Option<ClientNotification> = match notification {
                     RelayNotification::Event {
                         subscription_id,
                         event,
-                    } => Some(RelayPoolNotification::Event {
+                    } => Some(ClientNotification::Event {
                         relay_url: self.url.clone(),
                         subscription_id,
                         event,
                     }),
-                    RelayNotification::Message { message } => {
-                        Some(RelayPoolNotification::Message {
-                            relay_url: self.url.clone(),
-                            message,
-                        })
-                    }
+                    RelayNotification::Message { message } => Some(ClientNotification::Message {
+                        relay_url: self.url.clone(),
+                        message,
+                    }),
                     RelayNotification::RelayStatus { .. } => None,
                     RelayNotification::Authenticated => None,
                     RelayNotification::AuthenticationFailed => None,
-                    RelayNotification::Shutdown => Some(RelayPoolNotification::Shutdown),
+                    RelayNotification::Shutdown => Some(ClientNotification::Shutdown),
                 };
 
                 // Send external notification

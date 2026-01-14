@@ -4,6 +4,7 @@
 
 //! Client
 
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::sync::Arc;
@@ -21,6 +22,7 @@ mod builder;
 mod error;
 mod gossip;
 mod middleware;
+mod notification;
 mod options;
 
 pub use self::api::*;
@@ -28,9 +30,10 @@ pub use self::builder::*;
 pub use self::error::Error;
 use self::gossip::{BrokenDownFilters, GossipFilterPattern, GossipWrapper};
 use self::middleware::AdmissionPolicyMiddleware;
+pub use self::notification::*;
 pub use self::options::*;
 use crate::monitor::Monitor;
-use crate::pool::{RelayPool, RelayPoolBuilder, RelayPoolNotification};
+use crate::pool::{RelayPool, RelayPoolBuilder};
 use crate::relay::{
     Relay, RelayCapabilities, RelayOptions, ReqExitPolicy, SyncDirection, SyncOptions,
 };
@@ -38,7 +41,7 @@ use crate::relay::{
 /// Nostr client
 #[derive(Debug, Clone)]
 pub struct Client {
-    pool: RelayPool,
+    pool: Arc<RelayPool>,
     gossip: Option<GossipWrapper>,
     opts: ClientOptions,
     /// Semaphore used to limit the number of gossip checks and syncs
@@ -89,14 +92,16 @@ impl Client {
             websocket_transport: builder.websocket_transport,
             admit_policy: Some(Arc::new(admit_policy_wrapper)),
             monitor: builder.monitor,
-            opts: builder.opts.pool,
-            __database: builder.database,
-            __signer: builder.signer,
+            database: builder.database,
+            signer: builder.signer,
+            max_relays: builder.opts.max_relays,
+            nip42_auto_authentication: builder.opts.nip42_auto_authentication,
+            notification_channel_size: builder.opts.notification_channel_size,
         };
 
         // Construct client
         Self {
-            pool: pool_builder.build(),
+            pool: Arc::new(pool_builder.build()),
             gossip: builder.gossip.map(GossipWrapper::new),
             opts: builder.opts,
             // Allow only one gossip check and sync at a time
@@ -154,12 +159,6 @@ impl Client {
         Ok(self.signer().await?.get_public_key().await?)
     }
 
-    /// Get [`RelayPool`]
-    #[inline]
-    pub fn pool(&self) -> &RelayPool {
-        &self.pool
-    }
-
     /// Get database
     #[inline]
     pub fn database(&self) -> &Arc<dyn NostrDatabase> {
@@ -178,7 +177,9 @@ impl Client {
         self.pool.is_shutdown()
     }
 
-    /// Completely shutdown client
+    /// Explicitly shutdown the client
+    ///
+    /// This method will shut down the client and all its relays.
     #[inline]
     pub async fn shutdown(&self) {
         self.pool.shutdown().await
@@ -188,7 +189,7 @@ impl Client {
     ///
     /// <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>
     #[inline]
-    pub fn notifications(&self) -> broadcast::Receiver<RelayPoolNotification> {
+    pub fn notifications(&self) -> broadcast::Receiver<ClientNotification> {
         self.pool.notifications()
     }
 
@@ -218,7 +219,9 @@ impl Client {
     where
         U: Into<RelayUrlArg<'a>>,
     {
-        Ok(self.pool.relay(url).await?)
+        let url: RelayUrlArg<'a> = url.into();
+        let url: Cow<RelayUrl> = url.try_as_relay_url()?;
+        Ok(self.pool.relay(&url).await?)
     }
 
     fn compose_relay_opts<'a>(&self, _url: &'a RelayUrlArg<'a>) -> RelayOptions {
@@ -276,9 +279,6 @@ impl Client {
     /// If the relay already exists, the capabilities will be updated and `false` returned.
     ///
     /// To add a relay with specific capabilities, use [`AddRelay::capabilities`].
-    ///
-    /// If are set pool subscriptions, the new added relay will inherit them. Use [`Client::subscribe_to`] method instead of [`Client::subscribe`],
-    /// to avoid setting pool subscriptions.
     ///
     /// Connection is **NOT** automatically started with relay!
     #[inline]
@@ -394,25 +394,25 @@ impl Client {
     }
 
     /// Connect to a previously added relay
-    ///
-    /// Check [`RelayPool::connect_relay`] docs to learn more.
     #[inline]
     pub async fn connect_relay<'a, U>(&self, url: U) -> Result<(), Error>
     where
         U: Into<RelayUrlArg<'a>>,
     {
-        Ok(self.pool.connect_relay(url).await?)
+        let url: RelayUrlArg<'a> = url.into();
+        let url: Cow<RelayUrl> = url.try_as_relay_url()?;
+        Ok(self.pool.connect_relay(&url).await?)
     }
 
     /// Try to connect to a previously added relay
-    ///
-    /// For further details, see the documentation of [`RelayPool::try_connect_relay`].
     #[inline]
     pub async fn try_connect_relay<'a, U>(&self, url: U, timeout: Duration) -> Result<(), Error>
     where
         U: Into<RelayUrlArg<'a>>,
     {
-        Ok(self.pool.try_connect_relay(url, timeout).await?)
+        let url: RelayUrlArg<'a> = url.into();
+        let url: Cow<RelayUrl> = url.try_as_relay_url()?;
+        Ok(self.pool.try_connect_relay(&url, timeout).await?)
     }
 
     /// Disconnect relay
@@ -421,7 +421,9 @@ impl Client {
     where
         U: Into<RelayUrlArg<'a>>,
     {
-        Ok(self.pool.disconnect_relay(url).await?)
+        let url: RelayUrlArg<'a> = url.into();
+        let url: Cow<RelayUrl> = url.try_as_relay_url()?;
+        Ok(self.pool.disconnect_relay(&url).await?)
     }
 
     /// Connect to relays
@@ -599,7 +601,7 @@ impl Client {
     ///
     /// // Handle notifications
     /// while let Ok(notification) = notifications.recv().await {
-    ///     if let RelayPoolNotification::Event { relay_url, subscription_id, event } = notification {
+    ///     if let ClientNotification::Event { relay_url, subscription_id, event } = notification {
     ///         if output.id() == &subscription_id {
     ///             println!("Received an event from '{relay_url}' relay for the subscription '{subscription_id}': {}", event.as_json());
     ///         }
@@ -640,7 +642,7 @@ impl Client {
     ///
     /// // Handle notifications
     /// while let Ok(notification) = notifications.recv().await {
-    ///     if let RelayPoolNotification::Event { relay_url, subscription_id, event } = notification {
+    ///     if let ClientNotification::Event { relay_url, subscription_id, event } = notification {
     ///         if output.id() == &subscription_id {
     ///             println!("Received an event from '{relay_url}' relay for the subscription '{subscription_id}': {}", event.as_json());
     ///         }
@@ -683,7 +685,7 @@ impl Client {
     ///
     /// // Handle notifications
     /// while let Ok(notification) = notifications.recv().await {
-    ///     if let RelayPoolNotification::Event { relay_url, subscription_id, event } = notification {
+    ///     if let ClientNotification::Event { relay_url, subscription_id, event } = notification {
     ///         if output.id() == &subscription_id {
     ///             println!("Received an event from '{relay_url}' relay for the subscription '{subscription_id}': {}", event.as_json());
     ///         }
@@ -1020,7 +1022,7 @@ impl Client {
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,
     {
-        Ok(self.pool.send_msg_to(urls, msg).await?)
+        self.batch_msg_to(urls, vec![msg]).await
     }
 
     /// Batch send client messages to **specific relays**
@@ -1034,7 +1036,15 @@ impl Client {
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,
     {
-        Ok(self.pool.batch_msg_to(urls, msgs).await?)
+        let mut set: HashSet<RelayUrl> = HashSet::new();
+
+        for url in urls {
+            let url: RelayUrlArg<'a> = url.into();
+            let url: Cow<RelayUrl> = url.try_as_relay_url()?;
+            set.insert(url.into_owned());
+        }
+
+        Ok(self.pool.batch_msg_to(set, msgs).await?)
     }
 
     /// Send an event to relays.
@@ -1307,13 +1317,22 @@ impl Client {
     /// Handle notifications
     ///
     /// The closure function expects a `bool` as output: return `true` to exit from the notification loop.
-    #[inline]
     pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
     where
-        F: Fn(RelayPoolNotification) -> Fut,
+        F: Fn(ClientNotification) -> Fut,
         Fut: Future<Output = Result<bool>>,
     {
-        Ok(self.pool.handle_notifications(func).await?)
+        let mut notifications = self.notifications();
+        while let Ok(notification) = notifications.recv().await {
+            let shutdown: bool = ClientNotification::Shutdown == notification;
+            let exit: bool = func(notification)
+                .await
+                .map_err(|e| Error::Handler(e.to_string()))?;
+            if exit || shutdown {
+                break;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -1461,7 +1480,7 @@ impl Client {
         let filter: Filter = Filter::default().authors(outdated_public_keys).kind(kind);
 
         // Get DISCOVERY and READ relays
-        let urls: Vec<RelayUrl> = self
+        let urls: HashSet<RelayUrl> = self
             .pool
             .relay_urls_with_any_cap(RelayCapabilities::DISCOVERY | RelayCapabilities::READ)
             .await;
@@ -1676,7 +1695,7 @@ impl Client {
             BrokenDownFilters::Filters(filters) => filters,
             BrokenDownFilters::Orphan(filter) | BrokenDownFilters::Other(filter) => {
                 // Get read relays
-                let read_relays: Vec<RelayUrl> = self.pool.read_relay_urls().await;
+                let read_relays: HashSet<RelayUrl> = self.pool.read_relay_urls().await;
 
                 let mut map = HashMap::with_capacity(read_relays.len());
                 for url in read_relays.into_iter() {
@@ -1757,6 +1776,10 @@ mod tests {
 
         client.shutdown().await;
 
+        // All relays must be removed
+        assert!(client.relays().all().await.is_empty());
+
+        // Client must be marked as shutdown
         assert!(client.is_shutdown());
 
         assert!(matches!(
@@ -1773,8 +1796,7 @@ mod tests {
         let relay: Relay = {
             let client: Client = Client::default();
 
-            client.add_relay(&url).await.unwrap();
-            client.connect().await;
+            client.add_relay(&url).and_connect().await.unwrap();
 
             assert!(!client.is_shutdown());
 
@@ -1782,7 +1804,7 @@ mod tests {
 
             let relay = client.relay(&url).await.unwrap();
 
-            assert!(relay.status().is_connected());
+            assert!(relay.is_connected());
 
             relay
         };

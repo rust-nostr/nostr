@@ -13,8 +13,10 @@ use std::time::Duration;
 use async_wsocket::ConnectionMode;
 use nostr_gossip::GossipAllowedRelays;
 
-use crate::pool::RelayPoolOptions;
 use crate::relay::RelayLimits;
+
+/// Default notification channel size
+const DEFAULT_NOTIFICATION_CHANNEL_SIZE: usize = 4096;
 
 /// Max number of relays to use for gossip
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -69,7 +71,7 @@ impl GossipOptions {
 }
 
 /// Options
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct ClientOptions {
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) connection: Connection,
@@ -79,7 +81,27 @@ pub struct ClientOptions {
     pub(super) verify_subscriptions: bool,
     pub(super) ban_relay_on_mismatch: bool,
     pub(super) gossip: GossipOptions,
-    pub(super) pool: RelayPoolOptions,
+    pub(crate) max_relays: Option<usize>,
+    pub(crate) nip42_auto_authentication: bool,
+    pub(crate) notification_channel_size: usize,
+}
+
+impl Default for ClientOptions {
+    fn default() -> Self {
+        Self {
+            #[cfg(not(target_arch = "wasm32"))]
+            connection: Connection::default(),
+            relay_limits: RelayLimits::default(),
+            max_avg_latency: None,
+            sleep_when_idle: SleepWhenIdle::default(),
+            verify_subscriptions: false,
+            ban_relay_on_mismatch: false,
+            gossip: GossipOptions::default(),
+            max_relays: None,
+            nip42_auto_authentication: true,
+            notification_channel_size: DEFAULT_NOTIFICATION_CHANNEL_SIZE,
+        }
+    }
 }
 
 impl ClientOptions {
@@ -94,7 +116,7 @@ impl ClientOptions {
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[inline]
     pub fn automatic_authentication(mut self, enabled: bool) -> Self {
-        self.pool = self.pool.automatic_authentication(enabled);
+        self.nip42_auto_authentication = enabled;
         self
     }
 
@@ -148,10 +170,17 @@ impl ClientOptions {
         self
     }
 
-    /// Set relay pool options
+    /// Max relays (default: None)
     #[inline]
-    pub fn pool(mut self, opts: RelayPoolOptions) -> Self {
-        self.pool = opts;
+    pub fn max_relays(mut self, num: Option<usize>) -> Self {
+        self.max_relays = num;
+        self
+    }
+
+    /// Notification channel size (default: 4096)
+    #[inline]
+    pub fn notification_channel_size(mut self, size: usize) -> Self {
+        self.notification_channel_size = size;
         self
     }
 }

@@ -274,10 +274,10 @@ impl NostrWalletConnect {
         let mut notifications = self.client.notifications();
 
         while let Ok(notification) = notifications.recv().await {
-            tracing::trace!("Received relay pool notification: {:?}", notification);
+            tracing::trace!("Received a client notification: {:?}", notification);
 
             match notification {
-                RelayPoolNotification::Event {
+                ClientNotification::Event {
                     subscription_id,
                     event,
                     ..
@@ -321,7 +321,7 @@ impl NostrWalletConnect {
                         }
                     }
                 }
-                RelayPoolNotification::Shutdown => break,
+                ClientNotification::Shutdown => break,
                 _ => {}
             }
         }

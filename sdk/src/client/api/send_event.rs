@@ -248,7 +248,7 @@ async fn gossip_send_event(
         }
 
         // Get WRITE relays
-        let write_relays: Vec<RelayUrl> = client.pool.write_relay_urls().await;
+        let write_relays: HashSet<RelayUrl> = client.pool.write_relay_urls().await;
 
         // Extend relays with WRITE ones
         relays.extend(write_relays);
@@ -339,7 +339,7 @@ where
                 }
                 // Send to all WRITE relays
                 (Some(OverwritePolicy::Broadcast), _) => {
-                    let urls: Vec<RelayUrl> = self.client.pool.write_relay_urls().await;
+                    let urls: HashSet<RelayUrl> = self.client.pool.write_relay_urls().await;
                     Ok(self
                         .client
                         .pool
@@ -353,7 +353,7 @@ where
                 }
                 // No overwrite policy and no gossip available: send to all WRITE relays
                 (None, None) => {
-                    let urls: Vec<RelayUrl> = self.client.pool.write_relay_urls().await;
+                    let urls: HashSet<RelayUrl> = self.client.pool.write_relay_urls().await;
                     Ok(self
                         .client
                         .pool
