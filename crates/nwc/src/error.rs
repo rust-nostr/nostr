@@ -7,7 +7,7 @@
 use std::fmt;
 
 use nostr::nips::nip47;
-use nostr_sdk::pool;
+use nostr_sdk::{client, pool};
 
 /// NWC error
 #[derive(Debug)]
@@ -16,6 +16,8 @@ pub enum Error {
     NIP47(nip47::Error),
     /// Relay Pool
     Pool(pool::Error),
+    /// Client error
+    Client(client::Error),
     /// Premature exit
     PrematureExit,
     /// Request timeout
@@ -31,6 +33,7 @@ impl fmt::Display for Error {
         match self {
             Self::NIP47(e) => e.fmt(f),
             Self::Pool(e) => e.fmt(f),
+            Self::Client(e) => e.fmt(f),
             Self::PrematureExit => f.write_str("premature exit"),
             Self::Timeout => f.write_str("timeout"),
             Self::Handler(e) => f.write_str(e),
@@ -47,5 +50,11 @@ impl From<nip47::Error> for Error {
 impl From<pool::Error> for Error {
     fn from(e: pool::Error) -> Self {
         Self::Pool(e)
+    }
+}
+
+impl From<client::Error> for Error {
+    fn from(e: client::Error) -> Self {
+        Self::Client(e)
     }
 }

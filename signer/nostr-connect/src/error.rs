@@ -8,8 +8,9 @@ use std::fmt;
 
 use nostr::event::builder;
 use nostr::nips::{nip04, nip44, nip46};
+use nostr::types::url;
 use nostr::PublicKey;
-use nostr_sdk::pool;
+use nostr_sdk::{client, pool};
 use tokio::sync::SetError;
 
 /// Nostr Connect error
@@ -25,6 +26,10 @@ pub enum Error {
     NIP46(nip46::Error),
     /// Pool
     Pool(pool::Error),
+    /// Client
+    Client(client::Error),
+    /// Url parse error
+    RelayUrl(url::Error),
     /// Set user public key error
     SetUserPublicKey(SetError<PublicKey>),
     /// NIP46 response error
@@ -49,6 +54,8 @@ impl fmt::Display for Error {
             Self::NIP44(e) => e.fmt(f),
             Self::NIP46(e) => e.fmt(f),
             Self::Pool(e) => e.fmt(f),
+            Self::Client(e) => e.fmt(f),
+            Self::RelayUrl(e) => e.fmt(f),
             Self::SetUserPublicKey(e) => e.fmt(f),
             Self::Response(e) => e.fmt(f),
             Self::SignerPublicKeyNotFound => f.write_str("signer public key not found"),
@@ -86,6 +93,18 @@ impl From<nip46::Error> for Error {
 impl From<pool::Error> for Error {
     fn from(e: pool::Error) -> Self {
         Self::Pool(e)
+    }
+}
+
+impl From<client::Error> for Error {
+    fn from(e: client::Error) -> Self {
+        Self::Client(e)
+    }
+}
+
+impl From<url::Error> for Error {
+    fn from(e: url::Error) -> Self {
+        Self::RelayUrl(e)
     }
 }
 
