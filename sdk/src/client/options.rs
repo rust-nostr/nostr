@@ -10,8 +10,11 @@ use std::net::SocketAddr;
 use std::path::Path;
 use std::time::Duration;
 
+use async_wsocket::ConnectionMode;
 use nostr_gossip::GossipAllowedRelays;
-use nostr_relay_pool::prelude::*;
+
+use crate::pool::RelayPoolOptions;
+use crate::relay::limits::RelayLimits;
 
 /// Max number of relays to use for gossip
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

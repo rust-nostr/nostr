@@ -2857,7 +2857,7 @@ dependencies = [
  "async-utility",
  "dialoguer",
  "nostr",
- "nostr-relay-pool",
+ "nostr-sdk",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -3007,25 +3007,7 @@ dependencies = [
  "nostr",
  "nostr-database",
  "nostr-lmdb",
- "nostr-relay-pool",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "nostr-relay-pool"
-version = "0.44.0"
-dependencies = [
- "async-utility",
- "async-wsocket",
- "atomic-destructor",
- "hex",
- "lru",
- "negentropy",
- "nostr",
- "nostr-database",
- "nostr-relay-builder",
+ "nostr-sdk",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -3036,6 +3018,12 @@ name = "nostr-sdk"
 version = "0.44.1"
 dependencies = [
  "async-utility",
+ "async-wsocket",
+ "atomic-destructor",
+ "futures",
+ "hex",
+ "lru",
+ "negentropy",
  "nostr",
  "nostr-connect",
  "nostr-database",
@@ -3043,7 +3031,7 @@ dependencies = [
  "nostr-gossip-memory",
  "nostr-lmdb",
  "nostr-ndb",
- "nostr-relay-pool",
+ "nostr-relay-builder",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -3200,7 +3188,7 @@ name = "nwc"
 version = "0.44.0"
 dependencies = [
  "nostr",
- "nostr-relay-pool",
+ "nostr-sdk",
  "tokio",
  "tracing",
  "tracing-subscriber",

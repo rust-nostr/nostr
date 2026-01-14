@@ -3,7 +3,8 @@ use std::sync::Arc;
 use nostr::util::BoxedFuture;
 use nostr::{Event, RelayUrl, SubscriptionId};
 use nostr_gossip::NostrGossip;
-use nostr_relay_pool::policy::{AdmitPolicy, AdmitStatus, PolicyError};
+
+use crate::policy::{AdmitPolicy, AdmitStatus, PolicyError};
 
 #[derive(Debug)]
 pub(crate) struct AdmissionPolicyMiddleware {

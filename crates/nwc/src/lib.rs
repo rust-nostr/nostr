@@ -20,7 +20,7 @@ use std::time::Duration;
 pub extern crate nostr;
 
 use nostr::nips::nip47::{Notification, Request, Response};
-use nostr_relay_pool::prelude::*;
+use nostr_sdk::prelude::*;
 
 pub mod builder;
 pub mod error;

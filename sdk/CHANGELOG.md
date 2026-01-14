@@ -30,10 +30,14 @@
 - Replace `usize` with `u8` for gossip relay limits
 - Remove `autoconnect` option from `ClientOptions`
 - Change `Client::stream_events*` output to include the `RelayUrl` and `Result`, enabling callers to identify which relay sent the event or if a specific relay encountered an error (https://github.com/rust-nostr/nostr/pull/1156)
+- Change `RelayPool::stream_events*` output to include the `RelayUrl` and `Result`, enabling callers to identify which relay sent the event or if a specific relay encountered an error (https://github.com/rust-nostr/nostr/pull/1156)
+- Replace `RelayServiceFlags` with `RelayCapabilities` (TBD)
 
 ### Added
 
 - Re-add support for multi-filter REQ (https://github.com/rust-nostr/nostr/pull/1176)
+- Add `Output::new` constructor and `Output::into_inner` method
+- Add idle timeout for negentropy sync (https://github.com/rust-nostr/nostr/pull/1131)
 
 ### Added
 

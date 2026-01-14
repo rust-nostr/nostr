@@ -14,7 +14,7 @@ use async_wsocket::native::{self, Message, WebSocketStream};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use nostr_database::prelude::*;
-use nostr_relay_pool::{
+use nostr_sdk::{
     Output, Reconciliation, RelayOptions, RelayPool, RelayPoolNotification, SyncOptions,
 };
 use tokio::io::{AsyncRead, AsyncWrite};

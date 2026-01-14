@@ -8,8 +8,8 @@ use std::fmt;
 use nostr::types::url;
 use nostr_database::DatabaseError;
 
-use crate::__private::SharedStateError;
 use crate::relay;
+use crate::shared::SharedStateError;
 
 /// Relay Pool error
 #[derive(Debug)]

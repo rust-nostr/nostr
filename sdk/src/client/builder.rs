@@ -10,14 +10,14 @@ use nostr::signer::{IntoNostrSigner, NostrSigner};
 use nostr_database::memory::MemoryDatabase;
 use nostr_database::{IntoNostrDatabase, NostrDatabase};
 use nostr_gossip::{IntoNostrGossip, NostrGossip};
-use nostr_relay_pool::monitor::Monitor;
-use nostr_relay_pool::policy::AdmitPolicy;
-use nostr_relay_pool::transport::websocket::{
-    DefaultWebsocketTransport, IntoWebSocketTransport, WebSocketTransport,
-};
 
 use crate::client::options::ClientOptions;
 use crate::client::Client;
+use crate::monitor::Monitor;
+use crate::policy::AdmitPolicy;
+use crate::transport::websocket::{
+    DefaultWebsocketTransport, IntoWebSocketTransport, WebSocketTransport,
+};
 
 /// Client builder
 #[derive(Debug, Clone)]

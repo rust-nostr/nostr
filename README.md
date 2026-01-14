@@ -22,8 +22,7 @@ The project is split up into several crates:
     - [**nostr-http-file-storage**](./rfs/nostr-http-file-storage): HTTP File Storage client (NIP-96)
 - [**nostr-keyring**](./crates/nostr-keyring): Nostr Keyring
 - [**nostr-relay-builder**](./crates/nostr-relay-builder): Build your own custom nostr relay
-- [**nostr-relay-pool**](./crates/nostr-relay-pool): Nostr Relay Pool
-- [**nostr-sdk**](./crates/nostr-sdk): High-level client library
+- [**nostr-sdk**](./sdk): A full-featured SDK for building high-performance and reliable nostr applications
 - [**nwc**](./crates/nwc): Nostr Wallet Connect (NWC) client (NIP-47)
 
 > Note: this repository contains the Rust codebase.

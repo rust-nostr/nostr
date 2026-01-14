@@ -7,7 +7,7 @@
 use std::fmt;
 
 use nostr::nips::nip47;
-use nostr_relay_pool::pool;
+use nostr_sdk::pool;
 
 /// NWC error
 #[derive(Debug)]

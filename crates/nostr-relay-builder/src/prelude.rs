@@ -10,7 +10,7 @@
 
 pub use nostr::prelude::*;
 pub use nostr_database::prelude::*;
-pub use nostr_relay_pool::relay::SyncOptions;
+pub use nostr_sdk::relay::SyncOptions;
 
 pub use crate::builder::{self, *};
 pub use crate::local::{self, *};

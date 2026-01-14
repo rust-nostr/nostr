@@ -55,15 +55,14 @@ jobs:
           - nostr-sqlite
           - nostr-keyring
           - nostr-keyring --features async
-          - nostr-relay-pool
-          - nostr-relay-builder
-          - nostr-relay-builder --features tor
-          - nostr-connect
-          - nwc
           - nostr-sdk
           - nostr-sdk --features all-nips
           - nostr-sdk --features tor
           - nostr-sdk --all-features
+          - nostr-relay-builder
+          - nostr-relay-builder --features tor
+          - nostr-connect
+          - nwc
     steps:
     - name: Checkout
       uses: actions/checkout@v4

@@ -9,7 +9,7 @@
 #![doc(hidden)]
 
 pub use nostr::prelude::*;
-pub use nostr_relay_pool::prelude::*;
+pub use nostr_sdk::prelude::*;
 
 pub use crate::builder::*;
 pub use crate::error::*;

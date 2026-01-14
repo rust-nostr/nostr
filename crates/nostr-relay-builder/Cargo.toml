@@ -17,7 +17,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = []
-tor = ["async-wsocket/tor-launch-service"]
+tor = ["nostr-sdk/tor", "async-wsocket/tor-launch-service"]
 
 [dependencies]
 async-utility.workspace = true
@@ -27,7 +27,7 @@ hex = { workspace = true, features = ["std"] }
 negentropy = { workspace = true, features = ["std"] }
 nostr = { workspace = true, default-features = false, features = ["std", "rand"] }
 nostr-database.workspace = true
-nostr-relay-pool.workspace = true
+nostr-sdk.workspace = true
 tokio = { workspace = true, features = ["macros", "net", "sync"] }
 tracing.workspace = true
 

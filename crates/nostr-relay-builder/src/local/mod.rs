@@ -8,7 +8,7 @@ use std::net::SocketAddr;
 
 use atomic_destructor::AtomicDestructor;
 use nostr_database::prelude::*;
-use nostr_relay_pool::{Output, Reconciliation, SyncOptions};
+use nostr_sdk::{Output, Reconciliation, SyncOptions};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 mod inner;

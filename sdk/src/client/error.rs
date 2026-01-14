@@ -8,14 +8,15 @@ use nostr::prelude::*;
 use nostr::serde_json;
 use nostr_database::prelude::*;
 use nostr_gossip::error::GossipError;
-use nostr_relay_pool::__private::SharedStateError;
-use nostr_relay_pool::prelude::*;
+
+use crate::shared::SharedStateError;
+use crate::{pool, relay};
 
 /// Client error
 #[derive(Debug)]
 pub enum Error {
     /// Relay error
-    Relay(nostr_relay_pool::relay::Error),
+    Relay(relay::Error),
     /// Relay Pool error
     RelayPool(pool::Error),
     /// Database error
@@ -62,8 +63,8 @@ impl fmt::Display for Error {
     }
 }
 
-impl From<nostr_relay_pool::relay::Error> for Error {
-    fn from(e: nostr_relay_pool::relay::Error) -> Self {
+impl From<relay::Error> for Error {
+    fn from(e: relay::Error) -> Self {
         Self::Relay(e)
     }
 }

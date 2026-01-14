@@ -11,9 +11,8 @@
 Rust implementation of Nostr protocol.
 
 You may be interested in:
-* [`nostr-sdk`](https://crates.io/crates/nostr-sdk) if you want to write a typical Nostr client or bot
-* [`nostr-relay-pool`](https://crates.io/crates/nostr-relay-pool): Nostr Relay Pool
-* [`nostr-connect`](https://crates.io/crates/nostr-connect): Nostr Connect (NIP46)
+* [`nostr-sdk`](https://crates.io/crates/nostr-sdk) if you want to write a typical nostr client or bot
+* [`nostr-connect`](https://crates.io/crates/nostr-connect): Nostr Connect (NIP46) client and signer
 * [`nwc`](https://crates.io/crates/nwc): Nostr Wallet Connect (NWC) client
 
 ## Getting started

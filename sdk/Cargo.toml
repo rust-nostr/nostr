@@ -2,7 +2,7 @@
 name = "nostr-sdk"
 version = "0.44.1"
 edition = "2021"
-description = "High level Nostr client library."
+description = "A full-featured SDK for building high-performance and reliable nostr applications."
 authors.workspace = true
 homepage.workspace = true
 repository.workspace = true
@@ -17,7 +17,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = []
-tor = ["nostr-relay-pool/tor"]
+tor = ["async-wsocket/tor"]
 pow-multi-thread = ["nostr/pow-multi-thread"]
 all-nips = ["nostr/all-nips", "nip04", "nip06", "nip44", "nip47", "nip49", "nip57", "nip59", "nip96", "nip98"]
 nip03 = ["nostr/nip03"]
@@ -33,11 +33,16 @@ nip98 = ["nostr/nip98"]
 
 [dependencies]
 async-utility.workspace = true
-nostr = { workspace = true, features = ["std", "rand"] }
+async-wsocket = { workspace = true, features = ["socks"] }
+atomic-destructor.workspace = true
+futures = "0.3"
+hex = { workspace = true, features = ["std"] }
+lru.workspace = true
+negentropy = { workspace = true, features = ["std"] }
+nostr = { workspace = true, features = ["std", "rand", "os-rng"] }
 nostr-database.workspace = true
 nostr-gossip.workspace = true
-nostr-relay-pool.workspace = true
-tokio = { workspace = true, features = ["sync"] }
+tokio = { workspace = true, features = ["macros", "sync"] }
 tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
@@ -45,7 +50,8 @@ nostr-connect.workspace = true
 nostr-lmdb.workspace = true
 nostr-ndb.workspace = true
 nostr-gossip-memory.workspace = true
-tokio = { workspace = true, features = ["macros"] }
+nostr-relay-builder.workspace = true
+tokio = { workspace = true, features = ["macros", "rt"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [[example]]
@@ -99,3 +105,6 @@ name = "lmdb"
 
 [[example]]
 name = "whitelist"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bench)'] }

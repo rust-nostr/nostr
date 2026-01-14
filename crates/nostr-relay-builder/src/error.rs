@@ -8,7 +8,7 @@ use std::{fmt, io};
 
 #[cfg(feature = "tor")]
 use async_wsocket::native::tor;
-use nostr_relay_pool::pool;
+use nostr_sdk::pool;
 
 /// Relay builder error
 #[derive(Debug)]

@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use nostr::nips::nip46::ResponseResult;
-use nostr_relay_pool::prelude::*;
+use nostr_sdk::prelude::*;
 
 use crate::error::Error;
 

@@ -4,16 +4,11 @@
 [![crates.io - Downloads](https://img.shields.io/crates/d/nostr-sdk)](https://crates.io/crates/nostr-sdk)
 [![Documentation](https://docs.rs/nostr-sdk/badge.svg)](https://docs.rs/nostr-sdk)
 [![CI](https://github.com/rust-nostr/nostr/actions/workflows/ci.yml/badge.svg)](https://github.com/rust-nostr/nostr/actions/workflows/ci.yml)
-[![MIT](https://img.shields.io/crates/l/nostr-sdk.svg)](../../LICENSE)
+[![MIT](https://img.shields.io/crates/l/nostr-sdk.svg)](../LICENSE)
 
 ## Description
 
-A high-level, [Nostr](https://github.com/nostr-protocol/nostr) client library written in Rust.
-
-If you're writing a typical Nostr client or bot, this is likely the crate you need.
-
-However, the crate is designed in a modular way and depends on several other lower-level crates. 
-If you're attempting something more custom, you might be interested in [these](https://github.com/rust-nostr/nostr#project-structure).
+A full-featured SDK for building high-performance and reliable nostr applications.
 
 ## Getting started
 
@@ -42,7 +37,7 @@ async fn main() -> Result<()> {
     let opts = ClientOptions::new().connection(connection);
 
     // Create new client with custom options
-    let client = Client::builder().signer(keys.clone()).opts(opts).build();
+    let client = Client::builder().signer(keys).opts(opts).build();
 
     // Add relays
     client.add_relay("wss://relay.damus.io").await?;
@@ -122,7 +117,7 @@ All notable changes to this library are documented in the [CHANGELOG.md](CHANGEL
 
 ## State
 
-**This library is in an ALPHA state**, things that are implemented generally work but the API will change in breaking ways.
+**This library is in an ALPHA state**, things that are implemented generally work, but the API will change in breaking ways.
 
 ## Donations
 
@@ -130,4 +125,4 @@ All notable changes to this library are documented in the [CHANGELOG.md](CHANGEL
 
 ## License
 
-This project is distributed under the MIT software license - see the [LICENSE](../../LICENSE) file for details
+This project is distributed under the MIT software license – see the [LICENSE](../LICENSE) file for details

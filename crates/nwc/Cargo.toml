@@ -18,11 +18,11 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = []
 # Enables the tor embedded client
-tor = ["nostr-relay-pool/tor"]
+tor = ["nostr-sdk/tor"]
 
 [dependencies]
 nostr = { workspace = true, features = ["std", "nip47"] }
-nostr-relay-pool.workspace = true
+nostr-sdk.workspace = true
 tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]

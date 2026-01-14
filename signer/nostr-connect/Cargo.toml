@@ -17,12 +17,12 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = []
-tor = ["nostr-relay-pool/tor"]
+tor = ["nostr-sdk/tor"]
 
 [dependencies]
 async-utility.workspace = true
 nostr = { workspace = true, features = ["std", "rand", "nip04", "nip44", "nip46"] }
-nostr-relay-pool.workspace = true
+nostr-sdk.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 tracing.workspace = true
 

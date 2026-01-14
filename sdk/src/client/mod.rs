@@ -10,10 +10,11 @@ use std::iter;
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_wsocket::ConnectionMode;
+use futures::StreamExt;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
 use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
-use nostr_relay_pool::prelude::*;
 use tokio::sync::{broadcast, Semaphore};
 
 pub mod builder;
@@ -28,6 +29,13 @@ pub use self::options::{ClientOptions, SleepWhenIdle};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Connection, ConnectionTarget};
 use crate::gossip::{self, BrokenDownFilters, GossipFilterPattern, GossipWrapper};
+use crate::monitor::Monitor;
+use crate::pool::{self, Output, RelayPool, RelayPoolBuilder, RelayPoolNotification};
+use crate::relay::{
+    FlagCheck, Reconciliation, Relay, RelayOptions, RelayServiceFlags, ReqExitPolicy,
+    SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection, SyncOptions,
+};
+use crate::stream::BoxedStream;
 
 /// Nostr client
 #[derive(Debug, Clone)]
