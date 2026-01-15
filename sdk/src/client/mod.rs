@@ -19,16 +19,17 @@ use tokio::sync::{broadcast, Semaphore};
 
 pub mod builder;
 mod error;
+mod gossip;
 mod middleware;
 pub mod options;
 
 pub use self::builder::ClientBuilder;
 pub use self::error::Error;
+use self::gossip::{BrokenDownFilters, GossipFilterPattern, GossipWrapper};
 use self::middleware::AdmissionPolicyMiddleware;
 pub use self::options::{ClientOptions, SleepWhenIdle};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::options::{Connection, ConnectionTarget};
-use crate::gossip::{self, BrokenDownFilters, GossipFilterPattern, GossipWrapper};
 use crate::monitor::Monitor;
 use crate::pool::{self, Output, RelayPool, RelayPoolBuilder, RelayPoolNotification};
 use crate::relay::{

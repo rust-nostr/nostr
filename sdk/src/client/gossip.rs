@@ -1,7 +1,3 @@
-// Copyright (c) 2022-2023 Yuki Kishimoto
-// Copyright (c) 2023-2025 Rust Nostr Developers
-// Distributed under the MIT software license
-
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ops::Deref;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -16,7 +12,7 @@ use crate::client::Error;
 const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
 
 #[derive(Debug)]
-pub enum BrokenDownFilters {
+pub(super) enum BrokenDownFilters {
     /// Filters by url
     Filters(HashMap<RelayUrl, Filter>),
     /// Filters that match a certain pattern but where no relays are available
@@ -26,7 +22,7 @@ pub enum BrokenDownFilters {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct GossipWrapper {
+pub(super) struct GossipWrapper {
     gossip: Arc<dyn NostrGossip>,
     sync_counter: Arc<AtomicU64>,
 }
@@ -42,7 +38,7 @@ impl Deref for GossipWrapper {
 
 impl GossipWrapper {
     #[inline]
-    pub(crate) fn new(gossip: Arc<dyn NostrGossip>) -> Self {
+    pub(super) fn new(gossip: Arc<dyn NostrGossip>) -> Self {
         Self {
             gossip,
             sync_counter: Arc::new(AtomicU64::new(0)),
@@ -50,11 +46,11 @@ impl GossipWrapper {
     }
 
     #[inline]
-    pub(crate) fn next_sync_id(&self) -> u64 {
+    pub(super) fn next_sync_id(&self) -> u64 {
         self.sync_counter.fetch_add(1, Ordering::SeqCst)
     }
 
-    pub(crate) async fn get_relays<'a, I>(
+    pub(super) async fn get_relays<'a, I>(
         &self,
         public_keys: I,
         selection: BestRelaySelection,
@@ -106,7 +102,7 @@ impl GossipWrapper {
         Ok(urls)
     }
 
-    pub(crate) async fn break_down_filter(
+    pub(super) async fn break_down_filter(
         &self,
         filter: Filter,
         pattern: GossipFilterPattern,
@@ -322,7 +318,7 @@ impl GossipWrapper {
     }
 }
 
-pub(crate) enum GossipFilterPattern {
+pub(super) enum GossipFilterPattern {
     Nip65,
     Nip65AndNip17,
 }
@@ -337,7 +333,7 @@ impl GossipFilterPattern {
 /// Use both NIP-65 and NIP-17 if:
 /// - the `kinds` field contains the [`Kind::GiftWrap`];
 /// - if it's set a `#p` tag and no kind is specified
-pub(crate) fn find_filter_pattern(filter: &Filter) -> GossipFilterPattern {
+pub(super) fn find_filter_pattern(filter: &Filter) -> GossipFilterPattern {
     let (are_kinds_empty, has_gift_wrap_kind): (bool, bool) = match &filter.kinds {
         Some(kinds) if kinds.is_empty() => (true, false),
         Some(kinds) => (false, kinds.contains(&Kind::GiftWrap)),

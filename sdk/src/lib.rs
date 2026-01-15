@@ -15,7 +15,6 @@ pub use async_wsocket::ConnectionMode;
 pub use nostr::{self, *};
 
 pub mod client;
-mod gossip;
 pub mod monitor;
 pub mod policy;
 pub mod pool;
