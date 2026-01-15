@@ -10,7 +10,7 @@ use nostr::event::builder;
 use nostr::nips::{nip04, nip44, nip46};
 use nostr::types::url;
 use nostr::PublicKey;
-use nostr_sdk::{client, pool};
+use nostr_sdk::client;
 use tokio::sync::SetError;
 
 /// Nostr Connect error
@@ -24,8 +24,6 @@ pub enum Error {
     NIP44(nip44::Error),
     /// NIP46 error
     NIP46(nip46::Error),
-    /// Pool
-    Pool(pool::Error),
     /// Client
     Client(client::Error),
     /// Url parse error
@@ -53,7 +51,6 @@ impl fmt::Display for Error {
             Self::NIP04(e) => e.fmt(f),
             Self::NIP44(e) => e.fmt(f),
             Self::NIP46(e) => e.fmt(f),
-            Self::Pool(e) => e.fmt(f),
             Self::Client(e) => e.fmt(f),
             Self::RelayUrl(e) => e.fmt(f),
             Self::SetUserPublicKey(e) => e.fmt(f),
@@ -87,12 +84,6 @@ impl From<nip44::Error> for Error {
 impl From<nip46::Error> for Error {
     fn from(e: nip46::Error) -> Self {
         Self::NIP46(e)
-    }
-}
-
-impl From<pool::Error> for Error {
-    fn from(e: pool::Error) -> Self {
-        Self::Pool(e)
     }
 }
 

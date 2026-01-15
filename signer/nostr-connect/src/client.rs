@@ -114,7 +114,7 @@ impl NostrConnect {
     async fn bootstrap(&self) -> Result<PublicKey, Error> {
         // Add relays
         for url in self.uri.relays().iter() {
-            self.client.pool().add_relay(url, self.opts.clone()).await?;
+            self.client.add_relay(url).opts(self.opts.clone()).await?;
         }
 
         // Connect to relays

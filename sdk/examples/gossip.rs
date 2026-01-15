@@ -15,12 +15,15 @@ async fn main() -> Result<()> {
     let gossip = NostrGossipMemory::unbounded();
     let client = Client::builder().signer(keys).gossip(gossip).build();
 
-    client.add_discovery_relay("wss://relay.damus.io").await?;
-    client.add_discovery_relay("wss://purplepag.es").await?;
-    //client.add_discovery_relay("ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion").await?;
-
-    // client.add_relay("wss://relay.snort.social").await?;
-    // client.add_relay("wss://relay.damus.io").await?;
+    // Add discovery relays
+    client
+        .add_relay("wss://relay.damus.io")
+        .capabilities(RelayCapabilities::DISCOVERY)
+        .await?;
+    client
+        .add_relay("wss://purplepag.es")
+        .capabilities(RelayCapabilities::DISCOVERY)
+        .await?;
 
     client.connect().await;
 

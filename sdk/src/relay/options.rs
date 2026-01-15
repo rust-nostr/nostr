@@ -9,33 +9,30 @@ use std::time::Duration;
 use async_wsocket::ConnectionMode;
 use tokio::sync::watch::{self, Receiver, Sender};
 
-use super::capabilities::RelayCapabilities;
 use super::constants::{DEFAULT_NOTIFICATION_CHANNEL_SIZE, DEFAULT_RETRY_INTERVAL};
 use super::limits::RelayLimits;
 
 /// Relay options
 #[derive(Debug, Clone)]
 pub struct RelayOptions {
-    pub(super) connection_mode: ConnectionMode,
-    pub(super) capabilities: RelayCapabilities,
-    pub(super) ping: bool,
-    pub(super) reconnect: bool,
-    pub(super) sleep_when_idle: bool,
-    pub(super) idle_timeout: Duration,
-    pub(super) retry_interval: Duration,
-    pub(super) adjust_retry_interval: bool,
-    pub(super) verify_subscriptions: bool,
-    pub(super) ban_relay_on_mismatch: bool,
-    pub(super) limits: RelayLimits,
-    pub(super) max_avg_latency: Option<Duration>,
-    pub(super) notification_channel_size: usize,
+    pub(crate) connection_mode: ConnectionMode,
+    pub(crate) ping: bool,
+    pub(crate) reconnect: bool,
+    pub(crate) sleep_when_idle: bool,
+    pub(crate) idle_timeout: Duration,
+    pub(crate) retry_interval: Duration,
+    pub(crate) adjust_retry_interval: bool,
+    pub(crate) verify_subscriptions: bool,
+    pub(crate) ban_relay_on_mismatch: bool,
+    pub(crate) limits: RelayLimits,
+    pub(crate) max_avg_latency: Option<Duration>,
+    pub(crate) notification_channel_size: usize,
 }
 
 impl Default for RelayOptions {
     fn default() -> Self {
         Self {
             connection_mode: ConnectionMode::default(),
-            capabilities: RelayCapabilities::default(),
             ping: true,
             reconnect: true,
             sleep_when_idle: false,
@@ -62,12 +59,6 @@ impl RelayOptions {
     #[inline]
     pub fn connection_mode(mut self, mode: ConnectionMode) -> Self {
         self.connection_mode = mode;
-        self
-    }
-
-    /// Set Relay Service Flags
-    pub fn capabilities(mut self, capabilities: RelayCapabilities) -> Self {
-        self.capabilities = capabilities;
         self
     }
 
