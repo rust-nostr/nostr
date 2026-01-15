@@ -35,7 +35,7 @@ pub use self::output::Output;
 use crate::monitor::Monitor;
 use crate::relay::capabilities::RelayCapabilities;
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SubscribeOptions, SyncOptions};
-use crate::relay::{Reconciliation, Relay};
+use crate::relay::{AtomicRelayCapabilities, Reconciliation, Relay};
 use crate::shared::SharedState;
 use crate::stream::{BoxedStream, ReceiverStream};
 
@@ -248,22 +248,14 @@ impl RelayPool {
         self.internal_relay(&relays, &url).cloned()
     }
 
-    /// Add new relay
-    ///
-    /// If the [`RelayCapabilities::READ`] capability is set in [`RelayOptions`]
-    /// and the pool has some subscriptions, the new added relay will inherit them.
-    /// Use [`RelayPool::subscribe_to`] method instead of [`RelayPool::subscribe`],
-    /// to avoid setting pool subscriptions.
-    ///
-    /// Connection is **NOT** automatically started, remember to call [`RelayPool::connect`] or [`RelayPool::connect_relay`]!
     #[inline]
-    pub async fn add_relay<'a, U>(&self, url: U, opts: RelayOptions) -> Result<bool, Error>
-    where
-        U: Into<RelayUrlArg<'a>>,
-    {
-        // Convert into url
-        let url: Cow<RelayUrl> = url.into().try_into_relay_url()?;
-
+    pub(crate) async fn add_relay(
+        &self,
+        url: Cow<'_, RelayUrl>,
+        capabilities: RelayCapabilities,
+        connect: bool,
+        opts: RelayOptions,
+    ) -> Result<bool, Error> {
         // Check if the pool has been shutdown
         if self.is_shutdown() {
             return Err(Error::Shutdown);
@@ -272,8 +264,13 @@ impl RelayPool {
         // Get relays
         let mut relays = self.inner.atomic.relays.write().await;
 
-        // Check if map already contains url
-        if relays.contains_key(&url) {
+        // Check if the relay already exists
+        if let Some(relay) = relays.get(&url) {
+            // Add capabilities to the existing relay
+            let current_capabilities: &AtomicRelayCapabilities = relay.capabilities();
+            current_capabilities.add(capabilities);
+
+            // Return
             return Ok(false);
         }
 
@@ -284,10 +281,12 @@ impl RelayPool {
             }
         }
 
+        // Get owned url
         let url: RelayUrl = url.into_owned();
 
         // Compose new relay
-        let mut relay: Relay = Relay::new(url.clone(), self.inner.state.clone(), opts);
+        let mut relay: Relay =
+            Relay::new(url.clone(), self.inner.state.clone(), capabilities, opts);
 
         // Set notification sender
         relay
@@ -305,30 +304,15 @@ impl RelayPool {
             }
         }
 
+        // Connect
+        if connect {
+            relay.connect();
+        }
+
         // Insert relay into map
         relays.insert(url, relay);
 
         Ok(true)
-    }
-
-    // Private API
-    //
-    // Try to get relay by `url` or add it to pool.
-    // Return `Some(..)` only if the relay already exists.
-    #[inline]
-    #[doc(hidden)]
-    pub async fn __get_or_add_relay(
-        &self,
-        url: RelayUrl,
-        opts: RelayOptions,
-    ) -> Result<Option<Relay>, Error> {
-        match self.relay(&url).await {
-            Ok(relay) => Ok(Some(relay)),
-            Err(..) => {
-                self.add_relay(url, opts).await?;
-                Ok(None)
-            }
-        }
     }
 
     async fn _remove_relay<'a, U>(&self, url: U, force: bool) -> Result<(), Error>

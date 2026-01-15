@@ -111,8 +111,8 @@ impl NostrWalletConnect {
         // Add relays
         for url in self.uri.relays.iter() {
             self.client
-                .pool()
-                .add_relay(url, self.relay_opts.clone())
+                .add_relay(url)
+                .opts(self.relay_opts.clone())
                 .await?;
         }
 

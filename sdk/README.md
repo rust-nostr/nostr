@@ -44,7 +44,7 @@ async fn main() -> Result<()> {
     client.add_relay("ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion").await?;
     
     // Add read relay
-    client.add_read_relay("wss://relay.nostr.info").await?;
+    client.add_relay("wss://relay.nostr.info").capabilities(RelayCapabilities::READ).await?;
 
     // Connect to relays
     client.connect().await;

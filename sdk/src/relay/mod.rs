@@ -199,9 +199,14 @@ impl Ord for Relay {
 
 impl Relay {
     #[inline]
-    pub(crate) fn new(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
+    pub(crate) fn new(
+        url: RelayUrl,
+        state: SharedState,
+        capabilities: RelayCapabilities,
+        opts: RelayOptions,
+    ) -> Self {
         Self {
-            inner: AtomicDestructor::new(InnerRelay::new(url, state, opts)),
+            inner: AtomicDestructor::new(InnerRelay::new(url, state, capabilities, opts)),
         }
     }
 
@@ -821,7 +826,12 @@ mod tests {
     }
 
     fn new_relay(url: RelayUrl, opts: RelayOptions) -> Relay {
-        Relay::new(url, SharedState::default(), opts)
+        Relay::new(
+            url,
+            SharedState::default(),
+            RelayCapabilities::default(),
+            opts,
+        )
     }
 
     fn new_relay_with_database(
@@ -831,7 +841,7 @@ mod tests {
     ) -> Relay {
         let mut state = SharedState::default();
         state.database = database;
-        Relay::new(url, state, opts)
+        Relay::new(url, state, RelayCapabilities::default(), opts)
     }
 
     /// Setup public (without NIP42 auth) relay with N events to test event fetching
