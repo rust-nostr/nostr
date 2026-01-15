@@ -1544,6 +1544,16 @@ impl EventBuilder {
         Self::gift_wrap_from_seal(receiver, &seal, extra_tags)
     }
 
+    /// Private direct message relay list
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    pub fn nip17_relay_list<I>(urls: I) -> Self
+    where
+        I: IntoIterator<Item = RelayUrl>,
+    {
+        Self::new(Kind::InboxRelays, "").tags(urls.into_iter().map(Tag::relay))
+    }
+
     /// Private Direct message rumor
     ///
     /// You probably are looking for [`EventBuilder::private_msg`] method.
