@@ -243,8 +243,14 @@ impl InnerLocalRelay {
         }
     }
 
-    pub fn notify_event(&self, event: Event) -> bool {
+    #[inline]
+    pub(super) fn notify_event(&self, event: Event) -> bool {
         self.new_event.send(event).is_ok()
+    }
+
+    #[inline]
+    pub(super) async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, Error> {
+        Ok(self.database.save_event(event).await?)
     }
 
     #[inline]

@@ -101,6 +101,17 @@ impl LocalRelay {
         self.inner.notify_event(event)
     }
 
+    /// Save the event to the database and, if success, notify the subscribers.
+    pub async fn add_event(&self, event: Event) -> Result<SaveEventStatus, Error> {
+        let status = self.inner.save_event(&event).await?;
+
+        if status.is_success() {
+            self.inner.notify_event(event);
+        }
+
+        Ok(status)
+    }
+
     /// Shutdown relay
     #[inline]
     pub fn shutdown(&self) {

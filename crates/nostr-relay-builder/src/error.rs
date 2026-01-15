@@ -8,6 +8,7 @@ use std::{fmt, io};
 
 #[cfg(feature = "tor")]
 use async_wsocket::native::tor;
+use nostr_database::DatabaseError;
 use nostr_sdk::client;
 
 /// Relay builder error
@@ -18,6 +19,8 @@ pub enum Error {
     /// Tor error
     #[cfg(feature = "tor")]
     Tor(tor::Error),
+    /// Database error
+    Database(DatabaseError),
     /// Client error
     Client(client::Error),
     /// Relay already running
@@ -34,6 +37,7 @@ impl fmt::Display for Error {
             Self::IO(e) => write!(f, "{e}"),
             #[cfg(feature = "tor")]
             Self::Tor(e) => write!(f, "{e}"),
+            Self::Database(e) => write!(f, "{e}"),
             Self::Client(e) => e.fmt(f),
             Self::AlreadyRunning => write!(f, "the relay is already running"),
             Self::PrematureExit => write!(f, "premature exit"),
@@ -51,6 +55,12 @@ impl From<io::Error> for Error {
 impl From<tor::Error> for Error {
     fn from(e: tor::Error) -> Self {
         Self::Tor(e)
+    }
+}
+
+impl From<DatabaseError> for Error {
+    fn from(e: DatabaseError) -> Self {
+        Self::Database(e)
     }
 }
 
