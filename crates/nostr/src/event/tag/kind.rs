@@ -444,6 +444,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "request" => Self::Request,
             "response" => Self::Response,
             "runtime" => Self::Runtime,
+            "HEAD" => Self::Head,
             "server" => Self::Server,
             "size" => Self::Size,
             "starts" => Self::Starts,
