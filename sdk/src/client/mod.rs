@@ -216,11 +216,9 @@ impl Client {
     }
 
     /// Get relays with [`RelayCapabilities::READ`] or [`RelayCapabilities::WRITE`] capabilities
-    ///
-    /// Call [`RelayPool::all_relays`] to get all relays
     #[inline]
-    pub async fn relays(&self) -> HashMap<RelayUrl, Relay> {
-        self.pool.relays().await
+    pub fn relays(&self) -> GetRelays {
+        GetRelays::new(self)
     }
 
     /// Get a previously added [`Relay`]
