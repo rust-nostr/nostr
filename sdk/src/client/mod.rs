@@ -6,7 +6,6 @@
 
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
-use std::iter;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -14,7 +13,7 @@ use async_wsocket::ConnectionMode;
 use futures::StreamExt;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
-use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
+use nostr_gossip::{GossipListKind, GossipPublicKeyStatus, NostrGossip};
 use tokio::sync::{broadcast, Semaphore};
 
 mod api;
@@ -757,20 +756,8 @@ impl Client {
     /// - the [`Event`] will be sent also to NIP65 relays (automatically discovered);
     /// - the gossip data will be updated, if the [`Event`] is a NIP17/NIP65 relay list.
     #[inline]
-    pub async fn send_event(&self, event: &Event) -> Result<Output<EventId>, Error> {
-        match &self.gossip {
-            Some(gossip) => {
-                // Process event for gossip
-                gossip.process(event, None).await?;
-
-                // Send event using gossip
-                self.gossip_send_event(gossip, event, false).await
-            }
-            None => {
-                // NOT gossip, send event to all relays
-                Ok(self.pool.send_event(event).await?)
-            }
-        }
+    pub fn send_event<'event, 'url>(&self, event: &'event Event) -> SendEvent<'_, 'event, 'url> {
+        SendEvent::new(self, event)
     }
 
     /// Send event to specific relays
@@ -779,7 +766,10 @@ impl Client {
     ///
     /// If `gossip` is enabled and the [`Event`] is a NIP17/NIP65 relay list,
     /// the gossip data will be updated.
-    #[inline]
+    #[deprecated(
+        since = "0.45.0",
+        note = "use `client.send_event(event).to(urls).await` instead"
+    )]
     pub async fn send_event_to<'a, I, U>(
         &self,
         urls: I,
@@ -789,12 +779,7 @@ impl Client {
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,
     {
-        if let Some(gossip) = &self.gossip {
-            gossip.process(event, None).await?;
-        }
-
-        // Send event to relays
-        Ok(self.pool.send_event_to(urls, event).await?)
+        self.send_event(event).to(urls).await
     }
 
     /// Build, sign and return [`Event`]
@@ -822,8 +807,6 @@ impl Client {
     /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to specific relays.
     ///
     /// This method requires a [`NostrSigner`].
-    ///
-    /// Check [`Client::send_event_to`] from more details.
     #[inline]
     pub async fn send_event_builder_to<'a, I, U>(
         &self,
@@ -835,7 +818,7 @@ impl Client {
         U: Into<RelayUrlArg<'a>>,
     {
         let event: Event = self.sign_event_builder(builder).await?;
-        self.send_event_to(urls, &event).await
+        self.send_event(&event).to(urls).await
     }
 
     /// Fetch the newest public key metadata from relays.
@@ -978,17 +961,17 @@ impl Client {
         Ok(contacts)
     }
 
-    /// Send a private direct message
+    // TODO: deprecate this? Now the send_event allow choosing where to send an event
+    /// Send a private direct message to the NIP-17 relays of the receiver.
     ///
-    /// If `gossip` is enabled the message will be sent to the NIP17 relays (automatically discovered).
-    /// If gossip is not enabled will be sent to all relays with [`RelayCapabilities::WRITE`] flag.
     ///
-    /// This method requires a [`NostrSigner`].
+    /// This method requires that [`NostrSigner`] and [`NostrGossip`] are configured for the [`Client`].
     ///
     /// # Errors
     ///
     /// Returns [`Error::PrivateMsgRelaysNotFound`] if the receiver hasn't set the NIP17 list,
     /// meaning that is not ready to receive private messages.
+    /// Returns [`Error::GossipNotConfigured`] if gossip is not configured.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
@@ -1003,16 +986,16 @@ impl Client {
         S: Into<String>,
         I: IntoIterator<Item = Tag>,
     {
+        // Build event
         let signer = self.signer().await?;
         let event: Event =
             EventBuilder::private_msg(&signer, receiver, message, rumor_extra_tags).await?;
 
-        match &self.gossip {
-            Some(gossip) => self.gossip_send_event(gossip, &event, true).await,
-            None => self.send_event(&event).await,
-        }
+        // Send event to NIP-17 relays
+        self.send_event(&event).to_nip17().await
     }
 
+    // TODO: deprecate this? Now the send_event allow choosing where to send an event
     /// Send a private direct message to specific relays
     ///
     /// This method requires a [`NostrSigner`].
@@ -1036,9 +1019,10 @@ impl Client {
         let signer = self.signer().await?;
         let event: Event =
             EventBuilder::private_msg(&signer, receiver, message, rumor_extra_tags).await?;
-        self.send_event_to(urls, &event).await
+        self.send_event(&event).to(urls).await
     }
 
+    // TODO: deprecate this? Now the send_event allow choosing where to send an event
     /// Construct Gift Wrap and send to relays
     ///
     /// This method requires a [`NostrSigner`].
@@ -1068,6 +1052,7 @@ impl Client {
         self.send_event(&gift_wrap).await
     }
 
+    // TODO: deprecate this? Now the send_event allow choosing where to send an event
     /// Construct Gift Wrap and send to specific relays
     ///
     /// This method requires a [`NostrSigner`].
@@ -1095,9 +1080,10 @@ impl Client {
             EventBuilder::gift_wrap(&signer, receiver, rumor, extra_tags).await?;
 
         // Send
-        self.send_event_to(urls, &gift_wrap).await
+        self.send_event(&gift_wrap).to(urls).await
     }
 
+    // TODO: deprecate this?
     /// Unwrap Gift Wrap event
     ///
     /// This method requires a [`NostrSigner`].
@@ -1537,126 +1523,6 @@ impl Client {
             .into_iter()
             .map(|(k, v)| (k, v.into_iter().collect()))
             .collect())
-    }
-
-    async fn gossip_send_event(
-        &self,
-        gossip: &GossipWrapper,
-        event: &Event,
-        is_nip17: bool,
-    ) -> Result<Output<EventId>, Error> {
-        let is_contact_list: bool = event.kind == Kind::ContactList;
-        let is_gift_wrap: bool = event.kind == Kind::GiftWrap;
-
-        // Get involved public keys and check what are up to date in the gossip graph and which ones require an update.
-        if is_gift_wrap {
-            let kind: GossipListKind = if is_nip17 {
-                GossipListKind::Nip17
-            } else {
-                GossipListKind::Nip65
-            };
-
-            // Get only p tags since the author of a gift wrap is randomized
-            let public_keys = event.tags.public_keys().copied();
-            self.check_and_update_gossip(gossip, public_keys, kind)
-                .await?;
-        } else if is_contact_list {
-            // Contact list, update only author
-            self.check_and_update_gossip(gossip, [event.pubkey], GossipListKind::Nip65)
-                .await?;
-        } else {
-            // Get all public keys involved in the event: author + p tags
-            let public_keys = event
-                .tags
-                .public_keys()
-                .copied()
-                .chain(iter::once(event.pubkey));
-            self.check_and_update_gossip(gossip, public_keys, GossipListKind::Nip65)
-                .await?;
-        };
-
-        // Check if NIP17 or NIP65
-        let urls: HashSet<RelayUrl> = if is_nip17 && is_gift_wrap {
-            // Get NIP17 relays
-            // Get only for relays for p tags since gift wraps are signed with random key (random author)
-            let relays = gossip
-                .get_relays(
-                    event.tags.public_keys(),
-                    BestRelaySelection::PrivateMessage { limit: 3 },
-                    self.opts.gossip.allowed,
-                )
-                .await?;
-
-            // Clients SHOULD publish kind 14 events to the 10050-listed relays.
-            // If that is not found, that indicates the user is not ready to receive messages under this NIP and clients shouldn't try.
-            //
-            // <https://github.com/nostr-protocol/nips/blob/6e7a618e7f873bb91e743caacc3b09edab7796a0/17.md>
-            if relays.is_empty() {
-                return Err(Error::PrivateMsgRelaysNotFound);
-            }
-
-            // Add outbox and inbox relays
-            for url in relays.iter() {
-                self.add_relay(url)
-                    .capabilities(RelayCapabilities::GOSSIP)
-                    .and_connect()
-                    .await?;
-            }
-
-            relays
-        } else {
-            // Get OUTBOX, HINTS and MOST_RECEIVED relays for the author
-            let mut relays: HashSet<RelayUrl> = gossip
-                .get_best_relays(
-                    &event.pubkey,
-                    BestRelaySelection::All {
-                        read: 0,
-                        write: 2,
-                        hints: 1,
-                        most_received: 1,
-                    },
-                    self.opts.gossip.allowed,
-                )
-                .await?;
-
-            // Extend with INBOX, HINTS and MOST_RECEIVED relays for the tags
-            if !is_contact_list {
-                let inbox_hints_most_recv: HashSet<RelayUrl> = gossip
-                    .get_relays(
-                        event.tags.public_keys(),
-                        BestRelaySelection::All {
-                            read: 2,
-                            write: 0,
-                            hints: 1,
-                            most_received: 1,
-                        },
-                        self.opts.gossip.allowed,
-                    )
-                    .await?;
-
-                relays.extend(inbox_hints_most_recv);
-            }
-
-            // Add OUTBOX and INBOX relays
-            for url in relays.iter() {
-                self.add_relay(url)
-                    .capabilities(RelayCapabilities::GOSSIP)
-                    .and_connect()
-                    .await?;
-            }
-
-            // Get WRITE relays
-            let write_relays: Vec<RelayUrl> = self.pool.write_relay_urls().await;
-
-            // Extend relays with WRITE ones
-            relays.extend(write_relays);
-
-            // Return all relays
-            relays
-        };
-
-        // Send event
-        Ok(self.pool.send_event_to(urls, event).await?)
     }
 }
 
