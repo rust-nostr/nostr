@@ -886,60 +886,6 @@ impl RelayPool {
         Ok(output)
     }
 
-    /// Fetch events from specific relays
-    pub async fn fetch_events_from<'a, I, U, F>(
-        &self,
-        urls: I,
-        filters: F,
-        timeout: Duration,
-        policy: ReqExitPolicy,
-    ) -> Result<Events, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: Into<RelayUrlArg<'a>>,
-        F: Into<Vec<Filter>>,
-    {
-        // Convert filters
-        let filters: Vec<Filter> = filters.into();
-
-        let mut targets: HashMap<RelayUrl, Vec<Filter>> = HashMap::new();
-
-        for url in urls {
-            targets.insert(
-                url.into().try_into_relay_url()?.into_owned(),
-                filters.clone(),
-            );
-        }
-
-        // Construct a new events collection
-        let mut events: Events = if filters.len() == 1 {
-            // SAFETY: this can't panic because the filters are already verified that list isn't empty.
-            let filter: &Filter = &filters[0];
-            Events::new(filter)
-        } else {
-            // More than a filter, so we can't ensure to respect the limit -> construct a default collection.
-            Events::default()
-        };
-
-        // Stream events
-        let mut stream = self.stream_events(targets, Some(timeout), policy).await?;
-        while let Some((url, result)) = stream.next().await {
-            // NOTE: not propagate the error here! A single error by any of the relays would stop the entire fetching process.
-            match result {
-                Ok(event) => {
-                    // To find out more about why the `force_insert` was used, search for EVENTS_FORCE_INSERT in the code.
-                    events.force_insert(event);
-                }
-                Err(e) => {
-                    // TODO: use the Output<Events>
-                    tracing::error!(url = %url, error = %e, "Failed to handle streamed event");
-                }
-            }
-        }
-
-        Ok(events)
-    }
-
     pub(crate) async fn stream_events(
         &self,
         filters: HashMap<RelayUrl, Vec<Filter>>,

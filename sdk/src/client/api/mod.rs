@@ -1,5 +1,6 @@
 mod add;
 mod connect;
+mod fetch_events;
 mod output;
 mod relays;
 mod remove;
@@ -12,6 +13,7 @@ mod util;
 
 pub use self::add::*;
 pub use self::connect::*;
+pub use self::fetch_events::*;
 pub use self::output::*;
 pub use self::relays::*;
 pub use self::remove::*;

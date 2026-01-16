@@ -837,6 +837,106 @@ impl Client {
         StreamEvents::new(self, target.into())
     }
 
+    /// Fetch events from relays.
+    ///
+    /// # Overview
+    ///
+    /// Creates a short-lived event subscription and returns a list of events.
+    /// Compared to [`Client::stream_events`], this buffers events internally and returns them only after the stream terminates.
+    ///
+    /// For long-lived subscriptions, use [`Client::subscribe`].
+    ///
+    /// # Configuration
+    ///
+    /// By default:
+    ///
+    /// - No timeout is set
+    /// - Exit policy is [`ReqExitPolicy::ExitOnEOSE`]
+    ///
+    /// To customize this behavior, the returned [`FetchEvents`] can be
+    /// configured before awaiting it:
+    ///
+    /// - [`FetchEvents::timeout`]: set a maximum duration for the stream
+    /// - [`FetchEvents::policy`]: control when the stream terminates
+    ///
+    /// # Target Resolution, Event Semantics and Termination
+    ///
+    /// See [`Client::stream_events`] for details on:
+    ///
+    /// - Target resolution
+    /// - Event semantics
+    /// - Stream termination conditions
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    ///
+    /// - The resolved target contains no relays,
+    /// - A specified relay does not exist in the pool,
+    /// - Target resolution fails.
+    ///
+    /// # Examples
+    ///
+    /// ## Single-filter REQ and custom exit policy
+    ///
+    /// ```rust,no_run
+    /// # use std::time::Duration;
+    /// # use nostr_sdk::prelude::*;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// #   let client = Client::default();
+    /// let filter = Filter::new().kind(Kind::TextNote).limit(10);
+    ///
+    /// let events: Events = client
+    ///     .fetch_events(filter)
+    ///     .timeout(Duration::from_secs(10)) // Custom timeout
+    ///     .policy(ReqExitPolicy::WaitForEvents(10)) // Custom policy
+    ///     .await?;
+    ///
+    /// for event in events {
+    ///     println!("{}", event.as_json());
+    /// }
+    /// # Ok(()) }
+    /// ```
+    ///
+    /// ## Fetch from the explicitly specified relays
+    ///
+    /// ```rust,no_run
+    /// # use std::time::Duration;
+    /// # use std::collections::HashMap;
+    /// # use nostr_sdk::prelude::*;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// #   let client = Client::default();
+    /// // Subscribe with different filters per relay
+    /// let mut targets = HashMap::new();
+    /// targets.insert(
+    ///     "wss://relay1.example.com",
+    ///     vec![Filter::new().kind(Kind::TextNote).limit(10)],
+    /// );
+    /// targets.insert(
+    ///     "wss://relay2.example.com",
+    ///     vec![Filter::new().kind(Kind::Metadata).limit(5)],
+    /// );
+    ///
+    /// let events: Events = client
+    ///     .fetch_events(targets)
+    ///     .timeout(Duration::from_secs(10))
+    ///     .await?;
+    ///
+    /// for event in events {
+    ///     println!("{}", event.as_json());
+    /// }
+    /// # Ok(()) }
+    /// ```
+    #[inline]
+    pub fn fetch_events<'client, 'url, F>(&'client self, target: F) -> FetchEvents<'client, 'url>
+    where
+        F: Into<ReqTarget<'url>>,
+    {
+        FetchEvents::new(self, target.into())
+    }
+
     /// Sync events with relays (negentropy reconciliation)
     ///
     /// If `gossip` is enabled the events will be reconciled also from
@@ -869,160 +969,6 @@ impl Client {
         U: Into<RelayUrlArg<'a>>,
     {
         Ok(self.pool.sync_with(urls, filter, opts).await?)
-    }
-
-    /// Fetch events from relays
-    ///
-    /// # Overview
-    ///
-    /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
-    /// For long-lived subscriptions, use [`Client::subscribe`].
-    ///
-    /// # Gossip
-    ///
-    /// If `gossip` is enabled, the events will be requested also to
-    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// # use std::time::Duration;
-    /// # use nostr_sdk::prelude::*;
-    /// # #[tokio::main]
-    /// # async fn main() {
-    /// #   let keys = Keys::generate();
-    /// #   let client = Client::new();
-    /// let subscription = Filter::new()
-    ///     .pubkeys(vec![keys.public_key()])
-    ///     .since(Timestamp::now());
-    ///
-    /// let _events = client
-    ///     .fetch_events(subscription, Duration::from_secs(10))
-    ///     .await
-    ///     .unwrap();
-    /// # }
-    /// ```
-    pub async fn fetch_events<F>(&self, filters: F, timeout: Duration) -> Result<Events, Error>
-    where
-        F: Into<Vec<Filter>>,
-    {
-        let filters: Vec<Filter> = filters.into();
-
-        // Construct a new events collection
-        let mut events: Events = if filters.len() == 1 {
-            // SAFETY: this can't panic because the filters are already verified that list isn't empty.
-            let filter: &Filter = &filters[0];
-            Events::new(filter)
-        } else {
-            // More than a filter, so we can't ensure to respect the limit -> construct a default collection.
-            Events::default()
-        };
-
-        // Stream events
-        let mut stream = self
-            .stream_events(filters)
-            .timeout(timeout)
-            .policy(ReqExitPolicy::ExitOnEOSE)
-            .await?;
-
-        while let Some((url, result)) = stream.next().await {
-            // NOTE: not propagate the error here! A single error by any of the relays would stop the entire fetching process.
-            match result {
-                Ok(event) => {
-                    // To find out more about why the `force_insert` was used, search for EVENTS_FORCE_INSERT in the code.
-                    events.force_insert(event);
-                }
-                Err(e) => {
-                    // TODO: use the Output<Events>
-                    tracing::error!(url = %url, error = %e, "Failed to handle streamed event");
-                }
-            }
-        }
-
-        Ok(events)
-    }
-
-    /// Fetch events from specific relays
-    ///
-    /// # Overview
-    ///
-    /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
-    /// To use another exit policy, check [`RelayPool::fetch_events_from`].
-    /// For long-lived subscriptions, check [`Client::subscribe_to`].
-    #[inline]
-    pub async fn fetch_events_from<'a, I, U, F>(
-        &self,
-        urls: I,
-        filters: F,
-        timeout: Duration,
-    ) -> Result<Events, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: Into<RelayUrlArg<'a>>,
-        F: Into<Vec<Filter>>,
-    {
-        Ok(self
-            .pool
-            .fetch_events_from(urls, filters, timeout, ReqExitPolicy::ExitOnEOSE)
-            .await?)
-    }
-
-    /// Get events both from database and relays
-    ///
-    /// # Overview
-    ///
-    /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
-    /// For long-lived subscriptions, check [`Client::subscribe`].
-    ///
-    /// # Gossip
-    ///
-    /// If `gossip` is enabled the events will be requested also to
-    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
-    ///
-    /// # Notes and alternative example
-    ///
-    /// This method will be deprecated in the future!
-    /// This is a temporary solution for who still want to query events both from database and relays and merge the result.
-    /// The optimal solution is to execute a [`Client::sync`] to reconcile missing events, [`Client::subscribe`] to get all
-    /// new future events, [`NostrDatabase::query`] to query stored events and [`Client::handle_notifications`] to listen-for/handle new events (i.e. to know when update the UI).
-    /// This will allow very fast queries, low bandwidth usage (depending on how many events the client have to reconcile) and a lower load on the relays.
-    ///
-    /// You can obtain the same result with:
-    /// ```rust,no_run
-    /// # use std::time::Duration;
-    /// # use nostr_sdk::prelude::*;
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<()> {
-    /// # let client = Client::default();
-    /// # let filter = Filter::new().limit(1);
-    /// // Query database
-    /// let stored_events: Events = client.database().query(filter.clone()).await?;
-    ///
-    /// // Query relays
-    /// let fetched_events: Events = client.fetch_events(filter, Duration::from_secs(10)).await?;
-    ///
-    /// // Merge result
-    /// let events: Events = stored_events.merge(fetched_events);
-    ///
-    /// // Iter and print result
-    /// for event in events.into_iter() {
-    ///     println!("{}", event.as_json());
-    /// }
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub async fn fetch_combined_events(
-        &self,
-        filter: Filter,
-        timeout: Duration,
-    ) -> Result<Events, Error> {
-        // Query database
-        let stored_events: Events = self.database().query(filter.clone()).await?;
-
-        // Query relays
-        let fetched_events: Events = self.fetch_events(filter, timeout).await?;
-
-        // Merge result
-        Ok(stored_events.merge(fetched_events))
     }
 
     /// Send the client message to a **specific relays**
@@ -1165,7 +1111,7 @@ impl Client {
             .author(public_key)
             .kind(Kind::Metadata)
             .limit(1);
-        let events: Events = self.fetch_events(filter, timeout).await?;
+        let events: Events = self.fetch_events(filter).timeout(timeout).await?;
         match events.first() {
             Some(event) => Ok(Some(Metadata::try_from(event)?)),
             None => Ok(None),
@@ -1219,7 +1165,7 @@ impl Client {
     pub async fn get_contact_list(&self, timeout: Duration) -> Result<Vec<Contact>, Error> {
         let mut contact_list: Vec<Contact> = Vec::new();
         let filter: Filter = self.get_contact_list_filter().await?;
-        let events: Events = self.fetch_events(filter, timeout).await?;
+        let events: Events = self.fetch_events(filter).timeout(timeout).await?;
 
         // Get first event (result of `fetch_events` is sorted DESC by timestamp)
         if let Some(event) = events.first_owned() {
@@ -1254,7 +1200,7 @@ impl Client {
     ) -> Result<Vec<PublicKey>, Error> {
         let mut pubkeys: Vec<PublicKey> = Vec::new();
         let filter: Filter = self.get_contact_list_filter().await?;
-        let events: Events = self.fetch_events(filter, timeout).await?;
+        let events: Events = self.fetch_events(filter).timeout(timeout).await?;
 
         for event in events.into_iter() {
             pubkeys.extend(event.tags.public_keys());
@@ -1275,7 +1221,7 @@ impl Client {
             public_keys.iter().map(|p| (*p, Metadata::new())).collect();
 
         let filter: Filter = Filter::new().authors(public_keys).kind(Kind::Metadata);
-        let events: Events = self.fetch_events(filter, timeout).await?;
+        let events: Events = self.fetch_events(filter).timeout(timeout).await?;
         for event in events.into_iter() {
             let metadata = Metadata::from_json(&event.content)?;
             if let Some(m) = contacts.get_mut(&event.pubkey) {
@@ -1663,20 +1609,35 @@ impl Client {
         for chunk in filters.chunks(10) {
             // Fetch the events
             // NOTE: the received events are automatically processed in the middleware!
-            let received: Events = self
+
+            let mut targets = HashMap::with_capacity(output.failed.len());
+
+            for url in output.failed.keys() {
+                targets.insert(url.clone(), chunk.to_vec());
+            }
+
+            let mut stream = self
                 .pool
-                .fetch_events_from(
-                    output.failed.keys(),
-                    chunk,
-                    Duration::from_secs(10),
+                .stream_events(
+                    targets,
+                    Some(Duration::from_secs(10)),
                     ReqExitPolicy::ExitOnEOSE,
                 )
                 .await?;
 
             // Update the last check for the fetched public keys
-            for pk in received.iter().map(|e| e.pubkey) {
-                // Update the last check for this public key
-                gossip.update_fetch_attempt(&pk, *gossip_kind).await?;
+            while let Some((url, event)) = stream.next().await {
+                match event {
+                    Ok(event) => {
+                        // Update the last check for this public key
+                        gossip
+                            .update_fetch_attempt(&event.pubkey, *gossip_kind)
+                            .await?;
+                    }
+                    Err(e) => {
+                        tracing::error!(%url, error = %e, "Failed to fetch outdated gossip data from relay.");
+                    }
+                }
             }
         }
 
@@ -1705,13 +1666,25 @@ impl Client {
             .authors(missing_public_keys.clone())
             .kind(kind);
 
+        let mut targets = HashMap::with_capacity(output.failed.len());
+
+        for url in output.failed.keys() {
+            targets.insert(url.clone(), vec![missing_filter.clone()]);
+        }
+
         // NOTE: the received events are automatically processed in the middleware!
-        self.fetch_events_from(
-            output.failed.keys(),
-            missing_filter,
-            Duration::from_secs(10),
-        )
-        .await?;
+        let mut stream = self
+            .pool
+            .stream_events(
+                targets,
+                Some(Duration::from_secs(10)),
+                ReqExitPolicy::ExitOnEOSE,
+            )
+            .await?;
+
+        // Consume the stream
+        #[allow(clippy::redundant_pattern_matching)]
+        while let Some(..) = stream.next().await {}
 
         // Update the last check for the missing public keys
         for pk in missing_public_keys.into_iter() {
