@@ -1,4 +1,5 @@
 mod add;
+mod connect;
 mod fetch;
 mod filters_arg;
 mod remove;
@@ -6,9 +7,11 @@ mod remove_all;
 mod stream;
 mod subscribe;
 mod sync;
+mod try_connect;
 mod util;
 
 pub use self::add::*;
+pub use self::connect::*;
 pub use self::fetch::*;
 pub use self::filters_arg::*;
 pub use self::remove::*;
@@ -16,3 +19,4 @@ pub use self::remove_all::*;
 pub use self::stream::*;
 pub use self::subscribe::*;
 pub use self::sync::*;
+pub use self::try_connect::*;

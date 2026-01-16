@@ -436,27 +436,33 @@ impl Client {
         Ok(self.pool.disconnect_relay(url).await?)
     }
 
-    /// Connect to all added relays
+    /// Connect to relays
     ///
-    /// Attempts to initiate a connection for every relay currently in
+    /// Attempts to initiate a connection for relays with
     /// [`RelayStatus::Initialized`] or [`RelayStatus::Terminated`].
     /// A background connection task is spawned for each such relay, which then tries
     /// to establish the connection.
     /// Any relay not in one of these two statuses is skipped.
     ///
     /// For further details, see the documentation of [`Relay::connect`].
+    ///
+    /// [`RelayStatus::Initialized`]: crate::relay::RelayStatus::Initialized
+    /// [`RelayStatus::Terminated`]: crate::relay::RelayStatus::Terminated
     #[inline]
-    pub async fn connect(&self) {
-        self.pool.connect().await;
+    pub fn connect(&self) -> Connect {
+        Connect::new(self)
     }
 
     /// Waits for relays connections
     ///
     /// Wait for relays connections at most for the specified `timeout`.
     /// The code continues when the relays are connected or the `timeout` is reached.
-    #[inline]
+    #[deprecated(
+        since = "0.45.0",
+        note = "use `client.connect().and_wait(timeout).await` instead"
+    )]
     pub async fn wait_for_connection(&self, timeout: Duration) {
-        self.pool.wait_for_connection(timeout).await
+        self.connect().and_wait(timeout).await;
     }
 
     /// Try to establish a connection with the relays.
@@ -469,9 +475,12 @@ impl Client {
     /// regardless of whether the initial connection succeeds.
     ///
     /// For further details, see the documentation of [`Relay::try_connect`].
+    ///
+    /// [`RelayStatus::Initialized`]: crate::relay::RelayStatus::Initialized
+    /// [`RelayStatus::Terminated`]: crate::relay::RelayStatus::Terminated
     #[inline]
-    pub async fn try_connect(&self, timeout: Duration) -> Output<()> {
-        self.pool.try_connect(timeout).await
+    pub fn try_connect(&self) -> TryConnect {
+        TryConnect::new(self)
     }
 
     /// Disconnect from all relays
