@@ -1,4 +1,5 @@
 mod add;
+mod blocking;
 mod connect;
 mod fetch;
 mod filters_arg;
@@ -14,6 +15,7 @@ mod try_connect;
 mod util;
 
 pub use self::add::*;
+pub use self::blocking::*;
 pub use self::connect::*;
 pub use self::fetch::*;
 pub use self::filters_arg::*;

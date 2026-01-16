@@ -4,6 +4,7 @@ use std::pin::Pin;
 
 use nostr::{EventId, Filter, RelayUrl, RelayUrlArg, Timestamp};
 
+use super::blocking::Blocking;
 use super::output::Output;
 use crate::client::{Client, Error};
 use crate::relay::{Reconciliation, RelayCapabilities, SyncOptions};
@@ -136,3 +137,5 @@ where
         Box::pin(self.exec())
     }
 }
+
+impl<'client, 'url> Blocking for SyncEvents<'client, 'url> where 'url: 'client {}

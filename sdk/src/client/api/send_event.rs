@@ -6,6 +6,7 @@ use std::pin::Pin;
 use nostr::{Event, EventId, Kind, RelayUrl, RelayUrlArg};
 use nostr_gossip::{BestRelaySelection, GossipListKind};
 
+use super::blocking::Blocking;
 use super::output::Output;
 use crate::client::gossip::GossipWrapper;
 use crate::client::{Client, Error};
@@ -287,6 +288,13 @@ where
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(self.exec())
     }
+}
+
+impl<'client, 'event, 'url> Blocking for SendEvent<'client, 'event, 'url>
+where
+    'event: 'client,
+    'url: 'client,
+{
 }
 
 #[cfg(test)]

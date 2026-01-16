@@ -4,6 +4,7 @@ use std::pin::Pin;
 
 use nostr::{Filter, RelayUrl, SubscriptionId};
 
+use super::blocking::Blocking;
 use super::filters_arg::FiltersArg;
 use super::output::Output;
 use super::util::build_targets;
@@ -68,3 +69,5 @@ where
         Box::pin(self.exec())
     }
 }
+
+impl<'client, 'url> Blocking for Subscribe<'client, 'url> where 'url: 'client {}
