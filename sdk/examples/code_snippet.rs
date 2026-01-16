@@ -11,7 +11,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let keys = Keys::generate();
-    let client = Client::new(keys);
+    let client = Client::builder().signer(keys).build();
 
     client.add_relay("wss://relay.damus.io").await?;
     client.add_relay("wss://nos.lol").await?;
