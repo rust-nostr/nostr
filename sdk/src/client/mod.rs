@@ -33,8 +33,7 @@ pub use self::options::*;
 use crate::monitor::Monitor;
 use crate::pool::{RelayPool, RelayPoolBuilder, RelayPoolNotification};
 use crate::relay::{
-    Reconciliation, Relay, RelayCapabilities, RelayOptions, ReqExitPolicy, SyncDirection,
-    SyncOptions,
+    Relay, RelayCapabilities, RelayOptions, ReqExitPolicy, SyncDirection, SyncOptions,
 };
 
 /// Nostr client
@@ -937,38 +936,78 @@ impl Client {
         FetchEvents::new(self, target.into())
     }
 
-    /// Sync events with relays (negentropy reconciliation)
+    /// Synchronize events with relays using negentropy.
     ///
-    /// If `gossip` is enabled the events will be reconciled also from
-    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
+    /// # Overview
     ///
-    /// <https://github.com/hoytech/negentropy>
+    /// Performs a negentropy-based reconciliation between the local database
+    /// and one or more relays.
+    ///
+    /// # Configuration
+    ///
+    /// The returned [`SyncEvents`] builder can be configured before execution:
+    ///
+    /// - [`SyncEvents::with`]: explicitly select which relays to synchronize with
+    /// - [`SyncEvents::opts`]: configure reconciliation behavior
+    ///
+    /// If no relays are explicitly specified, the target set is resolved
+    /// automatically (see *Target Resolution*).
+    ///
+    /// # Target Resolution
+    ///
+    /// The set of relays to synchronize with is determined as follows:
+    ///
+    /// - If relays are explicitly provided via [`SyncEvents::with`], only those
+    ///   relays are used.
+    /// - Otherwise, if gossip is enabled ([`ClientBuilder::gossip`]), NIP-65 relays
+    ///   are automatically discovered and used as targets.
+    /// - Otherwise, all relays in the pool with
+    ///   [`RelayCapabilities::READ`] or [`RelayCapabilities::WRITE`] are used.
+    ///
+    /// Each target relay receives the same filter, scoped to the events relevant
+    /// for reconciliation.
+    ///
+    /// # Reconciliation Semantics
+    ///
+    /// - Reconciliation is performed using NIP-77 negentropy
+    ///   (<https://github.com/nostr-protocol/nips/blob/master/77.md>).
+    /// - Event transfer occurs **only** for events determined to be missing
+    ///   on either side.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    ///
+    /// - Target resolution fails,
+    /// - A specified relay URL is invalid,
+    /// - Database access fails,
+    /// - Or reconciliation cannot be initiated.
+    ///
+    /// Relay-specific failures during event transfer are reported in the
+    /// returned [`SyncSummary`].
     #[inline]
-    pub async fn sync(
-        &self,
-        filter: Filter,
-        opts: &SyncOptions,
-    ) -> Result<Output<Reconciliation>, Error> {
-        match &self.gossip {
-            Some(gossip) => self.gossip_sync_negentropy(gossip, filter, opts).await,
-            None => Ok(self.pool.sync(filter, opts).await?),
-        }
+    pub fn sync<'url>(&self, filter: Filter) -> SyncEvents<'_, 'url> {
+        SyncEvents::new(self, filter)
     }
 
     /// Sync events with specific relays (negentropy reconciliation)
     ///
     /// <https://github.com/hoytech/negentropy>
+    #[deprecated(
+        since = "0.45.0",
+        note = "use `client.sync(filter).with(urls).await` instead"
+    )]
     pub async fn sync_with<'a, I, U>(
         &self,
         urls: I,
         filter: Filter,
         opts: &SyncOptions,
-    ) -> Result<Output<Reconciliation>, Error>
+    ) -> Result<Output<SyncSummary>, Error>
     where
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,
     {
-        Ok(self.pool.sync_with(urls, filter, opts).await?)
+        self.sync(filter).with(urls).opts(opts.clone()).await
     }
 
     /// Send the client message to a **specific relays**
@@ -1509,7 +1548,7 @@ impl Client {
         gossip: &Arc<dyn NostrGossip>,
         gossip_kind: &GossipListKind,
         outdated_public_keys: HashSet<PublicKey>,
-    ) -> Result<(Output<Reconciliation>, Events), Error> {
+    ) -> Result<(Output<SyncSummary>, Events), Error> {
         // Get kind
         let kind: Kind = gossip_kind.to_event_kind();
 
@@ -1531,7 +1570,7 @@ impl Client {
         // Negentropy sync
         // NOTE: the received events are automatically processed in the middleware!
         let opts: SyncOptions = SyncOptions::default().direction(SyncDirection::Down);
-        let output: Output<Reconciliation> = self.sync_with(urls, filter.clone(), &opts).await?;
+        let output: Output<SyncSummary> = self.sync(filter.clone()).with(urls).opts(opts).await?;
 
         // Get events from the database
         let stored_events: Events = self.database().query(filter).await?;
@@ -1544,7 +1583,7 @@ impl Client {
                 .await?;
 
             // Skip events that has already processed in the middleware
-            if output.received.contains(&event.id) {
+            if output.received.contains_key(&event.id) {
                 continue;
             }
 
@@ -1560,7 +1599,7 @@ impl Client {
         sync_id: u64,
         gossip: &Arc<dyn NostrGossip>,
         gossip_kind: &GossipListKind,
-        output: &Output<Reconciliation>,
+        output: &Output<SyncSummary>,
         stored_events: &Events,
         missing_public_keys: &mut HashSet<PublicKey>,
     ) -> Result<(), Error> {
@@ -1569,7 +1608,8 @@ impl Client {
 
         let mut filters: Vec<Filter> = Vec::new();
 
-        let skip_ids: HashSet<EventId> = output.local.union(&output.received).copied().collect();
+        let received: HashSet<EventId> = output.received.keys().copied().collect();
+        let skip_ids: HashSet<EventId> = output.local.union(&received).copied().collect();
 
         // Try to fetch from relays only the newer events (last created_at + 1)
         for event in stored_events.iter() {
@@ -1650,7 +1690,7 @@ impl Client {
         sync_id: u64,
         gossip: &Arc<dyn NostrGossip>,
         gossip_kind: &GossipListKind,
-        output: &Output<Reconciliation>,
+        output: &Output<SyncSummary>,
         missing_public_keys: HashSet<PublicKey>,
     ) -> Result<(), Error> {
         // Get kind
@@ -1910,32 +1950,6 @@ impl Client {
 
         // Send event
         Ok(self.pool.send_event_to(urls, event).await?)
-    }
-
-    async fn gossip_sync_negentropy(
-        &self,
-        gossip: &GossipWrapper,
-        filter: Filter,
-        opts: &SyncOptions,
-    ) -> Result<Output<Reconciliation>, Error> {
-        // Break down filter
-        let temp_filters = self.break_down_filter(gossip, filter).await?;
-
-        let database = self.database();
-        let mut filters: HashMap<RelayUrl, (Filter, Vec<_>)> =
-            HashMap::with_capacity(temp_filters.len());
-
-        // Iterate broken down filters and compose new filters for targeted reconciliation
-        for (url, filter) in temp_filters.into_iter() {
-            // Get items
-            let items: Vec<(EventId, Timestamp)> =
-                database.negentropy_items(filter.clone()).await?;
-
-            filters.insert(url, (filter, items));
-        }
-
-        // Reconciliation
-        Ok(self.pool.sync_targeted(filters, opts).await?)
     }
 }
 

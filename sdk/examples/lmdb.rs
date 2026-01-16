@@ -40,7 +40,7 @@ async fn main() -> Result<()> {
             }
         }
     });
-    let output = client.sync(filter, &opts).await?;
+    let output = client.sync(filter).opts(opts).await?;
 
     println!("Local: {}", output.local.len());
     println!("Remote: {}", output.remote.len());

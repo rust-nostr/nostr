@@ -13,6 +13,7 @@ use async_utility::futures_util::{SinkExt, StreamExt};
 use async_wsocket::native::{self, Message, WebSocketStream};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Id, Negentropy, NegentropyStorageVector};
+use nostr_sdk::client::SyncSummary;
 use nostr_sdk::prelude::*;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
@@ -200,8 +201,8 @@ impl InnerLocalRelay {
         &self,
         urls: I,
         filter: Filter,
-        opts: &SyncOptions,
-    ) -> Result<Output<Reconciliation>, Error>
+        opts: SyncOptions,
+    ) -> Result<Output<SyncSummary>, Error>
     where
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,
@@ -232,7 +233,7 @@ impl InnerLocalRelay {
 
         // Start sync and wait for the result
         tokio::select! {
-            result = client.sync(filter, opts) => {
+            result = client.sync(filter).opts(opts) => {
                 // Shutdown client
                 client.shutdown().await;
 

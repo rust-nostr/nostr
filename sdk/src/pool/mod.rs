@@ -29,11 +29,11 @@ pub use self::builder::RelayPoolBuilder;
 pub use self::error::Error;
 use self::inner::{InnerRelayPool, Relays};
 pub use self::options::RelayPoolOptions;
-use crate::client::Output;
+use crate::client::{Output, SyncSummary};
 use crate::monitor::Monitor;
 use crate::relay::{
-    self, AtomicRelayCapabilities, Reconciliation, Relay, RelayCapabilities, RelayOptions,
-    ReqExitPolicy, SubscribeAutoCloseOptions, SyncOptions,
+    self, AtomicRelayCapabilities, Relay, RelayCapabilities, RelayOptions, ReqExitPolicy,
+    SubscribeAutoCloseOptions, SyncOptions,
 };
 use crate::shared::SharedState;
 use crate::stream::{BoxedStream, ReceiverStream};
@@ -184,11 +184,6 @@ impl RelayPool {
         self.internal_relays_with_any_cap(&relays, capabilities)
             .map(|(k, ..)| k.clone())
             .collect()
-    }
-
-    pub(crate) async fn relay_urls(&self) -> Vec<RelayUrl> {
-        self.relay_urls_with_any_cap(RelayCapabilities::READ | RelayCapabilities::WRITE)
-            .await
     }
 
     pub(crate) async fn read_relay_urls(&self) -> Vec<RelayUrl> {
@@ -782,59 +777,11 @@ impl RelayPool {
         }
     }
 
-    /// Sync events with relays (negentropy reconciliation)
-    pub async fn sync(
+    pub(crate) async fn sync(
         &self,
-        filter: Filter,
-        opts: &SyncOptions,
-    ) -> Result<Output<Reconciliation>, Error> {
-        let urls: Vec<RelayUrl> = self.relay_urls().await;
-        self.sync_with(urls, filter, opts).await
-    }
-
-    /// Sync events with specific relays (negentropy reconciliation)
-    pub async fn sync_with<'a, I, U>(
-        &self,
-        urls: I,
-        filter: Filter,
-        opts: &SyncOptions,
-    ) -> Result<Output<Reconciliation>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: Into<RelayUrlArg<'a>>,
-    {
-        // Get items
-        let items: Vec<(EventId, Timestamp)> = self
-            .inner
-            .state
-            .database()
-            .negentropy_items(filter.clone())
-            .await?;
-
-        let tup: (Filter, Vec<(EventId, Timestamp)>) = (filter, items);
-
-        // Reconcile
-        let targets = urls.into_iter().map(|u| (u, tup.clone()));
-        self.sync_targeted(targets, opts).await
-    }
-
-    /// Sync events with specific relays and filters (negentropy reconciliation)
-    pub async fn sync_targeted<'a, I, U>(
-        &self,
-        targets: I,
-        opts: &SyncOptions,
-    ) -> Result<Output<Reconciliation>, Error>
-    where
-        I: IntoIterator<Item = (U, (Filter, Vec<(EventId, Timestamp)>))>,
-        U: Into<RelayUrlArg<'a>>,
-    {
-        // Collect targets
-        #[allow(clippy::type_complexity)]
-        let targets: HashMap<Cow<RelayUrl>, (Filter, Vec<(EventId, Timestamp)>)> = targets
-            .into_iter()
-            .map(|(u, v)| Ok((u.into().try_into_relay_url()?, v)))
-            .collect::<Result<_, Error>>()?;
-
+        targets: HashMap<RelayUrl, (Filter, Vec<(EventId, Timestamp)>)>,
+        opts: SyncOptions,
+    ) -> Result<Output<SyncSummary>, Error> {
         // Check if urls set is empty
         if targets.is_empty() {
             return Err(Error::NoRelaysSpecified);
@@ -843,27 +790,23 @@ impl RelayPool {
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
 
-        // Check if empty
-        if relays.is_empty() {
-            return Err(Error::NoRelays);
-        }
-
-        // Check if urls set contains ONLY already added relays
-        if !targets.keys().all(|url| relays.contains_key(url)) {
-            return Err(Error::RelayNotFound);
-        }
-
         // TODO: shared reconciliation output to avoid to request duplicates?
 
         let mut urls: Vec<RelayUrl> = Vec::with_capacity(targets.len());
         let mut futures = Vec::with_capacity(targets.len());
-        let mut output: Output<Reconciliation> = Output::default();
+        let mut output: Output<SyncSummary> = Output::default();
 
         // Compose futures
         for (url, (filter, items)) in targets.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
-            urls.push(url.into_owned());
-            futures.push(relay.sync_with_items(filter, items, opts));
+            urls.push(url);
+            futures.push(
+                relay
+                    .sync(filter)
+                    .items(items)
+                    .opts(opts.clone())
+                    .into_future(),
+            );
         }
 
         // Join futures
@@ -874,8 +817,8 @@ impl RelayPool {
             match result {
                 Ok(reconciliation) => {
                     // Success, insert relay url in 'success' set result
-                    output.success.insert(url);
-                    output.merge(reconciliation);
+                    output.success.insert(url.clone());
+                    output.merge_relay_summary(url, reconciliation);
                 }
                 Err(e) => {
                     output.failed.insert(url, e.to_string());

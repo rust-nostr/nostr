@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 use std::cmp;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
@@ -37,39 +37,6 @@ pub use self::options::*;
 pub use self::stats::*;
 pub use self::status::*;
 use crate::shared::SharedState;
-
-// #[derive(Debug, Clone, Default, PartialEq, Eq)]
-// pub struct ReconciliationFailures {
-//     /// Send failures
-//     pub send: HashMap<EventId, Vec<String>>,
-//     // Receive failures (NOT CURRENTLY AVAILABLE)
-//     // pub receive: HashMap<EventId, Vec<String>>,
-// }
-
-/// Reconciliation output
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Reconciliation {
-    /// Events that were stored locally (missing on relay)
-    pub local: HashSet<EventId>,
-    /// Events that were stored on relay (missing locally)
-    pub remote: HashSet<EventId>,
-    /// Events that are **successfully** sent to relays during reconciliation
-    pub sent: HashSet<EventId>,
-    /// Event that are **successfully** received from relay during reconciliation
-    pub received: HashSet<EventId>,
-    /// Send failures
-    pub send_failures: HashMap<RelayUrl, HashMap<EventId, String>>,
-}
-
-impl Reconciliation {
-    pub(crate) fn merge(&mut self, other: Reconciliation) {
-        self.local.extend(other.local);
-        self.remote.extend(other.remote);
-        self.sent.extend(other.sent);
-        self.received.extend(other.received);
-        self.send_failures.extend(other.send_failures);
-    }
-}
 
 /// Subscription auto-closed reason
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -520,38 +487,9 @@ impl Relay {
     }
 
     /// Sync events with relays (negentropy reconciliation)
-    pub async fn sync(&self, filter: Filter, opts: &SyncOptions) -> Result<Reconciliation, Error> {
-        let items = self
-            .inner
-            .state
-            .database()
-            .negentropy_items(filter.clone())
-            .await?;
-        self.sync_with_items(filter, items, opts).await
-    }
-
-    /// Sync events with relays (negentropy reconciliation)
-    pub async fn sync_with_items(
-        &self,
-        filter: Filter,
-        items: Vec<(EventId, Timestamp)>,
-        opts: &SyncOptions,
-    ) -> Result<Reconciliation, Error> {
-        // Check if relay is operational
-        self.inner.ensure_operational()?;
-
-        // Check if relay can read
-        if !self.inner.capabilities.can_read() {
-            return Err(Error::ReadDisabled);
-        }
-
-        let mut output: Reconciliation = Reconciliation::default();
-
-        self.inner
-            .sync(&filter, items.clone(), opts, &mut output)
-            .await?;
-
-        Ok(output)
+    #[inline]
+    pub fn sync(&self, filter: Filter) -> SyncEvents {
+        SyncEvents::new(self, filter)
     }
 
     /// Handle notifications
@@ -576,12 +514,13 @@ impl Relay {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
     use std::sync::Arc;
 
     use async_utility::time;
     use nostr_relay_builder::prelude::*;
 
-    use super::{Error, SyncOptions, *};
+    use super::{Error, *};
     use crate::policy::{AdmitPolicy, AdmitStatus, PolicyError};
 
     #[derive(Debug)]
@@ -606,14 +545,6 @@ mod tests {
 
     fn new_relay(url: RelayUrl, opts: RelayOptions) -> Relay {
         Relay::builder(url).opts(opts).build()
-    }
-
-    fn new_relay_with_database(
-        url: RelayUrl,
-        database: Arc<dyn NostrDatabase>,
-        opts: RelayOptions,
-    ) -> Relay {
-        Relay::builder(url).database(database).opts(opts).build()
     }
 
     async fn setup_subscription_relay() -> (SubscriptionId, Relay, MockRelay) {
@@ -1057,85 +988,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_negentropy_sync() {
-        // Mock relay
-        let mock = MockRelay::run().await.unwrap();
-        let url = mock.url().await;
-
-        // Database
-        let database = MemoryDatabase::with_opts(MemoryDatabaseOptions {
-            events: true,
-            max_events: None,
-        });
-
-        // Build events to store in the local database
-        let local_events = vec![
-            EventBuilder::text_note("Local 1")
-                .sign_with_keys(&Keys::generate())
-                .unwrap(),
-            EventBuilder::text_note("Local 2")
-                .sign_with_keys(&Keys::generate())
-                .unwrap(),
-            EventBuilder::new(Kind::Custom(123), "Local 123")
-                .sign_with_keys(&Keys::generate())
-                .unwrap(),
-        ];
-
-        // Save an event to the local database
-        for event in local_events.iter() {
-            database.save_event(event).await.unwrap();
-        }
-        assert_eq!(database.count(Filter::new()).await.unwrap(), 3);
-
-        // Relay
-        let relay =
-            new_relay_with_database(url, Arc::new(database.clone()), RelayOptions::default());
-
-        // Connect
-        relay
-            .try_connect()
-            .timeout(Duration::from_secs(2))
-            .await
-            .unwrap();
-
-        // Build events to send to the relay
-        let relays_events = vec![
-            // Event in common with the local database
-            local_events[0].clone(),
-            EventBuilder::text_note("Test 2")
-                .sign_with_keys(&Keys::generate())
-                .unwrap(),
-            EventBuilder::text_note("Test 3")
-                .sign_with_keys(&Keys::generate())
-                .unwrap(),
-            EventBuilder::new(Kind::Custom(123), "Test 4")
-                .sign_with_keys(&Keys::generate())
-                .unwrap(),
-        ];
-
-        // Send events to the relays
-        for event in relays_events.iter() {
-            relay.send_event(event).await.unwrap();
-        }
-
-        // Sync
-        let filter = Filter::new().kind(Kind::TextNote);
-        let opts = SyncOptions::default().direction(SyncDirection::Both);
-        let output = relay.sync(filter, &opts).await.unwrap();
-
-        assert_eq!(
-            output,
-            Reconciliation {
-                local: HashSet::from([local_events[1].id]),
-                remote: HashSet::from([relays_events[1].id, relays_events[2].id]),
-                sent: HashSet::from([local_events[1].id]),
-                received: HashSet::from([relays_events[1].id, relays_events[2].id]),
-                send_failures: HashMap::new(),
-            }
-        );
-    }
-
-    #[tokio::test]
     async fn test_sleep_when_idle() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
@@ -1187,7 +1039,7 @@ mod tests {
 
         // Test wake up when sync
         let filter = Filter::new().kind(Kind::TextNote);
-        let _ = relay.sync(filter, &SyncOptions::new()).await.unwrap();
+        let _ = relay.sync(filter).await.unwrap();
         assert_eq!(relay.status(), RelayStatus::Connected);
 
         // Check if relay is sleeping

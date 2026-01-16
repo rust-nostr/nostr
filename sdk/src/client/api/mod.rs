@@ -8,6 +8,7 @@ mod remove_all;
 mod req_target;
 mod stream_events;
 mod subscribe;
+mod sync;
 mod try_connect;
 mod util;
 
@@ -21,4 +22,5 @@ pub use self::remove_all::*;
 pub use self::req_target::*;
 pub use self::stream_events::*;
 pub use self::subscribe::*;
+pub use self::sync::*;
 pub use self::try_connect::*;

@@ -36,6 +36,9 @@
 - Change `Client::try_connect` and `Relay::try_connect` signature (https://github.com/rust-nostr/nostr/pull/1229)
 - Remove `Client::subscribe_with_id`, `Client::subscribe_to`, `Client::subscribe_with_id_to`, `Client::subscribe_targed` and `Relay::subscribe_with_id` (https://github.com/rust-nostr/nostr/pull/1232)
 - Change `Client::subscribe` signature (https://github.com/rust-nostr/nostr/pull/1232) 
+- Remove `Relay::sync_with_items` (https://github.com/rust-nostr/nostr/pull/1235)
+- Replace `Reconciliation` struct with `SyncSummary` (https://github.com/rust-nostr/nostr/pull/1235)
+- Change `Client::sync` and `Relay::sync` signature (https://github.com/rust-nostr/nostr/pull/1235)
 
 ### Changed
 
@@ -47,6 +50,7 @@
 - Redesign `Client::subscribe` and `Relay::subscribe` APIs (https://github.com/rust-nostr/nostr/pull/1232)
 - Redesign `Client::stream_events` and `Relay::stream_events` APIs (https://github.com/rust-nostr/nostr/pull/1233)
 - Redesign `Client::fetch_events` and `Relay::fetch_events` APIs (https://github.com/rust-nostr/nostr/pull/1234)
+- Redesign `Client::sync` and `Relay::sync` APIs (https://github.com/rust-nostr/nostr/pull/1235)
 
 ### Added
 
