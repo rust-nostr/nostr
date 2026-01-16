@@ -50,28 +50,17 @@ pub struct Client {
 impl Default for Client {
     #[inline]
     fn default() -> Self {
-        Self::builder().build()
+        Self::new()
     }
 }
 
 impl Client {
-    /// Construct client with signer
+    /// Construct a new default client
     ///
-    /// To construct a client without signer use [`Client::default`].
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// let keys = Keys::generate();
-    /// let client = Client::new(keys);
-    /// ```
+    /// Use the [`Client::builder`] to configure the client (i.e., set a signer).
     #[inline]
-    pub fn new<T>(signer: T) -> Self
-    where
-        T: IntoNostrSigner,
-    {
-        Self::builder().signer(signer).build()
+    pub fn new() -> Self {
+        Self::builder().build()
     }
 
     /// Construct client
@@ -868,7 +857,7 @@ impl Client {
     /// # #[tokio::main]
     /// # async fn main() {
     /// #   let keys = Keys::generate();
-    /// #   let client = Client::new(keys);
+    /// #   let client = Client::builder().signer(keys).build();
     /// let metadata = Metadata::new()
     ///     .name("username")
     ///     .display_name("My Username")

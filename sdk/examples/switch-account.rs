@@ -12,7 +12,7 @@ async fn main() -> Result<()> {
 
     // Account 1
     let keys1 = Keys::parse("nsec12kcgs78l06p30jz7z7h3n2x2cy99nw2z6zspjdp7qc206887mwvs95lnkx")?;
-    let client = Client::new(keys1.clone());
+    let client = Client::builder().signer(keys1.clone()).build();
 
     client.add_relay("wss://relay.damus.io").await?;
     client.connect().await;
