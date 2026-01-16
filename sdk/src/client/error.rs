@@ -36,6 +36,8 @@ pub enum Error {
     /// NIP59
     #[cfg(feature = "nip59")]
     NIP59(nip59::Error),
+    /// Gossip is not configured
+    GossipNotConfigured,
     /// Broken down filters for gossip are empty
     GossipFiltersEmpty,
     /// Private message (NIP17) relays not found
@@ -58,6 +60,7 @@ impl fmt::Display for Error {
             Self::SharedState(e) => e.fmt(f),
             #[cfg(feature = "nip59")]
             Self::NIP59(e) => e.fmt(f),
+            Self::GossipNotConfigured => f.write_str("gossip not configured"),
             Self::GossipFiltersEmpty => {
                 f.write_str("gossip broken down filters are empty")
             }
