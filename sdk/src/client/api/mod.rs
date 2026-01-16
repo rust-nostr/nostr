@@ -5,6 +5,7 @@ mod remove;
 mod remove_all;
 mod stream;
 mod subscribe;
+mod sync;
 mod util;
 
 pub use self::add::*;
@@ -14,3 +15,4 @@ pub use self::remove::*;
 pub use self::remove_all::*;
 pub use self::stream::*;
 pub use self::subscribe::*;
+pub use self::sync::*;

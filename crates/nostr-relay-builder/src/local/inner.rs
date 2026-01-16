@@ -200,7 +200,7 @@ impl InnerLocalRelay {
         &self,
         urls: I,
         filter: Filter,
-        opts: &SyncOptions,
+        opts: SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -232,7 +232,7 @@ impl InnerLocalRelay {
 
         // Start sync and wait for the result
         tokio::select! {
-            result = client.sync(filter, opts) => {
+            result = client.sync(filter).opts(opts) => {
                 // Shutdown client
                 client.shutdown().await;
 
