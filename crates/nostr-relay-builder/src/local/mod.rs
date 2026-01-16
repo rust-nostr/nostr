@@ -82,7 +82,7 @@ impl LocalRelay {
         &self,
         urls: I,
         filter: Filter,
-        opts: &SyncOptions,
+        opts: SyncOptions,
     ) -> Result<Output<Reconciliation>, Error>
     where
         I: IntoIterator<Item = U>,

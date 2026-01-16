@@ -630,20 +630,17 @@ impl Client {
     ///
     /// <https://github.com/hoytech/negentropy>
     #[inline]
-    pub async fn sync(
-        &self,
-        filter: Filter,
-        opts: &SyncOptions,
-    ) -> Result<Output<Reconciliation>, Error> {
-        match &self.gossip {
-            Some(gossip) => self.gossip_sync_negentropy(gossip, filter, opts).await,
-            None => Ok(self.pool.sync(filter, opts).await?),
-        }
+    pub fn sync<'url>(&self, filter: Filter) -> SyncEvents<'_, 'url> {
+        SyncEvents::new(self, filter)
     }
 
     /// Sync events with specific relays (negentropy reconciliation)
     ///
     /// <https://github.com/hoytech/negentropy>
+    #[deprecated(
+        since = "0.45.0",
+        note = "use `client.sync(filter).with(urls).await` instead"
+    )]
     pub async fn sync_with<'a, I, U>(
         &self,
         urls: I,
@@ -654,7 +651,7 @@ impl Client {
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,
     {
-        Ok(self.pool.sync_with(urls, filter, opts).await?)
+        self.sync(filter).with(urls).opts(opts.clone()).await
     }
 
     /// Fetch events from relays
@@ -1271,7 +1268,8 @@ impl Client {
         // Negentropy sync
         // NOTE: the received events are automatically processed in the middleware!
         let opts: SyncOptions = SyncOptions::default().direction(SyncDirection::Down);
-        let output: Output<Reconciliation> = self.sync_with(urls, filter.clone(), &opts).await?;
+        let output: Output<Reconciliation> =
+            self.sync(filter.clone()).with(urls).opts(opts).await?;
 
         // Get events from the database
         let stored_events: Events = self.database().query(filter).await?;
@@ -1650,32 +1648,6 @@ impl Client {
 
         // Send event
         Ok(self.pool.send_event_to(urls, event).await?)
-    }
-
-    async fn gossip_sync_negentropy(
-        &self,
-        gossip: &GossipWrapper,
-        filter: Filter,
-        opts: &SyncOptions,
-    ) -> Result<Output<Reconciliation>, Error> {
-        // Break down filter
-        let temp_filters = self.break_down_filter(gossip, filter).await?;
-
-        let database = self.database();
-        let mut filters: HashMap<RelayUrl, (Filter, Vec<_>)> =
-            HashMap::with_capacity(temp_filters.len());
-
-        // Iterate broken down filters and compose new filters for targeted reconciliation
-        for (url, filter) in temp_filters.into_iter() {
-            // Get items
-            let items: Vec<(EventId, Timestamp)> =
-                database.negentropy_items(filter.clone()).await?;
-
-            filters.insert(url, (filter, items));
-        }
-
-        // Reconciliation
-        Ok(self.pool.sync_targeted(filters, opts).await?)
     }
 }
 

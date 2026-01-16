@@ -29,7 +29,7 @@ async fn main() -> Result<()> {
 
     // Negentropy reconcile
     let filter = Filter::new().author(keys.public_key());
-    client.sync(filter, &SyncOptions::default()).await?;
+    client.sync(filter).await?;
 
     // Query events from database
     let filter = Filter::new().author(keys.public_key()).limit(10);
