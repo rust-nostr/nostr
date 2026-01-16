@@ -4,8 +4,8 @@ use std::pin::Pin;
 
 use nostr::{EventId, Filter, RelayUrl, RelayUrlArg, Timestamp};
 
+use super::output::Output;
 use crate::client::{Client, Error};
-use crate::pool::Output;
 use crate::relay::{Reconciliation, RelayCapabilities, SyncOptions};
 
 /// Sync events

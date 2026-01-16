@@ -5,9 +5,9 @@ use std::pin::Pin;
 use nostr::{Filter, RelayUrl, SubscriptionId};
 
 use super::filters_arg::FiltersArg;
+use super::output::Output;
 use super::util::build_targets;
 use crate::client::{Client, Error};
-use crate::pool::Output;
 use crate::relay::options::SubscribeAutoCloseOptions;
 
 /// Subscribe to events

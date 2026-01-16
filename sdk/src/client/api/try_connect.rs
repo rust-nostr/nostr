@@ -2,8 +2,8 @@ use std::future::{Future, IntoFuture};
 use std::pin::Pin;
 use std::time::Duration;
 
+use super::output::Output;
 use crate::client::Client;
-use crate::pool::Output;
 
 /// Try to connect relays
 #[must_use = "Does nothing unless you await!"]

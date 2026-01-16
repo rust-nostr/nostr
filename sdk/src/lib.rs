@@ -10,7 +10,7 @@
 pub mod client;
 pub mod monitor;
 pub mod policy;
-pub mod pool;
+mod pool;
 pub mod prelude;
 pub mod relay;
 mod shared;
