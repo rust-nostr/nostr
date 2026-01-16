@@ -191,7 +191,7 @@ impl RelayPool {
         self.relay_urls_with_any_cap(RelayCapabilities::WRITE).await
     }
 
-    #[cfg(test)]
+    // Get **all** relays
     pub(crate) async fn all_relays(&self) -> HashMap<RelayUrl, Relay> {
         let relays = self.inner.atomic.relays.read().await;
         relays.clone()
@@ -206,12 +206,6 @@ impl RelayPool {
         self.internal_relays_with_any_cap(&relays, capabilities)
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect()
-    }
-
-    /// Get relays with `READ` or `WRITE` capabilities
-    pub async fn relays(&self) -> HashMap<RelayUrl, Relay> {
-        self.relays_with_any_cap(RelayCapabilities::READ | RelayCapabilities::WRITE)
-            .await
     }
 
     #[inline]
