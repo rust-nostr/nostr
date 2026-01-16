@@ -20,19 +20,9 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     let filter = Filter::new().author(public_key).kind(Kind::Metadata);
-    let events = client.fetch_events(filter, Duration::from_secs(10)).await?;
-    println!("{events:#?}");
-
-    let filter = Filter::new()
-        .author(public_key)
-        .kind(Kind::TextNote)
-        .limit(3);
     let events = client
-        .fetch_events_from(
-            ["wss://relay.damus.io", "wss://relay.rip"],
-            filter,
-            Duration::from_secs(10),
-        )
+        .fetch_events(filter)
+        .timeout(Duration::from_secs(10))
         .await?;
     println!("{events:#?}");
 
