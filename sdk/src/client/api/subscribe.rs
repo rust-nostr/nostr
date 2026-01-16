@@ -5,7 +5,7 @@ use std::pin::Pin;
 use nostr::{Filter, RelayUrl, SubscriptionId};
 
 use super::filters_arg::FiltersArg;
-use super::util::{convert_filters_arg_to_targets, convert_filters_arg_vec_to_map};
+use super::util::build_targets;
 use crate::client::{Client, Error};
 use crate::pool::Output;
 use crate::relay::options::SubscribeAutoCloseOptions;
@@ -45,18 +45,9 @@ impl<'client, 'url> Subscribe<'client, 'url> {
     }
 
     async fn exec(self) -> Result<Output<SubscriptionId>, Error> {
-        let targets: HashMap<RelayUrl, Vec<Filter>> = match &self.client.gossip {
-            Some(gossip) => match self.target {
-                // Gossip is configured and we need to break down filters before subscribing
-                FiltersArg::Broadcast(filters) => {
-                    self.client.break_down_filters(gossip, filters).await?
-                }
-                // The request is already targeted, skip gossip
-                FiltersArg::Targeted(target) => convert_filters_arg_vec_to_map(target)?,
-            },
-            // No gossip configured: directly use the target
-            None => convert_filters_arg_to_targets(&self.client.pool, self.target).await?,
-        };
+        // Build targets
+        let targets: HashMap<RelayUrl, Vec<Filter>> =
+            build_targets(self.client, self.target).await?;
 
         Ok(self
             .client
