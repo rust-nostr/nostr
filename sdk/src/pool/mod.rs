@@ -35,7 +35,9 @@ pub use self::output::Output;
 use crate::monitor::Monitor;
 use crate::relay::capabilities::RelayCapabilities;
 use crate::relay::options::{RelayOptions, ReqExitPolicy, SubscribeOptions, SyncOptions};
-use crate::relay::{AtomicRelayCapabilities, Reconciliation, Relay, SubscribeAutoCloseOptions};
+use crate::relay::{
+    self, AtomicRelayCapabilities, Reconciliation, Relay, SubscribeAutoCloseOptions,
+};
 use crate::shared::SharedState;
 use crate::stream::{BoxedStream, ReceiverStream};
 
@@ -913,20 +915,6 @@ impl RelayPool {
         Ok(output)
     }
 
-    /// Fetch events from relays with [`RelayCapabilities::READ`] capability.
-    pub async fn fetch_events<F>(
-        &self,
-        filters: F,
-        timeout: Duration,
-        policy: ReqExitPolicy,
-    ) -> Result<Events, Error>
-    where
-        F: Into<Vec<Filter>>,
-    {
-        let urls: Vec<RelayUrl> = self.read_relay_urls().await;
-        self.fetch_events_from(urls, filters, timeout, policy).await
-    }
-
     /// Fetch events from specific relays
     pub async fn fetch_events_from<'a, I, U, F>(
         &self,
@@ -943,6 +931,15 @@ impl RelayPool {
         // Convert filters
         let filters: Vec<Filter> = filters.into();
 
+        let mut targets: HashMap<RelayUrl, Vec<Filter>> = HashMap::new();
+
+        for url in urls {
+            targets.insert(
+                url.into().try_into_relay_url()?.into_owned(),
+                filters.clone(),
+            );
+        }
+
         // Construct a new events collection
         let mut events: Events = if filters.len() == 1 {
             // SAFETY: this can't panic because the filters are already verified that list isn't empty.
@@ -954,9 +951,7 @@ impl RelayPool {
         };
 
         // Stream events
-        let mut stream = self
-            .stream_events_from(urls, filters, timeout, policy)
-            .await?;
+        let mut stream = self.stream_events(targets, timeout, policy).await?;
         while let Some((url, result)) = stream.next().await {
             // NOTE: not propagate the error here! A single error by any of the relays would stop the entire fetching process.
             match result {
@@ -974,85 +969,33 @@ impl RelayPool {
         Ok(events)
     }
 
-    /// Stream events from relays with `READ` capability.
-    pub async fn stream_events<F>(
+    pub(crate) async fn stream_events(
         &self,
-        filters: F,
-        timeout: Duration,
+        filters: HashMap<RelayUrl, Vec<Filter>>,
+        timeout: Option<Duration>,
         policy: ReqExitPolicy,
-    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error>
-    where
-        F: Into<Vec<Filter>>,
-    {
-        let urls: Vec<RelayUrl> = self.read_relay_urls().await;
-        self.stream_events_from(urls, filters, timeout, policy)
-            .await
-    }
-
-    /// Stream events from specific relays
-    pub async fn stream_events_from<'a, I, U, F>(
-        &self,
-        urls: I,
-        filters: F,
-        timeout: Duration,
-        policy: ReqExitPolicy,
-    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: Into<RelayUrlArg<'a>>,
-        F: Into<Vec<Filter>>,
-    {
-        let filters: Vec<Filter> = filters.into();
-        let targets = urls.into_iter().map(|u| (u, filters.clone()));
-        self.stream_events_targeted(targets, timeout, policy).await
-    }
-
-    /// Targeted streaming events
-    ///
-    /// Stream events from specific relays with specific filters
-    pub async fn stream_events_targeted<'a, I, U, F>(
-        &self,
-        targets: I,
-        timeout: Duration,
-        policy: ReqExitPolicy,
-    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error>
-    where
-        I: IntoIterator<Item = (U, F)>,
-        U: Into<RelayUrlArg<'a>>,
-        F: Into<Vec<Filter>>,
-    {
-        // Collect targets
-        let targets: HashMap<Cow<RelayUrl>, Vec<Filter>> = targets
-            .into_iter()
-            .map(|(u, v)| Ok((u.into().try_into_relay_url()?, v.into())))
-            .collect::<Result<_, Error>>()?;
-
+    ) -> Result<BoxedStream<(RelayUrl, Result<Event, relay::Error>)>, Error> {
         // Check if `targets` map is empty
-        if targets.is_empty() {
+        if filters.is_empty() {
             return Err(Error::NoRelaysSpecified);
         }
 
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
 
-        // Check if empty
-        if relays.is_empty() {
-            return Err(Error::NoRelays);
-        }
-
         // Create a new channel
         // NOTE: the events are deduplicated and the send method awaits, so a huge capacity isn't necessary.
         let (tx, rx) = mpsc::channel(1024);
 
-        let mut urls: Vec<RelayUrl> = Vec::with_capacity(targets.len());
-        let mut futures = Vec::with_capacity(targets.len());
+        let mut urls: Vec<RelayUrl> = Vec::with_capacity(filters.len());
+        let mut futures = Vec::with_capacity(filters.len());
 
-        for (url, filter) in targets.into_iter() {
+        for (url, filter) in filters {
             // Try to get the relay
             let relay: &Relay = self.internal_relay(&relays, &url)?;
 
             // Push url
-            urls.push(url.into_owned());
+            urls.push(url);
 
             // Push stream events future
             futures.push(relay.stream_events(filter, timeout, policy));
@@ -1106,7 +1049,7 @@ impl RelayPool {
                                     }
                                     Err(e) => {
                                         // Send error
-                                        let _ = tx.send((url.clone(), Err(Error::Relay(e)))).await;
+                                        let _ = tx.send((url.clone(), Err(e))).await;
                                     }
                                 }
                             }
@@ -1116,7 +1059,7 @@ impl RelayPool {
                     Err(e) => {
                         Box::pin(async move {
                             // Send error
-                            let _ = tx.send((url, Err(Error::Relay(e)))).await;
+                            let _ = tx.send((url, Err(e))).await;
                         })
                     }
                 };

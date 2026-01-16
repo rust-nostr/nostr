@@ -634,7 +634,7 @@ impl Relay {
     pub async fn stream_events<F>(
         &self,
         filters: F,
-        timeout: Duration,
+        timeout: Option<Duration>,
         policy: ReqExitPolicy,
     ) -> Result<BoxedStream<Result<Event, Error>>, Error>
     where
@@ -646,7 +646,7 @@ impl Relay {
         // Compose auto-closing options
         let opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
             .exit_policy(policy)
-            .timeout(Some(timeout));
+            .timeout(timeout);
 
         // Subscribe
         let id: SubscriptionId = SubscriptionId::generate();
@@ -660,7 +660,7 @@ impl Relay {
     pub async fn fetch_events<F>(
         &self,
         filters: F,
-        timeout: Duration,
+        timeout: Option<Duration>,
         policy: ReqExitPolicy,
     ) -> Result<Events, Error>
     where
@@ -1256,7 +1256,11 @@ mod tests {
 
         let filter = Filter::new().kind(Kind::Metadata);
         relay
-            .fetch_events(filter, Duration::from_secs(3), ReqExitPolicy::ExitOnEOSE)
+            .fetch_events(
+                filter,
+                Some(Duration::from_secs(3)),
+                ReqExitPolicy::ExitOnEOSE,
+            )
             .await
             .unwrap();
 
@@ -1383,7 +1387,7 @@ mod tests {
         let err = relay
             .fetch_events(
                 filter.clone(),
-                Duration::from_secs(5),
+                Some(Duration::from_secs(5)),
                 ReqExitPolicy::ExitOnEOSE,
             )
             .await
@@ -1405,7 +1409,7 @@ mod tests {
         let err = relay
             .fetch_events(
                 filter.clone(),
-                Duration::from_secs(5),
+                Some(Duration::from_secs(5)),
                 ReqExitPolicy::ExitOnEOSE,
             )
             .await
@@ -1417,7 +1421,11 @@ mod tests {
 
         // Authenticated fetch
         let res = relay
-            .fetch_events(filter, Duration::from_secs(5), ReqExitPolicy::ExitOnEOSE)
+            .fetch_events(
+                filter,
+                Some(Duration::from_secs(5)),
+                ReqExitPolicy::ExitOnEOSE,
+            )
             .await;
         assert!(res.is_ok());
     }
@@ -1430,7 +1438,7 @@ mod tests {
         let events = relay
             .fetch_events(
                 Filter::new().kind(Kind::TextNote),
-                Duration::from_secs(5),
+                Some(Duration::from_secs(5)),
                 ReqExitPolicy::ExitOnEOSE,
             )
             .await
@@ -1441,7 +1449,7 @@ mod tests {
         let events = relay
             .fetch_events(
                 Filter::new().kind(Kind::TextNote).limit(3),
-                Duration::from_secs(5),
+                Some(Duration::from_secs(5)),
                 ReqExitPolicy::ExitOnEOSE,
             )
             .await
@@ -1456,7 +1464,7 @@ mod tests {
         let events = relay
             .fetch_events(
                 Filter::new().kind(Kind::TextNote),
-                Duration::from_secs(15),
+                Some(Duration::from_secs(15)),
                 ReqExitPolicy::WaitForEvents(2),
             )
             .await
@@ -1481,7 +1489,7 @@ mod tests {
         let events = relay
             .fetch_events(
                 Filter::new().kind(Kind::Metadata),
-                Duration::from_secs(5),
+                Some(Duration::from_secs(5)),
                 ReqExitPolicy::WaitForEvents(1),
             )
             .await
@@ -1515,7 +1523,7 @@ mod tests {
         let events = relay
             .fetch_events(
                 Filter::new().kind(Kind::TextNote).limit(3),
-                Duration::from_secs(15),
+                Some(Duration::from_secs(15)),
                 ReqExitPolicy::WaitForEventsAfterEOSE(2),
             )
             .await
@@ -1550,7 +1558,7 @@ mod tests {
         let events = relay
             .fetch_events(
                 Filter::new().kind(Kind::TextNote),
-                Duration::from_secs(15),
+                Some(Duration::from_secs(15)),
                 ReqExitPolicy::WaitDurationAfterEOSE(Duration::from_secs(3)),
             )
             .await
@@ -1790,7 +1798,11 @@ mod tests {
         // Test wake up when fetch events
         let filter = Filter::new().kind(Kind::TextNote);
         let _ = relay
-            .fetch_events(filter, Duration::from_secs(10), ReqExitPolicy::ExitOnEOSE)
+            .fetch_events(
+                filter,
+                Some(Duration::from_secs(10)),
+                ReqExitPolicy::ExitOnEOSE,
+            )
             .await
             .unwrap();
         assert_eq!(relay.status(), RelayStatus::Connected);
