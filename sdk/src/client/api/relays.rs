@@ -4,6 +4,7 @@ use std::pin::Pin;
 
 use nostr::RelayUrl;
 
+use super::blocking::Blocking;
 use crate::client::Client;
 use crate::relay::{Relay, RelayCapabilities};
 
@@ -64,3 +65,5 @@ impl<'client> IntoFuture for GetRelays<'client> {
         Box::pin(self.exec())
     }
 }
+
+impl Blocking for GetRelays<'_> {}

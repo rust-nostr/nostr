@@ -2,6 +2,7 @@ use std::future::{Future, IntoFuture};
 use std::pin::Pin;
 use std::time::Duration;
 
+use super::blocking::Blocking;
 use super::output::Output;
 use crate::client::Client;
 
@@ -43,3 +44,5 @@ impl<'client> IntoFuture for TryConnect<'client> {
         Box::pin(self.exec())
     }
 }
+
+impl Blocking for TryConnect<'_> {}
