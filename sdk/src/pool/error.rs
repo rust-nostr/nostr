@@ -27,8 +27,6 @@ pub enum Error {
         /// Max numer allowed
         limit: usize,
     },
-    /// No relays
-    NoRelays,
     /// No relays specified
     NoRelaysSpecified,
     /// Relay not found
@@ -47,7 +45,6 @@ impl fmt::Display for Error {
             Self::RelayUrl(e) => e.fmt(f),
             Self::Relay(e) => e.fmt(f),
             Self::TooManyRelays { .. } => f.write_str("too many relays"),
-            Self::NoRelays => f.write_str("no relays"),
             Self::NoRelaysSpecified => f.write_str("no relays specified"),
             Self::RelayNotFound => f.write_str("relay not found"),
             Self::Shutdown => f.write_str("relay pool is shutdown"),

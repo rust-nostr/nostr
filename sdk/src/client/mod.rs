@@ -4,6 +4,7 @@
 
 //! Client
 
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::sync::Arc;
@@ -21,25 +22,25 @@ mod builder;
 mod error;
 mod gossip;
 mod middleware;
-mod options;
 mod notification;
+mod options;
 
 pub use self::api::*;
 pub use self::builder::*;
 pub use self::error::Error;
 use self::gossip::{BrokenDownFilters, GossipFilterPattern, GossipWrapper};
 use self::middleware::AdmissionPolicyMiddleware;
-pub use self::options::*;
 pub use self::notification::*;
+pub use self::options::*;
 use crate::monitor::Monitor;
-use crate::pool::{Output, RelayPool, RelayPoolBuilder};
+use crate::pool::{RelayPool, RelayPoolBuilder};
 use crate::relay::options::{RelayOptions, SyncDirection, SyncOptions};
 use crate::relay::{Reconciliation, Relay, RelayCapabilities, ReqExitPolicy};
 
 /// Nostr client
 #[derive(Debug, Clone)]
 pub struct Client {
-    pool: RelayPool,
+    pool: Arc<RelayPool>,
     gossip: Option<GossipWrapper>,
     opts: ClientOptions,
     /// Semaphore used to limit the number of gossip checks and syncs
@@ -101,14 +102,16 @@ impl Client {
             websocket_transport: builder.websocket_transport,
             admit_policy: Some(Arc::new(admit_policy_wrapper)),
             monitor: builder.monitor,
-            opts: builder.opts.pool,
-            __database: builder.database,
-            __signer: builder.signer,
+            database: builder.database,
+            signer: builder.signer,
+            max_relays: builder.opts.max_relays,
+            nip42_auto_authentication: builder.opts.nip42_auto_authentication,
+            notification_channel_size: builder.opts.notification_channel_size,
         };
 
         // Construct client
         Self {
-            pool: pool_builder.build(),
+            pool: Arc::new(pool_builder.build()),
             gossip: builder.gossip.map(GossipWrapper::new),
             opts: builder.opts,
             // Allow only one gossip check and sync at a time
@@ -164,12 +167,6 @@ impl Client {
     #[inline]
     pub async fn public_key(&self) -> Result<PublicKey, Error> {
         Ok(self.signer().await?.get_public_key().await?)
-    }
-
-    /// Get [`RelayPool`]
-    #[inline]
-    pub fn pool(&self) -> &RelayPool {
-        &self.pool
     }
 
     /// Get database
@@ -229,7 +226,9 @@ impl Client {
     where
         U: Into<RelayUrlArg<'a>>,
     {
-        Ok(self.pool.relay(url).await?)
+        let url: RelayUrlArg<'a> = url.into();
+        let url: Cow<RelayUrl> = url.try_as_relay_url()?;
+        Ok(self.pool.relay(&url).await?)
     }
 
     fn compose_relay_opts<'a>(&self, _url: &'a RelayUrlArg<'a>) -> RelayOptions {
@@ -405,25 +404,25 @@ impl Client {
     }
 
     /// Connect to a previously added relay
-    ///
-    /// Check [`RelayPool::connect_relay`] docs to learn more.
     #[inline]
     pub async fn connect_relay<'a, U>(&self, url: U) -> Result<(), Error>
     where
         U: Into<RelayUrlArg<'a>>,
     {
-        Ok(self.pool.connect_relay(url).await?)
+        let url: RelayUrlArg<'a> = url.into();
+        let url: Cow<RelayUrl> = url.try_as_relay_url()?;
+        Ok(self.pool.connect_relay(&url).await?)
     }
 
     /// Try to connect to a previously added relay
-    ///
-    /// For further details, see the documentation of [`RelayPool::try_connect_relay`].
     #[inline]
     pub async fn try_connect_relay<'a, U>(&self, url: U, timeout: Duration) -> Result<(), Error>
     where
         U: Into<RelayUrlArg<'a>>,
     {
-        Ok(self.pool.try_connect_relay(url, timeout).await?)
+        let url: RelayUrlArg<'a> = url.into();
+        let url: Cow<RelayUrl> = url.try_as_relay_url()?;
+        Ok(self.pool.try_connect_relay(&url, timeout).await?)
     }
 
     /// Disconnect relay
@@ -432,7 +431,9 @@ impl Client {
     where
         U: Into<RelayUrlArg<'a>>,
     {
-        Ok(self.pool.disconnect_relay(url).await?)
+        let url: RelayUrlArg<'a> = url.into();
+        let url: Cow<RelayUrl> = url.try_as_relay_url()?;
+        Ok(self.pool.disconnect_relay(&url).await?)
     }
 
     /// Connect to relays
@@ -727,7 +728,7 @@ impl Client {
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,
     {
-        Ok(self.pool.send_msg_to(urls, msg).await?)
+        self.batch_msg_to(urls, vec![msg]).await
     }
 
     /// Batch send client messages to **specific relays**
@@ -741,7 +742,15 @@ impl Client {
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,
     {
-        Ok(self.pool.batch_msg_to(urls, msgs).await?)
+        let mut set: HashSet<RelayUrl> = HashSet::new();
+
+        for url in urls {
+            let url: RelayUrlArg<'a> = url.into();
+            let url: Cow<RelayUrl> = url.try_as_relay_url()?;
+            set.insert(url.into_owned());
+        }
+
+        Ok(self.pool.batch_msg_to(set, msgs).await?)
     }
 
     /// Send the event to relays

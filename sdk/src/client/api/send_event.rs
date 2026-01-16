@@ -6,9 +6,9 @@ use std::pin::Pin;
 use nostr::{Event, EventId, Kind, RelayUrl, RelayUrlArg};
 use nostr_gossip::{BestRelaySelection, GossipListKind};
 
+use super::output::Output;
 use crate::client::gossip::GossipWrapper;
 use crate::client::{Client, Error};
-use crate::pool::Output;
 use crate::relay::capabilities::RelayCapabilities;
 
 enum OverwritePolicy<'url> {
