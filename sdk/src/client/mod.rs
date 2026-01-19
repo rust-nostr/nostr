@@ -192,6 +192,12 @@ impl Client {
         self.unset_signer().await;
     }
 
+    /// Check if the client is shutting down
+    #[inline]
+    pub fn is_shutdown(&self) -> bool {
+        self.pool.is_shutdown()
+    }
+
     /// Completely shutdown client
     #[inline]
     pub async fn shutdown(&self) {
@@ -1967,13 +1973,13 @@ mod tests {
 
         client.connect().await;
 
-        assert!(!client.pool.is_shutdown());
+        assert!(!client.is_shutdown());
 
         tokio::time::sleep(Duration::from_secs(1)).await;
 
         client.shutdown().await;
 
-        assert!(client.pool.is_shutdown());
+        assert!(client.is_shutdown());
 
         assert!(matches!(
             client.add_relay(url).await.unwrap_err(),
