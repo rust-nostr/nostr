@@ -1267,7 +1267,7 @@ impl Client {
         let filter: Filter = Filter::default().authors(outdated_public_keys).kind(kind);
 
         // Get DISCOVERY and READ relays
-        let urls: Vec<RelayUrl> = self
+        let urls: HashSet<RelayUrl> = self
             .pool
             .relay_urls_with_any_cap(RelayCapabilities::DISCOVERY | RelayCapabilities::READ)
             .await;
@@ -1482,7 +1482,7 @@ impl Client {
             BrokenDownFilters::Filters(filters) => filters,
             BrokenDownFilters::Orphan(filter) | BrokenDownFilters::Other(filter) => {
                 // Get read relays
-                let read_relays: Vec<RelayUrl> = self.pool.read_relay_urls().await;
+                let read_relays: HashSet<RelayUrl> = self.pool.read_relay_urls().await;
 
                 let mut map = HashMap::with_capacity(read_relays.len());
                 for url in read_relays.into_iter() {
