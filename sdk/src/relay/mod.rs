@@ -20,6 +20,7 @@ use futures::{Stream, StreamExt};
 use nostr_database::prelude::*;
 use tokio::sync::{broadcast, mpsc};
 
+mod builder;
 pub mod capabilities;
 pub mod constants;
 mod error;
@@ -30,6 +31,7 @@ mod ping;
 pub mod stats;
 mod status;
 
+pub use self::builder::*;
 pub use self::capabilities::{AtomicRelayCapabilities, RelayCapabilities};
 use self::constants::{WAIT_FOR_AUTHENTICATION_TIMEOUT, WAIT_FOR_OK_TIMEOUT};
 pub use self::error::Error;
@@ -200,7 +202,7 @@ impl Ord for Relay {
 
 impl Relay {
     #[inline]
-    pub(crate) fn new(
+    pub(crate) fn new_shared(
         url: RelayUrl,
         state: SharedState,
         capabilities: RelayCapabilities,
@@ -208,6 +210,40 @@ impl Relay {
     ) -> Self {
         Self {
             inner: AtomicDestructor::new(InnerRelay::new(url, state, capabilities, opts)),
+        }
+    }
+
+    /// Construct a new relay.
+    ///
+    /// Use [`Relay::builder`] for customizing the relay.
+    #[inline]
+    pub fn new(url: RelayUrl) -> Self {
+        Self::builder(url).build()
+    }
+
+    /// Construct a new relay builder.
+    #[inline]
+    pub fn builder(url: RelayUrl) -> RelayBuilder {
+        RelayBuilder::new(url)
+    }
+
+    fn from_builder(builder: RelayBuilder) -> Self {
+        let state: SharedState = SharedState::new(
+            builder.database,
+            builder.websocket_transport,
+            None,
+            builder.admit_policy,
+            false,
+            None,
+        );
+
+        Self {
+            inner: AtomicDestructor::new(InnerRelay::new(
+                builder.url,
+                state,
+                builder.capabilities,
+                builder.opts,
+            )),
         }
     }
 
@@ -835,12 +871,7 @@ mod tests {
     }
 
     fn new_relay(url: RelayUrl, opts: RelayOptions) -> Relay {
-        Relay::new(
-            url,
-            SharedState::default(),
-            RelayCapabilities::default(),
-            opts,
-        )
+        Relay::builder(url).opts(opts).build()
     }
 
     fn new_relay_with_database(
@@ -848,9 +879,7 @@ mod tests {
         database: Arc<dyn NostrDatabase>,
         opts: RelayOptions,
     ) -> Relay {
-        let mut state = SharedState::default();
-        state.database = database;
-        Relay::new(url, state, RelayCapabilities::default(), opts)
+        Relay::builder(url).database(database).opts(opts).build()
     }
 
     /// Setup public (without NIP42 auth) relay with N events to test event fetching
