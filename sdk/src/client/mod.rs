@@ -282,9 +282,6 @@ impl Client {
     ///
     /// To add a relay with specific capabilities, use [`AddRelay::capabilities`].
     ///
-    /// If are set pool subscriptions, the new added relay will inherit them. Use [`Client::subscribe_to`] method instead of [`Client::subscribe`],
-    /// to avoid setting pool subscriptions.
-    ///
     /// Connection is **NOT** automatically started with relay!
     #[inline]
     pub fn add_relay<'client, 'url, U>(&'client self, url: U) -> AddRelay<'client, 'url>
