@@ -10,9 +10,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::{task, time};
-use async_wsocket::futures_util::{self, SinkExt, StreamExt};
 use async_wsocket::{ConnectionMode, Message};
 use atomic_destructor::AtomicDestroyer;
+use futures::{self, SinkExt, StreamExt};
 use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use nostr::rand::rngs::OsRng;
 use nostr::rand::{Rng, RngCore, TryRngCore};
@@ -2142,7 +2142,7 @@ impl InnerRelay {
 
 /// Send WebSocket messages with timeout set to [WEBSOCKET_TX_TIMEOUT].
 async fn send_ws_msgs(tx: &mut WebSocketSink, msgs: Vec<Message>) -> Result<(), Error> {
-    let mut stream = futures_util::stream::iter(msgs.into_iter().map(Ok));
+    let mut stream = futures::stream::iter(msgs.into_iter().map(Ok));
     match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.send_all(&mut stream)).await {
         Some(res) => Ok(res?),
         None => Err(Error::Timeout),

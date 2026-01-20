@@ -7,7 +7,7 @@
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use async_utility::futures_util::Stream;
+use futures::Stream;
 use tokio::sync::mpsc::Receiver;
 
 /// Boxed stream

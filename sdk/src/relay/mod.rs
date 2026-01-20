@@ -7,16 +7,16 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
+use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use async_utility::futures_util::{Stream, StreamExt};
 use async_utility::time;
-use async_wsocket::futures_util::Future;
 use async_wsocket::ConnectionMode;
 use atomic_destructor::AtomicDestructor;
+use futures::{Stream, StreamExt};
 use nostr_database::prelude::*;
 use tokio::sync::{broadcast, mpsc};
 
