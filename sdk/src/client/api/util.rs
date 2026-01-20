@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use nostr::types::url;
 use nostr::{Filter, RelayUrl, RelayUrlArg};
@@ -25,15 +25,20 @@ pub(super) async fn build_targets(
     }
 }
 
+async fn make_targets_from_filter_list(
+    pool: &RelayPool,
+    filters: Vec<Filter>,
+) -> HashMap<RelayUrl, Vec<Filter>> {
+    let urls: HashSet<RelayUrl> = pool.read_relay_urls().await;
+    urls.into_iter().map(|u| (u, filters.clone())).collect()
+}
+
 async fn convert_filters_arg_to_targets(
     pool: &RelayPool,
     target: FiltersArg<'_>,
 ) -> Result<HashMap<RelayUrl, Vec<Filter>>, url::Error> {
     match target {
-        FiltersArg::Broadcast(filters) => {
-            let urls: Vec<RelayUrl> = pool.read_relay_urls().await;
-            Ok(urls.into_iter().map(|u| (u, filters.clone())).collect())
-        }
+        FiltersArg::Broadcast(filters) => Ok(make_targets_from_filter_list(pool, filters).await),
         FiltersArg::Targeted(targets) => convert_filters_arg_vec_to_map(targets),
     }
 }

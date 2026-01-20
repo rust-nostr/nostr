@@ -12,7 +12,7 @@ use std::vec::IntoIter;
 use async_utility::task;
 use futures::{future, StreamExt};
 use nostr_database::prelude::*;
-use tokio::sync::{broadcast, mpsc, Mutex, RwLock, RwLockReadGuard};
+use tokio::sync::{broadcast, mpsc, Mutex, RwLock};
 
 mod builder;
 mod error;
@@ -35,11 +35,11 @@ pub(super) type Relays = HashMap<RelayUrl, Relay>;
 // so it's important that the RelayPool can't be cloned, otherwise may cause a non-expected shutdown.
 #[derive(Debug)]
 pub(crate) struct RelayPool {
-    pub(super) state: SharedState,
-    pub(super) relays: RwLock<Relays>,
-    pub(super) notification_sender: broadcast::Sender<ClientNotification>,
-    pub(super) shutdown: AtomicBool,
-    pub(super) max_relays: Option<usize>,
+    state: SharedState,
+    relays: RwLock<Relays>,
+    notification_sender: broadcast::Sender<ClientNotification>,
+    shutdown: AtomicBool,
+    max_relays: Option<usize>,
 }
 
 // Shutdown the pool on the **FIRST** drop
@@ -91,10 +91,12 @@ impl RelayPool {
         shutdown(&self.shutdown, &mut relays, &self.notification_sender)
     }
 
+    #[inline]
     pub(crate) fn notifications(&self) -> broadcast::Receiver<ClientNotification> {
         self.notification_sender.subscribe()
     }
 
+    #[inline]
     pub(crate) fn monitor(&self) -> Option<&Monitor> {
         self.state.monitor.as_ref()
     }
@@ -109,34 +111,29 @@ impl RelayPool {
         self.state.database()
     }
 
-    fn internal_relays_with_any_cap<'a>(
-        &self,
-        txn: &'a RwLockReadGuard<'a, Relays>,
-        capabilities: RelayCapabilities,
-    ) -> impl Iterator<Item = (&'a RelayUrl, &'a Relay)> + 'a {
-        txn.iter()
-            .filter(move |(_, r)| r.capabilities().has_any(capabilities))
-    }
-
+    #[inline]
     pub(crate) async fn relay_urls_with_any_cap(
         &self,
         capabilities: RelayCapabilities,
-    ) -> Vec<RelayUrl> {
+    ) -> HashSet<RelayUrl> {
         let relays = self.relays.read().await;
-        self.internal_relays_with_any_cap(&relays, capabilities)
+        filter_relays_with_any_cap(&relays, capabilities)
             .map(|(k, ..)| k.clone())
             .collect()
     }
 
-    pub(crate) async fn read_relay_urls(&self) -> Vec<RelayUrl> {
+    #[inline]
+    pub(crate) async fn read_relay_urls(&self) -> HashSet<RelayUrl> {
         self.relay_urls_with_any_cap(RelayCapabilities::READ).await
     }
 
-    pub(crate) async fn write_relay_urls(&self) -> Vec<RelayUrl> {
+    #[inline]
+    pub(crate) async fn write_relay_urls(&self) -> HashSet<RelayUrl> {
         self.relay_urls_with_any_cap(RelayCapabilities::WRITE).await
     }
 
     // Get **all** relays
+    #[inline]
     pub(crate) async fn all_relays(&self) -> HashMap<RelayUrl, Relay> {
         let relays = self.relays.read().await;
         relays.clone()
@@ -148,26 +145,17 @@ impl RelayPool {
         capabilities: RelayCapabilities,
     ) -> HashMap<RelayUrl, Relay> {
         let relays = self.relays.read().await;
-        self.internal_relays_with_any_cap(&relays, capabilities)
+        filter_relays_with_any_cap(&relays, capabilities)
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect()
     }
 
     #[inline]
-    fn internal_relay<'a>(
-        &self,
-        txn: &'a RwLockReadGuard<'a, Relays>,
-        url: &RelayUrl,
-    ) -> Result<&'a Relay, Error> {
-        txn.get(url).ok_or(Error::RelayNotFound)
-    }
-
     pub(crate) async fn relay(&self, url: &RelayUrl) -> Result<Relay, Error> {
         let relays = self.relays.read().await;
-        self.internal_relay(&relays, url).cloned()
+        relays.get(url).cloned().ok_or(Error::RelayNotFound)
     }
 
-    #[inline]
     pub(crate) async fn add_relay(
         &self,
         url: Cow<'_, RelayUrl>,
@@ -247,7 +235,6 @@ impl RelayPool {
         Ok(())
     }
 
-    #[inline]
     pub(crate) async fn remove_all_relays(&self, force: bool) {
         // Acquire write lock
         let mut relays = self.relays.write().await;
@@ -333,7 +320,7 @@ impl RelayPool {
         let relays = self.relays.read().await;
 
         // Get relay
-        let relay: &Relay = self.internal_relay(&relays, url)?;
+        let relay: &Relay = relays.get(url).ok_or(Error::RelayNotFound)?;
 
         // Connect
         relay.connect();
@@ -350,7 +337,7 @@ impl RelayPool {
         let relays = self.relays.read().await;
 
         // Get relay
-        let relay: &Relay = self.internal_relay(&relays, url)?;
+        let relay: &Relay = relays.get(url).ok_or(Error::RelayNotFound)?;
 
         // Try to connect
         relay.try_connect(timeout).await?;
@@ -363,7 +350,7 @@ impl RelayPool {
         let relays = self.relays.read().await;
 
         // Get relay
-        let relay: &Relay = self.internal_relay(&relays, url)?;
+        let relay: &Relay = relays.get(url).ok_or(Error::RelayNotFound)?;
 
         // Disconnect
         relay.disconnect();
@@ -428,18 +415,18 @@ impl RelayPool {
         // Lock with read shared access
         let relays = self.relays.read().await;
 
-        // Save events
-        for msg in msgs.iter() {
-            if let ClientMessage::Event(event) = msg {
-                self.state.database().save_event(event).await?;
-            }
-        }
+        // // Save events
+        // for msg in msgs.iter() {
+        //     if let ClientMessage::Event(event) = msg {
+        //         self.state.database().save_event(event).await?;
+        //     }
+        // }
 
         let mut output: Output<()> = Output::default();
 
         // Batch messages and construct outputs
         for url in urls {
-            let relay: &Relay = self.internal_relay(&relays, &url)?;
+            let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
             match relay.batch_msg(msgs.clone()) {
                 Ok(..) => {
                     // Success, insert relay url in 'success' set result
@@ -454,20 +441,16 @@ impl RelayPool {
         Ok(output)
     }
 
-    pub(crate) async fn send_event<'a, I, U>(
+    pub(crate) async fn send_event<I>(
         &self,
         urls: I,
         event: &Event,
     ) -> Result<Output<EventId>, Error>
     where
-        I: IntoIterator<Item = U>,
-        U: Into<RelayUrlArg<'a>>,
+        I: IntoIterator<Item = RelayUrl>,
     {
         // Compose URLs
-        let set: HashSet<Cow<RelayUrl>> = urls
-            .into_iter()
-            .map(|u| u.into().try_into_relay_url())
-            .collect::<Result<_, _>>()?;
+        let set: HashSet<RelayUrl> = urls.into_iter().collect();
 
         // Check if urls set is empty
         if set.is_empty() {
@@ -487,8 +470,8 @@ impl RelayPool {
 
         // Compose futures
         for url in set.into_iter() {
-            let relay: &Relay = self.internal_relay(&relays, &url)?;
-            urls.push(url.into_owned());
+            let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
+            urls.push(url);
             futures.push(relay.send_event(event));
         }
 
@@ -619,7 +602,7 @@ impl RelayPool {
 
         // Compose futures
         for (url, (filter, items)) in targets.into_iter() {
-            let relay: &Relay = self.internal_relay(&relays, &url)?;
+            let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
             urls.push(url);
             futures.push(relay.sync_with_items(filter, items, &opts));
         }
@@ -667,7 +650,7 @@ impl RelayPool {
 
         for (url, filter) in filters {
             // Try to get the relay
-            let relay: &Relay = self.internal_relay(&relays, &url)?;
+            let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
 
             // Push url
             urls.push(url);
@@ -752,6 +735,16 @@ impl RelayPool {
         // Return stream
         Ok(Box::pin(ReceiverStream::new(rx)))
     }
+}
+
+#[inline]
+fn filter_relays_with_any_cap(
+    relays: &Relays,
+    capabilities: RelayCapabilities,
+) -> impl Iterator<Item = (&RelayUrl, &Relay)> {
+    relays
+        .iter()
+        .filter(move |(_, r)| r.capabilities().has_any(capabilities))
 }
 
 // Return `true` if the relay can be removed
