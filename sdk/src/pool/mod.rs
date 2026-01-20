@@ -9,8 +9,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::vec::IntoIter;
 
-use async_utility::futures_util::{future, StreamExt};
 use async_utility::task;
+use futures::{future, StreamExt};
 use nostr_database::prelude::*;
 use tokio::sync::{broadcast, mpsc, Mutex, RwLock, RwLockReadGuard};
 
