@@ -195,7 +195,9 @@ impl Client {
         self.pool.is_shutdown()
     }
 
-    /// Completely shutdown client
+    /// Explicitly shutdown the client
+    ///
+    /// This method will shut down the client and all its relays.
     #[inline]
     pub async fn shutdown(&self) {
         self.pool.shutdown().await
@@ -1542,6 +1544,7 @@ mod tests {
 
     use super::*;
     use crate::pool;
+    use crate::relay::RelayStatus;
 
     #[tokio::test]
     async fn test_shutdown() {
@@ -1560,11 +1563,43 @@ mod tests {
 
         client.shutdown().await;
 
+        // All relays must be removed
+        assert!(client.relays().all().await.is_empty());
+
+        // Client must be marked as shutdown
         assert!(client.is_shutdown());
 
         assert!(matches!(
             client.add_relay(url).await.unwrap_err(),
             Error::RelayPool(pool::Error::Shutdown)
         ));
+    }
+
+    #[tokio::test]
+    async fn test_shutdown_on_drop() {
+        let mock = MockRelay::run().await.unwrap();
+        let url = mock.url().await;
+
+        let relay: Relay = {
+            let client: Client = Client::default();
+
+            client.add_relay(&url).and_connect().await.unwrap();
+
+            assert!(!client.is_shutdown());
+
+            tokio::time::sleep(Duration::from_millis(500)).await;
+
+            let relay = client.relay(&url).await.unwrap();
+
+            assert!(relay.is_connected());
+
+            relay
+        };
+        // Client is dropped here
+
+        tokio::time::sleep(Duration::from_secs(1)).await;
+
+        // When the client is dropped, all relays are shutdown
+        assert_eq!(relay.status(), RelayStatus::Terminated);
     }
 }
