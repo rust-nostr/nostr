@@ -36,8 +36,6 @@ pub(super) type Relays = HashMap<RelayUrl, Relay>;
 #[derive(Debug)]
 pub(super) struct AtomicPrivateData {
     pub(super) relays: RwLock<Relays>,
-    /// Map of subscriptions that will be inherited by new added relays.
-    pub(super) inherit_subscriptions: RwLock<HashMap<SubscriptionId, Vec<Filter>>>,
     pub(super) notification_sender: broadcast::Sender<ClientNotification>,
     pub(super) shutdown: AtomicBool,
 }
@@ -122,7 +120,6 @@ impl RelayPool {
             ),
             atomic: Arc::new(AtomicPrivateData {
                 relays: RwLock::new(HashMap::new()),
-                inherit_subscriptions: RwLock::new(HashMap::new()),
                 notification_sender,
                 shutdown: AtomicBool::new(false),
             }),
@@ -255,20 +252,7 @@ impl RelayPool {
         let mut relay: Relay = Relay::new(url.clone(), self.state.clone(), capabilities, opts);
 
         // Set notification sender
-        relay
-            .inner
-            .set_notification_sender(self.atomic.notification_sender.clone());
-
-        // If relay has `READ` capability, inherit pool subscriptions
-        if relay.capabilities().has_read() {
-            let subscriptions = self.atomic.inherit_subscriptions.read().await;
-            for (id, filter) in subscriptions.iter() {
-                relay
-                    .inner
-                    .update_subscription(id.clone(), filter.clone(), false)
-                    .await;
-            }
-        }
+        relay.set_notification_sender(self.atomic.notification_sender.clone());
 
         // Connect
         if connect {
@@ -467,30 +451,6 @@ impl RelayPool {
         filters
     }
 
-    // TODO: re-expose to Client?
-    // /// Register subscription in the [`RelayPool`].
-    // ///
-    // /// When a new relay is added, saved subscriptions will be automatically used for it.
-    // #[inline]
-    // pub(crate) async fn save_subscription<F>(&self, id: SubscriptionId, filters: F)
-    // where
-    //     F: Into<Vec<Filter>>,
-    // {
-    //     let mut subscriptions = self.atomic.inherit_subscriptions.write().await;
-    //     let current: &mut Vec<Filter> = subscriptions.entry(id).or_default();
-    //     *current = filters.into();
-    // }
-
-    async fn remove_subscription(&self, id: &SubscriptionId) {
-        let mut subscriptions = self.atomic.inherit_subscriptions.write().await;
-        subscriptions.remove(id);
-    }
-
-    async fn remove_all_subscriptions(&self) {
-        let mut subscriptions = self.atomic.inherit_subscriptions.write().await;
-        subscriptions.clear();
-    }
-
     pub(crate) async fn batch_msg_to(
         &self,
         urls: HashSet<RelayUrl>,
@@ -647,9 +607,6 @@ impl RelayPool {
     }
 
     pub(crate) async fn unsubscribe(&self, id: &SubscriptionId) {
-        // Remove subscription from pool
-        self.remove_subscription(id).await;
-
         // Lock with read shared access
         let relays = self.atomic.relays.read().await;
 
@@ -664,9 +621,6 @@ impl RelayPool {
     }
 
     pub(crate) async fn unsubscribe_all(&self) {
-        // Remove subscriptions from pool
-        self.remove_all_subscriptions().await;
-
         // Lock with read shared access
         let relays = self.atomic.relays.read().await;
 

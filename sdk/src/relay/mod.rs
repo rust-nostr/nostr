@@ -41,6 +41,7 @@ pub use self::options::{
 };
 pub use self::stats::RelayConnectionStats;
 pub use self::status::RelayStatus;
+use crate::client::ClientNotification;
 use crate::policy::AdmitStatus;
 use crate::shared::SharedState;
 use crate::stream::BoxedStream;
@@ -174,7 +175,7 @@ impl Stream for SubscriptionActivityEventStream {
 /// Relay
 #[derive(Debug, Clone)]
 pub struct Relay {
-    pub(crate) inner: AtomicDestructor<InnerRelay>,
+    inner: AtomicDestructor<InnerRelay>,
 }
 
 impl PartialEq for Relay {
@@ -267,6 +268,14 @@ impl Relay {
     #[inline]
     pub fn queue(&self) -> usize {
         self.inner.queue()
+    }
+
+    #[inline]
+    pub(super) fn set_notification_sender(
+        &mut self,
+        notification_sender: broadcast::Sender<ClientNotification>,
+    ) {
+        self.inner.set_notification_sender(notification_sender);
     }
 
     /// Get new **relay** notification listener

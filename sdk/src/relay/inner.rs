@@ -391,6 +391,7 @@ impl InnerRelay {
         self.atomic.channels.nostr_queue()
     }
 
+    #[inline]
     pub(crate) fn set_notification_sender(
         &mut self,
         notification_sender: broadcast::Sender<ClientNotification>,
