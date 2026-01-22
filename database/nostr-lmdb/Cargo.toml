@@ -18,6 +18,7 @@ nostr = { workspace = true, features = ["std"] }
 nostr-database = { workspace = true, features = ["flatbuf"] }
 tokio = { workspace = true, features = ["sync"] }
 tracing.workspace = true
+tantivy-query-grammar = "0.25"
 
 [target.'cfg(not(all(target_os = "macos", target_os = "ios")))'.dependencies]
 heed = { version = "0.20", default-features = false, features = ["read-txn-no-tls"] }
