@@ -27,12 +27,6 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
-    let metadata = Metadata::new()
-        .name("rust-nostr-bot-example")
-        .display_name("rust-nostr bot example")
-        .website(Url::parse("https://github.com/rust-nostr/nostr")?);
-    client.set_metadata(&metadata).await?;
-
     let subscription = Filter::new()
         .pubkey(keys.public_key())
         .kind(Kind::GiftWrap)
@@ -44,7 +38,7 @@ async fn main() -> Result<()> {
         .handle_notifications(|notification| async {
             if let ClientNotification::Event { event, .. } = notification {
                 if event.kind == Kind::GiftWrap {
-                    match client.unwrap_gift_wrap(&event).await {
+                    match UnwrappedGift::from_gift_wrap(&keys, &event).await {
                         Ok(UnwrappedGift { rumor, sender }) => {
                             if rumor.kind == Kind::PrivateDirectMessage {
                                 let content: String = match rumor.content.as_str() {
@@ -56,7 +50,9 @@ async fn main() -> Result<()> {
                                 };
 
                                 // Send private message
-                                client.send_private_msg(sender, content, []).await?;
+                                let msg =
+                                    EventBuilder::private_msg(&keys, sender, content, []).await?;
+                                client.send_event(&msg).to_nip17().await?;
                             }
                         }
                         Err(e) => tracing::error!("Impossible to decrypt direct message: {e}"),
