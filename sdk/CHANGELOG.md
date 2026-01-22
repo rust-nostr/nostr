@@ -38,6 +38,7 @@
 - Re-add support for multi-filter REQ (https://github.com/rust-nostr/nostr/pull/1176)
 - Add `Output::new` constructor and `Output::into_inner` method
 - Add idle timeout for negentropy sync (https://github.com/rust-nostr/nostr/pull/1131)
+- Add `AdmitPolicy::admit_auth` to control relay authentication (https://github.com/rust-nostr/nostr/pull/1218)
 
 ### Added
 
