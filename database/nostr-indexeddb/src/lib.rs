@@ -31,10 +31,11 @@ mod error;
 
 use self::error::{into_err, IndexedDBError};
 
-const CURRENT_DB_VERSION: u32 = 3;
+const CURRENT_DB_VERSION: u32 = 4;
 const EVENTS_CF: &str = "events";
 const EVENTS_SEEN_BY_RELAYS_CF: &str = "event-seen-by-relays";
-const ALL_STORES: [&str; 1] = [EVENTS_CF];
+const VANISHED_PUBLIC_KEYS_CF: &str = "vanished-public-keys";
+const ALL_STORES: [&str; 2] = [EVENTS_CF, VANISHED_PUBLIC_KEYS_CF];
 
 /// Helper struct for upgrading the inner DB.
 #[derive(Debug, Clone, Default)]
@@ -127,6 +128,12 @@ impl WebDatabase {
             } else if old_version < 3 {
                 let migration = OngoingMigration {
                     drop_stores: [EVENTS_SEEN_BY_RELAYS_CF].into_iter().collect(),
+                    ..Default::default()
+                };
+                self.apply_migration(CURRENT_DB_VERSION, migration).await?;
+            } else if old_version < 4 {
+                let migration = OngoingMigration {
+                    create_stores: [VANISHED_PUBLIC_KEYS_CF].into_iter().collect(),
                     ..Default::default()
                 };
                 self.apply_migration(CURRENT_DB_VERSION, migration).await?;
@@ -227,7 +234,68 @@ impl WebDatabase {
         Ok(())
     }
 
+    async fn mark_pubkey_as_vanished(&self, pk: &PublicKey) -> Result<(), IndexedDBError> {
+        let tx = self
+            .db
+            .transaction_on_one_with_mode(VANISHED_PUBLIC_KEYS_CF, IdbTransactionMode::Readwrite)?;
+        let store = tx.object_store(VANISHED_PUBLIC_KEYS_CF)?;
+        store.put_key_val(&JsValue::from(pk.to_hex()), &JsValue::from(true))?;
+        tx.await.into_result()?;
+        Ok(())
+    }
+
+    async fn pubkey_is_vanished(&self, pk: &PublicKey) -> Result<bool, IndexedDBError> {
+        let tx = self
+            .db
+            .transaction_on_one_with_mode(VANISHED_PUBLIC_KEYS_CF, IdbTransactionMode::Readonly)?;
+        let store = tx.object_store(VANISHED_PUBLIC_KEYS_CF)?;
+        let got = store.get(&JsValue::from(pk.to_hex()))?.await?;
+        Ok(got.is_some())
+    }
+
+    async fn handle_request_to_vanish(&self, pubkey: &PublicKey) -> Result<(), IndexedDBError> {
+        self.mark_pubkey_as_vanished(pubkey).await?;
+
+        // Delete all authored events of the public key
+        let author_ids = self
+            .helper
+            .delete(Filter::new().author(*pubkey))
+            .await
+            .unwrap_or_default();
+
+        // Delete gift wraps that mention the pubkey
+        // (kind = GiftWrap || 1059, tag "p" with the hex of the pubkey)
+        let gw_ids = self
+            .helper
+            .delete(Filter::new().kind(Kind::GiftWrap).pubkey(*pubkey))
+            .await
+            .unwrap_or_default();
+
+        // delete from IndexedDB in one tx
+        let tx = self
+            .db
+            .transaction_on_one_with_mode(EVENTS_CF, IdbTransactionMode::Readwrite)?;
+        let store = tx.object_store(EVENTS_CF)?;
+        for id in author_ids.into_iter().chain(gw_ids.into_iter()) {
+            store.delete(&JsValue::from(id.to_hex()))?;
+        }
+        tx.await.into_result()?;
+
+        Ok(())
+    }
+
     async fn _save_event(&self, event: &Event) -> Result<SaveEventStatus, IndexedDBError> {
+        // Reject event if the public key was vanished
+        if self.pubkey_is_vanished(&event.pubkey).await? {
+            return Ok(SaveEventStatus::Rejected(RejectedReason::Vanished));
+        }
+        // Handle request to vanish
+        if event.kind == Kind::RequestToVanish {
+            if let Some(TagStandard::AllRelays) = event.tags.find_standardized(TagKind::Relay) {
+                self.handle_request_to_vanish(&event.pubkey).await?;
+            }
+        }
+
         // Index event
         let DatabaseEventResult { status, to_discard } = self.helper.index_event(event).await;
 
@@ -314,7 +382,7 @@ impl NostrDatabase for WebDatabase {
             persistent: true,
             event_expiration: false,
             full_text_search: true,
-            request_to_vanish: false,
+            request_to_vanish: true,
         }
     }
 
