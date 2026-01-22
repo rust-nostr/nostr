@@ -1338,6 +1338,13 @@ impl InnerRelay {
     }
 
     async fn auth(&self, challenge: String) -> Result<(), Error> {
+        // Check if the relay can authenticate
+        if let Some(policy) = &self.state.admit_policy {
+            if let AdmitStatus::Rejected { reason } = policy.admit_auth(&self.url).await? {
+                return Err(Error::AuthenticationNotAdmitted { reason });
+            }
+        }
+
         // Get signer
         let signer = self.state.signer().ok_or(Error::SignerNotConfigured)?;
 

@@ -25,6 +25,18 @@ impl AdmitPolicy for AdmissionPolicyMiddleware {
         })
     }
 
+    fn admit_auth<'a>(
+        &'a self,
+        relay_url: &'a RelayUrl,
+    ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
+        Box::pin(async move {
+            match &self.external_policy {
+                Some(policy) => policy.admit_auth(relay_url).await,
+                None => Ok(AdmitStatus::Success),
+            }
+        })
+    }
+
     fn admit_event<'a>(
         &'a self,
         relay_url: &'a RelayUrl,

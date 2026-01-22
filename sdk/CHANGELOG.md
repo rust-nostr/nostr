@@ -73,6 +73,7 @@
 - Add `Output::new` constructor and `Output::into_inner` method
 - Add idle timeout for negentropy sync (https://github.com/rust-nostr/nostr/pull/1131)
 - Add `GossipAllowedRelays` to `GossipOptions` to filter relays during selection (https://github.com/rust-nostr/nostr/pull/1128)
+- Add `AdmitPolicy::admit_auth` to control relay authentication (https://github.com/rust-nostr/nostr/pull/1218)
 
 ## v0.44.1 - 2025/11/09
 

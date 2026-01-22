@@ -84,6 +84,17 @@ pub trait AdmitPolicy: fmt::Debug + Send + Sync {
         Box::pin(async move { Ok(AdmitStatus::Success) })
     }
 
+    /// Admit authenticating to a relay
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    fn admit_auth<'a>(
+        &'a self,
+        relay_url: &'a RelayUrl,
+    ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
+        let _ = relay_url;
+        Box::pin(async move { Ok(AdmitStatus::Success) })
+    }
+
     /// Admit [`Event`]
     ///
     /// Returns [`AdmitStatus::Success`] if the event is admitted, otherwise [`AdmitStatus::Rejected`].

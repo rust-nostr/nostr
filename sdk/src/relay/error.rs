@@ -112,6 +112,11 @@ pub enum Error {
     },
     /// Auth failed
     AuthenticationFailed,
+    /// Auth not admitted
+    AuthenticationNotAdmitted {
+        /// Rejection reason
+        reason: Option<String>,
+    },
     /// Premature exit
     PrematureExit,
     /// An empty list of filters has been provided
@@ -181,6 +186,10 @@ impl fmt::Display for Error {
                 current.as_millis()
             ),
             Self::AuthenticationFailed => f.write_str("authentication failed"),
+            Self::AuthenticationNotAdmitted { reason } => match reason {
+                Some(reason) => write!(f, "authentication not admitted: {reason}"),
+                None => f.write_str("authentication not admitted"),
+            },
             Self::PrematureExit => f.write_str("premature exit"),
             Self::EmptyFilters => f.write_str("empty filters"),
         }
