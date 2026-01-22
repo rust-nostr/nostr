@@ -5,8 +5,8 @@ use std::pin::Pin;
 use nostr::{Filter, RelayUrl, SubscriptionId};
 
 use super::blocking::Blocking;
-use super::filters_arg::FiltersArg;
 use super::output::Output;
+use super::req_target::ReqTarget;
 use super::util::build_targets;
 use crate::client::{Client, Error};
 use crate::relay::options::SubscribeAutoCloseOptions;
@@ -15,14 +15,14 @@ use crate::relay::options::SubscribeAutoCloseOptions;
 #[must_use = "Does nothing unless you await!"]
 pub struct Subscribe<'client, 'url> {
     client: &'client Client,
-    target: FiltersArg<'url>,
+    target: ReqTarget<'url>,
     id: Option<SubscriptionId>,
     auto_close: Option<SubscribeAutoCloseOptions>,
 }
 
 impl<'client, 'url> Subscribe<'client, 'url> {
     #[inline]
-    pub(crate) fn new(client: &'client Client, target: FiltersArg<'url>) -> Self {
+    pub(crate) fn new(client: &'client Client, target: ReqTarget<'url>) -> Self {
         Self {
             client,
             target,

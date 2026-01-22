@@ -497,7 +497,7 @@ impl Client {
 
     /// Subscribe to events
     ///
-    /// This method supports multiple subscription patterns through the [`FiltersArg`] type:
+    /// This method supports multiple subscription patterns through the [`ReqTarget`] type:
     /// - **Broadcast**: Send the same filters to all connected relays
     /// - **Targeted**: Send specific filters to specific relays
     ///
@@ -609,7 +609,7 @@ impl Client {
     #[inline]
     pub fn subscribe<'client, 'url, F>(&'client self, target: F) -> Subscribe<'client, 'url>
     where
-        F: Into<FiltersArg<'url>>,
+        F: Into<ReqTarget<'url>>,
     {
         Subscribe::new(self, target.into())
     }
@@ -687,7 +687,7 @@ impl Client {
     #[inline]
     pub fn fetch_events<'client, 'url, F>(&'client self, target: F) -> FetchEvents<'client, 'url>
     where
-        F: Into<FiltersArg<'url>>,
+        F: Into<ReqTarget<'url>>,
     {
         FetchEvents::new(self, target.into())
     }
@@ -706,7 +706,7 @@ impl Client {
     #[inline]
     pub fn stream_events<'client, 'url, F>(&'client self, target: F) -> StreamEvents<'client, 'url>
     where
-        F: Into<FiltersArg<'url>>,
+        F: Into<ReqTarget<'url>>,
     {
         StreamEvents::new(self, target.into())
     }
