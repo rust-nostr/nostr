@@ -6,7 +6,7 @@ use std::time::Duration;
 use nostr::types::url::RelayUrl;
 use nostr::{Event, Filter};
 
-use super::filters_arg::FiltersArg;
+use super::req_target::ReqTarget;
 use super::util::build_targets;
 use crate::client::{Client, Error};
 use crate::relay::{self, ReqExitPolicy};
@@ -18,13 +18,13 @@ type EventStream = BoxedStream<(RelayUrl, Result<Event, relay::Error>)>;
 #[must_use = "Does nothing unless you await!"]
 pub struct StreamEvents<'client, 'url> {
     client: &'client Client,
-    target: FiltersArg<'url>,
+    target: ReqTarget<'url>,
     timeout: Option<Duration>,
     policy: ReqExitPolicy,
 }
 
 impl<'client, 'url> StreamEvents<'client, 'url> {
-    pub(crate) fn new(client: &'client Client, target: FiltersArg<'url>) -> Self {
+    pub(crate) fn new(client: &'client Client, target: ReqTarget<'url>) -> Self {
         Self {
             client,
             target,

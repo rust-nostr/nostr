@@ -6,7 +6,7 @@ use futures::StreamExt;
 use nostr_database::Events;
 
 use super::blocking::Blocking;
-use super::filters_arg::FiltersArg;
+use super::req_target::ReqTarget;
 use super::stream::StreamEvents;
 use crate::client::{Client, Error};
 use crate::relay::ReqExitPolicy;
@@ -15,13 +15,13 @@ use crate::relay::ReqExitPolicy;
 #[must_use = "Does nothing unless you await!"]
 pub struct FetchEvents<'client, 'url> {
     client: &'client Client,
-    target: FiltersArg<'url>,
+    target: ReqTarget<'url>,
     timeout: Option<Duration>,
     policy: ReqExitPolicy,
 }
 
 impl<'client, 'url> FetchEvents<'client, 'url> {
-    pub(crate) fn new(client: &'client Client, target: FiltersArg<'url>) -> Self {
+    pub(crate) fn new(client: &'client Client, target: ReqTarget<'url>) -> Self {
         Self {
             client,
             target,
