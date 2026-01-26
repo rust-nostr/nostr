@@ -1,0 +1,36 @@
+use std::future::{Future, IntoFuture};
+use std::pin::Pin;
+
+use super::blocking::Blocking;
+use crate::client::{Client, Error, Output};
+
+/// Unsubscribe from all REQs
+#[must_use = "Does nothing unless you await!"]
+pub struct UnsubscribeAll<'client> {
+    client: &'client Client,
+}
+
+impl<'client> UnsubscribeAll<'client> {
+    #[inline]
+    pub(crate) fn new(client: &'client Client) -> Self {
+        Self { client }
+    }
+
+    async fn exec(self) -> Result<Output<()>, Error> {
+        // Unsubscribe
+        let output: Output<()> = self.client.pool.unsubscribe_all().await;
+
+        Ok(output)
+    }
+}
+
+impl<'client> IntoFuture for UnsubscribeAll<'client> {
+    type Output = Result<Output<()>, Error>;
+    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
+
+    fn into_future(self) -> Self::IntoFuture {
+        Box::pin(self.exec())
+    }
+}
+
+impl Blocking for UnsubscribeAll<'_> {}
