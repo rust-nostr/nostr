@@ -736,40 +736,10 @@ impl Client {
         StreamEvents::new(self, target.into())
     }
 
-    /// Send the client message to a **specific relays**
+    /// Send the client message
     #[inline]
-    pub async fn send_msg_to<'a, I, U>(
-        &self,
-        urls: I,
-        msg: ClientMessage<'_>,
-    ) -> Result<Output<()>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: Into<RelayUrlArg<'a>>,
-    {
-        self.batch_msg_to(urls, vec![msg]).await
-    }
-
-    /// Batch send client messages to **specific relays**
-    #[inline]
-    pub async fn batch_msg_to<'a, I, U>(
-        &self,
-        urls: I,
-        msgs: Vec<ClientMessage<'_>>,
-    ) -> Result<Output<()>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: Into<RelayUrlArg<'a>>,
-    {
-        let mut set: HashSet<RelayUrl> = HashSet::new();
-
-        for url in urls {
-            let url: RelayUrlArg<'a> = url.into();
-            let url: Cow<RelayUrl> = url.try_as_relay_url()?;
-            set.insert(url.into_owned());
-        }
-
-        Ok(self.pool.batch_msg_to(set, msgs).await?)
+    pub fn send_msg<'msg, 'url>(&self, msg: ClientMessage<'msg>) -> SendMessage<'_, 'msg, 'url> {
+        SendMessage::new(self, msg)
     }
 
     /// Send the event to relays

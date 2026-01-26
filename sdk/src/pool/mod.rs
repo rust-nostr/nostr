@@ -405,10 +405,10 @@ impl RelayPool {
         filters
     }
 
-    pub(crate) async fn batch_msg_to(
+    pub(crate) async fn send_msg(
         &self,
         urls: HashSet<RelayUrl>,
-        msgs: Vec<ClientMessage<'_>>,
+        msg: ClientMessage<'_>,
     ) -> Result<Output<()>, Error> {
         // Check if urls set is empty
         if urls.is_empty() {
@@ -418,11 +418,8 @@ impl RelayPool {
         // Lock with read shared access
         let relays = self.relays.read().await;
 
-        // // Save events
-        // for msg in msgs.iter() {
-        //     if let ClientMessage::Event(event) = msg {
-        //         self.state.database().save_event(event).await?;
-        //     }
+        // if let ClientMessage::Event(event) = msg {
+        //     self.state.database().save_event(event).await?;
         // }
 
         let mut output: Output<()> = Output::default();
@@ -430,7 +427,7 @@ impl RelayPool {
         // Batch messages and construct outputs
         for url in urls {
             let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
-            match relay.batch_msg(msgs.clone()) {
+            match relay.send_msg(msg.clone()) {
                 Ok(..) => {
                     // Success, insert relay url in 'success' set result
                     output.success.insert(url);
