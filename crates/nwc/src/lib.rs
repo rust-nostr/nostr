@@ -333,7 +333,7 @@ impl NostrWalletConnect {
     pub async fn unsubscribe_from_notifications(&self) -> Result<(), Error> {
         self.client
             .unsubscribe(&SubscriptionId::new(NOTIFICATIONS_ID))
-            .await;
+            .await?;
         self.notifications_subscribed.store(false, Ordering::SeqCst);
         Ok(())
     }
