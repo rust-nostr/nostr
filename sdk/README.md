@@ -34,10 +34,7 @@ async fn main() -> Result<()> {
     let connection: Connection = Connection::new()
         .proxy(addr) // Use `.embedded_tor()` instead to enable the embedded tor client (require `tor` feature)
         .target(ConnectionTarget::Onion);
-    let opts = ClientOptions::new().connection(connection);
-
-    // Create new client with custom options
-    let client = Client::builder().signer(keys.clone()).opts(opts).build();
+    let client = Client::builder().signer(keys.clone()).connection(connection).build();
 
     // Add relays
     client.add_relay("wss://relay.damus.io").await?;
