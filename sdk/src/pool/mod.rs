@@ -151,9 +151,12 @@ impl RelayPool {
     }
 
     #[inline]
-    pub(crate) async fn relay(&self, url: &RelayUrl) -> Result<Relay, Error> {
+    pub(crate) async fn relay(&self, url: &RelayUrl) -> Option<Relay> {
+        // Acquire read lock
         let relays = self.relays.read().await;
-        relays.get(url).cloned().ok_or(Error::RelayNotFound)
+
+        // Get relay and clone it
+        relays.get(url).cloned()
     }
 
     pub(crate) async fn add_relay(
