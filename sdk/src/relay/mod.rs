@@ -664,8 +664,10 @@ impl Relay {
     }
 
     /// Unsubscribe
+    ///
+    /// Returns `Ok(true)` if the subscription has been unsubscribed.
     #[inline]
-    pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<(), Error> {
+    pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<bool, Error> {
         self.inner.unsubscribe(id).await
     }
 

@@ -556,18 +556,41 @@ impl RelayPool {
         Ok(output)
     }
 
-    pub(crate) async fn unsubscribe(&self, id: &SubscriptionId) {
+    pub(crate) async fn unsubscribe(&self, id: &SubscriptionId) -> Output<()> {
         // Lock with read shared access
         let relays = self.relays.read().await;
 
-        // TODO: use join_all and return `Output`?
+        let mut urls: Vec<&RelayUrl> = Vec::with_capacity(relays.len());
+        let mut futures = Vec::with_capacity(relays.len());
 
-        // Remove subscription from relays
+        let mut output: Output<()> = Output::default();
+
+        // Compose futures
         for relay in relays.values() {
-            if let Err(e) = relay.unsubscribe(id).await {
-                tracing::error!("{e}");
+            // Create future
+            urls.push(relay.url());
+            futures.push(relay.unsubscribe(id));
+        }
+
+        // Join futures
+        let list = future::join_all(futures).await;
+
+        // Iter results and construct output
+        for (url, result) in urls.into_iter().zip(list.into_iter()) {
+            match result {
+                Ok(true) => {
+                    // Success, insert relay url in 'success' set result
+                    output.success.insert(url.clone());
+                }
+                // Subscription isn't found or auto-closing: do nothing
+                Ok(false) => {}
+                Err(e) => {
+                    output.failed.insert(url.clone(), e.to_string());
+                }
             }
         }
+
+        output
     }
 
     pub(crate) async fn unsubscribe_all(&self) {

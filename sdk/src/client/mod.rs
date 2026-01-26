@@ -639,10 +639,10 @@ impl Client {
         Subscribe::new(self, target.into())
     }
 
-    /// Unsubscribe
+    /// Unsubscribe from a REQ
     #[inline]
-    pub async fn unsubscribe(&self, id: &SubscriptionId) {
-        self.pool.unsubscribe(id).await;
+    pub fn unsubscribe<'id>(&self, id: &'id SubscriptionId) -> Unsubscribe<'_, 'id> {
+        Unsubscribe::new(self, id)
     }
 
     /// Unsubscribe from all subscriptions
