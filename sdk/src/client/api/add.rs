@@ -183,7 +183,7 @@ mod tests {
         assert!(res);
 
         // Verify capabilities
-        let relay = client.relay("wss://relay.damus.io").await.unwrap();
+        let relay = client.relay("wss://relay.damus.io").await.unwrap().unwrap();
         assert_eq!(
             relay.capabilities().load(),
             RelayCapabilities::READ | RelayCapabilities::WRITE
@@ -203,7 +203,7 @@ mod tests {
         assert!(res);
 
         // Verify capabilities
-        let relay = client.relay("wss://relay.damus.io").await.unwrap();
+        let relay = client.relay("wss://relay.damus.io").await.unwrap().unwrap();
         assert_eq!(relay.capabilities().load(), RelayCapabilities::READ);
 
         // Try to re-add relay with GOSSIP capability
@@ -215,7 +215,7 @@ mod tests {
         assert!(!res); // Already exists, so must return false
 
         // Verify capabilities
-        let relay = client.relay("wss://relay.damus.io").await.unwrap();
+        let relay = client.relay("wss://relay.damus.io").await.unwrap().unwrap();
         assert_eq!(
             relay.capabilities().load(),
             RelayCapabilities::READ | RelayCapabilities::GOSSIP

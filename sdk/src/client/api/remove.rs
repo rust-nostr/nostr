@@ -87,10 +87,7 @@ mod tests {
 
         // Remove the non-gossip relay
         assert!(client.remove_relay("ws://127.0.0.1:6666").await.is_ok());
-        assert!(matches!(
-            client.relay("ws://127.0.0.1:6666").await.unwrap_err(),
-            Error::RelayPool(pool::Error::RelayNotFound)
-        ));
+        assert!(client.relay("ws://127.0.0.1:6666").await.unwrap().is_none());
         assert_eq!(client.relays().await.len(), 1);
         assert_eq!(client.pool.all_relays().await.len(), 1);
 
@@ -122,10 +119,7 @@ mod tests {
             .force()
             .await
             .is_ok());
-        assert!(matches!(
-            client.relay("ws://127.0.0.1:6666").await.unwrap_err(),
-            Error::RelayPool(pool::Error::RelayNotFound)
-        ));
+        assert!(client.relay("ws://127.0.0.1:6666").await.unwrap().is_none());
         assert_eq!(client.relays().await.len(), 1);
         assert_eq!(client.pool.all_relays().await.len(), 1);
 
@@ -135,10 +129,7 @@ mod tests {
             .force()
             .await
             .is_ok());
-        assert!(matches!(
-            client.relay("ws://127.0.0.1:8888").await.unwrap_err(),
-            Error::RelayPool(pool::Error::RelayNotFound)
-        ));
+        assert!(client.relay("ws://127.0.0.1:8888").await.unwrap().is_none());
         assert!(client.relays().await.is_empty());
         assert!(client.pool.all_relays().await.is_empty());
     }

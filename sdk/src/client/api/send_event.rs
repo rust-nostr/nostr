@@ -540,10 +540,10 @@ mod tests {
         client.connect().await;
 
         // Verify that the client doesn't have the outbox relay
-        assert!(client.relay(&outbox_url).await.is_err());
+        assert!(client.relay(&outbox_url).await.unwrap().is_none());
 
         // Verify capabilities
-        let relay = client.relay(&discovery_url).await.unwrap();
+        let relay = client.relay(&discovery_url).await.unwrap().unwrap();
         assert_eq!(relay.capabilities().load(), RelayCapabilities::DISCOVERY);
 
         // Now, send a Text Note from User A.
@@ -569,7 +569,7 @@ mod tests {
         assert_eq!(output.val, event.id);
 
         // Verify the client now has the outbox relay in its pool with GOSSIP capability
-        let outbox_relay = client.relay(&outbox_url).await.unwrap();
+        let outbox_relay = client.relay(&outbox_url).await.unwrap().unwrap();
         assert_eq!(
             outbox_relay.capabilities().load(),
             RelayCapabilities::GOSSIP
@@ -637,7 +637,7 @@ mod tests {
         client.connect().await;
 
         // Verify that the client doesn't have the inbox relay
-        assert!(client.relay(&inbox_url).await.is_err());
+        assert!(client.relay(&inbox_url).await.unwrap().is_none());
 
         // Sends an event to the inbox relay
         // NOTE: this is not a NIP-17 event, as the nip59 feature is required, so we are sending a fake gift wrap tagging the recipient
@@ -656,7 +656,7 @@ mod tests {
         assert_eq!(output.val, event.id);
 
         // Verify the client now has the outbox relay in its pool with GOSSIP capability
-        let inbox_relay = client.relay(&inbox_url).await.unwrap();
+        let inbox_relay = client.relay(&inbox_url).await.unwrap().unwrap();
         assert_eq!(inbox_relay.capabilities().load(), RelayCapabilities::GOSSIP);
     }
 

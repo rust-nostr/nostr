@@ -213,15 +213,40 @@ impl Client {
         GetRelays::new(self)
     }
 
-    /// Get a previously added [`Relay`]
-    #[inline]
-    pub async fn relay<'a, U>(&self, url: U) -> Result<Relay, Error>
+    /// Get a previously added [`Relay`] by URL.
+    ///
+    /// It returns the relay **only if it has already been added**
+    /// to the client via [`Client::add_relay`].
+    ///
+    /// - Returns `Ok(None)` if the relay is not found in the pool.
+    /// - Returns `Err(_)` if the provided URL cannot be parsed as a relay URL.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use nostr_sdk::prelude::*;
+    /// # async fn example() -> Result<()> {
+    /// # let client = Client::default();
+    /// // Not added yet
+    /// let relay = client.relay("wss://relay.example.com").await?;
+    /// assert!(relay.is_none());
+    ///
+    /// // Add it
+    /// client.add_relay("wss://relay.example.com").await?;
+    ///
+    /// // Now it can be retrieved
+    /// let relay = client.relay("wss://relay.example.com").await?;
+    /// assert!(relay.is_some());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn relay<'a, U>(&self, url: U) -> Result<Option<Relay>, Error>
     where
         U: Into<RelayUrlArg<'a>>,
     {
         let url: RelayUrlArg<'a> = url.into();
         let url: Cow<RelayUrl> = url.try_as_relay_url()?;
-        Ok(self.pool.relay(&url).await?)
+        Ok(self.pool.relay(&url).await)
     }
 
     fn compose_relay_opts<'a>(&self, _url: &'a RelayUrlArg<'a>) -> RelayOptions {
@@ -1802,7 +1827,7 @@ mod tests {
 
             tokio::time::sleep(Duration::from_millis(500)).await;
 
-            let relay = client.relay(&url).await.unwrap();
+            let relay = client.relay(&url).await.unwrap().unwrap();
 
             assert!(relay.is_connected());
 

@@ -41,7 +41,6 @@ impl<'client> IntoFuture for RemoveAllRelays<'client> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::pool;
     use crate::relay::RelayCapabilities;
 
     #[tokio::test]
@@ -63,14 +62,8 @@ mod tests {
 
         // Remove all relays
         client.remove_all_relays().await.unwrap();
-        assert!(matches!(
-            client.relay("ws://127.0.0.1:6666").await.unwrap_err(),
-            Error::RelayPool(pool::Error::RelayNotFound)
-        ));
-        assert!(matches!(
-            client.relay("ws://127.0.0.1:7777").await.unwrap_err(),
-            Error::RelayPool(pool::Error::RelayNotFound)
-        ));
+        assert!(client.relay("ws://127.0.0.1:6666").await.unwrap().is_none());
+        assert!(client.relay("ws://127.0.0.1:7777").await.unwrap().is_none());
         assert!(client.relay("ws://127.0.0.1:8888").await.is_ok()); // The GOSSIP relay still exists
         assert!(client.relays().await.is_empty()); // This gets only the READ/WRITE relays, which are now 0
         assert_eq!(client.pool.all_relays().await.len(), 1); // The GOSSIP relay still exists
@@ -101,17 +94,8 @@ mod tests {
         assert!(client.pool.all_relays().await.is_empty());
 
         // Double check that relays doesn't exist
-        assert!(matches!(
-            client.relay("ws://127.0.0.1:6666").await.unwrap_err(),
-            Error::RelayPool(pool::Error::RelayNotFound)
-        ));
-        assert!(matches!(
-            client.relay("ws://127.0.0.1:7777").await.unwrap_err(),
-            Error::RelayPool(pool::Error::RelayNotFound)
-        ));
-        assert!(matches!(
-            client.relay("ws://127.0.0.1:8888").await.unwrap_err(),
-            Error::RelayPool(pool::Error::RelayNotFound)
-        ));
+        assert!(client.relay("ws://127.0.0.1:6666").await.unwrap().is_none());
+        assert!(client.relay("ws://127.0.0.1:7777").await.unwrap().is_none());
+        assert!(client.relay("ws://127.0.0.1:8888").await.unwrap().is_none());
     }
 }

@@ -42,6 +42,7 @@
 - Make `RelayPool` private (https://github.com/rust-nostr/nostr/pull/1237)
 - Replace `RelayPoolNotification` with `ClientNotification` (https://github.com/rust-nostr/nostr/pull/1237)
 - Relays no longer inherit subscriptions of the pool (https://github.com/rust-nostr/nostr/pull/1237)
+- Change `Client::relay` output to return `Result<Output<Relay>>`
 
 ### Changed
 
