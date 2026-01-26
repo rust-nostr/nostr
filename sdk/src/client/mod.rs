@@ -184,7 +184,7 @@ impl Client {
     /// * remove the database
     /// * clear the gossip graph
     pub async fn reset(&self) {
-        self.unsubscribe_all().await;
+        let _ = self.unsubscribe_all().await;
         let _ = self.remove_all_relays().force().await;
         self.unset_signer().await;
     }
@@ -645,10 +645,10 @@ impl Client {
         Unsubscribe::new(self, id)
     }
 
-    /// Unsubscribe from all subscriptions
+    /// Unsubscribe from all REQs
     #[inline]
-    pub async fn unsubscribe_all(&self) {
-        self.pool.unsubscribe_all().await;
+    pub fn unsubscribe_all(&self) -> UnsubscribeAll {
+        UnsubscribeAll::new(self)
     }
 
     /// Sync events with relays (negentropy reconciliation)
