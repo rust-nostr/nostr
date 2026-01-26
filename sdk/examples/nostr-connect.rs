@@ -31,16 +31,17 @@ async fn main() -> Result<()> {
     println!("\nBunker URI: {bunker_uri}\n");
 
     // Compose client
-    let client = Client::builder().signer(signer).build();
+    let client = Client::builder().build();
     client.add_relay("wss://relay.damus.io").await?;
     client.connect().await;
 
     // Publish events
-    let builder = EventBuilder::text_note("Testing rust-nostr NIP46 signer [bunker]");
-    let output = client.send_event_builder(builder).await?;
+    let event = EventBuilder::text_note("Testing rust-nostr NIP46 signer [bunker]")
+        .sign(&signer)
+        .await?;
+    let output = client.send_event(&event).await?;
     println!("Published text note: {}\n", output.id());
 
-    let signer = client.signer().await?;
     let receiver =
         PublicKey::from_bech32("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")?;
     let msg = EventBuilder::private_msg(&signer, receiver, "Hello from rust-nostr", []).await?;

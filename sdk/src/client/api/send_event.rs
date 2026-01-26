@@ -12,6 +12,29 @@ use crate::client::gossip::GossipWrapper;
 use crate::client::{Client, Error};
 use crate::relay::capabilities::RelayCapabilities;
 
+// enum EventArg<'event> {
+//     Ready(Cow<'event, Event>),
+//     ToBuild(EventBuilder),
+// }
+//
+// impl From<Event> for EventArg<'_> {
+//     fn from(event: Event) -> Self {
+//         Self::Ready(Cow::Owned(event))
+//     }
+// }
+//
+// impl<'event> From<&'event Event> for EventArg<'event> {
+//     fn from(event: &'event Event) -> Self {
+//         Self::Ready(Cow::Borrowed(event))
+//     }
+// }
+//
+// impl<'event> From<EventBuilder> for EventArg<'event> {
+//     fn from(builder: EventBuilder) -> Self {
+//         Self::ToBuild(builder)
+//     }
+// }
+
 enum OverwritePolicy<'url> {
     // All WRITE relays
     Broadcast,
