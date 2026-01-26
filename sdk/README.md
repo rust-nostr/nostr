@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
     let opts = ClientOptions::new().connection(connection);
 
     // Create new client with custom options
-    let client = Client::builder().signer(keys).opts(opts).build();
+    let client = Client::builder().signer(keys.clone()).opts(opts).build();
 
     // Add relays
     client.add_relay("wss://relay.damus.io").await?;
@@ -50,13 +50,8 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     // Publish a text note
-    let builder = EventBuilder::text_note("My first text note from rust-nostr!");
-    client.send_event_builder(builder).await?;
-
-    // Create a POW text note
-    let builder = EventBuilder::text_note("POW text note from nostr-sdk").pow(20);
-    client.send_event_builder(builder).await?; // Send to all relays
-    // client.send_event_builder_to(["wss://relay.damus.io"], builder).await?; // Send to specific relay
+    let event = EventBuilder::text_note("My first text note from rust-nostr!").sign_with_keys(&keys)?;
+    client.send_event(&event).await?;
 
     Ok(())
 }

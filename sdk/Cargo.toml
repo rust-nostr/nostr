@@ -64,9 +64,6 @@ name = "blacklist"
 name = "client"
 
 [[example]]
-name = "comment"
-
-[[example]]
 name = "fetch-events"
 
 [[example]]

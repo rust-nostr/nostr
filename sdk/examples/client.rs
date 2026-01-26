@@ -9,7 +9,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
-    let client = Client::builder().signer(keys).build();
+    let client = Client::builder().build();
 
     client.add_relay("wss://relay.damus.io").await?;
     client.add_relay("wss://nostr.wine").await?;
@@ -18,20 +18,25 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     // Publish a text note
-    let builder = EventBuilder::text_note("Hello world");
-    let output = client.send_event_builder(builder).await?;
+    let event = EventBuilder::text_note("Hello world").sign_with_keys(&keys)?;
+    let output = client.send_event(&event).await?;
     println!("Event ID: {}", output.id().to_bech32()?);
     println!("Sent to: {:?}", output.success);
     println!("Not sent to: {:?}", output.failed);
 
     // Create a text note POW event to relays
-    let builder = EventBuilder::text_note("POW text note from rust-nostr").pow(20);
-    client.send_event_builder(builder).await?;
+    let event = EventBuilder::text_note("POW text note from rust-nostr")
+        .pow(20)
+        .sign_with_keys(&keys)?;
+    client.send_event(&event).await?;
 
     // Send a text note POW event to specific relays
-    let builder = EventBuilder::text_note("POW text note from rust-nostr 16").pow(16);
+    let event = EventBuilder::text_note("POW text note from rust-nostr 16")
+        .pow(16)
+        .sign_with_keys(&keys)?;
     client
-        .send_event_builder_to(["wss://relay.damus.io", "wss://relay.rip"], builder)
+        .send_event(&event)
+        .to(["wss://relay.damus.io", "wss://relay.rip"])
         .await?;
 
     Ok(())

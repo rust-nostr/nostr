@@ -13,7 +13,10 @@ async fn main() -> Result<()> {
 
     let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
     let gossip = NostrGossipMemory::unbounded();
-    let client = Client::builder().signer(keys).gossip(gossip).build();
+    let client = Client::builder()
+        .signer(keys.clone())
+        .gossip(gossip)
+        .build();
 
     // Add discovery relays
     client
@@ -31,11 +34,12 @@ async fn main() -> Result<()> {
     let pubkey =
         PublicKey::parse("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")?;
 
-    let builder = EventBuilder::text_note(
+    let event = EventBuilder::text_note(
         "Hello world nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
     )
-    .tag(Tag::public_key(pubkey));
-    let output = client.send_event_builder(builder).await?;
+    .tag(Tag::public_key(pubkey))
+    .sign_with_keys(&keys)?;
+    let output = client.send_event(&event).await?;
     println!("Event ID: {}", output.to_bech32()?);
 
     println!("Sent to:");

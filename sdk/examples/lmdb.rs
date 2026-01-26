@@ -24,8 +24,8 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     // Publish a text note
-    let builder = EventBuilder::text_note("Hello world");
-    client.send_event_builder(builder).await?;
+    let event = EventBuilder::text_note("Hello world").sign_with_keys(&keys)?;
+    client.send_event(&event).await?;
 
     // Negentropy sync
     let filter = Filter::new().author(keys.public_key());

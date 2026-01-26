@@ -780,45 +780,6 @@ impl Client {
         self.send_event(event).to(urls).await
     }
 
-    /// Build, sign and return [`Event`]
-    ///
-    /// This method requires a [`NostrSigner`].
-    pub async fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
-        let signer = self.signer().await?;
-        Ok(builder.sign(&signer).await?)
-    }
-
-    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to relays.
-    ///
-    /// This method requires a [`NostrSigner`].
-    ///
-    /// Check [`Client::send_event`] from more details.
-    #[inline]
-    pub async fn send_event_builder(
-        &self,
-        builder: EventBuilder,
-    ) -> Result<Output<EventId>, Error> {
-        let event: Event = self.sign_event_builder(builder).await?;
-        self.send_event(&event).await
-    }
-
-    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to specific relays.
-    ///
-    /// This method requires a [`NostrSigner`].
-    #[inline]
-    pub async fn send_event_builder_to<'a, I, U>(
-        &self,
-        urls: I,
-        builder: EventBuilder,
-    ) -> Result<Output<EventId>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: Into<RelayUrlArg<'a>>,
-    {
-        let event: Event = self.sign_event_builder(builder).await?;
-        self.send_event(&event).to(urls).await
-    }
-
     /// Handle notifications
     ///
     /// The closure function expects a `bool` as output: return `true` to exit from the notification loop.
