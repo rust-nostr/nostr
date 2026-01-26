@@ -14,7 +14,7 @@ use async_wsocket::ConnectionMode;
 use futures::StreamExt;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
-use nostr_gossip::{GossipListKind, GossipPublicKeyStatus, NostrGossip};
+use nostr_gossip::{GossipAllowedRelays, GossipListKind, GossipPublicKeyStatus, NostrGossip};
 use tokio::sync::{broadcast, Semaphore};
 
 mod api;
@@ -23,7 +23,6 @@ mod error;
 mod gossip;
 mod middleware;
 mod notification;
-mod options;
 
 pub use self::api::*;
 pub use self::builder::*;
@@ -31,18 +30,31 @@ pub use self::error::Error;
 use self::gossip::{BrokenDownFilters, GossipFilterPattern, GossipWrapper};
 use self::middleware::AdmissionPolicyMiddleware;
 pub use self::notification::*;
-pub use self::options::*;
 use crate::monitor::Monitor;
 use crate::pool::{RelayPool, RelayPoolBuilder};
+use crate::prelude::RelayLimits;
 use crate::relay::options::{RelayOptions, SyncDirection, SyncOptions};
 use crate::relay::{Reconciliation, Relay, RelayCapabilities, ReqExitPolicy};
+
+#[derive(Debug, Clone)]
+struct ClientConfig {
+    #[cfg(not(target_arch = "wasm32"))]
+    connection: Connection,
+    gossip_limits: GossipRelayLimits,
+    gossip_allowed: GossipAllowedRelays,
+    relay_limits: RelayLimits,
+    max_avg_latency: Option<Duration>,
+    sleep_when_idle: SleepWhenIdle,
+    verify_subscriptions: bool,
+    ban_relay_on_mismatch: bool,
+}
 
 /// Nostr client
 #[derive(Debug, Clone)]
 pub struct Client {
     pool: Arc<RelayPool>,
     gossip: Option<GossipWrapper>,
-    opts: ClientOptions,
+    config: ClientConfig,
     /// Semaphore used to limit the number of gossip checks and syncs
     gossip_sync: Arc<Semaphore>,
 }
@@ -93,16 +105,25 @@ impl Client {
             monitor: builder.monitor,
             database: builder.database,
             signer: builder.signer,
-            max_relays: builder.opts.max_relays,
-            nip42_auto_authentication: builder.opts.nip42_auto_authentication,
-            notification_channel_size: builder.opts.notification_channel_size,
+            max_relays: builder.max_relays,
+            nip42_auto_authentication: builder.automatic_authentication,
+            notification_channel_size: builder.notification_channel_size,
         };
 
         // Construct client
         Self {
             pool: Arc::new(pool_builder.build()),
             gossip: builder.gossip.map(GossipWrapper::new),
-            opts: builder.opts,
+            config: ClientConfig {
+                connection: builder.connection,
+                gossip_limits: builder.gossip_limits,
+                gossip_allowed: builder.gossip_allowed,
+                relay_limits: builder.relay_limits,
+                max_avg_latency: builder.max_avg_latency,
+                sleep_when_idle: builder.sleep_when_idle,
+                verify_subscriptions: builder.verify_subscriptions,
+                ban_relay_on_mismatch: builder.ban_relay_on_mismatch,
+            },
             // Allow only one gossip check and sync at a time
             gossip_sync: Arc::new(Semaphore::new(1)),
         }
@@ -259,26 +280,26 @@ impl Client {
         // Set connection mode
         #[cfg(not(target_arch = "wasm32"))]
         if let Ok(url) = _url.try_as_relay_url() {
-            match &self.opts.connection.mode {
+            match &self.config.connection.mode {
                 ConnectionMode::Direct => {}
-                ConnectionMode::Proxy(..) => match self.opts.connection.target {
+                ConnectionMode::Proxy(..) => match self.config.connection.target {
                     ConnectionTarget::All => {
-                        opts = opts.connection_mode(self.opts.connection.mode.clone());
+                        opts = opts.connection_mode(self.config.connection.mode.clone());
                     }
                     ConnectionTarget::Onion => {
                         if url.is_onion() {
-                            opts = opts.connection_mode(self.opts.connection.mode.clone())
+                            opts = opts.connection_mode(self.config.connection.mode.clone())
                         }
                     }
                 },
                 #[cfg(feature = "tor")]
-                ConnectionMode::Tor { .. } => match self.opts.connection.target {
+                ConnectionMode::Tor { .. } => match self.config.connection.target {
                     ConnectionTarget::All => {
-                        opts = opts.connection_mode(self.opts.connection.mode.clone());
+                        opts = opts.connection_mode(self.config.connection.mode.clone());
                     }
                     ConnectionTarget::Onion => {
                         if url.is_onion() {
-                            opts = opts.connection_mode(self.opts.connection.mode.clone())
+                            opts = opts.connection_mode(self.config.connection.mode.clone())
                         }
                     }
                 },
@@ -286,7 +307,7 @@ impl Client {
         }
 
         // Set sleep when idle
-        match self.opts.sleep_when_idle {
+        match self.config.sleep_when_idle {
             // Do nothing
             SleepWhenIdle::Disabled => {}
             // Enable: update relay options
@@ -296,10 +317,10 @@ impl Client {
         };
 
         // Set limits
-        opts.limits(self.opts.relay_limits.clone())
-            .max_avg_latency(self.opts.max_avg_latency)
-            .verify_subscriptions(self.opts.verify_subscriptions)
-            .ban_relay_on_mismatch(self.opts.ban_relay_on_mismatch)
+        opts.limits(self.config.relay_limits.clone())
+            .max_avg_latency(self.config.max_avg_latency)
+            .verify_subscriptions(self.config.verify_subscriptions)
+            .ban_relay_on_mismatch(self.config.ban_relay_on_mismatch)
     }
 
     /// Add relay
@@ -1153,8 +1174,8 @@ impl Client {
             .break_down_filter(
                 filter,
                 pattern,
-                &self.opts.gossip.limits,
-                self.opts.gossip.allowed,
+                &self.config.gossip_limits,
+                self.config.gossip_allowed,
             )
             .await?
         {
