@@ -59,7 +59,7 @@ impl<'relay> Subscribe<'relay> {
     }
 }
 
-pub(in crate::relay) async fn subscribe_auto_closing(
+pub(super) async fn subscribe_auto_closing(
     relay: &Relay,
     id: SubscriptionId,
     filters: Vec<Filter>,
