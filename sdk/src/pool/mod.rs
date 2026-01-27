@@ -444,6 +444,8 @@ impl RelayPool {
         &self,
         urls: I,
         event: &Event,
+        wait_for_ok_timeout: Duration,
+        wait_for_authentication_timeout: Duration,
     ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = RelayUrl>,
@@ -471,7 +473,13 @@ impl RelayPool {
         for url in set.into_iter() {
             let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
             urls.push(url);
-            futures.push(relay.send_event(event));
+            futures.push(
+                relay
+                    .send_event(event)
+                    .ok_timeout(wait_for_ok_timeout)
+                    .authentication_timeout(wait_for_authentication_timeout)
+                    .into_future(),
+            );
         }
 
         // Join futures
