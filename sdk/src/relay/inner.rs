@@ -7,7 +7,6 @@ use std::time::Duration;
 
 use async_utility::{task, time};
 use async_wsocket::{ConnectionMode, Message};
-use atomic_destructor::AtomicDestroyer;
 use futures::{self, SinkExt, StreamExt};
 use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use nostr::rand::rngs::OsRng;
@@ -155,12 +154,6 @@ pub(crate) struct InnerRelay {
     pub(super) state: SharedState,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
     external_notification_sender: Option<broadcast::Sender<ClientNotification>>,
-}
-
-impl AtomicDestroyer for InnerRelay {
-    fn on_destroy(&self) {
-        self.shutdown();
-    }
 }
 
 impl InnerRelay {
