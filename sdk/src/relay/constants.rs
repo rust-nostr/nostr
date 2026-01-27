@@ -1,9 +1,3 @@
-// Copyright (c) 2022-2023 Yuki Kishimoto
-// Copyright (c) 2023-2025 Rust Nostr Developers
-// Distributed under the MIT software license
-
-//! Relay constants
-
 use core::ops::RangeInclusive;
 use core::time::Duration;
 
@@ -12,10 +6,10 @@ pub(super) const WAIT_FOR_AUTHENTICATION_TIMEOUT: Duration = Duration::from_secs
 pub(super) const DEFAULT_CONNECTION_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Relay default notification channel size
-pub const DEFAULT_NOTIFICATION_CHANNEL_SIZE: usize = 2048;
+pub(super) const DEFAULT_NOTIFICATION_CHANNEL_SIZE: usize = 2048;
 
 /// Max relay size
-pub const MAX_MESSAGE_SIZE: u32 = 5 * 1024 * 1024; // 5 MB
+pub(super) const MAX_MESSAGE_SIZE: u32 = 5 * 1024 * 1024; // 5 MB
 
 pub(super) const DEFAULT_RETRY_INTERVAL: Duration = Duration::from_secs(10);
 // Not increase the max retry interval too much.

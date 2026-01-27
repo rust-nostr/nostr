@@ -1,7 +1,3 @@
-// Copyright (c) 2022-2023 Yuki Kishimoto
-// Copyright (c) 2023-2025 Rust Nostr Developers
-// Distributed under the MIT software license
-
 //! Relay
 
 use std::borrow::Cow;
@@ -21,82 +17,32 @@ use nostr_database::prelude::*;
 use tokio::sync::{broadcast, mpsc};
 
 mod builder;
-pub mod capabilities;
-pub mod constants;
+mod capabilities;
+mod constants;
 mod error;
 mod inner;
-pub mod limits;
-pub mod options;
+mod limits;
+mod notification;
+mod options;
 mod ping;
-pub mod stats;
+mod stats;
 mod status;
 
 pub use self::builder::*;
-pub use self::capabilities::{AtomicRelayCapabilities, RelayCapabilities};
+pub use self::capabilities::*;
 use self::constants::{WAIT_FOR_AUTHENTICATION_TIMEOUT, WAIT_FOR_OK_TIMEOUT};
 pub use self::error::Error;
 use self::inner::InnerRelay;
-pub use self::limits::RelayLimits;
-pub use self::options::{
-    RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection,
-    SyncOptions, SyncProgress,
-};
-pub use self::stats::RelayConnectionStats;
-pub use self::status::RelayStatus;
+pub use self::limits::*;
+pub use self::notification::*;
+pub use self::options::*;
+pub use self::stats::*;
+pub use self::status::*;
 use crate::client::ClientNotification;
 use crate::policy::AdmitStatus;
 use crate::shared::SharedState;
 use crate::stream::BoxedStream;
 use crate::transport::websocket::{WebSocketSink, WebSocketStream};
-
-/// Subscription auto-closed reason
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SubscriptionAutoClosedReason {
-    /// NIP42 authentication failed
-    AuthenticationFailed,
-    /// Closed
-    Closed(String),
-    /// Completed
-    Completed,
-}
-
-#[derive(Debug)]
-enum SubscriptionActivity {
-    /// Received an event
-    ReceivedEvent(Event),
-    /// Subscription closed
-    Closed(SubscriptionAutoClosedReason),
-}
-
-/// Relay Notification
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RelayNotification {
-    /// Received an [`Event`]. Does not include events sent by this client.
-    Event {
-        /// Subscription ID
-        subscription_id: SubscriptionId,
-        /// Event
-        event: Box<Event>,
-    },
-    /// Received a [`RelayMessage`]. Includes messages wrapping events that were sent by this client.
-    Message {
-        /// Relay Message
-        message: RelayMessage<'static>,
-    },
-    /// Relay status changed
-    RelayStatus {
-        /// Relay Status
-        status: RelayStatus,
-    },
-    /// Authenticated to relay
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
-    Authenticated,
-    /// Authentication failed
-    AuthenticationFailed,
-    /// Shutdown
-    Shutdown,
-}
 
 // #[derive(Debug, Clone, Default, PartialEq, Eq)]
 // pub struct ReconciliationFailures {
@@ -129,6 +75,25 @@ impl Reconciliation {
         self.received.extend(other.received);
         self.send_failures.extend(other.send_failures);
     }
+}
+
+/// Subscription auto-closed reason
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum SubscriptionAutoClosedReason {
+    /// NIP42 authentication failed
+    AuthenticationFailed,
+    /// Closed
+    Closed(String),
+    /// Completed
+    Completed,
+}
+
+#[derive(Debug)]
+enum SubscriptionActivity {
+    /// Received an event
+    ReceivedEvent(Event),
+    /// Subscription closed
+    Closed(SubscriptionAutoClosedReason),
 }
 
 struct SubscriptionActivityEventStream {

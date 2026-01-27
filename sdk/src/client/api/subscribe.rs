@@ -9,7 +9,7 @@ use super::output::Output;
 use super::req_target::ReqTarget;
 use super::util::build_targets;
 use crate::client::{Client, Error};
-use crate::relay::options::SubscribeAutoCloseOptions;
+use crate::relay::SubscribeAutoCloseOptions;
 
 /// Subscribe to events
 #[must_use = "Does nothing unless you await!"]

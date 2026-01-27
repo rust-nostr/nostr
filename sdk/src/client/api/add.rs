@@ -8,9 +8,7 @@ use nostr::types::url::{RelayUrl, RelayUrlArg};
 
 use super::blocking::Blocking;
 use crate::client::{Client, Error};
-use crate::relay::capabilities::RelayCapabilities;
-use crate::relay::limits::RelayLimits;
-use crate::relay::options::RelayOptions;
+use crate::relay::{RelayCapabilities, RelayLimits, RelayOptions};
 
 /// Add new relay to the pool
 #[must_use = "Does nothing unless you await!"]

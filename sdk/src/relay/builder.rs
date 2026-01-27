@@ -1,5 +1,3 @@
-//! Relay builder
-
 use std::sync::Arc;
 
 use nostr::RelayUrl;

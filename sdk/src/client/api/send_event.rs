@@ -10,7 +10,7 @@ use super::blocking::Blocking;
 use super::output::Output;
 use crate::client::gossip::GossipWrapper;
 use crate::client::{Client, Error};
-use crate::relay::capabilities::RelayCapabilities;
+use crate::relay::RelayCapabilities;
 
 // enum EventArg<'event> {
 //     Ready(Cow<'event, Event>),

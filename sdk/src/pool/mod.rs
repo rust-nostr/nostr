@@ -21,10 +21,9 @@ pub(crate) use self::builder::RelayPoolBuilder;
 pub(crate) use self::error::Error;
 use crate::client::{ClientNotification, Output};
 use crate::monitor::Monitor;
-use crate::relay::capabilities::RelayCapabilities;
-use crate::relay::options::{ReqExitPolicy, SubscribeOptions, SyncOptions};
 use crate::relay::{
-    self, AtomicRelayCapabilities, Reconciliation, Relay, RelayOptions, SubscribeAutoCloseOptions,
+    self, AtomicRelayCapabilities, Reconciliation, Relay, RelayCapabilities, RelayOptions,
+    ReqExitPolicy, SubscribeAutoCloseOptions, SubscribeOptions, SyncOptions,
 };
 use crate::shared::SharedState;
 use crate::stream::{BoxedStream, ReceiverStream};

@@ -58,7 +58,7 @@ impl<'client, 'url> Blocking for RemoveRelay<'client, 'url> where 'url: 'client 
 mod tests {
     use super::*;
     use crate::pool;
-    use crate::relay::capabilities::RelayCapabilities;
+    use crate::relay::RelayCapabilities;
 
     #[tokio::test]
     async fn test_remove_nonexistent_relay() {
