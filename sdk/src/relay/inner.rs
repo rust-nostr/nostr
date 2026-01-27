@@ -19,8 +19,7 @@ use super::capabilities::{AtomicRelayCapabilities, RelayCapabilities};
 use super::constants::{
     DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE,
     NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP,
-    NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, SLEEP_INTERVAL, WAIT_FOR_OK_TIMEOUT,
-    WEBSOCKET_TX_TIMEOUT,
+    NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, SLEEP_INTERVAL, WEBSOCKET_TX_TIMEOUT,
 };
 use super::options::{RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, SyncOptions};
 use super::ping::PingTracker;
@@ -1371,7 +1370,7 @@ impl InnerRelay {
         // Wait for OK
         // The event ID is already checked in `wait_for_ok` method
         let (status, message) = self
-            .wait_for_ok(&mut notifications, &event.id, WAIT_FOR_OK_TIMEOUT)
+            .wait_for_ok(&mut notifications, &event.id, Duration::from_secs(10))
             .await?;
 
         // Check status

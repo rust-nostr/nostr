@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::future::{Future, IntoFuture};
 use std::iter;
 use std::pin::Pin;
+use std::time::Duration;
 
 use nostr::{Event, EventId, Kind, RelayUrl, RelayUrlArg};
 use nostr_gossip::{BestRelaySelection, GossipListKind};
@@ -53,6 +54,8 @@ pub struct SendEvent<'client, 'event, 'url> {
     event: &'event Event,
     policy: Option<OverwritePolicy<'url>>,
     save_into_database: bool,
+    wait_for_ok_timeout: Duration,
+    wait_for_authentication_timeout: Duration,
 }
 
 impl<'client, 'event, 'url> SendEvent<'client, 'event, 'url> {
@@ -62,6 +65,8 @@ impl<'client, 'event, 'url> SendEvent<'client, 'event, 'url> {
             event,
             policy: None,
             save_into_database: true,
+            wait_for_ok_timeout: Duration::from_secs(10),
+            wait_for_authentication_timeout: Duration::from_secs(10),
         }
     }
 
@@ -133,6 +138,20 @@ impl<'client, 'event, 'url> SendEvent<'client, 'event, 'url> {
         self
     }
 
+    /// Timeout for waiting for the `OK` message from relay (default: 10 sec)
+    #[inline]
+    pub fn ok_timeout(mut self, timeout: Duration) -> Self {
+        self.wait_for_ok_timeout = timeout;
+        self
+    }
+
+    /// Timeout for waiting that relay authenticates (default: 10 sec)
+    #[inline]
+    pub fn authentication_timeout(mut self, timeout: Duration) -> Self {
+        self.wait_for_authentication_timeout = timeout;
+        self
+    }
+
     async fn exec(self) -> Result<Output<EventId>, Error> {
         // Save event into database
         if self.save_into_database {
@@ -147,11 +166,27 @@ impl<'client, 'event, 'url> SendEvent<'client, 'event, 'url> {
         match (self.policy, &self.client.gossip) {
             // No overwrite policy or send to NIP-65 and gossip available: send to NIP-65 relays
             (None | Some(OverwritePolicy::ToNip65), Some(gossip)) => {
-                gossip_send_event(self.client, gossip, self.event, false).await
+                gossip_send_event(
+                    self.client,
+                    gossip,
+                    self.event,
+                    false,
+                    self.wait_for_ok_timeout,
+                    self.wait_for_authentication_timeout,
+                )
+                .await
             }
             // Send to NIP-17 and gossip available: send to NIP-17 relays
             (Some(OverwritePolicy::ToNip17), Some(gossip)) => {
-                gossip_send_event(self.client, gossip, self.event, true).await
+                gossip_send_event(
+                    self.client,
+                    gossip,
+                    self.event,
+                    true,
+                    self.wait_for_ok_timeout,
+                    self.wait_for_authentication_timeout,
+                )
+                .await
             }
             // Send to gossip, but gossip is not available: error
             (Some(OverwritePolicy::ToNip17 | OverwritePolicy::ToNip65), None) => {
@@ -165,17 +200,44 @@ impl<'client, 'event, 'url> SendEvent<'client, 'event, 'url> {
                     urls.insert(url.try_into_relay_url()?.into_owned());
                 }
 
-                Ok(self.client.pool.send_event(urls, self.event).await?)
+                Ok(self
+                    .client
+                    .pool
+                    .send_event(
+                        urls,
+                        self.event,
+                        self.wait_for_ok_timeout,
+                        self.wait_for_authentication_timeout,
+                    )
+                    .await?)
             }
             // Send to all WRITE relays
             (Some(OverwritePolicy::Broadcast), _) => {
                 let urls: HashSet<RelayUrl> = self.client.pool.write_relay_urls().await;
-                Ok(self.client.pool.send_event(urls, self.event).await?)
+                Ok(self
+                    .client
+                    .pool
+                    .send_event(
+                        urls,
+                        self.event,
+                        self.wait_for_ok_timeout,
+                        self.wait_for_authentication_timeout,
+                    )
+                    .await?)
             }
             // No overwrite policy and no gossip available: send to all WRITE relays
             (None, None) => {
                 let urls: HashSet<RelayUrl> = self.client.pool.write_relay_urls().await;
-                Ok(self.client.pool.send_event(urls, self.event).await?)
+                Ok(self
+                    .client
+                    .pool
+                    .send_event(
+                        urls,
+                        self.event,
+                        self.wait_for_ok_timeout,
+                        self.wait_for_authentication_timeout,
+                    )
+                    .await?)
             }
         }
     }
@@ -186,6 +248,8 @@ async fn gossip_send_event(
     gossip: &GossipWrapper,
     event: &Event,
     is_nip17: bool,
+    wait_for_ok_timeout: Duration,
+    wait_for_authentication_timeout: Duration,
 ) -> Result<Output<EventId>, Error> {
     let is_contact_list: bool = event.kind == Kind::ContactList;
     let is_gift_wrap: bool = event.kind == Kind::GiftWrap;
@@ -303,7 +367,15 @@ async fn gossip_send_event(
     };
 
     // Send event
-    Ok(client.pool.send_event(urls, event).await?)
+    Ok(client
+        .pool
+        .send_event(
+            urls,
+            event,
+            wait_for_ok_timeout,
+            wait_for_authentication_timeout,
+        )
+        .await?)
 }
 
 impl<'client, 'event, 'url> IntoFuture for SendEvent<'client, 'event, 'url>
