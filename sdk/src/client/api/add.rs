@@ -6,7 +6,7 @@ use std::time::Duration;
 use async_wsocket::ConnectionMode;
 use nostr::types::url::{RelayUrl, RelayUrlArg};
 
-use super::blocking::Blocking;
+use crate::blocking::Blocking;
 use crate::client::{Client, Error};
 use crate::relay::{RelayCapabilities, RelayLimits, RelayOptions};
 

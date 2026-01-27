@@ -1,5 +1,4 @@
 mod add;
-mod blocking;
 mod connect;
 mod fetch;
 mod output;
@@ -18,7 +17,6 @@ mod unsubscribe_all;
 mod util;
 
 pub use self::add::*;
-pub use self::blocking::*;
 pub use self::connect::*;
 pub use self::fetch::*;
 pub use self::output::*;

@@ -4,10 +4,10 @@ use std::pin::Pin;
 
 use nostr::{Filter, RelayUrl, SubscriptionId};
 
-use super::blocking::Blocking;
 use super::output::Output;
 use super::req_target::ReqTarget;
 use super::util::build_targets;
+use crate::blocking::Blocking;
 use crate::client::{Client, Error};
 use crate::relay::SubscribeAutoCloseOptions;
 

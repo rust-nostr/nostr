@@ -3,7 +3,7 @@ use std::pin::Pin;
 
 use nostr::SubscriptionId;
 
-use super::blocking::Blocking;
+use crate::blocking::Blocking;
 use crate::client::{Client, Error, Output};
 
 /// Unsubscribe from a REQ

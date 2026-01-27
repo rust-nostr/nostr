@@ -4,7 +4,7 @@ use std::pin::Pin;
 
 use nostr::types::url::{RelayUrl, RelayUrlArg};
 
-use super::blocking::Blocking;
+use crate::blocking::Blocking;
 use crate::client::{Client, Error};
 
 /// Remove a relay from the pool.

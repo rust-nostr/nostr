@@ -6,8 +6,8 @@ use std::pin::Pin;
 use nostr::{Event, EventId, Kind, RelayUrl, RelayUrlArg};
 use nostr_gossip::{BestRelaySelection, GossipListKind};
 
-use super::blocking::Blocking;
 use super::output::Output;
+use crate::blocking::Blocking;
 use crate::client::gossip::GossipWrapper;
 use crate::client::{Client, Error};
 use crate::relay::RelayCapabilities;
