@@ -4,16 +4,14 @@ use std::borrow::Cow;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
-use std::task::{Context, Poll};
 use std::time::Duration;
 
 use async_utility::time;
 use async_wsocket::ConnectionMode;
-use futures::{Stream, StreamExt};
+use futures::StreamExt;
 use nostr_database::prelude::*;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::broadcast;
 
 mod api;
 mod builder;
@@ -40,7 +38,6 @@ pub use self::stats::*;
 pub use self::status::*;
 use crate::client::ClientNotification;
 use crate::shared::SharedState;
-use crate::stream::BoxedStream;
 
 // #[derive(Debug, Clone, Default, PartialEq, Eq)]
 // pub struct ReconciliationFailures {
@@ -92,49 +89,6 @@ enum SubscriptionActivity {
     ReceivedEvent(Event),
     /// Subscription closed
     Closed(SubscriptionAutoClosedReason),
-}
-
-struct SubscriptionActivityEventStream {
-    rx: mpsc::Receiver<SubscriptionActivity>,
-    done: bool,
-}
-
-impl SubscriptionActivityEventStream {
-    fn new(rx: mpsc::Receiver<SubscriptionActivity>) -> Self {
-        Self { rx, done: false }
-    }
-}
-
-impl Stream for SubscriptionActivityEventStream {
-    type Item = Result<Event, Error>;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        if self.done {
-            return Poll::Ready(None);
-        }
-
-        match Pin::new(&mut self.rx).poll_recv(cx) {
-            Poll::Ready(Some(activity)) => match activity {
-                SubscriptionActivity::ReceivedEvent(event) => Poll::Ready(Some(Ok(event))),
-                SubscriptionActivity::Closed(reason) => match reason {
-                    SubscriptionAutoClosedReason::AuthenticationFailed => {
-                        self.done = true;
-                        Poll::Ready(Some(Err(Error::AuthenticationFailed)))
-                    }
-                    SubscriptionAutoClosedReason::Closed(message) => {
-                        self.done = true;
-                        Poll::Ready(Some(Err(Error::RelayMessage(message))))
-                    }
-                    SubscriptionAutoClosedReason::Completed => {
-                        self.done = true;
-                        Poll::Ready(None)
-                    }
-                },
-            },
-            Poll::Ready(None) => Poll::Ready(None),
-            Poll::Pending => Poll::Pending,
-        }
-    }
 }
 
 /// Relay
@@ -458,28 +412,12 @@ impl Relay {
     }
 
     /// Stream events from relay
-    pub async fn stream_events<F>(
-        &self,
-        filters: F,
-        timeout: Option<Duration>,
-        policy: ReqExitPolicy,
-    ) -> Result<BoxedStream<Result<Event, Error>>, Error>
+    #[inline]
+    pub fn stream_events<F>(&self, filters: F) -> StreamEvents
     where
         F: Into<Vec<Filter>>,
     {
-        // Create channels
-        let (tx, rx) = mpsc::channel(512);
-
-        // Compose auto-closing options
-        let opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
-            .exit_policy(policy)
-            .timeout(timeout);
-
-        // Subscribe
-        let id: SubscriptionId = SubscriptionId::generate();
-        subscribe_auto_closing(self, id, filters.into(), opts, Some(tx)).await?;
-
-        Ok(Box::pin(SubscriptionActivityEventStream::new(rx)))
+        StreamEvents::new(self, filters.into())
     }
 
     /// Fetch events
@@ -505,7 +443,11 @@ impl Relay {
         };
 
         // Stream events
-        let mut stream = self.stream_events(filters, timeout, policy).await?;
+        let mut stream = self
+            .stream_events(filters)
+            .maybe_timeout(timeout)
+            .policy(policy)
+            .await?;
 
         while let Some(res) = stream.next().await {
             // Get event from the result

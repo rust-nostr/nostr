@@ -711,7 +711,13 @@ impl RelayPool {
             urls.push(url);
 
             // Push stream events future
-            futures.push(relay.stream_events(filter, timeout, policy));
+            futures.push(
+                relay
+                    .stream_events(filter)
+                    .maybe_timeout(timeout)
+                    .policy(policy)
+                    .into_future(),
+            );
         }
 
         // Wait that futures complete
