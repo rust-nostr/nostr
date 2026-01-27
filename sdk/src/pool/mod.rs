@@ -23,7 +23,7 @@ use crate::client::{ClientNotification, Output};
 use crate::monitor::Monitor;
 use crate::relay::{
     self, AtomicRelayCapabilities, Reconciliation, Relay, RelayCapabilities, RelayOptions,
-    ReqExitPolicy, SubscribeAutoCloseOptions, SubscribeOptions, SyncOptions,
+    ReqExitPolicy, SubscribeAutoCloseOptions, SyncOptions,
 };
 use crate::shared::SharedState;
 use crate::stream::{BoxedStream, ReceiverStream};
@@ -531,11 +531,15 @@ impl RelayPool {
 
             // Prepare
             let id: SubscriptionId = id.clone();
-            let opts: SubscribeOptions = SubscribeOptions::default().close_on(auto_close);
+            let mut sub = relay.subscribe(filter).with_id(id);
+
+            if let Some(auto_close) = auto_close {
+                sub = sub.close_on(auto_close);
+            }
 
             // Create future
             urls.push(url);
-            futures.push(relay.subscribe_with_id(id, filter, opts));
+            futures.push(sub.into_future());
         }
 
         // Join futures
