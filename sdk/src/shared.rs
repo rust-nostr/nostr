@@ -7,13 +7,13 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use lru::LruCache;
 use nostr::prelude::IntoNostrSigner;
 use nostr::{EventId, NostrSigner};
 use nostr_database::{IntoNostrDatabase, MemoryDatabase, NostrDatabase};
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::monitor::Monitor;
 use crate::policy::AdmitPolicy;
@@ -26,7 +26,6 @@ const MAX_VERIFICATION_CACHE_SIZE: usize = 128_000;
 #[derive(Debug)]
 pub enum SharedStateError {
     SignerNotConfigured,
-    MutexPoisoned,
 }
 
 impl std::error::Error for SharedStateError {}
@@ -35,7 +34,6 @@ impl fmt::Display for SharedStateError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::SignerNotConfigured => f.write_str("signer not configured"),
-            Self::MutexPoisoned => f.write_str("mutex poisoned"),
         }
     }
 }
@@ -137,17 +135,14 @@ impl SharedState {
         *s = None;
     }
 
-    pub(crate) fn verified(&self, id: &EventId) -> Result<bool, SharedStateError> {
-        let mut cache = self
-            .verification_cache
-            .lock()
-            .map_err(|_| SharedStateError::MutexPoisoned)?;
+    pub(crate) async fn verified(&self, id: &EventId) -> bool {
+        let mut cache = self.verification_cache.lock().await;
 
         // Hash event ID
         let id: u64 = hash(&id);
 
         // Returns `Some(T)` if the key already exists
-        Ok(cache.put(id, ()).is_some())
+        cache.put(id, ()).is_some()
     }
 }
 
