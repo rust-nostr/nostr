@@ -17,7 +17,7 @@ use core::sync::atomic::{AtomicU64, Ordering};
 /// # Examples
 ///
 /// ```rust,no_run
-/// use nostr_sdk::relay::capabilities::RelayCapabilities;
+/// use nostr_sdk::prelude::*;
 ///
 /// // Default relay with read and write
 /// let caps = RelayCapabilities::default();
@@ -147,7 +147,7 @@ impl BitXorAssign for RelayCapabilities {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use nostr_sdk::relay::capabilities::{AtomicRelayCapabilities, RelayCapabilities};
+/// use nostr_sdk::prelude::*;
 ///
 /// let caps = AtomicRelayCapabilities::new(RelayCapabilities::READ | RelayCapabilities::WRITE);
 ///

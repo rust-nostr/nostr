@@ -47,7 +47,7 @@ impl Blocking for RemoveAllRelays<'_> {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::relay::capabilities::RelayCapabilities;
+    use crate::relay::RelayCapabilities;
 
     #[tokio::test]
     async fn test_remove_all_relays() {

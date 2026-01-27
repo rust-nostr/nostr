@@ -32,9 +32,10 @@ use self::middleware::AdmissionPolicyMiddleware;
 pub use self::notification::*;
 use crate::monitor::Monitor;
 use crate::pool::{RelayPool, RelayPoolBuilder};
-use crate::prelude::RelayLimits;
-use crate::relay::options::{RelayOptions, SyncDirection, SyncOptions};
-use crate::relay::{Reconciliation, Relay, RelayCapabilities, ReqExitPolicy};
+use crate::relay::{
+    Reconciliation, Relay, RelayCapabilities, RelayLimits, RelayOptions, ReqExitPolicy,
+    SyncDirection, SyncOptions,
+};
 
 #[derive(Debug, Clone)]
 struct ClientConfig {

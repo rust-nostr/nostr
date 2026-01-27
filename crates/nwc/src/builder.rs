@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use nostr::nips::nip47::NostrWalletConnectUri;
 use nostr_sdk::monitor::Monitor;
-use nostr_sdk::relay::options::RelayOptions;
+use nostr_sdk::relay::RelayOptions;
 
 use crate::NostrWalletConnect;
 
