@@ -1,3 +1,5 @@
+//! Blocking trait
+
 use std::future::IntoFuture;
 
 /// Trait for blocking execution.

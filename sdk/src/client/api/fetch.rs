@@ -5,9 +5,9 @@ use std::time::Duration;
 use futures::StreamExt;
 use nostr_database::Events;
 
-use super::blocking::Blocking;
 use super::req_target::ReqTarget;
 use super::stream::StreamEvents;
+use crate::blocking::Blocking;
 use crate::client::{Client, Error};
 use crate::relay::ReqExitPolicy;
 

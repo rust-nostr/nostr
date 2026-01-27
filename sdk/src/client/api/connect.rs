@@ -2,7 +2,7 @@ use std::future::{Future, IntoFuture};
 use std::pin::Pin;
 use std::time::Duration;
 
-use super::blocking::Blocking;
+use crate::blocking::Blocking;
 use crate::client::Client;
 
 /// Connect relays
