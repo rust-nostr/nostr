@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
-use std::future::Future;
+use std::future::{Future, IntoFuture};
 use std::iter::Zip;
 use std::mem;
 use std::pin::Pin;
@@ -284,7 +284,7 @@ impl RelayPool {
         // Filter only relays that can connect and compose futures
         for relay in relays.values().filter(|r| r.status().can_connect()) {
             urls.push(relay.url().clone());
-            futures.push(relay.try_connect(timeout));
+            futures.push(relay.try_connect().timeout(timeout).into_future());
         }
 
         // TODO: use semaphore to limit number concurrent connections?
@@ -342,7 +342,7 @@ impl RelayPool {
         let relay: &Relay = relays.get(url).ok_or(Error::RelayNotFound)?;
 
         // Try to connect
-        relay.try_connect(timeout).await?;
+        relay.try_connect().timeout(timeout).await?;
 
         Ok(())
     }
