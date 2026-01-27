@@ -323,7 +323,11 @@ impl Relay {
         let status: RelayStatus = self.status();
 
         // Immediately returns if the relay is already connected, if it's terminated or banned.
-        if status.is_connected() || status.is_terminated() || status.is_banned() {
+        if status.is_connected()
+            || status.is_terminated()
+            || status.is_banned()
+            || status.is_shutdown()
+        {
             return;
         }
 
@@ -341,11 +345,12 @@ impl Relay {
                         | RelayStatus::Pending
                         | RelayStatus::Connecting
                         | RelayStatus::Disconnected => {}
-                        // Connected or terminated/banned/sleeping
+                        // Connected or terminated/banned/sleeping/shutdown
                         RelayStatus::Connected
                         | RelayStatus::Terminated
                         | RelayStatus::Banned
-                        | RelayStatus::Sleeping => break,
+                        | RelayStatus::Sleeping
+                        | RelayStatus::Shutdown => break,
                     }
                 }
             }
@@ -373,6 +378,10 @@ impl Relay {
     /// This behavior can be disabled by changing [`RelayOptions::reconnect`] option.
     pub async fn try_connect(&self, timeout: Duration) -> Result<(), Error> {
         let status: RelayStatus = self.status();
+
+        if status.is_shutdown() {
+            return Err(Error::Shutdown);
+        }
 
         if status.is_banned() {
             return Err(Error::Banned);
@@ -417,6 +426,12 @@ impl Relay {
     #[inline]
     pub fn ban(&self) {
         self.inner.ban()
+    }
+
+    /// Shutdown relay and set the status to [`RelayStatus::Shutdown`].
+    #[inline]
+    pub fn shutdown(&self) {
+        self.inner.shutdown()
     }
 
     /// Send msg to relay
@@ -504,7 +519,6 @@ impl Relay {
                             return Err(Error::NotConnected);
                         }
                     }
-                    RelayNotification::Shutdown => break,
                     _ => (),
                 }
             }
@@ -795,7 +809,10 @@ impl Relay {
     {
         let mut notifications = self.notifications();
         while let Ok(notification) = notifications.recv().await {
-            let shutdown: bool = RelayNotification::Shutdown == notification;
+            let shutdown: bool = match &notification {
+                RelayNotification::RelayStatus { status } => status.is_permanently_disconnected(),
+                _ => false,
+            };
             let exit: bool = func(notification)
                 .await
                 .map_err(|e| Error::Handler(e.to_string()))?;
@@ -1209,6 +1226,33 @@ mod tests {
         // Health check
         let res = relay.inner.ensure_operational();
         assert!(matches!(res.unwrap_err(), Error::Banned));
+    }
+
+    #[tokio::test]
+    async fn test_shutdown() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = mock.url().await;
+
+        let relay: Relay = new_relay(url, RelayOptions::default());
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay.try_connect(Duration::from_secs(3)).await.unwrap();
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        relay.shutdown();
+
+        time::sleep(Duration::from_millis(100)).await;
+
+        assert_eq!(relay.status(), RelayStatus::Shutdown);
+
+        assert!(!relay.inner.is_running());
+
+        // Attempt to reconnect: must fail
+        let res = relay.try_connect(Duration::from_secs(3)).await;
+        assert!(matches!(res.unwrap_err(), Error::Shutdown));
     }
 
     #[tokio::test]
