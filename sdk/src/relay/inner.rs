@@ -1232,7 +1232,7 @@ impl InnerRelay {
                 // This may also be useful to avoid double verification if the event is received at the exact same time by many different Relay instances.
                 //
                 // This is important since event signature verification is a heavy job!
-                if !self.state.verified(&event.id)? {
+                if !self.state.verified(&event.id).await {
                     event.verify()?;
                 }
 
