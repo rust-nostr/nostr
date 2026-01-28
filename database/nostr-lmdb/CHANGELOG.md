@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Fixed
+
+- Fix the performance of queries by kinds (https://github.com/rust-nostr/nostr/pull/1220)
+
 ## v0.44.0 - 2025/11/06
 
 ### Changed
