@@ -19,11 +19,15 @@ use nostr_database::{FlatBufferBuilder, FlatBufferEncode, RejectedReason, SaveEv
 mod index;
 
 use self::index::EventIndexKeys;
-use super::error::Error;
+use super::error::{Error, MigrationError};
 use super::filter::DatabaseFilter;
 
 const EVENT_ID_ALL_ZEROS: [u8; 32] = [0; 32];
 const EVENT_ID_ALL_255: [u8; 32] = [255; 32];
+
+/// Current database schema version
+const DB_VERSION: u64 = 2;
+const DB_VERSION_KEY: &[u8] = b"db_version";
 
 #[derive(Debug)]
 enum QueryFilterPattern {
@@ -34,6 +38,7 @@ enum QueryFilterPattern {
     KindsAndTags,
     Tags,
     Authors,
+    Kinds,
     Scraping,
 }
 
@@ -56,6 +61,8 @@ impl QueryFilterPattern {
             Self::Tags
         } else if !filter.authors.is_empty() {
             Self::Authors
+        } else if !filter.kinds.is_empty() {
+            Self::Kinds
         } else {
             Self::Scraping
         }
@@ -78,6 +85,8 @@ pub(crate) struct Lmdb {
     akc_index: Database<Bytes, Bytes>, // <Index>, Event ID
     /// Author + Tag + CreatedAt + ID index
     atc_index: Database<Bytes, Bytes>, // <Index>, Event ID
+    /// Kind + CreatedAt + ID index
+    kc_index: Database<Bytes, Bytes>, // <Index>, Event ID
     /// Kind + Tag + CreatedAt + ID index
     ktc_index: Database<Bytes, Bytes>, // <Index>, Event ID
     /// Deleted IDs
@@ -86,6 +95,8 @@ pub(crate) struct Lmdb {
     deleted_coordinates: Database<Bytes, U64<NativeEndian>>, // Coordinate, UNIX timestamp
     /// Vanished public keys
     vanished_public_keys: Database<Bytes, Unit>, // Public key
+    /// Database metadata (version, etc)
+    metadata: Database<Bytes, U64<NativeEndian>>, // Key, Value
 }
 
 impl Lmdb {
@@ -102,7 +113,7 @@ impl Lmdb {
         let env: Env = unsafe {
             EnvOpenOptions::new()
                 .flags(EnvFlags::NO_TLS)
-                .max_dbs(9 + additional_dbs)
+                .max_dbs(12 + additional_dbs)
                 .max_readers(max_readers)
                 .map_size(map_size)
                 .open(path)?
@@ -141,6 +152,11 @@ impl Lmdb {
             .types::<Bytes, Bytes>()
             .name("atci")
             .create(&mut txn)?;
+        let kc_index = env
+            .database_options()
+            .types::<Bytes, Bytes>()
+            .name("kci")
+            .create(&mut txn)?;
         let ktc_index = env
             .database_options()
             .types::<Bytes, Bytes>()
@@ -161,11 +177,16 @@ impl Lmdb {
             .types::<Bytes, Unit>()
             .name("vanished-public-keys")
             .create(&mut txn)?;
+        let metadata = env
+            .database_options()
+            .types::<Bytes, U64<NativeEndian>>()
+            .name("metadata")
+            .create(&mut txn)?;
 
         // Commit changes
         txn.commit()?;
 
-        Ok(Self {
+        let lmdb = Self {
             env,
             events,
             ci_index,
@@ -173,11 +194,93 @@ impl Lmdb {
             ac_index,
             akc_index,
             atc_index,
+            kc_index,
             ktc_index,
             deleted_ids,
             deleted_coordinates,
             vanished_public_keys,
-        })
+            metadata,
+        };
+
+        // Check and run migrations if needed
+        lmdb.migrate()?;
+
+        Ok(lmdb)
+    }
+
+    /// Check database version and run migrations if needed
+    fn migrate(&self) -> Result<(), Error> {
+        let mut txn = self.write_txn()?;
+
+        // Get current database version (defaults to 0 if not set)
+        let current_version: u64 = self.metadata.get(&txn, DB_VERSION_KEY)?.unwrap_or(0);
+
+        match current_version.cmp(&DB_VERSION) {
+            Ordering::Less => {
+                tracing::info!(
+                    "Migrating database from version {} to {}",
+                    current_version,
+                    DB_VERSION
+                );
+
+                // Run migrations sequentially
+                if current_version < 2 {
+                    self.migrate_v1_to_v2(&mut txn)?;
+                }
+
+                // Update version
+                self.metadata.put(&mut txn, DB_VERSION_KEY, &DB_VERSION)?;
+                txn.commit()?;
+
+                tracing::info!("Migration completed successfully");
+
+                Ok(())
+            }
+            Ordering::Equal => {
+                txn.abort();
+                Ok(())
+            }
+            Ordering::Greater => {
+                txn.abort();
+                Err(Error::Migration(MigrationError::NewerVersion {
+                    current_version,
+                    new_version: DB_VERSION,
+                }))
+            }
+        }
+    }
+
+    /// Migrate from version 1 to version 2: Build kc_index
+    fn migrate_v1_to_v2(&self, txn: &mut RwTxn) -> Result<(), Error> {
+        tracing::info!("Building kc_index for existing events...");
+
+        let event_count = self.events.len(txn)?;
+        tracing::info!("Processing {} events", event_count);
+
+        // Collect all kc_index keys first to avoid borrow conflicts
+        let kc_indexes: Vec<(Vec<u8>, [u8; 32])> = {
+            let mut indexes = Vec::with_capacity(event_count as usize);
+            for result in self.events.iter(txn)? {
+                let (_id, event_bytes) = result?;
+
+                // Decode event
+                if let Ok(event) = EventBorrow::decode(event_bytes) {
+                    // Build just the kc_index key
+                    let kc_index_key =
+                        index::make_kc_index_key(event.kind, &event.created_at, event.id);
+                    indexes.push((kc_index_key, *event.id));
+                }
+            }
+            indexes
+        };
+
+        // Now insert all the indexes
+        for (kc_index_key, event_id) in kc_indexes {
+            self.kc_index.put(txn, &kc_index_key, &event_id)?;
+        }
+
+        tracing::info!("kc_index built successfully");
+        Ok(())
     }
 
     /// Get a read transaction
@@ -217,6 +320,7 @@ impl Lmdb {
         self.ci_index.put(txn, &index.ci_index, &index.id)?;
         self.akc_index.put(txn, &index.akc_index, &index.id)?;
         self.ac_index.put(txn, &index.ac_index, &index.id)?;
+        self.kc_index.put(txn, &index.kc_index, &index.id)?;
 
         for tag in index.tags.into_iter() {
             self.atc_index.put(txn, &tag.atc_index, &index.id)?;
@@ -249,6 +353,7 @@ impl Lmdb {
         self.ci_index.delete(txn, &index.ci_index)?;
         self.akc_index.delete(txn, &index.akc_index)?;
         self.ac_index.delete(txn, &index.ac_index)?;
+        self.kc_index.delete(txn, &index.kc_index)?;
 
         // Delete tag indexes
         for tag in &index.tags {
@@ -275,6 +380,7 @@ impl Lmdb {
         self.tc_index.clear(txn)?;
         self.ac_index.clear(txn)?;
         self.akc_index.clear(txn)?;
+        self.kc_index.clear(txn)?;
         self.atc_index.clear(txn)?;
         self.ktc_index.clear(txn)?;
         self.deleted_ids.clear(txn)?;
@@ -481,6 +587,9 @@ impl Lmdb {
             }
             QueryFilterPattern::Authors => {
                 self.query_by_authors(txn, filter, since, &until, limit, &mut output)?
+            }
+            QueryFilterPattern::Kinds => {
+                self.query_by_kinds(txn, filter, since, &until, limit, &mut output)?
             }
             QueryFilterPattern::Scraping => {
                 self.query_by_scraping(txn, filter, &since, &until, limit, &mut output)?
@@ -745,6 +854,30 @@ impl Lmdb {
 
         for author in filter.authors.iter() {
             let iter = self.ac_iter(txn, author, &since, until)?.filter_map(|res| {
+                let (_k, v) = res.ok()?;
+                Some(v)
+            });
+            self.iterate_filter_until_limit(txn, &filter, iter, &mut since, limit, output)?;
+        }
+
+        Ok(())
+    }
+
+    fn query_by_kinds<'a>(
+        &self,
+        txn: &'a RoTxn,
+        filter: DatabaseFilter,
+        since: Timestamp,
+        until: &Timestamp,
+        limit: Option<usize>,
+        output: &mut BTreeSet<EventBorrow<'a>>,
+    ) -> Result<(), Error> {
+        // We may bring since forward if we hit the limit without going back that
+        // far, so we use a mutable since:
+        let mut since: Timestamp = since;
+
+        for kind in filter.kinds.iter() {
+            let iter = self.kc_iter(txn, *kind, &since, until)?.filter_map(|res| {
                 let (_k, v) = res.ok()?;
                 Some(v)
             });
@@ -1106,6 +1239,22 @@ impl Lmdb {
         Ok(self.akc_index.range(txn, &range)?)
     }
 
+    pub(crate) fn kc_iter<'a>(
+        &'a self,
+        txn: &'a RoTxn,
+        kind: u16,
+        since: &Timestamp,
+        until: &Timestamp,
+    ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
+        let start_prefix = index::make_kc_index_key(kind, until, &EVENT_ID_ALL_ZEROS);
+        let end_prefix = index::make_kc_index_key(kind, since, &EVENT_ID_ALL_255);
+        let range = (
+            Bound::Included(start_prefix.as_slice()),
+            Bound::Excluded(end_prefix.as_slice()),
+        );
+        Ok(self.kc_index.range(txn, &range)?)
+    }
+
     pub(crate) fn atc_iter<'a>(
         &'a self,
         txn: &'a RoTxn,
@@ -1211,5 +1360,118 @@ fn has_event_been_replaced(stored: &EventBorrow, event: &Event) -> bool {
         }
         // Stored event is older than the new event, so it is not replaced yet.
         Ordering::Less => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tempfile::TempDir;
+
+    use super::*;
+
+    fn create_test_event(kind: u16, created_at: u64) -> Event {
+        let keys = Keys::generate();
+        EventBuilder::new(Kind::from(kind), "test content")
+            .custom_created_at(Timestamp::from_secs(created_at))
+            .sign_with_keys(&keys)
+            .unwrap()
+    }
+
+    #[test]
+    fn test_migration_v1_to_v2() {
+        // Create a temporary directory for the test database
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path();
+
+        // Step 1: Create a v1 database (without kc_index and version)
+        {
+            let lmdb = Lmdb::new(db_path, 1024 * 1024 * 100, 126, 0).unwrap();
+            let mut txn = lmdb.write_txn().unwrap();
+            let mut fbb = FlatBufferBuilder::new();
+
+            // Insert some test events with different kinds
+            let event1 = create_test_event(1, 1000);
+            let event2 = create_test_event(1, 1001);
+            let event3 = create_test_event(3, 1002);
+            let event4 = create_test_event(5, 1003);
+
+            lmdb.store(&mut txn, &mut fbb, &event1).unwrap();
+            lmdb.store(&mut txn, &mut fbb, &event2).unwrap();
+            lmdb.store(&mut txn, &mut fbb, &event3).unwrap();
+            lmdb.store(&mut txn, &mut fbb, &event4).unwrap();
+
+            // Manually clear kc_index and set version to 1 to simulate v1 database
+            lmdb.kc_index.clear(&mut txn).unwrap();
+            lmdb.metadata.put(&mut txn, DB_VERSION_KEY, &1u64).unwrap();
+
+            txn.commit().unwrap();
+        }
+
+        // Step 2: Reopen the database - this should trigger migration
+        {
+            let lmdb = Lmdb::new(db_path, 1024 * 1024 * 100, 126, 0).unwrap();
+            let txn = lmdb.read_txn().unwrap();
+
+            // Verify version was updated
+            let version = lmdb.metadata.get(&txn, DB_VERSION_KEY).unwrap();
+            assert_eq!(version, Some(DB_VERSION));
+
+            // Verify kc_index was populated by querying by kind
+            let filter = Filter::new().kind(Kind::from(1));
+            let results: Vec<EventBorrow> = lmdb.query(&txn, filter).unwrap().collect();
+            assert_eq!(results.len(), 2, "Should find 2 events of kind 1");
+
+            let filter = Filter::new().kind(Kind::from(3));
+            let results: Vec<EventBorrow> = lmdb.query(&txn, filter).unwrap().collect();
+            assert_eq!(results.len(), 1, "Should find 1 event of kind 3");
+
+            let filter = Filter::new().kind(Kind::from(5));
+            let results: Vec<EventBorrow> = lmdb.query(&txn, filter).unwrap().collect();
+            assert_eq!(results.len(), 1, "Should find 1 event of kind 5");
+
+            // Verify kc_index has entries
+            let kc_count = lmdb.kc_index.len(&txn).unwrap();
+            assert_eq!(kc_count, 4, "kc_index should have 4 entries");
+        }
+    }
+
+    #[test]
+    fn test_migration_new_database() {
+        // Create a new database from scratch
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path();
+
+        let lmdb = Lmdb::new(db_path, 1024 * 1024 * 100, 126, 0).unwrap();
+        let txn = lmdb.read_txn().unwrap();
+
+        // Verify version is set to current
+        let version = lmdb.metadata.get(&txn, DB_VERSION_KEY).unwrap();
+        assert_eq!(version, Some(DB_VERSION));
+    }
+
+    #[test]
+    fn test_migration_version_too_new() {
+        // Create a temporary directory for the test database
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path();
+
+        // Create a database with a future version
+        {
+            let lmdb = Lmdb::new(db_path, 1024 * 1024 * 100, 126, 0).unwrap();
+            let mut txn = lmdb.write_txn().unwrap();
+
+            // Set version to something higher than current
+            lmdb.metadata
+                .put(&mut txn, DB_VERSION_KEY, &999u64)
+                .unwrap();
+            txn.commit().unwrap();
+        }
+
+        // Try to reopen - should fail
+        let result = Lmdb::new(db_path, 1024 * 1024 * 100, 126, 0);
+        assert!(matches!(
+            result.unwrap_err(),
+            Error::Migration(MigrationError::NewerVersion { .. })
+        ));
     }
 }

@@ -10,6 +10,33 @@ use nostr::{key, secp256k1};
 use nostr_database::flatbuffers;
 use tokio::sync::oneshot;
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum MigrationError {
+    /// Database version is newer than supported one
+    NewerVersion {
+        /// Current version of the database
+        current_version: u64,
+        /// Newer version of the database
+        new_version: u64,
+    },
+}
+
+impl std::error::Error for MigrationError {}
+
+impl fmt::Display for MigrationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NewerVersion {
+                current_version,
+                new_version,
+            } => write!(
+                f,
+                "Database version {current_version} is newer than supported version {new_version}."
+            ),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Error {
     /// An upstream I/O error
@@ -22,6 +49,8 @@ pub enum Error {
     Key(key::Error),
     Secp256k1(secp256k1::Error),
     OneshotRecv(oneshot::error::RecvError),
+    /// Database migration error
+    Migration(MigrationError),
     /// Flume channel send error
     FlumeSend,
     /// The event kind is wrong
@@ -44,6 +73,7 @@ impl fmt::Display for Error {
             Self::Key(e) => write!(f, "{e}"),
             Self::Secp256k1(e) => write!(f, "{e}"),
             Self::OneshotRecv(e) => write!(f, "{e}"),
+            Self::Migration(e) => write!(f, "Migration error: {e}"),
             Self::FlumeSend => write!(f, "flume channel send error"),
             Self::NotFound => write!(f, "Not found"),
             Self::WrongEventKind => write!(f, "Wrong event kind"),

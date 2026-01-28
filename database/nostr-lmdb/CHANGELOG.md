@@ -39,6 +39,10 @@
 - Add `NostrLmdb::reindex` (https://github.com/rust-nostr/nostr/pull/1143)
 - Support NIP-62 `RequestToVanish` event kind (https://github.com/rust-nostr/nostr/pull/1210)
 
+### Fixed
+
+- Fix the performance of queries by kinds (https://github.com/rust-nostr/nostr/pull/1220)
+
 ## v0.44.0 - 2025/11/06
 
 ### Changed

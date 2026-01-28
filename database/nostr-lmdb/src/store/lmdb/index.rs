@@ -26,6 +26,7 @@ pub(super) struct EventIndexKeys {
     pub(super) ci_index: Vec<u8>,
     pub(super) akc_index: Vec<u8>,
     pub(super) ac_index: Vec<u8>,
+    pub(super) kc_index: Vec<u8>,
     pub(super) tags: Vec<TagIndexKeySet>,
 }
 
@@ -40,6 +41,9 @@ impl EventIndexKeys {
 
         // Index by author (with created_at and id)
         let ac_index: Vec<u8> = make_ac_index_key(event.pubkey, &event.created_at, event.id);
+
+        // Index by kind (with created_at and id)
+        let kc_index: Vec<u8> = make_kc_index_key(event.kind, &event.created_at, event.id);
 
         let tags = event
             .tags
@@ -81,6 +85,7 @@ impl EventIndexKeys {
             ci_index,
             akc_index,
             ac_index,
+            kc_index,
             tags,
         }
     }
@@ -174,6 +179,23 @@ pub fn make_akc_index_key(
     let mut key: Vec<u8> =
         Vec::with_capacity(PublicKey::LEN + KIND_BE + CREATED_AT_BE + EventId::LEN);
     key.extend(author);
+    key.extend(kind.to_be_bytes());
+    key.extend(reverse_and_conv_to_be64(created_at));
+    key.extend(event_id);
+    key
+}
+
+/// Make Kind + CreatedAt + ID index key (for looking up event by `kind`)
+///
+/// ## Structure
+///
+/// `kind(2)` + `reverse_created_at(8)` + `event_id(32)`
+pub fn make_kc_index_key(
+    kind: u16,
+    created_at: &Timestamp,
+    event_id: &[u8; EventId::LEN],
+) -> Vec<u8> {
+    let mut key: Vec<u8> = Vec::with_capacity(KIND_BE + CREATED_AT_BE + EventId::LEN);
     key.extend(kind.to_be_bytes());
     key.extend(reverse_and_conv_to_be64(created_at));
     key.extend(event_id);
