@@ -90,9 +90,6 @@ name = "stream-events"
 name = "subscriptions"
 
 [[example]]
-name = "switch-account"
-
-[[example]]
 name = "tor"
 required-features = ["nip59", "tor"]
 
