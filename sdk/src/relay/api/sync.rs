@@ -110,18 +110,22 @@ impl<'relay> SyncEvents<'relay> {
 }
 
 #[inline]
-fn send_neg_msg(relay: &Relay, id: &SubscriptionId, message: &str) -> Result<(), Error> {
-    relay.send_msg(ClientMessage::NegMsg {
-        subscription_id: Cow::Borrowed(id),
-        message: Cow::Borrowed(message),
-    })
+async fn send_neg_msg(relay: &Relay, id: &SubscriptionId, message: &str) -> Result<(), Error> {
+    relay
+        .send_msg(ClientMessage::NegMsg {
+            subscription_id: Cow::Borrowed(id),
+            message: Cow::Borrowed(message),
+        })
+        .await
 }
 
 #[inline]
-fn send_neg_close(relay: &Relay, id: &SubscriptionId) -> Result<(), Error> {
-    relay.send_msg(ClientMessage::NegClose {
-        subscription_id: Cow::Borrowed(id),
-    })
+async fn send_neg_close(relay: &Relay, id: &SubscriptionId) -> Result<(), Error> {
+    relay
+        .send_msg(ClientMessage::NegClose {
+            subscription_id: Cow::Borrowed(id),
+        })
+        .await
 }
 
 #[inline]
@@ -130,7 +134,7 @@ fn neg_id_to_event_id(id: Id) -> EventId {
 }
 
 #[inline(never)]
-fn handle_neg_msg<I>(
+async fn handle_neg_msg<I>(
     relay: &Relay,
     subscription_id: &SubscriptionId,
     msg: Option<Vec<u8>>,
@@ -172,13 +176,13 @@ where
     }
 
     match msg {
-        Some(query) => send_neg_msg(relay, subscription_id, &hex::encode(query)),
+        Some(query) => send_neg_msg(relay, subscription_id, &hex::encode(query)).await,
         None => {
             // Mark sync as done
             *sync_done = true;
 
             // Send NEG-CLOSE message
-            send_neg_close(relay, subscription_id)
+            send_neg_close(relay, subscription_id).await
         }
     }
 }
@@ -202,7 +206,7 @@ async fn upload_neg_events(
             match relay.inner.state.database().event_by_id(&id).await {
                 Ok(Some(event)) => {
                     in_flight_up.insert(id);
-                    relay.send_msg(ClientMessage::event(event))?;
+                    relay.send_msg(ClientMessage::event(event)).await?;
                     num_sent += 1;
                 }
                 Ok(None) => {
@@ -285,7 +289,7 @@ async fn req_neg_events(
         .await;
 
     // Send msg
-    if let Err(e) = relay.send_msg(msg) {
+    if let Err(e) = relay.send_msg(msg).await {
         // Remove previously added subscription
         relay.inner.remove_subscription(down_sub_id).await;
 
@@ -357,7 +361,7 @@ pub(super) async fn sync(
         id_size: None,
         initial_message: Cow::Owned(hex::encode(initial_message)),
     };
-    relay.send_msg(open_msg)?;
+    relay.send_msg(open_msg).await?;
 
     // Check if negentropy is supported
     check_negentropy_support(&sub_id, opts, &mut temp_notifications).await?;
@@ -409,7 +413,8 @@ pub(super) async fn sync(
                                 &mut have_ids,
                                 &mut need_ids,
                                 &mut sync_done,
-                            )?;
+                            )
+                            .await?;
 
                             // Relevant to this sync
                             true
@@ -456,7 +461,9 @@ pub(super) async fn sync(
                             relay.inner.remove_subscription(&down_sub_id).await;
 
                             // Close subscription
-                            relay.send_msg(ClientMessage::Close(Cow::Borrowed(&down_sub_id)))?;
+                            relay
+                                .send_msg(ClientMessage::Close(Cow::Borrowed(&down_sub_id)))
+                                .await?;
 
                             // Relevant to this sync
                             true

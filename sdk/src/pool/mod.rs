@@ -406,28 +406,41 @@ impl RelayPool {
 
     pub(crate) async fn send_msg(
         &self,
-        urls: HashSet<RelayUrl>,
+        set: HashSet<RelayUrl>,
         msg: ClientMessage<'_>,
+        wait_until_sent: Option<Duration>,
     ) -> Result<Output<()>, Error> {
         // Check if urls set is empty
-        if urls.is_empty() {
+        if set.is_empty() {
             return Err(Error::NoRelaysSpecified);
         }
 
         // Lock with read shared access
         let relays = self.relays.read().await;
 
-        // if let ClientMessage::Event(event) = msg {
-        //     self.state.database().save_event(event).await?;
-        // }
-
+        let mut urls: Vec<RelayUrl> = Vec::with_capacity(set.len());
+        let mut futures = Vec::with_capacity(set.len());
         let mut output: Output<()> = Output::default();
 
-        // Batch messages and construct outputs
-        for url in urls {
+        // Compose futures
+        for url in set.into_iter() {
             let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
-            match relay.send_msg(msg.clone()) {
-                Ok(..) => {
+            urls.push(url);
+            futures.push(
+                relay
+                    .send_msg(msg.clone())
+                    .maybe_wait_until_sent(wait_until_sent)
+                    .into_future(),
+            );
+        }
+
+        // Join futures
+        let list = future::join_all(futures).await;
+
+        // Iter results and construct output
+        for (url, result) in urls.into_iter().zip(list.into_iter()) {
+            match result {
+                Ok(()) => {
                     // Success, insert relay url in 'success' set result
                     output.success.insert(url);
                 }

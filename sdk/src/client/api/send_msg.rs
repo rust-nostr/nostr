@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::future::{Future, IntoFuture};
 use std::pin::Pin;
+use std::time::Duration;
 
 use nostr::{ClientMessage, RelayUrl, RelayUrlArg};
 
@@ -22,6 +23,7 @@ pub struct SendMessage<'client, 'msg, 'url> {
     client: &'client Client,
     msg: ClientMessage<'msg>,
     policy: Option<OverwritePolicy<'url>>,
+    wait_until_sent: Option<Duration>,
 }
 
 impl<'client, 'msg, 'url> SendMessage<'client, 'msg, 'url> {
@@ -30,6 +32,7 @@ impl<'client, 'msg, 'url> SendMessage<'client, 'msg, 'url> {
             client,
             msg,
             policy: None,
+            wait_until_sent: None,
         }
     }
 
@@ -59,6 +62,13 @@ impl<'client, 'msg, 'url> SendMessage<'client, 'msg, 'url> {
         self
     }
 
+    /// Wait that message is sent
+    #[inline]
+    pub fn wait_until_sent(mut self, timeout: Duration) -> Self {
+        self.wait_until_sent = Some(timeout);
+        self
+    }
+
     async fn exec(self) -> Result<Output<()>, Error> {
         let urls: HashSet<RelayUrl> = match self.policy {
             Some(OverwritePolicy::Broadcast) | None => {
@@ -79,7 +89,11 @@ impl<'client, 'msg, 'url> SendMessage<'client, 'msg, 'url> {
             }
         };
 
-        Ok(self.client.pool.send_msg(urls, self.msg).await?)
+        Ok(self
+            .client
+            .pool
+            .send_msg(urls, self.msg, self.wait_until_sent)
+            .await?)
     }
 }
 

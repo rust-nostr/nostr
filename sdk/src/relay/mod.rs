@@ -314,10 +314,10 @@ impl Relay {
         self.inner.shutdown()
     }
 
-    /// Send msg to relay
+    /// Send a message to the relay
     #[inline]
-    pub fn send_msg(&self, msg: ClientMessage<'_>) -> Result<(), Error> {
-        self.inner.send_msg(msg)
+    pub fn send_msg<'msg>(&self, msg: ClientMessage<'msg>) -> SendMessage<'_, 'msg> {
+        SendMessage::new(self, msg)
     }
 
     /// Send event and wait for `OK` relay msg
