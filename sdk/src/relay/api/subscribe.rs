@@ -87,7 +87,7 @@ pub(super) async fn subscribe_auto_closing(
         .await;
 
     // Send REQ message
-    if let Err(e) = relay.inner.send_msg(msg) {
+    if let Err(e) = relay.send_msg(msg).await {
         // Remove previously added subscription
         relay.inner.remove_subscription(&id).await;
 
@@ -121,7 +121,7 @@ async fn subscribe_long_lived(
     };
 
     // Send REQ message
-    relay.inner.send_msg(msg)?;
+    relay.send_msg(msg).await?;
 
     // No auto-close subscription: update subscription filter
     relay.inner.update_subscription(id, filters, true).await;
