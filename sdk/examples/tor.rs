@@ -15,8 +15,10 @@ async fn main() -> Result<()> {
     let connection: Connection = Connection::new()
         .embedded_tor()
         .target(ConnectionTarget::Onion);
-    let opts = ClientOptions::new().connection(connection);
-    let client = Client::builder().signer(keys.clone()).opts(opts).build();
+    let client = Client::builder()
+        .signer(keys.clone())
+        .connection(connection)
+        .build();
 
     // Add relays
     client.add_relay("wss://relay.damus.io").await?;
@@ -30,14 +32,15 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     let filter: Filter = Filter::new().pubkey(keys.public_key()).limit(0);
-    client.subscribe(filter, None).await?;
+    client.subscribe(filter).await?;
 
     // Handle subscription notifications with `handle_notifications` method
     client
         .handle_notifications(|notification| async {
-            if let RelayPoolNotification::Event { event, .. } = notification {
+            if let ClientNotification::Event { event, .. } = notification {
                 if event.kind == Kind::GiftWrap {
-                    let UnwrappedGift { rumor, .. } = client.unwrap_gift_wrap(&event).await?;
+                    let UnwrappedGift { rumor, .. } =
+                        UnwrappedGift::from_gift_wrap(&keys, &event).await?;
                     println!("Rumor: {}", rumor.as_json());
                 } else {
                     println!("{:?}", event);

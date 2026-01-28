@@ -19,6 +19,8 @@ pub enum Error {
     Relay(relay::Error),
     /// Relay Pool error
     RelayPool(pool::Error),
+    /// Relay URL error
+    RelayUrl(url::Error),
     /// Database error
     Database(DatabaseError),
     /// Signer error
@@ -31,9 +33,13 @@ pub enum Error {
     Json(serde_json::Error),
     /// Shared state error
     SharedState(SharedStateError),
+    /// Notification Handler error
+    Handler(String),
     /// NIP59
     #[cfg(feature = "nip59")]
     NIP59(nip59::Error),
+    /// Gossip is not configured
+    GossipNotConfigured,
     /// Broken down filters for gossip are empty
     GossipFiltersEmpty,
     /// Private message (NIP17) relays not found
@@ -47,14 +53,17 @@ impl fmt::Display for Error {
         match self {
             Self::Relay(e) => e.fmt(f),
             Self::RelayPool(e) => e.fmt(f),
+            Self::RelayUrl(e) => e.fmt(f),
             Self::Database(e) => e.fmt(f),
             Self::Signer(e) => e.fmt(f),
             Self::Gossip(e) => e.fmt(f),
             Self::EventBuilder(e) => e.fmt(f),
             Self::Json(e) => e.fmt(f),
             Self::SharedState(e) => e.fmt(f),
+            Self::Handler(e) => e.fmt(f),
             #[cfg(feature = "nip59")]
             Self::NIP59(e) => e.fmt(f),
+            Self::GossipNotConfigured => f.write_str("gossip not configured"),
             Self::GossipFiltersEmpty => {
                 f.write_str("gossip broken down filters are empty")
             }
@@ -72,6 +81,12 @@ impl From<relay::Error> for Error {
 impl From<pool::Error> for Error {
     fn from(e: pool::Error) -> Self {
         Self::RelayPool(e)
+    }
+}
+
+impl From<url::Error> for Error {
+    fn from(e: url::Error) -> Self {
+        Self::RelayUrl(e)
     }
 }
 

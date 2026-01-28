@@ -13,10 +13,8 @@ use async_utility::futures_util::{SinkExt, StreamExt};
 use async_wsocket::native::{self, Message, WebSocketStream};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Id, Negentropy, NegentropyStorageVector};
-use nostr_database::prelude::*;
-use nostr_sdk::{
-    Output, Reconciliation, RelayOptions, RelayPool, RelayPoolNotification, SyncOptions,
-};
+use nostr_sdk::client::SyncSummary;
+use nostr_sdk::prelude::*;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
 use tokio::sync::{broadcast, Notify, OnceCell, Semaphore};
@@ -203,31 +201,31 @@ impl InnerLocalRelay {
         &self,
         urls: I,
         filter: Filter,
-        opts: &SyncOptions,
-    ) -> Result<Output<Reconciliation>, Error>
+        opts: SyncOptions,
+    ) -> Result<Output<SyncSummary>, Error>
     where
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,
     {
         // Construct a new pool
-        let pool: RelayPool = RelayPool::default();
+        let client: Client = Client::default();
 
-        // Add relays to pool
+        // Add relays to client
         for url in urls {
-            pool.add_relay(url, RelayOptions::default()).await?;
+            client.add_relay(url).await?;
         }
 
         // Connect
-        pool.connect().await;
+        client.connect().await;
 
         // Subscribe to notifications
-        let mut notifications = pool.notifications();
+        let mut notifications = client.notifications();
 
         // Create a notification future
         let fut = async {
             while let Ok(notification) = notifications.recv().await {
                 // Notify about new events received by the sync
-                if let RelayPoolNotification::Event { event, .. } = notification {
+                if let ClientNotification::Event { event, .. } = notification {
                     self.notify_event(*event);
                 }
             }
@@ -235,9 +233,9 @@ impl InnerLocalRelay {
 
         // Start sync and wait for the result
         tokio::select! {
-            result = pool.sync(filter, opts) => {
-                // Shutdown pool
-                pool.shutdown().await;
+            result = client.sync(filter).opts(opts) => {
+                // Shutdown client
+                client.shutdown().await;
 
                 // Return reconciliation output
                 Ok(result?)
@@ -246,8 +244,14 @@ impl InnerLocalRelay {
         }
     }
 
-    pub fn notify_event(&self, event: Event) -> bool {
+    #[inline]
+    pub(super) fn notify_event(&self, event: Event) -> bool {
         self.new_event.send(event).is_ok()
+    }
+
+    #[inline]
+    pub(super) async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, Error> {
+        Ok(self.database.save_event(event).await?)
     }
 
     #[inline]

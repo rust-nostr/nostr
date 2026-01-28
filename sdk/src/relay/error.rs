@@ -1,13 +1,10 @@
-// Copyright (c) 2022-2023 Yuki Kishimoto
-// Copyright (c) 2023-2025 Rust Nostr Developers
-// Distributed under the MIT software license
-
 use std::fmt;
 use std::time::Duration;
 
 use nostr::event::{self, builder};
 use nostr::message::MessageHandleError;
 use nostr_database::DatabaseError;
+use tokio::sync::oneshot;
 
 use crate::policy::PolicyError;
 use crate::shared::SharedStateError;
@@ -34,6 +31,8 @@ pub enum Error {
     Hex(hex::FromHexError),
     /// Negentropy error
     Negentropy(negentropy::Error),
+    /// Oneshot recv error
+    OneshotRecv(oneshot::error::RecvError),
     /// Generic timeout
     Timeout,
     /// Not replied to ping
@@ -47,11 +46,8 @@ pub enum Error {
         /// Received nonce
         received: u64,
     },
-    /// Message response timeout
-    CantSendChannelMessage {
-        /// Name of channel
-        channel: String,
-    },
+    /// Can't send message to the transport dispatcher
+    CantSendMessageToDispatcher,
     /// Relay not ready
     NotReady,
     /// Relay not connected
@@ -66,6 +62,8 @@ pub enum Error {
     TooManyEvents,
     /// Relay banned
     Banned,
+    /// Relay shutdown
+    Shutdown,
     /// Connection rejected
     ConnectionRejected {
         /// Reason
@@ -73,12 +71,8 @@ pub enum Error {
     },
     /// Received termination request
     TerminationRequest,
-    /// Received shutdown
-    ReceivedShutdown,
     /// Relay message
     RelayMessage(String),
-    /// Batch messages empty
-    BatchMessagesEmpty,
     /// Read actions disabled
     ReadDisabled,
     /// Write actions disabled
@@ -139,6 +133,7 @@ impl fmt::Display for Error {
             Self::EventBuilder(e) => e.fmt(f),
             Self::Hex(e) => e.fmt(f),
             Self::Negentropy(e) => e.fmt(f),
+            Self::OneshotRecv(e) => e.fmt(f),
             Self::Timeout => f.write_str("timeout"),
             Self::NotRepliedToPing => f.write_str("not replied to ping"),
             Self::CantParsePong => f.write_str("can't parse pong"),
@@ -146,8 +141,8 @@ impl fmt::Display for Error {
                 f,
                 "pong not match: expected={expected}, received={received}"
             ),
-            Self::CantSendChannelMessage { channel } => {
-                write!(f, "can't send message to the '{channel}' channel")
+            Self::CantSendMessageToDispatcher => {
+                f.write_str("can't send message to the transport dispatcher")
             }
             Self::NotReady => f.write_str("relay is initialized but not ready"),
             Self::NotConnected => f.write_str("relay not connected"),
@@ -156,14 +151,13 @@ impl fmt::Display for Error {
             Self::TooManyEvents => f.write_str("received too many events for the subscription"),
             Self::Sleeping => f.write_str("relay is sleeping"),
             Self::Banned => f.write_str("relay banned"),
+            Self::Shutdown => f.write_str("relay shutdown"),
             Self::ConnectionRejected { reason } => {
                 let reason: &str = reason.as_deref().unwrap_or("unknown");
                 write!(f, "connection rejected: reason={reason}")
             }
             Self::TerminationRequest => f.write_str("received termination request"),
-            Self::ReceivedShutdown => f.write_str("received shutdown"),
             Self::RelayMessage(message) => f.write_str(message),
-            Self::BatchMessagesEmpty => f.write_str("can't batch empty list of messages"),
             Self::ReadDisabled => f.write_str("read actions are disabled"),
             Self::WriteDisabled => f.write_str("write actions are disabled"),
             Self::NegentropyNotSupported => f.write_str("negentropy not supported"),
@@ -245,5 +239,11 @@ impl From<hex::FromHexError> for Error {
 impl From<negentropy::Error> for Error {
     fn from(e: negentropy::Error) -> Self {
         Self::Negentropy(e)
+    }
+}
+
+impl From<oneshot::error::RecvError> for Error {
+    fn from(e: oneshot::error::RecvError) -> Self {
+        Self::OneshotRecv(e)
     }
 }

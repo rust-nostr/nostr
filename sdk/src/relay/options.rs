@@ -1,40 +1,33 @@
-// Copyright (c) 2022-2023 Yuki Kishimoto
-// Copyright (c) 2023-2025 Rust Nostr Developers
-// Distributed under the MIT software license
-
-//! Relay options
-
 use std::time::Duration;
 
 use async_wsocket::ConnectionMode;
 use tokio::sync::watch::{self, Receiver, Sender};
 
 use super::constants::{DEFAULT_NOTIFICATION_CHANNEL_SIZE, DEFAULT_RETRY_INTERVAL};
-use super::flags::RelayServiceFlags;
-use crate::RelayLimits;
+use super::limits::RelayLimits;
 
 /// Relay options
 #[derive(Debug, Clone)]
 pub struct RelayOptions {
-    pub(super) connection_mode: ConnectionMode,
-    pub(super) flags: RelayServiceFlags,
-    pub(super) reconnect: bool,
-    pub(super) sleep_when_idle: bool,
-    pub(super) idle_timeout: Duration,
-    pub(super) retry_interval: Duration,
-    pub(super) adjust_retry_interval: bool,
-    pub(super) verify_subscriptions: bool,
-    pub(super) ban_relay_on_mismatch: bool,
-    pub(super) limits: RelayLimits,
-    pub(super) max_avg_latency: Option<Duration>,
-    pub(super) notification_channel_size: usize,
+    pub(crate) connection_mode: ConnectionMode,
+    pub(crate) ping: bool,
+    pub(crate) reconnect: bool,
+    pub(crate) sleep_when_idle: bool,
+    pub(crate) idle_timeout: Duration,
+    pub(crate) retry_interval: Duration,
+    pub(crate) adjust_retry_interval: bool,
+    pub(crate) verify_subscriptions: bool,
+    pub(crate) ban_relay_on_mismatch: bool,
+    pub(crate) limits: RelayLimits,
+    pub(crate) max_avg_latency: Option<Duration>,
+    pub(crate) notification_channel_size: usize,
 }
 
 impl Default for RelayOptions {
     fn default() -> Self {
         Self {
             connection_mode: ConnectionMode::default(),
-            flags: RelayServiceFlags::default(),
+            ping: true,
             reconnect: true,
             sleep_when_idle: false,
             idle_timeout: Duration::from_secs(300),
@@ -63,39 +56,10 @@ impl RelayOptions {
         self
     }
 
-    /// Set Relay Service Flags
-    pub fn flags(mut self, flags: RelayServiceFlags) -> Self {
-        self.flags = flags;
-        self
-    }
-
-    /// Set read flag
-    pub fn read(mut self, read: bool) -> Self {
-        if read {
-            self.flags.add(RelayServiceFlags::READ);
-        } else {
-            self.flags.remove(RelayServiceFlags::READ);
-        }
-        self
-    }
-
-    /// Set write flag
-    pub fn write(mut self, write: bool) -> Self {
-        if write {
-            self.flags.add(RelayServiceFlags::WRITE);
-        } else {
-            self.flags.remove(RelayServiceFlags::WRITE);
-        }
-        self
-    }
-
-    /// Set ping flag
-    pub fn ping(mut self, ping: bool) -> Self {
-        if ping {
-            self.flags.add(RelayServiceFlags::PING);
-        } else {
-            self.flags.remove(RelayServiceFlags::PING);
-        }
+    /// Enable or disable ping
+    #[inline]
+    pub fn ping(mut self, enable: bool) -> Self {
+        self.ping = enable;
         self
     }
 
@@ -191,24 +155,6 @@ impl SubscribeAutoCloseOptions {
     pub fn idle_timeout(mut self, timeout: Option<Duration>) -> Self {
         self.idle_timeout = timeout;
         self
-    }
-}
-
-/// Subscribe options
-#[derive(Debug, Clone, Copy, Default)]
-pub struct SubscribeOptions {
-    pub(super) auto_close: Option<SubscribeAutoCloseOptions>,
-}
-
-impl SubscribeOptions {
-    /// Set auto-close conditions
-    pub fn close_on(mut self, opts: Option<SubscribeAutoCloseOptions>) -> Self {
-        self.auto_close = opts;
-        self
-    }
-
-    pub(crate) fn is_auto_closing(&self) -> bool {
-        self.auto_close.is_some()
     }
 }
 
@@ -370,14 +316,6 @@ mod tests {
         assert_eq!(opts.idle_timeout, duration);
         let opt = SyncOptions::default().initial_timeout(Duration::from_secs(5));
         assert_eq!(opt.initial_timeout, Duration::from_secs(5));
-    }
-
-    #[test]
-    fn test_close() {
-        let opts = SubscribeOptions::default();
-        assert!(!opts.is_auto_closing());
-        let opts = SubscribeOptions::default().close_on(Some(SubscribeAutoCloseOptions::default()));
-        assert!(opts.is_auto_closing());
     }
 
     #[test]

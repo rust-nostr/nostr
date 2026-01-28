@@ -34,42 +34,21 @@ async fn main() -> Result<()> {
     let connection: Connection = Connection::new()
         .proxy(addr) // Use `.embedded_tor()` instead to enable the embedded tor client (require `tor` feature)
         .target(ConnectionTarget::Onion);
-    let opts = ClientOptions::new().connection(connection);
-
-    // Create new client with custom options
-    let client = Client::builder().signer(keys).opts(opts).build();
+    let client = Client::builder().signer(keys.clone()).connection(connection).build();
 
     // Add relays
     client.add_relay("wss://relay.damus.io").await?;
     client.add_relay("ws://jgqaglhautb4k6e6i2g34jakxiemqp6z4wynlirltuukgkft2xuglmqd.onion").await?;
     
     // Add read relay
-    client.add_read_relay("wss://relay.nostr.info").await?;
+    client.add_relay("wss://relay.nostr.info").capabilities(RelayCapabilities::READ).await?;
 
     // Connect to relays
     client.connect().await;
 
-    let metadata = Metadata::new()
-        .name("username")
-        .display_name("My Username")
-        .about("Description")
-        .picture(Url::parse("https://example.com/avatar.png")?)
-        .banner(Url::parse("https://example.com/banner.png")?)
-        .nip05("username@example.com")
-        .lud16("pay@yukikishimoto.com")
-        .custom_field("custom_field", "my value");
-
-    // Update metadata
-    client.set_metadata(&metadata).await?;
-
     // Publish a text note
-    let builder = EventBuilder::text_note("My first text note from rust-nostr!");
-    client.send_event_builder(builder).await?;
-
-    // Create a POW text note
-    let builder = EventBuilder::text_note("POW text note from nostr-sdk").pow(20);
-    client.send_event_builder(builder).await?; // Send to all relays
-    // client.send_event_builder_to(["wss://relay.damus.io"], builder).await?; // Send to specific relay
+    let event = EventBuilder::text_note("My first text note from rust-nostr!").sign_with_keys(&keys)?;
+    client.send_event(&event).await?;
 
     Ok(())
 }

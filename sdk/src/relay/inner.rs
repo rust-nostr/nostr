@@ -1,41 +1,32 @@
-// Copyright (c) 2022-2023 Yuki Kishimoto
-// Copyright (c) 2023-2025 Rust Nostr Developers
-// Distributed under the MIT software license
-
 use std::borrow::Cow;
 use std::cmp;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::{task, time};
-use async_wsocket::futures_util::{self, SinkExt, StreamExt};
 use async_wsocket::{ConnectionMode, Message};
-use atomic_destructor::AtomicDestroyer;
-use negentropy::{Id, Negentropy, NegentropyStorageVector};
+use futures::{self, SinkExt, StreamExt};
 use nostr::rand::rngs::OsRng;
 use nostr::rand::{Rng, RngCore, TryRngCore};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard};
+use tokio::sync::{broadcast, oneshot, Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard};
 
+use super::capabilities::{AtomicRelayCapabilities, RelayCapabilities};
 use super::constants::{
     DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE,
-    NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP,
-    NEGENTROPY_LOW_WATER_UP, PING_INTERVAL, SLEEP_INTERVAL, WAIT_FOR_OK_TIMEOUT,
-    WEBSOCKET_TX_TIMEOUT,
+    PING_INTERVAL, SLEEP_INTERVAL, WEBSOCKET_TX_TIMEOUT,
 };
-use super::flags::AtomicRelayServiceFlags;
-use super::options::{RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions, SyncOptions};
+use super::options::{RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions};
 use super::ping::PingTracker;
 use super::stats::RelayConnectionStats;
 use super::{
-    Error, Reconciliation, RelayNotification, RelayStatus, SubscriptionActivity,
-    SubscriptionAutoClosedReason,
+    Error, RelayNotification, RelayStatus, SubscriptionActivity, SubscriptionAutoClosedReason,
 };
+use crate::client::ClientNotification;
 use crate::policy::AdmitStatus;
-use crate::pool::RelayPoolNotification;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
 use crate::transport::websocket::{WebSocketSink, WebSocketStream};
@@ -59,12 +50,14 @@ struct HandleAutoClosing {
     reason: Option<SubscriptionAutoClosedReason>,
 }
 
+struct JsonMessageItem {
+    json: ClientMessageJson,
+    confirmation: Option<oneshot::Sender<()>>,
+}
+
 #[derive(Debug)]
 struct RelayChannels {
-    nostr: (
-        Sender<Vec<ClientMessageJson>>,
-        Mutex<Receiver<Vec<ClientMessageJson>>>,
-    ),
+    nostr: (Sender<JsonMessageItem>, Mutex<Receiver<JsonMessageItem>>),
     ping: Notify,
     terminate: Notify,
 }
@@ -80,27 +73,17 @@ impl RelayChannels {
         }
     }
 
-    pub fn send_client_msgs(&self, msgs: Vec<ClientMessage>) -> Result<(), Error> {
-        // Serialize messages to JSON
-        let msgs: Vec<ClientMessageJson> = msgs.into_iter().map(|msg| msg.as_json()).collect();
-
-        // Send
+    #[inline]
+    fn send_client_msg(&self, msg: JsonMessageItem) -> Result<(), Error> {
         self.nostr
             .0
-            .try_send(msgs)
-            .map_err(|_| Error::CantSendChannelMessage {
-                channel: String::from("nostr"),
-            })
+            .try_send(msg)
+            .map_err(|_| Error::CantSendMessageToDispatcher)
     }
 
     #[inline]
-    pub async fn rx_nostr(&self) -> MutexGuard<'_, Receiver<Vec<ClientMessageJson>>> {
+    pub async fn rx_nostr(&self) -> MutexGuard<'_, Receiver<JsonMessageItem>> {
         self.nostr.1.lock().await
-    }
-
-    #[inline]
-    pub fn nostr_queue(&self) -> usize {
-        self.nostr.0.max_capacity() - self.nostr.0.capacity()
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -154,21 +137,20 @@ pub(crate) struct InnerRelay {
     pub(super) url: RelayUrl,
     pub(super) atomic: Arc<AtomicPrivateData>,
     pub(super) opts: RelayOptions,
-    pub(super) flags: AtomicRelayServiceFlags,
+    pub(super) capabilities: Arc<AtomicRelayCapabilities>,
     pub(super) stats: RelayConnectionStats,
     pub(super) state: SharedState,
     pub(super) internal_notification_sender: broadcast::Sender<RelayNotification>,
-    external_notification_sender: Option<broadcast::Sender<RelayPoolNotification>>,
-}
-
-impl AtomicDestroyer for InnerRelay {
-    fn on_destroy(&self) {
-        self.disconnect();
-    }
+    external_notification_sender: Option<broadcast::Sender<ClientNotification>>,
 }
 
 impl InnerRelay {
-    pub(super) fn new(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
+    pub(super) fn new(
+        url: RelayUrl,
+        state: SharedState,
+        capabilities: RelayCapabilities,
+        opts: RelayOptions,
+    ) -> Self {
         let (relay_notification_sender, ..) =
             broadcast::channel::<RelayNotification>(opts.notification_channel_size);
 
@@ -180,7 +162,7 @@ impl InnerRelay {
                 subscriptions: RwLock::new(HashMap::new()),
                 running: AtomicBool::new(false),
             }),
-            flags: AtomicRelayServiceFlags::new(opts.flags),
+            capabilities: Arc::new(AtomicRelayCapabilities::new(capabilities)),
             opts,
             stats: RelayConnectionStats::default(),
             state,
@@ -222,6 +204,7 @@ impl InnerRelay {
                 }
                 RelayStatus::Banned => tracing::info!(url = %self.url, "Relay banned."),
                 RelayStatus::Sleeping => tracing::info!("Relay '{}' went to sleep.", self.url),
+                RelayStatus::Shutdown => tracing::info!("Relay '{}' has been shutdown.", self.url),
             }
         }
 
@@ -382,13 +365,9 @@ impl InnerRelay {
     }
 
     #[inline]
-    pub fn queue(&self) -> usize {
-        self.atomic.channels.nostr_queue()
-    }
-
     pub(crate) fn set_notification_sender(
         &mut self,
-        notification_sender: broadcast::Sender<RelayPoolNotification>,
+        notification_sender: broadcast::Sender<ClientNotification>,
     ) {
         self.external_notification_sender = Some(notification_sender);
     }
@@ -400,25 +379,22 @@ impl InnerRelay {
                 let _ = self.internal_notification_sender.send(notification.clone());
 
                 // Convert relay to notification to pool notification
-                let notification: Option<RelayPoolNotification> = match notification {
+                let notification: Option<ClientNotification> = match notification {
                     RelayNotification::Event {
                         subscription_id,
                         event,
-                    } => Some(RelayPoolNotification::Event {
+                    } => Some(ClientNotification::Event {
                         relay_url: self.url.clone(),
                         subscription_id,
                         event,
                     }),
-                    RelayNotification::Message { message } => {
-                        Some(RelayPoolNotification::Message {
-                            relay_url: self.url.clone(),
-                            message,
-                        })
-                    }
+                    RelayNotification::Message { message } => Some(ClientNotification::Message {
+                        relay_url: self.url.clone(),
+                        message,
+                    }),
                     RelayNotification::RelayStatus { .. } => None,
                     RelayNotification::Authenticated => None,
                     RelayNotification::AuthenticationFailed => None,
-                    RelayNotification::Shutdown => Some(RelayPoolNotification::Shutdown),
                 };
 
                 // Send external notification
@@ -567,7 +543,11 @@ impl InnerRelay {
             let status: RelayStatus = self.status();
 
             // If the relay is terminated, banned or sleeping, break the loop.
-            if status.is_terminated() || status.is_banned() || status.is_sleeping() {
+            if status.is_terminated()
+                || status.is_banned()
+                || status.is_sleeping()
+                || status.is_shutdown()
+            {
                 break;
             }
 
@@ -701,7 +681,7 @@ impl InnerRelay {
     async fn connect_and_run(
         &self,
         stream: Option<(WebSocketSink, WebSocketStream)>,
-        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
+        rx_nostr: &mut MutexGuard<'_, Receiver<JsonMessageItem>>,
         last_ws_error: &mut Option<String>,
     ) {
         match stream {
@@ -744,10 +724,10 @@ impl InnerRelay {
         &self,
         mut ws_tx: WebSocketSink,
         ws_rx: WebSocketStream,
-        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
+        rx_nostr: &mut MutexGuard<'_, Receiver<JsonMessageItem>>,
     ) {
         // (Re)subscribe to relay
-        if self.flags.can_read() {
+        if self.capabilities.can_read() {
             if let Err(e) = self.resubscribe().await {
                 tracing::error!(url = %self.url, error = %e, "Impossible to subscribe.")
             }
@@ -793,7 +773,7 @@ impl InnerRelay {
     async fn sender_message_handler(
         &self,
         ws_tx: &mut WebSocketSink,
-        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
+        rx_nostr: &mut MutexGuard<'_, Receiver<JsonMessageItem>>,
         ping: &PingTracker,
     ) -> Result<(), Error> {
         #[cfg(target_arch = "wasm32")]
@@ -802,27 +782,25 @@ impl InnerRelay {
         loop {
             tokio::select! {
                 // Nostr channel receiver
-                Some(msgs) = rx_nostr.recv() => {
-                    // Compose WebSocket text messages
-                    let msgs: Vec<Message> = msgs
-                        .into_iter()
-                        .map(Message::Text)
-                        .collect();
-
-                    // Calculate messages size
-                    let size: usize = msgs.iter().map(|msg| msg.len()).sum();
-                    let len: usize = msgs.len();
+                Some(JsonMessageItem { json, confirmation }) = rx_nostr.recv() => {
+                    // Get messages size
+                    let size: usize = json.len();
 
                     // Log
-                    if len == 1 {
-                        let json = &msgs[0]; // SAFETY: len checked above (len == 1)
-                        tracing::debug!("Sending '{json}' to '{}' (size: {size} bytes)", self.url);
-                    } else {
-                        tracing::debug!("Sending {len} messages to '{}' (size: {size} bytes)", self.url);
-                    };
+                    tracing::debug!("Sending '{json}' to '{}' (size: {size} bytes)", self.url);
+
+                    // Compose WebSocket text messages
+                    let msg: Message = Message::Text(json);
 
                     // Send WebSocket messages
-                    send_ws_msgs(ws_tx, msgs).await?;
+                    send_ws_msg(ws_tx, msg).await?;
+
+                    // Send the confirmation
+                    if let Some(confirmation) = confirmation {
+                        if confirmation.send(()).is_err() {
+                            tracing::error!(url = %self.url, "Can't send msg confirmation.");
+                        }
+                    }
 
                     // Increase sent bytes
                     self.stats.add_bytes_sent(size);
@@ -847,7 +825,7 @@ impl InnerRelay {
                         let msg = Message::Ping(nonce.to_be_bytes().to_vec());
 
                         // Send WebSocket message
-                        send_ws_msgs(ws_tx, vec![msg]).await?;
+                        send_ws_msg(ws_tx, msg).await?;
 
                         // Set ping as just sent
                         ping.just_sent().await;
@@ -880,7 +858,7 @@ impl InnerRelay {
                 }
                 #[cfg(not(target_arch = "wasm32"))]
                 Message::Pong(bytes) => {
-                    if self.flags.has_ping() && self.state.transport.support_ping() {
+                    if self.opts.ping && self.state.transport.support_ping() {
                         match bytes.try_into() {
                             Ok(nonce) => {
                                 // Nonce from big-endian bytes
@@ -987,7 +965,7 @@ impl InnerRelay {
         loop {
             // Check if support ping
             #[cfg(not(target_arch = "wasm32"))]
-            if self.flags.has_ping() && self.state.transport.support_ping() {
+            if self.opts.ping && self.state.transport.support_ping() {
                 // Ping supported, ping!
                 self.atomic.channels.ping();
             }
@@ -1228,7 +1206,7 @@ impl InnerRelay {
                 // This may also be useful to avoid double verification if the event is received at the exact same time by many different Relay instances.
                 //
                 // This is important since event signature verification is a heavy job!
-                if !self.state.verified(&event.id)? {
+                if !self.state.verified(&event.id).await {
                     event.verify()?;
                 }
 
@@ -1273,8 +1251,8 @@ impl InnerRelay {
     pub fn disconnect(&self) {
         let status = self.status();
 
-        // Check if it's already terminated or banned
-        if status.is_terminated() || status.is_banned() {
+        // Check if it's already terminated, banned or shutdown
+        if status.is_terminated() || status.is_banned() || status.is_shutdown() {
             return;
         }
 
@@ -1283,16 +1261,13 @@ impl InnerRelay {
 
         // Update status
         self.set_status(RelayStatus::Terminated, true);
-
-        // Shutdown all notification loops
-        self.send_notification(RelayNotification::Shutdown, false);
     }
 
     pub fn ban(&self) {
         let status = self.status();
 
-        // Check if it's already terminated or banned
-        if status.is_terminated() || status.is_banned() {
+        // Check if it's already terminated, banned or shutdown
+        if status.is_terminated() || status.is_banned() || status.is_shutdown() {
             return;
         }
 
@@ -1301,50 +1276,63 @@ impl InnerRelay {
 
         // Update status
         self.set_status(RelayStatus::Banned, true);
+    }
 
-        // Shutdown all notification loops
-        self.send_notification(RelayNotification::Shutdown, false);
+    pub(super) fn shutdown(&self) {
+        let status = self.status();
+
+        // Check if it's already terminated, banned or shutdown
+        if status.is_terminated() || status.is_banned() || status.is_shutdown() {
+            return;
+        }
+
+        // Notify termination
+        self.atomic.channels.terminate();
+
+        // Update status
+        self.set_status(RelayStatus::Shutdown, true);
     }
 
     #[inline]
-    pub fn send_msg(&self, msg: ClientMessage<'_>) -> Result<(), Error> {
-        self.batch_msg(vec![msg])
-    }
-
-    pub fn batch_msg(&self, msgs: Vec<ClientMessage<'_>>) -> Result<(), Error> {
+    pub(super) async fn send_msg(
+        &self,
+        msg: ClientMessage<'_>,
+        wait_until_sent: Option<Duration>,
+    ) -> Result<(), Error> {
         // Check if relay is operational
         self.ensure_operational()?;
 
-        // Check if the list is empty
-        if msgs.is_empty() {
-            return Err(Error::BatchMessagesEmpty);
-        }
-
         // If it can't write, check if there are "write" messages
-        if !self.flags.can_write() && msgs.iter().any(|msg| msg.is_event()) {
+        if !self.capabilities.can_write() && msg.is_event() {
             return Err(Error::WriteDisabled);
         }
 
         // If it can't read, check if there are "read" messages
-        if !self.flags.can_read() && msgs.iter().any(|msg| msg.is_req() || msg.is_close()) {
+        if !self.capabilities.can_read() && (msg.is_req() || msg.is_close()) {
             return Err(Error::ReadDisabled);
         }
 
-        // Send messages
-        self.atomic.channels.send_client_msgs(msgs)
-    }
+        match wait_until_sent {
+            Some(timeout) => {
+                // Create a channel
+                let (tx, rx) = oneshot::channel();
 
-    fn send_neg_msg(&self, id: &SubscriptionId, message: &str) -> Result<(), Error> {
-        self.send_msg(ClientMessage::NegMsg {
-            subscription_id: Cow::Borrowed(id),
-            message: Cow::Borrowed(message),
-        })
-    }
+                // Send the item
+                self.atomic.channels.send_client_msg(JsonMessageItem {
+                    json: msg.as_json(),
+                    confirmation: Some(tx),
+                })?;
 
-    fn send_neg_close(&self, id: &SubscriptionId) -> Result<(), Error> {
-        self.send_msg(ClientMessage::NegClose {
-            subscription_id: Cow::Borrowed(id),
-        })
+                // Wait for confirmation
+                Ok(time::timeout(Some(timeout), rx)
+                    .await
+                    .ok_or(Error::Timeout)??)
+            }
+            None => self.atomic.channels.send_client_msg(JsonMessageItem {
+                json: msg.as_json(),
+                confirmation: None,
+            }),
+        }
     }
 
     async fn auth(&self, challenge: String) -> Result<(), Error> {
@@ -1360,12 +1348,13 @@ impl InnerRelay {
         let mut notifications = self.internal_notification_sender.subscribe();
 
         // Send the AUTH message
-        self.send_msg(ClientMessage::Auth(Cow::Borrowed(&event)))?;
+        self.send_msg(ClientMessage::Auth(Cow::Borrowed(&event)), None)
+            .await?;
 
         // Wait for OK
         // The event ID is already checked in `wait_for_ok` method
         let (status, message) = self
-            .wait_for_ok(&mut notifications, &event.id, WAIT_FOR_OK_TIMEOUT)
+            .wait_for_ok(&mut notifications, &event.id, Duration::from_secs(10))
             .await?;
 
         // Check status
@@ -1403,7 +1392,6 @@ impl InnerRelay {
                             return Err(Error::NotConnected);
                         }
                     }
-                    RelayNotification::Shutdown => break,
                     _ => (),
                 }
             }
@@ -1419,7 +1407,7 @@ impl InnerRelay {
         let subscriptions = self.subscriptions().await;
         for (id, filters) in subscriptions.into_iter() {
             if !filters.is_empty() && self.should_resubscribe(&id).await {
-                self.send_msg(ClientMessage::req(id, filters))?;
+                self.send_msg(ClientMessage::req(id, filters), None).await?;
             } else {
                 tracing::debug!("Skip re-subscription of '{id}'");
             }
@@ -1467,7 +1455,9 @@ impl InnerRelay {
             // Close subscription
             let send_result = if to_close {
                 tracing::debug!(id = %id, "Auto-closing subscription.");
-                relay.send_msg(ClientMessage::Close(Cow::Borrowed(&id)))
+                relay
+                    .send_msg(ClientMessage::Close(Cow::Borrowed(&id)), None)
+                    .await
             } else {
                 Ok(())
             };
@@ -1623,7 +1613,7 @@ impl InnerRelay {
                                 subscription_id: Cow::Borrowed(id),
                                 filters: filters.iter().map(Cow::Borrowed).collect(),
                             };
-                            let _ = self.send_msg(msg);
+                            let _ = self.send_msg(msg, None).await;
                         }
                     }
                     RelayNotification::AuthenticationFailed => {
@@ -1639,12 +1629,6 @@ impl InnerRelay {
                                 reason: None,
                             });
                         }
-                    }
-                    RelayNotification::Shutdown => {
-                        return Some(HandleAutoClosing {
-                            to_close: false, // No need to send CLOSE msg
-                            reason: None,
-                        });
                     }
                     _ => (),
                 }
@@ -1678,9 +1662,6 @@ impl InnerRelay {
                                     return Ok(());
                                 }
                             }
-                            RelayNotification::Shutdown => {
-                                return Ok(());
-                            }
                             _ => (),
                         }
                     }
@@ -1698,27 +1679,34 @@ impl InnerRelay {
         .await?
     }
 
-    fn _unsubscribe_long_lived_subscription(
+    // Returns `true` if the subscription has been unsubscribed
+    async fn _unsubscribe_long_lived_subscription(
         &self,
-        subscriptions: &mut RwLockWriteGuard<HashMap<SubscriptionId, SubscriptionData>>,
-        id: Cow<SubscriptionId>,
-    ) -> Result<(), Error> {
-        // Remove the subscription from the map
-        if let Some(sub) = subscriptions.remove(&id) {
-            // Re-insert if auto-closing
-            if sub.is_auto_closing {
-                subscriptions.insert(id.into_owned(), sub);
-                return Ok(());
-            }
-        }
+        subscriptions: &mut RwLockWriteGuard<'_, HashMap<SubscriptionId, SubscriptionData>>,
+        id: Cow<'_, SubscriptionId>,
+    ) -> Result<bool, Error> {
+        match subscriptions.remove(&id) {
+            Some(sub) => {
+                // Re-insert if auto-closing
+                if sub.is_auto_closing {
+                    subscriptions.insert(id.into_owned(), sub);
+                    return Ok(false);
+                }
 
-        // Send CLOSE message
-        self.send_msg(ClientMessage::Close(id))
+                // Send CLOSE message
+                self.send_msg(ClientMessage::Close(id), None).await?;
+
+                Ok(true)
+            }
+            // Not existent subscription
+            None => Ok(false),
+        }
     }
 
-    pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<(), Error> {
+    pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<bool, Error> {
         let mut subscriptions = self.atomic.subscriptions.write().await;
         self._unsubscribe_long_lived_subscription(&mut subscriptions, Cow::Borrowed(id))
+            .await
     }
 
     pub async fn unsubscribe_all(&self) -> Result<(), Error> {
@@ -1729,510 +1717,29 @@ impl InnerRelay {
 
         // Unsubscribe
         for id in ids.into_iter() {
-            self._unsubscribe_long_lived_subscription(&mut subscriptions, Cow::Owned(id))?;
+            self._unsubscribe_long_lived_subscription(&mut subscriptions, Cow::Owned(id))
+                .await?;
         }
-
-        Ok(())
-    }
-
-    #[inline(never)]
-    fn handle_neg_msg<I>(
-        &self,
-        subscription_id: &SubscriptionId,
-        msg: Option<Vec<u8>>,
-        curr_have_ids: I,
-        curr_need_ids: I,
-        opts: &SyncOptions,
-        output: &mut Reconciliation,
-        have_ids: &mut Vec<EventId>,
-        need_ids: &mut Vec<EventId>,
-        sync_done: &mut bool,
-    ) -> Result<(), Error>
-    where
-        I: Iterator<Item = EventId>,
-    {
-        let mut counter: u64 = 0;
-
-        // If event ID wasn't already seen, add to the HAVE IDs
-        // Add to HAVE IDs only if `do_up` is true
-        for id in curr_have_ids.into_iter() {
-            if output.local.insert(id) && opts.do_up() {
-                have_ids.push(id);
-                counter += 1;
-            }
-        }
-
-        // If event ID wasn't already seen, add to the NEED IDs
-        // Add to NEED IDs only if `do_down` is true
-        for id in curr_need_ids.into_iter() {
-            if output.remote.insert(id) && opts.do_down() {
-                need_ids.push(id);
-                counter += 1;
-            }
-        }
-
-        if let Some(progress) = &opts.progress {
-            progress.send_modify(|state| {
-                state.total += counter;
-            });
-        }
-
-        match msg {
-            Some(query) => self.send_neg_msg(subscription_id, &hex::encode(query)),
-            None => {
-                // Mark sync as done
-                *sync_done = true;
-
-                // Send NEG-CLOSE message
-                self.send_neg_close(subscription_id)
-            }
-        }
-    }
-
-    #[inline(never)]
-    async fn upload_neg_events(
-        &self,
-        have_ids: &mut Vec<EventId>,
-        in_flight_up: &mut HashSet<EventId>,
-        opts: &SyncOptions,
-    ) -> Result<(), Error> {
-        // Check if it should skip the upload
-        if !opts.do_up() || have_ids.is_empty() || in_flight_up.len() > NEGENTROPY_LOW_WATER_UP {
-            return Ok(());
-        }
-
-        let mut num_sent = 0;
-
-        while !have_ids.is_empty() && in_flight_up.len() < NEGENTROPY_HIGH_WATER_UP {
-            if let Some(id) = have_ids.pop() {
-                match self.state.database().event_by_id(&id).await {
-                    Ok(Some(event)) => {
-                        in_flight_up.insert(id);
-                        self.send_msg(ClientMessage::event(event))?;
-                        num_sent += 1;
-                    }
-                    Ok(None) => {
-                        // Event not found
-                    }
-                    Err(e) => tracing::error!(
-                        url = %self.url,
-                        error = %e,
-                        "Can't upload event."
-                    ),
-                }
-            }
-        }
-
-        // Update progress
-        if let Some(progress) = &opts.progress {
-            progress.send_modify(|state| {
-                state.current += num_sent;
-            });
-        }
-
-        if num_sent > 0 {
-            tracing::info!(
-                "Negentropy UP for '{}': {} events ({} remaining)",
-                self.url,
-                num_sent,
-                have_ids.len()
-            );
-        }
-
-        Ok(())
-    }
-
-    #[inline(never)]
-    async fn req_neg_events(
-        &self,
-        need_ids: &mut Vec<EventId>,
-        in_flight_down: &mut bool,
-        down_sub_id: &SubscriptionId,
-        opts: &SyncOptions,
-    ) -> Result<(), Error> {
-        // Check if it should skip the download
-        if !opts.do_down() || need_ids.is_empty() || *in_flight_down {
-            return Ok(());
-        }
-
-        let capacity: usize = cmp::min(need_ids.len(), NEGENTROPY_BATCH_SIZE_DOWN);
-        let mut ids: Vec<EventId> = Vec::with_capacity(capacity);
-
-        while !need_ids.is_empty() && ids.len() < NEGENTROPY_BATCH_SIZE_DOWN {
-            if let Some(id) = need_ids.pop() {
-                ids.push(id);
-            }
-        }
-
-        tracing::info!(
-            "Negentropy DOWN for '{}': {} events ({} remaining)",
-            self.url,
-            ids.len(),
-            need_ids.len()
-        );
-
-        // Update progress
-        if let Some(progress) = &opts.progress {
-            progress.send_modify(|state| {
-                state.current += ids.len() as u64;
-            });
-        }
-
-        let filter = Filter::new().ids(ids);
-        let msg: ClientMessage = ClientMessage::Req {
-            subscription_id: Cow::Borrowed(down_sub_id),
-            filters: vec![Cow::Borrowed(&filter)],
-        };
-
-        // Register an auto-closing subscription
-        self.add_auto_closing_subscription(down_sub_id.clone(), vec![filter.clone()])
-            .await;
-
-        // Send msg
-        if let Err(e) = self.send_msg(msg) {
-            // Remove previously added subscription
-            self.remove_subscription(down_sub_id).await;
-
-            // Propagate error
-            return Err(e);
-        }
-
-        *in_flight_down = true;
-
-        Ok(())
-    }
-
-    /// Returns `true` if the events was in the `in_flight_up` collection.
-    #[inline(never)]
-    fn handle_neg_ok(
-        &self,
-        in_flight_up: &mut HashSet<EventId>,
-        event_id: EventId,
-        status: bool,
-        message: Cow<'_, str>,
-        output: &mut Reconciliation,
-    ) -> bool {
-        if in_flight_up.remove(&event_id) {
-            if status {
-                output.sent.insert(event_id);
-            } else {
-                tracing::error!(
-                    url = %self.url,
-                    id = %event_id,
-                    msg = %message,
-                    "Can't upload event."
-                );
-
-                output
-                    .send_failures
-                    .entry(self.url.clone())
-                    .and_modify(|map| {
-                        map.insert(event_id, message.to_string());
-                    })
-                    .or_default()
-                    .insert(event_id, message.into_owned());
-            }
-
-            true
-        } else {
-            false
-        }
-    }
-
-    /// New negentropy protocol
-    #[inline(never)]
-    pub(super) async fn sync(
-        &self,
-        filter: &Filter,
-        items: Vec<(EventId, Timestamp)>,
-        opts: &SyncOptions,
-        output: &mut Reconciliation,
-    ) -> Result<(), Error> {
-        // Prepare the negentropy client
-        let storage: NegentropyStorageVector = prepare_negentropy_storage(items)?;
-        let mut negentropy: Negentropy<NegentropyStorageVector> =
-            Negentropy::borrowed(&storage, NEGENTROPY_FRAME_SIZE_LIMIT)?;
-
-        // Initiate reconciliation
-        let initial_message: Vec<u8> = negentropy.initiate()?;
-
-        // Subscribe
-        let mut notifications = self.internal_notification_sender.subscribe();
-        let mut temp_notifications = self.internal_notification_sender.subscribe();
-
-        // Send the initial negentropy message
-        let sub_id: SubscriptionId = SubscriptionId::generate();
-        let open_msg: ClientMessage = ClientMessage::NegOpen {
-            subscription_id: Cow::Borrowed(&sub_id),
-            filter: Cow::Borrowed(filter),
-            id_size: None,
-            initial_message: Cow::Owned(hex::encode(initial_message)),
-        };
-        self.send_msg(open_msg)?;
-
-        // Check if negentropy is supported
-        check_negentropy_support(&sub_id, opts, &mut temp_notifications).await?;
-
-        let mut in_flight_up: HashSet<EventId> = HashSet::new();
-        let mut in_flight_down: bool = false;
-        let mut sync_done: bool = false;
-        let mut have_ids: Vec<EventId> = Vec::new();
-        let mut need_ids: Vec<EventId> = Vec::new();
-        let down_sub_id: SubscriptionId = SubscriptionId::generate();
-        let mut last_relevant_msg: Instant = Instant::now();
-
-        // Start reconciliation
-        while let Ok(notification) = notifications.recv().await {
-            if last_relevant_msg.elapsed() > opts.idle_timeout {
-                return Err(Error::Timeout);
-            }
-
-            match notification {
-                RelayNotification::Message { message } => {
-                    let is_relevant: bool = match message {
-                        RelayMessage::NegMsg {
-                            subscription_id,
-                            message,
-                        } => {
-                            if subscription_id.as_ref() == &sub_id {
-                                let mut curr_have_ids: Vec<Id> = Vec::new();
-                                let mut curr_need_ids: Vec<Id> = Vec::new();
-
-                                // Parse message
-                                let query: Vec<u8> = hex::decode(message.as_ref())?;
-
-                                // Reconcile
-                                let msg: Option<Vec<u8>> = negentropy.reconcile_with_ids(
-                                    &query,
-                                    &mut curr_have_ids,
-                                    &mut curr_need_ids,
-                                )?;
-
-                                // Handle the message
-                                self.handle_neg_msg(
-                                    &subscription_id,
-                                    msg,
-                                    curr_have_ids.into_iter().map(neg_id_to_event_id),
-                                    curr_need_ids.into_iter().map(neg_id_to_event_id),
-                                    opts,
-                                    output,
-                                    &mut have_ids,
-                                    &mut need_ids,
-                                    &mut sync_done,
-                                )?;
-
-                                // Relevant to this sync
-                                true
-                            } else {
-                                // Not relevant to this sync
-                                false
-                            }
-                        }
-                        RelayMessage::NegErr {
-                            subscription_id,
-                            message,
-                        } => {
-                            if subscription_id.as_ref() == &sub_id {
-                                return Err(Error::RelayMessage(message.into_owned()));
-                            } else {
-                                // Not relevant to this sync
-                                false
-                            }
-                        }
-                        RelayMessage::Ok {
-                            event_id,
-                            status,
-                            message,
-                        } => {
-                            self.handle_neg_ok(&mut in_flight_up, event_id, status, message, output)
-                        }
-                        RelayMessage::Event {
-                            subscription_id,
-                            event,
-                        } => {
-                            if subscription_id.as_ref() == &down_sub_id {
-                                output.received.insert(event.id);
-
-                                // Relevant to this sync
-                                true
-                            } else {
-                                // Not relevant to this sync
-                                false
-                            }
-                        }
-                        RelayMessage::EndOfStoredEvents(subscription_id) => {
-                            if subscription_id.as_ref() == &down_sub_id {
-                                in_flight_down = false;
-
-                                // Remove subscription
-                                self.remove_subscription(&down_sub_id).await;
-
-                                // Close subscription
-                                self.send_msg(ClientMessage::Close(Cow::Borrowed(&down_sub_id)))?;
-
-                                // Relevant to this sync
-                                true
-                            } else {
-                                // Not relevant to this sync
-                                false
-                            }
-                        }
-                        RelayMessage::Closed {
-                            subscription_id, ..
-                        } => {
-                            if subscription_id.as_ref() == &down_sub_id {
-                                in_flight_down = false;
-
-                                // NOTE: the subscription is removed in the `InnerRelay::handle_relay_message` method,
-                                // so there is no need to try to remove it also here.
-
-                                // Relevant to this sync
-                                true
-                            } else {
-                                // Not relevant to this sync
-                                false
-                            }
-                        }
-                        _ => false,
-                    };
-
-                    // Send events
-                    self.upload_neg_events(&mut have_ids, &mut in_flight_up, opts)
-                        .await?;
-
-                    // Get events
-                    self.req_neg_events(&mut need_ids, &mut in_flight_down, &down_sub_id, opts)
-                        .await?;
-
-                    // NOTE: update this after the uploading and requesting of the events, as it may require some time.
-                    if is_relevant {
-                        last_relevant_msg = Instant::now();
-                    }
-                }
-                RelayNotification::RelayStatus { status } => {
-                    if status.is_disconnected() {
-                        return Err(Error::NotConnected);
-                    }
-                }
-                RelayNotification::Shutdown => {
-                    return Err(Error::ReceivedShutdown);
-                }
-                _ => (),
-            };
-
-            if sync_done
-                && have_ids.is_empty()
-                && need_ids.is_empty()
-                && in_flight_up.is_empty()
-                && !in_flight_down
-            {
-                break;
-            }
-        }
-
-        tracing::info!(url = %self.url, "Negentropy reconciliation terminated.");
 
         Ok(())
     }
 }
 
-/// Send WebSocket messages with timeout set to [WEBSOCKET_TX_TIMEOUT].
-async fn send_ws_msgs(tx: &mut WebSocketSink, msgs: Vec<Message>) -> Result<(), Error> {
-    let mut stream = futures_util::stream::iter(msgs.into_iter().map(Ok));
-    match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.send_all(&mut stream)).await {
+/// Send a WebSocket message with timeout set to [WEBSOCKET_TX_TIMEOUT].
+async fn send_ws_msg(tx: &mut WebSocketSink, msg: Message) -> Result<(), Error> {
+    match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.send(msg)).await {
         Some(res) => Ok(res?),
         None => Err(Error::Timeout),
     }
 }
 
-/// Send WebSocket messages with timeout set to [WEBSOCKET_TX_TIMEOUT].
+/// Send the close message with timeout set to [WEBSOCKET_TX_TIMEOUT].
 async fn close_ws(tx: &mut WebSocketSink) -> Result<(), Error> {
     // TODO: remove timeout from here?
     match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.close()).await {
         Some(res) => Ok(res?),
         None => Err(Error::Timeout),
     }
-}
-
-#[inline]
-fn neg_id_to_event_id(id: Id) -> EventId {
-    EventId::from_byte_array(id.to_bytes())
-}
-
-fn prepare_negentropy_storage(
-    items: Vec<(EventId, Timestamp)>,
-) -> Result<NegentropyStorageVector, Error> {
-    // Compose negentropy storage
-    let mut storage = NegentropyStorageVector::with_capacity(items.len());
-
-    // Add items
-    for (id, timestamp) in items.into_iter() {
-        let id: Id = Id::from_byte_array(id.to_bytes());
-        storage.insert(timestamp.as_secs(), id)?;
-    }
-
-    // Seal
-    storage.seal()?;
-
-    // Build negentropy client
-    Ok(storage)
-}
-
-/// Check if negentropy is supported
-#[inline(never)]
-async fn check_negentropy_support(
-    sub_id: &SubscriptionId,
-    opts: &SyncOptions,
-    temp_notifications: &mut broadcast::Receiver<RelayNotification>,
-) -> Result<(), Error> {
-    time::timeout(Some(opts.initial_timeout), async {
-        while let Ok(notification) = temp_notifications.recv().await {
-            if let RelayNotification::Message { message } = notification {
-                match message {
-                    RelayMessage::NegMsg {
-                        subscription_id, ..
-                    } => {
-                        if subscription_id.as_ref() == sub_id {
-                            break;
-                        }
-                    }
-                    RelayMessage::NegErr {
-                        subscription_id,
-                        message,
-                    } => {
-                        if subscription_id.as_ref() == sub_id {
-                            return Err(Error::RelayMessage(message.into_owned()));
-                        }
-                    }
-                    RelayMessage::Notice(message) => {
-                        if message == "ERROR: negentropy error: negentropy query missing elements" {
-                            // The NEG-OPEN message is sent with 4 elements instead of 5
-                            // If the relay return this error means that is not support new
-                            // negentropy protocol
-                            return Err(Error::Negentropy(
-                                negentropy::Error::UnsupportedProtocolVersion,
-                            ));
-                        } else if message.contains("bad msg")
-                            && (message.contains("unknown cmd")
-                                || message.contains("negentropy")
-                                || message.contains("NEG-"))
-                        {
-                            return Err(Error::NegentropyNotSupported);
-                        } else if message.contains("bad msg: invalid message")
-                            && message.contains("NEG-OPEN")
-                        {
-                            return Err(Error::UnknownNegentropyError);
-                        }
-                    }
-                    _ => (),
-                }
-            }
-        }
-
-        Ok(())
-    })
-    .await
-    .ok_or(Error::Timeout)?
 }
 
 #[cfg(bench)]

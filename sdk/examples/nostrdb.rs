@@ -24,12 +24,12 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     // Publish a text note
-    let builder = EventBuilder::text_note("Hello world");
-    client.send_event_builder(builder).await?;
+    let event = EventBuilder::text_note("Hello world").sign_with_keys(&keys)?;
+    client.send_event(&event).await?;
 
     // Negentropy reconcile
     let filter = Filter::new().author(keys.public_key());
-    client.sync(filter, &SyncOptions::default()).await?;
+    client.sync(filter).await?;
 
     // Query events from database
     let filter = Filter::new().author(keys.public_key()).limit(10);

@@ -3019,7 +3019,6 @@ version = "0.44.1"
 dependencies = [
  "async-utility",
  "async-wsocket",
- "atomic-destructor",
  "futures",
  "hex",
  "lru",

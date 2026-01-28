@@ -7,8 +7,8 @@
 use std::net::SocketAddr;
 
 use atomic_destructor::AtomicDestructor;
-use nostr_database::prelude::*;
-use nostr_sdk::{Output, Reconciliation, SyncOptions};
+use nostr_sdk::client::SyncSummary;
+use nostr_sdk::prelude::*;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 mod inner;
@@ -83,8 +83,8 @@ impl LocalRelay {
         &self,
         urls: I,
         filter: Filter,
-        opts: &SyncOptions,
-    ) -> Result<Output<Reconciliation>, Error>
+        opts: SyncOptions,
+    ) -> Result<Output<SyncSummary>, Error>
     where
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,
@@ -100,6 +100,17 @@ impl LocalRelay {
     /// It's intended to be used ONLY when the database is shared with other apps (i.e. with the nostr-sdk `Client`).
     pub fn notify_event(&self, event: Event) -> bool {
         self.inner.notify_event(event)
+    }
+
+    /// Save the event to the database and, if success, notify the subscribers.
+    pub async fn add_event(&self, event: Event) -> Result<SaveEventStatus, Error> {
+        let status = self.inner.save_event(&event).await?;
+
+        if status.is_success() {
+            self.inner.notify_event(event);
+        }
+
+        Ok(status)
     }
 
     /// Shutdown relay
