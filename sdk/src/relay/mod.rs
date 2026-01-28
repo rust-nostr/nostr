@@ -1,6 +1,5 @@
 //! Relay
 
-use std::borrow::Cow;
 use std::cmp;
 use std::collections::HashMap;
 use std::future::Future;
@@ -156,11 +155,6 @@ impl Relay {
         self.inner.status()
     }
 
-    /// Check if relay is connected
-    pub fn is_connected(&self) -> bool {
-        self.status().is_connected()
-    }
-
     /// Get relay capabilities
     #[inline]
     pub fn capabilities(&self) -> &Arc<AtomicRelayCapabilities> {
@@ -189,12 +183,6 @@ impl Relay {
     #[inline]
     pub fn stats(&self) -> &RelayConnectionStats {
         &self.inner.stats
-    }
-
-    /// Get queue len
-    #[inline]
-    pub fn queue(&self) -> usize {
-        self.inner.queue()
     }
 
     #[inline]
@@ -332,12 +320,6 @@ impl Relay {
         self.inner.send_msg(msg)
     }
 
-    /// Send multiple [`ClientMessage`] at once
-    #[inline]
-    pub fn batch_msg(&self, msgs: Vec<ClientMessage<'_>>) -> Result<(), Error> {
-        self.inner.batch_msg(msgs)
-    }
-
     /// Send event and wait for `OK` relay msg
     #[inline]
     pub fn send_event<'event>(&self, event: &'event Event) -> SendEvent<'_, 'event> {
@@ -393,44 +375,6 @@ impl Relay {
         F: Into<Vec<Filter>>,
     {
         FetchEvents::new(self, filters.into())
-    }
-
-    /// Count events
-    pub async fn count_events(&self, filter: Filter, timeout: Duration) -> Result<usize, Error> {
-        let id = SubscriptionId::generate();
-        let msg = ClientMessage::Count {
-            subscription_id: Cow::Borrowed(&id),
-            filter: Cow::Owned(filter),
-        };
-        self.inner.send_msg(msg)?;
-
-        let mut count = 0;
-
-        let mut notifications = self.inner.internal_notification_sender.subscribe();
-        time::timeout(Some(timeout), async {
-            while let Ok(notification) = notifications.recv().await {
-                if let RelayNotification::Message {
-                    message:
-                        RelayMessage::Count {
-                            subscription_id,
-                            count: c,
-                        },
-                } = notification
-                {
-                    if subscription_id.as_ref() == &id {
-                        count = c;
-                        break;
-                    }
-                }
-            }
-        })
-        .await
-        .ok_or(Error::Timeout)?;
-
-        // Unsubscribe
-        self.inner.send_msg(ClientMessage::close(id))?;
-
-        Ok(count)
     }
 
     /// Sync events with relays (negentropy reconciliation)
