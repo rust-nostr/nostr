@@ -7,7 +7,58 @@ use nostr::{EventId, Filter, RelayUrl, RelayUrlArg, Timestamp};
 use super::output::Output;
 use crate::blocking::Blocking;
 use crate::client::{Client, Error};
-use crate::relay::{Reconciliation, RelayCapabilities, SyncOptions};
+use crate::relay::{RelayCapabilities, SyncOptions, SyncSummary as RelaySyncSummary};
+
+/// Client negentropy reconciliation summary
+///
+/// This includes the summary for all relays involved in the reconciliation process.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SyncSummary {
+    /// Events that were stored locally (missing on relay)
+    pub local: HashSet<EventId>,
+    /// Events that were stored on relay (missing locally)
+    pub remote: HashMap<EventId, HashSet<RelayUrl>>,
+    /// Events that are **successfully** sent to relays during reconciliation
+    pub sent: HashMap<EventId, HashSet<RelayUrl>>,
+    /// Event that are **successfully** received from relay during reconciliation
+    pub received: HashMap<EventId, HashSet<RelayUrl>>,
+    // TODO: should this be HashMap<EventId, HashMap<RelayUrl, String>>?
+    /// Send failures
+    pub send_failures: HashMap<RelayUrl, HashMap<EventId, String>>,
+    // /// Receive failures
+    // pub receive: HashMap<RelayUrl, HashMap<EventId, String>>,
+}
+
+impl SyncSummary {
+    pub(crate) fn merge_relay_summary(&mut self, url: RelayUrl, other: RelaySyncSummary) {
+        self.local.extend(other.local);
+
+        // For each remote event, add this relay URL to the set
+        for event_id in other.remote {
+            self.remote.entry(event_id).or_default().insert(url.clone());
+        }
+
+        // For each sent event, add this relay URL to the set
+        for event_id in other.sent {
+            self.sent.entry(event_id).or_default().insert(url.clone());
+        }
+
+        // For each received event, add this relay URL to the set
+        for event_id in other.received {
+            self.received
+                .entry(event_id)
+                .or_default()
+                .insert(url.clone());
+        }
+
+        self.send_failures
+            .entry(url)
+            .or_default()
+            .extend(other.send_failures);
+
+        //self.receive.extend(other.receive);
+    }
+}
 
 /// Sync events
 ///
@@ -48,7 +99,7 @@ impl<'client, 'url> SyncEvents<'client, 'url> {
         self
     }
 
-    async fn exec(self) -> Result<Output<Reconciliation>, Error> {
+    async fn exec(self) -> Result<Output<SyncSummary>, Error> {
         // Build targets
         let targets: HashMap<RelayUrl, (Filter, Vec<(EventId, Timestamp)>)> =
             match (&self.client.gossip, self.with.is_empty()) {
@@ -131,7 +182,7 @@ impl<'client, 'url> IntoFuture for SyncEvents<'client, 'url>
 where
     'url: 'client,
 {
-    type Output = Result<Output<Reconciliation>, Error>;
+    type Output = Result<Output<SyncSummary>, Error>;
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
 
     fn into_future(self) -> Self::IntoFuture {
