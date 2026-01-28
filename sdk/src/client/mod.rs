@@ -33,8 +33,7 @@ pub use self::notification::*;
 use crate::monitor::Monitor;
 use crate::pool::{RelayPool, RelayPoolBuilder};
 use crate::relay::{
-    Reconciliation, Relay, RelayCapabilities, RelayLimits, RelayOptions, ReqExitPolicy,
-    SyncDirection, SyncOptions,
+    Relay, RelayCapabilities, RelayLimits, RelayOptions, ReqExitPolicy, SyncDirection, SyncOptions,
 };
 
 #[derive(Debug, Clone)]
@@ -696,7 +695,7 @@ impl Client {
         urls: I,
         filter: Filter,
         opts: &SyncOptions,
-    ) -> Result<Output<Reconciliation>, Error>
+    ) -> Result<Output<SyncSummary>, Error>
     where
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,
@@ -954,7 +953,7 @@ impl Client {
         gossip: &Arc<dyn NostrGossip>,
         gossip_kind: &GossipListKind,
         outdated_public_keys: HashSet<PublicKey>,
-    ) -> Result<(Output<Reconciliation>, Events), Error> {
+    ) -> Result<(Output<SyncSummary>, Events), Error> {
         // Get kind
         let kind: Kind = gossip_kind.to_event_kind();
 
@@ -976,8 +975,7 @@ impl Client {
         // Negentropy sync
         // NOTE: the received events are automatically processed in the middleware!
         let opts: SyncOptions = SyncOptions::default().direction(SyncDirection::Down);
-        let output: Output<Reconciliation> =
-            self.sync(filter.clone()).with(urls).opts(opts).await?;
+        let output: Output<SyncSummary> = self.sync(filter.clone()).with(urls).opts(opts).await?;
 
         // Get events from the database
         let stored_events: Events = self.database().query(filter).await?;
@@ -990,7 +988,7 @@ impl Client {
                 .await?;
 
             // Skip events that has already processed in the middleware
-            if output.received.contains(&event.id) {
+            if output.received.contains_key(&event.id) {
                 continue;
             }
 
@@ -1006,7 +1004,7 @@ impl Client {
         sync_id: u64,
         gossip: &Arc<dyn NostrGossip>,
         gossip_kind: &GossipListKind,
-        output: &Output<Reconciliation>,
+        output: &Output<SyncSummary>,
         stored_events: &Events,
         missing_public_keys: &mut HashSet<PublicKey>,
     ) -> Result<(), Error> {
@@ -1015,7 +1013,8 @@ impl Client {
 
         let mut filters: Vec<Filter> = Vec::new();
 
-        let skip_ids: HashSet<EventId> = output.local.union(&output.received).copied().collect();
+        let received: HashSet<EventId> = output.received.keys().copied().collect();
+        let skip_ids: HashSet<EventId> = output.local.union(&received).copied().collect();
 
         // Try to fetch from relays only the newer events (last created_at + 1)
         for event in stored_events.iter() {
@@ -1096,7 +1095,7 @@ impl Client {
         sync_id: u64,
         gossip: &Arc<dyn NostrGossip>,
         gossip_kind: &GossipListKind,
-        output: &Output<Reconciliation>,
+        output: &Output<SyncSummary>,
         missing_public_keys: HashSet<PublicKey>,
     ) -> Result<(), Error> {
         // Get kind

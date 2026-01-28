@@ -7,6 +7,7 @@
 use std::net::SocketAddr;
 
 use atomic_destructor::AtomicDestructor;
+use nostr_sdk::client::SyncSummary;
 use nostr_sdk::prelude::*;
 use tokio::io::{AsyncRead, AsyncWrite};
 
@@ -83,7 +84,7 @@ impl LocalRelay {
         urls: I,
         filter: Filter,
         opts: SyncOptions,
-    ) -> Result<Output<Reconciliation>, Error>
+    ) -> Result<Output<SyncSummary>, Error>
     where
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,

@@ -19,11 +19,11 @@ mod error;
 
 pub(crate) use self::builder::RelayPoolBuilder;
 pub(crate) use self::error::Error;
-use crate::client::{ClientNotification, Output};
+use crate::client::{ClientNotification, Output, SyncSummary};
 use crate::monitor::Monitor;
 use crate::relay::{
-    self, AtomicRelayCapabilities, Reconciliation, Relay, RelayCapabilities, RelayOptions,
-    ReqExitPolicy, SubscribeAutoCloseOptions, SyncOptions,
+    self, AtomicRelayCapabilities, Relay, RelayCapabilities, RelayOptions, ReqExitPolicy,
+    SubscribeAutoCloseOptions, SyncOptions,
 };
 use crate::shared::SharedState;
 use crate::stream::{BoxedStream, ReceiverStream};
@@ -640,7 +640,7 @@ impl RelayPool {
         &self,
         targets: HashMap<RelayUrl, (Filter, Vec<(EventId, Timestamp)>)>,
         opts: SyncOptions,
-    ) -> Result<Output<Reconciliation>, Error> {
+    ) -> Result<Output<SyncSummary>, Error> {
         // Check if urls set is empty
         if targets.is_empty() {
             return Err(Error::NoRelaysSpecified);
@@ -653,13 +653,19 @@ impl RelayPool {
 
         let mut urls: Vec<RelayUrl> = Vec::with_capacity(targets.len());
         let mut futures = Vec::with_capacity(targets.len());
-        let mut output: Output<Reconciliation> = Output::default();
+        let mut output: Output<SyncSummary> = Output::default();
 
         // Compose futures
         for (url, (filter, items)) in targets.into_iter() {
             let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
             urls.push(url);
-            futures.push(relay.sync_with_items(filter, items, &opts));
+            futures.push(
+                relay
+                    .sync(filter)
+                    .items(items)
+                    .opts(opts.clone())
+                    .into_future(),
+            );
         }
 
         // Join futures
@@ -670,8 +676,8 @@ impl RelayPool {
             match result {
                 Ok(reconciliation) => {
                     // Success, insert relay url in 'success' set result
-                    output.success.insert(url);
-                    output.merge(reconciliation);
+                    output.success.insert(url.clone());
+                    output.merge_relay_summary(url, reconciliation);
                 }
                 Err(e) => {
                     output.failed.insert(url, e.to_string());
