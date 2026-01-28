@@ -87,11 +87,13 @@ impl RelayStatus {
         matches!(self, Self::Initialized)
     }
 
+    /// Check if is [`RelayStatus::Connected`]
     #[inline]
-    pub(crate) fn is_connected(&self) -> bool {
+    pub fn is_connected(&self) -> bool {
         matches!(self, Self::Connected)
     }
 
+    // TODO: find a better name, which make clear that includes not just disconnected status but alos terminated, shutdown, etc.
     /// Check if is `disconnected`, `terminated`, `banned`, `sleeping` or `shutdown`.
     #[inline]
     pub(crate) fn is_disconnected(&self) -> bool {

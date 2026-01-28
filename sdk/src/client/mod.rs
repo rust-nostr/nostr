@@ -1291,7 +1291,7 @@ mod tests {
 
             let relay = client.relay(&url).await.unwrap().unwrap();
 
-            assert!(relay.is_connected());
+            assert!(relay.status().is_connected());
 
             relay
         };

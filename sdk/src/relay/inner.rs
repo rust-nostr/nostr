@@ -89,11 +89,6 @@ impl RelayChannels {
         self.nostr.1.lock().await
     }
 
-    #[inline]
-    pub fn nostr_queue(&self) -> usize {
-        self.nostr.0.max_capacity() - self.nostr.0.capacity()
-    }
-
     #[cfg(not(target_arch = "wasm32"))]
     pub fn ping(&self) {
         self.ping.notify_one()
@@ -370,11 +365,6 @@ impl InnerRelay {
             })
             | None => false,
         }
-    }
-
-    #[inline]
-    pub fn queue(&self) -> usize {
-        self.atomic.channels.nostr_queue()
     }
 
     #[inline]
