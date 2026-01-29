@@ -112,8 +112,7 @@ impl Store {
     pub(super) async fn count(&self, filter: Filter) -> Result<usize, Error> {
         self.interact(move |db| {
             let txn = db.read_txn()?;
-            let output = db.query(&txn, filter)?;
-            let len: usize = output.count();
+            let len: usize = db.count(&txn, filter)?;
             txn.commit()?;
             Ok(len)
         })

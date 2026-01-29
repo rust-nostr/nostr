@@ -536,6 +536,48 @@ impl Lmdb {
         Ok(())
     }
 
+    pub fn count(&self, txn: &RoTxn, filter: Filter) -> Result<usize, Error> {
+        // Check if we can use fast counting
+        let can_fast_count: bool = filter.ids.is_none()
+            && filter.authors.is_none()
+            && filter.kinds.is_none()
+            && filter.search.is_none()
+            && filter.generic_tags.is_empty();
+
+        if !can_fast_count {
+            // Complex filter - need to iterate
+            return Ok(self.query(txn, filter)?.count());
+        }
+
+        // Empty filter with maybe a limit
+        let empty_with_maybe_limit = Filter {
+            limit: filter.limit,
+            ..Default::default()
+        };
+
+        // Empty filter with no time constraints = O(1) using index length
+        if filter == empty_with_maybe_limit {
+            let total: usize = self.ci_index.len(txn)? as usize;
+            return Ok(match filter.limit {
+                Some(limit) => total.min(limit), // Return min of limit and total
+                None => total,
+            });
+        }
+
+        // Fast counting for time-based filters only
+        let since: Timestamp = filter.since.unwrap_or_else(Timestamp::min);
+        let until: Timestamp = filter.until.unwrap_or_else(Timestamp::max);
+        let limit: Option<usize> = filter.limit;
+
+        // Time-based filter: iterate ci_index (already sorted by time)
+        let count = match limit {
+            Some(limit) => self.ci_iter(txn, since, until)?.take(limit).count(),
+            None => self.ci_iter(txn, since, until)?.count(),
+        };
+
+        Ok(count)
+    }
+
     /// Find all events that match the filter
     pub fn query<'a>(
         &'a self,
