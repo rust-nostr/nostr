@@ -27,11 +27,11 @@
 
 ### Changed
 
-- Improve scraping performance (https://github.com/rust-nostr/nostr/pull/1221)
+- Improve scraping and counting performance (https://github.com/rust-nostr/nostr/pull/1221)
 
 ### Fixed
 
-- Fix the performance of queries by kinds (https://github.com/rust-nostr/nostr/pull/1220)
+- Fix the performance issues of queries by kinds (https://github.com/rust-nostr/nostr/pull/1220)
 
 ## v0.44.0 - 2025/11/06
 

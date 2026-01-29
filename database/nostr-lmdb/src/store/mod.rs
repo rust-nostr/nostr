@@ -93,8 +93,7 @@ impl Store {
 
     pub fn count(&self, filter: Filter) -> Result<usize, Error> {
         let txn = self.db.read_txn()?;
-        let output = self.db.query(&txn, filter)?;
-        let len: usize = output.count();
+        let len: usize = self.db.count(&txn, filter)?;
         txn.commit()?;
         Ok(len)
     }
