@@ -259,7 +259,7 @@ impl Lmdb {
                 if let Ok(event) = EventBorrow::decode(event_bytes) {
                     // Build just the kc_index key
                     let kc_index_key =
-                        index::make_kc_index_key(event.kind, &event.created_at, event.id);
+                        index::make_kc_index_key(event.kind, event.created_at, event.id);
                     indexes.push((kc_index_key, *event.id));
                 }
             }
@@ -424,7 +424,7 @@ impl Lmdb {
                 }
 
                 let coordinate = Coordinate::new(event.kind, event.pubkey);
-                self.remove_replaceable(txn, &coordinate, &event.created_at)?;
+                self.remove_replaceable(txn, &coordinate, event.created_at)?;
             }
         }
 
@@ -517,33 +517,28 @@ impl Lmdb {
         match pattern {
             QueryFilterPattern::Ids => self.query_by_ids(txn, filter, limit, &mut output)?,
             QueryFilterPattern::AuthorsAndKinds => {
-                self.query_by_authors_and_kinds(txn, filter, since, &until, limit, &mut output)?
+                self.query_by_authors_and_kinds(txn, filter, since, until, limit, &mut output)?
             }
             QueryFilterPattern::AuthorsAndTags => {
-                self.query_by_authors_and_tags(txn, filter, since, &until, limit, &mut output)?
+                self.query_by_authors_and_tags(txn, filter, since, until, limit, &mut output)?
             }
-            QueryFilterPattern::AuthorKindsAndTags => self.query_by_authors_kinds_and_tags(
-                txn,
-                filter,
-                since,
-                &until,
-                limit,
-                &mut output,
-            )?,
+            QueryFilterPattern::AuthorKindsAndTags => {
+                self.query_by_authors_kinds_and_tags(txn, filter, since, until, limit, &mut output)?
+            }
             QueryFilterPattern::KindsAndTags => {
-                self.query_by_kinds_and_tags(txn, filter, since, &until, limit, &mut output)?
+                self.query_by_kinds_and_tags(txn, filter, since, until, limit, &mut output)?
             }
             QueryFilterPattern::Tags => {
-                self.query_by_tags(txn, filter, since, &until, limit, &mut output)?
+                self.query_by_tags(txn, filter, since, until, limit, &mut output)?
             }
             QueryFilterPattern::Authors => {
-                self.query_by_authors(txn, filter, since, &until, limit, &mut output)?
+                self.query_by_authors(txn, filter, since, until, limit, &mut output)?
             }
             QueryFilterPattern::Kinds => {
-                self.query_by_kinds(txn, filter, since, &until, limit, &mut output)?
+                self.query_by_kinds(txn, filter, since, until, limit, &mut output)?
             }
             QueryFilterPattern::Scraping => {
-                self.query_by_scraping(txn, filter, &since, &until, limit, &mut output)?
+                self.query_by_scraping(txn, filter, since, until, limit, &mut output)?
             }
         }
 
@@ -586,7 +581,7 @@ impl Lmdb {
         txn: &'a RoTxn,
         filter: DatabaseFilter,
         since: Timestamp,
-        until: &Timestamp,
+        until: Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
     ) -> Result<(), Error> {
@@ -596,7 +591,7 @@ impl Lmdb {
 
         for author in filter.authors.iter() {
             for kind in filter.kinds.iter() {
-                let iter = self.akc_iter(txn, author, *kind, &since, until)?;
+                let iter = self.akc_iter(txn, author, *kind, since, until)?;
 
                 // Count how many we have found of this author-kind pair, so we
                 // can possibly update `since`
@@ -653,7 +648,7 @@ impl Lmdb {
         txn: &'a RoTxn,
         filter: DatabaseFilter,
         since: Timestamp,
-        until: &Timestamp,
+        until: Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
     ) -> Result<(), Error> {
@@ -665,7 +660,7 @@ impl Lmdb {
             for (tagname, set) in filter.generic_tags.iter() {
                 for tag_value in set.iter() {
                     let iter = self
-                        .atc_iter(txn, author, tagname, tag_value, &since, until)?
+                        .atc_iter(txn, author, tagname, tag_value, since, until)?
                         .filter_map(|res| {
                             let (_k, v) = res.ok()?;
                             Some(v)
@@ -683,7 +678,7 @@ impl Lmdb {
         txn: &'a RoTxn,
         filter: DatabaseFilter,
         since: Timestamp,
-        until: &Timestamp,
+        until: Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
     ) -> Result<(), Error> {
@@ -694,7 +689,7 @@ impl Lmdb {
         for author in filter.authors.iter() {
             for kind in filter.kinds.iter() {
                 // Author + Kind index
-                let akc_iter = self.akc_iter(txn, author, *kind, &since, until)?;
+                let akc_iter = self.akc_iter(txn, author, *kind, since, until)?;
 
                 // Collect Author + Kind BTree set
                 let akc_set: BTreeSet<&[u8]> = akc_iter
@@ -708,7 +703,7 @@ impl Lmdb {
                     for tag_value in set.iter() {
                         // Author + Tag index
                         let atc_iter =
-                            self.atc_iter(txn, author, tagname, tag_value, &since, until)?;
+                            self.atc_iter(txn, author, tagname, tag_value, since, until)?;
 
                         // Collect Author + Tag BTree set
                         let atc_set: BTreeSet<&[u8]> = atc_iter
@@ -737,7 +732,7 @@ impl Lmdb {
         txn: &'a RoTxn,
         filter: DatabaseFilter,
         since: Timestamp,
-        until: &Timestamp,
+        until: Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
     ) -> Result<(), Error> {
@@ -749,7 +744,7 @@ impl Lmdb {
             for (tag_name, set) in filter.generic_tags.iter() {
                 for tag_value in set.iter() {
                     let iter = self
-                        .ktc_iter(txn, *kind, tag_name, tag_value, &since, until)?
+                        .ktc_iter(txn, *kind, tag_name, tag_value, since, until)?
                         .filter_map(|res| {
                             let (_k, v) = res.ok()?;
                             Some(v)
@@ -767,7 +762,7 @@ impl Lmdb {
         txn: &'a RoTxn,
         filter: DatabaseFilter,
         since: Timestamp,
-        until: &Timestamp,
+        until: Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
     ) -> Result<(), Error> {
@@ -778,7 +773,7 @@ impl Lmdb {
         for (tag_name, set) in filter.generic_tags.iter() {
             for tag_value in set.iter() {
                 let iter = self
-                    .tc_iter(txn, tag_name, tag_value, &since, until)?
+                    .tc_iter(txn, tag_name, tag_value, since, until)?
                     .filter_map(|res| {
                         let (_k, v) = res.ok()?;
                         Some(v)
@@ -795,7 +790,7 @@ impl Lmdb {
         txn: &'a RoTxn,
         filter: DatabaseFilter,
         since: Timestamp,
-        until: &Timestamp,
+        until: Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
     ) -> Result<(), Error> {
@@ -804,7 +799,7 @@ impl Lmdb {
         let mut since: Timestamp = since;
 
         for author in filter.authors.iter() {
-            let iter = self.ac_iter(txn, author, &since, until)?.filter_map(|res| {
+            let iter = self.ac_iter(txn, author, since, until)?.filter_map(|res| {
                 let (_k, v) = res.ok()?;
                 Some(v)
             });
@@ -819,7 +814,7 @@ impl Lmdb {
         txn: &'a RoTxn,
         filter: DatabaseFilter,
         since: Timestamp,
-        until: &Timestamp,
+        until: Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
     ) -> Result<(), Error> {
@@ -828,7 +823,7 @@ impl Lmdb {
         let mut since: Timestamp = since;
 
         for kind in filter.kinds.iter() {
-            let iter = self.kc_iter(txn, *kind, &since, until)?.filter_map(|res| {
+            let iter = self.kc_iter(txn, *kind, since, until)?.filter_map(|res| {
                 let (_k, v) = res.ok()?;
                 Some(v)
             });
@@ -845,8 +840,8 @@ impl Lmdb {
         &self,
         txn: &'a RoTxn,
         filter: DatabaseFilter,
-        since: &Timestamp,
-        until: &Timestamp,
+        since: Timestamp,
+        until: Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
     ) -> Result<(), Error> {
@@ -932,8 +927,8 @@ impl Lmdb {
             txn,
             author.as_bytes(),
             kind.as_u16(),
-            &Timestamp::min(),
-            &Timestamp::max(),
+            Timestamp::min(),
+            Timestamp::max(),
         )?;
 
         if let Some(result) = iter.next() {
@@ -958,8 +953,8 @@ impl Lmdb {
             addr.public_key.as_bytes(),
             &SingleLetterTag::lowercase(Alphabet::D),
             &addr.identifier,
-            &Timestamp::min(),
-            &Timestamp::max(),
+            Timestamp::min(),
+            Timestamp::max(),
         )?;
 
         for result in iter {
@@ -983,7 +978,7 @@ impl Lmdb {
         &self,
         txn: &mut RwTxn,
         coordinate: &Coordinate,
-        until: &Timestamp,
+        until: Timestamp,
     ) -> Result<(), Error> {
         if !coordinate.kind.is_replaceable() {
             return Err(Error::WrongEventKind);
@@ -993,7 +988,7 @@ impl Lmdb {
             txn,
             coordinate.public_key.as_bytes(),
             coordinate.kind.as_u16(),
-            &Timestamp::zero(),
+            Timestamp::zero(),
             until,
         )?;
 
@@ -1032,8 +1027,8 @@ impl Lmdb {
             coordinate.public_key.as_bytes(),
             &SingleLetterTag::lowercase(Alphabet::D),
             &coordinate.identifier,
-            &Timestamp::min(),
-            &until,
+            Timestamp::min(),
+            until,
         )?;
 
         // Collect DeletionInfo for all events first to avoid iterator lifetime issues
@@ -1091,10 +1086,10 @@ impl Lmdb {
     }
 
     pub(crate) fn ci_iter<'a>(
-        &'a self,
+        &self,
         txn: &'a RoTxn,
-        since: &Timestamp,
-        until: &Timestamp,
+        since: Timestamp,
+        until: Timestamp,
     ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
         let start_prefix = index::make_ci_index_key(until, &EVENT_ID_ALL_ZEROS);
         let end_prefix = index::make_ci_index_key(since, &EVENT_ID_ALL_255);
@@ -1106,12 +1101,12 @@ impl Lmdb {
     }
 
     pub(crate) fn tc_iter<'a>(
-        &'a self,
+        &self,
         txn: &'a RoTxn,
         tag_name: &SingleLetterTag,
         tag_value: &str,
-        since: &Timestamp,
-        until: &Timestamp,
+        since: Timestamp,
+        until: Timestamp,
     ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
         let start_prefix = index::make_tc_index_key(
             tag_name,
@@ -1128,11 +1123,11 @@ impl Lmdb {
     }
 
     pub(crate) fn ac_iter<'a>(
-        &'a self,
+        &self,
         txn: &'a RoTxn,
         author: &[u8; 32],
-        since: &Timestamp,
-        until: &Timestamp,
+        since: Timestamp,
+        until: Timestamp,
     ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
         let start_prefix = index::make_ac_index_key(author, until, &EVENT_ID_ALL_ZEROS);
         let end_prefix = index::make_ac_index_key(author, since, &EVENT_ID_ALL_255);
@@ -1144,12 +1139,12 @@ impl Lmdb {
     }
 
     pub(crate) fn akc_iter<'a>(
-        &'a self,
+        &self,
         txn: &'a RoTxn,
         author: &[u8; 32],
         kind: u16,
-        since: &Timestamp,
-        until: &Timestamp,
+        since: Timestamp,
+        until: Timestamp,
     ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
         let start_prefix = index::make_akc_index_key(author, kind, until, &EVENT_ID_ALL_ZEROS);
         let end_prefix = index::make_akc_index_key(author, kind, since, &EVENT_ID_ALL_255);
@@ -1161,11 +1156,11 @@ impl Lmdb {
     }
 
     pub(crate) fn kc_iter<'a>(
-        &'a self,
+        &self,
         txn: &'a RoTxn,
         kind: u16,
-        since: &Timestamp,
-        until: &Timestamp,
+        since: Timestamp,
+        until: Timestamp,
     ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
         let start_prefix = index::make_kc_index_key(kind, until, &EVENT_ID_ALL_ZEROS);
         let end_prefix = index::make_kc_index_key(kind, since, &EVENT_ID_ALL_255);
@@ -1177,13 +1172,13 @@ impl Lmdb {
     }
 
     pub(crate) fn atc_iter<'a>(
-        &'a self,
+        &self,
         txn: &'a RoTxn,
         author: &[u8; 32],
         tag_name: &SingleLetterTag,
         tag_value: &str,
-        since: &Timestamp,
-        until: &Timestamp,
+        since: Timestamp,
+        until: Timestamp,
     ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
         let start_prefix: Vec<u8> = index::make_atc_index_key(
             author,
@@ -1236,7 +1231,7 @@ impl Lmdb {
 
             // Remove events (up to the created_at of the deletion event)
             if coordinate.kind.is_replaceable() {
-                self.remove_replaceable(txn, coordinate, &event.created_at)?;
+                self.remove_replaceable(txn, coordinate, event.created_at)?;
             } else if coordinate.kind.is_addressable() {
                 self.remove_addressable(txn, coordinate, event.created_at)?;
             }
@@ -1246,13 +1241,13 @@ impl Lmdb {
     }
 
     pub(crate) fn ktc_iter<'a>(
-        &'a self,
+        &self,
         txn: &'a RoTxn,
         kind: u16,
         tag_name: &SingleLetterTag,
         tag_value: &str,
-        since: &Timestamp,
-        until: &Timestamp,
+        since: Timestamp,
+        until: Timestamp,
     ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
         let start_prefix = index::make_ktc_index_key(
             kind,
