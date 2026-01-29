@@ -489,7 +489,7 @@ impl Lmdb {
 
     /// Find all events that match the filter
     pub fn query<'a>(
-        &self,
+        &'a self,
         txn: &'a RoTxn,
         filter: Filter,
     ) -> Result<Box<dyn Iterator<Item = EventBorrow<'a>> + 'a>, Error> {
@@ -538,7 +538,7 @@ impl Lmdb {
                 self.query_by_kinds(txn, filter, since, until, limit, &mut output)?
             }
             QueryFilterPattern::Scraping => {
-                self.query_by_scraping(txn, filter, since, until, limit, &mut output)?
+                return self.query_by_scraping(txn, filter, since, until, limit);
             }
         }
 
@@ -837,34 +837,28 @@ impl Lmdb {
     ///
     /// This is INEFFICIENT as it scans through many events
     fn query_by_scraping<'a>(
-        &self,
+        &'a self,
         txn: &'a RoTxn,
         filter: DatabaseFilter,
         since: Timestamp,
         until: Timestamp,
         limit: Option<usize>,
-        output: &mut BTreeSet<EventBorrow<'a>>,
-    ) -> Result<(), Error> {
-        let iter = self.ci_iter(txn, since, until)?;
+    ) -> Result<Box<dyn Iterator<Item = EventBorrow<'a>> + 'a>, Error> {
+        // Iterate over created _at index, so events are already sorted
+        Ok(Box::new(
+            self.ci_iter(txn, since, until)?
+                .filter_map(move |res| {
+                    let (_key, value) = res.ok()?;
+                    let event: EventBorrow = self.get_event_by_id(txn, value).ok()??;
 
-        for result in iter {
-            // Check if limit is set
-            if let Some(limit) = limit {
-                // Stop if limited
-                if output.len() >= limit {
-                    break;
-                }
-            }
-
-            let (_key, value) = result?;
-            let event = self.get_event_by_id(txn, value)?.ok_or(Error::NotFound)?;
-
-            if filter.match_event(&event) {
-                output.insert(event);
-            }
-        }
-
-        Ok(())
+                    if filter.match_event(&event) {
+                        Some(event)
+                    } else {
+                        None
+                    }
+                })
+                .take(limit.unwrap_or(usize::MAX)),
+        ))
     }
 
     fn iterate_filter_until_limit<'a, 'i, I>(
