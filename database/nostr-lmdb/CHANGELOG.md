@@ -33,12 +33,17 @@
 
 - Rename `NostrLMDB` to `NostrLmdb`
 - Spawn blocking task for read operations (https://github.com/rust-nostr/nostr/pull/1141)
-- Improve scraping and counting performance (https://github.com/rust-nostr/nostr/pull/1221)
 
 ### Added
 
 - Add `NostrLmdb::reindex` (https://github.com/rust-nostr/nostr/pull/1143)
 - Support NIP-62 `RequestToVanish` event kind (https://github.com/rust-nostr/nostr/pull/1210)
+
+## v0.44.1 - 2026/01/29
+
+### Changed
+
+- Improve scraping and counting performance (https://github.com/rust-nostr/nostr/pull/1221)
 
 ### Fixed
 
