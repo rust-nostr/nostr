@@ -33,6 +33,7 @@
 
 - Rename `NostrLMDB` to `NostrLmdb`
 - Spawn blocking task for read operations (https://github.com/rust-nostr/nostr/pull/1141)
+- Improve scraping performance (https://github.com/rust-nostr/nostr/pull/1221)
 
 ### Added
 
