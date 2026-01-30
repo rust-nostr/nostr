@@ -7,7 +7,6 @@ use nostr_database::DatabaseError;
 use tokio::sync::oneshot;
 
 use crate::policy::PolicyError;
-use crate::shared::SharedStateError;
 use crate::transport::error::TransportError;
 
 /// Relay error
@@ -19,8 +18,6 @@ pub enum Error {
     Policy(PolicyError),
     /// Database error
     Database(DatabaseError),
-    /// Shared state error
-    SharedState(SharedStateError),
     /// MessageHandle error
     MessageHandle(MessageHandleError),
     /// Event error
@@ -33,6 +30,8 @@ pub enum Error {
     Negentropy(negentropy::Error),
     /// Oneshot recv error
     OneshotRecv(oneshot::error::RecvError),
+    /// Signer not configured
+    SignerNotConfigured,
     /// Generic timeout
     Timeout,
     /// Not replied to ping
@@ -129,13 +128,13 @@ impl fmt::Display for Error {
             Self::Transport(e) => write!(f, "transport: {e}"),
             Self::Policy(e) => write!(f, "policy: {e}"),
             Self::Database(e) => write!(f, "database: {e}"),
-            Self::SharedState(e) => e.fmt(f),
             Self::MessageHandle(e) => e.fmt(f),
             Self::Event(e) => e.fmt(f),
             Self::EventBuilder(e) => e.fmt(f),
             Self::Hex(e) => e.fmt(f),
             Self::Negentropy(e) => e.fmt(f),
             Self::OneshotRecv(e) => e.fmt(f),
+            Self::SignerNotConfigured => f.write_str("signer not configured"),
             Self::Timeout => f.write_str("timeout"),
             Self::NotRepliedToPing => f.write_str("not replied to ping"),
             Self::CantParsePong => f.write_str("can't parse pong"),
@@ -206,12 +205,6 @@ impl From<PolicyError> for Error {
 impl From<DatabaseError> for Error {
     fn from(e: DatabaseError) -> Self {
         Self::Database(e)
-    }
-}
-
-impl From<SharedStateError> for Error {
-    fn from(e: SharedStateError) -> Self {
-        Self::SharedState(e)
     }
 }
 

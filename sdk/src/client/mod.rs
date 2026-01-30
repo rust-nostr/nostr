@@ -129,54 +129,12 @@ impl Client {
         }
     }
 
-    /// Auto authenticate to relays (default: true)
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
-    #[inline]
-    pub fn automatic_authentication(&self, enable: bool) {
-        self.pool.state().automatic_authentication(enable);
-    }
-
-    /// Check if signer is configured
-    #[inline]
-    pub async fn has_signer(&self) -> bool {
-        self.pool.state().has_signer().await
-    }
-
     /// Get current nostr signer
     ///
-    /// # Errors
-    ///
-    /// Returns an error if the signer isn't set.
+    /// Returns `None` if no signer is configured.
     #[inline]
-    pub async fn signer(&self) -> Result<Arc<dyn NostrSigner>, Error> {
-        Ok(self.pool.state().signer().await?)
-    }
-
-    /// Set nostr signer
-    #[inline]
-    pub async fn set_signer<T>(&self, signer: T)
-    where
-        T: IntoNostrSigner,
-    {
-        self.pool.state().set_signer(signer).await;
-    }
-
-    /// Unset nostr signer
-    #[inline]
-    pub async fn unset_signer(&self) {
-        self.pool.state().unset_signer().await;
-    }
-
-    /// Retrieves the client's public key
-    ///
-    /// # Errors
-    ///
-    /// - If the signer isn't set.
-    /// - Error by the signer.
-    #[inline]
-    pub async fn public_key(&self) -> Result<PublicKey, Error> {
-        Ok(self.signer().await?.get_public_key().await?)
+    pub fn signer(&self) -> Option<&Arc<dyn NostrSigner>> {
+        self.pool.state().signer()
     }
 
     /// Get database
@@ -211,6 +169,16 @@ impl Client {
     #[inline]
     pub fn notifications(&self) -> broadcast::Receiver<ClientNotification> {
         self.pool.notifications()
+    }
+
+    /// Enable or disable automatic authenticate to relays
+    ///
+    /// This feature requires a configured signer!
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
+    #[inline]
+    pub fn automatic_authentication(&self, enable: bool) {
+        self.pool.state().automatic_authentication(enable);
     }
 
     /// Get relays with [`RelayCapabilities::READ`] or [`RelayCapabilities::WRITE`] capabilities

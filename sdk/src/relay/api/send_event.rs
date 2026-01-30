@@ -78,8 +78,9 @@ impl<'relay, 'event> SendEvent<'relay, 'event> {
         // If auth required, wait for authentication adn resend it
         if let Some(MachineReadablePrefix::AuthRequired) = MachineReadablePrefix::parse(&message) {
             // Check if NIP42 auth is enabled and signer is set
-            let has_signer: bool = self.relay.inner.state.has_signer().await;
-            if self.relay.inner.state.is_auto_authentication_enabled() && has_signer {
+            if self.relay.inner.state.is_auto_authentication_enabled()
+                && self.relay.inner.state.has_signer()
+            {
                 // Wait that relay authenticate
                 wait_for_authentication(&mut notifications, self.wait_for_authentication_timeout)
                     .await?;
@@ -173,7 +174,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_nip42_send_event() {
+    async fn test_nip42_send_event_without_signer() {
         // Mock relay
         let opts = LocalRelayBuilderNip42 {
             mode: LocalRelayBuilderNip42Mode::Write,
@@ -184,17 +185,32 @@ mod tests {
 
         let relay: Relay = Relay::new(url);
 
-        relay.inner.state.automatic_authentication(true);
-
         relay.connect();
 
-        // Signer
+        // Signer and event
         let keys = Keys::generate();
-
-        // Send as unauthenticated (MUST return error)
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
             .unwrap();
+
+        // Disable NIP42 auto auth
+        relay.inner.state.automatic_authentication(false);
+
+        // Auth disabled, so must fails as is unauthenticated
+        match relay.send_event(&event).await.unwrap_err() {
+            crate::relay::Error::RelayMessage(msg) => {
+                assert_eq!(
+                    MachineReadablePrefix::parse(&msg).unwrap(),
+                    MachineReadablePrefix::AuthRequired
+                );
+            }
+            e => panic!("Unexpected error: {e}"),
+        }
+
+        // Enable NIP42 auto auth
+        relay.inner.state.automatic_authentication(true);
+
+        // Send as unauthenticated (MUST return error)
         let err = relay.send_event(&event).await.unwrap_err();
         if let crate::relay::Error::RelayMessage(msg) = err {
             assert_eq!(
@@ -204,14 +220,46 @@ mod tests {
         } else {
             panic!("Unexpected error");
         }
+    }
 
-        // Set a signer
-        relay.inner.state.set_signer(keys.clone()).await;
+    #[tokio::test]
+    async fn test_nip42_send_event_with_signer() {
+        // Mock relay
+        let opts = LocalRelayBuilderNip42 {
+            mode: LocalRelayBuilderNip42Mode::Write,
+        };
+        let mock = LocalRelay::builder().nip42(opts).build();
+        mock.run().await.unwrap();
+        let url = mock.url().await;
 
-        // Send as authenticated
+        // Signer and event
+        let keys = Keys::generate();
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
             .unwrap();
+
+        let relay: Relay = Relay::builder(url).signer(keys).build();
+
+        relay.connect();
+
+        // Disable NIP42 auto auth
+        relay.inner.state.automatic_authentication(false);
+
+        // Auth disabled, so must fails as is unauthenticated
+        match relay.send_event(&event).await.unwrap_err() {
+            crate::relay::Error::RelayMessage(msg) => {
+                assert_eq!(
+                    MachineReadablePrefix::parse(&msg).unwrap(),
+                    MachineReadablePrefix::AuthRequired
+                );
+            }
+            e => panic!("Unexpected error: {e}"),
+        }
+
+        // Enable NIP42 auto auth
+        relay.inner.state.automatic_authentication(true);
+
+        // Send as authenticated
         assert!(relay.send_event(&event).await.is_ok());
     }
 }

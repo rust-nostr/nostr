@@ -1337,11 +1337,11 @@ impl InnerRelay {
 
     async fn auth(&self, challenge: String) -> Result<(), Error> {
         // Get signer
-        let signer = self.state.signer().await?;
+        let signer = self.state.signer().ok_or(Error::SignerNotConfigured)?;
 
         // Construct event
         let event: Event = EventBuilder::auth(challenge, self.url.clone())
-            .sign(&signer)
+            .sign(signer)
             .await?;
 
         // Subscribe to notifications

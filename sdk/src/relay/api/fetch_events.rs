@@ -171,7 +171,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_nip42_fetch_events() {
+    async fn test_nip42_fetch_events_without_signer() {
         // Mock relay
         let opts = LocalRelayBuilderNip42 {
             mode: LocalRelayBuilderNip42Mode::Read,
@@ -224,9 +224,54 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(err, Error::AuthenticationFailed));
+    }
 
-        // Set a signer
-        relay.inner.state.set_signer(keys).await;
+    #[tokio::test]
+    async fn test_nip42_fetch_events_with_signer() {
+        // Mock relay
+        let opts = LocalRelayBuilderNip42 {
+            mode: LocalRelayBuilderNip42Mode::Read,
+        };
+        let mock = LocalRelay::builder().nip42(opts).build();
+        mock.run().await.unwrap();
+        let url = mock.url().await;
+
+        // Signer
+        let keys = Keys::generate();
+
+        let relay: Relay = Relay::builder(url).signer(keys.clone()).build();
+
+        relay.connect();
+
+        // Send an event
+        let event = EventBuilder::text_note("Test")
+            .sign_with_keys(&keys)
+            .unwrap();
+        relay.send_event(&event).await.unwrap();
+
+        let filter = Filter::new().kind(Kind::TextNote).limit(3);
+
+        // Disable NIP42 auto auth
+        relay.inner.state.automatic_authentication(false);
+
+        // NIP-42 auth disabled, so it's an unauthenticated REQ (MUST return error)
+        let err = relay
+            .fetch_events(filter.clone())
+            .timeout(Duration::from_secs(5))
+            .await
+            .unwrap_err();
+        match err {
+            Error::RelayMessage(msg) => {
+                assert_eq!(
+                    MachineReadablePrefix::parse(&msg).unwrap(),
+                    MachineReadablePrefix::AuthRequired
+                );
+            }
+            e => panic!("Unexpected error: {e}"),
+        }
+
+        // Enable NIP42 auto auth
+        relay.inner.state.automatic_authentication(true);
 
         // Authenticated fetch
         let res = relay
