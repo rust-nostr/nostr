@@ -7,7 +7,11 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 #![warn(clippy::large_futures)]
+#![cfg_attr(bench, feature(test))]
 #![allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive for `BTreeSet<Event>`
+
+#[cfg(bench)]
+extern crate test;
 
 use std::any::Any;
 use std::collections::HashMap;
