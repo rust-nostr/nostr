@@ -2856,6 +2856,7 @@ version = "0.44.0"
 dependencies = [
  "async-utility",
  "dialoguer",
+ "futures-core",
  "nostr",
  "nostr-sdk",
  "tokio",
@@ -3032,6 +3033,7 @@ dependencies = [
  "nostr-ndb",
  "nostr-relay-builder",
  "tokio",
+ "tokio-stream",
  "tracing",
  "tracing-subscriber",
 ]
@@ -5052,6 +5054,7 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]

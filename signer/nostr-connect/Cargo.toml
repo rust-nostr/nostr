@@ -21,6 +21,7 @@ tor = ["nostr-sdk/tor"]
 
 [dependencies]
 async-utility.workspace = true
+futures-core = "0.3"
 nostr = { workspace = true, features = ["std", "rand", "nip04", "nip44", "nip46"] }
 nostr-sdk.workspace = true
 tokio = { workspace = true, features = ["sync"] }

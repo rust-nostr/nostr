@@ -15,7 +15,7 @@ use futures::StreamExt;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
 use nostr_gossip::{GossipAllowedRelays, GossipListKind, GossipPublicKeyStatus, NostrGossip};
-use tokio::sync::{broadcast, Semaphore};
+use tokio::sync::Semaphore;
 
 mod api;
 mod builder;
@@ -35,6 +35,7 @@ use crate::pool::{RelayPool, RelayPoolBuilder};
 use crate::relay::{
     Relay, RelayCapabilities, RelayLimits, RelayOptions, ReqExitPolicy, SyncDirection, SyncOptions,
 };
+use crate::stream::{BoxedStream, NotificationStream};
 
 #[derive(Debug, Clone)]
 struct ClientConfig {
@@ -163,12 +164,12 @@ impl Client {
         self.pool.shutdown().await
     }
 
-    /// Get new notification listener
+    /// Get a new notification stream
     ///
     /// <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>
     #[inline]
-    pub fn notifications(&self) -> broadcast::Receiver<ClientNotification> {
-        self.pool.notifications()
+    pub fn notifications(&self) -> BoxedStream<ClientNotification> {
+        Box::pin(NotificationStream::new(self.pool.notifications()))
     }
 
     /// Enable or disable automatic authenticate to relays
@@ -750,6 +751,7 @@ impl Client {
         self.send_event(event).to(urls).await
     }
 
+    // TODO: remove this?
     /// Handle notifications
     ///
     /// The closure function expects a `bool` as output: return `true` to exit from the notification loop.
@@ -759,7 +761,7 @@ impl Client {
         Fut: Future<Output = Result<bool>>,
     {
         let mut notifications = self.notifications();
-        while let Ok(notification) = notifications.recv().await {
+        while let Some(notification) = notifications.next().await {
             let shutdown: bool = ClientNotification::Shutdown == notification;
             let exit: bool = func(notification)
                 .await

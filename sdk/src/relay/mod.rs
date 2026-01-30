@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use async_utility::time;
 use async_wsocket::ConnectionMode;
+use futures::StreamExt;
 use nostr_database::prelude::*;
 use tokio::sync::broadcast;
 
@@ -36,6 +37,7 @@ pub use self::stats::*;
 pub use self::status::*;
 use crate::client::ClientNotification;
 use crate::shared::SharedState;
+use crate::stream::{BoxedStream, NotificationStream};
 
 /// Subscription auto-closed reason
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -193,12 +195,14 @@ impl Relay {
         self.inner.set_notification_sender(notification_sender);
     }
 
-    /// Get new **relay** notification listener
+    /// Get a new notification stream
     ///
     /// <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>
     #[inline]
-    pub fn notifications(&self) -> broadcast::Receiver<RelayNotification> {
-        self.inner.internal_notification_sender.subscribe()
+    pub fn notifications(&self) -> BoxedStream<RelayNotification> {
+        Box::pin(NotificationStream::new(
+            self.inner.internal_notification_sender.subscribe(),
+        ))
     }
 
     /// Connect to the relay
@@ -383,6 +387,7 @@ impl Relay {
         SyncEvents::new(self, filter)
     }
 
+    // TODO: remove this?
     /// Handle notifications
     pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
     where
@@ -390,7 +395,7 @@ impl Relay {
         Fut: Future<Output = Result<bool>>,
     {
         let mut notifications = self.notifications();
-        while let Ok(notification) = notifications.recv().await {
+        while let Some(notification) = notifications.next().await {
             let shutdown: bool = match &notification {
                 RelayNotification::RelayStatus { status } => status.is_permanently_disconnected(),
                 _ => false,
