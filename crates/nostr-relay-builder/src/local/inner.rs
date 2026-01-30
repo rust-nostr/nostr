@@ -223,7 +223,7 @@ impl InnerLocalRelay {
 
         // Create a notification future
         let fut = async {
-            while let Ok(notification) = notifications.recv().await {
+            while let Some(notification) = notifications.next().await {
                 // Notify about new events received by the sync
                 if let ClientNotification::Event { event, .. } = notification {
                     self.notify_event(*event);

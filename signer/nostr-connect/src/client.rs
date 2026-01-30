@@ -10,9 +10,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::time;
+use futures_core::stream::BoxStream;
 use nostr::nips::nip46::ResponseResult;
 use nostr_sdk::prelude::*;
-use tokio::sync::broadcast::Receiver;
 use tokio::sync::OnceCell;
 
 use crate::error::Error;
@@ -139,7 +139,7 @@ impl NostrConnect {
         Ok(remote_signer_public_key)
     }
 
-    async fn subscribe(&self) -> Result<Receiver<ClientNotification>, Error> {
+    async fn subscribe(&self) -> Result<BoxStream<ClientNotification>, Error> {
         let public_key: PublicKey = self.client_keys.public_key();
 
         let filter = Filter::new()
@@ -228,7 +228,7 @@ impl NostrConnect {
         self.client.send_event(&event).await?;
 
         time::timeout(Some(self.timeout), async {
-            while let Ok(notification) = notifications.recv().await {
+            while let Some(notification) = notifications.next().await {
                 if let ClientNotification::Event { event, .. } = notification {
                     if event.kind == Kind::NostrConnect {
                         let msg: String =
@@ -367,11 +367,11 @@ impl NostrConnect {
 
 async fn get_remote_signer_public_key(
     client_keys: &Keys,
-    mut notifications: Receiver<ClientNotification>,
+    mut notifications: BoxStream<'_, ClientNotification>,
     timeout: Duration,
 ) -> Result<PublicKey, Error> {
     time::timeout(Some(timeout), async {
-        while let Ok(notification) = notifications.recv().await {
+        while let Some(notification) = notifications.next().await {
             if let ClientNotification::Event { event, .. } = notification {
                 if event.kind == Kind::NostrConnect {
                     // Decrypt content

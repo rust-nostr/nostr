@@ -273,7 +273,7 @@ impl NostrWalletConnect {
     {
         let mut notifications = self.client.notifications();
 
-        while let Ok(notification) = notifications.recv().await {
+        while let Some(notification) = notifications.next().await {
             tracing::trace!("Received a client notification: {:?}", notification);
 
             match notification {

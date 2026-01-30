@@ -6,7 +6,6 @@
 
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
-use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -15,7 +14,7 @@ use futures::StreamExt;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
 use nostr_gossip::{GossipAllowedRelays, GossipListKind, GossipPublicKeyStatus, NostrGossip};
-use tokio::sync::{broadcast, Semaphore};
+use tokio::sync::{oneshot, Semaphore};
 
 mod api;
 mod builder;
@@ -35,6 +34,7 @@ use crate::pool::{RelayPool, RelayPoolBuilder};
 use crate::relay::{
     Relay, RelayCapabilities, RelayLimits, RelayOptions, ReqExitPolicy, SyncDirection, SyncOptions,
 };
+use crate::stream::{BoxedStream, NotificationStream};
 
 #[derive(Debug, Clone)]
 struct ClientConfig {
@@ -163,12 +163,36 @@ impl Client {
         self.pool.shutdown().await
     }
 
-    /// Get new notification listener
+    /// Get a new notification stream
+    ///
+    /// The stream terminates when the client shutdowns.
     ///
     /// <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>
     #[inline]
-    pub fn notifications(&self) -> broadcast::Receiver<ClientNotification> {
-        self.pool.notifications()
+    pub fn notifications(&self) -> BoxedStream<ClientNotification> {
+        if self.is_shutdown() {
+            return Box::pin(futures::stream::empty());
+        }
+
+        // Subscribe to notifications
+        let rx = self.pool.notifications();
+
+        // Create a oneshot channel
+        let (tx, rx_done) = oneshot::channel();
+        let mut tx: Option<oneshot::Sender<()>> = Some(tx);
+
+        Box::pin(
+            NotificationStream::new(rx)
+                .inspect(move |notification| {
+                    if let ClientNotification::Shutdown = &notification {
+                        // Take the sender and send the oneshot notification
+                        if let Some(tx) = tx.take() {
+                            let _ = tx.send(());
+                        }
+                    }
+                })
+                .take_until(rx_done),
+        )
     }
 
     /// Enable or disable automatic authenticate to relays
@@ -613,7 +637,7 @@ impl Client {
     /// println!("Failed relays: {:?}", output.failed);
     ///
     /// // Handle notifications
-    /// while let Ok(notification) = notifications.recv().await {
+    /// while let Some(notification) = notifications.next().await {
     ///     if let ClientNotification::Event { relay_url, subscription_id, event } = notification {
     ///         if output.id() == &subscription_id {
     ///             println!("Received an event from '{relay_url}' relay for the subscription '{subscription_id}': {}", event.as_json());
@@ -654,7 +678,7 @@ impl Client {
     /// println!("Failed relays: {:?}", output.failed);
     ///
     /// // Handle notifications
-    /// while let Ok(notification) = notifications.recv().await {
+    /// while let Some(notification) = notifications.next().await {
     ///     if let ClientNotification::Event { relay_url, subscription_id, event } = notification {
     ///         if output.id() == &subscription_id {
     ///             println!("Received an event from '{relay_url}' relay for the subscription '{subscription_id}': {}", event.as_json());
@@ -697,7 +721,7 @@ impl Client {
     /// println!("Failed relays: {:?}", output.failed);
     ///
     /// // Handle notifications
-    /// while let Ok(notification) = notifications.recv().await {
+    /// while let Some(notification) = notifications.next().await {
     ///     if let ClientNotification::Event { relay_url, subscription_id, event } = notification {
     ///         if output.id() == &subscription_id {
     ///             println!("Received an event from '{relay_url}' relay for the subscription '{subscription_id}': {}", event.as_json());
@@ -1199,27 +1223,6 @@ impl Client {
         let event: Event = self.sign_event_builder(builder).await?;
         self.send_event(&event).to(urls).await
     }
-
-    /// Handle notifications
-    ///
-    /// The closure function expects a `bool` as output: return `true` to exit from the notification loop.
-    pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
-    where
-        F: Fn(ClientNotification) -> Fut,
-        Fut: Future<Output = Result<bool>>,
-    {
-        let mut notifications = self.notifications();
-        while let Ok(notification) = notifications.recv().await {
-            let shutdown: bool = ClientNotification::Shutdown == notification;
-            let exit: bool = func(notification)
-                .await
-                .map_err(|e| Error::Handler(e.to_string()))?;
-            if exit || shutdown {
-                break;
-            }
-        }
-        Ok(())
-    }
 }
 
 // Gossip
@@ -1700,5 +1703,57 @@ mod tests {
 
         // When the client is dropped, all relays are shutdown
         assert_eq!(relay.status(), RelayStatus::Shutdown);
+    }
+
+    #[tokio::test]
+    async fn test_terminate_notification_stream_on_shutdown() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = mock.url().await;
+
+        let client: Client = Client::default();
+
+        client.add_relay(&url).and_connect().await.unwrap();
+
+        // Shutdown after some time
+        let c = client.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(3)).await;
+
+            c.shutdown().await;
+        });
+
+        assert!(!client.is_shutdown());
+
+        let fut = async {
+            let mut notifications = client.notifications();
+
+            let mut received = false;
+
+            // The stream must terminate after receiving the shutdown status
+            while let Some(n) = notifications.next().await {
+                if let ClientNotification::Shutdown = n {
+                    received = true;
+                }
+            }
+
+            // Make sure we received the shutdown status
+            assert!(received);
+        };
+        tokio::time::timeout(Duration::from_secs(5), fut)
+            .await
+            .unwrap();
+
+        assert!(client.is_shutdown());
+
+        // Try to get a new stream
+        let mut notifications = client.notifications();
+
+        let res = tokio::time::timeout(Duration::from_secs(1), notifications.next())
+            .await
+            .unwrap();
+
+        // Must return None, as it's empty
+        assert!(res.is_none());
     }
 }

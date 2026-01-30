@@ -45,6 +45,7 @@
 - Remove `Client::batch_msgs` and `Relay::batch_msgs` (https://github.com/rust-nostr/nostr/pull/1240)
 - Change `Client::relay` output to return `Result<Output<Relay>>`
 - Remove `ClientOptions` in favor of `ClientBuilder` (https://github.com/rust-nostr/nostr/pull/1241)
+- Remove `Client::handle_notifications` and `Relay_handle_notifications` (https://github.com/rust-nostr/nostr/pull/1245)
 
 ### Changed
 
@@ -61,6 +62,7 @@
 - Redesign `Client::unsubscribe` and `Relay::unsubscribe` APIs (https://github.com/rust-nostr/nostr/pull/1238)
 - Redesign `Client::unsubscribe_all` and `Relay::unsubscribe_all` APIs (https://github.com/rust-nostr/nostr/pull/1239)
 - Redesign `Client::send_msg` and `Relay::send_msg` APIs (https://github.com/rust-nostr/nostr/pull/1240)
+- Redesign `Client::notifications` and `Relay::notifications` APIs (https://github.com/rust-nostr/nostr/pull/1245)
 
 ### Added
 
