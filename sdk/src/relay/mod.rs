@@ -2,7 +2,6 @@
 
 use std::cmp;
 use std::collections::HashMap;
-use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -411,25 +410,6 @@ impl Relay {
     #[inline]
     pub fn sync(&self, filter: Filter) -> SyncEvents {
         SyncEvents::new(self, filter)
-    }
-
-    // TODO: remove this?
-    /// Handle notifications
-    pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
-    where
-        F: Fn(RelayNotification) -> Fut,
-        Fut: Future<Output = Result<bool>>,
-    {
-        let mut notifications = self.notifications();
-        while let Some(notification) = notifications.next().await {
-            let exit: bool = func(notification)
-                .await
-                .map_err(|e| Error::Handler(e.to_string()))?;
-            if exit {
-                break;
-            }
-        }
-        Ok(())
     }
 }
 

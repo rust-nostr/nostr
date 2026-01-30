@@ -143,6 +143,7 @@ mod tests {
     use std::time::Duration;
 
     use async_utility::time;
+    use futures::StreamExt;
     use nostr::{Event, EventBuilder, EventId, Keys, Kind};
     use nostr_relay_builder::prelude::*;
 
@@ -182,13 +183,7 @@ mod tests {
         relay.subscribe(filter).await.unwrap();
 
         // Keep up the test
-        time::timeout(
-            Some(Duration::from_secs(10)),
-            relay.handle_notifications(|_| async { Ok(false) }),
-        )
-        .await
-        .unwrap()
-        .unwrap();
+        time::sleep(Duration::from_secs(5)).await;
 
         assert_eq!(relay.status(), RelayStatus::Banned);
 
@@ -237,28 +232,37 @@ mod tests {
         let sub_id = relay2.subscribe(filter).await.unwrap();
 
         // Listen for notifications
-        let fut = relay2.handle_notifications(|notification| async {
-            if let RelayNotification::Event {
-                subscription_id,
-                event,
-            } = notification
-            {
-                if subscription_id == sub_id {
-                    if event.id == event_id {
-                        return Ok(true);
+        let fut = async {
+            let mut notifications = relay2.notifications();
+
+            let mut received: bool = false;
+
+            while let Some(notification) = notifications.next().await {
+                if let RelayNotification::Event {
+                    subscription_id,
+                    event,
+                } = notification
+                {
+                    if subscription_id == sub_id {
+                        if event.id == event_id {
+                            received = true;
+                            break;
+                        } else {
+                            panic!("Unexpected event");
+                        }
                     } else {
-                        panic!("Unexpected event");
+                        panic!("Unexpected subscription ID");
                     }
-                } else {
-                    panic!("Unexpected subscription ID");
                 }
             }
-            Ok(false)
-        });
+
+            if !received {
+                panic!("No event received");
+            }
+        };
 
         tokio::time::timeout(Duration::from_secs(5), fut)
             .await
-            .unwrap()
             .unwrap();
     }
 }

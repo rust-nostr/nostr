@@ -6,7 +6,6 @@
 
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
-use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -773,27 +772,6 @@ impl Client {
         U: Into<RelayUrlArg<'a>>,
     {
         self.send_event(event).to(urls).await
-    }
-
-    // TODO: remove this?
-    /// Handle notifications
-    ///
-    /// The closure function expects a `bool` as output: return `true` to exit from the notification loop.
-    pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
-    where
-        F: Fn(ClientNotification) -> Fut,
-        Fut: Future<Output = Result<bool>>,
-    {
-        let mut notifications = self.notifications();
-        while let Some(notification) = notifications.next().await {
-            let exit: bool = func(notification)
-                .await
-                .map_err(|e| Error::Handler(e.to_string()))?;
-            if exit {
-                break;
-            }
-        }
-        Ok(())
     }
 }
 

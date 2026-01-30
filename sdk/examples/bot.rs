@@ -34,34 +34,32 @@ async fn main() -> Result<()> {
 
     client.subscribe(subscription).await?;
 
-    client
-        .handle_notifications(|notification| async {
-            if let ClientNotification::Event { event, .. } = notification {
-                if event.kind == Kind::GiftWrap {
-                    match UnwrappedGift::from_gift_wrap(&keys, &event).await {
-                        Ok(UnwrappedGift { rumor, sender }) => {
-                            if rumor.kind == Kind::PrivateDirectMessage {
-                                let content: String = match rumor.content.as_str() {
-                                    "/hello" => String::from("Hello, World!"),
-                                    "/help" => help(),
-                                    _ => String::from(
-                                        "Invalid command, send /help to see all commands.",
-                                    ),
-                                };
+    let mut notifications = client.notifications();
 
-                                // Send private message
-                                let msg =
-                                    EventBuilder::private_msg(&keys, sender, content, []).await?;
-                                client.send_event(&msg).to_nip17().await?;
-                            }
+    while let Some(notification) = notifications.next().await {
+        if let ClientNotification::Event { event, .. } = notification {
+            if event.kind == Kind::GiftWrap {
+                match UnwrappedGift::from_gift_wrap(&keys, &event).await {
+                    Ok(UnwrappedGift { rumor, sender }) => {
+                        if rumor.kind == Kind::PrivateDirectMessage {
+                            let content: String = match rumor.content.as_str() {
+                                "/hello" => String::from("Hello, World!"),
+                                "/help" => help(),
+                                _ => {
+                                    String::from("Invalid command, send /help to see all commands.")
+                                }
+                            };
+
+                            // Send private message
+                            let msg = EventBuilder::private_msg(&keys, sender, content, []).await?;
+                            client.send_event(&msg).to_nip17().await?;
                         }
-                        Err(e) => tracing::error!("Impossible to decrypt direct message: {e}"),
                     }
+                    Err(e) => tracing::error!("Impossible to decrypt direct message: {e}"),
                 }
             }
-            Ok(false) // Set to true to exit from the loop
-        })
-        .await?;
+        }
+    }
 
     Ok(())
 }

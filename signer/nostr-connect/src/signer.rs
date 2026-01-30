@@ -166,184 +166,163 @@ impl NostrConnectRemoteSigner {
             self.send_connect_ack(public_key).await?;
         }
 
-        self.client
-            .handle_notifications(|notification| async {
-                if let ClientNotification::Event { event, .. } = notification {
-                    if event.kind == Kind::NostrConnect {
-                        match nip44::decrypt(
-                            self.keys.signer.secret_key(),
-                            &event.pubkey,
-                            &event.content,
-                        ) {
-                            Ok(msg) => {
-                                tracing::debug!("New Nostr Connect message received: {msg}");
+        let mut notifications = self.client.notifications();
 
-                                let msg: NostrConnectMessage = NostrConnectMessage::from_json(msg)?;
-                                let id: String = msg.id().to_string();
+        while let Some(notification) = notifications.next().await {
+            if let ClientNotification::Event { event, .. } = notification {
+                if event.kind == Kind::NostrConnect {
+                    match nip44::decrypt(
+                        self.keys.signer.secret_key(),
+                        &event.pubkey,
+                        &event.content,
+                    ) {
+                        Ok(msg) => {
+                            tracing::debug!("New Nostr Connect message received: {msg}");
 
-                                if let Ok(req) = msg.to_request() {
-                                    // Generate response
-                                    let response: NostrConnectResponse = if actions
-                                        .approve(&event.pubkey, &req)
-                                    {
-                                        match req {
-                                            NostrConnectRequest::Connect {
-                                                remote_signer_public_key,
-                                                secret,
-                                            } => {
-                                                if remote_signer_public_key
-                                                    == self.keys.signer.public_key
-                                                {
-                                                    if self.match_secret(secret) {
-                                                        NostrConnectResponse::with_result(
-                                                            ResponseResult::Ack,
-                                                        )
-                                                    } else {
-                                                        NostrConnectResponse::with_error(
-                                                            "Secret not match",
-                                                        )
-                                                    }
+                            let msg: NostrConnectMessage = NostrConnectMessage::from_json(msg)?;
+                            let id: String = msg.id().to_string();
+
+                            if let Ok(req) = msg.to_request() {
+                                // Generate response
+                                let response: NostrConnectResponse = if actions
+                                    .approve(&event.pubkey, &req)
+                                {
+                                    match req {
+                                        NostrConnectRequest::Connect {
+                                            remote_signer_public_key,
+                                            secret,
+                                        } => {
+                                            if remote_signer_public_key
+                                                == self.keys.signer.public_key
+                                            {
+                                                if self.match_secret(secret) {
+                                                    NostrConnectResponse::with_result(
+                                                        ResponseResult::Ack,
+                                                    )
                                                 } else {
                                                     NostrConnectResponse::with_error(
-                                                        "Remote signer public key not match",
+                                                        "Secret not match",
                                                     )
                                                 }
-                                            }
-                                            NostrConnectRequest::GetPublicKey => {
-                                                NostrConnectResponse::with_result(
-                                                    ResponseResult::GetPublicKey(
-                                                        self.keys.user.public_key(),
-                                                    ),
-                                                )
-                                            }
-                                            NostrConnectRequest::Nip04Encrypt {
-                                                public_key,
-                                                text,
-                                            } => {
-                                                match nip04::encrypt(
-                                                    self.keys.user.secret_key(),
-                                                    &public_key,
-                                                    text,
-                                                ) {
-                                                    Ok(ciphertext) => {
-                                                        NostrConnectResponse::with_result(
-                                                            ResponseResult::Nip04Encrypt {
-                                                                ciphertext,
-                                                            },
-                                                        )
-                                                    }
-                                                    Err(e) => NostrConnectResponse::with_error(
-                                                        e.to_string(),
-                                                    ),
-                                                }
-                                            }
-                                            NostrConnectRequest::Nip04Decrypt {
-                                                public_key,
-                                                ciphertext,
-                                            } => {
-                                                match nip04::decrypt(
-                                                    self.keys.user.secret_key(),
-                                                    &public_key,
-                                                    ciphertext,
-                                                ) {
-                                                    Ok(plaintext) => {
-                                                        NostrConnectResponse::with_result(
-                                                            ResponseResult::Nip04Decrypt {
-                                                                plaintext,
-                                                            },
-                                                        )
-                                                    }
-                                                    Err(e) => NostrConnectResponse::with_error(
-                                                        e.to_string(),
-                                                    ),
-                                                }
-                                            }
-                                            NostrConnectRequest::Nip44Encrypt {
-                                                public_key,
-                                                text,
-                                            } => {
-                                                match nip44::encrypt(
-                                                    self.keys.user.secret_key(),
-                                                    &public_key,
-                                                    text,
-                                                    nip44::Version::default(),
-                                                ) {
-                                                    Ok(ciphertext) => {
-                                                        NostrConnectResponse::with_result(
-                                                            ResponseResult::Nip44Encrypt {
-                                                                ciphertext,
-                                                            },
-                                                        )
-                                                    }
-                                                    Err(e) => NostrConnectResponse::with_error(
-                                                        e.to_string(),
-                                                    ),
-                                                }
-                                            }
-                                            NostrConnectRequest::Nip44Decrypt {
-                                                public_key,
-                                                ciphertext,
-                                            } => {
-                                                match nip44::decrypt(
-                                                    self.keys.user.secret_key(),
-                                                    &public_key,
-                                                    ciphertext,
-                                                ) {
-                                                    Ok(plaintext) => {
-                                                        NostrConnectResponse::with_result(
-                                                            ResponseResult::Nip44Decrypt {
-                                                                plaintext,
-                                                            },
-                                                        )
-                                                    }
-                                                    Err(e) => NostrConnectResponse::with_error(
-                                                        e.to_string(),
-                                                    ),
-                                                }
-                                            }
-                                            NostrConnectRequest::SignEvent(unsigned) => {
-                                                match unsigned.sign_with_keys(&self.keys.user) {
-                                                    Ok(event) => NostrConnectResponse::with_result(
-                                                        ResponseResult::SignEvent(Box::new(event)),
-                                                    ),
-                                                    Err(e) => NostrConnectResponse::with_error(
-                                                        e.to_string(),
-                                                    ),
-                                                }
-                                            }
-                                            NostrConnectRequest::Ping => {
-                                                NostrConnectResponse::with_result(
-                                                    ResponseResult::Pong,
+                                            } else {
+                                                NostrConnectResponse::with_error(
+                                                    "Remote signer public key not match",
                                                 )
                                             }
                                         }
-                                    } else {
-                                        NostrConnectResponse::with_error("Rejected")
-                                    };
+                                        NostrConnectRequest::GetPublicKey => {
+                                            NostrConnectResponse::with_result(
+                                                ResponseResult::GetPublicKey(
+                                                    self.keys.user.public_key(),
+                                                ),
+                                            )
+                                        }
+                                        NostrConnectRequest::Nip04Encrypt { public_key, text } => {
+                                            match nip04::encrypt(
+                                                self.keys.user.secret_key(),
+                                                &public_key,
+                                                text,
+                                            ) {
+                                                Ok(ciphertext) => {
+                                                    NostrConnectResponse::with_result(
+                                                        ResponseResult::Nip04Encrypt { ciphertext },
+                                                    )
+                                                }
+                                                Err(e) => {
+                                                    NostrConnectResponse::with_error(e.to_string())
+                                                }
+                                            }
+                                        }
+                                        NostrConnectRequest::Nip04Decrypt {
+                                            public_key,
+                                            ciphertext,
+                                        } => {
+                                            match nip04::decrypt(
+                                                self.keys.user.secret_key(),
+                                                &public_key,
+                                                ciphertext,
+                                            ) {
+                                                Ok(plaintext) => NostrConnectResponse::with_result(
+                                                    ResponseResult::Nip04Decrypt { plaintext },
+                                                ),
+                                                Err(e) => {
+                                                    NostrConnectResponse::with_error(e.to_string())
+                                                }
+                                            }
+                                        }
+                                        NostrConnectRequest::Nip44Encrypt { public_key, text } => {
+                                            match nip44::encrypt(
+                                                self.keys.user.secret_key(),
+                                                &public_key,
+                                                text,
+                                                nip44::Version::default(),
+                                            ) {
+                                                Ok(ciphertext) => {
+                                                    NostrConnectResponse::with_result(
+                                                        ResponseResult::Nip44Encrypt { ciphertext },
+                                                    )
+                                                }
+                                                Err(e) => {
+                                                    NostrConnectResponse::with_error(e.to_string())
+                                                }
+                                            }
+                                        }
+                                        NostrConnectRequest::Nip44Decrypt {
+                                            public_key,
+                                            ciphertext,
+                                        } => {
+                                            match nip44::decrypt(
+                                                self.keys.user.secret_key(),
+                                                &public_key,
+                                                ciphertext,
+                                            ) {
+                                                Ok(plaintext) => NostrConnectResponse::with_result(
+                                                    ResponseResult::Nip44Decrypt { plaintext },
+                                                ),
+                                                Err(e) => {
+                                                    NostrConnectResponse::with_error(e.to_string())
+                                                }
+                                            }
+                                        }
+                                        NostrConnectRequest::SignEvent(unsigned) => {
+                                            match unsigned.sign_with_keys(&self.keys.user) {
+                                                Ok(event) => NostrConnectResponse::with_result(
+                                                    ResponseResult::SignEvent(Box::new(event)),
+                                                ),
+                                                Err(e) => {
+                                                    NostrConnectResponse::with_error(e.to_string())
+                                                }
+                                            }
+                                        }
+                                        NostrConnectRequest::Ping => {
+                                            NostrConnectResponse::with_result(ResponseResult::Pong)
+                                        }
+                                    }
+                                } else {
+                                    NostrConnectResponse::with_error("Rejected")
+                                };
 
-                                    // Compose message
-                                    let msg: NostrConnectMessage =
-                                        NostrConnectMessage::response(id, response);
+                                // Compose message
+                                let msg: NostrConnectMessage =
+                                    NostrConnectMessage::response(id, response);
 
-                                    // Compose and publish event
-                                    let event = EventBuilder::nostr_connect(
-                                        &self.keys.signer,
-                                        event.pubkey,
-                                        msg,
-                                    )?
-                                    .sign_with_keys(&self.keys.signer)?;
-                                    self.client.send_event(&event).await?;
-                                }
+                                // Compose and publish event
+                                let event = EventBuilder::nostr_connect(
+                                    &self.keys.signer,
+                                    event.pubkey,
+                                    msg,
+                                )?
+                                .sign_with_keys(&self.keys.signer)?;
+                                self.client.send_event(&event).await?;
                             }
-                            Err(e) => {
-                                tracing::error!(error = %e, "Impossible to decrypt message.")
-                            }
+                        }
+                        Err(e) => {
+                            tracing::error!(error = %e, "Impossible to decrypt message.")
                         }
                     }
                 }
-                Ok(false) // Set to true to exit from the loop
-            })
-            .await?;
+            }
+        }
 
         Ok(())
     }

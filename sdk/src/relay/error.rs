@@ -103,8 +103,6 @@ pub enum Error {
     },
     /// Event expired
     EventExpired,
-    /// Notification Handler error
-    Handler(String),
     /// Max latency exceeded
     MaximumLatencyExceeded {
         /// Max
@@ -176,7 +174,6 @@ impl fmt::Display for Error {
                 "Received event with too many tags: tags={size}, max_tags={max_size}"
             ),
             Self::EventExpired => f.write_str("event expired"),
-            Self::Handler(e) => f.write_str(e),
             Self::MaximumLatencyExceeded { max, current } => write!(
                 f,
                 "Maximum latency exceeded: max={}ms, current={}ms",

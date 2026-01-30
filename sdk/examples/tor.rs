@@ -34,21 +34,19 @@ async fn main() -> Result<()> {
     let filter: Filter = Filter::new().pubkey(keys.public_key()).limit(0);
     client.subscribe(filter).await?;
 
-    // Handle subscription notifications with `handle_notifications` method
-    client
-        .handle_notifications(|notification| async {
-            if let ClientNotification::Event { event, .. } = notification {
-                if event.kind == Kind::GiftWrap {
-                    let UnwrappedGift { rumor, .. } =
-                        UnwrappedGift::from_gift_wrap(&keys, &event).await?;
-                    println!("Rumor: {}", rumor.as_json());
-                } else {
-                    println!("{:?}", event);
-                }
+    let mut notifications = client.notifications();
+
+    while let Some(notification) = notifications.next().await {
+        if let ClientNotification::Event { event, .. } = notification {
+            if event.kind == Kind::GiftWrap {
+                let UnwrappedGift { rumor, .. } =
+                    UnwrappedGift::from_gift_wrap(&keys, &event).await?;
+                println!("Rumor: {}", rumor.as_json());
+            } else {
+                println!("{:?}", event);
             }
-            Ok(false) // Set to true to exit from the loop
-        })
-        .await?;
+        }
+    }
 
     Ok(())
 }

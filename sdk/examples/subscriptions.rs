@@ -42,38 +42,34 @@ async fn main() -> Result<()> {
         .since(Timestamp::now());
     client.subscribe(filter).with_id(sub_id_1.clone()).await?;
 
-    // Handle subscription notifications with `handle_notifications` method
-    client
-        .handle_notifications(|notification| async {
-            if let ClientNotification::Event {
-                subscription_id,
-                event,
-                ..
-            } = notification
-            {
-                // Check subscription ID
-                if subscription_id == sub_id_1 {
-                    // Handle (ex. update specific UI)
-                }
+    let mut notifications = client.notifications();
 
-                // Check kind
-                if event.kind == Kind::EncryptedDirectMessage {
-                    if let Ok(msg) =
-                        nip04::decrypt(keys.secret_key(), &event.pubkey, &event.content)
-                    {
-                        println!("DM: {msg}");
-                    } else {
-                        tracing::error!("Impossible to decrypt direct message");
-                    }
-                } else if event.kind == Kind::TextNote {
-                    println!("TextNote: {:?}", event);
-                } else {
-                    println!("{:?}", event);
-                }
+    while let Some(notification) = notifications.next().await {
+        if let ClientNotification::Event {
+            subscription_id,
+            event,
+            ..
+        } = notification
+        {
+            // Check subscription ID
+            if subscription_id == sub_id_1 {
+                // Handle (ex. update specific UI)
             }
-            Ok(false) // Set to true to exit from the loop
-        })
-        .await?;
+
+            // Check kind
+            if event.kind == Kind::EncryptedDirectMessage {
+                if let Ok(msg) = nip04::decrypt(keys.secret_key(), &event.pubkey, &event.content) {
+                    println!("DM: {msg}");
+                } else {
+                    tracing::error!("Impossible to decrypt direct message");
+                }
+            } else if event.kind == Kind::TextNote {
+                println!("TextNote: {:?}", event);
+            } else {
+                println!("{:?}", event);
+            }
+        }
+    }
 
     Ok(())
 }
