@@ -10,7 +10,7 @@ use async_utility::time;
 use async_wsocket::ConnectionMode;
 use futures::StreamExt;
 use nostr_database::prelude::*;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, oneshot};
 
 mod api;
 mod builder;
@@ -197,12 +197,38 @@ impl Relay {
 
     /// Get a new notification stream
     ///
+    /// The stream terminates when the relay shutdowns or is banned.
+    ///
     /// <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>
     #[inline]
     pub fn notifications(&self) -> BoxedStream<RelayNotification> {
-        Box::pin(NotificationStream::new(
-            self.inner.internal_notification_sender.subscribe(),
-        ))
+        // If the relay is permanently unusable, return an empty stream
+        let status: RelayStatus = self.status();
+        if status.is_banned() || status.is_shutdown() {
+            return Box::pin(futures::stream::empty());
+        }
+
+        // Subscribe to notifications
+        let rx = self.inner.internal_notification_sender.subscribe();
+
+        // Create a oneshot channel
+        let (tx, rx_done) = oneshot::channel();
+        let mut tx: Option<oneshot::Sender<()>> = Some(tx);
+
+        Box::pin(
+            NotificationStream::new(rx)
+                .inspect(move |notification| {
+                    if let RelayNotification::RelayStatus { status } = &notification {
+                        if status.is_banned() || status.is_shutdown() {
+                            // Take the sender and send the oneshot notification
+                            if let Some(tx) = tx.take() {
+                                let _ = tx.send(());
+                            }
+                        }
+                    }
+                })
+                .take_until(rx_done),
+        )
     }
 
     /// Connect to the relay
@@ -396,14 +422,10 @@ impl Relay {
     {
         let mut notifications = self.notifications();
         while let Some(notification) = notifications.next().await {
-            let shutdown: bool = match &notification {
-                RelayNotification::RelayStatus { status } => status.is_permanently_disconnected(),
-                _ => false,
-            };
             let exit: bool = func(notification)
                 .await
                 .map_err(|e| Error::Handler(e.to_string()))?;
-            if exit || shutdown {
+            if exit {
                 break;
             }
         }
@@ -983,5 +1005,62 @@ mod tests {
 
         time::sleep(Duration::from_secs(5)).await;
         assert_eq!(relay.status(), RelayStatus::Connected);
+    }
+
+    #[tokio::test]
+    async fn test_terminate_notification_stream_on_shutdown() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = mock.url().await;
+
+        let relay = Relay::new(url);
+
+        // Connect
+        relay
+            .try_connect()
+            .timeout(Duration::from_secs(2))
+            .await
+            .unwrap();
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        // Shutdown after some time
+        let r = relay.clone();
+        tokio::spawn(async move {
+            time::sleep(Duration::from_secs(3)).await;
+
+            r.shutdown()
+        });
+
+        let fut = async {
+            let mut notifications = relay.notifications();
+
+            let mut received = false;
+
+            // The stream must terminate after receiving the shutdown status
+            while let Some(n) = notifications.next().await {
+                if let RelayNotification::RelayStatus {
+                    status: RelayStatus::Shutdown,
+                } = n
+                {
+                    received = true;
+                }
+            }
+
+            // Make sure we received the shutdown status
+            assert!(received);
+        };
+        tokio::time::timeout(Duration::from_secs(5), fut)
+            .await
+            .unwrap();
+
+        // Try to get a new stream
+        let mut notifications = relay.notifications();
+
+        let res = tokio::time::timeout(Duration::from_secs(1), notifications.next())
+            .await
+            .unwrap();
+
+        // Must return None, as it's empty
+        assert!(res.is_none());
     }
 }

@@ -128,11 +128,6 @@ impl RelayStatus {
     pub(crate) fn can_connect(&self) -> bool {
         matches!(self, Self::Initialized | Self::Terminated | Self::Sleeping)
     }
-
-    /// Check if relay can't reconnect again (status is `banned` or `shutdown`)
-    pub(super) fn is_permanently_disconnected(&self) -> bool {
-        matches!(self, Self::Banned | Self::Shutdown)
-    }
 }
 
 #[cfg(test)]
@@ -156,7 +151,6 @@ mod tests {
         assert!(!status.is_banned());
         assert!(!status.is_sleeping());
         assert!(!status.is_shutdown());
-        assert!(!status.is_permanently_disconnected());
         assert!(status.can_connect());
         let relay = AtomicRelayStatus::new(status);
         assert_eq!(relay.load(), RelayStatus::Initialized);
@@ -172,7 +166,6 @@ mod tests {
         assert!(!status.is_banned());
         assert!(!status.is_sleeping());
         assert!(!status.is_shutdown());
-        assert!(!status.is_permanently_disconnected());
         assert!(!status.can_connect());
         let relay = AtomicRelayStatus::new(status);
         assert_eq!(relay.load(), RelayStatus::Pending);
@@ -188,7 +181,6 @@ mod tests {
         assert!(!status.is_banned());
         assert!(!status.is_sleeping());
         assert!(!status.is_shutdown());
-        assert!(!status.is_permanently_disconnected());
         assert!(!status.can_connect());
         let relay = AtomicRelayStatus::new(status);
         assert_eq!(relay.load(), RelayStatus::Connecting);
@@ -204,7 +196,6 @@ mod tests {
         assert!(!status.is_banned());
         assert!(!status.is_sleeping());
         assert!(!status.is_shutdown());
-        assert!(!status.is_permanently_disconnected());
         assert!(!status.can_connect());
         let relay = AtomicRelayStatus::new(status);
         assert_eq!(relay.load(), RelayStatus::Connected);
@@ -220,7 +211,6 @@ mod tests {
         assert!(!status.is_banned());
         assert!(!status.is_sleeping());
         assert!(!status.is_shutdown());
-        assert!(!status.is_permanently_disconnected());
         assert!(!status.can_connect());
         let relay = AtomicRelayStatus::new(status);
         assert_eq!(relay.load(), RelayStatus::Disconnected);
@@ -236,7 +226,6 @@ mod tests {
         assert!(!status.is_banned());
         assert!(!status.is_sleeping());
         assert!(!status.is_shutdown());
-        assert!(!status.is_permanently_disconnected());
         assert!(status.can_connect());
         let relay = AtomicRelayStatus::new(status);
         assert_eq!(relay.load(), RelayStatus::Terminated);
@@ -252,7 +241,6 @@ mod tests {
         assert!(status.is_banned());
         assert!(!status.is_sleeping());
         assert!(!status.is_shutdown());
-        assert!(status.is_permanently_disconnected());
         assert!(!status.can_connect());
         let relay = AtomicRelayStatus::new(status);
         assert_eq!(relay.load(), RelayStatus::Banned);
@@ -268,7 +256,6 @@ mod tests {
         assert!(!status.is_banned());
         assert!(status.is_sleeping());
         assert!(!status.is_shutdown());
-        assert!(!status.is_permanently_disconnected());
         assert!(status.can_connect());
         let relay = AtomicRelayStatus::new(status);
         assert_eq!(relay.load(), RelayStatus::Sleeping);
@@ -284,7 +271,6 @@ mod tests {
         assert!(!status.is_banned());
         assert!(!status.is_sleeping());
         assert!(status.is_shutdown());
-        assert!(status.is_permanently_disconnected());
         assert!(!status.can_connect());
         let relay = AtomicRelayStatus::new(status);
         assert_eq!(relay.load(), RelayStatus::Shutdown);

@@ -15,7 +15,7 @@ use futures::StreamExt;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
 use nostr_gossip::{GossipAllowedRelays, GossipListKind, GossipPublicKeyStatus, NostrGossip};
-use tokio::sync::Semaphore;
+use tokio::sync::{oneshot, Semaphore};
 
 mod api;
 mod builder;
@@ -166,10 +166,34 @@ impl Client {
 
     /// Get a new notification stream
     ///
+    /// The stream terminates when the client shutdowns.
+    ///
     /// <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>
     #[inline]
     pub fn notifications(&self) -> BoxedStream<ClientNotification> {
-        Box::pin(NotificationStream::new(self.pool.notifications()))
+        if self.is_shutdown() {
+            return Box::pin(futures::stream::empty());
+        }
+
+        // Subscribe to notifications
+        let rx = self.pool.notifications();
+
+        // Create a oneshot channel
+        let (tx, rx_done) = oneshot::channel();
+        let mut tx: Option<oneshot::Sender<()>> = Some(tx);
+
+        Box::pin(
+            NotificationStream::new(rx)
+                .inspect(move |notification| {
+                    if let ClientNotification::Shutdown = &notification {
+                        // Take the sender and send the oneshot notification
+                        if let Some(tx) = tx.take() {
+                            let _ = tx.send(());
+                        }
+                    }
+                })
+                .take_until(rx_done),
+        )
     }
 
     /// Enable or disable automatic authenticate to relays
@@ -762,11 +786,10 @@ impl Client {
     {
         let mut notifications = self.notifications();
         while let Some(notification) = notifications.next().await {
-            let shutdown: bool = ClientNotification::Shutdown == notification;
             let exit: bool = func(notification)
                 .await
                 .map_err(|e| Error::Handler(e.to_string()))?;
-            if exit || shutdown {
+            if exit {
                 break;
             }
         }
@@ -1252,5 +1275,57 @@ mod tests {
 
         // When the client is dropped, all relays are shutdown
         assert_eq!(relay.status(), RelayStatus::Shutdown);
+    }
+
+    #[tokio::test]
+    async fn test_terminate_notification_stream_on_shutdown() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = mock.url().await;
+
+        let client: Client = Client::default();
+
+        client.add_relay(&url).and_connect().await.unwrap();
+
+        // Shutdown after some time
+        let c = client.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_secs(3)).await;
+
+            c.shutdown().await;
+        });
+
+        assert!(!client.is_shutdown());
+
+        let fut = async {
+            let mut notifications = client.notifications();
+
+            let mut received = false;
+
+            // The stream must terminate after receiving the shutdown status
+            while let Some(n) = notifications.next().await {
+                if let ClientNotification::Shutdown = n {
+                    received = true;
+                }
+            }
+
+            // Make sure we received the shutdown status
+            assert!(received);
+        };
+        tokio::time::timeout(Duration::from_secs(5), fut)
+            .await
+            .unwrap();
+
+        assert!(client.is_shutdown());
+
+        // Try to get a new stream
+        let mut notifications = client.notifications();
+
+        let res = tokio::time::timeout(Duration::from_secs(1), notifications.next())
+            .await
+            .unwrap();
+
+        // Must return None, as it's empty
+        assert!(res.is_none());
     }
 }
