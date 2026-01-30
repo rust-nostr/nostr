@@ -71,6 +71,15 @@ where
     }
 }
 
+impl<T> IntoNostrSigner for Arc<T>
+where
+    T: NostrSigner + 'static,
+{
+    fn into_nostr_signer(self) -> Arc<dyn NostrSigner> {
+        self
+    }
+}
+
 /// Signer backend
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SignerBackend<'a> {
