@@ -173,25 +173,6 @@ impl Client {
         self.pool.monitor()
     }
 
-    /// Reset the client
-    ///
-    /// This method resets the client to simplify the switch to another account.
-    ///
-    /// This method will:
-    /// * unsubscribe from all subscriptions
-    /// * disconnect and force remove all relays
-    /// * unset the signer
-    ///
-    /// This method will NOT:
-    /// * reset [`ClientOptions`]
-    /// * remove the database
-    /// * clear the gossip graph
-    pub async fn reset(&self) {
-        self.unsubscribe_all().await;
-        self.force_remove_all_relays().await;
-        self.unset_signer().await;
-    }
-
     /// Check if the client is shutting down
     #[inline]
     pub fn is_shutdown(&self) -> bool {

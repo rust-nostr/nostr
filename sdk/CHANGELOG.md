@@ -31,7 +31,8 @@
 - Remove `autoconnect` option from `ClientOptions`
 - Change `Client::stream_events*` output to include the `RelayUrl` and `Result`, enabling callers to identify which relay sent the event or if a specific relay encountered an error (https://github.com/rust-nostr/nostr/pull/1156)
 - Change `RelayPool::stream_events*` output to include the `RelayUrl` and `Result`, enabling callers to identify which relay sent the event or if a specific relay encountered an error (https://github.com/rust-nostr/nostr/pull/1156)
-- Replace `RelayServiceFlags` with `RelayCapabilities` (TBD)
+- Replace `RelayServiceFlags` with `RelayCapabilities`
+- Remove `Client::reset` method
 
 ### Added
 
