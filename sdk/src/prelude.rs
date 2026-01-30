@@ -19,5 +19,4 @@ pub use crate::client::{self, *};
 pub use crate::monitor::{self, *};
 pub use crate::policy::*;
 pub use crate::relay::{self, *};
-pub use crate::stream::{self, *};
 pub use crate::*;

@@ -15,5 +15,5 @@ mod pool;
 pub mod prelude;
 pub mod relay;
 mod shared;
-pub mod stream;
+mod stream;
 pub mod transport;
