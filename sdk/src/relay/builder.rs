@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use nostr::signer::{IntoNostrSigner, NostrSigner};
 use nostr::RelayUrl;
 use nostr_database::{IntoNostrDatabase, MemoryDatabase, NostrDatabase};
 
@@ -15,6 +16,8 @@ pub struct RelayBuilder {
     pub url: RelayUrl,
     /// WebSocket transport
     pub websocket_transport: Arc<dyn WebSocketTransport>,
+    /// Nostr Signer
+    pub signer: Option<Arc<dyn NostrSigner>>,
     /// Database
     pub database: Arc<dyn NostrDatabase>,
     /// Admission policy
@@ -32,6 +35,7 @@ impl RelayBuilder {
         Self {
             url,
             websocket_transport: Arc::new(DefaultWebsocketTransport),
+            signer: None,
             database: Arc::new(MemoryDatabase::default()),
             admit_policy: None,
             capabilities: RelayCapabilities::default(),
@@ -46,6 +50,16 @@ impl RelayBuilder {
         T: WebSocketTransport + 'static,
     {
         self.websocket_transport = Arc::new(transport);
+        self
+    }
+
+    /// Set a signer
+    #[inline]
+    pub fn signer<T>(mut self, signer: T) -> Self
+    where
+        T: IntoNostrSigner,
+    {
+        self.signer = Some(signer.into_nostr_signer());
         self
     }
 
