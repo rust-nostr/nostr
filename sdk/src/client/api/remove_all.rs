@@ -1,7 +1,6 @@
 use std::future::{Future, IntoFuture};
 use std::pin::Pin;
 
-use crate::blocking::Blocking;
 use crate::client::{Client, Error};
 
 /// Remove all relays from the pool.
@@ -42,7 +41,7 @@ impl<'client> IntoFuture for RemoveAllRelays<'client> {
     }
 }
 
-impl Blocking for RemoveAllRelays<'_> {}
+impl_blocking!(RemoveAllRelays<'_>);
 
 #[cfg(test)]
 mod tests {

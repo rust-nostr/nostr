@@ -7,7 +7,6 @@ use nostr_database::Events;
 
 use super::req_target::ReqTarget;
 use super::stream::StreamEvents;
-use crate::blocking::Blocking;
 use crate::client::{Client, Error};
 use crate::relay::ReqExitPolicy;
 
@@ -91,4 +90,4 @@ where
     }
 }
 
-impl<'client, 'url> Blocking for FetchEvents<'client, 'url> where 'url: 'client {}
+impl_blocking!(for<'client, 'url> FetchEvents<'client, 'url> where 'url: 'client);

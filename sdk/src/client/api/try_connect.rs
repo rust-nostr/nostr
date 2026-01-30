@@ -3,7 +3,6 @@ use std::pin::Pin;
 use std::time::Duration;
 
 use super::output::Output;
-use crate::blocking::Blocking;
 use crate::client::Client;
 
 /// Try to connect relays
@@ -45,4 +44,4 @@ impl<'client> IntoFuture for TryConnect<'client> {
     }
 }
 
-impl Blocking for TryConnect<'_> {}
+impl_blocking!(TryConnect<'_>);

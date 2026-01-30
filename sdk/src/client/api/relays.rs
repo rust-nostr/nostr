@@ -4,7 +4,6 @@ use std::pin::Pin;
 
 use nostr::RelayUrl;
 
-use crate::blocking::Blocking;
 use crate::client::Client;
 use crate::relay::{Relay, RelayCapabilities};
 
@@ -66,4 +65,4 @@ impl<'client> IntoFuture for GetRelays<'client> {
     }
 }
 
-impl Blocking for GetRelays<'_> {}
+impl_blocking!(GetRelays<'_>);

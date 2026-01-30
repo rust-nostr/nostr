@@ -3,7 +3,6 @@ use std::pin::Pin;
 
 use nostr::SubscriptionId;
 
-use crate::blocking::Blocking;
 use crate::client::{Client, Error, Output};
 
 /// Unsubscribe from a REQ
@@ -39,4 +38,4 @@ where
     }
 }
 
-impl<'client, 'id> Blocking for Unsubscribe<'client, 'id> where 'id: 'client {}
+impl_blocking!(for<'client, 'id> Unsubscribe<'client, 'id> where 'id: 'client);

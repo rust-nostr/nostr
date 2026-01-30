@@ -8,7 +8,6 @@ use nostr::message::MachineReadablePrefix;
 use nostr::{ClientMessage, Event, EventId};
 use tokio::sync::broadcast;
 
-use crate::blocking::Blocking;
 use crate::relay::{Error, Relay, RelayNotification};
 
 /// Send event to relay
@@ -141,7 +140,7 @@ where
     }
 }
 
-impl<'relay, 'event> Blocking for SendEvent<'relay, 'event> where 'event: 'relay {}
+impl_blocking!(for<'relay, 'event> SendEvent<'relay, 'event> where 'event: 'relay);
 
 #[cfg(test)]
 mod tests {

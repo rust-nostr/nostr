@@ -7,7 +7,6 @@ use nostr::{Filter, RelayUrl, SubscriptionId};
 use super::output::Output;
 use super::req_target::ReqTarget;
 use super::util::build_targets;
-use crate::blocking::Blocking;
 use crate::client::{Client, Error};
 use crate::relay::SubscribeAutoCloseOptions;
 
@@ -70,4 +69,4 @@ where
     }
 }
 
-impl<'client, 'url> Blocking for Subscribe<'client, 'url> where 'url: 'client {}
+impl_blocking!(for<'client, 'url> Subscribe<'client, 'url> where 'url: 'client);

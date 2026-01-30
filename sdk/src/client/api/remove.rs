@@ -4,7 +4,6 @@ use std::pin::Pin;
 
 use nostr::types::url::{RelayUrl, RelayUrlArg};
 
-use crate::blocking::Blocking;
 use crate::client::{Client, Error};
 
 /// Remove a relay from the pool.
@@ -52,7 +51,7 @@ where
     }
 }
 
-impl<'client, 'url> Blocking for RemoveRelay<'client, 'url> where 'url: 'client {}
+impl_blocking!(for<'client, 'url> RemoveRelay<'client, 'url> where 'url: 'client);
 
 #[cfg(test)]
 mod tests {

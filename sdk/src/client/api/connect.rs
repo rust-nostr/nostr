@@ -2,7 +2,6 @@ use std::future::{Future, IntoFuture};
 use std::pin::Pin;
 use std::time::Duration;
 
-use crate::blocking::Blocking;
 use crate::client::Client;
 
 /// Connect relays
@@ -46,4 +45,4 @@ impl<'client> IntoFuture for Connect<'client> {
     }
 }
 
-impl Blocking for Connect<'_> {}
+impl_blocking!(Connect<'_>);

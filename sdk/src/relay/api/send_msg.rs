@@ -4,7 +4,6 @@ use std::time::Duration;
 
 use nostr::ClientMessage;
 
-use crate::blocking::Blocking;
 use crate::relay::{Error, Relay};
 
 /// Send the client message
@@ -58,4 +57,4 @@ where
     }
 }
 
-impl<'relay, 'msg> Blocking for SendMessage<'relay, 'msg> where 'msg: 'relay {}
+impl_blocking!(for<'relay, 'msg> SendMessage<'relay, 'msg> where 'msg: 'relay);

@@ -6,7 +6,6 @@ use futures::StreamExt;
 use nostr::{Event, Filter};
 use nostr_database::Events;
 
-use crate::blocking::Blocking;
 use crate::relay::{Error, Relay, ReqExitPolicy};
 
 /// Fetch events
@@ -94,7 +93,7 @@ impl<'relay> IntoFuture for FetchEvents<'relay> {
     }
 }
 
-impl Blocking for FetchEvents<'_> {}
+impl_blocking!(FetchEvents<'_>);
 
 #[cfg(test)]
 mod tests {

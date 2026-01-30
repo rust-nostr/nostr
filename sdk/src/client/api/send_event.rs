@@ -8,7 +8,6 @@ use nostr::{Event, EventId, Kind, RelayUrl, RelayUrlArg};
 use nostr_gossip::{BestRelaySelection, GossipListKind};
 
 use super::output::Output;
-use crate::blocking::Blocking;
 use crate::client::gossip::GossipWrapper;
 use crate::client::{Client, Error};
 use crate::relay::RelayCapabilities;
@@ -391,12 +390,7 @@ where
     }
 }
 
-impl<'client, 'event, 'url> Blocking for SendEvent<'client, 'event, 'url>
-where
-    'event: 'client,
-    'url: 'client,
-{
-}
+impl_blocking!(for<'client, 'event, 'url> SendEvent<'client, 'event, 'url> where 'event: 'client, 'url: 'client);
 
 #[cfg(test)]
 mod tests {

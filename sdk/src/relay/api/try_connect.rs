@@ -2,7 +2,6 @@ use std::future::{Future, IntoFuture};
 use std::pin::Pin;
 use std::time::Duration;
 
-use crate::blocking::Blocking;
 use crate::policy::AdmitStatus;
 use crate::relay::{Error, Relay, RelayStatus};
 use crate::transport::websocket::{WebSocketSink, WebSocketStream};
@@ -80,7 +79,7 @@ impl<'relay> IntoFuture for TryConnect<'relay> {
     }
 }
 
-impl Blocking for TryConnect<'_> {}
+impl_blocking!(TryConnect<'_>);
 
 #[cfg(test)]
 mod tests {

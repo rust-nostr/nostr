@@ -10,7 +10,6 @@ use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use nostr::{ClientMessage, EventId, Filter, RelayMessage, SubscriptionId, Timestamp};
 use tokio::sync::broadcast;
 
-use crate::blocking::Blocking;
 use crate::prelude::RelayNotification;
 use crate::relay::constants::{
     NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP,
@@ -617,7 +616,7 @@ impl<'relay> IntoFuture for SyncEvents<'relay> {
     }
 }
 
-impl Blocking for SyncEvents<'_> {}
+impl_blocking!(SyncEvents<'_>);
 
 #[cfg(test)]
 mod tests {

@@ -6,7 +6,6 @@ use std::time::Duration;
 use async_wsocket::ConnectionMode;
 use nostr::types::url::{RelayUrl, RelayUrlArg};
 
-use crate::blocking::Blocking;
 use crate::client::{Client, Error};
 use crate::relay::{RelayCapabilities, RelayLimits, RelayOptions};
 
@@ -161,7 +160,7 @@ where
     }
 }
 
-impl<'client, 'url> Blocking for AddRelay<'client, 'url> where 'url: 'client {}
+impl_blocking!(for<'client, 'url> AddRelay<'client, 'url> where 'url: 'client);
 
 #[cfg(test)]
 mod tests {

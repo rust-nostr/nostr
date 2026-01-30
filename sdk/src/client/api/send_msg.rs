@@ -6,7 +6,6 @@ use std::time::Duration;
 use nostr::{ClientMessage, RelayUrl, RelayUrlArg};
 
 use super::output::Output;
-use crate::blocking::Blocking;
 use crate::client::{Client, Error};
 use crate::relay::RelayCapabilities;
 
@@ -110,12 +109,7 @@ where
     }
 }
 
-impl<'client, 'msg, 'url> Blocking for SendMessage<'client, 'msg, 'url>
-where
-    'msg: 'client,
-    'url: 'client,
-{
-}
+impl_blocking!(for<'client, 'msg, 'url> SendMessage<'client, 'msg, 'url> where 'msg: 'client, 'url: 'client);
 
 #[cfg(test)]
 mod tests {

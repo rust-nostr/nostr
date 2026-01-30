@@ -1,7 +1,6 @@
 use std::future::{Future, IntoFuture};
 use std::pin::Pin;
 
-use crate::blocking::Blocking;
 use crate::client::{Client, Error, Output};
 
 /// Unsubscribe from all REQs
@@ -33,4 +32,4 @@ impl<'client> IntoFuture for UnsubscribeAll<'client> {
     }
 }
 
-impl Blocking for UnsubscribeAll<'_> {}
+impl_blocking!(UnsubscribeAll<'_>);

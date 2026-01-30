@@ -5,7 +5,6 @@ use std::pin::Pin;
 use nostr::{ClientMessage, Filter, SubscriptionId};
 use tokio::sync::mpsc;
 
-use crate::blocking::Blocking;
 use crate::relay::{Error, Relay, SubscribeAutoCloseOptions, SubscriptionActivity};
 
 /// Subscribe to events
@@ -139,7 +138,7 @@ impl<'relay> IntoFuture for Subscribe<'relay> {
     }
 }
 
-impl Blocking for Subscribe<'_> {}
+impl_blocking!(Subscribe<'_>);
 
 #[cfg(test)]
 mod tests {
