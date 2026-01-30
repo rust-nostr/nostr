@@ -40,22 +40,6 @@ impl<'relay> Subscribe<'relay> {
         self.auto_close = Some(opts);
         self
     }
-
-    async fn exec(self) -> Result<SubscriptionId, Error> {
-        // Get or generate subscription ID
-        let id: SubscriptionId = self.id.unwrap_or_else(SubscriptionId::generate);
-
-        // Check if the auto-close condition is set
-        match self.auto_close {
-            Some(opts) => {
-                subscribe_auto_closing(self.relay, id.clone(), self.filters, opts, None).await?
-            }
-            None => subscribe_long_lived(self.relay, id.clone(), self.filters).await?,
-        }
-
-        // Return subscription ID
-        Ok(id)
-    }
 }
 
 pub(super) async fn subscribe_auto_closing(
@@ -134,7 +118,21 @@ impl<'relay> IntoFuture for Subscribe<'relay> {
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'relay>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            // Get or generate subscription ID
+            let id: SubscriptionId = self.id.unwrap_or_else(SubscriptionId::generate);
+
+            // Check if the auto-close condition is set
+            match self.auto_close {
+                Some(opts) => {
+                    subscribe_auto_closing(self.relay, id.clone(), self.filters, opts, None).await?
+                }
+                None => subscribe_long_lived(self.relay, id.clone(), self.filters).await?,
+            }
+
+            // Return subscription ID
+            Ok(id)
+        })
     }
 }
 

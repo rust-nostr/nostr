@@ -44,38 +44,6 @@ impl<'client, 'url> FetchEvents<'client, 'url> {
         self.policy = policy;
         self
     }
-
-    async fn exec(self) -> Result<Events, Error> {
-        // Stream events
-        let mut stream: StreamEvents<'client, 'url> =
-            self.client.stream_events(self.target).policy(self.policy);
-
-        // Set timeout
-        if let Some(timeout) = self.timeout {
-            stream = stream.timeout(timeout);
-        }
-
-        // Execute stream
-        let mut stream = stream.await?;
-
-        let mut events: Events = Events::default();
-
-        // Collect events
-        while let Some((url, result)) = stream.next().await {
-            // NOTE: not propagate the error here! A single error by any of the relays would stop the entire fetching process.
-            match result {
-                Ok(event) => {
-                    // To find out more about why the `force_insert` was used, search for EVENTS_FORCE_INSERT in the code.
-                    events.force_insert(event);
-                }
-                Err(e) => {
-                    tracing::error!(url = %url, error = %e, "Failed to handle streamed event");
-                }
-            }
-        }
-
-        Ok(events)
-    }
 }
 
 impl<'client, 'url> IntoFuture for FetchEvents<'client, 'url>
@@ -86,7 +54,37 @@ where
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            // Stream events
+            let mut stream: StreamEvents<'client, 'url> =
+                self.client.stream_events(self.target).policy(self.policy);
+
+            // Set timeout
+            if let Some(timeout) = self.timeout {
+                stream = stream.timeout(timeout);
+            }
+
+            // Execute stream
+            let mut stream = stream.await?;
+
+            let mut events: Events = Events::default();
+
+            // Collect events
+            while let Some((url, result)) = stream.next().await {
+                // NOTE: not propagate the error here! A single error by any of the relays would stop the entire fetching process.
+                match result {
+                    Ok(event) => {
+                        // To find out more about why the `force_insert` was used, search for EVENTS_FORCE_INSERT in the code.
+                        events.force_insert(event);
+                    }
+                    Err(e) => {
+                        tracing::error!(url = %url, error = %e, "Failed to handle streamed event");
+                    }
+                }
+            }
+
+            Ok(events)
+        })
     }
 }
 

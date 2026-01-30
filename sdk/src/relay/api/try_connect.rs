@@ -28,46 +28,6 @@ impl<'relay> TryConnect<'relay> {
         self.timeout = timeout;
         self
     }
-
-    async fn exec(self) -> Result<(), Error> {
-        let status: RelayStatus = self.relay.status();
-
-        if status.is_shutdown() {
-            return Err(Error::Shutdown);
-        }
-
-        if status.is_banned() {
-            return Err(Error::Banned);
-        }
-
-        // Check if relay can't connect
-        if !status.can_connect() {
-            return Ok(());
-        }
-
-        // Check connection policy
-        if let AdmitStatus::Rejected { reason } = self.relay.inner.check_connection_policy().await?
-        {
-            // Set status to "terminated"
-            self.relay.inner.set_status(RelayStatus::Terminated, false);
-
-            // Return error
-            return Err(Error::ConnectionRejected { reason });
-        }
-
-        // Try to connect
-        // This will set the status to "terminated" if the connection fails
-        let stream: (WebSocketSink, WebSocketStream) = self
-            .relay
-            .inner
-            ._try_connect(self.timeout, RelayStatus::Terminated)
-            .await?;
-
-        // Spawn connection task
-        self.relay.inner.spawn_connection_task(Some(stream));
-
-        Ok(())
-    }
 }
 
 impl<'relay> IntoFuture for TryConnect<'relay> {
@@ -75,7 +35,46 @@ impl<'relay> IntoFuture for TryConnect<'relay> {
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'relay>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            let status: RelayStatus = self.relay.status();
+
+            if status.is_shutdown() {
+                return Err(Error::Shutdown);
+            }
+
+            if status.is_banned() {
+                return Err(Error::Banned);
+            }
+
+            // Check if relay can't connect
+            if !status.can_connect() {
+                return Ok(());
+            }
+
+            // Check connection policy
+            if let AdmitStatus::Rejected { reason } =
+                self.relay.inner.check_connection_policy().await?
+            {
+                // Set status to "terminated"
+                self.relay.inner.set_status(RelayStatus::Terminated, false);
+
+                // Return error
+                return Err(Error::ConnectionRejected { reason });
+            }
+
+            // Try to connect
+            // This will set the status to "terminated" if the connection fails
+            let stream: (WebSocketSink, WebSocketStream) = self
+                .relay
+                .inner
+                ._try_connect(self.timeout, RelayStatus::Terminated)
+                .await?;
+
+            // Spawn connection task
+            self.relay.inner.spawn_connection_task(Some(stream));
+
+            Ok(())
+        })
     }
 }
 

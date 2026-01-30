@@ -67,33 +67,6 @@ impl<'client, 'msg, 'url> SendMessage<'client, 'msg, 'url> {
         self.wait_until_sent = Some(timeout);
         self
     }
-
-    async fn exec(self) -> Result<Output<()>, Error> {
-        let urls: HashSet<RelayUrl> = match self.policy {
-            Some(OverwritePolicy::Broadcast) | None => {
-                self.client
-                    .pool
-                    .relay_urls_with_any_cap(RelayCapabilities::READ | RelayCapabilities::WRITE)
-                    .await
-            }
-            Some(OverwritePolicy::To(list)) => {
-                let mut urls: HashSet<RelayUrl> = HashSet::with_capacity(list.len());
-
-                for url in list {
-                    let url: RelayUrl = url.try_into_relay_url()?.into_owned();
-                    urls.insert(url);
-                }
-
-                urls
-            }
-        };
-
-        Ok(self
-            .client
-            .pool
-            .send_msg(urls, self.msg, self.wait_until_sent)
-            .await?)
-    }
 }
 
 impl<'client, 'msg, 'url> IntoFuture for SendMessage<'client, 'msg, 'url>
@@ -105,7 +78,32 @@ where
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            let urls: HashSet<RelayUrl> = match self.policy {
+                Some(OverwritePolicy::Broadcast) | None => {
+                    self.client
+                        .pool
+                        .relay_urls_with_any_cap(RelayCapabilities::READ | RelayCapabilities::WRITE)
+                        .await
+                }
+                Some(OverwritePolicy::To(list)) => {
+                    let mut urls: HashSet<RelayUrl> = HashSet::with_capacity(list.len());
+
+                    for url in list {
+                        let url: RelayUrl = url.try_into_relay_url()?.into_owned();
+                        urls.insert(url);
+                    }
+
+                    urls
+                }
+            };
+
+            Ok(self
+                .client
+                .pool
+                .send_msg(urls, self.msg, self.wait_until_sent)
+                .await?)
+        })
     }
 }
 

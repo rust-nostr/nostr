@@ -43,18 +43,6 @@ impl<'client, 'url> Subscribe<'client, 'url> {
         self.auto_close = Some(opts);
         self
     }
-
-    async fn exec(self) -> Result<Output<SubscriptionId>, Error> {
-        // Build targets
-        let targets: HashMap<RelayUrl, Vec<Filter>> =
-            build_targets(self.client, self.target).await?;
-
-        Ok(self
-            .client
-            .pool
-            .subscribe(targets, self.id, self.auto_close)
-            .await?)
-    }
 }
 
 impl<'client, 'url> IntoFuture for Subscribe<'client, 'url>
@@ -65,7 +53,17 @@ where
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            // Build targets
+            let targets: HashMap<RelayUrl, Vec<Filter>> =
+                build_targets(self.client, self.target).await?;
+
+            Ok(self
+                .client
+                .pool
+                .subscribe(targets, self.id, self.auto_close)
+                .await?)
+        })
     }
 }
 

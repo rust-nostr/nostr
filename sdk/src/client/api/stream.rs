@@ -48,19 +48,6 @@ impl<'client, 'url> StreamEvents<'client, 'url> {
         self.policy = policy;
         self
     }
-
-    async fn exec(self) -> Result<EventStream, Error> {
-        // Build targets
-        let targets: HashMap<RelayUrl, Vec<Filter>> =
-            build_targets(self.client, self.target).await?;
-
-        // Stream
-        Ok(self
-            .client
-            .pool
-            .stream_events(targets, self.timeout, self.policy)
-            .await?)
-    }
 }
 
 impl<'client, 'url> IntoFuture for StreamEvents<'client, 'url>
@@ -71,6 +58,17 @@ where
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            // Build targets
+            let targets: HashMap<RelayUrl, Vec<Filter>> =
+                build_targets(self.client, self.target).await?;
+
+            // Stream
+            Ok(self
+                .client
+                .pool
+                .stream_events(targets, self.timeout, self.policy)
+                .await?)
+        })
     }
 }

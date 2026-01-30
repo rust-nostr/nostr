@@ -29,14 +29,6 @@ impl<'client, 'url> RemoveRelay<'client, 'url> {
         self.force = true;
         self
     }
-
-    async fn exec(self) -> Result<(), Error> {
-        // Convert into relay URL
-        let url: Cow<RelayUrl> = self.url.try_into_relay_url()?;
-
-        // Remove the relay from the pool
-        Ok(self.client.pool.remove_relay(url, self.force).await?)
-    }
 }
 
 impl<'client, 'url> IntoFuture for RemoveRelay<'client, 'url>
@@ -47,7 +39,13 @@ where
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            // Convert into relay URL
+            let url: Cow<RelayUrl> = self.url.try_into_relay_url()?;
+
+            // Remove the relay from the pool
+            Ok(self.client.pool.remove_relay(url, self.force).await?)
+        })
     }
 }
 

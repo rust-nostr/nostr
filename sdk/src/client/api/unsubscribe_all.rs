@@ -14,13 +14,6 @@ impl<'client> UnsubscribeAll<'client> {
     pub(crate) fn new(client: &'client Client) -> Self {
         Self { client }
     }
-
-    async fn exec(self) -> Result<Output<()>, Error> {
-        // Unsubscribe
-        let output: Output<()> = self.client.pool.unsubscribe_all().await;
-
-        Ok(output)
-    }
 }
 
 impl<'client> IntoFuture for UnsubscribeAll<'client> {
@@ -28,7 +21,12 @@ impl<'client> IntoFuture for UnsubscribeAll<'client> {
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            // Unsubscribe
+            let output: Output<()> = self.client.pool.unsubscribe_all().await;
+
+            Ok(output)
+        })
     }
 }
 

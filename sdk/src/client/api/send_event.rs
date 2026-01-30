@@ -150,96 +150,6 @@ impl<'client, 'event, 'url> SendEvent<'client, 'event, 'url> {
         self.wait_for_authentication_timeout = timeout;
         self
     }
-
-    async fn exec(self) -> Result<Output<EventId>, Error> {
-        // Save event into database
-        if self.save_into_database {
-            self.client.database().save_event(self.event).await?;
-        }
-
-        // Process event for gossip, independently of the policy
-        if let Some(gossip) = &self.client.gossip {
-            gossip.process(self.event, None).await?;
-        }
-
-        match (self.policy, &self.client.gossip) {
-            // No overwrite policy or send to NIP-65 and gossip available: send to NIP-65 relays
-            (None | Some(OverwritePolicy::ToNip65), Some(gossip)) => {
-                gossip_send_event(
-                    self.client,
-                    gossip,
-                    self.event,
-                    false,
-                    self.wait_for_ok_timeout,
-                    self.wait_for_authentication_timeout,
-                )
-                .await
-            }
-            // Send to NIP-17 and gossip available: send to NIP-17 relays
-            (Some(OverwritePolicy::ToNip17), Some(gossip)) => {
-                gossip_send_event(
-                    self.client,
-                    gossip,
-                    self.event,
-                    true,
-                    self.wait_for_ok_timeout,
-                    self.wait_for_authentication_timeout,
-                )
-                .await
-            }
-            // Send to gossip, but gossip is not available: error
-            (Some(OverwritePolicy::ToNip17 | OverwritePolicy::ToNip65), None) => {
-                Err(Error::GossipNotConfigured)
-            }
-            // Send to specific relays
-            (Some(OverwritePolicy::To(list)), _) => {
-                let mut urls: HashSet<RelayUrl> = HashSet::with_capacity(list.len());
-
-                for url in list {
-                    urls.insert(url.try_into_relay_url()?.into_owned());
-                }
-
-                Ok(self
-                    .client
-                    .pool
-                    .send_event(
-                        urls,
-                        self.event,
-                        self.wait_for_ok_timeout,
-                        self.wait_for_authentication_timeout,
-                    )
-                    .await?)
-            }
-            // Send to all WRITE relays
-            (Some(OverwritePolicy::Broadcast), _) => {
-                let urls: HashSet<RelayUrl> = self.client.pool.write_relay_urls().await;
-                Ok(self
-                    .client
-                    .pool
-                    .send_event(
-                        urls,
-                        self.event,
-                        self.wait_for_ok_timeout,
-                        self.wait_for_authentication_timeout,
-                    )
-                    .await?)
-            }
-            // No overwrite policy and no gossip available: send to all WRITE relays
-            (None, None) => {
-                let urls: HashSet<RelayUrl> = self.client.pool.write_relay_urls().await;
-                Ok(self
-                    .client
-                    .pool
-                    .send_event(
-                        urls,
-                        self.event,
-                        self.wait_for_ok_timeout,
-                        self.wait_for_authentication_timeout,
-                    )
-                    .await?)
-            }
-        }
-    }
 }
 
 async fn gossip_send_event(
@@ -386,7 +296,95 @@ where
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            // Save event into database
+            if self.save_into_database {
+                self.client.database().save_event(self.event).await?;
+            }
+
+            // Process event for gossip, independently of the policy
+            if let Some(gossip) = &self.client.gossip {
+                gossip.process(self.event, None).await?;
+            }
+
+            match (self.policy, &self.client.gossip) {
+                // No overwrite policy or send to NIP-65 and gossip available: send to NIP-65 relays
+                (None | Some(OverwritePolicy::ToNip65), Some(gossip)) => {
+                    gossip_send_event(
+                        self.client,
+                        gossip,
+                        self.event,
+                        false,
+                        self.wait_for_ok_timeout,
+                        self.wait_for_authentication_timeout,
+                    )
+                    .await
+                }
+                // Send to NIP-17 and gossip available: send to NIP-17 relays
+                (Some(OverwritePolicy::ToNip17), Some(gossip)) => {
+                    gossip_send_event(
+                        self.client,
+                        gossip,
+                        self.event,
+                        true,
+                        self.wait_for_ok_timeout,
+                        self.wait_for_authentication_timeout,
+                    )
+                    .await
+                }
+                // Send to gossip, but gossip is not available: error
+                (Some(OverwritePolicy::ToNip17 | OverwritePolicy::ToNip65), None) => {
+                    Err(Error::GossipNotConfigured)
+                }
+                // Send to specific relays
+                (Some(OverwritePolicy::To(list)), _) => {
+                    let mut urls: HashSet<RelayUrl> = HashSet::with_capacity(list.len());
+
+                    for url in list {
+                        urls.insert(url.try_into_relay_url()?.into_owned());
+                    }
+
+                    Ok(self
+                        .client
+                        .pool
+                        .send_event(
+                            urls,
+                            self.event,
+                            self.wait_for_ok_timeout,
+                            self.wait_for_authentication_timeout,
+                        )
+                        .await?)
+                }
+                // Send to all WRITE relays
+                (Some(OverwritePolicy::Broadcast), _) => {
+                    let urls: HashSet<RelayUrl> = self.client.pool.write_relay_urls().await;
+                    Ok(self
+                        .client
+                        .pool
+                        .send_event(
+                            urls,
+                            self.event,
+                            self.wait_for_ok_timeout,
+                            self.wait_for_authentication_timeout,
+                        )
+                        .await?)
+                }
+                // No overwrite policy and no gossip available: send to all WRITE relays
+                (None, None) => {
+                    let urls: HashSet<RelayUrl> = self.client.pool.write_relay_urls().await;
+                    Ok(self
+                        .client
+                        .pool
+                        .send_event(
+                            urls,
+                            self.event,
+                            self.wait_for_ok_timeout,
+                            self.wait_for_authentication_timeout,
+                        )
+                        .await?)
+                }
+            }
+        })
     }
 }
 

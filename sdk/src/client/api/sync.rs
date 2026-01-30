@@ -97,48 +97,6 @@ impl<'client, 'url> SyncEvents<'client, 'url> {
         self.opts = opts;
         self
     }
-
-    async fn exec(self) -> Result<Output<SyncSummary>, Error> {
-        // Build targets
-        let targets: HashMap<RelayUrl, (Filter, Vec<(EventId, Timestamp)>)> =
-            match (&self.client.gossip, self.with.is_empty()) {
-                // Gossip is available, and there are no specified relays: use gossip
-                (Some(gossip), true) => {
-                    // Break down filter
-                    let filters: HashMap<RelayUrl, Filter> =
-                        self.client.break_down_filter(gossip, self.filter).await?;
-
-                    // Make targets
-                    make_sync_targets(self.client, filters).await?
-                }
-                // There are specified relays: use them as targets
-                (_, false) => {
-                    // Construct filters
-                    let filters: HashMap<RelayUrl, Filter> =
-                        construct_filters(self.with, self.filter)?;
-
-                    // Make targets
-                    make_sync_targets(self.client, filters).await?
-                }
-                // Gossip is not available, and there are no specified targets: use all relays as targets
-                (None, true) => {
-                    // Get all READ and WRITE relays from pool
-                    let urls: HashSet<RelayUrl> = self
-                        .client
-                        .pool
-                        .relay_urls_with_any_cap(RelayCapabilities::READ | RelayCapabilities::WRITE)
-                        .await;
-
-                    // Construct filters
-                    let filters: HashMap<RelayUrl, Filter> = construct_filters(urls, self.filter)?;
-
-                    // Make targets
-                    make_sync_targets(self.client, filters).await?
-                }
-            };
-
-        Ok(self.client.pool.sync(targets, self.opts).await?)
-    }
 }
 
 fn construct_filters<'url, I, T>(
@@ -185,7 +143,50 @@ where
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            // Build targets
+            let targets: HashMap<RelayUrl, (Filter, Vec<(EventId, Timestamp)>)> =
+                match (&self.client.gossip, self.with.is_empty()) {
+                    // Gossip is available, and there are no specified relays: use gossip
+                    (Some(gossip), true) => {
+                        // Break down filter
+                        let filters: HashMap<RelayUrl, Filter> =
+                            self.client.break_down_filter(gossip, self.filter).await?;
+
+                        // Make targets
+                        make_sync_targets(self.client, filters).await?
+                    }
+                    // There are specified relays: use them as targets
+                    (_, false) => {
+                        // Construct filters
+                        let filters: HashMap<RelayUrl, Filter> =
+                            construct_filters(self.with, self.filter)?;
+
+                        // Make targets
+                        make_sync_targets(self.client, filters).await?
+                    }
+                    // Gossip is not available, and there are no specified targets: use all relays as targets
+                    (None, true) => {
+                        // Get all READ and WRITE relays from pool
+                        let urls: HashSet<RelayUrl> = self
+                            .client
+                            .pool
+                            .relay_urls_with_any_cap(
+                                RelayCapabilities::READ | RelayCapabilities::WRITE,
+                            )
+                            .await;
+
+                        // Construct filters
+                        let filters: HashMap<RelayUrl, Filter> =
+                            construct_filters(urls, self.filter)?;
+
+                        // Make targets
+                        make_sync_targets(self.client, filters).await?
+                    }
+                };
+
+            Ok(self.client.pool.sync(targets, self.opts).await?)
+        })
     }
 }
 

@@ -27,20 +27,15 @@ impl<'client> TryConnect<'client> {
         self.timeout = timeout;
         self
     }
-
-    // TODO: return a Result? Replace the Output with something else?
-    #[inline]
-    async fn exec(self) -> Output<()> {
-        self.client.pool.try_connect(self.timeout).await
-    }
 }
 
 impl<'client> IntoFuture for TryConnect<'client> {
+    // TODO: return a Result? Replace the Output with something else?
     type Output = Output<()>;
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move { self.client.pool.try_connect(self.timeout).await })
     }
 }
 

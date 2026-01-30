@@ -56,22 +56,6 @@ impl<'relay> StreamEvents<'relay> {
         self.policy = policy;
         self
     }
-
-    async fn exec(self) -> Result<EventStream, Error> {
-        // Create channels
-        let (tx, rx) = mpsc::channel(512);
-
-        // Compose auto-closing options
-        let opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
-            .exit_policy(self.policy)
-            .timeout(self.timeout);
-
-        // Subscribe
-        let id: SubscriptionId = SubscriptionId::generate();
-        subscribe_auto_closing(self.relay, id, self.filters, opts, Some(tx)).await?;
-
-        Ok(Box::pin(SubscriptionActivityEventStream::new(rx)))
-    }
 }
 
 impl<'relay> IntoFuture for StreamEvents<'relay> {
@@ -79,7 +63,21 @@ impl<'relay> IntoFuture for StreamEvents<'relay> {
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'relay>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            // Create channels
+            let (tx, rx) = mpsc::channel(512);
+
+            // Compose auto-closing options
+            let opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
+                .exit_policy(self.policy)
+                .timeout(self.timeout);
+
+            // Subscribe
+            let id: SubscriptionId = SubscriptionId::generate();
+            subscribe_auto_closing(self.relay, id, self.filters, opts, Some(tx)).await?;
+
+            Ok(Box::pin(SubscriptionActivityEventStream::new(rx)) as EventStream)
+        })
     }
 }
 

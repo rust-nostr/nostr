@@ -45,15 +45,6 @@ impl<'client> GetRelays<'client> {
         self.policy = Policy::WithCapabilities(capabilities);
         self
     }
-
-    async fn exec(self) -> HashMap<RelayUrl, Relay> {
-        match self.policy {
-            Policy::All => self.client.pool.all_relays().await,
-            Policy::WithCapabilities(capabilities) => {
-                self.client.pool.relays_with_any_cap(capabilities).await
-            }
-        }
-    }
 }
 
 impl<'client> IntoFuture for GetRelays<'client> {
@@ -61,7 +52,14 @@ impl<'client> IntoFuture for GetRelays<'client> {
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            match self.policy {
+                Policy::All => self.client.pool.all_relays().await,
+                Policy::WithCapabilities(capabilities) => {
+                    self.client.pool.relays_with_any_cap(capabilities).await
+                }
+            }
+        })
     }
 }
 

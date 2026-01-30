@@ -59,45 +59,6 @@ impl<'relay, 'event> SendEvent<'relay, 'event> {
             .wait_for_ok(notifications, &event.id, self.wait_for_ok_timeout)
             .await
     }
-
-    async fn exec(self) -> Result<EventId, Error> {
-        // Health, write permission and number of messages checks are executed in `batch_msg` method.
-
-        // Subscribe to notifications
-        let mut notifications = self.relay.inner.internal_notification_sender.subscribe();
-
-        // Send event
-        let (status, message) = self.send(&mut notifications, self.event).await?;
-
-        // Check status
-        if status {
-            return Ok(self.event.id);
-        }
-
-        // If auth required, wait for authentication adn resend it
-        if let Some(MachineReadablePrefix::AuthRequired) = MachineReadablePrefix::parse(&message) {
-            // Check if NIP42 auth is enabled and signer is set
-            if self.relay.inner.state.is_auto_authentication_enabled()
-                && self.relay.inner.state.has_signer()
-            {
-                // Wait that relay authenticate
-                wait_for_authentication(&mut notifications, self.wait_for_authentication_timeout)
-                    .await?;
-
-                // Try to resend event
-                let (status, message) = self.send(&mut notifications, self.event).await?;
-
-                // Check status
-                return if status {
-                    Ok(self.event.id)
-                } else {
-                    Err(Error::RelayMessage(message))
-                };
-            }
-        }
-
-        Err(Error::RelayMessage(message))
-    }
 }
 
 async fn wait_for_authentication(
@@ -136,7 +97,49 @@ where
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'relay>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            // Health, write permission and number of messages checks are executed in `batch_msg` method.
+
+            // Subscribe to notifications
+            let mut notifications = self.relay.inner.internal_notification_sender.subscribe();
+
+            // Send event
+            let (status, message) = self.send(&mut notifications, self.event).await?;
+
+            // Check status
+            if status {
+                return Ok(self.event.id);
+            }
+
+            // If auth required, wait for authentication adn resend it
+            if let Some(MachineReadablePrefix::AuthRequired) =
+                MachineReadablePrefix::parse(&message)
+            {
+                // Check if NIP42 auth is enabled and signer is set
+                if self.relay.inner.state.is_auto_authentication_enabled()
+                    && self.relay.inner.state.has_signer()
+                {
+                    // Wait that relay authenticate
+                    wait_for_authentication(
+                        &mut notifications,
+                        self.wait_for_authentication_timeout,
+                    )
+                    .await?;
+
+                    // Try to resend event
+                    let (status, message) = self.send(&mut notifications, self.event).await?;
+
+                    // Check status
+                    return if status {
+                        Ok(self.event.id)
+                    } else {
+                        Err(Error::RelayMessage(message))
+                    };
+                }
+            }
+
+            Err(Error::RelayMessage(message))
+        })
     }
 }
 

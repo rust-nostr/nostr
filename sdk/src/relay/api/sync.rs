@@ -74,38 +74,6 @@ impl<'relay> SyncEvents<'relay> {
         self.opts = opts;
         self
     }
-
-    async fn exec(self) -> Result<SyncSummary, Error> {
-        // Check if relay is operational
-        self.relay.inner.ensure_operational()?;
-
-        // Check if relay can read
-        if !self.relay.inner.capabilities.can_read() {
-            return Err(Error::ReadDisabled);
-        }
-
-        let items: Vec<(EventId, Timestamp)> = match self.items {
-            Some(items) => items,
-            None => {
-                // Get negentropy items
-                let database = self.relay.inner.state.database();
-                database.negentropy_items(self.filter.clone()).await?
-            }
-        };
-
-        let mut output: SyncSummary = SyncSummary::default();
-
-        sync(
-            self.relay,
-            &self.filter,
-            items.clone(),
-            &self.opts,
-            &mut output,
-        )
-        .await?;
-
-        Ok(output)
-    }
 }
 
 #[inline]
@@ -612,7 +580,37 @@ impl<'relay> IntoFuture for SyncEvents<'relay> {
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'relay>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            // Check if relay is operational
+            self.relay.inner.ensure_operational()?;
+
+            // Check if relay can read
+            if !self.relay.inner.capabilities.can_read() {
+                return Err(Error::ReadDisabled);
+            }
+
+            let items: Vec<(EventId, Timestamp)> = match self.items {
+                Some(items) => items,
+                None => {
+                    // Get negentropy items
+                    let database = self.relay.inner.state.database();
+                    database.negentropy_items(self.filter.clone()).await?
+                }
+            };
+
+            let mut output: SyncSummary = SyncSummary::default();
+
+            sync(
+                self.relay,
+                &self.filter,
+                items.clone(),
+                &self.opts,
+                &mut output,
+            )
+            .await?;
+
+            Ok(output)
+        })
     }
 }
 

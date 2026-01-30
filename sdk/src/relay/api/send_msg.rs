@@ -35,14 +35,6 @@ impl<'relay, 'msg> SendMessage<'relay, 'msg> {
         self.wait_until_sent = Some(timeout);
         self
     }
-
-    #[inline]
-    async fn exec(self) -> Result<(), Error> {
-        self.relay
-            .inner
-            .send_msg(self.msg, self.wait_until_sent)
-            .await
-    }
 }
 
 impl<'relay, 'msg> IntoFuture for SendMessage<'relay, 'msg>
@@ -53,7 +45,12 @@ where
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'relay>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            self.relay
+                .inner
+                .send_msg(self.msg, self.wait_until_sent)
+                .await
+        })
     }
 }
 

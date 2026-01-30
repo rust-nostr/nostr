@@ -134,18 +134,6 @@ impl<'client, 'url> AddRelay<'client, 'url> {
         self.opts = opts;
         self
     }
-
-    async fn exec(self) -> Result<bool, Error> {
-        // Convert into relay URL
-        let url: Cow<RelayUrl> = self.url.try_into_relay_url()?;
-
-        // Add relay to the pool
-        Ok(self
-            .client
-            .pool
-            .add_relay(url, self.capabilities, self.connect, self.opts)
-            .await?)
-    }
 }
 
 impl<'client, 'url> IntoFuture for AddRelay<'client, 'url>
@@ -156,7 +144,17 @@ where
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            // Convert into relay URL
+            let url: Cow<RelayUrl> = self.url.try_into_relay_url()?;
+
+            // Add relay to the pool
+            Ok(self
+                .client
+                .pool
+                .add_relay(url, self.capabilities, self.connect, self.opts)
+                .await?)
+        })
     }
 }
 

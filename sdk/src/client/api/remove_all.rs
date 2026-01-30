@@ -24,12 +24,6 @@ impl<'client> RemoveAllRelays<'client> {
         self.force = true;
         self
     }
-
-    #[inline]
-    async fn exec(self) -> Result<(), Error> {
-        self.client.pool.remove_all_relays(self.force).await;
-        Ok(())
-    }
 }
 
 impl<'client> IntoFuture for RemoveAllRelays<'client> {
@@ -37,7 +31,10 @@ impl<'client> IntoFuture for RemoveAllRelays<'client> {
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            self.client.pool.remove_all_relays(self.force).await;
+            Ok(())
+        })
     }
 }
 

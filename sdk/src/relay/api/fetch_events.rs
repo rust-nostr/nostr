@@ -42,46 +42,6 @@ impl<'relay> FetchEvents<'relay> {
         self.policy = policy;
         self
     }
-
-    async fn exec(self) -> Result<Events, Error> {
-        // Construct a new events collection
-        let mut events: Events = if self.filters.len() == 1 {
-            // SAFETY: this can't panic because the filters are already verified that list isn't empty.
-            let filter: &Filter = &self.filters[0];
-            Events::new(filter)
-        } else {
-            // More than a filter, so we can't ensure to respect the limit -> construct a default collection.
-            Events::default()
-        };
-
-        // Stream events
-        let mut stream = self
-            .relay
-            .stream_events(self.filters)
-            .maybe_timeout(self.timeout)
-            .policy(self.policy)
-            .await?;
-
-        while let Some(res) = stream.next().await {
-            // Get event from the result
-            let event: Event = res?;
-
-            // Use force insert here!
-            // Due to the configurable REQ exit policy, the user may want to wait for events after EOSE.
-            // If the filter has a limit, the force insert allows adding events post-EOSE.
-            //
-            // For example, if we use `Events::insert` here,
-            // if the filter is '{"kinds":[1],"limit":3}' and the policy `ReqExitPolicy::WaitForEventsAfterEOSE(1)`,
-            // the events collection will discard 1 event because the filter limit is 3 and the total received events are 4.
-            //
-            // Events::force_insert automatically increases the capacity if needed, without discarding events.
-            //
-            // LOOKUP_ID: EVENTS_FORCE_INSERT
-            events.force_insert(event);
-        }
-
-        Ok(events)
-    }
 }
 
 impl<'relay> IntoFuture for FetchEvents<'relay> {
@@ -89,7 +49,45 @@ impl<'relay> IntoFuture for FetchEvents<'relay> {
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'relay>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            // Construct a new events collection
+            let mut events: Events = if self.filters.len() == 1 {
+                // SAFETY: this can't panic because the filters are already verified that list isn't empty.
+                let filter: &Filter = &self.filters[0];
+                Events::new(filter)
+            } else {
+                // More than a filter, so we can't ensure to respect the limit -> construct a default collection.
+                Events::default()
+            };
+
+            // Stream events
+            let mut stream = self
+                .relay
+                .stream_events(self.filters)
+                .maybe_timeout(self.timeout)
+                .policy(self.policy)
+                .await?;
+
+            while let Some(res) = stream.next().await {
+                // Get event from the result
+                let event: Event = res?;
+
+                // Use force insert here!
+                // Due to the configurable REQ exit policy, the user may want to wait for events after EOSE.
+                // If the filter has a limit, the force insert allows adding events post-EOSE.
+                //
+                // For example, if we use `Events::insert` here,
+                // if the filter is '{"kinds":[1],"limit":3}' and the policy `ReqExitPolicy::WaitForEventsAfterEOSE(1)`,
+                // the events collection will discard 1 event because the filter limit is 3 and the total received events are 4.
+                //
+                // Events::force_insert automatically increases the capacity if needed, without discarding events.
+                //
+                // LOOKUP_ID: EVENTS_FORCE_INSERT
+                events.force_insert(event);
+            }
+
+            Ok(events)
+        })
     }
 }
 

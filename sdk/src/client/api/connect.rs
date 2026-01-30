@@ -26,14 +26,6 @@ impl<'client> Connect<'client> {
         self.wait = Some(timeout);
         self
     }
-
-    async fn exec(self) {
-        self.client.pool.connect().await;
-
-        if let Some(timeout) = self.wait {
-            self.client.pool.wait_for_connection(timeout).await;
-        }
-    }
 }
 
 impl<'client> IntoFuture for Connect<'client> {
@@ -41,7 +33,13 @@ impl<'client> IntoFuture for Connect<'client> {
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(self.exec())
+        Box::pin(async move {
+            self.client.pool.connect().await;
+
+            if let Some(timeout) = self.wait {
+                self.client.pool.wait_for_connection(timeout).await;
+            }
+        })
     }
 }
 
