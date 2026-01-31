@@ -17,6 +17,11 @@ type EventStream = BoxedStream<(RelayUrl, Result<Event, relay::Error>)>;
 /// Stream events
 #[must_use = "Does nothing unless you await!"]
 pub struct StreamEvents<'client, 'url> {
+    // --------------------------------------------------
+    // WHEN ADDING NEW OPTIONS HERE,
+    // REMEMBER TO UPDATE THE "Configuration" SECTION in
+    // Client::stream_events DOC.
+    // --------------------------------------------------
     client: &'client Client,
     target: ReqTarget<'url>,
     timeout: Option<Duration>,

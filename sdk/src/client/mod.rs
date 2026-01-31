@@ -711,17 +711,121 @@ impl Client {
         FetchEvents::new(self, target.into())
     }
 
-    /// Stream events from relays
+    /// Stream events from relays.
     ///
     /// # Overview
     ///
-    /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
+    /// Creates a short-lived event subscription and returns a stream of events.
+    ///
     /// For long-lived subscriptions, use [`Client::subscribe`].
     ///
-    /// # Gossip
+    /// # Configuration
     ///
-    /// If `gossip` is enabled the events will be streamed also from
-    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
+    /// By default:
+    ///
+    /// - No timeout is set
+    /// - Exit policy is [`ReqExitPolicy::ExitOnEOSE`]
+    ///
+    /// To customize this behavior, the returned [`StreamEvents`] can be
+    /// configured before awaiting it:
+    ///
+    /// - [`StreamEvents::timeout`]: set a maximum duration for the stream
+    /// - [`StreamEvents::policy`]: control when the stream terminates
+    ///
+    /// # Target Resolution
+    ///
+    /// The request target determines which relays are queried:
+    ///
+    /// - [`ReqTarget::auto`]: Streams events from all relays with
+    ///   [`RelayCapabilities::READ`]. If gossip is enabled
+    ///   ([`ClientBuilder::gossip`]), NIP-65 relays are also included.
+    /// - [`ReqTarget::single`] / [`ReqTarget::manual`]: Streams events only from
+    ///   the explicitly specified relays.
+    ///
+    /// # Event Semantics
+    ///
+    /// - Events are **deduplicated** across relays by event ID.
+    /// - Event signatures are **validated**.
+    /// - Events are **verified against the requested filters** if
+    ///   [`ClientBuilder::verify_subscriptions`] is enabled.
+    /// - Event replacements, deletions, and other stateful event semantics
+    ///   depend on the [`NostrDatabase`] implementation in use.
+    ///
+    /// # Termination
+    ///
+    /// The stream terminates when:
+    ///
+    /// - The exit policy condition is met (i.e., EOSE),
+    /// - All relay streams terminate,
+    /// - Or an optional timeout expires.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    ///
+    /// - The resolved target contains no relays,
+    /// - A specified relay does not exist in the pool,
+    /// - Target resolution fails.
+    ///
+    /// Network or relay-specific errors are reported **inside the stream**
+    /// as `Err(relay::Error)` items.
+    ///
+    /// # Examples
+    ///
+    /// ## Single-filter REQ and custom exit policy
+    ///
+    /// ```rust,no_run
+    /// # use std::time::Duration;
+    /// # use nostr_sdk::prelude::*;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// #   let client = Client::default();
+    /// let filter = Filter::new().kind(Kind::TextNote).limit(10);
+    ///
+    /// let mut stream = client
+    ///     .stream_events(filter)
+    ///     .timeout(Duration::from_secs(10)) // Custom timeout
+    ///     .policy(ReqExitPolicy::WaitForEvents(10)) // Custom policy
+    ///     .await?;
+    ///
+    /// while let Some((url, result)) = stream.next().await {
+    ///     let event: Event = result?;
+    ///     println!("Received an event from '{url}': {}", event.as_json());
+    /// }
+    /// # Ok(()) }
+    /// ```
+    ///
+    /// ## Streams from the explicitly specified relays
+    ///
+    /// ```rust,no_run
+    /// # use std::time::Duration;
+    /// # use std::collections::HashMap;
+    /// # use nostr_sdk::prelude::*;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// #   let client = Client::default();
+    /// // Subscribe with different filters per relay
+    /// let mut targets = HashMap::new();
+    /// targets.insert(
+    ///     "wss://relay1.example.com",
+    ///     vec![Filter::new().kind(Kind::TextNote).limit(10)],
+    /// );
+    /// targets.insert(
+    ///     "wss://relay2.example.com",
+    ///     vec![Filter::new().kind(Kind::Metadata).limit(5)],
+    /// );
+    ///
+    /// let mut stream = client
+    ///     .stream_events(targets)
+    ///     .timeout(Duration::from_secs(10))
+    ///     .await?;
+    ///
+    /// while let Some((url, result)) = stream.next().await {
+    ///     let event: Event = result?;
+    ///     println!("Received an event from '{url}': {}", event.as_json());
+    /// }
+    /// # Ok(()) }
+    /// ```
     #[inline]
     pub fn stream_events<'client, 'url, F>(&'client self, target: F) -> StreamEvents<'client, 'url>
     where
