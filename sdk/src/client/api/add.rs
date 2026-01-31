@@ -98,7 +98,7 @@ impl<'client, 'url> AddRelay<'client, 'url> {
         self
     }
 
-    /// Notification channel size (default: [`DEFAULT_NOTIFICATION_CHANNEL_SIZE`])
+    /// Notification channel size (default: 4096)
     #[inline]
     pub fn notification_channel_size(mut self, size: usize) -> Self {
         self.opts.notification_channel_size = size;

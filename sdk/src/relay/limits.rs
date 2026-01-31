@@ -26,7 +26,7 @@ impl RelayLimits {
 /// Messages limits
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RelayMessageLimits {
-    /// Maximum size of normalised JSON, in bytes (default: [`MAX_MESSAGE_SIZE`])
+    /// Maximum size of normalised JSON, in bytes (default: 5 MB)
     pub max_size: Option<u32>,
 }
 
