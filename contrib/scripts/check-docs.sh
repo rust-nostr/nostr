@@ -2,4 +2,4 @@
 
 set -exuo pipefail
 
-cargo doc --no-deps --all --all-features
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all --all-features
