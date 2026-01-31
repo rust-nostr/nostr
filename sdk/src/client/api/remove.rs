@@ -68,7 +68,7 @@ mod tests {
                 .remove_relay("ws://127.0.0.1:7777")
                 .await
                 .unwrap_err(),
-            Error::RelayPool(pool::Error::RelayNotFound)
+            Error::RelayPool(pool::Error::RelayNotFound(..))
         ));
     }
 
