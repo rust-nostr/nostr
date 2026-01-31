@@ -1,5 +1,7 @@
 use std::fmt;
 
+use nostr::RelayUrl;
+
 use crate::relay;
 
 /// Relay Pool error
@@ -15,7 +17,7 @@ pub enum Error {
     /// No relays specified
     NoRelaysSpecified,
     /// Relay not found
-    RelayNotFound,
+    RelayNotFound(RelayUrl),
     /// Relay Pool is shutdown
     Shutdown,
 }
@@ -28,7 +30,7 @@ impl fmt::Display for Error {
             Self::Relay(e) => e.fmt(f),
             Self::TooManyRelays { .. } => f.write_str("too many relays"),
             Self::NoRelaysSpecified => f.write_str("no relays specified"),
-            Self::RelayNotFound => f.write_str("relay not found"),
+            Self::RelayNotFound(url) => write!(f, "relay '{}' not found", url),
             Self::Shutdown => f.write_str("relay pool is shutdown"),
         }
     }

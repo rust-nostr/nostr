@@ -219,7 +219,10 @@ impl RelayPool {
         let mut relays = self.relays.write().await;
 
         // Remove relay
-        let relay: Relay = relays.remove(&url).ok_or(Error::RelayNotFound)?;
+        let relay: Relay = match relays.remove(&url) {
+            Some(relay) => relay,
+            None => return Err(Error::RelayNotFound(url.into_owned())),
+        };
 
         // If NOT force, check if it has `GOSSIP` capability
         if !force {
@@ -321,7 +324,9 @@ impl RelayPool {
         let relays = self.relays.read().await;
 
         // Get relay
-        let relay: &Relay = relays.get(url).ok_or(Error::RelayNotFound)?;
+        let relay: &Relay = relays
+            .get(url)
+            .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
 
         // Connect
         relay.connect();
@@ -338,7 +343,9 @@ impl RelayPool {
         let relays = self.relays.read().await;
 
         // Get relay
-        let relay: &Relay = relays.get(url).ok_or(Error::RelayNotFound)?;
+        let relay: &Relay = relays
+            .get(url)
+            .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
 
         // Try to connect
         relay.try_connect().timeout(timeout).await?;
@@ -351,7 +358,9 @@ impl RelayPool {
         let relays = self.relays.read().await;
 
         // Get relay
-        let relay: &Relay = relays.get(url).ok_or(Error::RelayNotFound)?;
+        let relay: &Relay = relays
+            .get(url)
+            .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
 
         // Disconnect
         relay.disconnect();
@@ -423,7 +432,9 @@ impl RelayPool {
 
         // Compose futures
         for url in set.into_iter() {
-            let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
+            let relay: &Relay = relays
+                .get(&url)
+                .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
             urls.push(url);
             futures.push(
                 relay
@@ -483,7 +494,9 @@ impl RelayPool {
 
         // Compose futures
         for url in set.into_iter() {
-            let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
+            let relay: &Relay = relays
+                .get(&url)
+                .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
             urls.push(url);
             futures.push(
                 relay
@@ -539,7 +552,9 @@ impl RelayPool {
         // Compose futures
         for (url, filter) in filters.into_iter() {
             // Get relay
-            let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
+            let relay: &Relay = relays
+                .get(&url)
+                .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
 
             // Prepare
             let id: SubscriptionId = id.clone();
@@ -669,7 +684,9 @@ impl RelayPool {
 
         // Compose futures
         for (url, (filter, items)) in targets.into_iter() {
-            let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
+            let relay: &Relay = relays
+                .get(&url)
+                .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
             urls.push(url);
             futures.push(
                 relay
@@ -723,7 +740,9 @@ impl RelayPool {
 
         for (url, filter) in filters {
             // Try to get the relay
-            let relay: &Relay = relays.get(&url).ok_or(Error::RelayNotFound)?;
+            let relay: &Relay = relays
+                .get(&url)
+                .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
 
             // Push url
             urls.push(url);
