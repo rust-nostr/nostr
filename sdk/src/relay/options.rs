@@ -1,9 +1,3 @@
-// Copyright (c) 2022-2023 Yuki Kishimoto
-// Copyright (c) 2023-2025 Rust Nostr Developers
-// Distributed under the MIT software license
-
-//! Relay options
-
 use std::time::Duration;
 
 use async_wsocket::ConnectionMode;
@@ -123,7 +117,7 @@ impl RelayOptions {
         self
     }
 
-    /// Notification channel size (default: [`DEFAULT_NOTIFICATION_CHANNEL_SIZE`])
+    /// Notification channel size (default: 2048)
     #[inline]
     pub fn notification_channel_size(mut self, size: usize) -> Self {
         self.notification_channel_size = size;

@@ -33,9 +33,10 @@ use self::inner::{InnerRelayPool, Relays};
 pub use self::options::RelayPoolOptions;
 pub use self::output::Output;
 use crate::monitor::Monitor;
-use crate::relay::capabilities::RelayCapabilities;
-use crate::relay::options::{RelayOptions, ReqExitPolicy, SubscribeOptions, SyncOptions};
-use crate::relay::{Reconciliation, Relay};
+use crate::relay::{
+    Reconciliation, Relay, RelayCapabilities, RelayOptions, ReqExitPolicy, SubscribeOptions,
+    SyncOptions,
+};
 use crate::shared::SharedState;
 use crate::stream::{BoxedStream, ReceiverStream};
 

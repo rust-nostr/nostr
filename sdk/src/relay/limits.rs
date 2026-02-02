@@ -1,9 +1,3 @@
-// Copyright (c) 2022-2023 Yuki Kishimoto
-// Copyright (c) 2023-2025 Rust Nostr Developers
-// Distributed under the MIT software license
-
-//! Relay limits
-
 use std::collections::HashMap;
 
 use nostr::Kind;
@@ -32,7 +26,7 @@ impl RelayLimits {
 /// Messages limits
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RelayMessageLimits {
-    /// Maximum size of normalised JSON, in bytes (default: [`MAX_MESSAGE_SIZE`])
+    /// Maximum size of normalised JSON, in bytes (default: 5 MB)
     pub max_size: Option<u32>,
 }
 

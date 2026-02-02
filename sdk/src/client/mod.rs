@@ -30,10 +30,10 @@ use self::middleware::AdmissionPolicyMiddleware;
 pub use self::options::*;
 use crate::monitor::Monitor;
 use crate::pool::{self, Output, RelayPool, RelayPoolBuilder, RelayPoolNotification};
-use crate::relay::options::{
-    RelayOptions, SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection, SyncOptions,
+use crate::relay::{
+    Reconciliation, Relay, RelayCapabilities, RelayOptions, ReqExitPolicy,
+    SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection, SyncOptions,
 };
-use crate::relay::{Reconciliation, Relay, RelayCapabilities, ReqExitPolicy};
 use crate::stream::BoxedStream;
 
 /// Nostr client

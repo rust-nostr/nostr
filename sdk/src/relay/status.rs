@@ -1,9 +1,3 @@
-// Copyright (c) 2022-2023 Yuki Kishimoto
-// Copyright (c) 2023-2025 Rust Nostr Developers
-// Distributed under the MIT software license
-
-//! Relay status
-
 use core::fmt;
 use core::sync::atomic::{AtomicU8, Ordering};
 

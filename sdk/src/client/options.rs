@@ -14,7 +14,7 @@ use async_wsocket::ConnectionMode;
 use nostr_gossip::GossipAllowedRelays;
 
 use crate::pool::RelayPoolOptions;
-use crate::relay::limits::RelayLimits;
+use crate::relay::RelayLimits;
 
 /// Max number of relays to use for gossip
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
