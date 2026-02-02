@@ -51,6 +51,7 @@
 - Redesign `Client::stream_events` and `Relay::stream_events` APIs (https://github.com/rust-nostr/nostr/pull/1233)
 - Redesign `Client::fetch_events` and `Relay::fetch_events` APIs (https://github.com/rust-nostr/nostr/pull/1234)
 - Redesign `Client::sync` and `Relay::sync` APIs (https://github.com/rust-nostr/nostr/pull/1235)
+- Redesign `Client::send_event` and `Relay::send_event` APIs (https://github.com/rust-nostr/nostr/pull/1236)
 
 ### Added
 

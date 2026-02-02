@@ -17,7 +17,7 @@ use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard
 use super::capabilities::{AtomicRelayCapabilities, RelayCapabilities};
 use super::constants::{
     DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE,
-    PING_INTERVAL, SLEEP_INTERVAL, WAIT_FOR_OK_TIMEOUT, WEBSOCKET_TX_TIMEOUT,
+    PING_INTERVAL, SLEEP_INTERVAL, WEBSOCKET_TX_TIMEOUT,
 };
 use super::options::{RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions};
 use super::ping::PingTracker;
@@ -1342,7 +1342,7 @@ impl InnerRelay {
         // Wait for OK
         // The event ID is already checked in `wait_for_ok` method
         let (status, message) = self
-            .wait_for_ok(&mut notifications, &event.id, WAIT_FOR_OK_TIMEOUT)
+            .wait_for_ok(&mut notifications, &event.id, Duration::from_secs(10))
             .await?;
 
         // Check status

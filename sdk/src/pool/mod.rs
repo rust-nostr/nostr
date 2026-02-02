@@ -605,17 +605,12 @@ impl RelayPool {
         Ok(output)
     }
 
-    /// Send event to all relays with `WRITE` capability (check [`RelayCapabilities`] for more details).
-    pub async fn send_event(&self, event: &Event) -> Result<Output<EventId>, Error> {
-        let urls: Vec<RelayUrl> = self.write_relay_urls().await;
-        self.send_event_to(urls, event).await
-    }
-
-    /// Send event to specific relays
-    pub async fn send_event_to<'a, I, U>(
+    pub(crate) async fn send_event<'a, I, U>(
         &self,
         urls: I,
         event: &Event,
+        wait_for_ok_timeout: Duration,
+        wait_for_authentication_timeout: Duration,
     ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
@@ -635,18 +630,6 @@ impl RelayPool {
         // Lock with read shared access
         let relays = self.inner.atomic.relays.read().await;
 
-        if relays.is_empty() {
-            return Err(Error::NoRelays);
-        }
-
-        // Check if urls set contains ONLY already added relays
-        if !set.iter().all(|url| relays.contains_key(url)) {
-            return Err(Error::RelayNotFound);
-        }
-
-        // Save event into database
-        self.inner.state.database().save_event(event).await?;
-
         let mut urls: Vec<RelayUrl> = Vec::with_capacity(set.len());
         let mut futures = Vec::with_capacity(set.len());
         let mut output: Output<EventId> = Output {
@@ -659,7 +642,13 @@ impl RelayPool {
         for url in set.into_iter() {
             let relay: &Relay = self.internal_relay(&relays, &url)?;
             urls.push(url.into_owned());
-            futures.push(relay.send_event(event));
+            futures.push(
+                relay
+                    .send_event(event)
+                    .ok_timeout(wait_for_ok_timeout)
+                    .authentication_timeout(wait_for_authentication_timeout)
+                    .into_future(),
+            );
         }
 
         // Join futures
@@ -668,7 +657,10 @@ impl RelayPool {
         // Iter results and construct output
         for (url, result) in urls.into_iter().zip(list.into_iter()) {
             match result {
-                Ok(..) => {
+                Ok(id) => {
+                    // The ID must match
+                    assert_eq!(id, event.id);
+
                     // Success, insert relay url in 'success' set result
                     output.success.insert(url);
                 }

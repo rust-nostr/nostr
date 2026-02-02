@@ -28,7 +28,6 @@ mod status;
 pub use self::api::*;
 pub use self::builder::*;
 pub use self::capabilities::*;
-use self::constants::{WAIT_FOR_AUTHENTICATION_TIMEOUT, WAIT_FOR_OK_TIMEOUT};
 pub use self::error::Error;
 use self::inner::InnerRelay;
 pub use self::limits::*;
@@ -319,88 +318,10 @@ impl Relay {
         self.inner.batch_msg(msgs)
     }
 
-    async fn _send_event(
-        &self,
-        notifications: &mut broadcast::Receiver<RelayNotification>,
-        event: &Event,
-    ) -> Result<(bool, String), Error> {
-        // Send the EVENT message
-        self.inner
-            .send_msg(ClientMessage::Event(Cow::Borrowed(event)))?;
-
-        // Wait for OK
-        self.inner
-            .wait_for_ok(notifications, &event.id, WAIT_FOR_OK_TIMEOUT)
-            .await
-    }
-
     /// Send event and wait for `OK` relay msg
-    pub async fn send_event(&self, event: &Event) -> Result<EventId, Error> {
-        // Health, write permission and number of messages checks are executed in `batch_msg` method.
-
-        // Subscribe to notifications
-        let mut notifications = self.inner.internal_notification_sender.subscribe();
-
-        // Send event
-        let (status, message) = self._send_event(&mut notifications, event).await?;
-
-        // Check status
-        if status {
-            return Ok(event.id);
-        }
-
-        // If auth required, wait for authentication adn resend it
-        if let Some(MachineReadablePrefix::AuthRequired) = MachineReadablePrefix::parse(&message) {
-            // Check if NIP42 auth is enabled and signer is set
-            let has_signer: bool = self.inner.state.has_signer().await;
-            if self.inner.state.is_auto_authentication_enabled() && has_signer {
-                // Wait that relay authenticate
-                self.wait_for_authentication(&mut notifications, WAIT_FOR_AUTHENTICATION_TIMEOUT)
-                    .await?;
-
-                // Try to resend event
-                let (status, message) = self._send_event(&mut notifications, event).await?;
-
-                // Check status
-                return if status {
-                    Ok(event.id)
-                } else {
-                    Err(Error::RelayMessage(message))
-                };
-            }
-        }
-
-        Err(Error::RelayMessage(message))
-    }
-
-    async fn wait_for_authentication(
-        &self,
-        notifications: &mut broadcast::Receiver<RelayNotification>,
-        timeout: Duration,
-    ) -> Result<(), Error> {
-        time::timeout(Some(timeout), async {
-            while let Ok(notification) = notifications.recv().await {
-                match notification {
-                    RelayNotification::Authenticated => {
-                        return Ok(());
-                    }
-                    RelayNotification::AuthenticationFailed => {
-                        return Err(Error::AuthenticationFailed);
-                    }
-                    RelayNotification::RelayStatus { status } => {
-                        if status.is_disconnected() {
-                            return Err(Error::NotConnected);
-                        }
-                    }
-                    RelayNotification::Shutdown => break,
-                    _ => (),
-                }
-            }
-
-            Err(Error::PrematureExit)
-        })
-        .await
-        .ok_or(Error::Timeout)?
+    #[inline]
+    pub fn send_event<'event>(&self, event: &'event Event) -> SendEvent<'_, 'event> {
+        SendEvent::new(self, event)
     }
 
     /// Resubscribe to all **closed** or not yet initiated subscriptions
@@ -567,27 +488,6 @@ mod tests {
         assert_eq!(relay.status(), RelayStatus::Sleeping);
         assert!(relay.status().can_connect());
         assert!(!relay.inner.is_running());
-    }
-
-    #[tokio::test]
-    async fn test_ok_msg() {
-        // Mock relay
-        let mock = MockRelay::run().await.unwrap();
-        let url = mock.url().await;
-
-        let relay: Relay = new_relay(url, RelayOptions::default());
-
-        relay
-            .try_connect()
-            .timeout(Duration::from_secs(3))
-            .await
-            .unwrap();
-
-        let keys = Keys::generate();
-        let event = EventBuilder::text_note("Test")
-            .sign_with_keys(&keys)
-            .unwrap();
-        relay.send_event(&event).await.unwrap();
     }
 
     #[tokio::test]
