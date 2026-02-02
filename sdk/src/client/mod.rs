@@ -36,7 +36,6 @@ use crate::relay::{
     Reconciliation, Relay, RelayCapabilities, RelayOptions, ReqExitPolicy, SyncDirection,
     SyncOptions,
 };
-use crate::stream::BoxedStream;
 
 /// Nostr client
 #[derive(Debug, Clone)]
@@ -715,6 +714,129 @@ impl Client {
         self.pool.unsubscribe_all().await;
     }
 
+    /// Stream events from relays.
+    ///
+    /// # Overview
+    ///
+    /// Creates a short-lived event subscription and returns a stream of events.
+    ///
+    /// For long-lived subscriptions, use [`Client::subscribe`].
+    ///
+    /// # Configuration
+    ///
+    /// By default:
+    ///
+    /// - No timeout is set
+    /// - Exit policy is [`ReqExitPolicy::ExitOnEOSE`]
+    ///
+    /// To customize this behavior, the returned [`StreamEvents`] can be
+    /// configured before awaiting it:
+    ///
+    /// - [`StreamEvents::timeout`]: set a maximum duration for the stream
+    /// - [`StreamEvents::policy`]: control when the stream terminates
+    ///
+    /// # Target Resolution
+    ///
+    /// The request target determines which relays are queried:
+    ///
+    /// - [`ReqTarget::auto`]: Streams events from all relays with
+    ///   [`RelayCapabilities::READ`]. If gossip is enabled
+    ///   ([`ClientBuilder::gossip`]), NIP-65 relays are also included.
+    /// - [`ReqTarget::single`] / [`ReqTarget::manual`]: Streams events only from
+    ///   the explicitly specified relays.
+    ///
+    /// # Event Semantics
+    ///
+    /// - Events are **deduplicated** across relays by event ID.
+    /// - Event signatures are **validated**.
+    /// - Events are **verified against the requested filters** if
+    ///   [`ClientBuilder::verify_subscriptions`] is enabled.
+    /// - Event replacements, deletions, and other stateful event semantics
+    ///   depend on the [`NostrDatabase`] implementation in use.
+    ///
+    /// # Termination
+    ///
+    /// The stream terminates when:
+    ///
+    /// - The exit policy condition is met (i.e., EOSE),
+    /// - All relay streams terminate,
+    /// - Or an optional timeout expires.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    ///
+    /// - The resolved target contains no relays,
+    /// - A specified relay does not exist in the pool,
+    /// - Target resolution fails.
+    ///
+    /// Network or relay-specific errors are reported **inside the stream**
+    /// as `Err(relay::Error)` items.
+    ///
+    /// # Examples
+    ///
+    /// ## Single-filter REQ and custom exit policy
+    ///
+    /// ```rust,no_run
+    /// # use std::time::Duration;
+    /// # use nostr_sdk::prelude::*;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// #   let client = Client::default();
+    /// let filter = Filter::new().kind(Kind::TextNote).limit(10);
+    ///
+    /// let mut stream = client
+    ///     .stream_events(filter)
+    ///     .timeout(Duration::from_secs(10)) // Custom timeout
+    ///     .policy(ReqExitPolicy::WaitForEvents(10)) // Custom policy
+    ///     .await?;
+    ///
+    /// while let Some((url, result)) = stream.next().await {
+    ///     let event: Event = result?;
+    ///     println!("Received an event from '{url}': {}", event.as_json());
+    /// }
+    /// # Ok(()) }
+    /// ```
+    ///
+    /// ## Streams from the explicitly specified relays
+    ///
+    /// ```rust,no_run
+    /// # use std::time::Duration;
+    /// # use std::collections::HashMap;
+    /// # use nostr_sdk::prelude::*;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// #   let client = Client::default();
+    /// // Subscribe with different filters per relay
+    /// let mut targets = HashMap::new();
+    /// targets.insert(
+    ///     "wss://relay1.example.com",
+    ///     vec![Filter::new().kind(Kind::TextNote).limit(10)],
+    /// );
+    /// targets.insert(
+    ///     "wss://relay2.example.com",
+    ///     vec![Filter::new().kind(Kind::Metadata).limit(5)],
+    /// );
+    ///
+    /// let mut stream = client
+    ///     .stream_events(targets)
+    ///     .timeout(Duration::from_secs(10))
+    ///     .await?;
+    ///
+    /// while let Some((url, result)) = stream.next().await {
+    ///     let event: Event = result?;
+    ///     println!("Received an event from '{url}': {}", event.as_json());
+    /// }
+    /// # Ok(()) }
+    /// ```
+    #[inline]
+    pub fn stream_events<'client, 'url, F>(&'client self, target: F) -> StreamEvents<'client, 'url>
+    where
+        F: Into<ReqTarget<'url>>,
+    {
+        StreamEvents::new(self, target.into())
+    }
+
     /// Sync events with relays (negentropy reconciliation)
     ///
     /// If `gossip` is enabled the events will be reconciled also from
@@ -754,8 +876,7 @@ impl Client {
     /// # Overview
     ///
     /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
-    /// To use another exit policy, check [`RelayPool::fetch_events`].
-    /// For long-lived subscriptions, check [`Client::subscribe`].
+    /// For long-lived subscriptions, use [`Client::subscribe`].
     ///
     /// # Gossip
     ///
@@ -784,16 +905,40 @@ impl Client {
     where
         F: Into<Vec<Filter>>,
     {
-        match &self.gossip {
-            Some(gossip) => {
-                self.gossip_fetch_events(gossip, filters, timeout, ReqExitPolicy::ExitOnEOSE)
-                    .await
+        let filters: Vec<Filter> = filters.into();
+
+        // Construct a new events collection
+        let mut events: Events = if filters.len() == 1 {
+            // SAFETY: this can't panic because the filters are already verified that list isn't empty.
+            let filter: &Filter = &filters[0];
+            Events::new(filter)
+        } else {
+            // More than a filter, so we can't ensure to respect the limit -> construct a default collection.
+            Events::default()
+        };
+
+        // Stream events
+        let mut stream = self
+            .stream_events(filters)
+            .timeout(timeout)
+            .policy(ReqExitPolicy::ExitOnEOSE)
+            .await?;
+
+        while let Some((url, result)) = stream.next().await {
+            // NOTE: not propagate the error here! A single error by any of the relays would stop the entire fetching process.
+            match result {
+                Ok(event) => {
+                    // To find out more about why the `force_insert` was used, search for EVENTS_FORCE_INSERT in the code.
+                    events.force_insert(event);
+                }
+                Err(e) => {
+                    // TODO: use the Output<Events>
+                    tracing::error!(url = %url, error = %e, "Failed to handle streamed event");
+                }
             }
-            None => Ok(self
-                .pool
-                .fetch_events(filters, timeout, ReqExitPolicy::ExitOnEOSE)
-                .await?),
         }
+
+        Ok(events)
     }
 
     /// Fetch events from specific relays
@@ -878,106 +1023,6 @@ impl Client {
 
         // Merge result
         Ok(stored_events.merge(fetched_events))
-    }
-
-    /// Stream events from relays
-    ///
-    /// # Overview
-    ///
-    /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
-    /// To use another exit policy, check [`RelayPool::stream_events`].
-    /// For long-lived subscriptions, check [`Client::subscribe`].
-    ///
-    /// # Gossip
-    ///
-    /// If `gossip` is enabled the events will be streamed also from
-    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
-    pub async fn stream_events<F>(
-        &self,
-        filters: F,
-        timeout: Duration,
-    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error>
-    where
-        F: Into<Vec<Filter>>,
-    {
-        match &self.gossip {
-            Some(gossip) => {
-                self.gossip_stream_events(gossip, filters, timeout, ReqExitPolicy::ExitOnEOSE)
-                    .await
-            }
-            None => {
-                let stream = self
-                    .pool
-                    .stream_events(filters, timeout, ReqExitPolicy::ExitOnEOSE)
-                    .await?;
-
-                // Map stream to change the error type
-                let stream = stream.map(|(u, r)| (u, r.map_err(Error::from)));
-
-                // Box the stream
-                Ok(Box::pin(stream))
-            }
-        }
-    }
-
-    /// Stream events from specific relays
-    ///
-    /// # Overview
-    ///
-    /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
-    /// To use another exit policy, check [`RelayPool::stream_events_from`].
-    /// For long-lived subscriptions, check [`Client::subscribe_to`].
-    #[inline]
-    pub async fn stream_events_from<'a, I, U, F>(
-        &self,
-        urls: I,
-        filters: F,
-        timeout: Duration,
-    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: Into<RelayUrlArg<'a>>,
-        F: Into<Vec<Filter>>,
-    {
-        let stream = self
-            .pool
-            .stream_events_from(urls, filters, timeout, ReqExitPolicy::default())
-            .await?;
-
-        // Map stream to change the error type
-        let stream = stream.map(|(u, r)| (u, r.map_err(Error::from)));
-
-        // Box the stream
-        Ok(Box::pin(stream))
-    }
-
-    /// Stream events from specific relays with specific filters
-    ///
-    /// # Overview
-    ///
-    /// This is an **auto-closing subscription** and will be closed automatically on `EOSE`.
-    /// To use another exit policy, check [`RelayPool::stream_events_targeted`].
-    /// For long-lived subscriptions, check [`Client::subscribe_targeted`].
-    pub async fn stream_events_targeted<'a, I, U, F>(
-        &self,
-        targets: I,
-        timeout: Duration,
-    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error>
-    where
-        I: IntoIterator<Item = (U, F)>,
-        U: Into<RelayUrlArg<'a>>,
-        F: Into<Vec<Filter>>,
-    {
-        let stream = self
-            .pool
-            .stream_events_targeted(targets, timeout, ReqExitPolicy::default())
-            .await?;
-
-        // Map stream to change the error type
-        let stream = stream.map(|(u, r)| (u, r.map_err(Error::from)));
-
-        // Box the stream
-        Ok(Box::pin(stream))
     }
 
     /// Send the client message to a **specific relays**
@@ -1892,75 +1937,6 @@ impl Client {
 
         // Send event
         Ok(self.pool.send_event_to(urls, event).await?)
-    }
-
-    async fn gossip_stream_events<F>(
-        &self,
-        gossip: &GossipWrapper,
-        filters: F,
-        timeout: Duration,
-        policy: ReqExitPolicy,
-    ) -> Result<BoxedStream<(RelayUrl, Result<Event, Error>)>, Error>
-    where
-        F: Into<Vec<Filter>>,
-    {
-        let filters = self.break_down_filters(gossip, filters).await?;
-
-        // Stream events
-        let stream = self
-            .pool
-            .stream_events_targeted(filters, timeout, policy)
-            .await?;
-
-        // Map stream to change the error type
-        let stream = stream.map(|(u, r)| (u, r.map_err(Error::from)));
-
-        // Box the stream
-        Ok(Box::pin(stream))
-    }
-
-    async fn gossip_fetch_events<F>(
-        &self,
-        gossip: &GossipWrapper,
-        filters: F,
-        timeout: Duration,
-        policy: ReqExitPolicy,
-    ) -> Result<Events, Error>
-    where
-        F: Into<Vec<Filter>>,
-    {
-        let filters: Vec<Filter> = filters.into();
-
-        // Construct a new events collection
-        let mut events: Events = if filters.len() == 1 {
-            // SAFETY: this can't panic because the filters are already verified that list isn't empty.
-            let filter: &Filter = &filters[0];
-            Events::new(filter)
-        } else {
-            // More than a filter, so we can't ensure to respect the limit -> construct a default collection.
-            Events::default()
-        };
-
-        // Stream events
-        let mut stream = self
-            .gossip_stream_events(gossip, filters, timeout, policy)
-            .await?;
-
-        while let Some((url, result)) = stream.next().await {
-            // NOTE: not propagate the error here! A single error by any of the relays would stop the entire fetching process.
-            match result {
-                Ok(event) => {
-                    // To find out more about why the `force_insert` was used, search for EVENTS_FORCE_INSERT in the code.
-                    events.force_insert(event);
-                }
-                Err(e) => {
-                    // TODO: use the Output<Events>
-                    tracing::error!(url = %url, error = %e, "Failed to handle streamed event");
-                }
-            }
-        }
-
-        Ok(events)
     }
 
     async fn gossip_sync_negentropy(

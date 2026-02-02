@@ -3,17 +3,15 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
-use std::pin::Pin;
+use std::future::Future;
 use std::sync::Arc;
-use std::task::{Context, Poll};
 use std::time::Duration;
 
-use async_utility::futures_util::{Stream, StreamExt};
 use async_utility::time;
-use async_wsocket::futures_util::Future;
 use async_wsocket::ConnectionMode;
+use futures::StreamExt;
 use nostr_database::prelude::*;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::broadcast;
 
 mod api;
 mod builder;
@@ -40,7 +38,6 @@ pub use self::options::*;
 pub use self::stats::*;
 pub use self::status::*;
 use crate::shared::SharedState;
-use crate::stream::BoxedStream;
 
 // #[derive(Debug, Clone, Default, PartialEq, Eq)]
 // pub struct ReconciliationFailures {
@@ -92,49 +89,6 @@ enum SubscriptionActivity {
     ReceivedEvent(Event),
     /// Subscription closed
     Closed(SubscriptionAutoClosedReason),
-}
-
-struct SubscriptionActivityEventStream {
-    rx: mpsc::Receiver<SubscriptionActivity>,
-    done: bool,
-}
-
-impl SubscriptionActivityEventStream {
-    fn new(rx: mpsc::Receiver<SubscriptionActivity>) -> Self {
-        Self { rx, done: false }
-    }
-}
-
-impl Stream for SubscriptionActivityEventStream {
-    type Item = Result<Event, Error>;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        if self.done {
-            return Poll::Ready(None);
-        }
-
-        match Pin::new(&mut self.rx).poll_recv(cx) {
-            Poll::Ready(Some(activity)) => match activity {
-                SubscriptionActivity::ReceivedEvent(event) => Poll::Ready(Some(Ok(event))),
-                SubscriptionActivity::Closed(reason) => match reason {
-                    SubscriptionAutoClosedReason::AuthenticationFailed => {
-                        self.done = true;
-                        Poll::Ready(Some(Err(Error::AuthenticationFailed)))
-                    }
-                    SubscriptionAutoClosedReason::Closed(message) => {
-                        self.done = true;
-                        Poll::Ready(Some(Err(Error::RelayMessage(message))))
-                    }
-                    SubscriptionAutoClosedReason::Completed => {
-                        self.done = true;
-                        Poll::Ready(None)
-                    }
-                },
-            },
-            Poll::Ready(None) => Poll::Ready(None),
-            Poll::Pending => Poll::Pending,
-        }
-    }
 }
 
 /// Relay
@@ -511,35 +465,19 @@ impl Relay {
     }
 
     /// Stream events from relay
-    pub async fn stream_events<F>(
-        &self,
-        filters: F,
-        timeout: Duration,
-        policy: ReqExitPolicy,
-    ) -> Result<BoxedStream<Result<Event, Error>>, Error>
+    #[inline]
+    pub fn stream_events<F>(&self, filters: F) -> StreamEvents
     where
         F: Into<Vec<Filter>>,
     {
-        // Create channels
-        let (tx, rx) = mpsc::channel(512);
-
-        // Compose auto-closing options
-        let opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
-            .exit_policy(policy)
-            .timeout(Some(timeout));
-
-        // Subscribe
-        let id: SubscriptionId = SubscriptionId::generate();
-        subscribe_auto_closing(self, id, filters.into(), opts, Some(tx)).await?;
-
-        Ok(Box::pin(SubscriptionActivityEventStream::new(rx)))
+        StreamEvents::new(self, filters.into())
     }
 
     /// Fetch events
     pub async fn fetch_events<F>(
         &self,
         filters: F,
-        timeout: Duration,
+        timeout: Option<Duration>,
         policy: ReqExitPolicy,
     ) -> Result<Events, Error>
     where
@@ -558,7 +496,11 @@ impl Relay {
         };
 
         // Stream events
-        let mut stream = self.stream_events(filters, timeout, policy).await?;
+        let mut stream = self
+            .stream_events(filters)
+            .maybe_timeout(timeout)
+            .policy(policy)
+            .await?;
 
         while let Some(res) = stream.next().await {
             // Get event from the result
@@ -1157,7 +1099,11 @@ mod tests {
 
         let filter = Filter::new().kind(Kind::Metadata);
         relay
-            .fetch_events(filter, Duration::from_secs(3), ReqExitPolicy::ExitOnEOSE)
+            .fetch_events(
+                filter,
+                Some(Duration::from_secs(3)),
+                ReqExitPolicy::ExitOnEOSE,
+            )
             .await
             .unwrap();
 
@@ -1241,7 +1187,7 @@ mod tests {
         let err = relay
             .fetch_events(
                 filter.clone(),
-                Duration::from_secs(5),
+                Some(Duration::from_secs(5)),
                 ReqExitPolicy::ExitOnEOSE,
             )
             .await
@@ -1263,7 +1209,7 @@ mod tests {
         let err = relay
             .fetch_events(
                 filter.clone(),
-                Duration::from_secs(5),
+                Some(Duration::from_secs(5)),
                 ReqExitPolicy::ExitOnEOSE,
             )
             .await
@@ -1275,7 +1221,11 @@ mod tests {
 
         // Authenticated fetch
         let res = relay
-            .fetch_events(filter, Duration::from_secs(5), ReqExitPolicy::ExitOnEOSE)
+            .fetch_events(
+                filter,
+                Some(Duration::from_secs(5)),
+                ReqExitPolicy::ExitOnEOSE,
+            )
             .await;
         assert!(res.is_ok());
     }
@@ -1288,7 +1238,7 @@ mod tests {
         let events = relay
             .fetch_events(
                 Filter::new().kind(Kind::TextNote),
-                Duration::from_secs(5),
+                Some(Duration::from_secs(5)),
                 ReqExitPolicy::ExitOnEOSE,
             )
             .await
@@ -1299,7 +1249,7 @@ mod tests {
         let events = relay
             .fetch_events(
                 Filter::new().kind(Kind::TextNote).limit(3),
-                Duration::from_secs(5),
+                Some(Duration::from_secs(5)),
                 ReqExitPolicy::ExitOnEOSE,
             )
             .await
@@ -1314,7 +1264,7 @@ mod tests {
         let events = relay
             .fetch_events(
                 Filter::new().kind(Kind::TextNote),
-                Duration::from_secs(15),
+                Some(Duration::from_secs(15)),
                 ReqExitPolicy::WaitForEvents(2),
             )
             .await
@@ -1339,7 +1289,7 @@ mod tests {
         let events = relay
             .fetch_events(
                 Filter::new().kind(Kind::Metadata),
-                Duration::from_secs(5),
+                Some(Duration::from_secs(5)),
                 ReqExitPolicy::WaitForEvents(1),
             )
             .await
@@ -1373,7 +1323,7 @@ mod tests {
         let events = relay
             .fetch_events(
                 Filter::new().kind(Kind::TextNote).limit(3),
-                Duration::from_secs(15),
+                Some(Duration::from_secs(15)),
                 ReqExitPolicy::WaitForEventsAfterEOSE(2),
             )
             .await
@@ -1408,7 +1358,7 @@ mod tests {
         let events = relay
             .fetch_events(
                 Filter::new().kind(Kind::TextNote),
-                Duration::from_secs(15),
+                Some(Duration::from_secs(15)),
                 ReqExitPolicy::WaitDurationAfterEOSE(Duration::from_secs(3)),
             )
             .await
@@ -1588,7 +1538,11 @@ mod tests {
         // Test wake up when fetch events
         let filter = Filter::new().kind(Kind::TextNote);
         let _ = relay
-            .fetch_events(filter, Duration::from_secs(10), ReqExitPolicy::ExitOnEOSE)
+            .fetch_events(
+                filter,
+                Some(Duration::from_secs(10)),
+                ReqExitPolicy::ExitOnEOSE,
+            )
             .await
             .unwrap();
         assert_eq!(relay.status(), RelayStatus::Connected);

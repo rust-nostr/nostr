@@ -19,7 +19,9 @@ async fn main() -> Result<()> {
     // Stream events from all connected relays
     let filter = Filter::new().kind(Kind::TextNote).limit(100);
     let mut stream = client
-        .stream_events(filter, Duration::from_secs(15))
+        .stream_events(filter)
+        .timeout(Duration::from_secs(15))
+        .policy(ReqExitPolicy::ExitOnEOSE)
         .await?;
 
     while let Some((url, res)) = stream.next().await {

@@ -45,6 +45,7 @@
 - Redesign `Client::connect`, `Client::try_connect` and `Relay::try_connect` APIs (https://github.com/rust-nostr/nostr/pull/1229)
   Redesign `Client::relays` API (https://github.com/rust-nostr/nostr/pull/1231)
 - Redesign `Client::subscribe` and `Relay::subscribe` APIs (https://github.com/rust-nostr/nostr/pull/1232)
+- Redesign `Client::stream_events` and `Relay::stream_events` APIs (https://github.com/rust-nostr/nostr/pull/1233)
 
 ### Added
 
