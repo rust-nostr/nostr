@@ -415,42 +415,79 @@ impl Client {
         Ok(self.pool.disconnect_relay(url).await?)
     }
 
-    /// Connect to all added relays
+    /// Connect to relays
     ///
-    /// Attempts to initiate a connection for every relay currently in
-    /// [`RelayStatus::Initialized`] or [`RelayStatus::Terminated`].
-    /// A background connection task is spawned for each such relay, which then tries
-    /// to establish the connection.
-    /// Any relay not in one of these two statuses is skipped.
+    /// Attempts to initiate a connection with relays.
+    ///
+    /// At most **one connection per relay** is allowed at any time.
+    /// If a relay is already connected or currently attempting to connect,
+    /// this method does nothing for that relay.
+    ///
+    /// If a relay is disconnected, sleeping, or otherwise inactive, a
+    /// background task is spawned to initiate a connection.
     ///
     /// For further details, see the documentation of [`Relay::connect`].
+    ///
+    /// # Configuration
+    ///
+    /// By default:
+    ///
+    /// - Doesn't wait that relays connect
+    ///
+    /// To customize this behavior, the returned [`Connect`] can be
+    /// configured before awaiting it:
+    ///
+    /// - [`Connect::and_wait`]: wait for relays connections at most for the specified `timeout`
     #[inline]
-    pub async fn connect(&self) {
-        self.pool.connect().await;
+    pub fn connect(&self) -> Connect {
+        Connect::new(self)
     }
 
     /// Waits for relays connections
     ///
     /// Wait for relays connections at most for the specified `timeout`.
     /// The code continues when the relays are connected or the `timeout` is reached.
-    #[inline]
+    #[deprecated(
+        since = "0.45.0",
+        note = "use `client.connect().and_wait(timeout).await` instead"
+    )]
     pub async fn wait_for_connection(&self, timeout: Duration) {
-        self.pool.wait_for_connection(timeout).await
+        self.connect().and_wait(timeout).await;
     }
 
-    /// Try to establish a connection with the relays.
+    /// Try to establish a connection with relays.
     ///
-    /// Attempts to establish a connection for every relay currently in
-    /// [`RelayStatus::Initialized`] or [`RelayStatus::Terminated`]
-    /// without spawning the connection task if it fails.
-    /// This means that if the connection fails, no automatic retries are scheduled.
-    /// Use [`Client::connect`] if you want to immediately spawn a connection task,
-    /// regardless of whether the initial connection succeeds.
+    /// # Overview
+    ///
+    /// Attempts to initiate a connection with relays.
+    ///
+    /// At most **one connection per relay** is allowed at any time.
+    /// If a relay is already connected or currently attempting to connect,
+    /// this method does nothing for that relay.
+    ///
+    /// If the initial connection attempt succeeds, a background task is spawned
+    /// to maintain the connection and handle future reconnections.
+    /// If the initial attempt fails, no background task is spawned and no
+    /// automatic retries are scheduled.
+    ///
+    /// Use [`Client::connect`] if you want to always spawn a background
+    /// connection task, regardless of whether the initial attempt succeeds.
     ///
     /// For further details, see the documentation of [`Relay::try_connect`].
+    ///
+    /// # Configuration
+    ///
+    /// By default:
+    ///
+    /// - Connection timeout is set to 60 secs
+    ///
+    /// To customize this behavior, the returned [`TryConnect`] can be
+    /// configured before awaiting it:
+    ///
+    /// - [`TryConnect::timeout`]: set a maximum timeout
     #[inline]
-    pub async fn try_connect(&self, timeout: Duration) -> Output<()> {
-        self.pool.try_connect(timeout).await
+    pub fn try_connect(&self) -> TryConnect {
+        TryConnect::new(self)
     }
 
     /// Disconnect from all relays

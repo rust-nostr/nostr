@@ -33,12 +33,14 @@
 - Change `RelayPool::stream_events*` output to include the `RelayUrl` and `Result`, enabling callers to identify which relay sent the event or if a specific relay encountered an error (https://github.com/rust-nostr/nostr/pull/1156)
 - Replace `RelayServiceFlags` with `RelayCapabilities`
 - Remove `Client::reset` method
+- Change `Client::try_connect` and `Relay::try_connect` signature (https://github.com/rust-nostr/nostr/pull/1229)
 
 ### Changed
 
-- Redesigned `Client::add_relay` API (https://github.com/rust-nostr/nostr/pull/1227)
-- Redesigned `Client::remove_relay` API (https://github.com/rust-nostr/nostr/pull/1228)
-- Redesigned `Client::remove_relays` API (https://github.com/rust-nostr/nostr/pull/1229)
+- Redesign `Client::add_relay` API (https://github.com/rust-nostr/nostr/pull/1227)
+- Redesign `Client::remove_relay` API (https://github.com/rust-nostr/nostr/pull/1228)
+- Redesign `Client::remove_relays` API (https://github.com/rust-nostr/nostr/pull/1229)
+- Redesign `Client::connect`, `Client::try_connect` and `Relay::try_connect` APIs (https://github.com/rust-nostr/nostr/pull/1229)
 
 ### Added
 
