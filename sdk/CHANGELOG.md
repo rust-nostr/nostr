@@ -41,6 +41,7 @@
 - Redesign `Client::remove_relay` API (https://github.com/rust-nostr/nostr/pull/1228)
 - Redesign `Client::remove_relays` API (https://github.com/rust-nostr/nostr/pull/1229)
 - Redesign `Client::connect`, `Client::try_connect` and `Relay::try_connect` APIs (https://github.com/rust-nostr/nostr/pull/1229)
+  Redesign `Client::relays` API (https://github.com/rust-nostr/nostr/pull/1231)
 
 ### Added
 

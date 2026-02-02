@@ -177,9 +177,7 @@ impl RelayPool {
             .filter(move |(_, r)| r.capabilities().has_any(capabilities))
     }
 
-    /// Get relay URLs with specific capabilities
-    #[doc(hidden)]
-    pub async fn __relay_urls_with_any_cap(
+    pub(crate) async fn relay_urls_with_any_cap(
         &self,
         capabilities: RelayCapabilities,
     ) -> Vec<RelayUrl> {
@@ -189,37 +187,26 @@ impl RelayPool {
             .collect()
     }
 
-    /// Get relays with `READ` or `WRITE` relays
-    #[doc(hidden)]
-    pub async fn __relay_urls(&self) -> Vec<RelayUrl> {
-        self.__relay_urls_with_any_cap(RelayCapabilities::READ | RelayCapabilities::WRITE)
+    pub(crate) async fn relay_urls(&self) -> Vec<RelayUrl> {
+        self.relay_urls_with_any_cap(RelayCapabilities::READ | RelayCapabilities::WRITE)
             .await
     }
 
-    /// Get only READ relays
-    #[doc(hidden)]
-    pub async fn __read_relay_urls(&self) -> Vec<RelayUrl> {
-        self.__relay_urls_with_any_cap(RelayCapabilities::READ)
-            .await
+    pub(crate) async fn read_relay_urls(&self) -> Vec<RelayUrl> {
+        self.relay_urls_with_any_cap(RelayCapabilities::READ).await
     }
 
-    /// Get only WRITE relays
-    #[doc(hidden)]
-    pub async fn __write_relay_urls(&self) -> Vec<RelayUrl> {
-        self.__relay_urls_with_any_cap(RelayCapabilities::WRITE)
-            .await
+    pub(crate) async fn write_relay_urls(&self) -> Vec<RelayUrl> {
+        self.relay_urls_with_any_cap(RelayCapabilities::WRITE).await
     }
 
-    /// Get all relays
-    ///
-    /// This method returns all relays added to the pool, including the ones for gossip protocol or other services.
-    pub async fn all_relays(&self) -> HashMap<RelayUrl, Relay> {
+    // Get **all** relays
+    pub(crate) async fn all_relays(&self) -> HashMap<RelayUrl, Relay> {
         let relays = self.inner.atomic.relays.read().await;
         relays.clone()
     }
 
-    /// Get relays that have a certain [`RelayCapabilities`] enabled
-    async fn _relays_with_any_cap(
+    pub(crate) async fn relays_with_any_cap(
         &self,
         capabilities: RelayCapabilities,
     ) -> HashMap<RelayUrl, Relay> {
@@ -227,12 +214,6 @@ impl RelayPool {
         self.internal_relays_with_any_cap(&relays, capabilities)
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect()
-    }
-
-    /// Get relays with `READ` or `WRITE` capabilities
-    pub async fn relays(&self) -> HashMap<RelayUrl, Relay> {
-        self._relays_with_any_cap(RelayCapabilities::READ | RelayCapabilities::WRITE)
-            .await
     }
 
     #[inline]
@@ -632,7 +613,7 @@ impl RelayPool {
 
     /// Send event to all relays with `WRITE` capability (check [`RelayCapabilities`] for more details).
     pub async fn send_event(&self, event: &Event) -> Result<Output<EventId>, Error> {
-        let urls: Vec<RelayUrl> = self.__write_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.write_relay_urls().await;
         self.send_event_to(urls, event).await
     }
 
@@ -748,7 +729,7 @@ impl RelayPool {
         }
 
         // Get relay urls
-        let urls: Vec<RelayUrl> = self.__read_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.read_relay_urls().await;
 
         // Subscribe
         self.subscribe_with_id_to(urls, id, filters, opts).await
@@ -918,7 +899,7 @@ impl RelayPool {
         filter: Filter,
         opts: &SyncOptions,
     ) -> Result<Output<Reconciliation>, Error> {
-        let urls: Vec<RelayUrl> = self.__relay_urls().await;
+        let urls: Vec<RelayUrl> = self.relay_urls().await;
         self.sync_with(urls, filter, opts).await
     }
 
@@ -1026,7 +1007,7 @@ impl RelayPool {
     where
         F: Into<Vec<Filter>>,
     {
-        let urls: Vec<RelayUrl> = self.__read_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.read_relay_urls().await;
         self.fetch_events_from(urls, filters, timeout, policy).await
     }
 
@@ -1087,7 +1068,7 @@ impl RelayPool {
     where
         F: Into<Vec<Filter>>,
     {
-        let urls: Vec<RelayUrl> = self.__read_relay_urls().await;
+        let urls: Vec<RelayUrl> = self.read_relay_urls().await;
         self.stream_events_from(urls, filters, timeout, policy)
             .await
     }

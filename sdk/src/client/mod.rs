@@ -195,12 +195,24 @@ impl Client {
         self.pool.notifications()
     }
 
-    /// Get relays with [`RelayCapabilities::READ`] or [`RelayCapabilities::WRITE`] capabilities
+    /// Get relays from the relay pool.
     ///
-    /// Call [`RelayPool::all_relays`] to get all relays
+    /// # Configuration
+    ///
+    /// By default:
+    ///
+    /// - Only relays with [`RelayCapabilities::READ`] or [`RelayCapabilities::WRITE`]
+    ///   are returned.
+    ///
+    /// To customize this behavior, the returned [`GetRelays`] can be
+    /// configured before awaiting it:
+    ///
+    /// - [`GetRelays::all`]: return all relays in the pool, regardless of capabilities
+    /// - [`GetRelays::with_capabilities`]: return relays matching specific
+    ///   [`RelayCapabilities`]
     #[inline]
-    pub async fn relays(&self) -> HashMap<RelayUrl, Relay> {
-        self.pool.relays().await
+    pub fn relays(&self) -> GetRelays {
+        GetRelays::new(self)
     }
 
     /// Get a previously added [`Relay`]
@@ -1490,7 +1502,7 @@ impl Client {
         // Get DISCOVERY and READ relays
         let urls: Vec<RelayUrl> = self
             .pool
-            .__relay_urls_with_any_cap(RelayCapabilities::DISCOVERY | RelayCapabilities::READ)
+            .relay_urls_with_any_cap(RelayCapabilities::DISCOVERY | RelayCapabilities::READ)
             .await;
 
         // Negentropy sync
@@ -1675,7 +1687,7 @@ impl Client {
             BrokenDownFilters::Filters(filters) => filters,
             BrokenDownFilters::Orphan(filter) | BrokenDownFilters::Other(filter) => {
                 // Get read relays
-                let read_relays: Vec<RelayUrl> = self.pool.__read_relay_urls().await;
+                let read_relays: Vec<RelayUrl> = self.pool.read_relay_urls().await;
 
                 let mut map = HashMap::with_capacity(read_relays.len());
                 for url in read_relays.into_iter() {
@@ -1837,7 +1849,7 @@ impl Client {
             }
 
             // Get WRITE relays
-            let write_relays: Vec<RelayUrl> = self.pool.__write_relay_urls().await;
+            let write_relays: Vec<RelayUrl> = self.pool.write_relay_urls().await;
 
             // Extend relays with WRITE ones
             relays.extend(write_relays);
