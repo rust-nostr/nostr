@@ -321,13 +321,11 @@ impl RelayPool {
         Ok(true)
     }
 
-    async fn _remove_relay<'a, U>(&self, url: U, force: bool) -> Result<(), Error>
-    where
-        U: Into<RelayUrlArg<'a>>,
-    {
-        // Convert into url
-        let url: Cow<RelayUrl> = url.into().try_into_relay_url()?;
-
+    pub(crate) async fn remove_relay(
+        &self,
+        url: Cow<'_, RelayUrl>,
+        force: bool,
+    ) -> Result<(), Error> {
         // Acquire write lock
         let mut relays = self.inner.atomic.relays.write().await;
 
@@ -347,32 +345,6 @@ impl RelayPool {
         relay.disconnect();
 
         Ok(())
-    }
-
-    /// Remove and disconnect relay
-    ///
-    /// If the relay has [`RelayCapabilities::GOSSIP`], it will not be removed from the pool and its
-    /// capabilities will be updated (remove [`RelayCapabilities::READ`],
-    /// [`RelayCapabilities::WRITE`] and [`RelayCapabilities::DISCOVERY`] capabilities).
-    ///
-    /// To fore remove a relay use [`RelayPool::force_remove_relay`].
-    #[inline]
-    pub async fn remove_relay<'a, U>(&self, url: U) -> Result<(), Error>
-    where
-        U: Into<RelayUrlArg<'a>>,
-    {
-        self._remove_relay(url, false).await
-    }
-
-    /// Force remove and disconnect relay
-    ///
-    /// Note: this method will remove the relay, also if it's in use for the gossip model or other service!
-    #[inline]
-    pub async fn force_remove_relay<'a, U>(&self, url: U) -> Result<(), Error>
-    where
-        U: Into<RelayUrlArg<'a>>,
-    {
-        self._remove_relay(url, true).await
     }
 
     /// Disconnect and remove all relays
