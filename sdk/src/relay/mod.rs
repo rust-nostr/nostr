@@ -176,9 +176,14 @@ impl Ord for Relay {
 
 impl Relay {
     #[inline]
-    pub(crate) fn new_shared(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
+    pub(crate) fn new_shared(
+        url: RelayUrl,
+        state: SharedState,
+        capabilities: RelayCapabilities,
+        opts: RelayOptions,
+    ) -> Self {
         Self {
-            inner: InnerRelay::new(url, state, opts),
+            inner: InnerRelay::new(url, state, capabilities, opts),
             atomic_counter: Arc::new(()),
         }
     }
@@ -208,7 +213,7 @@ impl Relay {
         );
 
         Self {
-            inner: InnerRelay::new(builder.url, state, builder.opts),
+            inner: InnerRelay::new(builder.url, state, builder.capabilities, builder.opts),
             atomic_counter: Arc::new(()),
         }
     }

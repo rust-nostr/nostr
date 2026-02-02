@@ -17,19 +17,21 @@ use nostr_database::prelude::*;
 use nostr_gossip::{BestRelaySelection, GossipListKind, GossipPublicKeyStatus, NostrGossip};
 use tokio::sync::{broadcast, Semaphore};
 
+mod api;
 mod builder;
 mod error;
 mod gossip;
 mod middleware;
 mod options;
 
+pub use self::api::*;
 pub use self::builder::*;
 pub use self::error::Error;
 use self::gossip::{BrokenDownFilters, GossipFilterPattern, GossipWrapper};
 use self::middleware::AdmissionPolicyMiddleware;
 pub use self::options::*;
 use crate::monitor::Monitor;
-use crate::pool::{self, Output, RelayPool, RelayPoolBuilder, RelayPoolNotification};
+use crate::pool::{Output, RelayPool, RelayPoolBuilder, RelayPoolNotification};
 use crate::relay::{
     Reconciliation, Relay, RelayCapabilities, RelayOptions, ReqExitPolicy,
     SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection, SyncOptions,
@@ -210,42 +212,46 @@ impl Client {
         Ok(self.pool.relay(url).await?)
     }
 
-    async fn compose_relay_opts(&self, _url: &RelayUrl) -> RelayOptions {
-        let opts: RelayOptions = RelayOptions::new();
+    fn compose_relay_opts<'a>(&self, _url: &'a RelayUrlArg<'a>) -> RelayOptions {
+        let mut opts: RelayOptions = RelayOptions::new();
 
         // Set connection mode
         #[cfg(not(target_arch = "wasm32"))]
-        let opts: RelayOptions = match &self.opts.connection.mode {
-            ConnectionMode::Direct => opts,
-            ConnectionMode::Proxy(..) => match self.opts.connection.target {
-                ConnectionTarget::All => opts.connection_mode(self.opts.connection.mode.clone()),
-                ConnectionTarget::Onion => {
-                    if _url.is_onion() {
-                        opts.connection_mode(self.opts.connection.mode.clone())
-                    } else {
-                        opts
+        if let Ok(url) = _url.try_as_relay_url() {
+            match &self.opts.connection.mode {
+                ConnectionMode::Direct => {}
+                ConnectionMode::Proxy(..) => match self.opts.connection.target {
+                    ConnectionTarget::All => {
+                        opts = opts.connection_mode(self.opts.connection.mode.clone());
                     }
-                }
-            },
-            #[cfg(feature = "tor")]
-            ConnectionMode::Tor { .. } => match self.opts.connection.target {
-                ConnectionTarget::All => opts.connection_mode(self.opts.connection.mode.clone()),
-                ConnectionTarget::Onion => {
-                    if _url.is_onion() {
-                        opts.connection_mode(self.opts.connection.mode.clone())
-                    } else {
-                        opts
+                    ConnectionTarget::Onion => {
+                        if url.is_onion() {
+                            opts = opts.connection_mode(self.opts.connection.mode.clone())
+                        }
                     }
-                }
-            },
-        };
+                },
+                #[cfg(feature = "tor")]
+                ConnectionMode::Tor { .. } => match self.opts.connection.target {
+                    ConnectionTarget::All => {
+                        opts = opts.connection_mode(self.opts.connection.mode.clone());
+                    }
+                    ConnectionTarget::Onion => {
+                        if url.is_onion() {
+                            opts = opts.connection_mode(self.opts.connection.mode.clone())
+                        }
+                    }
+                },
+            };
+        }
 
         // Set sleep when idle
-        let opts: RelayOptions = match self.opts.sleep_when_idle {
+        match self.opts.sleep_when_idle {
             // Do nothing
-            SleepWhenIdle::Disabled => opts,
+            SleepWhenIdle::Disabled => {}
             // Enable: update relay options
-            SleepWhenIdle::Enabled { timeout } => opts.sleep_when_idle(true).idle_timeout(timeout),
+            SleepWhenIdle::Enabled { timeout } => {
+                opts = opts.sleep_when_idle(true).idle_timeout(timeout);
+            }
         };
 
         // Set limits
@@ -255,58 +261,25 @@ impl Client {
             .ban_relay_on_mismatch(self.opts.ban_relay_on_mismatch)
     }
 
-    /// If return `false` means that already existed
-    async fn get_or_add_relay_with_flag<'a, U>(
-        &self,
-        url: U,
-        capabilities: RelayCapabilities,
-    ) -> Result<bool, Error>
-    where
-        U: Into<RelayUrlArg<'a>>,
-    {
-        // Convert into url
-        let url: RelayUrl = url
-            .into()
-            .try_into_relay_url()
-            .map_err(pool::Error::from)?
-            .into_owned();
-
-        // Compose relay options
-        let opts: RelayOptions = self.compose_relay_opts(&url).await;
-
-        // Set capabilities
-        let opts: RelayOptions = opts.capabilities(capabilities);
-
-        // Add relay with opts or edit current one
-        match self.pool.__get_or_add_relay(url, opts).await? {
-            Some(relay) => {
-                relay.capabilities().add(capabilities);
-                Ok(false)
-            }
-            None => Ok(true),
-        }
-    }
-
     /// Add relay
     ///
-    /// Relays added with this method will have both [`RelayCapabilities::READ`] and [`RelayCapabilities::WRITE`] capabilities enabled.
-    ///
+    /// By default, relays added with this method will have both [`RelayCapabilities::READ`] and [`RelayCapabilities::WRITE`] capabilities enabled.
     /// If the relay already exists, the capabilities will be updated and `false` returned.
     ///
+    /// To add a relay with specific capabilities, use [`AddRelay::capabilities`].
+    ///
     /// If are set pool subscriptions, the new added relay will inherit them. Use [`Client::subscribe_to`] method instead of [`Client::subscribe`],
-    /// to avoid to set pool subscriptions.
+    /// to avoid setting pool subscriptions.
     ///
-    /// This method use previously set or default [`ClientOptions`] to configure the [`Relay`] (ex. set proxy, set min POW, set relay limits, ...).
-    /// To use custom [`RelayOptions`] use [`RelayPool::add_relay`].
-    ///
-    /// Connection is **NOT** automatically started with relay, remember to call [`Client::connect`]!
+    /// Connection is **NOT** automatically started with relay!
     #[inline]
-    pub async fn add_relay<'a, U>(&self, url: U) -> Result<bool, Error>
+    pub fn add_relay<'client, 'url, U>(&'client self, url: U) -> AddRelay<'client, 'url>
     where
-        U: Into<RelayUrlArg<'a>>,
+        U: Into<RelayUrlArg<'url>>,
     {
-        self.get_or_add_relay_with_flag(url, RelayCapabilities::default())
-            .await
+        let url: RelayUrlArg<'url> = url.into();
+        let opts: RelayOptions = self.compose_relay_opts(&url);
+        AddRelay::new(self, url).opts(opts)
     }
 
     /// Add discovery relay
@@ -314,48 +287,58 @@ impl Client {
     /// If relay already exists, this method automatically add the [`RelayCapabilities::DISCOVERY`] flag to it and return `false`.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
-    #[inline]
-    pub async fn add_discovery_relay<'a, U>(&self, url: U) -> Result<bool, Error>
+    #[deprecated(
+        since = "0.45.0",
+        note = "Use `Client::add_relay(url).capabilities(RelayCapabilities::DISCOVERY)` instead."
+    )]
+    pub async fn add_discovery_relay<'u, U>(&self, url: U) -> Result<bool, Error>
     where
-        U: Into<RelayUrlArg<'a>>,
+        U: Into<RelayUrlArg<'u>>,
     {
-        self.get_or_add_relay_with_flag(url, RelayCapabilities::DISCOVERY)
+        self.add_relay(url)
+            .capabilities(RelayCapabilities::DISCOVERY)
             .await
     }
 
     /// Add read relay
-    ///
-    /// If relay already exists, this method add the [`RelayCapabilities::READ`] flag to it and return `false`.
-    ///
-    /// If are set pool subscriptions, the new added relay will inherit them. Use `subscribe_to` method instead of `subscribe`,
-    /// to avoid to set pool subscriptions.
-    #[inline]
-    pub async fn add_read_relay<'a, U>(&self, url: U) -> Result<bool, Error>
+    #[deprecated(
+        since = "0.45.0",
+        note = "Use `Client::add_relay(url).capabilities(RelayCapabilities::READ)` instead."
+    )]
+    pub async fn add_read_relay<'u, U>(&self, url: U) -> Result<bool, Error>
     where
-        U: Into<RelayUrlArg<'a>>,
+        U: Into<RelayUrlArg<'u>>,
     {
-        self.get_or_add_relay_with_flag(url, RelayCapabilities::READ)
+        self.add_relay(url)
+            .capabilities(RelayCapabilities::READ)
             .await
     }
 
     /// Add write relay
-    ///
-    /// If relay already exists, this method add the [`RelayCapabilities::WRITE`] flag to it and return `false`.
-    #[inline]
-    pub async fn add_write_relay<'a, U>(&self, url: U) -> Result<bool, Error>
+    #[deprecated(
+        since = "0.45.0",
+        note = "Use `Client::add_relay(url).capabilities(RelayCapabilities::WRITE)` instead."
+    )]
+    pub async fn add_write_relay<'u, U>(&self, url: U) -> Result<bool, Error>
     where
-        U: Into<RelayUrlArg<'a>>,
+        U: Into<RelayUrlArg<'u>>,
     {
-        self.get_or_add_relay_with_flag(url, RelayCapabilities::WRITE)
+        self.add_relay(url)
+            .capabilities(RelayCapabilities::WRITE)
             .await
     }
 
-    #[inline]
-    async fn add_gossip_relay<'a, U>(&self, url: U) -> Result<bool, Error>
+    /// Add gossip relay
+    #[deprecated(
+        since = "0.45.0",
+        note = "Use `Client::add_relay(url).capabilities(RelayCapabilities::GOSSIP)` instead."
+    )]
+    pub async fn add_gossip_relay<'u, U>(&self, url: U) -> Result<bool, Error>
     where
-        U: Into<RelayUrlArg<'a>>,
+        U: Into<RelayUrlArg<'u>>,
     {
-        self.get_or_add_relay_with_flag(url, RelayCapabilities::GOSSIP)
+        self.add_relay(url)
+            .capabilities(RelayCapabilities::GOSSIP)
             .await
     }
 
@@ -1667,9 +1650,10 @@ impl Client {
 
         // Add gossip (outbox and inbox) relays
         for url in filters.keys() {
-            if self.add_gossip_relay(url).await? {
-                self.connect_relay(url).await?;
-            }
+            self.add_relay(url)
+                .capabilities(RelayCapabilities::GOSSIP)
+                .and_connect()
+                .await?;
         }
 
         // Check if filters are empty
@@ -1767,9 +1751,10 @@ impl Client {
 
             // Add outbox and inbox relays
             for url in relays.iter() {
-                if self.add_gossip_relay(url).await? {
-                    self.connect_relay(url).await?;
-                }
+                self.add_relay(url)
+                    .capabilities(RelayCapabilities::GOSSIP)
+                    .and_connect()
+                    .await?;
             }
 
             relays
@@ -1808,9 +1793,10 @@ impl Client {
 
             // Add OUTBOX and INBOX relays
             for url in relays.iter() {
-                if self.add_gossip_relay(url).await? {
-                    self.connect_relay(url).await?;
-                }
+                self.add_relay(url)
+                    .capabilities(RelayCapabilities::GOSSIP)
+                    .and_connect()
+                    .await?;
             }
 
             // Get WRITE relays
@@ -1942,6 +1928,7 @@ mod tests {
     use nostr_relay_builder::MockRelay;
 
     use super::*;
+    use crate::pool;
     use crate::relay::RelayStatus;
 
     #[tokio::test]
@@ -2020,12 +2007,8 @@ mod tests {
         client.add_relay("ws://127.0.0.1:6666").await.unwrap();
 
         client
-            .pool()
-            .add_relay(
-                "ws://127.0.0.1:8888",
-                RelayOptions::new()
-                    .capabilities(RelayCapabilities::default() | RelayCapabilities::GOSSIP),
-            )
+            .add_relay("ws://127.0.0.1:8888")
+            .capabilities(RelayCapabilities::default() | RelayCapabilities::GOSSIP)
             .await
             .unwrap();
 
@@ -2055,12 +2038,8 @@ mod tests {
         client.add_relay("ws://127.0.0.1:6666").await.unwrap();
 
         client
-            .pool()
-            .add_relay(
-                "ws://127.0.0.1:8888",
-                RelayOptions::new()
-                    .capabilities(RelayCapabilities::default() | RelayCapabilities::GOSSIP),
-            )
+            .add_relay("ws://127.0.0.1:8888")
+            .capabilities(RelayCapabilities::default() | RelayCapabilities::GOSSIP)
             .await
             .unwrap();
 
@@ -2101,12 +2080,8 @@ mod tests {
         client.add_relay("ws://127.0.0.1:7777").await.unwrap();
 
         client
-            .pool()
-            .add_relay(
-                "ws://127.0.0.1:8888",
-                RelayOptions::new()
-                    .capabilities(RelayCapabilities::default() | RelayCapabilities::GOSSIP),
-            )
+            .add_relay("ws://127.0.0.1:8888")
+            .capabilities(RelayCapabilities::default() | RelayCapabilities::GOSSIP)
             .await
             .unwrap();
 
@@ -2137,12 +2112,8 @@ mod tests {
         client.add_relay("ws://127.0.0.1:7777").await.unwrap();
 
         client
-            .pool()
-            .add_relay(
-                "ws://127.0.0.1:8888",
-                RelayOptions::new()
-                    .capabilities(RelayCapabilities::default() | RelayCapabilities::GOSSIP),
-            )
+            .add_relay("ws://127.0.0.1:8888")
+            .capabilities(RelayCapabilities::default() | RelayCapabilities::GOSSIP)
             .await
             .unwrap();
 

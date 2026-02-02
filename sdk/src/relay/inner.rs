@@ -15,7 +15,7 @@ use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard};
 
-use super::capabilities::AtomicRelayCapabilities;
+use super::capabilities::{AtomicRelayCapabilities, RelayCapabilities};
 use super::constants::{
     DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE,
     NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP,
@@ -157,7 +157,12 @@ pub(crate) struct InnerRelay {
 }
 
 impl InnerRelay {
-    pub(super) fn new(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
+    pub(super) fn new(
+        url: RelayUrl,
+        state: SharedState,
+        capabilities: RelayCapabilities,
+        opts: RelayOptions,
+    ) -> Self {
         let (relay_notification_sender, ..) =
             broadcast::channel::<RelayNotification>(opts.notification_channel_size);
 
@@ -169,7 +174,7 @@ impl InnerRelay {
                 subscriptions: RwLock::new(HashMap::new()),
                 running: AtomicBool::new(false),
             }),
-            capabilities: Arc::new(AtomicRelayCapabilities::new(opts.capabilities)),
+            capabilities: Arc::new(AtomicRelayCapabilities::new(capabilities)),
             opts,
             stats: RelayConnectionStats::default(),
             state,

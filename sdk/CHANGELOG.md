@@ -34,6 +34,10 @@
 - Replace `RelayServiceFlags` with `RelayCapabilities`
 - Remove `Client::reset` method
 
+### Changed
+
+- Redesigned `Client::add_relay` API (https://github.com/rust-nostr/nostr/pull/1227)
+
 ### Added
 
 - Add `Client::is_shutdown`
@@ -41,9 +45,6 @@
 - Re-add support for multi-filter REQ (https://github.com/rust-nostr/nostr/pull/1176)
 - Add `Output::new` constructor and `Output::into_inner` method
 - Add idle timeout for negentropy sync (https://github.com/rust-nostr/nostr/pull/1131)
-
-### Added
-
 - Add `GossipAllowedRelays` to `GossipOptions` to filter relays during selection (https://github.com/rust-nostr/nostr/pull/1128)
 
 ## v0.44.1 - 2025/11/09

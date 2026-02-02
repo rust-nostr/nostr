@@ -19,6 +19,8 @@ pub enum Error {
     Relay(relay::Error),
     /// Relay Pool error
     RelayPool(pool::Error),
+    /// Relay URL error
+    RelayUrl(url::Error),
     /// Database error
     Database(DatabaseError),
     /// Signer error
@@ -47,6 +49,7 @@ impl fmt::Display for Error {
         match self {
             Self::Relay(e) => e.fmt(f),
             Self::RelayPool(e) => e.fmt(f),
+            Self::RelayUrl(e) => e.fmt(f),
             Self::Database(e) => e.fmt(f),
             Self::Signer(e) => e.fmt(f),
             Self::Gossip(e) => e.fmt(f),
@@ -72,6 +75,12 @@ impl From<relay::Error> for Error {
 impl From<pool::Error> for Error {
     fn from(e: pool::Error) -> Self {
         Self::RelayPool(e)
+    }
+}
+
+impl From<url::Error> for Error {
+    fn from(e: url::Error) -> Self {
+        Self::RelayUrl(e)
     }
 }
 
