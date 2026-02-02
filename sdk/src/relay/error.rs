@@ -119,6 +119,8 @@ pub enum Error {
     AuthenticationFailed,
     /// Premature exit
     PrematureExit,
+    /// An empty list of filters has been provided
+    EmptyFilters,
 }
 
 impl std::error::Error for Error {}
@@ -186,6 +188,7 @@ impl fmt::Display for Error {
             ),
             Self::AuthenticationFailed => f.write_str("authentication failed"),
             Self::PrematureExit => f.write_str("premature exit"),
+            Self::EmptyFilters => f.write_str("empty filters"),
         }
     }
 }

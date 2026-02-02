@@ -34,6 +34,8 @@
 - Replace `RelayServiceFlags` with `RelayCapabilities`
 - Remove `Client::reset` method
 - Change `Client::try_connect` and `Relay::try_connect` signature (https://github.com/rust-nostr/nostr/pull/1229)
+- Remove `Client::subscribe_with_id`, `Client::subscribe_to`, `Client::subscribe_with_id_to`, `Client::subscribe_targed` and `Relay::subscribe_with_id` (https://github.com/rust-nostr/nostr/pull/1232)
+- Change `Client::subscribe` signature (https://github.com/rust-nostr/nostr/pull/1232) 
 
 ### Changed
 
@@ -42,6 +44,7 @@
 - Redesign `Client::remove_relays` API (https://github.com/rust-nostr/nostr/pull/1229)
 - Redesign `Client::connect`, `Client::try_connect` and `Relay::try_connect` APIs (https://github.com/rust-nostr/nostr/pull/1229)
   Redesign `Client::relays` API (https://github.com/rust-nostr/nostr/pull/1231)
+- Redesign `Client::subscribe` and `Relay::subscribe` APIs (https://github.com/rust-nostr/nostr/pull/1232)
 
 ### Added
 

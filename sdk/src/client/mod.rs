@@ -31,10 +31,10 @@ use self::gossip::{BrokenDownFilters, GossipFilterPattern, GossipWrapper};
 use self::middleware::AdmissionPolicyMiddleware;
 pub use self::options::*;
 use crate::monitor::Monitor;
-use crate::pool::{Output, RelayPool, RelayPoolBuilder, RelayPoolNotification};
+use crate::pool::{RelayPool, RelayPoolBuilder, RelayPoolNotification};
 use crate::relay::{
-    Reconciliation, Relay, RelayCapabilities, RelayOptions, ReqExitPolicy,
-    SubscribeAutoCloseOptions, SubscribeOptions, SyncDirection, SyncOptions,
+    Reconciliation, Relay, RelayCapabilities, RelayOptions, ReqExitPolicy, SyncDirection,
+    SyncOptions,
 };
 use crate::stream::BoxedStream;
 
@@ -520,155 +520,187 @@ impl Client {
         self.pool.subscription(id).await
     }
 
-    /// Subscribe to filters
+    /// Subscribe to events from relays.
     ///
-    /// This method create a new subscription. None of the previous subscriptions will be edited/closed when you call this!
-    /// So remember to unsubscribe when you no longer need it. You can get all your active (non-auto-closing) subscriptions
-    /// by calling `client.subscriptions().await`.
+    /// # Overview
     ///
-    /// If `gossip` is enabled the events will be requested also to
-    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
+    /// Creates a long-lived event subscription.
     ///
-    /// # Auto-closing subscription
+    /// The subscription remains active until it is explicitly closed or until
+    /// auto-close conditions are met.
     ///
-    /// It's possible to automatically close a subscription by configuring the [`SubscribeAutoCloseOptions`].
+    /// For short-lived, request-style event streams, use [`Client::stream_events`] or [`Client::fetch_events`].
     ///
-    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
+    /// # Configuration
     ///
-    /// # Example
+    /// By default:
+    ///
+    /// - a random subscription ID is generated
+    /// - no auto-close condition are set
+    ///
+    /// The returned [`Subscribe`] builder can be configured before execution:
+    ///
+    /// - [`Subscribe::with_id`]: set an explicit subscription ID
+    /// - [`Subscribe::close_on`]: configure automatic closing conditions
+    ///
+    /// # Target Resolution
+    ///
+    /// The request target determines which relays are queried:
+    ///
+    /// - [`ReqTarget::auto`]: Sends the subscription to all relays with
+    ///   [`RelayCapabilities::READ`]. If gossip is enabled
+    ///   ([`ClientBuilder::gossip`]), NIP-65 relays are also included.
+    /// - [`ReqTarget::single`] / [`ReqTarget::manual`]: Sends the subscription only to
+    ///   the explicitly specified relays.
+    ///
+    /// # Event Semantics
+    ///
+    /// - Event signatures are **validated**.
+    /// - Events are **verified against the requested filters** if
+    ///   [`ClientBuilder::verify_subscriptions`] is enabled.
+    /// - Event replacements, deletions, and other stateful event semantics
+    ///   depend on the [`NostrDatabase`] implementation in use.
+    ///
+    /// # Lifetime
+    ///
+    /// The subscription terminates when:
+    ///
+    /// - It is explicitly closed,
+    /// - Auto-close conditions are met (if configured),
+    /// - Or the relay closes it remotely.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    ///
+    /// - The resolved target contains no relays,
+    /// - A specified relay does not exist in the pool,
+    /// - Target resolution fails.
+    ///
+    /// # Examples
+    ///
+    /// ## Automatic target resolution
+    ///
     /// ```rust,no_run
     /// # use nostr_sdk::prelude::*;
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<()> {
-    /// #   let keys = Keys::generate();
-    /// #   let client = Client::new();
-    /// // Compose filter
-    /// let subscription = Filter::new()
-    ///     .pubkeys(vec![keys.public_key()])
-    ///     .since(Timestamp::now());
+    /// # async fn example() -> Result<()> {
+    /// # let client = Client::default();
+    /// # client.add_relay("wss://relay1.example.com").await?;
+    /// # client.add_relay("wss://relay2.example.com").await?;
     ///
-    /// // Subscribe
-    /// let output = client.subscribe(subscription, None).await?;
+    /// // Subscribe with a single filter to all relays
+    /// let filter = Filter::new().kind(Kind::TextNote).since(Timestamp::now());
+    ///
+    /// // Subscribe to notifications
+    /// let mut notifications = client.notifications();
+    ///
+    /// // Send REQ
+    /// let output = client.subscribe(filter).await?;
     /// println!("Subscription ID: {}", output.val);
+    /// println!("Successful relays: {:?}", output.success);
+    /// println!("Failed relays: {:?}", output.failed);
     ///
-    /// // Auto-closing subscription
-    /// let id = SubscriptionId::generate();
-    /// let subscription = Filter::new().kind(Kind::TextNote).limit(10);
-    /// let opts = SubscribeAutoCloseOptions::default().exit_policy(ReqExitPolicy::ExitOnEOSE);
-    /// let output = client.subscribe(subscription, Some(opts)).await?;
-    /// println!("Subscription ID: {} [auto-closing]", output.val);
+    /// // Handle notifications
+    /// while let Ok(notification) = notifications.recv().await {
+    ///     if let RelayPoolNotification::Event { relay_url, subscription_id, event } = notification {
+    ///         if output.id() == &subscription_id {
+    ///             println!("Received an event from '{relay_url}' relay for the subscription '{subscription_id}': {}", event.as_json());
+    ///         }
+    ///     }
+    /// }
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn subscribe<F>(
-        &self,
-        filters: F,
-        opts: Option<SubscribeAutoCloseOptions>,
-    ) -> Result<Output<SubscriptionId>, Error>
-    where
-        F: Into<Vec<Filter>>,
-    {
-        let id: SubscriptionId = SubscriptionId::generate();
-        let output: Output<()> = self.subscribe_with_id(id.clone(), filters, opts).await?;
-        Ok(Output {
-            val: id,
-            success: output.success,
-            failed: output.failed,
-        })
-    }
-
-    /// Subscribe to filters with custom [SubscriptionId]
     ///
-    /// If `gossip` is enabled the events will be requested also to
-    /// NIP65 relays (automatically discovered) of public keys included in filters (if any).
+    /// ## Target specific relays
     ///
-    /// # Auto-closing subscription
+    /// ```rust,no_run
+    /// # use std::collections::HashMap;
+    /// # use nostr_sdk::prelude::*;
+    /// # async fn example() -> Result<()> {
+    /// # let client = Client::default();
+    /// # client.add_relay("wss://relay1.example.com").await?;
+    /// # client.add_relay("wss://relay2.example.com").await?;
+    /// // Subscribe to notifications
+    /// let mut notifications = client.notifications();
     ///
-    /// It's possible to automatically close a subscription by configuring the [SubscribeAutoCloseOptions].
+    /// // Subscribe with different filters per relay
+    /// let mut targets = HashMap::new();
+    /// targets.insert(
+    ///     "wss://relay1.example.com",
+    ///     vec![Filter::new().kind(Kind::TextNote).limit(10)],
+    /// );
+    /// targets.insert(
+    ///     "wss://relay2.example.com",
+    ///     vec![Filter::new().kind(Kind::Metadata).limit(5)],
+    /// );
     ///
-    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
-    pub async fn subscribe_with_id<F>(
-        &self,
-        id: SubscriptionId,
-        filters: F,
-        opts: Option<SubscribeAutoCloseOptions>,
-    ) -> Result<Output<()>, Error>
-    where
-        F: Into<Vec<Filter>>,
-    {
-        let opts: SubscribeOptions = SubscribeOptions::default().close_on(opts);
-
-        match &self.gossip {
-            Some(gossip) => self.gossip_subscribe(gossip, id, filters, opts).await,
-            None => Ok(self.pool.subscribe_with_id(id, filters, opts).await?),
-        }
-    }
-
-    /// Subscribe to filters to specific relays
+    /// // Send REQ
+    /// let output = client.subscribe(targets).await?;
+    /// println!("Subscription ID: {}", output.val);
+    /// println!("Successful relays: {:?}", output.success);
+    /// println!("Failed relays: {:?}", output.failed);
     ///
-    /// This method create a new subscription. None of the previous subscriptions will be edited/closed when you call this!
-    /// So remember to unsubscribe when you no longer need it.
+    /// // Handle notifications
+    /// while let Ok(notification) = notifications.recv().await {
+    ///     if let RelayPoolNotification::Event { relay_url, subscription_id, event } = notification {
+    ///         if output.id() == &subscription_id {
+    ///             println!("Received an event from '{relay_url}' relay for the subscription '{subscription_id}': {}", event.as_json());
+    ///         }
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     ///
-    /// ### Auto-closing subscription
+    /// ## With custom ID and auto-close
     ///
-    /// It's possible to automatically close a subscription by configuring the [SubscribeAutoCloseOptions].
+    /// ```rust,no_run
+    /// # use std::time::Duration;
+    /// # use nostr_sdk::prelude::*;
+    /// # async fn example() -> Result<()> {
+    /// # let client = Client::default();
+    /// # client.add_relay("wss://relay1.example.com").await?;
+    /// # client.add_relay("wss://relay2.example.com").await?;
+    ///
+    /// // Subscribe to notifications
+    /// let mut notifications = client.notifications();
+    ///
+    /// let filter = Filter::new().kind(Kind::TextNote).limit(10);
+    /// let custom_id = SubscriptionId::generate();
+    ///
+    /// let auto_close =
+    ///     SubscribeAutoCloseOptions::default()
+    /// .exit_policy(ReqExitPolicy::WaitForEventsAfterEOSE(10))
+    /// .idle_timeout(Some(Duration::from_secs(60)));
+    ///
+    /// // Send REQ
+    /// let output = client
+    ///     .subscribe(filter)
+    ///     .with_id(custom_id)
+    ///     .close_on(auto_close)
+    ///     .await?;
+    ///
+    /// println!("Successful relays: {:?}", output.success);
+    /// println!("Failed relays: {:?}", output.failed);
+    ///
+    /// // Handle notifications
+    /// while let Ok(notification) = notifications.recv().await {
+    ///     if let RelayPoolNotification::Event { relay_url, subscription_id, event } = notification {
+    ///         if output.id() == &subscription_id {
+    ///             println!("Received an event from '{relay_url}' relay for the subscription '{subscription_id}': {}", event.as_json());
+    ///         }
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     #[inline]
-    pub async fn subscribe_to<'a, I, U, F>(
-        &self,
-        urls: I,
-        filters: F,
-        opts: Option<SubscribeAutoCloseOptions>,
-    ) -> Result<Output<SubscriptionId>, Error>
+    pub fn subscribe<'client, 'url, F>(&'client self, target: F) -> Subscribe<'client, 'url>
     where
-        I: IntoIterator<Item = U>,
-        U: Into<RelayUrlArg<'a>>,
-        F: Into<Vec<Filter>>,
+        F: Into<ReqTarget<'url>>,
     {
-        let opts: SubscribeOptions = SubscribeOptions::default().close_on(opts);
-        Ok(self.pool.subscribe_to(urls, filters, opts).await?)
-    }
-
-    /// Subscribe to filter with custom [SubscriptionId] to specific relays
-    ///
-    /// ### Auto-closing subscription
-    ///
-    /// It's possible to automatically close a subscription by configuring the [SubscribeAutoCloseOptions].
-    #[inline]
-    pub async fn subscribe_with_id_to<'a, I, U, F>(
-        &self,
-        urls: I,
-        id: SubscriptionId,
-        filters: F,
-        opts: Option<SubscribeAutoCloseOptions>,
-    ) -> Result<Output<()>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: Into<RelayUrlArg<'a>>,
-        F: Into<Vec<Filter>>,
-    {
-        let opts: SubscribeOptions = SubscribeOptions::default().close_on(opts);
-        Ok(self
-            .pool
-            .subscribe_with_id_to(urls, id, filters, opts)
-            .await?)
-    }
-
-    /// Targeted subscription
-    ///
-    /// Subscribe to specific relays with specific filters
-    #[inline]
-    pub async fn subscribe_targeted<'a, I, U, F>(
-        &self,
-        id: SubscriptionId,
-        targets: I,
-        opts: SubscribeOptions,
-    ) -> Result<Output<()>, Error>
-    where
-        I: IntoIterator<Item = (U, F)>,
-        U: Into<RelayUrlArg<'a>>,
-        F: Into<Vec<Filter>>,
-    {
-        Ok(self.pool.subscribe_targeted(id, targets, opts).await?)
+        Subscribe::new(self, target.into())
     }
 
     /// Unsubscribe
@@ -1929,20 +1961,6 @@ impl Client {
         }
 
         Ok(events)
-    }
-
-    async fn gossip_subscribe<F>(
-        &self,
-        gossip: &GossipWrapper,
-        id: SubscriptionId,
-        filters: F,
-        opts: SubscribeOptions,
-    ) -> Result<Output<()>, Error>
-    where
-        F: Into<Vec<Filter>>,
-    {
-        let filters = self.break_down_filters(gossip, filters).await?;
-        Ok(self.pool.subscribe_targeted(id, filters, opts).await?)
     }
 
     async fn gossip_sync_negentropy(

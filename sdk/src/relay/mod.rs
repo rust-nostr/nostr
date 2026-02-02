@@ -490,110 +490,12 @@ impl Relay {
     }
 
     /// Subscribe to filters
-    ///
-    /// Internally generate a new random [`SubscriptionId`]. Check `subscribe_with_id` method to use a custom [SubscriptionId].
-    ///
-    /// ### Auto-closing subscription
-    ///
-    /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
-    ///
-    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
-    pub async fn subscribe<F>(
-        &self,
-        filters: F,
-        opts: SubscribeOptions,
-    ) -> Result<SubscriptionId, Error>
+    #[inline]
+    pub fn subscribe<F>(&self, filters: F) -> Subscribe
     where
         F: Into<Vec<Filter>>,
     {
-        let id: SubscriptionId = SubscriptionId::generate();
-        self.subscribe_with_id(id.clone(), filters, opts).await?;
-        Ok(id)
-    }
-
-    /// Subscribe with custom [`SubscriptionId`]
-    ///
-    /// ### Auto-closing subscription
-    ///
-    /// It's possible to automatically close a subscription by configuring the [SubscribeOptions].
-    ///
-    /// Note: auto-closing subscriptions aren't saved in subscriptions map!
-    pub async fn subscribe_with_id<F>(
-        &self,
-        id: SubscriptionId,
-        filters: F,
-        opts: SubscribeOptions,
-    ) -> Result<(), Error>
-    where
-        F: Into<Vec<Filter>>,
-    {
-        // Convert filters
-        let filters: Vec<Filter> = filters.into();
-
-        // Check if the auto-close condition is set
-        match opts.auto_close {
-            Some(opts) => self.subscribe_auto_closing(id, filters, opts, None).await,
-            None => self.subscribe_long_lived(id, filters).await,
-        }
-    }
-
-    async fn subscribe_auto_closing(
-        &self,
-        id: SubscriptionId,
-        filters: Vec<Filter>,
-        opts: SubscribeAutoCloseOptions,
-        activity: Option<mpsc::Sender<SubscriptionActivity>>,
-    ) -> Result<(), Error> {
-        // Compose REQ message
-        let msg: ClientMessage = ClientMessage::Req {
-            subscription_id: Cow::Borrowed(&id),
-            filters: filters.iter().map(Cow::Borrowed).collect(),
-        };
-
-        // Subscribe to notifications
-        let notifications = self.inner.internal_notification_sender.subscribe();
-
-        // Register the auto-closing subscription
-        self.inner
-            .add_auto_closing_subscription(id.clone(), filters.clone())
-            .await;
-
-        // Send REQ message
-        if let Err(e) = self.inner.send_msg(msg) {
-            // Remove previously added subscription
-            self.inner.remove_subscription(&id).await;
-
-            // Propagate error
-            return Err(e);
-        }
-
-        // Spawn auto-closing handler
-        self.inner
-            .spawn_auto_closing_handler(id, filters, opts, notifications, activity);
-
-        // Return
-        Ok(())
-    }
-
-    async fn subscribe_long_lived(
-        &self,
-        id: SubscriptionId,
-        filters: Vec<Filter>,
-    ) -> Result<(), Error> {
-        // Compose REQ message
-        let msg: ClientMessage = ClientMessage::Req {
-            subscription_id: Cow::Borrowed(&id),
-            filters: filters.iter().map(Cow::Borrowed).collect(),
-        };
-
-        // Send REQ message
-        self.inner.send_msg(msg)?;
-
-        // No auto-close subscription: update subscription filter
-        self.inner.update_subscription(id, filters, true).await;
-
-        // Return
-        Ok(())
+        Subscribe::new(self, filters.into())
     }
 
     /// Unsubscribe
@@ -628,8 +530,7 @@ impl Relay {
 
         // Subscribe
         let id: SubscriptionId = SubscriptionId::generate();
-        self.subscribe_auto_closing(id, filters.into(), opts, Some(tx))
-            .await?;
+        subscribe_auto_closing(self, id, filters.into(), opts, Some(tx)).await?;
 
         Ok(Box::pin(SubscriptionActivityEventStream::new(rx)))
     }
@@ -851,10 +752,7 @@ mod tests {
 
         // Subscribe
         let filter = Filter::new().kind(Kind::TextNote);
-        let id = relay
-            .subscribe(filter, SubscribeOptions::default())
-            .await
-            .unwrap();
+        let id = relay.subscribe(filter).await.unwrap();
 
         (id, relay, mock)
     }
@@ -1269,53 +1167,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_subscribe_ban_relay() {
-        // Mock relay
-        let opts = LocalRelayTestOptions {
-            unresponsive_connection: None,
-            send_random_events: true,
-        };
-        let mock = MockRelay::run_with_opts(opts).await.unwrap();
-        let url = mock.url().await;
-
-        let relay = new_relay(
-            url,
-            RelayOptions::default()
-                .verify_subscriptions(true)
-                .ban_relay_on_mismatch(true),
-        );
-
-        assert_eq!(relay.status(), RelayStatus::Initialized);
-
-        relay
-            .try_connect()
-            .timeout(Duration::from_secs(3))
-            .await
-            .unwrap();
-
-        assert_eq!(relay.status(), RelayStatus::Connected);
-
-        let filter = Filter::new().kind(Kind::Metadata).limit(3);
-        relay
-            .subscribe(filter, SubscribeOptions::default())
-            .await
-            .unwrap();
-
-        // Keep up the test
-        time::timeout(
-            Some(Duration::from_secs(10)),
-            relay.handle_notifications(|_| async { Ok(false) }),
-        )
-        .await
-        .unwrap()
-        .unwrap();
-
-        assert_eq!(relay.status(), RelayStatus::Banned);
-
-        assert!(!relay.inner.is_running());
-    }
-
-    #[tokio::test]
     async fn test_nip42_send_event() {
         // Mock relay
         let opts = LocalRelayBuilderNip42 {
@@ -1566,76 +1417,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_subscribe_ephemeral_event() {
-        // Mock relay
-        let mock = MockRelay::run().await.unwrap();
-        let url = mock.url().await;
-
-        // Sender
-        let relay1: Relay = new_relay(url.clone(), RelayOptions::default());
-        relay1.connect();
-        relay1
-            .try_connect()
-            .timeout(Duration::from_millis(500))
-            .await
-            .unwrap();
-
-        // Fetcher
-        let relay2 = new_relay(url, RelayOptions::default());
-        relay2
-            .try_connect()
-            .timeout(Duration::from_millis(500))
-            .await
-            .unwrap();
-
-        // Signer
-        let keys = Keys::generate();
-
-        // Event
-        let kind = Kind::Custom(22_222); // Ephemeral kind
-        let event: Event = EventBuilder::new(kind, "").sign_with_keys(&keys).unwrap();
-
-        let event_id: EventId = event.id;
-
-        tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_secs(2)).await;
-            relay1.send_event(&event).await.unwrap();
-        });
-
-        // Subscribe
-        let filter = Filter::new().kind(kind);
-        let sub_id = relay2
-            .subscribe(filter, SubscribeOptions::default())
-            .await
-            .unwrap();
-
-        // Listen for notifications
-        let fut = relay2.handle_notifications(|notification| async {
-            if let RelayNotification::Event {
-                subscription_id,
-                event,
-            } = notification
-            {
-                if subscription_id == sub_id {
-                    if event.id == event_id {
-                        return Ok(true);
-                    } else {
-                        panic!("Unexpected event");
-                    }
-                } else {
-                    panic!("Unexpected subscription ID");
-                }
-            }
-            Ok(false)
-        });
-
-        tokio::time::timeout(Duration::from_secs(5), fut)
-            .await
-            .unwrap()
-            .unwrap();
-    }
-
-    #[tokio::test]
     async fn test_unsubscribe() {
         let (id, relay, _mock) = setup_subscription_relay().await;
 
@@ -1849,10 +1630,7 @@ mod tests {
         assert_eq!(relay.status(), RelayStatus::Connected);
 
         let filter = Filter::new().kind(Kind::TextNote);
-        relay
-            .subscribe(filter, SubscribeOptions::default())
-            .await
-            .unwrap();
+        relay.subscribe(filter).await.unwrap();
 
         time::sleep(Duration::from_secs(5)).await;
         assert_eq!(relay.status(), RelayStatus::Connected);

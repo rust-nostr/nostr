@@ -254,12 +254,8 @@ impl NostrWalletConnect {
         tracing::debug!("Notification filter: {:?}", notification_filter);
 
         self.client
-            .pool()
-            .subscribe_with_id(
-                SubscriptionId::new(NOTIFICATIONS_ID),
-                notification_filter,
-                SubscribeOptions::default(),
-            )
+            .subscribe(notification_filter)
+            .with_id(SubscriptionId::new(NOTIFICATIONS_ID))
             .await?;
 
         self.notifications_subscribed.store(true, Ordering::SeqCst);

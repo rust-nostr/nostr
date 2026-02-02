@@ -133,7 +133,7 @@ impl NostrConnectRemoteSigner {
             .since(Timestamp::now());
 
         // Subscribe
-        self.client.subscribe(filter, None).await?;
+        self.client.subscribe(filter).await?;
 
         // Mark as bootstrapped
         self.bootstrapped.store(true, Ordering::SeqCst);

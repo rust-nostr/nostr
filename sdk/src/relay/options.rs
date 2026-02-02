@@ -158,24 +158,6 @@ impl SubscribeAutoCloseOptions {
     }
 }
 
-/// Subscribe options
-#[derive(Debug, Clone, Copy, Default)]
-pub struct SubscribeOptions {
-    pub(super) auto_close: Option<SubscribeAutoCloseOptions>,
-}
-
-impl SubscribeOptions {
-    /// Set auto-close conditions
-    pub fn close_on(mut self, opts: Option<SubscribeAutoCloseOptions>) -> Self {
-        self.auto_close = opts;
-        self
-    }
-
-    pub(crate) fn is_auto_closing(&self) -> bool {
-        self.auto_close.is_some()
-    }
-}
-
 /// Request (REQ) exit policy
 #[derive(Debug, Clone, Copy, Default)]
 pub enum ReqExitPolicy {
@@ -334,14 +316,6 @@ mod tests {
         assert_eq!(opts.idle_timeout, duration);
         let opt = SyncOptions::default().initial_timeout(Duration::from_secs(5));
         assert_eq!(opt.initial_timeout, Duration::from_secs(5));
-    }
-
-    #[test]
-    fn test_close() {
-        let opts = SubscribeOptions::default();
-        assert!(!opts.is_auto_closing());
-        let opts = SubscribeOptions::default().close_on(Some(SubscribeAutoCloseOptions::default()));
-        assert!(opts.is_auto_closing());
     }
 
     #[test]
