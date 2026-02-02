@@ -288,7 +288,7 @@ impl RelayPool {
         let url: RelayUrl = url.into_owned();
 
         // Compose new relay
-        let mut relay: Relay = Relay::new(url.clone(), self.inner.state.clone(), opts);
+        let mut relay: Relay = Relay::new_shared(url.clone(), self.inner.state.clone(), opts);
 
         // Set notification sender
         relay

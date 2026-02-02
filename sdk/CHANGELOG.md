@@ -36,6 +36,7 @@
 ### Added
 
 - Add `Client::is_shutdown`
+- Add `RelayBuilder` struct and `Relay` constructors
 - Re-add support for multi-filter REQ (https://github.com/rust-nostr/nostr/pull/1176)
 - Add `Output::new` constructor and `Output::into_inner` method
 - Add idle timeout for negentropy sync (https://github.com/rust-nostr/nostr/pull/1131)

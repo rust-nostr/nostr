@@ -16,6 +16,7 @@ use atomic_destructor::AtomicDestructor;
 use nostr_database::prelude::*;
 use tokio::sync::{broadcast, mpsc};
 
+mod builder;
 mod capabilities;
 mod constants;
 mod error;
@@ -27,6 +28,7 @@ mod ping;
 mod stats;
 mod status;
 
+pub use self::builder::*;
 pub use self::capabilities::*;
 use self::constants::{WAIT_FOR_AUTHENTICATION_TIMEOUT, WAIT_FOR_OK_TIMEOUT};
 pub use self::error::Error;
@@ -164,9 +166,38 @@ impl Ord for Relay {
 
 impl Relay {
     #[inline]
-    pub(crate) fn new(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
+    pub(crate) fn new_shared(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
         Self {
             inner: AtomicDestructor::new(InnerRelay::new(url, state, opts)),
+        }
+    }
+
+    /// Construct a new relay.
+    ///
+    /// Use [`Relay::builder`] for customizing the relay.
+    #[inline]
+    pub fn new(url: RelayUrl) -> Self {
+        Self::builder(url).build()
+    }
+
+    /// Construct a new relay builder.
+    #[inline]
+    pub fn builder(url: RelayUrl) -> RelayBuilder {
+        RelayBuilder::new(url)
+    }
+
+    fn from_builder(builder: RelayBuilder) -> Self {
+        let state: SharedState = SharedState::new(
+            builder.database,
+            builder.websocket_transport,
+            builder.signer,
+            builder.admit_policy,
+            false,
+            None,
+        );
+
+        Self {
+            inner: AtomicDestructor::new(InnerRelay::new(builder.url, state, builder.opts)),
         }
     }
 
@@ -786,7 +817,7 @@ mod tests {
     }
 
     fn new_relay(url: RelayUrl, opts: RelayOptions) -> Relay {
-        Relay::new(url, SharedState::default(), opts)
+        Relay::builder(url).opts(opts).build()
     }
 
     fn new_relay_with_database(
@@ -794,9 +825,7 @@ mod tests {
         database: Arc<dyn NostrDatabase>,
         opts: RelayOptions,
     ) -> Relay {
-        let mut state = SharedState::default();
-        state.database = database;
-        Relay::new(url, state, opts)
+        Relay::builder(url).database(database).opts(opts).build()
     }
 
     /// Setup public (without NIP42 auth) relay with N events to test event fetching
