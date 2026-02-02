@@ -38,6 +38,7 @@
 
 - Redesigned `Client::add_relay` API (https://github.com/rust-nostr/nostr/pull/1227)
 - Redesigned `Client::remove_relay` API (https://github.com/rust-nostr/nostr/pull/1228)
+- Redesigned `Client::remove_relays` API (https://github.com/rust-nostr/nostr/pull/1229)
 
 ### Added
 

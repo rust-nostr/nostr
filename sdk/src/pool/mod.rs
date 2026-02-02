@@ -347,23 +347,9 @@ impl RelayPool {
         Ok(())
     }
 
-    /// Disconnect and remove all relays
-    ///
-    /// This method may not remove all relays.
-    /// Use [`RelayPool::force_remove_all_relays`] to remove every relay.
     #[inline]
-    pub async fn remove_all_relays(&self) {
-        // Acquire write lock
-        let mut relays = self.inner.atomic.relays.write().await;
-
-        // Retains all relays that can't be removed
-        relays.retain(|_, r| !can_remove_relay(r));
-    }
-
-    /// Disconnect and force remove all relays
-    #[inline]
-    pub async fn force_remove_all_relays(&self) {
-        self.inner.force_remove_all_relays().await
+    pub(crate) async fn remove_all_relays(&self, force: bool) {
+        self.inner.remove_all_relays(force).await
     }
 
     /// Connect to all added relays

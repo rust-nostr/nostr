@@ -368,18 +368,20 @@ impl Client {
 
     /// Disconnect and remove all relays
     ///
-    /// Some relays used by some services could not be disconnected with this method
-    /// (like the ones used for gossip).
-    /// Use [`Client::force_remove_all_relays`] to remove every relay.
+    /// Some relays (i.e., the gossip ones) will not be disconnected and removed unless you
+    /// use [`RemoveAllRelays::force()`].
     #[inline]
-    pub async fn remove_all_relays(&self) {
-        self.pool.remove_all_relays().await
+    pub fn remove_all_relays(&self) -> RemoveAllRelays<'_> {
+        RemoveAllRelays::new(self)
     }
 
     /// Disconnect and force remove all relays
-    #[inline]
+    #[deprecated(
+        since = "0.45.0",
+        note = "use `remove_all_relays(url).force()` instead"
+    )]
     pub async fn force_remove_all_relays(&self) {
-        self.pool.force_remove_all_relays().await
+        let _ = self.remove_all_relays().force().await;
     }
 
     /// Connect to a previously added relay
@@ -1981,76 +1983,5 @@ mod tests {
 
         // When the client is dropped, all relays are shutdown
         assert_eq!(relay.status(), RelayStatus::Terminated);
-    }
-
-    #[tokio::test]
-    async fn test_remove_all_relays() {
-        let client = Client::default();
-
-        client.add_relay("ws://127.0.0.1:6666").await.unwrap();
-
-        client.add_relay("ws://127.0.0.1:7777").await.unwrap();
-
-        client
-            .add_relay("ws://127.0.0.1:8888")
-            .capabilities(RelayCapabilities::default() | RelayCapabilities::GOSSIP)
-            .await
-            .unwrap();
-
-        assert_eq!(client.relays().await.len(), 3);
-        assert_eq!(client.pool.all_relays().await.len(), 3);
-
-        // Remove all relays
-        client.remove_all_relays().await;
-        assert!(matches!(
-            client.relay("ws://127.0.0.1:6666").await.unwrap_err(),
-            Error::RelayPool(pool::Error::RelayNotFound)
-        ));
-        assert!(matches!(
-            client.relay("ws://127.0.0.1:7777").await.unwrap_err(),
-            Error::RelayPool(pool::Error::RelayNotFound)
-        ));
-        assert!(client.relay("ws://127.0.0.1:8888").await.is_ok()); // The GOSSIP relay still exists
-        assert!(client.relays().await.is_empty()); // This gets only the READ/WRITE relays, which are now 0
-        assert_eq!(client.pool.all_relays().await.len(), 1); // The GOSSIP relay still exists
-    }
-
-    #[tokio::test]
-    async fn test_force_remove_all_relays() {
-        let client = Client::default();
-
-        client.add_relay("ws://127.0.0.1:6666").await.unwrap();
-
-        client.add_relay("ws://127.0.0.1:7777").await.unwrap();
-
-        client
-            .add_relay("ws://127.0.0.1:8888")
-            .capabilities(RelayCapabilities::default() | RelayCapabilities::GOSSIP)
-            .await
-            .unwrap();
-
-        assert_eq!(client.relays().await.len(), 3);
-        assert_eq!(client.pool.all_relays().await.len(), 3);
-
-        // Force remove all relays
-        client.force_remove_all_relays().await;
-
-        // Check if relays map is empty
-        assert!(client.relays().await.is_empty());
-        assert!(client.pool.all_relays().await.is_empty());
-
-        // Double check that relays doesn't exist
-        assert!(matches!(
-            client.relay("ws://127.0.0.1:6666").await.unwrap_err(),
-            Error::RelayPool(pool::Error::RelayNotFound)
-        ));
-        assert!(matches!(
-            client.relay("ws://127.0.0.1:7777").await.unwrap_err(),
-            Error::RelayPool(pool::Error::RelayNotFound)
-        ));
-        assert!(matches!(
-            client.relay("ws://127.0.0.1:8888").await.unwrap_err(),
-            Error::RelayPool(pool::Error::RelayNotFound)
-        ));
     }
 }
