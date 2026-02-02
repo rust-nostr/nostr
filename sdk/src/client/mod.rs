@@ -1961,6 +1961,7 @@ mod tests {
     use nostr_relay_builder::MockRelay;
 
     use super::*;
+    use crate::relay::RelayStatus;
 
     #[tokio::test]
     async fn test_shutdown() {
@@ -1985,6 +1986,35 @@ mod tests {
             client.add_relay(url).await.unwrap_err(),
             Error::RelayPool(pool::Error::Shutdown)
         ));
+    }
+
+    #[tokio::test]
+    async fn test_shutdown_on_drop() {
+        let mock = MockRelay::run().await.unwrap();
+        let url = mock.url().await;
+
+        let relay: Relay = {
+            let client: Client = Client::default();
+
+            client.add_relay(&url).await.unwrap();
+            client.connect().await;
+
+            assert!(!client.is_shutdown());
+
+            tokio::time::sleep(Duration::from_millis(500)).await;
+
+            let relay = client.relay(&url).await.unwrap();
+
+            assert!(relay.status().is_connected());
+
+            relay
+        };
+        // Client is dropped here
+
+        tokio::time::sleep(Duration::from_secs(1)).await;
+
+        // When the client is dropped, all relays are shutdown
+        assert_eq!(relay.status(), RelayStatus::Terminated);
     }
 
     #[tokio::test]

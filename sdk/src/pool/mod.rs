@@ -16,7 +16,6 @@ use std::vec::IntoIter;
 
 use async_utility::futures_util::{future, StreamExt};
 use async_utility::task;
-use atomic_destructor::{AtomicDestructor, StealthClone};
 use nostr_database::prelude::*;
 use tokio::sync::{broadcast, mpsc, Mutex, RwLockReadGuard};
 
@@ -81,7 +80,9 @@ pub enum RelayPoolNotification {
 /// Relay Pool
 #[derive(Debug, Clone)]
 pub struct RelayPool {
-    inner: AtomicDestructor<InnerRelayPool>,
+    inner: InnerRelayPool,
+    // Keep track of the atomic reference count to know when shutdown the relay.
+    atomic_counter: Arc<()>,
 }
 
 impl Default for RelayPool {
@@ -90,10 +91,13 @@ impl Default for RelayPool {
     }
 }
 
-impl StealthClone for RelayPool {
-    fn stealth_clone(&self) -> Self {
-        Self {
-            inner: self.inner.stealth_clone(),
+// TODO: use AsyncDrop when will be stable: https://doc.rust-lang.org/std/future/trait.AsyncDrop.html
+impl Drop for RelayPool {
+    fn drop(&mut self) {
+        // If there is only one reference left, shutdown the relay
+        if Arc::strong_count(&self.atomic_counter) == 1 {
+            let pool = self.inner.clone();
+            task::spawn(async move { pool.shutdown().await });
         }
     }
 }
@@ -116,7 +120,8 @@ impl RelayPool {
     #[inline]
     fn from_builder(builder: RelayPoolBuilder) -> Self {
         Self {
-            inner: AtomicDestructor::new(InnerRelayPool::from_builder(builder)),
+            inner: InnerRelayPool::from_builder(builder),
+            atomic_counter: Arc::new(()),
         }
     }
 

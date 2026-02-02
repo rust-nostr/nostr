@@ -12,7 +12,6 @@ use async_utility::futures_util::{Stream, StreamExt};
 use async_utility::time;
 use async_wsocket::futures_util::Future;
 use async_wsocket::ConnectionMode;
-use atomic_destructor::AtomicDestructor;
 use nostr_database::prelude::*;
 use tokio::sync::{broadcast, mpsc};
 
@@ -141,7 +140,18 @@ impl Stream for SubscriptionActivityEventStream {
 /// Relay
 #[derive(Debug, Clone)]
 pub struct Relay {
-    pub(crate) inner: AtomicDestructor<InnerRelay>,
+    pub(crate) inner: InnerRelay,
+    // Keep track of the atomic reference count to know when shutdown the relay.
+    atomic_counter: Arc<()>,
+}
+
+impl Drop for Relay {
+    fn drop(&mut self) {
+        // If there is only one reference left, shutdown the relay
+        if Arc::strong_count(&self.atomic_counter) == 1 {
+            self.disconnect();
+        }
+    }
 }
 
 impl PartialEq for Relay {
@@ -168,7 +178,8 @@ impl Relay {
     #[inline]
     pub(crate) fn new_shared(url: RelayUrl, state: SharedState, opts: RelayOptions) -> Self {
         Self {
-            inner: AtomicDestructor::new(InnerRelay::new(url, state, opts)),
+            inner: InnerRelay::new(url, state, opts),
+            atomic_counter: Arc::new(()),
         }
     }
 
@@ -197,7 +208,8 @@ impl Relay {
         );
 
         Self {
-            inner: AtomicDestructor::new(InnerRelay::new(builder.url, state, builder.opts)),
+            inner: InnerRelay::new(builder.url, state, builder.opts),
+            atomic_counter: Arc::new(()),
         }
     }
 
@@ -1188,6 +1200,46 @@ mod tests {
         // Health check
         let res = relay.inner.ensure_operational();
         assert!(matches!(res.unwrap_err(), Error::Banned));
+    }
+
+    #[tokio::test]
+    async fn test_shutdown_on_drop() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = mock.url().await;
+
+        let inner: InnerRelay = {
+            let relay: Relay = Relay::new(url);
+
+            relay.try_connect(Duration::from_secs(3)).await.unwrap();
+
+            assert_eq!(relay.status(), RelayStatus::Connected);
+
+            // Clone the inner relay
+            let inner: InnerRelay = relay.inner.clone();
+
+            {
+                let r2 = relay.clone();
+                tokio::spawn(async move {
+                    assert_eq!(Arc::strong_count(&r2.atomic_counter), 2);
+
+                    time::sleep(Duration::from_secs(1)).await;
+
+                    // r2 dropped here
+                });
+            }
+
+            time::sleep(Duration::from_secs(3)).await;
+
+            assert_eq!(Arc::strong_count(&relay.atomic_counter), 1);
+
+            inner
+        }; // relay dropped here
+
+        time::sleep(Duration::from_secs(1)).await;
+
+        assert_eq!(inner.status(), RelayStatus::Terminated);
+        assert!(!inner.is_running());
     }
 
     #[tokio::test]

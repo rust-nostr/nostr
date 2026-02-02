@@ -8,8 +8,6 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use async_utility::task;
-use atomic_destructor::AtomicDestroyer;
 use nostr_database::prelude::*;
 use tokio::sync::{broadcast, RwLock};
 
@@ -36,13 +34,6 @@ pub struct InnerRelayPool {
     pub(super) atomic: Arc<AtomicPrivateData>,
     pub(super) notification_sender: broadcast::Sender<RelayPoolNotification>, // TODO: move to shared state?
     pub(super) opts: RelayPoolOptions,
-}
-
-impl AtomicDestroyer for InnerRelayPool {
-    fn on_destroy(&self) {
-        let pool = self.clone();
-        task::spawn(async move { pool.shutdown().await });
-    }
 }
 
 impl InnerRelayPool {
