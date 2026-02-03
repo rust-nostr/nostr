@@ -183,7 +183,7 @@ async fn gossip_send_event(
             .get_relays(
                 event.tags.public_keys(),
                 BestRelaySelection::PrivateMessage { limit: 3 },
-                client.opts.gossip.allowed,
+                client.config.gossip_allowed,
             )
             .await?;
 
@@ -212,11 +212,11 @@ async fn gossip_send_event(
                 &event.pubkey,
                 BestRelaySelection::All {
                     read: 0, // No read relays
-                    write: client.opts.gossip.limits.write_relays_per_user,
-                    hints: client.opts.gossip.limits.hint_relays_per_user,
-                    most_received: client.opts.gossip.limits.most_used_relays_per_user,
+                    write: client.config.gossip_limits.write_relays_per_user,
+                    hints: client.config.gossip_limits.hint_relays_per_user,
+                    most_received: client.config.gossip_limits.most_used_relays_per_user,
                 },
-                client.opts.gossip.allowed,
+                client.config.gossip_allowed,
             )
             .await?;
 
@@ -226,12 +226,12 @@ async fn gossip_send_event(
                 .get_relays(
                     event.tags.public_keys(),
                     BestRelaySelection::All {
-                        read: client.opts.gossip.limits.read_relays_per_user,
+                        read: client.config.gossip_limits.read_relays_per_user,
                         write: 0, // No write relays
-                        hints: client.opts.gossip.limits.hint_relays_per_user,
-                        most_received: client.opts.gossip.limits.most_used_relays_per_user,
+                        hints: client.config.gossip_limits.hint_relays_per_user,
+                        most_received: client.config.gossip_limits.most_used_relays_per_user,
                     },
-                    client.opts.gossip.allowed,
+                    client.config.gossip_allowed,
                 )
                 .await?;
 
@@ -378,7 +378,7 @@ mod tests {
     use nostr_relay_builder::MockRelay;
 
     use super::*;
-    use crate::client::{ClientOptions, GossipOptions, GossipRelayLimits};
+    use crate::client::GossipRelayLimits;
 
     #[tokio::test]
     async fn test_send_event() {
@@ -513,22 +513,21 @@ mod tests {
 
         // Configure Client with Gossip
         let gossip = NostrGossipMemory::unbounded();
-        let opts = ClientOptions::default().gossip(
-            GossipOptions::default()
-                .allowed(GossipAllowedRelays {
-                    onion: true,
-                    local: true,
-                    without_tls: true,
-                })
-                .limits(GossipRelayLimits {
-                    read_relays_per_user: 2,
-                    write_relays_per_user: 2,
-                    hint_relays_per_user: 1,
-                    most_used_relays_per_user: 0, // Disable the most used, as it would be the discovery one
-                    nip17_relays: 3,
-                }),
-        );
-        let client = Client::builder().gossip(gossip).opts(opts).build();
+        let client = Client::builder()
+            .gossip(gossip)
+            .gossip_limits(GossipRelayLimits {
+                read_relays_per_user: 2,
+                write_relays_per_user: 2,
+                hint_relays_per_user: 1,
+                most_used_relays_per_user: 0, // Disable the most used, as it would be the discovery one
+                nip17_relays: 3,
+            })
+            .gossip_allowed(GossipAllowedRelays {
+                onion: true,
+                local: true,
+                without_tls: true,
+            })
+            .build();
 
         // The client only knows about the Discovery and Public relays initially
         client
@@ -618,14 +617,14 @@ mod tests {
 
         // Configure Client with Gossip
         let gossip = NostrGossipMemory::unbounded();
-        let opts = ClientOptions::default().gossip(GossipOptions::default().allowed(
-            GossipAllowedRelays {
+        let client = Client::builder()
+            .gossip(gossip)
+            .gossip_allowed(GossipAllowedRelays {
                 onion: true,
                 local: true,
                 without_tls: true,
-            },
-        ));
-        let client = Client::builder().gossip(gossip).opts(opts).build();
+            })
+            .build();
 
         // The client only knows about the Discovery and Public relays initially
         client

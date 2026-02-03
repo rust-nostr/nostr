@@ -44,6 +44,7 @@
 - Relays no longer inherit subscriptions of the pool (https://github.com/rust-nostr/nostr/pull/1237)
 - Remove `Client::batch_msgs` and `Relay::batch_msgs` (https://github.com/rust-nostr/nostr/pull/1240)
 - Change `Client::relay` output to return `Result<Output<Relay>>`
+- Remove `ClientOptions` in favor of `ClientBuilder` (https://github.com/rust-nostr/nostr/pull/1241)
 
 ### Changed
 
