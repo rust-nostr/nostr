@@ -69,7 +69,7 @@ impl Drop for Relay {
     fn drop(&mut self) {
         // If there is only one reference left, shutdown the relay
         if Arc::strong_count(&self.atomic_counter) == 1 {
-            self.disconnect();
+            self.shutdown();
         }
     }
 }
@@ -238,7 +238,11 @@ impl Relay {
         let status: RelayStatus = self.status();
 
         // Immediately returns if the relay is already connected, if it's terminated or banned.
-        if status.is_connected() || status.is_terminated() || status.is_banned() {
+        if status.is_connected()
+            || status.is_terminated()
+            || status.is_banned()
+            || status.is_shutdown()
+        {
             return;
         }
 
@@ -256,11 +260,12 @@ impl Relay {
                         | RelayStatus::Pending
                         | RelayStatus::Connecting
                         | RelayStatus::Disconnected => {}
-                        // Connected or terminated/banned/sleeping
+                        // Connected or terminated/banned/sleeping/shutdown
                         RelayStatus::Connected
                         | RelayStatus::Terminated
                         | RelayStatus::Banned
-                        | RelayStatus::Sleeping => break,
+                        | RelayStatus::Sleeping
+                        | RelayStatus::Shutdown => break,
                     }
                 }
             }
@@ -302,6 +307,12 @@ impl Relay {
     #[inline]
     pub fn ban(&self) {
         self.inner.ban()
+    }
+
+    /// Shutdown relay and set the status to [`RelayStatus::Shutdown`].
+    #[inline]
+    pub fn shutdown(&self) {
+        self.inner.shutdown()
     }
 
     /// Send a message to the relay
@@ -409,7 +420,10 @@ impl Relay {
     {
         let mut notifications = self.notifications();
         while let Ok(notification) = notifications.recv().await {
-            let shutdown: bool = RelayNotification::Shutdown == notification;
+            let shutdown: bool = match &notification {
+                RelayNotification::RelayStatus { status } => status.is_permanently_disconnected(),
+                _ => false,
+            };
             let exit: bool = func(notification)
                 .await
                 .map_err(|e| Error::Handler(e.to_string()))?;
@@ -754,6 +768,37 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_shutdown() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = mock.url().await;
+
+        let relay: Relay = new_relay(url, RelayOptions::default());
+
+        assert_eq!(relay.status(), RelayStatus::Initialized);
+
+        relay
+            .try_connect()
+            .timeout(Duration::from_secs(3))
+            .await
+            .unwrap();
+
+        assert_eq!(relay.status(), RelayStatus::Connected);
+
+        relay.shutdown();
+
+        time::sleep(Duration::from_millis(100)).await;
+
+        assert_eq!(relay.status(), RelayStatus::Shutdown);
+
+        assert!(!relay.inner.is_running());
+
+        // Attempt to reconnect: must fail
+        let res = relay.try_connect().timeout(Duration::from_secs(3)).await;
+        assert!(matches!(res.unwrap_err(), Error::Shutdown));
+    }
+
+    #[tokio::test]
     async fn test_shutdown_on_drop() {
         // Mock relay
         let mock = MockRelay::run().await.unwrap();
@@ -793,7 +838,7 @@ mod tests {
 
         time::sleep(Duration::from_secs(1)).await;
 
-        assert_eq!(inner.status(), RelayStatus::Terminated);
+        assert_eq!(inner.status(), RelayStatus::Shutdown);
         assert!(!inner.is_running());
     }
 

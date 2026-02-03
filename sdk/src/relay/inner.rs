@@ -204,6 +204,7 @@ impl InnerRelay {
                 }
                 RelayStatus::Banned => tracing::info!(url = %self.url, "Relay banned."),
                 RelayStatus::Sleeping => tracing::info!("Relay '{}' went to sleep.", self.url),
+                RelayStatus::Shutdown => tracing::info!("Relay '{}' has been shutdown.", self.url),
             }
         }
 
@@ -394,7 +395,6 @@ impl InnerRelay {
                     RelayNotification::RelayStatus { .. } => None,
                     RelayNotification::Authenticated => None,
                     RelayNotification::AuthenticationFailed => None,
-                    RelayNotification::Shutdown => Some(ClientNotification::Shutdown),
                 };
 
                 // Send external notification
@@ -543,7 +543,11 @@ impl InnerRelay {
             let status: RelayStatus = self.status();
 
             // If the relay is terminated, banned or sleeping, break the loop.
-            if status.is_terminated() || status.is_banned() || status.is_sleeping() {
+            if status.is_terminated()
+                || status.is_banned()
+                || status.is_sleeping()
+                || status.is_shutdown()
+            {
                 break;
             }
 
@@ -1247,8 +1251,8 @@ impl InnerRelay {
     pub fn disconnect(&self) {
         let status = self.status();
 
-        // Check if it's already terminated or banned
-        if status.is_terminated() || status.is_banned() {
+        // Check if it's already terminated, banned or shutdown
+        if status.is_terminated() || status.is_banned() || status.is_shutdown() {
             return;
         }
 
@@ -1257,16 +1261,13 @@ impl InnerRelay {
 
         // Update status
         self.set_status(RelayStatus::Terminated, true);
-
-        // Shutdown all notification loops
-        self.send_notification(RelayNotification::Shutdown, false);
     }
 
     pub fn ban(&self) {
         let status = self.status();
 
-        // Check if it's already terminated or banned
-        if status.is_terminated() || status.is_banned() {
+        // Check if it's already terminated, banned or shutdown
+        if status.is_terminated() || status.is_banned() || status.is_shutdown() {
             return;
         }
 
@@ -1275,9 +1276,21 @@ impl InnerRelay {
 
         // Update status
         self.set_status(RelayStatus::Banned, true);
+    }
 
-        // Shutdown all notification loops
-        self.send_notification(RelayNotification::Shutdown, false);
+    pub(super) fn shutdown(&self) {
+        let status = self.status();
+
+        // Check if it's already terminated, banned or shutdown
+        if status.is_terminated() || status.is_banned() || status.is_shutdown() {
+            return;
+        }
+
+        // Notify termination
+        self.atomic.channels.terminate();
+
+        // Update status
+        self.set_status(RelayStatus::Shutdown, true);
     }
 
     #[inline]
@@ -1379,7 +1392,6 @@ impl InnerRelay {
                             return Err(Error::NotConnected);
                         }
                     }
-                    RelayNotification::Shutdown => break,
                     _ => (),
                 }
             }
@@ -1618,12 +1630,6 @@ impl InnerRelay {
                             });
                         }
                     }
-                    RelayNotification::Shutdown => {
-                        return Some(HandleAutoClosing {
-                            to_close: false, // No need to send CLOSE msg
-                            reason: None,
-                        });
-                    }
                     _ => (),
                 }
             }
@@ -1655,9 +1661,6 @@ impl InnerRelay {
                                 if status.is_disconnected() {
                                     return Ok(());
                                 }
-                            }
-                            RelayNotification::Shutdown => {
-                                return Ok(());
                             }
                             _ => (),
                         }

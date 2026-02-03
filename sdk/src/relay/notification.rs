@@ -28,6 +28,4 @@ pub enum RelayNotification {
     Authenticated,
     /// Authentication failed
     AuthenticationFailed,
-    /// Shutdown
-    Shutdown,
 }

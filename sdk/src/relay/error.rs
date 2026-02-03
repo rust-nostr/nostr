@@ -61,6 +61,8 @@ pub enum Error {
     TooManyEvents,
     /// Relay banned
     Banned,
+    /// Relay shutdown
+    Shutdown,
     /// Connection rejected
     ConnectionRejected {
         /// Reason
@@ -68,8 +70,6 @@ pub enum Error {
     },
     /// Received termination request
     TerminationRequest,
-    /// Received shutdown
-    ReceivedShutdown,
     /// Relay message
     RelayMessage(String),
     /// Read actions disabled
@@ -152,12 +152,12 @@ impl fmt::Display for Error {
             Self::TooManyEvents => f.write_str("received too many events for the subscription"),
             Self::Sleeping => f.write_str("relay is sleeping"),
             Self::Banned => f.write_str("relay banned"),
+            Self::Shutdown => f.write_str("relay shutdown"),
             Self::ConnectionRejected { reason } => {
                 let reason: &str = reason.as_deref().unwrap_or("unknown");
                 write!(f, "connection rejected: reason={reason}")
             }
             Self::TerminationRequest => f.write_str("received termination request"),
-            Self::ReceivedShutdown => f.write_str("received shutdown"),
             Self::RelayMessage(message) => f.write_str(message),
             Self::ReadDisabled => f.write_str("read actions are disabled"),
             Self::WriteDisabled => f.write_str("write actions are disabled"),

@@ -846,7 +846,7 @@ fn can_remove_relay(relay: &Relay) -> bool {
     true
 }
 
-// Disconnect and remove all relays
+// Shutdown and remove all relays
 fn remove_all_relays(relays: &mut Relays) {
     // Drain the map to get owned keys and values
     let old_relays: Relays = mem::take(&mut *relays);
@@ -854,8 +854,7 @@ fn remove_all_relays(relays: &mut Relays) {
     for (url, relay) in old_relays {
         // Check if it can be removed
         if can_remove_relay(&relay) {
-            // Disconnect
-            relay.disconnect();
+            relay.shutdown();
         } else {
             // Re-insert into the map
             relays.insert(url, relay);
@@ -863,11 +862,11 @@ fn remove_all_relays(relays: &mut Relays) {
     }
 }
 
-// Disconnect and force remove all relays
+// Shutdown and force-remove all relays
 fn force_remove_all_relays(relays: &mut Relays) {
     // Make sure to disconnect all relays
     for relay in relays.values() {
-        relay.disconnect();
+        relay.shutdown();
     }
 
     // Clear map

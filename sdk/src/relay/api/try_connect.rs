@@ -38,6 +38,10 @@ impl<'relay> IntoFuture for TryConnect<'relay> {
         Box::pin(async move {
             let status: RelayStatus = self.relay.status();
 
+            if status.is_shutdown() {
+                return Err(Error::Shutdown);
+            }
+
             if status.is_banned() {
                 return Err(Error::Banned);
             }

@@ -1699,6 +1699,6 @@ mod tests {
         tokio::time::sleep(Duration::from_secs(1)).await;
 
         // When the client is dropped, all relays are shutdown
-        assert_eq!(relay.status(), RelayStatus::Terminated);
+        assert_eq!(relay.status(), RelayStatus::Shutdown);
     }
 }
