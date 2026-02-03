@@ -91,6 +91,8 @@ impl<'relay> IntoFuture for FetchEvents<'relay> {
     }
 }
 
+impl_blocking!(FetchEvents<'_>);
+
 #[cfg(test)]
 mod tests {
     use nostr::message::MachineReadablePrefix;

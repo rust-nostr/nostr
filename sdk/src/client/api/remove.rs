@@ -49,6 +49,8 @@ where
     }
 }
 
+impl_blocking!(for<'client, 'url> RemoveRelay<'client, 'url> where 'url: 'client);
+
 #[cfg(test)]
 mod tests {
     use super::*;

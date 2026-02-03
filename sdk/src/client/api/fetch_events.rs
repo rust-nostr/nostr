@@ -92,3 +92,5 @@ where
         })
     }
 }
+
+impl_blocking!(for<'client, 'url> FetchEvents<'client, 'url> where 'url: 'client);

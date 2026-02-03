@@ -136,6 +136,8 @@ impl<'relay> IntoFuture for Subscribe<'relay> {
     }
 }
 
+impl_blocking!(Subscribe<'_>);
+
 #[cfg(test)]
 mod tests {
     use std::time::Duration;

@@ -66,3 +66,5 @@ where
         })
     }
 }
+
+impl_blocking!(for<'client, 'url> Subscribe<'client, 'url> where 'url: 'client);

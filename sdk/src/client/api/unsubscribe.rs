@@ -35,3 +35,5 @@ where
         })
     }
 }
+
+impl_blocking!(for<'client, 'id> Unsubscribe<'client, 'id> where 'id: 'client);

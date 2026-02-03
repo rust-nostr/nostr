@@ -43,3 +43,5 @@ impl<'client> IntoFuture for TryConnect<'client> {
         Box::pin(async move { self.client.pool.try_connect(self.timeout).await })
     }
 }
+
+impl_blocking!(TryConnect<'_>);

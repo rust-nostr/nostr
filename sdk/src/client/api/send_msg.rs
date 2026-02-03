@@ -109,6 +109,8 @@ where
     }
 }
 
+impl_blocking!(for<'client, 'msg, 'url> SendMessage<'client, 'msg, 'url> where 'msg: 'client, 'url: 'client);
+
 #[cfg(test)]
 mod tests {
     use nostr::prelude::*;

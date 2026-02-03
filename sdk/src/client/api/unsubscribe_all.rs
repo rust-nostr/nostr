@@ -29,3 +29,5 @@ impl<'client> IntoFuture for UnsubscribeAll<'client> {
         })
     }
 }
+
+impl_blocking!(UnsubscribeAll<'_>);

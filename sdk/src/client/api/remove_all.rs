@@ -38,6 +38,8 @@ impl<'client> IntoFuture for RemoveAllRelays<'client> {
     }
 }
 
+impl_blocking!(RemoveAllRelays<'_>);
+
 #[cfg(test)]
 mod tests {
     use super::*;

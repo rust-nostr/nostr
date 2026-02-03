@@ -24,3 +24,5 @@ impl<'relay> IntoFuture for UnsubscribeAll<'relay> {
         Box::pin(async move { self.relay.inner.unsubscribe_all().await })
     }
 }
+
+impl_blocking!(UnsubscribeAll<'_>);
