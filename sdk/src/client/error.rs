@@ -9,7 +9,6 @@ use nostr::serde_json;
 use nostr_database::prelude::*;
 use nostr_gossip::error::GossipError;
 
-use crate::shared::SharedStateError;
 use crate::{pool, relay};
 
 /// Client error
@@ -31,13 +30,13 @@ pub enum Error {
     EventBuilder(event::builder::Error),
     /// Json error
     Json(serde_json::Error),
-    /// Shared state error
-    SharedState(SharedStateError),
     /// Notification Handler error
     Handler(String),
     /// NIP59
     #[cfg(feature = "nip59")]
     NIP59(nip59::Error),
+    /// Signer not configured
+    SignerNotConfigured,
     /// Gossip is not configured
     GossipNotConfigured,
     /// Broken down filters for gossip are empty
@@ -59,10 +58,10 @@ impl fmt::Display for Error {
             Self::Gossip(e) => e.fmt(f),
             Self::EventBuilder(e) => e.fmt(f),
             Self::Json(e) => e.fmt(f),
-            Self::SharedState(e) => e.fmt(f),
             Self::Handler(e) => e.fmt(f),
             #[cfg(feature = "nip59")]
             Self::NIP59(e) => e.fmt(f),
+            Self::SignerNotConfigured => f.write_str("signer not configured"),
             Self::GossipNotConfigured => f.write_str("gossip not configured"),
             Self::GossipFiltersEmpty => {
                 f.write_str("gossip broken down filters are empty")
@@ -117,12 +116,6 @@ impl From<event::builder::Error> for Error {
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
         Self::Json(e)
-    }
-}
-
-impl From<SharedStateError> for Error {
-    fn from(e: SharedStateError) -> Self {
-        Self::SharedState(e)
     }
 }
 
