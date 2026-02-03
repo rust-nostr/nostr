@@ -1674,25 +1674,31 @@ impl InnerRelay {
         .await?
     }
 
+    // Returns `true` if the subscription has been unsubscribed
     fn _unsubscribe_long_lived_subscription(
         &self,
         subscriptions: &mut RwLockWriteGuard<HashMap<SubscriptionId, SubscriptionData>>,
         id: Cow<SubscriptionId>,
-    ) -> Result<(), Error> {
-        // Remove the subscription from the map
-        if let Some(sub) = subscriptions.remove(&id) {
-            // Re-insert if auto-closing
-            if sub.is_auto_closing {
-                subscriptions.insert(id.into_owned(), sub);
-                return Ok(());
-            }
-        }
+    ) -> Result<bool, Error> {
+        match subscriptions.remove(&id) {
+            Some(sub) => {
+                // Re-insert if auto-closing
+                if sub.is_auto_closing {
+                    subscriptions.insert(id.into_owned(), sub);
+                    return Ok(false);
+                }
 
-        // Send CLOSE message
-        self.send_msg(ClientMessage::Close(id))
+                // Send CLOSE message
+                self.send_msg(ClientMessage::Close(id))?;
+
+                Ok(true)
+            }
+            // Not existent subscription
+            None => Ok(false),
+        }
     }
 
-    pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<(), Error> {
+    pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<bool, Error> {
         let mut subscriptions = self.atomic.subscriptions.write().await;
         self._unsubscribe_long_lived_subscription(&mut subscriptions, Cow::Borrowed(id))
     }

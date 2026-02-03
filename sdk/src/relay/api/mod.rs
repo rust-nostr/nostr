@@ -4,6 +4,7 @@ mod stream_events;
 mod subscribe;
 mod sync;
 mod try_connect;
+mod unsubscribe;
 
 pub use self::fetch_events::*;
 pub use self::send_event::*;
@@ -11,3 +12,4 @@ pub use self::stream_events::*;
 pub use self::subscribe::*;
 pub use self::sync::*;
 pub use self::try_connect::*;
+pub use self::unsubscribe::*;
