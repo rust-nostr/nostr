@@ -57,6 +57,7 @@
 - Redesign `Client::sync` and `Relay::sync` APIs (https://github.com/rust-nostr/nostr/pull/1235)
 - Redesign `Client::send_event` and `Relay::send_event` APIs (https://github.com/rust-nostr/nostr/pull/1236)
 - Redesign `Client::unsubscribe` and `Relay::unsubscribe` APIs (https://github.com/rust-nostr/nostr/pull/1238)
+- Redesign `Client::unsubscribe_all` and `Relay::unsubscribe_all` APIs (https://github.com/rust-nostr/nostr/pull/1239)
 
 ### Added
 

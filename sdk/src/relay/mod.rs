@@ -358,8 +358,8 @@ impl Relay {
 
     /// Unsubscribe from all subscriptions
     #[inline]
-    pub async fn unsubscribe_all(&self) -> Result<(), Error> {
-        self.inner.unsubscribe_all().await
+    pub fn unsubscribe_all(&self) -> UnsubscribeAll {
+        UnsubscribeAll::new(self)
     }
 
     /// Stream events from relay

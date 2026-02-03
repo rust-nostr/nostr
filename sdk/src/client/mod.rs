@@ -733,10 +733,10 @@ impl Client {
         Unsubscribe::new(self, id)
     }
 
-    /// Unsubscribe from all subscriptions
+    /// Unsubscribe from all REQs
     #[inline]
-    pub async fn unsubscribe_all(&self) {
-        self.pool.unsubscribe_all().await;
+    pub fn unsubscribe_all(&self) -> UnsubscribeAll {
+        UnsubscribeAll::new(self)
     }
 
     /// Stream events from relays.

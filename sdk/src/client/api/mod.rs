@@ -12,6 +12,7 @@ mod subscribe;
 mod sync;
 mod try_connect;
 mod unsubscribe;
+mod unsubscribe_all;
 mod util;
 
 pub use self::add::*;
@@ -28,3 +29,4 @@ pub use self::subscribe::*;
 pub use self::sync::*;
 pub use self::try_connect::*;
 pub use self::unsubscribe::*;
+pub use self::unsubscribe_all::*;
