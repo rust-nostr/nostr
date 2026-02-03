@@ -6,13 +6,13 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_utility::{task, time};
-use async_wsocket::futures_util::{self, SinkExt, StreamExt};
 use async_wsocket::{ConnectionMode, Message};
+use futures::{self, SinkExt, StreamExt};
 use nostr::rand::rngs::OsRng;
 use nostr::rand::{Rng, RngCore, TryRngCore};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::{broadcast, Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard};
+use tokio::sync::{broadcast, oneshot, Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard};
 
 use super::capabilities::{AtomicRelayCapabilities, RelayCapabilities};
 use super::constants::{
@@ -50,12 +50,14 @@ struct HandleAutoClosing {
     reason: Option<SubscriptionAutoClosedReason>,
 }
 
+struct JsonMessageItem {
+    json: ClientMessageJson,
+    confirmation: Option<oneshot::Sender<()>>,
+}
+
 #[derive(Debug)]
 struct RelayChannels {
-    nostr: (
-        Sender<Vec<ClientMessageJson>>,
-        Mutex<Receiver<Vec<ClientMessageJson>>>,
-    ),
+    nostr: (Sender<JsonMessageItem>, Mutex<Receiver<JsonMessageItem>>),
     ping: Notify,
     terminate: Notify,
 }
@@ -71,21 +73,16 @@ impl RelayChannels {
         }
     }
 
-    pub fn send_client_msgs(&self, msgs: Vec<ClientMessage>) -> Result<(), Error> {
-        // Serialize messages to JSON
-        let msgs: Vec<ClientMessageJson> = msgs.into_iter().map(|msg| msg.as_json()).collect();
-
-        // Send
+    #[inline]
+    fn send_client_msg(&self, msg: JsonMessageItem) -> Result<(), Error> {
         self.nostr
             .0
-            .try_send(msgs)
-            .map_err(|_| Error::CantSendChannelMessage {
-                channel: String::from("nostr"),
-            })
+            .try_send(msg)
+            .map_err(|_| Error::CantSendMessageToDispatcher)
     }
 
     #[inline]
-    pub async fn rx_nostr(&self) -> MutexGuard<'_, Receiver<Vec<ClientMessageJson>>> {
+    pub async fn rx_nostr(&self) -> MutexGuard<'_, Receiver<JsonMessageItem>> {
         self.nostr.1.lock().await
     }
 
@@ -690,7 +687,7 @@ impl InnerRelay {
     async fn connect_and_run(
         &self,
         stream: Option<(WebSocketSink, WebSocketStream)>,
-        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
+        rx_nostr: &mut MutexGuard<'_, Receiver<JsonMessageItem>>,
         last_ws_error: &mut Option<String>,
     ) {
         match stream {
@@ -733,7 +730,7 @@ impl InnerRelay {
         &self,
         mut ws_tx: WebSocketSink,
         ws_rx: WebSocketStream,
-        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
+        rx_nostr: &mut MutexGuard<'_, Receiver<JsonMessageItem>>,
     ) {
         // (Re)subscribe to relay
         if self.capabilities.can_read() {
@@ -782,7 +779,7 @@ impl InnerRelay {
     async fn sender_message_handler(
         &self,
         ws_tx: &mut WebSocketSink,
-        rx_nostr: &mut MutexGuard<'_, Receiver<Vec<ClientMessageJson>>>,
+        rx_nostr: &mut MutexGuard<'_, Receiver<JsonMessageItem>>,
         ping: &PingTracker,
     ) -> Result<(), Error> {
         #[cfg(target_arch = "wasm32")]
@@ -791,27 +788,25 @@ impl InnerRelay {
         loop {
             tokio::select! {
                 // Nostr channel receiver
-                Some(msgs) = rx_nostr.recv() => {
-                    // Compose WebSocket text messages
-                    let msgs: Vec<Message> = msgs
-                        .into_iter()
-                        .map(Message::Text)
-                        .collect();
-
-                    // Calculate messages size
-                    let size: usize = msgs.iter().map(|msg| msg.len()).sum();
-                    let len: usize = msgs.len();
+                Some(JsonMessageItem { json, confirmation }) = rx_nostr.recv() => {
+                    // Get messages size
+                    let size: usize = json.len();
 
                     // Log
-                    if len == 1 {
-                        let json = &msgs[0]; // SAFETY: len checked above (len == 1)
-                        tracing::debug!("Sending '{json}' to '{}' (size: {size} bytes)", self.url);
-                    } else {
-                        tracing::debug!("Sending {len} messages to '{}' (size: {size} bytes)", self.url);
-                    };
+                    tracing::debug!("Sending '{json}' to '{}' (size: {size} bytes)", self.url);
+
+                    // Compose WebSocket text messages
+                    let msg: Message = Message::Text(json);
 
                     // Send WebSocket messages
-                    send_ws_msgs(ws_tx, msgs).await?;
+                    send_ws_msg(ws_tx, msg).await?;
+
+                    // Send the confirmation
+                    if let Some(confirmation) = confirmation {
+                        if confirmation.send(()).is_err() {
+                            tracing::error!(url = %self.url, "Can't send msg confirmation.");
+                        }
+                    }
 
                     // Increase sent bytes
                     self.stats.add_bytes_sent(size);
@@ -836,7 +831,7 @@ impl InnerRelay {
                         let msg = Message::Ping(nonce.to_be_bytes().to_vec());
 
                         // Send WebSocket message
-                        send_ws_msgs(ws_tx, vec![msg]).await?;
+                        send_ws_msg(ws_tx, msg).await?;
 
                         // Set ping as just sent
                         ping.just_sent().await;
@@ -1296,31 +1291,45 @@ impl InnerRelay {
     }
 
     #[inline]
-    pub fn send_msg(&self, msg: ClientMessage<'_>) -> Result<(), Error> {
-        self.batch_msg(vec![msg])
-    }
-
-    pub fn batch_msg(&self, msgs: Vec<ClientMessage<'_>>) -> Result<(), Error> {
+    pub(super) async fn send_msg(
+        &self,
+        msg: ClientMessage<'_>,
+        wait_until_sent: Option<Duration>,
+    ) -> Result<(), Error> {
         // Check if relay is operational
         self.ensure_operational()?;
 
-        // Check if the list is empty
-        if msgs.is_empty() {
-            return Err(Error::BatchMessagesEmpty);
-        }
-
         // If it can't write, check if there are "write" messages
-        if !self.capabilities.can_write() && msgs.iter().any(|msg| msg.is_event()) {
+        if !self.capabilities.can_write() && msg.is_event() {
             return Err(Error::WriteDisabled);
         }
 
         // If it can't read, check if there are "read" messages
-        if !self.capabilities.can_read() && msgs.iter().any(|msg| msg.is_req() || msg.is_close()) {
+        if !self.capabilities.can_read() && (msg.is_req() || msg.is_close()) {
             return Err(Error::ReadDisabled);
         }
 
-        // Send messages
-        self.atomic.channels.send_client_msgs(msgs)
+        match wait_until_sent {
+            Some(timeout) => {
+                // Create a channel
+                let (tx, rx) = oneshot::channel();
+
+                // Send the item
+                self.atomic.channels.send_client_msg(JsonMessageItem {
+                    json: msg.as_json(),
+                    confirmation: Some(tx),
+                })?;
+
+                // Wait for confirmation
+                Ok(time::timeout(Some(timeout), rx)
+                    .await
+                    .ok_or(Error::Timeout)??)
+            }
+            None => self.atomic.channels.send_client_msg(JsonMessageItem {
+                json: msg.as_json(),
+                confirmation: None,
+            }),
+        }
     }
 
     async fn auth(&self, challenge: String) -> Result<(), Error> {
@@ -1336,7 +1345,8 @@ impl InnerRelay {
         let mut notifications = self.internal_notification_sender.subscribe();
 
         // Send the AUTH message
-        self.send_msg(ClientMessage::Auth(Cow::Borrowed(&event)))?;
+        self.send_msg(ClientMessage::Auth(Cow::Borrowed(&event)), None)
+            .await?;
 
         // Wait for OK
         // The event ID is already checked in `wait_for_ok` method
@@ -1395,7 +1405,7 @@ impl InnerRelay {
         let subscriptions = self.subscriptions().await;
         for (id, filters) in subscriptions.into_iter() {
             if !filters.is_empty() && self.should_resubscribe(&id).await {
-                self.send_msg(ClientMessage::req(id, filters))?;
+                self.send_msg(ClientMessage::req(id, filters), None).await?;
             } else {
                 tracing::debug!("Skip re-subscription of '{id}'");
             }
@@ -1443,7 +1453,9 @@ impl InnerRelay {
             // Close subscription
             let send_result = if to_close {
                 tracing::debug!(id = %id, "Auto-closing subscription.");
-                relay.send_msg(ClientMessage::Close(Cow::Borrowed(&id)))
+                relay
+                    .send_msg(ClientMessage::Close(Cow::Borrowed(&id)), None)
+                    .await
             } else {
                 Ok(())
             };
@@ -1599,7 +1611,7 @@ impl InnerRelay {
                                 subscription_id: Cow::Borrowed(id),
                                 filters: filters.iter().map(Cow::Borrowed).collect(),
                             };
-                            let _ = self.send_msg(msg);
+                            let _ = self.send_msg(msg, None).await;
                         }
                     }
                     RelayNotification::AuthenticationFailed => {
@@ -1675,10 +1687,10 @@ impl InnerRelay {
     }
 
     // Returns `true` if the subscription has been unsubscribed
-    fn _unsubscribe_long_lived_subscription(
+    async fn _unsubscribe_long_lived_subscription(
         &self,
-        subscriptions: &mut RwLockWriteGuard<HashMap<SubscriptionId, SubscriptionData>>,
-        id: Cow<SubscriptionId>,
+        subscriptions: &mut RwLockWriteGuard<'_, HashMap<SubscriptionId, SubscriptionData>>,
+        id: Cow<'_, SubscriptionId>,
     ) -> Result<bool, Error> {
         match subscriptions.remove(&id) {
             Some(sub) => {
@@ -1689,7 +1701,7 @@ impl InnerRelay {
                 }
 
                 // Send CLOSE message
-                self.send_msg(ClientMessage::Close(id))?;
+                self.send_msg(ClientMessage::Close(id), None).await?;
 
                 Ok(true)
             }
@@ -1701,6 +1713,7 @@ impl InnerRelay {
     pub async fn unsubscribe(&self, id: &SubscriptionId) -> Result<bool, Error> {
         let mut subscriptions = self.atomic.subscriptions.write().await;
         self._unsubscribe_long_lived_subscription(&mut subscriptions, Cow::Borrowed(id))
+            .await
     }
 
     pub async fn unsubscribe_all(&self) -> Result<(), Error> {
@@ -1711,23 +1724,23 @@ impl InnerRelay {
 
         // Unsubscribe
         for id in ids.into_iter() {
-            self._unsubscribe_long_lived_subscription(&mut subscriptions, Cow::Owned(id))?;
+            self._unsubscribe_long_lived_subscription(&mut subscriptions, Cow::Owned(id))
+                .await?;
         }
 
         Ok(())
     }
 }
 
-/// Send WebSocket messages with timeout set to [WEBSOCKET_TX_TIMEOUT].
-async fn send_ws_msgs(tx: &mut WebSocketSink, msgs: Vec<Message>) -> Result<(), Error> {
-    let mut stream = futures_util::stream::iter(msgs.into_iter().map(Ok));
-    match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.send_all(&mut stream)).await {
+/// Send a WebSocket message with timeout set to [WEBSOCKET_TX_TIMEOUT].
+async fn send_ws_msg(tx: &mut WebSocketSink, msg: Message) -> Result<(), Error> {
+    match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.send(msg)).await {
         Some(res) => Ok(res?),
         None => Err(Error::Timeout),
     }
 }
 
-/// Send WebSocket messages with timeout set to [WEBSOCKET_TX_TIMEOUT].
+/// Send the close message with timeout set to [WEBSOCKET_TX_TIMEOUT].
 async fn close_ws(tx: &mut WebSocketSink) -> Result<(), Error> {
     // TODO: remove timeout from here?
     match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.close()).await {

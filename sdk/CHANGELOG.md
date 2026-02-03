@@ -42,6 +42,7 @@
 - Make `RelayPool` private (https://github.com/rust-nostr/nostr/pull/1237)
 - Replace `RelayPoolNotification` with `ClientNotification` (https://github.com/rust-nostr/nostr/pull/1237)
 - Relays no longer inherit subscriptions of the pool (https://github.com/rust-nostr/nostr/pull/1237)
+- Remove `Client::batch_msgs` and `Relay::batch_msgs` (https://github.com/rust-nostr/nostr/pull/1240)
 - Change `Client::relay` output to return `Result<Output<Relay>>`
 
 ### Changed
@@ -58,6 +59,7 @@
 - Redesign `Client::send_event` and `Relay::send_event` APIs (https://github.com/rust-nostr/nostr/pull/1236)
 - Redesign `Client::unsubscribe` and `Relay::unsubscribe` APIs (https://github.com/rust-nostr/nostr/pull/1238)
 - Redesign `Client::unsubscribe_all` and `Relay::unsubscribe_all` APIs (https://github.com/rust-nostr/nostr/pull/1239)
+- Redesign `Client::send_msg` and `Relay::send_msg` APIs (https://github.com/rust-nostr/nostr/pull/1240)
 
 ### Added
 

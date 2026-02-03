@@ -50,8 +50,8 @@ impl<'relay, 'event> SendEvent<'relay, 'event> {
     ) -> Result<(bool, String), Error> {
         // Send the EVENT message
         self.relay
-            .inner
-            .send_msg(ClientMessage::Event(Cow::Borrowed(event)))?;
+            .send_msg(ClientMessage::Event(Cow::Borrowed(event)))
+            .await?;
 
         // Wait for OK
         self.relay

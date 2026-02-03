@@ -315,16 +315,10 @@ impl Relay {
         self.inner.ban()
     }
 
-    /// Send msg to relay
+    /// Send a message to the relay
     #[inline]
-    pub fn send_msg(&self, msg: ClientMessage<'_>) -> Result<(), Error> {
-        self.inner.send_msg(msg)
-    }
-
-    /// Send multiple [`ClientMessage`] at once
-    #[inline]
-    pub fn batch_msg(&self, msgs: Vec<ClientMessage<'_>>) -> Result<(), Error> {
-        self.inner.batch_msg(msgs)
+    pub fn send_msg<'msg>(&self, msg: ClientMessage<'msg>) -> SendMessage<'_, 'msg> {
+        SendMessage::new(self, msg)
     }
 
     /// Send event and wait for `OK` relay msg
@@ -387,7 +381,7 @@ impl Relay {
             subscription_id: Cow::Borrowed(&id),
             filter: Cow::Owned(filter),
         };
-        self.inner.send_msg(msg)?;
+        self.send_msg(msg).await?;
 
         let mut count = 0;
 
@@ -413,7 +407,7 @@ impl Relay {
         .ok_or(Error::Timeout)?;
 
         // Unsubscribe
-        self.inner.send_msg(ClientMessage::close(id))?;
+        self.send_msg(ClientMessage::close(id)).await?;
 
         Ok(count)
     }

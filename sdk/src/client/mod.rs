@@ -1036,40 +1036,53 @@ impl Client {
         self.sync(filter).with(urls).opts(opts.clone()).await
     }
 
-    /// Send the client message to a **specific relays**
+    /// Send a client message to relays.
+    ///
+    /// # Overview
+    ///
+    /// Sends a protocol-level [`ClientMessage`] to one or more relays.
+    ///
+    /// This API is intended for sending raw client messages (e.g. subscription
+    /// control, close messages, or other relay commands) and does **not** perform
+    /// event persistence, gossip routing, or event-specific processing.
+    ///
+    /// The operation completes once the message has been dispatched according
+    /// to the selected policy and optional waiting behavior.
+    ///
+    /// # Configuration
+    ///
+    /// By default:
+    /// - broadcast the message to [`RelayCapabilities::READ`] or [`RelayCapabilities::WRITE`] relays
+    /// - doesn't wait that the message is sent
+    ///
+    /// The returned [`SendMessage`] builder can be configured before execution:
+    ///
+    /// - [`SendMessage::broadcast`]: send the message to all relays with
+    ///   [`RelayCapabilities::READ`] or [`RelayCapabilities::WRITE`]
+    /// - [`SendMessage::to`]: send the message only to explicitly specified relays
+    /// - [`SendMessage::wait_until_sent`]: wait until the message is sent or a
+    ///   timeout expires
+    ///
+    /// # Delivery Semantics
+    ///
+    /// - Messages are sent once to each resolved relay.
+    /// - No retries are performed if delivery fails.
+    /// - Message ordering and relay acknowledgment depend on relay behavior.
+    ///
+    /// If [`SendMessage::wait_until_sent`] is configured, the operation waits
+    /// until the message is sent or the timeout expires.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    ///
+    /// - A specified relay URL is invalid,
+    /// - Or a specified relay does not exist in the pool.
+    ///
+    /// Relay-specific delivery failures are reported in the returned [`Output`].
     #[inline]
-    pub async fn send_msg_to<'a, I, U>(
-        &self,
-        urls: I,
-        msg: ClientMessage<'_>,
-    ) -> Result<Output<()>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: Into<RelayUrlArg<'a>>,
-    {
-        self.batch_msg_to(urls, vec![msg]).await
-    }
-
-    /// Batch send client messages to **specific relays**
-    #[inline]
-    pub async fn batch_msg_to<'a, I, U>(
-        &self,
-        urls: I,
-        msgs: Vec<ClientMessage<'_>>,
-    ) -> Result<Output<()>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: Into<RelayUrlArg<'a>>,
-    {
-        let mut set: HashSet<RelayUrl> = HashSet::new();
-
-        for url in urls {
-            let url: RelayUrlArg<'a> = url.into();
-            let url: Cow<RelayUrl> = url.try_as_relay_url()?;
-            set.insert(url.into_owned());
-        }
-
-        Ok(self.pool.batch_msg_to(set, msgs).await?)
+    pub fn send_msg<'msg, 'url>(&self, msg: ClientMessage<'msg>) -> SendMessage<'_, 'msg, 'url> {
+        SendMessage::new(self, msg)
     }
 
     /// Send an event to relays.
