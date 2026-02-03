@@ -46,19 +46,6 @@ async fn main() -> Result<()> {
     // Connect to relays
     client.connect().await;
 
-    let metadata = Metadata::new()
-        .name("username")
-        .display_name("My Username")
-        .about("Description")
-        .picture(Url::parse("https://example.com/avatar.png")?)
-        .banner(Url::parse("https://example.com/banner.png")?)
-        .nip05("username@example.com")
-        .lud16("pay@yukikishimoto.com")
-        .custom_field("custom_field", "my value");
-
-    // Update metadata
-    client.set_metadata(&metadata).await?;
-
     // Publish a text note
     let builder = EventBuilder::text_note("My first text note from rust-nostr!");
     client.send_event_builder(builder).await?;

@@ -83,8 +83,9 @@ impl RelayStatus {
         matches!(self, Self::Initialized)
     }
 
+    /// Check if is [`RelayStatus::Connected`]
     #[inline]
-    pub(crate) fn is_connected(&self) -> bool {
+    pub fn is_connected(&self) -> bool {
         matches!(self, Self::Connected)
     }
 

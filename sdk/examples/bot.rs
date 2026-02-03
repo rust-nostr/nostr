@@ -27,12 +27,6 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
-    let metadata = Metadata::new()
-        .name("rust-nostr-bot-example")
-        .display_name("rust-nostr bot example")
-        .website(Url::parse("https://github.com/rust-nostr/nostr")?);
-    client.set_metadata(&metadata).await?;
-
     let subscription = Filter::new()
         .pubkey(keys.public_key())
         .kind(Kind::GiftWrap)

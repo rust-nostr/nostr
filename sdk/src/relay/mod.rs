@@ -156,11 +156,6 @@ impl Relay {
         self.inner.status()
     }
 
-    /// Check if relay is connected
-    pub fn is_connected(&self) -> bool {
-        self.status().is_connected()
-    }
-
     /// Get relay capabilities
     #[inline]
     pub fn capabilities(&self) -> &Arc<AtomicRelayCapabilities> {
@@ -189,12 +184,6 @@ impl Relay {
     #[inline]
     pub fn stats(&self) -> &RelayConnectionStats {
         &self.inner.stats
-    }
-
-    /// Get queue len
-    #[inline]
-    pub fn queue(&self) -> usize {
-        self.inner.queue()
     }
 
     #[inline]
@@ -325,12 +314,6 @@ impl Relay {
     #[inline]
     pub fn send_event<'event>(&self, event: &'event Event) -> SendEvent<'_, 'event> {
         SendEvent::new(self, event)
-    }
-
-    /// Resubscribe to all **closed** or not yet initiated subscriptions
-    #[inline]
-    pub async fn resubscribe(&self) -> Result<(), Error> {
-        self.inner.resubscribe().await
     }
 
     /// Subscribe to filters
