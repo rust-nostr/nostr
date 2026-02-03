@@ -499,7 +499,7 @@ pub struct MakeHoldInvoiceRequest {
     pub payment_hash: String,
     /// The minimum CLTV delta to use for the final hop
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cltv_expiry_delta: Option<u32>,
+    pub min_cltv_expiry_delta: Option<u32>,
 }
 
 /// Cancel Hold Invoice Request
