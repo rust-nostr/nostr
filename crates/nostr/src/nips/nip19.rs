@@ -340,11 +340,18 @@ impl FromBech32 for PublicKey {
     fn from_bech32(public_key: &str) -> Result<Self, Self::Err> {
         let (hrp, data) = bech32::decode(public_key)?;
 
-        if hrp != HRP_PUBLIC_KEY {
-            return Err(Error::WrongPrefix);
+        // Parse npub
+        if hrp == HRP_PUBLIC_KEY {
+            return Ok(Self::from_slice(data.as_slice())?);
         }
 
-        Ok(Self::from_slice(data.as_slice())?)
+        // Parse nprofile
+        if hrp == HRP_PROFILE {
+            let profile: Nip19Profile = Nip19Profile::from_bech32_data(data)?;
+            return Ok(profile.public_key);
+        }
+
+        Err(Error::WrongPrefix)
     }
 }
 
@@ -813,6 +820,16 @@ mod tests {
         assert_eq!(
             "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99".to_string(),
             secret_key.to_bech32().unwrap()
+        );
+    }
+
+    #[test]
+    fn parse_public_key_from_nprofile() {
+        let nprofile = "nprofile1qqsrhuxx8l9ex335q7he0f09aej04zpazpl0ne2cgukyawd24mayt8gppemhxue69uhhytnc9e3k7mf0qyt8wumn8ghj7er2vfshxtnnv9jxkc3wvdhk6tclr7lsh";
+        let public_key = PublicKey::from_bech32(nprofile).unwrap();
+        assert_eq!(
+            public_key.to_hex(),
+            "3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d"
         );
     }
 
