@@ -1,11 +1,11 @@
-use std::future::{Future, IntoFuture};
-use std::pin::Pin;
+use std::future::IntoFuture;
 use std::time::Duration;
 
 use futures::StreamExt;
 use nostr::{Event, Filter};
 use nostr_database::Events;
 
+use crate::future::BoxedFuture;
 use crate::relay::{Error, Relay, ReqExitPolicy};
 
 /// Fetch events
@@ -46,7 +46,7 @@ impl<'relay> FetchEvents<'relay> {
 
 impl<'relay> IntoFuture for FetchEvents<'relay> {
     type Output = Result<Events, Error>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'relay>>;
+    type IntoFuture = BoxedFuture<'relay, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {

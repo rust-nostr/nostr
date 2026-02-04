@@ -1,10 +1,10 @@
 use std::borrow::Cow;
-use std::future::{Future, IntoFuture};
-use std::pin::Pin;
+use std::future::IntoFuture;
 
 use nostr::{ClientMessage, Filter, SubscriptionId};
 use tokio::sync::mpsc;
 
+use crate::future::BoxedFuture;
 use crate::relay::{Error, Relay, SubscribeAutoCloseOptions, SubscriptionActivity};
 
 /// Subscribe to events
@@ -115,7 +115,7 @@ async fn subscribe_long_lived(
 
 impl<'relay> IntoFuture for Subscribe<'relay> {
     type Output = Result<SubscriptionId, Error>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'relay>>;
+    type IntoFuture = BoxedFuture<'relay, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {

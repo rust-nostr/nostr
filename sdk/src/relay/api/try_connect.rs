@@ -1,7 +1,7 @@
-use std::future::{Future, IntoFuture};
-use std::pin::Pin;
+use std::future::IntoFuture;
 use std::time::Duration;
 
+use crate::future::BoxedFuture;
 use crate::policy::AdmitStatus;
 use crate::relay::{Error, Relay, RelayStatus};
 use crate::transport::websocket::{WebSocketSink, WebSocketStream};
@@ -32,7 +32,7 @@ impl<'relay> TryConnect<'relay> {
 
 impl<'relay> IntoFuture for TryConnect<'relay> {
     type Output = Result<(), Error>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'relay>>;
+    type IntoFuture = BoxedFuture<'relay, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {

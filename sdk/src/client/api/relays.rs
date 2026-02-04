@@ -1,10 +1,10 @@
 use std::collections::HashMap;
-use std::future::{Future, IntoFuture};
-use std::pin::Pin;
+use std::future::IntoFuture;
 
 use nostr::RelayUrl;
 
 use crate::client::Client;
+use crate::future::BoxedFuture;
 use crate::relay::{Relay, RelayCapabilities};
 
 enum Policy {
@@ -55,7 +55,7 @@ impl<'client> GetRelays<'client> {
 
 impl<'client> IntoFuture for GetRelays<'client> {
     type Output = HashMap<RelayUrl, Relay>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
+    type IntoFuture = BoxedFuture<'client, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {

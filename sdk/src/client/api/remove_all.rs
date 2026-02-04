@@ -1,7 +1,7 @@
-use std::future::{Future, IntoFuture};
-use std::pin::Pin;
+use std::future::IntoFuture;
 
 use crate::client::{Client, Error};
+use crate::future::BoxedFuture;
 
 /// Remove all relays from the pool.
 #[must_use = "Does nothing unless you await!"]
@@ -28,7 +28,7 @@ impl<'client> RemoveAllRelays<'client> {
 
 impl<'client> IntoFuture for RemoveAllRelays<'client> {
     type Output = Result<(), Error>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
+    type IntoFuture = BoxedFuture<'client, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {

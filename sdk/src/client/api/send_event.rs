@@ -1,7 +1,6 @@
 use std::collections::HashSet;
-use std::future::{Future, IntoFuture};
+use std::future::IntoFuture;
 use std::iter;
-use std::pin::Pin;
 use std::time::Duration;
 
 use nostr::{Event, EventId, Kind, RelayUrl, RelayUrlArg};
@@ -10,6 +9,7 @@ use nostr_gossip::{BestRelaySelection, GossipListKind};
 use super::output::Output;
 use crate::client::gossip::GossipWrapper;
 use crate::client::{Client, Error};
+use crate::future::BoxedFuture;
 use crate::relay::RelayCapabilities;
 
 enum OverwritePolicy<'url> {
@@ -275,7 +275,7 @@ where
     'url: 'client,
 {
     type Output = Result<Output<EventId>, Error>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
+    type IntoFuture = BoxedFuture<'client, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {

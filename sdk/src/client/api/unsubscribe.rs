@@ -1,9 +1,9 @@
-use std::future::{Future, IntoFuture};
-use std::pin::Pin;
+use std::future::IntoFuture;
 
 use nostr::SubscriptionId;
 
 use crate::client::{Client, Error, Output};
+use crate::future::BoxedFuture;
 
 /// Unsubscribe from a REQ
 #[must_use = "Does nothing unless you await!"]
@@ -24,7 +24,7 @@ where
     'id: 'client,
 {
     type Output = Result<Output<()>, Error>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
+    type IntoFuture = BoxedFuture<'client, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {

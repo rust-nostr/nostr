@@ -13,10 +13,10 @@ use std::time::Duration;
 use async_utility::futures_util::stream::SplitSink;
 use async_wsocket::futures_util::{Sink, SinkExt, StreamExt, TryStreamExt};
 use async_wsocket::{ConnectionMode, Message, WebSocket};
-use nostr::util::BoxedFuture;
 use nostr::Url;
 
 use super::error::TransportError;
+use crate::future::BoxedFuture;
 use crate::stream::BoxedStream;
 
 /// WebSocket transport sink

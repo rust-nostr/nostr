@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use nostr::util::BoxedFuture;
 use nostr::{Event, RelayUrl, SubscriptionId};
 use nostr_gossip::NostrGossip;
 
+use crate::future::BoxedFuture;
 use crate::policy::{AdmitPolicy, AdmitStatus, PolicyError};
 
 #[derive(Debug)]

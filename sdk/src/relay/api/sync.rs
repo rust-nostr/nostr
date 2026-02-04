@@ -1,8 +1,7 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
-use std::future::{Future, IntoFuture};
-use std::pin::Pin;
+use std::future::IntoFuture;
 use std::time::Instant;
 
 use async_utility::time;
@@ -10,12 +9,12 @@ use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use nostr::{ClientMessage, EventId, Filter, RelayMessage, SubscriptionId, Timestamp};
 use tokio::sync::broadcast;
 
-use crate::prelude::RelayNotification;
+use crate::future::BoxedFuture;
 use crate::relay::constants::{
     NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP,
     NEGENTROPY_LOW_WATER_UP,
 };
-use crate::relay::{Error, Relay, SyncOptions};
+use crate::relay::{Error, Relay, RelayNotification, SyncOptions};
 
 /// Relay negentropy reconciliation summary
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -577,7 +576,7 @@ async fn check_negentropy_support(
 
 impl<'relay> IntoFuture for SyncEvents<'relay> {
     type Output = Result<SyncSummary, Error>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'relay>>;
+    type IntoFuture = BoxedFuture<'relay, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {

@@ -1,7 +1,7 @@
-use std::future::{Future, IntoFuture};
-use std::pin::Pin;
+use std::future::IntoFuture;
 
 use crate::client::{Client, Error, Output};
+use crate::future::BoxedFuture;
 
 /// Unsubscribe from all REQs
 #[must_use = "Does nothing unless you await!"]
@@ -18,7 +18,7 @@ impl<'client> UnsubscribeAll<'client> {
 
 impl<'client> IntoFuture for UnsubscribeAll<'client> {
     type Output = Result<Output<()>, Error>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
+    type IntoFuture = BoxedFuture<'client, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {

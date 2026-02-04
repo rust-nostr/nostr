@@ -1,10 +1,10 @@
 use std::borrow::Cow;
-use std::future::{Future, IntoFuture};
-use std::pin::Pin;
+use std::future::IntoFuture;
 
 use nostr::types::url::{RelayUrl, RelayUrlArg};
 
 use crate::client::{Client, Error};
+use crate::future::BoxedFuture;
 
 /// Remove a relay from the pool.
 #[must_use = "Does nothing unless you await!"]
@@ -36,7 +36,7 @@ where
     'url: 'client,
 {
     type Output = Result<(), Error>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
+    type IntoFuture = BoxedFuture<'client, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {

@@ -1,8 +1,8 @@
-use std::future::{Future, IntoFuture};
-use std::pin::Pin;
+use std::future::IntoFuture;
 use std::time::Duration;
 
 use crate::client::Client;
+use crate::future::BoxedFuture;
 
 /// Connect relays
 #[must_use = "Does nothing unless you await!"]
@@ -35,7 +35,7 @@ impl<'client> Connect<'client> {
 
 impl<'client> IntoFuture for Connect<'client> {
     type Output = ();
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
+    type IntoFuture = BoxedFuture<'client, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {

@@ -1,6 +1,6 @@
-use std::future::{Future, IntoFuture};
-use std::pin::Pin;
+use std::future::IntoFuture;
 
+use crate::future::BoxedFuture;
 use crate::relay::{Error, Relay};
 
 /// Unsubscribe from all REQs
@@ -18,7 +18,7 @@ impl<'relay> UnsubscribeAll<'relay> {
 
 impl<'relay> IntoFuture for UnsubscribeAll<'relay> {
     type Output = Result<(), Error>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'relay>>;
+    type IntoFuture = BoxedFuture<'relay, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move { self.relay.inner.unsubscribe_all().await })

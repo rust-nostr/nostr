@@ -1,5 +1,4 @@
-use std::future::{Future, IntoFuture};
-use std::pin::Pin;
+use std::future::IntoFuture;
 use std::time::Duration;
 
 use futures::StreamExt;
@@ -8,6 +7,7 @@ use nostr_database::Events;
 use super::req_target::ReqTarget;
 use super::stream_events::StreamEvents;
 use crate::client::{Client, Error};
+use crate::future::BoxedFuture;
 use crate::relay::ReqExitPolicy;
 
 /// Fetch events
@@ -56,7 +56,7 @@ where
     'url: 'client,
 {
     type Output = Result<Events, Error>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
+    type IntoFuture = BoxedFuture<'client, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {

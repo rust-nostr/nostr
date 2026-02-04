@@ -6,8 +6,9 @@
 
 use std::fmt;
 
-use nostr::util::BoxedFuture;
 use nostr::{Event, RelayUrl, SubscriptionId};
+
+use crate::future::BoxedFuture;
 
 /// Policy Error
 #[derive(Debug)]

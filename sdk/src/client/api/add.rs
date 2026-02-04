@@ -1,12 +1,12 @@
 use std::borrow::Cow;
-use std::future::{Future, IntoFuture};
-use std::pin::Pin;
+use std::future::IntoFuture;
 use std::time::Duration;
 
 use async_wsocket::ConnectionMode;
 use nostr::types::url::{RelayUrl, RelayUrlArg};
 
 use crate::client::{Client, Error};
+use crate::future::BoxedFuture;
 use crate::relay::{RelayCapabilities, RelayLimits, RelayOptions};
 
 /// Add new relay to the pool
@@ -141,7 +141,7 @@ where
     'url: 'client,
 {
     type Output = Result<bool, Error>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
+    type IntoFuture = BoxedFuture<'client, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {

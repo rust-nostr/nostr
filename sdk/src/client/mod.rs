@@ -9,6 +9,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
+#[cfg(not(target_arch = "wasm32"))]
 use async_wsocket::ConnectionMode;
 use futures::StreamExt;
 use nostr::prelude::*;
@@ -115,6 +116,7 @@ impl Client {
             pool: Arc::new(pool_builder.build()),
             gossip: builder.gossip.map(GossipWrapper::new),
             config: ClientConfig {
+                #[cfg(not(target_arch = "wasm32"))]
                 connection: builder.connection,
                 gossip_limits: builder.gossip_limits,
                 gossip_allowed: builder.gossip_allowed,

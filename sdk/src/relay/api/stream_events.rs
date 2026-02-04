@@ -1,4 +1,4 @@
-use std::future::{Future, IntoFuture};
+use std::future::IntoFuture;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
@@ -8,6 +8,7 @@ use nostr::{Event, Filter, SubscriptionId};
 use tokio::sync::mpsc;
 
 use super::subscribe::subscribe_auto_closing;
+use crate::future::BoxedFuture;
 use crate::relay::{
     Error, Relay, ReqExitPolicy, SubscribeAutoCloseOptions, SubscriptionActivity,
     SubscriptionAutoClosedReason,
@@ -60,7 +61,7 @@ impl<'relay> StreamEvents<'relay> {
 
 impl<'relay> IntoFuture for StreamEvents<'relay> {
     type Output = Result<EventStream, Error>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'relay>>;
+    type IntoFuture = BoxedFuture<'relay, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {

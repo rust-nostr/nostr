@@ -1,9 +1,9 @@
-use std::future::{Future, IntoFuture};
-use std::pin::Pin;
+use std::future::IntoFuture;
 use std::time::Duration;
 
 use super::output::Output;
 use crate::client::Client;
+use crate::future::BoxedFuture;
 
 /// Try to connect relays
 #[must_use = "Does nothing unless you await!"]
@@ -37,7 +37,7 @@ impl<'client> TryConnect<'client> {
 impl<'client> IntoFuture for TryConnect<'client> {
     // TODO: return a Result? Replace the Output with something else?
     type Output = Output<()>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
+    type IntoFuture = BoxedFuture<'client, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move { self.client.pool.try_connect(self.timeout).await })

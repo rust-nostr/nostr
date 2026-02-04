@@ -1,6 +1,5 @@
 use std::collections::HashMap;
-use std::future::{Future, IntoFuture};
-use std::pin::Pin;
+use std::future::IntoFuture;
 
 use nostr::{Filter, RelayUrl, SubscriptionId};
 
@@ -8,6 +7,7 @@ use super::output::Output;
 use super::req_target::ReqTarget;
 use super::util::build_targets;
 use crate::client::{Client, Error};
+use crate::future::BoxedFuture;
 use crate::relay::SubscribeAutoCloseOptions;
 
 /// Subscribe to events
@@ -50,7 +50,7 @@ where
     'url: 'client,
 {
     type Output = Result<Output<SubscriptionId>, Error>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'client>>;
+    type IntoFuture = BoxedFuture<'client, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {
