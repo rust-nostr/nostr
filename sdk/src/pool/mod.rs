@@ -178,6 +178,11 @@ impl RelayPool {
             let current_capabilities: &AtomicRelayCapabilities = relay.capabilities();
             current_capabilities.add(capabilities);
 
+            // The relay already exists, but an explicit request has been made to connect it.
+            if connect {
+                relay.connect();
+            }
+
             // Return
             return Ok(false);
         }
