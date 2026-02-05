@@ -7,7 +7,7 @@ use nostr::{Event, EventId, Kind, RelayUrl, RelayUrlArg};
 use nostr_gossip::{BestRelaySelection, GossipListKind};
 
 use super::output::Output;
-use crate::client::gossip::GossipWrapper;
+use crate::client::gossip::Gossip;
 use crate::client::{Client, Error};
 use crate::future::BoxedFuture;
 use crate::relay::RelayCapabilities;
@@ -136,7 +136,7 @@ impl<'client, 'event, 'url> SendEvent<'client, 'event, 'url> {
 
 async fn gossip_send_event(
     client: &Client,
-    gossip: &GossipWrapper,
+    gossip: &Gossip,
     event: &Event,
     is_nip17: bool,
     wait_for_ok_timeout: Duration,
@@ -180,6 +180,7 @@ async fn gossip_send_event(
         // Get NIP17 relays
         // Get only for relays for p tags since gift wraps are signed with random key (random author)
         let relays = gossip
+            .resolver()
             .get_relays(
                 event.tags.public_keys(),
                 BestRelaySelection::PrivateMessage { limit: 3 },
@@ -208,6 +209,7 @@ async fn gossip_send_event(
     } else {
         // Get OUTBOX, HINTS and MOST_RECEIVED relays for the author
         let mut relays: HashSet<RelayUrl> = gossip
+            .store()
             .get_best_relays(
                 &event.pubkey,
                 BestRelaySelection::All {
@@ -223,6 +225,7 @@ async fn gossip_send_event(
         // Extend with INBOX, HINTS and MOST_RECEIVED relays for the tags
         if !is_contact_list {
             let inbox_hints_most_recv: HashSet<RelayUrl> = gossip
+                .resolver()
                 .get_relays(
                     event.tags.public_keys(),
                     BestRelaySelection::All {
@@ -286,7 +289,7 @@ where
 
             // Process event for gossip, independently of the policy
             if let Some(gossip) = &self.client.gossip {
-                gossip.process(self.event, None).await?;
+                gossip.store().process(self.event, None).await?;
             }
 
             match (self.policy, &self.client.gossip) {

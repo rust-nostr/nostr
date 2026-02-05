@@ -15,7 +15,7 @@ use futures::StreamExt;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
 use nostr_gossip::{GossipAllowedRelays, GossipListKind, GossipPublicKeyStatus, NostrGossip};
-use tokio::sync::{oneshot, Semaphore};
+use tokio::sync::oneshot;
 
 mod api;
 mod builder;
@@ -27,7 +27,7 @@ mod notification;
 pub use self::api::*;
 pub use self::builder::*;
 pub use self::error::Error;
-use self::gossip::{BrokenDownFilters, GossipFilterPattern, GossipWrapper};
+use self::gossip::*;
 use self::middleware::AdmissionPolicyMiddleware;
 pub use self::notification::*;
 use crate::monitor::Monitor;
@@ -54,10 +54,8 @@ struct ClientConfig {
 #[derive(Debug, Clone)]
 pub struct Client {
     pool: Arc<RelayPool>,
-    gossip: Option<GossipWrapper>,
+    gossip: Option<Gossip>,
     config: ClientConfig,
-    /// Semaphore used to limit the number of gossip checks and syncs
-    gossip_sync: Arc<Semaphore>,
 }
 
 impl Default for Client {
@@ -114,7 +112,7 @@ impl Client {
         // Construct client
         Self {
             pool: Arc::new(pool_builder.build()),
-            gossip: builder.gossip.map(GossipWrapper::new),
+            gossip: builder.gossip.map(Gossip::new),
             config: ClientConfig {
                 #[cfg(not(target_arch = "wasm32"))]
                 connection: builder.connection,
@@ -126,8 +124,6 @@ impl Client {
                 verify_subscriptions: builder.verify_subscriptions,
                 ban_relay_on_mismatch: builder.ban_relay_on_mismatch,
             },
-            // Allow only one gossip check and sync at a time
-            gossip_sync: Arc::new(Semaphore::new(1)),
         }
     }
 
@@ -1260,7 +1256,7 @@ impl Client {
     /// 2. For any relays where negentropy sync fails, falls back to standard REQ messages to fetch the gossip lists
     async fn check_and_update_gossip<I>(
         &self,
-        gossip: &GossipWrapper,
+        gossip: &Gossip,
         public_keys: I,
         gossip_kind: GossipListKind,
     ) -> Result<(), Error>
@@ -1271,7 +1267,7 @@ impl Client {
 
         // First check: check if there are outdated public keys.
         let outdated_public_keys_first_check: HashSet<PublicKey> = self
-            .check_outdated_public_keys(gossip, public_keys.iter(), gossip_kind)
+            .check_outdated_public_keys(gossip.store(), public_keys.iter(), gossip_kind)
             .await?;
 
         // No outdated public keys, immediately return.
@@ -1280,18 +1276,18 @@ impl Client {
             return Ok(());
         }
 
-        let sync_id: u64 = gossip.next_sync_id();
+        let sync_id: u64 = gossip.resolver().next_sync_id();
 
         tracing::debug!(sync_id, "Acquiring gossip sync permit...");
 
-        let _permit = self.gossip_sync.acquire().await;
+        let _permit = gossip.semaphore().acquire().await;
 
         tracing::debug!(sync_id, kind = ?gossip_kind, "Acquired gossip sync permit. Start syncing...");
 
         // Second check: check data is still outdated after acquiring permit
         // (another process might have updated it while we were waiting)
         let outdated_public_keys: HashSet<PublicKey> = self
-            .check_outdated_public_keys(gossip, public_keys.iter(), gossip_kind)
+            .check_outdated_public_keys(gossip.store(), public_keys.iter(), gossip_kind)
             .await?;
 
         // Double-check: data might have been updated while waiting for permit
@@ -1304,7 +1300,7 @@ impl Client {
         let (output, stored_events) = self
             .check_and_update_gossip_sync(
                 sync_id,
-                gossip,
+                gossip.store(),
                 &gossip_kind,
                 outdated_public_keys.clone(),
             )
@@ -1323,7 +1319,7 @@ impl Client {
             // Try to fetch the updated events
             self.check_and_update_gossip_fetch(
                 sync_id,
-                gossip,
+                gossip.store(),
                 &gossip_kind,
                 &output,
                 &stored_events,
@@ -1336,7 +1332,7 @@ impl Client {
                 // Try to fetch the missing events
                 self.check_and_update_gossip_missing(
                     sync_id,
-                    gossip,
+                    gossip.store(),
                     &gossip_kind,
                     &output,
                     missing_public_keys,
@@ -1546,14 +1542,14 @@ impl Client {
     /// Break down filters for gossip and discovery relays
     async fn break_down_filter(
         &self,
-        gossip: &GossipWrapper,
+        gossip: &Gossip,
         filter: Filter,
     ) -> Result<HashMap<RelayUrl, Filter>, Error> {
         // Extract all public keys from filters
         let public_keys = filter.extract_public_keys();
 
         // Find pattern to decide what list to update
-        let pattern: GossipFilterPattern = gossip::find_filter_pattern(&filter);
+        let pattern: GossipFilterPattern = find_filter_pattern(&filter);
 
         // Update outdated public keys
         match &pattern {
@@ -1575,6 +1571,7 @@ impl Client {
 
         // Broken-down filters
         let filters: HashMap<RelayUrl, Filter> = match gossip
+            .resolver()
             .break_down_filter(
                 filter,
                 pattern,
@@ -1616,7 +1613,7 @@ impl Client {
     /// Break down filters for gossip and discovery relays
     async fn break_down_filters<F>(
         &self,
-        gossip: &GossipWrapper,
+        gossip: &Gossip,
         filters: F,
     ) -> Result<HashMap<RelayUrl, Vec<Filter>>, Error>
     where

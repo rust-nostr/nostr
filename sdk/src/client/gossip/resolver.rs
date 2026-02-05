@@ -1,17 +1,15 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::ops::Deref;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use nostr::prelude::*;
 use nostr_gossip::{BestRelaySelection, GossipAllowedRelays, NostrGossip};
 
+use super::{GossipFilterPattern, P_TAG};
 use crate::client::{Error, GossipRelayLimits};
 
-const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
-
 #[derive(Debug)]
-pub(super) enum BrokenDownFilters {
+pub(in crate::client) enum BrokenDownFilters {
     /// Filters by url
     Filters(HashMap<RelayUrl, Filter>),
     /// Filters that match a certain pattern but where no relays are available
@@ -21,23 +19,14 @@ pub(super) enum BrokenDownFilters {
 }
 
 #[derive(Debug, Clone)]
-pub(super) struct GossipWrapper {
+pub(in crate::client) struct GossipRelayResolver {
     gossip: Arc<dyn NostrGossip>,
     sync_counter: Arc<AtomicU64>,
 }
 
-impl Deref for GossipWrapper {
-    type Target = Arc<dyn NostrGossip>;
-
+impl GossipRelayResolver {
     #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.gossip
-    }
-}
-
-impl GossipWrapper {
-    #[inline]
-    pub(super) fn new(gossip: Arc<dyn NostrGossip>) -> Self {
+    pub(in crate::client) fn new(gossip: Arc<dyn NostrGossip>) -> Self {
         Self {
             gossip,
             sync_counter: Arc::new(AtomicU64::new(0)),
@@ -45,11 +34,11 @@ impl GossipWrapper {
     }
 
     #[inline]
-    pub(super) fn next_sync_id(&self) -> u64 {
+    pub(in crate::client) fn next_sync_id(&self) -> u64 {
         self.sync_counter.fetch_add(1, Ordering::SeqCst)
     }
 
-    pub(super) async fn get_relays<'a, I>(
+    pub(in crate::client) async fn get_relays<'a, I>(
         &self,
         public_keys: I,
         selection: BestRelaySelection,
@@ -101,7 +90,7 @@ impl GossipWrapper {
         Ok(urls)
     }
 
-    pub(super) async fn break_down_filter(
+    pub(in crate::client) async fn break_down_filter(
         &self,
         filter: Filter,
         pattern: GossipFilterPattern,
@@ -317,38 +306,6 @@ impl GossipWrapper {
     }
 }
 
-pub(super) enum GossipFilterPattern {
-    Nip65,
-    Nip65AndNip17,
-}
-
-impl GossipFilterPattern {
-    #[inline]
-    fn has_nip17(&self) -> bool {
-        matches!(self, Self::Nip65AndNip17)
-    }
-}
-
-/// Use both NIP-65 and NIP-17 if:
-/// - the `kinds` field contains the [`Kind::GiftWrap`];
-/// - if it's set a `#p` tag and no kind is specified
-pub(super) fn find_filter_pattern(filter: &Filter) -> GossipFilterPattern {
-    let (are_kinds_empty, has_gift_wrap_kind): (bool, bool) = match &filter.kinds {
-        Some(kinds) if kinds.is_empty() => (true, false),
-        Some(kinds) => (false, kinds.contains(&Kind::GiftWrap)),
-        None => (true, false),
-    };
-    let has_p_tags: bool = filter.generic_tags.contains_key(&P_TAG);
-
-    // TODO: use both also if there are only IDs?
-
-    if has_gift_wrap_kind || (has_p_tags && are_kinds_empty) {
-        return GossipFilterPattern::Nip65AndNip17;
-    }
-
-    GossipFilterPattern::Nip65
-}
-
 #[cfg(test)]
 mod tests {
     use nostr_gossip_memory::prelude::*;
@@ -385,7 +342,7 @@ mod tests {
             .unwrap()
     }
 
-    async fn setup() -> GossipWrapper {
+    async fn setup() -> GossipRelayResolver {
         let db = NostrGossipMemory::unbounded();
 
         let events = vec![
@@ -397,7 +354,7 @@ mod tests {
             db.process(&event, None).await.unwrap();
         }
 
-        GossipWrapper::new(Arc::new(db))
+        GossipRelayResolver::new(Arc::new(db))
     }
 
     #[tokio::test]
