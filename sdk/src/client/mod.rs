@@ -5,7 +5,7 @@
 //! Client
 
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -1230,12 +1230,12 @@ impl Client {
         gossip: &Arc<dyn NostrGossip>,
         public_keys: I,
         gossip_kind: GossipListKind,
-    ) -> Result<HashSet<PublicKey>, Error>
+    ) -> Result<BTreeSet<PublicKey>, Error>
     where
         I: IntoIterator<Item = &'a PublicKey>,
     {
         // First check: check if there are outdated public keys.
-        let mut outdated_public_keys: HashSet<PublicKey> = HashSet::new();
+        let mut outdated_public_keys: BTreeSet<PublicKey> = BTreeSet::new();
 
         for public_key in public_keys.into_iter() {
             // Get the public key status
@@ -1263,10 +1263,10 @@ impl Client {
     where
         I: IntoIterator<Item = PublicKey>,
     {
-        let public_keys: HashSet<PublicKey> = public_keys.into_iter().collect();
+        let public_keys: BTreeSet<PublicKey> = public_keys.into_iter().collect();
 
         // First check: check if there are outdated public keys.
-        let outdated_public_keys_first_check: HashSet<PublicKey> = self
+        let outdated_public_keys_first_check: BTreeSet<PublicKey> = self
             .check_outdated_public_keys(gossip.store(), public_keys.iter(), gossip_kind)
             .await?;
 
@@ -1278,21 +1278,36 @@ impl Client {
 
         let sync_id: u64 = gossip.resolver().next_sync_id();
 
-        tracing::debug!(sync_id, "Acquiring gossip sync permit...");
+        tracing::debug!(
+            sync_id,
+            public_keys = outdated_public_keys_first_check.len(),
+            "Acquiring gossip permits..."
+        );
 
-        let _permit = gossip.semaphore().acquire().await;
+        let _permit: GossipSemaphorePermit = gossip
+            .semaphore()
+            .acquire(outdated_public_keys_first_check.clone())
+            .await;
 
-        tracing::debug!(sync_id, kind = ?gossip_kind, "Acquired gossip sync permit. Start syncing...");
+        tracing::debug!(
+            sync_id,
+            kind = ?gossip_kind,
+            "Acquired gossip permits. Start syncing..."
+        );
 
-        // Second check: check data is still outdated after acquiring permit
+        // Second check: check data is still outdated after acquiring permits
         // (another process might have updated it while we were waiting)
-        let outdated_public_keys: HashSet<PublicKey> = self
+        let outdated_public_keys: BTreeSet<PublicKey> = self
             .check_outdated_public_keys(gossip.store(), public_keys.iter(), gossip_kind)
             .await?;
 
-        // Double-check: data might have been updated while waiting for permit
+        // Double-check: data might have been updated while waiting for permits
         if outdated_public_keys.is_empty() {
-            tracing::debug!(sync_id = %sync_id, kind = ?gossip_kind, "Gossip sync skipped: data updated by another process while acquiring permits.");
+            tracing::debug!(
+                sync_id = %sync_id,
+                kind = ?gossip_kind,
+                "Gossip sync skipped: data updated by another process while acquiring permits."
+            );
             return Ok(());
         }
 
@@ -1307,7 +1322,7 @@ impl Client {
             .await?;
 
         // Keep track of the missing public keys
-        let mut missing_public_keys: HashSet<PublicKey> = outdated_public_keys;
+        let mut missing_public_keys: BTreeSet<PublicKey> = outdated_public_keys;
 
         // Check if sync failed for some relay
         if !output.failed.is_empty() {
@@ -1352,7 +1367,7 @@ impl Client {
         sync_id: u64,
         gossip: &Arc<dyn NostrGossip>,
         gossip_kind: &GossipListKind,
-        outdated_public_keys: HashSet<PublicKey>,
+        outdated_public_keys: BTreeSet<PublicKey>,
     ) -> Result<(Output<SyncSummary>, Events), Error> {
         // Get kind
         let kind: Kind = gossip_kind.to_event_kind();
@@ -1406,7 +1421,7 @@ impl Client {
         gossip_kind: &GossipListKind,
         output: &Output<SyncSummary>,
         stored_events: &Events,
-        missing_public_keys: &mut HashSet<PublicKey>,
+        missing_public_keys: &mut BTreeSet<PublicKey>,
     ) -> Result<(), Error> {
         // Get kind
         let kind: Kind = gossip_kind.to_event_kind();
@@ -1496,7 +1511,7 @@ impl Client {
         gossip: &Arc<dyn NostrGossip>,
         gossip_kind: &GossipListKind,
         output: &Output<SyncSummary>,
-        missing_public_keys: HashSet<PublicKey>,
+        missing_public_keys: BTreeSet<PublicKey>,
     ) -> Result<(), Error> {
         // Get kind
         let kind: Kind = gossip_kind.to_event_kind();

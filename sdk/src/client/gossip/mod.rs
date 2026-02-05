@@ -2,11 +2,12 @@ use std::sync::Arc;
 
 use nostr::{Alphabet, Filter, Kind, SingleLetterTag};
 use nostr_gossip::NostrGossip;
-use tokio::sync::Semaphore;
 
 mod resolver;
+mod semaphore;
 
 pub(super) use self::resolver::*;
+pub(super) use self::semaphore::*;
 
 const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
 
@@ -46,7 +47,7 @@ pub(super) fn find_filter_pattern(filter: &Filter) -> GossipFilterPattern {
 pub(super) struct Gossip {
     store: Arc<dyn NostrGossip>,
     resolver: GossipRelayResolver,
-    semaphore: Arc<Semaphore>,
+    semaphore: GossipSemaphore,
 }
 
 impl Gossip {
@@ -55,7 +56,7 @@ impl Gossip {
         Self {
             store: gossip.clone(),
             resolver: GossipRelayResolver::new(gossip),
-            semaphore: Arc::new(Semaphore::new(1)),
+            semaphore: GossipSemaphore::new(),
         }
     }
 
@@ -70,7 +71,7 @@ impl Gossip {
     }
 
     #[inline]
-    pub(super) fn semaphore(&self) -> &Arc<Semaphore> {
+    pub(super) fn semaphore(&self) -> &GossipSemaphore {
         &self.semaphore
     }
 }

@@ -49,11 +49,12 @@
 
 ### Changed
 
+- Improve gossip concurrency with per-key semaphore system (https://github.com/rust-nostr/nostr/pull/1250)
 - Redesign `Client::add_relay` API (https://github.com/rust-nostr/nostr/pull/1227)
 - Redesign `Client::remove_relay` API (https://github.com/rust-nostr/nostr/pull/1228)
 - Redesign `Client::remove_relays` API (https://github.com/rust-nostr/nostr/pull/1229)
 - Redesign `Client::connect`, `Client::try_connect` and `Relay::try_connect` APIs (https://github.com/rust-nostr/nostr/pull/1229)
-  Redesign `Client::relays` API (https://github.com/rust-nostr/nostr/pull/1231)
+- Redesign `Client::relays` API (https://github.com/rust-nostr/nostr/pull/1231)
 - Redesign `Client::subscribe` and `Relay::subscribe` APIs (https://github.com/rust-nostr/nostr/pull/1232)
 - Redesign `Client::stream_events` and `Relay::stream_events` APIs (https://github.com/rust-nostr/nostr/pull/1233)
 - Redesign `Client::fetch_events` and `Relay::fetch_events` APIs (https://github.com/rust-nostr/nostr/pull/1234)
