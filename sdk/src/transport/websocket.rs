@@ -8,7 +8,6 @@ use std::fmt;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
-use std::time::Duration;
 
 use async_utility::futures_util::stream::SplitSink;
 use async_wsocket::futures_util::{Sink, SinkExt, StreamExt, TryStreamExt};
@@ -67,7 +66,6 @@ pub trait WebSocketTransport: fmt::Debug + Send + Sync {
         &'a self,
         url: &'a Url,
         mode: &'a ConnectionMode,
-        timeout: Duration,
     ) -> BoxedFuture<'a, Result<(WebSocketSink, WebSocketStream), TransportError>>;
 }
 
@@ -84,11 +82,10 @@ impl WebSocketTransport for DefaultWebsocketTransport {
         &'a self,
         url: &'a Url,
         mode: &'a ConnectionMode,
-        timeout: Duration,
     ) -> BoxedFuture<'a, Result<(WebSocketSink, WebSocketStream), TransportError>> {
         Box::pin(async move {
             // Connect
-            let socket: WebSocket = WebSocket::connect(url, mode, timeout)
+            let socket: WebSocket = WebSocket::connect(url, mode)
                 .await
                 .map_err(TransportError::backend)?;
 

@@ -40,7 +40,7 @@ rust-version = "1.70.0"
 
 [workspace.dependencies]
 async-utility = "0.3"
-async-wsocket = "0.13"
+async-wsocket = {  git = "https://github.com/shadowylab/async-wsocket", rev = "0fed6c9c6aec7393ee0e9cf3933d76914ab427d3" }
 atomic-destructor = { version = "0.3", default-features = false }
 base64 = { version = "0.22", default-features = false }
 clap = "=4.4.18"

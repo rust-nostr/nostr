@@ -31,6 +31,7 @@ use crate::client::ClientNotification;
 use crate::policy::AdmitStatus;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
+use crate::transport::error::TransportError;
 use crate::transport::websocket::{WebSocketSink, WebSocketStream};
 
 type ClientMessageJson = String;
@@ -649,13 +650,20 @@ impl InnerRelay {
         // Increase the attempts
         self.stats.new_attempt();
 
+        // Connect futures
+        let connect_fut = self
+            .state
+            .transport
+            .connect((&self.url).into(), &self.opts.connection_mode);
+        let fut = time::timeout(Some(timeout), connect_fut);
+
         // Try to connect
         // If during connection the termination request is received, abort the connection and return error.
         // At this stem is NOT required to close the WebSocket connection.
         tokio::select! {
             // Connect
-            res = self.state.transport.connect((&self.url).into(), &self.opts.connection_mode, timeout) => match res {
-                Ok((ws_tx, ws_rx)) => {
+            res = fut => match res {
+                Some(Ok((ws_tx, ws_rx))) => {
                     // Update status
                     self.set_status(RelayStatus::Connected, true);
 
@@ -664,12 +672,19 @@ impl InnerRelay {
 
                     Ok((ws_tx, ws_rx))
                 }
-                Err(e) => {
+                Some(Err(e)) => {
                     // Update status
                     self.set_status(status_on_failure, false);
 
                     // Return error
                     Err(Error::Transport(e))
+                }
+                None => {
+                    // Update status
+                    self.set_status(status_on_failure, false);
+
+                    // Return error
+                    Err(Error::Transport(TransportError::timeout()))
                 }
             },
             // Handle termination notification

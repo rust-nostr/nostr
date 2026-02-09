@@ -46,6 +46,7 @@
 - Change `Client::relay` output to return `Result<Output<Relay>>`
 - Remove `ClientOptions` in favor of `ClientBuilder` (https://github.com/rust-nostr/nostr/pull/1241)
 - Remove `Client::handle_notifications` and `Relay_handle_notifications` (https://github.com/rust-nostr/nostr/pull/1245)
+- Remove `timeout` from `WebSocketTransport`
 
 ### Changed
 
