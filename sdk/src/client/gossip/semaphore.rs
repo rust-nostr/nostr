@@ -6,6 +6,7 @@
 use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 
+use async_utility::task;
 use nostr::prelude::*;
 use tokio::sync::{Mutex, OwnedSemaphorePermit, Semaphore};
 
@@ -134,7 +135,7 @@ impl Drop for GossipSemaphorePermit {
         drop(inner.permits);
 
         // Cleanup
-        tokio::spawn(async move {
+        task::spawn(async move {
             inner.semaphore.cleanup(&inner.public_keys).await;
         });
     }
