@@ -158,6 +158,8 @@ where
     }
 }
 
+impl_blocking!(for<'client, 'url> AddRelay<'client, 'url> where 'url: 'client);
+
 #[cfg(test)]
 mod tests {
     use super::*;

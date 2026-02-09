@@ -69,6 +69,8 @@ impl<'client> IntoFuture for GetRelays<'client> {
     }
 }
 
+impl_blocking!(GetRelays<'_>);
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -47,3 +47,5 @@ impl<'client> IntoFuture for Connect<'client> {
         })
     }
 }
+
+impl_blocking!(Connect<'_>);

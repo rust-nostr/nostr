@@ -78,6 +78,8 @@ impl<'relay> IntoFuture for TryConnect<'relay> {
     }
 }
 
+impl_blocking!(TryConnect<'_>);
+
 #[cfg(test)]
 mod tests {
     use async_utility::time;

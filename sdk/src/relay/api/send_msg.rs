@@ -53,3 +53,5 @@ where
         })
     }
 }
+
+impl_blocking!(for<'relay, 'msg> SendMessage<'relay, 'msg> where 'msg: 'relay);

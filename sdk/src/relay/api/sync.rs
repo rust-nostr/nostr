@@ -613,6 +613,8 @@ impl<'relay> IntoFuture for SyncEvents<'relay> {
     }
 }
 
+impl_blocking!(SyncEvents<'_>);
+
 #[cfg(test)]
 mod tests {
     use std::collections::{HashMap, HashSet};

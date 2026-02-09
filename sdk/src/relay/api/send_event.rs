@@ -143,6 +143,8 @@ where
     }
 }
 
+impl_blocking!(for<'relay, 'event> SendEvent<'relay, 'event> where 'event: 'relay);
+
 #[cfg(test)]
 mod tests {
     use std::time::Duration;

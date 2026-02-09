@@ -190,3 +190,5 @@ where
         })
     }
 }
+
+impl_blocking!(for<'client, 'url> SyncEvents<'client, 'url> where 'url: 'client);

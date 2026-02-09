@@ -373,6 +373,8 @@ where
     }
 }
 
+impl_blocking!(for<'client, 'event, 'url> SendEvent<'client, 'event, 'url> where 'event: 'client, 'url: 'client);
+
 #[cfg(test)]
 mod tests {
     use nostr::prelude::*;

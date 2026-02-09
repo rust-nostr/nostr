@@ -30,3 +30,5 @@ where
         Box::pin(async move { self.relay.inner.unsubscribe(self.id).await })
     }
 }
+
+impl_blocking!(for<'relay, 'id> Unsubscribe<'relay, 'id> where 'id: 'relay);
