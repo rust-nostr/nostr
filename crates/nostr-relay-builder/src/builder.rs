@@ -8,10 +8,6 @@ use std::borrow::Cow;
 use std::fmt;
 use std::net::{IpAddr, SocketAddr};
 use std::num::NonZeroUsize;
-#[cfg(all(feature = "tor", any(target_os = "android", target_os = "ios")))]
-use std::path::Path;
-#[cfg(feature = "tor")]
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -34,62 +30,6 @@ impl Default for RateLimit {
         Self {
             max_reqs: 500,
             notes_per_minute: 60,
-        }
-    }
-}
-
-#[cfg(feature = "tor")]
-#[allow(missing_docs)]
-#[deprecated(
-    since = "0.45.0",
-    note = "Use `LocalRelayBuilderHiddenService` instead"
-)]
-pub type RelayBuilderHiddenService = LocalRelayBuilderHiddenService;
-
-/// Relay builder tor hidden service options
-#[derive(Debug, Clone)]
-#[cfg(feature = "tor")]
-pub struct LocalRelayBuilderHiddenService {
-    /// Nickname (local identifier) for a Tor hidden service
-    ///
-    /// Used to look up this service's keys, state, configuration, etc., and distinguish them from other services.
-    pub nickname: String,
-    /// Custom path
-    pub custom_path: Option<PathBuf>,
-}
-
-#[cfg(feature = "tor")]
-impl LocalRelayBuilderHiddenService {
-    /// New tor hidden service options
-    ///
-    /// The nickname is a local identifier for a Tor hidden service.
-    /// It's used to look up this service's keys, state, configuration, etc., and distinguish them from other services.
-    #[inline]
-    #[cfg(all(not(target_os = "android"), not(target_os = "ios")))]
-    pub fn new<S>(nickname: S) -> Self
-    where
-        S: Into<String>,
-    {
-        Self {
-            nickname: nickname.into(),
-            custom_path: None,
-        }
-    }
-
-    /// New tor hidden service options
-    ///
-    /// The nickname is a local identifier for a Tor hidden service.
-    /// It's used to look up this service's keys, state, configuration, etc., and distinguish them from other services.
-    #[inline]
-    #[cfg(any(target_os = "android", target_os = "ios"))]
-    pub fn new<S, P>(nickname: S, path: P) -> Self
-    where
-        S: Into<String>,
-        P: AsRef<Path>,
-    {
-        Self {
-            nickname: nickname.into(),
-            custom_path: Some(path.as_ref().to_path_buf()),
         }
     }
 }
@@ -271,9 +211,6 @@ pub struct LocalRelayBuilder {
     pub(crate) rate_limit: RateLimit,
     /// NIP42 options
     pub(crate) nip42: Option<LocalRelayBuilderNip42>,
-    /// Tor hidden service
-    #[cfg(feature = "tor")]
-    pub(crate) tor: Option<LocalRelayBuilderHiddenService>,
     /// Max connections allowed
     pub(crate) max_connections: Option<usize>,
     /// Max subscription ID length
@@ -307,8 +244,6 @@ impl Default for LocalRelayBuilder {
             mode: LocalRelayBuilderMode::default(),
             rate_limit: RateLimit::default(),
             nip42: None,
-            #[cfg(feature = "tor")]
-            tor: None,
             max_connections: None,
             max_subid_length: 250,
             max_filter_limit: None,
@@ -365,14 +300,6 @@ impl LocalRelayBuilder {
     #[inline]
     pub fn nip42(mut self, opts: LocalRelayBuilderNip42) -> Self {
         self.nip42 = Some(opts);
-        self
-    }
-
-    /// Set tor options
-    #[inline]
-    #[cfg(feature = "tor")]
-    pub fn tor(mut self, opts: LocalRelayBuilderHiddenService) -> Self {
-        self.tor = Some(opts);
         self
     }
 

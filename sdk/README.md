@@ -83,7 +83,6 @@ The following crate feature flags are available:
 
 | Feature            | Default | Description                                                           |
 |--------------------|:-------:|-----------------------------------------------------------------------|
-| `tor`              |   No    | Enable support for embedded tor client                                |
 | `pow-multi-thread` |   No    | Enable event POW mining using multi-threads                           |
 | `all-nips`         |   No    | Enable all NIPs                                                       |
 | `nip03`            |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                 |

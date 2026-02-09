@@ -21,8 +21,6 @@ use tokio::sync::{broadcast, Notify, OnceCell, Semaphore};
 
 use super::session::{Nip42Session, RateLimiterResponse, Session, Tokens};
 use super::util;
-#[cfg(feature = "tor")]
-use crate::builder::LocalRelayBuilderHiddenService;
 use crate::builder::{
     LocalRelayBuilder, LocalRelayBuilderMode, LocalRelayBuilderNip42, LocalRelayTestOptions,
     QueryPolicy, QueryPolicyResult, RateLimit, WritePolicy, WritePolicyResult,
@@ -50,10 +48,6 @@ pub(super) struct InnerLocalRelay {
     default_filter_limit: usize,
     auth_dm: bool,
     min_pow: Option<u8>, // TODO: use AtomicU8 to allow to change it?
-    #[cfg(feature = "tor")]
-    tor: Option<LocalRelayBuilderHiddenService>,
-    #[cfg(feature = "tor")]
-    hidden_service: OnceCell<Option<String>>,
     write_policy: Option<Arc<dyn WritePolicy>>,
     query_policy: Option<Arc<dyn QueryPolicy>>,
     nip42: Option<LocalRelayBuilderNip42>,
@@ -100,10 +94,6 @@ impl InnerLocalRelay {
             default_filter_limit: builder.default_filter_limit,
             auth_dm: builder.auth_dm,
             min_pow: builder.min_pow,
-            #[cfg(feature = "tor")]
-            tor: builder.tor,
-            #[cfg(feature = "tor")]
-            hidden_service: OnceCell::new(),
             write_policy: builder.write_policy,
             query_policy: builder.query_policy,
             nip42: builder.nip42,
@@ -172,29 +162,6 @@ impl InnerLocalRelay {
         let addr: String = format!("ws://{addr}");
         // SAFETY: must be a valid address
         RelayUrl::parse(&addr).unwrap()
-    }
-
-    #[inline]
-    #[cfg(feature = "tor")]
-    pub async fn hidden_service(&self) -> Result<&Option<String>, Error> {
-        self.hidden_service
-            .get_or_try_init(|| async {
-                match &self.tor {
-                    Some(opts) => {
-                        let addr = self.addr().await;
-                        let service = native::tor::launch_onion_service(
-                            opts.nickname.clone(),
-                            *addr,
-                            80,
-                            opts.custom_path.as_ref(),
-                        )
-                        .await?;
-                        Ok(service.onion_name().map(|n| format!("ws://{n}")))
-                    }
-                    None => Ok(None),
-                }
-            })
-            .await
     }
 
     pub(super) async fn sync_with<'a, I, U>(

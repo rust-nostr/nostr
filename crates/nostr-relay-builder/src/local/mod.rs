@@ -69,14 +69,6 @@ impl LocalRelay {
         self.inner.url().await
     }
 
-    /// Run and get the hidden service address
-    #[inline]
-    #[cfg(feature = "tor")]
-    pub async fn hidden_service(&self) -> Result<Option<&str>, Error> {
-        let addr: &Option<String> = self.inner.hidden_service().await?;
-        Ok(addr.as_deref())
-    }
-
     /// Sync events with other relay(s).
     #[inline]
     pub async fn sync_with<'a, I, U>(

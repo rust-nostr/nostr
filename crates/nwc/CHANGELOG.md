@@ -29,6 +29,7 @@
 
 - Replace `NostrWalletConnectOptions` with `NostrWalletConnectBuilder` (https://github.com/rust-nostr/nostr/pull/1140)
 - Remove `NostrWalletConnect::with_opts` (https://github.com/rust-nostr/nostr/pull/1140)
+- Remove `tor` feature (https://github.com/rust-nostr/nostr/pull/1253)
 
 ### Changed
 

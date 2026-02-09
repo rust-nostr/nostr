@@ -17,7 +17,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = []
-tor = ["async-wsocket/tor"]
 pow-multi-thread = ["nostr/pow-multi-thread"]
 all-nips = ["nostr/all-nips", "nip04", "nip06", "nip44", "nip47", "nip49", "nip57", "nip59", "nip96", "nip98"]
 nip03 = ["nostr/nip03"]
@@ -95,7 +94,7 @@ name = "subscriptions"
 
 [[example]]
 name = "tor"
-required-features = ["nip59", "tor"]
+required-features = ["nip59"]
 
 [[example]]
 name = "lmdb"

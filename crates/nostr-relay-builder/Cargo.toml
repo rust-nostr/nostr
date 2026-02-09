@@ -15,10 +15,6 @@ keywords = ["nostr", "relay", "builder"]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
-[features]
-default = []
-tor = ["nostr-sdk/tor", "async-wsocket/tor-launch-service"]
-
 [dependencies]
 async-utility.workspace = true
 async-wsocket.workspace = true
@@ -41,10 +37,6 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [[example]]
 name = "hyper"
-
-[[example]]
-name = "local-with-hs"
-required-features = ["tor"]
 
 [[example]]
 name = "mock"

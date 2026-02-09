@@ -277,17 +277,6 @@ impl Client {
                         }
                     }
                 },
-                #[cfg(feature = "tor")]
-                ConnectionMode::Tor { .. } => match self.config.connection.target {
-                    ConnectionTarget::All => {
-                        opts = opts.connection_mode(self.config.connection.mode.clone());
-                    }
-                    ConnectionTarget::Onion => {
-                        if url.is_onion() {
-                            opts = opts.connection_mode(self.config.connection.mode.clone())
-                        }
-                    }
-                },
             };
         }
 

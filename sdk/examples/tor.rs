@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+
 use nostr_sdk::prelude::*;
 
 #[tokio::main]
@@ -13,7 +15,7 @@ async fn main() -> Result<()> {
 
     // Configure client to use embedded tor for `.onion` relays
     let connection: Connection = Connection::new()
-        .embedded_tor()
+        .proxy(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)))
         .target(ConnectionTarget::Onion);
     let client = Client::builder()
         .signer(keys.clone())

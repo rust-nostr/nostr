@@ -6,8 +6,6 @@
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
-#[cfg(feature = "tor")]
-use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -324,18 +322,6 @@ pub struct Connection {
 #[cfg(not(target_arch = "wasm32"))]
 impl Default for Connection {
     fn default() -> Self {
-        #[cfg(all(feature = "tor", not(target_os = "android"), not(target_os = "ios")))]
-        {
-            Self {
-                mode: ConnectionMode::tor(),
-                target: ConnectionTarget::Onion,
-            }
-        }
-
-        #[cfg(any(
-            not(feature = "tor"),
-            all(feature = "tor", any(target_os = "android", target_os = "ios")),
-        ))]
         Self {
             mode: ConnectionMode::default(),
             target: ConnectionTarget::default(),
@@ -379,27 +365,6 @@ impl Connection {
     #[inline]
     pub fn proxy(mut self, addr: SocketAddr) -> Self {
         self.mode = ConnectionMode::proxy(addr);
-        self
-    }
-
-    /// Use embedded tor client
-    #[inline]
-    #[cfg(feature = "tor")]
-    pub fn embedded_tor(mut self) -> Self {
-        self.mode = ConnectionMode::tor();
-        self
-    }
-
-    /// Use embedded tor client
-    ///
-    /// Specify a path where to store data
-    #[inline]
-    #[cfg(feature = "tor")]
-    pub fn embedded_tor_with_path<P>(mut self, path: P) -> Self
-    where
-        P: AsRef<Path>,
-    {
-        self.mode = ConnectionMode::tor_with_path(path);
         self
     }
 }

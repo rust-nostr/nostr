@@ -15,11 +15,6 @@ keywords = ["nostr", "nwc"]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
-[features]
-default = []
-# Enables the tor embedded client
-tor = ["nostr-sdk/tor"]
-
 [dependencies]
 nostr = { workspace = true, features = ["std", "nip47"] }
 nostr-sdk.workspace = true

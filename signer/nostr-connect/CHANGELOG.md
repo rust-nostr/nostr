@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Breaking changes
+
+- Remove `tor` feature (https://github.com/rust-nostr/nostr/pull/1253)
+
 ## v0.44.0 - 2025/11/06
 
 ### Fixed

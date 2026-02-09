@@ -57,10 +57,8 @@ jobs:
           - nostr-keyring --features async
           - nostr-sdk
           - nostr-sdk --features all-nips
-          - nostr-sdk --features tor
           - nostr-sdk --all-features
           - nostr-relay-builder
-          - nostr-relay-builder --features tor
           - nostr-connect
           - nwc
     steps:
