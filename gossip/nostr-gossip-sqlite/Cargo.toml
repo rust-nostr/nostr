@@ -12,13 +12,14 @@ rust-version.workspace = true
 keywords = ["nostr", "gossip", "sqlite"]
 
 [features]
-default = []
-unbundled = ["sqlx/sqlite-unbundled"]
+default = ["bundled"]
+bundled = ["rusqlite/bundled"]
 
 [dependencies]
+async-utility.workspace = true
 nostr = { workspace = true, features = ["std"] }
 nostr-gossip.workspace = true
-sqlx = { workspace = true, features = ["migrate", "runtime-tokio", "sqlite"] }
+rusqlite = { workspace = true, default-features = false }
 tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]

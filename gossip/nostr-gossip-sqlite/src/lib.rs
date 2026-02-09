@@ -11,6 +11,8 @@
 
 mod constant;
 pub mod error;
+mod migration;
 mod model;
+mod pool;
 pub mod prelude;
 pub mod store;
